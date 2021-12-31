@@ -8327,29 +8327,57 @@ compiler that uses the
 x64 native backend.
 
 \begin{verbatim}
-MLKit version 4.3.0, Jan 24, 2006 [X86 Backend]
+MLKit v4.6.0 [X64 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
 Options:
 
 --version, -v, -V
-     Print MLKit version information and exit.
-
---man
-     Print man-page and exit.
+     Print version information and exit.
 
 --help
-     Print help information and exit.
+     Print extended help information and exit.
 
 --help S
      Print help information about an option and exit.
 
+--man
+     Print man-page and exit.
+
+--SML_LIB S              (You_did_not_set_path_to_install_dir)
+     Installation directory for the MLKit standard library.
+     For normal execution you should not modify this value.
+     However, if you wish to use the MLKit with an altered
+     runtime system you can update this setting and the
+     system will try to link to a runtime system found in
+     the specified install directory.
+
+--aggresive_opt, -aopt                                    (on)
+     Enable aggressive optimisations, including constant
+     folding and aggressive inlining. These
+     optimisations are not guaranteed to be region
+     safe. Turning off garbage collection automatically
+     turns off this option.
+
+--assembler S, -as S                                   (as -q)
+     This option specifies the assembler used.
+     On Linux the default is 'as --64'. On macOS,
+     the default is 'as -q'.
+
+--c_compiler S, -cc S (gcc -Wl,-no_pie,-stack_size,0x10000000,-stack_addr,0xc0000000)
+     This option specifies which C compiler is
+     used for linking. When linking with c++
+     libraries, 'g++' is the linker you want.
+     On Linux the default is 'gcc -no-pie',
+     whereas on macOS, the default is
+     'gcc -Wl,-no_pie,-stack_size,0x10000000,-stack_addr,0xc0000000'.
+
 --chat, -verbose                                         (off)
      Print a message for each compilation step in the compiler.
 
---comments_in_x86_asmcode                                (off)
-     Insert comments in x86 assembler code.
+--comments_in_asmcode                                    (off)
+     Insert comments in assembler code.
 
 --compile_only, -c                                       (off)
      Compile only. Suppresses generation of executable
@@ -8358,7 +8386,7 @@ Options:
      Show compiler timings for each compilation phase.
 
 --contract                                                (on)
-     Contract is responsible for in-lining, specialization,
+     Contract is responsible for inlining, specialization,
      elimination of dead code, and much else (Lambda
      Expression Optimiser).
 
@@ -8370,7 +8398,7 @@ Options:
      possible.
 
 --cross_module_opt, -cross_opt                            (on)
-     Enable cross-module optimisation including in-lining
+     Enable cross-module optimisation including inlining
      of small functions and specialisation of small
      recursive functions. Which optimisations are performed
      across modules is controlled by individual optimisation
@@ -8399,12 +8427,11 @@ Options:
      files are linked together.
 
 --debug_man_enrich                                       (off)
-     During interactive use, show information about why a
-     program unit need be recompiled. In the MLKit, a
-     program unit (or a functor body) is recompiled if
-     either (a) the program unit is modified, or (b)
-     information about an identifier for which the program
-     unit depends upon has changed.
+     Show information about why a program unit need be
+     recompiled. A program unit (or a functor body)
+     is recompiled if either (a) the program unit is
+     modified, or (b) information about an identifier
+     for which the program unit depends upon has changed.
 
 --debug_which_at                                         (off)
      Debug storage mode analysis.
@@ -8430,17 +8457,13 @@ Options:
            let x1=e1 in ... let xn=en in ... xi .. xj ...
      (Lambda Expression Optimiser).
 
---extended_typing, -xt                                   (off)
-     When this flag is enabled, SMLserver requires
-     scripts to be functor SCRIPTLET's, which are
-     automatically instantiated by SMLserver in a
-     type safe way. To construct and link to XHTML
-     forms in a type safe way, SMLserver constructs an
-     abstract interface to the forms from the functor
-     arguments of the scriptlets. This interface is
-     constructed and written to the file scripts.gen.sml
-     prior to the actual type checking and compilation
-     of the project.
+--explicit_regions, -er                                  (off)
+     Support programming with explicit regions.
+
+--export_basis_js, -ebjs                                 (off)
+     When this flag is enabled, SmlToJs writes
+     pickled bases to file.eb.js files to be read by
+     js-client.
 
 --garbage_collection, -gc                                 (on)
      Enable garbage collection. When enabled, regions are
@@ -8456,9 +8479,9 @@ Options:
      calls (see the option ``preserve_tail_calls''.)
 
 --gdb_support, -g                                        (off)
-     When enabled, the compiler passes the option --gstabs
+     When enabled, the compiler passes the option --g
      to `as' (The GNU Assembler) and preserves the generated
-     assembler files (.s files). Passing the --gstabs
+     assembler files (.s files). Passing the --g
      option to `as' makes it possible to step through
      the generated program using gdb (The GNU Debugger).
 
@@ -8474,16 +8497,10 @@ Options:
      you wish to import the Basis Library manually in your
      projects.
 
---install_dir S                         (/home/mael/mlkit/kit)
-     Installation directory for the MLKit. For normal
-     execution you should not modify this value. However,
-     if you wish to use the MLKit with an altered runtime
-     system and you do not wish to exchange the .o-files in
-     the bin-subdirectory (for example because you are running
-     the MLKit on a shared system), you can update this
-     setting and the system will try to link to a runtime
-     system in the bin-subdirectory found in the new install
-     directory.
+--inline_names S
+     Names of functions that should always be inlined
+     if possible, no matter the setting of the flag
+     --maximum_inline_size.
 
 --libdirs S
      This option controls where ld looks for
@@ -8510,11 +8527,6 @@ Options:
      Link-files to be linked together to form an
      executable.
 
---link_code_scripts S, -link_scripts S
-     Link-files for SMLserver scripts; link-files
-     specified with -link represent libraries when
-     mlkit is used with SMLserver.
-
 --link_time_dead_code_elimination, -ltdce                 (on)
      Link time dead code elimination.
 
@@ -8525,11 +8537,11 @@ Options:
 --log_to_file                                            (off)
      Log to files instead of stdout.
 
---maximum_inline_size N                                   (50)
+--maximum_inline_size N                                   (70)
      Functions smaller than this size (counted in abstract
-     syntax tree nodes) are in-lines, even if they are used
+     syntax tree nodes) are inlined, even if they are used
      more than once. Functions that are used only once are
-     always in-lined.
+     always inlined.
 
 --maximum_specialise_size N                              (200)
      Curried functions smaller than this size (counted in
@@ -8542,6 +8554,17 @@ Options:
 
 --minimize_fixs                                           (on)
      Minimize fix constructs (Lambda Expression Optimiser).
+
+--mlb-subdir S
+     For ensuring that the smart recompilation scheme
+     is not reusing target-code compiled with different
+     settings, a string provided with the mlb-subdir
+     option can ensure the use of consistently generated
+     code. This option is Useful, in particular, when
+     performing benchmarking.
+
+--mlb_path_maps S, -mlb-path-map S
+     ML Basis path map files to be used.
 
 --namebase S                                       (dummyBase)
      Name base to enforce unique names when compiling
@@ -8607,6 +8630,9 @@ Options:
 --no_unbox_function_arguments
      Opposite of --unbox_function_arguments.
 
+--no_unbox_reals
+     Opposite of --unbox_reals.
+
 --no_uncurrying, -no_uncurry
      Opposite of --uncurrying, -uncurry.
 
@@ -8614,13 +8640,25 @@ Options:
      Enable optimisation of intermediate language code
      (Lambda Expressions). Which optimisations are performed
      is controlled by individual flags. The optimisations
-     include function in-lining, function specialisation,
+     include function inlining, function specialisation,
      fix-minimization, unboxing of function arguments, and
      elimination of unnecessary record constructions.
 
 --output S, -o S                                         (run)
      The name of the executable file generated by
      the Kit.
+
+--parallel_compilation N, -j N                             (1)
+     The maximum number of parallel processes used
+     for compilation.
+
+--parallelism, -par                                      (off)
+     When enabled, the runtime system supports
+     parallel threads.
+
+--parallelism_alloc_unprotected, -par0                   (off)
+     When enabled, allocation into a region is not
+     guaranteed to be atomic.
 
 --preserve_tail_calls, -ptc                               (on)
      Avoid the wrapping of letregion constructs around
@@ -8668,10 +8706,6 @@ Options:
      Print program with instructions for activation
      record fetching and flushing.
 
---print_lift_conv_program, -Plcp                         (off)
-     Print Region Expression after lifting. Used for the
-     compilation into byte code (KAM).
-
 --print_linearised_program                               (off)
      Print a linearlised representation of the
      program unit.
@@ -8684,6 +8718,9 @@ Options:
 
 --print_physical_size_inference_expression, -Ppse        (off)
      Print Region Expression after physical size inference.
+
+--print_post_elab_ast, -Ppeast                           (off)
+     Print ast after elaboration.
 
 --print_region_flow_graph, -Prfg                         (off)
      Print a region flow graph for the program fragment
@@ -8797,8 +8834,9 @@ Options:
      as a repository.
 
 --safeLinkTimeElimination                                (off)
-     Threat this module as a library in the sense that
-     the code can be eliminated if it is not used.
+     Treat this module as a library in the sense that
+     the code can be eliminated if it is not used,
+     even if the code has side effects.
 
 --specialize_recursive_functions                          (on)
      Specialise recursive functions. Use the option
@@ -8838,6 +8876,11 @@ Options:
      sites are transformed to match the new function (Lambda
      Expression Optimiser).
 
+--unbox_reals                                             (on)
+     Unbox real values and computations on real values inside
+     functions. Real values stored in data structures and
+     passed to functions are still boxed.
+
 --uncurrying, -uncurry                                    (on)
      Enable uncurrying of curried functions. The uncurried
      function takes its arguments unboxed in registers or
@@ -8845,10 +8888,19 @@ Options:
      application uses of the function, appropriate eta-
      expansions are applied.
 
+--values_64bit                                            (on)
+     Support 64-bit values. Should be enabled for
+     backends supporting 64-bit integers and words.
+
 --warn_on_escaping_puts                                  (off)
      Enable the compiler to issue a warning whenever a
      region type scheme contains a put effect on a region
      that is not quantified.
+
+--warn_on_parallel_puts                                  (off)
+     Enable the compiler to issue a warning whenever a
+     par-construct is passed functions with intersecting
+     put effects.
 
 --width N, -w N                                          (100)
      Column width used when pretty printing intermediate code.
