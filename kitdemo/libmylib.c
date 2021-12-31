@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdio.h>
 #include "../src/Runtime/List.h"
 #include "../src/Runtime/String.h"
 #include "../src/Runtime/Exception.h"
@@ -18,8 +19,9 @@
  * the converter functions. The function also works when profiling is
  * enabled. */
 
-int power(int base, int n) {
-  int p;
+long
+power(long base, long n) {
+  long p;
   base = convertIntToC(base);
   n = convertIntToC(n);
   for (p = 1; n > 0; --n) p = p * base;
@@ -29,8 +31,9 @@ int power(int base, int n) {
 
 /* This version of the power function assumes that auto convertion
  * is used. */
-int power_auto(int base, int n) {
-  int p;
+long
+power_auto(long base, long n) {
+  long p;
   for (p = 1; n > 0; --n) p = p * base;
   return p;
 }
@@ -40,30 +43,34 @@ int power_auto(int base, int n) {
  * space. We retrieve the real from base and put the result in memory
  * pointed at by res. The function also works when profiling is
  * enabled. */
-int power_real(int res, int base, int n) {
+ssize_t
+power_real(ssize_t res, ssize_t base, long n) {
   double p, base_real;
-  base_real = convertRealToC(base);
+  base_real = get_d(base);
   n = convertIntToC(n);
   for (p = 1; n > 0; --n) p = p * base_real;
-  convertRealToML(p,res);
+  get_d(res) = p;
+  set_dtag(res);
   return res;
 }
 
 /* A variant of power where an exception may be raised. We raise exn
  * when base is negative. The function also works when profiling is
  * enabled. */
-int power_exn(int res, int base, int n, int exn) {
+ssize_t
+power_exn(ssize_t res, Context ctx, ssize_t base, long n, uintptr_t exn) {
   double p, base_real;
-  base_real = convertRealToC(base);
+  base_real = get_d(base);
   if (base_real < 0.0) {
     printf("Now raising exception.\n");
-    raise_exn(exn);
+    raise_exn(ctx, exn);
     return 0; /* This return statement is necessary
 	       * with the C backend */
   }
   n = convertIntToC(n);
   for (p = 1; n > 0; --n) p = p * base_real;
-  convertRealToML(p,res);
+  get_d(res) = p;
+  set_dtag(res);
   return res;
 }
 
@@ -72,8 +79,9 @@ int power_exn(int res, int base, int n, int exn) {
  * list representation: ["ABC","DEF","GHI","JKL"] =
  * CONS("ABC",CONS("DEF",CONS("GHI",CONS("JKL",NIL)))). Works also
  * when profiling is enabled. */
-int print_string_list(int strs) {
-  int ys;
+long
+print_string_list(uintptr_t strs) {
+  uintptr_t ys;
   for (ys=strs; isCONS(ys); ys=tl(ys))
     printStringML((StringDesc *) hd(ys));
   return 0;
@@ -88,29 +96,30 @@ int print_string_list(int strs) {
  * a pointer to it.)
  *        ml_elem = ...
  *        allocRecordML(pairRho, 2, pair);
- *        first(pair) = (int) ml_elem;
+ *        first(pair) = (long) ml_elem;
  *        makeCONS(pair, cons);
- *        res = (int) cons;
+ *        res = (long) cons;
  *
  *        while (more elements) {
  *          ml_elem = ...
  *          allocRecordML(pairRho, 2, temp_pair);
- *          first(temp_pair) = (int) ml_elem;
+ *          first(temp_pair) = (long) ml_elem;
  *          makeCONS(temp_pair, cons);
- *          second(pair) = (int) cons;
+ *          second(pair) = (long) cons;
  *          pair = temp_pair;
  *        }
  *        makeNIL(cons);
- *        second(pair) = (int)cons;
+ *        second(pair) = (long)cons;
  *        return res;
  * The algorithm is explained in the manual ``Programming With Regions
  * in the MLKit'' found in the doc directory. Note, that we also try
  * to reset the two infinite regions. */
 
 #ifndef PROFILING
-int real_list(Region pairRho, Region realRho) {
+uintptr_t
+real_list(Region pairRho, Region realRho) {
   double elem;
-  int *realPtr, *pair, *consPtr, *temp_pair, i, res;
+  uintptr_t *realPtr, *pair, *consPtr, *temp_pair, i, res;
 
   if (is_inf_and_atbot(pairRho))
     resetRegion(pairRho);
@@ -123,29 +132,30 @@ int real_list(Region pairRho, Region realRho) {
   allocReal(realRho, realPtr);
   convertRealToML(elem, realPtr);
   allocRecordML(pairRho, 2, pair);
-  first(pair) = (int) realPtr;
+  first(pair) = (uintptr_t) realPtr;
   makeCONS(pair, consPtr);
-  res = (int) consPtr;
+  res = (uintptr_t) consPtr;
   for(i=1;i<10;i++) {
     elem = elem + 2.5;
     allocReal(realRho, realPtr);
     convertRealToML(elem, realPtr);
     allocRecordML(pairRho, 2, temp_pair);
-    first(temp_pair) = (int) realPtr;
+    first(temp_pair) = (uintptr_t) realPtr;
     makeCONS(temp_pair, consPtr);
-    second(pair) = (int) consPtr;
+    second(pair) = (uintptr_t) consPtr;
     pair = temp_pair;
   }
   makeNIL(consPtr);
-  second(pair) = (int)consPtr;
+  second(pair) = (uintptr_t)consPtr;
   return res;
 }
 
 #else /*PROFILING*/
 
-int real_listProf(Region pairRho, Region realRho, int pPoint) {
+uintptr_t
+real_listProf(Region pairRho, Region realRho, long pPoint) {
   double elem;
-  int *realPtr, *pair, *consPtr, *temp_pair, i, res;
+  uintptr_t *realPtr, *pair, *consPtr, *temp_pair, i, res;
 
   if (is_inf_and_atbot(pairRho))
     resetRegion(pairRho);
@@ -158,21 +168,21 @@ int real_listProf(Region pairRho, Region realRho, int pPoint) {
   allocRealProf(realRho, realPtr, pPoint);
   convertRealToML(elem, realPtr);
   allocRecordMLProf(pairRho, 2, pair, pPoint);
-  first(pair) = (int) realPtr;
+  first(pair) = (uintptr_t) realPtr;
   makeCONS(pair, consPtr);
-  res = (int) consPtr;
+  res = (uintptr_t) consPtr;
   for(i=1;i<10;i++) {
     elem = elem + 2.5;
     allocRealProf(realRho, realPtr, pPoint);
     convertRealToML(elem, realPtr);
     allocRecordMLProf(pairRho, 2, temp_pair, pPoint);
-    first(temp_pair) = (int) realPtr;
+    first(temp_pair) = (uintptr_t) realPtr;
     makeCONS(temp_pair, consPtr);
-    second(pair) = (int) consPtr;
+    second(pair) = (uintptr_t) consPtr;
     pair = temp_pair;
   }
   makeNIL(consPtr);
-  second(pair) = (int)consPtr;
+  second(pair) = (uintptr_t)consPtr;
   return res;
 }
 
@@ -187,25 +197,26 @@ int real_listProf(Region pairRho, Region realRho, int pPoint) {
  *        while (more elements) {
  *         ml_elem = ...;
  *         allocRecordML(pairRho, 2, pair);
- *         first(pair) = (int) ml_elem;
- *         second(pair) = (int) resList;
+ *         first(pair) = (long) ml_elem;
+ *         second(pair) = (long) resList;
  *         makeCONS(pair, resList);
  *        }
- *        return (int) resList;
+ *        return (long) resList;
  * The algorithm is explained in the manual ``Programming With Regions
  * in the MLKit'' found in the doc directory. We have also made a
  * profiling version of the function. Note, that we also try to reset
  * the two infinite regions. */
 
 #ifndef PROFILING
-int dir(Region pairRho, Region strRho, String mlDirName, int exn) {
+uintptr_t
+dir(Region pairRho, Region strRho, Context ctx, String mlDirName, uintptr_t exn) {
   char cDirName[1000];
-  int *resList, *pairPtr;
+  uintptr_t *resList, *pairPtr;
   StringDesc *mlStr;
   struct dirent *dp;            /* Dir stream pointer.  */
   DIR *dfd;                     /* Dir file descriptor. */
 
-  convertStringToC(mlDirName, cDirName, 1000, exn);  /* MEMO: Oops - we should return if the exn-flag is set! */
+  convertStringToC(ctx, mlDirName, cDirName, 1000, exn);  /* MEMO: Oops - we should return if the exn-flag is set! */
 
   if (is_inf_and_atbot(pairRho))
     resetRegion(pairRho);
@@ -213,27 +224,28 @@ int dir(Region pairRho, Region strRho, String mlDirName, int exn) {
     resetRegion(strRho);
 
   if ((dfd = opendir(cDirName)) == NULL) {
-    raise_exn(exn);
+    raise_exn(ctx, exn);
     return 0;
   }
   makeNIL(resList);
   while ((dp = readdir(dfd)) != NULL) {
     mlStr = convertStringToML(strRho, dp->d_name);
     allocRecordML(pairRho, 2, pairPtr);
-    first(pairPtr) = (int) mlStr;
-    second(pairPtr) = (int) resList;
+    first(pairPtr) = (uintptr_t) mlStr;
+    second(pairPtr) = (uintptr_t) resList;
     makeCONS(pairPtr, resList);
   }
 
   (void) closedir(dfd);
-  return (int) resList;
+  return (uintptr_t) resList;
 }
 
 #else /*PROFILING*/
 
-int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint) {
+uintptr_t
+dirProf(Region pairRho, Region strRho, Context ctx, String mlDirName, uintptr_t exn, long pPoint) {
   char cDirName[1000];
-  int *resList, *pairPtr;
+  uintptr_t *resList, *pairPtr;
   StringDesc *mlStr;
   struct dirent *dp;            /* Dir stream pointer.  */
   DIR *dfd;                     /* Dir file descriptor. */
@@ -243,9 +255,9 @@ int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint
   if (is_inf_and_atbot(strRho))
     resetRegion(strRho);
 
-  convertStringToC(mlDirName, cDirName, 1000, exn);
+  convertStringToC(ctx, mlDirName, cDirName, 1000, exn);
   if ((dfd = opendir(cDirName)) == NULL) {
-    raise_exn(exn);
+    raise_exn(ctx, exn);
     return 0;
   }
 
@@ -253,27 +265,28 @@ int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint
   while ((dp = readdir(dfd)) != NULL) {
     mlStr = convertStringToMLProf(strRho, dp->d_name, pPoint);
     allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
-    first(pairPtr) = (int) mlStr;
-    second(pairPtr) = (int) resList;
+    first(pairPtr) = (uintptr_t) mlStr;
+    second(pairPtr) = (uintptr_t) resList;
     makeCONS(pairPtr, resList);
   }
 
   (void) closedir(dfd);
-  return (int) resList;
+  return (uintptr_t) resList;
 }
 
 #endif /*PROFILING*/
 
 #ifndef PROFILING
-int change_elem(int newPair, Region stringRho, int pair, int exn) {
-  int firstElem_ml, secondElem_ml;
+uintptr_t
+change_elem(uintptr_t newPair, Region stringRho, Context ctx, uintptr_t pair, uintptr_t exn) {
+  long firstElem_ml, secondElem_ml;
   char cStr[1000];
 
   firstElem_ml = elemRecordML(pair, 0);
   secondElem_ml = elemRecordML(pair, 1);
 
-  convertStringToC((StringDesc *)secondElem_ml, cStr, 1000, exn);
-  secondElem_ml = (int) convertStringToML(stringRho, cStr);
+  convertStringToC(ctx, (StringDesc *)secondElem_ml, cStr, 1000, exn);
+  secondElem_ml = (uintptr_t) convertStringToML(stringRho, cStr);
 
   elemRecordML(newPair, 0) = secondElem_ml;
   elemRecordML(newPair, 1) = firstElem_ml;
@@ -281,15 +294,16 @@ int change_elem(int newPair, Region stringRho, int pair, int exn) {
   return newPair;
 }
 #else
-int change_elemProf(int newPair, Region stringRho, int pair, int exn, int pPoint) {
-  int firstElem_ml, secondElem_ml;
+uintptr_t
+change_elemProf(uintptr_t newPair, Region stringRho, Context ctx, uintptr_t pair, uintptr_t exn, long pPoint) {
+  long firstElem_ml, secondElem_ml;
   char cStr[1000];
 
   firstElem_ml = elemRecordML(pair, 0);
   secondElem_ml = elemRecordML(pair, 1);
 
-  convertStringToC((StringDesc *)secondElem_ml, cStr, 1000, exn);
-  secondElem_ml = (int) convertStringToMLProf(stringRho, cStr, pPoint);
+  convertStringToC(ctx, (StringDesc *)secondElem_ml, cStr, 1000, exn);
+  secondElem_ml = (uintptr_t) convertStringToMLProf(stringRho, cStr, pPoint);
 
   elemRecordML(newPair, 0) = secondElem_ml;
   elemRecordML(newPair, 1) = firstElem_ml;

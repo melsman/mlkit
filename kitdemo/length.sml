@@ -1,4 +1,4 @@
-   fun upto n = 
+   fun upto n =
      let fun loop(n,acc) = if n=0 then acc
 			   else loop(n-1, n::acc)
      in loop(n,[])
@@ -19,7 +19,7 @@
      in #2(loop(l,0))
      end
 
-   local 
+   local
      fun llength'(p as ([], acc)) = p
        | llength'(_::xs, acc) = llength'(xs,acc+1)
    in
@@ -31,7 +31,7 @@
 
    fun glength(l) = #2(global(l, 0))
 
-   val k = 10000000
-   val run = 
-     nlength(upto k) + tlength(upto k) + klength(upto k) 
+   val k = 5000000
+   val run =
+     nlength(upto k) + tlength(upto k) + klength(upto k)
      + llength(upto k) + glength(upto k)
