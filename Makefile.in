@@ -58,7 +58,7 @@ mlkit_basislibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -log_to_file basis.mlb)
 
 .PHONY: mlkit_kitlibs
 mlkit_kitlibs:
@@ -151,8 +151,8 @@ install_kitdemo:
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
-	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
-	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
+	$(INSTALLDATA) -p basis/*.{sml,sig,mlb,log} $(LIBDIR)/basis
+	$(INSTALLDATA) -p basis/io/*.{sml,sig,log} $(LIBDIR)/basis/io
 
 .PHONY: install_man
 install_man:
