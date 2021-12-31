@@ -1,7 +1,5 @@
 structure NetHostDB : NET_HOST_DB = struct
 
-fun not_impl s = raise Fail ("not implemented: " ^ s)
-
 fun isNull s = prim("__is_null",s : string) : bool
 
 (* error utilities *)

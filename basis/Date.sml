@@ -52,15 +52,18 @@ structure Date :> DATE =
        fun strftime_ (s : string, t : tmoz) : string = prim("sml_strftime", (getCtx(),s,t,Overflow(*strftime_exn*)))
     end
 
+    exception Date_toweekday
+    exception Date_tomonth
+
     val toweekday = fn 0 => Sun | 1 => Mon | 2 => Tue | 3 => Wed
                      | 4 => Thu | 5 => Fri | 6 => Sat
-		     | _ => raise Fail "Internal error: Date.toweekday";
+		     | _ => raise Date_toweekday
     val fromwday  = fn Sun => 0 | Mon => 1 | Tue => 2 | Wed => 3
                      | Thu => 4 | Fri => 5 | Sat => 6;
     val tomonth   = fn 0 => Jan | 1 => Feb |  2 => Mar |  3 => Apr
                      | 4 => May | 5 => Jun |  6 => Jul |  7 => Aug
 		     | 8 => Sep | 9 => Oct | 10 => Nov | 11 => Dec
-		     | _ => raise Fail "Internal error: Date.tomonth";
+		     | _ => raise Date_tomonth
     val frommonth = fn Jan => 0 | Feb => 1 | Mar => 2  | Apr => 3
 		     | May => 4 | Jun => 5 | Jul => 6  | Aug => 7
 		     | Sep => 8 | Oct => 9 | Nov => 10 | Dec => 11;
@@ -225,10 +228,11 @@ structure Date :> DATE =
 
     fun localOffset () = Time.fromSeconds (LargeInt.fromInt(Real.round localoffset mod 86400))
 
+    exception Date_toString
     fun toString date =
 	String.substring(asctime_ (dateToTmoz date), 0, 24)
 	handle Fail _    => raise Date
-	     | Subscript => raise (Fail "Date.toString: internal error");
+	     | Subscript => raise Date_toString
 
     fun fmt fmtstr date =
 	(strftime_ (fmtstr, dateToTmoz date))

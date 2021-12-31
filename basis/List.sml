@@ -21,33 +21,33 @@ structure List : LIST = struct
   fun nth (xs, n) =
     let fun h []      _ = raise Subscript
 	    | h (x::xr) n = if n=0 then x else h xr (n-1)
-    in if n<0 then raise Subscript else h xs n 
+    in if n<0 then raise Subscript else h xs n
     end
 
   fun drop (xs, n) =
     let fun h xs      0 = xs
 	    | h []      n = raise Subscript
 	    | h (x::xr) n = h xr (n-1)
-    in if n<0 then raise Subscript else h xs n 
+    in if n<0 then raise Subscript else h xs n
     end
 
   fun take (xs, n) =
     let fun h xs      0 = []
 	    | h []      n = raise Subscript
 	    | h (x::xr) n = x :: h xr (n-1)
-    in if n<0 then raise Subscript else h xs n 
+    in if n<0 then raise Subscript else h xs n
     end
 
   fun length xs =
     let fun acc []      k = k
 	    | acc (x::xr) k = acc xr (k+1)
-    in acc xs 0 
+    in acc xs 0
     end
 
   local
     fun revAcc [] ys = ys
 	| revAcc (x::xs) ys = revAcc xs (x::ys)
-  in 
+  in
     fun rev xs = revAcc xs []
 
     fun revAppend (xs, ys) = revAcc xs ys
@@ -64,9 +64,9 @@ structure List : LIST = struct
 
   fun map f [] = []
     | map f (x::xs) = f x :: map f xs
- 
+
   fun mapPartial f []      = []
-    | mapPartial f (x::xr) = case f x 
+    | mapPartial f (x::xr) = case f x
 				 of NONE => mapPartial f xr
 				  | SOME r => r :: mapPartial f xr
   fun find p []      = NONE
@@ -79,7 +79,7 @@ structure List : LIST = struct
     let fun h []      are aren't = (rev are, rev aren't)
 	  | h (x::xr) are aren't = if p x then h xr (x::are) aren't
 				   else h xr are      (x::aren't)
-    in h xs [] [] 
+    in h xs [] []
     end
 
   fun foldr f e []      = e
@@ -87,7 +87,7 @@ structure List : LIST = struct
 
 (*
   fun foldr f =
-    let fun foldr_loop(e,l) = 
+    let fun foldr_loop(e,l) =
               case l of
                 [] => e
               | x::xr => f(x,foldr_loop(e,xr))
@@ -99,7 +99,7 @@ structure List : LIST = struct
     | foldl f e (x::xr) = foldl f (f(x, e)) xr
 
 (*
-  fun foldl f b xs = 
+  fun foldl f b xs =
     let fun foldl_loop(p as ([], b))= p
           | foldl_loop(x::xs, b) = foldl_loop(xs,f(x, b))
     in
@@ -115,7 +115,7 @@ structure List : LIST = struct
 
   fun tabulate (n, f) =
     let fun h i = if i<n then f i :: h (i+1) else []
-    in if n<0 then raise Size else h 0 
+    in if n<0 then raise Size else h 0
     end
 
   fun getItem []        = NONE
@@ -124,12 +124,12 @@ structure List : LIST = struct
   fun collate f ([], [])       = EQUAL
     | collate f ([],_)         = LESS
     | collate f (_,[])         = GREATER
-    | collate f (x::xr, y::yr) = 
+    | collate f (x::xr, y::yr) =
     case f (x,y)
     of EQUAL => collate f (xr,yr)
      | GREATER => GREATER
      | LESS => LESS
-                                   
+
 end; (*structure List*)
 
 fun null a = List.null a
@@ -140,6 +140,6 @@ fun rev a = List.rev a
 fun op @ a = List.@ a
 fun app f l = List.app f l
 fun map f l = List.map f l
-fun foldr a b c = List.foldr a b c
-fun foldl a b c = List.foldl a b c
+val foldr = List.foldr
+val foldl = List.foldl
 exception Empty = List.Empty

@@ -145,10 +145,11 @@ structure IntInfRep (* : INT_INF_REP *)  =
 		| addc ([], n) = addOne n
 		| addc (dm::rm, dn::rn) = addd (nbase+dm+dn+1, rm, rn)
 
+              exception IntInfRep_SubtOne
 	      fun subtOne (0::mr) : bignat = maxDigit()::(subtOne mr)
 		| subtOne [1] = []
 		| subtOne (n::mr) = (n-1)::mr
-		| subtOne [] = raise Fail ""
+		| subtOne [] = raise IntInfRep_SubtOne
 
 	      exception Negative
 	      fun consd (0:int31, []) = []
@@ -194,9 +195,9 @@ structure IntInfRep (* : INT_INF_REP *)  =
 		| mult (m, [d]) = muld (m, d) (* speedup *)
 		| mult (m, 0::r) = consd (0, mult (m, r)) (* speedup *)
 		| mult (m, n) =
-		  let fun muln [] = []
-			| muln (d::r) = add (muld (n, d), consd (0, muln r))
-		  in muln m
+		  let fun muln [] n = []
+			| muln (d::r) n = add (muld (n, d), consd (0, muln r n))
+		  in muln m n
 		  end
 
 	      fun quotrem (i, j) = (quoti31 (i, j), remi31 (i, j))
@@ -213,6 +214,8 @@ structure IntInfRep (* : INT_INF_REP *)  =
 		    val (q0,r0) = adj (q0, sh r0+vl-q0*il)
 		    in (sh q1+q0, r0) end
 
+              exception IntInfRep_divmodd
+
 		  (* divide bignat by digit>0 *)
 	      fun divmodd (m, 1) = (m, 0:int31) (* speedup *)
 		| divmodd (m, i) = let
@@ -225,7 +228,7 @@ structure IntInfRep (* : INT_INF_REP *)  =
 			  val (q1,r1) = divmod2 ((rm,d), i')
 			  in (consd (q1,qt), r1) end
 		    val (q,r) = dmi m'
-		    val _ = if scale = 0 then raise Fail "divmodd" else ()
+		    val _ = if scale = 0 then raise IntInfRep_divmodd else ()
 		    in (q, r div scale) end
 
 		  (* From Knuth Vol II, 4.3.1, but without opt. in step D3 *)
@@ -449,18 +452,22 @@ structure IntInfRep (* : INT_INF_REP *)  =
       fun fromWordX (w:word) : intinf =
 	  fromInt(w_i_X w)
 
+      exception IntInfRep_toWord32
+      exception IntInfRep_toWord63
+      exception IntInfRep_toWord64
+
       fun toWord32 (x : intinf) : word32 =
 	  i32_w32(toInt32 x)
-	  handle _ => raise Fail "IntInfRep.toWord32"
+	  handle _ => raise IntInfRep_toWord32
 
       fun toWord63 (x : intinf) : word63 =
 	  i63_w63(toInt63 x)
-	  handle _ => raise Fail "IntInfRep.toWord32"
+	  handle _ => raise IntInfRep_toWord63
 
       fun toWord64 (x : intinf) : word64 =
           let val y = toInt64 x
           in i64_w64 y
-          end handle X => raise Fail ("IntInfRef.toWord64: " ^ exnMessage X)
+          end handle _ => raise IntInfRep_toWord64
 
       fun fromWord (w : word) : intinf =
 	  fromWord64 (w_w64 w)

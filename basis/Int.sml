@@ -44,15 +44,14 @@ structure Int : INTEGER =
 		     else (Char.ord c - 55) mod 32
       fun prhex i = if i < 10 then Char.chr(i + 48) else Char.chr(i + 55)
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
-      fun conv radix i =
+      fun conv rad radix i =
 	if SOME i = minInt then          (* Be careful not to Overflow *)
 	  let fun tag s1 s2 = if precision = SOME 63 then s1 else s2
-	  in case radix
-	       of 2 => tag "~100000000000000000000000000000000000000000000000000000000000000" "~1000000000000000000000000000000000000000000000000000000000000000"
-		| 8 => tag "~400000000000000000000" "~1000000000000000000000"
-		| 10 => tag "~4611686018427387904" "~9223372036854775808"
-		| 16 => tag "~4000000000000000" "~8000000000000000"
-                | _ => raise Fail "Int.conv"
+	  in case rad
+	       of BIN => tag "~100000000000000000000000000000000000000000000000000000000000000" "~1000000000000000000000000000000000000000000000000000000000000000"
+		| OCT => tag "~400000000000000000000" "~1000000000000000000000"
+		| DEC => tag "~4611686018427387904" "~9223372036854775808"
+		| HEX => tag "~4000000000000000" "~8000000000000000"
 	  end
 	else
 	  let fun h 0 res = res
@@ -101,12 +100,12 @@ structure Int : INTEGER =
 	in sign (skipWSget getc source)
 	end
 
-      fun fmt BIN = conv 2
-	| fmt OCT = conv 8
-	| fmt DEC = conv 10
-	| fmt HEX = conv 16
+      fun fmt BIN = conv BIN 2
+	| fmt OCT = conv OCT 8
+	| fmt DEC = conv DEC 10
+	| fmt HEX = conv HEX 16
 
-      (* It should hold that: toString = fmt DEC = conv 10 *)
+      (* It should hold that: toString = fmt DEC = conv DEC 10 *)
       fun toString (i: int): string = fmt DEC i
 
       fun fromString s = scanString (scan DEC) s

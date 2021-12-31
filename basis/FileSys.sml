@@ -10,12 +10,15 @@ structure OS =
     fun isNull (s : string) = prim("__is_null", s) : bool
 
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
+
+    exception OS_FileSys_errorName
     fun errorName (err : int) : string =
          let
            val s = prim("sml_errorName", err : int) : string
          in
            if isNull s
-           then raise Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")
+           then raise OS_FileSys_errorName
+                      (*Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")*)
            else
              let
                val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))

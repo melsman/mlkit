@@ -34,7 +34,7 @@ signature IMPERATIVE_IO_EXTRA_ARG =
       sharing type ArraySlice.vector_slice
          = PrimIO.vector_slice
          = VectorSlice.slice
-         
+
       val chunkSize: int
       val fileTypeFlags: Posix.FileSys.O.flags list
       val line : {isLine: Vector.elem -> bool,
@@ -48,7 +48,7 @@ signature IMPERATIVE_IO_EXTRA_ARG =
                      initBlkMode: bool,
                      chunkSize: int} -> PrimIO.writer
       val someElem: PrimIO.elem
-      val xlatePos : {toInt : PrimIO.pos -> Position.int, 
+      val xlatePos : {toInt : PrimIO.pos -> Position.int,
                       fromInt : Position.int -> PrimIO.pos} option
    end
 
@@ -89,7 +89,7 @@ fun setPosOut (Out os, outPos) = os := SIO.setPosOut outPos
 
 fun newOut {appendMode, bufferMode, closeAtExit, fd, name} =
    let
-      val writer = mkWriter {appendMode = appendMode, 
+      val writer = mkWriter {appendMode = appendMode,
                              chunkSize = chunkSize,
                              fd = fd,
                              initBlkMode = true,
@@ -104,7 +104,7 @@ fun newOut {appendMode, bufferMode, closeAtExit, fd, name} =
 
 structure PFS = Posix.FileSys
 
-val stdErr = (newOut {appendMode = true, 
+val stdErr = (newOut {appendMode = true,
                      bufferMode = IO.NO_BUF,
                      closeAtExit = false,
                      fd = PFS.stderr,
@@ -115,10 +115,10 @@ val stdErr = (newOut {appendMode = true,
                                                 closed = true,
                                                 writer = PIO.nullWr(),
                                                 bufferMode = IO.NO_BUF}))
-              else 
+              else
                 raise OS.SysErr(m, SOME k))
                   | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
-         
+
 val newOut = fn {appendMode, closeAtExit, fd, name} =>
    newOut {appendMode = appendMode,
            bufferMode = if Posix.ProcEnv.isatty fd
@@ -127,10 +127,10 @@ val newOut = fn {appendMode, closeAtExit, fd, name} =>
            closeAtExit = closeAtExit,
            fd = fd,
            name = name}
-         
+
 val stdOut = (newOut {appendMode = true,
                      closeAtExit = false,
-                     fd = PFS.stdout, 
+                     fd = PFS.stdout,
                      name = "<stdout>"})
              handle OS.SysErr(m,SOME k) => (
               if k = Posix.Error.badf
@@ -138,10 +138,10 @@ val stdOut = (newOut {appendMode = true,
                                                 closed = true,
                                                 writer = PIO.nullWr(),
                                                 bufferMode = IO.NO_BUF}))
-              else 
+              else
                 raise OS.SysErr(m, SOME k))
                   | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
-   
+
 val newOut = fn {appendMode, fd, name} =>
    newOut {appendMode = appendMode,
            closeAtExit = true,
@@ -152,7 +152,7 @@ fun 'a protect' (function: string, name: string, f: unit -> 'a): 'a =
    f () handle e => raise IO.Io {cause = e,
                                  function = function,
                                  name = name}
-      
+
 local
    val readWrite =
       let
@@ -165,12 +165,12 @@ in
       protect'
       ("openOut", file, fn () =>
        let
-          val fd = PFS.createf (file, Posix.IO.O_WRONLY, 
-                                PFS.O.flags (PFS.O.trunc::fileTypeFlags), 
+          val fd = PFS.createf (file, Posix.IO.O_WRONLY,
+                                PFS.O.flags (PFS.O.trunc::fileTypeFlags),
                                 readWrite)
-       in 
-          newOut {fd = fd, 
-                  name = file, 
+       in
+          newOut {fd = fd,
+                  name = file,
                   appendMode = false}
        end)
 
@@ -182,13 +182,13 @@ in
                                 PFS.O.flags (PFS.O.append::fileTypeFlags),
                                 readWrite)
        in
-          newOut {fd = fd, 
-                  name = file, 
+          newOut {fd = fd,
+                  name = file,
                   appendMode = true}
        end)
 end
 
-val newOut = fn (fd, name) => newOut {fd = fd, 
+val newOut = fn (fd, name) => newOut {fd = fd,
                                       name = name,
                                       appendMode = false}
 val outFd = SIO.outFd o getOutstream
@@ -197,11 +197,11 @@ val outFd = SIO.outFd o getOutstream
 (*                     instream                      *)
 (* ------------------------------------------------- *)
 
-datatype state = 
+datatype state =
    Closed
  | Open of {eos: bool}
  | Stream of SIO.instream
-(* Inv: if !first < !last then !state = Open {eos = false} 
+(* Inv: if !first < !last then !state = Open {eos = false}
  * if !state = Closed then !first = !last
  * if !state = Open {eos = true} then !first = !last
  *)
@@ -238,7 +238,7 @@ fun equalsIn (In {first = f, ...}, In {first = f', ...}) = f = f'
 fun augmentedReaderSel (In {augmentedReader = PIO.RD v, ...}, sel) = sel v
 
 fun readerSel (In {reader = PIO.RD v, ...}, sel) = sel v
-         
+
 fun inbufferName ib = readerSel (ib, #name)
 
 fun inFd ib =
@@ -248,8 +248,10 @@ fun inFd ib =
                            name = inbufferName ib}
     | SOME ioDesc => valOf (Posix.FileSys.iodToFD ioDesc)
 
-val empty = V.tabulate (0, fn _ => someElem)
-   
+(* val empty = V.tabulate (0, fn _ => someElem) *)
+
+fun mkEmpty () = V.tabulate (0, fn _ => someElem)
+
 local
    fun make (sel, e: exn) ib =
       case augmentedReaderSel (ib, sel) of
@@ -265,7 +267,7 @@ fun 'a protect (ib, function: string, f: unit -> 'a): 'a =
    f () handle e => raise IO.Io {cause = e,
                                  function = function,
                                  name = inbufferName ib}
-      
+
 fun update (ib as In {buf, first, last, state, ...}) =
    let
       val i = readArr ib (AS.full buf)
@@ -291,11 +293,11 @@ fun input (ib as In {buf, first, last, ...}) =
             val In {state, ...} = ib
          in
             case !state of
-               Closed => empty
+               Closed => mkEmpty()
              | Open {eos} =>
                   if eos
                      then (state := Open {eos = false}
-                           ; empty)
+                           ; mkEmpty())
                   else protect (ib, "input", fn () =>
                                 readVec ib (augmentedReaderSel (ib, #chunkSize)))
              | Stream s =>
@@ -360,11 +362,11 @@ fun inputN (ib as In {buf, first, last, ...}, n) =
                val In {state, ...} = ib
             in
                case !state of
-                  Closed => empty
+                  Closed => mkEmpty()
                 | Open {eos} =>
                      if eos
                         then (state := Open {eos = false}
-                              ; empty)
+                             ; mkEmpty())
                      else
                         protect
                         (ib, "inputN", fn () =>
@@ -382,7 +384,7 @@ fun inputN (ib as In {buf, first, last, ...}, n) =
                                if i = n
                                   then i
                                else let
-                                       val j = 
+                                       val j =
                                           readArr
                                           (AS.slice (inp, i, SOME (n - i)))
                                     in
@@ -408,11 +410,11 @@ fun inputN (ib as In {buf, first, last, ...}, n) =
 
 fun inputAll (ib as In {state, ...}) =
    case !state of
-      Closed => empty
+      Closed => mkEmpty()
     | Open {eos} =>
          if eos
             then (state := Open {eos = false}
-                  ; empty)
+                 ; mkEmpty())
          else
             protect
             (ib, "inputAll", fn () =>
@@ -476,7 +478,7 @@ val inputLine =
                                   let
                                      val f = !first
                                      val l = !last
-                                     (* !first < !last *) 
+                                     (* !first < !last *)
                                      fun loop' i = (* pre: !first <= i <= !last *)
                                         let
                                            fun done j = (* pre: !first < j <= !last *)
@@ -557,7 +559,7 @@ fun canInput (ib as In {state, ...}, n) =
                          else (state := Open {eos = true}; 0))
                 end)
        | Stream s => SIO.canInput (s, n)
-                 
+
 fun lookahead (ib as In {buf, first, last, ...}) =
    let
       val f = !first
@@ -628,7 +630,7 @@ fun mkInbuffer' {reader, closed, bufferContents} =
           state = state}
    end
 
-fun openVector v = 
+fun openVector v =
    mkInbuffer' {bufferContents = NONE,
                 closed = false,
                 reader = PIO.openVector v}
@@ -644,7 +646,7 @@ fun getInstream (ib as In {state, ...}) =
                List.partition (fn (ib', _) => equalsIn (ib, ib'))
                (!openInbuffers)
             val _ = openInbuffers := openInbuffers'
-            val closeAtExit = 
+            val closeAtExit =
                List.foldr (fn ((_, {close = close'}), close) =>
                            close orelse close')
                false ibs
@@ -659,7 +661,7 @@ fun getInstream (ib as In {state, ...}) =
          Closed => doit (true, NONE)
        | Open {eos} =>
             if eos
-               then doit (false, SOME (true, empty))
+               then doit (false, SOME (true, mkEmpty()))
             else
                let
                   val In {buf, first, last, ...} = ib
@@ -667,10 +669,10 @@ fun getInstream (ib as In {state, ...}) =
                   val l = !last
                   val s =
                      if f < l
-                        then 
+                        then
                            doit (false,
-                                 SOME (true, 
-                                       AS.vector (AS.slice (buf, f, 
+                                 SOME (true,
+                                       AS.vector (AS.slice (buf, f,
                                                             SOME (l - f)))))
                         else doit (false, NONE)
                   val () = state := Stream s
@@ -709,15 +711,15 @@ fun scanStream f is =
 
 val closeIn = fn ib =>
    let
-      val _ = openInbuffers := List.filter (fn (ib',_) => 
-                                            not (equalsIn (ib, ib'))) 
+      val _ = openInbuffers := List.filter (fn (ib',_) =>
+                                            not (equalsIn (ib, ib')))
          (!openInbuffers)
    in
       closeIn ib
    end
 
 fun newIn {bufferContents, closeAtExit, fd, name} =
-   let 
+   let
       val reader = mkReader {fd = fd, initBlkMode = true, name = name}
    in
       mkInbuffer'' {bufferContents = bufferContents,
@@ -725,7 +727,7 @@ fun newIn {bufferContents, closeAtExit, fd, name} =
                     closed = false,
                     reader = reader}
    end
-     
+
 val newIn = fn (fd, name) =>
    newIn {bufferContents = NONE,
           closeAtExit = true,
@@ -735,7 +737,7 @@ val newIn = fn (fd, name) =>
 val stdIn = (newIn (PFS.stdin, "<stdin>"))
             handle OS.SysErr(m,SOME k) => (
               if k = Posix.Error.badf
-              then 
+              then
                 In {augmentedReader = PIO.nullRd(),
                     buf = A.rawArray 0,
                     first = ref 0,
@@ -745,13 +747,13 @@ val stdIn = (newIn (PFS.stdin, "<stdin>"))
               else
                 raise OS.SysErr(m, SOME k))
                  | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
-         
+
 fun openIn file =
    protect'
    ("openIn", file, fn () =>
-    let 
+    let
        val fd = PFS.openf (file, Posix.IO.O_RDONLY, PFS.O.flags fileTypeFlags)
-    in 
+    in
        newIn (fd, file)
     end)
 
@@ -808,9 +810,9 @@ functor ImperativeIO (S: IMPERATIVE_IO_ARG): IMPERATIVE_IO =
       fun getInstream (In is) = !is
       fun input (In is) = let val (v, is') = SIO.input (!is)
                           in is := is'; v
-                          end 
+                          end
       (* input1 will never move past a temporary end of stream *)
-      fun input1 (In is) = 
+      fun input1 (In is) =
         case SIO.input1 (!is) of
           SOME (c,is') => (is := is'; SOME c)
         | NONE => NONE
