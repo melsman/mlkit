@@ -13,8 +13,8 @@ Library.
 
 Under macOS, MLKit is available through Homebrew: Just execute `brew
 install mlkit`. Under Linux, you may install a binary version of MLKit
-using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/ubuntu/mlkit).
-
+by downloading a binary tgz-distribution and following the embedded
+README-file.
 
 ## MLKit Features
 
@@ -22,6 +22,12 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
   [including Modules](http://elsman.com/mlkit/staticinterp.html),
   as specified by the Definition of Standard ML. The MLKit also
   supports large parts of the [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
+
+* Native backend for the x64 architecture (under Linux and
+  macOS). Also known as the _MLKit with Regions_ compiler.
+
+* JavaScript backend for executing Standard ML code in the
+  browser. Also known as the [SMLToJs](/README_SMLTOJS.md) compiler.
 
 * Supports [ML Basis Files](http://elsman.com/mlkit/mlbasisfiles.html):
   The MLKit compiles large programs,
@@ -32,33 +38,27 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
   of ML Basis Files. The MLKit works well together with [smlpkg](https://github.com/diku-dk/smlpkg), a
   generic package manager for Standard ML libraries and programs.
 
-* Region-Based Memory Management: Memory allocation directives (both
-  allocation and deallocation) are inferred by the compiler, which
-  uses a number of program analyses concerning lifetimes and storage
-  layout. The MLKit compiler is unique among ML implementations in
-  this respect.
+* Region-Based Memory Management: For the MLKit with Regions, memory
+  allocation directives (both allocation and deallocation) are
+  inferred by the compiler, which uses a number of program analyses
+  concerning lifetimes and storage layout. The MLKit compiler is
+  unique among ML implementations in this respect.
 
-* Reference-tracing Garbage Collection: The MLKit supports
+* Reference-tracing Garbage Collection: The MLKit with Regions supports
   reference-tracing garbage collection in combination with region-based
   memory management.
-
-* Native backend for the x64 architecture (under Linux and macOS).
 
 * [Documentation](http://elsman.com/mlkit/doc.html). A
   comprehensive guide on programming with the MLKit is
   available. Documentation is also available in man-pages and from the
   [MLKit home page](http://melsman.github.io/mlkit).
 
-## MLKit Cousins
+## The Barry Backend
 
-This repository also includes the sources for the following tools,
-which are built on top of MLKit:
-
-* [SMLToJs](/README_SMLTOJS.md). A compiler that compiles all of Standard ML into JavaScript.
-
-* [Barry](/README_BARRY.md). A Standard ML source-to-source compiler
-  that will eliminate modules, using static interpretation and
-  generate optimised Core-language Standard ML code.
+This repository also includes the sources for
+[Barry](/README_BARRY.md), a Standard ML source-to-source compiler
+that eliminates modules, using static interpretation, and generates
+optimised Core-language Standard ML code.
 
 ## License and Copyright
 
