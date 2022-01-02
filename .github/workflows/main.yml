@@ -106,6 +106,10 @@ jobs:
         run: |
           make mlkit_bin_dist
 
+      - name: Test bootstrapping
+        run: |
+          make bootstrap
+
       - name: Upload release
         if: ${{ matrix.mlcomp == 'mlton' && github.event_name == 'push' && contains(github.ref, '/tags/v') }}
         uses: svenstaro/upload-release-action@v2

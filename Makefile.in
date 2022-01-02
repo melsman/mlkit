@@ -144,15 +144,17 @@ clean_mlb:
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
 	$(MKDIR) $(DATADIR)/kitdemo/utils
-	$(INSTALLDATA) kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo
+	$(INSTALLDATA) kitdemo/Makefile kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils
 
 .PHONY: install_basis
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
-	$(INSTALLDATA) -p basis/*.{sml,sig,mlb,log} $(LIBDIR)/basis
-	$(INSTALLDATA) -p basis/io/*.{sml,sig,log} $(LIBDIR)/basis/io
+	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
+	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
+	test -n "`ls -1 basis/* | grep '.log'`" && $(INSTALLDATA) -p basis/*.log $(LIBDIR)/basis
+	test -n "`ls -1 basis/io/* | grep '.log'`" && $(INSTALLDATA) -p basis/io/*.log $(LIBDIR)/basis/io
 
 .PHONY: install_man
 install_man:
