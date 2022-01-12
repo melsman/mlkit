@@ -42,12 +42,12 @@ README-file.
   is available from the [MLKit home
   page](http://melsman.github.io/mlkit).
 
-## The MLKit with Regions
+## MLKit with Regions -- The x86 Native Backend
 
 This version of the compiler is based on region inference and has the
 following features:
 
-- A x86 native backend (under Linux and macOS).
+- An x86 native backend (works with Linux and macOS).
 
 - Memory allocation directives (both allocation and deallocation) are
   inferred by the compiler, which uses a number of program analyses
@@ -63,7 +63,7 @@ following features:
 - Region inference may be augmented with reference-tracing garbage
   collection to achieve better memory behavior.
 
-## SMLtoJs
+## SMLtoJs -- The JavaScript Backend
 
 This version of the compiler generates efficient JavaScript, primarily
 for [executing Standard ML code in the
