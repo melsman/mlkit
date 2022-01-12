@@ -2,8 +2,7 @@
 
 The [MLKit](http://elsman.com/mlkit) is a compiler for the programming language Standard ML. The
 MLKit covers all of Standard ML, as defined in the 1997 edition of the
-Definition of Standard ML and supports most of the Standard ML Basis
-Library.
+Definition of Standard ML and supports most of the [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
 
 ## Test Statistics and Benchmarking
 
@@ -18,44 +17,49 @@ README-file.
 
 ## MLKit Features
 
-* Covers all of Standard ML. The MLKit compiles all of Standard ML,
-  [including Modules](http://elsman.com/mlkit/staticinterp.html),
-  as specified by the Definition of Standard ML. The MLKit also
-  supports large parts of the [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
+The MLKit is really two Standard ML compilers that share the front-end
+and many intermediate language optimisations:
 
-* Native backend for the x64 architecture (under Linux and
-  macOS). Also known as the _MLKit with Regions_ compiler.
+1. **The MLKit with Regions**. This version of the compiler is based
+  on region inference and has the following features:
 
-* JavaScript backend for executing Standard ML code in the
-  browser. Also known as the [SMLToJs](/README_SMLTOJS.md) compiler.
+  - A native backend for the x64 architecture (under Linux and macOS).
 
-* Supports [ML Basis Files](http://elsman.com/mlkit/mlbasisfiles.html):
-  The MLKit compiles large programs,
-  [including itself](http://elsman.com/mlkit/bootstrap.html), around 80.000 lines of Standard ML plus the
-  Standard ML Basis Library. The support for ML Basis Files makes it
+  - Memory allocation directives (both allocation and deallocation)
+    are inferred by the compiler, which uses a number of program
+    analyses concerning lifetimes and storage layout. The MLKit
+    compiler is unique among ML implementations in this respect.
+
+  - A comprehensive guide on [Programming with Regions in the MLKit](http://elsman.com/mlkit/raw/doc/mlkit.pdf) is available, which also demonstrate how to create memory profiles of program executions using the supplied region profiler and how to interact with C programs.
+
+  - Region inference may be augmented with reference-tracing garbage
+    collection to achieve better memory behavior.
+
+2. **SMLtoJs**. This version of the compiler generates efficient
+  JavaScript, primarily for [executing Standard ML code in the
+  browser](/README_SMLTOJS.md).
+
+Here are some general features:
+
+* The MLKit compiles all of Standard ML, [including Modules](http://elsman.com/mlkit/staticinterp.html), as specified by
+  the Definition of Standard ML. The MLKit also supports most of the
+  [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
+
+* The MLKit compiles large programs, [including itself](http://elsman.com/mlkit/bootstrap.html), around 80.000 lines
+  of Standard ML plus the Standard ML Basis Library. The support for
+  [ML Basis Files](http://elsman.com/mlkit/mlbasisfiles.html) makes it
   easy to compile a program with different Standard ML
-  compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
-  of ML Basis Files. The MLKit works well together with [smlpkg](https://github.com/diku-dk/smlpkg), a
-  generic package manager for Standard ML libraries and programs.
+  compilers. Currently, both [MLton](http://mlton.org) and the MLKit
+  supports the concept of ML Basis Files. The MLKit works well
+  together with [smlpkg](https://github.com/diku-dk/smlpkg), a generic
+  package manager for Standard ML libraries and programs.
 
-* Region-Based Memory Management: For the MLKit with Regions, memory
-  allocation directives (both allocation and deallocation) are
-  inferred by the compiler, which uses a number of program analyses
-  concerning lifetimes and storage layout. The MLKit compiler is
-  unique among ML implementations in this respect.
-
-* Reference-tracing Garbage Collection: The MLKit with Regions supports
-  reference-tracing garbage collection in combination with region-based
-  memory management.
-
-* [Documentation](http://elsman.com/mlkit/doc.html). A
-  comprehensive guide on programming with the MLKit is
-  available. Documentation is also available in man-pages and from the
+* Documentation is available in man-pages and from the
   [MLKit home page](http://melsman.github.io/mlkit).
 
-## The Barry Backend
+### The Barry Backend
 
-This repository also includes the sources for
+The repository also includes the sources for
 [Barry](/README_BARRY.md), a Standard ML source-to-source compiler
 that eliminates modules, using static interpretation, and generates
 optimised Core-language Standard ML code.
@@ -78,19 +82,19 @@ To compile the MLKit, a Standard ML compiler is needed, which needs to
 be one of the following:
 
 __[MLton](http://mlton.org) >= 20051202:__
-````bash
+```bash
 $ mlton
 MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
-````
+```
 
 If a version prior to 20201023 is used, you may need to adjust the
 `mlton`-flags setup in the file `Makefiledefault`.
 
 __A working MLKit compiler >= 4.3.0:__
-````bash
+```bash
 $ mlkit -V
 MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
-````
+```
 
 Moreover, `gcc` is needed for compiling the runtime system and related
 tools.
@@ -98,92 +102,90 @@ tools.
 ## Compilation
 
 After having checked out the sources from Github, execute the command:
-````bash
+```bash
 $ ./autobuild
-````
+```
 
 Now, `cd` to the toplevel directory of the repository and execute the
 appropriate set of commands:
 
 __Compile with MLton alone (Tested with 3Gb RAM):__
-````bash
+```bash
 $ ./configure
 $ make mlkit
-````
+```
 
 __Compile with existing MLKit (Tested with 1Gb RAM):__
-````bash
+```bash
 $ ./configure --with-compiler=mlkit
 $ make mlkit
-````
+```
 
 If you later want to install the MLKit in your own home directory, you
 should also pass the option `--prefix=$HOME/mlkit` to `./configure` above.
 
 For binary packages, we use
-````bash
+```bash
 $ ./configure --sysconfdir=/etc --prefix=/usr
-````
+```
+
+## Pre-compile Basis Library and Kit-Library
+
+Execute the following command:
+```bash
+$ make mlkit_libs
+```
 
 ## Bootstrapping (optional - works with 1Gb RAM)
 
 This step is optional. If you want the resulting executable compiler
 to be bootstrapped (compiled with itself), execute the command:
-````bash
-$ make bootstrap
-````
+```bash
+$ make bootstrap && make mlkit_libs
+```
 
 Be aware that this step takes some time.
 
-## Pre-compile Basis Library and Kit-Library
-
-Execute the following command:
-````bash
-$ make mlkit_libs
-````
-
 ## Installation after Compilation
 
-For a system wide installation of the MLKit, installation including
+For a system-wide installation of the MLKit, including installation of
 man-pages and tools, execute the command:
-````bash
+```bash
 $ sudo make install
-````
+```
 
 For a personal installation, with `--prefix=$HOME/mlkit` given to
 `./configure`, execute the following command:
-````bash
+```bash
 $ make install
-````
+```
 
 ## Making a Binary Package
 
 To build a binary package, execute the command
-````bash
+```bash
 $ make mlkit_x64_tgz
-````
+```
 
 This command leaves a package `mlkit-X.Y.Z-x64.tgz` in the `dist/`
 directory. For building a binary package, the installation step above
-is not needed and the bootstrapping step is optional.
-
-For building packages containing both MLKit and SMLtoJs, consult the Makefile.
+is not needed and the bootstrapping step is optional. The binary package includes both the MLKit with Regions compiler (i.e., the `mlkit` executable) and [SMLtoJs](/README_SMLTOJS.md) (i.e., an executables named `smltojs`).
 
 ## Try It
 
 To test the installation, copy the directory `/usr/share/mlkit/kitdemo` to
 somewhere in your own directory, say `$HOME/kitdemo`:
-````bash
+```bash
 $ cp -a /usr/share/mlkit/kitdemo $HOME/kitdemo
 $ cd $HOME/kitdemo
 $ mlkit helloworld.sml
-````
+```
 
 The MLKit should produce an executable file `run`:
-````bash
+```bash
 $ ./run
 hello world
-````
+```
 
 ## Trying Without Installing
 
@@ -198,9 +200,9 @@ $ SML_LIB=$PWD bin/mlkit
 
 ## More Information
 
-See the [MLKit home page](http://melsman.github.io/mlkit).
+See the [MLKit home page](http://melsman.github.io/mlkit) for information about related papers, etc.
 
-Documentation for the MLKit is located in the directories `doc/mlkit`
+General documentation for the MLKit is located in the directories `doc/mlkit`
 and `man/man1`. License information is located in the file
 `doc/license/MLKit-LICENSE`.
 
@@ -228,24 +230,24 @@ We assume that MLton >= 20051202 is installed on the system as
 described above.
 
 After having checked out the sources from Github, execute the command:
-````bash
+```bash
 $ ./autobuild
-````
+```
 
 To compile the MLKit, execute the following commands:
-````bash
+```bash
 $ ./configure
 $ make mlkit
 $ make bootstrap
 $ make mlkit_libs
-````
+```
 
 The `make bootstrap` command is optional.
 
 To install the MLKit and related tools, execute:
-````bash
+```bash
 $ sudo make install
-````
+```
 
 See the section "Try It" above to test the installation.
 
