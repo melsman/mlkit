@@ -42,7 +42,7 @@ README-file.
   is available from the [MLKit home
   page](http://melsman.github.io/mlkit).
 
-## MLKit with Regions -- The x86 Native Backend
+## MLKit with Regions - The x86 Native Backend
 
 This version of the compiler is based on region inference and has the
 following features:
@@ -63,7 +63,7 @@ following features:
 - Region inference may be augmented with reference-tracing garbage
   collection to achieve better memory behavior.
 
-## SMLtoJs -- The JavaScript Backend
+## SMLtoJs - The JavaScript Backend
 
 This version of the compiler generates efficient JavaScript, primarily
 for [executing Standard ML code in the
