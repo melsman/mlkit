@@ -1,8 +1,14 @@
 ## MLKit
 
-The [MLKit](http://elsman.com/mlkit) is a compiler for the programming language Standard ML. The
-MLKit covers all of Standard ML, as defined in the 1997 edition of the
-Definition of Standard ML and supports most of the [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
+The [MLKit](http://elsman.com/mlkit) is a compiler toolkit for the
+Standard ML language, including **The MLKit with Regions**, a native
+backend for the x86 architecture, based on region inference, and
+**SMLtoJs**, a JavaScript backend targeting web browsers. The two
+compilers share the same frontend and compilation management scheme.
+
+The MLKit covers all of Standard ML, as defined in the 1997 edition of
+the Definition of Standard ML and supports most of the [Standard ML
+Basis Library](http://elsman.com/mlkit/basis.html).
 
 ## Test Statistics and Benchmarking
 
@@ -15,49 +21,55 @@ install mlkit`. Under Linux, you may install a binary version of MLKit
 by downloading a binary tgz-distribution and following the embedded
 README-file.
 
-## MLKit Features
+## General Features
 
-The MLKit is really two Standard ML compilers that share the front-end
-and many intermediate language optimisations:
-
-1. **The MLKit with Regions**. This version of the compiler is based
-  on region inference and has the following features:
-
-  - A native backend for the x64 architecture (under Linux and macOS).
-
-  - Memory allocation directives (both allocation and deallocation)
-    are inferred by the compiler, which uses a number of program
-    analyses concerning lifetimes and storage layout. The MLKit
-    compiler is unique among ML implementations in this respect.
-
-  - A comprehensive guide on [Programming with Regions in the MLKit](http://elsman.com/mlkit/raw/doc/mlkit.pdf) is available, which also demonstrate how to create memory profiles of program executions using the supplied region profiler and how to interact with C programs.
-
-  - Region inference may be augmented with reference-tracing garbage
-    collection to achieve better memory behavior.
-
-2. **SMLtoJs**. This version of the compiler generates efficient
-  JavaScript, primarily for [executing Standard ML code in the
-  browser](/README_SMLTOJS.md).
-
-Here are some general features:
-
-* The MLKit compiles all of Standard ML, [including Modules](http://elsman.com/mlkit/staticinterp.html), as specified by
+- **Compiles all of Standard ML**. The MLKit compiles all of Standard ML, [including Modules](http://elsman.com/mlkit/staticinterp.html), as specified by
   the Definition of Standard ML. The MLKit also supports most of the
   [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
 
-* The MLKit compiles large programs, [including itself](http://elsman.com/mlkit/bootstrap.html), around 80.000 lines
-  of Standard ML plus the Standard ML Basis Library. The support for
-  [ML Basis Files](http://elsman.com/mlkit/mlbasisfiles.html) makes it
-  easy to compile a program with different Standard ML
-  compilers. Currently, both [MLton](http://mlton.org) and the MLKit
-  supports the concept of ML Basis Files. The MLKit works well
-  together with [smlpkg](https://github.com/diku-dk/smlpkg), a generic
-  package manager for Standard ML libraries and programs.
+- **Compiles large programs**. The MLKit compiles large programs,
+  [including itself](http://elsman.com/mlkit/bootstrap.html), around
+  80.000 lines of Standard ML plus the Standard ML Basis Library. The
+  support for [ML Basis
+  Files](http://elsman.com/mlkit/mlbasisfiles.html) makes it easy to
+  compile a program with different Standard ML compilers. Currently,
+  both [MLton](http://mlton.org) and the MLKit supports the concept of
+  ML Basis Files. The MLKit works well together with
+  [smlpkg](https://github.com/diku-dk/smlpkg), a generic package
+  manager for Standard ML libraries and programs.
 
-* Documentation is available in man-pages and from the
-  [MLKit home page](http://melsman.github.io/mlkit).
+- **Documentation is available**. Man-pages and general documentation
+  is available from the [MLKit home
+  page](http://melsman.github.io/mlkit).
 
-### The Barry Backend
+## The MLKit with Regions
+
+This version of the compiler is based on region inference and has the
+following features:
+
+- A x86 native backend (under Linux and macOS).
+
+- Memory allocation directives (both allocation and deallocation) are
+  inferred by the compiler, which uses a number of program analyses
+  concerning lifetimes and storage layout. The MLKit compiler is
+  unique among ML implementations in this respect.
+
+- A comprehensive guide on [Programming with Regions in the
+  MLKit](http://elsman.com/mlkit/raw/doc/mlkit.pdf) is available,
+  which also demonstrate how to create memory profiles of program
+  executions using the supplied region profiler and how to interact
+  with C programs.
+
+- Region inference may be augmented with reference-tracing garbage
+  collection to achieve better memory behavior.
+
+## SMLtoJs
+
+This version of the compiler generates efficient JavaScript, primarily
+for [executing Standard ML code in the
+browser](/README_SMLTOJS.md).
+
+## The Barry Backend
 
 The repository also includes the sources for
 [Barry](/README_BARRY.md), a Standard ML source-to-source compiler
