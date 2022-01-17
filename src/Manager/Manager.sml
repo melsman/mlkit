@@ -698,27 +698,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Link together lnk-files and generate executable
      * ------------------------------------------------ *)
 
-     fun objFileExt() = if MO.backend_name = "KAM" then ".uo" else ".o"
-     local
-         fun fileFromSmlFile smlfile ext =
-            let val {dir,file} = OS.Path.splitDirFile smlfile
-                infix ##
-                val op ## = OS.Path.concat
-            in dir ## MO.mlbdir () ## (file ^ ext)
-            end handle OS.Path.Path => die "fileFromSmlFile. Path"
-         fun objFileFromSmlFile smlfile =
-             fileFromSmlFile smlfile (objFileExt())
-
-         fun lnkFileFromSmlFile smlfile =
-             objFileFromSmlFile smlfile ^ ".lnk"
-     in
-         fun getUoFiles (smlfile:string) : string list =
-             let val lnkfile = lnkFileFromSmlFile smlfile
-                 val modc = readLinkFiles [lnkfile]
-             in ModCode.target_files modc
-             end
-     end
-
     structure MlbProject = MlbProject(ManagerObjects.Environment)
 
     fun link_lnk_files (mlbfile_opt:string option) : unit =
@@ -856,19 +835,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                       \for compilation."
                 }
         local
-          fun link0 mlbfile target lnkFiles lnkFilesScripts () =
+          fun link0 mlbfile target lnkFiles () =
               (Flags.lookup_string_entry "output" := target;
                Flags.lookup_stringlist_entry "link" := lnkFiles;
-               (*Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;*)
                link_lnk_files (SOME mlbfile))
         in
-          fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
-             isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
+          fun link {verbose} {mlbfile,target,lnkFiles,flags=""} :unit =
+             isolate (link0 mlbfile target lnkFiles) ()
             | link _ _ = die "MlbPlugIn.link.flags non-empty"
         end
 
-        fun mlbdir() = MO.mlbdir()
-        val objFileExt = objFileExt
+        fun mlbdir () = MO.mlbdir()
+        fun objFileExt () = ".o"
 
         fun maybeSetRegionEffectVarCounter n =
             let
