@@ -20,6 +20,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     fun StringTree_to_string st = PP.flatten (PP.format (!Flags.colwidth, st))
     val pr_Type = StringTree_to_string o layoutType
 
+    val pr_TypeList = StringTree_to_string o layoutTypeList
+
     local
         fun f0 separator pp_x [] = ""
           | f0 separator pp_x [x] = pp_x x
@@ -818,7 +820,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		     log "application:\n"; log_st (layoutLambdaExp lexp);
 		     die "APP")
 	       end
-	      | _ => die "APP.argument type not arrow")
+	      | tl =>
+                ( log "lexp1:\n"
+                ; log_st (layoutLambdaExp lexp1)
+                ; log "env:\n"
+                ; log_st (layout_env env)
+                ; die ("APP.argument type not arrow - type list is " ^ pr_TypeList tl)
+                )
+          )
 	 | EXCEPTION (excon, typeopt, lexp) =>
 	      (case typeopt of SOME t => valid_t env t | NONE => ();
 	       type_lexp (add_excon(excon,typeopt,env)) lexp)
