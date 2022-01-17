@@ -25,8 +25,16 @@ structure Lvars: LVARS =
 
     fun newLvar () : lvar = new_named_lvar ""
 
+    val print_lvar_name = Flags.add_bool_entry
+      {long="print_lvar_name", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print lvar name"], desc=
+       "Print underlying unique name when printing lvars."}
+
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
-      | pr_lvar {str,...} = str
+      | pr_lvar {str,name,...} =
+        if print_lvar_name() then
+          str ^ "$" ^ Int.toString (#1(Name.key name)) ^ "_" ^ #2(Name.key name)
+        else str
 
     fun renew (lv:lvar) : lvar =
         {name=Name.new(), str=pr_lvar lv,
