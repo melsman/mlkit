@@ -8,6 +8,7 @@ struct
   structure RSE = RegionStatEnv
   structure Exp = RegionExp
   structure Lvar = Lvars
+  structure PP = PrettyPrint
   type cone = RType.cone
   type place = RType.place
   type effect = RType.effect
@@ -19,9 +20,6 @@ struct
   val dangling_pointers = Flags.is_on0 "dangling_pointers"
   val print_regions = Flags.is_on0 "print_regions"
 
-  fun footnote(x,y) = x
-  infix footnote
-
   fun uncurry f (x,y) = f x y
 
   infix &&
@@ -29,6 +27,10 @@ struct
     | d && (Effect.Lf[]) = d
     | d1 && d2 = Effect.Br(d1,d2)
   val delta_emp = Effect.Lf[]
+
+  fun pp_delta (Effect.Lf effects) =
+      "[" ^ String.concatWith "," (map (PP.flatten1 o Effect.layout_effect) effects) ^ "]"
+    | pp_delta (Effect.Br (d1,d2)) = pp_delta d1 ^ " && " ^ pp_delta d2
 
   exception AbortExp  (* Region inference of any expression is
                          enclosed in a handle which handles any
@@ -63,7 +65,7 @@ struct
   fun observeDelta x = Effect.observeDelta x
   fun popAndClean B  = Effect.popAndClean B
 
-  fun Below(B, mus) =
+  fun Below (B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
         val B' = foldl  (uncurry (Effect.lower(Effect.level B - 1))) B free_rhos_and_epss
                  handle _ => die "Below.lower failed\n"
@@ -73,11 +75,11 @@ struct
     end
 
 
-  fun retract(B, body as Exp.TR(e, Exp.Mus mus, phi),
-              delta_phi_body: Effect.delta_phi,
-              discharged_basis: effect list ref,
-              discharged_phi: effect list ref,
-              old_effect_of_letregion): cone * Effect.delta_phi =
+  fun retract (B, body as Exp.TR(e, Exp.Mus mus, phi),
+               delta_phi_body: Effect.delta_phi,
+               discharged_basis: effect list ref,
+               discharged_phi: effect list ref,
+               old_effect_of_letregion): cone * Effect.delta_phi =
         let
           (*val () = print "[Retract..."*)
           val (B_discharge,B_keep) = Below(B, mus)
@@ -100,7 +102,7 @@ struct
 
 
 
-  fun inferEffects(device: string-> unit) =
+  fun inferEffects (device: string -> unit) =
   let
     val layoutExp = Exp.layoutLambdaExp(if print_regions()
                                         then (fn rho => SOME(PrettyPrint.LEAF("at "
@@ -233,11 +235,6 @@ struct
                            in (B, d2 && d3)
                            end
            end
-        fun pr s = if false andalso !count_visited >= 10200 then
-                     (print s;
-                      if s="v" then Effect.profGlobalIncs()
-                      else ())
-                   else ()
       in count_visited:= !count_visited+1;
        (case e of
          Exp.VAR{lvar, il_r = il_r as ref(il,f), fix_bound} =>
@@ -245,23 +242,19 @@ struct
          in il_r:= (il, fn p => p);
            (case RSE.lookupLvar rse lvar of
      	  SOME(_,_,_,sigma,place0,_, _) =>
-                 let
-                   val _ = pr "V"
+                let
                    val (tau_1,B,updates: (effect * Effect.delta_phi)list) = instClever(sigma,il)(B)
                      handle Crash.CRASH =>
                        die ("inst failed; type scheme:\n" ^
                              PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma)) ^ "\n")
-                   val _ = pr "-"
                  in
                    case mt of
                      Exp.Mus [(tau, _)] =>
                        (let val B' = (unify_ty(tau,tau_1)B handle _ => die "unify_ty failed\n");
-                        in  pr "-";
-                            List.app update_increment    updates;
-                            pr "-";
+                        in  List.app update_increment    updates;
                             List.app (update_areff o #1) updates    (* takes time; mael 2015-05-07 *)
-                              handle _ => die "update_areff in VAR case";
-                            (B',delta_emp) before pr "v"
+                            handle _ => die "update_areff in VAR case";
+                            (B',delta_emp)
                         end
                        )
                    | _ => die ("R.VAR{...}: bad metatype")
@@ -291,15 +284,13 @@ struct
                     val (B, delta_body) = R(B,rse', body)
 		    val delta_gc = gc_compute_delta(rse,free,mu0)
 		    val delta = delta_body && delta_gc
-                    val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
- 	            val _ = pr "L"
+                    val lev_eps = case Effect.level_of eps_phi0 of
+                                      SOME n => n
+                                    | NONE => die "bad arrow effect (FN)"
                     val B = lower_delta lev_eps delta B
- 	            val _ = pr "-"
                  in
                     update_increment(eps_phi0, delta);
- 	            pr "-";
                     update_areff(eps_phi0);   (* takes time; mael 2015-05-07 *)
- 	            pr "l";
                     (B, delta_emp)
                  end
                | NONE => die "R: FN expression had bad meta type")
@@ -359,32 +350,44 @@ struct
 (*
                         val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat)
                         val _ = sayCone B3
-                        val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))
+                        val _ = sayLn("before rename ,    sigma is " ^ show_sigma sigma_3hat)
 *)
                         val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking alpha_equality below *)
                                handle _ => die("failed to rename type scheme " ^
                                                 show_sigma sigma_3hat)
-
-			(* val _ = sayLn("after  rename , sigma is " ^ show_sigma sigma3_hat_save) *)
+(*
+			val _ = sayLn("after  rename ,    sigma is " ^ show_sigma sigma3_hat_save)
+*)
                         val rse' = RSE.declareLvar(f,(true,true,[],(*sigma3_hat_save*) sigma_3hat, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
                         val bv_sigma3_hat as (_,rhos,epsilons) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
                                     handle _ => die "pushLayer failed\n"
-                        val (B4,delta_rhs) = R(B3', rse',bind)   (* bind is a fn, so delta_rhs is empty *)
+(*
+                        val _ = sayLn("before R(bind),    sigma is " ^ show_sigma sigma_3hat)
+                        val _ = sayCone B3'
+*)
+                        val (B4,delta_rhs) = R(B3', rse', bind)   (* bind is a fn, so delta_rhs is empty *)
+
                         val _ = count_RegEffClos:= !count_RegEffClos+1
+(*
+                        val _ = sayLn("before regEffClos, sigma is " ^ show_sigma sigma_3hat)
+*)
                         val (B5,sigma_5hat) = regEffClos(B4, Effect.level(B3),phi4,tau4)
-                        val (_, B5) = pop(B5)
+(*
+                        val _ = sayLn("after regEffClos,  sigma is " ^ show_sigma sigma_3hat)
+*)
+                        val (_, B5) = pop B5
                         val (_,newrhos,newepss) = RType.bv sigma_5hat
 			(* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)
                         (*val _ = Profile.profileOn();*)
                       in
-                         if alpha_equal(sigma3_hat_save, sigma_5hat) B5 (*footnote Profile.profileOff()*)
+                         if alpha_equal(sigma3_hat_save, sigma_5hat) B5 (*before Profile.profileOff()*)
                               handle _ => die ("alpha_equal failed\n" ^
                                                "sigma_3_hat_save = \n" ^ show_sigma sigma3_hat_save ^
                                                "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
                          then
-                                ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);*)
-                                 (*log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
+                                ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);
+                                 log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f); *)
                                  (* update bindings in syntax tree *)
                                  rhosr:= newrhos;
                                  epssr:= newepss;
@@ -444,7 +447,9 @@ struct
                       | NONE => die "APP: not function")
                    | _ => die "APP: not function"
                val (B,d2) = R(B,rse,t2)
-           in  (B, current_increment eps_phi0 && d1 && d2)
+               val d0 = current_increment eps_phi0
+               val d = d0 && d1 && d2
+           in  (B, d)
                (*(B, Effect.Lf[eps_phi0] && d1 && d2)*)
            end
        | Exp.EXCEPTION(excon, nullary:bool, mu, alloc, t1) =>
