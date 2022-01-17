@@ -78,6 +78,10 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
     (* Picklers *)
 
+    fun puSay s (p : 'a Pickle.pu) : 'a Pickle.pu =
+        Pickle.comment s p
+
+
     val pu_BodyBuilderClos =
 	let fun to ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext)) =
 		{infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,
@@ -85,9 +89,14 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,filetext,
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext))
 	in Pickle.convert (to,from)
-	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-			     Pickle.pairGen0(OpacityEnv.pu,Pickle.listGen TyName.pu),
-			     Pickle.tup3Gen0(Environments.E.pu,Pickle.string,Pickle.string)))
+	                  (Pickle.tup3Gen0(Pickle.tup3Gen0(puSay "IBasis" InfixBasis.pu,
+                                                           puSay "MEnv" ModuleEnvironments.B.pu,
+                                                           puSay "absprjid" ModuleEnvironments.pu_absprjid),
+			                   Pickle.pairGen0(puSay "OEnv" OpacityEnv.pu,
+                                                           puSay "T" (Pickle.listGen TyName.pu)),
+			                   Pickle.tup3Gen0(puSay "Env" Environments.E.pu,
+                                                           puSay "hash" Pickle.string,
+                                                           puSay "filetext" Pickle.string)))
 	end
 
     val pu_IntSigEnv =
