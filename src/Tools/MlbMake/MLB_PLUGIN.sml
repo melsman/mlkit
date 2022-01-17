@@ -15,7 +15,6 @@ signature MLB_PLUGIN =
 	        -> {mlbfile: string,
 	            target: string,
 	            lnkFiles: string list,
-	            lnkFilesScripts: string list,
 	            flags: string}
 	        -> unit
 

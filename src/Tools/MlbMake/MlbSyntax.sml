@@ -4,7 +4,7 @@ struct
 	  sig eqtype bid and longbid
 	  end =
     struct
-      type bid = string 
+      type bid = string
       type longbid = bid list
     end
 
@@ -14,13 +14,12 @@ struct
                 | LONGBIDbexp of Bid.longbid
 
   and bdec = SEQbdec of bdec * bdec
-           | EMPTYbdec 
+           | EMPTYbdec
            | LOCALbdec of bdec * bdec
            | BASISbdec of Bid.bid * bexp
            | OPENbdec of Bid.longbid list
            | ATBDECbdec of atbdec
            | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
-           | SCRIPTSbdec of atbdec list
            | ANNbdec of string * bdec
 
 	fun supported_annotation s =
@@ -35,7 +34,6 @@ struct
     | fold (OPENbdec l)           e seq bas loc fopen fatbdec fmlb script ann = List.foldl fopen e l
     | fold (ATBDECbdec a)         e seq bas loc fopen fatbdec fmlb script ann = fatbdec(a,e)
     | fold (MLBFILEbdec (s,so))   e seq bas loc fopen fatbdec fmlb script ann = fmlb(s,so,e)
-    | fold (SCRIPTSbdec l)        e seq bas loc fopen fatbdec fmlb script ann = List.foldl script e l 
     | fold (ANNbdec (ann',bdec))  e seq bas loc fopen fatbdec fmlb script ann = ann(ann',bdec,e)
 
 end

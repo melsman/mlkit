@@ -26,6 +26,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     type ElabEnv = ManagerObjects.ElabEnv
     type ElabBasis = ManagerObjects.ElabBasis
 
+    infix |>
+    fun x |> f = f x
+
     fun die s = Crash.impossible ("IntModules." ^ s)
     fun print_error_report report = Report.print' report (!Flags.log)
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
@@ -458,8 +461,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      fun reuse_msg s = (print("[cannot reuse instance code for functor `"
 				       ^ FunId.pr_FunId funid ^ "' -- " ^ s ^ "]\n"); NONE)
 
+              (* remove prefix hash value from the absprjid string *)
+              val src_name =
+                  ModuleEnvironments.absprjid_to_string absprjid
+               |> Substring.full
+               |> Substring.splitl (fn c => c = #"-")
+               |> #2
+               |> Substring.string
+
 	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^
-			    " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
+			    " (from source " ^ src_name ^ ") begin]\n")
 (* 	      val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 
 	      val _ = chat "[recreating functor body begin...]"
