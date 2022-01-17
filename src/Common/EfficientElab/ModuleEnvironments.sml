@@ -103,7 +103,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
     fun lt_absprjid (a,b:string) = a < b
 
     datatype FunEnv = FUNENV of (funid, absprjid*FunSig) FinMap.map
-    fun absprjid_to_string(absprjid) = absprjid
+    fun absprjid_to_string absprjid = absprjid
     fun mk_absprjid x = x
 
     fun is_absprjid_basislib absprjid =
