@@ -142,6 +142,8 @@ struct
   (***********************)
   type StringTree = PP.StringTree
 
+  fun pr_rho r = PP.flatten1(Effect.layout_effect r)
+
   local
     open PP
 
@@ -429,6 +431,7 @@ struct
 	  val _ = print "\nlayout end"
       in r
       end
+    fun pp_sma sma = PP.flatten1(pr_sma sma)
   end
 
   local
@@ -1548,6 +1551,23 @@ struct
 	in (implode o (map conv) o explode) r
 	end
 
+    fun pass_ptr_to_rho s pr sma =
+        let
+(*
+            val ce = get_ce sma
+
+            val () =
+                case ce of
+                    RVAR r => ()
+                  | VAR _ => ()
+                  | DROPPED_RVAR _ => die (s ^ "("^pr()^
+                                           "): expecting only non-dropped rvars")
+                  | _ => die (s ^ "("^pr()^
+                              "): expecting only non-dropped rvars; sma=" ^ pp_sma sma)
+*)
+        in PASS_PTR_TO_RHO sma
+        end
+
     (* ------------------------ *)
     (*    Closure Conversion    *)
     (* ------------------------ *)
@@ -1725,11 +1745,11 @@ struct
 		       val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
 		       fun maybe_insert_smas([],[],ce) = ce
 			 | maybe_insert_smas(fresh_lvs,smas,ce) =
-			 LET{pat=fresh_lvs,bind=UB_RECORD smas,scope=ce}
+			   LET{pat=fresh_lvs,bind=UB_RECORD smas,scope=ce}
 		   in
 		     (insert_ses
 		      (maybe_insert_smas
-		       (fresh_lvs,map PASS_PTR_TO_RHO smas,
+		       (fresh_lvs,map (pass_ptr_to_rho "JMP" (fn () => Lvars.pr_lvar lvar)) smas,
 			insert_ses
 			(JMP{opr=lab_f,args=ces_arg,reg_vec=NONE,
 			     reg_args=map VAR fresh_lvs,clos=ce_clos},
@@ -1750,7 +1770,20 @@ struct
 		     in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
 		     end
 		   else ()
+(*
+                 fun check_rho s rho =
+                     case lookup_rho env rho (fn () => "FUNCALL-check") of
+                         (DROPPED_RVAR p,_) => die ("FUNCALL " ^ Lvars.pr_lvar lvar ^ ": check: " ^ s ^ " - rho: " ^ pr_rho rho ^ " - place: " ^ pr_rho p)
+                       | _ => ()
 
+                 val () = (* check that all rhos_actuals are NON-DROPPED *)
+                     List.app (fn a => case a of
+                                           AtInf.IGNORE => die ("FUNCALL" ^ Lvars.pr_lvar lvar ^ ": ignore")
+                                         | AtInf.ATTOP(rho,pp) => check_rho "ATTOP" rho
+                                         | AtInf.ATBOT(rho,pp) => check_rho "ATBOT" rho
+                                         | AtInf.SAT(rho,pp) => check_rho "SAT" rho
+                              ) rhos_actuals
+*)
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
@@ -1770,7 +1803,7 @@ struct
 	       in
 		 (insert_ses
 		  (maybe_insert_smas
-		   (fresh_lvs, map PASS_PTR_TO_RHO smas,
+		   (fresh_lvs, map (pass_ptr_to_rho "FUNCALL" (fn () => Lvars.pr_lvar lvar)) smas,
 		    insert_ses
 		    (FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,
 			     reg_args=map VAR fresh_lvs,clos=ce_clos},
@@ -2238,10 +2271,10 @@ struct
 
 		 fun comp_region_args_sma [] = []
 		   | comp_region_args_sma ((sma, i_opt)::rest) =
-		       (case i_opt of
-			  SOME 0 => die "ccExp (CCALL ...): argument region with size 0"
-			| SOME i => PASS_PTR_TO_MEM(sma,i) :: (comp_region_args_sma rest)
-			| NONE   => PASS_PTR_TO_RHO(sma) :: (comp_region_args_sma rest))
+		     case i_opt of
+			 SOME 0 => die "ccExp (CCALL ...): argument region with size 0"
+		       | SOME i => PASS_PTR_TO_MEM(sma,i) :: comp_region_args_sma rest
+		       | NONE   => pass_ptr_to_rho "CCALL" (fn () => name) sma :: comp_region_args_sma rest
 		 val smas_and_ses = List.map (fn (alloc,_) => convert_alloc(alloc,env)) rhos_for_result
 		 val i_opts = List.map #2 rhos_for_result
 

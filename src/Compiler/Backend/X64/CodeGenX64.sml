@@ -42,7 +42,7 @@ struct
      fun CG_lss(lss,size_ff,size_ccf,C) =
        let
          fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
-         fun CG_ls(ls,C) =
+         fun CG_ls (ls,C) =
            (case ls
               of LS.ASSIGN{pat=SS.FLOW_VAR_ATY(lv,lab_t,lab_f),
                            bind=LS.CON0{con,con_kind,aux_regions=[],alloc=LS.IGNORE}} =>
@@ -1232,7 +1232,7 @@ struct
                  end
                | LS.CCALL{name,args,rhos_for_result,res} =>
                   let
-                    fun comp_c_call(all_args,res,C) =
+                    fun comp_c_call (all_args,res,C) =
                       compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
                     val _ =
                         case (explode name, rhos_for_result) of
@@ -1261,7 +1261,8 @@ struct
                                        [] => comp_c_call(all_args, NONE, C)
                                      | [res_aty] => comp_c_call(all_args, SOME res_aty, C)
                                      | _ => die "CCall with more than one result variable"
-                                end)
+                                end handle X => ( print ("EXN: CCALL: " ^ pr_ls ls ^ "\n")
+                                                ; raise X))
                   end
                | LS.CCALL_AUTO{name, args, res} =>
 
@@ -1270,7 +1271,10 @@ struct
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
+                                compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C)
+                                handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
+                                            ; raise X)
+                               )
 
                | LS.EXPORT{name,
                            clos_lab,
