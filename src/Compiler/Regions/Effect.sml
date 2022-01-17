@@ -55,8 +55,7 @@ struct
        "Print effects in region types."}
 
   type StringTree = PP.StringTree
-  infix footnote
-  fun x footnote y = x
+
   fun die s = (print ("Effect." ^ s ^ "\n"); Crash.impossible("Effect." ^ s))
   fun log_tree (tr: StringTree) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), tr, !Flags.colwidth)
   fun say i = TextIO.output(TextIO.stdOut, i)
@@ -96,7 +95,7 @@ struct
          | TOP_RT => "T"
          | BOT_RT => "B"
 
-  fun lub_runType(rt1,rt2) =
+  fun lub_runType (rt1,rt2) =
       if rt1 = rt2 then rt1
       else if rt1 = BOT_RT then rt2
       else if rt2 = BOT_RT then rt1
@@ -1146,7 +1145,7 @@ tracing *)
                   end
                  )
           end
-      in searchDelta(delta,[]) footnote unvisitDelta delta
+      in searchDelta(delta,[]) before unvisitDelta delta
       end
 
   fun current_increment eps =
@@ -1204,7 +1203,7 @@ tracing *)
        are the result). Finally, unmark all nodes in l2 *)
       ( app (fn node => G.find_visited node:= true) l2;
         List.filter (fn node => not(!(G.find_visited node))) l1
-                    footnote app (fn node => G.find_visited node:= false) l2
+                    before app (fn node => G.find_visited node:= false) l2
       )
 
   fun say_eps eps = PP.outputTree(say, layout_effect eps, !Flags.colwidth)
@@ -1213,16 +1212,18 @@ tracing *)
      level no greater than the level of eps *)
 
   fun update_areff eps =
-   ((*say ("update_areff: eps = "); say_eps eps; *)
+   ((*say ("update_areff: eps = "); say_eps eps;
+    say "\n";*)
     if is_arrow_effect eps
     then
       case Increments.lookup (!globalIncs) eps of
           SOME delta =>
             let val nodes = computeIncrement delta
                 val to_be_added = setminus(nodes, G.nodes(G.subgraph [eps]))
-            in  G.add_edges(eps, to_be_added)(*;
-                say "update_areff:result = ";*)
-                (*PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth) *)
+            in  G.add_edges(eps, to_be_added) (* ;
+                say "update_areff:result = ";
+                PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth);
+                say "\n" *)
             end
         | NONE => ()
     else ()
@@ -1887,7 +1888,7 @@ tracing *)
       let val refs = foldl (fn (a,b) => visit_eps_or_rho a b) [] discharged_basis
           fun keep (ae,mul): bool = not(!(G.find_visited ae))
       in
-         List.filter keep psi footnote
+         List.filter keep psi before
             app (fn r => r := false) refs
       end
 
