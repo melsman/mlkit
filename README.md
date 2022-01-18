@@ -55,7 +55,7 @@ following features:
   unique among ML implementations in this respect.
 
 - A comprehensive guide on [Programming with Regions in the
-  MLKit](http://elsman.com/mlkit/raw/doc/mlkit.pdf) is available,
+  MLKit](https://github.com/melsman/mlkit/raw/master/doc/mlkit.pdf) is available,
   which also demonstrates how to create memory profiles of program
   executions using the supplied region profiler and how to interact
   with C programs.
