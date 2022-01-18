@@ -162,3 +162,5 @@ export2.sml
 export3.sml
 
 atExit0.sml
+
+stringsz.sml

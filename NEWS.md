@@ -1,5 +1,10 @@
 ## MLKit NEWS
 
+* mael 2022-01-18: The maximum size of a string is now 4Gb (previously
+  16Mb). For the JavaScript backend, the maximum size is now 1Gb
+  (previously 16Mb). Same for Word8Vector.vector, CharArray.array, and
+  Word8Array.array.
+
 * mael 2022-01-18: Fixed problem with dropped region variable being
   passed to a function. Such situations can arise if the particular
   function call instance cause no allocation in the dropped region,
