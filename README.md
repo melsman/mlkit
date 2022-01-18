@@ -1,13 +1,13 @@
 ## MLKit
 
 The [MLKit](http://elsman.com/mlkit) is a compiler toolkit for the
-Standard ML language, including **The MLKit with Regions**, a native
-backend for the x86 architecture, based on region inference, and
-**SMLtoJs**, a JavaScript backend targeting web browsers. The two
+Standard ML language, including **The MLKit with Regions**, which features a native
+backend for the x64 architecture, based on region inference, and
+**SMLtoJs**, which features a JavaScript backend targeting web browsers. The two
 compilers share the same frontend and compilation management scheme.
 
 The MLKit covers all of Standard ML, as defined in the 1997 edition of
-the Definition of Standard ML and supports most of the [Standard ML
+[The Definition of Standard ML](https://mitpress.mit.edu/books/definition-standard-ml-revised-edition) and supports most of the [Standard ML
 Basis Library](http://elsman.com/mlkit/basis.html).
 
 ## Test Statistics and Benchmarking
@@ -42,12 +42,12 @@ README-file.
   is available from the [MLKit home
   page](http://melsman.github.io/mlkit).
 
-## MLKit with Regions - The x86 Native Backend
+## MLKit with Regions - The x64 Native Backend
 
 This version of the compiler is based on region inference and has the
 following features:
 
-- An x86 native backend (works with Linux and macOS).
+- An x64 native backend (works with Linux and macOS).
 
 - Memory allocation directives (both allocation and deallocation) are
   inferred by the compiler, which uses a number of program analyses
@@ -56,7 +56,7 @@ following features:
 
 - A comprehensive guide on [Programming with Regions in the
   MLKit](http://elsman.com/mlkit/raw/doc/mlkit.pdf) is available,
-  which also demonstrate how to create memory profiles of program
+  which also demonstrates how to create memory profiles of program
   executions using the supplied region profiler and how to interact
   with C programs.
 
@@ -67,7 +67,9 @@ following features:
 
 This version of the compiler generates efficient JavaScript, primarily
 for [executing Standard ML code in the
-browser](/README_SMLTOJS.md).
+browser](/README_SMLTOJS.md). There is also an [online version of
+SMLtoJs](https://diku-dk.github.io/sml-ide/), which makes it possible
+to write, compile, and execute Standard ML code in a web browser.
 
 ## The Barry Backend
 
@@ -87,7 +89,7 @@ for details. The runtime system (`/src/Runtime/`) and libraries
 
 To compile, install, and use the MLKit, a Linux box running Ubuntu
 Linux, Debian, gentoo, or similar is needed. The MLKit also works on
-macOS and has also earlier been reported to run on the FreeBSD/x86
+macOS and has also earlier been reported to run on the FreeBSD/x64
 platform, with a little tweaking.
 
 To compile the MLKit, a Standard ML compiler is needed, which needs to
