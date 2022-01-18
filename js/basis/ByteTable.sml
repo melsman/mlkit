@@ -52,7 +52,7 @@ functor ByteTable(eqtype table
       in h (length t - 1, nil)
       end
 
-    val maxLen = 1024*1024*1024   (* 1Gb *)
+    val maxLen = 2147483647       (* maxInt; 2Gb *)
 
     fun sub (t: table, i) : elem =
       if i < 0 orelse i >= length t then raise Subscript
