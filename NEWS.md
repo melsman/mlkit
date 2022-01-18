@@ -1,5 +1,23 @@
 ## MLKit NEWS
 
+* mael 2022-01-18: Fixed problem with dropped region variable being
+  passed to a function. Such situations can arise if the particular
+  function call instance cause no allocation in the dropped region,
+  while another function call instance will prowide a proper region
+  which will be allocated into (by, for instance, a parameter-passed
+  function) (problem mentioned in issue #97).
+
+* mael 2022-01-18: Fixed name clash error related to referencing
+  similarly named (but different) files from different mlb-files. The
+  rule is now that two identically named mlb-files containing
+  identical content must be identical (issue #97).
+
+* mael 2022-01-18: Fixed behavior of VectorSlice.foldli,
+  ArraySlice.foldli, Word8VectorSlice.foldli, ... to have the index
+  reference the position in the slice rather than in the underlying
+  vector or array. Problem fixed for both the JavaScript and the
+  native basis. (issue #90).
+
 ### MLKit version 4.6.0 is released
 
 * mael 2021-12-31: Revised the manual for version 4.6.0.

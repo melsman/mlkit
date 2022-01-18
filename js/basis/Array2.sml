@@ -2,11 +2,11 @@
 
 structure Array2 : ARRAY2 =
   struct
-    type 'a array = ('a Array.array Vector.vector * int * int) ref 
+    type 'a array = ('a Array.array Vector.vector * int * int) ref
 
     datatype traversal = RowMajor | ColMajor
 
-    type 'a region = { base : 'a array, row : int, col : int, 
+    type 'a region = { base : 'a array, row : int, col : int,
 		       nrows : int option, ncols : int option}
 
     fun fromList [] = ref (Vector.fromList [], 0, 0)
@@ -14,31 +14,31 @@ structure Array2 : ARRAY2 =
 	let val row1 = Array.fromList xs1
 	    val rowr = List.map Array.fromList xsr
 	    val cols = Array.length row1
-	    val vec = 
+	    val vec =
 		if List.all (fn r => Array.length r = cols) rowr then
 		    Vector.fromList (row1 :: rowr)
 		else
 		    raise Size
-	in 
+	in
 	    ref (vec, Vector.length vec, cols)
 	end
 
-    fun array (m, n, x) = 
+    fun array (m, n, x) =
 	ref (Vector.tabulate(m, fn _ => Array.array(n, x)), m, n);
 
-    fun tabulate RowMajor (m, n, f) = 
+    fun tabulate RowMajor (m, n, f) =
 	ref (Vector.tabulate(m, fn i => Array.tabulate(n, fn j => f(i,j))), m, n)
-      | tabulate ColMajor (m, n, f) = 
-	if m > 0 andalso n > 0 then 
+      | tabulate ColMajor (m, n, f) =
+	if m > 0 andalso n > 0 then
 	    let val f00 = f(0, 0)
 		val arr = Vector.tabulate(m, fn i => Array.array(n, f00))
 		(* Column 0: do not apply f to (0,0) again: *)
-		val _ = VectorSlice.appi (fn (r, a) => Array.update(a, 0, f(r, 0))) 
+		val _ = VectorSlice.appi (fn (r, a) => Array.update(a, 0, f(r+1, 0)))
 				    (VectorSlice.slice(arr, 1, NONE));
 		(* Remaining columns: loop, updating all rows: *)
-		fun loop c = 
-		    if c < n then  
-			(Vector.appi (fn (r, a) => Array.update(a, c, f(r, c))) 
+		fun loop c =
+		    if c < n then
+			(Vector.appi (fn (r, a) => Array.update(a, c, f(r, c)))
 				     arr;
 			 loop (c+1))
 		    else ()
@@ -56,80 +56,80 @@ structure Array2 : ARRAY2 =
 
     fun update(ref (a,m,n), i, j, x) = Array.update(Vector.sub(a, i), j, x);
 
-    fun row (ref (a, _, _), i) = 
+    fun row (ref (a, _, _), i) =
 	Array.vector(Vector.sub(a, i));
 
-    fun column (ref (a, m, n), j) = 
+    fun column (ref (a, m, n), j) =
 	if j<0 orelse j>=n then raise Subscript
 	else Vector.tabulate(m, fn k => Array.sub(Vector.sub(a, k), j))
 
-    fun fold RowMajor f b (ref (a, _, _)) = 
+    fun fold RowMajor f b (ref (a, _, _)) =
 	Vector.foldl (fn (xs, res) => Array.foldl f res xs) b a
-      | fold ColMajor f b (ref (a, m, n)) = 
-	let fun rows j i b = 
-		if i >= m then b 
+      | fold ColMajor f b (ref (a, m, n)) =
+	let fun rows j i b =
+		if i >= m then b
 		else rows j (i+1) (f(Array.sub(Vector.sub(a, i), j), b))
 	    fun cols j b =
-		if j >= n then b 
+		if j >= n then b
 		else cols (j+1) (rows j 0 b)
 	in cols 0 b end
 
-    fun stop len i NONE = 
+    fun stop len i NONE =
 	if i<0 orelse i>len then raise Subscript
 	else len
-      | stop len i (SOME n) = 
+      | stop len i (SOME n) =
 	if i<0 orelse n<0 orelse i+n>len then raise Subscript
 	else i+n;
 
-    fun foldi RowMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
-	VectorSlice.foldli 
-	       (fn (i, xs, res) => 
-		   ArraySlice.foldli 
-		   (fn (j,x,res) => f(i,j,x,res)) res (ArraySlice.slice(xs,col,ncols)))
+    fun foldi RowMajor f b { base = ref (a, m, n), row, col, nrows, ncols } =
+	VectorSlice.foldli
+	       (fn (i, xs, res) =>
+		   ArraySlice.foldli
+		   (fn (j,x,res) => f(i+row,j+col,x,res)) res (ArraySlice.slice(xs,col,ncols)))
 	       b (VectorSlice.slice(a, row, nrows))
-      | foldi ColMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
+      | foldi ColMajor f b { base = ref (a, m, n), row, col, nrows, ncols } =
 	let val stoprow = stop m row nrows
 	    val stopcol = stop n col ncols
-	    fun rows j i b = 
-		if i >= stoprow then b 
+	    fun rows j i b =
+		if i >= stoprow then b
 		else rows j (i+1) (f(i, j, Array.sub(Vector.sub(a, i), j), b))
 	    fun cols j b =
-		if j >= stopcol then b 
+		if j >= stopcol then b
 		else cols (j+1) (rows j row b)
 	in cols col b end
 
-    fun app RowMajor f (ref (a, _, _)) = 
+    fun app RowMajor f (ref (a, _, _)) =
 	Vector.app (Array.app f) a
       | app ColMajor f arr  =
 	fold ColMajor (fn (a, _) => f a) () arr
 
     fun appi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	VectorSlice.appi 
-	      (fn (i, xs) => ArraySlice.appi 
-	       (fn (j, x) => f(i, j, x)) (ArraySlice.slice(xs, col, ncols)))
+	VectorSlice.appi
+	      (fn (i, xs) => ArraySlice.appi
+	       (fn (j, x) => f(i+row, j+col, x)) (ArraySlice.slice(xs, col, ncols)))
 	      (VectorSlice.slice(a, row, nrows))
       | appi ColMajor f reg =
 	foldi ColMajor (fn (i, j, a, _) => f (i, j, a)) () reg
 
-    fun modify RowMajor f (ref (a, _, _)) = 
+    fun modify RowMajor f (ref (a, _, _)) =
 	Vector.app (Array.modify f) a
       | modify ColMajor f arr =
 	foldi ColMajor (fn (i, j, a, _) => update(arr, i, j, f a)) ()
 	      {base=arr, row=0, col=0, nrows=NONE, ncols=NONE}
 
     fun modifyi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	VectorSlice.appi 
-	      (fn (i, xs) => ArraySlice.modifyi (fn (j, x) => f(i, j, x)) 
+	VectorSlice.appi
+	      (fn (i, xs) => ArraySlice.modifyi (fn (j, x) => f(i+row, j+col, x))
 					   (ArraySlice.slice(xs, col, ncols)))
 	      (VectorSlice.slice(a, row, nrows))
       | modifyi ColMajor f (reg as {base, ...}) =
 	foldi ColMajor (fn (i, j, a, _) => update(base, i, j, f (i, j, a))) () reg
 
-    fun copy { src = { base = ref (sa, sm, sn), row = src_row, col = src_col, 
-		       nrows, ncols }, 
+    fun copy { src = { base = ref (sa, sm, sn), row = src_row, col = src_col,
+		       nrows, ncols },
 	       dst = ref (da, dm, dn), dst_row, dst_col } =
 	let val stoprow = stop sm src_row nrows
-	    fun bottomUp from_row to_row = 
+	    fun bottomUp from_row to_row =
 		if from_row < src_row then ()
 		else
 		    (ArraySlice.copy { src = ArraySlice.slice
@@ -137,7 +137,7 @@ structure Array2 : ARRAY2 =
 				       dst = Vector.sub(da, to_row),
 				       di = dst_col };
 		     bottomUp (from_row-1) (to_row-1))
-	    fun topDown from_row to_row = 
+	    fun topDown from_row to_row =
 		if from_row >= stoprow then ()
 		else
 		    (ArraySlice.copy { src = ArraySlice.slice
@@ -146,11 +146,10 @@ structure Array2 : ARRAY2 =
 				       di = dst_col };
 		     topDown (from_row+1) (to_row+1))
 	in
-	    if src_row <= dst_row then (* top dst overlaps with bot src; 
+	    if src_row <= dst_row then (* top dst overlaps with bot src;
 					  copy bottom-up *)
 		bottomUp (stoprow-1) (stoprow-1+dst_row-src_row)
 	    else (* bot dst overlaps with top src; copy top-down *)
 		topDown src_row dst_row
-	end       
+	end
   end
-
