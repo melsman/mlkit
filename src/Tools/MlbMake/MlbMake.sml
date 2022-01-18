@@ -164,13 +164,18 @@ struct
             val hash = MD5.fromStringP chars (mlbhash ^ "-" ^
                                               OS.Path.file mlbfile ^ "-" ^
                                               smlfile)
-        in SOME(P.compile {verbose=verbose}
-                          {basisFiles=basisFiles,source=smlfile,
-                           target=objFileFromSmlFile smlfile,
-                           unique = unique,
-                           lockfile = if force then NONE else SOME (lockFileFromSmlFile smlfile),
-                           namebase=hash ^ "-" ^ OS.Path.file mlbfile ^ "->" ^ OS.Path.file smlfile,
-                           flags=flags})
+            val hash = if size hash > 0 andalso Char.isDigit (String.sub(hash,0))
+                       then "h" ^ hash (* make sure namebase does not start with a digit *)
+                       else hash
+        in SOME(P.compile {verbose = verbose}
+                          {basisFiles = basisFiles,
+                           source     = smlfile,
+                           target     = objFileFromSmlFile smlfile,
+                           unique     = unique,
+                           lockfile   = if force then NONE else SOME (lockFileFromSmlFile smlfile),
+                           namebase   = hash ^ "-" ^ OS.Path.file mlbfile ^ "->" ^ OS.Path.file smlfile,
+                           flags      = flags}
+               )
         end
 
     fun writeFile f c =

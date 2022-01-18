@@ -142,7 +142,7 @@ local
       end
 
   fun normalizeBase b =
-      let val b = replaceString (".mlb-", "$0") b
+      let val b = replaceString (".mlb->", "$0") b
           val b = replaceString (".sml1", "$1") b
       in
         String.translate (fn #"." => "$2" | #"-" => "$3" | c => Char.toString c) b

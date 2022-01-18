@@ -465,8 +465,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
               val src_name =
                   ModuleEnvironments.absprjid_to_string absprjid
                |> Substring.full
-               |> Substring.splitl (fn c => c = #"-")
+               |> Substring.splitl (fn c => c <> #"-")
                |> #2
+               |> Substring.dropl (fn c => c = #"-")
                |> Substring.string
 
 	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^
