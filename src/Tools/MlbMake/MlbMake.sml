@@ -163,7 +163,9 @@ struct
             val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
             val hash = MD5.fromStringP chars (mlbhash ^ "-" ^
                                               OS.Path.file mlbfile ^ "-" ^
-                                              smlfile)
+                                              (if OS.Path.isAbsolute smlfile
+                                               then OS.Path.file smlfile
+                                               else smlfile))
             val hash = if size hash > 0 andalso Char.isDigit (String.sub(hash,0))
                        then "h" ^ hash (* make sure namebase does not start with a digit *)
                        else hash
