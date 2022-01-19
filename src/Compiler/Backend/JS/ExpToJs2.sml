@@ -18,10 +18,10 @@ datatype conRep = (* representation of value constructors for datatypes *)
        | UNBOXED_UNARY
 
 (* Replacing lvars in an expression to other lvars *)
-type rep = (lvar, lvar) FinMapEq.map
+type rep = lvar Lvars.Map.map
 
 fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances,regvars}) : Exp =
-    (case FinMapEq.lookup Lvars.eq rep lvar of
+    (case Lvars.Map.lookup rep lvar of
          SOME lv => L.VAR{lvar=lv,instances=instances,regvars=nil}
        | NONE => e)
   | replace_lvs rep (L.FRAME _) = die "rename_lvs: FRAME construct not expected"
@@ -776,8 +776,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.FN {pat,body} =>
     let val ids = map (prLvar C o #1) pat
     in if #clos_p P then
-         let fun fromList nil = FinMapEq.empty
-               | fromList ((k,v)::rest) = FinMapEq.add Lvars.eq (k,v,fromList rest)
+         let fun fromList nil = Lvars.Map.empty
+               | fromList ((k,v)::rest) = Lvars.Map.add (k,v,fromList rest)
              val (fvs,_) = LambdaBasics.freevars e (* memo: what about excons? *)
              val lvs_lvs'_idxs =  (* new lvs for free variables *)
                  rev (#1 (foldl (fn (x,(acc,i)) => ((x,Lvars.newLvar(),i)::acc,i+1))

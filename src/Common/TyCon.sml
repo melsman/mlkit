@@ -21,7 +21,6 @@ structure TyCon: TYCON =
 	join string_list ^ pr_TyCon tycon
       end
 
-
     fun implode_LongTyCon (strid_list, tycon) =
       LONGTYCON(strid_list, tycon)
 
@@ -85,4 +84,9 @@ structure TyCon: TYCON =
       | is_'it' (TYCON _) = false
 
     val pu = Pickle.convert (TYCON, fn TYCON s => s) Pickle.string
+
+    structure Map = OrderFinMap(struct type t = tycon
+				       val lt = op<
+				end)
+
   end

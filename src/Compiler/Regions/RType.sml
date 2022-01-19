@@ -5,8 +5,6 @@ struct
   structure L = LambdaExp
   structure E = Effect
 
-  structure EdList = Edlib.List
-
   val print_word_regions = Flags.add_bool_entry
       {long="print_word_regions", short=SOME "Pwordregions", item=ref false, neg=false,
        menu=["Layout", "print word regions"], desc=
@@ -830,13 +828,21 @@ struct
 
   fun partition_rhos (rhos:place list): place list list =
       let val sorted_rhos = ListSort.sort (fn rho1 => fn rho2=> skey rho1 <= skey rho2) rhos
+          fun runs ([],acc) = acc
+            | runs (x::xs,(y::ys)::acc) =
+              if skey x = skey y then runs(xs,(x::y::ys)::acc)
+              else runs(xs,[x]::(y::ys)::acc)
+            | runs (x::xs,nil::acc) = runs(xs,[x]::acc)
+            | runs (x::xs,[]) = runs(xs,[x]::nil)
+(*
           fun runs [] = []
             | runs (x::xs) =
-                let val (run1, rest)= EdList.splitFirst (fn rho => skey rho <> skey x) xs
+                let val (run1, rest)= EdList.splitFirst (fn rho => skey rho <> skey x) xs (* DELETE *)
                                       handle _ => (xs, [])
                 in (x::run1) :: runs rest
                 end
-      in runs sorted_rhos
+*)
+      in runs (sorted_rhos,nil)
       end
 
   fun unifyRhos (rhos as [], cone): place * cone =
@@ -1070,7 +1076,9 @@ struct
             val _ = List.app (fn (eps, rho) => E.edge(eps, E.mkPut rho))
                                (BasisCompat.ListPair.zipEq(fresh_epss'',fresh_rhos_of_epss))
             val Se' = map (fn (bound_eps,ix) =>
-                            (bound_eps, #1(EdList.first (fn (new_eps,ix') => ix=ix') fresh_epss'_with_ints))
+                              (bound_eps, case List.find (fn (new_eps,ix') => ix=ix') fresh_epss'_with_ints of
+                                              SOME (e,_) => e
+                                            | NONE => die "alpha_equal.impossible")
                           )
                           epsilons_and_ints1
 
@@ -1081,8 +1089,10 @@ struct
                                  (rhos1 @ epsilons1); raise x)
 
             val Se'' = map (fn (bound_eps,ix) =>
-                            (bound_eps, #1(EdList.first (fn (new_eps,ix') => ix=ix') fresh_epss''_with_ints))
-                          )
+                               (bound_eps, case List.find (fn (new_eps,ix') => ix=ix') fresh_epss''_with_ints of
+                                               SOME (e,_) => e
+                                             | NONE => die "alpha_equal.impossible2")
+                           )
                           epsilons_and_ints2
 
             val (tau'', cone, updates) =
@@ -1300,13 +1310,13 @@ struct
    it was seen with.*)
 
   fun unify_rhos_on_same_tyvars mu B = #2 (unify_rhos_on_same_tyvars0 (mu,
-        (FinMap.empty : (tyvar, place) FinMap.map, B : cone)))
+        (L.TyvarMap.empty : place L.TyvarMap.map, B : cone)))
   and unify_rhos_on_same_tyvars0 ((tau, rho), (ttr, B)) =
         (case tau of
            TYVAR tyvar =>
-             (case FinMap.lookup ttr tyvar of
+             (case L.TyvarMap.lookup ttr tyvar of
                 SOME rho' => (ttr, E.unifyRho (rho, rho') B)
-              | NONE =>      (FinMap.add (tyvar, rho, ttr), B))
+              | NONE =>      (L.TyvarMap.add (tyvar, rho, ttr), B))
          | CONSTYPE (tyname, mus, _, _) =>
              unify_rhos_on_same_tyvars00 (mus, (ttr, B))
          | RECORD mus => unify_rhos_on_same_tyvars00 (mus, (ttr, B))

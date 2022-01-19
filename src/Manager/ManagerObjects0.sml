@@ -42,8 +42,8 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 			    T: TyName.TyName list,
 			    resE: ElabEnv}
 
-    datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
-    datatype IntFunEnv = IFE of (funid, absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis) FinMap.map
+    datatype IntSigEnv = ISE of TyName.Set.Set SigId.Map.map
+    datatype IntFunEnv = IFE of (absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis) FunId.Map.map
          and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
 
     (* Instead of storing structure expressions in functor environments, information necessary for recreating
@@ -54,7 +54,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    PP.NODE{start="BBC=<todo",finish=">", indent=2,
 		    childsep=PP.RIGHT", ", children=[]}
     in
-	fun layoutIntSigEnv (ISE ise) = FinMap.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
+	fun layoutIntSigEnv (ISE ise) = SigId.Map.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
 	    (PP.LEAF o SigId.pr_SigId)
 	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
 
@@ -71,7 +71,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		       children=[layoutBBC BBC,
 				 layoutIntBasis ib]}
 	    end
-	and layoutIntFunEnv (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
+	and layoutIntFunEnv (IFE ife) = FunId.Map.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
 	    (PP.LEAF o FunId.pr_FunId) layoutClos ife
 
     end
@@ -101,18 +101,18 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
     val pu_IntSigEnv =
 	Pickle.convert (ISE, fn ISE v => v)
-	(FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
+	(SigId.Map.pu SigId.pu (TyName.Set.pu TyName.pu))
 
     val (pu_IntFunEnv,pu_IntBasis) =
 	let fun IntFunEnvToInt _ = 0
 	    fun IntBasisToInt _ = 0
 	    fun fun_IFE (pu_IntFunEnv, pu_IntBasis) =
 		Pickle.con1 IFE (fn IFE a => a)
-		(FinMap.pu (FunId.pu,
-			    Pickle.convert (fn ((a,b),(d,e,f)) => (a,b,d,e,f), fn (a,b,d,e,f) => ((a,b),(d,e,f)))
-			    (Pickle.pairGen0(Pickle.pairGen0(ModuleEnvironments.pu_absprjid,StrId.pu),
-					     Pickle.tup3Gen0(Environments.E.pu,
-							     pu_BodyBuilderClos,pu_IntBasis)))))
+		(FunId.Map.pu FunId.pu
+			    (Pickle.convert (fn ((a,b),(d,e,f)) => (a,b,d,e,f), fn (a,b,d,e,f) => ((a,b),(d,e,f)))
+			                    (Pickle.pairGen0(Pickle.pairGen0(ModuleEnvironments.pu_absprjid,StrId.pu),
+					                     Pickle.tup3Gen0(Environments.E.pu,
+							                     pu_BodyBuilderClos,pu_IntBasis)))))
 	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
 		Pickle.con1 IB (fn IB a => a)
 		(Pickle.tup4Gen0(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
@@ -122,57 +122,57 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
     structure IntFunEnv =
       struct
-	val empty = IFE FinMap.empty
-	val initial = IFE FinMap.empty
-	fun plus(IFE ife1, IFE ife2) = IFE(FinMap.plus(ife1,ife2))
-	fun add(funid,e,IFE ife) = IFE(FinMap.add(funid,e,ife))
+	val empty = IFE FunId.Map.empty
+	val initial = IFE FunId.Map.empty
+	fun plus(IFE ife1, IFE ife2) = IFE(FunId.Map.plus(ife1,ife2))
+	fun add(funid,e,IFE ife) = IFE(FunId.Map.add(funid,e,ife))
 	fun lookup (IFE ife) funid =
-	  case FinMap.lookup ife funid
+	  case FunId.Map.lookup ife funid
 	    of SOME res => res
 	     | NONE => die ("IntFunEnv.lookup: could not find funid " ^ FunId.pr_FunId funid)
 	fun restrict (IFE ife, funids) = IFE
 	  (foldl (fn (funid, acc) =>
-		  case FinMap.lookup ife funid
-		    of SOME e => FinMap.add(funid,e,acc)
+		  case FunId.Map.lookup ife funid
+		    of SOME e => FunId.Map.add(funid,e,acc)
 		     | NONE => die ("IntFunEnv.restrict: could not find funid " ^ FunId.pr_FunId funid))
-	   FinMap.empty funids)
+	   FunId.Map.empty funids)
 	fun enrich(IFE ife0, IFE ife) : bool = (* using md5 checksums; enrichment for free variables is checked *)
-	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
-		      case FinMap.lookup ife0 funid
+	  FunId.Map.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
+		      case FunId.Map.lookup ife0 funid
 			of SOME obj0 =>
 			    #1 obj = #1 obj0                               (* absprjid *)
 			    andalso #filemd5 (#4 obj) = #filemd5 (#4 obj0) (* md5 of functor body *)
 			 | NONE => false) true ife
 
 	val layout = layoutIntFunEnv
-	fun fold f i (IFE ife) = FinMap.Fold f i ife
+	fun fold f i (IFE ife) = FunId.Map.Fold f i ife
 	val pu = pu_IntFunEnv
       end
 
 
     structure IntSigEnv =
       struct
-	val empty = ISE FinMap.empty
+	val empty = ISE SigId.Map.empty
 	val initial = empty
-	fun plus (ISE ise1, ISE ise2) = ISE(FinMap.plus(ise1,ise2))
-	fun add (sigid,T,ISE ise) = ISE(FinMap.add(sigid,T,ise))
+	fun plus (ISE ise1, ISE ise2) = ISE(SigId.Map.plus(ise1,ise2))
+	fun add (sigid,T,ISE ise) = ISE(SigId.Map.add(sigid,T,ise))
 	fun lookup (ISE ise) sigid =
-	  case FinMap.lookup ise sigid
+	  case SigId.Map.lookup ise sigid
 	    of SOME T => T
 	     | NONE => die ("IntSigEnv.lookup: could not find sigid " ^ SigId.pr_SigId sigid)
 	fun restrict (ISE ise, sigids) = ISE
 	  (foldl (fn (sigid, acc) =>
-		  case FinMap.lookup ise sigid
-		    of SOME e => FinMap.add(sigid,e,acc)
+		  case SigId.Map.lookup ise sigid
+		    of SOME e => SigId.Map.add(sigid,e,acc)
 		     | NONE => die ("IntSigEnv.restrict: could not find sigid " ^ SigId.pr_SigId sigid))
-	   FinMap.empty sigids)
+	   SigId.Map.empty sigids)
 	fun enrich(ISE ise0, ISE ise) : bool =
-	  FinMap.Fold(fn ((sigid, T), b) => b andalso
-		      case FinMap.lookup ise0 sigid
+	  SigId.Map.Fold(fn ((sigid, T), b) => b andalso
+		      case SigId.Map.lookup ise0 sigid
 			of SOME T0 => TyName.Set.eq T T0
 			 | NONE => false) true ise
 	val layout = layoutIntSigEnv
-	fun tynames (ISE ise) = FinMap.fold (fn (a,b) => TyName.Set.union a b) TyName.Set.empty ise
+	fun tynames (ISE ise) = SigId.Map.fold (fn (a,b) => TyName.Set.union a b) TyName.Set.empty ise
 
 	val pu = pu_IntSigEnv
       end
@@ -208,7 +208,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		        let val IB(_,ise,ce,_) = obj
 			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
-		  in FinMap.fold tynames_obj nil ife
+		  in FunId.Map.fold tynames_obj nil ife
 		  end
 		val tynames =
 		    TyName.Set.union
@@ -272,7 +272,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		        let val IB(_,ise,ce,_) = obj
 			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
-		  in FinMap.fold tynames_obj nil ife
+		  in FunId.Map.fold tynames_obj nil ife
 		  end
 		val tynames =
 		    TyName.Set.union

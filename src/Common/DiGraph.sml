@@ -9,7 +9,6 @@ structure DiGraph: DIGRAPH  =
   struct
     structure PP = PrettyPrint
     structure UF = UnionFindPoly
-    structure EdList = Edlib.List
 
     fun say s = TextIO.output(TextIO.stdOut, s ^ "\n")
 

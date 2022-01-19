@@ -221,9 +221,7 @@ struct
                     | STRING_ENTRY of string entry
                     | STRINGLIST_ENTRY of string list entry
 
-    structure M = OrderFinMap (struct type T = string
-				      fun lt a (b:string) = a < b
-			       end)
+    structure M = StringFinMap
 
     val dir : entry0 M.map ref = ref M.empty
 

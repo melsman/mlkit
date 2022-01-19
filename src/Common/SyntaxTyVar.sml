@@ -11,7 +11,14 @@ structure SyntaxTyVar: SYNTAX_TYVAR =
 				  #"'" :: #"'" :: ss => true
 				| _ => false)
 
-    val pu = 
-	Pickle.convert (TYVAR, fn TYVAR s => s) 
-	Pickle.string
+    fun lt (TYVAR s1, TYVAR s2) = s1 < s2
+
+    val pu =
+	Pickle.convert (TYVAR, fn TYVAR s => s)
+	               Pickle.string
+
+    structure Map = OrderFinMap(struct type t = SyntaxTyVar
+				       val lt = lt
+				end)
+
   end

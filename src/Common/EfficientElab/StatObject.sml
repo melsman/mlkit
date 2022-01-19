@@ -3,7 +3,7 @@ structure StatObject: STATOBJECT =
   struct
     structure PP = PrettyPrint
     structure ExplicitTyVar = SyntaxTyVar
-    structure EdList = Edlib.List
+    structure ExplicitTyVarMap = SyntaxTyVar.Map
 
     val print_type_levels = ref false     (* for debugging *)
 
@@ -111,7 +111,11 @@ structure StatObject: STATOBJECT =
     type FunType     = Type
     type ConsType    = Type
 
-    fun TyVarDesc_eq ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) = id=id2 andalso base=base2
+    fun TyVarDesc_eq ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) =
+        id=id2 andalso base=base2
+
+    fun TyVarDesc_lt ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) =
+        id < id2 orelse (id = id2 andalso base<base2)
 
     fun findType ty =
       case #TypeDesc ty
@@ -131,14 +135,13 @@ structure StatObject: STATOBJECT =
      * to change a RecType into a (lab, Type) SortedMap with optional
      * RowVar. *)
 
-    fun sanitiseRecType r : (Lab.lab, Type) SortedFinMap.map *
-      {RowVar : RowVar, level : level ref} option =
+    fun sanitiseRecType r : (Type Lab.Map.map) * ({RowVar : RowVar, level : level ref} option) =
       case findRecType r
-	of NILrec => (SortedFinMap.empty, NONE)
-	 | VARrec rv => (SortedFinMap.empty, SOME rv)
+	of NILrec => (Lab.Map.empty, NONE)
+	 | VARrec rv => (Lab.Map.empty, SOME rv)
 	 | ROWrec(lab, tau, r') =>
 	  let val (map, rvOpt) = sanitiseRecType r'
-	  in (SortedFinMap.add Lab.< (lab, tau, map), rvOpt)
+	  in (Lab.Map.add (lab, tau, map), rvOpt)
 	  end
 
     datatype eq_significant = EQ_SIGNIFICANT | EQ_NOT_SIGNIFICANT
@@ -278,6 +281,13 @@ structure StatObject: STATOBJECT =
 	     | (ref (TY_LINK _), _)  => die "TyVar.eq_tv1"
 	     | (_, ref (TY_LINK _)) => die "TyVar.eq_tv2"
 
+	fun lt (tv,tv') =
+	  case (tv, tv')
+	    of (ref(NO_TY_LINK tvd1), ref(NO_TY_LINK tvd2)) => TyVarDesc_lt(tvd1,tvd2)
+	     | (ref (TY_LINK _), _)  => die "TyVar.eq_tv1"
+	     | (_, ref (TY_LINK _)) => die "TyVar.eq_tv2"
+
+
 	fun eq' EQ_NOT_SIGNIFICANT (tv,tv') = eq (tv,tv')
 	  | eq' EQ_SIGNIFICANT (tv,tv') = eq (tv,tv') andalso equality tv = equality tv'
 
@@ -353,13 +363,10 @@ structure StatObject: STATOBJECT =
 		(if is_overloaded0 overloaded then "OVERLOADED" else "")
 	      ^ (if equality then "''" else "'")
 	      ^ (case names of
-		   NAMES (L as ref L') =>
-		       (let val {letter, ...} =
-			           EdList.first (fn {tv, ...} => tv = id) L'
-			in
-			  str(chr(ordA + letter))
-			end
-		        handle EdList.First _ =>
+		     NAMES (L as ref L') =>
+                     (case List.find (fn {tv, ...} => tv = id) L' of
+                          SOME {letter, ...} => str(chr(ordA + letter))
+                        | NONE =>
 			  let val len = List.length L'
 			  in
 			    L := L' @ [{tv=id, letter=len}] ;
@@ -454,7 +461,7 @@ structure StatObject: STATOBJECT =
 	      val finish = case rv_opt
 			     of SOME {RowVar=rv,...} => " ... " ^ pr_RowVar rv ^ "}"
 			      | NONE => "}"
-	  in SortedFinMap.layoutMap  {start="{", eq=" : ", sep=", ", finish=finish}
+	  in Lab.Map.layoutMap {start="{", eq=" : ", sep=", ", finish=finish}
 	    (PP.layoutAtom Lab.pr_Lab) layout m
 	  end
 
@@ -513,10 +520,12 @@ structure StatObject: STATOBJECT =
 	      if operator_precedence < context_precedence then
 		concat ["(", s, ")"] else s
 
-	fun is_tuple_type (m, rv) =
-	      (SortedFinMap.matches
-		 (fn (i, lab) => Lab.is_LabN(lab, i+1)) m,
-	       rv)
+        fun matches f xs=
+            #2(Lab.Map.Fold (fn ((lab,_),(i,b)) => (i+1,b andalso f(i,lab)))
+                              (0,true) xs)
+
+	fun is_tuple_type m =
+	    matches (fn (i, lab) => Lab.is_LabN(lab, i+1)) m
 
 	(* ziptypes l1 l2 = a list of type options; the list has the
 	 * same length as l2; it takes the form [SOME ty1', SOME ty2'
@@ -538,7 +547,7 @@ structure StatObject: STATOBJECT =
 		  let val r' = findRecType r'
 		      val (m', rv') = sanitiseRecType r'
 		  in
-		      ziptypes (SortedFinMap.rangeSORTED m') fields
+		      ziptypes (Lab.Map.range m') fields
 		  end
 	      | _ => map (fn field => NONE) fields
 
@@ -573,16 +582,16 @@ structure StatObject: STATOBJECT =
 						 * rather than `{1: a, 2: b, ...}' *)
 		    let val r = findRecType r
 		        val (m, rv) = sanitiseRecType r
-		    in case is_tuple_type(m, rv)
+		    in case (is_tuple_type m, rv)
 			 of (true, NONE) => (* A possible (t1 * t2 * ...) type, and
 					     * no rowvar. *)
 			   print_tuple names precedence (m, ty'_opt)
 			  | _ => (*Have to do the general print.*)
-			   let val fields = SortedFinMap.rangeSORTED m
+			   let val fields = Lab.Map.range m
 			     val fields' = fields_of_other_record (ty'_opt, fields)
 			     val field_types = map (pretty_string_as_opt names 1)
 			       (ListPair.zip (fields,fields'))
-			     val labels = map Lab.pr_Lab (SortedFinMap.domSORTED m)
+			     val labels = map Lab.pr_Lab (Lab.Map.dom m)
 			     fun colon_between (lab, ty) = lab ^ ": " ^ ty
 			   in
 			     ListUtils.stringSep "{" "}" ", " colon_between
@@ -632,18 +641,16 @@ structure StatObject: STATOBJECT =
 	   * there's a row var. *)
 
 	      let
-		val fields = SortedFinMap.rangeSORTED m
+		val fields = Lab.Map.range m
 		val fields' =
 		      (case ty'_opt of
 			 SOME {TypeDesc = RECTYPE r', ...} =>
 			   let val r' = findRecType r'
 			       val (m', rv') = sanitiseRecType r'
-			   in (case (SortedFinMap.matches
-				       (fn (i,lab) => Lab.is_LabN (lab, i+1)) m',
-				     rv') of
+			   in (case (is_tuple_type m', rv') of
 			         (true, NONE) =>
 				   (* A possible (t1' * t2' *  ) type, and no rowvar: *)
-				   ziptypes (SortedFinMap.rangeSORTED m') fields
+				   ziptypes (Lab.Map.range m') fields
 			       | _ => map (fn field => NONE) fields)
 			   end
 		       | _ => map (fn field => NONE) fields)
@@ -744,19 +751,19 @@ structure StatObject: STATOBJECT =
 	       | ROWrec (lab, ty, r') =>  fold f (f (ty,x)) r')
 
 	fun sorted_labs r =
-	      (case sanitiseRecType r of (m, _) => SortedFinMap.domSORTED m)
+	      (case sanitiseRecType r of (m, _) => Lab.Map.dom m)
 	fun to_list r =
 	      let val m = #1 (sanitiseRecType r)
 	      in
-		BasisCompat.ListPair.zipEq (SortedFinMap.domSORTED m, SortedFinMap.rangeSORTED m)
+		BasisCompat.ListPair.zipEq (Lab.Map.dom m, Lab.Map.range m)
 	      end handle BasisCompat.ListPair.UnequalLengths => die "to_list"
 	fun to_pair r =
 	      (case sanitiseRecType r of
 		 (m, NONE) =>
-		   (case SortedFinMap.lookup m ONE of
+		   (case Lab.Map.lookup m ONE of
 		      NONE => die "Type.to_pair(L=?)"
 		    | SOME tyL =>
-			(case SortedFinMap.lookup m TWO of
+			(case Lab.Map.lookup m TWO of
 			   NONE => die "Type.to_pair(R=?)"
 			 | SOME tyR => (tyL, tyR)))
 	       | (_, SOME _) => (*It's flexible: punt*)
@@ -764,8 +771,8 @@ structure StatObject: STATOBJECT =
 	fun sort (r : RecType) : RecType =
 	      let
 		val (m,varrec_opt) = sanitiseRecType r
-		val dom = SortedFinMap.domSORTED m
-		val range = SortedFinMap.rangeSORTED m
+		val dom = Lab.Map.dom m
+		val range = Lab.Map.range m
 	      in
 		foldr
 		  (fn ((lab,ty), r) => ROWrec(lab,ty,r))

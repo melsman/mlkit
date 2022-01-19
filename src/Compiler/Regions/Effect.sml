@@ -1077,11 +1077,12 @@ tracing *)
        ; Lf unique_nodes
       end
 
-  structure Increments =
-      OrderFinMap(struct type T = effect
-			 fun lt (i: effect) (j:effect) =
-			     get_key_of_eps i < get_key_of_eps j
+  structure PlaceOrEffectMap =
+      OrderFinMap(struct type t = effect
+			 val lt = lt_eps_or_rho
                   end)
+
+  structure Increments = PlaceOrEffectMap
 
   val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
 

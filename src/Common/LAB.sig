@@ -14,4 +14,7 @@ signature LAB =
     val pr_Lab: lab -> string
 
     val pu : lab Pickle.pu
-  end;
+
+    structure Map : MONO_FINMAP where type dom = lab
+
+  end

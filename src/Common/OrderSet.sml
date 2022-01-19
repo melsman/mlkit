@@ -1,17 +1,17 @@
 (* Finite sets using balanced AVL trees *)
 
-functor OrderSet(Order : ORDERING): KIT_MONO_SET =
+functor OrderSet(Order : ORDER): KIT_MONO_SET =
   struct
     structure PP = PrettyPrint
 
     infix ==
 
-    type elt = Order.T
+    type elt = Order.t
 
-    fun a < b = Order.lt a b 
+    fun a < b = Order.lt (a,b)
 
-    fun (i1:elt) == (i2:elt) : bool = 
-      not (i1 < i2 orelse i2 < i1) 
+    fun (i1:elt) == (i2:elt) : bool =
+      not (i1 < i2 orelse i2 < i1)
 
     exception Impossible of string
     fun impossible s = let val s = "Impossible.OrderSet." ^ s
@@ -23,7 +23,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
        have the same depth, and 'R' if the right subtree is one deeper than
        the left subtree: *)
 
-    datatype bal = L | B | R 
+    datatype bal = L | B | R
     datatype Set = E | N of elt * Set * Set * bal
 
     val empty = E
@@ -37,22 +37,22 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
       | isEmpty _ = false
 
     fun member (i:elt) (s:Set) : bool =
-      let 
+      let
 	fun search E = false
-	  | search(N(i', l, r, _)) = 
+	  | search(N(i', l, r, _)) =
 	      if i == i' then true
 	      else if i < i' then search l
 		   else search r
-      in 
-	search s 
+      in
+	search s
       end
 
-    fun eq s1 s2 = 
+    fun eq s1 s2 =
       size s1 = size s2 andalso
       (* each member of s1 must be a member of s2 *)
       let
 	fun eq' E = true
-	  | eq' (N(i, l, r, _)) = 
+	  | eq' (N(i, l, r, _)) =
 	    member i s2 andalso eq' l andalso eq' r
       in
 	eq' s1
@@ -62,12 +62,12 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
     fun insert k0 t =
       let
 	fun ins E = (true, N(k0, E, E, B))
-	  | ins (N(k, l, r, bal)) = 
+	  | ins (N(k, l, r, bal)) =
 	    if k0 == k then raise ALREADYTHERE
 	    else if k0 < k then
-	      let 
+	      let
 		val (higher, l') = ins l
-	      in 
+	      in
 		case(bal,higher) of
 		  (B,true)  => (true, N(k, l', r, L))
 		| (B,false) => (false, N(k, l', r, B))
@@ -75,22 +75,22 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 		| (R,false) => (false, N(k, l', r, R))
 		| (L,false) => (false, N(k, l', r, L))
 		| (L,true) =>
-		    let 
-		      val (lk,ll,lr,lbal) = 
+		    let
+		      val (lk,ll,lr,lbal) =
 			case l' of
 			  N d => d
 			| _ => impossible "empty tree01!"
 		    in
-		      if lbal = L then 
+		      if lbal = L then
 			(false, N(lk,ll,N(k,lr,r,B),B))
 		      else (* lbal = R *)
-			let 
-			  val (lrk,lrl,lrr,lrbal) = 
+			let
+			  val (lrk,lrl,lrr,lrbal) =
 			    case lr of
 			      N d => d
 			    | _ => impossible "empty tree02!"
 			in
-			  (false, 
+			  (false,
 			   N(lrk,
 			     N(lk,ll,lrl, if lrbal=R then L else B),
 			     N(k,lrr,r, if lrbal= L then R else B),
@@ -99,32 +99,32 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 		    end
 	      end
 	    else (* k0 succeeds k *)
-	      let 
+	      let
 		val (higher, r') = ins r
-	      in 
+	      in
 		case (bal,higher) of
 		  (B,true) => (true, N(k,l,r',R))
 		| (B,false)=> (false, N(k,l,r',B))
 		| (L,true)=> (false,N(k,l,r',B))
 		| (L,false)=> (false, N(k,l,r',L))
 		| (R, false)=> (false,N(k,l,r',R))
-		| (R, true) => 
-		    let 
-		      val (rk,rl,rr,rbal) = 
+		| (R, true) =>
+		    let
+		      val (rk,rl,rr,rbal) =
 			case r' of
 			  N d => d
 			| _ => impossible "empty tree03!"
 		    in
-		      if rbal = R then 
+		      if rbal = R then
 			(false, N(rk,N(k,l,rl,B),rr,B))
 		      else (* rbal = L *)
-			let 
-			  val (rlk,rll,rlr,rlbal) = 
+			let
+			  val (rlk,rll,rlr,rlbal) =
 			    case rl of
 			      N d => d
 			    | _ => impossible "empty tree04!"
 			in
-			  (false, 
+			  (false,
 			   N(rlk,
 			     N(k,l,rll, if rlbal=R then L else B),
 			     N(rk,rlr,rr,if rlbal = L then R else B),
@@ -139,7 +139,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
     fun list (s:Set) : elt list =
       let
 	fun f E a = a
-	  | f (N(i, s1, s2, _)) a = 
+	  | f (N(i, s1, s2, _)) a =
 	       f s1 (i::(f s2 a))
       in
 	f s []
@@ -153,7 +153,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
     fun union (s1:Set) (s2:Set) : Set =
       case s2 of
 	E => s1
-      | N(i, s3, s4, _) => 
+      | N(i, s3, s4, _) =>
 	  union (union (insert i s1) s3) s4
 
     fun addList [] s = s
@@ -165,25 +165,25 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	fun balance1 E = impossible "(balance1 on an empty tree)"
 	  | balance1 (N(k,l,r,bal)) =
 	    (* left branch has become lower *)
-	    case bal of 
+	    case bal of
 	      L => (N(k,l,r,B), true)
 	    | B => (N(k,l,r,R), false)
 	    | R => (* rebalance *)
-		let 
-		  val (rk,rl,rr,rbal) = 
+		let
+		  val (rk,rl,rr,rbal) =
 		    case r of
 		      N d => d
 		    | _ => impossible "empty tree11!"
-		in 
-		  case rbal of 
-		    L => let 
-			   val (rlk,rll,rlr,rlbal) = 
+		in
+		  case rbal of
+		    L => let
+			   val (rlk,rll,rlr,rlbal) =
 			     case rl of
 			       N d => d
 			     | _ => impossible "empty tree12!"
 			   val bal' = if rlbal = R then L else B
 			   val rbal' =if rlbal = L then R else B
-			 in 
+			 in
 			   (N(rlk,
 			      N(k,l,rll,bal'),
 			      N(rk,rlr,rr,rbal'),
@@ -192,7 +192,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 			 end
 		  | B => (N(rk,
 			    N(k,l,rl,R),
-			    rr,L),false) 
+			    rr,L),false)
 		  | R => (N(rk,
 			    N(k,l,rl,B),
 			    rr,B),true)
@@ -200,25 +200,25 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	fun balance2 E = impossible "(balance2 on an empty tree)"
 	  | balance2 (N(k,l,r,bal)) =
 	    (* right branch has become lower *)
-	    case bal of 
+	    case bal of
 	      R => (N(k,l,r,B), true)
 	    | B => (N(k,l,r,L), false)
 	    | L => (* rebalance *)
-		let 
-		  val (lk,ll,lr,lbal) = 
+		let
+		  val (lk,ll,lr,lbal) =
 		    case l of
 		      N d => d
-		    | _ => impossible "empty tree21!" 
-		in 
-		  case lbal of 
-		    R => let 
-			   val (lrk,lrl,lrr,lrbal) = 
+		    | _ => impossible "empty tree21!"
+		in
+		  case lbal of
+		    R => let
+			   val (lrk,lrl,lrr,lrbal) =
 			     case lr of
 			       N d => d
 			     | _ => impossible "empty tree22!"
 			   val bal' = if lrbal = L then R else B
 			   val lbal' =if lrbal = R then L else B
-			 in 
+			 in
 			   (N(lrk,
 			      N(lk,ll, lrl,lbal'),
 			      N(k,lrr,r,bal'),
@@ -228,43 +228,43 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 		  | B => (N(lk,
 			    ll,
 			    N(k,lr,r,L),
-			    R),false) 
+			    R),false)
 		  | L => (N(lk,
 			    ll,
 			    N(k,lr,r,B),
 			    B),true)
 		end
-  
-	fun remove_rightmost E : Set * elt * bool  = 
+
+	fun remove_rightmost E : Set * elt * bool  =
   	      impossible "(remove_rightmost on empty tree)"
 	  | remove_rightmost (N(k,l,E,bal)) = (l, k, true)
-	  | remove_rightmost (N(k,l,r,bal)) = 
-	    let 
+	  | remove_rightmost (N(k,l,r,bal)) =
+	    let
 	      val (r',k',lower) = remove_rightmost r
-	    in 
-	      if lower then 
-		let 
+	    in
+	      if lower then
+		let
 		  val (t'', lower'') = balance2(N(k,l,r',bal))
-		in 
+		in
 		  (t'',k',lower'')
 		end
-	      else 
+	      else
 		(N(k,l,r',bal),k',false)
 	    end
-	  
+
 	fun del E = raise NOTFOUND
-	  | del (N(k,l,r,bal)) = 
-	    if k0 < k then 
-	      let 
-		val (l', lower) = del l 
-	      in 
+	  | del (N(k,l,r,bal)) =
+	    if k0 < k then
+	      let
+		val (l', lower) = del l
+	      in
 		if lower then balance1(N(k,l',r,bal))
 		else (N(k,l',r,bal), false)
 	      end
 	    else if k < k0 then
-	      let 
+	      let
 		val (r', lower) = del r
-	      in 
+	      in
 		if lower then balance2(N(k,l,r',bal))
 		else (N(k,l,r',bal), false)
 	      end
@@ -272,11 +272,11 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	      case (l,r) of
 		(_, E) => (l, true)
 	      | (E, _) => (r, true)
-	      |   _    => 
-		    let 
-		      val (l', k', lower) = 
+	      |   _    =>
+		    let
+		      val (l', k', lower) =
 			remove_rightmost l
-		    in 
+		    in
 		      if lower then balance1(N(k',l',r,bal))
 		      else (N(k',l',r,bal), false)
 		    end
@@ -291,16 +291,16 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	E => E
       | _ => (case s2 of
 		E => s1
-	      | N(i, l, r, _) => 
+	      | N(i, l, r, _) =>
 		  difference (difference (remove i s1) l) r)
 
     fun intersect (s1:Set) (s2:Set) : Set =
-      (* Build up a new set from elements in s1 which 
+      (* Build up a new set from elements in s1 which
          are also members of s2. *)
       let
 	fun inters E a = a
 	  | inters (N(i,r,l,_)) a =
-	    inters r (inters l (if member i s2 then insert i a 
+	    inters r (inters l (if member i s2 then insert i a
 				else a))
       in
 	inters s1 empty
@@ -313,7 +313,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	    let
 	      val b = if f i then (insert i s3, s4)
 		      else (s3, insert i s4)
-	    in 
+	    in
 	      g s2 (g s1 b)
 	    end
       in
@@ -358,7 +358,7 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
     val pu_bal =
 	Pickle.enumGen ("OrderSet.bal",[L,B,R])
 
-    fun pu pu_elt = 
+    fun pu pu_elt =
 	let fun toInt E = 0
 	      | toInt (N _) = 1
 	    val funE = Pickle.con0 E
@@ -368,4 +368,3 @@ functor OrderSet(Order : ORDERING): KIT_MONO_SET =
 	in Pickle.dataGen ("OrderSet.Set",toInt,[funE,funN])
 	end
   end
-

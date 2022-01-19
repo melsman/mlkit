@@ -37,7 +37,7 @@ signature LAMBDA_EXP =
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list
 
-    val tyvars : Type -> tyvar EqSet.Set
+    val tyvars : Type -> tyvar list  (* without duplicates *)
 
     (* word8 is compiled into default word-type in CompileDec *)
     val boolType: Type
@@ -171,4 +171,6 @@ signature LAMBDA_EXP =
     val tyvars_Type   : TyvarSet.Set -> Type -> TyvarSet.Set -> TyvarSet.Set
     val tyvars_TypeList : TyvarSet.Set -> TypeList -> TyvarSet.Set -> TyvarSet.Set
     val tyvars_Prim   : TyvarSet.Set -> Type prim -> TyvarSet.Set -> TyvarSet.Set
+
+    structure TyvarMap : MONO_FINMAP where type dom = tyvar
   end

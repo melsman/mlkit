@@ -8,7 +8,6 @@ structure AtInf: AT_INF =
     structure LLV = LocallyLiveVariables
     structure BT = IntStringFinMap
     structure RegvarBT = EffVarEnv
-    structure EdList = Edlib.List
 
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
@@ -199,8 +198,9 @@ structure AtInf: AT_INF =
       val empty_excon_env = EXCON_ENV []
       fun declare_excon_env(x,y,EXCON_ENV m) = EXCON_ENV((x,y)::m)
       fun retrieve_excon_env(x,EXCON_ENV m) =
-        #2 (EdList.first (fn x' => Excon.eq(x, #1 x')) m)
-        handle EdList.First _ => raise ExconEnv
+          case List.find (fn x' => Excon.eq(x, #1 x')) m of
+              SOME (_,res) => res
+            | NONE => raise ExconEnv
     end
 
 

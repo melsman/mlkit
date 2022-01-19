@@ -4,7 +4,6 @@ structure DropRegions: DROP_REGIONS =
     structure PP = PrettyPrint
     structure Eff = Effect
     structure RSE = RegionStatEnv
-    structure EdList = Edlib.List
 
     structure LvarMap = Lvars.Map
 
@@ -147,17 +146,19 @@ structure DropRegions: DROP_REGIONS =
     * Environment for Region Variables
     * ----------------------------------------------------------------- *)
 
+    structure PlaceMap = Eff.PlaceOrEffectMap
+
     datatype regenv_res = DROPIT | KEEP | LETREGION_INF (*to disable global regions*)
     type place = RType.place
-    type regenv = (place, regenv_res) FinMapEq.map
-    val empty_regenv = FinMapEq.empty : regenv
-    fun add_regenv (rho, res, regenv) = FinMapEq.add Eff.eq_effect (rho, res, regenv)
+    type regenv = regenv_res PlaceMap.map
+    val empty_regenv = PlaceMap.empty : regenv
+    fun add_regenv (rho, res, regenv) = PlaceMap.add (rho, res, regenv)
     fun add_regenv' (rho, res, (env,renv)) = (env, add_regenv (rho,res,renv))
     type StringTree = PP.StringTree
     fun layout_regenv_res DROPIT = PP.LEAF "drop"
       | layout_regenv_res KEEP = PP.LEAF "keep"
       | layout_regenv_res LETREGION_INF = PP.LEAF "letregion_inf"
-    val layout_regenv = FinMapEq.layoutMap
+    val layout_regenv = PlaceMap.layoutMap
            {start="Environment for region variables in DropRegions:(",finish=")",
             eq=" -> ",sep=", "} Eff.layout_effect layout_regenv_res
 
@@ -188,7 +189,7 @@ structure DropRegions: DROP_REGIONS =
       rho is marked as DROPIT in regvar_env: *)
 
    fun maybe_add_rho regvar_env (rho, acc) =
-      case FinMapEq.lookup Eff.eq_effect regvar_env rho
+      case PlaceMap.lookup regvar_env rho
         of SOME DROPIT => rho :: acc
       | _ =>  acc
 
@@ -215,7 +216,7 @@ structure DropRegions: DROP_REGIONS =
 	  else
 	    let
 	      fun subst rho =
-		case FinMapEq.lookup Eff.eq_effect regvar_env rho
+		case PlaceMap.lookup regvar_env rho
 		  of SOME LETREGION_INF => ATTOP
 		    (case Eff.get_place_ty rho
 		       of SOME Eff.STRING_RT => Eff.toplevel_region_withtype_string
@@ -594,7 +595,7 @@ structure DropRegions: DROP_REGIONS =
 	      export_basis=export_basis,export_Psi=export_Psi}, env')
       end
 
-    fun drop_places places = EdList.dropAll word_region places
+    fun drop_places places = List.filter (not o word_region) places
 
 
     val pu_env_res =

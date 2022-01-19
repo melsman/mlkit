@@ -10,4 +10,7 @@ signature SIGID =
     val < : sigid * sigid -> bool	(* Used for top-level printout *)
 
     val pu : sigid Pickle.pu
+
+    structure Map : MONO_FINMAP where type dom = sigid
+
   end

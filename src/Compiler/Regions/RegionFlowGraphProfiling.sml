@@ -1,6 +1,6 @@
 
 structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
-  struct   
+  struct
     structure PP = PrettyPrint
     type place = Effect.place
     type 'a at = 'a AtInf.at
@@ -28,7 +28,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
     fun show_phsize (PhysSizeInf.INF) = "inf"
       | show_phsize (PhysSizeInf.WORDS n) = Int.toString n
 
-    fun show_atkind (AtInf.ATTOP _) = "attop" 
+    fun show_atkind (AtInf.ATTOP _) = "attop"
       | show_atkind (AtInf.ATBOT _) = "atbot"
       | show_atkind (AtInf.SAT _) = "sat"
       | show_atkind (AtInf.IGNORE) = die "show_atkind"
@@ -64,11 +64,11 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 					  type nodeId = int
 					  type info = int * string * string
 					  type edgeInfo = (place*pp) AtInf.at (* We put the storage mode on the edge. *)
-					  fun lt (a:nodeId) b = (a<b)
+					  fun lt (a:nodeId, b) = (a<b)
 					  fun getId ((id,s,size):info) = id
 					  val pu = Pickle.int
 				      end)
-    local 
+    local
       val region_flow_graph : DiGraphScc.graph ref = ref (DiGraphScc.mkGraph())
     in
       fun reset_graph () = region_flow_graph := DiGraphScc.mkGraph()
@@ -77,7 +77,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 
     (* Add node (rho:int, string:string, rho_size:string) to graph. *)
     fun add_nodes ([], str) = ()
-      | add_nodes ((p:place, phs:phsize)::rest,str) = 
+      | add_nodes ((p:place, phs:phsize)::rest,str) =
       (DiGraphScc.addNodeWithUpdate (DiGraphScc.mkNode(get_rho_key p, str, show_phsize phs)) (get_graph());
        add_nodes (rest,str))
 
@@ -88,7 +88,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 	val rhoNode1 =
 	  case DiGraphScc.findNodeOpt (get_rho_key p_formal) (get_graph()) of
 	    SOME n1 => (DiGraphScc.setInfoNode n1 (get_rho_key p_formal, str, show_phsize phs_formal);n1)
-	  | NONE => 
+	  | NONE =>
 	      let
 		val n1 = DiGraphScc.mkNode (get_rho_key p_formal, str, show_phsize phs_formal)
 	      in
@@ -99,27 +99,27 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 	val rhoNode2 =
 	  case DiGraphScc.findNodeOpt (get_rho_key p_actual) (get_graph()) of
 	    SOME n2 => n2
-	  | NONE => 
+	  | NONE =>
 	      let
 		val n2 = DiGraphScc.mkNode (get_rho_key p_actual, "unknown", "unknown")
 	      in
 		DiGraphScc.addNode n2 (get_graph());
 		n2
 	      end
-	    
+
 	val oldAtKind = DiGraphScc.findEdgeOpt rhoNode1 rhoNode2
       in
 	DiGraphScc.addEdgeWithUpdate rhoNode1 rhoNode2 (maxAtKind actual oldAtKind);
 	add_edges ((rest_formals,str),rest_actuals)
       end
       | add_edges _ = die "add_edges, lists not of equal size."
-    
-    fun layout_graph () = 
+
+    fun layout_graph () =
       let
 	val g = get_graph()
 	val sccGraph = DiGraphScc.genSccGraph g
 	val nodeIdList = !Flags.region_paths
-	  
+
 	fun findPath id1 id2 =
 	  let
 	    val node1 = DiGraphScc.findNodeOpt id1 g
@@ -138,30 +138,30 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 		[])
 	    | (SOME n1, SOME n2) => DiGraphScc.pathsBetweenTwoNodes n1 n2 sccGraph
 	  end
-	
-	val pathsList = 
-	  map 
+
+	val pathsList =
+	  map
 	  (fn (id1, id2) => findPath id1 id2)
 	  nodeIdList
-	  
+
       in
 	PP.NODE{start="Begin layout of region flow graph and SCC-graph.",
 		finish="End layout of region flow graph and SCC-graph.",
 		indent=4,
-		children=[DiGraphScc.layoutGraph (fn (id,str,size) => str^"[r"^(Int.toString id)^":"^size^"]") 
-			  (fn edgeInfo => " "^(show_atkind edgeInfo)) 
+		children=[DiGraphScc.layoutGraph (fn (id,str,size) => str^"[r"^(Int.toString id)^":"^size^"]")
+			  (fn edgeInfo => " "^(show_atkind edgeInfo))
 			  (fn id => "r"^(Int.toString id)) (DiGraphScc.rangeGraph g),
 			  DiGraphScc.layoutScc (fn id => "r"^(Int.toString id)) sccGraph] @
 		(map (DiGraphScc.layoutPaths (fn id => "r"^(Int.toString id))) pathsList),
 		childsep=PP.NOSEP}
       end
 
-    fun export_graph stream = 
+    fun export_graph stream =
       let
 	val g = get_graph()
 	val sccGraph = DiGraphScc.genSccGraph g
 	val nodeIdList = !Flags.region_paths
-	  
+
 	(* Returns a list with each element being a list of nodes (a path). *)
 	(* [ [n1, ..., nN],...,[n1, ..., nM] ] *)
 	fun findPath id1 id2 : DiGraphScc.node list list=
@@ -180,7 +180,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 			     ^ " and " ^ Int.toString id2 ^ ".")
 		       // line "The second node does not exist.");
 		[])
-	    | (SOME n1, SOME n2) => 
+	    | (SOME n1, SOME n2) =>
 		let
 		  val sccNodess = DiGraphScc.pathsBetweenTwoNodes n1 n2 sccGraph
 		in
@@ -192,16 +192,16 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 
 	(* Returns a list of paths numbered from two each with a path name.               *)
 	(* [ [pathNo1, pathName1, nodesInPath], ..., [pathNoN, pathNameN, nodesInPathN] ] *)
-	val pathsList : (int * string * DiGraphScc.node list) list = 
+	val pathsList : (int * string * DiGraphScc.node list) list =
 	  let
 	    fun paths no [] = []
-	      | paths no ((id1, id2)::rest) = 
+	      | paths no ((id1, id2)::rest) =
 	      let
-		val (no',p) = 
+		val (no',p) =
 		  foldr
-		   (fn (nodes, (no, acc)) => 
+		   (fn (nodes, (no, acc)) =>
 		     (no+1, (no, "Path" ^ Int.toString no ^ "(r" ^ Int.toString id1 ^ ",r" ^ Int.toString id2 ^ ")", nodes) :: acc))
-		  (no, []) 
+		  (no, [])
 		  (findPath id1 id2)
 	      in
 		p @ (paths no' rest)
@@ -209,7 +209,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 	  in
 	    paths 2 nodeIdList
 	  end
-	
+
 	(* Returns a list of classes numbered from two each with a class name.                  *)
 	(* Each class contains a list of nodepairs representing an edge in the the path         *)
 	(* that the class represents.                                                           *)
@@ -230,12 +230,12 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 	      []
 	      nodes
 	  in
-	    List.map 
+	    List.map
 	    (fn (classNo, className, nodes) => (classNo, className, genEdgeList nodes))
 	    pathsList
 	  end
 
-	fun exportClassNames (classNo, className, nodePairs) = 
+	fun exportClassNames (classNo, className, nodePairs) =
 	  TextIO.output(stream, "classname " ^ (Int.toString classNo) ^ ":\"" ^ className ^ "\"\n")
 
 	val beginGraph = "graph: {\n"
@@ -248,15 +248,15 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 	  "display_edge_labels: yes\n" ^
 	  "classname 1:\"Graph\"\n"
 	val endGraph = "}\n"
-	  
+
       in
 	(TextIO.output(stream, beginGraph ^ attrGraph);
 	 map exportClassNames classList;
-	 DiGraphScc.exportGraphVCG 
+	 DiGraphScc.exportGraphVCG
          "Region flow graph"
-	 (fn (id,str,size) => str^"[r"^(Int.toString id)^":"^size^"]") 
+	 (fn (id,str,size) => str^"[r"^(Int.toString id)^":"^size^"]")
 	 (fn edgeInfo => " "^(show_atkind edgeInfo)) (*06/03/1996, Niels*)
-	 (fn id => "r"^(Int.toString id)) 
+	 (fn id => "r"^(Int.toString id))
 	 classList
 	 g stream;
 	 DiGraphScc.exportSccVCG "SCC graph" (fn id => "r"^(Int.toString id)) sccGraph stream;

@@ -19,7 +19,6 @@ struct
   structure E' = RegionExp
   structure Eff = Effect
   structure LB = LambdaBasics
-  structure EdList = Edlib.List
 
   fun uncurry f (a,b) = f a b
 
@@ -388,18 +387,18 @@ struct
       (* unify types of branches - when they are not frames or raised Bind types *)
 
       val (B,metatype) =
-          (case EdList.first (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
-            E'.TR(_,E'.Mus mus1,_) =>
-                (List.foldl (fn (E'.TR(_,E'.Mus mus,_),B) => R.unify_mus(mus,mus1)B
-                              | (E'.TR(_, _, _),B) => B)
-			    B
-                            (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
-                 E'.Mus mus1)
-	  | _ => die "spreadSwitch"
-          )handle EdList.First _ =>
-          (case EdList.first (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
-            E'.TR(_,metatype,_) => (B,metatype)
-          )handle EdList.First _ => (B, E'.RaisedExnBind)
+          case List.find (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
+              SOME(E'.TR(_,E'.Mus mus1,_)) =>
+              (List.foldl (fn (E'.TR(_,E'.Mus mus,_),B) => R.unify_mus(mus,mus1)B
+                          | (E'.TR(_, _, _),B) => B)
+			  B
+                          (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
+               E'.Mus mus1)
+	    | SOME _ => die "spreadSwitch"
+            | NONE =>
+              case List.find (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
+                  SOME (E'.TR(_,metatype,_)) => (B,metatype)
+                | NONE => (B, E'.RaisedExnBind)
 
       (* val accumulate effects*)
       val phi = Eff.mkUnion(phi_0:: Eff.mkGet object_rho::

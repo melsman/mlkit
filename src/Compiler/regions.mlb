@@ -14,7 +14,7 @@ in
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml
   local open Pickle in Regions/DROP_REGIONS.sml end
-  local open Pickle SyntaxObjects in Regions/EFFECT.sig end
+  local open Pickle SyntaxObjects Tools in Regions/EFFECT.sig end
   Regions/LOCALLY_LIVE_VARIABLES.sml
   local open Pickle in Regions/MUL.sig end
   local open SyntaxObjects in Regions/REGION_EXP.sml end

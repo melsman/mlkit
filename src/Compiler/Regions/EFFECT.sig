@@ -222,4 +222,6 @@ sig
   val layoutLayerRng: coneLayer -> StringTree   (* sets and clears visited field*)
   val layoutCone : cone -> StringTree           (* sets and clears visited field*)
   val layoutEtas: effect list -> StringTree list(* sets and clears visited field*)
+
+  structure PlaceOrEffectMap : MONO_FINMAP where type dom = effect
 end

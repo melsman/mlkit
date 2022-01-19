@@ -27,41 +27,6 @@ structure Pickle :> PICKLE = (* was : *)
     exception PickleExn
     type dyn = Dyn.dyn
 
-    structure TableFactory :> sig
-      type 'a t_from
-      type 'a t_to
-      val mkFrom     : {hash: 'a -> word, eq: 'a * 'a -> bool} -> 'a t_from
-      val mkTo       : unit -> 'a t_to
-      val addTo      : 'a t_to -> word -> 'a -> unit
-      val addFrom    : 'a t_from -> 'a -> word -> unit
-      val lookupTo   : 'a t_to -> word -> 'a option
-      val lookupFrom : 'a t_from -> 'a -> word option
-      val reset      : unit -> unit
-      val clearTo    : 'a t_to -> unit
-      val clearFrom  : 'a t_from -> unit
-      val register_reset : (unit -> unit) -> unit
-      val bitsFrom   : 'a t_from -> word
-      val bitsTo     : 'a t_to -> word
-    end = struct
-      type 'a t_from = ('a, word) H.hash_table
-      type 'a t_to = (word, 'a) H.hash_table
-      val reset_fun = ref id
-      fun register_reset f = reset_fun := (f o !reset_fun)
-      fun mkFrom {hash: 'a -> word, eq: 'a * 'a -> bool} : 'a t_from =
-          H.mkTable (Word.toIntX o hash, eq) (10,PickleExn)
-      fun mkTo() =
-          H.mkTable (Word.toIntX, op =) (10,PickleExn)
-      fun addTo t k v = H.insert t (k,v)
-      fun addFrom t k v = H.insert t (k,v)
-      fun lookupTo t = H.peek t
-      fun lookupFrom t = H.peek t
-      fun clearTo t = H.clear t
-      fun clearFrom t = H.clear t
-      fun reset() = !reset_fun ()
-      fun bitsFrom t = (log2 o Word.fromInt o H.numItems) t
-      val bitsTo = bitsFrom
-    end
-
     datatype 'a cache = NoCache | Cached of 'a | Caching
 
     infix ==
@@ -120,7 +85,7 @@ structure Pickle :> PICKLE = (* was : *)
                  | Tword32 | Tword31 | Tchar | Tcon0 | Tcon1 | Tunit | Tstring
                  | Tpair of typ * typ | Tref of typ | Tref0 of typ
                  | Tref1 of typ | Tconv of typ | Toption of typ | Tlist of typ | Tdecorate of string * typ
-                 | TregisterEq of typ | Tdata of int | Tenum of int
+                 | TregisterEq of typ | Tdata of string * int | Tenum of int
 
     (* be conservative with typ_unboxed - don't look at Int.maxInt,
      * for instance, as this would course picklers compiled with
@@ -165,11 +130,64 @@ structure Pickle :> PICKLE = (* was : *)
                 | Tlist t => arg "list" t acc
                 | Tdecorate(s,t) => arg ("deco_" ^ s) t acc
                 | TregisterEq t => arg "registerEq" t acc
-                | Tdata i => "data(" :: Int.toString i :: ")" :: acc
+                | Tdata (s,i) => "data(" :: s :: "," :: Int.toString i :: ")" :: acc
                 | Tenum i => "enum(" :: Int.toString i :: ")" :: acc
 
         in String.concat(pp(t,nil))
         end
+
+    structure TableFactory :> sig
+      type 'a t_from
+      type 'a t_to
+      val mkFrom     : {hash: 'a -> word, eq: 'a * 'a -> bool} -> 'a t_from
+      val mkTo       : unit -> 'a t_to
+      val addTo      : 'a t_to -> word -> 'a -> unit
+      val addFrom    : 'a t_from -> 'a -> word -> unit
+      val addFromCheck : 'a t_from -> 'a -> word -> unit
+      val lookupTo   : 'a t_to -> word -> 'a option
+      val lookupFrom : 'a t_from -> 'a -> word option
+      val reset      : unit -> unit
+      val clearTo    : 'a t_to -> unit
+      val clearFrom  : 'a t_from -> unit
+      val register_reset : (unit -> unit) -> unit
+      val bitsFrom   : 'a t_from -> word
+      val bitsTo     : 'a t_to -> word
+      val checkFrom  : {typ:typ,pp:'a->string} -> 'a t_from -> 'a -> unit
+    end = struct
+      type 'a t_from = ('a, word) H.hash_table
+      type 'a t_to = (word, 'a) H.hash_table
+      val reset_fun = ref id
+      fun register_reset f = reset_fun := (f o !reset_fun)
+      fun mkFrom {hash: 'a -> word, eq: 'a * 'a -> bool} : 'a t_from =
+          H.mkTable (Word.toIntX o hash, eq) (10,PickleExn)
+      fun mkTo() =
+          H.mkTable (Word.toIntX, op =) (10,PickleExn)
+      fun addTo t k v = H.insert t (k,v)
+      fun addFrom t k v = H.insert t (k,v)
+      fun lookupTo t = H.peek t
+      fun lookupFrom t = H.peek t
+      fun clearTo t = H.clear t
+      fun clearFrom t = H.clear t
+      fun reset() = !reset_fun ()
+      fun bitsFrom t = (log2 o Word.fromInt o H.numItems) t
+      val bitsTo = bitsFrom
+      fun checkFrom {typ:typ, pp:'a->string} (t:'a t_from) (v:'a) : unit =
+          let val (c,h) = H.peekSameHash t v
+	      val maxBucket = 100
+	  in if c > maxBucket then
+               print ("** Bucket > " ^ Int.toString maxBucket
+		      ^ " (c=" ^ Int.toString c ^ ",h="
+		      ^ Int.toString h ^") **: " ^ pp_typ typ ^ "\n"
+		      ^ "** Value = " ^ pp v ^ "\n")
+	     else ()
+          end
+      fun addFromCheck t k v =
+          let val (c,_) = H.peekSameHash t k
+	      val maxBucket = 10
+	  in if c > maxBucket then ()
+             else H.insert t (k,v)
+          end
+    end
 
     structure HashConsEnv :>
 	sig
@@ -345,17 +363,8 @@ structure Pickle :> PICKLE = (* was : *)
 			      in case TableFactory.lookupFrom T_from v of
 				  SOME _ => res
 				| NONE =>
-				      let (*
-					  val (c,h) = H.peekSameHash pe d
-					  val maxBucket = 10
-					  val _ = if c > maxBucket then
-                                                    print ("** Bucket > " ^ Int.toString maxBucket
-							   ^ " (c=" ^ Int.toString c ^ ",h="
-							   ^ Int.toString h ^") **: " ^ pp_typ typ ^ "\n"
-							   ^ "** Value = " ^ pp v ^ "\n")
-						  else ()
-					  *)
-				      in TableFactory.addFrom T_from v loc
+				      let val () = TableFactory.checkFrom {pp=pp,typ=typ} T_from v
+				      in TableFactory.addFromCheck T_from v loc
 				       ; res
 				      end
 			      end
@@ -595,7 +604,7 @@ structure Pickle :> PICKLE = (* was : *)
 	debug "dataGen"
 	let (* val _ = print ("Generated pickler for " ^ name ^ "\n") *)
             val typ = case typ of SOME typ => typ
-                                | NONE => Tdata(length fs)
+                                | NONE => Tdata(name,length fs)
 	    val hash_data = newHashCount()
 	    val res : 'a pu option ref = ref NONE
 	    val ps : 'a pu Vector.vector cache ref = ref NoCache
@@ -694,7 +703,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    and aGetPUP() =
 		case !aRes of
 		    NONE => let (*val typ = aname ^ "_" ^ Int.toString (length afs)*)
-                                val typ = Tdata(length afs)
+                                val typ = Tdata(aname,length afs)
 				fun pp v = "Con" ^ Int.toString (aToInt v)
 				val pup = shareGen0 pp (PU {pickler=aP,unpickler=aUp,
 							    hasher=aH,eq=aEq,typ=typ})
@@ -729,7 +738,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    and bGetPUP() =
 		case !bRes of
 		    NONE => let (*val typ = bname ^ "_" ^ Int.toString (length bfs)*)
-                                val typ = Tdata(length bfs)
+                                val typ = Tdata(bname,length bfs)
 				fun pp v = "Con" ^ Int.toString (bToInt v)
 				val pup = shareGen0 pp (PU {pickler=bP,unpickler=bUp,
 							    hasher=bH,eq=bEq,typ=typ})
@@ -795,7 +804,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    and aGetPUP() =
 		case !aRes of
 		    NONE => let (*val typ = aname ^ "_" ^ Int.toString (length afs)*)
-                                val typ = Tdata(length afs)
+                                val typ = Tdata(aname,length afs)
 				fun pp v = "Con" ^ Int.toString (aToInt v)
 				val pup = shareGen0 pp (PU {pickler=aP,unpickler=aUp,
 							    hasher=aH,eq=aEq,typ=typ})
@@ -831,7 +840,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    and bGetPUP() =
 		case !bRes of
 		    NONE => let (*val typ = bname ^ "_" ^ Int.toString (length bfs)*)
-                                val typ = Tdata(length bfs)
+                                val typ = Tdata(bname,length bfs)
 				fun pp v = "Con" ^ Int.toString (bToInt v)
 				val pup = shareGen0 pp (PU {pickler=bP,unpickler=bUp,
 							    hasher=bH,eq=bEq,typ=typ})
@@ -867,7 +876,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    and cGetPUP() =
 		case !cRes of
 		    NONE => let (*val typ = cname ^ "_" ^ Int.toString (length cfs)*)
-                                val typ = Tdata(length cfs)
+                                val typ = Tdata(cname,length cfs)
 				fun pp v = "Con" ^ Int.toString (cToInt v)
 				val pup = shareGen0 pp (PU {pickler=cP,unpickler=cUp,
 							    hasher=cH,eq=cEq,typ=typ})

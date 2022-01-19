@@ -288,18 +288,21 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun new_tv tv = if equality_tyvar tv then fresh_eqtyvar()
 		      else fresh_tyvar()
 
-      type ren = (lvar, lvar) FinMapEq.map * (tyvar, tyvar) FinMap.map
-      val empty_ren = (FinMapEq.empty, FinMap.empty)
-      fun add_lv (lv, lv', (lv_map, tv_map)) = (FinMapEq.add Lvars.eq (lv,lv',lv_map), tv_map)
+      structure LvMap = Lvars.Map
+      structure TvMap = LambdaExp.TyvarMap
+
+      type ren = lvar LvMap.map * tyvar TvMap.map
+      val empty_ren = (LvMap.empty, TvMap.empty)
+      fun add_lv (lv, lv', (lv_map, tv_map)) = (LvMap.add (lv,lv',lv_map), tv_map)
       fun add_lvs [] ren = ren
 	| add_lvs ((lv,lv')::pairs) ren = add_lvs pairs (add_lv (lv,lv',ren))
-      fun add_tv (tv, tv', (lv_map, tv_map)) = (lv_map, FinMap.add(tv,tv',tv_map))
+      fun add_tv (tv, tv', (lv_map, tv_map)) = (lv_map, TvMap.add(tv,tv',tv_map))
       fun add_tvs [] ren = ren
 	| add_tvs ((tv,tv')::pairs) ren = add_tvs pairs (add_tv (tv,tv',ren))
-      fun on_tv (_, tv_map) tv = case FinMap.lookup tv_map tv
+      fun on_tv (_, tv_map) tv = case TvMap.lookup tv_map tv
 				   of SOME tv => tv
 				    | NONE => tv
-      fun on_lv (lv_map, _) lv = case FinMapEq.lookup Lvars.eq lv_map lv
+      fun on_lv (lv_map, _) lv = case LvMap.lookup lv_map lv
 				   of SOME lv => lv
 				    | NONE => lv
       fun on_lv_opt s (SOME lv) = SOME (on_lv s lv)
@@ -618,6 +621,8 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       exception TypeVariableCapture = TypeVariableCapture
 
+      structure TvMap = LambdaExp.TyvarMap
+
       type subst = subst
 
       val mk_subst = mk_subst
@@ -659,10 +664,10 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun match_sigma((tvs,tau), tau') =
 	let fun add(tv,tau,S) =
-	      case FinMap.lookup S tv
+	      case TvMap.lookup S tv
 		of SOME tau' => if eq_Type(tau,tau') then S
 				else die "match_sigma.add"
-		 | NONE => FinMap.add(tv,tau,S)
+		 | NONE => TvMap.add(tv,tau,S)
 
 	    fun match_tau(S, tau, tau') =
 	      case (tau, tau')
@@ -684,8 +689,8 @@ structure LambdaBasics: LAMBDA_BASICS =
 	      end
 	      | match_taus _ = die "match_taus"
 
-	    val S = match_tau(FinMap.empty,tau,tau')
-	    val subst = map (fn tv => case FinMap.lookup S tv
+	    val S = match_tau(TvMap.empty,tau,tau')
+	    val subst = map (fn tv => case TvMap.lookup S tv
 					of SOME tau => (tv,tau)
 					 | NONE => (tv,TYVARtype tv)) tvs
 	in subst

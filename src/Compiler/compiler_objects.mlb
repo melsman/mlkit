@@ -24,7 +24,7 @@ in
 
   local open Pickle
   in Lambda/COMPILER_ENV.sml
-     local open Edlib Tools
+     local open Tools
      in Lambda/LAMBDA_EXP.sml
         local open Tools SyntaxObjects SpecialObjects
         in Lambda/LambdaExp.sml

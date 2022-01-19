@@ -10,7 +10,6 @@ struct
       QuasiEnv(structure OFinMap = EffVarEnv
 	       val key = Effect.key_of_eps_or_rho
 	       val eq = Effect.eq_effect)
-  structure EdList = Edlib.List
 
   structure LvarMap = Lvar.Map
 
@@ -282,9 +281,9 @@ struct
       fun lookup _ eps =
         let val key = Effect.key_of_eps_or_rho eps
             val hash = key mod size
-        in
-            SOME(#2(EdList.first(fn (i':int,r) => i' = key) (Array.sub(empty, hash))))
-            handle _ => NONE
+        in case List.find (fn (i':int,r) => i' = key) (Array.sub(empty, hash)) of
+               SOME (_,res) => SOME res
+             | NONE => NONE
         end
       fun layoutMap _ _ _ _ = PP.LEAF "(not implemented)"
       fun hash(key) = key mod size
@@ -684,8 +683,9 @@ struct
 
   fun getmultiplicities_unsorted(psi,rhos) =
       map (fn rho => let val ae_rho = Eff.mkPut rho
-                     in #2(EdList.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
-                        handle EdList.First _ => NUM 0
+                     in case List.find (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi of
+                            SOME (_,res) => res
+                          | NONE => NUM 0
                      end)
           rhos
 

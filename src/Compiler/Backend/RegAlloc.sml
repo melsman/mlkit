@@ -1043,8 +1043,8 @@ struct
   local
     structure EdgeSet =
         OrderSet(struct
-                     type T = string * string
-                     fun lt((s11,s12): T) (s21,s22) = (s11^s12) < (s21^s22)
+                     type t = string * string
+                     fun lt((s11,s12):t, (s21,s22)) = (s11^s12) < (s21^s22)
                  end)
     val edge_set = ref EdgeSet.empty
     val move_set = ref EdgeSet.empty

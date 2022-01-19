@@ -25,7 +25,7 @@ signature STATOBJECT =
     type scon
     type strid
 
-
+    structure ExplicitTyVarMap : MONO_FINMAP where type dom = ExplicitTyVar
 
     (*Level: for an explanation of type inference using `let levels'
      see Martin Elsman: A Portable Standard ML Implementation.
@@ -46,6 +46,7 @@ signature STATOBJECT =
     structure TyVar :
       sig
 	val eq                      : TyVar * TyVar -> bool
+	val lt                      : TyVar * TyVar -> bool
 	val equality                : TyVar -> bool
 	val fresh_normal            : unit -> TyVar
 	val fresh_overloaded        : TyName list -> TyVar

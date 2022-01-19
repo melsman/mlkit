@@ -3,8 +3,8 @@ structure EliminateEq: ELIMINATE_EQ =
   struct
     structure PP = PrettyPrint
     structure TyVarMap =
-	OrderFinMap(struct type T = LambdaExp.tyvar
-			   fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
+	OrderFinMap(struct type t = LambdaExp.tyvar
+			   val lt = LambdaExp.lt_tyvar
 		    end)
 
     structure TyNameMap = TyName.Map

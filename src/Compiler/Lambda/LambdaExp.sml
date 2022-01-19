@@ -2,8 +2,8 @@
 structure LambdaExp: LAMBDA_EXP =
   struct
     structure PP = PrettyPrint
-    structure StrSet = OrderSet(struct type T = string
-				       fun lt (a:string) b = a < b
+    structure StrSet = OrderSet(struct type t = string
+				       fun lt (a:string, b) = a < b
 				end)
 
     fun uncurry f (x,y) = f x y
@@ -74,9 +74,11 @@ structure LambdaExp: LAMBDA_EXP =
     val chararrayType = CONStype([], TyName.tyName_CHARARRAY)
     val unitType = RECORDtype([])
 
-    val tyvars = foldType (fn tyvarset =>
-			   (fn TYVARtype tyvar => EqSet.insert tyvar tyvarset
-			     | _ => tyvarset)) EqSet.empty
+    val tyvars = foldType (fn tvs =>
+			      (fn TYVARtype tv =>
+                                  if List.exists (fn x => tv=x) tvs
+                                  then tvs else tv::tvs
+			        | _ => tvs)) nil
 
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
@@ -1768,4 +1770,5 @@ structure LambdaExp: LAMBDA_EXP =
 	| Frame fr => tyvars_Frame s fr acc
 	| RaisedExnBind => acc
 
+    structure TyvarMap = WordFinMap
   end

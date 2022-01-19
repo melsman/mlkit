@@ -664,11 +664,13 @@ struct
       FN of args * free
     | FIX of args * free
 
-    structure FuncEnv =
+    structure FuncEnv = Lvars.Map
+(*
       OrderFinMap(struct
 		      type T = lvar
 		      fun lt(l1: T) l2 = Lvars.lt(l1,l2)
 		  end)
+*)
     local
       fun pp_dom lvar = PP.LEAF (Lvars.pr_lvar lvar)
       fun pp_ran (FN(args,free)) =
@@ -708,20 +710,20 @@ struct
     (*******)
     structure EnvLvar =
 	OrderSet(struct
-		     type T = lvar
-		     fun lt(l1: T) l2 = Lvars.lt(l1,l2)
+		     type t = lvar
+		     fun lt(l1: t, l2) = Lvars.lt(l1,l2)
 		 end)
 
     structure EnvExCon =
 	OrderSet(struct
-		     type T = excon
-		     fun lt(e1: T) e2 = Excon.< (e1,e2)
+		     type t = excon
+		     fun lt(e1: t, e2) = Excon.< (e1,e2)
 		 end)
 
     structure EnvRho =
 	OrderSet(struct
-		     type T = place
-		     fun lt(r1: T) r2 = Effect.lt_eps_or_rho(r1,r2)
+		     type t = place
+		     val lt = Effect.lt_eps_or_rho
 		 end)
 
     fun add_Env (Lvar, ExCon, Rho) (lvars, excons, rhos) =
@@ -1095,8 +1097,8 @@ struct
 
     structure SEMap = (* The map (se --> ce) is used temporarily by unify_ce_se and unify_sma_se only *)
 	OrderFinMap(struct
-			type T = select_exp
-			fun lt(se1: T) se2 = lt_se(se1,se2)
+			type t = select_exp
+			val lt = lt_se
 		    end)
 
     fun unify_ce_se ces_and_ses se_map =

@@ -230,13 +230,17 @@ structure CompileDec: COMPILE_DEC =
      * Compiling type variables
      * ---------------------------------------------- *)
 
+   structure TyVarFinMap = OrderFinMap(struct type t = TyVar
+                                              val lt = StatObject.TyVar.lt
+                                       end)
+
    structure TV : sig val reset : unit -> unit
 		      val lookup : string -> TyVar -> TLE.tyvar
 		  end =
       struct
-	val env : (TyVar, TLE.tyvar) FinMapEq.map ref = ref FinMapEq.empty
-	fun look a = FinMapEq.lookup TyVar.eq a
-	fun add a = FinMapEq.add TyVar.eq a
+	val env : TLE.tyvar TyVarFinMap.map ref = ref TyVarFinMap.empty
+	fun look a = TyVarFinMap.lookup a
+	fun add a = TyVarFinMap.add a
 	fun lookup s tv =
 	      (case look (!env) tv of
 		 SOME tv' => tv'
@@ -247,7 +251,7 @@ structure CompileDec: COMPILE_DEC =
 		 handle ? => (TextIO.output (TextIO.stdOut, "  [TV.lookup " ^ s ^ "]  ") ;
 			      raise ?)
 
-	fun reset() = env := FinMapEq.empty
+	fun reset() = env := TyVarFinMap.empty
       end
 
 
@@ -784,8 +788,8 @@ Report: Opt:
 
   structure conset : KIT_MONO_SET = OrderSet
       (struct
-	   type T = con
-	   fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
+	   type t = con
+	   val lt = lt_from_cmp con_cmp
        end) (*structure Order*)
 
   structure negset = struct
@@ -893,13 +897,13 @@ Report: Opt:
   local
     structure map = OrderFinMap
       (struct
-	 type T = ifeq
-	 (*lt ifeq1 ifeq2 = lexicographic ordering of the components of the
+	 type t = ifeq
+	 (*lt (ifeq1, ifeq2) = lexicographic ordering of the components of the
 	  tuples.  As long as it is a linear order, I can choose any
 	  ordering, so I compare the components in an order such that in the
 	  frequent cases it is determined as quickly as possible whether
 	  ifeq1 < ifeq2.*)
-	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
+	 val lt = lt_from_cmp ifeq_cmp
        end)
 
     type mapr = node map.map ref
@@ -1655,10 +1659,7 @@ end; (*match compiler local*)
     *)
 
     local
-	structure CNameMap = OrderFinMap(struct
-					     type T = string
-					     val lt : T -> T -> bool = fn a => fn b => a < b
-					 end)
+	structure CNameMap = StringFinMap
 
       (* 32-bit and 64-bit primitives are resolved to primitives working on either
        * boxed or unboxed representations *)
@@ -2752,7 +2753,7 @@ the 12 lines above are very similar to the code below
 				 | _ => die ("give prim " ^ name ^ " a record argument type"))))
 		   val tau2 = compileType tau_result
 		   val tau = TLE.ARROWtype (taus1, [tau2])
-		   val tyvars = EqSet.list (LambdaExp.tyvars tau)
+		   val tyvars = LambdaExp.tyvars tau
 		   val tyvars_fresh = map (fn tyvar => LambdaExp.fresh_tyvar ()) tyvars
 		   val subst = mk_subst
 		                 (fn () => "CompileDec.compile_application_of_c_function")
