@@ -157,9 +157,7 @@ datatype prim =
          Blockf64_update_f64 | Blockf64_sub_f64
 
 local
-  structure M = OrderFinMap(struct type T = string
-                                   fun lt (a: T) b = a < b
-			    end)
+  structure M = StringFinMap
 
   val flow_pairs =
 	[("__equal_int31", Equal_int31), ("__equal_int32ub", Equal_int32ub), ("__equal_int32b", Equal_int32b),

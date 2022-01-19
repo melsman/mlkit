@@ -23,11 +23,11 @@ structure Bitstream :> BITSTREAM =
 
     type pos = word
 
-    type instream = 
+    type instream =
          {pos: pos,               (* bits read *)
           buf: Word8Vector.vector (* entire input *)
          }
-    type outstream = 
+    type outstream =
          {pos: pos,               (* bits written *)
           buf: Word8Array.array   (* output *)
          }
@@ -40,12 +40,12 @@ structure Bitstream :> BITSTREAM =
             val newbuf = Word8Array.array(sz*2,0w0)
         in Word8Array.copy{src=buf,dst=newbuf,di=0}
          ; newbuf
-        end
+        end handle Size => raise Fail ("Bitstream.double - sz = " ^ Int.toString (Word8Array.length buf))
 
-    fun array_capacity buf = 
+    fun array_capacity buf =
         Word.fromInt (8 * Word8Array.length buf)
 
-    fun vector_capacity buf = 
+    fun vector_capacity buf =
         Word.fromInt (8 * Word8Vector.length buf)
 
     fun ensurespace (s as {pos,buf}) i =
@@ -59,9 +59,9 @@ structure Bitstream :> BITSTREAM =
         in (bits, Word.toInt pos_byte)
         end
 
-    fun mask n w = 
+    fun mask n w =
         let val p = wordToWord8 (Word.<<(0w1,n) - 0w1)
-        in Word8.andb(w,p)            
+        in Word8.andb(w,p)
         end
 
     fun outwN n (e : Word8.word, s:outstream) : outstream =   (* n \in {1,2,3,4,5,6,7,8} *)
@@ -69,10 +69,10 @@ structure Bitstream :> BITSTREAM =
             val s as {pos,buf} = ensurespace s n
             val (bits, pos_byte) = alignment_properties pos
             val _ =
-              if bits = 0w0 then 
+              if bits = 0w0 then
                 Word8Array.update(buf,pos_byte,e)
               else (* 0 < bits < 8 *)
-                let 
+                let
                     (* write least significant bits first *)
                     (* e{0:7-bits} -> buf[pos]{bits:7} *)
                     val w = Word8Array.sub(buf,pos_byte)
@@ -80,7 +80,7 @@ structure Bitstream :> BITSTREAM =
                     val w' = Word8.orb(w,e')
                     val _ = Word8Array.update(buf,pos_byte,w')
                 in if n <= (0w8 - bits) then () (* no need to use additional byte *)
-                   else 
+                   else
                      let
                        (* e{8-bits:7} -> buf[pos+1]{0:bits-1} *)
                        val e'' = Word8.>>(e,0w8-bits)  (* e/2^(8-bits) *)
@@ -95,13 +95,13 @@ structure Bitstream :> BITSTREAM =
     fun getwN n ({pos,buf}:instream) : Word8.word * instream = (* n \in {1,2,3,4,5,6,7,8} *)
         if pos + n > vector_capacity buf then
           raise Fail "getwN: empty in-stream"
-        else 
+        else
           let val (bits, pos_byte) = alignment_properties pos
               val e =
                   if bits = 0w0 then
                     Word8Vector.sub(buf,pos_byte)
                   else (* 0 < bits < 8 *)
-                    let 
+                    let
                       (* read least significant bits first *)
                       (* e{0:7-bits} <- buf[pos]{bits:7} *)
                       val w1 = Word8Vector.sub(buf,pos_byte)
@@ -151,17 +151,17 @@ structure Bitstream :> BITSTREAM =
     end
 
     local
-      fun getGen (op << : 'a * Word.word -> 'a) (op +) (fromWord8: Word8.word -> 'a) (s: instream) : 'a * instream = 
+      fun getGen (op << : 'a * Word.word -> 'a) (op +) (fromWord8: Word8.word -> 'a) (s: instream) : 'a * instream =
 	let val (w0,s) = getw8 s
-            val (w1,s) = getw8 s                           
-            val (w2,s) = getw8 s                           
-            val (w3,s) = getw8 s                           
+            val (w1,s) = getw8 s
+            val (w2,s) = getw8 s
+            val (w3,s) = getw8 s
             val w0 = fromWord8 w0
 	    val w1 = fromWord8 w1
 	    val w2 = fromWord8 w2
 	    val w3 = fromWord8 w3
 	    infix <<
-	    val w = w0 + (w1 << 0w8) + (w2 << 0w16) + (w3 << 0w24) 
+	    val w = w0 + (w1 << 0w8) + (w2 << 0w16) + (w3 << 0w24)
 	in (w, s)
 	end
     in
@@ -189,7 +189,7 @@ structure Bitstream :> BITSTREAM =
                        let val (w8,s) = getwN n s
                        in (Word.orb(Word.<<(word8ToWord w8,off),a),s)
                        end
-                     else 
+                     else
                        let val (w8,s) = getw8 s
                            val a = Word.orb(Word.<<(word8ToWord w8,off),a)
                        in loop (n-0w8) (off+0w8) a s
@@ -210,12 +210,12 @@ structure Bitstream :> BITSTREAM =
 	end
 
     fun outcw2 (w,s) = (* 255*256=65280 *)
-	if w <= 0w65279 then 
+	if w <= 0w65279 then
 	    let val w1 = wordToWord8 (w div 0w256)
 		val w2 = wordToWord8 (w mod 0w256)
 	    in outw8(w2,outw8(w1,s))
 	    end
-	else 
+	else
 	    let val s = outw8(0w255,s)
 	    in outw(w,s)
 	    end
@@ -223,7 +223,7 @@ structure Bitstream :> BITSTREAM =
     fun getcw2 s =
 	let val (w,s) = getw8 s
 	in if w = 0w255 then getw s
-	   else 
+	   else
 	       let val (w2,s) = getw8 s
                    val w = word8ToWord w
                    val w2 = word8ToWord w2
