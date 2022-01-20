@@ -562,7 +562,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				       let val s = ("EXCONprim: " (* ^ Excon.pr_excon excon *))
 					   val ts = unTypeList s (type_e lexp)
 				       in if eq_Types([t],ts) then [CONStype([],tyName_EXN)]
-					  else die s
+					  else die (s ^ "; t=" ^ prType t ^ "; ts=" ^ prTypes ts
+                                                    ^ "; excon=" ^ Excon.pr_excon excon)
 				       end
 				      | NONE => die "EXCONprim.Nullary excon applied to arg.")
 		      | _ => die "EXCONprim.Wrong number of args")

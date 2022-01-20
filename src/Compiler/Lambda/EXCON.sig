@@ -14,6 +14,8 @@ signature EXCON =
     val pr_excon : excon -> string
     val pr_excon' : excon -> string  (* prints key *)
 
+    val renew : excon -> excon
+
     val < : excon * excon -> bool
     val eq : excon * excon -> bool
 

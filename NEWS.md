@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2022-01-20: Fixed bug caused by not renaming bound exception
+  constructors during inlining (issue #104).
+
 ### MLKit version 4.6.1 is released
 
 * mael 2022-01-20: Make use of better finite map structures (based on

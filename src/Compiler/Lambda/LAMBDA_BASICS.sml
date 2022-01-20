@@ -14,7 +14,6 @@ signature LAMBDA_BASICS =
     (* generate a new instance of a lambda expression; rename bound variables *)
     val new_instance : LambdaExp -> LambdaExp
 
-
     (* find exported identifiers of a lambda expression *)
     type excon and lvar
     val exports : LambdaExp -> lvar list * excon list
@@ -33,7 +32,7 @@ signature LAMBDA_BASICS =
     val eq_Type : Type * Type -> bool
     val eq_Types : Type list * Type list -> bool
     val eq_sigma : (tyvar list * Type) * (tyvar list * Type) -> bool
-    val eq_sigma_with_il : (tyvar list * Type * Type list) * 
+    val eq_sigma_with_il : (tyvar list * Type * Type list) *
                            (tyvar list * Type * Type list) -> bool    (* see COMPILER_ENV*)
 
     val match_sigma : (tyvar list * Type) * Type -> subst
