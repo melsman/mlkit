@@ -1,5 +1,13 @@
 ## MLKit NEWS
 
+### MLKit version 4.6.1 is released
+
+* mael 2022-01-20: Make use of better finite map structures (based on
+  AVL trees) for all compiler and elaboration environments.
+
+* mael 2022-01-20: Faster serialisation of compiler bases by adopting
+  a non-sharing strategy in case there are many hash-collisions.
+
 * mael 2022-01-18: The maximum size of a string is now 4Gb (previously
   16Mb). For the JavaScript backend, the maximum size is now 1Gb
   (previously 16Mb). Same for Word8Vector.vector, CharArray.array, and
