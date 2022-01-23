@@ -1180,7 +1180,8 @@ struct
   val pu_mularefset = Pickle.listGen pu_mularef
   val pu_qmularefset = Pickle.pairGen0(Pickle.tup3Gen0(Eff.pu_effects,Eff.pu_effects,pu_mularefset),
 				       Eff.pu_effect)
-  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.ref0Gen pu_qmularefset)
+(*  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.ref0Gen pu_qmularefset) *)
+  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.convert (ref,!) pu_qmularefset)
 
   val pu_mularefmap = GlobalEffVarEnv.pu Eff.pu_effect (Pickle.ref0Gen pu_mularef)
 end

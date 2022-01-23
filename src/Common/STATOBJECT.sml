@@ -64,7 +64,7 @@ signature STATOBJECT =
 	val intersectTyVarSet       : TyVar list * TyVar list -> TyVar list
 	val unionTyVarSet           : TyVar list * TyVar list -> TyVar list
 
-	val pu                      : TyVar Pickle.pu
+(*	val pu                      : TyVar Pickle.pu *)
       end (*TyVar*)
 
     structure Type :

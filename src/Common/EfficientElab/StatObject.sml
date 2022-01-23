@@ -18,6 +18,11 @@ structure StatObject: STATOBJECT =
     val print_node = Report.print o PP.reportStringTree o PP.NODE
     fun pr_st st = PP.outputTree (print, st, 100)
 
+    fun mapi f xs =
+        rev(#2(List.foldl (fn (x,(i,xs)) =>
+                              (i+1, f (x,i) :: xs)) (0,nil) xs
+              ))
+
     type tycon = TyCon.tycon
     structure TyName = TyName
     structure Rank = TyName.Rank
@@ -188,7 +193,7 @@ structure StatObject: STATOBJECT =
 	    NILrec => NILrec
 	  | VARrec _ => die "norm_RecType.uninstantiated rowvar"
 	  | ROWrec (l,t,rt) => ROWrec(l,norm_Type t, norm_RecType rt)
-
+(*
     (* Pickling *)
     val pu_TyVarDesc =
 	let fun to (((id,b),e,r),ov,ex) : TyVarDesc =
@@ -203,11 +208,44 @@ structure StatObject: STATOBJECT =
 			     Pickle.optionGen ExplicitTyVar.pu))
 	end
 
-    val pu_TyLink =
-	Pickle.convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_TyLink.NO_TY_LINK")
+    val pu_NoTyLink =
+	Pickle.convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_NoTyLink.NO_TY_LINK")
 	pu_TyVarDesc
+*)
 
-    val pu_TyVar : TyVar Pickle.pu = Pickle.ref0Gen pu_TyLink
+    fun ppTyVarDesc {base: string,
+	             id : int,
+	             equality : bool,
+	             rank: rank ref,
+	             overloaded : TyName.Set.Set option,
+	             explicit : ExplicitTyVar option,
+	             inst :  {TypeDesc : TypeDesc, level : level ref} option ref} =
+        "<" ^ String.concatWith "," [base,Int.toString id,Bool.toString equality,
+                                     Rank.pp (!rank),
+                                     case overloaded of NONE => "noovl"
+                                                      | SOME _ => "ovl",
+                                     case explicit of NONE => "noexpl"
+                                                    | SOME _ => "expl"
+                                    ] ^ ">"
+
+
+    fun ppTyVar (ref (NO_TY_LINK tvdesc)) = ppTyVarDesc tvdesc
+      | ppTyVar (ref _) = "tylink"
+
+(*
+    local
+
+      fun eq (tv,tv') =
+          tv = tv' orelse
+	  case (tv, tv') of
+              (ref(NO_TY_LINK tvd1), ref(NO_TY_LINK tvd2)) => TyVarDesc_eq(tvd1,tvd2)
+                                                              andalso #rank tvd1 = #rank tvd2
+	    | (ref (TY_LINK _), _)  => die "TyVar.eq_tv1"
+	    | (_, ref (TY_LINK _)) => die "TyVar.eq_tv2"
+
+    in
+    val pu_TyVar : TyVar Pickle.pu = Pickle.ref0EqGenPP ppTyVar eq pu_NoTyLink
+    end
 
     val pu_Type : TypeDesc Pickle.pu -> Type Pickle.pu =
 	let fun to (td,l) = {TypeDesc=td,level=l}
@@ -259,7 +297,7 @@ structure StatObject: STATOBJECT =
     in
       val pu_Type = pu_Type pu_TypeDesc
     end
-
+*)
     structure TyVar =
       struct
 
@@ -410,8 +448,10 @@ structure StatObject: STATOBJECT =
 	      | pr_l [a] = string a
 	in "(" ^ pr_l l ^ ")"
 	end
-
+(*
       val pu = pu_TyVar
+*)
+
     end (*TyVar*)
 
 
@@ -1339,7 +1379,7 @@ structure StatObject: STATOBJECT =
 	 * Unify two types
 	 *******************)
 
-	fun unifyType(ty,ty') =
+	fun unifyType (ty,ty') =
 	  let
 	    val (ty,ty') = (findType ty,findType ty')
 	  in
@@ -1352,7 +1392,7 @@ structure StatObject: STATOBJECT =
 	       | (_, _) => raise Unify "unifyType"
 	  end
 
-	and unifyRecType(r1, r2) = unifyRow(r1, r2)
+	and unifyRecType (r1, r2) = unifyRow(r1, r2)
 
 	and extract (lab: Lab.lab, row: RecType): RecType =
 	  let
@@ -1370,17 +1410,17 @@ structure StatObject: STATOBJECT =
 		  end
 	  end
 
-	and unifyRow(row1: RecType, row2: RecType): Substitution =
+	and unifyRow (row1: RecType, row2: RecType): Substitution =
 	  let val (row1,row2) = (RecType.sort row1, RecType.sort row2)
 	  in unifyRow' (row1, row2)
 	  end
 
-	and unifyRowVar({RowVar=rv,level}, row) =
+	and unifyRowVar ({RowVar=rv,level}, row) =
 	  (decr_level_RecType (!level) row;
 	   if occurs_rv_in_RecType(rv, row) then raise Unify "unifyRowVar"
 	   else rv := REC_LINK row)
 
-	and unifyRow'(row1: RecType, row2: RecType) =
+	and unifyRow' (row1: RecType, row2: RecType) =
 	  (* Assumes findRecType and RecType.sort has been applied --- done in unifyRow *)
 	  if RecType_eq (row1, row2) then ()
 	  else
@@ -1399,10 +1439,10 @@ structure StatObject: STATOBJECT =
 
 	       | _ => raise Unify "unifyRow'"
 
-	and unifyFunType((tau1, tau2), (tau3, tau4)) =
+	and unifyFunType ((tau1, tau2), (tau3, tau4)) =
 	  (unifyType(tau1, tau3); unifyType(tau2, tau4))
 
-	and unifyConsType((ty_list, tyname), (ty_list', tyname')) =
+	and unifyConsType ((ty_list, tyname), (ty_list', tyname')) =
 	  if TyName.eq(tyname, tyname') then                            (* Note that tyname=tyname' implies *)
 	    List.app unifyType (ListPair.zip(ty_list, ty_list'))      (* length(ty_list)=length(ty_list') *)
 	  else raise Unify "unifyConsType"
@@ -1444,10 +1484,11 @@ structure StatObject: STATOBJECT =
 	val match = match_Type
       end (*local*)
 
+(*
       val pu : Type Pickle.pu =
 	  Pickle.convert (fn a => a, norm_Type)
 	  pu_Type
-
+*)
     end (*Type*)
 
 
@@ -1463,7 +1504,7 @@ structure StatObject: STATOBJECT =
 	fun layout (alphas, tau) =
 	  PP.NODE{start="all" ^ TyVar.pr_tyvars alphas ^ ".",finish="",
 		  indent=1,childsep=PP.NOSEP,children=[Type.layout tau]}
-	fun string(alphas, tau) = "all" ^ TyVar.pr_tyvars alphas ^ "." ^ Type.string tau
+	fun string (alphas, tau) = "all" ^ TyVar.pr_tyvars alphas ^ "." ^ Type.string tau
 	fun debug_string s sigma = (s ^ ": sigma= " ^ string sigma ^ "\n")
 
 	(* instance_with_types (sigma, taus); instantiate sigma with
@@ -1529,8 +1570,8 @@ structure StatObject: STATOBJECT =
 	 * instantiated variable. The equality function here is also
 	 * used to implement equality of type functions. *)
 
-	fun eq(([],ty1), ([],ty2)) = Type.eq(ty1,ty2)
-	  | eq(sigma1 as (tvs1,_), sigma2 as (tvs2,_)) =
+	fun eq (([],ty1), ([],ty2)) = Type.eq(ty1,ty2)
+	  | eq (sigma1 as (tvs1,_), sigma2 as (tvs2,_)) =
 	  length tvs1 = length tvs2 andalso
 	  let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
 		| fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
@@ -1640,10 +1681,10 @@ structure StatObject: STATOBJECT =
       (* Matching for the recompilation manager *)
 
       fun match((_,tau1),(_,tau2)) : unit = Type.match(tau1,tau2)
-
+(*
       val pu =
 	  Pickle.pairGen(Pickle.listGen TyVar.pu,Type.pu)
-
+*)
     end (*TypeScheme*)
 
 
@@ -1725,13 +1766,13 @@ structure StatObject: STATOBJECT =
 	fun pretty_string' names theta = #body (pretty_string names theta)
 
 	fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
-
+(*
 	val pu =
 	    let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
 		fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
 	    in Pickle.convert (to,from) TypeScheme.pu
 	    end
-
+*)
     end (*TypeFcn*)
 
 
@@ -1968,7 +2009,7 @@ structure StatObject: STATOBJECT =
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
-
+(*
       val pu_TypeFcn' =
 	  let fun toInt (TYNAME _) = 0
 		| toInt (EXPANDED _) = 1
@@ -1988,8 +2029,228 @@ structure StatObject: STATOBJECT =
 	  in Pickle.convert (to,from)
 	      (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
 	  end
-
+*)
     end (*Realisation*)
+
+    structure Picklers : sig
+       type 'a pu = 'a Pickle.pu
+       type pty
+       type ptysch
+       val pu_pty            : pty pu
+       val pu_ptysch         : ptysch pu
+       val type_to_pty       : Type -> pty
+       val pty_to_type       : pty -> Type
+       val typesch_to_ptysch : TypeScheme -> ptysch
+       val ptysch_to_typesch : ptysch -> TypeScheme
+
+       val pu_Type           : Type pu
+       val pu_TypeScheme     : TypeScheme pu
+       val pu_TypeFcn        : TypeFcn pu
+       val pu_realisation    : realisation pu
+    end  = struct
+
+      type 'a pu = 'a Pickle.pu
+
+      (* all serialised type schemes should be closed, thus type variables can be local *)
+      type ptv = { id:int
+                 , equality:bool
+                 , overloaded: TyName.Set.Set option
+  (*
+                 , explicit: ExplicitTyVar option     (* whether a type variable is explicit or not should
+                                                       * be irrelevant for serialisation *)
+  *)
+                 }
+
+      datatype pty =
+          Tyvar of ptv
+        | Arrow of pty * pty
+        | Rectype of (Lab.lab * pty) list
+        | Constype of pty list * TyName.TyName
+
+      type ptysch = ptv list * pty
+
+      val pu_ptv : ptv Pickle.pu =
+          Pickle.convert (fn (id,equality,overloaded) => {id=id,equality=equality,overloaded=overloaded},
+                          fn {id,equality,overloaded} => (id,equality,overloaded))
+                         (Pickle.tup3Gen0(Pickle.int,
+                                          Pickle.bool,
+                                          Pickle.optionGen(TyName.Set.pu TyName.pu)))
+
+      val pu_pty : pty Pickle.pu =
+          let fun toInt pty =
+                  case pty of
+                      Tyvar _ => 0
+                    | Arrow _ => 1
+                    | Rectype _ => 2
+                    | Constype _ => 3
+              fun fun_Tyvar _ =
+                  Pickle.con1 Tyvar (fn Tyvar a => a | _ => die "pu_pty.Tyvar")
+                              pu_ptv
+              fun fun_Arrow pu_pty =
+                  Pickle.con1 Arrow (fn Arrow a => a | _ => die "pu_pty.Arrow")
+                              (Pickle.pairGen0(pu_pty, pu_pty))
+              fun fun_Rectype pu_pty =
+                  Pickle.con1 Rectype (fn Rectype a => a | _ => die "pu_pty.Rectype")
+                              (Pickle.listGen(Pickle.pairGen0(Lab.pu,pu_pty)))
+              fun fun_Constype pu_pty =
+                  Pickle.con1 Constype (fn Constype a => a | _ => die "pu_pty.Rectype")
+                              (Pickle.pairGen0(Pickle.listGen pu_pty, TyName.pu))
+          in Pickle.dataGen ("PickleType.pu_pty",toInt,
+                             [fun_Tyvar,fun_Arrow,
+                              fun_Rectype,fun_Constype])
+          end
+
+      val pu_ptysch : ptysch Pickle.pu =
+          Pickle.pairGen(Pickle.listGen pu_ptv, pu_pty)
+
+
+      local
+        type ptvMap = pty IntFinMap.map
+
+        fun type_to_pty0 (S: ptvMap) (ty:Type) : pty =
+            case #TypeDesc(findType ty) of
+                TYVAR (ref (NO_TY_LINK tvd)) =>
+                (case IntFinMap.lookup S (#id tvd) of
+                     SOME pty => pty
+                   | NONE => die "type_to_pty0: lookup")
+              | TYVAR _ => die "type_to_pty0.TYVAR link: impossible"
+              | ARROW (ty1,ty2) => Arrow(type_to_pty0 S ty1, type_to_pty0 S ty2)
+              | RECTYPE rt => let fun collect (rt,acc) =
+                                      case findRecType rt of
+                                          NILrec => rev acc
+                                        | ROWrec (l,ty,rt) => collect (rt,(l,type_to_pty0 S ty)::acc)
+                                        | VARrec _ => die "type_to_pty0:VARrec"
+                              in Rectype (collect (rt,nil))
+                              end
+              | CONSTYPE (tys,tn) => Constype (map (type_to_pty0 S) tys,tn)
+      in
+        fun type_to_pty (ty:Type) : pty =
+            type_to_pty0 IntFinMap.empty ty
+        fun typesch_to_ptysch ((tyvars,ty): TyVar list * Type) : ptysch =
+            let val l =
+                    mapi (fn (tyvar as ref (NO_TY_LINK tvd), i) =>
+                             (#id tvd, {id=i,
+                                        equality= #equality tvd,
+                                        overloaded= #overloaded tvd})
+                           | _ => die "typesch_to_ptysch"
+                         ) tyvars
+                val S = IntFinMap.fromList (map (fn (id,tv) => (id,Tyvar tv)) l)
+            in (map #2 l, type_to_pty0 S ty)
+            end
+      end
+
+      local
+        type tyMap = Type vector
+
+        fun tdToType td : Type =
+            {TypeDesc=td,level=ref Level.GENERIC}
+
+        (* Notice: level is GENERIC if level of a subpart is GENERIC *)
+        fun pty_to_type0 (V: tyMap) (pty:pty) : Type =
+            case pty of
+                Tyvar {id,...} =>
+                let val t = Vector.sub(V,id)
+                            handle Subscript => die "pty_to_type0.id missing"
+                in t
+                end
+              | Arrow(pty1,pty2) =>
+                let val ty1 = pty_to_type0 V pty1
+                    val ty2 = pty_to_type0 V pty2
+                in {TypeDesc=ARROW(ty1,ty2),
+                    level=ref(Int.min(!(#level ty1),
+                                      !(#level ty2)))
+                   }
+                end
+              | Rectype lptys =>
+                let val (r,l) = List.foldr (fn ((lab,pty),(rt,lev)) =>
+                                               let val ty = pty_to_type0 V pty
+                                               in (ROWrec (lab,ty,rt),
+                                                   Int.min(lev,!(#level ty)))
+                                               end) (NILrec,Level.NONGENERIC) lptys
+                in {TypeDesc=RECTYPE r,
+                    level=ref l
+                   }
+                end
+              | Constype (ptys, tn) =>
+                let val (tys,l) = List.foldr (fn (pty,(tys,lev)) =>
+                                               let val ty = pty_to_type0 V pty
+                                               in (ty::tys,
+                                                   Int.min(lev,!(#level ty)))
+                                               end) (nil,Level.NONGENERIC) ptys
+                in {TypeDesc=CONSTYPE (tys,tn),
+                    level=ref l
+                   }
+                end
+      in
+        fun pty_to_type (ty:pty) : Type =
+            pty_to_type0 (Vector.tabulate (0, fn _ =>raise Fail "impossible")) ty
+
+        fun ptysch_to_typesch (ptvs:ptv list, pty:pty) : TyVar list * Type =
+            let val l = map (fn {id,equality,overloaded} =>
+                                TyVar.fresh0 { equality=equality
+                                             , overloaded=overloaded
+                                             , explicit=NONE
+                                             }
+                            ) ptvs
+                val V = Vector.fromList (map (tdToType o TYVAR) l)
+            in (l, pty_to_type0 V pty)
+            end
+      end
+
+      val pu_Type = Pickle.convert0 (pty_to_type, type_to_pty) pu_pty
+      val pu_TypeScheme = Pickle.convert0 (ptysch_to_typesch, typesch_to_ptysch) pu_ptysch
+      val pu_TypeFcn =
+          let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
+              fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
+          in Pickle.convert0 (to,from) pu_TypeScheme
+          end
+
+      val pu_realisation =
+          let val pu_TypeFcn' =
+                  let fun toInt (TYNAME _) = 0
+                        | toInt (EXPANDED _) = 1
+                      fun fun_TYNAME _ =
+                          Pickle.con1 TYNAME (fn TYNAME a => a | _ => die "pu_TypeFcn'.TYNAME")
+                                      TyName.pu
+                      fun fun_EXPANDED _ =
+                          Pickle.con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
+                                      pu_TypeFcn
+                  in Pickle.dataGen("StatObject.Picklers.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
+                  end
+              fun to (SOME e) = Not_Id e
+                | to NONE = Realisation_Id
+              fun from (Not_Id e) = SOME e
+                | from Realisation_Id = NONE
+          in Pickle.convert (to,from)
+                            (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
+          end
+
+    (* mael 2022-01-24: Really, we should transform entire
+       environments before starting serialisation; it seems we now
+       apply Pickle.convert from-functions again and again for
+       equality and hashing... *)
+
+    end
+
+    structure Type = struct
+      open Type
+      val pu = Picklers.pu_Type
+    end
+
+    structure TypeScheme = struct
+      open TypeScheme
+      val pu = Picklers.pu_TypeScheme
+    end
+
+    structure TypeFcn = struct
+      open TypeFcn
+      val pu = Picklers.pu_TypeFcn
+    end
+
+    structure Realisation = struct
+      open Realisation
+      val pu = Picklers.pu_realisation
+    end
 
 (*
    (* Test stuff *)

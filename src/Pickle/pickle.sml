@@ -363,7 +363,7 @@ structure Pickle :> PICKLE = (* was : *)
 			      in case TableFactory.lookupFrom T_from v of
 				  SOME _ => res
 				| NONE =>
-				      let val () = TableFactory.checkFrom {pp=pp,typ=typ} T_from v
+				      let (*val () = TableFactory.checkFrom {pp=pp,typ=typ} T_from v*)
 				      in TableFactory.addFromCheck T_from v loc
 				       ; res
 				      end
@@ -487,6 +487,7 @@ structure Pickle :> PICKLE = (* was : *)
 			| NONE =>
 			      let val s = S.outw1(DEF,s)
                                   val loc = newloc()
+                                  (*val () = TableFactory.checkFrom {pp=fn _ => "no pp (ref)",typ=typ} T_from r*)
 			      in TableFactory.addFrom T_from r loc
 			       ; pickler pu v s
 			      end
@@ -516,7 +517,7 @@ structure Pickle :> PICKLE = (* was : *)
     fun refGen (v_dummy:'a) (pu:'a pu) : 'a ref pu =
 	refEqGen (op =) v_dummy pu
 
-    fun ref0EqGen (eq: 'a ref * 'a ref ->bool) (pu:'a pu) : 'a ref pu =
+    fun ref0EqGenPP (pp : 'a ref -> string) (eq: 'a ref * 'a ref ->bool) (pu:'a pu) : 'a ref pu =
       debug "ref0EqGen"
       let val eq = if very_safe_p then op = else eq
 	  val hash_ref = newHashCount()
@@ -535,6 +536,7 @@ structure Pickle :> PICKLE = (* was : *)
 			| NONE =>
 			      let val s = S.outw1(DEF,s)
                                   val loc = newloc()
+                                  (*val () = TableFactory.checkFrom {pp=pp,typ=typ} T_from r*)
 			      in TableFactory.addFrom T_from r loc
 			       ; pickler pu v s
 			      end
@@ -561,8 +563,14 @@ structure Pickle :> PICKLE = (* was : *)
 	   typ = typ}
       end
 
+    fun ref0EqGen eq pu =
+        ref0EqGenPP (fn _ => "no pp (ref0EqGen)") eq pu
+
     fun ref0Gen (pu:'a pu) : 'a ref pu =
 	ref0EqGen (op =) pu
+
+    fun ref0GenPP (pp:'a ref->string) (pu:'a pu) : 'a ref pu =
+	ref0EqGenPP pp (op =) pu
 
     fun ref0ShGen (pu:'a pu) : 'a ref pu =
 	if very_safe_p then ref0Gen pu

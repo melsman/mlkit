@@ -392,7 +392,7 @@ structure CompilerEnv: COMPILER_ENV =
        TYENV (restrictTyConMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
 
    fun restrictStrEnv (STRENV m, strid_restrs) : StrEnv =
-       STRENV (foldl (fn ((strid,restr:Environments.restricter), acc) =>
+       STRENV (foldl (fn ((strid,restr:Environments.restrictor), acc) =>
 		      let val res = case StrId.Map.lookup m strid of
 			  SOME res => restrictCEnv(res,restr)
 			| NONE => die "restrictStrEnv.strid not in env"
@@ -406,7 +406,7 @@ structure CompilerEnv: COMPILER_ENV =
 	  TyEnv=restrictTyEnv(TyEnv,tycons),
 	  PathEnv=emptyPathEnv}
 
-   val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restricter longids)
+   val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restrictor longids)
 
 
    (* -------------

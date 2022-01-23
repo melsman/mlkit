@@ -457,14 +457,14 @@ structure Environments: ENVIRONMENTS =
 
     in (*local*)
 
-      datatype restricter = Restr of {strids: (strid * restricter) list,
+      datatype restrictor = Restr of {strids: (strid * restrictor) list,
 				      vids: id list, tycons: tycon list}
 	                  | Whole
 
-      fun create_restricter (longids:longids) : restricter =
+      fun create_restrictor (longids:longids) : restrictor =
 	let val {vids, tycons, strids, rest} = split longids
 	in Restr {strids=map (fn strid => (strid,Whole)) strids @
-		         map (fn (strid,rest) => (strid, create_restricter rest)) rest,
+		         map (fn (strid,rest) => (strid, create_restrictor rest)) rest,
 		  vids=vids, tycons=tycons}
 	end
 
@@ -1429,22 +1429,26 @@ structure Environments: ENVIRONMENTS =
 
       (* Restriction *)
       local
-	fun restr_E (E,Whole) = E
-	  | restr_E (E,Restr{strids,vids,tycons}) =
+	fun restr_E (p, E, Whole) = E   (* p: preserve_all_vids *)
+	  | restr_E (p, E, Restr{strids,vids,tycons}) =
 	  let val (SE,TE,VE,R) = un E
   	      val SE' = foldl (fn ((strid,restr), SEnew) =>
 				    let val E = (case SE.lookup SE strid
-						   of SOME E => restr_E(E,restr)
+						   of SOME E => restr_E(p,E,restr)
 						    | NONE => impossible "restrictE: strid not in env.")
 				    in SE.plus (SEnew, SE.singleton (strid,E))
 				    end) SE.empty strids
  	      val TE' = TE.restrict (TE, tycons)
-	      val VE' = VE.restrict (VE, vids)
+	      val VE' = if p then VE else VE.restrict (VE, vids)
               val R' = nil
 	  in mk (SE',TE',VE',R')
 	  end
       in
-	fun restrict (E,longids) = restr_E(E,create_restricter longids)
+        fun restrict (E,longids) =
+            restr_E (false,E,create_restrictor longids)
+
+        fun restrict_preservecon (E,longids) =
+            restr_E (true,E,create_restrictor longids)
       end
 
       (* Matching *)

@@ -4,9 +4,9 @@
 signature MODULE_ENVIRONMENTS =
   sig
     (*types provided by this module:*)
-    type Basis  
-    type FunEnv 
-    type SigEnv 
+    type Basis
+    type FunEnv
+    type SigEnv
 
     (*types from other modules:*)
     type TyName = TyName.TyName
@@ -27,9 +27,9 @@ signature MODULE_ENVIRONMENTS =
     eqtype funid
     type StringTree = TyName.Set.StringTree
     type Report
-    (*The report functions below are used for top-level printout*)
+    (* The report functions below are used for top-level printout *)
 
-                       (*G, signature environments*)
+    (* G, signature environments *)
 
     structure G :
       sig
@@ -46,7 +46,7 @@ signature MODULE_ENVIRONMENTS =
       end
 
 
-                       (*F, functor environments*)
+    (* F, functor environments *)
 
     eqtype absprjid  (* absolute project identifier *)
     val lt_absprjid : absprjid * absprjid -> bool
@@ -74,7 +74,7 @@ signature MODULE_ENVIRONMENTS =
       end
 
 
-                          (*B, static basis*)
+    (* B, static basis *)
 
     structure B :
       sig
@@ -89,7 +89,7 @@ signature MODULE_ENVIRONMENTS =
 	val layout           : Basis -> StringTree
 	val tyvars'          : Basis -> (id * TyVar list) list
 
-                     	(*E component*)
+        (* E component *)
 	val plus_E           : Basis * Env     -> Basis
 	val from_E           : Env -> Basis
 	val to_E             : Basis -> Env
@@ -97,19 +97,19 @@ signature MODULE_ENVIRONMENTS =
 	val lookup_longstrid : Basis -> longstrid -> Env option
 	val lookup_longtycon : Basis -> longtycon -> TyStr option
 
-	                (*G component*)
+	(* G component *)
 	val from_G           : SigEnv -> Basis
 	val to_G             : Basis -> SigEnv
 	val plus_G           : Basis  * SigEnv -> Basis
 	val lookup_sigid     : Basis -> sigid -> Sig option
 
-	                (*F component*)
+	(* F component *)
 	val from_F           : FunEnv -> Basis
 	val to_F             : Basis -> FunEnv
 	val plus_F           : Basis  * FunEnv -> Basis
 	val lookup_funid     : Basis -> funid -> (absprjid * FunSig) option
 
-	           (*for compilation manager*)
+	(* for compilation manager *)
 	val enrich           : Basis * Basis -> bool
 	val agree            : longstrid list * Basis * Basis -> bool
 	val restrict         : Basis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
@@ -118,6 +118,9 @@ signature MODULE_ENVIRONMENTS =
 
 	val domain           : Basis -> {funids:funid list, sigids:sigid list, longstrids: longstrid list,
 					 longvids: longid list, longtycons: longtycon list}
+
+        val restrict_preservecon : Basis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
+					    longvids: longid list, longtycons: longtycon list} -> Basis
 
 	val pu               : Basis Pickle.pu
       end

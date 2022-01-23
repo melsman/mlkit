@@ -198,7 +198,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 		     children = [F.layout F, G.layout G, E.layout E],
 		     childsep = PP.RIGHT " "}
 
-  (*E component*)
+      (*E component*)
       fun plus_E (BASIS {F, G, E}, E') = BASIS {F=F, G=G, E=E.plus (E, E')}
       fun from_E E = BASIS {F = F.empty, G = G.empty, E = E}
       fun to_E (BASIS {E, ...}) = E
@@ -206,20 +206,20 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
       val lookup_longstrid = E.lookup_longstrid o to_E
       val lookup_longtycon = E.lookup_longtycon o to_E
 
-  (*G component*)
+      (*G component*)
       fun from_G G = BASIS {F = F.empty, G = G, E = E.empty}
       fun to_G (BASIS {G, ...}) = G
       fun plus_G (BASIS {F, G, E}, G') = BASIS {F = F, G = G.plus (G, G'), E = E}
       val lookup_sigid = G.lookup o to_G
 
-  (*F component*)
+      (*F component*)
       fun from_F F = BASIS {F = F, G = G.empty, E = E.empty}
       fun to_F (BASIS{F, ...}) = F
       fun plus_F (BASIS {F, G, E}, F') = BASIS {F = F.plus (F, F'), G = G, E = E}
       val lookup_funid = F.lookup o to_F
 
 
-              (*Enrichment relation for compilation manager*)
+      (*Enrichment relation for compilation manager*)
 
       fun enrich_Env a = E.enrich a
 
@@ -242,33 +242,28 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
       val enrich = enrichB
 
 
-              (*Restriction relation for compilation manager*)
+      (*Restriction relation for compilation manager*)
 
-	(* MEMO: use operations on F and G instead *)
       fun restrictB restrictE (BASIS {F=FUNENV F,G=SIGENV G,E},
-		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
-		      funids : funid list, sigids : sigid list}:longids) =
-	let val F' = foldl
-	               (fn (funid, Fnew) =>
-			let val FunSig = (case FunId.Map.lookup F funid of
-					    SOME FunSig => FunSig
-					  | NONE => die ("restrictB.funid " ^ FunId.pr_FunId funid ^ " not in basis."))
-			in FunId.Map.add(funid,FunSig,Fnew)
-			end) FunId.Map.empty funids
-	    val G' = foldl
-	               (fn (sigid, Gnew) =>
-			let val Sig = (case SigId.Map.lookup G sigid of
-					 SOME Sig => Sig
-				       | NONE => die ("restrictB.sigid " ^ SigId.pr_SigId sigid ^ " not in basis."))
-			in SigId.Map.add(sigid,Sig,Gnew)
-			end) SigId.Map.empty sigids
-	    val E' = restrictE (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})
+		               {longvids : longid list, longtycons : longtycon list,
+                                longstrids : longstrid list, funids : funid list,
+                                sigids : sigid list}:longids) =
+	  let val F' = FunId.Map.restrict (FunId.pr_FunId, F, funids)
+                       handle FunId.Map.Restrict msg => die ("restrictB.error: " ^ msg)
+	      val G' = SigId.Map.restrict (SigId.pr_SigId, G, sigids)
+                       handle SigId.Map.Restrict msg => die ("restrictB.error: " ^ msg)
+	      val E' = restrictE (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})
 	in BASIS {F=FUNENV F', G=SIGENV G', E=E'}
-	end
+	  end
+
       val enrich = enrichB
+
       fun restrict p = restrictB E.restrict p
 
-      fun domain(BASIS{F=FUNENV F,G=SIGENV G,E}) : longids =
+      fun restrict_preservecon (B,longids:longids) =
+          restrictB E.restrict_preservecon (B,longids)
+
+      fun domain (BASIS{F=FUNENV F,G=SIGENV G,E}) : longids =
 	  let val (SE,TE,VE,_) = E.un E
 	      val strids = EqSet.list (SE.dom SE)
 	      val longstrids = map StrId.longStrIdOfStrId strids
@@ -281,24 +276,24 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	  end
 
       (* Structure agreement *)
-      fun agree([],_,_) = true
-	| agree(longstrid::longstrids,B1,B2) =
+      fun agree ([],_,_) = true
+	| agree (longstrid::longstrids,B1,B2) =
 	case (lookup_longstrid B1 longstrid,
 	      lookup_longstrid B2 longstrid)
 	  of (SOME E1, SOME E2) => Environments.E.eq(E1,E2) andalso agree(longstrids,B1,B2)
 	   | _ => false
 
-      (*Matching function for compilation manager*)
-
+      (* Matching function for compilation manager *)
       fun match (BASIS {F,G,E}, BASIS {F=F0,G=G0,E=E0}) = E.match (E,E0)
 
       val pu =
 	  let fun to (F,G,E) = BASIS{F=F,G=G,E=E}
 	      fun from (BASIS{F=F,G=G,E=E}) = (F,G,E)
-	  in Pickle.convert (to,from)
-	      (Pickle.tup3Gen0(F.pu,G.pu,E.pu))
+	  in Pickle.comment "ModuleEnvironments.B.pu"
+                            (Pickle.convert (to,from)
+	                                    (Pickle.tup3Gen0(F.pu,G.pu,E.pu)))
 	  end
 
     end (*B*)
 
-  end; (*functor ModuleEnvironments*)
+  end

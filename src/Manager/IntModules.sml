@@ -518,9 +518,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
 	  end
 
-    fun generate_BBC(absprjid : absprjid, funid, strid_arg,
-			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list,
-			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp)
+    fun generate_BBC (absprjid : absprjid, funid, strid_arg,
+		      {infB: InfixBasis, elabB: ElabBasis, T: TyName list,
+		       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp)
        : BodyBuilderClos =
 	   let val funid_string = FunId.pr_FunId funid
 (**	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
@@ -551,9 +551,23 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                val filetext = withFile TextIO.inputAll filename
 *)
 
+               (* Attempt to restrict elaboration basis *)
+               val _ = chat "[finding free identifiers (restrict elaboration basis) begin...]"
+	       val freeids = FreeIds.fid_strexp strexp
+	       val _ = chat "[finding free identifiers (restruct elaboration basis) end...]"
+	       val elabB' = ModuleEnvironments.B.restrict (*_preservecon*) (elabB, freeids)
+
+               (* hmm: I believe elaboration should be preserved under
+                  the restricted basis; in fact, the free identifiers
+                  also include those identifiers that are
+                  constructors; notice that I'm not claiming that
+                  elaboration is preserved under an extended basis,
+                  which might not be the case if new constructors
+                  enter the basis. mael 2022-01-21 *)
+
 	       (* Explicit environment for the closure (function) below *)
 	       val BBC : BodyBuilderClos =
-		   {infB=infB,elabB=elabB,absprjid=absprjid,
+		   {infB=infB,elabB=elabB',absprjid=absprjid,
 		    (**filename=filename,**)filemd5=MD5.fromString filetext,filetext=filetext,
                     opaq_env=opaq_env,T=T,resE=resE}
 	   in BBC
