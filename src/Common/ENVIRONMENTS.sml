@@ -236,7 +236,6 @@ signature ENVIRONMENTS =
 
 	val layout               : Context -> StringTree
 
-	val pu                   : Context Pickle.pu
       end (*C*)
 
 

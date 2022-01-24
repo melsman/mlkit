@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2022-01-24: More efficient static environment serialisation
+  (issue #103).
+
 * mael 2022-01-20: Fixed bug caused by not renaming bound exception
   constructors during inlining (issue #104).
 

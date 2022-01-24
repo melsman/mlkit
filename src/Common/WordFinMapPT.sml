@@ -8,7 +8,7 @@ structure WordFinMap: MONO_FINMAP =
 struct
   structure PP = PrettyPrint
   type dom = word
-  
+
   (* helper functions *)
   open Word
   fun lowestBit x = andb (x,0w0 - x)
@@ -28,9 +28,9 @@ struct
       Empty
     | Lf of word * 'a
     | Br of word * word * 'a map * 'a map
-  (* 
-   * Lf (k,x): 
-   *   k is the key 
+  (*
+   * Lf (k,x):
+   *   k is the key
    * Br (p,m,t0,t1):
    *   p is the largest common prefix for all the keys in this tree
    *   m is the branching bit
@@ -139,14 +139,14 @@ struct
 
   fun range m = fold (op ::) nil m
   fun list m = Fold (op ::) nil m
-  fun filter f m = Fold (fn (e as (d,r),a) => if f e then add(d,r,a) 
-					      else a) empty m 
-    
+  fun filter f m = Fold (fn (e as (d,r),a) => if f e then add(d,r,a)
+					      else a) empty m
+
   fun addList [] m = m
     | addList ((d,r)::rest) m = addList rest (add(d,r,m))
 
   fun fromList l = addList l empty
-    
+
   exception Restrict of string
   fun restrict (pp, m, l) =
     let fun res ([], a) = a
@@ -158,21 +158,21 @@ struct
     end
 
    fun enrich f (m1, m2) =
-     Fold (fn ((d2,r2),b) => 
+     Fold (fn ((d2,r2),b) =>
 	   case lookup m1 d2
 	     of SOME r1 => b andalso f(r1,r2)
-	      | NONE => false) true m2  
+	      | NONE => false) true m2
 
    type StringTree = PP.StringTree
 
-   fun layoutMap {start, eq=equal, sep, finish} 
+   fun layoutMap {start, eq=equal, sep, finish}
       layoutDom layoutRan m =
       PP.NODE {start=start,
 	       finish=finish,
-	       children=map (fn (d,r) => 
+	       children=map (fn (d,r) =>
 			     PP.NODE {start="",
 				      finish="",
-				      children=[layoutDom d, 
+				      children=[layoutDom d,
 						layoutRan r],
 				      indent=3,
 				      childsep=PP.RIGHT equal})
@@ -185,13 +185,14 @@ struct
    fun reportMap f t = Report.flatten(map f (list t))
 
    fun pu _ = raise Fail "WordFinMapPT.pu: not implemented"
+   fun puNoShare _ = raise Fail "WordFinMapPT.puNoShare: not implemented"
 
 end
 
 
 structure TestWordFinMap : sig end =
   struct
-(*    
+(*
     structure BasicIO = BasicIO()
     structure Report = Report(structure BasicIO=BasicIO)
     structure Crash=Crash(structure BasicIO = BasicIO)
@@ -228,7 +229,7 @@ structure TestWordFinMap : sig end =
       | test s false = print ("ERROR : " ^ s ^ "\n")
 
     val test1 = test "test1" (IFM.list(m3) === IFM.list(IFM.fromList(l1@l2)))
-      
+
     val test2 = test "test2" (IFM.lookup m1 6 = SOME "6")
     val test3 = test "test3" (IFM.lookup m1 9 = NONE)
 
@@ -247,7 +248,7 @@ structure TestWordFinMap : sig end =
 
     fun sum [] = 0
       | sum (x::xs) = x + sum xs
-      
+
     fun remdubs ([],a:int list) = a
       | remdubs (x::xs,a) = remdubs(xs, if member a x then a else x::a)
 
@@ -261,4 +262,3 @@ structure TestWordFinMap : sig end =
     val _ = PP.outputTree(print, st, 100)
 *)
   end
-

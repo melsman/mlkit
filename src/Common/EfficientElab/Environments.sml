@@ -257,12 +257,12 @@ structure Environments: ENVIRONMENTS =
 		Pickle.con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
 		Type.pu
 
-	in Pickle.dataGen ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	in Pickle.dataGenNoShare ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
 
     val pu_VarEnv : VarEnv Pickle.pu =
 	Pickle.convert (VARENV, fn VARENV s => s)
-	(Ident.Map.pu Ident.pu pu_range_private)
+	(Ident.Map.puNoShare Ident.pu pu_range_private)
 
     val pu_TyStr : TyStr Pickle.pu =
 	let fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
@@ -273,11 +273,7 @@ structure Environments: ENVIRONMENTS =
 
     val pu_TyEnv : TyEnv Pickle.pu =
 	Pickle.convert (TYENV, fn TYENV s => s)
-	(TyCon.Map.pu TyCon.pu pu_TyStr)
-
-    val pu_ExplicitTyVarEnv : ExplicitTyVarEnv Pickle.pu =
-	Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s)
-	(ExplicitTyVarMap.pu SyntaxTyVar.pu Type.pu)
+	(TyCon.Map.puNoShare TyCon.pu pu_TyStr)
 
     val (pu_Env, pu_StrEnv) =
 	let fun EnvToInt (ENV _) = 0
@@ -288,16 +284,9 @@ structure Environments: ENVIRONMENTS =
 		(Pickle.tup4Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv,Pickle.listGen RegVar.pu))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
 		Pickle.con1 STRENV (fn STRENV a => a)
-		(StrId.Map.pu StrId.pu pu_Env)
-	in Pickle.data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
-			    "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
-	end
-
-    val pu_Context =
-	let fun to (U,E) = CONTEXT{U=U,E=E}
-	    fun from (CONTEXT{U,E}) = (U,E)
-	in Pickle.convert (to,from)
-	    (Pickle.pairGen0(pu_ExplicitTyVarEnv, pu_Env))
+		(StrId.Map.puNoShare StrId.pu pu_Env)
+	in Pickle.data2GenNoShare ("Environments.Env",EnvToInt,[fun_ENV],
+			           "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
 	end
 
     fun layoutSE (STRENV m) =
@@ -1652,7 +1641,6 @@ structure Environments: ENVIRONMENTS =
 	end (*let*) handle BoundTwice VE => VE
       end (*local exception BoundTwice*)
 
-      val pu = Pickle.comment "Environments.C.pu" pu_Context
     end (*C*)
 
 

@@ -91,7 +91,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	else SIGENV (SigId.Map.composemap (fn Sigma => Sigma.on (rea,Sigma)) m)
 
       val pu = Pickle.convert (SIGENV, fn SIGENV m => m)
-	  (SigId.Map.pu SigId.pu Sigma.pu)
+	  (SigId.Map.puNoShare SigId.pu Sigma.pu)
 
     end (*G*)
 
@@ -164,7 +164,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	else FUNENV (FunId.Map.composemap (fn (absprjid, Phi) => (absprjid, Phi.on (rea, Phi))) m)
 
       val pu = Pickle.convert (FUNENV, fn FUNENV m => m)
-	  (FunId.Map.pu FunId.pu (Pickle.pairGen(Pickle.string,Phi.pu)))
+	  (FunId.Map.puNoShare FunId.pu (Pickle.pairGen(Pickle.string,Phi.pu)))
 
     end (*F*)
 

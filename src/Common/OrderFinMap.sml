@@ -491,7 +491,7 @@ old *)
     (* Pickler *)
     val pu_bal : bal Pickle.pu = Pickle.enumGen("OrderFinMap.bal",[L,B,R])
 
-    fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu =
+    fun pu0 sh (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu =
 	let fun toInt E = 0
 	      | toInt (N _) = 1
 	    val fun_E = Pickle.con0 E
@@ -500,7 +500,11 @@ old *)
 		(fn N(a,b,c,d,e) => ((a,b,c,d),e)
 	          | _ => die "pu.fun_N")
 		(Pickle.pairGen0(Pickle.tup4Gen0(pu_dom,pu_r,pu,pu),pu_bal))
-	in Pickle.dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
+	in if sh then Pickle.dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
+           else Pickle.dataGenNoShare("OrderFinMap.map",toInt,[fun_E,fun_N])
 	end
+
+    fun pu x = pu0 true x
+    fun puNoShare x = pu0 false x
 
   end

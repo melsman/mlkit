@@ -5,18 +5,19 @@ signature BASIC_FINMAP =
 	val empty      : 'b map
 	val lookup     : 'b map -> dom -> 'b option
 	val add        : dom * 'b * 'b map -> 'b map
-	val remove     : dom * 'b map -> 'b map option      
+	val remove     : dom * 'b map -> 'b map option
 	val mergeMap   : (('b * 'b) -> 'b) -> 'b map -> 'b map -> 'b map
 	val Fold       : (((dom * 'b) * 'c) -> 'c)-> 'c -> 'b map -> 'c
 	val pu         : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu
+	val puNoShare  : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu
     end
 
-functor MonoFinMap (B : BASIC_FINMAP) 
-    : MONO_FINMAP where type dom = B.dom 
+functor MonoFinMap (B : BASIC_FINMAP)
+    : MONO_FINMAP where type dom = B.dom
 		  where type 'a map = 'a B.map =
     struct
 	open B
-	fun singleton(d,r) = add(d,r,empty)
+	fun singleton (d,r) = add(d,r,empty)
 
 	fun fold f a m =
 	    Fold (fn ((d,r),a) => f(r,a)) a m
@@ -24,7 +25,7 @@ functor MonoFinMap (B : BASIC_FINMAP)
 	fun list m = Fold (op ::) nil m
 
 	exception NOT_EMPTY
-	fun isEmpty m = 
+	fun isEmpty m =
 	    let fun f _ = raise NOT_EMPTY
 	    in Fold f () m ; true
 	    end handle NOT_EMPTY => false
@@ -58,32 +59,32 @@ functor MonoFinMap (B : BASIC_FINMAP)
 
 	exception Restrict of string
 	fun restrict (pp, m, l) =
-	    let 
+	    let
 		fun res ([], a) = a
-		  | res (d::rest, a) = 
-		    case lookup m d of 
+		  | res (d::rest, a) =
+		    case lookup m d of
 			SOME r => res(rest,add(d,r,a))
 		      | NONE => raise Restrict(pp d)
 	    in res (l, empty)
 	    end
-	
+
 	fun enrich f (m1, m2) =
-	    Fold (fn ((d2,r2),b) => 
-		  case lookup m1 d2 of 
+	    Fold (fn ((d2,r2),b) =>
+		  case lookup m1 d2 of
 		      SOME r1 => b andalso f(r1,r2)
-		    | NONE => false) true m2  
-	    
+		    | NONE => false) true m2
+
 	structure PP = PrettyPrint
 
 	type StringTree = PP.StringTree
-	    
+
 	fun layoutMap {start, eq=equal, sep, finish} layoutDom layoutRan m =
 	    PP.NODE {start=start,
 		     finish=finish,
-		     children=map (fn (d,r) => 
+		     children=map (fn (d,r) =>
 				   PP.NODE {start="",
 					    finish="",
-					    children=[layoutDom d, 
+					    children=[layoutDom d,
 						      layoutRan r],
 					    indent=3,
 					    childsep=PP.RIGHT equal})

@@ -75,11 +75,19 @@ signature PICKLE =
     val combHash     : ('a -> int) -> 'a pu -> 'a pu
     val maybeNewHash : ('a -> int option) -> 'a pu -> 'a pu
 
+    val noshare      : 'a pu -> 'a pu
+
     val debug     : string -> 'a pu -> 'a pu
     val nameGen   : string -> 'a pu -> 'a pu
     val comment   : string -> 'a pu -> 'a pu
     val checkUnpickle : ('a -> unit) -> 'a pu -> 'a pu
     val debugUnpickle : string -> 'a pu -> 'a pu
+
+    val dataGenNoShare   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
+    val data2GenNoShare  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
+	                   * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
+                           -> 'a pu * 'b pu
+
   end
 
 (*

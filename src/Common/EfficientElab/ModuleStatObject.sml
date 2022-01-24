@@ -451,7 +451,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 		    T'E'=Sigma.on(phi,T'E')}
 	  end
       in
-	fun eq(FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
+	fun eq (FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
 	  if TyName.Set.size T1 <> TyName.Set.size T then false
 	  else let val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
 		   val Sig2 = SIGMA{T=T2,E=E2}

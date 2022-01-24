@@ -2197,8 +2197,8 @@ structure StatObject: STATOBJECT =
             end
       end
 
-      val pu_Type = Pickle.convert0 (pty_to_type, type_to_pty) pu_pty
-      val pu_TypeScheme = Pickle.convert0 (ptysch_to_typesch, typesch_to_ptysch) pu_ptysch
+      val pu_Type = Pickle.noshare(Pickle.convert0 (pty_to_type, type_to_pty) pu_pty)
+      val pu_TypeScheme = Pickle.noshare(Pickle.convert0 (ptysch_to_typesch, typesch_to_ptysch) pu_ptysch)
       val pu_TypeFcn =
           let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
               fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)

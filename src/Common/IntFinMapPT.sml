@@ -5,10 +5,10 @@
 
 structure IntFinMap: MONO_FINMAP =
 struct
-  
+
   structure PP = PrettyPrint
   type dom = int
-  
+
   (* helper functions *)
   open Word
   fun lowestBit x = andb (x,0w0 - x)
@@ -28,9 +28,9 @@ struct
       Empty
     | Lf of word * 'a
     | Br of word * word * 'a map * 'a map
-  (* 
-   * Lf (k,x): 
-   *   k is the key 
+  (*
+   * Lf (k,x):
+   *   k is the key
    * Br (p,m,t0,t1):
    *   p is the largest common prefix for all the keys in this tree
    *   m is the branching bit
@@ -41,10 +41,10 @@ struct
 
   val empty = Empty
 
-  fun check s d = if Int.<(d, 0) then print ("IntFinMapPT." ^ s ^ " error\n")  
+  fun check s d = if Int.<(d, 0) then print ("IntFinMapPT." ^ s ^ " error\n")
 		  else ()
 
-  fun singleton (d,r) = 
+  fun singleton (d,r) =
     ((* check "singleton" d; *)
      Lf (fromInt d, r))
 
@@ -127,7 +127,7 @@ struct
 *)
 
   fun removew (w,t) =
-      case t of                
+      case t of
         Empty => NONE
       | Lf(w',e) => if w' = w then SOME Empty
                     else NONE
@@ -141,7 +141,7 @@ struct
             NONE => NONE
           | SOME t1' => SOME (plus(t0,t1'))
 
-  fun remove (k,t) = removew (fromInt k,t)      
+  fun remove (k,t) = removew (fromInt k,t)
 
   fun composemap f Empty = Empty
     | composemap f (Lf(w,e)) = Lf(w,f e)
@@ -164,13 +164,13 @@ struct
 
   fun range m = fold (op ::) nil m
   fun list m = Fold (op ::) nil m
-  fun filter f m = Fold (fn (e as (d,r),a) => if f e then add(d,r,a) 
-					      else a) empty m 
+  fun filter f m = Fold (fn (e as (d,r),a) => if f e then add(d,r,a)
+					      else a) empty m
   fun addList [] m = m
     | addList ((d,r)::rest) m = addList rest (add(d,r,m))
 
   fun fromList l = addList l empty
-    
+
   exception Restrict of string
   fun restrict (pp, m, l) =
     let fun res ([], a) = a
@@ -182,14 +182,14 @@ struct
     end
 (*
    fun enrich f (m1, m2) =
-     Fold (fn ((d2,r2),b) => 
+     Fold (fn ((d2,r2),b) =>
 	   case lookup m1 d2
 	     of SOME r1 => b andalso f(r1,r2)
-	      | NONE => false) true m2  
+	      | NONE => false) true m2
 *)
    fun enrich f p =
        let fun enr (_, Empty) = true
-             | enr (Empty, _) = false                           
+             | enr (Empty, _) = false
              | enr (Lf _, Br _) = false
              | enr (t1, Lf(d2,r2)) =
                (case lookupw t1 d2 of
@@ -204,14 +204,14 @@ struct
 
    type StringTree = PP.StringTree
 
-   fun layoutMap {start, eq=equal, sep, finish} 
+   fun layoutMap {start, eq=equal, sep, finish}
       layoutDom layoutRan m =
       PP.NODE {start=start,
 	       finish=finish,
-	       children=map (fn (d,r) => 
+	       children=map (fn (d,r) =>
 			     PP.NODE {start="",
 				      finish="",
-				      children=[layoutDom d, 
+				      children=[layoutDom d,
 						layoutRan r],
 				      indent=3,
 				      childsep=PP.RIGHT equal})
@@ -224,23 +224,25 @@ struct
    fun reportMap f t = Report.flatten(map f (list t))
 
 
-   (* Pickler *)
+   (* Picklers *)
 
-   fun pu _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
-       let fun toInt Empty = 0
-	     | toInt (Lf _) = 1
-	     | toInt (Br _) = 2
+   local
+     fun toInt Empty = 0
+       | toInt (Lf _) = 1
+       | toInt (Br _) = 2
 
-	   val pu_Empty = Pickle.con0 Empty
+     fun pu_Lf pu_a _ =
+	 Pickle.con1 Lf (fn Lf a => a | _ => raise Fail "IntFinMapPT.pu_Lf")
+	             (Pickle.pairGen0(Pickle.word,pu_a))
 
-	   fun pu_Lf _ =
-	       Pickle.con1 Lf (fn Lf a => a | _ => raise Fail "IntFinMapPT.pu_Lf")
-	       (Pickle.pairGen0(Pickle.word,pu_a))
+     fun pu_Br pu =
+	 Pickle.con1 Br (fn Br a => a | _ => raise Fail "IntFinMapPT.pu_Br")
+	             (Pickle.tup4Gen0(Pickle.word,Pickle.word,pu,pu))
+   in
+     fun pu _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
+         Pickle.dataGen ("IntFinMapPT.map",toInt,[Pickle.con0 Empty, pu_Lf pu_a, pu_Br])
 
-	   fun pu_Br pu =
-	       Pickle.con1 Br (fn Br a => a | _ => raise Fail "IntFinMapPT.pu_Br")
-	       (Pickle.tup4Gen0(Pickle.word,Pickle.word,pu,pu))
-       in
-	   Pickle.dataGen ("IntFinMapPT.map",toInt,[pu_Empty, pu_Lf, pu_Br])
-       end
+     fun puNoShare _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
+         Pickle.dataGenNoShare ("IntFinMapPT.map",toInt,[Pickle.con0 Empty, pu_Lf pu_a, pu_Br])
+   end
 end
