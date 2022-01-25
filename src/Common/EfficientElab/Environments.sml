@@ -285,8 +285,8 @@ structure Environments: ENVIRONMENTS =
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
 		Pickle.con1 STRENV (fn STRENV a => a)
 		(StrId.Map.puNoShare StrId.pu pu_Env)
-	in Pickle.data2GenNoShare ("Environments.Env",EnvToInt,[fun_ENV],
-			           "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
+	in Pickle.data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
+			    "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
 	end
 
     fun layoutSE (STRENV m) =

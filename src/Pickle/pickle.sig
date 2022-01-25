@@ -72,6 +72,7 @@ signature PICKLE =
     val hashConsEq: ('a*'a->bool) -> 'a pu -> 'a pu
 
     val newHash      : ('a -> int) -> 'a pu -> 'a pu
+    val newHashEq    : ('a -> word) -> ('a * 'a -> bool) -> 'a pu -> 'a pu
     val combHash     : ('a -> int) -> 'a pu -> 'a pu
     val maybeNewHash : ('a -> int option) -> 'a pu -> 'a pu
 
@@ -87,7 +88,15 @@ signature PICKLE =
     val data2GenNoShare  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
 	                   * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
                            -> 'a pu * 'b pu
-
+    structure Hash : sig
+      type acc = word * int
+      val string  : string -> acc -> acc
+      val comb    : (acc -> acc) -> acc -> acc
+      val word    : word -> acc -> acc
+      val int     : int -> acc -> acc
+      val hash    : acc -> word
+      val init    : acc
+    end
   end
 
 (*

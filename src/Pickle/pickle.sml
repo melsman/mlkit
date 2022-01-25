@@ -77,6 +77,25 @@ structure Pickle :> PICKLE = (* was : *)
         in loop (0,acc)
         end
 
+    structure Hash : sig
+      type acc = word * int
+      val string  : string -> acc -> acc
+      val comb    : (acc -> acc) -> acc -> acc
+      val word    : word -> acc -> acc
+      val int     : int -> acc -> acc
+      val hash    : acc -> word
+      val init    : acc
+    end = struct
+      type acc = word * int
+      fun string (s:string) (acc:acc) : acc = (stringHash (#1 acc) s,#2 acc-1)
+      fun comb (f:acc -> acc) (acc:acc) : acc = hashComb f acc
+      fun word (w:word) (acc:acc) : acc = hashAdd w acc
+      fun int (i:int) (acc:acc) : acc = word (Word.fromInt i) acc
+      val hash : acc -> word = #1
+      val init : acc = (UNIT_HASH,2*maxDepth)
+    end
+
+
     (* typ approximates the type of a pickler/unpickler. It is used for
      * prettyprinting (during debugging) and for avoiding (shareGen o
      * shareGen), (shareGen o dataGen), and (shareGen o refGen)... *)
@@ -675,9 +694,11 @@ structure Pickle :> PICKLE = (* was : *)
                 case !res of
                     NONE => let (* val typ = name ^ "_" ^ Int.toString (length fs) *)
                                 fun pp v = "Con" ^ Int.toString (toInt v)
-                                val pup = shareGen0 pp (PU {pickler=p(),unpickler=up(),
-                                                            hasher=h,eq=eq,typ=typ,
-                                                            share=sh})
+                                val pup0 = PU {pickler=p(),unpickler=up(),
+                                               hasher=h,eq=eq,typ=typ,
+                                               share=sh}
+                                val pup = if sh then shareGen0 pp pup0
+                                          else pup0
                             in res := SOME pup
                              ; pup
                             end
@@ -688,7 +709,7 @@ structure Pickle :> PICKLE = (* was : *)
                                    val ps0 = map (fn f => f (getPUP())) fs
                                    val psv = Vector.fromList ps0
                                in ps := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen.Caching: " ^ name)
@@ -737,9 +758,11 @@ structure Pickle :> PICKLE = (* was : *)
                     NONE => let (*val typ = aname ^ "_" ^ Int.toString (length afs)*)
                                 val typ = Tdata(aname,length afs)
                                 fun pp v = "Con" ^ Int.toString (aToInt v)
-                                val pup = shareGen0 pp (PU {pickler=aP,unpickler=aUp,
-                                                            hasher=aH,eq=aEq,typ=typ,
-                                                            share=sh})
+                                val pup0 = PU {pickler=aP,unpickler=aUp,
+                                               hasher=aH,eq=aEq,typ=typ,
+                                               share=sh}
+                                val pup = if sh then shareGen0 pp pup0
+                                          else pup0
                             in aRes := SOME pup
                              ; pup
                             end
@@ -750,7 +773,7 @@ structure Pickle :> PICKLE = (* was : *)
                                    val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) afs
                                    val psv = Vector.fromList ps0
                                in aPs := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen2.Caching.a: " ^ aname)
@@ -773,9 +796,11 @@ structure Pickle :> PICKLE = (* was : *)
                     NONE => let (*val typ = bname ^ "_" ^ Int.toString (length bfs)*)
                                 val typ = Tdata(bname,length bfs)
                                 fun pp v = "Con" ^ Int.toString (bToInt v)
-                                val pup = shareGen0 pp (PU {pickler=bP,unpickler=bUp,
-                                                            hasher=bH,eq=bEq,typ=typ,
-                                                            share=sh})
+                                val pup0 = PU {pickler=bP,unpickler=bUp,
+                                               hasher=bH,eq=bEq,typ=typ,
+                                               share=sh}
+                                val pup = if sh then shareGen0 pp pup0
+                                          else pup0
                             in bRes := SOME pup
                              ; pup
                             end
@@ -786,7 +811,7 @@ structure Pickle :> PICKLE = (* was : *)
                                    val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) bfs
                                    val psv = Vector.fromList ps0
                                in bPs := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen2.Caching.b: " ^ bname)
@@ -858,7 +883,7 @@ structure Pickle :> PICKLE = (* was : *)
                                                              cGetPUP())) afs
                                    val psv = Vector.fromList ps0
                                in aPs := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen3.Caching.a: " ^ aname)
@@ -895,7 +920,7 @@ structure Pickle :> PICKLE = (* was : *)
                                                              cGetPUP())) bfs
                                    val psv = Vector.fromList ps0
                                in bPs := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen3.Caching.b: " ^ bname)
@@ -932,7 +957,7 @@ structure Pickle :> PICKLE = (* was : *)
                                                              cGetPUP())) cfs
                                    val psv = Vector.fromList ps0
                                in cPs := Cached psv
-                                   ; Vector.sub(psv,i)
+                                ; Vector.sub(psv,i)
                                end
                   | Cached psv => Vector.sub(psv,i)
                   | Caching => fail ("dataGen3.Caching.c: " ^ cname)
@@ -979,6 +1004,14 @@ structure Pickle :> PICKLE = (* was : *)
             hasher = fn b:'b => hashComb (fn p => hasher pu (decon b) p),
             eq = fn (b1:'b, b2:'b) => eQ pu (decon b1, decon b2),
             typ = Tcon1,
+            share = share pu}
+
+    fun newHashEq (h: 'a -> word) (eq: 'a * 'a -> bool) (pu: 'a pu) : 'a pu =
+        PU {pickler= pickler pu,
+            unpickler = unpickler pu,
+            hasher = hashComb o hashAdd o h,
+            eq=eq,
+            typ = typ pu,
             share = share pu}
 
     fun newHash (f: 'a -> int) (pu: 'a pu) : 'a pu =

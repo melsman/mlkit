@@ -96,8 +96,7 @@ structure StatObject: STATOBJECT =
 	 and TyVar       = TyLink ref
 	 and RowVar      = RecLink ref
          and TyVarDesc =
-	   {base: string,     (* compilation unit base; (base,id) should be unique *)
-	    id : int,         (* Two type variables are equal if their ids are equal and their bases are equal*)
+	   {id : int,         (* Two type variables are equal if their ids are equal *)
 	    equality : bool,  (* Does the tyvar admit equality *)
 	    rank: rank ref,   (* The rank field contains an updatable rank for the
 			       * type variable. See TYNAME for further comments. *)
@@ -116,11 +115,11 @@ structure StatObject: STATOBJECT =
     type FunType     = Type
     type ConsType    = Type
 
-    fun TyVarDesc_eq ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) =
-        id=id2 andalso base=base2
+    fun TyVarDesc_eq ({id,...}:TyVarDesc, {id=id2,...}:TyVarDesc) =
+        id=id2
 
-    fun TyVarDesc_lt ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) =
-        id < id2 orelse (id = id2 andalso base<base2)
+    fun TyVarDesc_lt ({id,...}:TyVarDesc, {id=id2,...}:TyVarDesc) =
+        id < id2
 
     fun findType ty =
       case #TypeDesc ty
@@ -213,14 +212,13 @@ structure StatObject: STATOBJECT =
 	pu_TyVarDesc
 *)
 
-    fun ppTyVarDesc {base: string,
-	             id : int,
+    fun ppTyVarDesc {id : int,
 	             equality : bool,
 	             rank: rank ref,
 	             overloaded : TyName.Set.Set option,
 	             explicit : ExplicitTyVar option,
 	             inst :  {TypeDesc : TypeDesc, level : level ref} option ref} =
-        "<" ^ String.concatWith "," [base,Int.toString id,Bool.toString equality,
+        "<" ^ String.concatWith "," [Int.toString id,Bool.toString equality,
                                      Rank.pp (!rank),
                                      case overloaded of NONE => "noovl"
                                                       | SOME _ => "ovl",
@@ -366,7 +364,6 @@ structure StatObject: STATOBJECT =
 	in
 	  fun fresh0 {equality, overloaded, explicit} =
 	    ref (NO_TY_LINK {id = (r := !r + 1 ; !r),
-			     base = Name.baseGet(),
 			     equality = equality,
 			     rank=ref (Rank.current()),
 			     overloaded = overloaded,
@@ -1105,10 +1102,10 @@ structure StatObject: STATOBJECT =
 	  case #TypeDesc (findType ty)
 	    of TYVAR (tv as (ref (NO_TY_LINK ({explicit=SOME ExplicitTyVar,...})))) =>
 	      if ExplicitTyVar.isEquality ExplicitTyVar then () else raise NotEquality
-	     | TYVAR (tv as (ref (NO_TY_LINK ({equality, overloaded, id, base, rank, explicit=NONE, inst, ...})))) =>
+	     | TYVAR (tv as (ref (NO_TY_LINK ({equality, overloaded, id, rank, explicit=NONE, inst, ...})))) =>
 	      if equality then ()
 	      else tv := NO_TY_LINK {equality = true,  overloaded = overloaded,
-				     rank = rank, id = id, base = base, explicit = NONE, inst = inst}
+				     rank = rank, id = id, explicit = NONE, inst = inst}
 	     | TYVAR _ => die "make_equality"
 	     | RECTYPE r => RecType.apply make_equality0 r
 	     | CONSTYPE (ty_list, tyname) =>
@@ -1240,19 +1237,19 @@ structure StatObject: STATOBJECT =
 	  case #TypeDesc (findType tau)
 	    of TYVAR (ref (NO_TY_LINK {explicit=SOME _,...})) =>
 	      raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=NONE,
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=NONE,
 					      rank, inst, ...}))) =>
-	      let val tvd = {equality = equality, id = id, base = base, rank = rank,
+	      let val tvd = {equality = equality, id = id, rank = rank,
 			     overloaded=SOME tynames1, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=SOME tynames2,
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=SOME tynames2,
 					      rank, inst, ...}))) =>
 	      let val overloadSet = TyName.Set.intersect tynames1 tynames2
                   val _ = if TyName.Set.isEmpty overloadSet then
                             raise Unify "unify_with_overloaded_tyvar: tyvars overloaded with distinct tynames"
                           else ()
-		  val tvd = {equality = equality, id = id, base = base, rank = rank,
+		  val tvd = {equality = equality, id = id, rank = rank,
 			     overloaded = SOME overloadSet, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
@@ -2140,6 +2137,92 @@ structure StatObject: STATOBJECT =
       end
 
       local
+        structure H = Pickle.Hash
+        type hm = word IntFinMap.map
+        fun type_hash0 (hm:hm) (ty:Type) (acc:H.acc) : H.acc =
+            case #TypeDesc(findType ty) of
+                TYVAR (ref (NO_TY_LINK tvd)) =>
+                H.comb (fn acc => case IntFinMap.lookup hm (#id tvd) of
+                                      SOME w => H.word w acc
+                                    | NONE => die "type_hash: lookup") acc
+              | TYVAR _ => die "type_hash.TYVAR link: impossible"
+              | ARROW (ty1,ty2) => H.comb (type_hash0 hm ty2) (H.comb (type_hash0 hm ty1) (H.comb (H.word 0w1377) acc))
+              | RECTYPE rt =>
+                let fun loop rt acc =
+                        case findRecType rt of
+                            NILrec => acc
+                          | ROWrec (l,ty,rt) => H.comb (loop rt) (H.comb (H.string (Lab.pr_Lab l)) (H.comb (type_hash0 hm ty) acc))
+                          | VARrec _ => die "type_hash:VARrec"
+                in loop rt (H.word 0w4513 acc)
+                end
+              | CONSTYPE (tys,tn) =>
+                let fun loop nil acc = acc
+                      | loop (ty::tys) acc = H.comb (loop tys) (H.comb (type_hash0 hm ty) acc)
+                in loop tys (H.int (#1(TyName.id tn)) acc)
+                end
+      in
+        fun type_hash (ty:Type) (acc:H.acc) : H.acc =
+            type_hash0 IntFinMap.empty ty acc
+
+        fun typesch_hash ((tyvars,ty): TyVar list * Type) (acc:H.acc) : H.acc =
+            let val l =
+                    mapi (fn (tyvar as ref (NO_TY_LINK tvd), i) =>
+                             (#id tvd, Word.fromInt i)
+                           | _ => die "typesch_hash"
+                         ) tyvars
+                val hm = IntFinMap.fromList l
+            in type_hash0 hm ty acc
+            end
+      end
+
+      local (* all type schemes are closed, which leads to a simple implementation *)
+        structure H = Pickle.Hash
+        type im = int IntFinMap.map
+        fun type_eq0 (im:im,ty1:Type,ty2:Type) : bool =
+            case (#TypeDesc(findType ty1), #TypeDesc(findType ty2)) of
+                (TYVAR (ref (NO_TY_LINK tvd1)), TYVAR (ref (NO_TY_LINK tvd2)))  =>
+                (case IntFinMap.lookup im (#id tvd1) of
+                     SOME i => i = #id tvd2 andalso #equality tvd1 = #equality tvd2
+                   | NONE => false)
+              | (ARROW (ty1,ty2), ARROW (ty1',ty2')) =>
+                type_eq0 (im,ty1,ty1') andalso type_eq0 (im,ty2,ty2')
+              | (RECTYPE rt1, RECTYPE rt2) =>
+                let fun loop (rt1,rt2) =
+                        case (findRecType rt1, findRecType rt2) of
+                            (NILrec, NILrec) => true
+                          | (ROWrec (l1,ty1,rt1), ROWrec (l2,ty2,rt2)) =>
+                            l1 = l2 andalso type_eq0 (im,ty1,ty2) andalso loop (rt1,rt2)
+                          | _ => false
+                in loop (rt1,rt2)
+                end
+              | (CONSTYPE (tys1,tn1), CONSTYPE (tys2,tn2)) =>
+                let fun loop (nil,nil) = true
+                      | loop (ty1::tys1, ty2::tys2) = type_eq0 (im,ty1,ty2) andalso loop (tys1,tys2)
+                      | loop _ = false
+                in TyName.eq(tn1,tn2) andalso loop (tys1,tys2)
+                end
+              | _ => false
+      in
+        fun type_eq (ty1:Type,ty2:Type) : bool =
+            type_eq0 (IntFinMap.empty,ty1,ty2)
+
+        fun map2 f (nil,nil) = nil
+          | map2 f (x::xs, y::ys) = f(x,y)::map2 f (xs,ys)
+          | map2 f _ = nil
+
+        fun typesch_eq ((tvs1,ty1):TyVar list * Type, (tvs2,ty2):TyVar list * Type) : bool =
+            length tvs1 = length tvs2
+            andalso
+            let val l = map2 (fn (ref (NO_TY_LINK tvd1), ref (NO_TY_LINK tvd2)) =>
+                                 (#id tvd1, #id tvd2)
+                               | _ => die "typesch_hash"
+                             ) (tvs1,tvs2)
+                val im = IntFinMap.fromList l
+            in type_eq0 (im,ty1,ty2)
+            end
+      end
+
+      local
         type tyMap = Type vector
 
         fun tdToType td : Type =
@@ -2197,8 +2280,20 @@ structure StatObject: STATOBJECT =
             end
       end
 
-      val pu_Type = Pickle.noshare(Pickle.convert0 (pty_to_type, type_to_pty) pu_pty)
-      val pu_TypeScheme = Pickle.noshare(Pickle.convert0 (ptysch_to_typesch, typesch_to_ptysch) pu_ptysch)
+      local
+        structure H = Pickle.Hash
+        infix |>
+        fun x |> f = f x
+      in
+        val pu_Type =
+            Pickle.noshare (Pickle.convert0 (pty_to_type, type_to_pty) pu_pty)
+            |> Pickle.newHashEq (fn ty => H.hash(type_hash ty H.init)) type_eq
+
+        val pu_TypeScheme =
+            Pickle.noshare(Pickle.convert0 (ptysch_to_typesch, typesch_to_ptysch) pu_ptysch)
+            |> Pickle.newHashEq (fn tysch => H.hash(typesch_hash tysch H.init)) typesch_eq
+      end
+
       val pu_TypeFcn =
           let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
               fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
