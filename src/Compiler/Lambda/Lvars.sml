@@ -43,6 +43,7 @@ structure Lvars: LVARS =
 
     fun pr_lvar' ({str,name,...} : lvar) : string =
 	let val (i,s) = Name.key name
+            val s = if Name.baseGet() = s then "" else s
 	    val str = if str = "" then "v:" else str ^ ":"
 	in str ^ Int.toString i ^ ":" ^ s
 	end

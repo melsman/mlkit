@@ -457,9 +457,7 @@ structure LambdaExp: LAMBDA_EXP =
 	 | _ => false
 
    fun unsymb (s:string) : string =
-     let fun do_unsymb nil = nil
-	   | do_unsymb (c::cs) = if is_symb c then do_unsymb cs
-				 else c :: do_unsymb cs
+     let val do_unsymb = List.filter (not o is_symb)
      in
        if String.size s < 1 then s
        else if is_symb (CharVector.sub(s,0)) then implode(#"v" :: do_unsymb (explode s))
@@ -497,9 +495,14 @@ structure LambdaExp: LAMBDA_EXP =
 	    end
       | DECONprim{con,instances,lv_opt} =>
 	      if !barify_p then
-		  (case lv_opt of
-		       SOME lvar => PP.LEAF (pr_lvar lvar)
-		     | NONE => PP.LEAF "TODO")
+		case lv_opt of
+		    SOME lvar => PP.LEAF (pr_lvar lvar)
+		  | NONE => PP.NODE{start="fn y => case ",
+                                    childsep=PP.RIGHT " of ",
+                                    children=[PP.LEAF "y",
+                                              PP.LEAF (pr_con con ^ " x => x")],
+                                    finish="",
+                                    indent=1}
 	      else
 	      if !Flags.print_types then
 		  PP.NODE{start= "decon(" ^ pr_con con,finish=")",
@@ -528,6 +531,7 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__abs_real",...} => PP.LEAF("abs" )
       | CCALLprim{name="floorFloat",...} => PP.LEAF("floor" )
       | CCALLprim{name="realInt",...} => PP.LEAF("real" )
+      | CCALLprim{name="__get_ctx",...} => PP.LEAF("()" )
       | DEREFprim {instance} =>
           if !Flags.print_types then
 	     PP.NODE{start="!(",finish=")",indent=2,
@@ -988,7 +992,12 @@ structure LambdaExp: LAMBDA_EXP =
 	      if !barify_p then
 		  case lv_opt of
 		      SOME lvar => PP.LEAF (pr_lvar lvar)
-		    | NONE => PP.LEAF "TODO"
+		    | NONE => PP.NODE{start="case ",
+                                      childsep=PP.RIGHT " of ",
+                                      children=[layoutLambdaExp(lamb,0),
+                                                PP.LEAF (pr_con con ^ " x => x")],
+                                      finish="",
+                                      indent=1}
 	      else
 	      if !Flags.print_types then
 		  PP.NODE{start= "decon(" ^ pr_con con,finish=")",
