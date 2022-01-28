@@ -98,7 +98,7 @@ struct
            (*print "]\n";*)
            (B_keep, delta_letregion)
         end
-    | retract(B, t,_,_,_,_) = (B, delta_emp)
+    | retract (B, t,_,_,_,_) = (B, delta_emp)
 
 
 
@@ -112,8 +112,8 @@ struct
     fun sayCone B = PrettyPrint.outputTree(device,Effect.layoutCone B,!Flags.colwidth);
     fun sayLn s = (TextIO.output(TextIO.stdOut, s ^ "\n") (* ;
                    device(s ^ "\n") *))
-    fun logtree(t:PrettyPrint.StringTree) = PrettyPrint.outputTree(device, t, !Flags.colwidth)
-    fun log_sigma(sigma_5hat, f) =
+    fun logtree (t:PrettyPrint.StringTree) = PrettyPrint.outputTree(device, t, !Flags.colwidth)
+    fun log_sigma (sigma_5hat, f) =
       (case RType.bv sigma_5hat of
          ([], _, _) =>
            (sayLn ("***" ^ Lvar.pr_lvar f ^ " is:");
@@ -160,7 +160,7 @@ struct
      *)
 
     val gc_arrow_effect_update = ref false
-    fun gc_compute_delta(rse,free,(ty0,rho0)) =
+    fun gc_compute_delta (rse,free,(ty0,rho0)) =
       if dangling_pointers() then delta_emp
       else
 	let

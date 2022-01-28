@@ -853,7 +853,7 @@ struct
         val gets = map mkGet toplevel_rhos
 	val puts_and_gets = puts@gets
     in app (fn to => edge(toplevel_arreff,to)) puts_and_gets
-	; puts_and_gets
+     ; puts_and_gets
     end
 
   (* Optimization: For regions of type word we reuse the top-level
@@ -1084,7 +1084,7 @@ tracing *)
 
   structure Increments = PlaceOrEffectMap
 
-  val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
+  val globalIncs : delta_phi Increments.map ref = ref Increments.empty
 
   val profGlobalIncs : unit -> unit =
    fn () =>
@@ -1113,13 +1113,13 @@ tracing *)
 
   fun computeIncrement delta =
     let
-        fun search' (b,[]) = b
-          | search' (b,x::xs) = search'(search(x, b), xs)
+        fun search' ([],acc) = acc
+          | search' (x::xs,acc) = search'(xs,search(x,acc))
 
-        and searchDelta (Lf effects, acc) = search'(acc,effects)
-          | searchDelta (Br(d1,d2), acc) = searchDelta(d1,searchDelta(d2, acc))
+        and searchDelta (Lf effects, acc) = search'(effects,acc)
+          | searchDelta (Br(d1,d2), acc) = searchDelta(d1,searchDelta(d2,acc))
 
-        and search (n: effect, ns : effect list) : effect list =
+        and search (n:effect, ns:effect list) : effect list =
           let
             val r = G.find_visited n
           in
@@ -1129,7 +1129,7 @@ tracing *)
                   in case i of
                             UNION _ =>
                                   (* do not include n itself, but search children *)
-                                  (search'(ns,(G.out_of_node n)))
+                                  search'(G.out_of_node n, ns)
                            | RHO _ => (* do not include it; a PUT or GET will be
                                          included, when necessary *)
                                   ns
@@ -1137,11 +1137,11 @@ tracing *)
                            | GET  =>  n::ns
 			   | WORDEFFECT => ns
                            | EPS _  =>
-                             search'(
-                                    (case Increments.lookup (!globalIncs) n of
-                                       SOME delta' => searchDelta(delta', n::ns)
-                                     | NONE => n::ns),
-                                    (G.out_of_node n))
+                             search'(G.out_of_node n,
+                                     case Increments.lookup (!globalIncs) n of
+                                         SOME delta' => searchDelta(delta', n::ns)
+                                       | NONE => n::ns
+                                    )
 
                   end
                  )
@@ -1162,9 +1162,9 @@ tracing *)
      Lower use  a depth-first traversal  of effect.
   *)
 
-  fun lower (newlevel: int) : effect -> cone -> cone =
-      let fun low' (b,[]) = b
-            | low' (b,x::xs) = (low'(low(x, b), xs))
+  fun lower (newlevel:int) : effect -> cone -> cone =
+      let fun low' ([],b) = b
+            | low' (x::xs,b) = low'(xs,low(x, b))
           and low (effect, cone:cone) : cone =
               case get_level_and_key effect of
                   SOME (l as ref n, key) =>
@@ -1186,10 +1186,10 @@ tracing *)
 		        val _  = l:= newlevel
 		        val cone'' = add(effect, newlevel, !key,cone')
                                      (* put node back in cone at lower level *)
-                    in low' (cone'',G.out_of_node effect)
+                    in low' (G.out_of_node effect, cone'')
                     end
                 | NONE => (* not EPS or RHO, no level; just lower children *)
-                  low'(cone,G.out_of_node effect)
+                  low'(G.out_of_node effect,cone)
    in fn effect => fn cone => low(effect,cone)
    end
 
@@ -1272,9 +1272,8 @@ tracing *)
       val largest_toplevel_effect_key = 9
       fun aux_combine (op1,op2) =
 	  case (op1,op2) of
-	      (NONE, NONE) => op1
-	    | (SOME _, NONE) => op1
-	    | (NONE, SOME _) => op2
+	      (_, NONE) => op1
+	    | (NONE, _) => op2
 	    | (SOME n1, SOME n2) =>
 		  (* n1 and n2 are supposed to be either both PUT nodes
 		   or both GET nodes *)
@@ -1419,7 +1418,7 @@ tracing *)
   *)
 
   fun instNodes l cone = #1(instNodesClever l cone)
-  and instNodesClever(l : (effect * effect) list) cone : cone * (effect * delta_phi)list=
+  and instNodesClever (l : (effect * effect) list) cone : cone * (effect * delta_phi)list=
     let
       (* bound_to_free_no_transparent nodes: map each non-transparent n
          to itself, if it is not
@@ -1431,13 +1430,13 @@ tracing *)
 
       (* assumption: no node in "nodes" need be subjected to "find" *)
 
-      fun bound_to_free node=
-          case G.find_info(node) of
+      fun bound_to_free node =
+          case G.find_info node of
               PUT =>
               (case G.out_of_node node of
-                   (rho_origin::_) =>
+                   rho_origin :: _ =>
                    (case !(get_instance rho_origin) of
-                        (SOME node') => (* generic *) SOME(mkPut node')
+                        SOME node' => (* generic *) SOME(mkPut node')
                       | NONE => (* non-generic *)
                         SOME node
                    )
@@ -1445,7 +1444,7 @@ tracing *)
               )
             | GET =>
               (case G.out_of_node node of
-                   (rho_origin::_) =>
+                   rho_origin :: _ =>
                    (case !(get_instance rho_origin) of
                         SOME node' => (* generic *) SOME(mkGet node')
                       | NONE => (* non-generic *) SOME node
@@ -1456,7 +1455,7 @@ tracing *)
 	    | WORDEFFECT => SOME node           (*do not return NONE as this would make G.multi_graft
 					         *trace the outedges of the node, which include
 					         *the region variable r2 (global word region). *)
-            | EPS{instance as ref i,  ...} =>
+            | EPS {instance as ref i,  ...} =>
               (case i of
                    g as SOME n' => (* generic *) g
                  | NONE => (* non-generic*) SOME node
@@ -1473,7 +1472,7 @@ tracing *)
 	  G.multi_graft bound_to_free l
     in
       (foldl (fn (a,b) => lower_new_edges a b) cone targets_and_new_children,
-       map(fn (target, its_new_children) => (target, Lf(its_new_children)))targets_and_new_children)
+       map (fn (target, children) => (target, Lf children)) targets_and_new_children)
     end
 
   (*************************************************************************************
@@ -1490,7 +1489,7 @@ tracing *)
 
   fun say s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s))
 
-  fun observeDelta(l: int, source: delta_phi, destination: effect): effect list * delta_phi =
+  fun observeDelta (l: int, source: delta_phi, destination: effect): effect list * delta_phi =
     let
       (*val _ = Profile.profileOn()*)
 (*
@@ -1506,7 +1505,7 @@ tracing *)
          with one child, a RHO node. The return value is true if the RHO node
          has level <= l and false otherwise *)
 
-      val r_acc : effect list ref   = ref []  (* for accumulating nodes of level > l *)
+      val r_acc : effect list ref = ref []  (* for accumulating nodes of level > l *)
 
       fun include_put_or_get node : bool =
         case G.out_of_node node of
@@ -1516,72 +1515,53 @@ tracing *)
         | _ => die "include_rho: not precisely one child of PUT or GET node"
 
       (* collect: see description below *)
-
-
-      fun collect(l:int, source: delta_phi)=
+      fun collect (l:int, source: delta_phi) =
       let
-        fun sawNode() = ()             (*   *)
-        fun sawEdge() = ()             (*   *)
-        fun includeUNIONandStop() = () (*    *)
-        fun dropUnionAndContinue() = ()  (* *)
-        fun sawPutOrGet() = ()           (*  *)
-        fun sawEpsDidStop()= ()          (*   *)
-        fun sawEpsDidContinue()=()       (*   *)
-        fun sawRho() = ()                (*    0 *)
+        fun searchDelta (Lf effects, acc:effect list) : effect list =
+            search'(effects,acc)
+          | searchDelta (Br(d1,d2), acc) = searchDelta(d2,searchDelta(d1,acc))
 
-        fun searchDelta(Lf effects, ns:effect list): effect list =
-            search'(ns, effects)
-          | searchDelta(Br(d1,d2), ns) =
-              searchDelta(d2, searchDelta(d1, ns))
+        and search' ([],acc) = acc
+          | search' (x::xs,acc) = (search'(xs,search(x,acc)))
 
-        and search' (b,[]) = b
-          | search' (b,x::xs) =
-              (sawEdge();search'(search(x, b), xs))
-
-        and search (n: effect, ns : effect list) : effect list =
-          let
-            val _ = sawNode()
-            val r = G.find_visited n
-          in
-            if !r then ns
-            else (r := true;
-                  let
-                          val i = G.find_info n
-                  in
-                          case i of
-                            UNION _ =>
-                                  (* do not include n itself, but search children *)
-                                  (dropUnionAndContinue();
-                                   search'(ns,(G.out_of_node n)))
-                           | RHO _ => (* do not include it; a PUT or GET will be
-                                         included, when necessary *)
-                                  (sawRho(); ns)
-                           | PUT  => (sawPutOrGet(); if include_put_or_get n then n::ns
-                                                     else (r_acc:= n :: !r_acc; ns))
-                           | GET  => (sawPutOrGet(); if include_put_or_get n then n::ns
-                                                     else (r_acc:= n :: !r_acc; ns))
-			   | WORDEFFECT => ns
-                           | EPS{level as ref l', ...} =>
-                                 if l'<=l then
-                                   (* include it, without examining children *)
-                                   (*(sawEpsDidContinue(); *)
-                                    (*apply G.visit_all (G.out_of_node n);*)
-                                    n::ns
-                                 else
-                                  (* do not include n itself, but search children *)
-                                  (sawEpsDidContinue();
-                                   r_acc:= n :: !r_acc;
-                                   if false (*!algorithm_R*) then
-                                         searchDelta(current_increment n,ns)
-                                   else (* S *)
-                                         search'(ns, G.out_of_node n))
-                  end
-                 )
+        and search (n:effect, ns:effect list) : effect list =
+          let val r = G.find_visited n
+          in if !r then ns
+             else (r := true;
+                   let val i = G.find_info n
+                   in case i of
+                          UNION _ =>
+                          (* do not include n itself, but search children *)
+                          search'(G.out_of_node n,ns)
+                        | RHO _ => (* do not include it; a PUT or GET will be
+                                      included, when necessary *)
+                          ns
+                        | PUT  => (if include_put_or_get n then n::ns
+                                   else (r_acc:= n :: !r_acc; ns))
+                        | GET  => (if include_put_or_get n then n::ns
+                                   else (r_acc:= n :: !r_acc; ns))
+		        | WORDEFFECT => ns
+                        | EPS{level as ref l', ...} =>
+                          if l'<=l then
+                            (* include it, without examining children *)
+                            (*apply G.visit_all (G.out_of_node n);*)
+                            n::ns
+                          else
+                            (* do not include n itself, but search children *)
+                            (r_acc:= n :: !r_acc;
+                             if false (*!algorithm_R*) then
+                               searchDelta(current_increment n,ns)
+                             else (* S *)
+                               search'(G.out_of_node n,ns)
+                            )
+                   end
+                  )
           end
       in
         searchDelta(source,[])
       end
     in
+
      (*
      (1) Visit all nodes reachable from 'destination', leaving all
          visited nodes as marked;
@@ -1593,7 +1573,6 @@ tracing *)
          collected in the reference r.
      (3) Then unmark all visited nodes from 'source' and 'destination'
      (4) append l' to the list of children of destination.
-
       *)
 
       G.visit_all destination;                        (* (1) *)
@@ -1607,7 +1586,7 @@ tracing *)
         PP.outputTree(say, layout_effect_deep destination, !Flags.colwidth);
         (*input(std_in, 1);*)
 *)
-        (!r_acc, Lf(nodes_to_add))
+        (!r_acc, Lf nodes_to_add)
       end
     end
 
@@ -1620,24 +1599,23 @@ tracing *)
   (* findPutAndGets(node) : node list;
      find all the Put and Get nodes reachable from node *)
 
-  fun findPutAndGets(node) =
+  fun findPutAndGets node =
       List.filter is_put_or_get (G.topsort [node])
-
 
   (* sameLists(l1, l2) : bool   returns true if l1 and l2 contain the same elements;
      neither l1 nor l2 contains duplicates
   *)
 
-  fun sameLists(l1,l2) : bool =
+  fun sameLists (l1,l2) : bool =
     let fun visit l1 = app (fn node => G.find_visited node := true) l1
-        fun unvisit([], acc) = acc
-          | unvisit(x::l2',acc) =
+        fun unvisit ([], acc) = acc
+          | unvisit (x::l2',acc) =
              let val r = G.find_visited x
              in if !r then (r:=false; unvisit(l2',acc))
                 else unvisit(l2',false)
              end
-        fun unvisited([], acc) = acc
-          | unvisited(x::xs, acc) =
+        fun unvisited ([], acc) = acc
+          | unvisited (x::xs, acc) =
              let val r = G.find_visited x
              in if !r then (r:=false; unvisited(xs, false))
                 else unvisited(xs, acc)
@@ -1649,15 +1627,13 @@ tracing *)
                                            those that were not unmarked *)
     end
 
-
   (* sameEffect(eps1, eps2) cone  returns true iff the same set of PUT and GET nodes
      are reachable from eps1 and eps2 *)
 
-  fun sameEffect(node1, node2) : bool=
-        sameLists(findPutAndGets node1, findPutAndGets node2)
+  fun sameEffect (node1, node2) : bool=
+      sameLists(findPutAndGets node1, findPutAndGets node2)
 
-
-  fun einfo_scc_combine(einfo1, einfo2) =
+  fun einfo_scc_combine (einfo1, einfo2) =
     case (einfo1,einfo2) of
         (UNION _ , _) => einfo2
       | (_, UNION _) => einfo1
@@ -1675,9 +1651,9 @@ tracing *)
      found and have been collapsed.
   *)
 
-  fun subgraph(l) = G.nodes(G.subgraph(l))
+  fun subgraph l = G.nodes(G.subgraph l)
 
-  fun contract_effects (arreffs: effect list): effect list  =
+  fun contract_effects (arreffs: effect list) : effect list  =
       let val sg = G.subgraph arreffs
 	  val effs = G.nodes(G.quotient layout_einfo einfo_scc_combine sg);
       in effs
@@ -1695,17 +1671,17 @@ tracing *)
   fun get_opt l = foldl (fn (opt,acc) =>
                          case opt of SOME t => t::acc | NONE => acc) [] l
 
-  fun layoutEtas(etas: effect list): StringTree list =
+  fun layoutEtas (etas: effect list): StringTree list =
        get_opt(map (fn eff => if is_rho eff then
-                                     if print_regions()
-                                     then SOME(layout_effect_deep eff)
-                                     else NONE
+                                if print_regions()
+                                then SOME(layout_effect_deep eff)
+                                else NONE
                               else if print_effects()
-                                   then SOME(layout_effect_deep eff)
-                                   else NONE) (etas))
+                              then SOME(layout_effect_deep eff)
+                              else NONE) etas)
 
   val reset_cone = Cone.reset
-  fun reset() = ((*reset_cone emptyCone;*)
+  fun reset () = ((*reset_cone emptyCone;*)
 		 (* resetCount(); *)
                  globalIncs:= Increments.empty)
 
@@ -1744,9 +1720,9 @@ tracing *)
 
   fun unify_with_toplevel_effect effect : unit =
     let
-      fun union_with(toplevel_rho) : unit =
-	if G.eq_nodes(toplevel_rho,effect) then ()
-	else (G.union einfo_combine_rho (toplevel_rho,effect);())
+      fun union_with toplevel_rho : unit =
+	  if G.eq_nodes(toplevel_rho,effect) then ()
+	  else (G.union einfo_combine_rho (toplevel_rho,effect);())
     in (*say_etas[layout_effect effect] (*test*);*)
       if is_arrow_effect effect then
 	if G.eq_nodes(toplevel_arreff,effect) then ()
@@ -1781,7 +1757,7 @@ tracing *)
 	else die "unify_with_toplevel_effect.not rho or eps"
     end
 
-  fun unify_with_toplevel_rhos_eps(cone as (n,c),rhos_epss) : cone =
+  fun unify_with_toplevel_rhos_eps (cone as (n,c),rhos_epss) : cone =
     let
       val nodes_for_unification =
 	rhos_epss @
