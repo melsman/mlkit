@@ -68,6 +68,12 @@ structure Compile: COMPILE =
           item=ref false, neg=false, desc=
           "Print Region Expression with call annotations."}
 
+    val print_region_spreaded_program = Flags.add_bool_entry
+         {long="print_region_spreaded_program", short=SOME "Prsp",
+          menu=["Printing of intermediate forms","print region-spreaded program"],
+          item=ref false, neg=false, desc=
+          "Print region-spreaded program."}
+
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
     (* ---------------------------------------------------------------------- *)
@@ -160,7 +166,7 @@ structure Compile: COMPILE =
            (*Profile.profileOff();
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
-           if !Flags.DEBUG_COMPILER
+           if !Flags.DEBUG_COMPILER orelse print_region_spreaded_program()
              then (display("\nReport: Spread; program",
                            layoutRegionPgm spread_lamb) ;
                    display("\nReport: Spread; entire cone after Spreading",
