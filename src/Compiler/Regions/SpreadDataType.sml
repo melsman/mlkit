@@ -1,12 +1,9 @@
-
 (*
-*
 *   The purpose of SpreadDatatype is to analyse datatype declarations
 *   and find out for each type name what its arity is (not just the
 *   type arity, which is given in the input program) but also the
 *   region and effect arity). Moreover, the module infers a region-polymorphic
 *   type scheme for each value constructor declared in the source program.
-*
 *)
 
 structure SpreadDatatype: SPREAD_DATATYPE =
@@ -16,16 +13,11 @@ struct
   structure RSE = RegionStatEnv
   structure E' = RegionExp
   structure E = LambdaExp
-  structure E = E
-  structure E' = E'
   structure LambdaExp = E
   structure RegionExp = E'
-  structure RegionStatEnv = RSE
-(*  structure Info = Info*)
 
   type rse = RSE.regionStatEnv
 
-  type TyName = TyName.TyName
   type tyname = TyName.TyName
   type tyvar = E.tyvar
    and con = E.con
@@ -60,8 +52,6 @@ struct
    (*                        *)
    (**************************)
 
-
-
   fun merge_runtypes([], l2) = l2
     | merge_runtypes(l1, []) = l1
     | merge_runtypes(l1 as (x::xs), l2 as (y::ys)) =
@@ -77,9 +67,9 @@ struct
   with
     val zero = EA 0
     val one  = EA 1
-    fun eplus(EA 0, EA 0) = EA 0
+    fun eplus (EA 0, EA 0) = EA 0
       | eplus _ = EA 1
-    fun eff_arity_int(EA i) = i
+    fun eff_arity_int (EA i) = i
   end
 
   type arity = int * Effect.runType list * eff_arity
@@ -99,8 +89,8 @@ struct
   *)
 
 
-  fun layout_arity(a,b,c) = PP.LEAF ("(" ^ Int.toString a ^ "," ^ Int.toString(length(b)) ^ ","
-                                     ^ Int.toString c ^ ")")
+  fun layout_arity (a,b,c) = PP.LEAF ("(" ^ Int.toString a ^ "," ^ Int.toString(length(b)) ^ ","
+                                      ^ Int.toString c ^ ")")
 
 
   (* All type names in a mutually recursive datbind have the same
@@ -114,9 +104,9 @@ struct
       (#1 arity, merge_runtypes(#2 acc , #2 arity), eplus(#3 acc, #3 arity)))
     arity0  new_tyenv_association_list
 
-  fun zap_ty_arity(_,l,c) = (0, l, c)
-  fun mk_abstract(a,b,0) = (a,b,zero)
-    | mk_abstract(a,b,1) = (a,b,one)
+  fun zap_ty_arity (_,l,c) = (0, l, c)
+  fun mk_abstract (a,b,0) = (a,b,zero)
+    | mk_abstract (a,b,1) = (a,b,one)
     | mk_abstract _ = Crash.impossible "SpreadDataType.mk_abstract"
 
   fun mk_concrete(a,b,c) = (a,b,eff_arity_int c)
@@ -179,8 +169,8 @@ struct
   (* from within a conbind      *)
   (******************************)
 
-  fun fresh_list(f,0,cone) = ([],cone)
-    | fresh_list(f,n, cone) =
+  fun fresh_list (f,0,cone) = ([],cone)
+    | fresh_list (f,n, cone) =
        let val (new, cone) = f cone
            val (rest, cone) = fresh_list(f,n-1,cone)
        in  (new::rest, cone)
@@ -192,30 +182,30 @@ struct
        | NONE => die ("get_place: no places of type " ^ Effect.show_runType rt)
 
   fun get_eps arreff_resource () =
-    case !arreff_resource of [] => die "get_eps: no more epsilons"
-  | arreff::rest => ((*arreff_resource:= rest; always choose the same "fresh" variable! *)
-                      arreff)
+      case !arreff_resource of
+          [] => die "get_eps: no more epsilons"
+        | arreff::rest => ((*arreff_resource:= rest; always choose the same "fresh" variable! *)
+          arreff)
 
-
-  fun spread_ty_to_mu(tyvar_to_place: tyvar -> place option,
-                      get_with_rt: Effect.runType -> place,
-                      get_eps: unit -> effect,
-                      being_defined: tyname -> bool,
-                      fresh_rhos: place list,
-                      fresh_epss: effect list,
-                      common_place: place,
-                      rse,
-                      global_rse,
-                      ty: E.Type): R.Type * R.effect  =
+  fun spread_ty_to_mu (tyvar_to_place: tyvar -> place option,
+                       get_with_rt: Effect.runType -> place,
+                       get_eps: unit -> effect,
+                       being_defined: tyname -> bool,
+                       fresh_rhos: place list,
+                       fresh_epss: effect list,
+                       common_place: place,
+                       rse,
+                       global_rse,
+                       ty: E.Type): R.Type * R.effect  =
     let
 
-      fun extend(tau': R.Type): R.Type*R.effect =
-        (tau', get_with_rt(R.runtype tau'))
+      fun extend (tau': R.Type): R.Type*R.effect =
+          (tau', get_with_rt(R.runtype tau'))
 
-      fun get_list_with_runtypes(runtypes: R.runType list): R.effect list =
-        map get_with_rt runtypes
+      fun get_list_with_runtypes (runtypes: R.runType list): R.effect list =
+          map get_with_rt runtypes
 
-      fun ty_to_mu(tau: E.Type): R.Type*R.effect=
+      fun ty_to_mu (tau: E.Type): R.Type*R.effect=
         case tau of
           E.TYVARtype alpha =>
              let val place = noSome (tyvar_to_place alpha)
@@ -242,16 +232,15 @@ struct
         | E.RECORDtype(taus) =>
             extend(R.mkRECORD(map ty_to_mu taus))
 
-      and spread_constructed_type(rse, tyname, taus):
-                                           (R.Type*R.effect) option =
+      and spread_constructed_type (rse, tyname, taus) : (R.Type*R.effect) option =
          case RSE.lookupTyName rse tyname of
            SOME arity =>
              let val (number_of_alphas, rho_runtypes, number_of_epsilons) =
                   RSE.un_arity arity
              in
                SOME(extend(R.mkCONSTYPE(tyname, map ty_to_mu taus,
-                                             get_list_with_runtypes rho_runtypes,
-                                             apply_n get_eps number_of_epsilons)))
+                                        get_list_with_runtypes rho_runtypes,
+                                        apply_n get_eps number_of_epsilons)))
              end
          | NONE => NONE
 
@@ -397,7 +386,7 @@ struct
               ((tyname,db') :: tdb_list, cone)
           end (* spread_single_datbind *)
 
-      fun msg(s) = if !Flags.chat then (*mads*) TextIO.output(TextIO.stdOut, s^"\n") else ()
+      fun msg (s) = if !Flags.chat then (*mads*) TextIO.output(TextIO.stdOut, s^"\n") else ()
 
       (*val _ = msg "Computing new datatype bindings..."*)
       val (target_datbind,cone) = foldl (uncurry spread_single_datbind) ([],cone) datbind
