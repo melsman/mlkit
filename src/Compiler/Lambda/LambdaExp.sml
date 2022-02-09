@@ -31,7 +31,7 @@ structure LambdaExp: LAMBDA_EXP =
     in
       fun fresh_tyvar () = incr2 tyvar_no
       fun fresh_eqtyvar () = incr2 eqtyvar_no
-      fun reset() = (tyvar_no := !init_tyvar_no; eqtyvar_no := !init_eqtyvar_no)
+      fun reset () = (tyvar_no := !init_tyvar_no; eqtyvar_no := !init_eqtyvar_no)
     end
 
 
@@ -349,7 +349,7 @@ structure LambdaExp: LAMBDA_EXP =
    in
      fun safeLambdaExps lambs = (app safe lambs; true) handle NotSafe => false
      fun safeLambdaExp lamb = safeLambdaExps [lamb]
-     fun safeLambdaPgm(PGM(_,exp)) = safeLambdaExp exp
+     fun safeLambdaPgm (PGM(_,exp)) = safeLambdaExp exp
    end
 
 (*
@@ -831,7 +831,7 @@ structure LambdaExp: LAMBDA_EXP =
           PP.NODE{start = "", finish= "", indent =0, childsep = PP.RIGHT operator,
                   children = map (fn e => layoutLambdaExp(e,0)) expressions}
 
-    and layoutLambdaExp(lamb,context:int): StringTree =
+    and layoutLambdaExp (lamb,context:int): StringTree =
       case lamb of
           VAR {lvar=lv,instances=taus,regvars} =>
           let val s = pr_lvar lv ^
@@ -1196,14 +1196,14 @@ structure LambdaExp: LAMBDA_EXP =
                     childsep=PP.LEFT " in "}
           end
 
-      and mk_valbind(pat, e) =
+      and mk_valbind (pat, e) =
         let
             val child1 = layPatLet pat   (*NB*)
          in
             PP.NODE{start = "val ",finish="",childsep=PP.RIGHT " = ",
                  indent=4,  children=[child1, layoutLambdaExp(e,0)] }
         end
-      and mk_excon_binding(excon, ty_opt) =
+      and mk_excon_binding (excon, ty_opt) =
             (* exception EXCON    (* exn value or name at RHO *) or
                excpetion EXCON of tau
             *)
@@ -1213,7 +1213,7 @@ structure LambdaExp: LAMBDA_EXP =
 			       finish="", childsep=PP.RIGHT " of ", indent=10,
 			       children=[PP.LEAF(pr_excon excon), layoutType ty]}
         )
-      and  mk_mutual_binding(functions) =
+      and mk_mutual_binding (functions) =
         let fun mk_fix({lvar,regvars,tyvars,Type, bind as (FN{pat, body, ...})})
                      (no, rest_of_mutual_binding) =
               (*
