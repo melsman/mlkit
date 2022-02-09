@@ -42,6 +42,8 @@ struct
   type place = E.effect
   type arroweffect = E.effect
 
+  fun pr_place r = PP.flatten1(E.layout_effect r)
+
   datatype Type =
       TYVAR of tyvar
     | CONSTYPE of tyname * mu list * place list * arroweffect list
@@ -438,7 +440,7 @@ struct
      type. Every bound region or effect variable has in it a field, pix,
      which uniquely identifies its syntactic position in the term.
      Negative pix indicates secondary variable; for region variables,
-     each runtime type correpsonds to a distinct negative number.
+     each runtime type corresponds to a distinct negative number.
   *)
 
 
@@ -456,8 +458,8 @@ struct
       in
           (* subtract the bound rhos *)
           List.app (fn bound_rho => E.get_visited bound_rho := true) rhos;
-          List.filter   (fn free_rho => not(!(E.get_visited free_rho))) frv_tau
-            before List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
+          List.filter (fn free_rho => not(!(E.get_visited free_rho))) frv_tau
+          before List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
   (* ferv_sigma(sigma) computes a list of all region and effect
@@ -467,12 +469,12 @@ struct
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
           val free = List.filter (fn node => E.is_rho node orelse E.is_arrow_effect node) all_nodes
-          val bound  = epss @rhos
+          val bound = epss @ rhos
       in
           (* subtract the bound region and effect variables *)
           List.app (fn b => E.get_visited b := true) bound;
-          List.filter   (fn f => not(!(E.get_visited f))) free
-            before List.app (fn b => E.get_visited b := false) bound
+          List.filter (fn f => not(!(E.get_visited f))) free
+          before List.app (fn b => E.get_visited b := false) bound
       end
 
   fun free_puts (FORALL(alphas,rhos,epss,tau)) =
@@ -489,11 +491,82 @@ struct
       end
 
   fun insert_alphas (alphas, FORALL(_, rhos,epss,tau)) =
-      FORALL(alphas,rhos,epss,tau)
+      let (* A type variable in alphas may be associated with different regions
+             when occuring as a mu in tau. However, the same region cannot be
+             associated with different type variables. Here is a property that
+             should hold:
+
+             For each mu=(tv,r) in tau,
+               a) rt(r) = RT_BOT
+               b) tv in alphas implies r in rhos.
+               c) for any other mu'=(tv',r) in tau, tv=tv'
+
+             Moreover, for any n-array type name tn, the type name has associated
+             with it m >= n auxiliary region variables and we assume that the region
+             variable associated with the i'th type variable is given by the function
+
+               RV : TyName x N => N
+
+             Thus, for a region-annotated datatype declaration
+
+               datatype ([tv1..tv..tvn],[r0..r..rm],[..]) tn =
+                  C1 of ty1 | ... | Ck of tyk
+
+             it holds that for each mu=(tv,r) in ty1...tyk, we have
+
+               1) tv = tvi for some i in {1,...,n}  (!)
+               2) mu=(tvi,rj) and j = RV(tn,i)
+
+             (!) Notice that the type schemes for the datatype constructors are
+             guaranteed to be closed (enforced by the SML definition).
+           *)
+
+        fun is_abs_tv tv = List.exists (fn tv' => tv=tv') alphas
+        type tvenv = tyvar option IntFinMap.map
+        fun chk (E:tvenv) (ty,rhoOpt) : tvenv =
+            case ty of
+                TYVAR tv =>
+                if is_abs_tv tv then
+                  (case rhoOpt of
+                       NONE => E (* either toplevel or argument to CONSTYPE *)
+                     | SOME rho =>
+                       let val key = E.key_of_eps_or_rho rho
+                       in case IntFinMap.lookup E key of
+                              NONE => (* rho not in rhos *)
+                              die ("quantified type variable " ^ L.pr_tyvar tv ^
+                                   " associated with a non-quantified region " ^
+                                   pr_place rho)
+                            | SOME NONE => (* rho in rhos *)
+                              (case E.get_place_ty rho of
+                                   SOME E.BOT_RT => IntFinMap.add(key,SOME tv,E)
+                                 | SOME rt => die ("quantified type variable " ^ L.pr_tyvar tv ^
+                                                   " associated with region " ^ pr_place rho ^
+                                                   " of type " ^ E.show_runType rt)
+                                 | NONE => die ("quantified type variable " ^ L.pr_tyvar tv ^
+                                                " associated with node " ^ pr_place rho ^
+                                                ", which has no runtype")
+                              )
+                            | SOME (SOME tv') =>
+                              if tv'<>tv then
+                                die ("quantified type variable " ^ L.pr_tyvar tv ^
+                                     " is associated with the region " ^ pr_place rho ^
+                                     ", which is also associated with the type variable " ^
+                                     L.pr_tyvar tv')
+                              else E
+                       end)
+                else E
+              | RECORD mus => chks E mus (* memo: check rhoOpt *)
+              | CONSTYPE(tn,mus,rhos,effs) => chks E mus (* memo: check rhoOpt *)
+              | FUN(mus1,_,mus2) => chks (chks E mus1) mus2 (* memo: check rhoOpt *)
+        and chks E nil = E
+          | chks E ((ty,rho)::mus) = chks (chk E (ty,SOME rho)) mus
+        val E0 = IntFinMap.fromList (map (fn r => (E.key_of_eps_or_rho r,NONE)) rhos)
+      in chk E0 (tau,NONE)
+       ; FORALL(alphas,rhos,epss,tau)
+      end
 
   fun drop_alphas (FORALL(_, rhos,epss,tau)) =
       FORALL([],rhos,epss,tau)
-
 
   fun mk_lay_sigma_aux (omit_region_info: bool):
     tyvar list * StringTree list * arroweffect list * Type->  PP.StringTree =
@@ -567,7 +640,7 @@ struct
             else
                 ((case E.lub_runType(old,new) of
                       E.WORD_RT =>
-                          (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; mu)
+                          (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; mu)   (* the toplevel region is already in the cone, so the resulting cone is unaltered (the entry for rho could be gc'ed) *)
                     | rt => (E.setRunType rho rt; mu))
               handle X =>
                 let val (_,lay_mu) = mk_layout false;
@@ -575,7 +648,9 @@ struct
                 in TextIO.output(!Flags.log, "mu = ")
                  ; dump mu
                  ; TextIO.output(!Flags.log, "\n")
-                 ; die "maybe_increase_runtime"
+                 ; TextIO.output(!Flags.log, "new: " ^ E.show_runType new ^ "\n")
+                 ; TextIO.output(!Flags.log, "old: " ^ E.show_runType old ^ "\n")
+                 ; die "maybe_increase_runtype"
                 end)
         else mu
     end
@@ -724,6 +799,10 @@ struct
     | update_runtypes (rho_a::actuals,rho_f::formals) =
       let val rt_a = runtype_place rho_a
           val rt_lub = E.lub_runType(rt_a,runtype_place rho_f)
+                       handle X => ( print ("RType.update_runtypes: Failed to find lub_runtype for "
+                                            ^ pr_place rho_a ^ " and " ^ pr_place rho_f ^ "\n")
+                                   ; raise X
+                                   )
           val _ = if rt_lub = rt_a then ()
                   else E.setRunType rho_a rt_lub
       in update_runtypes(actuals,formals)
@@ -997,7 +1076,7 @@ struct
      sigma' is a version of sigma which uses fresh bound region and effect variables
   *)
 
-  fun alpha_rename(sigma, B: E.cone): sigma =
+  fun alpha_rename (sigma, B: E.cone): sigma =
     let val FORALL(alphas,rhos,epss,tau) = sigma
         val c = E.push B
         val (rhos', c) = E.renameRhos(rhos,c)
