@@ -1509,7 +1509,7 @@ tracing *)
 
       fun include_put_or_get node : bool =
         case G.out_of_node node of
-          [rho] => (case G.find_info(rho) of
+          [rho] => (case G.find_info rho of
                       RHO{level as ref l', ...} => l'<=l
                     | _ => die "include_rho: not RHO node")
         | _ => die "include_rho: not precisely one child of PUT or GET node"
@@ -1566,7 +1566,7 @@ tracing *)
      (1) Visit all nodes reachable from 'destination', leaving all
          visited nodes as marked;
      (2) Then traverse nodes reachable from source, collecting those
-         nodes that are not reachable from  'destination' (i.e., are not marked)
+         nodes that are not reachable from 'destination' (i.e., are not marked)
          and have level at most 'l'. (This search uses the same mark
          in nodes as (1).)  The result is a list l' of nodes of low level.
          As a side-effect, the atomic effects of level > l (i.e., l+1) are
