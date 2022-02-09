@@ -73,6 +73,8 @@ sig
   val frv_mu      : mu -> place list
   val frv_sigma   : sigma -> place list   (* free region variables of sigma; word regions not included. *)
   val ferv_sigma  : sigma -> effect list  (* free effect and region variables of sigma; word regions not included. *)
+  val ftv_sigma   : sigma -> tyvar list
+
   val inst        : sigma * il -> cone -> Type * cone
 
   type delta_phi

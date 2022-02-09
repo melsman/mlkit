@@ -490,6 +490,19 @@ struct
           before List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
+  fun ftv_sigma (FORALL(alphas,_,_,tau)) : tyvar list =
+      let fun mem tv nil = false
+            | mem tv (tv'::tvs) = tv = tv' orelse mem tv tvs
+          fun ftv (t,(seen,acc)) =
+              case t of
+                  TYVAR tv => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
+                | CONSTYPE(_,mus,_,_) => ftv_mus (mus,(seen,acc))
+                | RECORD mus => ftv_mus (mus,(seen,acc))
+                | FUN(mus1,_,mus2) => ftv_mus (mus2,ftv_mus (mus1,(seen,acc)))
+          and ftv_mus (mus,p) = List.foldr (fn ((ty,_),p) => ftv(ty,p)) p mus
+      in #2 (ftv(tau,(alphas,nil)))
+      end
+
   fun insert_alphas (alphas, FORALL(_, rhos,epss,tau)) =
       let (* A type variable in alphas may be associated with different regions
              when occuring as a mu in tau. However, the same region cannot be
@@ -519,6 +532,12 @@ struct
 
              (!) Notice that the type schemes for the datatype constructors are
              guaranteed to be closed (enforced by the SML definition).
+
+             When this check is enabled, compiling SMLtoJS fails with
+             a message "Impossible: RType.quantified type variable
+             'a56 associated with a non-quantified region r2546",
+             which happens during spreading of pickler code for
+             IntFinMapPT.
            *)
 
         fun is_abs_tv tv = List.exists (fn tv' => tv=tv') alphas
@@ -560,9 +579,11 @@ struct
               | FUN(mus1,_,mus2) => chks (chks E mus1) mus2 (* memo: check rhoOpt *)
         and chks E nil = E
           | chks E ((ty,rho)::mus) = chks (chk E (ty,SOME rho)) mus
+(*
         val E0 = IntFinMap.fromList (map (fn r => (E.key_of_eps_or_rho r,NONE)) rhos)
-      in chk E0 (tau,NONE)
-       ; FORALL(alphas,rhos,epss,tau)
+        val _ = chk E0 (tau,NONE)
+*)
+      in FORALL(alphas,rhos,epss,tau)
       end
 
   fun drop_alphas (FORALL(_, rhos,epss,tau)) =
