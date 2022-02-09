@@ -318,6 +318,9 @@ struct
                val rse' = RSE.declareLvar(lvar,(false,false,[],insert_alphas(alphas, sigma'),
                                                 rho1', NONE, NONE),
                                           rse)
+               val () = if List.null alphas then ()
+                        else print ("Generalised let(" ^ Int.toString (length alphas) ^ "): "
+                                    ^ Lvars.pr_lvar lvar ^ "\n")
                val (B, d2) = R(B,rse', scope)
             in
                (B, d1 && d2)
