@@ -851,10 +851,10 @@ structure LambdaExp: LAMBDA_EXP =
           else PP.LEAF(IntInf.toString i)
       | WORD (w,tau) =>
 	    if !Flags.print_types then
-	      PP.NODE{start="0xw" ^ IntInf.fmt StringCvt.HEX w ^ ":", finish=" ",indent=0,
+	      PP.NODE{start="0wx" ^ IntInf.fmt StringCvt.HEX w ^ ":", finish=" ",indent=0,
 		      children=[layoutType tau],
 		      childsep=PP.NOSEP}
-	    else PP.LEAF("0xw" ^ IntInf.fmt StringCvt.HEX w)
+	    else PP.LEAF("0wx" ^ IntInf.fmt StringCvt.HEX w)
 
       | STRING (s,NONE) => PP.LEAF(quote s)
       | STRING (s,SOME rv) => PP.LEAF(quote s ^ "`" ^ RegVar.pr rv)
