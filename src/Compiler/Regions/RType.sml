@@ -490,18 +490,29 @@ struct
           before List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
-  fun ftv_sigma (FORALL(alphas,_,_,tau)) : tyvar list =
-      let fun mem tv nil = false
-            | mem tv (tv'::tvs) = tv = tv' orelse mem tv tvs
-          fun ftv (t,(seen,acc)) =
-              case t of
-                  TYVAR tv => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
-                | CONSTYPE(_,mus,_,_) => ftv_mus (mus,(seen,acc))
-                | RECORD mus => ftv_mus (mus,(seen,acc))
-                | FUN(mus1,_,mus2) => ftv_mus (mus2,ftv_mus (mus1,(seen,acc)))
-          and ftv_mus (mus,p) = List.foldr (fn ((ty,_),p) => ftv(ty,p)) p mus
-      in #2 (ftv(tau,(alphas,nil)))
-      end
+  local
+    fun mem tv nil = false
+      | mem tv (tv'::tvs) = tv = tv' orelse mem tv tvs
+  in
+    fun ftv_sigma (FORALL(alphas,_,_,tau)) : tyvar list =
+        let
+            fun ftv (t,(seen,acc)) =
+                case t of
+                    TYVAR tv => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
+                  | CONSTYPE(_,mus,_,_) => ftv_mus (mus,(seen,acc))
+                  | RECORD mus => ftv_mus (mus,(seen,acc))
+                  | FUN(mus1,_,mus2) => ftv_mus (mus2,ftv_mus (mus1,(seen,acc)))
+            and ftv_mus (mus,p) = List.foldr (fn ((ty,_),p) => ftv(ty,p)) p mus
+        in #2 (ftv(tau,(alphas,nil)))
+        end
+
+    fun ftv_ty ty = ftv_sigma (type_to_scheme ty)
+
+    fun ftv_minus (nil, tvs) = nil
+      | ftv_minus (x::xs, tvs) =
+        if mem x tvs then ftv_minus (xs, tvs)
+        else x :: ftv_minus (xs, tvs)
+  end
 
   fun insert_alphas (alphas, FORALL(_, rhos,epss,tau)) =
       let (* A type variable in alphas may be associated with different regions

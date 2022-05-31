@@ -176,7 +176,35 @@ struct
 	  val (lvs,exs) = case free
 			    of SOME p => p
 			     | NONE => die "gc_compute_delta.free variables not annotated"
-	  val effects = foldl effects_ex (foldl effects_lv nil lvs) exs
+
+          fun warn s =
+              print ("**WARNING: " ^ s ^ "\n")
+
+          val () =
+              List.app (fn lv => case RSE.lookupLvar rse lv of
+                                     NONE => die "gc_compute_delta.lv"
+                                   | SOME(_,_,_,sigma,_,_,_) =>
+                                     case RType.ftv_sigma sigma of
+                                         nil => ()
+                                       | tvs =>
+                                         case RType.ftv_minus(tvs,RType.ftv_ty ty0) of
+                                             nil => ()
+                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of lvar " ^ Lvar.pr_lvar lv)
+                       ) lvs
+
+          val () =
+              List.app (fn ex => case RSE.lookupExcon rse ex of
+                                     NONE => die "gc_compute_delta.ex"
+                                   | SOME(ty,_) =>
+                                     case RType.ftv_ty ty of
+                                         nil => ()
+                                       | tvs =>
+                                         case RType.ftv_minus(tvs,RType.ftv_ty ty0) of
+                                             nil => ()
+                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of excon " ^ Excon.pr_excon ex)
+                       ) exs
+
+          val effects = foldl effects_ex (foldl effects_lv nil lvs) exs
 	  val effects = Effect.remove_duplicates effects
 
 	  val effects_not =
