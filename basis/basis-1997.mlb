@@ -2,15 +2,15 @@
 
 local
     Initial.sml
-    basis General = 
-      bas 
-        GENERAL.sml General.sml OPTION.sml Option.sml 
+    basis General =
+      bas
+        GENERAL.sig General.sml OPTION.sig Option.sml
       end
 
     basis List =
       let open General
       in bas
-            LIST.sml List.sml LIST_PAIR.sml ListPair.sml
+            LIST.sig List.sml LIST_PAIR.sml ListPair.sml
          end
       end
 
@@ -18,107 +18,114 @@ local
         let open General List
             basis Poly =
               let wordtables.sml
-              in bas 
-                    VECTOR.sml Vector.sml ARRAY.sml Array.sml
+              in bas
+                    VECTOR.sig Vector.sml ARRAY.sig Array.sml
                  end
               end
         in bas
-              open Poly   
-              MONO_VECTOR-1997.sml MONO_ARRAY-1997.sml ByteTable-1997.sml 
+              open Poly
+              MONO_VECTOR-1997.sml MONO_ARRAY-1997.sml ByteTable-1997.sml
            end
         end
 
-    basis String = 
+    basis String =
        let open General Array
        in bas
-             STRING_CVT.sml StringCvt.sml 
+             STRING_CVT.sml StringCvt.sml
              local open List
-                   STR_BASE.sml StrBase.sml 
+                   STR_BASE.sml StrBase.sml
              in
-                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml 
+                Char.sml String.sml CHAR.sig STRING.sig SUBSTRING.sig Substring.sml
              end
           end
        end
 
-    basis Bool = 
-       let open General String 
-       in bas BOOL.sml Bool.sml end
+    basis Bool =
+       let open General String
+       in bas BOOL.sig Bool.sml end
+       end
+
+    basis IntInfRep =
+       let open General List
+       in bas INT_INF_REP.sml IntInfRep.sml end
        end
 
     basis Word =
-       let open General String
-           basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
-           basis PW = let open Array W 
-                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
+       let open General String IntInfRep
+           basis W = bas WORD.sig Word.sml Word64.sml Word63.sml Word32.sml Word31.sml Word8.sml end
+           basis PW = let open Array W
+                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end
                       end
        in bas open W PW end
        end
 
-    basis Byte = 
+    basis Byte =
        let open General String Array Word
-       in bas BYTE.sml Byte.sml end
+       in bas BYTE-1997.sig Byte-1997.sml end
        end
- 
+
     basis Int =
-       let open General String
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
+       let open General String IntInfRep
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml end
        end
 
     basis Real =
        let open General String Int
-       in bas MATH.sml Math.sml REAL.sml Real.sml end
+       in bas MATH.sig Math.sml REAL.sig Real.sml end
        end
 
     basis IntInf =
        let open General List Array String Word Int Real
        in bas INT_INF.sml IntInf.sml end
        end
-(*  
+(*
     basis Polyhash =
        let open General String Array Word
        in bas POLYHASH.sml Polyhash.sml end
        end
 *)
     basis Io =
-       let open General String List 
-       in bas IO.sml TEXT_IO-1997.sml TextIO-1997.sml 
+       let open General String List
+       in bas IO.sml TEXT_IO-1997.sml TextIO-1997.sml
               local open Word Array Byte
-              in BIN_IO.sml BinIO.sml 
+              in BIN_IO.sml BinIO.sml
               end
           end
        end
 
     basis System =
-       let open General String
-       in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
-              basis Random = let open Real in bas RANDOM.sml Random.sml end end
+       let open General String Int
+       in let basis Time = let open Int IntInf Real in bas TIME.sig Time.sml end end
+              basis Random = let open Real in bas RANDOM.sig Random.sml end end
               basis Path = let open List in bas OS_PATH-1997.sml Path-1997.sml end end
-              basis FileSys = let open List Time Random Path in bas OS_FILE_SYS.sml FileSys-1997.sml end end
-              basis Process = bas OS_PROCESS.sml local open List in Process.sml end end
+              basis FileSys = let open List Time Random Path
+                              in bas OS_FILE_SYS.sml FileSys-1997.sml end
+                              end
+              basis Process = bas local open Time in OS_PROCESS.sml end local open List in Process.sml end end
               basis Os = let open FileSys Path Process in bas OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
-              basis Date = let open Int Real Time in bas DATE.sml Date.sml end end
-              basis Timer = let open Int Time in bas TIMER-1997.sml Timer-1997.sml end end
-          in bas open Time Random Path FileSys 
+              basis Date = let open Int Real Time in bas DATE.sig Date.sml end end
+              basis Timer = let open Int Time in bas TIMER-1997.sig Timer-1997.sml end end
+          in bas open Time Random Path FileSys
                       Process Os CommandLine Date Timer
              end
           end
        end
 (*
-    basis Susp =  (* Suspension *) 
-       let open General String 
+    basis Susp =  (* Suspension *)
+       let open General String
        in bas SUSP.sml Susp.sml end
        end
 
-    basis SetsAndMaps = 
-       let open General String 
+    basis SetsAndMaps =
+       let open General String
        in let basis Splay = let SPLAYTREE.sml Splaytree.sml
-                            in bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml 
-                                   local open List in Splayset.sml end 
+                            in bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml
+                                   local open List in Splayset.sml end
                                end
                             end
               basis BinMap = bas BINARYMAP.sml Binarymap.sml INTMAP.sml Intmap.sml end
-              basis BinSet = bas BINARYSET.sml INTSET.sml 
+              basis BinSet = bas BINARYSET.sml INTSET.sml
                                  local open List in Binaryset.sml Intset.sml end
                              end
           in bas open Splay BinMap BinSet end
@@ -126,11 +133,11 @@ local
        end
 
     basis Regexp =  (* Regular expression support *)
-       let open General String 
+       let open General String
        in bas REG_EXP.sml local open Int Array List SetsAndMaps in RegExp.sml end end
        end
-*)    
-    basis Sml90 = 
+*)
+    basis Sml90 =
        let open General List String Real Io
        in bas SML90.sml end
        end
