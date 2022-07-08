@@ -524,8 +524,8 @@ structure AtInf: AT_INF =
                             val (RE,LE,EE) = sme
                             val LE' = foldl  (fn ({lvar,tyvars, rhos_formals, epss, Type, ...}, acc) =>
 					      let val rhos = map (fn (a,_) => a) (!rhos_formals)
-					      in SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,
-							epss,Type),shared_rho),acc)
+					      in SME.declare_lvar_env(lvar,rvars(RType.FORALL(rhos,
+							epss,tyvars,Type),shared_rho),acc)
 					      end)
                                       LE functions
                             val sme' = (RE,LE',EE)

@@ -59,12 +59,12 @@ sig
 
   type sigma and il
   val type_to_scheme : Type -> sigma
-  val bv             : sigma -> tyvar list * place list * effect list
-  val FORALL         : tyvar list * place list * effect list * Type -> sigma
+  val bv             : sigma -> place list * effect list * tyvar list
+  val FORALL         : place list * effect list * tyvar list * Type -> sigma
   val drop_alphas    : sigma -> sigma
   val insert_alphas  : tyvar list * sigma -> sigma
-  val mk_il          : Type list * place list * effect list -> il
-  val un_il          : il -> Type list * place list * effect list
+  val mk_il          : place list * effect list * Type list -> il
+  val un_il          : il -> place list * effect list * Type list
   val ann_sigma      : sigma -> effect list -> effect list   (* ann_sigma(sigma)acc is a list of all the
 							      * places and arrow effects that occur in
 							      * type of sigma, consed onto acc; word regions
@@ -116,9 +116,9 @@ sig
      omit region information *)
   val mk_layout      : bool -> (Type -> StringTree) * (mu -> StringTree)
   val mk_lay_sigma   : bool -> sigma -> StringTree
-  val mk_lay_sigma'  : bool -> (tyvar list * place list * effect list * Type) -> StringTree
+  val mk_lay_sigma'  : bool -> (place list * effect list * tyvar list * Type) -> StringTree
   val mk_lay_sigma'' : ('b -> StringTree option) -> bool ->
-                         (tyvar list * 'b list * effect list * Type) -> StringTree
+                         ('b list * effect list * tyvar list * Type) -> StringTree
 
   (* Picklers *)
   val pu_Type  : Type Pickle.pu

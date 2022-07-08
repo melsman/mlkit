@@ -25,6 +25,7 @@ struct
     type effect = Eff.effect
     type cone = Eff.cone
     type tyvar = Lam.tyvar
+    val pr_tyvar = Lam.pr_tyvar
 
     type Type = R.Type
      and sigma  = R.sigma
@@ -296,7 +297,7 @@ struct
                            layTau tau]}
 old*)
      fun layVarSigma(lvar,alphas,rhos,epss, tau,p) =
-         let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
+         let val sigma_t = R.mk_lay_sigma' omit_region_info (rhos, epss, alphas, tau)
              val start:string = Lvar.pr_lvar lvar ^ " " ^
                                  (if !Flags.print_types then ":" else "")
              val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
@@ -345,7 +346,7 @@ old*)
       end
 
       fun lay_il (lvar_string:string, terminator: string, il) : StringTree =
-          let val (taus,rhos,epss)= R.un_il(il)
+          let val (rhos,epss,taus)= R.un_il(il)
               val taus_opt = if !(Flags.print_types) then SOME(layList layTau taus) else NONE
               val rhos_opt = if print_regions() then SOME(layHlist Eff.layout_effect rhos) else NONE
               val epss_opt = if print_effects() then SOME(layList Eff.layout_effect epss) else NONE
@@ -712,7 +713,7 @@ for more info*)
                 (case formal_regions of
                    NONE=>
                     let
-                     val sigma_t = R.mk_lay_sigma' omit_region_info (tyvars,rhos,epss,Type)
+                     val sigma_t = R.mk_lay_sigma' omit_region_info (rhos,epss,tyvars,Type)
                      val alloc_s = case opt_alloc of NONE => "" | SOME t => PP.flatten1 t
                      val t1 = let val s: string = Lvar.pr_lvar lvar ^ " " ^ alloc_s ^
                                  (if !Flags.print_types then ":" else "")

@@ -122,7 +122,7 @@ struct
           case e of
             VAR{lvar,fix_bound,rhos_actuals,il,plain_arreffs,other: qmularefset ref} =>
               let
-                val (_,places,_) = RType.un_il il
+                val (places,_,_) = RType.un_il il
                 val qmul = Mul.instantiateRegions(places,!other)
                 val arreffs = Mul.make_arroweffects plain_arreffs
 (*

@@ -445,13 +445,13 @@ struct
 
 
   datatype sigma =
-     FORALL of tyvar list * place list * arroweffect list * Type
+     FORALL of place list * arroweffect list * tyvar list * Type
 
-  fun bv (FORALL(alphas,rhos,epss,_)) = (alphas,rhos,epss)
+  fun bv (FORALL(rhos,epss,alphas,_)) = (rhos,epss,alphas)
 
   fun type_to_scheme tau = FORALL([],[],[],tau)
 
-  fun frv_sigma (FORALL(alphas,rhos,epss,tau)) =
+  fun frv_sigma (FORALL(rhos,epss,alphas,tau)) =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
           val frv_tau = List.filter E.is_rho all_nodes
@@ -465,7 +465,7 @@ struct
   (* ferv_sigma(sigma) computes a list of all region and effect
      variables that occur free in sigma *)
 
-  fun ferv_sigma (FORALL(alphas,rhos,epss,tau)): E.effect list =
+  fun ferv_sigma (FORALL(rhos,epss,alphas,tau)): E.effect list =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
           val free = List.filter (fn node => E.is_rho node orelse E.is_arrow_effect node) all_nodes
@@ -477,7 +477,7 @@ struct
           before List.app (fn b => E.get_visited b := false) bound
       end
 
-  fun free_puts (FORALL(alphas,rhos,epss,tau)) =
+  fun free_puts (FORALL(rhos,epss,alphas,tau)) =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
           val put_nodes = List.filter E.is_put all_nodes
@@ -494,7 +494,7 @@ struct
     fun mem tv nil = false
       | mem tv (tv'::tvs) = tv = tv' orelse mem tv tvs
   in
-    fun ftv_sigma (FORALL(alphas,_,_,tau)) : tyvar list =
+    fun ftv_sigma (FORALL(_,_,alphas,tau)) : tyvar list =
         let
             fun ftv (t,(seen,acc)) =
                 case t of
@@ -514,7 +514,7 @@ struct
         else x :: ftv_minus (xs, tvs)
   end
 
-  fun insert_alphas (alphas, FORALL(_, rhos,epss,tau)) =
+  fun insert_alphas (alphas, FORALL(rhos,epss,_,tau)) =
       let (* A type variable in alphas may be associated with different regions
              when occuring as a mu in tau. However, the same region cannot be
              associated with different type variables. Here is a property that
@@ -594,19 +594,19 @@ struct
         val E0 = IntFinMap.fromList (map (fn r => (E.key_of_eps_or_rho r,NONE)) rhos)
         val _ = chk E0 (tau,NONE)
 *)
-      in FORALL(alphas,rhos,epss,tau)
+      in FORALL(rhos,epss,alphas,tau)
       end
 
-  fun drop_alphas (FORALL(_, rhos,epss,tau)) =
-      FORALL([],rhos,epss,tau)
+  fun drop_alphas (FORALL(rhos,epss,_,tau)) =
+      FORALL(rhos,epss,[],tau)
 
-  fun mk_lay_sigma_aux (omit_region_info: bool):
-    tyvar list * StringTree list * arroweffect list * Type->  PP.StringTree =
+  fun mk_lay_sigma_aux (omit_region_info:bool) :
+    StringTree list * arroweffect list * tyvar list * Type -> PP.StringTree =
   let
     val (lay_ty, _) = mk_layout omit_region_info
-    fun lay_sig (alphas, rho_trees, epsilons,tau) =
-      (case(alphas,rho_trees, epsilons) of
-         ([],[],[]) => if !Flags.print_types then lay_ty(tau) else PP.LEAF ""
+    fun lay_sig (rho_trees,epsilons,alphas,tau) =
+      (case(rho_trees,epsilons,alphas) of
+         ([],[],[]) => if !Flags.print_types then lay_ty tau else PP.LEAF ""
        | _ =>
           let val children =
                   if print_effects() then
@@ -641,19 +641,19 @@ struct
 
   fun mk_lay_sigma omit_region_info =
       let val f = mk_lay_sigma_aux omit_region_info
-      in fn (FORALL (raw as(alphas,rhos,epss,tau))) =>
-              f(alphas, map lay_node rhos, epss, tau)
+      in fn (FORALL (raw as (rhos,epss,alphas,tau))) =>
+              f(map lay_node rhos, epss, alphas, tau)
       end
 
-  fun mk_lay_sigma' (omit_region_info: bool) (tyvars,rhos,epss,tau): PP.StringTree =
-      mk_lay_sigma(omit_region_info)(FORALL(tyvars,rhos,epss,tau))
+  fun mk_lay_sigma' (omit_region_info: bool) (rhos,epss,tyvars,tau): PP.StringTree =
+      mk_lay_sigma(omit_region_info)(FORALL(rhos,epss,tyvars,tau))
 
   fun mk_lay_sigma'' (lay_bind: 'b -> StringTree option) omit_region_info  =
       let val f = mk_lay_sigma_aux omit_region_info
-      in fn (alphas,rhos,epss,tau) =>
+      in fn (rhos,epss,alphas,tau) =>
              let val ts = List.foldr (fn (rho,acc) => case lay_bind rho of
                                           SOME t => t::acc | _ => acc) [] rhos
-             in f(alphas, ts, epss, tau)
+             in f(ts, epss, alphas, tau)
              end
       end
 
@@ -698,10 +698,10 @@ struct
      is traversed, but not copied).
   *)
 
-  type il = Type list * effect list * effect list (* instantiation lists *)
+  type il = effect list * effect list * Type list (* instantiation lists *)
 
-  fun mk_il (taus,places,effects) = (taus,places,effects)
-  fun un_il (taus,places,effects) = (taus,places,effects)
+  fun mk_il x = x
+  fun un_il x = x
 
   fun instAux (S as (St,Sr,Se),tau) cone =
       let
@@ -849,8 +849,8 @@ struct
       end
 
   fun instClever (FORALL([],[],[],tau),il) cone = (tau, cone,[])
-    | instClever (sigma as FORALL(alphas,rhos,epsilons,tau),
-                  il as (types,places,arreffs)) cone =
+    | instClever (sigma as FORALL(rhos,epsilons,alphas,tau),
+                  il as (places,arreffs,types)) cone =
       let
         (*val _ = Profile.profileOn();*)
         (* set types of places according to rhos *)
@@ -881,7 +881,7 @@ struct
 
   fun inst sigma_il cone =
       let val (a,cone,c) = instClever sigma_il cone
-          val places = #2(#2(sigma_il))
+          val places = #1(#2 sigma_il)
           val cone = unify_with_toplevel_wordregion (cone, places)
       in (a,cone)
       end
@@ -1085,7 +1085,7 @@ struct
 
         val bound_epss = List.filter (potentially_generalisable n) fev_tau (* bottom-up order *)
         val _ = set_pix_primary(E.setminus(bound_epss,problematic_secondary_fev_tau), pfev_tau)
-        val sigma = FORALL([], bound_rhos, bound_epss, tau)
+        val sigma = FORALL(bound_rhos, bound_epss, [], tau)
 
         (* debugging
         val _ = logsay("regEffClos leave, sigma = \n");
@@ -1109,12 +1109,12 @@ struct
   *)
 
   fun alpha_rename (sigma, B: E.cone): sigma =
-    let val FORALL(alphas,rhos,epss,tau) = sigma
+    let val FORALL(rhos,epss,alphas,tau) = sigma
         val c = E.push B
         val (rhos', c) = E.renameRhos(rhos,c)
         val (epss', c) = E.renameEpss(epss,c)
-        val (tau',c) = inst (FORALL([],rhos,epss,tau),([],rhos',epss')) c
-        val sigma' = FORALL([], rhos', epss', tau')
+        val (tau',c) = inst (FORALL(rhos,epss,[],tau),(rhos',epss',[])) c
+        val sigma' = FORALL(rhos', epss', [], tau')
         val (_, c) = E.pop c
     in
         sigma'
@@ -1125,8 +1125,8 @@ struct
         val c = E.push B
         val (rhos', c) = E.renameRhos(rhos,c)
         val (epss', c) = E.renameEpss(epss,c)
-        val (tau',c) = inst (FORALL([],rhos,epss,tau),([],rhos',epss')) c
-        val sigma' = FORALL([], rhos', epss', tau')
+        val (tau',c) = inst (FORALL(rhos,epss,[],tau),(rhos',epss',[])) c
+        val sigma' = FORALL(rhos', epss', [], tau')
         val (_, c) = E.pop c
     in
         sigma'
@@ -1153,8 +1153,8 @@ struct
 
   fun layout_sigma sigma = mk_lay_sigma false sigma
 
-  fun alpha_equal (sigma1 as FORALL(_,rhos1,epsilons1,tau1),
-                   sigma2 as FORALL(_,rhos2,epsilons2,tau2)) cone : bool =
+  fun alpha_equal (sigma1 as FORALL(rhos1,epsilons1,_,tau1),
+                   sigma2 as FORALL(rhos2,epsilons2,_,tau2)) cone : bool =
       let val cone = E.push cone
         (*val _ = logsay "enter alpha_equal\n"
           val _ = logsay "sigma1=\n"
@@ -1249,12 +1249,12 @@ struct
       end handle _ => raise FAIL_MATCH "select_and_unify"
 
   fun mk_transformer (origins as (rho_origins: int list list, eps_origins: int list list))
-                     ((taus, old_rhos: place list, old_epss: effect list), cone) : il * cone =
+                     ((old_rhos:place list, old_epss:effect list,taus), cone) : il * cone =
       let
         val (new_rhos, cone) = select_and_unify(old_rhos,rho_origins,unify_rho_partition,cone)
         val (new_epss, cone) = select_and_unify(old_epss, eps_origins, unify_eps_partition, cone)
       in
-        ((taus,new_rhos,new_epss), cone)
+        ((new_rhos,new_epss,taus), cone)
       end
 
   (* l:int list = find_origin(vars : effect list)(var': effect)
@@ -1320,8 +1320,8 @@ struct
        raise x
       )
 
-  fun matchSchemes (sigma as FORALL([], rhos, epss,tau),
-                    sigma' as FORALL([], rhos', epss', tau')) :
+  fun matchSchemes (sigma as FORALL(rhos, epss,[],tau),
+                    sigma' as FORALL(rhos', epss',[],tau')) :
       (il * cone) -> (il * cone) =
    (let
       (* debugging
@@ -1352,11 +1352,11 @@ struct
 
       val thin = mk_transformer(rhos'_origins_extended, epss'_origins_extended)
     in
-      fn ((old_taus, old_rhos, old_epss), cone) =>
+      fn ((old_rhos, old_epss, old_taus), cone) =>
          (let val (new_rhos, cone) = E.cloneRhos(add_rhos, cone)
               val (new_epss, cone) = E.cloneEpss(add_epss, cone)
           in
-              thin ((old_taus,new_rhos@old_rhos, new_epss @ old_epss), cone)
+              thin ((new_rhos@old_rhos, new_epss @ old_epss, old_taus), cone)
           end handle x => failwith (x,sigma,sigma'))
     end  handle x => failwith(x,sigma,sigma')
     )
@@ -1578,7 +1578,7 @@ struct
 
   val pu_sigma =
       Pickle.convert (FORALL, fn FORALL a => a)
-      (Pickle.tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,Pickle.debugUnpickle "Type" pu_Type))
+      (Pickle.tup4Gen0(E.pu_effects,E.pu_effects,L.pu_tyvars,Pickle.debugUnpickle "Type" pu_Type))
 
 end; (* RType ends here *)
 

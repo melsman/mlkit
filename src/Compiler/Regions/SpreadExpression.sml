@@ -50,19 +50,19 @@ struct
   fun logsay(s) = TextIO.output(!Flags.log, s);
   fun logtree(t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
 
-  fun log_sigma(sigma1, lvar) =
+  fun log_sigma (sigma1, lvar) =
     case R.bv sigma1 of
-      ([], _, _) =>
+      (_, _, []) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is:");
          logsay (Lvars.pr_lvar lvar ^ " is:\n");
          logtree(R.mk_lay_sigma false sigma1);
          logsay "\n")
-    | (alpha::alphas,[],_) =>
+    | ([],_,alpha::alphas) =>
         (say ("******" ^ Lvars.pr_lvar lvar ^ " is  polymorphic with escaping regions");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic with escaping regions:\n");
          logtree(R.mk_lay_sigma false sigma1);
          logsay "\n")
-    | (alpha::alphas,_,_) =>
+    | (_,_,alpha::alphas) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is  polymorphic");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic:\n");
          logtree(R.mk_lay_sigma false sigma1);
@@ -159,7 +159,7 @@ struct
                       (t1,tau1,sigma1)::rest2,
                       occ::rest3) =
     let
-      val (_,brhos, bepss) = R.bv(sigma1)
+      val (brhos, bepss,_) = R.bv(sigma1)
       val transformer = R.matchSchemes(sigma_hat, sigma1) handle R.FAIL_MATCH msg =>
           die ("mkRhs: lvar = " ^ Lvars.pr_lvar lvar ^ "\n" ^ msg)
       val _ = adjust_instances(transformer, occ)
@@ -304,7 +304,7 @@ struct
        | mk_sigma_hat_list (B,retract_level)({lvar,regvars,tyvars,Type,bind}::rest) =
           let
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
-            val B = Eff.push(B)         (* for generalize_all *)
+            val B = Eff.push B         (* for generalize_all *)
 	    val (tau_x_ml, tau_1_ml) =
 		case Type of
 		    E.ARROWtype p => p
@@ -319,11 +319,11 @@ struct
           end
 
     fun newInstance (A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
-      let val (alphas, rhos, epss) = R.bv sigma
+      let val (rhos, epss, alphas) = R.bv sigma
           val (taus', A) = freshTypes(A,taus)
           val (rhos', A) = Eff.freshRhosPreserveRT(rhos, A)
           val (epss', A) = Eff.freshEpss(epss, A)
-          val il = R.mk_il(taus',rhos',epss')
+          val il = R.mk_il(rhos',epss',taus')
           val (tau', A1) = R.inst(sigma,il) A (* side-effects il *)
       in
           (A1, tau', il)
@@ -440,7 +440,7 @@ struct
                                                   \not match the number of formal explicit region variables.")
               val B =
                   if null regvars then B
-                  else let val all = ListPair.zipEq (#2 (R.bv sigma), #2 (R.un_il il_1))
+                  else let val all = ListPair.zipEq (#1 (R.bv sigma), #1 (R.un_il il_1))
                            val explicits = ListPair.zipEq (formal_regvars, regvars)
                            fun find f nil = NONE
                              | find f ((p,p')::rest) = case Eff.getRegVar p of
@@ -641,7 +641,7 @@ good *)
             val retract_level = Eff.level B
             val (rho,B) = Eff.freshRhoWithTy(Eff.TOP_RT,B) (* for shared region closure *)
             val phi1 = Eff.mkPut rho
-            val (B,sigma_hat_list)= mk_sigma_hat_list(B,retract_level)(functions)
+            val (B,sigma_hat_list)= mk_sigma_hat_list(B,retract_level) functions
             val (B,rse2,functions') = spreadFcns(B,rho,retract_level,rse)(repl(functions,sigma_hat_list))
             val (B, t2 as E'.TR(_, meta2, phi2), cont) = spreadExp(B, rse2, scope,toplevel,cont)
             val e' = E'.FIX{shared_clos = rho,functions = functions',scope = t2}
@@ -1256,7 +1256,7 @@ good *)
               | spreadRhss(B)((lvar,regvars,tyvars,sigma_hat,bind)::rest) =
                   let
                      (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
-                      val B = Eff.push(B)
+                      val B = Eff.push B
                       (*val () = print ("spreadFcns - length(regvars) = " ^ Int.toString (length regvars) ^ "\n") *)
                       val (B,rse1') = List.foldl (fn (rv,(B,rse)) =>
                                                      let val (rho,B) = Eff.freshRhoRegVar (B,rv)
@@ -1273,7 +1273,7 @@ good *)
                     val (_,B) = Eff.pop B (* back to retract level *)
 
 (*                    val _  = log_sigma(R.insert_alphas(tyvars, sigma1), lvar)*)
-                    val (B, l) = spreadRhss(B)(rest)
+                    val (B, l) = spreadRhss B rest
                   in
                     (B, (t1,tau1,sigma1)::l)
                   end

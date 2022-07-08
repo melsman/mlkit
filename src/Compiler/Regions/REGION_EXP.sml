@@ -134,6 +134,7 @@ signature REGION_EXP =
 
     val countletregions: 'a -> unit
 
+    val pr_tyvar : tyvar -> string
 
     type StringTree
     val printcount: int ref  (* controls printing of effects on expressions*)

@@ -266,12 +266,12 @@ struct
 	    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} =>
 	         let val TE' =
 	                foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
-			   RSE.declareLvar(lvar, (true,true,[],R.FORALL(tyvars,rhos,epss,Type), shared_clos , NONE, NONE), TE'))
+			   RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), shared_clos , NONE, NONE), TE'))
 			TE functions
 
 	             fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                                     bound_but_never_written_into,other,bind} =
-	                  let val sigma = R.FORALL(tyvars,rhos,epss,Type)
+	                  let val sigma = R.FORALL(rhos,epss,tyvars,Type)
 	                  in (if warn_on_escaping_puts() then
 	                        warn_if_escaping_puts(TE, lvar, sigma)
                               else ());
@@ -292,7 +292,7 @@ struct
                    (warn_puts_trip TE bind;
                     let
                         val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
-			   RSE.declareLvar(lvar, (true,true,[],R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
+			   RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho , NONE, NONE), TE'))
                            TE
             		   pat
                    in warn_puts_trip TE' scope
@@ -509,7 +509,7 @@ struct
 	    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} =>
 	         let val TE' =
 	                foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
-			   RSE.declareLvar(lvar, (true,true,[],R.FORALL(tyvars,rhos,epss,Type), get_place shared_clos , NONE, NONE), TE'))
+			   RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), get_place shared_clos , NONE, NONE), TE'))
 			TE functions
 
 	         in warn_dangle_trip TE' scope;
@@ -540,7 +540,7 @@ struct
                    (warn_dangle_trip TE bind;
                     let
                         val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
-					 RSE.declareLvar(lvar, (true,true,[],R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
+					 RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho , NONE, NONE), TE'))
                            TE
             		   pat
                    in warn_dangle_trip TE' scope
@@ -706,8 +706,8 @@ struct
                               children = map layVarMu pat}
 
 
-     fun layVarSigma start (lvar,alphas,rhos,epss, tau, rho) =
-         let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
+     fun layVarSigma start (lvar,rhos,epss,alphas,tau, rho) =
+         let val sigma_t = R.mk_lay_sigma' omit_region_info (rhos, epss, alphas, tau)
              val start:string = start ^ Lvars.pr_lvar lvar ^
                                  (if !Flags.print_types then ":" else "")
              val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
@@ -723,10 +723,10 @@ struct
 
      fun layPatLet [] = LEAF("val _")  (* wild card *)
        | layPatLet [one as (lvar,_,tyvars,ref epss,tau,rho)] =
-         layVarSigma "val " (lvar,tyvars,[],epss,tau,rho)
+         layVarSigma "val " (lvar,[],epss,tyvars,tau,rho)
        | layPatLet pat = HNODE{start = "val (", finish = ")", childsep = RIGHT",",
                                children = map (fn (lvar,_,tyvars,ref epss,tau,rho) =>
-                                                  layVarSigma "" (lvar,tyvars,[],epss,tau,rho)) pat}
+                                                  layVarSigma "" (lvar,[],epss,tyvars,tau,rho)) pat}
 
     fun layoutSwitch n laytrip show_const (SWITCH(lamb,rules,wildcardOpt)) =
         let val rules = map (fn (x,lamb) => (show_const x,lamb)) rules @
@@ -751,7 +751,7 @@ struct
         end
 
       fun lay_il (lvar_string:string, terminator: string, il, rhos_actuals) : StringTree =
-          let val (taus,rhos,epss)= R.un_il(il)
+          let val (rhos,epss,taus)= R.un_il(il)
               val rho_actuals_t_opt= if print_regions() then
                                         SOME(layHlistopt layout_alloc_short rhos_actuals)
                                      else NONE
@@ -1242,7 +1242,7 @@ struct
                      val sigma_t_opt = if !Flags.print_types then
                                           SOME(PP.NODE{start = ":", finish = "", indent = 1, childsep= PP.NOSEP,
                                                        children = [R.mk_lay_sigma'' (SOME o Eff.layout_effect)
-				                                   omit_region_info (tyvars,rhos,epss,Type)]})
+				                                   omit_region_info (rhos,epss,tyvars,Type)]})
                                        else NONE
                      val rho_formals_opt = if print_rhos_formals then
                                             SOME(PP.HNODE{start = "[", finish = "]", childsep= PP.RIGHT", ",
@@ -1515,7 +1515,7 @@ struct
        in
         case e of
           RegionExp.VAR{lvar, il_r, fix_bound} =>
-             let val (_,rhos,eff_nodes) = R.un_il(#1(!il_r))
+             let val (rhos,eff_nodes,_) = R.un_il(#1(!il_r))
 		 val arreffs = map (fn eps => (eps, Eff.mk_phi eps)) eff_nodes
                                handle _ => die ("VAR (mk_phi failed), lvar = " ^ Lvars.pr_lvar lvar)
 		 val r  = Mul.lookup_efenv(EE, lvar)

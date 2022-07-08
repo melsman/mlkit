@@ -189,7 +189,8 @@ struct
                                        | tvs =>
                                          case RType.ftv_minus(tvs,RType.ftv_ty ty0) of
                                              nil => ()
-                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of lvar " ^ Lvar.pr_lvar lv)
+                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of lvar " ^ Lvar.pr_lvar lv
+                                                          ^ ": [" ^ String.concatWith "," (map Exp.pr_tyvar tvs) ^ "]")
                        ) lvs
 
           val () =
@@ -201,7 +202,8 @@ struct
                                        | tvs =>
                                          case RType.ftv_minus(tvs,RType.ftv_ty ty0) of
                                              nil => ()
-                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of excon " ^ Excon.pr_excon ex)
+                                           | tvs => warn ("gc_compute_delta, unsoundness: free tv in type of excon " ^ Excon.pr_excon ex
+                                                          ^ ": [" ^ String.concatWith "," (map Exp.pr_tyvar tvs) ^ "]")
                        ) exs
 
           val effects = foldl effects_ex (foldl effects_lv nil lvs) exs
@@ -367,7 +369,7 @@ struct
               fun addBindingForRhs ({lvar = f, occ, tyvars = alphavec,
                                      rhos as ref rhovec, epss as ref epsvec,
                                      Type = tau0, formal_regions,bind}, rse) =
-                  let val sigma = RType.FORALL([] ,rhovec,epsvec,tau0)
+                  let val sigma = RType.FORALL(rhovec,epsvec,[],tau0)
                   in RSE.declareLvar(f,(true,true,[],sigma, rho0, SOME occ, NONE),rse)
                   end
 
@@ -390,7 +392,7 @@ struct
 			val _ = sayLn("after  rename ,    sigma is " ^ show_sigma sigma3_hat_save)
 *)
                         val rse' = RSE.declareLvar(f,(true,true,[],(*sigma3_hat_save*) sigma_3hat, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
-                        val bv_sigma3_hat as (_,rhos,epsilons) = RType.bv sigma_3hat
+                        val bv_sigma3_hat as (rhos,epsilons,_) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
                                     handle _ => die "pushLayer failed\n"
 (*
@@ -408,7 +410,7 @@ struct
                         val _ = sayLn("after regEffClos,  sigma is " ^ show_sigma sigma_3hat)
 *)
                         val (_, B5) = pop B5
-                        val (_,newrhos,newepss) = RType.bv sigma_5hat
+                        val (newrhos,newepss,_) = RType.bv sigma_5hat
 			(* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)
                         (*val _ = Profile.profileOn();*)
                       in
@@ -442,7 +444,7 @@ struct
                            end
                       end
                in
-                   (fn B => Rrec(B, RType.FORALL([],rhovec,epsvec,tau0),true))
+                   (fn B => Rrec(B, RType.FORALL(rhovec,epsvec,[],tau0),true))
                end
 		| doOneRhs _ _ = die "doOneRhs.wrong bind"
 
@@ -457,7 +459,7 @@ struct
               fun addBindingForScope ({lvar = f, occ, tyvars = alphavec,
                                        rhos as ref rhovec, epss as ref epsvec,
                                        Type = tau0, formal_regions,bind}, rse) =
-                  let val sigma1hat' = RType.FORALL(alphavec ,rhovec,epsvec,tau0)
+                  let val sigma1hat' = RType.FORALL(rhovec,epsvec,alphavec,tau0)
                   in RSE.declareLvar(f,(true,true,[],sigma1hat', rho0, SOME occ, NONE),rse)
                   end
 
