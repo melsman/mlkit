@@ -57,31 +57,40 @@ sig
   val unify_mu   : mu * mu -> cone -> cone
   val unify_mus  : mu list * mu list -> cone -> cone
 
+  val locate_arrow_effect : effect -> Type -> Type -> effect option
+
   type sigma and il
   val type_to_scheme : Type -> sigma
-  val bv             : sigma -> tyvar list * place list * effect list
-  val FORALL         : tyvar list * place list * effect list * Type -> sigma
+  val bv             : sigma -> place list * effect list * (tyvar*arroweffect option) list
+  val FORALL         : place list * effect list * (tyvar*arroweffect option) list * Type -> sigma
   val drop_alphas    : sigma -> sigma
-  val insert_alphas  : tyvar list * sigma -> sigma
-  val mk_il          : Type list * place list * effect list -> il
-  val un_il          : il -> Type list * place list * effect list
+  val insert_alphas  : (tyvar*arroweffect option) list * sigma -> sigma
+  val mk_il          : place list * effect list * Type list -> il
+  val un_il          : il -> place list * effect list * Type list
   val ann_sigma      : sigma -> effect list -> effect list   (* ann_sigma(sigma)acc is a list of all the
 							      * places and arrow effects that occur in
 							      * type of sigma, consed onto acc; word regions
 							      * are not included in the result. *)
+
+  val un_scheme   : sigma -> place list * effect list * (tyvar*arroweffect option) list * Type
+
   val free_puts   : sigma -> effect list
   val frv_mu      : mu -> place list
   val frv_sigma   : sigma -> place list   (* free region variables of sigma; word regions not included. *)
   val ferv_sigma  : sigma -> effect list  (* free effect and region variables of sigma; word regions not included. *)
+
   val ftv_sigma   : sigma -> tyvar list
+  val ftv_ty      : Type -> tyvar list
+  val ftv_minus   : tyvar list * tyvar list -> tyvar list
 
   val inst        : sigma * il -> cone -> Type * cone
 
   type delta_phi
-  val instClever  : sigma * il -> cone -> Type * cone * (effect * delta_phi)list
+  val instClever  : sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
 
+  val regEffClos0    : (unit -> string) * cone * int * effect * Type * effect list -> cone * sigma
   val regEffClos     : cone * int * effect * Type -> cone * sigma
-  val generalize_all : cone * int * tyvar list * Type -> cone * sigma
+  val generalize_all : cone * int * (tyvar*arroweffect option) list * Type -> cone * sigma
 
   val alpha_rename   : sigma * cone -> sigma
   val alpha_equal    : sigma * sigma -> cone -> bool
@@ -113,9 +122,9 @@ sig
      omit region information *)
   val mk_layout      : bool -> (Type -> StringTree) * (mu -> StringTree)
   val mk_lay_sigma   : bool -> sigma -> StringTree
-  val mk_lay_sigma'  : bool -> (tyvar list * place list * effect list * Type) -> StringTree
+  val mk_lay_sigma'  : bool -> (place list * effect list * (tyvar*arroweffect option) list * Type) -> StringTree
   val mk_lay_sigma'' : ('b -> StringTree option) -> bool ->
-                         (tyvar list * 'b list * effect list * Type) -> StringTree
+                         ('b list * effect list * (tyvar*arroweffect option) list * Type) -> StringTree
 
   (* Picklers *)
   val pu_Type  : Type Pickle.pu

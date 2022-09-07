@@ -122,7 +122,7 @@ struct
           case e of
             VAR{lvar,fix_bound,rhos_actuals,il,plain_arreffs,other: qmularefset ref} =>
               let
-                val (_,places,_) = RType.un_il il
+                val (places,_,_) = RType.un_il il
                 val qmul = Mul.instantiateRegions(places,!other)
                 val arreffs = Mul.make_arroweffects plain_arreffs
 (*
@@ -526,22 +526,22 @@ struct
     end
 
 
-  fun mkPhi(c,tr) = RegionExp.mkPhi(c,tr)
-  fun makezero_Phi Phi= Mul.makezero_Phi Phi
+  fun mkPhi (c,tr) = RegionExp.mkPhi(c,tr)
+  fun makezero_Phi Phi = Mul.makezero_Phi Phi
   fun mk_init_dependency_map Psi = Mul.mk_init_dependency_map Psi
-  fun mk_initial_mulexp(mulenv,tr, dep) = MulExp.mk_initial_mulexp(mulenv,tr, dep)
+  fun mk_initial_mulexp (mulenv,tr, dep) = MulExp.mk_initial_mulexp(mulenv,tr, dep)
   fun eval_phis x = Eff.eval_phis x
-  fun combine(Psi0, Psi)= Mul.combine(Psi0, Psi)
+  fun combine (Psi0, Psi)= Mul.combine(Psi0, Psi)
 
   (* test of k-normalisation: *)
-  fun printnormal(msg, trip) =
-          (say msg; outtree(layouttrip trip))
+  fun printnormal (msg, trip) =
+      (say msg; outtree(layouttrip trip))
 
-  fun printerror(e1,e2) =
-          (say "***** test of  k-normalisation failed ****\nFIRST EXPRESSION:\n";
-           outtree(layoutExp e1);
-           say "\nSECOND EXPRESSION:\n";
-           outtree(layoutExp e2))
+  fun printerror (e1,e2) =
+      (say "***** test of  k-normalisation failed ****\nFIRST EXPRESSION:\n";
+       outtree(layoutExp e1);
+       say "\nSECOND EXPRESSION:\n";
+       outtree(layoutExp e2))
 
   val dummy_'c = ref Mul.empty_qmularefset
 
@@ -551,10 +551,11 @@ struct
                 (place,place*mul, qmularefset ref)MulExp.LambdaPgm =
       MulExp.k_normPgm printnormal dummy_'c pgm
 
-  fun mulInf(p as RegionExp.PGM{expression = tr,export_datbinds,export_basis},
-             Psi0: Mul.mularefmap, (* the multiplicity arrow effect map in which free effect variables
-                                  of tr may be looked up; it is applicative *)
-             c: Eff.cone, mulenv: Mul.efenv): (place,place*Mul.mul,Mul.qmularefset ref)LambdaPgm_psi * efenv * mularefmap=
+  fun mulInf (p as RegionExp.PGM{expression = tr,export_datbinds,export_basis},
+              Psi0: Mul.mularefmap, (* the multiplicity arrow effect map in which free effect variables
+                                       of tr may be looked up; it is applicative *)
+              c: Eff.cone, mulenv: Mul.efenv)
+      : (place,place*Mul.mul,Mul.qmularefset ref)LambdaPgm_psi * efenv * mularefmap =
 	let
             val test = false
             val _ = if test then say "\nmulInf:" else ();

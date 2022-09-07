@@ -14,6 +14,7 @@ signature REGION_STAT_ENV =
     type TyName
     type lvar				(* Unique lambda identifiers. *)
     type TypeAndPlaceScheme and Type and place and runType and effectvar
+    type tyvar
     type arity
 
     val mk_arity: int * runType list * int -> arity
@@ -37,12 +38,13 @@ signature REGION_STAT_ENV =
                           * (il->unit) option) (* il transformer which can be used for pruning in later topdecs*)
                        * regionStatEnv) -> regionStatEnv
     val declareRegVar : RegVar.regvar * place * regionStatEnv -> regionStatEnv
+    val declareTyVar : tyvar * effectvar * regionStatEnv -> regionStatEnv
 
     val plus: regionStatEnv * regionStatEnv -> regionStatEnv
 
     val lookupTyName : regionStatEnv -> TyName -> arity option
     val lookupCon : regionStatEnv -> con -> TypeAndPlaceScheme option
-    val lookupExcon: regionStatEnv -> excon -> (Type * place) option
+    val lookupExcon : regionStatEnv -> excon -> (Type * place) option
     val lookupLvar : regionStatEnv -> lvar ->
                      (  bool
                       * bool
@@ -54,6 +56,7 @@ signature REGION_STAT_ENV =
                      ) option
 
     val lookupRegVar : regionStatEnv -> RegVar.regvar -> place option
+    val lookupTyVar : regionStatEnv -> tyvar -> effectvar option
 
     val FoldExcon: (((excon * (Type * place)) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
     val FoldLvar : (((lvar * (bool * bool * RegVar.regvar list * TypeAndPlaceScheme
@@ -74,7 +77,7 @@ signature REGION_STAT_ENV =
 
     val enrich : regionStatEnv * regionStatEnv -> bool
     val places_effectvarsRSE : regionStatEnv -> place list * effectvar list
-
+    val places_effectvarsRSE' : regionStatEnv -> place list * effectvar list
 
     val mkConeToplevel: regionStatEnv -> cone
 
@@ -82,4 +85,9 @@ signature REGION_STAT_ENV =
     val layout : regionStatEnv -> StringTree
 
     val pu : regionStatEnv Pickle.pu
+
+    (* Spurious type variables and related functionality *)
+
+    val spuriousJoin      : tyvar list -> tyvar list -> tyvar list
+    val spuriousTyvars    : regionStatEnv -> Type -> (lvar list * excon list) -> tyvar list
   end

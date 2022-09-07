@@ -366,18 +366,20 @@ struct
                                           tau)
                               val (eps, cone) = Effect.freshEps cone
                               val _ = Effect.edge(eps, Effect.mkPut common_place)  (* inserted 21/5/96 mads*)
+                              val tvs = map (fn tv => (tv,NONE)) tyvar_list
                               val (cone,sigma) =
-                                    R.generalize_all(cone,level_of_TE,tyvar_list,
+                                    R.generalize_all(cone,level_of_TE,tvs,
                                                  R.mkFUN([mu1],eps,[(result_type,
                                                                 common_place)]))
                           in
                             ((con, E'.VALUE_CARRYING, sigma)::list,cone)
                           end
-                      | NONE     =>
-                          let val (cone,sigma) =
-                                  R.generalize_all(cone,level_of_TE,tyvar_list,result_type)
-                          in ((con, E'.CONSTANT, sigma)::list, cone)
-                          end
+                      | NONE =>
+                        let val tvs = map (fn tv => (tv,NONE)) tyvar_list
+                            val (cone,sigma) =
+                                R.generalize_all(cone,level_of_TE,tvs,result_type)
+                        in ((con, E'.CONSTANT, sigma)::list, cone)
+                        end
                   ) (*spreadCon*)
 
               val (db': (Con.con * E'.constructorKind * R.sigma) list, cone) =

@@ -106,7 +106,7 @@ structure DropRegions: DROP_REGIONS =
                                                                            (*****************************)
     val init =                                                             (* create the initial env by *)
       let fun foldfn ((lvar, (compound,_,_,sigma,_,_,_)), env) =             (* folding over RSE.initial  *)
-	    if compound then let val (_,places,arreffs) = RType.bv sigma   (*****************************)
+	    if compound then let val (places,arreffs,_) = RType.bv sigma   (*****************************)
 				 val bl = drop_places(places,arreffs)
 			     in add(lvar,FIXBOUND bl,env)
 			     end

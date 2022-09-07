@@ -25,6 +25,7 @@ struct
     type effect = Eff.effect
     type cone = Eff.cone
     type tyvar = Lam.tyvar
+    val pr_tyvar = Lam.pr_tyvar
 
     type Type = R.Type
      and sigma  = R.sigma
@@ -69,13 +70,13 @@ struct
                      alloc: 'a,
 		     free: (lvar list * excon list) option} (*region inference without dangling pointers*)
       | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
-      | LET      of {pat : (lvar * tyvar list * Type * place) list,
+      | LET      of {pat : (lvar * (tyvar*effect option) list * Type * place) list,
                      bind : ('a,'b)trip,
                      scope: ('a,'b)trip}
       | FIX      of {shared_clos: 'a,
                      functions : {lvar : lvar,
                                   occ  : (il * (il * cone -> il * cone)) ref list ref,
-                                  tyvars : tyvar list,
+                                  tyvars : (tyvar*effect option) list ref,
                                   rhos: place list ref,
                                   epss: effect list ref,
                                   Type : Type,
@@ -295,8 +296,8 @@ struct
                                  children = map Eff.layout_effect effs},
                            layTau tau]}
 old*)
-     fun layVarSigma(lvar,alphas,rhos,epss, tau,p) =
-         let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
+     fun layVarSigma (lvar,alphas,rhos,epss, tau,p) =
+         let val sigma_t = R.mk_lay_sigma' omit_region_info (rhos, epss, alphas, tau)
              val start:string = Lvar.pr_lvar lvar ^ " " ^
                                  (if !Flags.print_types then ":" else "")
              val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
@@ -345,7 +346,7 @@ old*)
       end
 
       fun lay_il (lvar_string:string, terminator: string, il) : StringTree =
-          let val (taus,rhos,epss)= R.un_il(il)
+          let val (rhos,epss,taus)= R.un_il(il)
               val taus_opt = if !(Flags.print_types) then SOME(layList layTau taus) else NONE
               val rhos_opt = if print_regions() then SOME(layHlist Eff.layout_effect rhos) else NONE
               val epss_opt = if print_effects() then SOME(layList Eff.layout_effect epss) else NONE
@@ -670,14 +671,14 @@ for more info*)
                     childsep=LEFT (" in " (* ^ (!inInfo) *) )} (*martin*)
           end
 
-      and mk_valbind(pat, t) =
+      and mk_valbind (pat, t) =
         let
             val child1 = layPatLet pat
          in
             NODE{start = "val ",finish="",childsep=RIGHT " = ",
                  indent=4,  children=[child1, layTrip(t,0)] }
         end
-      and mk_excon_binding(excon, nullary, alloc_t, mu) =
+      and mk_excon_binding (excon, nullary, alloc_t, mu) =
             (* exception EXCON : mu  (* exn value or name at RHO *) or
                excpetion EXCON : mu
             *)
@@ -688,8 +689,8 @@ for more info*)
                  indent=4,  children=[LEAF(Excon.pr_excon excon), LEAF ":", layMu mu,
                                       LEAF("(* exn value or name " ^ PP.flatten1 t ^ " *)")]}
         )
-      and  mk_mutual_binding(opt_alloc, functions) =
-        let fun mk_fix({lvar,occ,tyvars,rhos = ref rhos,epss= ref epss,Type, formal_regions, bind as TR(FN{pat, body, ...},_,_)})
+      and mk_mutual_binding (opt_alloc, functions) =
+        let fun mk_fix({lvar,occ,tyvars=ref tyvars,rhos = ref rhos,epss= ref epss,Type, formal_regions, bind as TR(FN{pat, body, ...},_,_)})
                      (no, rest_of_mutual_binding) =
               (*
                    fun f at rho : sigma
@@ -711,8 +712,8 @@ for more info*)
               (no-1,
                 (case formal_regions of
                    NONE=>
-                    let
-                     val sigma_t = R.mk_lay_sigma' omit_region_info (tyvars,rhos,epss,Type)
+                   let
+                     val sigma_t = R.mk_lay_sigma' omit_region_info (rhos,epss,tyvars,Type)
                      val alloc_s = case opt_alloc of NONE => "" | SOME t => PP.flatten1 t
                      val t1 = let val s: string = Lvar.pr_lvar lvar ^ " " ^ alloc_s ^
                                  (if !Flags.print_types then ":" else "")
