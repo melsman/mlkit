@@ -92,7 +92,7 @@ signature MUL_EXP =
                       body: ('a,'b,'c)trip}
 
       | LET      of {k_let: bool,
-                     pat : (lvar * il ref list ref * tyvar list *
+                     pat : (lvar * il ref list ref * (tyvar*effectvar option) list *
                                    effect list ref * Type * place * 'c) list,
 		     bind : ('a,'b,'c)trip,
 		     scope: ('a,'b,'c)trip}
@@ -101,10 +101,10 @@ signature MUL_EXP =
                      functions : {lvar : lvar,
                                   occ : il list,                        (* instantiation lists              *)
                                                                         (* at non-binding occurrences of il *)
-				  tyvars : tyvar list,                  (* original *)
-                                  rhos: place list,                     (* region   *)
-                                  epss: effect list,                    (* type     *)
-				  Type : Type,                          (* scheme.  *)
+				  tyvars : (tyvar*effectvar option) list,   (* original *)
+                                  rhos: place list,                         (* region   *)
+                                  epss: effect list,                        (* type     *)
+				  Type : Type,                              (* scheme.  *)
 				  rhos_formals: 'b list ref,
                                   bound_but_never_written_into: 'b list option, (* set by DropRegions; used by CompLamb*)
                                   other:  'c,

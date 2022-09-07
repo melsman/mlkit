@@ -84,10 +84,10 @@ structure Compile: COMPILE =
                  children = stl}, !Flags.colwidth)
 
     local
-      fun msg(s: string) =
+      fun msg (s: string) =
           (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     in
-      fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
+      fun chat (s: string) = if !Flags.chat then msg (s^"\n") else ()
     end
 
     fun fast_pr stringtree =
@@ -95,7 +95,7 @@ structure Compile: COMPILE =
                         stringtree, !Flags.colwidth);
          TextIO.output(!Flags.log, "\n\n"))
 
-    fun display(title, tree) =
+    fun display (title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
                    indent=3,
@@ -105,6 +105,11 @@ structure Compile: COMPILE =
           )
 
     fun ifthen e f = if e then f() else ()
+
+    fun pr_effect e = PP.flatten1(Effect.layout_effect e)
+
+    fun pr_effects es =
+        "[" ^ String.concatWith "," (map pr_effect es) ^ "]"
 
     (* ---------------------------------------------------------------------- *)
     (*  Abbreviations                                                         *)
@@ -145,20 +150,22 @@ structure Compile: COMPILE =
     (*   Spread the optimised lambda code                                     *)
     (* ---------------------------------------------------------------------- *)
 
-    fun spread(cone,rse, lamb_opt)=
+    fun spread (cone,rse, lamb_opt) =
         (chat "[Spreading regions and effects...";
          Timing.timing_begin();
          (*Profile.reset();
          Profile.profileOn();*)
          let
 (*           val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout rse) *)
+(*
              val effects_rse =
                  SpreadExp.RegionStatEnv.FoldLvar
                  (fn ((lv,(_,_,_,s,r,_,_)),acc) =>
                   if Lvars.pr_lvar lv = "revAcc" then
                       r :: RType.frv_sigma s @ acc
                   else acc) nil rse
-(*           val _ = out_layer (Effect.layoutEtas effects_rse) *)
+             val _ = out_layer (Effect.layoutEtas effects_rse)
+*)
              val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
          in
            Timing.timing_end("SpreadExp");
@@ -180,11 +187,12 @@ structure Compile: COMPILE =
     (*   Do the region inference on the spread optimised lambda code          *)
     (* ---------------------------------------------------------------------- *)
 
-    fun inferRegions(cone,rse, rse_con,  spread_lamb as RegionExp.PGM
-                        {expression = spread_lamb_exp,
-                         export_datbinds = datbinds,
-                         export_basis=export_basis  (* list of region variables and arrow effects *)
-                        }) =
+    fun inferRegions (cone,rse, rse_con,
+                      spread_lamb as RegionExp.PGM
+                                  {expression = spread_lamb_exp,
+                                   export_datbinds = datbinds,
+                                   export_basis=export_basis  (* list of region variables and arrow effects *)
+                     }) =
     let
         val _ = (chat "[Inferring regions and effects...";
                  Timing.timing_begin())
@@ -267,7 +275,11 @@ structure Compile: COMPILE =
                end handle _ => die "cannot form rse'")
              | _ => die "program does not have type frame"
 
-        val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE rse'
+        val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE' rse'
+(*
+        val () = print ("RHOS: " ^ pr_effects rhos_rse' ^ "\n")
+        val () = print ("EPSS: " ^ pr_effects epss_rse' ^ "\n")
+*)
 (*
         val _ =
           if !profRegInf.b then
@@ -293,7 +305,7 @@ structure Compile: COMPILE =
     (*   Multiplicity Inference                                               *)
     (* ---------------------------------------------------------------------- *)
 
-    fun mulInf(program_after_R:(Effect.place,unit)RegionExp.LambdaPgm, Psi, cone, mulenv) =
+    fun mulInf (program_after_R:(Effect.place,unit)RegionExp.LambdaPgm, Psi, cone, mulenv) =
     let
 
         val _ = (chat "[Inferring multiplicities...";
@@ -328,7 +340,7 @@ structure Compile: COMPILE =
     (* of a lambda program are lowered to have level toplevel; i.e. 1.        *)
     (* ---------------------------------------------------------------------- *)
 
-    fun SpreadRegMul(rse, Psi, mulenv, opt_pgm) =
+    fun SpreadRegMul (rse, Psi, mulenv, opt_pgm) =
       let (* regionvar id is initialized by call in Manager.sml *)
           val cone = Effect.push (SpreadExp.RegionStatEnv.mkConeToplevel rse)
           val (cone, rse_con, spread_pgm) = spread(cone,rse,opt_pgm)

@@ -120,7 +120,7 @@ struct
                       body: ('a,'b,'c)trip}
 
       | LET      of {k_let: bool,
-                     pat : (lvar * il ref list ref * tyvar list *
+                     pat : (lvar * il ref list ref * (tyvar*effectvar option) list *
                                    effect list ref * Type * place * 'c) list,
 		     bind : ('a,'b,'c)trip,
 		     scope: ('a,'b,'c)trip}
@@ -129,10 +129,10 @@ struct
                      functions : {lvar : lvar,
                                   occ : il list,                        (* instantiation lists              *)
                                                                         (* at non-binding occurrences of il *)
-				  tyvars : tyvar list,            (* original *)
-                                  rhos: place list,               (* region   *)
-                                  epss: effect list,              (* type     *)
-				  Type : Type,                    (* scheme.  *)
+				  tyvars : (tyvar*effectvar option) list,  (* original *)
+                                  rhos: place list,                        (* region   *)
+                                  epss: effect list,                       (* type     *)
+				  Type : Type,                             (* scheme.  *)
 				  rhos_formals: 'b list ref,
                                   bound_but_never_written_into: 'b list option,
                                   other:  'c,
@@ -214,7 +214,7 @@ struct
     | flatten (l::rest) = l @ flatten rest
 
   type regionStatEnv = RSE.regionStatEnv
-  fun warn_if_escaping_puts(TE, lvar, sigma): unit =
+  fun warn_if_escaping_puts (TE, lvar, sigma): unit =
         case R.free_puts sigma of
           [] => ()
         | rhos =>
@@ -271,12 +271,12 @@ struct
 
 	             fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                                     bound_but_never_written_into,other,bind} =
-	                  let val sigma = R.FORALL(rhos,epss,tyvars,Type)
-	                  in (if warn_on_escaping_puts() then
-	                        warn_if_escaping_puts(TE, lvar, sigma)
-                              else ());
-			     warn_puts_trip TE' bind
-	                  end
+	                 let val sigma = R.FORALL(rhos,epss,tyvars,Type)
+	                 in (if warn_on_escaping_puts() then
+	                       warn_if_escaping_puts(TE, lvar, sigma)
+                             else ());
+			    warn_puts_trip TE' bind
+	                 end
 	         in
 	             app warn_lvar functions;
 		     warn_puts_trip TE' scope
@@ -469,8 +469,8 @@ struct
 
   fun show_rhos rhos = concat(map (fn rho => " " ^ pp_regvar rho) rhos)
 
-  fun report_dangling(e, [],[]): unit = ()
-    | report_dangling(e, l1: bad_lvars, l2: bad_excons): unit =
+  fun report_dangling (e, [],[]): unit = ()
+    | report_dangling (e, l1: bad_lvars, l2: bad_excons): unit =
 
     let val source_identification =
           case e of FN{pat, ...} =>
@@ -629,14 +629,14 @@ struct
   (* same as in RegionExp)     *)
   (*****************************)
 
-  fun isWordRegion(rho) =
+  fun isWordRegion rho =
         case Eff.get_place_ty rho of
           SOME Eff.WORD_RT => true
         | _ => false
 
   type StringTree = PP.StringTree
-  fun layPair(t1,t2) = PP.NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT", ",
-                               children = [t1, t2]}
+  fun layPair (t1,t2) = PP.NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT", ",
+                                children = [t1, t2]}
 
   fun layout_set children = PP.NODE{start = "{", finish = "}", indent = 1, childsep = PP.RIGHT", ",
                                children = children}
@@ -1686,7 +1686,7 @@ struct
                 | x => (outtree(RegionExp.layoutLambdaExp' e); raise Abort x)
 
       and mk_dep_funcs (EE, [], [], dep) = ([],dep)
-        | mk_dep_funcs (EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
+        | mk_dep_funcs (EE, {lvar,occ,tyvars=ref tyvars,rhos=ref rhos,epss=ref epss,Type,
                             formal_regions,bind}::rest,
                            r :: rest_refs, dep)=
              let val (bind', dep) = mk_deptr(EE,bind,dep)

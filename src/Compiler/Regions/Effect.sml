@@ -1183,6 +1183,7 @@ tracing *)
                                     in raise Report.DeepError (report0 // report)
                                     end
                         val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
+                                    handle ? => (print "lower\n"; raise ?)
 		        val _  = l:= newlevel
 		        val cone'' = add(effect, newlevel, !key,cone')
                                      (* put node back in cone at lower level *)
@@ -1195,7 +1196,8 @@ tracing *)
 
   fun lower_delta level delta B =
       case delta of
-          Lf(l: effect list) => foldl (fn (a,b) => lower level a b) B l
+          Lf(l: effect list) => foldl (fn (a,b) => lower level a b
+                                                   handle ? => (print "lower_delta\n"; raise ?)) B l
         | Br(d1, d2) => lower_delta level d2 (lower_delta level d1 B)
 
   fun setminus (l1: effect list, l2: effect list) : effect list =
@@ -1330,12 +1332,12 @@ tracing *)
   fun mkSameLevel (node1, node2) cone : cone =
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
       case (level_of node1, level_of node2) of
-          (SOME l1, SOME l2) => if l1=l2 then cone
-                                else if l1<l2 then lower l1 node2 cone
-                                else (* l1>l2 *)   lower l2 node1 cone
+          (SOME l1, SOME l2) =>
+          if l1=l2 then cone
+          else if l1<l2 then lower l1 node2 cone
+          else (* l1>l2 *)   lower l2 node1 cone
         | _ => die "mkSameLevel: one of the two nodes was not \
                    \an EPS or a RHO node"
-
 
   (* unifyNodes f (node1, node2) cone : cone
      First lower node1 and node2 to the same level; then union
@@ -1466,7 +1468,7 @@ tracing *)
       fun lower_new_edges (n:effect, new_target_nodes:effect list) cone : cone =
           let val level = noSome (level_of n, "instNodes: no level")
           in foldl (fn (a,b) => lower level a b) cone new_target_nodes
-          end
+          end handle ? => (print "lower_new_edges\n"; raise ?)
 
       val targets_and_new_children: (effect * effect list) list =
 	  G.multi_graft bound_to_free l
