@@ -89,12 +89,6 @@ sig
 
   val inst        : sigma * il -> cone -> Type * cone
 
-  type pi  (* type scheme and place or mu *)
-  val mu_to_pi               : mu -> pi
-  val scheme_and_place_to_pi : sigma * place -> pi
-  val pi_to_scheme_and_place : pi -> (sigma * place) option
-  val pi_to_mu               : pi -> mu option
-
   type delta_phi
   val instClever  : sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
 

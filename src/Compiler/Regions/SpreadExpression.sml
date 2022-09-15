@@ -486,11 +486,6 @@ struct
     end handle X as Report.DeepError _ => raise X
              | X => die ("spreadSwitch: cannot spread; exception " ^ exnName X ^ " raised")
 
-    fun unpack mu =
-        case R.unBOX mu of
-            SOME(tau,rho) => (tau,SOME rho)
-          | NONE => (mu,NONE)
-
     fun freshBoxMu s B tau =
         case R.runtype tau of
             NONE => die ("freshBoxMu: " ^ s)
@@ -569,7 +564,7 @@ struct
        )
     | E.INTEGER (i,tau_ml) =>
       let val (mu, B) = freshMu(tau_ml,B)
-          val (tau,rho_opt) = unpack mu
+          val (tau,rho_opt) = R.unbox mu
           val phi = case rho_opt of SOME rho => Eff.mkPut rho | NONE => Eff.empty
       in (B,E'.TR(E'.INTEGER(i, tau, rho_opt),E'.Mus[mu], phi),
           NOTAIL,
@@ -577,7 +572,7 @@ struct
       end
     | E.WORD (i, tau_ml) =>
       let val (mu, B) = freshMu(tau_ml,B)
-          val (tau,rho_opt) = unpack mu
+          val (tau,rho_opt) = R.unbox mu
           val phi = case rho_opt of SOME rho => Eff.mkPut rho | NONE => Eff.empty
       in (B,E'.TR(E'.WORD(i, tau, rho_opt),E'.Mus[mu], phi),
           NOTAIL,
@@ -628,10 +623,7 @@ struct
         let
           val (mus, B) = freshTypesWithPlaces (B, map #2 pat)
           val rse' = List.foldl (fn ((lvar, mu), rse) =>
-                                    let val (tau,rho_opt) =
-                                            case R.unBOX mu of
-                                                SOME (tau,rho) => (tau,SOME rho)
-                                              | NONE => (mu, NONE)
+                                    let val (tau,rho_opt) = R.unbox mu
                                     in RSE.declareLvar(lvar, (false,false,[],
                                                               R.type_to_scheme tau,
                                                               rho_opt,NONE,NONE), rse)
@@ -713,10 +705,7 @@ struct
            fun loop_pat ([], [], B, rse, pat'_list) = (B,rse, rev pat'_list)
              | loop_pat ((lvar,alphas,tau_ML):: rest_bind, mu1 :: mu_rest,
                          B, rse, pat'_list) =
-               let val (tau1,rho_opt) =
-                       case R.unBOX mu1 of
-                           SOME(tau1,rho) => (tau1,SOME rho)
-                         | NONE => (mu1,NONE)
+               let val (tau1,rho_opt) = R.unbox mu1
                    val sigma = R.type_to_scheme tau1
 (*                 val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                    val alphas = map (fn tv => (tv,NONE)) alphas            (* TODO MAEL: for those in tvs1, SOME eps, where eps is fresh... *)

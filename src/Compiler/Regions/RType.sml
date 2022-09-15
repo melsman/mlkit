@@ -1207,17 +1207,6 @@ struct
            | _ => die "sigma_for_c_function"
       end
 
-  datatype pi = Mu_pi of mu | Sigma_pi of sigma * place
-  val mu_to_pi = Mu_pi
-  val scheme_and_place_to_pi = Sigma_pi
-  fun pi_to_scheme_and_place (pi:pi) =
-      case pi of Sigma_pi x => SOME x
-               | _ => NONE
-  fun pi_to_mu (pi:pi) =
-      case pi of
-          Mu_pi x => SOME x
-        | _ => NONE
-
   (* Picklers *)
   val pu_mu : Type Pickle.pu -> mu Pickle.pu = fn x => x
 
@@ -1256,13 +1245,7 @@ struct
   val pu_sigma =
       Pickle.convert (FORALL, fn FORALL a => a)
       (Pickle.tup4Gen0(E.pu_effects,E.pu_effects,pu_tyvars,Pickle.debugUnpickle "Type" pu_Type))
-
-  val pu_pi = Pickle.dataGen("RType.pi", fn Mu_pi _ => 0 | Sigma_pi _ => 1,
-                             [fn _ => Pickle.con1 Mu_pi (fn Mu_pi mu => mu | _ => die "pu_pi.Mu_pi") pu_mu,
-                              fn _ => Pickle.con1 Sigma_pi (fn Sigma_pi p => p | _ => die "pu_pi.Sigma_pi")
-                                                  (Pickle.pairGen0 (pu_sigma, E.pu_effect))
-                            ])
-end; (* RType ends here *)
+end
 
 (*
 functor TestRType() =
