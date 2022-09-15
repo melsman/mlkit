@@ -31,12 +31,10 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
     fun show_atkind (AtInf.ATTOP _) = "attop"
       | show_atkind (AtInf.ATBOT _) = "atbot"
       | show_atkind (AtInf.SAT _) = "sat"
-      | show_atkind (AtInf.IGNORE) = die "show_atkind"
 
     fun get_info_actual (AtInf.ATTOP i) = i
       | get_info_actual (AtInf.ATBOT i) = i
       | get_info_actual (AtInf.SAT i) = i
-      | get_info_actual _ = die "get_info_actual"
 
     (* Ordering for storage modes. ATBOT < ATTOP and SAT < ATTOP. *)
     fun maxAtKind ak1 (SOME ak2) =
@@ -49,8 +47,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
        | (AtInf.ATTOP _, AtInf.SAT _)   => ak1
        | (AtInf.ATTOP _, AtInf.ATTOP _) => ak1
        | (AtInf.ATBOT _, AtInf.SAT _)   => ak2
-       | (AtInf.SAT _,   AtInf.ATBOT _) => ak1
-       | _  => die ("maxAtKind("^(show_atkind ak1)^","^(show_atkind ak2)^")"))
+       | (AtInf.SAT _,   AtInf.ATBOT _) => ak1)
       | maxAtKind ak1 NONE = ak1
 
     (*--------------------------------------------------------------------------------------*

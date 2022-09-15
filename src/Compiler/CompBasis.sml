@@ -184,7 +184,6 @@ structure CompBasis: COMP_BASIS =
           val mularefmap1 = Mul.restrict_mularefmap(mularefmap,effectvars)
           val drop_env1 = DropRegions.restrict(drop_env,lvars)
           val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
-          val places = DropRegions.drop_places places
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,
            EqEnv=EqEnv1,

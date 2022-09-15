@@ -2,10 +2,9 @@
 signature EFFECT =
 sig
 
-  datatype runType = WORD_RT | STRING_RT | PAIR_RT | TOP_RT | BOT_RT
+  datatype runType = STRING_RT | PAIR_RT | TOP_RT | BOT_RT
                    | ARRAY_RT | REF_RT | TRIPLE_RT
 
-  val is_wordsize: runType -> bool
   val ord_runType: runType -> int
   val show_runType: runType -> string
   val lub_runType: runType * runType -> runType
@@ -26,7 +25,6 @@ sig
 
   val removeatomiceffects: (effect * 'a)list * effect list-> (effect * 'a)list
   val get_visited: effect -> bool ref
-
   val get_instance: effect -> effect option ref
 
   (* setInstance(rho,rho') sets the instance field of  rho
@@ -46,7 +44,6 @@ sig
   val is_put : effect -> bool
   val is_get : effect -> bool
   val rho_of : effect -> place (* should only be applied to PUT and GET nodes *)
-
 
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
@@ -75,7 +72,6 @@ sig
   val info: cone -> string
 
   val toplevel_region_withtype_top    : effect
-  val toplevel_region_withtype_word   : effect
   val toplevel_region_withtype_bot    : effect
   val toplevel_region_withtype_string : effect
   val toplevel_region_withtype_pair   : effect
@@ -117,8 +113,8 @@ sig
   val restrain : cone -> cone
       (* B' = restrain(B):
          B must contain at least one level.
-	 Lower (by one) the levels of region and effect variables in the topmost
-	 layer of B. B' is B with the topmost layer removed.
+         Lower (by one) the levels of region and effect variables in the topmost
+         layer of B. B' is B with the topmost layer removed.
       *)
 
   val sort: effect list -> effect list
@@ -129,31 +125,33 @@ sig
   val level: cone -> int
 
   val resetCount: unit -> unit (* set initial regionid/effectid to that provided
-				* on command-line with "-regionvar n". *)
+                                * on command-line with "-regionvar n". *)
   val getCountFirstLast: unit -> int * int (* used for storing count numbers in MLB/f.rv file
-					    * when "-c -regionvar N" is given as argument to
-					    * mlkit executable; used for region profiling. *)
+                                            * when "-c -regionvar N" is given as argument to
+                                            * mlkit executable; used for region profiling. *)
+
   val freshRho: cone -> effect * cone
   val freshRhos: place list * cone -> place list * cone
+
   val freshRhosPreserveRT: place list * cone -> place list * cone
   val renameRhos: place list * cone -> place list * cone (* fresh variables,
                                                          preserve runtime types and pix *)
   val cloneRhos: place list * cone -> place list * cone  (* fresh variables,
                                                          preserve runtime types, pix = ~1 *)
-  val freshRhoRegVar: cone * RegVar.regvar -> effect * cone
+  val freshRhoRegVar  : cone * RegVar.regvar -> effect * cone
+  val freshRhoWithTy  : runType * cone -> effect * cone
+  val freshRhoWithTy' : RegVar.regvar option * runType * cone -> effect * cone
 
-  val freshRhoWithTy: runType * cone -> effect * cone
-  val freshRhoWithTy': RegVar.regvar option * runType * cone -> effect * cone
-  val setRunType: place -> runType -> unit
-  val get_place_ty: place -> runType option
+  val setRunType   : place -> runType -> unit
+  val get_place_ty : place -> runType option
 
-  val setRegVar : place -> RegVar.regvar -> unit
-  val getRegVar : place -> RegVar.regvar option
+  val setRegVar  : place -> RegVar.regvar -> unit
+  val getRegVar  : place -> RegVar.regvar option
 
-  val freshEps: cone -> effect * cone
-  val freshEpss: effect list * cone -> effect list * cone
-  val renameEpss: effect list * cone -> effect list * cone
-  val cloneEpss: effect list * cone -> effect list * cone
+  val freshEps   : cone -> effect * cone
+  val freshEpss  : effect list * cone -> effect list * cone
+  val renameEpss : effect list * cone -> effect list * cone
+  val cloneEpss  : effect list * cone -> effect list * cone
 
   val mkPut: effect -> effect (* argument must
                                  represent a region variable *)

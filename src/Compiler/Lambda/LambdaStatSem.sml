@@ -768,7 +768,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	                                            | _ => die "LET.polymorphic let -- Polymorphism only allowed in FIX.")
 		else (fn _ => ())
 
-	      fun check_type_scheme(tyvars, tau, tau') =
+	      fun check_type_scheme (tyvars, tau, tau') =
 		(eqType "LET" (tau,tau');
 		 check_polymorphism tyvars;
 		 tyvars_not_in_env(tyvars, env))

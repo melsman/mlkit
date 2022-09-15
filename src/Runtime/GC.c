@@ -1757,7 +1757,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 
   if ( verbose_gc )
     {
-      double RI = 0.0, GC = 0.0, FRAG = 0.0;
+      double FRAG = 0.0;
       size_t bytes_to_space;
       size_t pages_to_space;
       //size_t copied_bytes = alloc_period;
@@ -1818,7 +1818,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 	  L_gc = L1 - L2;
 	  P_ri = 100.0 * (R_ri + L_ri) / (R_ri + L_ri + R_gc + L_gc);
 	  P_gc = 100.0 * (R_gc + L_gc) / (R_ri + L_ri + R_gc + L_gc);
-
+	  /*
 	  RI = 100.0 * ( ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
 				   (double)lobjs_period - (double)bytes_from_space - (double)lobjs_beforegc)) /
 			 ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
@@ -1829,7 +1829,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 			 ((double)(to_space_old + lobjs_aftergc_old
 				   + alloc_period + lobjs_period -
 				   bytes_to_space - lobjs_aftergc)));
-
+	  */
 	  FRAG = 100.0 - 100.0 * (((double)(bytes_from_space + lobjs_beforegc)) /
 				  ((double)(sizeof(void *)*ALLOCATABLE_WORDS_IN_REGION_PAGE*pages_from_space
 					    + lobjs_beforegc)));

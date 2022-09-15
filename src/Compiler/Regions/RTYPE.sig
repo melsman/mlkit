@@ -12,17 +12,23 @@ sig
   type runType
 
   type Type
-  type mu = Type * place
+  type mu = Type
 
-  val mkTYVAR    : tyvar -> Type
+  val wf_mu      : Type -> bool
+
+  val mkTYVAR    : tyvar -> mu
   val mkCONSTYPE : tyname * mu list * place list * arroweffect list -> Type
   val mkRECORD   : mu list -> Type
   val mkFUN      : mu list * arroweffect * mu list -> Type
+  val mkBOX      : Type * place -> mu
 
-  val unTYVAR    : Type -> tyvar option
+  val unTYVAR    : mu -> tyvar option
   val unCONSTYPE : Type -> (tyname * mu list * place list * arroweffect list) option
   val unRECORD   : Type -> mu list option
   val unFUN      : Type -> (mu list * arroweffect * mu list) option
+  val unBOX      : mu -> (Type * place) option
+
+  val unbox      : mu -> Type * place option
 
   val exnType    : Type
   val int31Type  : Type
@@ -42,7 +48,7 @@ sig
   val chararrayType : Type
 
   val unboxed    : Type -> bool
-  val runtype    : Type -> runType
+  val runtype    : Type -> runType option
 
   val isF64Type  : Type -> bool
 
@@ -57,8 +63,6 @@ sig
   val unify_mu   : mu * mu -> cone -> cone
   val unify_mus  : mu list * mu list -> cone -> cone
 
-  val locate_arrow_effect : effect -> Type -> Type -> effect option
-
   type sigma and il
   val type_to_scheme : Type -> sigma
   val bv             : sigma -> place list * effect list * (tyvar*arroweffect option) list
@@ -68,9 +72,9 @@ sig
   val mk_il          : place list * effect list * Type list -> il
   val un_il          : il -> place list * effect list * Type list
   val ann_sigma      : sigma -> effect list -> effect list   (* ann_sigma(sigma)acc is a list of all the
-							      * places and arrow effects that occur in
-							      * type of sigma, consed onto acc; word regions
-							      * are not included in the result. *)
+                                                              * places and arrow effects that occur in
+                                                              * type of sigma, consed onto acc; word regions
+                                                              * are not included in the result. *)
 
   val un_scheme   : sigma -> place list * effect list * (tyvar*arroweffect option) list * Type
 
@@ -114,7 +118,7 @@ sig
    * in MUL_EXP.
    *)
 
-  val sigma_for_c_function : tyvar list -> mu -> cone -> sigma * cone
+  val sigma_for_c_function : tyvar list -> Type -> cone -> sigma * cone
   val c_function_effects   : sigma * mu -> (place * int option) list
 
   type StringTree
