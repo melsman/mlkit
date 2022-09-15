@@ -75,11 +75,9 @@ struct
     let val free_rhos_and_epss = ann_mus mus []
         val B' = foldl  (uncurry (Effect.lower(Effect.level B - 1))) B free_rhos_and_epss
                  handle _ => die "Below.lower failed\n"
-    in
-        popAndClean B'
-            handle _ => die "Below.popAndClean failed\n"
+    in popAndClean B'
+       handle _ => die "Below.popAndClean failed\n"
     end
-
 
   fun retract (B, body as Exp.TR(e, Exp.Mus mus, phi),
                delta_phi_body: Effect.delta_phi,
@@ -106,9 +104,7 @@ struct
         end
     | retract (B, t,_,_,_,_) = (B, delta_emp)
 
-
-
-  fun inferEffects (device: string -> unit) =
+  fun inferEffects (device: string -> unit) : cone * rse * (place,unit)Exp.trip -> cone =
   let
     val layoutExp = Exp.layoutLambdaExp(if print_regions()
                                         then (fn rho => SOME(PP.LEAF("at "
@@ -181,19 +177,23 @@ struct
     fun gc_compute_delta (rse,free,(ty0,rho0)) =
       if dangling_pointers() then (delta_emp,nil)
       else
-	let
+        let
           val fv_sigma = RType.ferv_sigma    (*was: frv_sigma*)
-	  fun effects_lv (lv, acc: effect list) : effect list =
-	    case RSE.lookupLvar rse lv
-	      of SOME(_,_,_,sigma,p,_,_) => p :: fv_sigma sigma @ acc
-	       | NONE => die "gc_compute_delta.effects_lv"
-	  fun effects_ex (ex, acc: effect list) : effect list =
-	    case RSE.lookupExcon rse ex
-	      of SOME (ty,p) => p :: fv_sigma (RType.type_to_scheme ty) @ acc
-	       | NONE => die "gc_compute_delta.effects_ex"
-	  val (lvs,exs) = case free
-			    of SOME p => p
-			     | NONE => die "gc_compute_delta.free variables not annotated"
+          fun effects_lv (lv, acc: effect list) : effect list =
+              case RSE.lookupLvar rse lv of
+                  SOME(_,_,_,sigma,SOME p,_,_) => p :: fv_sigma sigma @ acc
+                | SOME(_,_,_,sigma,NONE,_,_) => fv_sigma sigma @ acc
+                | NONE => die "gc_compute_delta.effects_lv"
+          fun effects_ex (ex, acc: effect list) : effect list =
+              case RSE.lookupExcon rse ex of
+                  SOME mu =>
+                  (case RType.unBOX mu of
+                       SOME(ty,p) => p :: fv_sigma (RType.type_to_scheme ty) @ acc
+                     | NONE => fv_sigma (RType.type_to_scheme mu) @ acc)
+                | NONE => die "gc_compute_delta.effects_ex"
+          val (lvs,exs) = case free of
+                              SOME p => p
+                            | NONE => die "gc_compute_delta.free variables not annotated"
 (*
           fun warn s =
               print ("**WARNING: " ^ s ^ "\n")
@@ -236,53 +236,51 @@ struct
                      spurious_tyvars
               end
 
-	  val effects = Effect.remove_duplicates effects
+          val effects = Effect.remove_duplicates effects
 
-	  val effects_not =
-	    [rho0,
-	     Effect.toplevel_arreff,
-	     Effect.toplevel_region_withtype_top,
-	     Effect.toplevel_region_withtype_bot,
-	     Effect.toplevel_region_withtype_word,
-	     Effect.toplevel_region_withtype_string,
-	     Effect.toplevel_region_withtype_pair,
-	     Effect.toplevel_region_withtype_array,
-	     Effect.toplevel_region_withtype_ref,
-	     Effect.toplevel_region_withtype_triple] @
-	    RType.ferv_sigma(RType.type_to_scheme ty0)
-	  val effects = Effect.setminus(effects, effects_not)
+          val effects_not =
+            [rho0,
+             Effect.toplevel_arreff,
+             Effect.toplevel_region_withtype_top,
+             Effect.toplevel_region_withtype_bot,
+             Effect.toplevel_region_withtype_string,
+             Effect.toplevel_region_withtype_pair,
+             Effect.toplevel_region_withtype_array,
+             Effect.toplevel_region_withtype_ref,
+             Effect.toplevel_region_withtype_triple] @
+            RType.ferv_sigma(RType.type_to_scheme ty0)
+          val effects = Effect.setminus(effects, effects_not)
 
-	  val effects = map (fn e => if Effect.is_rho e then Effect.mkGet e
-				     else if Effect.is_put e orelse Effect.is_get e then
-				       die "gc_compute_delta.put or get"
-				     else e) effects
-	  val _ = app (fn e => if Effect.is_rho e then die "gc_compute_delta.is_rho"
-			       else ()) effects
+          val effects = map (fn e => if Effect.is_rho e then Effect.mkGet e
+                                     else if Effect.is_put e orelse Effect.is_get e then
+                                       die "gc_compute_delta.put or get"
+                                     else e) effects
+          val _ = app (fn e => if Effect.is_rho e then die "gc_compute_delta.is_rho"
+                               else ()) effects
 (*
-	  val _ = print ("New effects are " ^ PP.flatten1 (PP.layout_list Effect.layout_effect_deep effects) ^ "\n")
+          val _ = print ("New effects are " ^ PP.flatten1 (PP.layout_list Effect.layout_effect_deep effects) ^ "\n")
 *)
-	  (* Statistics *)
-	  fun incr r n = r := !r + n
-	  val _ = if length effects > 0 then
+          (* Statistics *)
+          fun incr r n = r := !r + n
+          val _ = if length effects > 0 then
                      (gc_arrow_effect_update := true;
-		      incr Flags.Statistics.no_dangling_pointers_changes 1;
-		      incr Flags.Statistics.no_dangling_pointers_changes_total (length effects))
-		  else ()
-	in (Effect.Lf effects, es_tvs)
-	end
+                      incr Flags.Statistics.no_dangling_pointers_changes 1;
+                      incr Flags.Statistics.no_dangling_pointers_changes_total (length effects))
+                  else ()
+        in (Effect.Lf effects, es_tvs)
+        end
 
     val effects_not =
-	[Effect.toplevel_arreff,
-	 Effect.toplevel_region_withtype_top,
-	 Effect.toplevel_region_withtype_bot,
-	 Effect.toplevel_region_withtype_word,
-	 Effect.toplevel_region_withtype_string,
-	 Effect.toplevel_region_withtype_pair,
-	 Effect.toplevel_region_withtype_array,
-	 Effect.toplevel_region_withtype_ref,
-	 Effect.toplevel_region_withtype_triple]
+        [Effect.toplevel_arreff,
+         Effect.toplevel_region_withtype_top,
+         Effect.toplevel_region_withtype_bot,
+         Effect.toplevel_region_withtype_string,
+         Effect.toplevel_region_withtype_pair,
+         Effect.toplevel_region_withtype_array,
+         Effect.toplevel_region_withtype_ref,
+         Effect.toplevel_region_withtype_triple]
 
-     fun R (B:cone, rse: rse, t as Exp.TR(e, mt: Exp.metaType, phi: effect)): cone * Effect.delta_phi =
+     fun R (B:cone, rse: rse, (t as Exp.TR(e, mt: Exp.metaType, phi: effect)) : (place,unit)Exp.trip) : cone * Effect.delta_phi =
       let
 (*
         val () = if !count_visited mod 100 = 0 then
@@ -311,7 +309,7 @@ struct
          let val (il, B) = f(il, B)
          in il_r:= (il, fn p => p);
             (case RSE.lookupLvar rse lvar of
-     	         SOME(_,_,_,sigma,place0,_, _) =>
+                 SOME(_,_,_,sigma,_,_, _) =>
                  let val (tau_1, B, updates: (effect * Effect.delta_phi)list,
                           spuriousPairs: (effect * RType.Type)list) =
                          instClever (sigma,il) B
@@ -320,8 +318,9 @@ struct
                                      PP.flatten1(RType.mk_lay_sigma false sigma) ^ "\n")
                      val B =
                          case mt of
-                             Exp.Mus [(tau, _)] =>
-                             let val B' = unify_ty (tau,tau_1) B handle _ => die "unify_ty failed\n"
+                             Exp.Mus [mu] =>
+                             let val tau = case RType.unBOX mu of SOME (ty,_) => ty | NONE => mu
+                                 val B' = unify_ty (tau,tau_1) B handle _ => die "unify_ty failed\n"
                              in List.app update_increment updates;
                                 List.app (update_areff o #1) updates    (* takes time; mael 2015-05-07 *)
                                 handle _ => die "update_areff in VAR case";
@@ -346,10 +345,10 @@ struct
 *)
                                      val effs = effs' @ effs
                                      val effs = Effect.setminus(effs, effects_not)
-	                             val effs = map (fn e => if Effect.is_rho e then Effect.mkGet e
-				                             else if Effect.is_put e orelse Effect.is_get e then
-				                               die "R.VAR.put or get"
-				                             else e) effs
+                                     val effs = map (fn e => if Effect.is_rho e then Effect.mkGet e
+                                                             else if Effect.is_put e orelse Effect.is_get e then
+                                                               die "R.VAR.put or get"
+                                                             else e) effs
                                      val effs = Effect.remove_duplicates effs
                                  in (e,Effect.Lf effs)
                                  end)
@@ -388,31 +387,39 @@ struct
                                         (B,delta_emp) ts
        | Exp.FN{pat, body, alloc, free} =>
            (case mt of
-              Exp.Mus [mu0 as (ty,_)] =>
-              (case RType.unFUN ty of
-                 SOME(mus2,eps_phi0,mus1) =>
-                 let
-	            val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
-                          RSE.declareLvar(lvar, (false,false,[],
-                                 RType.type_to_scheme tau, rho,NONE,NONE),
-                                          rse)) rse
-                              (ListPair.zip(map #1 pat, mus2))
-                    val (B, delta_body) = R(B,rse', body)
-		    val (delta_gc,es_tvs) = gc_compute_delta(rse,free,mu0)
-                    val B = List.foldl (fn (e,B) => Effect.unifyEps (eps_phi0,e) B) B es_tvs
-		    val delta = delta_body && delta_gc
-                    val lev_eps = case Effect.level_of eps_phi0 of
-                                      SOME n => n
-                                    | NONE => die "bad arrow effect (FN)"
-                    val B = lower_delta lev_eps delta B
-                 in
-                    update_increment(eps_phi0, delta);
-                    update_areff eps_phi0;   (* takes time; mael 2015-05-07 *)
-                    (B, delta_emp)
-                 end
-               | NONE => die "R: FN expression had bad meta type")
-            | _ => die "R: FN expression had bad meta type")
-
+              Exp.Mus [mu0] =>
+              (case RType.unBOX mu0 of
+                   SOME(ty,rho) =>
+                   (case RType.unFUN ty of
+                        SOME(mus2,eps_phi0,mus1) =>
+                        let
+                          val rse' = foldl (fn ((lvar, mu), rse) =>
+                                               let val (tau,rho) =
+                                                       case RType.unBOX mu of
+                                                           SOME(ty,rho) => (ty,SOME rho)
+                                                         | NONE => (mu,NONE)
+                                               in RSE.declareLvar(lvar, (false,false,[],
+                                                                         RType.type_to_scheme tau,
+                                                                         rho,NONE,NONE),
+                                                                  rse)
+                                               end) rse
+                                           (ListPair.zip(map #1 pat, mus2))
+                          val (B, delta_body) = R(B,rse', body)
+                          val (delta_gc,es_tvs) = gc_compute_delta(rse,free,(ty,rho))
+                          val B = List.foldl (fn (e,B) => Effect.unifyEps (eps_phi0,e) B) B es_tvs
+                          val delta = delta_body && delta_gc
+                          val lev_eps = case Effect.level_of eps_phi0 of
+                                            SOME n => n
+                                          | NONE => die "bad arrow effect (FN)"
+                          val B = lower_delta lev_eps delta B
+                        in
+                          update_increment(eps_phi0, delta);
+                          update_areff eps_phi0;   (* takes time; mael 2015-05-07 *)
+                          (B, delta_emp)
+                        end
+                      | NONE => die "R: FN expected function type")
+                 | NONE => die "R: FN expected boxed function type")
+             | _ => die "R: FN expression had bad meta type")
 
        | Exp.LETREGION_B{B = B1, discharged_phi, body} =>
            let
@@ -445,8 +452,8 @@ struct
        | Exp.LET{pat = nil, bind = bind, scope} =>  (* wild card *)
            let val (B,d1) = R(B,rse,bind)
                val (B,d2) = R(B,rse,scope)
-	   in (B, d1 && d2)
-	   end
+           in (B, d1 && d2)
+           end
        | Exp.LET _ => die "LET.multiple bindings not implemented."
        | Exp.FIX{shared_clos = rho0,
                  functions,
@@ -459,15 +466,18 @@ struct
                   let val sigma = RType.FORALL(rhovec,epsvec,[],tau0)
                       val rse = foldl (fn ((tv,NONE),rse) => rse
                                         | ((tv,SOME e),rse) => RSE.declareTyVar (tv,e,rse)) rse alphavec
-                  in RSE.declareLvar(f,(true,true,[],sigma, rho0, SOME occ, NONE),rse)
+                  in RSE.declareLvar(f,(true,true,[],sigma, SOME rho0, SOME occ, NONE),rse)
                   end
 
               fun doOneRhs rse {lvar = f,occ,tyvars = alphasr as ref alphavec,
                                 rhos = rhosr as ref rhovec, epss = epssr as ref epsvec,
                                 Type = tau0, formal_regions,
-                                bind as Exp.TR(_,Exp.Mus[(tau4,rho4)],phi4)} =
+                                bind as Exp.TR(_,Exp.Mus[mu4],phi4)} =
               let
-                    fun Rrec (B3,sigma_3hat,previous_functions_ok:bool) =
+                   val (tau4,rho4) = case RType.unBOX mu4 of
+                                         SOME p => p
+                                       | NONE => die "doOneRhs.expecting boxed mu"
+                   fun Rrec (B3,sigma_3hat,previous_functions_ok:bool) =
                       let
 (*
                         val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat)
@@ -478,9 +488,9 @@ struct
                                handle _ => die("failed to rename type scheme " ^
                                                 show_sigma sigma_3hat)
 (*
-			val _ = sayLn("after  rename ,    sigma is " ^ show_sigma sigma3_hat_save)
+                        val _ = sayLn("after  rename ,    sigma is " ^ show_sigma sigma3_hat_save)
 *)
-                        val rse' = RSE.declareLvar(f,(true,true,[],(*sigma3_hat_save*) sigma_3hat, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
+                        val rse' = RSE.declareLvar(f,(true,true,[],(*sigma3_hat_save*) sigma_3hat, SOME rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
                         val bv_sigma3_hat as (rhos,epsilons,_) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
                                     handle _ => die "pushLayer failed\n"
@@ -501,7 +511,7 @@ struct
 *)
                         val (_, B5) = pop B5
                         val (newrhos,newepss,_) = RType.bv sigma_5hat
-			(* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)
+                        (* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)
                         (*val _ = Profile.profileOn();*)
                         fun update_quantified_effectvars () =
                             if eq_effects (!epssr, newepss) then ()
@@ -514,15 +524,6 @@ struct
                                                                (!epssr)
                                       val () = epssr := newepss
                                       val newalphavec = !alphasr
-(*                                          map (fn (tv, NONE) => (tv,NONE)
-                                                | (tv, SOME e) =>  (* find the effectvar in tau0 and return the corresponding effectvar in tau5_hat *)
-                                                  if List.exists (fn e' => Effect.eq_effect(e,e')) changed then
-                                                    case RType.locate_arrow_effect e tau0 tau4 of
-                                                        SOME e => (tv, SOME e)
-                                                      | NONE => die "update_quantified_effectvars; maybe unify effect variables"
-                                                  else (tv,SOME e)
-                                              ) alphavec
-*)
                                   in alphasr := newalphavec
                                   end)
 
@@ -550,7 +551,7 @@ struct
                                           ^ Lvar.pr_lvar f ^ "\n" ^ msg)
                            in
                              (* update bindings in syntax tree *)
-			     (*sayLn("fix: looping for " ^ Lvar.pr_lvar f);*)
+                             (*sayLn("fix: looping for " ^ Lvar.pr_lvar f);*)
                              (*log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
                              rhosr:= newrhos;
                              update_quantified_effectvars();
@@ -560,7 +561,7 @@ struct
                in
                    (fn B => Rrec(B, RType.FORALL(rhovec,epsvec,[],tau0),true))
                end
-		| doOneRhs _ _ = die "doOneRhs.wrong bind"
+                | doOneRhs _ _ = die "doOneRhs.wrong bind"
 
               fun loop {B, fcn=[], previous_were_ok=true, rse} = B
                 | loop {B, fcn=[], previous_were_ok=false, rse} = loop {B=B,fcn=functions,previous_were_ok=true,rse=rse}
@@ -574,25 +575,28 @@ struct
                                        rhos as ref rhovec, epss as ref epsvec,
                                        Type = tau0, formal_regions,bind}, rse) =
                   let val sigma1hat' = RType.FORALL(rhovec,epsvec,alphavec,tau0)
-                  in RSE.declareLvar(f,(true,true,[],sigma1hat', rho0, SOME occ, NONE),rse)
+                  in RSE.declareLvar(f,(true,true,[],sigma1hat', SOME rho0, SOME occ, NONE),rse)
                   end
 
               val B1 = loop {B=B,fcn=functions,previous_were_ok=true, rse=foldl addBindingForRhs rse functions}
 
               val rse' = foldl addBindingForScope rse functions
             in
-		R(B1, rse', t2)
+                R(B1, rse', t2)
             end
 
        | Exp.APP(t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
                val eps_phi0 =
                    case t1 of
-                     Exp.TR(_, Exp.Mus [(ty,_)],_) =>
-                     (case RType.unFUN ty of
-                        SOME(_,eps_phi0,_) => eps_phi0
-                      | NONE => die "APP: not function")
-                   | _ => die "APP: not function"
+                       Exp.TR(_, Exp.Mus [mu],_) =>
+                       (case RType.unBOX mu of
+                            SOME(ty,_) =>
+                            (case RType.unFUN ty of
+                                 SOME(_,eps_phi0,_) => eps_phi0
+                               | NONE => die "APP: not function")
+                          | NONE => die "APP: not boxed function")
+                     | _ => die "APP: not function"
                val (B,d2) = R(B,rse,t2)
                val d0 = current_increment eps_phi0
                val d = d0 && d1 && d2
@@ -606,11 +610,14 @@ struct
            let val (B,d1) = R(B,rse,t1)
                val eps_phi0 =
                    case t2 of
-                     Exp.TR(_, Exp.Mus [(ty,_)],_) =>
-                     (case RType.unFUN ty of
-                        SOME(_,eps_phi0,_) => eps_phi0
-                      | NONE => die "HANDLE: not function")
-                   | _ => die "HANDLE: not function"
+                       Exp.TR(_, Exp.Mus [mu],_) =>
+                       (case RType.unBOX mu of
+                            SOME(ty,_) =>
+                            (case RType.unFUN ty of
+                                 SOME(_,eps_phi0,_) => eps_phi0
+                               | NONE => die "HANDLE: not function")
+                          | NONE => die "HANDLE: not boxed function")
+                     | _ => die "HANDLE: not function"
                val (B,d2) = R(B,rse,t2)
            in  (B, current_increment eps_phi0 && d1 && d2)
                (*(B, Effect.Lf[eps_phi0] && d1 && d2)*)
@@ -627,12 +634,12 @@ struct
        | Exp.EXCON (_, SOME (_,t)) => R(B,rse,t)
        | Exp.DEEXCON (_, t) => R(B,rse,t)
        | Exp.RECORD (_, ts) => foldr(fn (t, (B, d)) =>
-					let val (B', d') = R(B,rse,t) in (B', d && d') end)
+                                        let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                     (B,delta_emp) ts
        | Exp.SELECT (_, t) => R(B,rse,t)
        | Exp.DEREF t => R(B,rse,t)
        | Exp.REF (_, t) => R(B,rse,t)
-       | Exp.ASSIGN (_,t1,t2) =>
+       | Exp.ASSIGN (t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = R(B,rse,t2)
            in  (B, d1 && d2)
@@ -644,10 +651,10 @@ struct
            in  (B, d1 && d2)
            end
        | Exp.CCALL (_, ts) => foldr(fn (t,(B, d))  =>
-				       let val (B', d') = R(B,rse,t) in (B', d && d') end)
+                                       let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                    (B,delta_emp) ts
        | Exp.BLOCKF64 (_, ts) => foldr(fn (t, (B, d)) =>
-					  let val (B', d') = R(B,rse,t) in (B', d && d') end)
+                                          let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                       (B,delta_emp) ts
        | Exp.SCRATCHMEM _ => (B, delta_emp)
        | Exp.EXPORT (_, t) => R(B,rse,t)
@@ -662,28 +669,26 @@ struct
             (B, delta_emp)
            )
        ) (* case *)
-          handle AbortExp  => raise AbortExp
-               | _ =>
-          (device "Region inference failed (function R)\n";
-           device "Smallest enclosing expression:\n";
-           PP.outputTree(device,layoutExp(e),!Flags.colwidth);
-           device "Region Static Environment:\n";
-           PP.outputTree(device,RSE.layout(rse),!Flags.colwidth);
-           device "\n";
-           raise AbortExp
-          )
+       handle AbortExp => raise AbortExp
+            | _ =>
+              (device "Region inference failed (function R)\n";
+               device "Smallest enclosing expression:\n";
+               PP.outputTree(device,layoutExp e,!Flags.colwidth);
+               device "Region Static Environment:\n";
+               PP.outputTree(device,RSE.layout rse,!Flags.colwidth);
+               device "\n";
+               raise AbortExp
+              )
 
       end (* let fun R_sw ...*)
 
-    fun loopR (B,rse,tr) =
-	let val _ = gc_arrow_effect_update := false
-	    val _ = Effect.reset();
+    fun loopR (B:cone,rse:rse,tr : (place,unit)Exp.trip) : cone =
+        let val _ = gc_arrow_effect_update := false
+            val _ = Effect.reset();
             val B = #1(R (B,rse,tr)) handle AbortExp => Crash.impossible "R failed"
-  	    (* for toplas submission: insert call show_visited *)
-	    val B = (* show_visited *) B
-	in if !gc_arrow_effect_update then loopR (B,rse,tr)
-	   else B
-	end
+        in if !gc_arrow_effect_update then loopR (B,rse,tr)
+           else B
+        end
   in
      Effect.algorithm_R:=true;
      loopR
@@ -691,4 +696,4 @@ struct
 
   type ('a,'b)trip = ('a,'b)Exp.trip
 
-end; (*R*)
+end

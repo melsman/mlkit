@@ -269,7 +269,7 @@ structure Compile: COMPILE =
                                                            NONE (*SOME(ref[])*) (* reset occurrences *), NONE
                                                          ), rse)) rse_con declared_lvars
                in
-                 foldl (fn ((excon, SOME(Type, place)), rse) => SpreadExp.RegionStatEnv.declareExcon(excon,(Type,place),rse)
+                 foldl (fn ((excon, SOME mu), rse) => SpreadExp.RegionStatEnv.declareExcon(excon,mu,rse)
                          | _ => die "rse.excon") rse_temp declared_excons
 
                end handle _ => die "cannot form rse'")
@@ -436,12 +436,11 @@ structure Compile: COMPILE =
     (*   Warn against dangling pointers (when Garbage Collection is on)       *)
     (* ---------------------------------------------------------------------- *)
 
-       fun warn_dangling_pointers(rse, psi_pgm) =
+       fun warn_dangling_pointers (rse, psi_pgm) =
         let (* warn against dangling references *)
-            fun get_place_at(AtInf.ATTOP(rho,pp)) = rho
-              | get_place_at(AtInf.ATBOT(rho,pp)) = rho
-              | get_place_at(AtInf.SAT(rho,pp)) = rho
-              | get_place_at(AtInf.IGNORE) = Effect.toplevel_region_withtype_top
+            fun get_place_at (AtInf.ATTOP(rho,pp)) = rho
+              | get_place_at (AtInf.ATBOT(rho,pp)) = rho
+              | get_place_at (AtInf.SAT(rho,pp)) = rho
         in
             chat "[Checking for dangling pointers...";
             Timing.timing_begin();
@@ -487,7 +486,7 @@ structure Compile: COMPILE =
 
     fun compile fe (CEnv, Basis, strdecs) : res =
       let
-        val _ = RegionExp.printcount:=1;
+(*        val _ = RegionExp.printcount:=1; *)
         val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
           CompBasis.de_CompBasis Basis
         val BtoLamb = CompBasisToLamb.mk_CompBasis{NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}

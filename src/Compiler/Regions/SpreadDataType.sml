@@ -1,10 +1,10 @@
 (*
-*   The purpose of SpreadDatatype is to analyse datatype declarations
-*   and find out for each type name what its arity is (not just the
-*   type arity, which is given in the input program) but also the
-*   region and effect arity). Moreover, the module infers a region-polymorphic
-*   type scheme for each value constructor declared in the source program.
-*)
+ *   The purpose of SpreadDatatype is to analyse datatype declarations
+ *   and find out for each type name what its arity is (not just the
+ *   type arity, which is given in the input program) but also the
+ *   region and effect arity). Moreover, the module infers a region-polymorphic
+ *   type scheme for each value constructor declared in the source program.
+ *)
 
 structure SpreadDatatype: SPREAD_DATATYPE =
 struct
@@ -32,9 +32,9 @@ struct
   fun die s = Crash.impossible ("SpreadDatatype." ^ s)
 
   fun noSome x msg =
-    case x of
-      SOME it => it
-    | NONE => die msg
+      case x of
+          SOME it => it
+        | NONE => die msg
 
   fun apply_n f 0 = []
     | apply_n f n = f() :: apply_n f (n-1)
@@ -45,16 +45,15 @@ struct
   (* one target_datbind for each set of mutually recursive datatype bindings *)
   type target_datbind = target_db list
 
-
    (**************************)
    (*                        *)
    (*  arities               *)
    (*                        *)
    (**************************)
 
-  fun merge_runtypes([], l2) = l2
-    | merge_runtypes(l1, []) = l1
-    | merge_runtypes(l1 as (x::xs), l2 as (y::ys)) =
+  fun merge_runtypes ([], l2) = l2
+    | merge_runtypes (l1, []) = l1
+    | merge_runtypes (l1 as (x::xs), l2 as (y::ys)) =
         let val i1 = Effect.ord_runType x
             val i2 = Effect.ord_runType y
         in
@@ -75,7 +74,6 @@ struct
   type arity = int * Effect.runType list * eff_arity
   val arity0 = (0, [], zero)
 
-
   infix ++
   fun ((a,b,c) ++ (a',b',c')) = (a+a':int, merge_runtypes(b,b'), eplus(c,c'))
   fun plus (a,b,c)(a',b',c') = (a+a':int, merge_runtypes(b,b'), eplus(c,c'))
@@ -88,10 +86,8 @@ struct
      have to be found by analysis of the type declarations.
   *)
 
-
   fun layout_arity (a,b,c) = PP.LEAF ("(" ^ Int.toString a ^ "," ^ Int.toString(length(b)) ^ ","
                                       ^ Int.toString c ^ ")")
-
 
   (* All type names in a mutually recursive datbind have the same
     region and effect arity; these are computed by summing up
@@ -109,45 +105,47 @@ struct
     | mk_abstract (a,b,1) = (a,b,one)
     | mk_abstract _ = Crash.impossible "SpreadDataType.mk_abstract"
 
-  fun mk_concrete(a,b,c) = (a,b,eff_arity_int c)
+  fun mk_concrete (a,b,c) = (a,b,eff_arity_int c)
 
   fun infer_arity_ty rse (current_tynames: tyname list) (tau: E.Type): arity =
-    (case tau of
-     E.TYVARtype _ =>  arity0
+      case tau of
+          E.TYVARtype _ =>  arity0
        (* this does not give a contribution to the arity: all occurrences of
         the same type variable in the source expression are translated into
         the same pair of a type variable and a region variable in the target.
         All the other forms of types contribute at least with one region to
         the arity.                       *)
 
-  |  E.ARROWtype(taus1,taus2) =>
-        foldl (uncurry plus)
-         (foldl (uncurry plus) (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
-          (map (infer_arity_ty rse current_tynames) taus1)
-         )
-        (map (infer_arity_ty rse current_tynames) taus2)
+       |  E.ARROWtype(taus1,taus2) =>
+          foldl (uncurry plus)
+                (foldl (uncurry plus) (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
+                       (map (infer_arity_ty rse current_tynames) taus1)
+                )
+                (map (infer_arity_ty rse current_tynames) taus2)
 
-  |  E.CONStype(types,tyname) =>
-         foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
-         ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames
-               then arity0
-               else (0,[R.runtype(R.mkCONSTYPE(tyname,[],[],[]))],zero) ++
+       |  E.CONStype(types,tyname) =>
+          foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
+                ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames
+                    then arity0
+                    else
+                      (case R.runtype(R.mkCONSTYPE(tyname,[],[],[])) of
+                           SOME rt => (0,[rt],zero)
+                         | NONE => arity0) ++
                      let val (global, local_rse) = rse
-                     in
-                      (case RSE.lookupTyName local_rse tyname of
-                         SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
-                       | NONE => (case RSE.lookupTyName global tyname of
-                           SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
-                         | NONE => die ("infer_arity_ty. Type name: "
-                                  ^ TyName.pr_TyName tyname)))
+                     in case RSE.lookupTyName local_rse tyname of
+                            SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
+                          | NONE =>
+                            case RSE.lookupTyName global tyname of
+                                SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
+                              | NONE => die ("infer_arity_ty. Type name: "
+                                             ^ TyName.pr_TyName tyname)
                      end)
-  |  E.RECORDtype(types) =>
-         foldr (uncurry plus) (0,[case types of [] => Effect.WORD_RT
-                               | [_,_] => Effect.PAIR_RT
-			       | [_,_,_] => Effect.TRIPLE_RT
-                               | _ => Effect.TOP_RT],zero)
-          (map (infer_arity_ty rse current_tynames) types)
-  )
+       |  E.RECORDtype nil => arity0
+       |  E.RECORDtype types =>
+          foldr (uncurry plus) (0,[case types of [_,_] => Effect.PAIR_RT
+                                               | [_,_,_] => Effect.TRIPLE_RT
+                                               | _ => Effect.TOP_RT],zero)
+                (map (infer_arity_ty rse current_tynames) types)
 
   fun infer_arity_conbind_list rse current_tynames conbind_list =
     foldr
@@ -187,75 +185,73 @@ struct
         | arreff::rest => ((*arreff_resource:= rest; always choose the same "fresh" variable! *)
           arreff)
 
-  fun spread_ty_to_mu (tyvar_to_place: tyvar -> place option,
-                       get_with_rt: Effect.runType -> place,
+  fun spread_ty_to_mu (get_with_rt: Effect.runType -> place,
                        get_eps: unit -> effect,
                        being_defined: tyname -> bool,
                        fresh_rhos: place list,
                        fresh_epss: effect list,
-                       common_place: place,
+                       common_place: place option,
                        rse,
                        global_rse,
-                       ty: E.Type): R.Type * R.effect  =
+                       ty: E.Type): R.mu =
     let
 
-      fun extend (tau': R.Type): R.Type*R.effect =
-          (tau', get_with_rt(R.runtype tau'))
+      fun extend (tau: R.Type): R.mu =
+          case R.runtype tau of
+              SOME rt => R.mkBOX(tau, get_with_rt rt)
+            | NONE => tau
 
       fun get_list_with_runtypes (runtypes: R.runType list): R.effect list =
           map get_with_rt runtypes
 
-      fun ty_to_mu (tau: E.Type): R.Type*R.effect=
-        case tau of
-          E.TYVARtype alpha =>
-             let val place = noSome (tyvar_to_place alpha)
-                             "ty_to_mu: tyvar not in domain"
-             in (R.mkTYVAR alpha, place)
-             end
-        | E.ARROWtype(taus1,taus2) =>
-             extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
-        | E.CONStype(taus, tyname) =>
-             if being_defined tyname
-               then (R.mkCONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss),
-                     common_place)
-             else (* tyname not in the current datbind.
-                   Look for it amongst previously declared datbinds: *)
-               (case spread_constructed_type(rse, tyname, taus) of
-                  SOME mu => mu
-                | NONE => (* look for it in the global rse *)
-                    (case spread_constructed_type(global_rse, tyname, taus) of
-                       SOME mu => mu
-                     | NONE => die ("ty_to_mu: \
-                      \ undeclared type name: " ^ TyName.pr_TyName tyname)
-                    )
-               )
-        | E.RECORDtype(taus) =>
-            extend(R.mkRECORD(map ty_to_mu taus))
+      fun ty_to_mu (tau: E.Type) : R.mu =
+          case tau of
+              E.TYVARtype alpha => R.mkTYVAR alpha
+            | E.ARROWtype(taus1,taus2) =>
+              extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
+            | E.CONStype(taus, tyname) =>
+              if being_defined tyname
+              then let val tau = R.mkCONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss)
+                   in case common_place of
+                          SOME p => R.mkBOX(tau,p)
+                        | NONE => tau
+                   end
+              else (* tyname not in the current datbind.
+                      Look for it amongst previously declared datbinds: *)
+                (case spread_constructed_type(rse, tyname, taus) of
+                     SOME mu => mu
+                   | NONE => (* look for it in the global rse *)
+                     (case spread_constructed_type(global_rse, tyname, taus) of
+                          SOME mu => mu
+                        | NONE => die ("ty_to_mu: \
+                                      \ undeclared type name: " ^ TyName.pr_TyName tyname)
+                     )
+                )
+            | E.RECORDtype taus =>
+              extend(R.mkRECORD(map ty_to_mu taus))
 
-      and spread_constructed_type (rse, tyname, taus) : (R.Type*R.effect) option =
-         case RSE.lookupTyName rse tyname of
-           SOME arity =>
-             let val (number_of_alphas, rho_runtypes, number_of_epsilons) =
-                  RSE.un_arity arity
-             in
-               SOME(extend(R.mkCONSTYPE(tyname, map ty_to_mu taus,
-                                        get_list_with_runtypes rho_runtypes,
-                                        apply_n get_eps number_of_epsilons)))
-             end
-         | NONE => NONE
-
+      and spread_constructed_type (rse, tyname, taus) : R.mu option =
+          case RSE.lookupTyName rse tyname of
+              SOME arity =>
+              let val (number_of_alphas, rho_runtypes, number_of_epsilons) =
+                      RSE.un_arity arity
+              in SOME(extend(R.mkCONSTYPE(tyname, map ty_to_mu taus,
+                                          get_list_with_runtypes rho_runtypes,
+                                          apply_n get_eps number_of_epsilons)))
+              end
+            | NONE => NONE
     in
-       ty_to_mu ty
+      ty_to_mu ty
     end
 
   fun mk_rse_constructors (target_db: target_db) con_rse: rse=
-          foldl (fn ((con,_,sigma), con_rse) =>
-                         RSE.declareCon(con, sigma, con_rse))
-                     con_rse
-                     (#2 target_db) (* the list of constructors for one type name *)
+      foldl (fn ((con,_,sigma), con_rse) =>
+                RSE.declareCon(con, sigma, con_rse))
+            con_rse
+            (#2 target_db) (* the list of constructors for one type name *)
 
   fun mk_rse_one_mutual_recursion (target_dbs: target_datbind) con_rse =
-           foldl (uncurry mk_rse_constructors) con_rse target_dbs
+      foldl (uncurry mk_rse_constructors) con_rse target_dbs
 
 
   (************************************************************************)
@@ -275,8 +271,8 @@ struct
 
 
   fun spreadDatbind (level_of_TE:int)(global_rse: rse)(datbind: datbind)
-                    (rse, datbind'_acc: target_datbind list,cone) :
-                        (rse * target_datbind list * cone) =
+                    (rse, datbind'_acc: target_datbind list,cone)
+      : (rse * target_datbind list * cone) =
 
   let
       val current_tynames: tyname list  = map (#2) datbind;
@@ -295,20 +291,25 @@ struct
          use the same region for their values: *)
 
       val (common_place,cone) =
-	let (* see CompileDec.sml for information about the unboxing scheme *)
-	    val rt = case current_tynames
-		       of tn::_ => if TyName.unboxed tn then Effect.WORD_RT
-				   else Effect.TOP_RT
-			| _ => Effect.TOP_RT
-	in Effect.freshRhoWithTy(rt, cone)
-	end
+          let (* see CompileDec.sml for information about the unboxing scheme *)
+            val rt = case current_tynames of
+                         tn::_ => if TyName.unboxed tn then NONE
+                                  else SOME Effect.TOP_RT
+                       | _ => SOME Effect.TOP_RT
+          in case rt of
+                 SOME rt =>
+                 let val (rho,cone) = Effect.freshRhoWithTy(rt, cone)
+                 in (SOME rho,cone)
+                 end
+               | NONE => (NONE, cone)
+          end
 
    (*mads   val _ = TextIO.output(TextIO.stdOut,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))*)
 
       val (l,cone) = foldr (fn (rt,(l,cone)) =>
-			    let val (rho,cone) = Effect.freshRhoWithTy(rt,cone)
-			    in ((rt,rho)::l, cone)
-			    end) (nil, cone) (#2 common_arity)
+                            let val (rho,cone) = Effect.freshRhoWithTy(rt,cone)
+                            in ((rt,rho)::l, cone)
+                            end) (nil, cone) (#2 common_arity)
       val fresh_aux_rhos = map #2 l
 (*
       val (fresh_aux_rhos,cone) = fresh_list(Effect.freshRho,length(#2 common_arity),cone)
@@ -330,34 +331,23 @@ struct
                                                              target_db list * cone =
           let
               val (tyvar_list, tyname, conbind_list) = db
-              val (tyvar_conversion0,cone) =
-                  foldr
-                          (fn (alpha,(rho_list, cone)) =>
-                           let val (rho, cone') =
-                                 Effect.freshRhoWithTy (Effect.BOT_RT, cone)
-                           in
-                             ((alpha, rho):: rho_list, cone')
-                           end) ([], cone) tyvar_list
-              val new_mus0 = map (fn (alpha,rho) => (R.mkTYVAR alpha, rho))
-                                 tyvar_conversion0
-              val tyvarPairMap0 =
-                   foldr
-                    (fn ((alpha,rho), m) => E.TyvarMap.add (alpha, rho, m))
-                    E.TyvarMap.empty tyvar_conversion0
-
+              val new_mus0 = map R.mkTYVAR tyvar_list
               val result_type =
-                    R.mkCONSTYPE(tyname,new_mus0, fresh_aux_rhos, fresh_aux_arreffs)
+                  R.mkCONSTYPE(tyname, new_mus0, fresh_aux_rhos, fresh_aux_arreffs)
+
+              val result_mu = case common_place of
+                                  SOME rho => R.mkBOX(result_type,rho)
+                                | NONE => result_type
 
               fun spreadCon (con, tau_opt) (acc as (list,cone) :
                         ((Con.con * E'.constructorKind * R.sigma)list * cone)) =
                    (case tau_opt of
                         SOME tau =>
                           let val mu1 = spread_ty_to_mu(
-                                          E.TyvarMap.lookup tyvarPairMap0,
                                           (get_place rho_resource),
                                           (get_eps arreff_resource),
                                           (fn tyname => List.exists (fn tn => TyName.eq(tn, tyname))
-                                                          current_tynames),
+                                                                    current_tynames),
                                           fresh_aux_rhos,
                                           fresh_aux_arreffs,
                                           common_place,
@@ -365,12 +355,12 @@ struct
                                           global_rse,
                                           tau)
                               val (eps, cone) = Effect.freshEps cone
-                              val _ = Effect.edge(eps, Effect.mkPut common_place)  (* inserted 21/5/96 mads*)
+                              val () = case common_place of SOME p => Effect.edge(eps, Effect.mkPut p)
+                                                          | NONE => () (* inserted 21/5/96 mads*)
                               val tvs = map (fn tv => (tv,NONE)) tyvar_list
                               val (cone,sigma) =
                                     R.generalize_all(cone,level_of_TE,tvs,
-                                                 R.mkFUN([mu1],eps,[(result_type,
-                                                                common_place)]))
+                                                     R.mkFUN([mu1],eps,[result_mu]))
                           in
                             ((con, E'.VALUE_CARRYING, sigma)::list,cone)
                           end
@@ -430,4 +420,4 @@ struct
         (rse1, E'.DATBINDS(rev reversed_target_datbind))
      end;
 
-end; (* SpreadDatatype *)
+end

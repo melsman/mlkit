@@ -1,7 +1,6 @@
-(*$SPREAD_EXPRESSION: LAMBDA_EXP REGION_EXP REGION_STAT_ENV*)
 
 signature SPREAD_EXPRESSION =
-  sig 
+  sig
     structure E : LAMBDA_EXP
     structure E': REGION_EXP
     structure RegionStatEnv: REGION_STAT_ENV
@@ -18,5 +17,4 @@ signature SPREAD_EXPRESSION =
 
     val spreadPgm: cone * RegionStatEnv.regionStatEnv * E.LambdaPgm  ->
                    cone * RegionStatEnv.regionStatEnv * (place,unit)E'.LambdaPgm
-
-  end;
+  end

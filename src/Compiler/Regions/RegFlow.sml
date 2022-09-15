@@ -155,15 +155,13 @@ struct
 
     fun connect_to_global rho : unit=
        case Eff.get_place_ty rho of
-         SOME Eff.WORD_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
-       | SOME Eff.STRING_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_string)
+         SOME Eff.STRING_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_string)
        | SOME Eff.PAIR_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_pair)
        | SOME Eff.ARRAY_RT  => add_edge_iter(rho,Eff.toplevel_region_withtype_array)
        | SOME Eff.REF_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_ref)
        | SOME Eff.TRIPLE_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_triple)
        | SOME Eff.TOP_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_top)
        | SOME Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
-                             add_edge_iter(rho,Eff.toplevel_region_withtype_word);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_string);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_pair);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_array);
@@ -339,7 +337,7 @@ struct
           | SELECT(_, tr) => mk_graph tr
           | DEREF tr => mk_graph tr
           | REF(_,tr) => mk_graph tr
-          | ASSIGN(_,tr1,tr2) => (mk_graph tr1; mk_graph tr2)
+          | ASSIGN(tr1,tr2) => (mk_graph tr1; mk_graph tr2)
           | EQUAL(_,tr1, tr2) => (mk_graph tr1; mk_graph tr2)
           | CCALL(_,trs) => List.app mk_graph trs
           | RESET_REGIONS(_,tr) => mk_graph tr
