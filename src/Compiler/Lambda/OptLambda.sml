@@ -156,7 +156,7 @@ structure OptLambda: OPT_LAMBDA =
     val aggressive_opt = Flags.add_bool_entry
         {long="aggresive_opt",short=SOME "aopt",
          menu=["Control", "Optimiser", "aggressive optimisation"],
-         item=ref true,neg=false,
+         item=ref true,neg=true,
          desc=
          "Enable aggressive optimisations, including constant\n\
          \folding and aggressive inlining. These\n\
