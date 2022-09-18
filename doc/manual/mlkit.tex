@@ -8007,6 +8007,27 @@ for detailed comments.)
 \chapter{Summary of Changes}
 %---------------------------------------------------------
 
+\section{Changes Since Version 4.6.1}
+\index{changes!since version 4.6.1}%
+
+This section provides an overview of the main changes to the MLKit
+since version 4.6.1.
+
+\subsubsection*{Simplification of the Region Type System}
+
+To simplify the region type system, region variables are no longer
+associated with type variables and the concept of word regions has
+been eliminated entirely. Instead of associating type variables with
+region variables, type substitutions now map type variables to region
+type and places.
+
+\subsubsection*{GC Safety Fixed}
+
+A problem with garbage-collection safety was fixed and it is now
+properly ensured that no dangling pointers appear during evaluation,
+which is a necessary requirement for combining region inference and
+reference-tracing garbage collection.
+
 \section{Changes Since Version 4.3.0}
 \index{changes!since version 4.3.0}%
 This section provides an overview of the main changes to the MLKit
