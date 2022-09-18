@@ -233,25 +233,22 @@ struct
                                            else l)[] TE
                      val lvars_and_excons_rho =
                          RSE.FoldLvar (fn ((lvar, (_,_,_,sigma,p,_,_)), l: string list) =>
-                                          case p of
-                                              SOME p =>
-                                              if Eff.eq_effect(rho,p) orelse
-                                                 List.exists (fn rho' => Eff.eq_effect(rho,rho'))
-                                                             (R.frv_sigma sigma)
-                                              then Lvars.pr_lvar lvar :: l
-                                              else l
-                                            | NONE => l
-                                      ) excons_rho TE
-
+                                          let val rhos = R.frv_sigma sigma
+                                              val rhos = case p of SOME p => p::rhos
+                                                                 | NONE => rhos
+                                          in if List.exists (fn p => Eff.eq_effect(rho,p)) rhos
+                                             then Lvars.pr_lvar lvar :: l
+                                             else l
+                                          end) excons_rho TE
                  in
-                   (pp_regvar rho::
-                    ", which is also free in the type schemes with places of : "::
+                   (pp_regvar rho ::
+                    ", which is also free in the type schemes with places of : " ::
                     map (fn s => " " ^ s) lvars_and_excons_rho) @ ["\n"]
                  end
          in
             Flags.warn (line (Lvars.pr_lvar lvar
-                                              ^ "\t has a type scheme with escaping put effects\
-                                               \ on region(s): ")
+                              ^ " has a type scheme with escaping put effects\
+                                \ on region(s): ")
                         // line (concat (flatten (map report_rho rhos))))
          end
 
@@ -262,88 +259,88 @@ struct
 
     fun warn_puts (TE:regionStatEnv,
                    (PGM{expression = TR(e,_,_,_), ...}):(place,'a,'b) LambdaPgm ):unit =
-    if not(warn_on_escaping_puts() orelse warn_on_parallel_puts())
-      then ()
-    else
-      let
-        val _ = already_reported:= []  (* reset *)
-        fun warn_puts TE e =
-          case e of
-            FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} =>
-                 let val TE' =
-                        foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
-                                  RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), SOME shared_clos,
-                                                         NONE, NONE), TE'))
-                              TE functions
+        if not(warn_on_escaping_puts() orelse warn_on_parallel_puts())
+        then ()
+        else
+          let
+            val _ = already_reported:= []  (* reset *)
+            fun warn_puts TE e =
+                case e of
+                    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} =>
+                    let val TE' =
+                            foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
+                                      RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), SOME shared_clos,
+                                                             NONE, NONE), TE'))
+                                  TE functions
 
-                     fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
-                                    bound_but_never_written_into,other,bind} =
-                         let val sigma = R.FORALL(rhos,epss,tyvars,Type)
-                         in (if warn_on_escaping_puts() then
-                               warn_if_escaping_puts(TE, lvar, sigma)
-                             else ());
-                            warn_puts_trip TE' bind
-                         end
-                 in
-                     app warn_lvar functions;
-                     warn_puts_trip TE' scope
-                 end
-             | FN{pat,body,...} =>
-               let val TE' = foldr (fn ((lvar,mu), TE') =>
-                                       let val (ty,rho) =
-                                               case R.unBOX mu of
-                                                   SOME (ty,rho) => (ty,SOME rho)
-                                                 | NONE => (mu,NONE)
-                                       in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme ty,rho,NONE,NONE),
-                                                          TE')
-                                       end)
-                                   TE pat
-               in warn_puts_trip TE' body
-               end
-             | LET{k_let,pat,bind,scope} =>
-               (warn_puts_trip TE bind;
-                let val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
-                                        RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho,
-                                                               NONE, NONE),
-                                                        TE'))
-                                    TE
-                                    pat
-                in warn_puts_trip TE' scope
-                end)
-             | APP(_,_,e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
-             | EXCEPTION(excon, is_nullary, mu, _, body) =>
-               warn_puts_trip (RSE.declareExcon(excon,mu,TE)) body
-             | RAISE(e) => warn_puts_trip TE e
-             | HANDLE(e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
-             | SWITCH_I {switch, precision} => warn_puts_i TE switch
-             | SWITCH_W {switch, precision} => warn_puts_w TE switch
-             | SWITCH_S(switch) => warn_puts_s TE switch
-             | SWITCH_C(switch) => warn_puts_c TE switch
-             | SWITCH_E(switch) => warn_puts_e TE switch
-             | CON0 _ => ()
-             | CON1(_,tr) => warn_puts_trip TE tr
-             | DECON(_,tr) => warn_puts_trip TE tr
-             | EXCON(_,SOME(_, tr)) => warn_puts_trip TE tr
-             | DEEXCON(_,tr) =>warn_puts_trip TE tr
-             | RECORD(_,l) => app (warn_puts_trip TE) l
-             | UB_RECORD l => app (warn_puts_trip TE) l
-             | SELECT(_,tr) => warn_puts_trip TE tr
-             | DEREF tr => warn_puts_trip TE tr
-             | REF(_,tr) => warn_puts_trip TE tr
-             | ASSIGN(tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
-             | DROP(tr1) => (warn_puts_trip TE tr1)
-             | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
-             | CCALL(_,l) => app (warn_puts_trip TE) l
-             | EXPORT(_,tr) => warn_puts_trip TE tr
-             | BLOCKF64(_,l) => app (warn_puts_trip TE) l
-             | SCRATCHMEM _ => ()
-             | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
-             | FRAME _ => ()
-             | LETREGION{body, ...} => warn_puts_trip TE body
-             | _ => ()
+                        fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                       bound_but_never_written_into,other,bind} =
+                            let val sigma = R.FORALL(rhos,epss,tyvars,Type)
+                            in (if warn_on_escaping_puts() then
+                                  warn_if_escaping_puts(TE, lvar, sigma)
+                                else ());
+                               warn_puts_trip TE' bind
+                            end
+                    in
+                      app warn_lvar functions;
+                      warn_puts_trip TE' scope
+                    end
+                  | FN{pat,body,...} =>
+                    let val TE' = foldr (fn ((lvar,mu), TE') =>
+                                            let val (ty,rho) =
+                                                    case R.unBOX mu of
+                                                        SOME (ty,rho) => (ty,SOME rho)
+                                                      | NONE => (mu,NONE)
+                                            in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme ty,rho,NONE,NONE),
+                                                               TE')
+                                            end)
+                                        TE pat
+                    in warn_puts_trip TE' body
+                    end
+                  | LET{k_let,pat,bind,scope} =>
+                    (warn_puts_trip TE bind;
+                     let val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
+                                             RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho,
+                                                                    NONE, NONE),
+                                                             TE'))
+                                         TE
+                                         pat
+                     in warn_puts_trip TE' scope
+                     end)
+                  | APP(_,_,e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
+                  | EXCEPTION(excon, is_nullary, mu, _, body) =>
+                    warn_puts_trip (RSE.declareExcon(excon,mu,TE)) body
+                  | RAISE(e) => warn_puts_trip TE e
+                  | HANDLE(e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
+                  | SWITCH_I {switch, precision} => warn_puts_i TE switch
+                  | SWITCH_W {switch, precision} => warn_puts_w TE switch
+                  | SWITCH_S(switch) => warn_puts_s TE switch
+                  | SWITCH_C(switch) => warn_puts_c TE switch
+                  | SWITCH_E(switch) => warn_puts_e TE switch
+                  | CON0 _ => ()
+                  | CON1(_,tr) => warn_puts_trip TE tr
+                  | DECON(_,tr) => warn_puts_trip TE tr
+                  | EXCON(_,SOME(_, tr)) => warn_puts_trip TE tr
+                  | DEEXCON(_,tr) => warn_puts_trip TE tr
+                  | RECORD(_,l) => app (warn_puts_trip TE) l
+                  | UB_RECORD l => app (warn_puts_trip TE) l
+                  | SELECT(_,tr) => warn_puts_trip TE tr
+                  | DEREF tr => warn_puts_trip TE tr
+                  | REF(_,tr) => warn_puts_trip TE tr
+                  | ASSIGN(tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
+                  | DROP(tr1) => (warn_puts_trip TE tr1)
+                  | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
+                  | CCALL(_,l) => app (warn_puts_trip TE) l
+                  | EXPORT(_,tr) => warn_puts_trip TE tr
+                  | BLOCKF64(_,l) => app (warn_puts_trip TE) l
+                  | SCRATCHMEM _ => ()
+                  | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
+                  | FRAME _ => ()
+                  | LETREGION{body, ...} => warn_puts_trip TE body
+                  | _ => ()
 
-           and warn_puts_trip TE (TR(e,mt,_,_)) =
-               case e of
+            and warn_puts_trip TE (TR(e,mt,_,_)) =
+                case e of
                    VAR {lvar, il, plain_arreffs, fix_bound=true, rhos_actuals, other} =>
                    if Lvars.pr_lvar lvar = "par" andalso warn_on_parallel_puts() then
                      (case mt of
