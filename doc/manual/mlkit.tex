@@ -6,7 +6,7 @@
 %\usepackage{times}                % times font
 \usepackage{type1cm}               % traditional font - quite thin for screen reading
 \renewcommand{\ttdefault}{cmtt}    % smaller tt-font
-\newcommand{\docversion}{4.6.0}
+\newcommand{\docversion}{4.7.2}
 \usepackage{alltt}
 \makeindex
 \input{genericmac}
@@ -17,7 +17,7 @@
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
-\date{December 30, 2021 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
+\date{September 16, 2022 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
 \raggedbottom
 
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
@@ -187,10 +187,15 @@ This report consists of three parts:
 
 The present report describes the
 \index{MLKit!Version \docversion}%
-MLKit Version~{\docversion}. This version of the MLKit extends the MLKit
-Version~4.3.0 with the following features:
+MLKit Version~{\docversion}. This version of the MLKit extends, and differs from, the MLKit
+Version~4.3.0 by the following features:
 
 \begin{enumerate}
+\item Type variables are no longer associated with region variables,
+  which simplifies region types significantly and eases the
+  implementation.
+\item The machinery for ensuring that no dangling pointers are
+  dereferenced during a garbage collection has been fixed.
 \item A move to machine code generation for the x86\_64
   architecture. The port also features register allocation for
   floating point registers, holding intra-procedural values of type \texttt{real}.
@@ -283,7 +288,7 @@ including Peter Bertelsen, Lars Birkedal, Martin Elsman, Niels
 Hallenberg, Tommy H\o jfeld Olesen, Nick Rothwell, Mads Tofte, David
 N.\@ Turner, Peter Sestoft, and Carsten Varming.
 
-People who have contributed with bug reports and patches includes, but
+People who have contributed with bug reports and patches include, but
 are not limited to (in alphabetical order) Johnny Andersen, Troels
 Henriksen, Koshy A Joseph, Ken Friis Larsen, Philip Munksgaard,
 Henning Niss, Daniel Wang, and Stephen Weeks.
@@ -638,8 +643,7 @@ traditional memory management schemes are
 \end{enumerate}
 Regions are not a magic wand to solve all memory management problems.
 Rather, the region scheme encourages a particular discipline of
-programming. The purpose of this report is to lay out this discipline
-of programming.
+programming. The purpose of this report is to lay out this discipline.
 
 \section{Example: the Game of Life}
 \label{life.sec}
@@ -996,29 +1000,27 @@ determined upper bound on the number of times a value is put into the
 region. The MLKit operates with three multiplicities: 0, 1 and $\infty$,
 ordered by $0<1<\infty$. Multiplicities annotate binding occurrences
 of region variables. An expression of the form
-$$\boxml{letregion $\rho:m$ in $e$ end}$$
+$$\boxml{let region $\rho:m$ in $e$ end}$$
 where $m$ is a multiplicity,
 gives rise to an allocation of a region, which is finite if $m<\infty$, and
 infinite otherwise.
 
 \section{Runtime Types of Regions}
 \label{runtimetypes.sec}
-Every region has a
-\index{runtime type}%
-runtime type. The following runtime types exist: {\sc word\_rt}, {\sc
-  pair\_rt}, {\sc array\_rt}, {\sc ref\_rt}, {\sc triple\_rt},
-{\sc string\_rt}, {\sc top\_rt}, and {\sc bot\_rt}. Not surprisingly,
-regions of runtime type {\sc
-  string\_rt} contain values of
-ML type {\tt string}. Regions of runtime type {\sc pair\_rt},
-{\sc array\_rt}, {\sc ref\_rt} and {\sc triple\_rt} contain pairs, arrays,
-references, and triples.  Regions with
-runtime type {\sc top\_rt} can contain all other forms of allocated
-values, that is, constructed values, such as tuples (that are not pairs or triples), records (that do not contain two or three fields), and function
-closures. Regions of runtime type {\sc word\_rt} are dropped after region
-inference; they are associated with unboxed values and are unnecessary
-because unboxed values are not allocated in regions. Regions of
-runtime type {\sc bot\_rt} are not present at runtime and are always associated with ML type variables.
+Every region has a \index{runtime type}% runtime type. The following
+runtime types exist: {\sc pair\_rt}, {\sc array\_rt}, {\sc ref\_rt},
+{\sc triple\_rt}, {\sc string\_rt}, {\sc top\_rt}, and {\sc
+  bot\_rt}. Not surprisingly, regions of runtime type {\sc string\_rt}
+contain values of ML type {\tt string}. Regions of runtime type {\sc
+  pair\_rt}, {\sc array\_rt}, {\sc ref\_rt}, and {\sc triple\_rt}
+contain pairs, arrays, references, and triples, respectively.  Regions
+with runtime type {\sc top\_rt} can contain all other forms of
+allocated values, that is, constructed values, such as tuples (that
+are not pairs or triples), records (that do not contain two or three
+fields), and function closures. Regions of runtime type {\sc bot\_rt}
+are not present at runtime and are associated only with so-called
+\emph{explicit region variables}, which we shall not discuss in this
+document.
 
 It is often, but not always, the case that all values that reside in
 the same region have the same type (considered as representations of
@@ -1036,8 +1038,8 @@ $\RegExp$.
 In $\RegExp$, region allocation and de-allocation are explicit, they
 are always paired, and they follow the syntactical structure of the
 source program.  If $e$ is an expression in $\RegExp$, then so is
-\index{letregion@\texttt{letregion}}%
-$$\boxml{letregion $\rho$ in $e$ end}$$
+\index{let region@\texttt{let region}}%
+$$\boxml{let region $\rho$ in $e$ end}$$
 Here $\rho$ is a
 \index{region variable}%
 {\em region variable}. At runtime, first a region is allocated and
@@ -1049,7 +1051,7 @@ Region inference also decides, for each value-producing expression,
 into which region (identified by a region variable) the value will be
 put.
 
-We emphasize that region variables and {\tt letregion} expressions are
+We emphasize that region variables and {\tt region} bindings are
 not present in source programs. The source language is unadulterated
 Standard ML, so programs that run on the MLKit should be easy to port to
 any other Standard ML implementation.
@@ -1141,7 +1143,7 @@ The intermediate languages that we shall refer to in the following are
 \item[\RegExp:]
   \index{RegExp@$\RegExp$}%
   Same as \Lam, but with explicit region annotations (such as the {\tt
-    letregion} bindings mentioned in Section~\ref{aldeal.sec}). Region
+    region} bindings mentioned in Section~\ref{aldeal.sec}). Region
   variables have their runtime type (Section~\ref{runtimetypes.sec})
   as an attribute, although, for brevity, the pretty printer omits
   runtime types when printing expressions, unless instructed
@@ -1349,27 +1351,28 @@ Here is the resulting $\MulExp$ program:\footnote{Program
   \boxml{kitdemo/projection.sml}. Running programs is described in
   Section~\ref{tryit.sec}.}
 \begin{verbatim}
-  let val xy = ((), ()) at r1; val x = #0 xy
-  in  {|xy: (_,r1), x: _|}
+  let val xy = ((), ())at r4;
+      val x = #0 xy
+  in {|xy: (_,r4), x: _|}
   end
 \end{verbatim}
 There are several things to notice from this example.
 \begin{enumerate}
-\item The $\MulExp$ program contains a free region variable, {\tt r1}.
+\item The $\MulExp$ program contains a free region variable, {\tt r4}.
   Notice that the construction of the pair {\tt xy} has been annotated
-  by ``{\tt at r1}'', indicating where the pair should be put;
-\item The expression \verb+{|xy: (_,r1), x: _|}+ is an example of a
+  by ``{\tt at r4}'', indicating where the pair should be put;
+\item The expression \verb+{|xy: (_,r4), x: _|}+ is an example of a
   \index{frame}%
   {\em frame expression}. A frame enumerates the components that are
   exported from a compilation unit.  A frame is similar to a record,
   except that its components are variables, each annotated with a type
-  scheme and a region variable. (In records, the components can only
+  scheme and a region variable, if the value is boxed. (In records, the components can only
   have types, not general type schemes.) In the example, the type of
-  the frame is \verb+{|xy: (unit*unit, r1), x: unit|}+.
+  the frame is \verb+{|xy: (unit*unit, r4), x: unit|}+.
     % (Regions of unboxed elements are not printed, since unboxed values
     % are not allocated in regions.)
   The type shows that, after the program unit has been evaluated,
-  \boxml{xy} will reside in \boxml{r1}.  In the the above example,
+  \boxml{xy} will reside in \boxml{r4}.  In the the above example,
   printing of types was suppressed. Thus types were abbreviated to
   \boxml{\_}.
 \end{enumerate}
@@ -1381,7 +1384,7 @@ Region inference extends this idea by inferring for each expression a
 \index{region-annotated type}%
 {\em (region-annotated) type with place}. We use $\mu$ to range over
 types with places
-$$\mu::=(\tau,\rho)$$
+$$\mu ~~ ::= ~~ (\tau,\rho)~~|~~\tau$$
 where $\tau$ is a {\em region-annotated type},
 which again can contain other region-annotated types with places. The
 region-annotated type with place of an expression is the ML type of
@@ -1389,15 +1392,10 @@ the expression decorated with extra region information; every type
 constructor that represents boxed values (e.g., pairs and strings) is
 paired with a region variable, indicating where the value is to be put
 at runtime. Type constructors that represents unboxed values (e.g.,
-integers and booleans) are paired with the region variable
-\index{$\rhoword$}%
-$\rhoword$, which denotes a non-existing global region.
+integers and booleans) are not paired with a region.
 \index{boxing}%
 \index{value!boxed}%
 \index{value!unboxed}%
-As an abbreviation, we shall often omit the region variable $\rhoword$
-from region-annotated types and from region-annotated types with
-places; and so shall the MLKit.
 
 Here are some examples of region-annotated types with places:
 \begin{description}
@@ -1418,18 +1416,18 @@ One can get the MLKit to print the region-annotated types with places
 that it infers for binding occurrences of variables.  The above
 example then becomes
 \begin{verbatim}
-  let val xy:(unit*unit,r1) = ((), ()) at r1;
+  let val xy:(unit*unit,r4) = ((), ())at r4;
       val x:unit = #0 xy
-  in  {|x: unit, xy: (unit*unit,r1)|}
+  in {|xy: (unit*unit,r4), x: unit|}
   end
 \end{verbatim}
 
-\section{Effects and \texttt{letregion}}
+\section{Effects and \texttt{let region}}
 \label{effects.sec}
 We now describe the general principle that the MLKit uses to decide when
 it is safe to put
-\index{letregion@\texttt{letregion}}%
-\boxml{letregion} around an expression.
+\index{let region@\texttt{let region}}%
+\boxml{region} binding around an expression.
 
 Here is an example of an SML program that first creates a pair and
 then selects a component of the pair, after which the pair is
@@ -1448,18 +1446,15 @@ is, without reducing the conditional to its {\tt then} branch.
 \begin{figure}
 \hrule\medskip
 \begin{verbatim}
-  let val n =
-          letregion r7:1
-          in let val pair =
-                     (case true
-                        of true => (3 + 4, 4 + 5) at r7
-                      | false => (4, 5) at r7
-                     ) (*case*)
-             in  #0 pair
-             end
-          end
-  in  {|n: _|}
-  end
+   let val n =
+         let region r13:1;
+             val pair = case true of
+                          true => (3 + 4, 4 + 5)at r13
+                        | _ => (4, 5)at r13
+         in  #0 pair
+         end
+   in  {|n: _|}
+   end
 \end{verbatim}
 \caption{Region inference decides that the pair is to be allocated
   in a local, finite region; the region will be de-allocated as soon
@@ -1467,12 +1462,12 @@ is, without reducing the conditional to its {\tt then} branch.
 \medskip\hrule
 \label{elimpair.fig}
 \end{figure}
-During evaluation, a region (denoted by {\tt r7}) is introduced before
-the pair is allocated; it remains on the region stack till the
-projection of the pair has been computed, after which the region is
+During evaluation, a region (denoted by {\tt r13}) is introduced before
+the pair is allocated; it remains on the region stack until the
+projection of the pair is evaluated, after which the region is
 de-allocated.
 
-The ``{\tt :1}'' on the binding occurrences of {\tt r7} is a
+The ``{\tt :1}'' on the binding occurrences of {\tt r13} is a
 multiplicity indicating that there is only one store operation into
 the region. (The
 \index{multiplicity analysis}%
@@ -1483,9 +1478,9 @@ pair will be allocated in a little region on the runtime stack.
 
 But how does the MLKit know that it is safe to
 \index{region!de-allocation}%
-de-allocate {\tt r7} where the
-\index{letregion@\texttt{letregion}}%
-{\tt letregion} ends?
+de-allocate {\tt r13} when the
+\index{region@\texttt{region}}%
+region goes out of scope?
 
 The answer lies in the fact that the MLKit infers for every expression
 not just a region-annotated type with place, but also a so-called
@@ -1500,18 +1495,16 @@ $\Get(\rho)$, where $\rho$ as usual ranges over region variables. The
 atomic effect $\Put(\rho)$ indicates that a value is being stored in
 region $\rho$ and $\Get(\rho)$ indicates that a value is being read
 from region $\rho$.  In our example, the region inference algorithm
-considers the sub-expression $e_0 = $
+considers the sub-expression ($e_0=$)
 \begin{verbatim}
-  let val pair =
-         (case true
-            of true => (3 + 4, 4 + 5) at r7
-             | false => (4, 5) at r7
-          ) (*case*)
+  let val pair = case true of
+                    true => (3 + 4, 4 + 5)at r13
+                  | _ => (4, 5)at r13
   in  #0 pair
   end
 \end{verbatim}
 and finds that it has region-annotated type $\boxml{int}$ and effect
-$\{\Put(\boxml{r7}), \Get(\boxml{r7})\}$.
+$\{\Put(\boxml{r13}), \Get(\boxml{r13})\}$.
 
 Whenever a region variable occurs free in the effect of an expression
 but occurs free neither in the region-annotated type with place of the
@@ -1521,13 +1514,13 @@ only locally within the expression.  That this is true is of course
 far from trivial, but it has been proved for a skeletal version of
 $\RegExp$.  Consequently, when this condition is met, the region
 inference algorithm wraps a
-\index{letregion@\texttt{letregion}}%
-{\tt letregion} binding of the region variable around that expression.
+\index{let region@\texttt{let region}}%
+\texttt{region} binding of the region variable around that expression.
 
 In our example, there are no free variables in $e_0$; moreover,
-$\boxml{r7}$ occurs in the effect of $e_0$ but not in the
+$\boxml{r13}$ occurs in the effect of $e_0$ but not in the
 region-annotated type with place of $e_0$. Thus, the region inference
-algorithm inserts a {\tt letregion} binding of $\boxml{r7}$ around
+algorithm inserts a \texttt{region} binding of $\boxml{r13}$ around
 $e_0$.
 
 \section{Runtime Representation}
@@ -1637,7 +1630,8 @@ The following operations on integers are pre-defined at top level:
 \end{verbatim}
 
 In fact, these operations are overloaded and will work on values of
-other integer types as well, even on values of type {\tt IntInf.int}.
+other integer types as well, even on values of type {\tt IntInf.int},
+which denotes arbitrarily-sized integers.
 
 Operations on 8-bit, 31-bit, 32-bit, 63-bit, and 64-bit unsigned words are available
 in the structures
@@ -1710,8 +1704,7 @@ operations on reals.\footnote{Consult the files {\tt
 
 The MLKit will do its best to eliminate regions holding reals by
 unboxing reals and representing them in floating point registers or on
-the runtime stack. Unboxed reals reside in regions of type {\sc
-  word\_rt}, which have no presence at runtime.
+the runtime stack.
 
 \section{Characters and Strings}
 The
@@ -1790,7 +1783,7 @@ booleans.\footnote{Consult the file {\tt basis/BOOL.sig}.}
 \label{lists.sec}\index{list}
 %---------------------------------------------------------
 Section~\ref{lsyn.sec} gives a summary of the list concept in Standard
-ML, introduces the notion of the {\em auxiliary pairs} of a list and
+ML, introduces the notion of the \emph{auxiliary pairs} of a list and
 presents the syntax of constructors and de-constructors in the
 intermediate languages.  Section~\ref{listtypes.sec} introduces
 region-annotated list types and show how they correspond to the layout
@@ -1954,7 +1947,7 @@ classifies lists
 that have their auxiliary pairs in a region $\rho_2$ and strings in a
 region $\rho_1$.
 
-Note that the \boxml{list} type constructor is not paired with a
+Notice that the \boxml{list} type constructor is not paired with a
 region variable.  The reason is that the physical representation of
 lists treats the constructors as unboxed in the sense described in
 Section~\ref{ublists.sec}.
@@ -1963,16 +1956,16 @@ Very importantly, not all lists need to live in the same regions.
 Formally, {\tt nil} and {\tt ::} have the following region-annotated
 type schemes:
 \begin{eqnarray*}
-\boxml{nil} & \mapsto & \forall\alpha\rho_1\rho_2.((\alpha,\rho_1),[\rho_2])\boxml{list}\\
-\boxml{::}  & \mapsto & \forall\alpha\rho_1\rho_2\epsilon.((\alpha,\rho_1)\ast((\alpha,\rho_1),[\rho_2])\boxml{list},\rho_2)
-\ar{\epsilon.\emptyset} ((\alpha,\rho_1),[\rho_2])\boxml{list}
+\boxml{nil} & \mapsto & \forall\alpha\rho.(\alpha,[\rho])\boxml{list}\\
+\boxml{::}  & \mapsto & \forall\alpha\rho\epsilon.(\alpha\ast(\alpha,[\rho])\boxml{list},\rho)
+\ar{\epsilon.\emptyset} (\alpha,[\rho])\boxml{list}
 \end{eqnarray*}
 Despite its verbosity, the type scheme for {\tt ::} deserves careful
 study. It is polymorphic not just in types (signified by the bound
-type variable $\alpha$) but also in regions (signified by the bound
-region variables $\rho_1$ and $\rho_2$). The $\epsilon$ is a so-called
+type variable $\alpha$) but also in the region signified by the bound
+region variables $\rho$, and, in the case of \texttt{::}, in the effect signified by the
 \index{effect variable}%
-{\em effect variable}.
+\emph{effect variable} $\epsilon$.
 The $\epsilon.\emptyset$ appearing on the function arrow is called an
 \index{arrow effect}%
 {\em arrow effect}.  Occurring in a function type, an arrow effect
@@ -1985,7 +1978,7 @@ of a list can, potentially, be in its own regions. But notice that the
 type of {\tt ::} forces the element, which is consed onto the list, to
 be in the same regions as the already existing elements of the list.
 Similarly, the type forces the auxiliary pairs to be in one region
-($\rho_2$).
+($\rho$).
 
 \section{Example: Basic List Operations}
 \label{listexamples.sec}
@@ -1999,24 +1992,20 @@ into the $\RegExp$ program shown in Figure~\ref{listprint.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  let val it =
-          letregion r10:INF
-          in let val l =
-                     ::
-                     (1,
-                      :: (2, :: (3, nil) at r10) at r10
-                     ) at r10
-             in  (case l
-                    of :: => #0 decon_:: l | _ => raise Bind
-                 ) (*case*)
-             end
-          end (*r10:INF*)
-  in  {|it: _|}
-  end
+   let val it =
+         let region r9:INF;
+             val l = [1,2,3] at r9
+         in  case l of :: => let val v91 = decon_:: l
+                             in #0 v91
+                             end
+                | _ => raise Bind
+         end
+   in  {|it: _|}
+   end
 \end{verbatim}
 \caption{Example showing construction and de-construction of a small list.
 Layout of the list {\tt l} is analogous to Figure~\ref{listregions.fig}.
-The infinite region {\tt r10} holds the auxiliary pairs of the list.
+The infinite region {\tt r9} holds the auxiliary pairs of the list.
 }
 \label{listprint.fig}
 \medskip
@@ -2107,21 +2096,16 @@ Figure~\ref{fromto.fig}.
 \hrule
 \medskip
 \begin{verbatim}
-  let fun fromto at r1 [r7:INF] (a, b)=
-          (case a > b
-             of true => nil
-             |  _ => :: (a, fromto[r7] <a + 1, b>) at r7
-          ) (*case*) ;
-      val l =
-          let val v39457 = fromto[r1] <1, 10>;
-              val _ =
-                  letregion r14:INF
-                  in fromto[r14] <100, 110>
-                  end (*r14:INF*)
-          in  v39457
-          end
-  in  {|l: _, fromto: (_,r1)|}
-  end
+   let fun fromto at r1 [r14:INF] (v93, v94) =
+           case v93 > v94 of
+              true => nil
+            | _ => :: (v93, fromto[r14] <v93 + 1, v94>)at r14;
+       val l = let region r24:INF, r28:1
+               in #0 (fromto[r4] <1, 10>,
+                      fromto[r24] <100, 110>)at r28
+               end
+   in  {|fromto: (_,r1), l: _|}
+   end
 \end{verbatim}
 \caption{The region-annotated version of {\tt fromto} shows that {\tt fromto}
   is region-polymorphic. (Program: \boxml{kitdemo/fromto.sml}, printed
@@ -2143,17 +2127,17 @@ use the boxed representation of the argument and transforms all calls
 to the function to pass the argument unboxed (on the runtime stack and
 in registers if possible).
 
-Second, notice that \boxml{r7} is a formal region parameter of {\tt
-  fromto} and that \boxml{r7} is passed along in the recursive call
-\boxml{fromto[r7] <a + 1, b>}. Here the notation \boxml{<a + 1, b>}
+Second, notice that \boxml{r14} is a formal region parameter of {\tt
+  fromto} and that \boxml{r14} is passed along in the recursive call
+\boxml{fromto[r14] <v93 + 1, v94>}. Here the notation \boxml{<v93 + 1, v94>}
 denotes the passing of the unboxed record to the function {\tt
   fromto}.
 
 \index{fromto@\texttt{fromto}}%
 Finally, notice that the regions that hold the two lists generated by
 this program are distinct.  The list that escapes to top level is
-stored in the global region {\tt r1}, whereas the list that does not
-escape is stored in the local region {\tt r14}.
+stored in the global region {\tt r4}, whereas the list that does not
+escape is stored in the local region {\tt r24}.
 
 \section{Region-Annotated Type Schemes}
 \label{regtych.sec}
@@ -2186,22 +2170,22 @@ application.
 
 For example, the region-annotated type scheme of {\tt fromto} from
 Figure~\ref{fromto.fig} is
-$$\forall\rho_7\epsilon. [\boxml{int}, \boxml{int} ]
-\ar{\epsilon.\{\Put(\rho_7)\}} (\boxml{int},[\rho_7])\boxml{list}$$
+$$\forall\rho_{14}\epsilon. [\boxml{int}, \boxml{int} ]
+\ar{\epsilon.\{\Put(\rho_{14})\}} (\boxml{int},[\rho_{14}])\boxml{list}$$
 where we use the syntax $[\tau_1, \ldots, \tau_n], n \geq 1$ to denote
 an unboxed tuple of types $\tau_1, \ldots,\tau_n$. This syntax is not
 to be confused with the auxiliary region variables of type
-constructors (e.g., the list $[\rho_7]$ in the region-annotated type
+constructors (e.g., the list $[\rho_{14}]$ in the region-annotated type
 scheme of {\tt fromto}.)
 
 At the last call of {\tt fromto} in Figure~\ref{fromto.fig},
 the type scheme is instantiated to the region-annotated type
-$$[\boxml{int}, \boxml{int}] \ar{\epsilon'.\{\Put(\rho_{14})\}}
-(\boxml{int},[\rho_{14}])\boxml{list}$$
+$$[\boxml{int}, \boxml{int}] \ar{\epsilon'.\{\Put(\rho_{24})\}}
+(\boxml{int},[\rho_{24}])\boxml{list}$$
 
 The instantiation of bound variables of the type scheme that yields
 this region-annotated type is
-$$\{\rho_7\mapsto\rho_{14}, \epsilon\mapsto\epsilon'\}$$
+$$\{\rho_{14}\mapsto\rho_{24}, \epsilon\mapsto\epsilon'\}$$
 In general,
 the actual region parameters that annotate a call of a
 region-polymorphic function are obtained from the range of the
@@ -2227,12 +2211,9 @@ distinguished from instances of the type scheme, which decorate
 non-binding occurrences of the variable.
 
 The region-annotated type scheme with place of a variable bound to an
-unboxed value is always on the form $(\sigma,\rhoword)$, where
+unboxed value is always on the form $\sigma$ (no specified place), where
 $\sigma$ is the region-annotated type scheme associated with the
-variable and where $\rhoword$ denotes a non-existent global region
-(see Section~\ref{reganntypes.sec}). In the following, we shall often
-abbreviate the region-annotated type scheme with place of a variable
-bound to an unboxed value by its region-annotated type scheme.
+variable (see Section~\ref{reganntypes.sec}).
 
 \section{Endomorphisms and Exomorphisms}
 The {\tt fromto} function from Section~\ref{regtych.sec} has the
@@ -2263,10 +2244,10 @@ need not be in the same regions, although the elements of \boxml{xs}
 and \boxml{ys} clearly must be in the same regions, because they end
 up in the same list. These properties of the append function \boxml{@}
 are summarized in its inferred region-annotated type scheme:
-$$\begin{array}{c}\forall\alpha\rho_7\rho_8\rho_9\epsilon.
-   [ ((\alpha,\rho_9),[\rho_8])\boxml{list},
-      ((\alpha,\rho_9),[\rho_7])\boxml{list} ] \\
-\ar{\epsilon.\{\Get(\rho_8),\Put(\rho_7)\}} ((\alpha,\rho_9),[\rho_7])\boxml{list}\end{array}
+$$\begin{array}{c}\forall\alpha\rho_{15}\rho_{16}\epsilon.
+   [ (\alpha,[\rho_{16}])\boxml{list},
+      (\alpha,[\rho_{15}])\boxml{list} ]
+\ar{\epsilon.\{\Get(\rho_{16}),\Put(\rho_{15})\}} (\alpha,[\rho_{15}])\boxml{list}\end{array}
 $$
 When one writes a function it is a good idea to consider whether one
 wants the function to create values in fresh regions or whether one
@@ -2279,25 +2260,20 @@ values in the region may be needed in the future.
 \hrule
 \medskip
 \begin{verbatim}
-  let fun @ at r1 [r7:INF] (var255-0, var255-1)=
-          (case var255-0
-             of nil => var255-1
-             |  _ =>
-                let val ys = var255-1;
-                    val xs = #1 decon_:: var255-0;
-                    val x = #0 decon_:: var255-0
-                in  :: (x, @[r7] <xs, ys>) at r7
-                end
-          ) (*case*) ;
-      val l =
-          letregion r19:1
-          in @[r1]
-             <:: (1, nil) at r19,
-              :: (2, :: (3, nil) at r1) at r1
-             >
-          end (*r19:1*)
-  in  {|l: _, @: (_,r1)|}
-  end
+   let fun @ at r1 [r15:INF] (v96, v129) =
+           case v96 of
+             nil => v129
+           | _ =>
+             let val v98 = decon_:: v96;
+                 val v99 = #0 v98;
+                 val v100 = #1 v98
+             in  :: (v99, @[r15] <v100, v129>)at r15
+             end;
+       val l = let region r27:INF
+               in @[r4] <[1] at r27, [2,3] at r4>
+               end
+   in  {|@: (_,r1), l: _|}
+   end
 \end{verbatim}
 \caption{The region-annotated version of {\tt append}.}
 \medskip
@@ -2308,14 +2284,9 @@ values in the region may be needed in the future.
 The MulExp version of the append function is listed in
 Figure~\ref{append.fig}. At the application of \boxml{@}, the region
 annotated type scheme for \boxml{@} is instantiated to the region annotated type
-$$ \begin{array}{c}[ ((\boxml{int},\rhoword),[\rho_{19}])\boxml{list},
-      ((\boxml{int},\rhoword),[\rho_1])\boxml{list} ]  \\
-\ar{\epsilon'.\{\Get(\rho_{19}),\Put(\rho_1)\}} ((\boxml{int},\rhoword),[\rho_1])\boxml{list}
-\end{array} $$
-which, by omitting of word regions, is identical to
-$$[ (\boxml{int},[\rho_{19}])\boxml{list},
-      (\boxml{int},[\rho_1])\boxml{list} ]
-\ar{\epsilon'.\{\Get(\rho_{19}),\Put(\rho_1)\}} (\boxml{int},[\rho_1])\boxml{list} $$
+$$[ (\boxml{int},[\rho_{27}])\boxml{list},
+      (\boxml{int},[\rho_4])\boxml{list} ]
+\ar{\epsilon'.\{\Get(\rho_{27}),\Put(\rho_4)\}} (\boxml{int},[\rho_4])\boxml{list} $$
 
 To avoid passing regions that are never used, the MLKit introduces only
 formal region variables for those bound region variables in the type
@@ -2325,8 +2296,8 @@ $\Put$ effect in the type of the function.  Reading a value is done
 simply by following a pointer to the value, irrespective of what
 region the value resides in, whereas storing a value in a region uses
 the name (see Section~\ref{fininf.sec}) of the region.  This omitting
-of region parameters explains why $\rho_8$ does not become a formal
-region parameter of \boxml{@} and why $\rho_{19}$ is not passed to
+of region parameters explains why $\rho_{16}$ does not become a formal
+region parameter of \boxml{@} and why $\rho_{27}$ is not passed to
 \boxml{@} at the call site. This optimisation, which is called
 \index{region!dropping of}%
 {\em dropping of regions}, is the key reason why the MLKit takes the
@@ -2347,12 +2318,12 @@ Here \boxml{cp1} can copy the auxiliary pairs of a list into a fresh
 region, whereas \boxml{cp2} always copies the auxiliary pairs of a
 list into the same region:
 \begin{eqnarray*}
-\boxml{cp1}&\mapsto&\forall\alpha\rho_1\rho_2\rho_2'\epsilon.
-     ((\alpha,\rho_1),[\rho_2])\boxml{list} \ar{\epsilon.\{\Get(\rho_2),
-           \Put(\rho_2')\}} ((\alpha,\rho_1),[\rho_2'])\boxml{list}\\
-\boxml{cp2}&\mapsto&\forall\alpha\rho_1\rho_2\epsilon.
-     ((\alpha,\rho_1),[\rho_2])\boxml{list} \ar{\epsilon.\{\Get(\rho_2),
-           \Put(\rho_2)\}} ((\alpha,\rho_1),[\rho_2])\boxml{list}
+\boxml{cp1}&\mapsto&\forall\alpha\rho\rho'\epsilon.
+     (\alpha,[\rho])\boxml{list} \ar{\epsilon.\{\Get(\rho),
+           \Put(\rho')\}} (\alpha,[\rho'])\boxml{list}\\
+\boxml{cp2}&\mapsto&\forall\alpha\rho\epsilon.
+     (\alpha,[\rho])\boxml{list} \ar{\epsilon.\{\Get(\rho),
+           \Put(\rho)\}} (\alpha,[\rho])\boxml{list}
 \end{eqnarray*}
 As we saw in Section~\ref{life.sec}, there are cases where it is
 useful to copy a list from one region into another region, so as to
@@ -2649,12 +2620,12 @@ lifetimes, but, because we want to be able to handle recursive data
 types and higher-order functions, the coupling is less tight.  The
 ground rule of region inference
 \index{region inference!ground rule}%
-\index{letregion@\texttt{letregion}}%
+\index{let region@\texttt{let region}}%
 is that as long as a value variable is in scope, the value bound to it
 at runtime will remain allocated. More precisely:
 \begin{quote}
   Ground Rule: The region rules forbid transforming an expression
-  $\exp$ into \boxml{letregion $\rho$ in $\exp$ end} if $\exp$ is in
+  $\exp$ into \boxml{let region $\rho$ in $\exp$ end} if $\exp$ is in
   the scope of an identifier that has $\rho$ free in its
   region-annotated type scheme with place.
 \end{quote}
@@ -2717,8 +2688,8 @@ In many cases, the solution is simply to shorten the scope of the
 declaration.  In the above example, a good solution is to move the
 application of {\tt sieve} outside the {\tt let}:
 \begin{verbatim}
-  fun sieve(a as ([], p)) = a
-    | sieve(x::xs, p) =
+  fun sieve (a as ([], p)) = a
+    | sieve (x::xs, p) =
           sieve let val rest = sift(x,xs)
                 in (cp rest,x::p)
                 end
@@ -2741,16 +2712,15 @@ variable in scope at that point, not even in the region-annotated type
 scheme with place of {\tt sieve}, which only has the region that
 contains {\tt sieve} itself free in its region-annotated type scheme
 with place.  Consequently, region inference wraps the {\tt let}
-expression by a {\tt letregion} binding of the region variable in
+expression by a {\tt region} declaration of the region variable in
 question:
 \begin{verbatim}
-  fun sieve(a as ([], p)) = a
-    | sieve(x::xs, p) =
-          sieve letregion r10
-                in let val rest = sift[r10](x,xs)
-                   in (cp rest,x::p)
-                   end
-                end
+  fun sieve (a as ([], p)) = a
+    | sieve (x::xs, p) =
+        sieve let region r10
+                  val rest = sift[r10](x,xs)
+              in (cp rest,x::p)
+              end
 \end{verbatim}
 
 \section{Shortening Lifetime}
@@ -2806,12 +2776,11 @@ region that is the same for all calls of the function. For example,
 consider the source program\footnote{Program
   \boxml{kitdemo/escape.sml}.}
 \begin{verbatim}
-  fun g() =
+  fun g () =
     let val x = [5,7]
-        fun f(y) = (if y>3 then x@x else x;
-                    5)
-    in
-        f 1; f 4
+        fun f y = (if y>3 then x@x else x;
+                   5)
+    in f 1; f 4
     end
 \end{verbatim} 
 Here \boxml{f} has type $\boxml{int}\to\boxml{int}$; yet, when the
@@ -2828,11 +2797,11 @@ type of {\tt f}, so the writing is a side-effect at the implementation
 level, even though there are no references in the program.
 
 The region-annotated type scheme inferred for \boxml{f} is
-$$\forall\epsilon.\boxml{int} \ar{\epsilon.\{\Put(\mathtt{r5})\}} \boxml{int}$$
+$$\forall\epsilon.\boxml{int} \ar{\epsilon.\{\Put(\rho_{11})\}} \boxml{int}$$
 where the region-annotated type of \boxml{x} is
-$$(\boxml{int},[\boxml{r5}])\boxml{list}$$
+$$(\boxml{int},[\rho_{11}])\boxml{list}$$
 Here we see that
-$\boxml{r5}$ is free in the region-annotated type scheme and appears
+$\rho_{11}$ is free in the region-annotated type scheme and appears
 with a $\Put$ effect.
 
 \section{Warnings About Space Leaks}
@@ -2855,26 +2824,21 @@ issues the following warning:\footnote{To provoke the warning, one has
 \hrule
 \medskip
 \begin{verbatim}
-  let fun g at r1 [] (v39428)=
-        letregion r10:INF
-        in let val x = :: (5, :: (7, nil) at r10) at r10
-           in  letregion r11:1
-               in let fun f at r11 [] (y)=
-                        let val _ =
-                              (case y > 3
-                                 of true => @[r10] <x, x>
-                                 |  _ => x
-                              ) (*case*)
-                        in  5
-                        end ;
-                      val _ = f[] 1
-                  in  f[] 4
-                  end
-               end (*r11:1*)
+   let fun g at r1 [] (v86) =
+           let region r11:INF;
+               val x = [5,7] at r11;
+               region r18:1;
+               fun f at r18 [] (y) =
+                   let val _ = case y > 3 of
+                                  true => @[r11] <x, x>
+                                | _ => x
+                   in 5
+                   end;
+               val _ = f[] 1
+           in  f[] 4
            end
-        end (*r10:INF*)
-  in  {|g: (_,r1)|}
-  end
+   in  {|g: (_,r1)|}
+   end
 \end{verbatim}
 \caption{The region-annotated version of {\tt g}.}
 \medskip
@@ -2883,12 +2847,12 @@ issues the following warning:\footnote{To provoke the warning, one has
 \end{figure}
 \begin{small}
 \begin{verbatim}
-   *** Warnings ***
-  f has a type scheme with escaping put effects on region(s):
-  r10, which is also free in the type schemes with places of :  x
+ *** Warnings ***
+f has a type scheme with escaping put effects on region(s):
+r11, which is also free in the type schemes with places of :  x
 \end{verbatim}
 \end{small}
-We are told that the program might space leak in region \boxml{r10}.
+We are told that the program might space leak in region \boxml{r11}.
 Looking at the function \boxml{f}, we see that this region is an
 actual region parameter to \boxml{@}. It follows that the problem is
 the call to \boxml{@}.
@@ -2899,13 +2863,12 @@ that causes the space leak. In the above example, we can move the
 construction of the list into \boxml{f}:\footnote{Program
   \boxml{kitdemo/escape1.sml}.}
 \begin{verbatim}
-  fun g() =
-    let fun mk_x() = [5,7]
-        fun f(y) = let val x = mk_x()
-                   in if y>3 then x@x else x; 5
-                   end
-    in
-        f 1; f 4
+  fun g () =
+    let fun mk_x () = [5,7]
+        fun f y = let val x = mk_x()
+                  in if y>3 then x@x else x; 5
+                  end
+    in f 1; f 4
     end
 \end{verbatim}
 Of course, this means that the list will be reconstructed upon each
@@ -2913,13 +2876,11 @@ application of \boxml{f}. Another solution is to move the creation of
 the list as close to the calls as possible and then pass the list as
 an extra argument:\footnote{Program \boxml{kitdemo/escape2.sml}.}
 \begin{verbatim}
-  fun g() =
-    let
-        fun f(x,y) = (if y>3 then x@x else x; 5)
-    in
-        let val x = [5,7]
-        in  f(x, 1); f(x, 4)
-        end
+  fun g () =
+    let fun f (x,y) = (if y>3 then x@x else x; 5)
+    in let val x = [5,7]
+       in  f(x,1); f(x,4)
+       end
     end
 \end{verbatim}
 Both solutions stop warnings from being printed, but the second
@@ -2927,7 +2888,7 @@ solution is better than the first: \boxml{f} still has a $\Put$ effect on
 the regions containing \boxml{x}, but the difference is that these are
 now represented by bound region variables in the type scheme of
 \boxml{f}. This quantification has the advantages that (1) allocation
-of space for the list is delayed till the list is actually used and
+of space for the list is delayed until the list is actually used and
 (2), the list can be de-allocated after the calls have been made
 (whereas in the original version, \boxml{x} occurs free in the
 declaration of \boxml{f} and will be kept alive as long as \boxml{f}
@@ -3005,7 +2966,7 @@ familiar with mutable variables in languages like C and Pascal:
 \begin{verbatim}
   val it = let val x: int ref = ref 3
                val y: bool ref = ref true
-               val z: int ref  = if !y then x else ref 5
+               val z: int ref = if !y then x else ref 5
            in z:= 6; !x
            end
 \end{verbatim}
@@ -3084,8 +3045,7 @@ region name, say \boxml{r35}; then the evaluation of the declaration
 ~\boxml{val x = ref $\at\,\rho$ 3}~ results in the environment
 $\{\boxml{x}\mapsto r\}$, where $r$ is the address of a word with
 contents 3 residing in region \boxml{r35}, see Figure~\ref{refs.fig}.
-The type of \boxml{x} is {\tt ((int,$\rhoword$) ref, $\rho$)}, which,
-as usual, we shorten to \boxml{(int ref, $\rho$)}.
+The type of \boxml{x} is {\tt (int ref, $\rho$)}.
 
 \begin{figure}
 \hrule
@@ -3114,18 +3074,17 @@ region-annotated type schemes given to the three built-in operations
 are: \medskip
 
 \halign{\indent\tt#\ \hfil&\quad$#$\hfil\ &#\hfil\cr
-ref & \forall\alpha\rho_1\rho_2\epsilon.(\alpha,\rho_1) \ar{\epsilon.\{\Put(\rho_2)\}}((\alpha,\rho_1)\REF,\rho_2)\cr
-!   &  \forall\alpha\rho_1\rho_2\epsilon.((\alpha,\rho_1)\REF,\rho_2)\ar{\epsilon.\{\Get(\rho_2)\}} (\alpha,\rho_1) \cr
-:=  & \forall\alpha\rho_1\rho_2\epsilon.[((\alpha,\rho_1)\REF,\rho_2), (\alpha,\rho_1)]
-           \ar{\epsilon.\{\Get(\rho_2)\}} \UNIT\cr}
+ref & \forall\alpha\rho\epsilon.\alpha \ar{\epsilon.\{\Put(\rho)\}}(\alpha~\REF,\rho)\cr
+!   &  \forall\alpha\rho\epsilon.(\alpha~\REF,\rho)\ar{\epsilon.\{\Get(\rho)\}} \alpha \cr
+:=  & \forall\alpha\rho\epsilon.[(\alpha~\REF,\rho), \alpha] \ar{\epsilon.\{\Get(\rho)\}} \UNIT\cr}
 \medskip
 
 \noindent
 The type scheme for \verb+:=+ has in it a $\Get$ effect on the region
 holding the reference. Although the operator does not actually read
-the value, the presence of the value is necessary for it to updated.
+the value, the presence of the value is necessary for it to be updated.
 Assigning a value $v$ to a reference $r$ does not make a copy of $v$
-(unless $v$ is unboxed). Instead, \verb+:=+ updates the reference $r$
+(unless $v$ is unboxed). Instead, \verb+:=+ updates the content of the reference $r$
 to point to $v$.
 
 The advantage of the chosen scheme for handling references is that
@@ -3141,38 +3100,31 @@ program shown in Figure~\ref{otherrefs.fig}.\footnote{Program
 \hrule
 \medskip
 \begin{verbatim}
-  let val it =
-          letregion r7:INF
-          in let val x = ref at r7 3
-             in  letregion r8:1
-                 in let val y = ref at r8 true;
-                        val z =
-                            (case ![] y
-                               of true => x
-                               |  _ => ref at r7 5
-                            ) (*case*) ;
-                        val _ = :=[] <z, 6>
-                    in  ![] x
-                    end
-                 end (*r8:1*)
-             end
-          end (*r7:INF*)
-  in  {|it: _|}
-  end
+   let val it =
+         let region r9:INF;
+             val x = ref at r9 3;
+             region r10:1;
+             val y = ref at r10 true;
+             val z = case !y of true => x | _ => ref at r9 5;
+             val _ = (z := 6)
+         in  !x
+         end
+   in  {|it: _|}
+   end
 \end{verbatim}
 \caption{Region-annotated reference creation.}
 \label{otherrefs.fig}
 \medskip
 \hrule
 \end{figure}
-The region denoted by {\tt r7} contains the memory word whose address
+The region denoted by {\tt r9} contains the memory word whose address
 is bound to {\tt x} and {\tt z}, and whose contents is first 3, then
-6.  The region denoted by {\tt r8} contains a single boolean.  Also
-notice that the word containing 5 is designated {\tt r7}, because the
+6.  The region denoted by {\tt r10} contains a single boolean.  Also
+notice that the word containing 5 is designated {\tt r9}, because the
 {\tt then} and {\tt else} branches must be given the same
 region-annotated type with place. Finally, notice that all references
-will be reclaimed automatically at the end of the {\tt letregion}
-constructs that bind \boxml{r7} and \boxml{r8}.
+will be reclaimed automatically at the end of the {\tt let}
+construct that bind \boxml{r9} and \boxml{r10}.
 
 \section{Local References}
 References \index{reference!local} that are created locally within a
@@ -3180,21 +3132,22 @@ function and that do not escape the function naturally reside in
 regions that are local to the function body.  For example, the
 declaration:\footnote{Program \boxml{kitdemo/refs1.sml}.}
 \begin{verbatim}
-  fun id(x) = let val r = ref x in ! r end;
+  fun id x = let val r = ref x in !r end;
 \end{verbatim}
 is compiled into
 \begin{verbatim}
-  let fun id at r1 [] (x)=
-          letregion r9:1
-          in let val r = ref at r9 x in ![] r end
-          end (*r9:1*)
-  in  {|id: (_,r1)|}
+  let fun id at r1 [] (x) =
+        let region r11:1;
+            val r = ref at r11 x
+        in !r
+        end
+  in {|id: (_,r1)|}
   end
 \end{verbatim}
-Here {\tt r9} will be implemented as one word on the runtime stack.
-The evaluation of ~~\boxml{ref at r9 x}~~ moves the argument \boxml{x}
-to that word on the stack. At the end of the {\tt letregion r9 in
-  $\cdots$ end}, the word is popped off the stack.
+Here {\tt r11} will be implemented as one word on the runtime stack.
+The evaluation of ~~\boxml{ref at r11 x}~~ moves the argument
+\boxml{x} to that word on the stack. At the end of the inner
+\texttt{let}-scope, the word (i.e., region \texttt{r11}) is popped off the stack.
 
 Now, let us turn to an example of a memory cell whose lifetime extends
 the scope of its declaration, because it is accessible via a function
@@ -3216,13 +3169,13 @@ those functions that are applied once,\footnote{To restrict the
   \texttt{-maximum\_inline\_size 0} to the MLKit compiler.} this example
 compiles into
 \begin{verbatim}
-  let val r = let val v39399 = nil in ref at r1 v39399 end ;
-      fun memo_id at r1 [] (x)=
-          let val _ = :=[] <r, :: (x, ![] r) at r1> in x end ;
-      val y = memo_id[] "abc"at r4;
-      val z = memo_id[] "efg"at r4
-  in  {|z: (_,r4), y: (_,r4), memo_id: (_,r1), r: (_,r1)|}
-  end
+   let val r = ref at r6 nil;
+       fun memo_id at r1 [] (x) =
+         let val _ = (r := :: (x, !r)at r4) in x end;
+       val y = memo_id[] "abc"at r3;
+       val z = memo_id[] "efg"at r3
+   in  {|r: (_,r6), memo_id: (_,r1), y: (_,r3), z: (_,r3)|}
+   end
 \end{verbatim}
 and the MLKit warns us that there is a possible space
 leak:\footnote{Warnings are printed only if the option {\tt
@@ -3230,11 +3183,9 @@ leak:\footnote{Warnings are printed only if the option {\tt
   with the option \texttt{-maximum\_inline\_size 0}. See
   Chapter~\ref{spaceleak.sec}.}
 \begin{verbatim}
-   *** Warnings ***
-  memo_id  has a type scheme with escaping put effects
-  on region(s):
-   r1, which is also free in the type schemes with places of :
-    less_int minus_int := ! r Div Mod Match Bind
+ *** Warnings ***
+memo_id	 has a type scheme with escaping put effects on region(s):
+r4, which is also free in the type schemes with places of :  r
 \end{verbatim}
 
 \section{Hints on Programming  with References}
@@ -3338,8 +3289,8 @@ number of auxiliary regions and arrow effects of the data type,
 respectively.
 
 For efficiency purposes, we have found it prudent to restrict the
-maximal number of auxiliary regions a data type can have to 3 (one for
-each kind of runtime type of regions) and to restrict the maximal
+maximal number of auxiliary regions a data type can have to one for
+each kind of runtime type of regions and to restrict the maximal
 number of auxiliary effects to 1.  Otherwise, the number of auxiliary
 regions can grow exponentially in the size of the program:
 \begin{verbatim}
@@ -3370,8 +3321,12 @@ binary trees are put into regions and are subsequently de-allocated
 (in a constant time operation) when the region is popped. The next
 section goes thorough an example to illustrate the point.
 
-For simplicity, constructed values except lists
-(Chapter~\ref{lists.sec}) are always boxed.
+The MLKit attempts to use an unboxed representation for value
+constructors when possible. We have already seen how cons (i.e.,
+\texttt{::}) and \texttt{nil} use an unboxed representation (Chapter~\ref{lists.sec}). In
+general, a value constructor of a type is represented unboxed if
+(1) the type has at most three unary constructors and (2) each unary
+constructor takes boxed arguments.
 
 \section{Example: Balanced Trees}
 Consider the program in Figure~\ref{balpre.fig}.\footnote{MLB-file:
@@ -3415,27 +3370,27 @@ removed after it has been collapsed into a list by {\tt preord}.  And
 indeed it is. Here is the proof:
 \begin{verbatim}
   val it =
-      letregion r57:INF
-      in print[]
-         letregion r59:INF
-         in implode[r57]
-            letregion r61:INF, r62:INF
-            in preord[r59]
-               <letregion r64:INF
-                in balpre[r61,r62]
-                   letregion r66:1
-                   in explode[r64]
-                      "Greetings from the MLKit\n"at r66
-                   end (*r66:1*)
-                end (*r64:INF*),
-                nil
-               >
-            end (*r61:INF, r62:INF*)
-         end (*r59:INF*)
-      end (*r57:INF*)
+    let region r257:INF
+    in  print[]
+        let region r259:INF
+        in  implode[r257]
+            let region r262:INF, r264:1
+            in  preord[r259]
+                (let region r267:INF
+                 in  balpre[r262]
+                     let region r270:1
+                     in explode[r267]
+                        "Greetings from the Kit\n"at r270
+                     end
+                 end,
+                 nil
+                )at r264
+            end
+        end
+    end
 \end{verbatim}
 The exomorphic behavior of {\tt balpre} causes the tree to be
-allocated in regions {\tt r61} and {\tt r62}, which are both
+allocated in region {\tt r262}, which is
 de-allocated after the call to {\tt preord}.
 
 This is the kind of certainty about lifetimes we are aiming at.
@@ -3544,10 +3499,10 @@ matching handler is found, the runtime stack is popped down to the
 handler. This popping includes popping of regions that lie between
 that stack top and the handler. Put differently, consider an
 expression of the form
-\index{letregion@\texttt{letregion}}%
-{\tt letregion $\rho$ in $e$ end}; if $e$ evaluates to an exception
+\index{let region@\texttt{let region}}%
+{\tt let region $\rho$ in $e$ end}; if $e$ evaluates to an exception
 packet, then the region bound to $\rho$ is de-allocated and the packet
-is also the result of evaluating the \texttt{letregion} expression.
+is also the result of evaluating the \texttt{let region} expression.
 
 We have not attempted to design an analysis that would estimate how
 far down the stack a given exception value might propagate. Of course,
@@ -3564,7 +3519,7 @@ $$\boxml{${\it exp}_1$ handle {\it match}}$$
 is compiled into a
 $\MulExp$ expression of the form
 \begin{tabbing}
-\ \ \ \ \ \ \=\tt letregion $\rho$ in \\
+\ \ \ \ \ \ \=\tt let region $\rho$ in \\
 \>\ \ \=\boxml{let $f$ = fn $\at\,\rho$ {\it match} in $e_1$ handle $f$ end}\\
 \>\tt end
 \end{tabbing}
@@ -3573,7 +3528,7 @@ function) is evaluated and stored in some region $\rho$. This region
 will always have multiplicity one and therefore be a finite region
 which is put on the stack.  Then $e_1$, the result of compiling ${\it
   exp}_1$, is evaluated.  If $e_1$ terminates with a value, the {\tt
-  letregion} construct will take care of de-allocating the handler.
+  let region} construct will take care of de-allocating the handler.
 If $e_1$ terminates with an exception, however, $f$ is applied.
 
 Thus the combined cost of raising an exception and searching for the
@@ -3755,7 +3710,7 @@ runtime, $\rho'$ is bound to some region name
 (Section~\ref{fininf.sec}) $r'$.  Then $r'$ is combined with a
 definite storage mode (i.e., $\attop$ or $\atbot$), to yield $r$, say,
 which is then bound to $\rho$.  When $r'$ was originally created (by a
-{\tt letregion} expression), $r'$ was also made to contain an
+{\tt let region} expression), $r'$ was also made to contain an
 indication of whether it is an infinite region or a finite
 region.\footnote{On machines\label{atbit.lab} that have at least four
   bytes per word, the two least significant bits of a pointer to a
@@ -3787,32 +3742,37 @@ to the MLKit compiler.
 \hrule
 \medskip
 \begin{verbatim}
-  let fun f attop r1 [r7:INF] (var255)=
-          (case var255
-             of nil => nil
-             |  _ =>
-                let val xs = #1 decon_:: var255;
-                    val x = #0 decon_:: var255
-                in  :: (x + 1, f[sat r7] xs) attop r7
-                end
-          ) (*case*) ;
-      val n =
-          letregion r16:INF
-          in length[]
-             let val l1 =
-                     ::
-                     (1,
-                      :: (2, :: (3, nil) attop r16) attop r16
-                     ) attop r16
-             in  (case true
-  (*1*)             of true => f[atbot r16] l1 | _ => l1
-                 ) (*case*)
-             end
-          end (*r16:INF*)
-  in  {|n: _, f: (_,r1)|}
-  end
+   let fun f attop r1 [r14:INF] (var1) =
+           case var1 of
+             nil => nil
+           | _ =>
+             let val v94 = decon_:: var1;
+                 val v95 = #0 v94;
+                 val v96 = #1 v94
+             in  :: (v95 + 1, f[sat r14] v96)attop r14
+             end;
+       val n =
+         let region r38:INF;
+             val a = let region r27:INF;
+                         val l1 = [1,2,3] attop r27
+  (*1*)              in f[atbot r38] l1
+                     end;
+             region r40:1;
+             fun acc atbot r40 [] (var11, var12) =
+                 case var11 of
+                    nil => var12
+                  | _ => let val v261 = decon_:: var11;
+                             val v263 = #1 v261
+                         in acc[] <v263, var12 + 1>
+                         end
+         in  acc[] <a, 0>
+         end
+   in  {|f: (_,r1), n: _|}
+   end
 \end{verbatim}
-\caption{Storage modes inferred by the storage mode analysis.}
+\caption{Storage modes inferred by the storage mode analysis. Notice
+  that the MLKit has inlined the call to the function
+  \texttt{length}.}
 \label{sma1.fig}
 \medskip
 \hrule
@@ -3866,7 +3826,7 @@ be given.
 
 \noindent{\bf CASE A:} $\rho$ is a global region. Then $\attop$ is used.
 There is a deficiency we have to admit here. The MLKit only puts {\tt
-  letregion} around expressions, not around declarations. Thus, if one
+  region} bindings around expressions, not around declarations. Thus, if one
 writes
 \begin{verbatim}
   local
@@ -3903,12 +3863,12 @@ Now there are the following cases:
     $\rho$ as formal parameter):} use {\tt attop}
     \index{attop@\texttt{attop}}%
     (see Figure~\ref{b1.fig})
-  \item[B2] {\it $\rho$ is bound by a {\tt letregion} expression
+  \item[B2] {\it $\rho$ is bound by a {\tt let region} expression
       inside the smallest enclosing function:} use {\tt atbot} if no
     locally live variable at the allocation point has $\rho$ free in
     its region-annotated type scheme with place
     (Section~\ref{regtych.sec}), and use {\tt attop} otherwise
-    \index{letregion@\texttt{letregion}}%
+    \index{let region@\texttt{let region}}%
     (see Figure~\ref{b2.fig})
   \item[B3 (first attempt)]{\it $\rho$ is a formal parameter of a
       region-polymorphic function whose right-hand side is the
@@ -3923,7 +3883,7 @@ Now there are the following cases:
 \begin{center}
 \begin{tabbing}
 \\
-\hskip3cm\=\tt letregion $\rho$\\
+\hskip3cm\=\tt let region $\rho$\\
        \>\tt in $\ldots$ (fn {\it pat} => $\ldots\at\,\rho\ldots$)\\
        \>\tt end\\
 \\
@@ -3944,7 +3904,7 @@ Now there are the following cases:
 \begin{tabbing}
 \\
 \hskip3cm\=\tt (fn ${\it pat}$ => $\ldots$\\
-       \>\ \ \=\tt letregion $\rho$ \\
+       \>\ \ \=\tt let region $\rho$ \\
        \>    \>\tt in  $\ldots\at\,\rho\ldots l \ldots$\\
        \>    \>\tt end $\ldots$\\
        \>\tt )
@@ -3980,7 +3940,7 @@ The intuition behind (B2) is as follows. Region inference makes sure
 that the region-annotated type of a variable always contains free in
 it region variables for all the regions that the value bound to the
 variable needs when used. The lifetime of the region bound to $\rho$
-is given by the {\tt letregion} expression, which is in the same
+is given by the {\tt let region} expression, which is in the same
 function as the allocation point. Thus, if no locally live variable at
 the allocation point has $\rho$ free in its region-annotated type
 scheme with place, then $\rho$ really does not contain any live value
@@ -4038,7 +3998,7 @@ The rule that replaces (B3) is:
 \end{description}
 \medskip
 
-\noindent{\bf CASE C:} $\rho$ is bound by a {\tt letregion} expression
+\noindent{\bf CASE C:} $\rho$ is bound by a {\tt let region} expression
 and the allocation point (\ref{allocpoint}) does not occur inside any
 function abstraction.  As in (B2), use {\tt atbot} if no locally live
 variable at the allocation point has $\rho$ free in its
@@ -4153,7 +4113,7 @@ function would become region-polymorphic and the polymorphic recursion
 in regions would allow the pair \boxml{(xs, acc+1)} to be stored in a
 region different from the argument pair to {\tt tlength'}. In this
 case, what appeared to be a tail call would in fact not be a tail
-call, for it would automatically be enclosed in a {\tt letregion}
+call, for it would automatically be enclosed in a {\tt let region}
 construct, introducing a fresh region for each argument pair
 \boxml{(xs, acc+1)}.  This region would be finite, so it would be
 allocated on the stack.  Thus, with unboxing of function arguments
@@ -4163,10 +4123,10 @@ situation, we cannot always expect it to do so; if we were to collect
 boxed data in accumulating parameters to the function and this data is
 not to be returned by the function, there is a danger that the
 recursive call would not become a tail call due to the introduction of
-a {\tt letregion} construct being wrapped around the recursive
+a {\tt let region} construct being wrapped around the recursive
 call.\footnote{The MLKit features an option
   \texttt{--preserve\_tail\_calls}, which ensures that no
-  \texttt{letregion} construct is wrapped around a tail-call. This
+  \texttt{region} binding is wrapped around a tail-call. This
   option is enabled by default when garbage collection is enabled.}
 
 The next function, {\tt klength}, deserves careful study, because it
@@ -4411,26 +4371,26 @@ Figure~\ref{msortreset1.fig}.\footnote{MLB-file:
 
 Unfortunately, the storage mode analysis complains:
 \begin{verbatim}
-   *** Warnings ***
-  resetRegions(xs):
-     You have suggested resetting the regions that appear free
-     in the type scheme with place of 'xs', i.e., in
-     (int, [r140]) list
-     (1)
-          'r140': there is a conflict with the locally
-          live variable
-          l :(int, [r154]) list
-          from which the following region variables can be reached
-          in the region flow graph:
-               {r154}
-          Amongst these, 'r154' can also be reached from 'r140'.
-          Thus I have given 'r140' storage mode "attop".
+ *** Warnings ***
+resetRegions(xs):
+   You have suggested resetting the regions that appear free
+   in the type scheme with place of 'xs', i.e., in
+   (int, [r104]) list
+   (1)
+        'r104': there is a conflict with the locally
+        live variable
+        v187 :(int, [r113]) list
+        from which the following region variables can be reached
+        in the region flow graph:
+             {r113}
+        Amongst these, 'r113' can also be reached from 'r104'.
+        Thus I have given 'r104' storage mode "attop".
 \end{verbatim}
 There is one complaint concerning the first $\resetr$, but none
 concerning the two remaining ones.  By inspecting the region-annotated
-term one sees that \boxml{r140} is a formal parameter of {\tt msort}.
+term one sees that \boxml{r104} is a formal parameter of {\tt msort}.
 Due to the recursive call {\tt msort l}, the region graph contains an
-edge from \boxml{r140} to \boxml{r154}. Thus the analysis decides on
+edge from \boxml{r104} to \boxml{r113}. Thus the analysis decides on
 {\tt attop}, using rule (B3). This choice shows a weakness in the
 analysis, for using {\tt sat} would really be sound. (The problem is
 that, unlike polymorphic recursion, the region flow graph does not
@@ -4813,51 +4773,49 @@ Notice that {\tt xs} has to be kept alive for as long as the function
 access {\tt xs}, when called.  The region-annotated version of the
 example appears in Figure~\ref{lambda1.fig}.\footnote{To see the
   output programs discussed in this section, enable the flag
-  \texttt{print drop regions expression}.}
+  \texttt{-print\_drop\_regions\_expression}.}
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  let val n =
-        letregion r8:1, r10:1, r11:INF
-        in let val f =
-                 let val xs =
-                       :: (1, :: (2, nil) attop r11) attop r11
-                 in   fn atbot r8 ys =>
-                      length[] xs + length[] ys
-                 end
-           in  f :: (7, nil) attop r10
-           end
-        end (*r8:1, r10:1, r11:INF*)
-  in  {|n: _|}
-  end
+   let val n =
+         let region r134:INF, r141:INF, r150:1;
+             val f =
+               let val xs = [1,2] attop r134
+               in  fn atbot r150 ys =>
+                     length[] xs + length[] ys
+               end
+         in  f [7] attop r141
+         end
+   in  {|n: _|}
+   end
 \end{verbatim}
 \caption{Region-annotated program illustrating that the lifetime of
   a closure is at least as long as the lifetime of the values that
   evaluation of the function body will require.}  \medskip \hrule
 \label{lambda1.fig}
 \end{figure}
-We see that {\tt xs} is put in {\tt r11}, that the function closure
-for \boxml{(fn ys => $\cdots$)} is put in {\tt r8} and indeed, {\tt
-  r8} and {\tt r11} have the same lifetime. To understand how the
+We see that {\tt xs} is put in {\tt r134}, that the function closure
+for \boxml{(fn ys => $\cdots$)} is put in {\tt r150} and indeed, {\tt
+  r134} and {\tt r150} have the same lifetime. To understand how the
 region inference system figured that out, let us consider the effect
 and the region-annotated types of particular sub-expressions. Looking
 at the lambda abstraction, it must have a functional type of the form
-$(\tau\ar{\epsilon.\rea}\tau', {\tt r8})$ where $\rea$ is the effect
-$$\{\Get(\boxml{r1}), \Get(\boxml{r11}), \Get(\boxml{r10})\}$$
+$(\tau\ar{\epsilon.\rea}\tau', {\tt r150})$ where $\rea$ is the effect
+$$\{\Get(\boxml{r1}), \Get(\boxml{r134}), \Get(\boxml{r141})\}$$
 Notice
-that \boxml{r11} occurs free in the type of the lambda abstraction.
+that \boxml{r134} occurs free in the type of the lambda abstraction.
 But, as pointed out in Section~\ref{effects.sec}, the criterion
 \index{region!de-allocation}%
-for putting a {\tt letregion} binding of $\rho$ around an expression
+for putting a {\tt region} binding of $\rho$ around an expression
 $e$ is that $\rho$ occurs free neither in the type with place of $e$
 nor in the type scheme with place of any variable in the domain of the
 type environment. The smallest sub-expression of the program for which
-{\tt r11} does not occur free in the type with place of the expression
+{\tt r134} does not occur free in the type with place of the expression
 is the right-hand side of the {\tt val} binding of {\tt n}, for that
 expression simply has type with place $\boxml{int}$.  And at that
 point, the only region variables that occur free in the type
 environment are global region variables.  Hence the placement of the
-{\tt letregion} binding of {\tt r11}.
+{\tt region} binding of {\tt r134}.
 
 \section{Arrow Effects}
 In a first-order language, effect variables might not be particularly
@@ -4872,9 +4830,9 @@ example illustrates the point:\footnote{Program
 \end{verbatim}
 Here is the region-annotated type scheme of {\tt apply}:
 \begin{tabbing}
-\qquad$\forall\alpha_0\alpha_2\rho_7\rho_8\rho_9\rho_{10}\epsilon_{11}\epsilon_{12}\epsilon_{13}.$\=$((\alpha_0,\rho_{10})
-        \ar{\epsilon_{11}.\emptyset}(\alpha_2,\rho_9),\rho_8)\ar{\epsilon_{12}.\{\Put(\rho_7)\}}$\\
-            \>$((\alpha_0,\rho_{10})\ar{\epsilon_{13}.\{\Get(\rho_8), \epsilon_{11}\}}(\alpha_2,\rho_9),\rho_7)$
+\qquad$\forall\alpha_0\alpha_2\rho_7\rho_8\epsilon_{11}\epsilon_{12}\epsilon_{13}.$\=$(\alpha_0
+        \ar{\epsilon_{11}.\emptyset}\alpha_2,\rho_8)\ar{\epsilon_{12}.\{\Put(\rho_7)\}}$\\
+            \>$(\alpha_0\ar{\epsilon_{13}.\{\Get(\rho_8), \epsilon_{11}\}}\alpha_2,\rho_7)$
 \end{tabbing}
 The latent effect associated with $\epsilon_{12}$ shows that when {\tt
   apply} is applied to a function, it may create (in fact: will
@@ -4900,10 +4858,10 @@ $\rho_{18}$ and $\rho_5$ were chosen arbitrarily. (Actually, the
 region variable $\rho_5$ denotes the global region for reals.) The
 region inference algorithm discovers that (\ref{suc.lab}) can be
 derived from the argument type
-$$((\alpha_0,\rho_{10})\ar{\epsilon_{11}.\emptyset}(\alpha_2,\rho_9),\rho_8)$$
+$$(\alpha_0\ar{\epsilon_{11}.\emptyset}\alpha_2,\rho_8)$$
 of the type scheme for {\tt apply} by the instantiating substitution
-$$S =(\!\!\begin{array}[t]{l}\{\alpha_0\mapsto\boxml{real},\alpha_2\mapsto\boxml{real}\},\{
-       \rho_{10}\mapsto\rho_{18},\rho_9\mapsto\rho_5,\rho_8\mapsto\rho_{17}\},\\
+$$S =(\!\!\begin{array}[t]{l}\{\alpha_0\mapsto(\boxml{real},\rho_{18}),\alpha_2\mapsto(\boxml{real}, \rho_5)\},\{
+       \rho_8\mapsto\rho_{17}\},\\
      \{\epsilon_{11}\mapsto\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\})
    \end{array}$$
 Formally, a
@@ -4958,47 +4916,43 @@ the full output for the {\tt apply} example in Figure~\ref{apply.fig}.
 \begin{verbatim}
   fun apply
       :all
-          'a0,'a2,r7,r8,r9,r10,e11,e12,e13.
-           (('a0,r10)-e11->('a2,r9),r8)
-           -e12(put(r7))->
-           (('a0,r10)-e13(U(U,get(r8),e11))->('a2,r9),r7)
-      at r1
-      [r7:1]
-      [r8:0, r9:0, r10:0]
-      (f)=
-      fn e13 at r7 x:('a0,r10) => f x;
-  val y:(real,r5) =
-      letregion r16:1, r17:1, r18:1
-      in  apply
-           [r16]
-           [real,real]
-           [r16,r17,r5,r18]
-           [e14(get(r1),get(r18),put(r5)),
-            e19(put(r16)),
-            e15(e14(get(r1),get(r18),put(r5)),get(r17))
-           ]
-          (fn e14 at r17 n:(real,r18) =>
-           letregion r21:1
-           in (n + 1.0at r21) at r5
-           end (*r21:1*)
-          )
-          5.0at r18
-      end (*r16:1, r17:1, r18:1*);
+          r18,r16,e15,e19,e17,'a0,'a2.
+          ('a0-e15->'a2,r16)
+          -e19(put(r18))->
+          ('a0-e17(U(U,get(r16),e15))->'a2,r18)
+      attop r1
+      [r18:1]
+      [r16:0]
+      (f) =
+      fn attop r18 x:'a0 => f x;
+  val y:(real,r1) =
+    let region r21:1, r23:1, r24:1
+    in   apply
+          [atbot r24]
+          [(real,r21),(real,r1)]
+          [r24,r23]
+          [e27(get(r21),put(r1)),
+           e26(put(r24)),
+           e25(e27(get(r21),put(r1)),get(r23))]
+         (fn atbot r23 n:(real,r21) =>
+           f64_to_real(attop r1, real_to_f64(n) + 1.0f64))
+         5.0attop r21
+    end;
   val z:int =
-      letregion r24:1, r25:1
-      in  apply
-           [r24]
-           [int,int]
-           [r24,r25,r2,r2]
-           [e22,e26(put(r24)),e23(e22,get(r25))]
-          (fn e22 at r25 m:int => m)
-          6
-      end (*r24:1, r25:1*)
+    let region r42:1, r43:1
+    in   apply
+          [atbot r43]
+          [int,int]
+          [r43,r42]
+          [e46,e45(put(r43)),e44(e46,get(r42))]
+         (fn atbot r42 m:int => m)
+         6
+    end
 \end{verbatim}
 \caption{The instantiation of arrow effects keeps different applications of
   the same function (here {\tt apply}) apart. The output was obtained
   by compiling the program \boxml{kitdemo/apply.sml} with options
-  \texttt{-print\_types}, \texttt{-print\_effects}, and
+  \texttt{-print\_types}, \texttt{-print\_effects}, \texttt{-no\_uncurry} and
   \texttt{-maximum\_inline\_size 0}.}  \medskip \hrule
 \label{apply.fig}
 \end{figure}
@@ -5035,7 +4989,7 @@ second use of {\tt apply}, \boxml{r8} was instantiated to {\tt r25}.
 Unlike identifiers bound by {\tt fun}, lambda-bound function
 identifiers are never region-polymorphic. So in an expression of the
 form
-$$\boxml{(fn f => $\cdots$ f $\cdots$ f $\cdots$)}$$
+$$\boxml{fn f => $\cdots$ f $\cdots$ f $\cdots$}$$
 all the uses of
 $\boxml{f}$ use the same regions. Indeed, because \boxml{f} occurs
 free in the type environment while region inference analyses the body
@@ -5050,11 +5004,11 @@ Therefore, when a function $f$ is passed as argument to another
 function $g$, as in the expression \boxml{$g$($f$)}, first regions are
 allocated for the use of $f$, then $g$ is called, and finally, the
 regions are de-allocated (provided they are not global regions).
-Whether the {\tt letregion} construct thus introduced encloses the
+Whether the {\tt let region} construct thus introduced encloses the
 call site immediately, as in
-$$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $g$($f$) end}$$
+$$\boxml{let region $\rho_1,\ldots,\rho_n$ in $g$($f$) end}$$
 or further out, as in
-$$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$)
+$$\boxml{let region $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$)
   $\ldots$ end}$$
 depends on the type and effect of the expression
 \boxml{$g$($f$)} in the usual way: regions can be de-allocated when
@@ -5077,54 +5031,53 @@ list, due to currying.\footnote{When {\tt map} and the application of
   not have this defect. This specialisation is the result of a general
   optimisation of curried functions that are invariant in their first
   argument. The output we present in this section was obtained by
-  passing to the MLKit compiler the option
-  \texttt{-maximum\_specialise\_size 0}.} However it serves to
+  passing to the MLKit compiler the options
+  \texttt{-maximum\_specialise\_size 0} and \texttt{-no\_uncurry}.} However it serves to
 illustrate the point made in the previous section about allocating
 regions in connection with higher-order functions. The
 region-annotated version is listed in Figure~\ref{map.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  let fun map at r1 [r7:1, r8:0] (var255)=
-           fn at r7 var256 =>
-           (case var256
-              of nil => nil
-              |  _ =>
-                 let val xs = #1 decon_:: var256;
-                     val x = #0 decon_:: var256
-                 in  ::
-                     (var255 x,
-                      letregion r20:1
-                      in map[r20,r8] var255 xs
-                      end (*r20:1*)
-                     ) at r8
-                 end
-           ) (*case*) ;
-      val x =
-          letregion r26:1, r27:INF, r28:1
-          in  map[r26,r1] (fn at r28 x => x + 1)
-              :: (7, :: (11, nil) at r27) at r27
-          end (*r26:1, r27:INF, r28:1*)
-  in  {|x: _, map: (_,r1)|}
-  end
+   let fun map attop r1 [r34:1, r20:0] (var1) =
+            fn attop r34 var2 =>
+            (case var2 of
+               nil => nil
+             | _ =>
+               let val v102 = decon_:: var2;
+                   val v103 = #0 v102;
+                   val v104 = #1 v102
+               in  :: (var1 v103, let region r28:1
+                                  in map[atbot r28,attop r20]
+                                       var1 v104
+                                  end)attop r20
+               end
+            );
+       val x =
+         let region r37:1, r38:INF, r40:1
+         in  map[atbot r40,attop r4]
+              (fn atbot r37 x => x + 1) [7,11] attop r38
+         end
+   in  {|map: (_,r1), x: _|}
+   end
 \end{verbatim}
 \caption{Although this version of {\tt map} creates a closure for
   each list element, the region-polymorphic recursion (of {\tt map})
   ensures that that closure is put in a region local to {\tt map}.
-  Thus, these closures do not pile up in {\tt r26}, the region of the
+  Thus, these closures do not pile up in {\tt r37}, the region of the
   initial argument.}
 \medskip \hrule
 \label{map.fig}
 \end{figure}
 We see that the region that appears free in the type with place of the
-successor function (i.e., \boxml{r26}) is allocated prior to the call
+successor function (i.e., \boxml{r37}) is allocated prior to the call
 of {\tt map} and that it stays alive throughout the evaluation of the
 body of {\tt map}. Notice, however, that the closures that are created
-when {\tt map} is applied do not pile up in {\tt r27}, the region of
+when {\tt map} is applied do not pile up in {\tt r37}, the region of
 the successor function. Instead, they are put in local regions bound
-to {\tt r20}, one closure in each region.  Also, if we had given some
+to {\tt r28}, one closure in each region.  Also, if we had given some
 more complicated argument to {\tt map}, the body of that function
-could include {\tt letregion} expressions. For each list element,
+could include local {\tt region} declarations. For each list element,
 regions would then be allocated, used, and then de-allocated before
 proceeding to the next list element.
 
@@ -5136,7 +5089,7 @@ can lead to space leaks. Here is an example:
   fun foldl f acc [] = acc
     | foldl f acc (x::xs)  = foldl f (f(x,acc)) xs
 
-  val x = foldl (fn (x,acc) => 10*acc+x) 0 [7,2];
+  val x = foldl (fn (x,acc) => 10*acc+x) 0 [7,2]
 \end{verbatim}
 Because {\tt f} is lambda-bound, all the pairs created by the
 expression \boxml{(x,acc)} will pile up in the same region. The
@@ -5152,7 +5105,7 @@ region endomorphism:
   fun foldl(p as (f,[],_)) = p
     | foldl(f,x::xs,acc) = foldl(f,xs,f(x,acc))
 
-  val x = #3(foldl(fn(x,acc) => 10*acc+x,[7,2],0));
+  val x = #3(foldl(fn(x,acc) => 10*acc+x,[7,2],0))
 \end{verbatim}
 The storage mode analysis will still give {\tt attop} for the
 allocation of the pair \boxml{(x,acc)}, because the region of the pair
@@ -5166,8 +5119,7 @@ creation of the pair altogether?\footnote{Program
   fun foldl f b xs =
     let fun loop(p as ([], b)) = p
           | loop(x::xs, b) = loop(xs,f x b)
-    in
-        #2(loop(xs,b))
+    in #2(loop(xs,b))
     end
 \end{verbatim}
 The region-annotated version of this program appears in
@@ -5282,7 +5234,7 @@ such a call is as efficient as an assembly language jump to a constant
 label (not taking into account the shuffling of arguments needed to
 match the calling convention for $f$.
 
-The way to avoid that a {\tt letregion} construct is wrapped around
+The way to avoid that a {\tt region} binding is wrapped around
 the function call (and thus causes the call not to be recognized as a
 tail call) is to turn the calling function into a region endomorphism,
 when possible.
@@ -5302,14 +5254,14 @@ Figure~\ref{tail.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  fun f' attop r1 [r7:inf] (var256)=
-      (case #0 var256
-         of 0 => var256
-         |  _ =>
-            let val b = #1 var256; val n = #0 var256
-            in  jmp f'[sat r7] (n - 1, n * b) sat r7
-            end
-      ) (*case*)
+  fun f' attop r1 [r13:inf] (var2) =
+    let val v96 = #0 var2
+    in  case v96 of
+           0 => var2
+         | _ => let val v98 = #1 var2
+                in jmp f'[sat r13] (v96 - 1, v96 * v98)sat r13
+                end
+    end
 \end{verbatim}
 \caption{An example where a function call turns into a tail call to a known function.}
 \medskip \hrule
@@ -5339,18 +5291,17 @@ indeed, the call to {\tt g} is recognized as a tail call.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  let fun g attop r1 [] (n, b)=
-          letregion r9:3
-          in fncall funcall h[atbot r9] (n - 1) b
-          end (*r9:3*)
-      and h attop r1 [r12:3] (var255)=
-           fn attop r12 var256 =>
-           (case var255
-              of 0 => var256
-              |  _ => jmp g[] <var255, var255 * var256>
-           ) (*case*)
-  in  {|g: (_,r1), h: (_,r1)|}
-  end
+   let fun h attop r1 [r18:3] (var1) =
+         fn attop r18 var2 =>
+           (case var1 of
+               0 => var2
+             | _ => jmp g[] <var1, var1 * var2>)
+       and g attop r1 [] (v90, v91) =
+         let region r21:3
+         in fncall funcall h[atbot r21] (v90 - 1) v91
+         end
+   in  {|h: (_,r1), g: (_,r1)|}
+   end
 \end{verbatim}
 \caption{A function call can turn into a tail call even
   in the case that the call appears in the body of a {\tt fn} expression.}
@@ -5370,10 +5321,10 @@ $$\boxml{funcall $f$ [$\rho_1, \ldots, \rho_n$] $\exp$}$$
 where {\tt
   funcall} is the mnemonic used for non-tail calls to
 region-polymorphic functions. One example is the call to {\tt h} in
-Figure~\ref{tail2.fig}. Here the call to {\tt h} take a region
-argument {\tt r9} and an ordinary argument {\tt (n-1)}; the call to
-{\tt h} returns width a closure, which needs to be applied to {\tt b}
-before the function {\tt g} can de-allocate the region {\tt r9} and
+Figure~\ref{tail2.fig}. Here the call to {\tt h} takes a region
+argument {\tt r21} and an ordinary argument {\tt (v90-1)}; the call to
+{\tt h} returns a closure, which needs to be applied to {\tt v91}
+before the function {\tt g} can de-allocate the region {\tt r21} and
 return.
 
 This case completes all possible cases of applications of
@@ -5438,18 +5389,18 @@ follows\footnote{Program \boxml{kitdemo/compose.sml}.}
 \end{verbatim}
 The resulting call-explicit expression produced by the MLKit is
 \begin{verbatim}
-  fun o attop r1 [r7:3] (f, g)=
-      fn attop r7 x => fnjmp f (fncall g x)
+  fun o attop r1 [r22:3] (v92, v93) =
+      fn attop r22 x => fnjmp v92 (fncall v93 x)
 \end{verbatim}
 Notice that
 \index{o@\texttt{o}}%
-\boxml{f o g} first creates a closure in \boxml{r7} and then returns.
+\boxml{f o g} first creates a closure in \boxml{r22} and then returns.
 The closure is of size three words and contains a pointer to the code
 for the function and pointers to the closures for \boxml{f} and
 \boxml{g}. When called, the created function first performs a non-tail
 call of \boxml{g} and then a tail call to \boxml{f}.
 
-\section{Example: \texttt{foldl}  Revisited}
+\section{Example: \texttt{foldl} Revisited}
 \label{foldl.sec}
 Consider the following declaration of folding over
 lists:\footnote{Program \boxml{kitdemo/fold1.sml}.}
@@ -5469,25 +5420,24 @@ Figure~\ref{fold1.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  fun foldl attop r1 [r7:4, r8:4] (f)=
-       fn attop r7 b =>
-        fn attop r8 xs =>
-        (case xs
-           of nil => b
-           |  _ =>
-              let val xs' = #1 decon_:: xs;
-                  val x = #0 decon_:: xs
-              in  letregion r22:4
-                  in fncall
-                      letregion r24:4
-                      in fncall
-                          funcall foldl[atbot r24,atbot r22] f
-                          (fncall fncall f x b)
-                      end (*r24:4*)
-                      xs'
-                  end (*r22:4*)
-              end
-        ) (*case*)
+  fun foldl attop r1 [r40:4, r38:4] (f) =
+    fn attop r40 b =>
+      fn attop r38 xs =>
+        (case xs of
+            nil => b
+          | _ =>
+              let val v100 = decon_:: xs;
+                  val v101 = #0 v100;
+                  val v102 = #1 v100;
+                  region r30:4
+              in  fncall
+                   let region r31:4
+                   in fncall
+                        funcall foldl[atbot r31,atbot r30] f
+                        (fncall fncall f v101 b)
+                   end
+                   v102
+              end)
 \end{verbatim}
 \caption{The straightforward implementation of {\tt foldl} uses space
   linear in the length of the list. (Program {\tt
@@ -5503,7 +5453,7 @@ An alternative version of {\tt foldl} assumes that \boxml{f}
 is curried:\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{verbatim}
   fun foldl f b xs =
-    let fun loop(p as ([], b))= p
+    let fun loop(p as ([], b)) = p
           | loop(x::xs, b) = loop(xs,f x b)
     in
         #2(loop(xs,b))
@@ -5514,32 +5464,28 @@ Figure~\ref{fold2.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-  fun foldl attop r1 [r7:3, r8:3] (f)=
-       fn attop r7 b =>
-        fn attop r8 xs =>
-        letregion r19:1
-        in let fun loop atbot r19 [r20:inf] (var256)=
-                   (case #0 var256
-                      of nil => var256
-                      |  _ =>
-                         let val b = #1 var256;
-                             val xs = #1 decon_:: #0 var256;
-                             val x = #0 decon_:: #0 var256
-                         in  jmp loop[sat r20]
-                                 (xs,
-                                  fncall fncall f x b
-                                 ) sat r20
-                         end
-                   ) (*case*)
-           in  letregion r26:inf
-               in let val v39423 =
-                          funcall loop[atbot r26]
-                                  (xs, b) atbot r26
-                  in  #1 v39423
-                  end
-               end (*r26:inf*)
-           end
-        end (*r19:1*)
+  fun foldl attop r1 [r50:3, r48:3] (f) =
+    fn attop r50 b =>
+      fn attop r48 xs =>
+        let region r25:1;
+            fun loop atbot r25 [r32:inf] (var2) =
+              let val v107 = #0 var2
+              in  case v107 of
+                      nil => var2
+                    | _ =>
+                        let val v109 = decon_:: v107;
+                            val v110 = #0 v109;
+                            val v111 = #1 v109;
+                            val v112 = #1 var2
+                        in  jmp loop[sat r32]
+                              (v111,
+                               fncall fncall f v110 v112
+                              )sat r32
+                        end
+              end;
+            region r44:inf
+        in  #1 funcall loop[atbot r44] (xs, b)atbot r44
+        end
 \end{verbatim}
 \caption{The result of compiling the efficient version of {\tt foldl}
   ({\tt kitdemo/fold2.sml}) is an iterative function that avoids
@@ -5558,7 +5504,7 @@ assumes that {\tt f} takes a pair as an argument:\footnote{Program
   \boxml{kitdemo/fold3.sml}.}
 \begin{verbatim}
   fun foldl' f b xs =
-    let fun loop(p as ([], b))= p
+    let fun loop(p as ([], b)) = p
           | loop(x::xs, b) = loop(xs,f(x,b)))
     in
         #2(loop(xs,b))
@@ -5947,25 +5893,23 @@ into a $\MulExp$ program. The $\MulExp$ call-explicit code for the
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
-  fun mem attop r1 [r10:4] (x)=
-    fn attop r10 l =>
-    letregion r14:3
-    in let fun mem' atbot r14 [] (var260)=
-             (case var260
-                of nil => false
-                |  _ =>
-                   let val ys = #1 decon_:: var260;
-                       val y = #0 decon_:: var260
-                   in  (case funcall lt[] <y, x>
-                          of true => jmp mem'[] ys
-                          |  _ =>
-                             jmp not[] funcall lt[] <x, y>
-                       ) (*case*)
-                   end
-             ) (*case*)
-       in  funcall mem'[] l
-       end
-    end (*r14:3*)
+  fun mem attop r1 [] (x, l) =
+    let region r53:1;
+        fun mem' atbot r53 [] (var2) =
+          case var2 of
+             nil => false
+           | _ =>
+              let val v193 = decon_:: var2;
+                  val v194 = #0 v193;
+                  val v195 = #1 v193
+              in  case v194 < x of
+                     true => jmp mem'[] v195
+                   | _ => (case x < v194 of
+                              true => false
+                            | _ => true)
+              end
+    in  funcall mem'[] l
+    end
 \end{verbatim}
 \caption{The $\MulExp$ call-explicit code for the {\tt mem}
   function resulting from instantiating the {\tt Set} functor.}
@@ -5973,24 +5917,9 @@ into a $\MulExp$ program. The $\MulExp$ call-explicit code for the
 \label{set_inst_mulexp.fig}
 \end{figure}
 
-Notice that the code for the {\tt mem}~function refers to compiled
-code for the {\tt lt}~function; the MLKit does not by default propagate
-enough information across module boundaries that the use of the {\tt
-  lt}~function is reduced to a built-in comparison on integers.
-Instead, for simplicity, the MLKit compiles the argument to the {\tt
-  Set}~functor in the source file \boxml{SetApp.sml} into separate
-code:
-\begin{verbatim}
-  let fun lt attop r1 [] (v39503-0, v39503-1)=
-          v39503-0 < v39503-1;
-      fun pr attop r1 [r9:inf] (a)=
-          jmp toString[sat r9] a
-  in  {|pr: (_,r1), lt: (_,r1)|}
-  end
-\end{verbatim}
-Here, the \boxml{toString} function comes from the \boxml{Int}
-structure of the Standard ML Basis Library and the primitive
-operation~\boxml{<} provides a built-in comparison on integers.
+Notice that the code for the {\tt mem}~function holds inlined code for
+the {\tt lt}~function; because the function is sufficiently small, the MLKit propagates its intermediate representation
+ across module boundaries.
 
 %---------------------------------------------------------
 \chapter{Garbage Collection}
@@ -6034,23 +5963,13 @@ following MulExp program:\footnote{Compiled with {\tt mlkit -no\_gc
   {\tt kitdemo} directory.}
 \begin{verbatim}
   val f =
-    letregion r7:2
-    in let val x =
-             let val v291610 =
-                   (2, :: (1, nil) attop r7) attop r1
-             in  ref attop r1 v291610
-             end
-       in fn attop r1 y =>
-            (let val v291617 = ![] x
-             in  #0 v291617
-             end ,
-             y
-            ) attop r1
-       end
-    end (*r7:2*)
-  val r = f 5
+    let region r9:inf;
+        val x = ref attop r6 (2, [1] attop r9)attop r4
+    in  fn attop r1 y => (#0 (!x), y)attop r4
+    end
+  val r = fncall f 5
 \end{verbatim}
-Notice here that region {\tt r7}, which contains the list {\tt [1]},
+Notice here that region {\tt r9}, which contains the list {\tt [1]},
 is de-allocated before the function {\tt f} is applied to the value
 {\tt 5}. If we chose to run this program together with a reference
 tracing garbage collector, a fatal error could occur: The memory that
@@ -6059,25 +5978,16 @@ time the garbage collector tries to trace the dangling pointer.
 
 Figure~\ref{dangling_gc.fig} shows the MulExp program produced when
 garbage collection is enabled.\footnote{Compiled with {\tt mlkit -gc
-    -maximum\_inline\_size 0 -Ppse -w 40 dangling.sml} from within the
+    -maximum\_inline\_size 0 -Ppse -w 50 dangling.sml} from within the
   {\tt kitdemo} directory.}
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
   val f =
-    let val x =
-          let val v291610 =
-                (2, :: (1, nil) attop r1) attop r1
-          in  ref attop r1 v291610
-          end
-    in fn attop r1 y =>
-          (let val v291617 = ![] x
-           in  #0 v291617
-           end ,
-           y
-          ) attop r1
+    let val x = ref attop r6 (2, [1] attop r4)attop r4
+    in  fn attop r1 y => (#0 (!x), y)attop r4
     end
-  val r = f 5
+  val r = fncall f 5
 \end{verbatim}
 \caption{The $\MulExp$ program produced when compiling the program
   {\tt kitdemo/dangling.sml} with garbage collection enabled. To avoid
@@ -6098,7 +6008,7 @@ $\rho$ occur free in $\mu$. In the implementation, the requirement may
 lead to extra $\Get$ effects being added to $\epsilon.\varphi$ when
 garbage collection is enabled. In the example, an imposed $\Get$
 effect on the arrow effect in the type for {\tt f} makes it impossible
-to wrap a {\tt letregion} around the binding for {\tt f}. (See
+to wrap a {\tt region} binding around the binding for {\tt f}. (See
 \cite[page 50]{total93} and \cite{elsman:tldi03} for more information
 about this requirement.)
 
@@ -6182,10 +6092,10 @@ different kinds of graphs may be created:
   regions and on the stack as a function of time. In the graph,
   regions that arise from the same
   \begin{center}
-    \texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
+    \texttt{region} $\rho$
   \end{center}
-  expression are collected into one colored band, labelled $\rho$. The
-  region variables that label bands are always global or {\tt letregion}-bound,
+  construct are collected into one colored band, labelled $\rho$. The
+  region variables that label bands are always global or {\tt region}-bound,
   never formal region parameters.
 \item An
   \index{object profile}%
@@ -6225,7 +6135,7 @@ points, it is also possible, during compilation, to generate a
 at runtime when region-polymorphic functions are applied. The region
 flow graph comes in handy when profiling large programs and when one wants
 to find out why a formal region variable is instantiated to a
-certain {\tt letregion}-bound region variable.
+certain {\tt region}-bound region variable.
 
 The following example clarifies the use of a region flow graph.
 Suppose the region profile shows that \texttt{r5} is responsible for
@@ -6413,7 +6323,7 @@ and find the following fragment of the region flow graph:
 \end{verbatim}
 \end{small}
 The fragment is read as follows. The formal region variable {\tt
-  r59007} is instantiated to the {\tt letregion}-bound region variable
+  r59007} is instantiated to the {\tt region}-bound region variable
 {\tt r154248} in a call to {\tt toString}. Moreover, also the formal
 region variable {\tt r153984} (of function {\tt readWord}) is
 instantiated to {\tt r154248}. (The asterisks ({\tt *}) denote that the
@@ -6576,7 +6486,7 @@ storage mode analysis (see page~\pageref{region flow graph}). In the
 graph, region variables are nodes and there is an edge between two nodes
 $\rho$ and $\rho'$ if $\rho$ is a formal region parameter of a
 function that is applied to actual region parameter $\rho'$. It
-follows that \texttt{letregion}-bound region variables are always leaf
+follows that \texttt{region}-bound region variables are always leaf
 nodes.
 
 Nodes in the graph are written in square brackets, which are labeled
@@ -6836,7 +6746,7 @@ different colors, then the smallest regions are collected in an OTHER
 band at the bottom.
 
 Each region is identified with a number that matches a {\tt
-  letregion}-bound region variable in the region-annotated program.
+  region}-bound region variable in the region-annotated program.
 Infinite regions end with {\tt inf} and finite regions end with {\tt
   fin}. There are also a band named {\tt rDesc} and a band named
 {\tt stack}. The {\tt rDesc} band shows the memory used on
@@ -7812,11 +7722,14 @@ identifier {\tt second} to the C function
 \end{verbatim}
 The MLKit associates the following region-annotated type scheme to the value
 identifier {\tt second}:
-$$\forall \alpha_1\alpha_2\rho_1\rho_2\rho_3\epsilon.((\alpha_1,
-\rho_1) * (\alpha_2, \rho_2), \rho_3) \ar{\epsilon.\{\Get(\rho_3)\}} (\alpha_2,
-\rho_2)$$
-Notice that the region-annotated type scheme expresses the region endomorphic
-behavior of the C function.
+$$\forall \alpha_1\alpha_2\rho\epsilon.(\alpha_1 * \alpha_2, \rho)
+\ar{\epsilon.\{\Get(\rho_3)\}} \alpha_2$$ Notice that the
+region-annotated type scheme expresses the region endomorphic behavior
+of the C function. That is, for any substitution $S$, mapping
+$\alpha_1$ and $\alpha_2$ to region types and places, the type
+$S((\alpha_1 * \alpha_2, \rho) \ar{\epsilon.\{\Get(\rho_3)\}}
+\alpha_2)$ will express that the result is located in the same regions
+as (the second projection) of the argument.
 
 
 %=======================================================
@@ -8327,7 +8240,7 @@ compiler that uses the
 x64 native backend.
 
 \begin{verbatim}
-MLKit v4.6.0 [X64 Backend]
+MLKit v4.7.2 ( - ) [X64 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
@@ -8570,6 +8483,9 @@ Options:
      Name base to enforce unique names when compiling
      mlb-files.
 
+--no_aggresive_opt, -no_aopt
+     Opposite of --aggresive_opt, -aopt.
+
 --no_contract
      Opposite of --contract.
 
@@ -8699,6 +8615,9 @@ Options:
 --print_effects, -Peffects                               (off)
      Print effects in region types.
 
+--print_excon_name                                       (off)
+     Print underlying unique name when printing excons.
+
 --print_export_bases, -Peb                               (off)
      Controls printing of export bases.
 
@@ -8709,6 +8628,9 @@ Options:
 --print_linearised_program                               (off)
      Print a linearlised representation of the
      program unit.
+
+--print_lvar_name                                        (off)
+     Print underlying unique name when printing lvars.
 
 --print_normalized_program                               (off)
      Print Region Expression after K-normalisation.
@@ -8727,6 +8649,9 @@ Options:
      and generate a .vcg-file, which can be viewed using
      the xvcg program.
 
+--print_region_spreaded_program, -Prsp                   (off)
+     Print region-spreaded program.
+
 --print_region_static_env0, -Prse0                       (off)
      Print imported region static environment prior to
      region inference.
@@ -8744,16 +8669,11 @@ Options:
 --print_rho_types                                        (off)
      Print region types of region variables in types and
      intermediate forms. Possible region types are:
-         w  Type of regions containing only word values; these
-            regions are dropped from the program because word
-            values are represented unboxed.
          p  Type of regions containing pairs.
          a  Type of regions containing arrays.
          r  Type of regions containing references.
          t  Type of regions containing triples.
          s  Type of regions containing strings.
-         B  Type of regions associated with type variables.
-            Regions of this type do not exist at runtime.
          T  Type of regions containing other than the above
             kinds of values.
 
@@ -8772,9 +8692,6 @@ Options:
      Print types when printing intermediate forms. For Lambda
      Expressions, ordinary ML types are printed, whereas for
      Region Expressions, region types are printed.
-
---print_word_regions, -Pwordregions                      (off)
-     Also print word regions that have been dropped.
 
 --quotation, -quot                                       (off)
      Enable support for quotations and anti-quotations.
@@ -8926,16 +8843,14 @@ Options:
 \hrule
 \halign{\parbox[t]{15mm}{#}\hfil\ &\ \parbox[t]{13cm}{\strut#\strut}\cr
 \boxml{r1}&Holds values of type {\tt top}, that is, records, exceptions, and closures.\cr
-\boxml{r2}&This region does not actually exist; it is used with unboxed values,
-           such as integers, booleans, and the 0-tuple.\cr
-\boxml{r3}&Holds values of type {\tt bot}. Because no values has type
+\boxml{r2}&Holds values of type {\tt bot}. Because no values has type
 {\tt bot}, this region contains no values. Region variables with region type {\tt bot} are used with
-type variables.\cr
-\boxml{r4}&Holds values of type {\tt string}.\cr
-\boxml{r5}&Holds values of type $\tau_1 \times \tau_2$, for any types $\tau_1$ and $\tau_2$.\cr
-\boxml{r6}&Holds values of type $\tau~\texttt{array}$ and $\tau~\texttt{vector}$, for any type $\tau$.\cr
-\boxml{r7}&Holds values of type $\tau~\texttt{ref}$, for any type $\tau$.\cr
-\boxml{r8}&Holds values of $\tau_1 \times \tau_2 \times \tau_3$, for any types $\tau_1$, $\tau_2$, and $\tau_3$.\cr
+so-called explicit regions, which are not covered in this report.\cr
+\boxml{r3}&Holds values of type {\tt string}.\cr
+\boxml{r4}&Holds values of type $\tau_1 \times \tau_2$, for any types $\tau_1$ and $\tau_2$.\cr
+\boxml{r5}&Holds values of type $\tau~\texttt{array}$ and $\tau~\texttt{vector}$, for any type $\tau$.\cr
+\boxml{r6}&Holds values of type $\tau~\texttt{ref}$, for any type $\tau$.\cr
+\boxml{r7}&Holds values of $\tau_1 \times \tau_2 \times \tau_3$, for any types $\tau_1$, $\tau_2$, and $\tau_3$.\cr
 }
 \hrule
 \bigskip
