@@ -1,5 +1,18 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.2 is released
+
+* mael 2022-09-15: The region type system has now been made simpler by
+  avoing word-regions all together and by limiting regions of type
+  RT_BOT to be related to explicit region annotated programs (PR
+  #110). This change also eliminated a bug that prevented MLKit from
+  compiling MLton (issue #103).
+
+* mael 2022-09-07: Fixed unsoundness of gc-safety. The combination of
+  garbage collection and region inference has now been made safe by
+  ensuring (for certain) that no dangling pointers are introduced at
+  runtime (PR #109).
+
 * mael 2022-01-24: More efficient static environment serialisation
   (issue #103).
 
