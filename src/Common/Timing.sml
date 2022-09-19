@@ -1,11 +1,11 @@
 
 signature TIMING =
-  sig 
+  sig
     (* Every call of timing_begin should be matched by a call of timing_end,
        but such calls may be nested. When they are nested, all time is attributed
        to the outermost call of timing_begin ... timing_end. *)
-       
-    val timing_begin   : unit -> unit 
+
+    val timing_begin   : unit -> unit
     val timing_end     : string -> unit
     val timing_end_res : string * 'a -> 'a
     val timing         : string -> ('a -> 'b) -> 'a -> 'b
@@ -19,29 +19,36 @@ signature TIMING =
 				    wallclock: Time.time}) list) list
 *)
     val reset_timings  : unit -> unit
-      
+
     (* Local timers used manually (and temporarily) in modules. *)
     (* There is only one local timer available.                 *)
     (* A local_time is updated. A new time is therefore _not_   *)
     (* returned in function local_timing_end.                   *)
+(*
     type local_time
     val empty_local_time : unit -> local_time
     val local_timing_begin : unit -> unit
     val local_timing_end : local_time -> unit
     val reset_local_time : local_time -> unit
     val pp_local_timing : local_time -> string
-
+*)
+    type timing
+    val new   : unit -> timing
+    val start : timing -> unit
+    val stop  : timing -> unit
+    val wrap  : timing -> ('a -> 'b) -> 'a -> 'b
+    val pr    : timing -> string
   end
 
 structure Timing: TIMING =
   struct
-    
+
     fun die s = Crash.impossible ("Timing." ^ s)
 
     fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     fun msg'(s: string) = (TextIO.output(TextIO.stdOut, s); TextIO.flushOut (TextIO.stdOut))
 
-    fun raise_again s e = 
+    fun raise_again s e =
 	(print ("Function " ^ s ^ " raises exception " ^ General.exnName e ^ "\n");
 	 raise e)
 
@@ -65,11 +72,11 @@ structure Timing: TIMING =
 		     wallclock: Time.time}) list) list ref = ref []
 
     fun timing_begin0 s () =
-      if !compiler_timings then 
+      if !compiler_timings then
 	(if !timingNow then
 	   timer_nesting:= !timer_nesting+1 (*die ("Only one timer available (" ^ s ^ ")")*)
 	 else
-	   (t := Timer.startCPUTimer(); 
+	   (t := Timer.startCPUTimer();
 	    timingNow := true;
 	    rt := Timer.startRealTimer())
         )
@@ -82,11 +89,11 @@ structure Timing: TIMING =
 
     fun add_time_elems {name=name1: string, non_gc=non_gc1: Time.time,
 			system=system1: Time.time,
-			gc=gc1: Time.time, 
+			gc=gc1: Time.time,
 			wallclock=wallclock1: Time.time}
                        {name=name2: string, non_gc=non_gc2: Time.time,
 			system=system2: Time.time,
-			gc=gc2: Time.time, 
+			gc=gc2: Time.time,
 			wallclock=wallclock2: Time.time} =
       if name1<>name2 then
 	die "Can only add timeelements with same name."
@@ -98,8 +105,8 @@ structure Timing: TIMING =
 	 wallclock=Time_plus(wallclock1,wallclock2)}
 
     fun insert_time_elem [] time_elem = [time_elem]
-      | insert_time_elem ((timings as {name=name1,...})::rest) 
-                          (time_elem as {name=name2,...}) = 
+      | insert_time_elem ((timings as {name=name1,...})::rest)
+                          (time_elem as {name=name2,...}) =
 	if name1=name2 then
 	  (add_time_elems timings time_elem)::rest
 	else
@@ -114,12 +121,12 @@ structure Timing: TIMING =
 	 | NONE => ())
 	  handle E => raise_again "maybe_export_timings" E
 
-      
-    fun timing_end (name) = 
-      if !compiler_timings orelse !timingNow then 
+
+    fun timing_end (name) =
+      if !compiler_timings orelse !timingNow then
 	(if not(!timingNow) then die "timing_end called with no timer started"
          else
-           if !timer_nesting > 0 
+           if !timer_nesting > 0
            then timer_nesting:= !timer_nesting -1
            else
              let
@@ -130,8 +137,8 @@ structure Timing: TIMING =
 		       (* raise_again "timing_end.checkRealTimer" E *)
 
 
-               val padL = StringCvt.padLeft #" " 15 
-	   
+               val padL = StringCvt.padLeft #" " 15
+
 	       val time_elem = {name = name,
 			    non_gc = non_gc,
 			    system = system,
@@ -141,7 +148,7 @@ structure Timing: TIMING =
 	       val _ = maybe_export_timings time_elem
 
 	       val _ = timings :=
-     	         (case (!timings) 
+     	         (case (!timings)
    		   of [] => [("Unknown", [time_elem])]
          		 | ((file,timings)::rest) =>
 		  (file,insert_time_elem timings time_elem)::rest)
@@ -155,13 +162,13 @@ structure Timing: TIMING =
 	   chat("\n") *)
         ) handle E => raise_again "timing_end" E
       else ()
-      
+
     fun timing_end_res (name, x) = (timing_end name; x)
 
-    fun timing (name:string) (f: 'a -> 'b) (a: 'a) : 'b = 
+    fun timing (name:string) (f: 'a -> 'b) (a: 'a) : 'b =
       (timing_begin0 name (); f a before timing_end name)
 
-      
+
     (* The first list in timings will always be the *)
     (* current one.                                 *)
     fun new_file filename =
@@ -171,17 +178,17 @@ structure Timing: TIMING =
 	timings:= (filename,[])::(!timings)
 
     fun get_timings () = List.rev (!timings)
-      
+
     fun reset_timings() = (timings := [];
 			   timingNow := false)
-      
+
     (* Local timers used manually (and temporarily) in modules. *)
     (* There is only one local timer available.                 *)
     type local_time = Time.time ref
     fun empty_local_time() = ref (Time.zeroTime)
     val local_timer = ref (Timer.startCPUTimer())
     val local_timer_on = ref false
-    fun local_timing_begin () = 
+    fun local_timing_begin () =
       if !local_timer_on then
 	die "Local timer already started."
       else
@@ -193,4 +200,27 @@ structure Timing: TIMING =
     fun reset_local_time timer = timer := Time.zeroTime
     fun pp_local_timing timer = StringCvt.padLeft #" " 15 (Time.toString (!timer))
 	handle E => raise_again "pp_local_timing" E
-end
+
+    type timing = {aggr: Time.time ref, started: Timer.cpu_timer option ref}
+
+    fun new () : timing = {aggr=ref Time.zeroTime, started=ref NONE}
+    fun start ({aggr,started}:timing) : unit =
+        case !started of
+            NONE => started := SOME (Timer.startCPUTimer())
+          | SOME _ => die "start: Timer already started"
+
+    fun stop ({aggr,started}:timing) : unit =
+        case !started of
+            SOME t => ( aggr:= Time.+ (!aggr, #usr (Timer.checkCPUTimer t))
+                      ; started := NONE )
+          | NONE => die "stop: Timer not started"
+
+    fun wrap (t:timing) f x =
+        ( start t
+        ; f x before stop t)
+
+    fun pr ({aggr,started}:timing) : string =
+        case !started of
+            SOME t => die "pr: Timer not stopped"
+          | NONE => Time.toString (!aggr)
+  end
