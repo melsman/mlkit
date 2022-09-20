@@ -48,7 +48,6 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 			 where type label = AddressLabels.label
 		       structure RegisterInfo : REGISTER_INFO
 			 where type lvar = Lvars.lvar
-			 where type lvarset = Lvarset.lvarset
 		       ) : NATIVE_COMPILE =
   struct
     structure RegionExp = MulExp.RegionExp

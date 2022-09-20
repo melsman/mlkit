@@ -16,7 +16,7 @@ signature KIT_MONO_SET =
     val eq : Set -> Set -> bool
 
     val list : Set -> elt list
-    val fromList : elt list -> Set 
+    val fromList : elt list -> Set
     val addList : elt list -> Set -> Set
       (* addList l s : Add elements in list l to s. *)
 
@@ -39,10 +39,14 @@ signature KIT_MONO_SET =
     val apply : (elt -> unit) -> Set -> unit
       (* apply f s; applies f to each element of s (in order) *)
 
+    val getOne : Set -> elt option
+     (* getOne s; returns SOME e if s is non-empty and NONE otherwise;
+        e is an element in s *)
+
     type StringTree
 
     val layoutSet : {start: string, sep: string, finish: string} ->
       (elt -> StringTree) -> Set -> StringTree
 
     val pu : elt Pickle.pu -> Set Pickle.pu
-  end;
+  end

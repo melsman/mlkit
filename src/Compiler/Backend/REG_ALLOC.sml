@@ -19,7 +19,7 @@ signature REG_ALLOC =
 
     *)
 
-    type place 
+    type place
     type phsize
     type pp = int
     type lvar
@@ -36,21 +36,17 @@ signature REG_ALLOC =
     | PHREG_STY of lvar * lvar
     | FV_STY    of lvar * label * label
 
-    val ra_dummy : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
-                   {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+    val ra_dummy : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,
+                    imports:label list * label list,exports:label list * label list} ->
+                   {main_lab:label,code:(StoreType,unit,Atom) LinePrg,
+                    imports:label list * label list,exports:label list * label list}
 
-    val ra       : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
-                   {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+    val ra       : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,
+                    imports:label list * label list,exports:label list * label list} ->
+                   {main_lab:label,code:(StoreType,unit,Atom) LinePrg,
+                    imports:label list * label list,exports:label list * label list}
 
     val pr_sty    : StoreType -> string
     val pr_atom   : Atom -> string
 
   end
-
-
-
-
-
-
-
-

@@ -26,6 +26,9 @@ functor OrderSet(Order : ORDER): KIT_MONO_SET =
     datatype bal = L | B | R
     datatype Set = E | N of elt * Set * Set * bal
 
+    fun getOne E = NONE
+      | getOne (N(e,_,_,_)) = SOME e
+
     val empty = E
 
     fun singleton i = N(i, E, E, B)
