@@ -554,26 +554,37 @@ struct
   local
     val init_count : int option ref = ref NONE    (* 9 (1-9) top-level predefined rhos/eps declared below! *)
     val count = ref 1
-    fun inc r = r:= !r + 1;
+    val countEps = ref 1
+    fun incn r n = !r before r := !r + n
+    fun inc r = !r before r := !r + 1
     val firstRef : int option ref = ref NONE      (* first rho/eps declared in a program unit *)
   in
     fun set_init_count () = (* to be called after declaration of top-level effects below *)
         case !init_count of
-            NONE => init_count := SOME (!count)
+            NONE => ( init_count := SOME (!count)
+                    ; countEps := !count + 1 )
           | SOME _ => die "init_count already set"
 
     fun resetCount () = (* to be called before region inference in Compile.sml *)
         case !init_count of
             SOME c =>
                 let val first = max (c, regionvarInitial())
-                in count := first ; firstRef := SOME first
+                in count := first ; firstRef := SOME first ; countEps := first + 1
                 end
           | NONE => die "init_count not set"
 
-    fun freshInt () = !count before inc count
+    fun freshRhoInt () =
+        if Option.isSome (!init_count)
+        then incn count 2
+        else inc count
+
+    fun freshEpsInt () =
+        if Option.isSome (!init_count)
+        then incn countEps 2
+        else inc count
 
     fun getCountFirstLast () =
-        let val last = !count
+        let val last = max(!count,!countEps)
         in case !firstRef of
             SOME first => (first,last)
           | NONE => die "getCountFirstLast: error"
@@ -585,13 +596,13 @@ struct
      this topmost layer *)
 
   fun freshRho (cone:cone as (n, c)): effect * cone =
-      let val key = freshInt()
+      let val key = freshRhoInt()
           val node = mkRho(n,key,NONE)
       in (node, add(node, n, key, cone))
       end
 
   fun freshRhoRegVar (cone:cone as (n, c), rv): effect * cone =
-      let val key = freshInt()
+      let val key = freshRhoInt()
           val node = mkRho_pinned(n,key,SOME rv)
       in (node, add(node, n, key, cone))
       end
@@ -609,7 +620,7 @@ struct
       foldr (fn (rho,(rhos',c)) =>
                   case G.find_info rho of
                     RHO{level,pix,ty,...} =>
-                     let val k = freshInt()
+                     let val k = freshRhoInt()
                          val new_rho =
                              G.mk_node(RHO{key = ref k, level = ref(g level),
                                            put = NONE, get = NONE, instance = ref NONE,
@@ -633,7 +644,7 @@ struct
       foldr (fn (eps,(epss',c)) =>
                   case G.find_info eps of
                     EPS{level,pix,(*represents = NONE,*)...} =>
-                     let val k = freshInt()
+                     let val k = freshEpsInt()
                          val new_eps=
                       G.mk_node(EPS{key = ref(k), level = ref(g level),
                                     instance = ref NONE,
@@ -653,7 +664,7 @@ struct
       rename_epss_aux(epss,c,fn(ref int) => ~1, fn _ => n)
 
   fun freshRhoWithTy' (rv_opt:regvar option, rt: runType, cone:cone as (n, c)): effect * cone =
-      let val key = freshInt()
+      let val key = freshRhoInt()
           val node =G.mk_node(RHO{key = ref key, level = ref n,
                                   put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
                                   rv_opt=rv_opt,pinned=false})
@@ -697,7 +708,7 @@ struct
      this topmost layer *)
 
   fun freshEps (cone:cone as (n, c)): effect * cone =
-      let val key = freshInt()
+      let val key = freshEpsInt()
           val node = mkEps(n,key)
       in (node, add(node, n, key, cone))
       end

@@ -121,6 +121,9 @@ structure StatObject: STATOBJECT =
     fun TyVarDesc_lt ({id,...}:TyVarDesc, {id=id2,...}:TyVarDesc) =
         id < id2
 
+    fun TyVarDesc_id ({id,...}:TyVarDesc) =
+        id
+
     fun findType ty =
       case #TypeDesc ty
 	of TYVAR (tl as ref (TY_LINK ty')) =>
@@ -323,6 +326,10 @@ structure StatObject: STATOBJECT =
 	     | (ref (TY_LINK _), _)  => die "TyVar.eq_tv1"
 	     | (_, ref (TY_LINK _)) => die "TyVar.eq_tv2"
 
+        fun id tv =
+            case tv of
+                ref(NO_TY_LINK tvd) => TyVarDesc_id tvd
+              | _ => die "TyVar.id"
 
 	fun eq' EQ_NOT_SIGNIFICANT (tv,tv') = eq (tv,tv')
 	  | eq' EQ_SIGNIFICANT (tv,tv') = eq (tv,tv') andalso equality tv = equality tv'

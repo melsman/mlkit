@@ -184,8 +184,27 @@ struct
 
    fun reportMap f t = Report.flatten(map f (list t))
 
-   fun pu _ = raise Fail "WordFinMapPT.pu: not implemented"
-   fun puNoShare _ = raise Fail "WordFinMapPT.puNoShare: not implemented"
+   (* Picklers *)
+
+   local
+     fun toInt Empty = 0
+       | toInt (Lf _) = 1
+       | toInt (Br _) = 2
+
+     fun pu_Lf pu_a _ =
+	 Pickle.con1 Lf (fn Lf a => a | _ => raise Fail "WordFinMapPT.pu_Lf")
+	             (Pickle.pairGen0(Pickle.word,pu_a))
+
+     fun pu_Br pu =
+	 Pickle.con1 Br (fn Br a => a | _ => raise Fail "WordFinMapPT.pu_Br")
+	             (Pickle.tup4Gen0(Pickle.word,Pickle.word,pu,pu))
+   in
+     fun pu _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
+         Pickle.dataGen ("WordFinMapPT.map",toInt,[Pickle.con0 Empty, pu_Lf pu_a, pu_Br])
+
+     fun puNoShare _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
+         Pickle.dataGenNoShare ("WordFinMapPT.map",toInt,[Pickle.con0 Empty, pu_Lf pu_a, pu_Br])
+   end
 
 end
 

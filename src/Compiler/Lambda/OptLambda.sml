@@ -291,7 +291,7 @@ structure OptLambda: OPT_LAMBDA =
         end
 
     in
-      fun reset_statistics() = (stat_map := StringFinMap.empty; tick_count_list := [0])
+      fun reset_statistics () = (stat_map := StringFinMap.empty; tick_count_list := [0])
       fun add_statistics (s:string) =
         let val map = !stat_map
             val i = case StringFinMap.lookup map s
@@ -327,8 +327,8 @@ structure OptLambda: OPT_LAMBDA =
       fun tick (s : string) = (flag := true;
                                if statistics_after_optimisation() then add_statistics s
                                else ())
-      fun reset_tick() = flag := false
-      fun test_tick() = !flag
+      fun reset_tick () = flag := false
+      fun test_tick () = !flag
     end
 
    (* -----------------------------------------------------------------
@@ -2475,6 +2475,7 @@ structure OptLambda: OPT_LAMBDA =
                  (tick "fix conversion";
                   FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,bind=bind}],
                       scope=scope})
+           | f (FIX{functions=[],scope}) = (tick "fix conversion - empty"; f scope)
            | f lamb = lamb
      in
        if !fix_conversion_ref then (log "fix_conversion\n"; passTD f lamb)

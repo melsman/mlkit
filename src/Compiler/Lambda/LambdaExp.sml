@@ -672,18 +672,18 @@ structure LambdaExp: LAMBDA_EXP =
 		  children=[head,children]}
       end
 
-   fun parenthesise(st: PP.StringTree): PP.StringTree=
-     PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NOSEP}
+    fun parenthesise (st: PP.StringTree): PP.StringTree=
+        PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NOSEP}
 
-   fun layoutTyvarseq tyvars =
-      case tyvars
-	of nil => NONE
-	 | [tv] => SOME(PP.LEAF (pr_tyvar tv))
-	 | tvs => SOME(PP.NODE{start="(", finish=")", indent=1,
-			       children=map (PP.LEAF o pr_tyvar) tvs,
-			       childsep=PP.RIGHT ", "
-			      }
-		      )
+    fun layoutTyvarseq tyvars =
+        case tyvars
+	 of nil => NONE
+	  | [tv] => SOME(PP.LEAF (pr_tyvar tv))
+	  | tvs => SOME(PP.NODE{start="(", finish=")", indent=1,
+			        children=map (PP.LEAF o pr_tyvar) tvs,
+			        childsep=PP.RIGHT ", "
+			       }
+		       )
 
    fun layoutType tau =
        case tau of
@@ -731,14 +731,14 @@ structure LambdaExp: LAMBDA_EXP =
 
     and layoutFrame str {declared_lvars, declared_excons} =
       let
-	fun lvar_child({lvar,tyvars,Type}) =
+	fun lvar_child ({lvar,tyvars,Type}) =
 	  PP.NODE{start=pr_lvar lvar ^ ": ", finish="", indent=3,
 		  children=[layoutTypeScheme(tyvars,Type)],
 		  childsep=PP.NOSEP
 		  }
 
 	val lvars_children = map lvar_child  declared_lvars
-	fun excon_child(excon, ty_opt) =
+	fun excon_child (excon, ty_opt) =
 	  let val (connect,type_tree) =
 	    case ty_opt of
 	      NONE => ( "", PP.LEAF "")
@@ -757,7 +757,7 @@ structure LambdaExp: LAMBDA_EXP =
 		childsep = PP.RIGHT ", "}
       end
 
-  and layoutTypeScheme(tyvars,tau) =
+  and layoutTypeScheme (tyvars,tau) =
       let
 	val tyvarsT = layoutTyvarseq tyvars
 	val tauT = layoutType tau
@@ -770,7 +770,7 @@ structure LambdaExp: LAMBDA_EXP =
 		    childsep=PP.RIGHT"."}
       end
 
-   fun layVarSigma(lvar,alphas,tau) =
+   fun layVarSigma (lvar,alphas,tau) =
      if !Flags.print_types
        then
          let val sigma_t = layoutTypeScheme(alphas, tau)
@@ -1022,7 +1022,7 @@ structure LambdaExp: LAMBDA_EXP =
 			indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
 	      else PP.LEAF s
            end
-         | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context)
+(*         | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context) *)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs

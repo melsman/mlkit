@@ -20,6 +20,15 @@ struct
   val dangling_pointers = Flags.is_on0 "dangling_pointers"
   val print_regions = Flags.is_on0 "print_regions"
 
+  val disable_spurious_p = Flags.add_bool_entry
+    {long="disable_spurious_type_variables",short=NONE,
+     menu=["Control", "Regions"],
+     item=ref false, neg=false, desc=
+     "Disable inference of spurious type variables. This option\n\
+     \may crash the reference tracing garbage collector as it may\n\
+     \result in dangling pointers. This flag is relevant only when\n\
+     \garbage collection is enabled."}
+
   fun uncurry f (x,y) = f x y
 
   fun eq_effects (nil,nil) = true
@@ -228,6 +237,8 @@ struct
           val effects = foldl effects_ex (foldl effects_lv nil lvs) exs
 
           val es_tvs =
+              if disable_spurious_p() then []
+              else
               let val spurious_tyvars = RSE.spuriousTyvars rse ty0 (lvs,exs)
               in map (fn tv =>
                          case RSE.lookupTyVar rse tv of

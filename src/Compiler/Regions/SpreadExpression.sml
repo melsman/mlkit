@@ -24,6 +24,55 @@ struct
 
   val preserve_tail_calls = Flags.is_on0 "preserve_tail_calls"
 
+  val warn_spurious_p = Flags.add_bool_entry
+    {long="warn_spurious",short=NONE, menu=["Control", "Regions"],
+     item=ref false, neg=false, desc=
+     "Warn on the presence of a spurious type variable. This\n\
+     \flag is relevant only when garbage collection is enabled."}
+
+  val stats_spurious_p = Flags.add_bool_entry
+    {long="statistics_spurious",short=SOME "stats_spurious",
+     menu=["Control", "Regions"],
+     item=ref false, neg=false, desc=
+     "Report statistics on spurious functions and instantiations\n\
+     \of spurious type variable. This flag is relevant only when\n\
+     \garbage collection is enabled."}
+
+  val disable_spurious_p = Flags.is_on0 "disable_spurious_type_variables"
+
+  structure SpuriousStats : sig
+    val fundeclare : unit -> unit
+    val funspurious : unit -> unit
+    val tvinstance : bool -> unit
+    val report     : unit -> unit
+    val reset      : unit -> unit
+  end = struct
+    val insts_total = ref 0
+    val funs_total = ref 0
+    val insts_spurious = ref 0
+    val funs_spurious = ref 0
+    fun reset () =
+        ( insts_spurious := 0
+        ; insts_total := 0
+        ; funs_spurious := 0
+        ; funs_total := 0
+        )
+    fun pr (ref n, ref t) =
+        Int.toString n ^ " / " ^ Int.toString t
+    fun report () =
+        ( print ("*** Spurious instantiations: " ^ pr (insts_spurious, insts_total) ^ "\n")
+        ; print ("*** Spurious functions: " ^ pr (funs_spurious, funs_total) ^ "\n")
+        )
+    fun incr r = r := !r + 1
+    fun fundeclare () = incr funs_total
+    fun funspurious () = incr funs_spurious
+    fun tvinstance b =
+        ( incr insts_total
+        ; if b then incr insts_spurious else ()
+        )
+  end
+
+
   type rse = RSE.regionStatEnv
 
   type source_pgm = E.LambdaPgm
@@ -277,13 +326,16 @@ struct
                         if mem tyvars tv then (tv::bound,free)
                         else (bound,tv::free))
                     (nil,nil) tvs
-          val () = if true orelse List.null bound then ()
-                   else print ("*** WARNING: Spurious type variables in function " ^
+          val () = SpuriousStats.fundeclare()
+          val () = if not(List.null bound) then SpuriousStats.funspurious() else ()
+          val () = if warn_spurious_p() andalso not(List.null bound)
+                   then print ("*** WARNING: Spurious quantified type variables for function " ^
                                Lvars.pr_lvar lvar ^ ": " ^
                                String.concatWith ", " (map E.pr_tyvar bound) ^
                                "\n")
+                   else ()
           val (tvs,cone) = foldr (fn (tv,(tvs,cone)) =>
-                                     if mem bound tv then
+                                     if mem bound tv andalso not (disable_spurious_p()) then
                                        let val (eff,cone) = Eff.freshEps cone
                                        in ((tv,SOME eff)::tvs,cone)
                                        end
@@ -346,13 +398,36 @@ struct
              (B,sigma_hat::l)
           end
 
-    fun newInstance (A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
+    fun newInstance (lvopt:Lvars.lvar option,A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
       let val (rhos, epss, alphas) = R.bv sigma
           val (taus', A) = freshTypesWithPlaces(A,taus)
           val (rhos', A) = Eff.freshRhosPreserveRT(rhos, A)
           val (epss', A) = Eff.freshEpss(epss, A)
           val il = R.mk_il(rhos',epss',taus')
           val (tau', A1) = R.inst(sigma,il) A (* side-effects il *)
+          val () = if warn_spurious_p() then
+                     ListPair.appEq (fn ((tv,NONE),t) => ()
+                                      | ((tv,SOME _),t) =>
+                                        if R.unboxed t then ()
+                                        else
+                                        let val f = case lvopt of
+                                                        SOME lv => Lvars.pr_lvar lv
+                                                      | NONE => "?"
+                                        in print ("*** WARNING: Instantiation of spurious type variable "
+                                                  ^ E.pr_tyvar tv
+                                                  ^ " with boxed type (or tyvar) in function "
+                                                  ^ f
+                                                  ^ "\n")
+                                        end)
+                                    (alphas,taus')
+                   else ()
+          val () = if stats_spurious_p() then
+                     ListPair.appEq (fn ((tv,opt),t) =>
+                                        let val b = Option.isSome opt andalso not(R.unboxed t)
+                                        in SpuriousStats.tvinstance b
+                                        end)
+                                    (alphas,taus')
+                   else ()
       in
           (A1, tau', il)
       end
@@ -506,7 +581,7 @@ struct
           SOME(compound,create_region_record,formal_regvars,
                sigma,place0opt,instances_opt, transformer) =>
             let
-              val (B, tau, il_1) = newInstance(B,sigma,instances)
+              val (B, tau, il_1) = newInstance(SOME lvar,B,sigma,instances)
               val il_r = ref (il_1, fn p => p)
               val _ = save_il(instances_opt, il_r)
               val fix_bound = compound andalso create_region_record
@@ -762,6 +837,7 @@ struct
         end (* FIX *)
 good *)
 
+    | E.FIX{functions=nil, scope} => S(B,scope,toplevel,cont)
     | E.FIX{functions, scope} =>
         let
           val B = pushIfNotTopLevel(toplevel,B) ;         (* for pop in retract *)
@@ -981,7 +1057,7 @@ good *)
     | E.PRIM(E.CONprim{con, instances, regvar}, []) =>
         let
           val sigma = noSome (RSE.lookupCon rse con) ".S: constructor not in RSE"
-          val (B, tau, il) = newInstance(B,sigma,instances)
+          val (B, tau, il) = newInstance(NONE,B,sigma,instances)
           val aux_regions = (case R.unCONSTYPE tau of
                                SOME(_,_,rhos,_) => rhos
                              | NONE => die "S: nullary constructor not of constructed type")
@@ -997,7 +1073,7 @@ good *)
     | E.PRIM(E.CONprim{con, instances, regvar}, [arg]) =>
         let
           val sigma = noSome (RSE.lookupCon rse con) "S (CONprim): constructor not in RSE"
-          val (B, tau', il) = newInstance(B,sigma,instances)
+          val (B, tau', il) = newInstance(NONE,B,sigma,instances)
           val (mu1,_,mus2,mu2) =
               case R.unFUN tau' of
                 SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
@@ -1030,7 +1106,7 @@ good *)
         let
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val sigma = noSome (RSE.lookupCon rse con) "S (DECONprim): constructor not in RSE"
-          val (B, tau', il) = newInstance(B,sigma,instances)
+          val (B, tau', il) = newInstance(NONE,B,sigma,instances)
           val (mus1,arreff,mus2,mu2) =
               case R.unFUN tau' of
                   SOME(mus1,areff, mus2 as [mu2]) => (mus1,areff,mus2,mu2)
@@ -1220,7 +1296,7 @@ good *)
               in (B, sigma)  (* for sigma *)
               end handle X => (print "CCALL-1\n"; raise X)
             (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
-            val (B, tau, _) = newInstance (B, sigma, instances)
+            val (B, tau, _) = newInstance (NONE,B, sigma, instances)
               handle X => (print "CCALL-2\n"; raise X)
         in
           (case R.unFUN tau of
@@ -1490,11 +1566,15 @@ good *)
      val _ = Eff.algorithm_R:=false
      (*val _ = Eff.trace := []*)
      val E.PGM(datbinds,e) = p
+     val () = SpuriousStats.reset()
      val _ = chat "Spreading datatypes ..."
      val (new_rse, new_datbinds) = SpreadDatatype.spreadDatbinds rse datbinds cone
      val _ = chat "Spreading expression ..."
      val _ = count_RegEffClos := 0
      val (cone',t',_,_) = spreadExp (cone, RSE.plus(rse,new_rse), e,true,NOTAIL)
+
+     val () = if stats_spurious_p() then SpuriousStats.report()
+              else ()
 
     (* for toplas submission:
      val _ = TextIO.output(!Flags.log, "\nRegEffGen (times called during S)" ^ Int.string (!count_RegEffClos) ^ "\n")

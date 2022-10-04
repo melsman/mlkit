@@ -1011,6 +1011,7 @@ struct
                         "f64" => true
                       | "real" => true
                       | "int31" => true
+                      | "int63" => true
                       | "int32ub" => true
                       | "int64ub" => true
                       | "word32ub" => true

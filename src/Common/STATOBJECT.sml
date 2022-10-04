@@ -47,6 +47,7 @@ signature STATOBJECT =
       sig
 	val eq                      : TyVar * TyVar -> bool
 	val lt                      : TyVar * TyVar -> bool
+        val id                      : TyVar -> int
 	val equality                : TyVar -> bool
 	val fresh_normal            : unit -> TyVar
 	val fresh_overloaded        : TyName list -> TyVar
