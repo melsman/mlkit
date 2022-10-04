@@ -47,11 +47,11 @@ functor ByteTable(eqtype table
 
     val maxLen = 4 * 1024 * 1024 * 1024  (* 4Gb *)
 
-    fun sub(t : table, i) : elem =
+    fun sub (t : table, i) : elem =
       if i < 0 orelse i >= length t then raise Subscript
       else sub_unsafe(t, i)
 
-    fun update(t : table, i, e : elem) : unit =
+    fun update (t : table, i, e : elem) : unit =
       if i < 0 orelse i >= length t then raise Subscript
       else update_unsafe(t, i, e)
 
@@ -64,7 +64,7 @@ functor ByteTable(eqtype table
 	in loop 0; t
 	end
 
-    fun updatev(t : table, i, e : elem) : table =
+    fun updatev (t : table, i, e : elem) : table =
       if i < 0 orelse i >= length t then raise Subscript
       else tabulate (length t,fn j => if i=j then e else sub_unsafe(t,j))
 
@@ -90,9 +90,9 @@ functor ByteTable(eqtype table
       in rl (length a - 1, e)
       end
 
-    fun app f a =
+    fun app f (a:table) =
       let val stop = length a
-	  fun lr j = if j < stop then (f(sub_unsafe(a,j)); lr (j+1))
+	  fun lr j = if j < stop then (f(sub_unsafe(a,j)):unit; lr (j+1))
 		     else ()
       in lr 0
       end
@@ -132,10 +132,10 @@ functor ByteTable(eqtype table
       in loop (length a - 1)
       end
 
-    fun appi f (slice as (a, i, _)) =
+    fun appi f ((slice as (a: table, i, _))) =
       let fun loop stop =
 	    let	fun lr j =
-		    if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1))
+		    if j < stop then (f(j, sub_unsafe(a,j)):unit; lr (j+1))
 		    else ()
 	    in lr i
 	    end
@@ -239,10 +239,10 @@ functor ByteTable(eqtype table
       end
     val copyVec = fn {src,dst,di} => copyVec{src=src,dst=dst,di=di,si=0,len=NONE}
 
-    fun appi f a =
+    fun appi f (a:table) =
       let val stop = length a
 	  fun lr j =
-	    if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1))
+	    if j < stop then (f(j, sub_unsafe(a,j)):unit; lr (j+1))
 	    else ()
       in lr 0
       end

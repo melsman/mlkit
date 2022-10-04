@@ -603,7 +603,10 @@ structure IntInf : INT_INF =
         fun fmt10() = fmt (#1 (powers10()), #2 (powers10()), NumFormat.fmtInt StringCvt.DEC)
         fun fmt16() = fmt (#1 (powers16()), #2 (powers16()), NumFormat.fmtInt StringCvt.HEX)
 
-        fun scan (bound,powers,geti) getc cs = let
+        type ('a,'b) reader = ('a,'b) StringCvt.reader
+
+        fun scan (bound,powers,geti) (getc:(char,'s)reader) (cs:'s) : (bignat*'s) option =
+            let
               fun get (l,cs) = if l = bound then NONE
                                else case getc cs of
                                  NONE => NONE
@@ -834,8 +837,9 @@ structure IntInf : INT_INF =
 
     fun toString a = fmt StringCvt.DEC a
 
+    type ('a,'b) reader = ('a,'b) StringCvt.reader
     local
-      fun scan' scanFn getc cs = let
+      fun scan' scanFn (getc:(char,'s)reader) (cs:'s) : (intinf * 's) option = let
             val cs' = NumScan.skipWS getc cs
             fun cvt (NONE,_) = NONE
               | cvt (SOME(i,cs),wr) = SOME(wr i, cs)

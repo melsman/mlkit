@@ -102,8 +102,8 @@ struct
 	    let fun hi2lo j =
 		    if j >= 0 then
 			(update0(a2, i2+j,sub0(a1,j)); hi2lo (j-1))
-		    else ()
-	    in hi2lo (n-1)
+		    else a1
+	    in hi2lo (n-1); ()
 	    end
     end
 
@@ -116,8 +116,8 @@ struct
 	    let fun lo2hi j =
 		    if j < n then
 			(update0(a,i2+j,sub_vector0(v,j)); lo2hi (j+1))
-		    else ()
-	    in lo2hi 0
+		    else v
+	    in lo2hi 0; ()
 	    end
     end
 
@@ -125,32 +125,32 @@ struct
   fun app f a =
     let val n = length a
         fun lr j =
-	  if j < n then (f (sub0 (a, j)); lr (j+1))
-	  else ()
-    in lr 0
+	  if j < n then (f (sub0 (a, j)) : unit; lr (j+1))
+	  else a
+    in lr 0 ; ()
     end
 
   fun foldli f e a =
     let val stop = length a
-	fun lr j res =
-	    if j < stop then lr (j+1) (f(j, sub0(a,j), res))
+	fun lr (j, res, a) =
+	    if j < stop then lr (j+1, f(j, sub0(a,j), res), a)
 	    else res
-    in lr 0 e
+    in lr (0, e, a)
     end
 
   fun foldri f e a =
-    let fun rl j res =
-	    if j >= 0 then rl (j-1) (f(j, sub0(a,j), res))
+    let fun rl (j, res, a) =
+	    if j >= 0 then rl (j-1, f(j, sub0(a,j), res), a)
 	    else res
-    in rl (length a - 1) e
+    in rl (length a - 1, e, a)
     end
 
   fun appi f a =
     let val stop = length a
 	fun lr j =
-	    if j < stop then (f(j, sub0(a,j)); lr (j+1))
-	    else ()
-    in lr 0
+	    if j < stop then (f(j, sub0(a,j)):unit; lr (j+1))
+	    else a
+    in lr 0; ()
     end
 
   fun mapi (f : int * 'a -> 'b) (a : 'a table) : 'b table =
@@ -160,40 +160,40 @@ struct
 	    if j < stop then
 		(update0(newvec, j, f(j, sub0(a,j)));
 		 lr (j+1))
-	    else ()
+	    else a
     in lr 0; newvec
     end
 
   fun foldl f e a =
     let val n = length a
-	fun lr (j, res) =
-	  if j < n then lr (j+1, f (sub0 (a, j), res))
+	fun lr (j, res, a) =
+	  if j < n then lr (j+1, f (sub0 (a, j), res), a)
 	  else res
-    in lr (0, e)
+    in lr (0, e, a)
     end
 
   fun foldr f e a =
     let val n = length a
-        fun rl (j, res) =
-	  if j >= 0 then rl (j-1, f (sub0 (a, j), res))
+        fun rl (j, res, a) =
+	  if j >= 0 then rl (j-1, f (sub0 (a, j), res), a)
 	  else res
-    in rl (n-1, e)
+    in rl (n-1, e, a)
     end
 
   fun modifyi f a =
     let val stop = length a
 	fun lr j =
 	    if j < stop then (update0(a,j,f(j, sub0(a,j))); lr (j+1))
-	    else ()
-    in lr 0
+	    else a
+    in lr 0; ()
     end
 
   fun modify f a =
     let val n = length a
         fun lr j =
 	  if j < n then (update0 (a, j, f (sub0 (a, j))); lr (j+1))
-	  else ()
-    in lr 0
+	  else a
+    in lr 0; ()
     end
 
   (* The following are only for the Vector structure: *)
@@ -202,8 +202,8 @@ struct
         val b : 'b table = table n
 	fun lr j =
 	  if j < n then (update0 (b, j, f (sub0 (a, j))); lr (j+1))
-	  else b
-    in lr 0
+	  else (a,b)
+    in lr 0; b
     end
 
   fun mapi (f : int * 'a -> 'b) (a : 'a table) : 'b table =
@@ -213,7 +213,7 @@ struct
 	    if j < stop then
 		(update0(newvec, j, f(j, sub0(a,j)));
 		 lr (j+1))
-	    else ()
+	    else (a,newvec)
     in lr 0; newvec
     end
 
@@ -228,7 +228,7 @@ struct
 	let val x_n = length x
 	    fun copy j =
 	      if j < x_n then (update0 (v, to+j, sub0 (x, j)); copy (j+1))
-	      else ()
+	      else v
 	in copy 0; copyall (to+x_n, xs)
 	end
     in copyall (0, vecs)
@@ -255,28 +255,28 @@ struct
 
   fun exists (p : 'a -> bool) (a : 'a table) : bool =
     let val stop = length a
-	fun lr j = j < stop andalso (p (sub0(a,j)) orelse lr (j+1))
-    in lr 0
+	fun lr (j,a) = j < stop andalso (p (sub0(a,j)) orelse lr (j+1,a))
+    in lr (0,a)
     end
 
   fun all (p : 'a -> bool) (a : 'a table) : bool =
     let val stop = length a
-	fun lr j = j >= stop orelse (p (sub0(a,j)) andalso lr (j+1))
-    in lr 0
+	fun lr (j,a) = j >= stop orelse (p (sub0(a,j)) andalso lr (j+1,a))
+    in lr (0,a)
     end
 
-  fun collate cmp (v1, v2) =
+  fun 'a collate cmp (v1: 'a table, v2: 'a table) =
     let val n1 = length v1
 	and n2 = length v2
 	val stop = if n1 < n2 then n1 else n2
-	fun h j = (* At this point v1[0..j-1] = v2[0..j-1] *)
+	fun h (j,v: 'a table) = (* At this point v1[0..j-1] = v2[0..j-1] *)
 	    if j = stop then if      n1 < n2 then LESS
                              else if n1 > n2 then GREATER
                              else                 EQUAL
 	    else
 		case cmp(sub0(v1,j), sub0(v2,j)) of
-		    EQUAL => h (j+1)
+		    EQUAL => h (j+1,v)
 		  | res   => res
-    in h 0
+    in h (0,v1)
     end
-end; (*functor table*)
+end

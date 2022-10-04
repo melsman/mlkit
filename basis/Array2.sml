@@ -90,18 +90,18 @@ fun tabulate t (nr:int,nc:int,f:int*int-> 'a) : 'a array =
         val a = table2d0(n+2,nr,nc)
     in case t of
            RowMajor =>
-           let fun loopC (r,c) = if c >= nc then ()
+           let fun loopC (r,c) = if c >= nc then a
                                  else (update2(a,nc,r,c,f(r,c)); loopC (r,c+1))
-               fun loopR (r,c) = if r >= nr then ()
+               fun loopR (r,c) = if r >= nr then a
                                  else (loopC(r,c); loopR(r+1,c))
-           in loopR (0,0); a
+           in loopR (0,0)
            end
          | ColMajor =>
-           let fun loopR (r,c) = if r >= nr then ()
+           let fun loopR (r,c) = if r >= nr then a
                                  else (update2(a,nc,r,c,f(r,c)); loopR (r+1,c))
-               fun loopC (r,c) = if c >= nc then ()
+               fun loopC (r,c) = if c >= nc then a
                                  else (loopR(r,c); loopC(r,c+1))
-           in loopC (0,0); a
+           in loopC (0,0)
            end
     end
 
@@ -130,21 +130,21 @@ fun traverseInit ({base,row,col,nrows,ncols}: 'a region)
 fun traverseRM (f: int*int*'a*'b -> 'b) (a:'b)
                (reg as {base,row,col,nrows,ncols}: 'a region) : 'b =
     let val {nR,nC,rstop,cstop} = traverseInit reg
-        fun loopC (r,c,a) = if c >= cstop then a
-                            else loopC (r,c+1,f(r,c,sub2(base,nC,r,c),a))
-        fun loopR (r,c,a) = if r >= rstop then a
-                            else loopR(r+1,c,loopC(r,c,a))
-    in loopR (row,col,a)
+        fun loopC (r,c,a,reg: 'a region) = if c >= cstop then a
+                                           else loopC (r,c+1,f(r,c,sub2(base,nC,r,c),a),reg)
+        fun loopR (r,c,a,reg: 'a region) = if r >= rstop then a
+                                           else loopR(r+1,c,loopC(r,c,a,reg),reg)
+    in loopR (row,col,a,reg)
     end
 
 fun traverseCM (f: int*int*'a*'b -> 'b) (a:'b)
                (reg as {base,row,col,nrows,ncols}: 'a region) : 'b =
     let val {nR,nC,rstop,cstop} = traverseInit reg
-        fun loopR (r,c,a) = if r >= rstop then a
-                            else loopR (r+1,c,f(r,c,sub2(base,nC,r,c),a))
-        fun loopC (r,c,a) = if c >= cstop then a
-                            else loopC(r,c+1,loopR(r,c,a))
-    in loopC (row,col,a)
+        fun loopR (r,c,a,reg: 'a region) = if r >= rstop then a
+                                           else loopR (r+1,c,f(r,c,sub2(base,nC,r,c),a),reg)
+        fun loopC (r,c,a,reg: 'a region) = if c >= cstop then a
+                                           else loopC(r,c+1,loopR(r,c,a,reg),reg)
+    in loopC (row,col,a,reg)
     end
 
 fun traverse (t:traversal) (f: int*int*'a*'b -> 'b)

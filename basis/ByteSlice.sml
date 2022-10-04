@@ -142,7 +142,7 @@ struct
 
     fun app f (a, i, n) =
       let val stop = i+n
-	  fun lr j = if j < stop then (f(sub_unsafe(a,j)); lr (j+1))
+	  fun lr j = if j < stop then (f(sub_unsafe(a,j)): unit; lr (j+1))
 		     else ()
       in lr i
       end
@@ -191,7 +191,7 @@ struct
     fun appi f (a, i, n) =
       let val stop = i+n
 	  fun lr j =
-	      if j < stop then (f(j-i, sub_unsafe(a,j)); lr (j+1))
+	      if j < stop then (f(j-i, sub_unsafe(a,j)):unit; lr (j+1))
 	      else ()
       in lr i
       end

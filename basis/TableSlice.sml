@@ -31,7 +31,7 @@ struct
 
   fun length (a, i, n) = n
 
-  fun sub((a', i', n'), i) =
+  fun sub ((a', i', n'), i) =
     if i<0 orelse i >= n' then raise Subscript
     else sub0(a',i'+i)
 
@@ -62,29 +62,29 @@ struct
 
   fun vector (a : 'a table, i, n) =
     let val newvec = vector0 n : 'a vector
-	fun copy j =
+	fun copy (a,j) =
 	    if j<n then
-		(update_vector0(newvec, j, sub0(a,i+j)); copy (j+1))
+		(update_vector0(newvec, j, sub0(a,i+j)); copy (a,j+1))
 	    else
 		()
-    in copy 0; newvec
+    in copy (a,0); newvec
     end
 
   fun copy {src=(a1,i1,n) : 'a slice, dst=a2: 'a table, di=i2} =
     if i2<0 orelse i2+n > length0 a2 then raise Subscript
     else if i1 < i2 then            (* copy from high to low *)
-	   let fun hi2lo j =
+	   let fun hi2lo (a2,j) =
 	         if j >= 0 then
-		     (update0(a2,i2+j,sub0(a1,i1+j)); hi2lo (j-1))
+		     (update0(a2,i2+j,sub0(a1,i1+j)); hi2lo (a2,j-1))
 		 else ()
-	   in hi2lo (n-1)
+	   in hi2lo (a2,n-1)
 	   end
 	 else                       (* i1 >= i2, copy from low to high *)
-	   let fun lo2hi j =
+	   let fun lo2hi (a2,j) =
 	         if j < n then
-		     (update0(a2,i2+j,sub0(a1,i1+j)); lo2hi (j+1))
+		     (update0(a2,i2+j,sub0(a1,i1+j)); lo2hi (a2,j+1))
 		 else ()
-	   in lo2hi 0
+	   in lo2hi (a2,0)
 	   end
 
   fun copyVec {src : 'a vector_slice, dst=a2: 'a table, di=i2} =
@@ -92,10 +92,10 @@ struct
     in
 	if i2<0 orelse i2+n > length0 a2 then raise Subscript
 	else
-	    let fun lo2hi j = if j < n then
-		  (update0(a2,i2+j,sub_vector0(a1,i1+j)); lo2hi (j+1))
+	    let fun lo2hi (a2,j) = if j < n then
+		  (update0(a2,i2+j,sub_vector0(a1,i1+j)); lo2hi (a2,j+1))
 			      else ()
-	    in lo2hi 0
+	    in lo2hi (a2,0)
 	    end
     end
 
@@ -109,13 +109,13 @@ struct
 		     else table0 len : 'a table
         fun copyall to []                   = () (* Now: to = len *)
           | copyall to ((v1, i1, n1)::slir) =
-	    let fun copyv1 j =
+	    let fun copyv1 (newvec,j) =
 		if j<n1 then
-		    (update0(newvec,to+j, sub0(v1,i1+j)); copyv1 (j+1))
+		    (update0(newvec,to+j, sub0(v1,i1+j)); copyv1 (newvec,j+1))
 		else
 		    ()
 	    in
-		(copyv1 0; copyall (to+n1) slir)
+		(copyv1 (newvec,0); copyall (to+n1) slir)
 	    end
     in copyall 0 slis; newvec
     end
@@ -134,52 +134,52 @@ struct
 
   fun exists (p : 'a -> bool) ((a,i,n) : 'a slice) : bool =
     let val stop = i+n
-	fun lr j = j < stop andalso (p (sub0(a,j)) orelse lr (j+1))
-    in lr i
+	fun lr (a,j) = j < stop andalso (p (sub0(a,j)) orelse lr (a,j+1))
+    in lr (a,i)
     end
 
   fun all (p : 'a -> bool) ((a,i,n) : 'a slice) : bool =
     let val stop = i+n
-	fun lr j = j >= stop orelse (p (sub0(a,j)) andalso lr (j+1))
-    in lr i
+	fun lr (a,j) = j >= stop orelse (p (sub0(a,j)) andalso lr (a,j+1))
+    in lr (a,i)
     end
 
   fun app f (a, i, n) =
     let val stop = i+n
-	fun lr j = if j < stop then (f(sub0(a,j)); lr (j+1))
-		   else ()
-    in lr i
+	fun lr (a,j) = if j < stop then (f(sub0(a,j)):unit; lr (a,j+1))
+		       else ()
+    in lr (a,i)
     end
 
   fun map (f : 'a -> 'b) (a : 'a table, i, n) =
     let val newvec = table0 n : 'b table
 	val stop = i+n
-	fun lr j =
+	fun lr (a,newvec,j) =
 	    if j < stop then
-		(update0(newvec,j-i,f(sub0(a,j))); lr (j+1))
+	      (update0(newvec,j-i,f(sub0(a,j))); lr (a,newvec,j+1))
 	    else
-		()
-    in lr i; newvec
+	      ()
+    in lr (a,newvec,i); newvec
     end
 
   fun foldl f e (a, i, n) =
     let val stop = i+n
-	fun lr j res = if j < stop then lr (j+1) (f(sub0(a,j), res))
-		       else res
-    in lr i e
+	fun lr (a,j,res) = if j < stop then lr (a,j+1,f(sub0(a,j),res))
+		           else res
+    in lr (a,i,e)
     end
 
   fun foldr f e (a, i, n) =
-    let fun rl j res = if j >= i then rl (j-1) (f(sub0(a,j), res))
-		       else res
-    in rl (i+n-1) e
+    let fun rl (a,j,res) = if j >= i then rl (a,j-1,f(sub0(a,j),res))
+		           else res
+    in rl (a,i+n-1,e)
     end
 
   fun modify f (a, i, n) =
     let val stop = i+n
-	fun lr j = if j < stop then (update0(a,j,f(sub0(a,j))); lr (j+1))
-		   else ()
-    in lr i
+	fun lr (a,j) = if j < stop then (update0(a,j,f(sub0(a,j))); lr (a,j+1))
+		       else ()
+    in lr (a,i)
     end
 
   fun findi (p : int * 'a -> bool) ((a,i,n) : 'a slice) : (int * 'a) option =
@@ -194,56 +194,56 @@ struct
 
   fun appi f (a, i, n) =
     let val stop = i+n
-	fun lr j =
-	    if j < stop then (f(j-i, sub0(a,j)); lr (j+1))
+	fun lr (a,j) =
+	    if j < stop then (f(j-i, sub0(a,j)):unit; lr (a,j+1))
 	    else ()
-    in lr i
+    in lr (a,i)
     end
 
   fun mapi (f : int * 'a -> 'b) (a : 'a table, i, n) =
     let val newvec = table0 n : 'b table
 	val stop = i+n
-	fun lr j =
+	fun lr (a,newvec,j) =
 	    if j < stop then
-		(update0(newvec,j-i,f(j-i, sub0(a,j))); lr (j+1))
+		(update0(newvec,j-i,f(j-i, sub0(a,j))); lr (a,newvec,j+1))
 	    else
 		()
-    in lr i; newvec
+    in lr (a,newvec,i); newvec
     end
 
   fun foldli f e (a, i, n) =
     let val stop = i+n
-	fun lr j res =
-	    if j < stop then lr (j+1) (f(j-i, sub0(a,j), res))
+	fun lr (a,j,res) =
+	    if j < stop then lr (a,j+1,f(j-i,sub0(a,j),res))
 	    else res
-    in lr i e
+    in lr (a,i,e)
     end
 
   fun foldri f e (a, i, n) =
-    let fun rl j res =
-	    if j >= i then rl (j-1) (f(j-i, sub0(a,j), res))
+    let fun rl (a,j,res) =
+	    if j >= i then rl (a,j-1,f(j-i,sub0(a,j),res))
 	    else res
-    in rl (i+n-1) e
+    in rl (a,i+n-1,e)
     end
 
   fun modifyi f (a, i, n) =
     let val stop = i+n
-	fun lr j =
-	    if j < stop then (update0(a,j,f(j-i, sub0(a,j))); lr (j+1))
+	fun lr (a,j) =
+	    if j < stop then (update0(a,j,f(j-i, sub0(a,j))); lr (a,j+1))
 	    else ()
-    in lr i
+    in lr (a,i)
     end
 
-  fun collate cmp ((a1,i1,n1), (a2,i2,n2)) =
+  fun collate cmp ((a1: 'a table,i1,n1), (a2: 'a table,i2,n2)) =
     let val stop = if n1 < n2 then n1 else n2
-	fun h j = (* At this point a1[i1..i1+j-1] = a2[i2..i2+j-1] *)
+	fun h (a1,j) = (* At this point a1[i1..i1+j-1] = a2[i2..i2+j-1] *)
 	    if j = stop then if      n1 < n2 then LESS
                              else if n1 > n2 then GREATER
                              else                 EQUAL
 	    else
 		case cmp(sub0(a1,i1+j), sub0(a2,i2+j)) of
-		    EQUAL => h (j+1)
+		    EQUAL => h (a1,j+1)
 		  | res   => res
-    in h 0
+    in h (a1,0)
     end
 end

@@ -107,7 +107,7 @@ fun copyVec {src=v:B.t, dst=a:B.t, di=i2} =
 fun app f a =
     let val n = length a
         fun lr j =
-	    if j < n then (f (B.sub (a, j));
+	    if j < n then (f (B.sub (a, j)):unit;
                            lr (j+1))
 	    else ()
     in lr 0
@@ -131,7 +131,7 @@ fun foldri f e a =
 fun appi f a =
     let val stop = length a
 	fun lr j =
-	    if j < stop then (f(j, B.sub(a,j));
+	    if j < stop then (f(j, B.sub(a,j)):unit;
                               lr (j+1))
 	    else ()
     in lr 0
