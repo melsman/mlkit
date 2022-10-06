@@ -8,78 +8,72 @@
 signature REGION_STAT_ENV =
   sig
     type cone
-    type regionStatEnv
     type con                            (* Unqualified value constructors. *)
-    type excon				(* Unqualified exception constructors.*)
+    type excon                          (* Unqualified exception constructors.*)
     type TyName
-    type lvar				(* Unique lambda identifiers. *)
-    type TypeAndPlaceScheme and Type and place and runType and effectvar
-    type arity
+    type lvar                           (* Unique lambda identifiers. *)
+    type sigma and Type and mu and place and runType and effectvar
+    type tyvar
 
-    val mk_arity: int * runType list * int -> arity
-    val un_arity: arity -> int * runType list * int
+    type arity
+    val mk_arity : int * runType list * int -> arity
+    val un_arity : arity -> int * runType list * int
 
     type il
+    type instance_list = (il * (il * cone -> il * cone)) ref list
+    type lvar_env_range =
+           bool                         (* true iff type scheme is compound *)
+         * bool                         (* true iff reference to lvar should create region record *)
+         * RegVar.regvar list
+         * sigma
+         * place option
+         * instance_list ref option     (* il node at applied instances of the lvars *)
+         * (il -> unit) option          (* il transformer which can be used for pruning in later topdecs*)
 
-    val empty: regionStatEnv
-    val initial: regionStatEnv
+    type regionStatEnv
 
-    val declareTyName: (TyName * arity * regionStatEnv) -> regionStatEnv
-    val declareCon: (con * TypeAndPlaceScheme * regionStatEnv) -> regionStatEnv
-    val declareExcon: (excon * (Type * place) * regionStatEnv) -> regionStatEnv
-    val declareLvar : (lvar
-                       * (  bool  (* true iff type scheme is compound *)
-                          * bool  (* true iff reference to lvar should create region record *)
-                          * RegVar.regvar list
-                          * TypeAndPlaceScheme
-                          * place
-                          * (il * (il * cone -> il * cone)) ref list ref option (* il node at applied instances of the lvars *)
-                          * (il->unit) option) (* il transformer which can be used for pruning in later topdecs*)
-                       * regionStatEnv) -> regionStatEnv
-    val declareRegVar : RegVar.regvar * place * regionStatEnv -> regionStatEnv
+    val empty          : regionStatEnv
+    val initial        : regionStatEnv
 
-    val plus: regionStatEnv * regionStatEnv -> regionStatEnv
+    val declareTyName  : (TyName * arity * regionStatEnv) -> regionStatEnv
+    val declareCon     : (con * sigma * regionStatEnv) -> regionStatEnv
+    val declareExcon   : (excon * mu * regionStatEnv) -> regionStatEnv
+    val declareLvar    : (lvar * lvar_env_range * regionStatEnv) -> regionStatEnv
+    val declareRegVar  : RegVar.regvar * place * regionStatEnv -> regionStatEnv
+    val declareTyVar   : tyvar * effectvar * regionStatEnv -> regionStatEnv
 
-    val lookupTyName : regionStatEnv -> TyName -> arity option
-    val lookupCon : regionStatEnv -> con -> TypeAndPlaceScheme option
-    val lookupExcon: regionStatEnv -> excon -> (Type * place) option
-    val lookupLvar : regionStatEnv -> lvar ->
-                     (  bool
-                      * bool
-                      * RegVar.regvar list
-                      * TypeAndPlaceScheme
-                      * place
-                      * (il * (il * cone -> il * cone)) ref list ref option  (* il node at applied instances of the lvars *)
-                      * (il -> unit)option  (* il transformer which can be used for pruning in later topdecs*)
-                     ) option
+    val plus           : regionStatEnv * regionStatEnv -> regionStatEnv
 
-    val lookupRegVar : regionStatEnv -> RegVar.regvar -> place option
+    val lookupTyName   : regionStatEnv -> TyName -> arity option
+    val lookupCon      : regionStatEnv -> con -> sigma option
+    val lookupExcon    : regionStatEnv -> excon -> mu option
+    val lookupLvar     : regionStatEnv -> lvar -> lvar_env_range option
+    val lookupRegVar   : regionStatEnv -> RegVar.regvar -> place option
+    val lookupTyVar    : regionStatEnv -> tyvar -> effectvar option
 
-    val FoldExcon: (((excon * (Type * place)) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
-    val FoldLvar : (((lvar * (bool * bool * RegVar.regvar list * TypeAndPlaceScheme
-                      * place
-                      * (il * (il * cone -> il * cone))ref list ref option
-                      * (il -> unit)option
-                    )) * 'a) -> 'a) -> 'a  -> regionStatEnv -> 'a
+    val FoldExcon      : (((excon * mu) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
+    val FoldLvar       : (((lvar * lvar_env_range) * 'a) -> 'a) -> 'a  -> regionStatEnv -> 'a
 
+    val mapLvar        : (lvar_env_range -> lvar_env_range) -> regionStatEnv -> regionStatEnv
 
-    val mapLvar : ((bool*bool*RegVar.regvar list*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option) ->
-                   (bool*bool*RegVar.regvar list*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option))
-        	-> regionStatEnv -> regionStatEnv
+    val restrict       : regionStatEnv * {lvars:lvar list,
+                                         tynames:TyName list,
+                                         cons:con list,
+                                         excons:excon list} -> regionStatEnv
 
-    val restrict : regionStatEnv * {lvars:lvar list,
-				    tynames:TyName list,
-				    cons:con list,
-				    excons:excon list} -> regionStatEnv
+    val enrich         : regionStatEnv * regionStatEnv -> bool
+    val places_effectvarsRSE  : regionStatEnv -> place list * effectvar list
+    val places_effectvarsRSE' : regionStatEnv -> place list * effectvar list
 
-    val enrich : regionStatEnv * regionStatEnv -> bool
-    val places_effectvarsRSE : regionStatEnv -> place list * effectvar list
-
-
-    val mkConeToplevel: regionStatEnv -> cone
+    val mkConeToplevel : regionStatEnv -> cone
 
     type StringTree
-    val layout : regionStatEnv -> StringTree
+    val layout         : regionStatEnv -> StringTree
 
-    val pu : regionStatEnv Pickle.pu
+    val pu             : regionStatEnv Pickle.pu
+
+    (* Spurious type variables and related functionality *)
+
+    val spuriousJoin   : tyvar list -> tyvar list -> tyvar list
+    val spuriousTyvars : regionStatEnv -> Type -> (lvar list * excon list) -> tyvar list
   end

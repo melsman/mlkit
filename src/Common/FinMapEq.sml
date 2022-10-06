@@ -3,7 +3,7 @@
 structure FinMapEq: FINMAPEQ =
   struct
     structure PP = PrettyPrint
-    
+
     type ('a, 'b) map = ('a *  'b) list
 
     val empty = []
@@ -20,11 +20,11 @@ structure FinMapEq: FINMAPEQ =
       | isin eq (x,(x',y)::rest) = eq(x,x') orelse isin eq (x,rest)
 
     fun ins eq (x, y, nil) = [(x, y)]
-      | ins eq (x', y', (p as (x, y)) :: rest) = 
+      | ins eq (x', y', (p as (x, y)) :: rest) =
 	  if eq(x,x') then (x', y') :: rest
 	  else p :: ins eq (x', y', rest)
 
-    fun add eq (x, y, l) = 
+    fun add eq (x, y, l) =
         if isin eq (x,l) then ins eq (x,y,l)
         else (x,y)::l
 
@@ -49,17 +49,17 @@ structure FinMapEq: FINMAPEQ =
 	foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2
       end
 
-    fun dom eq (m: ('a, 'b) map) = Set.fromList (fn a => fn b => eq(a,b)) (map #1 m)
+    fun dom eq (m: ('a, 'b) map) = (fn a => fn b => eq(a,b)) (map #1 m)
     val range : ('a, 'b) map -> 'b list  = fn x => map #2 x
     val list : ('a, 'b) map -> ('a * 'b) list  = fn x => x
 
-    fun composemap (f: 'b -> 'c) (m: ('a, 'b) map): ('a, 'c) map = 
+    fun composemap (f: 'b -> 'c) (m: ('a, 'b) map): ('a, 'c) map =
 	map (fn (a, b) => (a, f b)) m
 
     fun ComposeMap (f: 'a * 'b -> 'c) (m: ('a, 'b) map): ('a, 'c) map =
         map (fn (a, b) => (a, f(a, b))) m
 
-    fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : ('d,'a) map) : 'b = 
+    fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : ('d,'a) map) : 'b =
 	foldl (fn ((a, b), c) => f(b, c)) x m
 
     fun Fold (f : (('a * 'b) * 'c) -> 'c) (x : 'c) (m : ('a,'b) map) : 'c =

@@ -4,19 +4,18 @@ local
   basis Environment = bas environment.mlb end
   basis FileSys = bas MLB_FILESYS.sml MlbFileSys.sml end
   basis Util = bas MlbUtil.sml end
+  basis Md5 = bas ../../Common/md5.mlb end
 in
   local
     open Environment FileSys
   in
-    MLB_PROJECT.sml  
-    local open KitLib Util
+    MLB_PROJECT.sml
+    local open KitLib Util Md5
     in MlbProject.sml
     end
-    ULFILE.sig
-    UlFile.sml
   end
   MLB_PLUGIN.sml
-  local open KitLib Util
+  local open KitLib Util Md5
   in MlbMake.sml
   end
 end

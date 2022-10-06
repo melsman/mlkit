@@ -65,9 +65,9 @@ signature CLOS_EXP =
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
-    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
-    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes: int, alloc: sma, tag: Word32.word}
@@ -75,9 +75,9 @@ signature CLOS_EXP =
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
-			  clos: ClosExp option}
+                          clos: ClosExp option}
     | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
-			  clos: ClosExp option}
+                          clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp
@@ -95,18 +95,18 @@ signature CLOS_EXP =
     | ASSIGN          of sma * ClosExp * ClosExp
     | DROP            of ClosExp
     | RESET_REGIONS   of {force: bool,
-			  regions_for_resetting: sma list}
+                          regions_for_resetting: sma list}
     | CCALL           of {name: string,
-			  args: ClosExp list,
-			  rhos_for_result : ClosExp list}
+                          args: ClosExp list,
+                          rhos_for_result : ClosExp list}
     | CCALL_AUTO      of {name: string,
-			  args: (ClosExp * foreign_type) list,
-			  res: foreign_type}
+                          args: (ClosExp * foreign_type) list,
+                          res: foreign_type}
     | EXPORT          of {name: string,
-			  clos_lab: label,
-			  arg: ClosExp * foreign_type * foreign_type}
+                          clos_lab: label,
+                          arg: ClosExp * foreign_type * foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
-			  declared_excons: {excon: excon, label: label} list}
+                          declared_excons: {excon: excon, label: label} list}
 
     and 'a Switch = SWITCH of ClosExp * ('a * ClosExp) list * ClosExp
 
@@ -134,27 +134,21 @@ signature CLOS_EXP =
     val enrich : env * env -> bool
     val match : env * env -> unit
     val restrict : env * {lvars:lvar list,
-			  cons:con list,
-			  excons:excon list} -> env
+                          cons:con list,
+                          excons:excon list} -> env
 
     (* restrict0 : Don't include predeclared regions *)
     val restrict0 : env * {lvars:lvar list,
-			   cons:con list,
-			   excons:excon list} -> env
+                           cons:con list,
+                           excons:excon list} -> env
     val pu : env Pickle.pu
 
     val cc : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
-								    code:ClosPrg,
-								    env:env,
-								    imports:label list * label list,
-								    exports:label list * label list}
+                                                                    code:ClosPrg,
+                                                                    env:env,
+                                                                    imports:label list * label list,
+                                                                    exports:label list * label list}
 
-    (* For bytecode ME 2000-10-04 *)
-    val lift : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
-								      code:ClosPrg,
-								      env:env,
-								      imports:label list * label list,
-								      exports:label list * label list}
     type StringTree
     val layout_clos_exp : ClosExp -> StringTree
     val layout_top_decl : TopDecl -> StringTree

@@ -26,12 +26,16 @@ TickList * firstTick; /* Pointer to data for the first tick. */
 TickList * lastTick;  /* Pointer to data for the last tick. */
 
 int maxRegions = 0;         /* max. number of allocated words in regions. */
+int maxStackAll = 0;        /* max. number of allocated bytes on stack,
+			     * throughout the execution */
+int maxMemAll = 0;          /* max. number of allocated bytes in regions and on stack,
+	 		     * throughout the execution */
 
 ProfTabList * profHashTab[profHashTabSize];  /* Hash table for profiling */
 
 void initializeProfTab(void) {
   int i;
-  for (i=0;i<profHashTabSize;i++) 
+  for (i=0;i<profHashTabSize;i++)
     profHashTab[i]=NULL;
   return;
 }
@@ -71,12 +75,6 @@ void profTabSetMaxAlloc(int regionId, int no) {
   return;
 }
 
-/*
-static unsigned int max(unsigned int a, unsigned int b) {
-  return (a<b)?b:a;
-}
-*/
-
 static unsigned int min(unsigned int a, unsigned int b) {
   return (a<b)?a:b;
 }
@@ -85,6 +83,8 @@ static unsigned int min(unsigned int a, unsigned int b) {
  * Input word data file with all collected data.                  *
  * Layout of file is as follows:                                  *
  *  maxRegion                                                     *
+ *  maxStack                                                      *
+ *  maxMem                                                        *
  *  noOfTicks,                                                    *
  *      noOfRegions, stackUse, regionDescUse, time                *
  *        regionId, used, waste, noOfObj, infinite                *
@@ -128,6 +128,8 @@ void inputProfile(void) {
 
   readWord(maxRegions, logFile);   /* not the same as the sum of max's of each region, because
 				    * regions may be large at different times. */
+  readWord(maxStackAll, logFile);
+  readWord(maxMemAll, logFile);
   readWord(noOfTicks, logFile);
 
   if (noOfTicks == 0) {
@@ -217,14 +219,14 @@ static void sortOutBin(int min, int max, int no, int *sampleNoTab)
 }
 
 /* Returns number of samples in sampleNoTab. */
-static int sortSamples(int sortType, int *sampleNoTab) 
+static int sortSamples(int sortType, int *sampleNoTab)
 {
   int i, j, m;                     /* Counters */
   int *sampleSizeTab ;             /* Table holding size of each sample. */
   TickList *newTick;               /* Used to walk through the samples.  */
   RegionList *newRegion;           /* Used to walk through the regions in each sample. */
   int total, temp;                 /* Temporary variables. */
-  int sampleNo;                    
+  int sampleNo;
 
   if (sortType == TAKE_BY_SAMPLE_NO) {
 
@@ -237,12 +239,12 @@ static int sortSamples(int sortType, int *sampleNoTab)
       sampleNoTab[i] = i;
     if (noOfSamples <= SampleMax)
       /* Return all samples. */
-      return noOfSamples; 
-    else { 
+      return noOfSamples;
+    else {
       /* After sortOutBin all samples which have to be sorted out have the */
       /* value -1.                                                         */
       sortOutBin(1, noOfSamples, noOfSamples-SampleMax, sampleNoTab);
-      
+
       i = 0;
       sampleNo=0;
       for (i=0;i<noOfSamples;i++) {
@@ -256,7 +258,7 @@ static int sortSamples(int sortType, int *sampleNoTab)
       }
       if (sampleNo != SampleMax)  /* These two variables have to be equal. */
 	Disaster("SortSamples: SampleMax <> sampleNo");
-    
+
       return sampleNo;
     }
   } else { /* sortType == TAKE_BY_SIZE. */
@@ -307,7 +309,7 @@ static int sortSamples(int sortType, int *sampleNoTab)
     }
     return min(SampleMax, noOfSamples);
   }
-} 
+}
 
 /*----------------------------------------------------------------*
  * PrintProfile:                                                  *
@@ -321,7 +323,7 @@ void PrintProfile(void) {
   for (newTick=firstTick;newTick!=NULL;newTick=newTick->nTick) {
     printf("Starting new tick with stackUse: %5d and regionDescUse: %5d.\n", newTick->stackUse, newTick->regionDescUse);
     for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
-      if (newRegion->infinite) 
+      if (newRegion->infinite)
 	printf("  Infinite region: %3d, used: %3d, waste: %3d, noObj: %3d, Infinite: %3d.\n",
 	       newRegion->regionId, newRegion->used, newRegion->waste,
 	       newRegion->noObj,newRegion->infinite);
@@ -362,12 +364,12 @@ void PrintRegion(int region) {
 	  printf("  Finite region id:   %5d\n", newRegion->regionId);
 	printf("  Used:                 %5d\n", newRegion->used);
 	printf("  Waste:                %5d\n", newRegion->waste);
-	for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) 
+	for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj)
 	  printf("  Object %4d with size %5d words.\n", newObj->atId, newObj->size);
       }
     i++;
   }
-  
+
   return;
 }
 
@@ -378,7 +380,7 @@ void PrintRegion(int region) {
 void PrintSomeStat(void) {
   int i, noOfTicks=0;
   int minRd=10000, maxRd=0, minPP=10000, maxPP=0;
-  int totalUsedI=0, totalWasteI=0, totalUsedF=0, totalWasteF=0; 
+  int totalUsedI=0, totalWasteI=0, totalUsedF=0, totalWasteF=0;
   TickList *newTick;
   ObjectList *newObj;
   RegionList *newRegion;
@@ -427,6 +429,24 @@ void PrintSomeStat(void) {
   return;
 }
 
+
+float MiB = 1024.0*1024.0;
+float KiB = 1024.0;
+
+float
+ppBytes(float arg) {
+  if (arg > 10.0*MiB) { return arg / MiB; }
+  if (arg > 10.0*KiB) { return arg / KiB; }
+  return arg;
+}
+
+char *
+ppUnit(float arg) {
+  if (arg > 10.0*MiB) { return "MiB"; }
+  if (arg > 10.0*KiB) { return "KiB"; }
+  return "";
+}
+
 /* Makes a region profile. */
 void MakeRegionProfile(void) {
   int i, sampleNo, no;
@@ -434,8 +454,6 @@ void MakeRegionProfile(void) {
   RegionList *newRegion;
   int *sampleNoTab;
   float sampleTime;
-  float maxStack = 0.0;
-  
   char idStr[100];
 
   GraphReset();
@@ -465,19 +483,16 @@ void MakeRegionProfile(void) {
       }
       /*printf("sampleNo %3d SampleTime %5.2f\n", sampleNo, sampleTime);*/
       allocNewSample(sampleNo, sampleTime);
-      storeSampleEntry(sampleNo, sampleTime, "stack", ((float)(newTick->stackUse))*4.0);
-      storeSampleEntry(sampleNo, sampleTime, "rDesc", ((float)(newTick->regionDescUse))*4.0);
+      storeSampleEntry(sampleNo, sampleTime, "stack", ((float)(newTick->stackUse))*8.0);
+      storeSampleEntry(sampleNo, sampleTime, "rDesc", ((float)(newTick->regionDescUse))*8.0);
 
-      if (((((float)(newTick->stackUse))+((float)(newTick->regionDescUse)))*4.0) > maxStack) /* To ajust the max. */
-	maxStack = (((float)(newTick->stackUse))+((float)(newTick->regionDescUse)))*4.0;     /* allocation line.  */
-	  
       for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
-	if (newRegion->infinite) 
+	if (newRegion->infinite)
 	  sprintf(idStr, "r%dinf", newRegion->regionId);
-	else 
+	else
 	  sprintf(idStr, "r%dfin", newRegion->regionId);
 
-	storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newRegion->used))*4.0);
+	storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newRegion->used))*8.0);
       }
       sampleNo++;
     }
@@ -485,16 +500,20 @@ void MakeRegionProfile(void) {
 
   if (sampleNo != nsamples)           /* These two variables have to follow each other. */
     Disaster("sampleNo <> nsamples");
-    
+
   if ((noOfSamples >= SampleMax) && (SampleMax != nsamples))         /* If we have more than SampleMax samples, */
     Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
 
   showMax = 1;
-  maxValue = maxRegions*4;   /* The total memory used is often lower than what the line suggests
+  maxValue = maxMemAll;      /* The total memory used is often lower than what the line suggests
 			      * because the time the stack is maximal may not be the same time
 			      * that allocation in regions is maximal! mael 2001-05-22 */
-  sprintf(maxValueStr, "Maximum allocated bytes in regions (%2.0f) and on stack (%2.0f)", maxValue, maxStack);
-  maxValue += maxStack; /* Ajusting the max. allocation line. */
+  sprintf(maxValueStr, "Maximum allocated bytes (%2.0f%s) in regions (%2.0f%s) and on stack (%2.0f%s)",
+	  ppBytes(maxMemAll), ppUnit(maxMemAll),
+	  ppBytes(maxRegions*8), ppUnit(maxRegions*8),
+	  ppBytes(maxStackAll), ppUnit(maxStackAll)
+	  );
+
   yLab = MallocString("bytes");
   PutFile();
   return;
@@ -506,7 +525,7 @@ void MakeStackProfile(void) {
   TickList *newTick;
   int *sampleNoTab;
   float sampleTime;
-  
+
   char idStr[100];
 
   GraphReset();
@@ -536,8 +555,8 @@ void MakeStackProfile(void) {
       }
       /*printf("sampleNo %3d SampleTime %5.2f\n", sampleNo, sampleTime);*/
       allocNewSample(sampleNo, sampleTime);
-      storeSampleEntry(sampleNo, sampleTime, "stack", ((float)(newTick->stackUse))*4.0);
-      storeSampleEntry(sampleNo, sampleTime, "rDesc", ((float)(newTick->regionDescUse))*4.0);
+      storeSampleEntry(sampleNo, sampleTime, "stack", ((float)(newTick->stackUse))*8.0);
+      storeSampleEntry(sampleNo, sampleTime, "rDesc", ((float)(newTick->regionDescUse))*8.0);
 
       sampleNo++;
     }
@@ -545,11 +564,15 @@ void MakeStackProfile(void) {
 
   if (sampleNo != nsamples)           /* These two variables have to follow each other. */
     Disaster("sampleNo <> nsamples");
-    
+
   if ((noOfSamples >= SampleMax) && (SampleMax != nsamples))         /* If we have more than SampleMax samples, */
     Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
 
-  showMax = 0; /* Do not show a maximum line. */
+  showMax = 1;
+  maxValue = (float)maxStackAll;
+  sprintf(maxValueStr, "Maximum allocated bytes on stack (%2.0f%s)",
+	  ppBytes(maxValue), ppUnit(maxValue));
+
   yLab = MallocString("bytes");
   PutFile();
   return;
@@ -563,7 +586,7 @@ void MakeObjectProfile(int region) {
   RegionList *newRegion;
   int *sampleNoTab;
   float sampleTime;
-  
+
   char idStr[100];
   int success = 0;
 
@@ -594,13 +617,13 @@ void MakeObjectProfile(int region) {
       }
       /*printf("sampleNo %3d SampleTime %5.2f\n", sampleNo, sampleTime);*/
       allocNewSample(sampleNo, sampleTime);
-	  
+
       for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
-	if (newRegion->regionId == region) 
+	if (newRegion->regionId == region)
 	  for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) {
 	    success = 1;
 	    sprintf(idStr, "pp%d", newObj->atId);
-	    storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newObj->size))*4.0);
+	    storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newObj->size))*8.0);
 	  }
       }
       sampleNo++;
@@ -615,13 +638,14 @@ void MakeObjectProfile(int region) {
 
   if (sampleNo != nsamples)           /* These two variables have to follow each other. */
     Disaster("sampleNo <> nsamples");
-    
+
   if ((noOfSamples >= SampleMax) && (SampleMax != nsamples))         /* If we have more than SampleMax samples, */
     Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
 
   showMax = 1;
-  maxValue = profTabGetMaxAlloc(region)*4;
-  sprintf(maxValueStr, "Maximum allocated bytes in this region: %2.0f.", maxValue);
+  maxValue = profTabGetMaxAlloc(region)*8;
+  sprintf(maxValueStr, "Maximum allocated bytes in this region: %2.0f%s.",
+	  ppBytes(maxValue), ppUnit(maxValue));
   yLab = MallocString("bytes");
   PutFile();
   return;
@@ -632,7 +656,7 @@ void FindProgramPoint(int pPoint) {
   TickList *newTick;
   ObjectList *newObj;
   RegionList *newRegion;
-  
+
   for (newTick=firstTick;newTick!=NULL;newTick=newTick->nTick) {
     for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
       for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) {

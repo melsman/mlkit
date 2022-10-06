@@ -28,9 +28,12 @@ signature MUL_EXP =
 
     eqtype tyvar
 
-    type Type and sigma and il and cone and constructorKind and
+    type Type and mu and sigma and il and cone and constructorKind and
          datbinds and metaType and ateffect and mulef and mularef and
          mularefmap and dependency_map and qmularefset and regionStatEnv
+
+    type lvarset
+    type liveset = lvarset * excon list
 
     structure RegionExp: REGION_EXP
       where type lvar = lvar
@@ -47,6 +50,7 @@ signature MUL_EXP =
       where type metaType = metaType
       where type datbinds = datbinds
       where type Type = Type
+      where type mu = mu
 
     datatype callKind = JMP      (* tail call     to fix-bound function *)
                       | FUNCALL  (* non-tail call to fix-bound function *)
@@ -59,8 +63,8 @@ signature MUL_EXP =
     datatype ('a,'b,'c) LambdaPgm = PGM of
                         {expression: ('a,'b,'c)trip,
                          export_datbinds: datbinds,
-			 import_vars: (lvar list * excon list * place list) option ref,
-			 export_vars: lvar list * excon list * place list,
+                         import_vars: (lvar list * excon list * place list) option ref,
+                         export_vars: lvar list * excon list * place list,
                          export_basis: ateffect list,  (* list of region variables and arrow effects *)
                          export_Psi:   mularef ref list
                         }
@@ -73,18 +77,18 @@ signature MUL_EXP =
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il : il, plain_arreffs: (effectvar * ateffect list) list,
                      fix_bound: bool, rhos_actuals: 'a list ref, other: 'c}
-      | INTEGER  of IntInf.int * Type * 'a
-      | WORD     of IntInf.int * Type * 'a
+      | INTEGER  of IntInf.int * Type * 'a option
+      | WORD     of IntInf.int * Type * 'a option
       | STRING   of string * 'a
       | REAL     of string * 'a (* reals are represented as strings
-				 * for the precision to be preserved. *)
-      | F64      of string * 'a (* f64s are represented as strings
-				 * for the precision to be preserved. *)
+                                 * for the precision to be preserved. *)
+      | F64      of string      (* f64s are represented as strings
+                                 * for the precision to be preserved. *)
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
 
-      | FN       of {pat : (lvar * (Type*place)) list,
+      | FN       of {pat : (lvar * mu) list,
                      body : ('a,'b,'c)trip,
-		     free: (lvar list * excon list * place list) option ref,
+                     free: (lvar list * excon list * place list) option ref,
                      alloc: 'a}
 
       | LETREGION of {B: effect list ref,  (* contains both region variables and arrow effects *)
@@ -92,29 +96,29 @@ signature MUL_EXP =
                       body: ('a,'b,'c)trip}
 
       | LET      of {k_let: bool,
-                     pat : (lvar * il ref list ref * tyvar list *
-                                   effect list ref * Type * place * 'c) list,
-		     bind : ('a,'b,'c)trip,
-		     scope: ('a,'b,'c)trip}
+                     pat : (lvar * il ref list ref * (tyvar*effectvar option) list *
+                                   effect list ref * Type * place option * 'c) list,
+                     bind : ('a,'b,'c)trip,
+                     scope: ('a,'b,'c)trip}
       | FIX      of {free: (lvar list * excon list * place list) option ref,
-		     shared_clos: 'a,
+                     shared_clos: 'a,
                      functions : {lvar : lvar,
                                   occ : il list,                        (* instantiation lists              *)
                                                                         (* at non-binding occurrences of il *)
-				  tyvars : tyvar list,                  (* original *)
-                                  rhos: place list,                     (* region   *)
-                                  epss: effect list,                    (* type     *)
-				  Type : Type,                          (* scheme.  *)
-				  rhos_formals: 'b list ref,
+                                  tyvars : (tyvar*effectvar option) list,   (* original *)
+                                  rhos: place list,                         (* region   *)
+                                  epss: effect list,                        (* type     *)
+                                  Type : Type,                              (* scheme.  *)
+                                  rhos_formals: 'b list ref,
                                   bound_but_never_written_into: 'b list option, (* set by DropRegions; used by CompLamb*)
                                   other:  'c,
-				  bind : ('a,'b,'c)trip} list,
-		     scope : ('a,'b,'c)trip}
+                                  bind : ('a,'b,'c)trip} list,
+                     scope : ('a,'b,'c)trip}
 
       | APP      of callKind option * saveRestore * ('a,'b,'c)trip * ('a,'b,'c)trip
 
-      | EXCEPTION of excon * bool * (Type*place)  * 'a * ('a,'b,'c)trip
-                             (* Type*place: of exception constructor
+      | EXCEPTION of excon * bool * mu * 'a * ('a,'b,'c)trip
+                             (* mu: of exception constructor
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b,'c)trip
       | HANDLE   of ('a,'b,'c)trip * ('a,'b,'c)trip
@@ -123,59 +127,59 @@ signature MUL_EXP =
       | SWITCH_S of ('a,'b,'c,string) Switch
       | SWITCH_C of ('a,'b,'c,con)    Switch
       | SWITCH_E of ('a,'b,'c,excon)  Switch
-      | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
-      | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b,'c)trip
+      | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a option}
+      | CON1     of {con : con, il : il, alloc: 'a option} * ('a,'b,'c)trip
       | DECON    of {con : con, il : il} * ('a,'b,'c)trip
       | EXCON    of excon * ('a * ('a,'b,'c)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b,'c)trip
-      | RECORD   of 'a * ('a,'b,'c)trip list
+      | RECORD   of 'a option * ('a,'b,'c)trip list
       | SELECT   of int * ('a,'b,'c)trip
       | DEREF    of ('a,'b,'c)trip
       | REF      of 'a * ('a,'b,'c)trip
-      | ASSIGN   of 'a * ('a,'b,'c)trip * ('a,'b,'c)trip
+      | ASSIGN   of ('a,'b,'c)trip * ('a,'b,'c)trip
       | DROP     of ('a,'b,'c)trip
-      | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
+      | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,
-		     mu_result : Type * place, (*mu of result from c function*)
-		     rhos_for_result : ('a * int option) list}
-	            * ('a,'b,'c)trip list  (* Calling C functions *)
+                     mu_result : mu, (*mu of result from c function*)
+                     rhos_for_result : ('a * int option) list}
+                    * ('a,'b,'c)trip list  (* Calling C functions *)
 
-	(*`rhos_for_result' is technical but needed in PhysSizeInf, MulInf &
-	 CompLamb.  Roughly it is the rho arguments to the c function as
-	 described in the documentation in the chapter `Calling C Functions'.
-	 So do not change the order if you tamper with this list!
-	 `rhos_for_result' is needed in PhysSizeInf, MulInf & CompLamb.  It
-	 is a list of pairs (rho, i_opt), where rho is a region variable in
-	 the return type for the c function `name'.  `i_opt' describes how
-	 `name' will allocate in rho.  `Some 0' means that `name' will put an
-	 unboxed type in rho (e.g., bool or unit).  `Some i' means that
-	 `name' will allocate i words in rho.  `None' means that `name' may
-	 allocate unboundedly in rho.  rhos with a tyvar as tau are not in
-	 the list.  I think it would be wrong if c_function_effects removed
-	 duplicates (using Eff.remove_duplicates), because we may want the
-	 same region passed to the c function more than once if it simply
-	 happens to be used for more than one thing.*)
+        (*`rhos_for_result' is technical but needed in PhysSizeInf, MulInf &
+         CompLamb.  Roughly it is the rho arguments to the c function as
+         described in the documentation in the chapter `Calling C Functions'.
+         So do not change the order if you tamper with this list!
+         `rhos_for_result' is needed in PhysSizeInf, MulInf & CompLamb.  It
+         is a list of pairs (rho, i_opt), where rho is a region variable in
+         the return type for the c function `name'.  `i_opt' describes how
+         `name' will allocate in rho.  `Some 0' means that `name' will put an
+         unboxed type in rho (e.g., bool or unit).  `Some i' means that
+         `name' will allocate i words in rho.  `None' means that `name' may
+         allocate unboundedly in rho.  rhos with a tyvar as tau are not in
+         the list.  I think it would be wrong if c_function_effects removed
+         duplicates (using Eff.remove_duplicates), because we may want the
+         same region passed to the c function more than once if it simply
+         happens to be used for more than one thing.*)
 
       | BLOCKF64 of 'a * ('a,'b,'c)trip list
       | SCRATCHMEM of int * 'a
 
       | EXPORT   of {name : string,
-		     mu_arg : Type * place, (*mu of argument for c function*)
-		     mu_res : Type * place}
-	            * ('a,'b,'c)trip
+                     mu_arg : mu, (*mu of argument for c function*)
+                     mu_res : mu}
+                    * ('a,'b,'c)trip
 
-      | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list}
-			  * ('a,'b,'c)trip		(* for programmer-directed resetting of regions;  *)
-                                   			(* resetting is forced iff "force" is true.       *)
-							(* Forced resetting is not guaranteed to be sound *)
+      | RESET_REGIONS of {force: bool, liveset: liveset option, regions_for_resetting: 'a list}
+                          * ('a,'b,'c)trip              (* for programmer-directed resetting of regions;  *)
+                                                        (* resetting is forced iff "force" is true.       *)
+                                                        (* Forced resetting is not guaranteed to be sound *)
       | FRAME    of {declared_lvars: {lvar : lvar,
                                       sigma : sigma,
                                       other : 'c,
-                                      place : place} list,
-                     declared_excons: (excon * (Type*place) option) list}
+                                      place : place option} list,
+                     declared_excons: (excon * mu option) list}
                        (* a frame is the result of a structure-level
                         * declaration.
-			*)
+                        *)
 
     and ('a,'b,'c,'d) Switch = SWITCH of ('a,'b,'c)trip *
                                       ('d * ('a,'b,'c)trip) list * ('a,'b,'c)trip option
@@ -211,7 +215,6 @@ signature MUL_EXP =
                     ('b list * 'a -> 'b list) ->
                     ('a,'b,'c)LambdaPgm -> ('a,'b,'c)LambdaPgm
 
-    val printcount: int ref  (* controls printing of effects on expressions*)
     val layoutLambdaPgm: ('a -> StringTree option) -> ('a -> StringTree option) ->
                          ('b -> StringTree option) ->
                          ('c -> StringTree option) -> ('a, 'b, 'c)LambdaPgm -> StringTree

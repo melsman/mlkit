@@ -2,7 +2,7 @@
 
 structure Lab: LAB =
   struct
-      
+
     datatype lab = LAB of string
 
    (* Ordering of labels requires a rethink, because we have to be careful
@@ -28,8 +28,13 @@ structure Lab: LAB =
     val mk_IdentLab = LAB
     val mk_IntegerLab = LAB o Int.toString
 
-    val pu = 
-	Pickle.convert (LAB, fn LAB s => s) 
+    val pu =
+	Pickle.convert (LAB, fn LAB s => s)
 	Pickle.string
-	
-  end;
+
+    structure Map = OrderFinMap(struct type t = lab
+				       val lt = op<
+				end)
+
+
+  end

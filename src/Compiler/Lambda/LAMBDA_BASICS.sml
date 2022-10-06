@@ -14,7 +14,6 @@ signature LAMBDA_BASICS =
     (* generate a new instance of a lambda expression; rename bound variables *)
     val new_instance : LambdaExp -> LambdaExp
 
-
     (* find exported identifiers of a lambda expression *)
     type excon and lvar
     val exports : LambdaExp -> lvar list * excon list

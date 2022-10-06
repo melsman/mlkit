@@ -73,11 +73,11 @@ structure CompileDec: COMPILE_DEC =
      * Environment functions
      * ---------------------------------------- *)
 
-    fun declareExcon(id,(excon,tau),CE) = CE.declareExcon(id,(excon,tau),CE)
-    fun declareCon(id,(con,tyvars,tau),CE) = CE.declareCon(id,(con,tyvars,tau),CE)
+    fun declareExcon (id,(excon,tau),CE) = CE.declareExcon(id,(excon,tau),CE)
+    fun declareCon (id,(con,tyvars,tau),CE) = CE.declareCon(id,(con,tyvars,tau),CE)
 
     datatype lookup_info = NORMAL of ElabInfo.ElabInfo | OTHER of string
-    fun lookup_error(kind: string, CE, longid, info:lookup_info) =
+    fun lookup_error (kind: string, CE, longid, info:lookup_info) =
             let fun say s = print s
 	        fun sayst(st) = PrettyPrint.outputTree(say, st, !Flags.colwidth)
                 fun say_compilerenv() = sayst(CE.layoutCEnv CE)
@@ -230,13 +230,15 @@ structure CompileDec: COMPILE_DEC =
      * Compiling type variables
      * ---------------------------------------------- *)
 
+   structure TyVarFinMap = IntFinMap
+
    structure TV : sig val reset : unit -> unit
 		      val lookup : string -> TyVar -> TLE.tyvar
 		  end =
       struct
-	val env : (TyVar, TLE.tyvar) FinMapEq.map ref = ref FinMapEq.empty
-	fun look a = FinMapEq.lookup TyVar.eq a
-	fun add a = FinMapEq.add TyVar.eq a
+	val env : TLE.tyvar TyVarFinMap.map ref = ref TyVarFinMap.empty
+	fun look e a = TyVarFinMap.lookup e (TyVar.id a)
+	fun add (tv,tv',e) = TyVarFinMap.add (TyVar.id tv,tv',e)
 	fun lookup s tv =
 	      (case look (!env) tv of
 		 SOME tv' => tv'
@@ -247,7 +249,7 @@ structure CompileDec: COMPILE_DEC =
 		 handle ? => (TextIO.output (TextIO.stdOut, "  [TV.lookup " ^ s ^ "]  ") ;
 			      raise ?)
 
-	fun reset() = env := FinMapEq.empty
+	fun reset () = env := TyVarFinMap.empty
       end
 
 
@@ -784,8 +786,8 @@ Report: Opt:
 
   structure conset : KIT_MONO_SET = OrderSet
       (struct
-	   type T = con
-	   fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
+	   type t = con
+	   val lt = lt_from_cmp con_cmp
        end) (*structure Order*)
 
   structure negset = struct
@@ -882,26 +884,28 @@ Report: Opt:
 
   fun ifeq_cmp ((path1 : path, con1 : con, then1 : edge, else1 : edge),
 		(path2 : path, con2 : con, then2 : edge, else2 : edge)) =
-	(case edge_cmp (else1, else2) of
-	   Eq => (case edge_cmp (then1, then2) of
-		    Eq => (case con_cmp (con1, con2) of
-			     Eq => path_cmp (path1, path2)
-			   | cmp => cmp)
-		  | cmp => cmp)
-	 | cmp => cmp)
+      case edge_cmp (else1, else2) of
+	  Eq => (case edge_cmp (then1, then2) of
+		     Eq => (case con_cmp (con1, con2) of
+			        Eq => path_cmp (path1, path2)
+			      | cmp => cmp)
+		   | cmp => cmp)
+	| cmp => cmp
 
-  local
-    structure map = OrderFinMap
+  val ifeq_lt = lt_from_cmp ifeq_cmp
+
+  structure map = OrderFinMap
       (struct
-	 type T = ifeq
-	 (*lt ifeq1 ifeq2 = lexicographic ordering of the components of the
+	 type t = ifeq
+	 (*lt (ifeq1, ifeq2) = lexicographic ordering of the components of the
 	  tuples.  As long as it is a linear order, I can choose any
 	  ordering, so I compare the components in an order such that in the
 	  frequent cases it is determined as quickly as possible whether
 	  ifeq1 < ifeq2.*)
-	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
+	 val lt = ifeq_lt
        end)
 
+  local
     type mapr = node map.map ref
     val mapr : mapr = ref map.empty
     fun find_ifeq_node_like_this ifeq : node option = map.lookup (!mapr) ifeq
@@ -1655,10 +1659,7 @@ end; (*match compiler local*)
     *)
 
     local
-	structure CNameMap = OrderFinMap(struct
-					     type T = string
-					     val lt : T -> T -> bool = fn a => fn b => a < b
-					 end)
+	structure CNameMap = StringFinMap
 
       (* 32-bit and 64-bit primitives are resolved to primitives working on either
        * boxed or unboxed representations *)
@@ -2752,7 +2753,7 @@ the 12 lines above are very similar to the code below
 				 | _ => die ("give prim " ^ name ^ " a record argument type"))))
 		   val tau2 = compileType tau_result
 		   val tau = TLE.ARROWtype (taus1, [tau2])
-		   val tyvars = EqSet.list (LambdaExp.tyvars tau)
+		   val tyvars = LambdaExp.tyvars tau
 		   val tyvars_fresh = map (fn tyvar => LambdaExp.fresh_tyvar ()) tyvars
 		   val subst = mk_subst
 		                 (fn () => "CompileDec.compile_application_of_c_function")
@@ -3550,4 +3551,4 @@ old*)
   val _ = CE.set_compileTypeScheme compileTypeScheme   (* MEGA HACK - Martin *)
 
 
-  end;
+  end

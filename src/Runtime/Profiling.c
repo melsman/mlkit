@@ -31,6 +31,8 @@ long tempCount;
 long tellTime;         /* 1, if the next profile tick should print out the
 		       * current time - 0 otherwise */
 
+extern unsigned long maxMem;  /* defined in Region.c */
+
 struct itimerval rttimer;
 struct itimerval old_rttimer;
 int    profileON = TRUE; /* if false profiling is not started after a profileTick. */
@@ -488,6 +490,16 @@ printProfTab()
 
 }
 
+
+/* return the max size of stack (in bytes) during
+ * execution (excluding profiling information)
+ */
+long
+maxSizeStack() {
+  return ((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*)));
+}
+
+
 void
 Statistics()
 {
@@ -548,7 +560,7 @@ Statistics()
     fprintf(stderr,"  Max space for region descs: %ld bytes (%.1fMb)\n",
 	    maxRegionDescUseInf*sizeof(long*), (maxRegionDescUseInf*(sizeof(long*)))/Mb);
     fprintf(stderr,"  Max size of stack: %ld bytes (%.1fMb)\n",
-	   ((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*))), (((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*))))/Mb);
+	    maxSizeStack(), maxSizeStack()/Mb);
     fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n",
 	    ((long)stackBot)-((long)maxStack), ((((long)stackBot)-((long)maxStack))*1.0)/Mb);
     fprintf(stderr,"    in profile tick: %ld bytes (%.1fMb)\n",
@@ -579,7 +591,7 @@ Statistics()
  *                Functions for the profiling tool.                        *
  * This module contains functions used when profiling.                     *
  *                                                                         *
- * profileTick(stackTop)                                                   *
+ * profileTick(ctx, stackTop)                                              *
  * printProfile()                                                          *
  * outputProfile()                                                         *
  * AlarmHandler()                                                          *
@@ -658,7 +670,7 @@ pp_infinite_region (Region r)
  * regions on screen.                                *
  *---------------------------------------------------*/
 void
-pp_infinite_regions()
+pp_infinite_regions(Context ctx)
 {
   Region r;
 
@@ -846,7 +858,7 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
 }
 
 void
-profileTick(long *stackTop)
+profileTick(Context ctx, long *stackTop)
 {
   TickList *newTick;
   FiniteRegionDesc *frd;
@@ -1137,9 +1149,9 @@ profileTick(long *stackTop)
   /*  checkProfTab("profileTick.exit"); */
 
   if (raised_exn_interupt_prof)
-    raise_exn((uintptr_t)&exn_INTERRUPT);
+    raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow_prof)
-    raise_exn((uintptr_t)&exn_OVERFLOW);
+    raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
 }
 
 /*-------------------------------------------------------------------*
@@ -1212,6 +1224,9 @@ printProfile(void)
  *    regionId, MaxAlloc                                          *
  *    |                                                           *
  *    regionId, MaxAlloc                                          *
+ *  |                                                             *
+ * Here we put the maximum size of the stack:                     *
+ *  maxStack (bytes)                                              *
  *----------------------------------------------------------------*/
 
 void
@@ -1228,6 +1243,8 @@ outputProfilePre(void)
     }
 
   putw(42424242, logFile); /* dummy maxAlloc, updated in outputProfilePost */
+  putw(42424242, logFile); /* dummy maxSizeStack, updated in outputProfilePost */
+  putw(42424242, logFile); /* dummy maxMem, updated in outputProfilePost */
   putw(42424242, logFile); /* dummy noOfTicks, updated in outputProfilePost */
 
   noOfTickInFile = 0; /* Initialize counter tick-counter */
@@ -1295,7 +1312,9 @@ outputProfilePost(void)
       }
 
   fseek(logFile, 0, SEEK_SET);    // seek to the beginning of file
-  putw(maxAlloc, logFile);        // overwrite first two words
+  putw(maxAlloc, logFile);        // overwrite first three words
+  putw(maxSizeStack(), logFile);
+  putw(maxMem, logFile);
   putw(noOfTickInFile, logFile);
   fclose(logFile);
   debug(printf("]"));

@@ -163,6 +163,7 @@ structure CompBasis: COMP_BASIS =
                      else cons
           val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
+              TyName.tyName_FOREIGNPTR ::
               TyName.tyName_VECTOR :: tynames     (* for elim eq *)
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
                         else tynames
@@ -183,7 +184,6 @@ structure CompBasis: COMP_BASIS =
           val mularefmap1 = Mul.restrict_mularefmap(mularefmap,effectvars)
           val drop_env1 = DropRegions.restrict(drop_env,lvars)
           val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
-          val places = DropRegions.drop_places places
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,
            EqEnv=EqEnv1,

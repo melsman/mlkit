@@ -1,5 +1,5 @@
-(* test/arrayslice.sml -- some test cases for ArraySlice 
-   sestoft@dina.kvl.dk 2000-10-18 
+(* test/arrayslice.sml -- some test cases for ArraySlice
+   sestoft@dina.kvl.dk 2000-10-18
 
    - modified for the MLKit; mael 2005-11-28 *)
 
@@ -9,8 +9,8 @@ fun e1 seq e2 = e2;
 fun check b = if b then "OK" else "WRONG";
 fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN";
 
-fun range (from, to) p = 
-    let open Int 
+fun range (from, to) p =
+    let open Int
     in
 	(from > to) orelse (p from) andalso (range (from+1, to) p)
     end;
@@ -19,8 +19,8 @@ fun checkrange bounds p = check'(fn _ => range bounds p)
 
 val _ = print "<h2>File arrayslice.sml: Testing structure ArraySlice...</h2>";
 
-local 
-    open Array ArraySlice 
+local
+    open Array ArraySlice
     infix 9 sub
     val array0 = fromList []
     fun cons (x,r) = x ::  r
@@ -40,9 +40,9 @@ val slice04 = slice(a, 7, SOME 0)
 val slice05 = slice(a, 4, SOME 0)
 
 val slicea07 = full a
-val slicea02 = slice(a, 0, SOME 2); 
-val slicea23 = slice(a, 2, SOME 3); 
-val slicea25 = slice(a, 2, SOME 5); 
+val slicea02 = slice(a, 0, SOME 2);
+val slicea23 = slice(a, 2, SOME 3);
+val slicea25 = slice(a, 2, SOME 5);
 
 val slice06 = subslice(slicea23, 0, SOME 0)
 val slice07 = subslice(slicea23, 1, SOME 0)
@@ -54,9 +54,9 @@ val slice0s = [slice00, slice01, slice02, slice03, slice04, slice05,
 
 val sliceas = [slicea07, slicea02, slicea23, slicea25];
 
-val test1a = 
-    check'(fn _ => List.all 
-	   (fn sli => vector sli = Vector.fromList[] 
+val test1a =
+    check'(fn _ => List.all
+	   (fn sli => vector sli = Vector.fromList[]
 	    andalso length sli = 0
 	    andalso isEmpty sli
 	    andalso vector (subslice(sli, 0, NONE)) = Vector.fromList[]
@@ -79,8 +79,8 @@ val test1a =
 	   slice0s);
 val _ = ptest "test1a" test1a
 
-val test1b = 
-    check'(fn _ => 
+val test1b =
+    check'(fn _ =>
 	   vector slicea02 = Vector.fromList[1, 11]
 	   andalso vector slicea23 = Vector.fromList[21,31,41]
 	   andalso vector slicea25 = Vector.fromList[21,31,41,51,61]
@@ -95,37 +95,37 @@ val test1b =
 	   andalso length slicea07 = 7);
 val _ = ptest "test1b" test1b
 
-val test2a = 
-    check'(fn _ => 
-	   slicea07 sub 0 = 1 
-	   andalso slicea07 sub 6 = 61 
-	   andalso slicea23 sub 0 = 21 
+val test2a =
+    check'(fn _ =>
+	   slicea07 sub 0 = 1
+	   andalso slicea07 sub 6 = 61
+	   andalso slicea23 sub 0 = 21
 	   andalso slicea23 sub 2 = 41);
 val _ = ptest "test2a" test2a
 
-val test2b = 
+val test2b =
     (slicea07 sub ~1; "WRONG") handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test2b" test2b
 
-val test2c = 
+val test2c =
     (slicea07 sub 7; "WRONG") handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test2c" test2c
 
-val test2cc = 
+val test2cc =
     (slicea23 sub ~1; "WRONG") handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test2cc" test2cc
 
-val test2d = 
+val test2d =
     (slicea23 sub 3; "WRONG") handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test2d" test2d
 
-val test2e = 
+val test2e =
     check'(fn _ =>
-	   List.all (fn sli => ((sli sub 0; false) 
+	   List.all (fn sli => ((sli sub 0; false)
 				handle Subscript => true)) slice0s);
 val _ = ptest "test2e" test2e
 
-val test3a = 
+val test3a =
     check'(fn _ => List.all (not o isEmpty) sliceas)
 val _ = ptest "test3a" test3a
 
@@ -139,41 +139,41 @@ val test4a =
 val _ = ptest "test4a" test4a
 
 val test4b =
-    (subslice(slicea23, 3, SOME 1); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, 3, SOME 1); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4b" test4b
 
 val test4c =
-    (subslice(slicea23, ~1, NONE); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, ~1, NONE); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4c" test4c
 
 val test4d =
-    (subslice(slicea23, ~1, SOME 2); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, ~1, SOME 2); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4d" test4d
 
 val test4e =
-    (subslice(slicea23, 4, NONE); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, 4, NONE); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4e" test4e
 
 val test4f =
-    (subslice(slicea23, 4, SOME ~2); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, 4, SOME ~2); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4f" test4f
 
 val test4g =
-    (subslice(slicea23, 2, SOME 2); "WRONG") 
-    handle Subscript => "OK" | _ => "WRONG";    
+    (subslice(slicea23, 2, SOME 2); "WRONG")
+    handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test4g" test4g
 
-val test5 = 
+val test5 =
     check'(fn _ => let val (i1, r1) = Option.valOf (getItem slicea23)
 		       val (i2, r2) = Option.valOf (getItem r1)
 		       val (i3, r3) = Option.valOf (getItem r2)
-		   in 
-		       i1 = 21 andalso i2 = 31 andalso i3 = 41 
+		   in
+		       i1 = 21 andalso i2 = 31 andalso i3 = 41
 		       andalso not (Option.isSome (getItem r3))
 		   end);
 val _ = ptest "test5" test5
@@ -185,8 +185,8 @@ val test6b = (update(slicea23, 3, 99) seq "WRONG")
              handle Subscript => "OK" | _ => "WRONG";
 val _ = ptest "test6b" test6b
 
-val test6c = 
-    check'(fn _ => 
+val test6c =
+    check'(fn _ =>
 	   (update(slicea23, 0, 99); Array.sub(a, 2) = 99)
 	   andalso (update(slicea23, 2, 199); Array.sub(a, 4) = 199)
 	   andalso (update(slicea23, 0, 21);  Array.sub(a, 2) = 21)
@@ -197,20 +197,20 @@ val sliced = full (tabulate(100, fn i => i mod 7 * 10 + 1));
 val sliceb = full b;
 
 val e = array(203, 0);
-val _ = (copy{src=sliced, dst=e, di=0}; 
+val _ = (copy{src=sliced, dst=e, di=0};
 	 copy{src=sliceb, dst=e, di=length sliced};
 	 copy{src=sliced, dst=e, di=length sliced + length sliceb});
 
-val ev = Vector.concat [vector sliced, vector sliceb, vector sliced]; 
+val ev = Vector.concat [vector sliced, vector sliceb, vector sliced];
 (* length e = 203 *)
 
 val slicee = full e
 
-val test9a = 
+val test9a =
     check'(fn () => vector(subslice(slicee, 100, SOME 3)) = vector sliceb);
 val _ = ptest "test9a" test9a
-val test9b = 
-    check'(fn () => 
+val test9b =
+    check'(fn () =>
 	   ev = vector (subslice(slicee, 0, SOME (length slicee)))
 	   andalso ev = vector (subslice(slicee, 0, NONE)));
 val _ = ptest "test9b" test9b
@@ -221,7 +221,7 @@ val _ = copy{src=slicee, dst=g, di=0};
 
 val sliceg = full g;
 
-val test10a = 
+val test10a =
 	   check'(fn () => ev = Array.vector e
 		  andalso ev = Array.vector g);
 val _ = ptest "test10a" test10a
@@ -238,21 +238,21 @@ val _ = ptest "test10c" test10c
 
 val sliceg202 = slice(g, 202, SOME 1);
 val _ = copy{src=sliceg202, dst=g, di=202};
-val test10d = 
+val test10d =
     check'(fn () => sliceg sub 202 = 10 * (202-1-103) mod 7 + 1);
 val _ = ptest "test10d" test10d
 
-val test11a = (copy{src=sliceg, dst=g, di= ~1}; "WRONG") 
+val test11a = (copy{src=sliceg, dst=g, di= ~1}; "WRONG")
               handle Subscript => "OK" | _ => "WRONG"
 val _ = ptest "test11a" test11a
-val test11b = (copy{src=sliceg1, dst=g, di=0}; "OK") 
+val test11b = (copy{src=sliceg1, dst=g, di=0}; "OK")
               handle _ => "WRONG"
 val _ = ptest "test11b" test11b
-val test11c = (copy{src=sliceg, dst=g, di=1}; "WRONG") 
+val test11c = (copy{src=sliceg, dst=g, di=1}; "WRONG")
               handle Subscript => "OK" | _ => "WRONG"
 val _ = ptest "test11c" test11c
 
-local 
+local
     val v = ref 0
     fun setv c = v := c;
     fun addv c = v := c + !v;
@@ -267,7 +267,7 @@ local
     val pnia = Array.fromList (rev inplist)
     val pni = slice(pnia, 5, SOME 3)
     fun resetinp () = copy{src=full(fromList inplist), dst=inpa, di=0}
-in 
+in
 
 val test12a =
     check'(fn _ =>
@@ -289,39 +289,39 @@ val test12c =
 	   andalso (setv 0; find (fn x => (addv x; x=9)) inp; !v = 7+9));
 val _ = ptest "test12c" test12c
 
-val test12d = 
+val test12d =
     check'(fn _ =>
            ((setv 0; app addv inp; !v = 7+9+13)
 	    andalso (app setv inp; !v = 13)));
 val _ = ptest "test12d" test12d
 
-val test12e = 
+val test12e =
     check'(fn _ =>
 	   (resetinp(); modify ~ inp; foldr (op::) [] inp = [~7,~9,~13])
-	   andalso (resetinp(); setv 117; modify (fn x => (setv x; 37)) inp; 
+	   andalso (resetinp(); setv 117; modify (fn x => (setv x; 37)) inp;
 		    !v = 13))
 val _ = ptest "test12e" test12e
 
-val _ = resetinp(); 
+val _ = resetinp();
 
-val test12f = 
-    check'(fn _ => 
+val test12f =
+    check'(fn _ =>
 	   not (exists (fn i => i>13) inp)
 	   andalso exists (fn i => i>12) inp);
 val _ = ptest "test12f" test12f
-val test12g = 
-    check'(fn _ => 
+val test12g =
+    check'(fn _ =>
 	   (setv 117; exists (fn x => (setv x; false)) slice05; !v = 117)
 	   andalso (setv 0; exists (fn x => (addv x; false)) inp; !v = 7+9+13)
 	   andalso (exists (fn x => (setv x; false)) inp; !v = 13));
 val _ = ptest "test12g" test12g
-val test12h = 
-    check'(fn _ => 
+val test12h =
+    check'(fn _ =>
 	   not (all (fn i => i<13) inp)
 	   andalso all (fn i => i<14) inp);
 val _ = ptest "test12h" test12h
-val test12i = 
-    check'(fn _ => 
+val test12i =
+    check'(fn _ =>
 	   (setv 117; all (fn x => (setv x; true)) slice05; !v = 117)
 	   andalso (setv 0; all (fn x => (addv x; true)) inp; !v = 7+9+13)
 	   andalso (all (fn x => (setv x; true)) inp; !v = 13));
@@ -329,12 +329,13 @@ val _ = ptest "test12i" test12i
 
 val _ = resetinp();
 
+
 val test13 =
     check'(fn _ =>
-	   foldli consi [] inp = [(6,13),(5,9),(4,7)]
-	   andalso foldri consi [] inp = [(4,7),(5,9),(6,13)]
-	   andalso (resetinp(); setv 117; foldli setvif () inp; !v = 6+13)
-	   andalso (resetinp(); setv 117; foldri setvif () inp; !v = 4+7));
+	   foldli consi [] inp = [(2,13),(1,9),(0,7)]
+	   andalso foldri consi [] inp = [(0,7),(1,9),(2,13)]
+	   andalso (resetinp(); setv 117; foldli setvif () inp; !v = 2+13)
+	   andalso (resetinp(); setv 117; foldri setvif () inp; !v = 0+7));
 val _ = ptest "test13" test13
 
 val _ = resetinp();
@@ -342,37 +343,37 @@ val _ = resetinp();
 val test14a =
     check'(fn _ =>
 	   findi (fn _ => false) inp = NONE
-	   andalso findi (fn (i,x) => x=9) inp = SOME (5,9)
-	   andalso findi (fn (i,x) => i=6) inp = SOME (6,13));
+	   andalso findi (fn (i,x) => x=9) inp = SOME (1,9)
+	   andalso findi (fn (i,x) => i=2) inp = SOME (2,13));
 val _ = ptest "test14a" test14a
 
 val test14b =
-    check'(fn _ =>	   
-	   List.all (fn sli => NONE=findi (fn (j, x) => j*10+1<>x) sli)
+    check'(fn _ =>
+	   List.all (fn sli => NONE=findi (fn (j, x) => j >= 7 orelse j < 0 orelse x mod 10 <> 1) sli)
 	            sliceas)
 val _ = ptest "test14b" test14b
 
-val test15 = 
+val test15 =
     check'(fn _ =>
-           ((setvi (0,0); appi addvi inp; !v = 4+7+5+9+6+13)
-	   andalso (appi setvi inp; !v = 6+13)));
+           ((setvi (0,0); appi addvi inp; !v = 3+7+9+13)
+	   andalso (appi setvi inp; !v = 2+13)));
 val _ = ptest "test15" test15
 
-val test16 = 
+val test16 =
     check'(fn _ =>
-           (resetinp(); modifyi (op -) inp; vector inp = Vector.fromList[~3,~4,~7])
-	   andalso (resetinp(); setv 117; 
-		    modifyi (fn x => (setvi x; 37)) inp; !v = 6+13));
+           (resetinp(); modifyi (op -) inp; vector inp = Vector.fromList[~7,~8,~11])
+	   andalso (resetinp(); setv 117;
+		    modifyi (fn x => (setvi x; 37)) inp; !v = 2+13));
 val _ = ptest "test16" test16
 end
 
-val test17a = 
+val test17a =
     check'(fn _ =>
-	   let fun invcompare (c1, c2) = Char.compare (c2, c1) 
-	       fun coll s1 s2 = 
-		   collate invcompare (full (fromList (explode s1)), 
+	   let fun invcompare (c1, c2) = Char.compare (c2, c1)
+	       fun coll s1 s2 =
+		   collate invcompare (full (fromList (explode s1)),
 				       full (fromList (explode s2)))
-	   in 
+	   in
 	       coll "" "" = EQUAL
 	       andalso coll "" " " = LESS
 	       andalso coll " " "" = GREATER
@@ -388,13 +389,13 @@ val test17a =
 	   end)
 val _ = ptest "test17a" test17a
 
-val test17b = 
+val test17b =
     check'(fn _ =>
   let val sa = fromList(explode "AAAAaAbAABBBB");
                               (* 0123456789012 *)
-      fun invcompare (c1, c2) = Char.compare (c2, c1) 
+      fun invcompare (c1, c2) = Char.compare (c2, c1)
       fun coll s1 s2 = collate invcompare (s1, s2)
-  in 
+  in
       coll (full sa) (slice(sa, 0, SOME 13)) = EQUAL
       andalso coll (slice(sa, 0, SOME 0)) (slice(sa, 13, SOME 0)) = EQUAL
       andalso coll (slice(sa, 0, SOME 0)) (slice(sa, 0, SOME 13)) = LESS

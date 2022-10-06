@@ -1,4 +1,4 @@
-(* CharVectorSlice/Word8VectorSlice/CharArraySlice/Word8ArraySlice 
+(* CharVectorSlice/Word8VectorSlice/CharArraySlice/Word8ArraySlice
  * - code partly from Moscow ML ; mael 2005-11-27 *)
 functor ByteSlice (type table
 		   type elem
@@ -25,18 +25,18 @@ struct
 
     fun length (a, i, n) = n
 
-    fun sub((a', i', n'), i) = 
+    fun sub((a', i', n'), i) =
       if i<0 orelse i >= n' then raise Subscript
       else sub_unsafe(a',i'+i)
 
     fun update ((a', i', n'), i, v) =
-      if i<0 orelse i>=n' then raise Subscript 
+      if i<0 orelse i>=n' then raise Subscript
       else update_unsafe (a',i'+i,v);
 
     fun slice (a, i, len) =
       let val alen = length0 a
-      in 
-	case len of 
+      in
+	case len of
 	    NONE   => if 0<=i andalso i<=alen then (a, i, alen - i)
 		      else raise Subscript
 	  | SOME n => if 0<=i andalso 0<=n andalso n<=alen-i then (a, i, n)
@@ -51,45 +51,45 @@ struct
       | subslice ((a, i, n), i', SOME n') =
       if 0<=i' andalso 0<=n' andalso n'<=n-i' then (a, i+i', n')
       else raise Subscript
-		      
+
     fun base sli = sli
 
-    fun vector (a : table, i, n) : vector = 
+    fun vector (a : table, i, n) : vector =
       let val newvec = alloc_vector_unsafe n : vector
-	  fun copy j = 
+	  fun copy j =
 	    if j<n then
 		(update_vector_unsafe(newvec,j,sub_unsafe(a,i+j)); copy (j+1))
 	    else
 		update_vector_unsafe(newvec,j,null())
-      in copy 0; newvec 
+      in copy 0; newvec
       end
 
     fun copy {src=(a1,i1,n) : slice, dst=a2: table, di=i2} =
 	if i2<0 orelse i2+n > length0 a2 then raise Subscript
 	else if i1 < i2 then		(* copy from high to low *)
-	         let fun hi2lo j = 
+	         let fun hi2lo j =
 		     if j >= 0 then
 			 (update_unsafe(a2,i2+j,sub_unsafe(a1,i1+j)); hi2lo (j-1))
 		     else ()
-		 in hi2lo (n-1) 
+		 in hi2lo (n-1)
 		 end
 	     else                       (* i1 >= i2, copy from low to high *)
-		 let fun lo2hi j = 
+		 let fun lo2hi j =
 		     if j < n then
 			 (update_unsafe(a2,i2+j,sub_unsafe(a1,i1+j)); lo2hi (j+1))
 		     else ()
-		 in lo2hi 0 
+		 in lo2hi 0
 		 end
 
     fun copyVec {src : vector_slice, dst=a2: table, di=i2} =
       let val (a1, i1, n) = src
       in
 	if i2<0 orelse i2+n > length0 a2 then raise Subscript
-	else 
+	else
 	    let fun lo2hi j = if j < n then
 		(update_unsafe(a2,i2+j,sub_vector_unsafe(a1,i1+j)); lo2hi (j+1))
 			      else ()
-	    in lo2hi 0 
+	    in lo2hi 0
 	    end
       end
 
@@ -99,135 +99,135 @@ struct
       let fun acc [] len                 = len
 	    | acc ((_, _, len1)::vr) len = acc vr (len1 + len)
 	  val len = acc slis 0
-	  val newvec = if len > maxLen then raise Size 
+	  val newvec = if len > maxLen then raise Size
 		       else alloc_vector_unsafe len : vector
 	  fun copyall to []                   = () (* Now: to = len *)
-	    | copyall to ((v1, i1, n1)::slir) = 
-	    let fun copyv1 j = 
+	    | copyall to ((v1, i1, n1)::slir) =
+	    let fun copyv1 j =
 		if j<n1 then
 		    (update_vector_unsafe(newvec,to+j,sub_unsafe(v1,i1+j)); copyv1 (j+1))
 		else
 		    ()
-	    in 
+	    in
 		(copyv1 0; copyall (to+n1) slir)
 	    end
-      in copyall 0 slis; 
+      in copyall 0 slis;
 	  update_vector_unsafe(newvec,len,null());
-	  newvec 
+	  newvec
       end
 
     fun getItem (a, i, 0) = NONE
       | getItem (a, i, n) = SOME(sub_unsafe(a,i), (a, i+1, n-1));
 
-    fun find (p : elem -> bool) ((a,i,n) : slice) : elem option = 
+    fun find (p : elem -> bool) ((a,i,n) : slice) : elem option =
       let val stop = i+n
-	  fun lr j = 
-	    if j < stop then 
+	  fun lr j =
+	    if j < stop then
 		if p (sub_unsafe(a,j)) then SOME (sub_unsafe(a,j)) else lr (j+1)
 	    else NONE
-      in lr i 
+      in lr i
       end
 
-    fun exists (p : elem -> bool) ((a,i,n) : slice) : bool = 
+    fun exists (p : elem -> bool) ((a,i,n) : slice) : bool =
       let val stop = i+n
 	  fun lr j = j < stop andalso (p (sub_unsafe(a,j)) orelse lr (j+1))
-      in lr i 
+      in lr i
       end
 
-    fun all (p : elem -> bool) ((a,i,n) : slice) : bool = 
+    fun all (p : elem -> bool) ((a,i,n) : slice) : bool =
       let val stop = i+n
 	  fun lr j = j >= stop orelse (p (sub_unsafe(a,j)) andalso lr (j+1))
-      in lr i 
-      end
-  
-    fun app f (a, i, n) = 
-      let val stop = i+n
-	  fun lr j = if j < stop then (f(sub_unsafe(a,j)); lr (j+1))
-		     else ()
-      in lr i 
+      in lr i
       end
 
-    fun map (f : elem -> elem) (a : table, i, n) : table = 
+    fun app f (a, i, n) =
+      let val stop = i+n
+	  fun lr j = if j < stop then (f(sub_unsafe(a,j)): unit; lr (j+1))
+		     else ()
+      in lr i
+      end
+
+    fun map (f : elem -> elem) (a : table, i, n) : table =
       let val newvec = alloc_table_unsafe n : table
 	  val stop = i+n
-	  fun lr j = 
-	    if j < stop then 
+	  fun lr j =
+	    if j < stop then
 		(update_unsafe(newvec,j-i,f(sub_unsafe(a,j))); lr (j+1))
-	    else 
+	    else
 		update_unsafe(newvec,j-i,null())
-      in lr i; newvec 
+      in lr i; newvec
       end
 
-    fun foldl f e (a, i, n) = 
+    fun foldl f e (a, i, n) =
       let val stop = i+n
 	  fun lr j res = if j < stop then lr (j+1) (f(sub_unsafe(a,j), res))
 			 else res
-      in lr i e 
+      in lr i e
       end
 
     fun foldr f e (a, i, n) =
       let fun rl j res = if j >= i then rl (j-1) (f(sub_unsafe(a,j), res))
 			 else res
-      in rl (i+n-1) e 
+      in rl (i+n-1) e
       end
 
-    fun modify f (a, i, n) = 
+    fun modify f (a, i, n) =
 	let val stop = i+n
 	    fun lr j = if j < stop then (update_unsafe(a,j,f(sub_unsafe(a,j))); lr (j+1))
 		       else ()
-	in lr i 
+	in lr i
 	end
 
-    fun findi (p : int * elem -> bool) ((a,i,n) : slice) : (int * elem) option = 
+    fun findi (p : int * elem -> bool) ((a,i,n) : slice) : (int * elem) option =
       let val stop = i+n
-	  fun lr j = 
-	    if j < stop then 
-		if p (j, sub_unsafe(a,j)) then SOME (j, sub_unsafe(a,j)) else lr (j+1)
-	    else 
+	  fun lr j =
+	    if j < stop then
+		if p (j-i, sub_unsafe(a,j)) then SOME (j-i, sub_unsafe(a,j)) else lr (j+1)
+	    else
 		NONE
-      in lr i 
+      in lr i
       end
 
-    fun appi f (a, i, n) = 
+    fun appi f (a, i, n) =
       let val stop = i+n
-	  fun lr j = 
-	      if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1)) 
+	  fun lr j =
+	      if j < stop then (f(j-i, sub_unsafe(a,j)):unit; lr (j+1))
 	      else ()
-      in lr i 
+      in lr i
       end
 
-    fun mapi (f : int * elem -> elem) (a : table, i, n) : table = 
+    fun mapi (f : int * elem -> elem) (a : table, i, n) : table =
       let val newvec = alloc_table_unsafe n : table
 	  val stop = i+n
-	  fun lr j = 
-	      if j < stop then 
-		  (update_unsafe(newvec,j-i,f(j, sub_unsafe(a,j))); lr (j+1))
-	      else 
+	  fun lr j =
+	      if j < stop then
+		  (update_unsafe(newvec,j-i,f(j-i, sub_unsafe(a,j))); lr (j+1))
+	      else
 		  update_unsafe(newvec,j-i,null())
-      in lr i; newvec 
+      in lr i; newvec
       end
 
-    fun foldli f e (a, i, n) = 
+    fun foldli f e (a, i, n) =
       let val stop = i+n
-	  fun lr j res = 
-	      if j < stop then lr (j+1) (f(j, sub_unsafe(a,j), res))
+	  fun lr j res =
+	      if j < stop then lr (j+1) (f(j-i, sub_unsafe(a,j), res))
 	      else res
-      in lr i e 
+      in lr i e
       end
 
-    fun foldri f e (a, i, n) = 
-      let fun rl j res = 
-	      if j >= i then rl (j-1) (f(j, sub_unsafe(a,j), res))
+    fun foldri f e (a, i, n) =
+      let fun rl j res =
+	      if j >= i then rl (j-1) (f(j-i, sub_unsafe(a,j), res))
 	      else res
-      in rl (i+n-1) e 
+      in rl (i+n-1) e
       end
 
-    fun modifyi f (a, i, n) = 
+    fun modifyi f (a, i, n) =
       let val stop = i+n
-	  fun lr j = 
-	    if j < stop then (update_unsafe(a,j,f(j, sub_unsafe(a,j))); lr (j+1))
+	  fun lr j =
+	    if j < stop then (update_unsafe(a,j,f(j-i, sub_unsafe(a,j))); lr (j+1))
 	    else ()
-      in lr i 
+      in lr i
       end
 
     fun collate cmp ((a1,i1,n1), (a2,i2,n2)) =
@@ -240,32 +240,32 @@ struct
 		  case cmp(sub_unsafe(a1,i1+j), sub_unsafe(a2,i2+j)) of
 		      EQUAL => h (j+1)
 		    | res   => res
-      in h 0 
+      in h 0
       end
 end
 
-structure CharVectorSlice : MONO_VECTOR_SLICE = 
+structure CharVectorSlice : MONO_VECTOR_SLICE =
     ByteSlice(type table  = CharVector.vector
 	      type array  = CharArray.array
 	      type vector = CharVector.vector
 	      type elem   = char
 	      val maxLen  = CharVector.maxLen)
 
-structure Word8VectorSlice : MONO_VECTOR_SLICE = 
+structure Word8VectorSlice : MONO_VECTOR_SLICE =
     ByteSlice(type table  = Word8Vector.vector
 	      type array  = Word8Array.array
 	      type vector = Word8Vector.vector
 	      type elem   = word8
 	      val maxLen  = Word8Vector.maxLen)
 
-structure CharArraySlice : MONO_ARRAY_SLICE = 
+structure CharArraySlice : MONO_ARRAY_SLICE =
     ByteSlice(type table  = CharArray.array
 	      type array  = CharArray.array
 	      type vector = CharVector.vector
 	      type elem   = char
 	      val maxLen  = CharArray.maxLen)
 
-structure Word8ArraySlice : MONO_ARRAY_SLICE = 
+structure Word8ArraySlice : MONO_ARRAY_SLICE =
     ByteSlice(type table  = Word8Array.array
 	      type array  = Word8Array.array
 	      type vector = Word8Vector.vector

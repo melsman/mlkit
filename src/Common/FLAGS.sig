@@ -3,13 +3,13 @@
 signature FLAGS =
   sig
 
-    (* 
+    (*
      * MLKit warnings: collected during compilation and printed all at once at
      * the end of the compilation of a program.  The printing is done in
-     * Manager which also resets the warnings. 
+     * Manager which also resets the warnings.
      *)
 
-    type Report 
+    type Report
     val warn : Report -> unit
     val warn_string : string -> unit
     val report_warnings : unit -> unit
@@ -19,7 +19,7 @@ signature FLAGS =
      * Testing and toggling of flags.
      *)
 
-    val is_on               : string -> bool 
+    val is_on               : string -> bool
     val is_on0              : string -> unit -> bool    (* to avoid lookup *)
     val turn_on             : string -> unit
     val turn_off            : string -> unit
@@ -53,49 +53,46 @@ signature FLAGS =
 				  information
                                *)
 
-    val chat: bool ref         (* true if a message is to be printed 
-				  for each phase of compilation 
+    val chat: bool ref         (* true if a message is to be printed
+				  for each phase of compilation
 			       *)
 
     val DEBUG_COMPILER:		bool ref
 
     val print_types : bool ref
 
-    val SMLserver : bool ref              (* true when SMLserver for KAM backend
-					     is enabled.
-					  *)
     val log : TextIO.outstream ref
     val colwidth : int ref
 
-    val timings_stream : TextIO.outstream option ref   (* optional stream for exporting 
-							  timings (`KITtimings') 
+    val timings_stream : TextIO.outstream option ref   (* optional stream for exporting
+							  timings (`KITtimings')
 						       *)
 
     (* Program Points. *)
     val print_all_program_points : bool ref    (* if true then print all program points,
-						  otherwise print program_points in the 
-						  list below. 
+						  otherwise print program_points in the
+						  list below.
 					       *)
-    val program_points: int list ref           (* contains the program points that 
-						  should be included in program listing 
+    val program_points: int list ref           (* contains the program points that
+						  should be included in program listing
 					       *)
-    val region_paths : (int*int) list ref 
+    val region_paths : (int*int) list ref
 
-    (* Generic system to document options and let them appear on command 
+    (* Generic system to document options and let them appear on command
      * lines. *)
 
-    type bentry = {long: string,           (* long option for use with mlkit command 
+    type bentry = {long: string,           (* long option for use with mlkit command
 					    *   using `--', script files, and internally
-					    *   in the mlkit to lookup the current setting 
+					    *   in the mlkit to lookup the current setting
 					    *   during execution. *)
 		   short: string option,   (* short option used in commands with - *)
 		   menu: string list,      (* menu path; nil means no-show *)
 		   item: bool ref,         (* the actual flag *)
 		   neg: bool,              (* should negated flag be introduced?
 					    *   -no_opt,  --no_optimiser *)
-		   desc: string}           (* description string; format manually 
+		   desc: string}           (* description string; format manually
 					    *   with new-lines *)
-      
+
     type 'a entry = {long: string,
 		     short: string option,
 		     menu: string list,
@@ -104,7 +101,7 @@ signature FLAGS =
 
     (* Functions to add entries dynamically; remember to add a description
      * telling what the flag is used for. If a nil-menu is given, the
-     * entry is not shown in help and the option cannot be given at the 
+     * entry is not shown in help and the option cannot be given at the
      * command line. *)
 
     val add_bool_entry       : bentry -> (unit -> bool)
@@ -126,7 +123,7 @@ signature FLAGS =
     val help_all : unit -> string
 
     type options = {desc : string, long : string list, short : string list,
-                    kind : string option, default : string option} 
+                    kind : string option, default : string option}
 
     val getOptions : unit -> options list
 

@@ -57,7 +57,7 @@ IDE_EXTRACODE=Array2-sml ArraySlice-sml-code1 ArraySlice-sml-code3	\
    ByteSlice-sml-code7 ByteSlice-sml-code9 Bool-sml Char-sml Byte-sml	\
    StrBase-sml Math-sml Html-sml Rwp-sml Parsercomb-sml			\
    XMLrpcClient-sml-code1 XMLrpcClient-sml-code2			\
-   XMLrpcClient-sml-code3 utest-sml
+   XMLrpcClient-sml-code3 utest-sml Random-sml
 IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 
 #

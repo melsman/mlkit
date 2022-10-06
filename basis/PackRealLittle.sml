@@ -8,7 +8,7 @@ structure PackRealLittle : PACK_REAL =
 
     fun toBytes (r:real) : Word8Vector.vector =
         Byte.stringToBytes(toBytesS r)
-        
+
     fun fromBytes (s: Word8Vector.vector) : real =
         fromBytesS(Byte.bytesToString s)
 
@@ -19,13 +19,13 @@ structure PackRealLittle : PACK_REAL =
         in fromBytes (Word8Vector.fromList (toL 1 []))
         end
 
-    fun subArr(a,i) = 
+    fun subArr (a,i) =
         let
           fun toL 9 l = l
             | toL j l = toL (j+1) (Word8Array.sub(a,(i+1)*bytesPerElem-j) :: l)
         in fromBytes (Word8Vector.fromList (toL 1 []))
         end
-    
-    fun update(a,i,r) =
-          Word8Array.copyVec {src=toBytes r, dst=a, di=i}
+
+    fun update (a,i,r) =
+        Word8Array.copyVec {src=toBytes r, dst=a, di=i*bytesPerElem}
   end

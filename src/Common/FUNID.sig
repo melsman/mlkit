@@ -10,4 +10,6 @@ signature FUNID =
     val < : funid * funid -> bool	(* Used for top-level printout *)
 
     val pu : funid Pickle.pu
+
+    structure Map : MONO_FINMAP where type dom = funid
   end

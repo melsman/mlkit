@@ -1,56 +1,41 @@
 local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
-  basis Edlib = bas ../Edlib/edlib.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
   basis Kitlib = bas ../Kitlib/kitlib.mlb end
   open BasLib
-in 
-(*
-  BASIC_IO.sml 
-  BasicIO.sml 
-*)
+in
   CRASH.sig
   Crash.sml
   REPORT.sig
   Report.sml
   TIMESTAMP.sig
   Timestamp.sml
-  local open Edlib
-  in PRETTYPRINT.sig 
-     ListUtils.sml
-     PrettyPrint.sml  
-  end
-  local open Edlib Pickle 
-  in MONO_FINMAP.sml 
+  PRETTYPRINT.sig
+  ListUtils.sml
+  PrettyPrint.sml
+  ORDER.sig
+  local open Pickle
+  in MONO_FINMAP.sml
      MonoFinMap.sml
      IntFinMapPT.sml
-     OrderFinMap.sml 
+     OrderFinMap.sml
   end
   FLAGS.sig
   BasisCompat.sml
-(*  Menu.sml *)
+  StringFinMap.sml
   local open Kitlib
   in
     Flags.sml
     Man.sml
   end
-  StringFinMap.sml
-  local open Pickle 
+  local open Pickle
   in IntStringFinMap.sml
      WordFinMapPT.sml
-     local open Edlib 
-     in FINMAPEQ.sig
-        FinMapEq.sml
-        FINMAP.sig
-        FinMap.sml 
-     end
-     SORTED_FINMAP.sml
-     SortedFinMap.sml
   end
   Timing.sml
-  local open Pickle 
+  local open Pickle
   in KIT_MONO_SET.sml
-     local open Edlib in OrderSet.sml end
+     local in OrderSet.sml end
   end
 
   local open Pickle
@@ -60,14 +45,12 @@ in
 
   STACK.sig
   Stack.sml
-  local open Pickle 
+  local open Pickle
   in UNION_FIND_POLY.sml
      UnionFindPoly.sml
      DIGRAPH.sig
-     local open Edlib
-     in IntDiGraph.sml
-        DiGraph.sml 
-     end
+     IntDiGraph.sml
+     DiGraph.sml
   end
 
   Heap.sml

@@ -14,7 +14,7 @@ in
   in
      local open CompilerObjects
      in Backend/LineStmt.sml
-        Backend/RegAlloc.sml
+        local open Pickle in Backend/RegAlloc.sml end
         Backend/FetchAndFlush.sml
         local open Edlib in Backend/CalcOffset.sml end
         Backend/SubstAndSimplify.sml

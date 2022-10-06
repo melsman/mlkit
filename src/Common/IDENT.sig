@@ -72,4 +72,7 @@ signature IDENT =
 
     val reset : unit -> unit   (* resets counter to initial counter. *)
     val pu : id Pickle.pu
-  end;
+
+    structure Map : MONO_FINMAP where type dom = id
+
+  end

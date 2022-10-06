@@ -15,16 +15,6 @@ BINDIR=@top_srcdir@/bin
 
 include @top_srcdir@/Makefiledefault
 
-GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \
- Runtime/KamInsts.h Runtime/KamInsts.c Runtime/jumptbl.h \
- Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml \
- Compiler/Backend/KAM/OPCODES_KAM.sml Compiler/Backend/KAM/OpcodesKAM.sml
-
-GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
- Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec \
- Compiler/Backend/KAM/BuiltInCFunctionsApSml.spec \
- Compiler/Backend/KAM/KamInsts.spec
-
 # Whether request profiling is enabled
 REQUEST_PROFILING=
 #REQUEST_PROFILING=true
@@ -58,28 +48,8 @@ smltojs: basics mlbmake mllex-yacc
 	$(MLCOMP) -output smltojs Compiler/smltojs.mlb
 	$(INSTALL) -p smltojs $(BINDIR)
 
-mlkit_kam: mlkit_kam_kit
-
 .PHONY: mllex-yacc
 mllex-yacc: Parsing/Topdec.lex.sml Parsing/Topdec.grm.sml
-
-.PHONY: mlkit_kam_kit
-mlkit_kam_kit: basics tester kitbench mllex-yacc
-	$(MAKE) -C Runtime kam
-	$(MLCOMP) -output mlkit_kam Compiler/kitkam.mlb
-	$(INSTALL) -p mlkit_kam $(BINDIR)
-
-.PHONY: smlserver
-smlserver: smlserver_kit
-
-.PHONY: smlserver_kit
-smlserver_kit: basics mlbmake mllex-yacc
-	$(MAKE) -C Tools/MspComp
-	$(MAKE) -C Tools/UlWrapUp
-	$(MAKE) -C Runtime runtimeSystemKamApSml.o
-	$(MAKE) -C SMLserver/apache
-	$(MLCOMP) -output smlserverc Compiler/smlserver.mlb
-	$(INSTALL) -p smlserverc $(BINDIR)
 
 .PHONY: barry
 barry: basics mlbmake mllex-yacc
@@ -87,16 +57,7 @@ barry: basics mlbmake mllex-yacc
 	$(INSTALL) -p barry $(BINDIR)
 
 .PHONY: basics
-basics: genopcodes mlkit-mllex mlkit-mlyacc
-
-.PHONY: genopcodes
-genopcodes: $(BINDIR)/kitgen_opcodes
-
-$(BINDIR)/kitgen_opcodes: $(GENOPCODES_SOURCES)
-	$(MKDIR) $(BINDIR)
-	$(MAKE) -C Tools/GenOpcodes BINDIR=../../$(BINDIR)
-# kitgen_opcodes assumes it's run from the src-directory
-	$(BINDIR)/kitgen_opcodes
+basics: mlkit-mllex mlkit-mlyacc
 
 .PHONY: rp2ps
 rp2ps:
@@ -130,7 +91,7 @@ Parsing/Topdec.grm.sml: Parsing/Topdec.grm
 
 .PHONY: clean
 clean:
-	$(CLEAN) run $(GENOPCODES_TARGETS) smltojs
+	$(CLEAN) run smltojs
 	$(MAKE) -C Pickle clean
 	cd Pickle && $(CLEAN)
 	cd Kitlib && $(CLEAN)
@@ -145,63 +106,15 @@ clean:
 	cd Tools/Tester && $(MAKE) clean
 	cd Tools/Rp2ps && $(MAKE) clean
 	cd Tools/MlbMake && $(MAKE) clean
-	cd Tools/GenOpcodes && $(MAKE) clean
 	cd Tools/Benchmark && $(MAKE) clean
-	$(MAKE) -C Tools/UlWrapUp clean
 	$(MAKE) -C Tools/ml-lex clean
 	$(MAKE) -C Tools/ml-yacc clean
 	cd Compiler && $(CLEAN)
 	cd Compiler/Backend && $(CLEAN)
 	cd Compiler/Backend/Dummy && $(CLEAN)
-	cd Compiler/Backend/HpPaRisc && $(CLEAN)
-	cd Compiler/Backend/X86 && $(CLEAN)
 	cd Compiler/Backend/X64 && $(CLEAN)
-	cd Compiler/Backend/KAM && $(CLEAN)
 	cd Compiler/Backend/Barry && $(CLEAN)
 	cd Compiler/Backend/JS && $(CLEAN)
 	cd Compiler/Regions && $(CLEAN)
 	cd Compiler/Lambda && $(CLEAN)
-	cd SMLserver && $(CLEAN) nssml.so *.o
-	$(MAKE) -C SMLserver/apache clean
 	rm -f mlkit
-
-
-# ----------------------------------------------------------
-# Support for measuring the code blowup resulting from
-# compiling functors in the MLKit; not used by install!
-# ----------------------------------------------------------
-
-FILE = /home/mael/kit/src/bdys.txt
-LINES = /home/mael/kit/src/lines.mael.sml
-
-.PHONY: bdys
-bdys:
-	(cd Common/PM/RI && wc -l *.bdy > $(FILE))
-	(cd Common/EfficientElab/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Parsing/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Lambda/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Regions/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Kam/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Cfg/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/C/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Backend/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Compiler/Backend/HpPaRisc/PM/RI && wc -l *.bdy >> $(FILE))
-	(cd Manager/PM/RI && wc -l *.bdy >> $(FILE))
-
-.PHONY: lines
-lines:
-	(cd Common && cat *.sml > $(LINES))
-	(cd Common/EfficientElab && cat *.sml >> $(LINES))
-	(cd Parsing && cat *.sml >> $(LINES))
-	(cd Compiler && cat *.sml >> $(LINES))
-	(cd Compiler/Lambda && cat *.sml >> $(LINES))
-	(cd Compiler/Regions && cat *.sml >> $(LINES))
-	(cd Compiler/Kam && cat *.sml >> $(LINES))
-	(cd Compiler/Cfg && cat *.sml >> $(LINES))
-	(cd Compiler/C && cat *.sml >> $(LINES))
-	(cd Compiler/Backend && cat *.sml >> $(LINES))
-	(cd Compiler/Backend/HpPaRisc && cat *.sml >> $(LINES))
-	(cd Manager && cat *.sml >> $(LINES))
-	wc -l $(LINES)
-	rm -f $(LINES)

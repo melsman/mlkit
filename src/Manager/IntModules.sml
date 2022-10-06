@@ -26,6 +26,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     type ElabEnv = ManagerObjects.ElabEnv
     type ElabBasis = ManagerObjects.ElabBasis
 
+    infix |>
+    fun x |> f = f x
+
     fun die s = Crash.impossible ("IntModules." ^ s)
     fun print_error_report report = Report.print' report (!Flags.log)
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
@@ -458,8 +461,17 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      fun reuse_msg s = (print("[cannot reuse instance code for functor `"
 				       ^ FunId.pr_FunId funid ^ "' -- " ^ s ^ "]\n"); NONE)
 
+              (* remove prefix hash value from the absprjid string *)
+              val src_name =
+                  ModuleEnvironments.absprjid_to_string absprjid
+               |> Substring.full
+               |> Substring.splitl (fn c => c <> #"-")
+               |> #2
+               |> Substring.dropl (fn c => c = #"-")
+               |> Substring.string
+
 	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^
-			    " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
+			    " (from source " ^ src_name ^ ") begin]\n")
 (* 	      val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 
 	      val _ = chat "[recreating functor body begin...]"
@@ -506,9 +518,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
 	  end
 
-    fun generate_BBC(absprjid : absprjid, funid, strid_arg,
-			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list,
-			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp)
+    fun generate_BBC (absprjid : absprjid, funid, strid_arg,
+		      {infB: InfixBasis, elabB: ElabBasis, T: TyName list,
+		       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp)
        : BodyBuilderClos =
 	   let val funid_string = FunId.pr_FunId funid
 (**	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
@@ -539,9 +551,23 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                val filetext = withFile TextIO.inputAll filename
 *)
 
+               (* Attempt to restrict elaboration basis *)
+               val _ = chat "[finding free identifiers (restrict elaboration basis) begin...]"
+	       val freeids = FreeIds.fid_strexp strexp
+	       val _ = chat "[finding free identifiers (restruct elaboration basis) end...]"
+	       val elabB' = ModuleEnvironments.B.restrict (*_preservecon*) (elabB, freeids)
+
+               (* hmm: I believe elaboration should be preserved under
+                  the restricted basis; in fact, the free identifiers
+                  also include those identifiers that are
+                  constructors; notice that I'm not claiming that
+                  elaboration is preserved under an extended basis,
+                  which might not be the case if new constructors
+                  enter the basis. mael 2022-01-21 *)
+
 	       (* Explicit environment for the closure (function) below *)
 	       val BBC : BodyBuilderClos =
-		   {infB=infB,elabB=elabB,absprjid=absprjid,
+		   {infB=infB,elabB=elabB',absprjid=absprjid,
 		    (**filename=filename,**)filemd5=MD5.fromString filetext,filetext=filetext,
                     opaq_env=opaq_env,T=T,resE=resE}
 	   in BBC

@@ -31,8 +31,8 @@ structure OpacityEnv: OPACITY_ENV =
     fun die s = Crash.impossible ("OpacityEnv." ^ s)
     structure Realisation = Environments.Realisation
     type realisation = Environments.realisation
-    structure FE = OrderFinMap(struct type T = FunId.funid
-				      val lt = fn a => fn b => FunId.<(a,b)
+    structure FE = OrderFinMap(struct type t = FunId.funid
+				      val lt = fn (a,b) => FunId.<(a,b)
 			       end)
 
     type funenv = (TyName.Set.Set * realisation) FE.map
@@ -44,25 +44,25 @@ structure OpacityEnv: OPACITY_ENV =
     fun from_funid (funid, (T,rea)) = (FE.add(funid,(T,rea),FE.empty), Realisation.Id)
     fun rea_of (_,rea) = rea
     fun lookup_funid (fe,_) funid = FE.lookup fe funid
-    val empty = (FE.empty, Realisation.Id)    
+    val empty = (FE.empty, Realisation.Id)
     val initial = empty
     fun plus ((fe1, rea1),(fe2,rea2)) = (FE.plus(fe1,fe2),Realisation.oo(rea1,rea2))
     fun eq_fe_entry((T1,rea1),(T2,rea2)) = TyName.Set.eq T1 T2 andalso Realisation.eq (rea1,rea2)
-    fun enrich ((fe1, rea1),((fe2,rea2),T)) = 
+    fun enrich ((fe1, rea1),((fe2,rea2),T)) =
       FE.enrich eq_fe_entry (fe1,fe2) andalso Realisation.enrich(rea1,(rea2,T))
 
-    fun eq((fe1,re1),(fe2,re2)) = 
+    fun eq((fe1,re1),(fe2,re2)) =
 	FE.enrich eq_fe_entry (fe1,fe2) andalso FE.dom fe1 = FE.dom fe2
 	andalso Realisation.eq(re1,re2)
-	
+
     fun restrict((fe,rea), (funids,T)) = (FE.restrict (FunId.pr_FunId,fe,funids), Realisation.restrict T rea)
       handle FE.Restrict s => die ("restrict; funid " ^ s ^ " is not in the environment")
     fun match((fe1,rea1),(fe2,rea2)) = Realisation.match(rea1,rea2)
 
     type StringTree = PP.StringTree
-    fun layout_fe_entry (T,rea) = 
+    fun layout_fe_entry (T,rea) =
       PP.NODE{start="[", finish="", childsep=PP.RIGHT "]", indent=1,
-	      children=[TyName.Set.layoutSet {start="{",finish="}",sep=","} TyName.layout T, 
+	      children=[TyName.Set.layoutSet {start="{",finish="}",sep=","} TyName.layout T,
 			Realisation.layout rea]}
     fun layout_fe fe = FE.layoutMap {start="{",finish="}",eq=" -> ",sep=","} (PP.LEAF o FunId.pr_FunId)
       layout_fe_entry fe

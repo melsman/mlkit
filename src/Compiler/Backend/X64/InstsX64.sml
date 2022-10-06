@@ -315,8 +315,8 @@ structure InstsX64: INSTS_X64 =
                | movzbq a => emit_bin ("movzbq", a)
                | movslq a => emit_bin ("movslq", a)
                | leaq a => emit_bin ("leaq", a)
-               | push ea => emit_unary ("push", ea)
-               | pop ea => emit_unary ("pop", ea)
+               | push ea => emit_unary ("pushq", ea)
+               | pop ea => emit_unary ("popq", ea)
                | andb a => emit_bin("andb", a)
 
                | addl a => emit_bin("addl", a)
@@ -551,23 +551,22 @@ structure InstsX64: INSTS_X64 =
         val freg_args = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7]
         val args_phfreg = map reg_to_lv freg_args
 
+        val callee_save_regs_ccall = [rbx,rbp,r12,r13,(*r14,*)r15]   (* save r14 for context pointer; r15 used by raise_inst *)
+        val callee_save_ccall_phregs = map reg_to_lv callee_save_regs_ccall
+        val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
+        fun is_callee_save_ccall phreg = false
+
         val caller_save_regs_mlkit = [rax,rbx,rdi,rdx,rsi]
         val caller_save_phregs = map reg_to_lv caller_save_regs_mlkit
         val caller_save_phregset = Lvarset.lvarsetof caller_save_phregs
         fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
 
         (* Conventions for calls to C (standard calling conventions) *)
-        val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]                                       (* https://www.agner.org/optimize/calling_conventions.pdf, section 6 *)
-        val res_reg_ccall = [rax]
-
+        val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]                 (* https://www.agner.org/optimize/calling_conventions.pdf, section 6 *)
         val args_phreg_ccall = map reg_to_lv args_reg_ccall
         val args_ccall_phregset = Lvarset.lvarsetof args_phreg_ccall
+        val res_reg_ccall = [rax]
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
-
-        val callee_save_regs_ccall = [rbx,rbp,r12,r13,r14,r15]                             (* https://www.agner.org/optimize/calling_conventions.pdf, section 6 *)
-        val callee_save_ccall_phregs = map reg_to_lv callee_save_regs_ccall
-        val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
-        fun is_callee_save_ccall phreg = false
       end
 
     val tmp_reg0 = r10 (* CALLER saves scratch registers *)

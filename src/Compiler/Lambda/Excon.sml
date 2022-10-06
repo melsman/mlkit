@@ -12,11 +12,22 @@ structure Excon: EXCON =
     type name = Name.name
     type excon = {str: string, name: name}
 
+    val print_excon_name = Flags.add_bool_entry
+      {long="print_excon_name", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print excon name"], desc=
+       "Print underlying unique name when printing excons."}
+
     fun mk_excon (s: string) : excon = {str=s,name=Name.new()}
-    fun pr_excon ({str,...}: excon) : string = str
+
     fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (#1(Name.key name))
 
-(*    val pr_excon = pr_excon'  (* MEMO; mael 2004-03-03 *) *)
+    fun pr_excon ({str,name}: excon) : string =
+        if print_excon_name() then
+          str ^ "$" ^ Int.toString (#1(Name.key name)) ^ "_" ^ #2(Name.key name)
+        else str
+
+    fun renew ({str,name}:excon) : excon =
+        {name=Name.new(), str=str}
 
     fun name ({name,...}: excon) : name = name
 

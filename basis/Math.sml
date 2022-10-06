@@ -10,7 +10,7 @@ structure Math : MATH = struct
   val posInf = Initial.posInf
   val negInf = Initial.negInf
 
-  fun compare (x, y: real) = 
+  fun compare (x, y: real) =
     if x<y then LESS else if x>y then GREATER else EQUAL
 
   infix ==
@@ -31,16 +31,20 @@ structure Math : MATH = struct
   fun atan2 (y : real, x : real) : real = prim ("atan2Float", (y,x))
   fun exp (r : real) : real = prim ("expFloat", r)
   fun pow (x : real, y : real) : real = prim ("powFloat", (x,y))
-  local 
+  local
+    fun mkPosInf () : real = prim ("posInfFloat", ())
+    fun mkNegInf () : real = prim ("negInfFloat", ())
     fun ln' (r : real) : real = prim ("lnFloat", r)
-  in 
-     fun ln r = if r == 0.0 then negInf 
-		else if r == posInf then posInf
+    fun sqrt (r : real) : real = prim ("sqrtFloat", r)
+    fun mkNaN () = sqrt ~1.0
+  in
+     fun ln r = if r == 0.0 then mkNegInf()
+		else if r == mkPosInf() then mkPosInf()
 		     else let val r = ln' r
-			  in if r == negInf then Initial.NaN
+			  in if r == mkNegInf() then mkNaN()
 			     else r
-			  end 
-     fun log10 r = ln r / Initial.ln10
+			  end
+     fun log10 r = ln r / ln' 10.0
   end
   fun sinh (a : real) : real = prim ("sinhFloat", a)
   fun cosh (a : real) : real = prim ("coshFloat", a)

@@ -10,4 +10,9 @@ structure FunId: FUNID =
     val op < = fn (FUNID str1, FUNID str2) => str1 < str2
 
     val pu = Pickle.convert (FUNID, fn FUNID s => s) Pickle.string
+
+    structure Map = OrderFinMap(struct type t = funid
+				       val lt = op<
+				end)
+
   end

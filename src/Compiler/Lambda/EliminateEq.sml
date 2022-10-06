@@ -1,12 +1,8 @@
 
-structure EliminateEq: ELIMINATE_EQ =
+structure EliminateEq : ELIMINATE_EQ =
   struct
     structure PP = PrettyPrint
-    structure TyVarMap =
-	OrderFinMap(struct type T = LambdaExp.tyvar
-			   fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
-		    end)
-
+    structure TyVarMap = LambdaExp.TyvarMap
     structure TyNameMap = TyName.Map
     structure LvarMap = Lvars.Map
 
@@ -57,7 +53,7 @@ structure EliminateEq: ELIMINATE_EQ =
       fun env_map (f:result->result) (tynamemap,tyvarmap,lvarmap) =
 	(TyNameMap.composemap f tynamemap, tyvarmap,lvarmap)
 
-      fun restrict'((tnmap,_,lvmap),{lvars,tynames}) =
+      fun restrict' ((tnmap,_,lvmap),{lvars,tynames}) =
 	let val tnmap' = List.foldl (fn (tn,acc) =>
 				     case TyNameMap.lookup tnmap tn  (* do not scream if it *)
 				       of SOME res => TyNameMap.add(tn,res,acc)     (* is not here... *)
@@ -285,6 +281,13 @@ structure EliminateEq: ELIMINATE_EQ =
       in gen tau
       end
 
+    fun lv_in lv e =
+        let val occurs = ref false
+            fun is (VAR{lvar,...}) = if Lvars.eq (lv,lvar) then occurs := true else ()
+              | is e = LambdaBasics.app_lamb is e
+        in is e ; !occurs
+        end
+
 
     (* --------------------------------------------------------------
      * Generate equality functions for datatype bindings that
@@ -437,21 +440,39 @@ structure EliminateEq: ELIMINATE_EQ =
      * basic type names and are treated directly in gen_type_eq.
      * ------------------------------------------------------------ *)
 
+    fun prune (f,env) =
+        let fun range env =
+                case env_range env of
+                    [POLYLVAR lv] => SOME lv
+                  | [] => NONE
+                  | _ => die "prune.cannot find single lvar"
+        in case range env of
+               NONE => (f,env)
+             | SOME lv =>
+               (fn e =>
+                   if lv_in lv e then f e
+                   else e,
+                env)
+        end
+
     fun gen_datatype_builtin_eq () =
       let
-	val tn_list = TyName.tyName_LIST
-	val tv = fresh_tyvar()
-	val tau_tv = TYVARtype tv
-	val cbs = [(Con.con_CONS, SOME (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
-		   (Con.con_NIL, NONE)]
-	val dbss = [[([tv], tn_list,cbs)]]
-	val (f, e) = gen_datatype_eq empty dbss
-	val (f1, e1) = gen_datatype_for_table ()
-        val (f2, e2) = gen_datatype_for_quotation ()
-        val (f3, e3) = gen_datatype_for_intinf e (* list-env *)
+	val (f, e) = (prune o gen_datatype_for_list) ()
+	val (f1, e1) = (prune o gen_datatype_for_table) ()
+        val (f2, e2) = (prune o gen_datatype_for_quotation) ()
+        val (f3, e3) = (prune o gen_datatype_for_intinf) e (* uses list-env *)
       in
 	(f o f1 o f2 o f3, plus(plus(plus(e,e1),e2),e3))
       end
+    and gen_datatype_for_list () =
+        let val tn_list = TyName.tyName_LIST
+	    val tv = fresh_tyvar()
+	    val tau_tv = TYVARtype tv
+	    val cbs = [(Con.con_CONS, SOME (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
+		       (Con.con_NIL, NONE)]
+	    val dbss = [[([tv], tn_list,cbs)]]
+	in gen_datatype_eq empty dbss
+        end
     and gen_datatype_for_intinf e =
 	let val int31 = CONStype([],TyName.tyName_INT31)
 	    val int31list = CONStype([int31],TyName.tyName_LIST)
@@ -822,12 +843,12 @@ structure EliminateEq: ELIMINATE_EQ =
 	val (f, env_dat) = gen_datatype_eq env1 dbss
 	val env2 = env1 + env_dat
 	val _ = env_frame := empty
-	val lexp' = t env2 lexp                         (* env_frame is updated as a side-effect. *)
+	val lexp1 = t env2 lexp                         (* env_frame is updated as a side-effect. *)
 	val env_export = env_dat + (!env_frame)
-	val lexp'' = extend_frame env_dat lexp'         (* don't put eq. functions for built-in
+	val lexp2 = extend_frame env_dat lexp1          (* don't put eq. functions for built-in
 							 * datatypes in frame. For in-lining, we
 							 * better introduce them in each module. *)
-      in (PGM (datbinds, (f' o f) lexp''), env_export)
+      in (PGM (datbinds, (f' o f) lexp2), env_export)
       end handle e as DONT_SUPPORT_EQ s =>
 	(log ("\n ** Equality not supported for datatype " ^ s ^ "\n");
 	 log (" ** Rewrite the program to use an explicit equality function\n");

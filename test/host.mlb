@@ -1,0 +1,4 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+in host.sml
+end

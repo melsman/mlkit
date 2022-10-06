@@ -1,7 +1,7 @@
 (*REAL.sml*)
 
 signature REAL = sig
-  type real = real
+  type real
 
   structure Math : MATH
 

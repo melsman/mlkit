@@ -2,7 +2,7 @@
 
 structure StrId: STRID =
   struct
-    
+
     datatype strid = STRID of string
 
     fun pr_StrId(STRID str) = str
@@ -38,10 +38,15 @@ structure StrId: STRID =
 
     val op < = fn (STRID str1, STRID str2) => str1 < str2
 
-    val pu = 
-	Pickle.convert (STRID, fn STRID s => s) Pickle.string    
+    val pu =
+	Pickle.convert (STRID, fn STRID s => s) Pickle.string
 
-    val pu_longstrid = 
+    val pu_longstrid =
 	Pickle.convert (LONGSTRID, fn LONGSTRID a => a)
-	(Pickle.pairGen0(Pickle.listGen pu, pu))
+	               (Pickle.pairGen0(Pickle.listGen pu, pu))
+
+    structure Map = OrderFinMap(struct type t = strid
+				       val lt = op<
+				end)
+
   end

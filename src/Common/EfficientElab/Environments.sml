@@ -8,7 +8,8 @@ structure Environments: ENVIRONMENTS =
   struct
     structure DecGrammar = PreElabDecGrammar
     structure PP = PrettyPrint
-    structure OrderFinMap = IdentFinMap
+    structure ExplicitTyVarMap = StatObject.ExplicitTyVarMap
+
     val quotation = Flags.is_on0 "quotation"
 
     fun uncurry f (a,b) = f a b
@@ -223,16 +224,16 @@ structure Environments: ENVIRONMENTS =
     (*the types Context, Env, StrEnv, TyEnv, TyStr, and VarEnv, and
      some layout and report functions for them.*)
 
-    datatype VarEnv = VARENV of range_private OrderFinMap.map
+    datatype VarEnv = VARENV of range_private Ident.Map.map
 
     datatype TyStr = TYSTR of {theta : TypeFcn, VE : VarEnv}
 
-    datatype TyEnv = TYENV of (tycon, TyStr) FinMap.map
+    datatype TyEnv = TYENV of TyStr TyCon.Map.map
 
-    datatype ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,Type) FinMap.map
+    datatype ExplicitTyVarEnv = EXPLICITTYVARENV of Type ExplicitTyVarMap.map
 
     datatype Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv, R : RegVar.regvar list}
-	 and StrEnv = STRENV of (strid, Env) FinMap.map
+	 and StrEnv = STRENV of Env StrId.Map.map
 
     datatype Context = CONTEXT of {U : ExplicitTyVarEnv, E : Env}
 
@@ -256,12 +257,12 @@ structure Environments: ENVIRONMENTS =
 		Pickle.con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
 		Type.pu
 
-	in Pickle.dataGen ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	in Pickle.dataGenNoShare ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
 
     val pu_VarEnv : VarEnv Pickle.pu =
 	Pickle.convert (VARENV, fn VARENV s => s)
-	(OrderFinMap.pu Ident.pu pu_range_private)
+	(Ident.Map.puNoShare Ident.pu pu_range_private)
 
     val pu_TyStr : TyStr Pickle.pu =
 	let fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
@@ -272,11 +273,7 @@ structure Environments: ENVIRONMENTS =
 
     val pu_TyEnv : TyEnv Pickle.pu =
 	Pickle.convert (TYENV, fn TYENV s => s)
-	(FinMap.pu (TyCon.pu,pu_TyStr))
-
-    val pu_ExplicitTyVarEnv : ExplicitTyVarEnv Pickle.pu =
-	Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s)
-	(FinMap.pu (SyntaxTyVar.pu,Type.pu))
+	(TyCon.Map.puNoShare TyCon.pu pu_TyStr)
 
     val (pu_Env, pu_StrEnv) =
 	let fun EnvToInt (ENV _) = 0
@@ -287,23 +284,16 @@ structure Environments: ENVIRONMENTS =
 		(Pickle.tup4Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv,Pickle.listGen RegVar.pu))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
 		Pickle.con1 STRENV (fn STRENV a => a)
-		(FinMap.pu(StrId.pu,pu_Env))
+		(StrId.Map.puNoShare StrId.pu pu_Env)
 	in Pickle.data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
 			    "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
 	end
 
-    val pu_Context =
-	let fun to (U,E) = CONTEXT{U=U,E=E}
-	    fun from (CONTEXT{U,E}) = (U,E)
-	in Pickle.convert (to,from)
-	    (Pickle.pairGen0(pu_ExplicitTyVarEnv, pu_Env))
-	end
-
     fun layoutSE (STRENV m) =
-      FinMap.layoutMap {start="", finish="",sep=", ", eq=" : "}
+      StrId.Map.layoutMap {start="", finish="",sep=", ", eq=" : "}
       (fn s => PP.LEAF ("structure " ^ StrId.pr_StrId s)) layoutEnv m
 (*
-          let val l = FinMap.Fold (op ::) nil m
+          let val l = StrId.Map.Fold (op ::) nil m
 
 	  fun format_strid strid =
 	        concat ["structure ", StrId.pr_StrId strid, " : "]
@@ -321,10 +311,10 @@ structure Environments: ENVIRONMENTS =
 *)
 
     and layoutTE (TYENV m) =
-      FinMap.layoutMap {start="", finish="",sep=", ", eq=" : "}
+      TyCon.Map.layoutMap {start="", finish="",sep=", ", eq=" : "}
       (fn t => PP.LEAF ("tycon " ^ TyCon.pr_TyCon t)) layoutTystr m
 (*
-          let val l = FinMap.Fold (op ::) nil m
+          let val l = TyCon.Map.Fold (op ::) nil m
 
 	  fun layoutPair (tycon, tystr) =
 	        PP.NODE {start=TyCon.pr_TyCon tycon ^ ":",
@@ -340,7 +330,7 @@ structure Environments: ENVIRONMENTS =
           let
 	    fun layout_id id =
 	      (fn s => PP.LEAF (s ^ Ident.pr_id id))
-	      (case OrderFinMap.lookup m id
+	      (case Ident.Map.lookup m id
 		 of SOME(LONGVARpriv _) => "val "
 		  | SOME(LONGCONpriv _) => "con "
 		  | SOME(LONGEXCONpriv _) => "excon "
@@ -350,7 +340,7 @@ structure Environments: ENVIRONMENTS =
 	      | layoutRng(LONGCONpriv(sigma, _)) = TypeScheme.layout sigma
 	      | layoutRng(LONGEXCONpriv tau) = Type.layout tau
 	  in
-	    OrderFinMap.layoutMap {start="", finish="",sep=", ", eq=" : "} layout_id layoutRng m
+	    Ident.Map.layoutMap {start="", finish="",sep=", ", eq=" : "} layout_id layoutRng m
 	  end
 (*
 	  fun layoutPair(id, rng) =
@@ -456,217 +446,21 @@ structure Environments: ENVIRONMENTS =
 
     in (*local*)
 
-      datatype restricter = Restr of {strids: (strid * restricter) list,
+      datatype restrictor = Restr of {strids: (strid * restrictor) list,
 				      vids: id list, tycons: tycon list}
 	                  | Whole
 
-      fun create_restricter (longids:longids) : restricter =
+      fun create_restrictor (longids:longids) : restrictor =
 	let val {vids, tycons, strids, rest} = split longids
 	in Restr {strids=map (fn strid => (strid,Whole)) strids @
-		         map (fn (strid,rest) => (strid, create_restricter rest)) rest,
+		         map (fn (strid,rest) => (strid, create_restrictor rest)) rest,
 		  vids=vids, tycons=tycons}
 	end
 
     end (*local*)
 
 
-    (*Now a structure for each kind of environment:*)
-
-(*old
-    structure VE = struct
-      (*The type of items associated with identifiers in a VarEnv:*)
-      datatype range = LONGVAR   of TypeScheme
-	             | LONGCON   of TypeScheme
-                     | LONGEXCON of Type            (* MEMO: why LONGxxx? *)
-
-      val empty : VarEnv = VARENV FinMap.empty
-      val bogus = empty
-      val singleton : id * range_private -> VarEnv =
-	    VARENV o FinMap.singleton
-      fun singleton_var (id : Ident.id, sigma : TypeScheme) : VarEnv =
-            singleton (id, LONGVARpriv sigma)
-      fun singleton_con (id : Ident.id, sigma : TypeScheme, ids : id list)
-            : VarEnv = singleton (id, LONGCONpriv (sigma, ids))
-      fun singleton_excon (id : Ident.id, tau : Type) : VarEnv =
-            singleton (id, LONGEXCONpriv tau)
-      val add : VarEnv -> id -> range_private -> VarEnv =
-	    fn VARENV v => fn id => fn range_private =>
-	         VARENV (FinMap.add (id,range_private,v))
-      fun plus (VARENV v, VARENV v') : VarEnv =
-	    VARENV (FinMap.plus (v, v'))
-      fun range_private_to_range (LONGVARpriv sigma) = LONGVAR sigma
-	| range_private_to_range (LONGCONpriv(sigma, _)) = LONGCON sigma
-	| range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
-      fun lookup (VARENV v) id : range option =
-            map_opt range_private_to_range (FinMap.lookup v id)
-                  handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.lookup\n");
-                             let
-                               val st = FinMap.layoutMap{start="{",finish="}",
-                                         eq="", sep= ", "} (fn id => PP.LEAF(Ident.pr_id id))
-                                                         (fn _ => PP.LEAF "")
-                                                         v
-                               val os = TextIO.openOut "madsdebug"
-                             in
-                               TextIO.output(os, PP.flatten1(st));
-                               TextIO.closeOut os
-                             end;
-                             raise Crash.CRASH
-                            )
-
-      fun dom (VARENV m) = FinMap.dom m
-      fun is_empty (VARENV v) = FinMap.isEmpty v
-      fun map (f : range_private -> range_private) (VARENV m) : VarEnv =
-	    VARENV(FinMap.composemap f m)
-      fun eq (VARENV v1, VARENV v2) : bool =
-	    let val finmap_to_sorted_alist =
-		      ListSort.sort
-		        (fn (id1, _) => fn (id2, _) => Ident.< (id1,id2))
-		      o FinMap.list
-		val alist1 = finmap_to_sorted_alist v1
-		val alist2 = finmap_to_sorted_alist v2
-	    in
-	      foldl
-	        (fn (((id1, LONGCONpriv (sigma1, ids1)),
-		     (id2, LONGCONpriv (sigma2, ids2))),
-		     bool) =>
-		      bool andalso
-		      id1 = id2 andalso
-		      TypeScheme.eq (sigma1,sigma2)
-		   | _ => impossible "VE.eq: VE contains non-constructors")
-		  true (BasisCompat.ListPair.zipEq (alist1, alist2))
-		  handle BasisCompat.ListPair.UnequalLengths => false
-	    end
-      fun fold (f : range -> 'a -> 'a)
-      	       (start : 'a)
-	       (VARENV map) : 'a =
-	    FinMap.fold
-	      (fn (range, a) => f (range_private_to_range range) a)
-	        start map
-
-      fun size (VARENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
-
-      fun FoldPRIVATE (f : id * range_private -> 'a -> 'a)
-      		      (start : 'a) (VARENV map) : 'a =
-		        FinMap.Fold (uncurry f) start map
-      fun Fold (f :   id * range -> 'a  -> 'a)
-      	       (start : 'a)
-	       (VARENV map) : 'a =
-	    FinMap.Fold (fn ((id, range), a) =>
-			      f (id, range_private_to_range range) a)
-	      start map
-
-      fun apply (f : (id * range -> unit)) (VARENV map) : unit =
-	    List.app
-	       (fn (id, range_private) =>
-		      f (id, range_private_to_range range_private))
-	          (FinMap.list map)
-
-      (*CEfold f a VE = will crash if there is anything else than
-       constructors in VE; fold f over the constructors in VE.  CEFold
-       is similar*)
-
-      fun CEfold (f : TypeScheme -> 'a -> 'a) : 'a -> VarEnv -> 'a =
-	    fold
-	      (fn range => fn a' =>
-	       (case range of
-		  LONGCON sigma => f sigma a'
-		| _ => impossible "CEfold: VE contains non-constructors"))
-      fun CEFold (f : id * TypeScheme -> 'a -> 'a) : 'a -> VarEnv -> 'a =
-            Fold
-	      (fn (id,range) => fn a =>
-	       (case range of
-		  LONGCON sigma => f (id,sigma) a
-		| _ => impossible "CEFold: VE contains non-constructors"))
-
-      fun close (VE : VarEnv) : VarEnv =
-	    FoldPRIVATE
-	      (fn (id, range_private) => fn VE =>
-	             add VE id
-		       (case range_private of
-			  LONGVARpriv sigma => LONGVARpriv (TypeScheme.close true sigma)
-			| LONGCONpriv (sigma, ids) => LONGCONpriv (TypeScheme.close true sigma, ids)
-			| LONGEXCONpriv tau => LONGEXCONpriv tau))
-	         empty VE
-
-      fun lookup_fellow_constructors (VARENV v) id : id list option =
-	    (case FinMap.lookup v id of
-	       SOME (LONGCONpriv(sigma, ids)) => SOME ids
-	     | _ => NONE)
-                  handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.lookup_fellow_constructors\n");
-                             raise Crash.CRASH
-                            )
-
-
-      fun on (S : Substitution, VE as VARENV m) : VarEnv = VE
-
-      fun restrict (VARENV m,ids) =
-	    VARENV (foldl
-		      (fn (id, m_new) =>
-		       let val r = case FinMap.lookup m id
-				     of SOME r => r
-				      | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
-                                   handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.restrict\n");
-                             raise Crash.CRASH
-                            )
-
-		       in FinMap.add(id,r,m_new)
-		       end) FinMap.empty ids)
-
-      (* Matching *)
-      local
-	fun match_scheme a = StatObject.TypeScheme.match a
-	fun match_type a = StatObject.Type.match a
-
-	fun match_range (LONGVAR sigma1, LONGVAR sigma2) = match_scheme (sigma1, sigma2)
-	  | match_range (LONGCON sigma1, LONGCON sigma2) = match_scheme (sigma1, sigma2)
-	  | match_range (LONGEXCON tau1, LONGEXCON tau2) = match_type (tau1, tau2)
-	  | match_range _ = ()
-      in
-	fun match (VE,VE0) = Fold (fn (id,r) => fn () =>
-				   (case lookup VE0 id
-				      of SOME r0 => match_range (r,r0)
-				       | NONE => ())) () VE
-      end
-
-      fun report (f, VARENV m) =
-	    FinMap.reportMapSORTED (Ident.<)
-	      (fn (id, range_private) =>
-	            f (id, range_private_to_range range_private)) m
-      val layout = layoutVE
-      fun tyvars_in_range (LONGVAR sigma) = TypeScheme.tyvars sigma
-	| tyvars_in_range (LONGCON sigma) = TypeScheme.tyvars sigma
-	| tyvars_in_range (LONGEXCON tau) = Type.tyvars tau
-      val tyvars =
-	      fold
-		(fn range => fn T =>
-		       unionTyVarSet (T, tyvars_in_range range))
-		   []
-      val tyvars' =
-	      Fold
-		(fn (id, range) => fn criminals =>
-		       (case tyvars_in_range range of
-			  [] => criminals
-			| tyvars => (id, tyvars) :: criminals))
-		    []
-      fun tynames_in_range (LONGVAR sigma) = TypeScheme.tynames sigma
-	| tynames_in_range (LONGCON sigma) = TypeScheme.tynames sigma
-	| tynames_in_range (LONGEXCON tau) = Type.tynames tau
-
-      val tynames = fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
-
-      fun ids_with_tyvar_in_type_scheme VE tyvar =
-	    Fold (fn (id, range) => fn ids =>
-		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
-		  else ids) [] VE
-
-      val pu = pu_VarEnv
-    end (*VE*)
-
-
-old *)
+    (* Now a structure for each kind of environment: *)
 
     structure VE = struct
       (*The type of items associated with identifiers in a VarEnv:*)
@@ -674,10 +468,10 @@ old *)
 	             | LONGCON   of TypeScheme
                      | LONGEXCON of Type            (* MEMO: why LONGxxx? *)
 
-      val empty : VarEnv = VARENV OrderFinMap.empty
+      val empty : VarEnv = VARENV Ident.Map.empty
       val bogus = empty
       fun singleton (p: id * range_private): VarEnv =
-	    VARENV(OrderFinMap.singleton p)
+	    VARENV(Ident.Map.singleton p)
       fun singleton_var (id : Ident.id, sigma : TypeScheme) : VarEnv =
             singleton (id, LONGVARpriv sigma)
       fun singleton_con (id : Ident.id, sigma : TypeScheme, ids : id list)
@@ -685,26 +479,26 @@ old *)
       fun singleton_excon (id : Ident.id, tau : Type) : VarEnv =
             singleton (id, LONGEXCONpriv tau)
       fun add (ve: VarEnv as VARENV v)(id: id)(range_private: range_private): VarEnv =
-	         VARENV (OrderFinMap.add (id,range_private,v))
+	         VARENV (Ident.Map.add (id,range_private,v))
       fun plus (VARENV v, VARENV v') : VarEnv =
           ((*if Compiler.Profile.getTimingMode() then
-             let fun size m = List.length(OrderFinMap.list m)
+             let fun size m = List.length(Ident.Map.list m)
              in
                  TextIO.output(TextIO.stdOut, concat["plus(",Int.toString(size v), ", ",
                                                              Int.toString(size v'),")\n"])
              end
            else ();*)
-           VARENV (OrderFinMap.plus (v, v'))
+           VARENV (Ident.Map.plus (v, v'))
          )
       fun range_private_to_range (LONGVARpriv sigma) = LONGVAR sigma
 	| range_private_to_range (LONGCONpriv(sigma, _)) = LONGCON sigma
 	| range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
       fun lookup (VARENV v) id : range option =
-            map_opt range_private_to_range (OrderFinMap.lookup v id)
+            map_opt range_private_to_range (Ident.Map.lookup v id)
                   handle Crash.CRASH  =>
                             (TextIO.output(TextIO.stdOut, "Environments.lookup\n");
                              let
-                               val st = OrderFinMap.layoutMap{start="{",finish="}",
+                               val st = Ident.Map.layoutMap{start="{",finish="}",
                                          eq="", sep= ", "} (fn id => PP.LEAF(Ident.pr_id id))
                                                          (fn _ => PP.LEAF "")
                                                          v
@@ -716,15 +510,15 @@ old *)
                              raise Crash.CRASH
                             )
 
-      fun dom (VARENV m) = EqSet.fromList(OrderFinMap.dom m)
-      fun is_empty (VARENV v) = OrderFinMap.isEmpty v
+      fun dom (VARENV m) = EqSet.fromList(Ident.Map.dom m)
+      fun is_empty (VARENV v) = Ident.Map.isEmpty v
       fun map (f : range_private -> range_private) (VARENV m) : VarEnv =
-	    VARENV(OrderFinMap.composemap f m)
+	    VARENV(Ident.Map.composemap f m)
       fun eq (VARENV v1, VARENV v2) : bool =
 	    let val finmap_to_sorted_alist =
 		      ListSort.sort
 		        (fn (id1, _) => fn (id2, _) => Ident.< (id1,id2))
-		      o OrderFinMap.list
+		      o Ident.Map.list
 		val alist1 = finmap_to_sorted_alist v1
 		val alist2 = finmap_to_sorted_alist v2
 	    in
@@ -742,19 +536,19 @@ old *)
       fun fold (f : range -> 'a -> 'a)
       	       (start : 'a)
 	       (VARENV map) : 'a =
-	    OrderFinMap.fold
+	    Ident.Map.fold
 	      (fn (range, a) => f (range_private_to_range range) a)
 	        start map
 
-      fun size (VARENV v1) : int = OrderFinMap.fold (fn (_, a) => a + 1) 0 v1
+      fun size (VARENV v1) : int = Ident.Map.fold (fn (_, a) => a + 1) 0 v1
 
       fun FoldPRIVATE (f : id * range_private -> 'a -> 'a)
       		      (start : 'a) (VARENV map) : 'a =
-		        OrderFinMap.Fold (uncurry f) start map
+		        Ident.Map.Fold (uncurry f) start map
       fun Fold (f :   id * range -> 'a  -> 'a)
       	       (start : 'a)
 	       (VARENV map) : 'a =
-	    OrderFinMap.Fold (fn ((id, range), a) =>
+	    Ident.Map.Fold (fn ((id, range), a) =>
 			      f (id, range_private_to_range range) a)
 	      start map
 
@@ -762,7 +556,7 @@ old *)
 	    List.app
 	       (fn (id, range_private) =>
 		      f (id, range_private_to_range range_private))
-	          (OrderFinMap.list map)
+	          (Ident.Map.list map)
 
       (*CEfold f a VE = will crash if there is anything else than
        constructors in VE; fold f over the constructors in VE.  CEFold
@@ -792,7 +586,7 @@ old *)
 	         empty VE
 
       fun lookup_fellow_constructors (VARENV v) id : id list option =
-	    (case OrderFinMap.lookup v id of
+	    (case Ident.Map.lookup v id of
 	       SOME (LONGCONpriv(sigma, ids)) => SOME ids
 	     | _ => NONE)
                   handle Crash.CRASH  =>
@@ -806,7 +600,7 @@ old *)
       fun restrict (VARENV m,ids) =
 	    VARENV (foldl
 		      (fn (id, m_new) =>
-		       let val r = case OrderFinMap.lookup m id
+		       let val r = case Ident.Map.lookup m id
 				     of SOME r => r
 				      | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
                                    handle Crash.CRASH  =>
@@ -814,8 +608,8 @@ old *)
                              raise Crash.CRASH
                             )
 
-		       in OrderFinMap.add(id,r,m_new)
-		       end) OrderFinMap.empty ids)
+		       in Ident.Map.add(id,r,m_new)
+		       end) Ident.Map.empty ids)
 
       (* Matching *)
       local
@@ -834,14 +628,10 @@ old *)
       end
 
       fun report (f, VARENV m) =
-          let
-            val l = OrderFinMap.list(m)
-            val m = FinMap.fromList l
-          in
-	    FinMap.reportMapSORTED (Ident.<)
+	  Ident.Map.reportMap
 	      (fn (id, range_private) =>
-	            f (id, range_private_to_range range_private)) m
-          end
+	          f (id, range_private_to_range range_private)) m
+
       val layout = layoutVE
       fun tyvars_in_range (LONGVAR sigma) = TypeScheme.tyvars sigma
 	| tyvars_in_range (LONGCON sigma) = TypeScheme.tyvars sigma
@@ -909,21 +699,21 @@ old *)
     (*Type environments*)
 
     structure TE = struct
-      val empty : TyEnv = TYENV FinMap.empty
+      val empty : TyEnv = TYENV TyCon.Map.empty
       val bogus = empty
-      val singleton : tycon * TyStr -> TyEnv = TYENV o FinMap.singleton
-      fun plus (TYENV t, TYENV t') : TyEnv = TYENV (FinMap.plus (t, t'))
-      fun lookup (TYENV m) tycon : TyStr option = FinMap.lookup m tycon
-      fun dom (TYENV map) = FinMap.dom map
+      val singleton : tycon * TyStr -> TyEnv = TYENV o TyCon.Map.singleton
+      fun plus (TYENV t, TYENV t') : TyEnv = TYENV (TyCon.Map.plus (t, t'))
+      fun lookup (TYENV m) tycon : TyStr option = TyCon.Map.lookup m tycon
+      fun dom (TYENV map) = EqSet.fromList(TyCon.Map.dom map)
       fun map (f : TyStr -> TyStr) (TYENV m) : TyEnv =
-	    TYENV (FinMap.composemap f m)
+	    TYENV (TyCon.Map.composemap f m)
       fun fold (f : TyStr -> 'a -> 'a) (start : 'a) (TYENV map) : 'a =
-	    FinMap.fold (uncurry f) start map
+	    TyCon.Map.fold (uncurry f) start map
       fun Fold (f : tycon * TyStr -> 'a -> 'a) (start : 'a) (TYENV map)
-	    : 'a = FinMap.Fold (uncurry f) start map
+	    : 'a = TyCon.Map.Fold (uncurry f) start map
       fun apply (f : (tycon * TyStr -> unit)) (TYENV map) : unit =
-	    List.app f (FinMap.list map)
-      fun size (TYENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
+	    List.app f (TyCon.Map.list map)
+      fun size (TYENV v1) : int = TyCon.Map.fold (fn (_, a) => a + 1) 0 v1
 
       (*equality_maximising_realisation TE = a realisation that maps all
        tynames in TE that have been found to respect equality to fresh
@@ -1027,26 +817,18 @@ old *)
 
       local
 	fun reportCE (VARENV v) =
-          let
-            val l = OrderFinMap.list v
-            val v = FinMap.fromList l
-          in
-	      FinMap.reportMapSORTED
-		Ident.<
-		  (fn (id, range_private) =>
-			(case range_private of
-			   LONGCONpriv (sigma, ids) =>
-			     Report.line ("con " ^ Ident.pr_id id ^ " : "
-					  ^ TypeScheme.pretty_string
-					      (StatObject.newTVNames ()) sigma)
-			 | _ => impossible "reportCE"))
-		    v
-
-          end
+	    Ident.Map.reportMap
+		(fn (id, range_private) =>
+		    (case range_private of
+			 LONGCONpriv (sigma, ids) =>
+			 Report.line ("con " ^ Ident.pr_id id ^ " : "
+				      ^ TypeScheme.pretty_string
+					    (StatObject.newTVNames ()) sigma)
+		       | _ => impossible "reportCE"))
+		v
       in
 	fun report {tyEnv=TYENV map, bindings} =
-	      FinMap.reportMapSORTED
-		TyCon.<
+	      TyCon.Map.reportMap
 		  (fn (tycon, TYSTR {theta, VE as (VARENV v)}) =>
 		   let
 		     val names = StatObject.newTVNames()
@@ -1055,7 +837,7 @@ old *)
 		     val vars' = (case vars of "" => "" | _ => vars ^ " ")
 		   in
 		     Report.line
-		       (if OrderFinMap.isEmpty v then
+		       (if Ident.Map.isEmpty v then
 			  "type " ^ vars' ^ TyCon.pr_TyCon tycon
 			  ^ (if bindings then " = " ^ body else "")
 			else
@@ -1073,25 +855,25 @@ old *)
 
 
     structure SE = struct
-      val empty : StrEnv = STRENV FinMap.empty
-      val singleton : strid * Env -> StrEnv = STRENV o FinMap.singleton
+      val empty : StrEnv = STRENV StrId.Map.empty
+      val singleton : strid * Env -> StrEnv = STRENV o StrId.Map.singleton
       fun plus (STRENV s, STRENV s') : StrEnv =
-	    STRENV(FinMap.plus(s, s'))
+	    STRENV(StrId.Map.plus(s, s'))
       fun lookup (STRENV map) (strid : strid) : Env option =
-	    FinMap.lookup map strid
-      fun dom (STRENV map) = FinMap.dom map
-      fun is_empty (STRENV m) = FinMap.isEmpty m
+	    StrId.Map.lookup map strid
+      fun dom (STRENV map) = EqSet.fromList(StrId.Map.dom map)
+      fun is_empty (STRENV m) = StrId.Map.isEmpty m
       fun fold (f : Env -> 'a -> 'a) (start : 'a) (STRENV map) : 'a =
-	    FinMap.fold (uncurry f) start map
+	    StrId.Map.fold (uncurry f) start map
       fun Fold (f : strid * Env -> 'a -> 'a) (start : 'a) (STRENV map) : 'a =
-	    FinMap.Fold (uncurry f) start map
+	    StrId.Map.Fold (uncurry f) start map
       fun apply (f : strid * Env -> unit) (STRENV map) : unit =
-	    List.app f (FinMap.list map)
+	    List.app f (StrId.Map.list map)
       fun map (f : Env -> Env) (STRENV map) =
-	    STRENV (FinMap.composemap f map)
-      fun report (f, STRENV m) = FinMap.reportMapSORTED (StrId.<) f m
+	    STRENV (StrId.Map.composemap f map)
+      fun report (f, STRENV m) = StrId.Map.reportMap f m
 
-      fun size (STRENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
+      fun size (STRENV v1) : int = StrId.Map.fold (fn (_, a) => a + 1) 0 v1
 
       (*since SE.tyvars and E.tyvars are mutually recursive, E.tyvars is defined
        in structure SE rather than structure E.  Similarly with tynames:*)
@@ -1636,22 +1418,26 @@ old *)
 
       (* Restriction *)
       local
-	fun restr_E (E,Whole) = E
-	  | restr_E (E,Restr{strids,vids,tycons}) =
+	fun restr_E (p, E, Whole) = E   (* p: preserve_all_vids *)
+	  | restr_E (p, E, Restr{strids,vids,tycons}) =
 	  let val (SE,TE,VE,R) = un E
   	      val SE' = foldl (fn ((strid,restr), SEnew) =>
 				    let val E = (case SE.lookup SE strid
-						   of SOME E => restr_E(E,restr)
+						   of SOME E => restr_E(p,E,restr)
 						    | NONE => impossible "restrictE: strid not in env.")
 				    in SE.plus (SEnew, SE.singleton (strid,E))
 				    end) SE.empty strids
  	      val TE' = TE.restrict (TE, tycons)
-	      val VE' = VE.restrict (VE, vids)
+	      val VE' = if p then VE else VE.restrict (VE, vids)
               val R' = nil
 	  in mk (SE',TE',VE',R')
 	  end
       in
-	fun restrict (E,longids) = restr_E(E,create_restricter longids)
+        fun restrict (E,longids) =
+            restr_E (false,E,create_restrictor longids)
+
+        fun restrict_preservecon (E,longids) =
+            restr_E (true,E,create_restrictor longids)
       end
 
       (* Matching *)
@@ -1676,23 +1462,23 @@ old *)
 
     structure C = struct
       (*ExplicitTyVarEnv*)
-      val U_empty = EXPLICITTYVARENV FinMap.empty
+      val U_empty = EXPLICITTYVARENV ExplicitTyVarMap.empty
       fun plus_U' (CONTEXT {U = EXPLICITTYVARENV U,E},
 		   ExplicitTyVars : ExplicitTyVar list) : TyVar list * Context =
 	    let val (l,U) = foldr (fn (ExplicitTyVar, (l,m)) =>
 				   let val tv = TyVar.from_ExplicitTyVar ExplicitTyVar
 				       val ty = Type.from_TyVar tv
-				   in (tv::l, FinMap.add (ExplicitTyVar, ty, m))
+				   in (tv::l, ExplicitTyVarMap.add (ExplicitTyVar, ty, m))
 				   end) ([], U) ExplicitTyVars
 	    in
 	      (l, CONTEXT {U=EXPLICITTYVARENV U, E=E})
 	    end
       fun plus_U a = #2 (plus_U' a)
       fun to_U (CONTEXT {U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
-	    EqSet.list(FinMap.dom m)
+	                                             ExplicitTyVarMap.dom m
       fun to_R (CONTEXT{E,...}) = E.to_R E
       fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
-	  FinMap.lookup m ExplicitTyVar
+	  ExplicitTyVarMap.lookup m ExplicitTyVar
             handle Crash.CRASH  =>
                             (TextIO.output(TextIO.stdOut, "Environments.ExplicitTyVar_lookup\n");
                              raise Crash.CRASH
@@ -1804,8 +1590,8 @@ old *)
 		  val b = DecGrammar.expansive harmless_con exp
 		in
 		  foldr
-		    (fn (id, m) => FinMap.add (id, b, m))
-		       FinMap.empty
+		    (fn (id, m) => Ident.Map.add (id, b, m))
+		       Ident.Map.empty
 		         (dom_pat (C,pat,false))
 		end
 	    in
@@ -1814,7 +1600,7 @@ old *)
 		 | PLAINvalbind (_, pat, exp, SOME valbind) =>
 		  let val m1 = makemap pat exp
 		      val m2 = isExpansiveId valbind
-		  in FinMap.mergeMap (fn (b1, b2) => raise BoundTwice VE) m1 m2
+		  in Ident.Map.mergeMap (fn (b1, b2) => raise BoundTwice VE) m1 m2
 		  end
 		 | RECvalbind (i, valbind) => isExpansiveId valbind
 	    end
@@ -1824,7 +1610,7 @@ old *)
 	  (* isVar is true iff id is a variable in dom VE *)
 	  fun remake isVar id (sigma : TypeScheme) : TypeScheme =
 	    let val isExp =
-	         (case FinMap.lookup isExpansiveId_map id
+	         (case Ident.Map.lookup isExpansiveId_map id
 		    of NONE => false
 		     | SOME b => b
                  )
@@ -1837,44 +1623,45 @@ old *)
 	    end
 
 	  val VARENV m = VE
-	  val m = OrderFinMap.Fold
+	  val m = Ident.Map.Fold
 	     (fn ((id, range), m) =>
 	      case range
 		of LONGVARpriv sigma =>
 		  let val sigma = remake true id sigma
-		  in OrderFinMap.add (id, LONGVARpriv sigma, m)
+		  in Ident.Map.add (id, LONGVARpriv sigma, m)
 		  end
 		 | LONGCONpriv (sigma, cons) =>
 		  let val sigma = remake false id sigma
-		  in OrderFinMap.add (id, LONGCONpriv (sigma, cons), m)
+		  in Ident.Map.add (id, LONGCONpriv (sigma, cons), m)
 		  end
-		 | LONGEXCONpriv tau => OrderFinMap.add (id, LONGEXCONpriv tau, m))
-	     OrderFinMap.empty m
+		 | LONGEXCONpriv tau => Ident.Map.add (id, LONGEXCONpriv tau, m))
+	     Ident.Map.empty m
 	in
 	  VARENV m
 	end (*let*) handle BoundTwice VE => VE
       end (*local exception BoundTwice*)
 
-      val pu = Pickle.comment "Environments.C.pu" pu_Context
     end (*C*)
 
 
     (*constructor_map --- see comment in signature*)
 
-    type constructor_map = (id, TypeScheme) FinMap.map
+    type constructor_map = TypeScheme Ident.Map.map
 
     structure constructor_map = struct
-      val empty = FinMap.empty : constructor_map
+      val empty = Ident.Map.empty : constructor_map
       fun add id sigma constructor_map =
-            FinMap.add (id, sigma, constructor_map)
+            Ident.Map.add (id, sigma, constructor_map)
       fun in_dom id constructor_map =
-            EqSet.member id (FinMap.dom constructor_map)
+          case Ident.Map.lookup constructor_map id of
+              SOME _ => true
+            | NONE => false
       fun to_VE (constructor_map : constructor_map) : VarEnv =
 	    let val fellow_constructors =
-		      (ListSort.sort (fn x => fn y => Ident.< (x,y)) o EqSet.list o FinMap.dom)
+		      (ListSort.sort (fn x => fn y => Ident.< (x,y)) o Ident.Map.dom)
 			constructor_map
 	    in
-	      FinMap.Fold
+	      Ident.Map.Fold
 		(fn ((id,sigma), VE) =>
 		      VE.add VE id (LONGCONpriv (sigma, fellow_constructors)))
 		  VE.empty

@@ -19,30 +19,29 @@ in
      MODCODE_MINI.sml
   end
 
-  local open Basics 
-  in INT_MODULES.sml 
+  local open Basics
+  in INT_MODULES.sml
      MANAGER.sig
   end
 
   local open Pickle CompilerObjects
-  in local open Tools 
-     in ../Compiler/COMPILE_BASIS.sml 
+  in local open Tools
+     in ../Compiler/COMPILE_BASIS.sml
      end
      local open SyntaxObjects Basics
      in EXECUTION.sml
      end
   end
 
-  ../Common/MD5.sml
+  ../Common/md5.mlb
 
   local open Pickle Tools Basics CompilerObjects
-  in local open SyntaxObjects Environment 
+  in local open SyntaxObjects Environment
      in ManagerObjects0.sml
 	ManagerObjects.sml
         local open Edlib in IntModules.sml end
-     end     
+     end
      Scriptlet.sml
      local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
 end
-

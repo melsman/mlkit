@@ -107,4 +107,8 @@ structure Ident: IDENT =
 
     val pu = Pickle.convert (ID, fn ID s => s) Pickle.string
 
-  end;
+    structure Map = OrderFinMap(struct type t = id
+				       val lt = op<
+				end)
+
+  end

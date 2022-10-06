@@ -52,4 +52,7 @@ signature TYCON =
     val is_'it' : tycon -> bool
 
     val pu : tycon Pickle.pu
-  end;
+
+    structure Map : MONO_FINMAP where type dom = tycon
+
+  end

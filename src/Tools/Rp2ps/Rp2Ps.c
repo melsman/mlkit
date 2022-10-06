@@ -26,7 +26,7 @@ int makeRP = 0;               /* if one then make region profile. */
 int makeSP = 0;               /* if one then make stack profile. */
 int printSomeStat = 0;        /* if one then print some statistics. */
 int findPrgPoint = 0;         /* if one then find program point prgPoint. */
-int prgPoint = 0;               
+int prgPoint = 0;
 
 /*------------------------------------------------*
  * We have all global declarations in this module *
@@ -114,7 +114,7 @@ static void printUsage(void) {
   printf("Help screen for graph generator %s.\n", prgName);
   printf("The graph generator creates one or more region graphs in postscript from a profile datafile.\n\n");
   printf("usage: %s [-region [filename]] [-stack [filename]] [-object regionNo [filename]]\n", prgName);
-  printf("       [-sampleMax n] [-sortByTime | -sortBySize]\n"); 
+  printf("       [-sampleMax n] [-sortByTime | -sortBySize]\n");
   printf("       [-vert] [-eps width (in|mm|pt)] \n");
   printf("       [-noOfBands n]\n");
   printf("       [-comment time string] [-mark time]\n");
@@ -126,13 +126,13 @@ static void printUsage(void) {
 /*  printf("      -instance       Profile all regions with respect to number of instances (default output filename is %s%s).\n", rpiName,dotEnd);*/
   printf("      -object         Profile all objects in region regionNo.\n");
   printf("                      (default output filename is %s#%s, where # is regionNo.\n\n", objName, dotEnd);
-			       
+
   printf("      -sampleMax n    Use only n samples (default is %d).\n", SampleMax);
   printf("      -sortByTime     Choose sampleMax samples equally distributed over sample time.\n");
   printf("      -sortBySize     Choose the sampleMax largest samples.\n");
-  if (sortOpt == TAKE_BY_SIZE) 
+  if (sortOpt == TAKE_BY_SIZE)
     printf("                      Default is sortBySize.\n\n");
-  else			       
+  else
     printf("                      Default is sortByTime.\n\n");
   printf("      -vert           Put a vertical line in the region graph for each sample used.\n");
   printf("      -eps            Produce encapsulated postscript with specified width in\n");
@@ -141,15 +141,15 @@ static void printUsage(void) {
   printf("      -noOfBands n    Max. number of bands shown on the region graph. Default (and possible maximum) is %d.\n", MAX_NO_OF_BANDS);
   printf("      -fixedYRange n  Use n (bytes) as fixed range of y-axis, -1 means no fixed range on y-axis.\n");
   printf("      -useTickNo      Use tick numbers on x-axis instead of elapsed time\n\n");
-			       
+
   printf("      -comment t str  Insert comment str (one word only) at time t in the region graph.\n");
   printf("      -mark    t      Insert mark at time t in the region graph.\n\n");
-			       
+
   printf("      -pregion n      Print region n on stdout.\n");
   printf("      -print          Print all profiling data on stdout.\n");
   printf("      -stat           Print some statistics on stdout.\n");
   printf("      -findPrgPoint n Print regions containing program point n.\n\n");
-			       
+
   printf("      -source name    Specify name of profile datafile (default is %s).\n", logName);
   printf("      -name name      Name to print on top of region graph (default is %s).\n\n", name);
   printf("      -interactive    Enter interactive mode.\n");
@@ -241,8 +241,8 @@ static void interactive(void) {
  *----------------------------------------------------------------*/
 static void checkArgs(int argc, char *argv[]) {
 
-  strcpy(prgName, (char *)argv[0]); 
-  strcpy(name, prgName); 
+  strcpy(prgName, (char *)argv[0]);
+  strcpy(name, prgName);
 
   while (--argc > 0) {
     ++argv;    /* next parameter. */
@@ -252,25 +252,25 @@ static void checkArgs(int argc, char *argv[]) {
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(rpName, (char *)argv[0]);     
+	strcpy(rpName, (char *)argv[0]);
       } else
 	strcat(rpName, dotEnd);
       printf("Region profiling to output file %s.\n", rpName);
       match = 1;
       makeRP = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-stack")==0) {
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(stackName, (char *)argv[0]);     
+	strcpy(stackName, (char *)argv[0]);
       } else
 	strcat(stackName, dotEnd);
       printf("Stack profiling to output file %s.\n", stackName);
       match = 1;
       makeSP = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-object")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a region number. */
@@ -282,11 +282,11 @@ static void checkArgs(int argc, char *argv[]) {
 	printf("No region number after the -object switch.\n");
 	printUsage();
       }
-    
+
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(objName, (char *)argv[0]);     
+	strcpy(objName, (char *)argv[0]);
       } else {
 	sprintf(tempStr, "%d", regionNo);
 	strcat(objName, tempStr);
@@ -295,7 +295,7 @@ static void checkArgs(int argc, char *argv[]) {
       printf("Object profiling on region %d to output file %s.\n", regionNo, objName);
       match = 1;
       makeObjP = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-findPrgPoint")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
@@ -310,7 +310,7 @@ static void checkArgs(int argc, char *argv[]) {
       printf("Find program point %d.\n", prgPoint);
       findPrgPoint = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-noOfBands")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
@@ -325,7 +325,7 @@ static void checkArgs(int argc, char *argv[]) {
       noOfBands = min(noOfBands, MAX_NO_OF_BANDS);
       printf("Show %d bands on graph.\n", noOfBands);
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-fixedYRange")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
@@ -342,19 +342,19 @@ static void checkArgs(int argc, char *argv[]) {
       else
 	printf("Use %d bytes as fixed range on y-axis.\n", fixedYRange);
       match = 1;
-    } 
-    
+    }
+
     if (strcmp((char *)argv[0], "-print")==0) {
       printf("Print profile\n");
       printProfile = 1;
       match = 1;
-    } 
-          
+    }
+
     if (strcmp((char *)argv[0], "-interactive")==0) {
       printf("Interactive\n");
       match = 1;
       interact = 1;
-    } 
+    }
 
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
@@ -382,27 +382,27 @@ static void checkArgs(int argc, char *argv[]) {
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(logName, (char *)argv[0]);     
+	strcpy(logName, (char *)argv[0]);
       } else {
 	printf("No filename after the -source switch.\n");
 	printUsage();
       }
       printf("Using input file %s.\n", logName);
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-name")==0) {
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(name, (char *)argv[0]);     
+	strcpy(name, (char *)argv[0]);
       } else {
 	printf("No name after the -name switch.\n");
 	printUsage();
       }
       printf("Using name %s.\n", name);
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0], "-stat")==0) {
       printf("Print some statistics\n");
@@ -436,7 +436,7 @@ static void checkArgs(int argc, char *argv[]) {
       printf("Using encapsulated postscript with width %0.0f pt.\n", epsfwidth);
       eflag = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-comment")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a time. */
@@ -457,7 +457,7 @@ static void checkArgs(int argc, char *argv[]) {
       printf("Inserting comment %s at time %4.2f.\n", (char*)argv[0], commenttime);
       cflag = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-mark")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a time. */
@@ -475,31 +475,31 @@ static void checkArgs(int argc, char *argv[]) {
       printf("Inserting mark at time %4.2f.\n", commenttime);
       mflag = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0], "-vert")==0) {
       printf("Show vertical lines in graph.\n");
       yflag = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0], "-sortByTime")==0) {
       printf("Chose sampleMax samples equally distributed over sample numbers.\n");
       sortOpt = TAKE_BY_SAMPLE_NO;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0], "-sortBySize")==0) {
       printf("Chose the sampleMax largest samples.\n");
       sortOpt = TAKE_BY_SIZE;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0], "-useTickNo")==0) {
       printf("Use tick numbers on x-axis instead of elapsed time.\n");
       useTickNo = 1;
       match = 1;
-    } 
+    }
 
     if (strcmp((char *)argv[0],"-sampleMax")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
@@ -511,9 +511,9 @@ static void checkArgs(int argc, char *argv[]) {
 	printf("No number after the -sampleMax switch.\n");
 	printUsage();
       }
-      printf("Using %d samples.\n", SampleMax);
+      printf("Using a maximum of %d samples.\n", SampleMax);
       match = 1;
-    } 
+    }
 
     if (match == 0) {
       printf("Something wrong with the switches, maybe an unknown switch...\n");
@@ -529,7 +529,7 @@ main(int argc, char *argv[]) {
 
   checkArgs(argc, argv);
 
-  GetTime(); 
+  GetTime();
 
   inputProfile();
 
@@ -541,7 +541,7 @@ main(int argc, char *argv[]) {
     MakeObjectProfile(regionNo);
   if (printProfile)
     PrintProfile();
-  if (printRegion) 
+  if (printRegion)
     PrintRegion(regionNo2);
   if (printSomeStat)
     PrintSomeStat();
@@ -549,6 +549,9 @@ main(int argc, char *argv[]) {
     FindProgramPoint(prgPoint);
   if (interact)
     interactive();
+  if (!printSomeStat) {
+    printf("Available samples: %d (max used is %d)\n", noOfSamples, SampleMax);
+  }
+
   return EXIT_SUCCESS;
 }
-

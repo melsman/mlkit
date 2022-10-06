@@ -32,7 +32,7 @@ structure RegVar :> REGVAR = struct
           SOME f => SOME(f())
         | NONE => NONE
 
-  structure Map = OrderFinMap(struct type T = regvar
-                                     fun lt (a:T) (b:T) = #name a < #name b
+  structure Map = OrderFinMap(struct type t = regvar
+                                     fun lt (a:t, b:t) = #name a < #name b
                               end)
 end

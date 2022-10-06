@@ -6,7 +6,7 @@
 #define __EXCEPTION_H
 
 #include<signal.h>
-
+#include "Region.h"
 #include "String.h"
 
 typedef void (*SignalHandler)(int);
@@ -27,7 +27,7 @@ extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl
 extern Exception* exn_SUBSCRIPT;
 extern Exception* exn_SIZE;
 
-void raise_exn(uintptr_t exn);
+void raise_exn(Context ctx, uintptr_t exn);
 
 extern size_t failNumber;
 

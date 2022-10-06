@@ -67,12 +67,13 @@ functor CreateWriterReader (S : sig
                                   val vectorLength : vector -> int
                                 end) =
   struct
+    fun getCtx () : foreignptr = prim("__get_ctx",())
     open S
     val failexn = Initial.FileSys.filesys_fail
-    fun isreg_ (s : file_desc) : bool = prim("sml_isreg", (s, failexn))
+    fun isreg_ (s : file_desc) : bool = prim("sml_isreg", (getCtx(), s, failexn))
     fun isReg fd = (isreg_ fd) handle Fail s => raiseSys ("isReg " ^ (Int.toString fd)) NONE ""
 
-    fun filesize_ (s : file_desc) : int = prim("sml_filesizefd", (s, failexn))
+    fun filesize_ (s : file_desc) : int = prim("sml_filesizefd", (getCtx(), s, failexn))
     fun fileSize fd = (filesize_ fd) handle Fail s => raiseSys "filesize" NONE ""
     exception ClosedStream = Initial.ClosedStream
 
@@ -219,6 +220,7 @@ functor CreateWriterReader (S : sig
 
 structure Posix :> POSIX =
 struct
+  fun getCtx () : foreignptr = prim("__get_ctx",())
   structure Signal : POSIX_SIGNAL =
   struct
     type signal = int
@@ -402,7 +404,7 @@ struct
 
     fun sysconf (s : string) =
 	let
-	  fun rsys i = (prim ("sml_sysconf", i : int) : int)
+	  fun rsys i = (prim ("sml_sysconf", (getCtx(), i : int)) : int)
 		       handle Overflow => raise OS.SysErr ("Not supported", NONE)
 	in
 	  SysWord.fromInt
@@ -432,7 +434,7 @@ struct
 	       cutime_usec : int,
 	       cstime_sec : int,
 	       cstime_usec : int
-              ) = (prim ("sml_times", ()))
+              ) = (prim ("sml_times", (getCtx())))
 		  handle Overflow =>
 			 raiseSys "Posix.ProcEnv.times" NONE ""
 
@@ -480,7 +482,7 @@ struct
     fun getgroups () =
         let
           val e = OS.SysErr ("Posix.ProcEnv.getgroups", NONE)
-          val (r,l) = prim("sml_getgroups", e : exn) : (int * int list)
+          val (r,l) = prim("sml_getgroups", (getCtx(), e : exn)) : (int * int list)
         in
           if r = ~1 then raiseSys "Posix.ProcEnv.getgroups" NONE "" else l
         end
@@ -583,6 +585,13 @@ struct
     val stdin = Initial.Posix_File_Sys.stdin
     val stdout = Initial.Posix_File_Sys.stdout
     val stderr = Initial.Posix_File_Sys.stderr
+
+    structure FD =
+    struct
+      open Initial.Posix_File_Sys.FD
+      structure A = BitFlags(Initial.Posix_File_Sys.FD)
+      open A
+    end
 
     structure S =
     struct
@@ -801,6 +810,12 @@ struct
       | F_WRLCK
       | F_UNLCK
 
+    structure FD :
+      sig
+        include BIT_FLAGS
+        val cloexec : flags
+      end = FileSys.FD
+
     structure O :
       sig
         include BIT_FLAGS
@@ -822,6 +837,16 @@ struct
 			   end
 
     fun dup f = dupfd {old = f, base = 0}
+
+    fun dup2 {old, new} = let val a = prim ("@sml_dup2", (old : int, new : int)) : int
+                          in if a = ~1 then raiseSys "dup2" NONE "" else ()
+                          end
+
+    fun getfd fd = FD.fromWord (SysWord.fromInt (prim("@sml_getfd", fd : int)))
+
+    fun setfd (fd, flags) = let val a = prim("@sml_setfd", (fd: int, SysWord.toInt (FD.toWord flags)))
+                            in if a = ~1 then raiseSys "setfd" NONE "" else ()
+                            end
 
     fun lseek (fd, p, w) =
         let
@@ -998,7 +1023,7 @@ struct
           val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
           val e = OS.SysErr ("getgrgid: no group with gid = " ^
                              (Int.toString g) ^ " found", NONE)
-          val (n,m,res) = prim("sml_getgrgid", (g : int, s : int, e : exn))
+          val (n,m,res) = prim("sml_getgrgid", (getCtx(), g : int, s : int, e : exn))
                           : (string * string list * int)
           val res' = Error.fromWord(SysWord.fromInt res)
         in
@@ -1010,7 +1035,7 @@ struct
         let
           val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
           val e = OS.SysErr ("getgrnam: no group with groupname = " ^ n ^ " found", NONE)
-          val (g,m,res) = prim("sml_getgrnam", (n : string, s : int, e : exn))
+          val (g,m,res) = prim("sml_getgrnam", (getCtx(), n : string, s : int, e : exn))
                           : (int * string list * int)
           val res' = Error.fromWord(SysWord.fromInt res)
         in
@@ -1022,7 +1047,7 @@ struct
         let
           val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
           val e = OS.SysErr ("getpwnam: no user with username = " ^ n ^ " found", NONE)
-          val (u,g,h,s,res) = prim("sml_getpwnam", (n : string, s : int, e : exn))
+          val (u,g,h,s,res) = prim("sml_getpwnam", (getCtx(), n : string, s : int, e : exn))
                               : (int * int * string * string * int)
           val res' = Error.fromWord(SysWord.fromInt res)
         in
@@ -1034,7 +1059,7 @@ struct
         let
           val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
           val e = OS.SysErr ("getpwuid: no user with uid = " ^ (Int.toString u) ^ " found", NONE)
-          val (n,g,h,s,res) = prim("sml_getpwuid", (u : int, s : int, e : exn))
+          val (n,g,h,s,res) = prim("sml_getpwuid", (getCtx(), u : int, s : int, e : exn))
                               : (string * int * string * string * int)
           val res' = Error.fromWord(SysWord.fromInt res)
         in

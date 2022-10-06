@@ -67,6 +67,8 @@ elabDecBug.sml      ccl ecte
 oh-no.sml           ccl       nobasislib
 oh-no2.sml          ccl       nobasislib
 real_match.sml                nobasislib
+gc0.sml                       nobasislib nooptimiser
+gc01.sml                      nobasislib nooptimiser
 
 (* Tests of some benchmark programs *)
 
@@ -148,6 +150,7 @@ word64.sml
 pickletest.mlb
 packreal.sml
 packreal2.sml
+packreal3.sml
 patricia.sml
 stream.mlb
 natset.sml
@@ -155,3 +158,12 @@ fns.sml
 datatypes.sml
 real64vector.sml
 real64array.sml
+hatch1.sml
+
+export2.sml
+export3.sml
+
+atExit0.sml
+
+stringsz.sml
+with-escape.sml

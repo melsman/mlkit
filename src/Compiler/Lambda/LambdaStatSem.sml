@@ -20,6 +20,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     fun StringTree_to_string st = PP.flatten (PP.format (!Flags.colwidth, st))
     val pr_Type = StringTree_to_string o layoutType
 
+    val pr_TypeList = StringTree_to_string o layoutTypeList
+
     local
         fun f0 separator pp_x [] = ""
           | f0 separator pp_x [x] = pp_x x
@@ -596,7 +598,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                        let val s = ("EXCONprim: " (* ^ Excon.pr_excon excon *))
                                            val ts = unTypeList s (type_e lexp)
                                        in if eq_Types([t],ts) then [CONStype([],tyName_EXN)]
-                                          else die s
+                                          else die (s ^ "; t=" ^ prType t ^ "; ts=" ^ prTypes ts
+                                                    ^ "; excon=" ^ Excon.pr_excon excon)
                                        end
                                       | NONE => die "EXCONprim.Nullary excon applied to arg.")
                       | _ => die "EXCONprim.Wrong number of args")
@@ -626,8 +629,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                             | _ => die "SELECTprim.Wrong number of args.")
            | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
            | DEREFprim {instance} => (* instance: argument type of primitive *)
-             (valid_t env instance;
-              check_t_no_f64 "DEREFprim" instance;
+               (valid_t env instance;
+                check_t_no_f64 "DEREFprim" instance;
                 case lexps
                   of [lexp] => (case instance
                                   of CONStype([t], tyName_REF) =>
@@ -658,8 +661,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                       | _ => die "REFprim.Wrong number of args"
                   end
            | ASSIGNprim {instance} => (* instance: argument type of primitive *)
-             (valid_t env instance;
-              check_t_no_f64 "ASSIGNprim" instance;
+               (valid_t env instance;
+                check_t_no_f64 "ASSIGNprim" instance;
                 case lexps
                   of [lexp1, lexp2] => (case instance
                                           of RECORDtype [CONStype([t], tyName_REF), t'] =>
@@ -676,8 +679,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      of [lexp] => (type_e lexp; nil)
                       | _ => die "DROPprim -- one parameter expected")
            | EQUALprim {instance} => (* instance: argument type of primitive *)
-             (valid_t env instance;
-              case lexps
+               (valid_t env instance;
+                case lexps
                   of [lexp1,lexp2] => (case instance
                                          of RECORDtype [t1,t2] =>
                                            let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)
@@ -812,7 +815,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                                     | _ => die "LET.polymorphic let -- Polymorphism only allowed in FIX.")
                 else (fn _ => ())
 
-              fun check_type_scheme(tyvars, tau, tau') =
+              fun check_type_scheme (tyvars, tau, tau') =
                 (eqType "LET" (tau,tau');
                  check_polymorphism tyvars;
                  tyvars_not_in_env(tyvars, env))
@@ -865,7 +868,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      log "application:\n"; log_st (layoutLambdaExp lexp);
                      die "APP")
                end
-              | _ => die "APP.argument type not arrow")
+              | tl =>
+                ( log "lexp1:\n"
+                ; log_st (layoutLambdaExp lexp1)
+                ; log "env:\n"
+                ; log_st (layout_env env)
+                ; die ("APP.argument type not arrow - type list is " ^ pr_TypeList tl)
+                )
+          )
          | EXCEPTION (excon, typeopt, lexp) =>
               (case typeopt of SOME t => valid_t env t | NONE => ();
                type_lexp (add_excon(excon,typeopt,env)) lexp)

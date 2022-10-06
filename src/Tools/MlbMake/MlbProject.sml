@@ -1,10 +1,10 @@
-functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT = 
+functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 struct
 
-  fun die s = (print ("Die: MlbProject: " ^ s ^ "\n"); raise Fail s) 
+  fun die s = (print ("Die: MlbProject: " ^ s ^ "\n"); raise Fail s)
 
   fun unique_true f = MlbFileSys.unique true f
-  
+
   structure MS =
   struct
 
@@ -20,10 +20,10 @@ struct
         val explode : longbid -> bid list
       end =
     struct
-      type bid = string 
+      type bid = string
       type longbid = bid list
       fun bid s = s
-      val bidCompare = String.compare 
+      val bidCompare = String.compare
       fun pp_bid s = s
       fun longbid (bids:bid list) : longbid = bids
       fun longopen nil = die "empty longbid"
@@ -41,31 +41,18 @@ struct
                   | LONGBIDbexp of Bid.longbid
 
     and bdec = SEQbdec of bdec * bdec
-             | EMPTYbdec 
+             | EMPTYbdec
              | LOCALbdec of bdec * bdec
              | BASISbdec of Bid.bid * bexp
              | OPENbdec of Bid.longbid list
              | ATBDECbdec of atbdec
-             | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
-             | SCRIPTSbdec of atbdec list
+             | MLBFILEbdec of string  (* path.mlb *)
              | ANNbdec of string * bdec
 
     fun supported_annotation s =
         case s of
           "safeLinkTimeElimination" => true
         | _ => false
-
-    fun fold (SEQbdec(a,b))         e bas loc fopen fatbdec fmlb script ann = 
-        fold b (fold a e bas loc fopen fatbdec fmlb script ann)
-             bas loc fopen fatbdec fmlb script ann
-      | fold EMPTYbdec              e bas loc fopen fatbdec fmlb script ann = e
-      | fold (LOCALbdec(a,b))       e bas loc fopen fatbdec fmlb script ann = loc(b,loc(a,e))
-      | fold (BASISbdec (bid,bexp)) e bas loc fopen fatbdec fmlb script ann = bas(bid,bexp,e)
-      | fold (OPENbdec l)           e bas loc fopen fatbdec fmlb script ann = List.foldl fopen e l
-      | fold (ATBDECbdec a)         e bas loc fopen fatbdec fmlb script ann = fatbdec(a,e)
-      | fold (MLBFILEbdec (s,so))   e bas loc fopen fatbdec fmlb script ann = fmlb(s,so,e)
-      | fold (SCRIPTSbdec l)        e bas loc fopen fatbdec fmlb script ann = List.foldl script e l 
-      | fold (ANNbdec (ann',bdec))  e bas loc fopen fatbdec fmlb script ann = ann(ann',bdec,e)
 
   end
 
@@ -75,17 +62,17 @@ struct
   val warn = MlbUtil.warn
   val quot = MlbUtil.quot
 
-  fun has_ext(s: string,ext) = 
-      case OS.Path.ext s of 
+  fun has_ext (s: string,ext) =
+      case OS.Path.ext s of
         SOME ext' => ext = ext'
       | NONE => false
-                    
-  fun member s l = 
+
+  fun member s l =
       let fun m [] = false
             | m (x::xs) = x = s orelse m xs
       in m l
       end
-                     
+
   fun drop_comments (file:string) (l: char list) : char list =
       let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
             | loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
@@ -104,11 +91,11 @@ struct
         if is_symbol c then SOME (c,chs) else NONE
       | lex_symbol nil = NONE
 
-    fun lex_whitesp (all as c::rest) = 
-        if Char.isSpace c then lex_whitesp rest else all 
+    fun lex_whitesp (all as c::rest) =
+        if Char.isSpace c then lex_whitesp rest else all
       | lex_whitesp [] = []
 
-    fun lex_string (c::rest, acc) = 
+    fun lex_string (c::rest, acc) =
         if is_symbol c then (implode(rev acc), c::rest)
         else if Char.isSpace c then (implode(rev acc), rest)
        else lex_string (rest, c::acc)
@@ -116,7 +103,7 @@ struct
 
     val lex_string_lit =
      fn file => fn #"\"" :: rest =>
-       let 
+       let
          fun lp acc =
           fn #"\"" :: rest => SOME (implode (rev acc), rest)
            | c :: rest => lp (c::acc) rest
@@ -136,7 +123,7 @@ struct
                                      SOME (s, chs) => (chs, s :: acc)
                                    | NONE =>
                                      let val (s, chs) = lex_string(chs,[])
-                                     in (chs, s::acc) 
+                                     in (chs, s::acc)
                                      end)
   in
     fun lex file chs : string list = lex0 file (chs,[])
@@ -149,26 +136,26 @@ struct
 
   fun is_mlbfile s =
       has_ext (s,"mlb")
-      
-  fun is_smlfile s = 
+
+  fun is_smlfile s =
       has_ext(s,"sml") orelse has_ext(s,"sig") orelse has_ext(s,"fun")
 
-  fun is_id s = 
+  fun is_id s =
       case explode s of
-        c::cs => Char.isAlpha c 
-                 andalso List.all (fn c => Char.isAlphaNum c 
+        c::cs => Char.isAlpha c
+                 andalso List.all (fn c => Char.isAlphaNum c
                                            orelse c = #"_"
                                            orelse c = #"'") cs
       | _ => false
-             
+
   fun is_valid_path p =
       case String.fields (fn x => x = #"/") p of
         f :: rest => (List.all (fn x => is_id x andalso not (is_mlbfile x orelse is_smlfile x)) rest
-                      andalso (is_id f andalso not (is_mlbfile f orelse is_smlfile f) 
+                      andalso (is_id f andalso not (is_mlbfile f orelse is_smlfile f)
                                orelse f = ""))
       | _ => false
 
-  fun is_keyword s = 
+  fun is_keyword s =
       case s of
         "open" => true
       | "let" => true
@@ -181,19 +168,19 @@ struct
       | "ann" => true
       | _ => false
 
-  local           
+  local
     fun is_fileext s =
         case s of
           "mlb" => true
         | "sml" => true
         | "sig" => true
         | _ => false
-               
+
   in
     fun is_bid s =
         is_id s andalso not (is_keyword s) andalso not (is_fileext s)
-                                                   
-    fun is_longbid s = 
+
+    fun is_longbid s =
         let val fs = String.fields (fn c => c = #".") s
         in if List.all is_bid fs then SOME (MS.Bid.longbid (map MS.Bid.bid fs))
            else NONE
@@ -201,26 +188,26 @@ struct
   end
 
   fun print_ss ss = (print "Tokens: "; app (fn s => print (s ^ " ")) ss; print "\n")
-                    
+
   fun parse_error mlbfile msg = error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg)
-  fun parse_error1 mlbfile (msg, rest: string list) = 
-      case rest of 
+  fun parse_error1 mlbfile (msg, rest: string list) =
+      case rest of
         [] => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached end of file)")
       | s::_ => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached " ^ quot s ^ ")")
-                
+
   fun parse_warn1 mlbfile (msg, rest) =
       warn (concat ["while parsing basis file ", quot mlbfile, " : ", msg,
                     case rest of [] => "(reached end of file)"
                                | s::_ => "(reached " ^ quot s ^ ")"])
-      
-  fun expand mlbfile s = 
-      let 
+
+  fun expand mlbfile s =
+      let
         val implodeRev = implode o rev
         fun resolveVar pathVar =
             case Env.getEnvVal pathVar
              of SOME path => path
               | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
-                        
+
         fun inVar strs cs =
          fn [] => parse_error mlbfile "malformed path-var"
           | #")" :: cc =>
@@ -228,7 +215,7 @@ struct
           | cc as (#"/" :: _) =>
             inLit (resolveVar (implodeRev cs)::strs) [] cc
           | c::cc => inVar strs (c::cs) cc
-                     
+
         and inLit strs cs =
          fn [] => concat (rev (implodeRev cs::strs))
           | #"$" :: #"(" :: cc => inVar (implodeRev cs::strs) [] cc
@@ -243,41 +230,41 @@ struct
         SOME(bdec',ss) => SOME(MS.SEQbdec(bdec,bdec'),ss)
       | NONE => SOME(bdec,ss)
 
-  and parse_bexp mlbfile (ss:string list) : MS.bexp * string list =           
+  and parse_bexp mlbfile (ss:string list) : MS.bexp * string list =
       case ss of
         nil => parse_error1 mlbfile ("missing basis expression", ss)
-      | "let" :: ss => 
-        let 
+      | "let" :: ss =>
+        let
           fun parse_rest(bdec,ss) =
-              case ss of 
-                "in" :: ss => 
+              case ss of
+                "in" :: ss =>
                 let val (bexp,ss) = parse_bexp mlbfile ss
-                in 
-                  case ss of 
+                in
+                  case ss of
                     "end" :: ss => (MS.LETbexp(bdec,bexp),ss)
                   | _ => parse_error1 mlbfile ("missing 'end'", ss)
                 end
               | _ => parse_error1 mlbfile ("missing 'in'", ss)
-        in case parse_bdec_opt mlbfile ss of 
+        in case parse_bdec_opt mlbfile ss of
              NONE => parse_rest(MS.EMPTYbdec,ss)
            | SOME(bdec,ss) => parse_rest(bdec,ss)
         end
-      | "bas" :: ss => 
-        let 
+      | "bas" :: ss =>
+        let
           fun parse_rest(bdec,ss) =
               case ss of
                 "end" :: ss => (MS.BASbexp bdec, ss)
               | _ => parse_error1 mlbfile ("missing 'end'", ss)
         in
-          case parse_bdec_opt mlbfile ss of 
+          case parse_bdec_opt mlbfile ss of
             NONE => parse_rest(MS.EMPTYbdec,ss)
           | SOME(bdec,ss) => parse_rest(bdec,ss)
         end
-      | s :: ss' => 
+      | s :: ss' =>
         (case is_longbid s of
            SOME longbid => (MS.LONGBIDbexp longbid,ss')
          | NONE => parse_error1 mlbfile ("invalid basis expression", ss))
-        
+
   and parse_ann mlbfile ss =
       let
         fun lp (anns, s::ss) =
@@ -291,23 +278,23 @@ struct
       in
         lp ([], ss)
       end
-      
+
   and parse_bdec_opt mlbfile ss =
       case ss of
-        "local" :: ss => 
-        let 
+        "local" :: ss =>
+        let
           fun parse_rest'(bdec,bdec',ss) =
-              case ss of 
+              case ss of
                 "end" :: ss => parse_bdec_more mlbfile (MS.LOCALbdec(bdec,bdec'),ss)
               | _ => parse_error1 mlbfile ("I expect an 'end'", ss)
           fun parse_rest(bdec,ss) =
-              case ss of 
-                "in" :: ss => 
-                (case parse_bdec_opt mlbfile ss of 
+              case ss of
+                "in" :: ss =>
+                (case parse_bdec_opt mlbfile ss of
                    NONE => parse_rest'(bdec,MS.EMPTYbdec,ss)
                  | SOME(bdec',ss) => parse_rest'(bdec,bdec',ss))
               | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
-        in case parse_bdec_opt mlbfile ss of 
+        in case parse_bdec_opt mlbfile ss of
              NONE => parse_rest(MS.EMPTYbdec,ss)
            | SOME(bdec,ss) => parse_rest(bdec,ss)
         end
@@ -319,36 +306,25 @@ struct
              parse_error1 mlbfile ("I expect a basis identifier", ss)
            else
              (case ss of
-                "=" :: ss => 
+                "=" :: ss =>
                 let val (bexp,ss) = parse_bexp mlbfile ss
                 in parse_bdec_more mlbfile (MS.BASISbdec(MS.Bid.bid bid,bexp),ss)
                 end
               | _ => parse_error1 mlbfile ("missing '='", ss)))
-      | "open" :: ss =>         
-        let 
+      | "open" :: ss =>
+        let
           fun readBids (nil,acc) = (rev acc, nil)
-            | readBids (ss_all as (s::ss),acc) = 
+            | readBids (ss_all as (s::ss),acc) =
               (case is_longbid s of
                  SOME longbid => readBids(ss,longbid::acc)
                | NONE => (rev acc, ss_all))
           val (longbids,ss) = readBids (ss,nil)
         in parse_bdec_more mlbfile (MS.OPENbdec longbids,ss)
         end
-      | "scripts" :: ss => 
-        let 
-          fun readSrcs (nil,_) = 
-              parse_error1 mlbfile ("Missing 'end' in 'scripts ... end' at end of file",nil)
-            | readSrcs ("end"::ss,acc) = (rev acc,ss)
-            | readSrcs (ss_all as (s::ss),acc) =                              
-              if is_smlfile s then readSrcs(ss,s::acc)
-              else parse_error1 mlbfile ("Expecting src-file or 'end' in 'scripts ... end' construct",ss)
-          val (srcs,ss) = readSrcs (ss,nil)
-        in parse_bdec_more mlbfile (MS.SCRIPTSbdec srcs,ss)
-        end
       | "ann" :: ss =>
-        let 
-          fun parse_rest'(anns,bdec,ss) =
-              case ss of 
+        let
+          fun parse_rest' (anns,bdec,ss) =
+              case ss of
                 "end" :: ss =>
                 parse_bdec_more
                     mlbfile
@@ -358,71 +334,64 @@ struct
                            anns,
                      ss)
               | _ => parse_error1 mlbfile ("I expect an 'end'", ss)
-          fun parse_rest(anns,ss) =
-              case ss of 
-                "in" :: ss => 
-                (case parse_bdec_opt mlbfile ss of 
+          fun parse_rest (anns,ss) =
+              case ss of
+                "in" :: ss =>
+                (case parse_bdec_opt mlbfile ss of
                    NONE => parse_rest'(anns,MS.EMPTYbdec,ss)
                  | SOME(bdec,ss) => parse_rest'(anns,bdec,ss))
               | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
-        in case parse_ann mlbfile ss of 
+        in case parse_ann mlbfile ss of
              (anns,ss) => parse_rest(anns,ss)
         end
       | s :: ss =>
         if is_smlfile s then parse_bdec_more mlbfile (MS.ATBDECbdec (expand mlbfile s),ss)
-        else 
-          if is_mlbfile s then 
-            let val (opt,ss) =
-                    (case ss of
-                       "scriptpath" :: ss =>
-                       (case ss of
-                          p :: ss' => 
-                          if is_valid_path p then (SOME p,ss')
-                          else parse_error1 mlbfile ("invalid path following SCRIPTPATH keyword",ss)
-                        | _ => parse_error1 mlbfile ("missing path to follow SCRIPTPATH keyword",ss))
-                     | _ => (NONE,ss))
-              val mlbfile2 = expand mlbfile s
+        else
+          if is_mlbfile s then
+            let val mlbfile2 = expand mlbfile s
               (*val () = print ("File " ^ s ^ " expands to " ^ mlbfile2 ^ " in " ^ mlbfile ^"\n") *)
-            in parse_bdec_more mlbfile (MS.MLBFILEbdec (mlbfile2,opt),ss)
+            in parse_bdec_more mlbfile (MS.MLBFILEbdec mlbfile2,ss)
             end
           else NONE
       | nil => NONE
-               
+
   fun fromFile' (filename:string) : string option =
       SOME(MlbFileSys.fromFile filename) handle _ => NONE
-                                                     
-  fun parse (mlbfile: string) : MS.bdec =
-      if not (has_ext(mlbfile, "mlb")) then 
-        error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")         
+
+  fun parse (mlbfile: string) : MS.bdec * string =
+      if not (has_ext(mlbfile, "mlb")) then
+        error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")
       else
         let (* val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n") *)
+          val mlbcontent = MlbFileSys.fromFile mlbfile
+          val mlbhash = MD5.fromString mlbcontent
           val ss = (lex mlbfile o drop_comments mlbfile o
-                    explode o MlbFileSys.fromFile) mlbfile
+                    explode) mlbcontent
         (* val _ = print_ss ss *)
-          val bdec = 
+          val bdec =
               case parse_bdec_opt mlbfile ss of
                 SOME (bdec,nil) => bdec
               | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
               | NONE => MS.EMPTYbdec
         in (* print ("Successfully parsed " ^ mlbfile ^ "\n"); *)
-           bdec
+           (bdec, mlbhash)
         end
         handle IO.Io {name=io_s,cause,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
-                                              
+
 
   (* Support for writing dependency information to disk in .d-files. *)
 
-  fun path_concat dir file = 
+  fun path_concat dir file =
       (if OS.Path.isAbsolute file then file
        else OS.Path.concat(dir,file))
       handle OS.Path.Path => die "Path: path_concat"
-                                              
-  structure DepEnv = 
+
+  structure DepEnv =
   struct
-    type L = string list        
+    type L = string list
     datatype D = D of L * (MS.Bid.bid * D) list
     fun lookup d longbid : D option =
-        let 
+        let
           fun look nil _ = NONE
             | look ((x,d)::xs) y = if x = y then SOME d else look xs y
           fun lookD _ nil = die "empty longbid"
@@ -434,7 +403,7 @@ struct
         in lookD d (MS.Bid.explode longbid)
         end
     fun plus (D(L1,M1),D(L2,M2)) = D(L1 @ L2, M1 @ M2)
-                                   
+
     fun getL (D(L,_)) : L = L
     fun singleBidEntry e = D(nil,[e])
     fun singleFile f = D([f],nil)
@@ -445,17 +414,17 @@ struct
         in depMap (path_concat dir) dep
         end
   end
-  
+
   fun timeMax(t1,t2) = if Time.<(t1,t2) then t2 else t1
 
-  fun maybe_create_dir d : unit = 
+  fun maybe_create_dir d : unit =
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
         if OS.FileSys.isDir d then ()
         else error ("The file " ^ quot d ^ " is not a directory")
-      else ((OS.FileSys.mkDir d;()) handle _ => 
-         error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
+      else ((OS.FileSys.mkDir d;()) handle _ =>
+         error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^
                 OS.FileSys.getDir()))
-           
+
   fun maybe_create_dirs path dirs =
       let val dirs = String.tokens (fn c => c = #"/") dirs
         fun append_path "" d = d
@@ -466,25 +435,25 @@ struct
                               end
       in loop(path, dirs)
       end
-      
-  fun maybe_create_depdir path = 
+
+  fun maybe_create_depdir path =
       maybe_create_dirs path (!depDir)
-      
+
   fun writeDep pathfile s =
       (let val os = TextIO.openOut pathfile
        in (  TextIO.output(os,s)
            ; TextIO.closeOut os
           (* ; print ("File " ^ pathfile ^ " updated\n") *)
           ) handle ? => (TextIO.closeOut os; raise ?)
-       end handle _ => error("Failed to write dependencies to file " ^ quot pathfile))             
-      
+       end handle _ => error("Failed to write dependencies to file " ^ quot pathfile))
+
   fun fileNewer t file : bool =
       Time.>(OS.FileSys.modTime file,t) handle _ => false
-                                                        
+
   local
     fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
                      handle OS.Path.Path => die "mkAbs"
-                     
+
   in
     fun subtractDir _ "" = (fn p => p)
       | subtractDir hasLink dir =
@@ -499,15 +468,15 @@ struct
                 end
           end
   end
-  
+
   local
-    fun hasLinks d = 
-        let 
-          val islink = fn x => (OS.FileSys.isLink x handle OS.SysErr (s,e) => 
+    fun hasLinks d =
+        let
+          val islink = fn x => (OS.FileSys.isLink x handle OS.SysErr (s,e) =>
                                                            error ("Couldn't get status on " ^ x ^" : " ^ (Option.getOpt (Option.map OS.errorMsg e, ""))))
           val {arcs,vol,isAbs} = OS.Path.fromString d
         in
-          case arcs 
+          case arcs
            of [] => false
             | (x::xr) => #2(List.foldl (fn (x,(y,b)) =>
                                            let val y' = OS.Path.concat (y,x) handle OS.Path.Path => die "Path: hasLinks"
@@ -520,14 +489,14 @@ struct
         end
   in
     fun maybeWriteDep smlfile (modTimeMlbFileMax:Time.time) D : unit =
-        let 
+        let
           val {dir,file} = OS.Path.splitDirFile smlfile
-          infix ## 
+          infix ##
           val op ## = OS.Path.concat
           val file = (dir ## (!depDir) ## (file ^ ".d")) handle OS.Path.Path => die "Path: maybeWriteDep"
         in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .d-file if the current .d-file *)
            else                                                  (*  is newer than the mlb-file or any imported mlb-file. *)
-             let 
+             let
                val L = DepEnv.getL D
                val L = map (subtractDir (hasLinks dir) dir) L
                val s = concat (map (fn s => s ^ " ") L)
@@ -542,7 +511,7 @@ struct
              end
         end
   end
-  
+
   local
         val op + = DepEnv.plus
         type D = DepEnv.D
@@ -566,8 +535,8 @@ struct
               | MS.LONGBIDbexp longbid =>
                     (case DepEnv.lookup D longbid of
                          SOME D => (D,A)
-                       | NONE => error ("The long basis identifier " 
-                                        ^ MS.Bid.pp_longbid longbid 
+                       | NONE => error ("The long basis identifier "
+                                        ^ MS.Bid.pp_longbid longbid
                                         ^ " is undefined"))
 
         and dep_bdec (D:D) (A:A) bdec : D * A =
@@ -588,12 +557,12 @@ struct
                     in (DepEnv.singleBidEntry (bid,D'), A)
                     end
               | MS.OPENbdec longbids =>
-                    let val D' = 
-                        foldl (fn (longbid,Dacc) => 
+                    let val D' =
+                        foldl (fn (longbid,Dacc) =>
                                case DepEnv.lookup D longbid of
                                    SOME D => Dacc + D
-                                 | NONE => error ("The long basis identifier " 
-                                                  ^ MS.Bid.pp_longbid longbid 
+                                 | NONE => error ("The long basis identifier "
+                                                  ^ MS.Bid.pp_longbid longbid
                                                   ^ " is undefined")) DepEnv.empty longbids
                     in (D',A)
                     end
@@ -601,14 +570,9 @@ struct
                     let val _ = maybeWriteDep smlfile (#modTimeMlbFileMax A) D
                     in (DepEnv.singleFile smlfile, A)
                     end
-              | MS.MLBFILEbdec (mlbfile,_) => 
+              | MS.MLBFILEbdec mlbfile =>
                     let val (D,A) = dep_bdec_file A mlbfile
                     in (DepEnv.dirModify (OS.Path.dir mlbfile, D), A)
-                    end
-              | MS.SCRIPTSbdec smlfiles => 
-                    let val t = #modTimeMlbFileMax A
-                        val _ = app (fn f => maybeWriteDep f t D) smlfiles
-                    in (DepEnv.empty, A)
                     end
               | MS.ANNbdec (s,bdec) => dep_bdec D A bdec
 
@@ -622,7 +586,7 @@ struct
                   | NONE =>
                         let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
                         in let val _ = maybe_create_depdir ""
-                               val bdec = parse mlbfile
+                               val (bdec,_) = parse mlbfile
                                val modTimeMlbFileMaxOld = #modTimeMlbFileMax A
                                val modTimeMlbFileMaxNew = OS.FileSys.modTime mlbfile
                                    handle _ => error ("Failed to read the modification time of the basis file " ^
@@ -630,14 +594,14 @@ struct
                                val A = {modTimeMlbFileMax=modTimeMlbFileMaxNew,
                                         mlbfiles= #mlbfiles A}
                                val (D,A) = dep_bdec DepEnv.empty A bdec
-                           in  cd_old() ; 
+                           in  cd_old() ;
                                (D, {modTimeMlbFileMax=timeMax(modTimeMlbFileMaxOld,modTimeMlbFileMaxNew),
                                     mlbfiles=(unique,D) :: #mlbfiles A})
                            end handle X => (cd_old(); raise X)
                         end
             end
 
-  in 
+  in
         fun dep (mlbfile : string) : unit =
             ((* print "[Computing dependencies ..."; *)
              dep_bdec_file emptyA mlbfile; ()
@@ -652,7 +616,7 @@ struct
         val toString : atom -> string
         val fromString : string -> atom
         val compare : (atom * atom) -> order
-      end = 
+      end =
       struct
         type atom = string
         val toString = fn x => x
@@ -660,13 +624,9 @@ struct
         val compare = String.compare
       end
 
-  datatype SmlFile = Script of Atom.atom
-                   | NonScript of Atom.atom
-                                    
-  fun stripFile (Script a) = a
-    | stripFile (NonScript a) = a
+  type SmlFile = Atom.atom
 
-  structure BuildGraph : 
+  structure BuildGraph :
     sig
       type 'a A
       type 'a B
@@ -682,7 +642,7 @@ struct
       val fromMap : ('a Map * I) -> 'a B list
       val done : I -> unit
       val next : 'a B -> 'a B option
-    end = 
+    end =
   struct
       type I = bool ref * int
       type 'a A = {id:int, elem:'a, status:bool ref, depend_status: (bool ref * int) list} list
@@ -691,20 +651,20 @@ struct
       type 'a Map =  (int,'a B list) Binarymap.dict
       type DepToken = bool ref * int
       fun done (r,_) = r:= true
-      fun next x = ((Option.map #2) o List.getItem) x 
+      fun next x = ((Option.map #2) o List.getItem) x
       val firstB = (ref true,0)
       fun projectB [] = NONE
-        | projectB (({elem,id,status,queued,depend_status}:'a elem) ::r) = 
-            if not (!queued) andalso List.all ! depend_status 
+        | projectB (({elem,id,status,queued,depend_status}:'a elem) ::r) =
+            if not (!queued) andalso List.all ! depend_status
             then (queued := true ; SOME (elem, (status,id)))
             else NONE
-      fun fromMap (m,(_,i)) = case Binarymap.peek (m,i) 
+      fun fromMap (m,(_,i)) = case Binarymap.peek (m,i)
                           of NONE => []
                            | SOME l => List.filter (fn [] => false
-                                                     | (elem::_) => not (!(#status (elem : 'a elem)))) l 
+                                                     | (elem::_) => not (!(#status (elem : 'a elem)))) l
       val emptyA = []
       val foldB = fn f => List.foldl (fn ({elem,id,status,queued,depend_status},acc) => f (elem,acc))
-      fun add_first bg deps elem = 
+      fun add_first bg deps elem =
         let
           val r = ref false
           val i = case List.getItem bg
@@ -714,11 +674,11 @@ struct
           ({id = i, elem = elem, status = r, depend_status = deps}::bg,(r,i))
         end
       local
-        fun updatesMap (m,i,l) = 
+        fun updatesMap (m,i,l) =
               case Binarymap.peek(m,i)
               of NONE => Binarymap.insert(m,i,[l])
                | SOME bl => Binarymap.insert(m,i,l::bl)
-        fun turn' ({id,elem,status,depend_status},(acc,m)) = 
+        fun turn' ({id,elem,status,depend_status},(acc,m)) =
          let
            val acc = {id=id,elem=elem,status=status,queued = ref false,depend_status = List.map (#1) depend_status}::acc
          in
@@ -748,7 +708,7 @@ struct
       | wrap_local (m::[]) = (m::[])
       | wrap_local (m1::m2::r) = (m1 @ m2) :: r
     fun find_in_map _ [] = NONE : BG.DepToken list option
-      | find_in_map lbid (Dep(b,deps,m)::r) = 
+      | find_in_map lbid (Dep(b,deps,m)::r) =
           if #1(MS.Bid.longopen lbid) = b
           then
             case #2(MS.Bid.longopen lbid)
@@ -770,7 +730,7 @@ struct
     fun pathUpArrow(p,p_pre) = path_concat p_pre p
   in
     fun srcs_bdec_file {dir,current_mlb} state mlbs mlbfile_rel =
-      let 
+      let
         val mlbfile_abs = unique_true mlbfile_rel
         val _ = if List.exists (fn m => m = mlbfile_abs) current_mlb
                 then raise Cycle ([(mlbfile_rel,mlbfile_abs)], NONE)
@@ -778,26 +738,26 @@ struct
       in
         case List.find (fn (a,_) => mlbfile_abs = a) mlbs
         of SOME (_,deps) => (state,deps, mlbs)
-         | NONE => 
+         | NONE =>
            let
              val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
            in
              let
-               val bdec = parse mlbfile
+               val (bdec,mlbhash) = parse mlbfile
                val dir = path_concat dir (OS.Path.dir mlbfile_rel)
                                        (* srcs_bdec state mlbfile mlbs dir [] [] bdec *)
 (*
                val () = print ("CurrentDir: " ^ FileSys.getDir() ^ "\n")
                val () = print ("Dir before processing " ^ mlbfile ^ ": " ^ dir ^ "\n")
 *)
-               val (state,deps,mlbs) = (srcs_bdec state mlbfile mlbs {dir=dir,current_mlb = mlbfile_abs::current_mlb} [] [] bdec)
-                 handle Cycle (l,cycend) => 
+               val (state,deps,mlbs) = (srcs_bdec state (mlbfile,mlbhash) mlbs {dir=dir,current_mlb = mlbfile_abs::current_mlb} [] [] bdec)
+                 handle Cycle (l,cycend) =>
                    let
                      val dir = OS.Path.dir mlbfile_rel
                      val l = List.map (fn (s,u) => (pathUpArrow (s,dir),u)) l
                    in
                      raise Cycle((mlbfile_rel,mlbfile_abs)::l,
-                                  case cycend 
+                                  case cycend
                                   of NONE => if #2(List.last l) = mlbfile_abs then SOME (mlbfile_rel,mlbfile_abs) else NONE
                                    | SOME (s,u) => SOME (pathUpArrow (s,dir),u))
                    end
@@ -808,122 +768,119 @@ struct
            end
       end
 
-  and srcs_bdec state mlbfile mlbs dir anns deps bdec =
+  and srcs_bdec state mlbfilehash mlbs dir anns deps bdec =
     case bdec
-    of MS.SEQbdec (bdec1, bdec2) => 
+    of MS.SEQbdec (bdec1, bdec2) =>
       let
-        val (s1,deps,mlbs) = srcs_bdec state mlbfile mlbs dir anns deps bdec1
+        val (s1,deps,mlbs) = srcs_bdec state mlbfilehash mlbs dir anns deps bdec1
       in
-        srcs_bdec s1 mlbfile mlbs dir anns deps bdec2
+        srcs_bdec s1 mlbfilehash mlbs dir anns deps bdec2
       end
      | MS.EMPTYbdec => (state,deps,mlbs)
-     | MS.LOCALbdec (bdec1,bdec2) => 
-         let 
-           val (s1,deps,mlbs) = srcs_bdec {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfile mlbs dir anns deps bdec1
-           val (s2,deps,mlbs) = srcs_bdec {bg = #bg s1, bid_map = add_level_map (#bid_map s1)} mlbfile mlbs dir anns deps bdec2
-         in 
+     | MS.LOCALbdec (bdec1,bdec2) =>
+         let
+           val (s1,deps,mlbs) = srcs_bdec {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfilehash mlbs dir anns deps bdec1
+           val (s2,deps,mlbs) = srcs_bdec {bg = #bg s1, bid_map = add_level_map (#bid_map s1)} mlbfilehash mlbs dir anns deps bdec2
+         in
            ({bg = #bg s2, bid_map = kill_local (#bid_map s2)},deps,mlbs)
          end
-     | MS.BASISbdec (bid,bexp) => 
+     | MS.BASISbdec (bid,bexp) =>
        let
-         val (s1,deps1,mlbs) = srcs_bexp {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfile dir mlbs anns deps bexp
+         val (s1,deps1,mlbs) = srcs_bexp {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfilehash dir mlbs anns deps bexp
        in
          ({bg = #bg s1, bid_map = wrap_level (#bid_map s1, bid, deps1)},deps,mlbs)
        end
-     | MS.OPENbdec l => (state, 
+     | MS.OPENbdec l => (state,
                         List.foldl (fn (lbid,acc) => (case find_in_maps lbid (#bid_map state)
-                                                      of NONE => [] 
+                                                      of NONE => []
                                                        | SOME d => d) @ acc) deps l
                          , mlbs)
-     | MS.ATBDECbdec smlfile => 
+     | MS.ATBDECbdec smlfile =>
        let
          val smlfile = path_concat (#dir dir) smlfile
-         val (bg,deps) = BG.add_first (#bg state : (SmlFile * string * string list) BG.A) deps (NonScript (Atom.fromString smlfile), mlbfile, anns)
+         val (bg,deps) = BG.add_first (#bg state : (SmlFile * (string*string) * string list) BG.A) deps (Atom.fromString smlfile, mlbfilehash, anns)
        in
          ({bg = bg, bid_map = #bid_map state}, [deps], mlbs)
        end
-     | MS.MLBFILEbdec (mlbfile,_) =>
+     | MS.MLBFILEbdec mlbfile =>
        let
          val (ss,deps2,mlbs) = srcs_bdec_file dir state mlbs mlbfile
        in
          (ss,deps @ deps2, mlbs)
        end
-     | MS.SCRIPTSbdec smlfiles =>
-       let
-         val smlfiles = List.map (path_concat (#dir dir)) smlfiles
-         val bg = List.foldl (fn (f,bg) => #1 (BG.add_first bg deps (Script (Atom.fromString f), mlbfile, anns))) (#bg state) smlfiles
-       in
-         ({bg = bg,bid_map = #bid_map state},deps,mlbs)
-       end
-     | MS.ANNbdec (ann,bdec) => srcs_bdec state mlbfile mlbs dir (ann::anns) deps bdec
+     | MS.ANNbdec (ann,bdec) => srcs_bdec state mlbfilehash mlbs dir (ann::anns) deps bdec
 
-  and srcs_bexp state mlbfile dir mlbs anns deps bexp =
+  and srcs_bexp state mlbfilehash dir mlbs anns deps bexp =
     case bexp
-    of MS.BASbexp bdec => srcs_bdec state mlbfile mlbs dir anns deps bdec
+    of MS.BASbexp bdec => srcs_bdec state mlbfilehash mlbs dir anns deps bdec
      | MS.LETbexp (bdec,bexp) =>
        let
-         val (s1,deps,mlbs) = srcs_bdec state mlbfile mlbs dir anns deps bdec
+         val (s1,deps,mlbs) = srcs_bdec state mlbfilehash mlbs dir anns deps bdec
        in
-         srcs_bexp s1 mlbfile dir mlbs anns deps bexp
+         srcs_bexp s1 mlbfilehash dir mlbs anns deps bexp
        end
      | MS.LONGBIDbexp bid => (state, case find_in_maps bid (#bid_map state) of NONE => [] | SOME d => d, mlbs)
 
+(*
   fun pp_prior k [] = ""
     | pp_prior k ((x,y,z)::r) = "priority: " ^ (Int.toString k) ^ " " ^ x ^ " " ^ y ^ "\n" ^ (pp_prior k r)
-        
-  type Elem = SmlFile * string * string list
+  *)
+
+  type Elem = SmlFile * (string*string) * string list
   type BG = Elem BG.B * Elem BG.Map
-  type File = SmlFile * Elem BG.B * BG.I * (Elem BG.B) list 
+  type File = SmlFile * Elem BG.B * BG.I * (Elem BG.B) list
 
-  local 
+  local
       fun fromElem (e : Elem, acc) =
-          let val a = (stripFile o #1) e
+          let val a = #1 e
               val smlfile = Atom.toString a
-              val mlbfile = #2 e
-          in 
+              val (mlbfile,mlbhash) = #2 e
+          in
             ((unique_true smlfile, (a,mlbfile)) :: acc)
-            handle _ => 
+            handle _ =>
                    MlbUtil.error
-                   ("The file " ^ MlbUtil.quot smlfile ^ " (referenced in " ^ MlbUtil.quot mlbfile ^ ") does not exist or cannot be read") 
+                   ("The file " ^ MlbUtil.quot smlfile ^ " (referenced in " ^ MlbUtil.quot mlbfile ^ ") does not exist or cannot be read")
           end
-          
-      val list = BG.foldB fromElem []
 
-      val sort = Listsort.sort (fn ((a,_),(b,_)) => MlbFileSys.cmp (a,b))
-      fun filesEqual (f,g) = 
+      fun list (es:Elem BG.B) : (MlbFileSys.unique*(SmlFile*string))list = BG.foldB fromElem [] es
+
+      fun sort x = Listsort.sort (fn ((a,_),(b,_)) => MlbFileSys.cmp (a,b)) x
+      fun filesEqual (f,g) =
           (case MlbFileSys.cmp (unique_true f, unique_true g) of
              EQUAL => true
            | _ => false)
           handle _ => false
-      fun report(s,m1,m2) =
+      fun report (s,m1,m2) =
         let
           val s = Atom.toString s
           val first = "The file " ^ MlbUtil.quot s ^ " is referenced "
-        in 
+        in
           if filesEqual(m1,m2) then
             first ^ "more than once in " ^ MlbUtil.quot m1
           else
             first ^ "in both " ^ MlbUtil.quot m1 ^ " and " ^ MlbUtil.quot m2
         end
-      fun check' [] = []
-        | check' [a] = [a]
-        | check' ((f1,(sml1 : Atom.atom,mlb1:string))::(a2 as (f2,(sml2,mlb2))):: r) = 
+      fun check' [] = ()
+        | check' [a] = ()
+        | check' ((f1,(sml1 : Atom.atom,mlb1:string))::(a2 as (f2,(sml2,mlb2))):: r) =
             if f1 = f2
             then MlbUtil.error (report (sml1,mlb1,mlb2))
             else check' (a2::r)
-      fun check a = check' (sort (list a))
+      fun check (a:Elem BG.B) : unit = check' (sort (list a))
   in
-    fun sources (mlbfile:string) = 
+    fun sources (mlbfile:string) =
         let
           (*val () = print ("Finding sources in " ^ mlbfile ^ "\n")*)
-          val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file {dir="",current_mlb = []} {bg = BG.emptyA, bid_map = []} [] mlbfile)))
-        in (ignore (check a); (a,b))
+          val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file {dir="",current_mlb = []}
+                                                      {bg = BG.emptyA, bid_map = []}
+                                                      [] mlbfile)))
+        in (check a; (a,b))
         end
-        handle Cycle (l,u) => 
+        handle Cycle (l,u) =>
                case u
                 of NONE => error ("Bad cycle detected, this is a compiler bug")
-                 | SOME (e,u) => 
-                   let 
+                 | SOME (e,u) =>
+                   let
                      fun cycstart [] = ["hmmm - empty cycle!"]
                        | cycstart [(s,us)] = [MlbUtil.quot s]
                        | cycstart ((s,us)::l) =
@@ -938,15 +895,16 @@ struct
   val fold = fn f => fn b => fn (a,_) => BG.foldB (fn ((file,s,sl),b) => f(file,s,sl,b)) b a
 
   local
-      fun file m (x:Elem BG.B) = Option.map (fn ((f,s,sl),i) => ((f,x,i,BG.fromMap (m,i)),s,sl)) (BG.projectB x) : (File * string * string list) option
+    fun file m (x:Elem BG.B) : (File * (string*string) * string list) option =
+        Option.map (fn ((f,s,sl),i) => ((f,x,i,BG.fromMap (m,i)),s,sl)) (BG.projectB x)
   in
-      fun initial (_,m) = 
+      fun initial (_,m) =
          let
            val l = BG.fromMap (m,BG.firstB)
-         in 
+         in
            List.mapPartial (file m) l
          end
-      fun done ((_,x,i,l),(ll,m)) = 
+      fun done ((_,x,i,l),(ll,m)) =
           let
             val _ = BG.done i
             val n = BG.next x
@@ -956,4 +914,3 @@ struct
   end
 
 end
-        

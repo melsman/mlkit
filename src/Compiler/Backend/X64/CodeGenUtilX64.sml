@@ -98,7 +98,7 @@ struct
   (********************************)
 
     (* Global Labels *)
-    val exn_ptr_lab = NameLab "exn_ptr"
+(*    val exn_ptr_lab = NameLab "exn_ptr" *)
     val exn_counter_lab = NameLab "exnameCounter"
     val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
     val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
@@ -451,10 +451,12 @@ struct
                I.subq(I "8", R rsp) :: I.movsd(R aty_reg, D("",rsp)) :: C
              else I.push(R aty_reg) :: C
            | SS.INTEGER_ATY i =>
-             if boxedNum (#precision i) then default()
+             if boxedNum (#precision i)
+                orelse #value i > 0x3FFFFFFF
+                orelse #value i <= ~0x40000000 then default()
              else I.push(I (fmtInt i)) :: C
            | SS.WORD_ATY w =>
-             if boxedNum (#precision w) then default()
+             if boxedNum (#precision w) orelse #value w > 0x7FFFFFFF then default()
              else I.push(I (fmtWord w)) :: C
            | _ => default()
       end
@@ -1098,35 +1100,42 @@ struct
              I.lab cont_lab :: C)))
           end
 
-    (* Set Atbot bits on region variables *)
+    (* Set Atbot bits on region variables. When a region parameter is
+       dropped, it means that the function (for this particular call)
+       will not allocate into the region; in these cases, we just
+       store the 0-value in the destination register.
+    *)
+
     fun prefix_sm (sma,dst_reg:reg,size_ff,C) =
-      case sma
-        of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.IGNORE => die "prefix_sm: IGNORE not implemented."
-         | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.ATTOP_FI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          clear_atbot_bit(dst_reg,C))
-         | LS.ATTOP_FF(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff, (* It is necessary to clear atbot bit *)
-          clear_atbot_bit(dst_reg,C))               (* because the region may be infinite *)
-         | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) =>
-          base_plus_offset(rsp,BYTES(size_ff*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
-          set_inf_bit_and_atbot_bit(dst_reg, C))
-         | LS.ATBOT_LI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          set_atbot_bit(dst_reg,C))
-         | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+        let fun zero () = I.movq(I "0", R dst_reg) :: C
+        in case sma of
+               LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => zero()
+             | LS.IGNORE => die "prefix_sm: IGNORE not implemented."
+             | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+             | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+             | LS.ATTOP_FI(aty,pp) =>
+               move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                    clear_atbot_bit(dst_reg,C))
+             | LS.ATTOP_FF(aty,pp) =>
+               move_aty_into_reg_ap(aty,dst_reg,size_ff, (* It is necessary to clear atbot bit *)
+                                    clear_atbot_bit(dst_reg,C))               (* because the region may be infinite *)
+             | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) =>
+               base_plus_offset(rsp,BYTES(size_ff*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
+                                set_inf_bit_and_atbot_bit(dst_reg, C))
+             | LS.ATBOT_LI(aty,pp) =>
+               move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                    set_atbot_bit(dst_reg,C))
+             | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+             | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+             | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+        end
 
     (* Used to build a region vector *)
     fun store_sm_in_record (sma,tmp:reg,base_reg,offset,size_ff,C) =

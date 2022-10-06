@@ -49,7 +49,11 @@ fun concat (ss : string list) : string = prim ("implodeStringML", ss)
 fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
 fun size (s : string) : int = prim ("__bytetable_size", s)
-fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+
+fun chr (i:int) : char =
+    if i>=0 andalso i<256 then prim ("id", i)
+    else raise Chr
+
 fun ord (c : char) : int = prim ("id", c)
 fun print (x:string):unit = prim("printStringML", x)
 
@@ -58,10 +62,10 @@ fun append [] ys = ys
 fun xs @ ys = append xs ys
 
 fun real (x : int) : real = prim ("realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
 
 fun not true = false
-    | not false = true
+  | not false = true
+
 fun (f o g) x = f(g x)
 fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 

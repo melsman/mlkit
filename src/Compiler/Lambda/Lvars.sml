@@ -25,8 +25,16 @@ structure Lvars: LVARS =
 
     fun newLvar () : lvar = new_named_lvar ""
 
+    val print_lvar_name = Flags.add_bool_entry
+      {long="print_lvar_name", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print lvar name"], desc=
+       "Print underlying unique name when printing lvars."}
+
     fun pr_lvar ({str="",name,ubf64,...} : lvar) : string = (if !ubf64 then "f" else "v") ^ Int.toString (#1(Name.key name))
-      | pr_lvar {str,...} = str
+      | pr_lvar {str,name,...} =
+        if print_lvar_name() then
+          str ^ "$" ^ Int.toString (#1(Name.key name)) ^ "_" ^ #2(Name.key name)
+        else str
 
     fun renew (lv:lvar) : lvar =
         {name=Name.new(), str=pr_lvar lv,
@@ -35,8 +43,9 @@ structure Lvars: LVARS =
 
     fun pr_lvar' ({str,name,ubf64,...} : lvar) : string =
 	let val (i,s) = Name.key name
-	    val str = if str = "" then (if !ubf64 then "f" else "v") else str
-	in str ^ ":" ^ Int.toString i ^ ":" ^ s
+            val s = if Name.baseGet() = s then "" else s
+	    val str = if str = "" then (if !ubf64 then "f:" else "v:") else str ^ ":"
+	in str ^ Int.toString i ^ ":" ^ s
 	end
 
     fun name ({name,...} : lvar) : name = name
@@ -65,6 +74,19 @@ structure Lvars: LVARS =
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
 
+    val pu =
+	Pickle.hashConsEq eq
+	let fun to ((n,s,f),i,u,ubf64) : lvar =
+		{name=n, str=s, free=f, inserted=i, use=u, ubf64=ubf64}
+	    fun from ({name=n, str=s, free=f, inserted=i, use=u, ubf64} : lvar) = ((n,s,f),i,u,ubf64)
+	in Pickle.newHash (#1 o Name.key o #name)
+	     (Pickle.convert (to,from)
+	      (Pickle.tup4Gen0(Pickle.tup3Gen0(Name.pu,Pickle.string,Pickle.refOneGen Pickle.bool),
+			       Pickle.refOneGen Pickle.bool,
+                               Pickle.refOneGen Pickle.int,
+                               Pickle.refOneGen Pickle.bool)))
+	end
+
     structure QD : QUASI_DOM =
       struct
 	type dom = lvar
@@ -74,24 +96,6 @@ structure Lvars: LVARS =
       end
 
     structure Map = QuasiMap(QD)
-
-    (* For the KAM machine *)
-    val env_lvar = new_named_lvar("env")
-    val notused_lvar = new_named_lvar("notused")
-
-    val pu =
-	Pickle.hashConsEq eq
-	(Pickle.register "Lvars" [env_lvar,notused_lvar]
-	 let fun to ((n,s,f),i,u,ubf64) : lvar =
-		 {name=n, str=s, free=f, inserted=i, use=u, ubf64=ubf64}
-	     fun from ({name=n, str=s, free=f, inserted=i, use=u, ubf64} : lvar) = ((n,s,f),i,u,ubf64)
-	 in Pickle.newHash (#1 o Name.key o #name)
-	     (Pickle.convert (to,from)
-	      (Pickle.tup4Gen0(Pickle.tup3Gen0(Name.pu,Pickle.string,Pickle.refOneGen Pickle.bool),
-			       Pickle.refOneGen Pickle.bool,
-                               Pickle.refOneGen Pickle.int,
-                               Pickle.refOneGen Pickle.bool)))
-	 end)
 
   end
 

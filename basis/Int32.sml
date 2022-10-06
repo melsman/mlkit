@@ -46,14 +46,13 @@ structure Int32 : INTEGER =
       fun prhex i = if i < 10 then chr32(i + 48) else chr32(i + 55)
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
 
-      fun conv radix (i:int32) =
+      fun conv rad radix (i:int32) =
 	if SOME i = minInt then          (* Be careful not to Overflow *)
-	  (case radix
-	     of 2 => "~10000000000000000000000000000000"
-	      | 8 => "~20000000000"
-	      | 10 => "~2147483648"
-	      | 16 => "~80000000"
-	      | _ => raise Fail "conv")
+	  (case rad
+	     of BIN => "~10000000000000000000000000000000"
+	      | OCT => "~20000000000"
+	      | DEC => "~2147483648"
+	      | HEX => "~80000000")
 	else
 	  let fun h 0 res = res
 		| h n res = h (n div radix) (prhex (n mod radix) :: res)
@@ -114,12 +113,12 @@ structure Int32 : INTEGER =
 	in sign (skipWSget getc source)
 	end
 
-      fun fmt BIN = conv 2
-	| fmt OCT = conv 8
-	| fmt DEC = conv 10
-	| fmt HEX = conv 16
+      fun fmt BIN = conv BIN 2
+	| fmt OCT = conv OCT 8
+	| fmt DEC = conv DEC 10
+	| fmt HEX = conv HEX 16
 
-      (* It should hold that: toString = fmt DEC = conv 10 *)
+      (* It should hold that: toString = fmt DEC = conv DEC 10 *)
       fun toString (i: int32): string = fmt DEC i
 
       fun fromString s = scanString (scan DEC) s

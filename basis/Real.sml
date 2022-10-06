@@ -5,9 +5,12 @@ structure Real : REAL =
     (* Primitives *)
 
     fun real (x : int) : real = prim ("realInt", x)
-    fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
-    fun ceil (x : real) : int = prim ("ceilFloat", x)      (* may raise Overflow *)
-    fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
+
+    fun getCtx () : foreignptr = prim("__get_ctx",())
+
+    fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun ceil (x : real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
+    fun trunc (x : real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
 
     fun realFloor (x: real) : real = prim ("realFloor", x)
     fun realCeil (x: real) : real = prim ("realCeil", x)
@@ -47,7 +50,7 @@ structure Real : REAL =
      conversions, AT&T Bell Labs, Numerical Analysis Manuscript 90-10,
      November 30, 1990 *)
 
-    fun fmt spec =
+    fun fmt spec r =
       let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
 	      let val stop = size s
 		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
@@ -59,22 +62,21 @@ structure Real : REAL =
 	  open StringCvt
 	  (* Below we check that the requested number of decimal digits
 	   * is reasonable; else sml_general_string_of_float may crash. *)
-	  val fmtspec =
+      in
 	  case spec of
-	      SCI NONE     => to_string_gen "%e"
+	      SCI NONE     => to_string_gen "%e" r
 	    | SCI (SOME n) =>
 		  if n < 0 orelse n > 400 then raise Size
-		  else to_string_gen ("%." ^ Int.toString n ^ "e")
-	    | FIX NONE     => to_string_gen "%f"
+		  else to_string_gen ("%." ^ Int.toString n ^ "e") r
+	    | FIX NONE     => to_string_gen "%f" r
 	    | FIX (SOME n) =>
 		  if n < 0 orelse n > 400 then raise Size
-		  else to_string_gen ("%." ^ Int.toString n ^ "f")
-	    | GEN NONE     => toString
+		  else to_string_gen ("%." ^ Int.toString n ^ "f") r
+	    | GEN NONE     => toString r
 	    | GEN (SOME n) =>
 		  if n < 1 orelse n > 400 then raise Size
-		  else (fn r => mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r))
-            | EXACT => fmt (SCI (SOME 30))
-      in fmtspec
+		  else mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
+            | EXACT => fmt (SCI (SOME 30)) r
       end
 
     fun scan getc source =

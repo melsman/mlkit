@@ -221,9 +221,7 @@ struct
                     | STRING_ENTRY of string entry
                     | STRINGLIST_ENTRY of string list entry
 
-    structure M = OrderFinMap (struct type T = string
-				      fun lt a (b:string) = a < b
-			       end)
+    structure M = StringFinMap
 
     val dir : entry0 M.map ref = ref M.empty
 
@@ -788,13 +786,12 @@ val _ = add_string_entry
      {long="SML_LIB", short=NONE, menu=["File", "installation directory"],
       item=install_dir,
       desc=
-       "Installation directory for the MLKit standard library. For normal\n\
-       \execution you should not modify this value. However,\n\
-       \if you wish to use the MLKit with an altered runtime\n\
-       \system you can update this\n\
-       \setting and the system will try to link to a runtime\n\
-       \system found in the new install\n\
-       \directory."}
+       "Installation directory for the MLKit standard library.\n\
+       \For normal execution you should not modify this value.\n\
+       \However, if you wish to use the MLKit with an altered\n\
+       \runtime system you can update this setting and the\n\
+       \system will try to link to a runtime system found in\n\
+       \the specified install directory."}
 
   (*5. Profiling menu*)
 
@@ -896,8 +893,6 @@ val help_all = Directory.help_all
 type options = {desc : string, long : string list, short : string list,
                 kind : string option, default : string option}
 val getOptions = Directory.getOptions : unit -> options list
-
-val SMLserver = ref false
 
 datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)

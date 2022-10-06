@@ -15,47 +15,43 @@ structure InfixBasis: INFIX_BASIS =
 	 | INFIX n => "infix " ^ Int.toString n
 	 | INFIXR n => "infixr " ^ Int.toString n
 
-    type Basis = (id, InfixEntry) FinMap.map
+    type Basis = InfixEntry Ident.Map.map
 
-    val emptyB = FinMap.empty
+    val emptyB = Ident.Map.empty
 
    (* new - we declare identifiers in groups (since that's what the ML
 	    syntax supports). Each such declaration creates a new
     	    environment which we may then add to existing environments. *)
 
     local
-      fun declare iBas (id, fix) = FinMap.add(id, fix, iBas)
+      fun declare iBas (id, fix) = Ident.Map.add(id, fix, iBas)
     in
       fun new(ids, fix) =
 	foldl (fn (id,iBas) => declare iBas (id, fix)) emptyB ids
     end
 
     fun lookup iBas id =
-      case FinMap.lookup iBas id
+      case Ident.Map.lookup iBas id
 	of SOME fix => fix
 	 | NONE => NONFIX
 
-    fun compose a = FinMap.plus a
+    fun compose a = Ident.Map.plus a
 
     fun eq (B1, B2) =
-      let fun sorter (a,_) (b,_) = Ident.< (a,b)
-	  val l1 = ListSort.sort sorter (FinMap.list B1)
-	  val l2 = ListSort.sort sorter (FinMap.list B2)
-      in l1 = l2
-      end
+        Ident.Map.list B1 = Ident.Map.list B2
 
     type Report = Report.Report
 
     val reportBasis =
-      FinMap.reportMapSORTED
-        (Ident.<) (fn (id, entry) =>
-		     Report.line(pr_InfixEntry entry ^ " " ^ Ident.pr_id id)
-		  )
+      Ident.Map.reportMap
+          (fn (id, entry) =>
+	      Report.line(pr_InfixEntry entry ^ " " ^ Ident.pr_id id)
+	  )
 
     type StringTree = PP.StringTree
 
     val layoutBasis =
-      FinMap.layoutMap {start="<iBas: ", eq=" -> ", sep="; ", finish=">"}
+      Ident.Map.layoutMap {start="<iBas: ", eq=" -> ", sep="; ", finish=">"}
       		       (PP.layoutAtom Ident.pr_id)
 		       (PP.layoutAtom pr_InfixEntry)
 
@@ -73,6 +69,6 @@ structure InfixBasis: INFIX_BASIS =
 	in Pickle.dataGen("InfixEntry",toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
 	end
 
-    val pu : Basis Pickle.pu = FinMap.pu(Ident.pu,pu_InfixEntry)
+    val pu : Basis Pickle.pu = Ident.Map.pu Ident.pu pu_InfixEntry
 
   end

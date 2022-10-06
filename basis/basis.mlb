@@ -110,19 +110,10 @@ local
               end
           end
        end
-(*
-    basis Polyhash =
-       let open General String ArrayVector Word
-       in bas POLYHASH.sig Polyhash.sml end
-       end
-*)
+
     basis Io =
        let open General String List
-       in bas IO.sml (* TEXT_IO.sml TextIO.sml
-              local open Word ArrayVector Byte
-              in BIN_IO.sml BinIO.sml
-              end *)
-          end
+       in bas IO.sml end
        end
 
     basis System =
@@ -150,17 +141,18 @@ local
         in bas OSError.sml end
         end
 
-(*    basis Socket =
-       let open General String System ArrayVector
-       in
-         bas NET_HOST_DB.sml SOCKET.sml end
-       end*)
-
-(*    basis Unix =
-       let open Word System Io
-       in
-         bas UNIX.sml (*UNIX_SOCK.sml*) end
-       end*)
+    basis Socket =
+       let open General String System ArrayVector List Word
+       in bas NET_HOST_DB.sig
+              NetHostDB.sml
+              SOCKET.sig
+              Socket.sml
+              INET_SOCK.sig
+           (* UNIX_SOCK.sig
+              GENERIC_SOCK.sig
+            *)
+          end
+       end
 
      basis PrimIO =
        let open General System ArrayVector Io Int String Word
@@ -211,7 +203,13 @@ local
        in bas SML90.sml end
        end
 *)
+
+    basis Unix =
+       let open General Word System Posix IO String
+       in
+         bas UNIX.sig Unix.sml end
+       end
 in
   open General List ArrayVector String Bool Word Byte
-       Int Real IntInf IntInfRep Io System Text Posix IO (* Sml90 *)
+       Int Real IntInf IntInfRep Io System Text Posix IO Unix Socket (* Sml90 *)
 end

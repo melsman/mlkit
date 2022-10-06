@@ -78,9 +78,9 @@ signature LINE_STMT =
     | STRING          of string
     | REAL            of string
     | F64             of string
-    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
-    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}

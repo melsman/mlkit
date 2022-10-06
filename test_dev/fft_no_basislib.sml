@@ -20,9 +20,10 @@ fun a <> b = not (a = b)
 fun print (s:string) : unit = prim("printStringML", s)
 fun printReal (r:real) : unit = prim("printReal", r)
 fun real (x : int) : real = prim("realInt", x)
-fun floor (x : real) : int = prim("floorFloat", x)    (* may raise Overflow *)
-fun ceil (x : real) : int = prim("ceilFloat", x)      (* may raise Overflow *)
-fun trunc (x : real) : int = prim("truncFloat", x)    (* may raise Overflow *)
+
+fun getCtx () : foreignptr = prim("__get_ctx",())
+
+fun floor (x : real) : int = prim("floorFloat", (getCtx(),x))    (* may raise Overflow *)
 
 val op mod : (int * int) -> int = op mod
 fun (a:real) / (b:real) : real = prim("divFloat", (a,b))

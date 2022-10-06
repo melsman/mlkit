@@ -32,7 +32,7 @@ void CurvesInit(void)
   sf = graphwidth / xrange;
 
   /*printf("CurvesInit, sf: %8.6f, graphwidth: %8.2f, xrange: %8.2f\n", sf, graphwidth, xrange);*/
-  
+
   for (i = 0; i < nsamples; i++) {
     x [ i ] = (sampletable[ i ] - sampletable[ 0 ]) * sf;
     y [ i ] = 0;
@@ -181,7 +181,7 @@ static void KeyEntry(double centreline, char* name, int colour)
 
   namebase = centreline - (double) (NORMAL_FONT / 2);
   keyboxbase = centreline - ((double) KEY_BOX_WIDTH / 2);
-  
+
   kstart = graphx0 + graphwidth;
 
   #if DEBUG_KEYENTRY
@@ -219,7 +219,7 @@ void Key(void)
 /***************************************************************************
  * Axes                                                                    *
  ***************************************************************************/
-typedef enum {MEGABYTE, KILOBYTE, BYTE} mkb; 
+typedef enum {MEGABYTE, KILOBYTE, BYTE} mkb;
 
 /*
  *      Find a "nice round" value to use on the axis.
@@ -237,7 +237,7 @@ static double Round(double y)
     y = (double)2.0e-3;
   } else {
     y = (double)1.0e-3;
-  }   
+  }
 
   for ( ; i > 0; y = y * 10, i--)
     ;
@@ -245,26 +245,30 @@ static double Round(double y)
   return y;
 }
 
-static void XAxisMark(double x, double num)
+static void XAxisMark(double x, double num, double xrange)
 {
   char info[100];
   /* calibration mark */
   outputLine(xpage(x), ypage(0.0), 0.0, -5.0);
 
-  sprintf(info,"%.1f",num);
+  if (xrange < 0.5) {
+    sprintf(info,"%.2f",num);
+  } else {
+    sprintf(info,"%.1f",num);
+  }
   output->Text(JustifyCenter,xpage(x),borderspace,SCALE_FONT,info);
 }
 
 #define N_X_MARKS       7
-#define XFUDGE          15      
+#define XFUDGE          15
 
 static void XAxis(void)
 {
-  double increment, i; 
+  double increment, i;
   double t, x;
   // double legendlen;
   double aBitMore = 15.0;
- 
+
   /* draw the x axis line */
   outputLine(xpage(0.0), ypage(0.0), graphwidth,0);
 
@@ -283,14 +287,14 @@ static void XAxis(void)
 
   t = graphwidth / xrange;
   //legendlen = StringSize("seconds") + (double) XFUDGE;
- 
+
   for (i = sampletable[ 0 ]; i < sampletable[ nsamples - 1]; i += increment) {
-    x = (i - sampletable[ 0 ]) * t;  
- 
-    if (x < (graphwidth/* - legendlen*/)) {  
-      XAxisMark(x,i);
-    } 
-  } 
+    x = (i - sampletable[ 0 ]) * t;
+
+    if (x < (graphwidth/* - legendlen*/)) {
+      XAxisMark(x,i,xrange);
+    }
+  }
 }
 
 static void YAxisMark(double y, double num, mkb unit)
@@ -299,15 +303,15 @@ static void YAxisMark(double y, double num, mkb unit)
 
     /* calibration mark */
   outputLine(xpage(0.0), ypage(y), -4.0, 0.0);
- 
+
     /* number */
 
   switch (unit) {
     case MEGABYTE :
-      sprintf(info, "%dM", (int) (num / MB));
+      sprintf(info, "%dMiB", (int) (num / MB));
       break;
     case KILOBYTE :
-      sprintf(info, "%dK", (int) (num / KB));
+      sprintf(info, "%dKiB", (int) (num / KB));
       break;
     case BYTE:
       sprintf(info, "%d", (int) (num));
@@ -317,8 +321,8 @@ static void YAxisMark(double y, double num, mkb unit)
   output->Text(JustifyRight,graphx0 - borderspace,ypage(y),SCALE_FONT,info);
 }
 
-#define N_Y_MARKS        7      
-#define YFUDGE          15 
+#define N_Y_MARKS        7
+#define YFUDGE          15
 
 static void YAxis(void)
 {
@@ -327,13 +331,13 @@ static void YAxis(void)
   double legendlen;
   double scale;
   mkb unit;
-  
+
     /* draw the y axis line */
   outputLine(xpage(0.0), ypage(0.0), 0.0, graphheight);
 
   /* draw y axis legend */
 
-  output->Text(JustifyVertical,xpage(0.0) - borderspace,ypage(0.0)+graphheight,SCALE_FONT,yLab); 
+  output->Text(JustifyVertical,xpage(0.0) - borderspace,ypage(0.0)+graphheight,SCALE_FONT,yLab);
 
     /* draw y axis scaling */
 
@@ -349,10 +353,10 @@ static void YAxis(void)
       unit = KILOBYTE;
   } else {
       unit = BYTE;
-  }   
+  }
 
-  t = graphheight / yrange; 
-  legendlen = StringSize(yLab) + (double) YFUDGE; 
+  t = graphheight / yrange;
+  legendlen = StringSize(yLab) + (double) YFUDGE;
 
   for (i = 0; i <= yrange; i += increment) {
     y = i * t;
@@ -360,7 +364,7 @@ static void YAxis(void)
     if (y < (graphheight - legendlen)) {
       YAxisMark(y, i, unit);
     }
-  } 
+  }
 }
 
 void Axes(void)
@@ -372,10 +376,10 @@ void Axes(void)
 /* drawMaxValue, draws a horizontal line showing a maximum */
 /* on the graph.                                           */
 void drawMaxValue(float value, char *valStr) {
-  
+
   double strSize;
   double xCor, yCor;
-  
+
   strSize = StringSize(valStr);
   xCor = (graphwidth-strSize)/2.0;
   yCor = graphheight/yrange*value;

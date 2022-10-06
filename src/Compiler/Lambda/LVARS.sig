@@ -39,13 +39,10 @@ signature LVARS =
     type name
     val match : lvar * lvar -> unit
     val name : lvar -> name
-    structure Map : MONO_FINMAP where type dom = lvar
-
-    (* Special for the KAM machine (Bytecode-machine) *)
-    val env_lvar : lvar
-    val notused_lvar : lvar
 
     val pu : lvar Pickle.pu
+
+    structure Map : MONO_FINMAP where type dom = lvar
 
   end
 

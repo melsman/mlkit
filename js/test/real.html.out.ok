@@ -172,8 +172,4 @@ test12b: OK
 test12c: OK
 test13a: OK
 test13b: OK
-0.0
-0.0
-0.00000
-test13c: WRONG
 Test ended.

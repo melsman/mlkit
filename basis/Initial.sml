@@ -292,6 +292,14 @@ structure Initial =
       structure Posix_File_Sys =
         struct
         val (stdin,stdout,stderr) = prim ("sml_getStdNumbers", ()) : (int * int * int)
+
+        structure FD =
+          struct
+            val cloexec = 0wx1
+
+            val all = 0wx1
+          end
+
         structure O =
           struct
             val append   =  0wx1
@@ -329,7 +337,5 @@ structure Initial =
             val all   = 0wx3FFF
           end
         end
-
-
 
   end

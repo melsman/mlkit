@@ -137,26 +137,6 @@ structure TyName :> TYNAME =
           | (false, true)  => tyName_WORD64
           | (false, false) => tyName_WORD32
 
-    fun pr_TyName (tn: TyName) : string =
-      let val str = TyCon.pr_TyCon (tycon tn)
-      in
-	if print_type_name_stamps() then
-	  let val eq = if equality tn then "E " else ""
-	      val (i,b) = Name.key (name tn)
-	      val id = Int.toString i
-	  in str ^ "(" ^ eq ^ id ^ b ^ ")"
-	  end
-	else
-	  (if tag_values() then
-	     (if eq(tn, tyName_INT63) then "int"
-	      else if eq(tn, tyName_WORD63) then "word"
-		   else str)
-	   else
-	     (if eq(tn, tyName_INT64) then "int"
-	      else if eq(tn, tyName_WORD64) then "word"
-		   else str))
-      end
-
     local
       fun unboxed_num32 tn =
           not(tag_values()) andalso (eq(tn,tyName_INT32)
@@ -168,6 +148,28 @@ structure TyName :> TYNAME =
     in
       fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse !(#unboxed tn)
     end
+
+    fun pr_TyName (tn: TyName) : string =
+      let val str = TyCon.pr_TyCon (tycon tn)
+      in
+	if print_type_name_stamps() then
+	  let val eq = if equality tn then "E " else ""
+	      val (i,b) = Name.key (name tn)
+	      val id = Int.toString i
+              val unb = if unboxed tn then "unboxed"
+                        else "boxed"
+	  in str ^ "(" ^ eq ^ id ^ b ^ ":" ^ unb ^ ")"
+	  end
+	else
+	  (if tag_values() then
+	     (if eq(tn, tyName_INT63) then "int"
+	      else if eq(tn, tyName_WORD63) then "word"
+		   else str)
+	   else
+	     (if eq(tn, tyName_INT64) then "int"
+	      else if eq(tn, tyName_WORD64) then "word"
+		   else str))
+      end
 
     fun setUnboxed (tn: TyName) : unit =
 	if unboxed tn then

@@ -1,4 +1,4 @@
-(* 
+(*
 
    The NativeCompile functor builds a backend appropriate for machine
    code generation; the backend provides, among other things, register
@@ -6,7 +6,7 @@
    architecture and is parameterized over a structure RegisterInfo,
    which provides information about machine registers, and a structure
    BackendInfo, which provides information about tagging,
-   stack-properties, and so on. 
+   stack-properties, and so on.
 
    After program code is compiled into the LinePrg, which this module
    does, the LinePrg is emitted by a machine-dependant code generator,
@@ -22,7 +22,7 @@ signature NATIVE_COMPILE =
     structure SubstAndSimplify : SUBST_AND_SIMPLIFY
 
     type BackendEnv
-    type place 
+    type place
     type pp
     type 'a at
     type phsize
@@ -35,7 +35,7 @@ signature NATIVE_COMPILE =
     type Aty
 
 
-    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) -> 
+    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) ->
       BackendEnv * {main_lab:label,
 		    code:(StoreTypeCO,offset,Aty) LinePrg,
 		    imports:label list * label list,
@@ -48,7 +48,6 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 			 where type label = AddressLabels.label
 		       structure RegisterInfo : REGISTER_INFO
 			 where type lvar = Lvars.lvar
-			 where type lvarset = Lvarset.lvarset
 		       ) : NATIVE_COMPILE =
   struct
     structure RegionExp = MulExp.RegionExp
@@ -101,7 +100,7 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
     val gc_p = Flags.is_on0 "garbage_collection"
     val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
 
-    fun fast_pr stringtree = 
+    fun fast_pr stringtree =
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
             TextIO.output(!Flags.log, "\n\n"))
 
@@ -118,23 +117,23 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 
     (* the boolean `safe' is true if the fragment has no side-effects;
      * for dead code elimination. *)
-    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool, vcg_file:string) 
-      : ClosExp.env * {main_lab: label, 
+    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool, vcg_file:string)
+      : ClosExp.env * {main_lab: label,
 		       code: (StoreTypeCO,offset,Aty) LinePrg,
-		       imports: label list * label list, 
-		       exports: label list * label list, 
+		       imports: label list * label list,
+		       exports: label list * label list,
 		       safe:bool}  =
       let
-	
+
 	val _ = RegionFlowGraphProfiling.reset_graph ()
 
-	val {main_lab,code,imports,exports,env=clos_env1} = 
+	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
 
 	(* Show region flow graph and generate .vcg file *)
-	val _ = 
+	val _ =
 	  if print_region_flow_graph() then
-	    (display("Report: REGION FLOW GRAPH FOR PROFILING:", 
+	    (display("Report: REGION FLOW GRAPH FOR PROFILING:",
 		     RegionFlowGraphProfiling.layout_graph());
 	     let val outStreamVCG = TextIO.openOut vcg_file
 	     in RegionFlowGraphProfiling.export_graph outStreamVCG;
@@ -153,11 +152,11 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 	val all_fetch_flush = Timing.timing "FetchFlush" FetchAndFlush.IFF all_reg_alloc
 	val all_calc_offset = Timing.timing "CalcOffset" CalcOffset.CO all_fetch_flush
 
-	val all_calc_offset_with_bv = 
+	val all_calc_offset_with_bv =
 	  if gc_p() then Timing.timing "CBV" CalcOffset.CBV all_calc_offset
 	  else all_calc_offset
 
-	val {main_lab, code, imports, exports, ...} = 
+	val {main_lab, code, imports, exports, ...} =
 	  Timing.timing "SS" SubstAndSimplify.SS all_calc_offset_with_bv
       in (clos_env1,
 	 {main_lab=main_lab, code=code, imports=imports, exports=exports,

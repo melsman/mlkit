@@ -11,7 +11,7 @@ signature MONO_FINMAP =
     val lookup     : 'b map -> dom -> 'b option
     val add        : dom * 'b * 'b map -> 'b map
     val plus       : 'b map * 'b map -> 'b map
-    val remove     : dom * 'b map -> 'b map option      
+    val remove     : dom * 'b map -> 'b map option
     val dom        : 'b map -> dom list
     val range      : 'b map -> 'b list
     val list       : 'b map -> (dom * 'b) list
@@ -26,7 +26,7 @@ signature MONO_FINMAP =
       (* addList l m; adds a list of associations to a map. *)
 
     val mergeMap : (('b * 'b) -> 'b) -> 'b map -> 'b map -> 'b map
-      (* mergeMap f m1 m2; merges two finite maps, with a composition 
+      (* mergeMap f m1 m2; merges two finite maps, with a composition
          function to apply to the codomains of domains which clash. *)
 
     exception Restrict of string
@@ -35,8 +35,8 @@ signature MONO_FINMAP =
          of the list is not in the domain of the map. *)
 
     val enrich : ('b * 'b -> bool) -> ('b map * 'b map) -> bool
-      (* enrich en (A, B) returns true if for all a and b 
-         such that b \in B and a \in (A \restrict dom(B)) 
+      (* enrich en (A, B) returns true if for all a and b
+         such that b \in B and a \in (A \restrict dom(B))
 	 we have en(a,b). *)
 
     type StringTree
@@ -47,4 +47,5 @@ signature MONO_FINMAP =
     val reportMap: (dom * 'b -> Report) -> 'b map -> Report
 
     val pu : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu
+    val puNoShare : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu
   end

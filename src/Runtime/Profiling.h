@@ -93,7 +93,7 @@ extern ProfTabList * profHashTab[];
 
 void checkProfTab(char* s);
 void printProfTab(void);
-void profileTick(long *stackTop);
+void profileTick(Context ctx, long *stackTop);
 void profiling_on(void);
 void profiling_off(void);
 void AlarmHandler();

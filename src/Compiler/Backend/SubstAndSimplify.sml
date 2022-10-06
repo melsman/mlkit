@@ -197,12 +197,16 @@ struct
           | SS_se(LS.STRING str) = LS.STRING str
           | SS_se(LS.REAL str) = LS.REAL str
           | SS_se(LS.F64 str) = LS.F64 str
-          | SS_se(LS.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = LS.CLOS_RECORD{label=label,
-                                                                                        elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
-                                                                                        alloc= sma_to_sma' alloc}
+          | SS_se(LS.CLOS_RECORD{label,elems=(lvs,excons,rhos),f64_vars,alloc}) =
+            LS.CLOS_RECORD{label=label,
+                           elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
+                           f64_vars=f64_vars,
+                           alloc= sma_to_sma' alloc}
           | SS_se(LS.REGVEC_RECORD{elems,alloc}) = LS.REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma' alloc}
-          | SS_se(LS.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = LS.SCLOS_RECORD{elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
-                                                                                    alloc = sma_to_sma' alloc}
+          | SS_se(LS.SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
+            LS.SCLOS_RECORD{elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
+                            f64_vars=f64_vars,
+                            alloc = sma_to_sma' alloc}
           | SS_se(LS.RECORD{elems,alloc,tag,maybeuntag}) = LS.RECORD{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag,
                                                                      maybeuntag=maybeuntag}
           | SS_se(LS.BLOCKF64{elems,alloc,tag}) = LS.BLOCKF64{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag}

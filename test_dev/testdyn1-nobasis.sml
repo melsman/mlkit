@@ -119,10 +119,12 @@ end
 
   (* structure Real *)
 
+  fun getCtx () : foreignptr = prim("__get_ctx",())
+
   fun real (x : int) : real = prim ("realInt", x)
-  fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
-  fun ceil (x : real) : int = prim ("ceilFloat", x)      (* may raise Overflow *)
-  fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
+  fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+  fun ceil (x : real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
+  fun trunc (x : real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
 
   fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
 

@@ -1,17 +1,17 @@
 (* Finite maps using balanced AVL trees *)
 
-functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
+functor OrderFinMap(Order : ORDER): MONO_FINMAP =
   struct
     structure PP = PrettyPrint
 
     fun die s = Crash.impossible ("OrderFinMap." ^ s)
 
-    type dom = Order.T
+    type dom = Order.t
 
-    fun a < b = Order.lt a b
+    fun a < b = Order.lt (a, b)
     val lt = op <
 
-    fun eq (i1:dom, i2:dom) = 
+    fun eq (i1:dom, i2:dom) =
       not (i1 < i2 orelse i2 < i1)
 
     (* The balance of a tree is 'L', if the left subtree is one
@@ -19,7 +19,7 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
        have the same depth, and 'R' if the right subtree is one deeper than
        the left subtree: *)
 
-    datatype bal = L | B | R 
+    datatype bal = L | B | R
     datatype 'b map = E | N of dom * 'b * 'b map * 'b map * bal
 
     val empty = E
@@ -31,14 +31,14 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 
 
     fun lookup t key =
-      let 
+      let
 	fun search E = NONE
-            | search(N(key', data, l, r, _)) = 
+            | search(N(key', data, l, r, _)) =
               if key < key' then search l
               else if key' < key then search r
               else (*key eq key' *) SOME data
-      in 
-	search t 
+      in
+	search t
       end
 
     exception Impossible of string
@@ -49,11 +49,11 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
       fun insert((k0, d0), t) =
 	let
 	  fun ins E = (true, N(k0, d0, E, E, B))
-	    | ins (N(k, d, l, r, bal)) = 
+	    | ins (N(k, d, l, r, bal)) =
               if k0 < k then
-                let 
+                let
 		  val (higher, l') = ins l
-                in 
+                in
 		  case(bal,higher) of
 		    (B,true)  => (true,  N(k, d, l', r, L))
 		  | (B,false) => (false, N(k, d, l', r,  B))
@@ -61,22 +61,22 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 		  | (R,false) => (false, N(k, d, l', r,  R))
 		  | (L,false) => (false, N(k, d, l', r, L))
 		  | (L,true) =>
-		      let 
-			val (lk,ld,ll,lr,lbal) = 
+		      let
+			val (lk,ld,ll,lr,lbal) =
 			  case l' of
 			    N d => d
-			  | _ => impossible "AVLfinmap 1"  
+			  | _ => impossible "AVLfinmap 1"
 		      in
-			if lbal = L then 
+			if lbal = L then
 			  (false, N(lk,ld,ll,N(k,d,lr,r,B),B))
 			else (* lbal = R *)
-			  let 
-			    val (lrk,lrd,lrl,lrr,lrbal) = 
+			  let
+			    val (lrk,lrd,lrl,lrr,lrbal) =
 			      case lr of
 				N d => d
-			      | _ => impossible "AVLfinmap 2"  
+			      | _ => impossible "AVLfinmap 2"
 			  in
-			    (false, 
+			    (false,
 			     N(lrk,lrd,
 			       N(lk,ld,ll,lrl, if lrbal=R then L else B),
 			       N(k,d,lrr,r, if lrbal= L then R else B),
@@ -85,32 +85,32 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 		      end
 		end
 	      else if k < k0 (* k0 succeeds k *) then
-		let 
+		let
 		  val (higher, r') = ins r
-                in 
+                in
 		  case (bal,higher) of
 		    (B,true) => (true, N(k,d,l,r',R))
 		  | (B,false) => (false, N(k,d,l,r',B))
 		  | (L,true) => (false,N(k,d,l,r',B))
 		  | (L,false) => (false, N(k,d,l,r',L))
 		  | (R, false) => (false,N(k,d,l,r',R))
-		  | (R, true) => 
-		      let 
-			val (rk,rd,rl,rr,rbal) = 
+		  | (R, true) =>
+		      let
+			val (rk,rd,rl,rr,rbal) =
 			  case r' of
 			    N d => d
-			  | _ => impossible "AVLfinmap 3"  			    
+			  | _ => impossible "AVLfinmap 3"
 		      in
-			if rbal = R then 
+			if rbal = R then
 			  (false, N(rk,rd,N(k,d,l,rl,B),rr,B))
 			else (* rbal = L *)
-			  let 
-			    val (rlk,rld,rll,rlr,rlbal) = 
+			  let
+			    val (rlk,rld,rll,rlr,rlbal) =
 			      case rl of
 				N d => d
-			      | _ => impossible "AVLfinmap 4"  				
+			      | _ => impossible "AVLfinmap 4"
 			  in
-			    (false, 
+			    (false,
 			     N(rlk, rld,
 			       N(k,d,l,rll, if rlbal=R then L else B),
 			       N(rk,rd,rlr,rr,if rlbal = L then R else B),
@@ -121,7 +121,7 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
               else (* k = k0 *) raise ALREADYTHERE
 	in
 	  #2(ins t)
-	end 
+	end
 
       fun update((k0, d0), t) =
         let fun repl E = impossible "AVLupdate.repl"
@@ -135,16 +135,16 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 
     in
       fun add (k0:dom, d0:'b, t:'b map) : 'b map =
-	insert((k0, d0), t) 
+	insert((k0, d0), t)
 	handle ALREADYTHERE => update ((k0, d0), t)
     end
 
     fun plus (t1:'b map, t2:'b map) : 'b map =
       case t2 of
 	E => t1
-      | N(k,d,l,r,_) => 
-	  plus (plus (add(k,d,t1), l), r) 
-  
+      | N(k,d,l,r,_) =>
+	  plus (plus (add(k,d,t1), l), r)
+
     local
       exception NOTFOUND
       fun delete(k0, t) =
@@ -152,25 +152,25 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 	  fun balance1 E = impossible "(balance1 on an empty map)"
 	    | balance1 (N(k,d,l,r,bal)) =
               (* left branch has become lower *)
-              case bal of 
+              case bal of
                 L => (N(k,d,l,r,B), true)
               | B => (N(k,d,l,r,R), false)
               | R => (* rebalance *)
-		  let 
-		    val (rk,rd,rl,rr,rbal) = 
+		  let
+		    val (rk,rd,rl,rr,rbal) =
 		      case r of
 			N d => d
-		      | _ => impossible "AVLfinmap 5" 
-		  in 
-		    case rbal of 
-		      L => let 
-			     val (rlk,rld,rll,rlr,rlbal) = 
+		      | _ => impossible "AVLfinmap 5"
+		  in
+		    case rbal of
+		      L => let
+			     val (rlk,rld,rll,rlr,rlbal) =
 			       case rl of
 				 N d => d
-			       | _ => impossible "AVLfinmap 6" 
+			       | _ => impossible "AVLfinmap 6"
 			     val bal' = if rlbal = R then L else B
 			     val rbal' = if rlbal = L then R else B
-			   in 
+			   in
 			     (N(rlk,rld,
 				N(k,d,l,rll,bal'),
 				N(rk,rd,rlr,rr,rbal'),
@@ -179,7 +179,7 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 			   end
 		    | B => (N(rk,rd,
 			      N(k,d,l,rl,R),
-			      rr,L),false) 
+			      rr,L),false)
 		    | R => (N(rk,rd,
 			      N(k,d,l,rl,B),
 			      rr,B),true)
@@ -187,25 +187,25 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 	  fun balance2 E = impossible "(balance2 on an empty map)"
 	    | balance2 (N(k,d,l,r,bal)) =
               (* right branch has become lower *)
-	      case bal of 
+	      case bal of
 		R => (N(k,d,l,r,B), true)
 	      | B => (N(k,d,l,r,L), false)
               | L => (* rebalance *)
-		  let 
-		    val (lk,ld,ll,lr,lbal) = 
+		  let
+		    val (lk,ld,ll,lr,lbal) =
 		      case l of
 			N d => d
-		      | _ => impossible "AVLfinmap 7" 
-		  in 
-		    case lbal of 
-		      R => let 
-			     val (lrk,lrd,lrl,lrr,lrbal) = 
+		      | _ => impossible "AVLfinmap 7"
+		  in
+		    case lbal of
+		      R => let
+			     val (lrk,lrd,lrl,lrr,lrbal) =
 			       case lr of
 				 N d => d
-			       | _ => impossible "AVLfinmap 8" 				 
+			       | _ => impossible "AVLfinmap 8"
 			     val bal' = if lrbal = L then R else B
 			     val lbal' =if lrbal = R then L else B
-			   in 
+			   in
 			     (N(lrk,lrd,
 				N(lk,ld,ll, lrl,lbal'),
 				N(k,d,lrr,r,bal'),
@@ -215,43 +215,43 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 		    | B => (N(lk,ld,
 			      ll,
 			      N(k,d,lr,r,L),
-			      R),false) 
+			      R),false)
 		    | L => (N(lk,ld,
 			      ll,
 			      N(k,d,lr,r,B),
 			      B),true)
 		  end
 
-	  fun remove_rightmost E : 'b map * dom * 'b * bool  = 
+	  fun remove_rightmost E : 'b map * dom * 'b * bool  =
 	          impossible "(remove_rightmost on empty map)"
 	    | remove_rightmost (N(k,d,l,E,bal)) = (l, k, d, true)
-	    | remove_rightmost (N(k,d,l,r,bal)) = 
-	      let 
+	    | remove_rightmost (N(k,d,l,r,bal)) =
+	      let
 		val (r',k',d',lower) = remove_rightmost r
-              in 
-		if lower then 
-		  let 
+              in
+		if lower then
+		  let
 		    val (t'', lower'') = balance2(N(k,d,l,r',bal))
-		  in 
+		  in
 		    (t'',k',d',lower'')
 		  end
-		else 
+		else
 		  (N(k,d,l,r',bal),k',d',false)
 	      end
 
 	  fun del E = raise NOTFOUND
-	    | del (N(k,d,l,r,bal)) = 
-              if k0 < k then 
-                let 
-		  val (l', lower) = del l 
-		in 
+	    | del (N(k,d,l,r,bal)) =
+              if k0 < k then
+                let
+		  val (l', lower) = del l
+		in
 		  if lower then balance1(N(k,d,l',r,bal))
 		  else (N(k,d,l',r,bal), false)
                 end
               else if k <  k0 then
-                let 
+                let
 		  val (r', lower) = del r
-		in 
+		in
 		  if lower then balance2(N(k,d,l,r',bal))
 		  else (N(k,d,l,r',bal), false)
                 end
@@ -259,11 +259,11 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
                 case (l,r) of
                   (_, E) => (l, true)
                 | (E, _) => (r, true)
-                |   _    => 
-		      let 
-			val (l', k', d', lower) = 
+                |   _    =>
+		      let
+			val (l', k', d', lower) =
 			  remove_rightmost l
-		      in 
+		      in
 			if lower then balance1(N(k',d',l',r,bal))
 			else (N(k',d',l',r,bal), false)
 		      end
@@ -272,11 +272,11 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 	end
     in
       fun remove(k:dom, t:'b map) : 'b map option =
-	SOME(delete(k, t)) 
+	SOME(delete(k, t))
 	handle NOTFOUND => NONE
 
       val delete : dom * 'b map -> 'b map = fn (k, t) =>
-	delete(k, t) handle NOTFOUND => t 
+	delete(k, t) handle NOTFOUND => t
     end
 
     fun dom (m:'b map) : (dom list) =
@@ -287,7 +287,7 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
       in
 	dom' m []
       end
-	
+
     fun range (m:'b map) : 'b list =
       let
 	fun ran E a = a
@@ -309,20 +309,20 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
     fun composemap (f:'b -> 'c) (t:'b map) : 'c map =
       case t of
 	E => E
-      | N(k,d,l,r,b) => 
+      | N(k,d,l,r,b) =>
 	  let
 	    val l' = composemap f l
-	  in 
+	  in
 	    N(k,f d,l',composemap f r,b)
 	  end
 
     fun ComposeMap (f: dom * 'b -> 'c) (t:'b map) : 'c map =
       case t of
 	E => E
-      | N(k,d,l,r,b) => 
+      | N(k,d,l,r,b) =>
 	  let
 	    val l' = ComposeMap f l
-	  in 
+	  in
 	    N(k,f (k,d),l',ComposeMap f r, b)
 	  end
 
@@ -349,12 +349,12 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
 			      else t') empty t
 
     fun addList [] (t : 'b map) : 'b map = t
-      | addList ((k : dom, d : 'b) :: rest) t = 
-	   addList rest (add (k, d, t)) 
+      | addList ((k : dom, d : 'b) :: rest) t =
+	   addList rest (add (k, d, t))
 
     fun fromList l = addList l empty
 
-    (* constructing an AVL-tree from a sorted list in 
+    (* constructing an AVL-tree from a sorted list in
        linear time.  Mikkel Thorup and Mads Tofte    *)
 
     fun fromSortedList l =
@@ -362,18 +362,18 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
        fun power2 0 = false
          | power2 1 = true
 	 | power2 n = n mod 2 = 0 andalso power2 (n div 2)
-         
-       datatype ('a,'b) tree = 
-	   Lf 
+
+       datatype ('a,'b) tree =
+	   Lf
 	 | Node of 'a * 'b * ('a,'b) tree * ('a,'b) tree
 
        fun build(0,xs) = (xs, Lf)
-	 | build(n,xs) = 
+	 | build(n,xs) =
 	   let val n' = n div 2
 	     val (xs1, t1) = build(n', xs)
 	     val (d,r,xs1') = case xs1
 				of (d,r) :: xs1' => (d,r,xs1')
-				 | _ => impossible "build" 
+				 | _ => impossible "build"
 (*old
 	     val (d,r) :: xs1' = xs1
 old*)
@@ -403,7 +403,7 @@ old*)
 	  | merge t1 E a = plus (t1,a)
 	  | merge (t1 as N(k,d,l,r,_)) t2 a =
 	    let
-	      val (e, t2') = 
+	      val (e, t2') =
 		case lookup t2 k of
 		  SOME d' => (f (d,d'), delete (k, t2))
 		| NONE => (d, t2)
@@ -415,7 +415,7 @@ old*)
 	merge t1 t2 empty
       end
 old *)
-	  
+
     (* mergeMap f t1 t2   merges t1 and t2 into a single map
        which has domain  dom(t1) union dom(t2) and which
        satifies  (mergeMap f t1 t2) x = f(t1(x), t2(x)), for
@@ -430,7 +430,7 @@ old *)
         (* merge lists *)
 	fun merge ([], ys) = ys
 	  | merge (xs, []) = xs
-	  | merge (l as((d1,r1)::xs), l' as ((d2,r2)::ys)) = 
+	  | merge (l as((d1,r1)::xs), l' as ((d2,r2)::ys)) =
 	    if lt(d1,d2) then (d1,r1):: merge(xs, l')
 	    else if lt(d2,d1) then (d2,r2)::merge(l, ys)
 		 else (* d1=d2 *)
@@ -440,24 +440,24 @@ old *)
          fromSortedList(merge(list t1, list t2))
       end
 
-    fun oneForWhich (f : ((dom * 'b) -> bool)) (t : 'b map) 
+    fun oneForWhich (f : ((dom * 'b) -> bool)) (t : 'b map)
           : (dom * 'b) option =
       case t of
 	E => NONE
-      | N(k,d,l,r,_) => 
+      | N(k,d,l,r,_) =>
 	  if f (k,d) then SOME (k,d)
-	  else 
+	  else
 	    case oneForWhich f l of
 	      SOME p => SOME p
-	    | NONE => oneForWhich f r  
+	    | NONE => oneForWhich f r
 
 
     exception Restrict of string
     fun restrict(pp, m: 'b map, dom : dom list) : 'b map =
-      foldl(fn (d, acc) => 
+      foldl(fn (d, acc) =>
 		 case lookup m d
 		   of SOME res => add(d,res,acc)
-		    | NONE => raise Restrict(pp d)) empty dom 
+		    | NONE => raise Restrict(pp d)) empty dom
 
     fun enrich en (m0, m) =
       Fold(fn ((d,r),b) => b andalso
@@ -467,14 +467,14 @@ old *)
 
     type StringTree = PP.StringTree
 
-    fun layoutMap {start, eq=equal, sep, finish} 
+    fun layoutMap {start, eq=equal, sep, finish}
       layoutDom layoutRan m =
       PP.NODE {start=start,
 	       finish=finish,
-	       children=map (fn (d,r) => 
+	       children=map (fn (d,r) =>
 			     PP.NODE {start="",
 				      finish="",
-				      children=[layoutDom d, 
+				      children=[layoutDom d,
 						layoutRan r],
 				      indent=3,
 				      childsep=PP.RIGHT equal})
@@ -491,7 +491,7 @@ old *)
     (* Pickler *)
     val pu_bal : bal Pickle.pu = Pickle.enumGen("OrderFinMap.bal",[L,B,R])
 
-    fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu = 
+    fun pu0 sh (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu =
 	let fun toInt E = 0
 	      | toInt (N _) = 1
 	    val fun_E = Pickle.con0 E
@@ -500,7 +500,11 @@ old *)
 		(fn N(a,b,c,d,e) => ((a,b,c,d),e)
 	          | _ => die "pu.fun_N")
 		(Pickle.pairGen0(Pickle.tup4Gen0(pu_dom,pu_r,pu,pu),pu_bal))
-	in Pickle.dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
+	in if sh then Pickle.dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
+           else Pickle.dataGenNoShare("OrderFinMap.map",toInt,[fun_E,fun_N])
 	end
+
+    fun pu x = pu0 true x
+    fun puNoShare x = pu0 false x
 
   end

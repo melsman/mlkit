@@ -7,17 +7,19 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
 
     fun key d = Name.key(QD.name d)
     fun rigid d = Name.rigid(QD.name d)
-      
+
     type elt = QD.dom
-      
+
     type 'a imap = 'a M.map
     datatype map0 = Rigid of elt imap | Flexible of {matchcount: Name.matchcount, imap: elt imap}
-      
+
     datatype Set = M of map0 ref | Empty
-      
+
+    fun getOne _ = die "getOne: not implemented"
+
     val empty = Empty
-      
-    fun singleton d = 
+
+    fun singleton d =
       let val nd = QD.name d
       in if Name.rigid nd then M (ref (Rigid(M.singleton(Name.key nd,d))))
 	 else M (ref (Flexible {imap = M.singleton(Name.key nd,d), matchcount = Name.current_matchcount()}))
@@ -33,16 +35,16 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
     fun imap' (M(ref(Rigid imap))) = imap
       | imap' (M(ref(Flexible {imap,...}))) = imap
       | imap' Empty = die "imap': impossible"
-      
+
     fun ensure_consistent_imap (imap : elt imap) : {rigid: bool, imap : elt imap} =
-      let 
+      let
 	val (consistent, rigid) = (* Property: rigid => consistent *)
 	  M.Fold(fn((i,d),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
 	val imap = if consistent then imap
 		   else M.fold(fn(d,im) => M.add(key d,d,im)) M.empty imap
       in {rigid=rigid,imap=imap}
       end
-    
+
     (* Operation for ensuring consistency of integer map *)
     fun ensure_consistent (m as Empty) = m
       | ensure_consistent (m as M(ref(Rigid _))) = m
@@ -53,11 +55,11 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
 	   else (r := Flexible{imap=imap,matchcount=Name.current_matchcount()}; m)
 	end
       else m
-	
+
     fun mk_flex imap = M(ref(Flexible{imap=imap,matchcount=Name.current_matchcount()}))
     fun mk_rigid imap = M(ref(Rigid imap))
 
-    fun member d m = 
+    fun member d m =
       case imap (ensure_consistent m)
 	of SOME im => (case M.lookup im (key d)
 			 of SOME _ => true
@@ -86,12 +88,12 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
       let val m = ensure_consistent m
       in case m
 	   of Empty => m
-	    | M(ref(Rigid im)) => 
+	    | M(ref(Rigid im)) =>
 	     (case M.remove(key d, im)
 		of SOME im' => if M.isEmpty im' then Empty
 			       else mk_rigid im'
 		 | NONE => m)
-	    | M(ref(Flexible{imap,...})) => 
+	    | M(ref(Flexible{imap,...})) =>
 		(case M.remove(key d, imap)
 		   of SOME im' => if M.isEmpty im' then Empty
 				  else mk_flex im'
@@ -106,7 +108,7 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
       case (ensure_consistent m1,ensure_consistent m2)
 	of (Empty,_) => Empty
 	 | (m1,Empty) => m1
-	 | (m1,m2) => 
+	 | (m1,m2) =>
 	  let val im1 = imap' m1
 	      val im2 = imap' m2
 	      val (im,rigid) =
@@ -121,7 +123,7 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
       case (ensure_consistent m1,ensure_consistent m2)
 	of (Empty,_) => Empty
 	 | (_,Empty) => Empty
-	 | (m1,m2) => 
+	 | (m1,m2) =>
 	  let val im1 = imap' m1
 	      val im2 = imap' m2
 	      val (im,rigid) =
@@ -191,7 +193,7 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
     fun size m =
       case imap(ensure_consistent m)
 	of NONE => 0
-	 | SOME im => M.fold(fn(_,n)=>n+1) 0 im 
+	 | SOME im => M.fold(fn(_,n)=>n+1) 0 im
 
     fun eq (s1: Set) (s2: Set) : bool =
       let fun f s = fold(fn d => fn b => b andalso member d s2) true s
@@ -200,7 +202,7 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
 
 
     type StringTree = PP.StringTree
-      
+
     fun layoutSet {start, sep, finish} pp_elt m =
       PP.NODE{start=start,finish=finish,indent=1,childsep=PP.RIGHT sep,
 	      children = List.map pp_elt (list m)}
@@ -213,7 +215,7 @@ functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
 		Pickle.con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
 		pu_m
 	    fun fun_Flexible _ =
-		Pickle.con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m})  (* invalidate earlier matchcount; i.e., force 
+		Pickle.con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m})  (* invalidate earlier matchcount; i.e., force
 											 * ensurance of consistency *)
 		(fn Flexible{matchcount=c,imap=m} => (c,m) | _ => die "pu_map0.Flexible")
 		(Pickle.pairGen(Name.pu_matchcount,pu_m))

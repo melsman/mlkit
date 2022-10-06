@@ -353,7 +353,7 @@ mk_from_space_gen(Gen *gen)
   gen->a = alloc_new_block(gen);
 }
 
-static void mk_from_space()
+static void mk_from_space(Context ctx)
 {
   Ro *r;
 
@@ -591,7 +591,7 @@ allocated_bytes_in_region_untagged(Ro* r, long obj_sz)   // obj_sz is in words
 }
 
 static size_t
-allocated_bytes_in_regions(void)
+allocated_bytes_in_regions(Context ctx)
 {
   size_t n = 0;
   Ro* r;
@@ -621,7 +621,7 @@ allocated_bytes_in_regions(void)
 }
 
 static long
-allocated_bytes_in_lobjs(void)
+allocated_bytes_in_lobjs(Context ctx)
 {
   long n = 0;
   Ro* r;
@@ -667,7 +667,7 @@ allocated_pages_in_region(Region r)
 }
 
 static long
-allocated_pages_in_regions(void)
+allocated_pages_in_regions(Context ctx)
 {
   long n = 0;
   Ro* r;
@@ -708,7 +708,7 @@ chk_no_tospacebits_region(Region r)
 }
 
 static void
-chk_no_tospacebits_regions(void)
+chk_no_tospacebits_regions(Context ctx)
 {
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
@@ -1269,7 +1269,7 @@ clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 
 #ifdef CHECK_GC
 void
-check_all_lobjs(void)    // used for debugging
+check_all_lobjs(Context ctx)    // used for debugging
 {
   Region r;
   //printf("[check_all_lobjs begin]\n");
@@ -1312,7 +1312,7 @@ region_utilize(long pages, long bytes)
 // --------------------
 
 void
-gc(uintptr_t **sp, size_t reg_map)
+gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   long time_gc_one_ms = 0;
   extern Rp* freelist;
@@ -1383,11 +1383,11 @@ gc(uintptr_t **sp, size_t reg_map)
 	      num_gc);
       fflush(stderr);
       ////fprintf(stderr,"[GC: allocated_bytes_in_regions]\n");
-      bytes_from_space = allocated_bytes_in_regions();
+      bytes_from_space = allocated_bytes_in_regions(ctx);
       ////fprintf(stderr,"[GC: allocated_pages_in_regions]\n");
-      pages_from_space = allocated_pages_in_regions();
+      pages_from_space = allocated_pages_in_regions(ctx);
       ////fprintf(stderr,"[GC: allocated_bytes_in_lobjs]\n");
-      lobjs_beforegc = allocated_bytes_in_lobjs();
+      lobjs_beforegc = allocated_bytes_in_lobjs(ctx);
       alloc_period_save = alloc_period;
       alloc_period = 0;
     }
@@ -1401,7 +1401,7 @@ gc(uintptr_t **sp, size_t reg_map)
 
 #ifdef ENABLE_GEN_GC
 #ifdef CHECK_GC
-  chk_no_tospacebits_regions();
+  chk_no_tospacebits_regions(ctx);
 
   for ( r = TOP_REGION ; r ; r = r->p )
     {
@@ -1431,7 +1431,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
 
   ////fprintf(stderr,"[GC: mk_from_space]\n");
-  mk_from_space();
+  mk_from_space(ctx);
 
 #ifdef ENABLE_GEN_GC
   if ( is_minor_p ) {
@@ -1732,7 +1732,7 @@ gc(uintptr_t **sp, size_t reg_map)
   clear_scan_container();
 
 #ifdef CHECK_GC
-  check_all_lobjs();  // debugging
+  check_all_lobjs(ctx);  // debugging
 #endif // CHECK_GC
 
   rp_used = rp_total - size_free_list();
@@ -1787,13 +1787,13 @@ gc(uintptr_t **sp, size_t reg_map)
 
   if ( verbose_gc )
     {
-      double RI = 0.0, GC = 0.0, FRAG = 0.0;
+      double FRAG = 0.0;
       size_t bytes_to_space;
       size_t pages_to_space;
       //size_t copied_bytes = alloc_period;
-      bytes_to_space = allocated_bytes_in_regions(); // ok gengc
-      pages_to_space = allocated_pages_in_regions(); // ok gengc
-      lobjs_aftergc = allocated_bytes_in_lobjs();  // ok gengc
+      bytes_to_space = allocated_bytes_in_regions(ctx); // ok gengc
+      pages_to_space = allocated_pages_in_regions(ctx); // ok gengc
+      lobjs_aftergc = allocated_bytes_in_lobjs(ctx);  // ok gengc
       alloc_period = alloc_period_save;            // ok gengc
       alloc_total += alloc_period;                 // ok gengc
       alloc_total += lobjs_period;                 // ok gengc
@@ -1848,7 +1848,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	  L_gc = L1 - L2;
 	  P_ri = 100.0 * (R_ri + L_ri) / (R_ri + L_ri + R_gc + L_gc);
 	  P_gc = 100.0 * (R_gc + L_gc) / (R_ri + L_ri + R_gc + L_gc);
-
+	  /*
 	  RI = 100.0 * ( ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
 				   (double)lobjs_period - (double)bytes_from_space - (double)lobjs_beforegc)) /
 			 ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
@@ -1859,7 +1859,7 @@ gc(uintptr_t **sp, size_t reg_map)
 			 ((double)(to_space_old + lobjs_aftergc_old
 				   + alloc_period + lobjs_period -
 				   bytes_to_space - lobjs_aftergc)));
-
+	  */
 	  FRAG = 100.0 - 100.0 * (((double)(bytes_from_space + lobjs_beforegc)) /
 				  ((double)(sizeof(void *)*ALLOCATABLE_WORDS_IN_REGION_PAGE*pages_from_space
 					    + lobjs_beforegc)));
@@ -1889,9 +1889,9 @@ gc(uintptr_t **sp, size_t reg_map)
   doing_gc = 0; // Mutex on the garbage collector
 
   if (raised_exn_interupt)
-    raise_exn((uintptr_t)&exn_INTERRUPT);
+    raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow)
-    raise_exn((uintptr_t)&exn_OVERFLOW);
+    raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
   return;
 }
 

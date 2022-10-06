@@ -36,7 +36,7 @@ REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size)
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
 void
-convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
+convertStringToC(Context ctx, String mlStr, char *buf, size_t buflen, uintptr_t exn)
 {
   size_t sz;
   char *p;
@@ -44,7 +44,7 @@ convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
   sz = sizeStringDefine(mlStr);
   if ( sz > buflen-1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   for ( p = &(mlStr->data); *p != '\0'; )
     {
@@ -106,6 +106,13 @@ REG_POLY_FUN_HDR(allocStringML, Region rAddr, size_t sizeML)
 {
   size_t sizeC = convertIntToC(sizeML);
   String strPtr;
+
+  // maybe reset region
+  if ( is_inf_and_atbot(rAddr) )
+    {
+      resetRegion(rAddr);
+    }
+
   strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
@@ -118,24 +125,15 @@ REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC)
   return strPtr;
 }
 
-size_t
-chrCharML(size_t charNrML, uintptr_t exn)
-{
-  size_t charNrC = convertIntToC(charNrML);
-  if ( charNrC <= 255 )
-    {
-      return convertIntToML (charNrC);
-    }
-  raise_exn(exn);
-  return 0;        // never reached
-}
-
 String
 REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 {
   String res;
   char *s, *p;
   size_t i, sz;
+
+  // resetting not possible due to possible aliasing
+
   debug(printf("[enter concatStringML (rAddr=%p,str1=%p,str2=%p)]\n", rAddr,str1,str2);)
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
   res = REG_POLY_CALL(allocString, rAddr, sz);

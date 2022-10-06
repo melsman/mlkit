@@ -13,7 +13,7 @@ signature DATE =
 		hour : int,
 		minute : int,
 		second : int,
-		offset : Time.time option} 
+		offset : Time.time option}
 	-> date
 
     val year    : date -> int
@@ -153,27 +153,42 @@ toString date
 
     The former formats the date according to the format string s,
     following the semantics of the ISO C function strftime. In
-    particular, fmt is locale-dependent. The allowed formats are: %a
-    locale's abbreviated weekday name %A locale's full weekday name %b
-    locale's abbreviated month name %B locale's full month name %c
-    locale's date and time representation (e.g., "Dec 2 06:55:15
-    1979") %d day of month [01-31] %H hour [00-23] %I hour [01-12] %j
-    day of year [001-366] %m month number [01-12] %M minutes [00-59]
-    %p locale's equivalent of the AM/PM designation %S seconds [00-61]
-    %U week number of year [00-53], with the first Sunday as the first
-    day of week 01 %w day of week [0-6], with 0 representing Sunday %W
-    week number of year [00-53], with the first Monday as the first
-    day of week 01 %x locale's appropriate date representation %X
-    locale's appropriate time representation %y year of century
-    [00-99] %Y year including century (e.g., 1997) %Z time zone name
-    or abbreviation, or the empty string if no time zone information
-    exists %% the percent character %c the character c, if c is not
-    one of the format characters listed above For instance, fmt "%A"
-    date returns the full name of the weekday specified by date (e.g.,
-    "Monday"). For a full description of the format-string syntax,
-    consult a description of strftime. Note, however, that unlike
-    strftime, the behavior of fmt is defined for the directive %c for
-    any character c.
+    particular, fmt is locale-dependent. The allowed formats are:
+
+     %a locale's abbreviated weekday name
+     %A locale's full weekday name
+     %b locale's abbreviated month name
+     %B locale's full month name
+     %c locale's date and time representation
+        (e.g., "Dec 2 06:55:15 1979")
+     %d day of month [01-31]
+     %H hour [00-23]
+     %I hour [01-12]
+     %j day of year [001-366]
+     %m month number [01-12]
+     %M minutes [00-59]
+     %p locale's equivalent of the AM/PM designation
+     %S seconds [00-61]
+     %U week number of year [00-53], with the first Sunday as the first
+        day of week 01
+     %w day of week [0-6], with 0 representing Sunday
+     %W week number of year [00-53], with the first Monday as the first
+        day of week 01
+     %x locale's appropriate date representation
+     %X locale's appropriate time representation
+     %y year of century [00-99]
+     %Y year including century (e.g., 1997)
+     %Z time zone name or abbreviation, or the empty string if no time
+        zone information exists
+     %% the percent character
+     %c the character c, if c is not one of the format characters listed
+        above
+
+    For instance, fmt "%A" date returns the full name of the weekday
+    specified by date (e.g., "Monday"). For a full description of the
+    format-string syntax, consult a description of strftime. Note,
+    however, that unlike strftime, the behavior of fmt is defined for
+    the directive %c for any character c.
 
     toString returns a 24-character string representing the date date
     in the following format:

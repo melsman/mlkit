@@ -1,6 +1,5 @@
 
-signature REGION_EXP =
-  sig
+signature REGION_EXP = sig
 
     (* Intermediate language used for region inference. The language
      * is typed and functions are allowed to accept and return
@@ -9,7 +8,7 @@ signature REGION_EXP =
      * represented in registers.
      *
      * Value and exceptions constructors are supposed to be
-     * distinct. This must be ensured by the compiler. *)
+     * distinct, which must be ensured by the compiler frontend. *)
 
     type lvar
     type con
@@ -19,22 +18,22 @@ signature REGION_EXP =
 
     eqtype tyvar
 
-    type Type and sigma and il and cone
+    type Type and mu and sigma and il and cone
 
     datatype constructorKind = CONSTANT | VALUE_CARRYING
     datatype datbinds = DATBINDS of (TyName * (con * constructorKind * sigma) list) list list
 
     datatype metaType =
                             (* describes normal expressions: *)
-        Mus of (Type*place) list
+        Mus of mu list
                             (* To allow the result of a declaration: *)
       | Frame of {declared_lvars: {lvar : lvar,
 				   compound : bool,
 				   create_region_record : bool,
                                    regvars : RegVar.regvar list,
                                    sigma: sigma ref,
-                                   place: place}list,
-		  declared_excons: (excon* (Type*place)option) list}
+                                   place: place option} list,
+		  declared_excons: (excon * mu option) list}
 
       | RaisedExnBind (* to be a raised Bind exception. *)
 
@@ -49,24 +48,24 @@ signature REGION_EXP =
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
-      | INTEGER  of IntInf.int * Type * 'a
-      | WORD     of IntInf.int * Type * 'a
+      | INTEGER  of IntInf.int * Type * 'a option  (* NONE if unboxed *)
+      | WORD     of IntInf.int * Type * 'a option  (* NONE if unboxed *)
       | STRING   of string * 'a
       | REAL     of string * 'a
-      | F64      of string * 'a
+      | F64      of string
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
-      | FN       of {pat : (lvar * (Type*place)) list,
+      | FN       of {pat : (lvar * mu) list,
                      body : ('a,'b)trip,
                      alloc: 'a,
 		     free: (lvar list * excon list) option}  (*region inference without dangling pointers*)
       | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
-      | LET      of {pat : (lvar * tyvar list * Type * place) list,
+      | LET      of {pat : (lvar * (tyvar*effect option) list * Type * place option) list,   (* memo: delete tyvar list *)
 		     bind : ('a,'b)trip,
 		     scope: ('a,'b)trip}
       | FIX      of {shared_clos: 'a,
                      functions : {lvar : lvar,
                                   occ: (il * (il * cone -> il * cone)) ref list ref,
-				  tyvars : tyvar list,
+				  tyvars : (tyvar*effect option) list ref,                   (* spurious tyvars are annotated with effects *)
                                   rhos: place list ref,
                                   epss: effect list ref,
 				  Type : Type,
@@ -74,8 +73,8 @@ signature REGION_EXP =
 				  bind : ('a,'b)trip} list,
 		     scope : ('a,'b)trip}
       | APP      of ('a,'b)trip * ('a,'b)trip
-      | EXCEPTION of excon * bool * (Type*place)  * 'a * ('a,'b)trip
-                             (* Type*place: of exception constructor
+      | EXCEPTION of excon * bool * mu * 'a * ('a,'b)trip
+                             (* mu: of exception constructor
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b)trip
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
@@ -84,20 +83,20 @@ signature REGION_EXP =
       | SWITCH_S of ('a,'b,string) Switch
       | SWITCH_C of ('a,'b,con) Switch
       | SWITCH_E of ('a,'b,excon) Switch
-      | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
-      | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b)trip
+      | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a option}   (* NONE if unboxed *)
+      | CON1     of {con : con, il : il, alloc: 'a option} * ('a,'b)trip           (* NONE if unboxed *)
       | DECON    of {con : con, il : il} * ('a,'b)trip
       | EXCON    of excon * ('a * ('a,'b)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b)trip
-      | RECORD   of 'a * ('a,'b)trip list
+      | RECORD   of 'a option * ('a,'b)trip list
       | SELECT   of int * ('a,'b)trip
       | DEREF    of ('a,'b)trip
       | REF      of 'a * ('a,'b)trip
-      | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
+      | ASSIGN   of ('a,'b)trip * ('a,'b)trip
       | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
-      | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
+      | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
-		     mu_result : Type * place, (*mu of result from c function*)
+		     mu_result : mu, (*mu of result from c function*)
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list  (* Calling C functions *)
 
@@ -107,19 +106,19 @@ signature REGION_EXP =
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
 
       | EXPORT   of {name : string,
-		     mu_arg : Type * place, (*mu of argument to c function*)
-		     mu_res : Type * place}
+		     mu_arg : mu, (*mu of argument to c function*)
+		     mu_res : mu}
 	            * ('a,'b)trip  (* The ML function *)
 
-      | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list}
+      | RESET_REGIONS of {force: bool, regions_for_resetting: 'a list}
                          * ('a,'b)trip     (* for programmer-directed resetting of regions;
 				            * resetting is forced iff "force" is true.
 				            * Forced resetting is not guaranteed to be sound *)
       | FRAME    of {declared_lvars: {lvar : lvar,
                                       regvars : RegVar.regvar list,
                                       sigma: sigma ref,
-                                      place: place} list,
-                     declared_excons: (excon * (Type*place) option) list}
+                                      place: place option} list,
+                     declared_excons: (excon * mu option) list}
                        (* a frame is the result of a structure-level
                         * declaration.
 			*)
@@ -132,11 +131,10 @@ signature REGION_EXP =
 
     val normPgm: (place, 'b)LambdaPgm * (unit -> int) -> unit
 
-    val countletregions: 'a -> unit
-
+    val pr_tyvar : tyvar -> string
 
     type StringTree
-    val printcount: int ref  (* controls printing of effects on expressions*)
+
     val layMeta : metaType -> StringTree
     val layoutLambdaPgm: ('a -> StringTree option) -> ('b -> StringTree option) ->
                          ('a, 'b)LambdaPgm -> StringTree

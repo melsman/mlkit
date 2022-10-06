@@ -14,6 +14,12 @@ signature POSIX_IO =
       | O_WRONLY
       | O_RDWR
 
+    structure FD :
+      sig
+          include BIT_FLAGS
+          val cloexec : flags
+      end
+
     structure O :
       sig
         include BIT_FLAGS
@@ -24,9 +30,13 @@ signature POSIX_IO =
 
     val close : file_desc -> unit
     val dup : file_desc -> file_desc
+    val dup2 : {old : file_desc, new : file_desc} -> unit
     val dupfd : {old : file_desc, base : file_desc} -> file_desc
     val pipe : unit -> {infd : file_desc, outfd : file_desc}
-   
+
+    val getfd : file_desc -> FD.flags
+    val setfd : file_desc * FD.flags -> unit
+
     datatype lock_type
       = F_RDLCK
       | F_WRLCK

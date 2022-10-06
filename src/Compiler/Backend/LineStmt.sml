@@ -95,9 +95,9 @@ struct
     | STRING          of string
     | REAL            of string
     | F64             of string
-    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
-    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}
@@ -269,19 +269,21 @@ struct
          | STRING s  => LEAF("\"" ^ String.toString s ^ "\"")
          | REAL s    => LEAF(s)
          | F64 s     => LEAF(s ^ "f64")
-         | CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} => HNODE{start="[",
-                                                                              finish="]clos " ^ pr_sma pr_aty alloc,
-                                                                              childsep=RIGHT ",",
-                                                                              children=LEAF(Labels.pr_label label)::
-                                                                              map (layout_aty pr_aty) (smash_free elems)}
+         | CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
+           HNODE{start="[",
+                 finish="]clos(" ^ Int.toString f64_vars ^ ") " ^ pr_sma pr_aty alloc,
+                 childsep=RIGHT ",",
+                 children=LEAF(Labels.pr_label label)::
+                          map (layout_aty pr_aty) (smash_free elems)}
          | REGVEC_RECORD{elems,alloc} => HNODE{start="[",
                                                finish="]regvec " ^ pr_sma pr_aty alloc,
                                                childsep=RIGHT ",",
                                                children=map (layout_sma pr_aty) elems}
-         | SCLOS_RECORD{elems=elems as (lvs,excons,rhos),alloc} => HNODE{start="[",
-                                                                         finish="]sclos " ^ pr_sma pr_aty alloc,
-                                                                         childsep=RIGHT ",",
-                                                                         children= map (layout_aty pr_aty) (smash_free elems)}
+         | SCLOS_RECORD{elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
+           HNODE{start="[",
+                 finish="]sclos(" ^ Int.toString f64_vars ^ ") " ^ pr_sma pr_aty alloc,
+                 childsep=RIGHT ",",
+                 children= map (layout_aty pr_aty) (smash_free elems)}
          | RECORD{elems,alloc,tag,maybeuntag} => HNODE{start="[",
                                                        finish="] " ^ pr_sma pr_aty alloc,
                                                        childsep=RIGHT ",",
@@ -655,15 +657,17 @@ struct
             end
          | ClosExp.PASS_PTR_TO_RHO sma => maybe_assign (lvars_res, PASS_PTR_TO_RHO(sma_to_sma sma), acc)
          | ClosExp.UB_RECORD ces => List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
-         | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc} =>
+         | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),f64_vars,alloc} =>
           maybe_assign (lvars_res, CLOS_RECORD{label=label,
                                                elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
+                                               f64_vars=f64_vars,
                                                alloc=sma_to_sma alloc}, acc)
          | ClosExp.REGVEC_RECORD{elems,alloc} =>
           maybe_assign (lvars_res, REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma alloc}, acc)
-         | ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc} =>
-          maybe_assign (lvars_res, SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
-                                                alloc=sma_to_sma alloc}, acc)
+         | ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc} =>
+           maybe_assign (lvars_res, SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
+                                                 f64_vars=f64_vars,
+                                                 alloc=sma_to_sma alloc}, acc)
          | ClosExp.RECORD{elems,alloc,tag,maybeuntag} =>
           maybe_assign (lvars_res, RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag,maybeuntag=maybeuntag}, acc)
          | ClosExp.BLOCKF64{elems,alloc,tag} =>
@@ -852,9 +856,9 @@ struct
     | get_phreg_se (STRING str,acc) = acc
     | get_phreg_se (REAL str,acc) = acc
     | get_phreg_se (F64 str,acc) = acc
-    | get_phreg_se (CLOS_RECORD{label,elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
+    | get_phreg_se (CLOS_RECORD{label,elems,f64_vars,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
     | get_phreg_se (REGVEC_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(elems,acc))
-    | get_phreg_se (SCLOS_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
+    | get_phreg_se (SCLOS_RECORD{elems,f64_vars,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
     | get_phreg_se (RECORD{elems,alloc,tag,maybeuntag},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
     | get_phreg_se (BLOCKF64{elems,alloc,tag},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
     | get_phreg_se (SCRATCHMEM{bytes,alloc,tag},acc) = get_phreg_sma(alloc, acc)
@@ -978,9 +982,9 @@ struct
       | (STRING str,acc) => acc
       | (REAL str,acc) => acc
       | (F64 str,acc) => acc
-      | (CLOS_RECORD{label,elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+      | (CLOS_RECORD{label,elems,f64_vars,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
       | (REGVEC_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_smas(elems,acc))
-      | (SCLOS_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+      | (SCLOS_RECORD{elems,f64_vars,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
       | (RECORD{elems,alloc,tag,maybeuntag},acc) => get_var_sma(alloc, get_var_atoms(elems,acc))
       | (BLOCKF64{elems,alloc,tag},acc) => get_var_sma(alloc, get_var_atoms(elems,acc))
       | (SCRATCHMEM{bytes,alloc,tag},acc) => get_var_sma(alloc,acc)
@@ -1127,13 +1131,15 @@ struct
           | map_se (STRING str) = STRING str
           | map_se (REAL str) = REAL str
           | map_se (F64 str) = F64 str
-          | map_se (CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) =
+          | map_se (CLOS_RECORD{label,elems=(lvs,excons,rhos),f64_vars,alloc}) =
           CLOS_RECORD{label=label,
                       elems=(map_atys lvs,map_atys excons,map_atys rhos),
+                      f64_vars=f64_vars,
                       alloc= map_sma alloc}
           | map_se (REGVEC_RECORD{elems,alloc}) = REGVEC_RECORD{elems=map_smas elems,alloc=map_sma alloc}
-          | map_se (SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) =
+          | map_se (SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
           SCLOS_RECORD{elems=(map_atys lvs,map_atys excons,map_atys rhos),
+                       f64_vars=f64_vars,
                        alloc = map_sma alloc}
           | map_se (RECORD{elems,alloc,tag,maybeuntag}) = RECORD{elems=map_atys elems,alloc=map_sma alloc,tag=tag,maybeuntag=maybeuntag}
           | map_se (BLOCKF64{elems,alloc,tag}) = BLOCKF64{elems=map_atys elems,alloc=map_sma alloc,tag=tag}

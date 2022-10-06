@@ -8,14 +8,12 @@ structure OptLambda: OPT_LAMBDA =
                      type nodeId = Lvars.lvar
                      type info = Lvars.lvar
                      type edgeInfo = unit
-                     val lt = fn a => fn b => Lvars.lt(a,b)
+                     val lt = fn (a,b) => Lvars.lt(a,b)
                      fun getId lv = lv
                      val pu = Lvars.pu
                  end)
 
     structure PP = PrettyPrint
-
-    structure EdList = Edlib.List
 
     structure LvarMap = Lvars.Map
 
@@ -173,7 +171,7 @@ structure OptLambda: OPT_LAMBDA =
     val aggressive_opt = Flags.add_bool_entry
         {long="aggresive_opt",short=SOME "aopt",
          menu=["Control", "Optimiser", "aggressive optimisation"],
-         item=ref true,neg=false,
+         item=ref true,neg=true,
          desc=
          "Enable aggressive optimisations, including constant\n\
          \folding and aggressive inlining. These\n\
@@ -205,6 +203,12 @@ structure OptLambda: OPT_LAMBDA =
 
     fun fst (a,_) = a
     and snd (_,b) = b
+
+    fun removeNth 0 (x::xs) = SOME(x,xs)
+      | removeNth _ nil = NONE
+      | removeNth n (x::xs) = case removeNth (n-1) xs of
+                                  SOME(y,ys) => SOME(y,x::ys)
+                                | NONE => NONE
 
     fun size_lamb lamb = foldTD (fn s => fn _ => s + 1) 0 lamb
 
@@ -257,9 +261,9 @@ structure OptLambda: OPT_LAMBDA =
     * ----------------------------------------------------------------- *)
 
     local
-      type stat_map = (string, int) FinMap.map
+      type stat_map = int StringFinMap.map
       fun pad m =
-        let val l = FinMap.list m
+        let val l = StringFinMap.list m
             val ss = map #1 l
             val max = List.foldl (fn (s,max) => if String.size s > max then String.size s else max) 0 ss
             fun space 0 = ""
@@ -267,12 +271,12 @@ structure OptLambda: OPT_LAMBDA =
             fun add_space s = s ^ space (max - String.size s)
             val ss' = map add_space ss
             val l' = BasisCompat.ListPair.zipEq (ss', map #2 l) handle _ => die "pad"
-            fun fromList [] = FinMap.empty
-              | fromList ((a,b)::rest) = FinMap.add(a,b,fromList rest)
+            fun fromList [] = StringFinMap.empty
+              | fromList ((a,b)::rest) = StringFinMap.add(a,b,fromList rest)
         in fromList l'
         end
-      val stat_map : stat_map ref = ref FinMap.empty
-      val layout_stat = (FinMap.layoutMap {start="Optimiser Statistics:", eq=" : ", sep=", ", finish =""}
+      val stat_map : stat_map ref = ref StringFinMap.empty
+      val layout_stat = (StringFinMap.layoutMap {start="Optimiser Statistics:", eq=" : ", sep=", ", finish =""}
         PP.LEAF (PP.LEAF o Int.toString)) o pad
       fun print_size_difference size_before size_after =
         let
@@ -302,13 +306,13 @@ structure OptLambda: OPT_LAMBDA =
         end
 
     in
-      fun reset_statistics() = (stat_map := FinMap.empty; tick_count_list := [0])
+      fun reset_statistics () = (stat_map := StringFinMap.empty; tick_count_list := [0])
       fun add_statistics (s:string) =
         let val map = !stat_map
-            val i = case FinMap.lookup map s
+            val i = case StringFinMap.lookup map s
                       of SOME i => i
                        | NONE => 0
-            val new_stat_map = FinMap.add(s, i+1, map)
+            val new_stat_map = StringFinMap.add(s, i+1, map)
             val _ = incr_tick_counter()
         in (* log ("  " ^ s ^ "\n"); *) stat_map := new_stat_map
         end
@@ -338,8 +342,8 @@ structure OptLambda: OPT_LAMBDA =
       fun tick (s : string) = (flag := true;
                                if statistics_after_optimisation() then add_statistics s
                                else ())
-      fun reset_tick() = flag := false
-      fun test_tick() = !flag
+      fun reset_tick () = flag := false
+      fun test_tick () = !flag
     end
 
    (* -----------------------------------------------------------------
@@ -1596,7 +1600,9 @@ structure OptLambda: OPT_LAMBDA =
                          | _ => fail
                in case lamb
                     of PRIM(RECORDprim _,lambs) =>
-                      let val (lamb', lambs') = EdList.removeNth n lambs
+                      let val (lamb', lambs') = case removeNth n lambs of
+                                                    SOME p => p
+                                                  | NONE => die "reduce.impossible"
                       in if safeLambdaExps lambs' then
                            (tick "reduce - sel-record"; app decr_uses lambs';
                             reduce(env, (lamb', CUNKNOWN)))
@@ -2484,6 +2490,7 @@ structure OptLambda: OPT_LAMBDA =
                  (tick "fix conversion";
                   FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,bind=bind}],
                       scope=scope})
+           | f (FIX{functions=[],scope}) = (tick "fix conversion - empty"; f scope)
            | f lamb = lamb
      in
        if !fix_conversion_ref then (log "fix_conversion\n"; passTD f lamb)
@@ -2723,7 +2730,6 @@ structure OptLambda: OPT_LAMBDA =
                    | _ => (body, acc))
               | _ => (body, acc)
          val (body, lvar_map) = hoist (body, nil)
-
          val argpat =
              mapi (fn (i,ty) =>
                       let val (lv,ty) = case lookup i lvar_map of
@@ -2906,7 +2912,6 @@ structure OptLambda: OPT_LAMBDA =
                     ; pr_env (!frame_unbox_fix_env)
                     ; print "\n")
                   else ()
-
        in (lamb, !frame_unbox_fix_env)
        end
 

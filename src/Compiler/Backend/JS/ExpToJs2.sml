@@ -18,10 +18,10 @@ datatype conRep = (* representation of value constructors for datatypes *)
        | UNBOXED_UNARY
 
 (* Replacing lvars in an expression to other lvars *)
-type rep = (lvar, lvar) FinMapEq.map
+type rep = lvar Lvars.Map.map
 
 fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances,regvars}) : Exp =
-    (case FinMapEq.lookup Lvars.eq rep lvar of
+    (case Lvars.Map.lookup rep lvar of
          SOME lv => L.VAR{lvar=lv,instances=instances,regvars=nil}
        | NONE => e)
   | replace_lvs rep (L.FRAME _) = die "rename_lvs: FRAME construct not expected"
@@ -142,7 +142,7 @@ local
       end
 
   fun normalizeBase b =
-      let val b = replaceString (".mlb-", "$0") b
+      let val b = replaceString (".mlb->", "$0") b
           val b = replaceString (".sml1", "$1") b
       in
         String.translate (fn #"." => "$2" | #"-" => "$3" | c => Char.toString c) b
@@ -252,11 +252,20 @@ datatype cont = RetCont of (lvar*J.id list) option   (* lvar is the fix-bound va
 
 datatype ret = S of cont -> J.stmt | E of J.exp
 
+(* JExp: smart constructor that eliminates certain certain effect-free
+   expression statements, such as J.Exp(function(){..}) *)
+
+val zero_exp = J.Cnst (J.Int 0)
+fun JExp e =
+    case e of
+        J.Fun _ => J.Exp zero_exp
+      | _ => J.Exp e
+
 fun wrapExp (k:cont) (e:J.exp) : J.stmt =
     case k of
-      IdCont id => J.Exp(J.Prim("=",[J.Id id,e]))
+      IdCont id => JExp(J.Prim("=",[J.Id id,e]))
     | RetCont _ => J.Return e
-    | NxtCont => J.Exp e
+    | NxtCont => JExp e
 
 fun wrapRet (k:cont) (r:ret) : J.stmt =
     case r of
@@ -767,8 +776,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.FN {pat,body} =>
     let val ids = map (prLvar C o #1) pat
     in if #clos_p P then
-         let fun fromList nil = FinMapEq.empty
-               | fromList ((k,v)::rest) = FinMapEq.add Lvars.eq (k,v,fromList rest)
+         let fun fromList nil = Lvars.Map.empty
+               | fromList ((k,v)::rest) = Lvars.Map.add (k,v,fromList rest)
              val (fvs,_) = LambdaBasics.freevars e (* memo: what about excons? *)
              val lvs_lvs'_idxs =  (* new lvs for free variables *)
                  rev (#1 (foldl (fn (x,(acc,i)) => ((x,Lvars.newLvar(),i)::acc,i+1))
@@ -791,7 +800,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
          let val s_bind =
                  case toj C P bind of
                    S f => f NxtCont
-                 | E e => J.Exp e
+                 | E e => JExp e
          in s_bind &
             (case toj C P scope of
                S f' => f' k
@@ -1019,12 +1028,12 @@ fun toJs (env0, L.PGM(dbss,e)) =
       val env' = Env.fromDatbinds dbss
       val env = Env.plus(env0,env')
       val js = wrapRet (RetCont NONE) (toj (Context.mk env) {clos_p=false} e)
-      val js = J.Exp(J.App(J.Fun([],js),[]))
+      val js = JExp(J.App(J.Fun([],js),[]))
       val js =
           case getLocalBase() of
             SOME b => J.IfStmt(J.Prim("==",[J.App(J.Id"typeof",[J.Id b]),
                                             J.Cnst (J.Str "undefined")]),
-                               J.Exp(J.Prim("=",[J.Id b, J.Id "{}"])),
+                               JExp(J.Prim("=",[J.Id b, J.Id "{}"])),
                                NONE) & js
           | NONE => js
     in (js, env')

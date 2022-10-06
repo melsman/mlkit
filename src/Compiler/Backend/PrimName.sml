@@ -141,7 +141,7 @@ datatype prim =
          Word32ub_to_int64ub_X |
          Word32ub_to_word64ub_X |
 
-	 Exn_ptr | Fresh_exname |
+	 Exn_ptr | Fresh_exname | Get_ctx |
 
          Bytetable_sub | Bytetable_size | Bytetable_update |
 	 Word_sub0 | Word_update0 | Table_size |
@@ -157,9 +157,7 @@ datatype prim =
          Blockf64_update_f64 | Blockf64_sub_f64
 
 local
-  structure M = OrderFinMap(struct type T = string
-                                   fun lt (a: T) b = a < b
-			    end)
+  structure M = StringFinMap
 
   val flow_pairs =
 	[("__equal_int31", Equal_int31), ("__equal_int32ub", Equal_int32ub), ("__equal_int32b", Equal_int32b),
@@ -309,7 +307,7 @@ local
          ("__word32ub_to_int64ub_X", Word32ub_to_int64ub_X),
          ("__word32ub_to_word64ub_X", Word32ub_to_word64ub_X),
 
-	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname),
+	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname), ("__get_ctx", Get_ctx),
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
 	 ("word_sub0", Word_sub0), ("word_update0", Word_update0), ("table_size", Table_size),
 	 ("__is_null", Is_null),
@@ -680,6 +678,7 @@ fun pp_prim (p:prim) : string =
 
       | Exn_ptr => "Exn_ptr"
       | Fresh_exname => "Fresh_exname"
+      | Get_ctx => "Get_ctx"
       | Bytetable_sub => "Bytetable_sub"
       | Bytetable_size => "Bytetable_size"
       | Bytetable_update => "Bytetable_update"

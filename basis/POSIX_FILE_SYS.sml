@@ -44,6 +44,12 @@ signature POSIX_FILE_SYS =
         val isgid : mode
       end
 
+    structure FD :
+      sig
+          include BIT_FLAGS
+          val cloexec : flags
+      end
+
     structure O : sig
       include BIT_FLAGS
 

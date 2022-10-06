@@ -13,7 +13,7 @@ BINDIR=@top_srcdir@/bin
 LIBDIR=@top_srcdir@/lib
 
 OFILES=Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
-       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
+       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o Socket.o
 OFILESWITHGC=$(OFILES) GC.o
 OFILESWITHPAR=$(OFILES) Spawn.o
 CFILES_PAR=$(OFILESWITHPAR:%.o=%.c)
@@ -27,18 +27,8 @@ OFILES_GEN_GC = $(OFILESWITHGC:%.o=%-gengc.o)
 OFILES_GEN_GC_PROF = $(OFILESWITHGC:%.o=%-gengc-p.o)
 OFILES_GC_TP = $(OFILESWITHGC:%.o=%-gc-tp.o)
 OFILES_GC_TP_PROF = $(OFILESWITHGC:%.o=%-gc-tp-p.o)
-OFILES_KAM = $(OFILES:%.o=%-kam.o) Interp-kam.o LoadKAM-kam.o KamInsts-kam.o Prims.o \
-             HeapCache-kam.o
-CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c
-OFILES_SMLSERVER = $(OFILES:%.o=%-smlserver.o) Interp-smlserver.o LoadKAM-smlserver.o \
-             HeapCache-smlserver.o KamInsts-smlserver.o PrimsApSml.o
-CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
-
 HEADER_FILES=SysErrTable.h
 
-#OPT=-Wall -pedantic -std=c99
-
-#OPT:=-m32 -Wall -std=gnu99
 OPT:=-Wall -std=gnu99
 OPT:=$(OPT) $(CFLAGS)
 
@@ -46,7 +36,7 @@ AR=ar rc
 
 .PHONY: depend clean runtime all
 
-all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
+all: runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
  runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
  runtimeSystemGCTPProf.a runtimeSystemGenGC.a runtimeSystemGenGCProf.a \
  runtimeSystemPar.a
@@ -65,14 +55,6 @@ SysErrTable.h: gen_syserror
 gen_syserror: gen_syserror.c
 	$(CC) gen_syserror.c -o gen_syserror
 
-
-%-kam.o: %.c
-	$(CC) -c -DKAM -DLAB_THREADED $(OPT) -o $*-kam.o $<
-#	$(CC) -c -DKAM -DDEBUG -DLAB_THREADED $(OPT) -o $*-kam.o $<
-#	$(CC) -c -DKAM $(OPT) -o $*-kam.o $<
-
-%-smlserver.o: %.c Makefile
-	$(CC) -c -DKAM -DLAB_THREADED -DTHREADS -DAPACHE -fpic $(OPT) -o $*-smlserver.o $<
 
 %-p.o: %.c
 #	$(CC) -c -DPROFILING -DDEBUG -o $*-p.o $<
@@ -134,16 +116,6 @@ runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF) $(HEADER_FILES)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-kam: $(OFILES_KAM) $(HEADER_FILES)
-	$(CC) -o $@ $(OFILES_KAM) -lm -ldl -m32
-	$(MKDIR) $(LIBDIR)
-	$(INSTALL) $@ $(LIBDIR)
-
-runtimeSystemKamApSml.o: $(OFILES_SMLSERVER) $(HEADER_FILES)
-	ld -r -o $@ $(OFILES_SMLSERVER)
-	$(MKDIR) $(LIBDIR)
-	$(INSTALLDATA) $@ $(LIBDIR)
-
 runtimeSystemGCTP.a: $(OFILES_GC_TP) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC_TP)
 	$(MKDIR) $(LIBDIR)
@@ -170,18 +142,16 @@ depend:
 	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS -DPROFILING -DENABLE_GC -DENABLE_GEN_GC $(CFILES) | sed -e 's/\.o/-gengc-p.o/'; \
 	 $(CC) -MM -DTAG_VALUES -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc-tp.o/'; \
 	 $(CC) -MM -DTAG_VALUES -DPROFILING -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc-tp-p.o/'; \
-	 $(CC) -MM -DKAM $(CFILES_KAM) | sed -e 's/\.o/-kam.o/'; \
-	 $(CC) -MM -DKAM $(CFILES_SMLSERVER) | sed -e 's/\.o/-smlserver.o/'; \
 	 $(CC) -MM -DPARALLEL $(CFILES_PAR) | sed -e 's/\.o/-par.o/'; \
 	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS $(CFILES) | sed -e 's/\.o/-tag.o/') > Makefile.in
 	rm Makefile.in.bak
 
 clean:
 	rm -f $(OFILES) $(OFILES_TAG) $(OFILES_PROF) $(OFILES_GC) $(OFILES_GC_TP)
-	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER)
+	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF)
 	rm -f $(OFILES_GEN_GC_PROF) $(OFILES_GEN_GC) $(OFILES_PAR)
 	rm -f core a.out *~ *.bak gen_syserror SysErrTable.h
-	rm -f runtimeSystemKamApSml.o kam runtimeSystemGCProf.a runtimeSystemGC.a
+	rm -f runtimeSystemGCProf.a runtimeSystemGC.a
 	rm -f runtimeSystemGCTPProf.a runtimeSystemGCTP.a
 	rm -f runtimeSystemProf.a runtimeSystemTag.a runtimeSystem.a
 	rm -f runtimeSystemGenGCProf.a runtimeSystemGenGC.a runtimeSystemPar.a

@@ -1,12 +1,92 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.2 is released
+
+* mael 2022-09-15: The region type system has now been made simpler by
+  avoing word-regions all together and by limiting regions of type
+  RT_BOT to be related to explicit region annotated programs (PR
+  #110). This change also eliminated a bug that prevented MLKit from
+  compiling MLton (issue #103).
+
+* mael 2022-09-07: Fixed unsoundness of gc-safety. The combination of
+  garbage collection and region inference has now been made safe by
+  ensuring (for certain) that no dangling pointers are introduced at
+  runtime (PR #109).
+
+* mael 2022-01-24: More efficient static environment serialisation
+  (issue #103).
+
+* mael 2022-01-20: Fixed bug caused by not renaming bound exception
+  constructors during inlining (issue #104).
+
+### MLKit version 4.6.1 is released
+
+* mael 2022-01-20: Make use of better finite map structures (based on
+  AVL trees) for all compiler and elaboration environments.
+
+* mael 2022-01-20: Faster serialisation of compiler bases by adopting
+  a non-sharing strategy in case there are many hash-collisions.
+
+* mael 2022-01-18: The maximum size of a string is now 4Gb (previously
+  16Mb). For the JavaScript backend, the maximum size is now 1Gb
+  (previously 16Mb). Same for Word8Vector.vector, CharArray.array, and
+  Word8Array.array.
+
+* mael 2022-01-18: Fixed problem with dropped region variable being
+  passed to a function. Such situations can arise if the particular
+  function call instance cause no allocation in the dropped region,
+  while another function call instance will prowide a proper region
+  which will be allocated into (by, for instance, a parameter-passed
+  function) (problem mentioned in issue #97).
+
+* mael 2022-01-18: Fixed name clash error related to referencing
+  similarly named (but different) files from different mlb-files. The
+  rule is now that two identically named mlb-files containing
+  identical content must be identical (issue #97).
+
+* mael 2022-01-18: Fixed behavior of VectorSlice.foldli,
+  ArraySlice.foldli, Word8VectorSlice.foldli, ... to have the index
+  reference the position in the slice rather than in the underlying
+  vector or array. Problem fixed for both the JavaScript and the
+  native basis. (issue #90).
+
+### MLKit version 4.6.0 is released
+
+* mael 2021-12-31: Revised the manual for version 4.6.0.
+
+* mael 2021-12-31: Improved region profiler to show maximum memory
+  usage precisely and not as the sum of the maximum memory used in
+  regions and the maximum stack size.
+
+* mael 2021-11-15: Removed all SMLserver code as well as the KAM
+  bytecode backend as it is no longer maintained. The successor to
+  SMLserver will be based on the native backend.
+
+### MLKit version 4.5.9 is released
+
+* mael 2021-09-17: Fixed smltojs problem with generating statements
+  consisting of lambda expressions.
+
+* mael 2021-09-17: Fixed problem with dealing with comments in
+  ML-Yacc; fix ported from upstream implementation.
+
+* mael 2021-07-15: PackReal{Big,Little} fixes (due to Ken Friis
+  Larsen).
+
+* mael 2021-06-23: Support for the Unix structure (due to Troels
+  Henriksen).
+
+* mael 2021-06-23: Fixes and additions to the Posix structure.
+
 * mael 2021-02-17: Preliminary support for fork-join based
   task-parallelism. See the `par-benchmarks` folder in the
   [mlkit-bench](http://github.com/melsman/mlkit-bench) github
   repository for examples.
 
-* mael 2021-02-17: Prettier priniting of multiplicity terms (e.g.,
+* mael 2021-02-17: Prettier printing of multiplicity terms (e.g.,
   -Pcee).
+
+* mael 2021-02-15: More Real functionality (realCeil and friends).
 
 ### MLKit version 4.5.7 is released
 

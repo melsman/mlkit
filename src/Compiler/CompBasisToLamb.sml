@@ -121,7 +121,8 @@ structure CompBasisToLamb
 	  val tns = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
 	      TyName.tyName_VECTOR ::               (* for elim eq *)
-              TyName.tyName_CHARARRAY :: tns    (* for inlining primitives *)
+              TyName.tyName_CHARARRAY ::        (* for inlining primitives *)
+              TyName.tyName_FOREIGNPTR :: tns    (* for inlining primitives *)
           val tns = if quotation() then TyName.tyName_FRAG :: tns
                     else tns
 

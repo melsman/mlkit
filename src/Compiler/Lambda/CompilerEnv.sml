@@ -68,32 +68,28 @@ structure CompilerEnv: COMPILER_ENV =
 
     structure PathEnv =
 	OrderFinMap(struct
-			type T = spath
-			fun lt (a:T) b = spath_lt(a,b)
+			type t = spath
+			val lt = spath_lt
 		    end)
 
     type PathEnv = (lvar*Type) PathEnv.map
-    structure VarEnv = OrderFinMap(struct
-					  type T = Ident.id
-					  fun lt (a:T) b = Ident.<(a,b)
-				      end)
 
-    type VarEnv = result VarEnv.map
+    type VarEnv = result Ident.Map.map
 
     datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv: TyEnv, PathEnv:PathEnv}
-    and StrEnv  = STRENV of (strid,CEnv) FinMap.map
-    and TyEnv = TYENV of (tycon,TyName list * CEnv) FinMap.map
+    and StrEnv  = STRENV of CEnv StrId.Map.map
+    and TyEnv = TYENV of (TyName list * CEnv) TyCon.Map.map
 
-    val emptyStrEnv   : StrEnv = STRENV FinMap.empty
-    and emptyVarEnv   : VarEnv = VarEnv.empty
-    and emptyTyEnv    : TyEnv  = TYENV FinMap.empty
+    val emptyStrEnv   : StrEnv = STRENV StrId.Map.empty
+    and emptyVarEnv   : VarEnv = Ident.Map.empty
+    and emptyTyEnv    : TyEnv  = TYENV TyCon.Map.empty
     and emptyPathEnv  : PathEnv = PathEnv.empty
     val emptyCEnv = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv,
 			  TyEnv=emptyTyEnv, PathEnv=emptyPathEnv}
 
-    fun initMap a = foldl (fn ((v,r), m) => FinMap.add(v,r,m)) FinMap.empty a
-    fun initVE  a = foldl (fn ((v,r), m) => VarEnv.add(v,r,m)) VarEnv.empty a
-    val initialStrEnv = STRENV(FinMap.singleton(StrId.mk_StrId "IntInfRep", emptyCEnv))
+    fun initMap a = foldl (fn ((v,r), m) => TyCon.Map.add(v,r,m)) TyCon.Map.empty a
+    fun initVE  a = foldl (fn ((v,r), m) => Ident.Map.add(v,r,m)) Ident.Map.empty a
+    val initialStrEnv = STRENV(StrId.Map.singleton(StrId.mk_StrId "IntInfRep", emptyCEnv))
 
     val boolType = LambdaExp.boolType
     val exnType = LambdaExp.exnType
@@ -147,7 +143,7 @@ structure CompilerEnv: COMPILER_ENV =
 					 [LambdaExp.TYVARtype tyvar_antiquote]))]
 
     val initialVarEnv : VarEnv =
-        VarEnv.plus(VarEnv.plus(VarEnv.plus(boolVE,listVE),fragVE),
+        Ident.Map.plus(Ident.Map.plus(Ident.Map.plus(boolVE,listVE),fragVE),
          initVE [(Ident.id_PRIM, PRIM),
 	         (Ident.id_EXPORT, EXPORT),
 	         (Ident.id_ABS, ABS),
@@ -239,27 +235,27 @@ structure CompilerEnv: COMPILER_ENV =
     fun declareVar (id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VarEnv.add(id, LVAR (lv,tyvars,tau,il0), m),
+	      VarEnv=Ident.Map.add(id, LVAR (lv,tyvars,tau,il0), m),
 	      PathEnv=PathEnv}
       end
 
     fun declareCon (id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VarEnv.add(id,CON (con,tyvars,tau,il0), m),
+	      VarEnv=Ident.Map.add(id,CON (con,tyvars,tau,il0), m),
 	      PathEnv=PathEnv}
       end
 
     fun declareExcon (id, excon, CENV{StrEnv,VarEnv=map,TyEnv,PathEnv}) =
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv.add(id,EXCON excon,map),TyEnv=TyEnv,
+      CENV{StrEnv=StrEnv,VarEnv=Ident.Map.add(id,EXCON excon,map),TyEnv=TyEnv,
 	   PathEnv=PathEnv}
 
     fun declare_strid (strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,PathEnv}) =
-      CENV{StrEnv=STRENV (FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,
+      CENV{StrEnv=STRENV (StrId.Map.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,
 	   PathEnv=PathEnv}
 
     fun declare_tycon (tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,PathEnv}) =
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m)),PathEnv=PathEnv}
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(TyCon.Map.add(tycon,a,m)),PathEnv=PathEnv}
 
     fun plus (CENV{StrEnv,VarEnv,TyEnv,PathEnv},
 	      CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',PathEnv=PathEnv'}) =
@@ -268,27 +264,27 @@ structure CompilerEnv: COMPILER_ENV =
 	   TyEnv=plusTyEnv(TyEnv,TyEnv'),
 	   PathEnv=PathEnv.plus(PathEnv,PathEnv')}
 
-    and plusStrEnv (STRENV m1, STRENV m2) : StrEnv = STRENV(FinMap.plus(m1,m2))
+    and plusStrEnv (STRENV m1, STRENV m2) : StrEnv = STRENV(StrId.Map.plus(m1,m2))
     and plusVarEnv (m1: VarEnv, m2: VarEnv) : VarEnv =
        ((*if Compiler.Profile.getTimingMode() then
-             let fun size m = List.length(VarEnv.list m)
+             let fun size m = List.length(Ident.Map.list m)
              in
                  TextIO.output(TextIO.stdOut, concat["plus(",Int.toString(size m1), ", ",
                                                              Int.toString(size m2),")\n"])
              end
         else ();*)
-        VarEnv.plus(m1,m2)
+        Ident.Map.plus(m1,m2)
        )
-    and plusTyEnv  (TYENV m1,  TYENV m2)  : TyEnv  = TYENV(FinMap.plus(m1,m2))
+    and plusTyEnv  (TYENV m1,  TYENV m2)  : TyEnv  = TYENV(TyCon.Map.plus(m1,m2))
 
     exception LOOKUP_ID
     fun lookupId (CENV{VarEnv=m,...}) id =
-      case VarEnv.lookup m id
+      case Ident.Map.lookup m id
 	of SOME res => res
 	 | NONE => raise LOOKUP_ID
 
     fun lookup_strid (CENV{StrEnv=STRENV m,...}) strid =
-      case FinMap.lookup m strid
+      case StrId.Map.lookup m strid
 	of SOME res => res
 	 | NONE => die ("lookup_strid(" ^ StrId.pr_StrId strid ^ ")")
 
@@ -308,7 +304,7 @@ structure CompilerEnv: COMPILER_ENV =
       end
 
     fun lookup_tycon (CENV{TyEnv=TYENV m, ...}) tycon =
-      case FinMap.lookup m tycon
+      case TyCon.Map.lookup m tycon
 	of SOME res => res
 	 | NONE => die ("lookup_tycon(" ^ TyCon.pr_TyCon tycon ^ ")")
 
@@ -342,8 +338,8 @@ structure CompilerEnv: COMPILER_ENV =
 
     fun varsOfCEnv (vars_result : result * 'a list -> 'a list) ce : 'a list =
       let fun vars_ce (CENV{VarEnv=m,StrEnv,...}, vars) =
-	    VarEnv.fold vars_result (vars_se (StrEnv,vars)) m
-	  and vars_se (STRENV m, vars) = FinMap.fold vars_ce vars m
+	    Ident.Map.fold vars_result (vars_se (StrEnv,vars)) m
+	  and vars_se (STRENV m, vars) = StrId.Map.fold vars_ce vars m
       in vars_ce (ce, [])
       end
 
@@ -353,13 +349,13 @@ structure CompilerEnv: COMPILER_ENV =
 
     fun tynamesOfCEnv ce : TyName list =
       let fun tynames_TEentry((tns,ce),acc) = tynames_E(ce,tns@acc)
-          and tynames_TE(TYENV m, acc) = FinMap.fold tynames_TEentry acc m
+          and tynames_TE(TYENV m, acc) = TyCon.Map.fold tynames_TEentry acc m
           and tynames_E(CENV{VarEnv=ve, StrEnv, TyEnv, ...}, acc) =
 	    let val acc = tynames_SE (StrEnv,acc)
 	        val acc = tynames_TE (TyEnv,acc)
-	    in VarEnv.fold tynames_result acc ve
+	    in Ident.Map.fold tynames_result acc ve
 	    end
-	  and tynames_SE(STRENV m, acc) = FinMap.fold tynames_E acc m
+	  and tynames_SE(STRENV m, acc) = StrId.Map.fold tynames_E acc m
       in (TyName.Set.list o TyName.Set.fromList) (tynames_E(ce,[]))
       end
 
@@ -367,33 +363,41 @@ structure CompilerEnv: COMPILER_ENV =
     * Restriction
     * ------------- *)
 
-   fun restrictFinMap (error_str, env : (''a,'b) FinMap.map, dom : ''a list) =
+   fun restrictTyConMap (error_str, env : 'b TyCon.Map.map, dom) =
      foldl (fn (id, acc) =>
-	    let val res = case FinMap.lookup env id
+	    let val res = case TyCon.Map.lookup env id
 			    of SOME res => res
 			     | NONE => die (error_str id)
-	    in FinMap.add(id,res,acc)
-	    end) FinMap.empty dom
+	    in TyCon.Map.add(id,res,acc)
+	    end) TyCon.Map.empty dom
+
+   fun restrictStrIdMap (error_str, env : 'b StrId.Map.map, dom) =
+     foldl (fn (id, acc) =>
+	    let val res = case StrId.Map.lookup env id
+			    of SOME res => res
+			     | NONE => die (error_str id)
+	    in StrId.Map.add(id,res,acc)
+	    end) StrId.Map.empty dom
 
    fun restrictVarEnv (m: VarEnv, ids) : VarEnv =
      foldl (fn (id, acc) =>
-	    let val res = case VarEnv.lookup m id
+	    let val res = case Ident.Map.lookup m id
 			    of SOME res => res
 			     | NONE => die ("restrictCEnv.id not in env" (*  ^ id*))
-	    in VarEnv.add(id,res,acc)
-	    end) VarEnv.empty ids
+	    in Ident.Map.add(id,res,acc)
+	    end) Ident.Map.empty ids
 
 
    fun restrictTyEnv (TYENV m, tycons) : TyEnv =
-       TYENV (restrictFinMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
+       TYENV (restrictTyConMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
 
    fun restrictStrEnv (STRENV m, strid_restrs) : StrEnv =
-       STRENV (foldl (fn ((strid,restr:Environments.restricter), acc) =>
-		      let val res = case FinMap.lookup m strid of
+       STRENV (foldl (fn ((strid,restr:Environments.restrictor), acc) =>
+		      let val res = case StrId.Map.lookup m strid of
 			  SOME res => restrictCEnv(res,restr)
 			| NONE => die "restrictStrEnv.strid not in env"
-		      in FinMap.add(strid,res,acc)
-		      end) FinMap.empty strid_restrs)
+		      in StrId.Map.add(strid,res,acc)
+		      end) StrId.Map.empty strid_restrs)
 
    and restrictCEnv (ce,Environments.Whole) = ce
      | restrictCEnv (CENV{StrEnv,VarEnv,TyEnv,PathEnv}, Environments.Restr{strids,vids,tycons}) =
@@ -402,7 +406,7 @@ structure CompilerEnv: COMPILER_ENV =
 	  TyEnv=restrictTyEnv(TyEnv,tycons),
 	  PathEnv=emptyPathEnv}
 
-   val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restricter longids)
+   val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restrictor longids)
 
 
    (* -------------
@@ -447,16 +451,16 @@ structure CompilerEnv: COMPILER_ENV =
        | eq_res _ = false
 
      fun enrichVarEnv (env1: VarEnv, env2: VarEnv) : bool =
-       VarEnv.Fold (fn ((id2,res2),b) => b andalso
-		    case VarEnv.lookup env1 id2
+       Ident.Map.Fold (fn ((id2,res2),b) => b andalso
+		    case Ident.Map.lookup env1 id2
 		      of SOME res1 => eq_res(res1,res2)
 		       | NONE => false) true env2
 
      fun eq_tynames (res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
 
      fun enrichTyEnv (TYENV m1, TYENV m2) : bool =
-       FinMap.Fold (fn ((id2,(res2,ce2)),b) => b andalso
-		    case FinMap.lookup m1 id2
+       TyCon.Map.Fold (fn ((id2,(res2,ce2)),b) => b andalso
+		    case TyCon.Map.lookup m1 id2
 		      of SOME (res1,ce1) => eq_tynames(res1,res2) andalso eqCEnv(ce1,ce2)
 		       | NONE => false) true m2
 
@@ -471,8 +475,8 @@ structure CompilerEnv: COMPILER_ENV =
      and eqCEnv (ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
 
      and enrichStrEnv (STRENV se1, STRENV se2) =
-       FinMap.Fold (fn ((strid,env2),b) => b andalso
-		    case FinMap.lookup se1 strid
+       StrId.Map.Fold (fn ((strid,env2),b) => b andalso
+		    case StrId.Map.lookup se1 strid
 		      of SOME env1 => enrichCEnv(env1,env2)
 		       | NONE => false) true se2
    in
@@ -493,8 +497,8 @@ structure CompilerEnv: COMPILER_ENV =
        | matchRes _ = ()
 
      fun matchVarEnv (env: VarEnv, env0: VarEnv) =
-       VarEnv.Fold(fn ((id,res),_) =>
-		   case VarEnv.lookup env0 id
+       Ident.Map.Fold(fn ((id,res),_) =>
+		   case Ident.Map.lookup env0 id
 		     of SOME res0 => matchRes(res,res0)
 		      | NONE => ()) () env
 
@@ -503,8 +507,8 @@ structure CompilerEnv: COMPILER_ENV =
          (matchStrEnv(StrEnv,StrEnv0); matchVarEnv(VarEnv,VarEnv0))
 
      and matchStrEnv (STRENV se, STRENV se0) =
-       FinMap.Fold(fn ((strid,env),_) =>
-		   case FinMap.lookup se0 strid
+       StrId.Map.Fold(fn ((strid,env),_) =>
+		   case StrId.Map.lookup se0 strid
 		     of SOME env0 => matchEnv(env,env0)
 		      | NONE => ()) () se
    in
@@ -596,25 +600,25 @@ structure CompilerEnv: COMPILER_ENV =
 
 	 and constr_se(STRENV se, elabSE) =
 	     STRENV(SE.Fold (fn (strid, elabE) => fn se' =>
-			     case FinMap.lookup se strid
+			     case StrId.Map.lookup se strid
 				 of SOME ce => let val ce' = constr_ce(ce,elabE)
-					       in FinMap.add(strid,ce',se')
+					       in StrId.Map.add(strid,ce',se')
 					       end
-			       | NONE => die "constr_se") FinMap.empty elabSE)
+			       | NONE => die "constr_se") StrId.Map.empty elabSE)
 
 	 and constr_ve(ve, elabVE) =
 	   VE.Fold (fn (id, elabRan) => fn ve' =>
-		    case VarEnv.lookup ve id
+		    case Ident.Map.lookup ve id
 		      of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
-					  in VarEnv.add(id,transRan', ve')
+					  in Ident.Map.add(id,transRan', ve')
 					  end
-		       | NONE => die ("constr_ve: no " ^ Ident.pr_id id)) VarEnv.empty elabVE
+		       | NONE => die ("constr_ve: no " ^ Ident.pr_id id)) Ident.Map.empty elabVE
 
 	 and constr_te(TYENV te, elabTE) =
 	     TYENV(TE.Fold(fn (tycon, _) => fn te' =>
-			   case FinMap.lookup te tycon
-			       of SOME tynames => FinMap.add(tycon,tynames,te')
-			     | NONE => die "constr_te") FinMap.empty elabTE)
+			   case TyCon.Map.lookup te tycon
+			       of SOME tynames => TyCon.Map.add(tycon,tynames,te')
+			     | NONE => die "constr_te") TyCon.Map.empty elabTE)
 
 (*	 val _ = print "\n[Constraining ...\n" *)
 	 val res = constr_ce(ce, elabE)
@@ -630,7 +634,7 @@ structure CompilerEnv: COMPILER_ENV =
      in "{" ^ pp l ^ "}"
      end
 
-   type StringTree = FinMap.StringTree
+   type StringTree = PP.StringTree
 
    fun layout_spath (l:spath) = PP.HNODE{start="{",finish="}",childsep=PP.RIGHT",",
 					 children=map (fn i => PP.LEAF(Int.toString i)) l}
@@ -651,14 +655,14 @@ structure CompilerEnv: COMPILER_ENV =
 
     and layoutStrEnv (STRENV m) =
       PP.NODE{start="StrEnv = ",finish="",indent=2,
-	      children= [FinMap.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
+	      children= [StrId.Map.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
 			 (PP.layoutAtom StrId.pr_StrId)
 			 (layoutCEnv) m],
 	      childsep=PP.RIGHT ","}
 
     and layoutVarEnv (m : VarEnv) =
       PP.NODE{start="VarEnv = ",finish="",indent=2,
-	      children= [VarEnv.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
+	      children= [Ident.Map.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
 			               (PP.layoutAtom Ident.pr_id)
 				       (PP.layoutAtom
 					(fn LVAR (lv,tyvars,Type,il) => ("LVAR(" ^ Lvars.pr_lvar lv ^ ", " ^
@@ -689,7 +693,7 @@ structure CompilerEnv: COMPILER_ENV =
       let fun layout_res (tynames,ce) =
 	    PP.NODE {start="([",finish="], ce)",indent=0, children=map TyName.layout tynames,
 		     childsep=PP.RIGHT ","}
-      in FinMap.layoutMap {start="TyEnv = {", eq=" -> ", sep = ", ", finish="}"} (PP.LEAF o TyCon.pr_TyCon)
+      in TyCon.Map.layoutMap {start="TyEnv = {", eq=" -> ", sep = ", ", finish="}"} (PP.LEAF o TyCon.pr_TyCon)
 	 layout_res m
       end
 
@@ -749,7 +753,7 @@ structure CompilerEnv: COMPILER_ENV =
 
     val pu_PathEnv =
 	PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type))
-    val pu_VarEnv= VarEnv.pu Ident.pu pu_result
+    val pu_VarEnv= Ident.Map.pu Ident.pu pu_result
     val (pu,_,_) =
 	let val pu_TyNames = Pickle.listGen TyName.pu
 	    fun CEnvToInt _ = 0
@@ -761,10 +765,10 @@ structure CompilerEnv: COMPILER_ENV =
 		(Pickle.pairGen0(Pickle.pairGen0(pu_StrEnv,pu_VarEnv),Pickle.pairGen0(pu_TyEnv,pu_PathEnv)))
 	    fun fun_STRENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		Pickle.con1 STRENV (fn STRENV v => v)
-		(FinMap.pu(StrId.pu,pu_CEnv))
+		(StrId.Map.pu StrId.pu pu_CEnv)
 	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		Pickle.con1 TYENV (fn TYENV v => v)
-		(FinMap.pu(TyCon.pu,Pickle.pairGen(pu_TyNames,pu_CEnv)))
+		(TyCon.Map.pu TyCon.pu (Pickle.pairGen(pu_TyNames,pu_CEnv)))
 	in Pickle.data3Gen("CompilerEnv.CEnv",CEnvToInt,[fun_CENV],
 			   "CompilerEnv.StrEnv",StrEnvToInt,[fun_STRENV],
 			   "CompilerEnv.TyEnv",TyEnvToInt,[fun_TYENV])

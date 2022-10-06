@@ -41,10 +41,11 @@ signature CALL_CONV =
     val get_spilled_res_with_offsets  : cc -> (lvar * offset) list
 
     val get_register_args             : cc -> lvar list (* Machine registers as lvars. *)
-    val get_register_args_excluding_region_and_float_args : cc -> lvar list (* Machine registers as lvars, excluding registers holding region args and excluding floating point registers *)
+
+    val get_register_args_excluding_region_and_float_args : cc -> lvar list
+    (* Machine registers as lvars, excluding registers holding region args and excluding floating point registers *)
 
     val decompose_cc                  : cc -> lvar cc0
-
 
     val get_frame_size                : cc -> int
     val add_frame_size                : cc * int -> cc

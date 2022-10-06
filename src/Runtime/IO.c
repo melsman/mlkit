@@ -25,72 +25,72 @@
 #include "Runtime.h"
 
 uintptr_t
-openInStream(String path, uintptr_t exn)                    /* SML Basis */
+openInStream(Context ctx, String path, uintptr_t exn)                    /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "r")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 uintptr_t
-openOutStream(String path, uintptr_t exn)                   /* SML Basis */
+openOutStream(Context ctx, String path, uintptr_t exn)                   /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "w")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 uintptr_t
-openAppendStream(String path, uintptr_t exn)                /* SML Basis */
+openAppendStream(Context ctx, String path, uintptr_t exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "a")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 uintptr_t
-openInBinStream(String path, uintptr_t exn)                 /* SML Basis */
+openInBinStream(Context ctx, String path, uintptr_t exn)                 /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "rb")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 uintptr_t
-openOutBinStream(String path, uintptr_t exn)                /* SML Basis */
+openOutBinStream(Context ctx, String path, uintptr_t exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "wb")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 uintptr_t
-openAppendBinStream(String path, uintptr_t exn)             /* SML Basis */
+openAppendBinStream(Context ctx, String path, uintptr_t exn)             /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "ab")) == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(fileDesc);
   return (uintptr_t)(tag_scalar(fileDesc));
@@ -194,13 +194,13 @@ endOfStream(FILE *stream)
 */
 
 size_t
-outputStream(uintptr_t os1, String s, uintptr_t exn)
+outputStream(Context ctx, uintptr_t os1, String s, uintptr_t exn)
 {
   FILE *os = (FILE *)untag_scalar(os1);
   if ( fputs(&(s->data), os) == EOF )
     {
       fflush(os);
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return mlUNIT;
 }
@@ -234,39 +234,39 @@ stdErrStream(uintptr_t dummy)
 }
 
 void
-sml_chdir(String dirname, uintptr_t exn)              /* SML Basis */
+sml_chdir(Context ctx, String dirname, uintptr_t exn)              /* SML Basis */
 {
   if ( chdir(&(dirname->data)) != 0 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 void
-sml_remove(String name, uintptr_t exn)                /* SML Basis */
+sml_remove(Context ctx, String name, uintptr_t exn)                /* SML Basis */
 {
   int ret;
   ret = unlink(&(name->data));
   if ( ret != 0 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 void
-sml_rename(String oldname, String newname, uintptr_t exn)    /* SML Basis */
+sml_rename(Context ctx, String oldname, String newname, uintptr_t exn)    /* SML Basis */
 {
   if ( rename(&(oldname->data), &(newname->data)) != 0 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 size_t
-sml_access(String path, size_t permarg, uintptr_t exn)               /* ML */
+sml_access(String path, size_t permarg)               /* ML */
 {
   long perms;
   long perm = convertIntToC(permarg);
@@ -285,7 +285,7 @@ sml_access(String path, size_t permarg, uintptr_t exn)               /* ML */
 }
 
 String
-REG_POLY_FUN_HDR(sml_getdir, Region rAddr, uintptr_t exn)                 	 /* SML Basis */
+REG_POLY_FUN_HDR(sml_getdir, Region rAddr, Context ctx, uintptr_t exn)                 	 /* SML Basis */
 {
  char directory[MAXPATHLEN];
  char *res;
@@ -293,18 +293,18 @@ REG_POLY_FUN_HDR(sml_getdir, Region rAddr, uintptr_t exn)                 	 /* S
  res = getcwd(directory, MAXPATHLEN);
  if ( res == NULL )
    {
-     raise_exn(exn);
+     raise_exn(ctx,exn);
    }
  return REG_POLY_CALL(convertStringToML, rAddr, directory);
 }
 
 size_t
-sml_isdir(String path, uintptr_t exn)             /* SML Basis */
+sml_isdir(Context ctx, String path, uintptr_t exn)             /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   if (S_ISDIR(buf.st_mode))
     {
@@ -314,23 +314,23 @@ sml_isdir(String path, uintptr_t exn)             /* SML Basis */
 }
 
 void
-sml_mkdir(String path, uintptr_t exn)                        /* SML Basis */
+sml_mkdir(Context ctx, String path, uintptr_t exn)                        /* SML Basis */
 {
   if ( mkdir(&(path->data), 0777) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 
 uintptr_t
-sml_modtime(uintptr_t vAddr, String path, uintptr_t exn)             /* SML Basis */
+sml_modtime(uintptr_t vAddr, Context ctx, String path, uintptr_t exn)             /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   get_d(vAddr) = (double)(buf.st_mtime);
   set_dtag(vAddr);
@@ -338,53 +338,53 @@ sml_modtime(uintptr_t vAddr, String path, uintptr_t exn)             /* SML Basi
 }
 
 void
-sml_rmdir(String path, uintptr_t exn)              /* SML Basis */
+sml_rmdir(Context ctx, String path, uintptr_t exn)              /* SML Basis */
 {
   if ( rmdir(&(path->data)) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 void
-sml_settime(String path, uintptr_t time, uintptr_t exn)     /* SML Basis */
+sml_settime(Context ctx, String path, uintptr_t time, uintptr_t exn)     /* SML Basis */
 {
   struct utimbuf tbuf;
   tbuf.actime = tbuf.modtime = (long)(get_d(time));
   if ( utime(&(path->data), &tbuf) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
 
 size_t
-sml_filesize(String path, uintptr_t exn)              /* SML Basis */
+sml_filesize(Context ctx, String path, uintptr_t exn)              /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return (convertIntToML(buf.st_size));
 }
 
 uintptr_t
-sml_opendir(String path, uintptr_t exn)           /* SML Basis */
+sml_opendir(Context ctx, String path, uintptr_t exn)           /* SML Basis */
 {
   DIR * dstr;
   dstr = opendir(&(path->data));
   if ( dstr == NULL )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   check_tag_scalar(dstr);
   return (uintptr_t)tag_scalar(dstr);
 }
 
 String
-REG_POLY_FUN_HDR(sml_readdir, Region rAddr, uintptr_t v, uintptr_t exn)    /* SML Basis */
+REG_POLY_FUN_HDR(sml_readdir, Region rAddr, Context ctx, uintptr_t v, uintptr_t exn)    /* SML Basis */
 {
   struct dirent *direntry;
   String res;
@@ -393,7 +393,7 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, uintptr_t v, uintptr_t exn)    /* SM
   direntry = readdir(dir_ptr);
   if (direntry == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
       return NULL;
     }
   else
@@ -414,14 +414,14 @@ sml_rewinddir(uintptr_t v)            /* SML Basis */
 }
 
 void
-sml_closedir(uintptr_t v, uintptr_t exn)            /* SML Basis */
+sml_closedir(Context ctx, uintptr_t v, uintptr_t exn)            /* SML Basis */
 {
   DIR *dir_ptr;
 
   dir_ptr = (DIR *)untag_scalar(v);
   if (closedir(dir_ptr) == -1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return;
 }
@@ -444,12 +444,12 @@ REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, size_t errnum)    /* SML Basis */
 }
 
 size_t
-sml_islink(String path, uintptr_t exn)              /* SML Basis */
+sml_islink(Context ctx, String path, uintptr_t exn)              /* SML Basis */
 {
   struct stat buf;
   if (lstat(&(path->data), &buf) == -1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   if (S_ISLNK(buf.st_mode))
     {
@@ -459,12 +459,12 @@ sml_islink(String path, uintptr_t exn)              /* SML Basis */
 }
 
 size_t
-sml_isreg(size_t fd, uintptr_t exn)              /* SML Basis */
+sml_isreg(Context ctx, size_t fd, uintptr_t exn)              /* SML Basis */
 {
   struct stat buf;
   if (fstat(convertIntToC(fd), &buf) == -1)
     {
-      raise_exn(exn);
+      raise_exn(ctx, exn);
     }
   if (S_ISREG(buf.st_mode))
     {
@@ -474,25 +474,25 @@ sml_isreg(size_t fd, uintptr_t exn)              /* SML Basis */
 }
 
 size_t
-sml_filesizefd(size_t fd, uintptr_t exn)              /* SML Basis */
+sml_filesizefd(Context ctx, size_t fd, uintptr_t exn)              /* SML Basis */
 {
   struct stat buf;
   if (fstat(convertIntToC(fd), &buf) == -1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return convertIntToML(buf.st_size);
 }
 
 String
-REG_POLY_FUN_HDR(sml_readlink, Region rAddr, String path, uintptr_t exn)    /* SML Basis */
+REG_POLY_FUN_HDR(sml_readlink, Region rAddr, Context ctx, String path, uintptr_t exn)    /* SML Basis */
 {
   char buffer[MAXPATHLEN];
   long result;
   result = readlink(&(path->data), buffer, MAXPATHLEN);
   if (result == -1 || result >= MAXPATHLEN)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   buffer[result] = '\0';
   return REG_POLY_CALL(convertStringToML, rAddr, buffer);
@@ -501,26 +501,26 @@ REG_POLY_FUN_HDR(sml_readlink, Region rAddr, String path, uintptr_t exn)    /* S
 extern char *realpath();
 
 String
-REG_POLY_FUN_HDR(sml_realpath, Region rAddr, String path, uintptr_t exn)  /* SML Basis */
+REG_POLY_FUN_HDR(sml_realpath, Region rAddr, Context ctx, String path, uintptr_t exn)  /* SML Basis */
 {
   char buffer[MAXPATHLEN];
   char *result;
   result = realpath(&(path->data), buffer);
   if (result == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
       return NULL;
     }
   return REG_POLY_CALL(convertStringToML, rAddr, result);
 }
 
 uintptr_t
-sml_devinode(uintptr_t vAddr, String path, uintptr_t exn)             /* SML Basis */
+sml_devinode(uintptr_t vAddr, Context ctx, String path, uintptr_t exn)             /* SML Basis */
 {
   struct stat buf;
   if (stat(&(path->data), &buf) == -1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   // Return a pair of the device and the inode
   first(vAddr) = convertIntToML((uintptr_t)buf.st_dev);
@@ -530,7 +530,7 @@ sml_devinode(uintptr_t vAddr, String path, uintptr_t exn)             /* SML Bas
 }
 
 size_t
-sml_system(String cmd, uintptr_t exn)         /* SML Basis */
+sml_system(String cmd)         /* SML Basis */
 {
   int res;
   res = system(&(cmd->data));
@@ -542,19 +542,19 @@ sml_system(String cmd, uintptr_t exn)         /* SML Basis */
 }
 
 String
-REG_POLY_FUN_HDR(sml_getenv, Region rAddr, String var, uintptr_t exn)  /* SML Basis */
+REG_POLY_FUN_HDR(sml_getenv, Region rAddr, Context ctx, String var, uintptr_t exn)  /* SML Basis */
 {
   char *res;
   res = (char *)(getenv(&(var->data)));
   if (res == NULL)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
 size_t
-outputBinStream(uintptr_t os1, String s, uintptr_t exn)
+outputBinStream(Context ctx, uintptr_t os1, String s, uintptr_t exn)
 { long strsize;
   FILE *os = (FILE *) os1;
   strsize = sizeStringDefine(s);
@@ -562,7 +562,7 @@ outputBinStream(uintptr_t os1, String s, uintptr_t exn)
   if ( fwrite(&(s->data), 1, strsize, os) != strsize )
     {
       fflush(os);
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return mlUNIT;
 }

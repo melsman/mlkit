@@ -1,5 +1,5 @@
 (* Generic pickle module
- * Copyright, Martin Elsman 2003-01-07 
+ * Copyright, Martin Elsman 2003-01-07
  * GPL Licence
  *)
 
@@ -33,23 +33,25 @@ signature PICKLE =
     val refEqGen  : ('a ref * 'a ref -> bool) -> 'a -> 'a pu -> 'a ref pu
     val refGen    : 'a -> 'a pu -> 'a ref pu
     val ref0Gen   : 'a pu -> 'a ref pu
+    val ref0GenPP : ('a ref -> string) -> 'a pu -> 'a ref pu
     val refOneGen : 'a pu -> 'a ref pu
     val ref0EqGen : ('a ref * 'a ref -> bool) -> 'a pu -> 'a ref pu
+    val ref0EqGenPP : ('a ref -> string) -> ('a ref * 'a ref -> bool) -> 'a pu -> 'a ref pu
     val ref0ShGen : 'a pu -> 'a ref pu
     val listGen   : 'a pu -> 'a list pu
     val optionGen : 'a pu -> 'a option pu
     val vectorGen : 'a pu -> 'a Vector.vector pu
     val shareGen  : 'a pu -> 'a pu
-    val enumGen   : string * ''a list -> ''a pu     
+    val enumGen   : string * ''a list -> ''a pu
 
     val dataGen   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
-    val data2Gen  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list 
-	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list 
+    val data2Gen  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
                     -> 'a pu * 'b pu
 
-    val data3Gen  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list 
-	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list 
-	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list 
+    val data3Gen  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list
+	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list
                     -> 'a pu * 'b pu * 'c pu
 
     val con0      : 'a -> 'b -> 'a pu
@@ -63,26 +65,43 @@ signature PICKLE =
 
     val register  : string -> 'a list -> 'a pu -> 'a pu
 
-    val registerEq: ('a*'a->bool) -> ('a->int) 
+    val registerEq: ('a*'a->bool) -> ('a->int)
 	            -> string -> 'a list -> 'a pu -> 'a pu
 
     val hashCons  : 'a pu -> 'a pu
     val hashConsEq: ('a*'a->bool) -> 'a pu -> 'a pu
 
     val newHash      : ('a -> int) -> 'a pu -> 'a pu
+    val newHashEq    : ('a -> word) -> ('a * 'a -> bool) -> 'a pu -> 'a pu
     val combHash     : ('a -> int) -> 'a pu -> 'a pu
     val maybeNewHash : ('a -> int option) -> 'a pu -> 'a pu
+
+    val noshare      : 'a pu -> 'a pu
 
     val debug     : string -> 'a pu -> 'a pu
     val nameGen   : string -> 'a pu -> 'a pu
     val comment   : string -> 'a pu -> 'a pu
     val checkUnpickle : ('a -> unit) -> 'a pu -> 'a pu
     val debugUnpickle : string -> 'a pu -> 'a pu
+
+    val dataGenNoShare   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
+    val data2GenNoShare  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
+	                   * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
+                           -> 'a pu * 'b pu
+    structure Hash : sig
+      type acc = word * int
+      val string  : string -> acc -> acc
+      val comb    : (acc -> acc) -> acc -> acc
+      val word    : word -> acc -> acc
+      val int     : int -> acc -> acc
+      val hash    : acc -> word
+      val init    : acc
+    end
   end
 
 (*
  ['a pu] parameterized type of a pair of a pickler and an unpickler.
- 
+
  [word] pickler-unpickler pair for word values.
 
  [int] pickler-unpickler pair for int values.
@@ -146,4 +165,3 @@ signature PICKLE =
  that a pickled value equal to a value in vs is equal to the
  value in vs when unpickled.
 *)
-
