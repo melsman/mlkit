@@ -29,6 +29,9 @@ signature LAMBDA_BASICS =
     val on_Type : subst -> Type -> Type
     val on_LambdaExp : subst -> LambdaExp -> LambdaExp
 
+    val contains_f64Type : Type -> bool
+    val contains_f64Types : Type list -> bool
+
     val eq_Type : Type * Type -> bool
     val eq_Types : Type list * Type list -> bool
     val eq_sigma : (tyvar list * Type) * (tyvar list * Type) -> bool

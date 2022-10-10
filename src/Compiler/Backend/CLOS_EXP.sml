@@ -65,9 +65,9 @@ signature CLOS_EXP =
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
-    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
-    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes: int, alloc: sma, tag: Word32.word}

@@ -32,6 +32,10 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
+  val caller_save_regs_ccall = nil(*map RI.lv_to_reg RI.caller_save_ccall_phregs*)
+  val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
+  val all_regs = map RI.lv_to_reg RI.all_regs
+
   val ctx_exnptr_offs = "8"
 
   local
@@ -91,11 +95,13 @@ struct
                                      I.movsd(D("0", tmp_reg0),R d) :: C'
                                   end
                       end
-                    | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
+                    | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)
-                         val n_skip = length rhos + 1 (* We don't traverse region pointers,
-                                                       * i.e. we skip rhos+1 fields *)
+                         val n_skip = length rhos + 1 (* We don't traverse region pointers
+                                                       * or lvars of type f64, which appears first in lvs.
+                                                       * i.e. we skip rhos + f64lvs + 1 fields *)
+                                      + f64_vars
                      in
                        if BI.tag_values() then
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
@@ -139,10 +145,13 @@ struct
                                                                 WORDS offset,size_ff, C)))
                             (num_elems-1,C') elems))
                      end
-                    | LS.SCLOS_RECORD{elems=elems as (lvs,excons,rhos),alloc} =>
+                    | LS.SCLOS_RECORD{elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)
-                         val n_skip = length rhos (* We don't traverse region pointers *)
+                         val n_skip =
+                             length rhos (* We don't traverse region pointers or lvars of type f64,
+                                            which appears first in lvs... *)
+                             + f64_vars
                      in
                        if BI.tag_values() then
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
@@ -395,8 +404,10 @@ struct
                | LS.FNJMP(cc as {opr,args,clos,res,bv}) =>
                 comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
                 let
-                  val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,
-                                                                    reg_args=[],reg_vec=NONE,res=res}
+                  val (spilled_args,_) =
+                      CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                               res_regs=RI.res_phreg}
+                                              {args=args, clos=clos, reg_args=[], fargs=[], res=res}
                   val offset_codeptr = if BI.tag_values() then "8" else "0"
                 in
                   if List.length spilled_args > 0 then
@@ -417,8 +428,10 @@ struct
                   comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
                   let
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
-                    val (spilled_args,spilled_res,_) =
-                      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
+                    val (spilled_args,spilled_res) =
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args,clos=clos,reg_args=[],fargs=[],res=res}
                     val size_rcf = length spilled_res
                     val size_ccf = length spilled_args
                     val size_cc = size_rcf+size_ccf+1
@@ -446,7 +459,7 @@ struct
                     I.push(LA return_lab) ::                                          (* Push Return Label *)
                     flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
                   end)
-               | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
+               | LS.JMP(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
                   comment_fn (fn () => "JMP: " ^ pr_ls ls,
                   let
                   (* The stack looks as follows - growing downwards to the right:
@@ -459,10 +472,12 @@ struct
                    * the values in ``| ccf | ff |'' may be needed. On the other hand, some of the
                    * arguments may be positioned on the stack correctly already.
                    *)
-                    val (spilled_args, (* those arguments that need be passed on the stack *)
-                         spilled_res,  (* those return values that are returned on the stack *)
-                         _) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg
-                              {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
+                    val (spilled_args,   (* those arguments that need be passed on the stack *)
+                         spilled_res) =  (* those return values that are returned on the stack *)
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args,clos=clos,reg_args=reg_args,
+                                                 fargs=fargs,res=res}
 
                     val size_rcf = length spilled_res
                     val size_ccf_new = length spilled_args
@@ -494,16 +509,18 @@ struct
                      (base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
                                        jmp C)))
                   end)
-               | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
+               | LS.FUNCALL{opr,args,reg_args,clos,fargs,res,bv} =>
                   comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
                   let
-                    val (spilled_args,spilled_res,_) =
-                        CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,
-                                                                            reg_vec=reg_vec,res=res}
+                    val (spilled_args,spilled_res) =
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg,arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args, clos=clos, reg_args=reg_args,
+                                                 fargs=fargs, res=res}
                     val size_rcf = List.length spilled_res
                     val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
-                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
+                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
@@ -1406,14 +1423,14 @@ struct
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-        val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
-        val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
+        val size_spilled_region_and_float_args = List.length (CallConv.get_spilled_region_and_float_args cc)
+        val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_and_float_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
    (*
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
         val _ = pw reg_map
    *)
-        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
+        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_and_float_args)
 
         val () = reset_code_blocks()
         val C =
@@ -1655,12 +1672,23 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                             nil)
         val _  = add_static_data static_data
 
-        (* args can only be tmp_reg0 and tmp_reg1; no arguments
+
+        fun push_reg (r,C) =
+            if I.is_xmm r then
+              I.subq(I "8", R rsp) :: I.movsd(R r, D("",rsp)) :: C
+            else I.push (R r) :: C
+
+        fun pop_reg (r,C) =
+            if I.is_xmm r then
+              I.movsd(D("",rsp), R r) :: I.addq(I "8", R rsp) :: C
+            else I.pop (R r) :: C
+
+        (* args can only be tmp_reg0 (r10) and tmp_reg1 (r11); no arguments
          * on the stack; only the return address! Destroys tmp_reg0! *)
         fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
-            val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
-                            caller_save_regs_ccall  (* maybe also save the other
+            val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax :: map RI.lv_to_reg RI.f64_phregs
+                        (*caller_save_regs_ccall*)  (* maybe also save the other
                                                      * ccall argument registers and the
                                                      * ccall result register rax *)
 
@@ -1670,8 +1698,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                allocation may choose to map variables to these
                registers:
 
-                 X = [rax,rbx,rdi,rdx,rsi] u [rbx,rbp,r12,r13,r14,r15]
-                   = [rax,rbx,rdi,rdx,rsi,rbp,r12,r13,r14,r15]
+                 X = {rax,rbx,rdi,rdx,rsi} U {rbx,rbp,r12,r13,r14,r15} U {xmm0..xmm13}
+                   = {rax,rbx,rdi,rdx,rsi,rbp,r12,r13,r14,r15} U {xmm0..xmm13}
 
                Here are the registers that are not saved:
 
@@ -1680,10 +1708,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                These should exactly be the callee-save registers!
             *)
 
-            fun push_callersave_regs C =
-              foldl (fn (r, C) => I.push(R r) :: C) C save_regs
-            fun pop_callersave_regs C =
-              foldr (fn (r, C) => I.pop(R r) :: C) C save_regs
+            fun push_callersave_regs C = foldl push_reg C save_regs
+            fun pop_callersave_regs C = foldr pop_reg C save_regs
             val size_ff = 0 (* dummy *)
             val stublab = NameLab stubname
             val res = if ret then SOME (SS.PHREG_ATY tmp_reg1) else NONE
@@ -1733,10 +1759,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun gc_stub C = (* tmp_reg1 must contain the register map and tmp_reg0 the return address. *)
           if gc_p() then
             let
-              fun push_all_regs C =
-                foldr (fn (r, C) => I.push(R r) :: C) C all_regs
-              fun pop_all_regs C =
-                foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
+              (* first push the fpr registers; the runtime systems knows
+                 about the order the registers appear on the stack *)
+              val regs_to_store = map RI.lv_to_reg RI.args_phfreg @ all_regs
+              fun push_all_regs C = foldr push_reg C regs_to_store
+              fun pop_all_regs C = foldl pop_reg C regs_to_store
               fun pop_size_ccf_rcf_reg_args C =
                   base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)

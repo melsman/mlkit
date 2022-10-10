@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+* mael 2022-10-06: Reals may now be passed to functions unboxed in
+  floating point registers. They may also be captured unboxed in
+  closures (PR #73).
+
 ### MLKit version 4.7.2 is released
 
 * mael 2022-09-15: The region type system has now been made simpler by

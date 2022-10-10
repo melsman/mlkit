@@ -1,4 +1,5 @@
-TESTFILES=scratchmem.sml int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
+TESTFILES=f64_1.sml f64_2.sml f64_3.sml f64_4.sml \
+  scratchmem.sml int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
   exception1.sml exception3.sml exception5.sml f1.sml f2.sml fib.sml \
   fib0.sml global_region.sml hanoi.sml hello.sml if.sml immedString.sml l1.sml list_nh.sml \
   ref-int.sml ref.sml string1.sml test_dattyp.sml foldl.sml real_cmp.sml real0.sml \

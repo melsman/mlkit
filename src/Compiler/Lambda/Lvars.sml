@@ -30,7 +30,7 @@ structure Lvars: LVARS =
        menu=["Layout", "print lvar name"], desc=
        "Print underlying unique name when printing lvars."}
 
-    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
+    fun pr_lvar ({str="",name,ubf64,...} : lvar) : string = (if !ubf64 then "f" else "v") ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,name,...} =
         if print_lvar_name() then
           str ^ "$" ^ Int.toString (#1(Name.key name)) ^ "_" ^ #2(Name.key name)
@@ -41,10 +41,10 @@ structure Lvars: LVARS =
 	 free=ref false, inserted=ref false,
 	 use=ref 0, ubf64=ref (!(#ubf64 lv))}
 
-    fun pr_lvar' ({str,name,...} : lvar) : string =
+    fun pr_lvar' ({str,name,ubf64,...} : lvar) : string =
 	let val (i,s) = Name.key name
             val s = if Name.baseGet() = s then "" else s
-	    val str = if str = "" then "v:" else str ^ ":"
+	    val str = if str = "" then (if !ubf64 then "f:" else "v:") else str ^ ":"
 	in str ^ Int.toString i ^ ":" ^ s
 	end
 
@@ -129,7 +129,7 @@ struct
 
     fun singleton lvar = sing (Word.fromInt(#1(Lvars.key lvar)),lvar)
 
-    fun cardinality LF             = 0
+    fun cardinality LF = 0
       | cardinality (BR(b, t1, t2)) = List.length b + cardinality t1 + cardinality t2
 
     fun mkBR (nil, LF, LF) = LF
@@ -233,6 +233,8 @@ struct
 
     fun mapset f t = foldset (fn (a,i) => f i :: a) ([], t)
 
+    fun appset f t = foldset (fn ((),i) => f i) ((), t)
+
     fun members t = foldset (fn (a,i) => i :: a) ([], t)
 
     fun findLvar (pred: lvar -> 'a option) lvarset =
@@ -248,6 +250,35 @@ struct
         (search lvarset; NONE) handle Found result => result
       end
 
-  val empty = LF
+    val empty = LF
+
+    fun diff1 (nil,_) = NONE
+      | diff1 (lv::_,nil) = SOME lv
+      | diff1 (lvs1' as (lv1::lvs1), lvs2' as (lv2::lvs2)) =
+	let val s1 = #2 (Lvars.key lv1)
+	    val s2 = #2 (Lvars.key lv2)
+	in if s1 < s2 then SOME lv1
+	   else if s2 < s1 then diff1(lvs1',lvs2)
+		else diff1(lvs1,lvs2)
+	end
+
+    fun get1 LF = NONE
+      | get1 (BR(v::_,_,_)) = SOME v
+      | get1 (BR(nil,t1,t2)) =
+        case get1 t1 of
+            NONE => get1 t2
+          | v => v
+
+    fun difference1 (LF, ns2) = NONE
+      | difference1 (ns1, LF) = get1 ns1
+      | difference1 (BR(b1, t11, t12), BR(b2, t21, t22)) =
+        case diff1(b1,b2) of
+            NONE =>
+            (case difference1(t11, t21) of
+                 NONE => difference1(t12, t22)
+               | v => v)
+          | v => v
+
+    val one_in_difference = difference1
 
 end

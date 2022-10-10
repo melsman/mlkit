@@ -46,8 +46,6 @@ struct
     in print (s ^ " = ["); loop lvs; print "]\n"
     end
 
-  val region_vectors = false
-
   (***********)
   (* ClosExp *)
   (***********)
@@ -75,9 +73,9 @@ struct
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
-    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
-    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes:int, alloc: sma, tag: Word32.word}
@@ -202,19 +200,21 @@ struct
                                               finish=">",
                                               childsep=RIGHT ",",
                                               children=map layout_ce ces}
-      | layout_ce(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = HNODE{start="[",
-                                                                            finish="]clos " ^ (flatten1(pr_sma alloc)),
-                                                                            childsep=RIGHT ",",
-                                                                            children=LEAF(Labels.pr_label label)::
-                                                                            map layout_ce (rhos@excons@lvs)}
+      | layout_ce(CLOS_RECORD{label,elems=(lvs,excons,rhos),f64_vars,alloc}) =
+        HNODE{start="[",
+              finish="]clos(" ^ Int.toString f64_vars ^ ") " ^ (flatten1(pr_sma alloc)),
+              childsep=RIGHT ",",
+              children=LEAF(Labels.pr_label label)::
+                       map layout_ce (rhos@excons@lvs)}
       | layout_ce(REGVEC_RECORD{elems,alloc}) = HNODE{start="[",
                                                       finish="]regvec " ^ (flatten1(pr_sma alloc)),
                                                       childsep=RIGHT ",",
                                                       children=map (fn sma => pr_sma sma) elems}
-      | layout_ce(SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = HNODE{start="[",
-                                                                       finish="]sclos " ^ (flatten1(pr_sma alloc)),
-                                                                       childsep=RIGHT ",",
-                                                                       children= map layout_ce (rhos@excons@lvs)}
+      | layout_ce(SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
+        HNODE{start="[",
+              finish="]sclos(" ^ Int.toString f64_vars ^ ") " ^ (flatten1(pr_sma alloc)),
+              childsep=RIGHT ",",
+              children= map layout_ce (rhos@excons@lvs)}
       | layout_ce(RECORD{elems,alloc,tag,maybeuntag}) = HNODE{start="(",
                                                               finish=") " ^ (flatten1(pr_sma alloc)),
                                                               childsep=RIGHT ",",
@@ -1192,26 +1192,31 @@ struct
 
     fun lookup_ve env lv =
       let
-        fun resolve_se(CE.LVAR lv') = (VAR lv',NONE_SE)
-          | resolve_se(CE.SELECT(lv',i)) =
+        fun resolve_se {f64} (CE.LVAR lv') =
+            let val () = if f64 <> Lvars.get_ubf64 lv' then die "f64 mismatch" else ()
+            in (VAR lv',NONE_SE)
+            end
+          | resolve_se {f64} (CE.SELECT(lv',i)) =
               let
-                val lv'' = fresh_lvar("lookup_ve")
+                val lv'' = fresh_lvar ("lookup_ve")
+                val () = if f64 then Lvars.set_ubf64 lv'' else ()
               in
                 (VAR lv'',SELECT_SE(lv'',i,lv'))
               end
-          | resolve_se(CE.LABEL lab) =
+          | resolve_se {f64} (CE.LABEL lab) =
               let
                 val lv' = fresh_lvar("lookup_ve")
+                val () = if f64 then Lvars.set_ubf64 lv' else ()
               in
                 (VAR lv',FETCH_SE (lv',lab))
               end
-          | resolve_se _ = die "resolve_se: wrong FIX or RVAR binding in VE"
+          | resolve_se _ _ = die "resolve_se: wrong FIX or RVAR binding in VE"
       in
         case CE.lookupVarOpt env lv of
-          SOME(CE.FIX(_,SOME a,_,_)) => resolve_se(a)
-        | SOME(CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
-        | SOME(a) => resolve_se(a)
-        | NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
+            SOME (CE.FIX(_,SOME a,_,_)) => resolve_se {f64=false} a
+          | SOME (CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
+          | SOME a => resolve_se {f64=Lvars.get_ubf64 lv} a
+          | NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
       end
 
     fun lookup_fun env lv =
@@ -1394,6 +1399,10 @@ struct
     (* when building the new environment.                                *)
     (* Region variables are FIRST in the closure, then comes unboxed     *)
     (* f64 lambda variables; necessary for tagging.                      *)
+
+    (* Notice that lvars appears with the free lvars of type f64 first
+     * in the list (file get_fvs() in PhysSizeInf) *)
+
     fun build_clos_env org_env new_env lv_clos base_offset (free_lv,free_excon,free_rho) =
       let
         (* When computing offsets we do not increase the offset counter when meeting *)
@@ -1598,8 +1607,10 @@ struct
                  val _ = add_new_fn(new_lab, cc, insert_se(ccTrip body env_with_args new_lab NONE))
                  val (sma,se_sma) = convert_alloc(alloc,env)
                  val (smas,ces,ses) = unify_smas_ces_and_ses_free([(sma,se_sma)],ces_and_ses)
+
+                 val f64_vars = length (List.filter Lvars.get_ubf64 (#1 free_vars_all))
                in
-                 (insert_ses(CLOS_RECORD{label=new_lab, elems=ces, alloc=one_in_list(smas)},ses),NONE_SE)
+                 (insert_ses(CLOS_RECORD{label=new_lab, elems=ces, f64_vars=f64_vars, alloc=one_in_list(smas)},ses),NONE_SE)
                end
            | MulExp.FN _ => die "ccExp: FN with no free vars info"
            | MulExp.FIX{free=ref (SOME free_vars_all),shared_clos=alloc,functions,scope} =>
@@ -1651,18 +1662,11 @@ struct
                          (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size,formals))) lvars_labels_formals)
                      val lv_rv = fresh_lvar("rv")
                      val (reg_args, env_with_rv) =
-                       if region_vectors then
-                         let val e = #1(List.foldl (fn ((place,_),(env,i)) =>
-                                                    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1))
-                                        (env_with_funs, BI.init_regvec_offset) formals) (* formals may be empty! *)
-                         in (nil, e)
-                         end
-                       else (List.foldr (fn ((place,_),(lvs,env)) =>
-                                         let val lv = fresh_lvar "regarg"
-                                         in (lv::lvs, CE.declareRho(place,CE.LVAR lv,env))
-                                         end)
-                             (nil,env_with_funs) formals)
-
+                         List.foldr (fn ((place,_),(lvs,env)) =>
+                                        let val lv = fresh_lvar "regarg"
+                                        in (lv::lvs, CE.declareRho(place,CE.LVAR lv,env))
+                                        end)
+                                    (nil,env_with_funs) formals
                      val env_with_rho_kind =
                           (env_with_rv plus_decl_with CE.declareRhoKind)
                           (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
@@ -1681,12 +1685,10 @@ struct
 (*                   val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^
                                     " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
                      val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-                     val (lv_rv_opt, lv_rv_var_opt) =
-                       if List.null formals orelse not(region_vectors) then (NONE, NONE)
-                       else (SOME lv_rv, SOME(VAR lv_rv))
-                     val cc = CallConv.mk_cc_fun(args,sclos,lv_rv_opt,reg_args,ress)
+                     val (fargs,args) = List.partition Lvars.get_ubf64 args
+                     val cc = CallConv.mk_cc_fun(args,sclos,reg_args,fargs,ress)
                    in
-                     add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab lv_rv_var_opt))
+                     add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab NONE))
                    end
                  val _ = List.app compile_fn (zip5 (lvars,binds,formalss,dropss,labels))
                in
@@ -1696,15 +1698,15 @@ struct
                    let
                      val (sma,se_a) = convert_alloc(alloc,env)
                      val (smas,ces,ses) = unify_smas_ces_and_ses_free([(sma,se_a)],ces_and_ses)
+                     val f64_vars = length (List.filter Lvars.get_ubf64 (#1 free_vars_all))
                    in
                      (insert_ses(LET{pat=[lv_sclos],
-                                     bind= SCLOS_RECORD{elems=ces,alloc=one_in_list(smas)},
+                                     bind= SCLOS_RECORD{elems=ces,f64_vars=f64_vars,alloc=one_in_list(smas)},
                                      scope=insert_se(ccTrip scope env_scope lab cur_rv)},
                                  ses),NONE_SE)
                    end
                end
            | MulExp.FIX{free=_,shared_clos,functions,scope} => die "ccExp: No free variables in FIX"
-
            | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
                (* Poly tail call; this could be made more efficient if we distinguish between a tail call
                 * and a jmp - that is, if we recognice that regions in registers and on the stack

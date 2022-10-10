@@ -78,9 +78,9 @@ signature LINE_STMT =
     | STRING          of string
     | REAL            of string
     | F64             of string
-    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
-    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
     | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
     | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}
@@ -103,10 +103,10 @@ signature LINE_STMT =
 			res: 'aty list, bv: Word32.word list}
     | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option,
 			res: 'aty list, bv: Word32.word list}
-    | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option,
-			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
-    | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option,
-			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
+    | JMP           of {opr: label, args: 'aty list,
+			reg_args: 'aty list, fargs: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
+    | FUNCALL       of {opr: label, args: 'aty list,
+			reg_args: 'aty list, fargs: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
     | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list,
@@ -176,9 +176,9 @@ signature LINE_STMT =
 
     val use_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
     val def_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
-    val use_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+    val use_lvar_on_fun   : {opr: label,args: Atom list,reg_args: Atom list, fargs: Atom list,
 			     clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
-    val def_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+    val def_lvar_on_fun   : {opr: label,args: Atom list,reg_args: Atom list, fargs: Atom list,
 			     clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
 
     val use_lvar_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
@@ -196,9 +196,9 @@ signature LINE_STMT =
 
     val use_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
     val def_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
-    val use_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+    val use_var_on_fun   : {opr: label,args: Atom list,reg_args: Atom list, fargs: Atom list,
 			    clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
-    val def_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+    val def_var_on_fun   : {opr: label,args: Atom list,reg_args: Atom list, fargs: Atom list,
 			    clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
 
     val use_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
@@ -210,7 +210,7 @@ signature LINE_STMT =
     (* Lvars bound to regions are also filtered out; they are not *)
     (* part of the root-set and are therefore not included in the *)
     (* bit vectors. Also lvars bound to unboxed f64 float values  *)
-    (* are filtered out.                                          *)
+    (* are filtered out (for calc bit-vectors).                   *)
     (**************************************************************)
     val def_use_var_ls_cbv : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
 
@@ -222,7 +222,7 @@ signature LINE_STMT =
     val get_phreg_atom_opt : Atom option * lvar list -> lvar list
     val get_phreg_sma      : Atom sma * lvar list -> lvar list
     val get_phreg_smas     : Atom sma list * lvar list -> lvar list
-    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_args: Atom list, fargs: Atom list,
 			      clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
     val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
     val get_phreg_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
