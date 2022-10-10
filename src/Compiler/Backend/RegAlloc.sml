@@ -383,15 +383,15 @@ struct
 
   datatype kind = GPR | FPR
 
-  type key = int   (* memo: use word *)
+  type key = word
 
   fun key lv : key =
-      let val k = 2 * #1 (Lvars.key lv)
-      in if Lvars.get_ubf64 lv then k+1 else k
+      let val k = 0w2 * Word.fromInt (#1 (Lvars.key lv))
+      in if Lvars.get_ubf64 lv then k+0w1 else k
       end
 
   fun key_kind (k:key) : kind =
-      if k mod 2 = 1 then FPR else GPR
+      if k mod 0w2 = 0w1 then FPR else GPR
 
   datatype worklist_enum =
     precolored_enum | initial_enum | simplifyWorklist_enum | freezeWorklist_enum |
@@ -440,8 +440,6 @@ struct
                adjList:=nil; alias:=NONE; color:=SOME key; lrs:=no_call; uses:=0))
           precolored
 
-(*  val allColors : lvarset = Lvarset.lvarsetof(map (#lv) precolored)*)
-
   val Kfpr = List.length RI.f64_phregs
   val Kgpr = List.length RI.caller_save_phregs
 
@@ -450,7 +448,6 @@ struct
           GPR => Kgpr
         | FPR => Kfpr
 
-(*  val K = length precolored *)
   val () = setKs (Kgpr,Kfpr)
 
   fun makeWorklist (c:worklist_enum) : {reset   : unit -> unit,
@@ -555,11 +552,11 @@ struct
 
   local
     structure H = Polyhash
-    val nTable : (int, node) H.hash_table =
-        H.mkTable (fn x => x, op =) (500,Fail "RegAlloc.nTable")
+    val nTable : (key, node) H.hash_table =
+        H.mkTable (Word.toIntX, op =) (500,Fail "RegAlloc.nTable")
   in
     fun nTableLookup i : node option = H.peek nTable i
-    fun nTableAdd (i:int, n:node) : unit = H.insert nTable (i,n)
+    fun nTableAdd (i:key, n:node) : unit = H.insert nTable (i,n)
     fun nTableReset () : unit =
         ( H.clear nTable
         ; app (fn n => nTableAdd (key' n, n)) precolored
@@ -570,14 +567,14 @@ struct
   (* moveList; table from lvar keys to moves *)
   local
     structure H = Polyhash
-    val mTable : (int, move list ref) H.hash_table  =
-        H.mkTable (fn x => x, op =) (500,Fail "RegAlloc.mTable")
+    val mTable : (key, move list ref) H.hash_table  =
+        H.mkTable (Word.toIntX, op =) (500,Fail "RegAlloc.mTable")
   in
     fun moveListLookup i : move list =
         case H.peek mTable i of
             SOME rl => !rl
           | NONE => nil
-    fun moveListAdd (i:int, m:move) : unit =
+    fun moveListAdd (i:key, m:move) : unit =
         case H.peek mTable i of
             SOME rl => rl := m :: !rl
           | NONE => H.insert mTable (i,ref [m])
@@ -587,19 +584,19 @@ struct
 
   local
     structure H = Polyhash
-    val adjSet : (int, S.Set ref) H.hash_table =
-        H.mkTable (fn x => x, op =) (500,Fail "RegAlloc.adjSet")
+    val adjSet : (key, S.Set ref) H.hash_table =
+        H.mkTable (Word.toIntX, op =) (500,Fail "RegAlloc.adjSet")
   in
     fun adjSetMember (i1,i2) : bool =
         if i1 < i2 then (case H.peek adjSet i1 of
-                             SOME s => S.member (Word.fromInt i2) (!s)
+                             SOME s => S.member i2 (!s)
                            | NONE => false)
         else adjSetMember(i2,i1)
     fun adjSetAdd (i1,i2) : unit =
         if i1 < i2 then (case H.peek adjSet i1 of
-                             SOME s => if S.member (Word.fromInt i2) (!s) then ()
-                                       else s := S.insert (Word.fromInt i2) (!s)
-                           | NONE => H.insert adjSet (i1,ref(S.singleton (Word.fromInt i2))))
+                             SOME s => if S.member i2 (!s) then ()
+                                       else s := S.insert i2 (!s)
+                           | NONE => H.insert adjSet (i1,ref(S.singleton i2)))
         else adjSetAdd(i2,i1)
     fun adjSetReset () =
         H.clear adjSet
@@ -640,31 +637,31 @@ struct
                   (NodeMoves n))
           nodes
 
-  fun GetAliasKey (k : int) : node =
+  fun GetAliasKey (k : key) : node =
       case nTableLookup k of
           SOME n =>
           if !(#worklist n) = coalescedNodes_enum then
             case !(#alias n) of
                 SOME i => GetAliasKey i
-              | NONE => die ("GetAliasKey.1: key=" ^ Int.toString k)
+              | NONE => die ("GetAliasKey.1: key=" ^ Word.toString k)
           else n
-        | NONE => die ("GetAliasKey.2: key=" ^ Int.toString k)
+        | NONE => die ("GetAliasKey.2: key=" ^ Word.toString k)
 
   fun GetAliasNode (n:node) : node =
       GetAliasKey (#key n)
 
   fun pr_node ({key,lv,degree,mv_related,worklist = ref wl,adjList,
                 alias = ref NONE,color = ref (SOME color_key),lrs,uses}:node) =
-      "{key: " ^ Int.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:NONE,color:" ^
-      Int.toString color_key ^ ",wl:" ^ pr_worklist wl ^ "}"
+      "{key: " ^ Word.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:NONE,color:" ^
+      Word.toString color_key ^ ",wl:" ^ pr_worklist wl ^ "}"
     | pr_node {key,lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref (SOME color_key),lrs,uses} =
-      "{key: " ^ Int.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
-      Lvars.pr_lvar (#lv(GetAliasKey a_id)) ^ ",color:" ^ Int.toString color_key ^ ",wl:" ^ pr_worklist wl ^ "}"
+      "{key: " ^ Word.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
+      Lvars.pr_lvar (#lv(GetAliasKey a_id)) ^ ",color:" ^ Word.toString color_key ^ ",wl:" ^ pr_worklist wl ^ "}"
     | pr_node {key,lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref NONE,lrs,uses} =
-      "{key: " ^ Int.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
+      "{key: " ^ Word.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
       Lvars.pr_lvar (#lv(GetAliasKey a_id)) ^ ",wl:" ^ pr_worklist wl ^ ",color:NONE}"
     | pr_node {key,lv,degree,mv_related,worklist = ref wl,adjList,alias = ref NONE,color = ref NONE,lrs,uses} =
-      "{key: " ^ Int.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",wl:" ^ pr_worklist wl ^ ",alias:NONE,color:NONE}"
+      "{key: " ^ Word.toString key ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",wl:" ^ pr_worklist wl ^ ",alias:NONE,color:NONE}"
 
   fun pr_precolored () =
       (print "\nPrecolored[";map (print o pr_node) precolored;print "]\n")
@@ -711,9 +708,6 @@ struct
                | NONE => ()
            )
 
-  fun AddEdge' (u:word, v:word) : unit =
-      AddEdge(Word.toInt u, Word.toInt v)
-
   fun MakeWorklist () =
       let fun do_n n =
               if !(#degree n) >= K (kind n)
@@ -734,11 +728,13 @@ struct
   fun OK (t : node, r : node) : bool =
       !(#degree t) < K(kind t) orelse !(#worklist t) = precolored_enum orelse adjSetMember(key' t, key' r)
 
-  fun Conservative (K:int) (nodes:S.Set) : bool =  (* memo: maybe fold over nodes instead of creating intermediate list *)
-      let val nodes = map (fn k => case nTableLookup (Word.toInt k) of
-                                       SOME n => n
-                                     | NONE => die "Conservative") (S.list nodes)
-      in (foldl (fn (n,k) => if !(#degree n) >= K then k+1 else k) 0 nodes) < K
+  fun Conservative (K:int) (nodes:S.Set) : bool =
+      let val N =
+              S.fold (fn k => fn N =>
+                         case nTableLookup k of
+                             SOME n => if !(#degree n) >= K then N+1 else N
+                           | NONE => die "Conservative") 0 nodes
+      in N < K
       end
 
   fun check_same_kind s (u:node) (v:node) : unit =
@@ -783,8 +779,8 @@ struct
                      orelse
                      (!(#worklist u) <> precolored_enum andalso
                       Conservative (K(kind u))
-                                   (S.union (S.fromList(map (Word.fromInt o #key) (Adjecent u)))
-                                            (S.fromList(map (Word.fromInt o #key) (Adjecent v)))))
+                                   (S.union (S.fromList(map #key (Adjecent u)))
+                                            (S.fromList(map #key (Adjecent v)))))
              then (coalescedMovesAdd m;
                    inc_coalesce();
                    Combine(u,v);
@@ -830,16 +826,16 @@ struct
       end
 
   val caller_save_regset =
-      S.fromList (map (Word.fromInt o key) RI.caller_save_phregs)
+      S.fromList (map key RI.caller_save_phregs)
 
   val callee_save_regs =
       S.empty
 
   val f64_phregset =
-      S.fromList (map (Word.fromInt o key) RI.f64_phregs)
+      S.fromList (map key RI.f64_phregs)
 
   val callee_save_ccall_phregset =
-      S.fromList (map (Word.fromInt o key) RI.callee_save_ccall_phregs)
+      S.fromList (map key RI.callee_save_ccall_phregs)
 
   fun getOne (s:S.Set) : word option = S.getOne s
 
@@ -848,7 +844,7 @@ struct
               case getOne (S.difference colors notOkColors) of
                   NONE => no()
                 | SOME c => ( coloredNodesAdd n
-                            ; #color n := SOME (Word.toInt c)
+                            ; #color n := SOME c
                             ; inc_assigned_colors()
                             )
           fun assign_none n = (spilledNodesAdd n; inc_spills())
@@ -866,12 +862,12 @@ struct
                         | FPR => (f64_phregset, S.empty)
               in case !(#lrs n) of
                      c_call =>
-                     (* means: variable live only over ccalls *)
+                     (* variable is live only over ccalls *)
                      ( inc_c_call()
                      ; assign_color1 (n,callee_save_ccall,notOkColors)
                      )
                    | ml_call =>
-                     (* means: variable live across ml call and/or c call; we have to
+                     (* variable is live across ml call and/or c call; we have to
                       * be carefull that rbx is not assigned as it may be destroyed by
                       * an ml-call *)
                      ( inc_ml_call()
@@ -879,7 +875,7 @@ struct
                      )
                    | no_call =>
                      (* prioritise to use caller-save regs so that callee-save regs are
-                      * available for those variables with live ranges accross calls *)
+                      * available for those variables with live ranges across calls *)
                      ( inc_no_call()
                      ; assign_color2 (n,caller_save,callee_save_ccall,notOkColors)
                      )
@@ -902,7 +898,7 @@ struct
                                              | precolored_enum => true
                                              | _ => false) then
                                          case !(#color(GetAliasKey k)) of
-                                             SOME c => S.insert (Word.fromInt c) set
+                                             SOME c => S.insert c set
                                            | NONE => die "pop_loop"
                                        else set
                                     end) S.empty (!(#adjList n))
@@ -970,17 +966,16 @@ struct
    * the IG because they are not to be colored. *)
 
   structure S = NatSet
-  fun keyw lv = Word.fromInt (key lv)
   fun delete s e = S.remove e s
   fun add s e = S.insert e s
-  fun lvarset_atom a = S.fromList (map keyw (LS.get_var_atom(a,nil)))
-  fun lvarsetof lvs = S.fromList (map keyw lvs)
+  fun lvarset_atom a = S.fromList (map key (LS.get_var_atom(a,nil)))
+  fun lvarsetof lvs = S.fromList (map key lvs)
 
   fun Build (args_on_stack_lvs, lss) =
     let
       val args_on_stack_lvs = lvarsetof args_on_stack_lvs
       fun set_lrs_status new_s k =
-          case nTableLookup (Word.toInt k) of
+          case nTableLookup k of
               SOME {lrs = (lrs as ref old_s),...} => lrs := merge_lrs(old_s,new_s)
             | NONE => die "set_lrs_status - nTableLookup failed"
       fun lvarset_app f lvs =
@@ -1006,13 +1001,13 @@ struct
                     | LS.CCALL_AUTO _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
                     | _ => lvarset_app (set_lrs_status ml_call) lvars_to_flush
               val L = S.union L def  (* We insert edges between def'ed variables *)
-              val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge'(d,u)) L) def
+              val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def
               val L = S.union use lvars_to_flush
           in L
           end
       fun do_tail_call (L, ls) =
           let val (def, use) = def_use_var_ls ls
-              val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge'(d,u)) def) def
+              val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) def) def
               (* We insert edges between def'ed variables *)
               val L = use_var_ls ls
           in L
@@ -1020,27 +1015,27 @@ struct
       fun do_record (L,ls) = (* We must insert edges between def and use! *)
           let val (def,use) = def_use_var_ls ls
               val L' = S.union (S.union L def) use
-              val _ = lvarset_app (fn d => lvarset_app (fn l => AddEdge'(l,d)) L') def
+              val _ = lvarset_app (fn d => lvarset_app (fn l => AddEdge(l,d)) L') def
               val L = S.union use (S.difference L def)
           in L
           end
       fun do_move (L,lv1,lv2) = (* lv1 <-- lv2 *)
-          let val k1 = keyw lv1
-              val k2 = keyw lv2
+          let val k1 = key lv1
+              val k2 = key lv2
           in
             if S.member k1 args_on_stack_lvs then
               if S.member k2 args_on_stack_lvs then L
               else add L k2
             else if S.member k2 args_on_stack_lvs then
-              (lvarset_app (fn l => AddEdge'(l,k1)) L;
+              (lvarset_app (fn l => AddEdge(l,k1)) L;
                delete L k1)
             else
               let val _ = inc_moves()
-                  val move : move = {k1=Word.toInt k1, k2=Word.toInt k2,
+                  val move : move = {k1=k1, k2=k2,
                                      movelist=ref worklistMoves_enum}
-                  val _ = (moveListAdd(Word.toInt k1, move); moveListAdd(Word.toInt k2, move))
+                  val _ = (moveListAdd(k1, move); moveListAdd(k2, move))
                   val _ = worklistMovesAdd move
-                  val _ = lvarset_app (fn l => AddEdge'(l,k1)) (delete L k2)
+                  val _ = lvarset_app (fn l => AddEdge(l,k1)) (delete L k2)
                   val L = add (delete L k1) k2
               in L
               end
@@ -1086,9 +1081,9 @@ struct
              (* after the handle. We define handl_return_lv in the    *)
              (* handle construct. 19/03/1999, Niels                   *)
              val L' = ig_lss(handl, ig_lss(default, L))
-             val handl_return_key = keyw (one_in_list (LS.get_var_atom (handl_return_lv,nil)))
+             val handl_return_key = key (one_in_list (LS.get_var_atom (handl_return_lv,nil)))
              val _ = lvarset_app (set_lrs_status ml_call) (delete L' handl_return_key)
-             val _ = lvarset_app (fn l => AddEdge'(l,handl_return_key)) L'  (* ME 1999-08-14 *)
+             val _ = lvarset_app (fn l => AddEdge(l,handl_return_key)) L'  (* ME 1999-08-14 *)
            in
              L'
            end
@@ -1112,7 +1107,7 @@ struct
            | _ => (* general *)
             let val (def, use) = def_use_var_ls ls
                 val L = S.union L def   (* to introduce edges between defs *)
-                val _ = lvarset_app (fn d => lvarset_app (fn l => AddEdge'(l,d)) L) def
+                val _ = lvarset_app (fn d => lvarset_app (fn l => AddEdge(l,d)) L) def
                 val L = S.union use (S.difference L def)
             in L
             end
@@ -1158,11 +1153,11 @@ struct
   in
   val phregKeyToLv : key -> lvar =
       let val regs = RI.f64_phregs @ RI.all_regs
-          val m = H.mkTable (fn x => x, op =) (50,Fail "RegAlloc.phregTable")
+          val m = H.mkTable (Word.toIntX, op =) (50,Fail "RegAlloc.phregTable")
           val () = app (fn lv => H.insert m (key lv, lv)) regs
       in fn k => case H.peek m k of
                      SOME lv => lv
-                   | NONE => die ("phregKeyToLv: no lv found for key " ^ Int.toString k)
+                   | NONE => die ("phregKeyToLv: no lv found for key " ^ Word.toString k)
       end
   end
 
