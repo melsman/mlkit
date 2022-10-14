@@ -32,6 +32,17 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
+  (****************************************************************)
+  (* Add Dynamic Flags                                            *)
+  (****************************************************************)
+
+  val extra_gc_checks_p =
+      Flags.add_bool_entry
+          {long="extra_gc_checks", short=NONE, item=ref false,
+           menu=["Compiler", "extra GC checks"], neg=false,
+           desc="Insert check for GC even in functions that do not\n\
+                \allocate."}
+
   val caller_save_regs_ccall = nil(*map RI.lv_to_reg RI.caller_save_ccall_phregs*)
   val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
   val all_regs = map RI.lv_to_reg RI.all_regs
@@ -1431,6 +1442,11 @@ struct
         val _ = pw reg_map
    *)
         val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_and_float_args)
+
+        val (checkGC,GCsnippet) =
+            if extra_gc_checks_p() orelse LS.allocating lss
+            then (checkGC, GCsnippet)
+            else (fn C => C, nil)
 
         val () = reset_code_blocks()
         val C =

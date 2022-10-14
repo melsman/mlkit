@@ -158,6 +158,7 @@ signature LINE_STMT =
                   {main_lab:label,code:('sty1,'offset1,'aty1) LinePrg,imports:label list * label list,exports:label list * label list} ->
                   {main_lab:label,code:('sty2,'offset2,'aty2) LinePrg,imports:label list * label list,exports:label list * label list}
 
+    val allocating : ('sty,'offset,'aty) LineStmt list -> bool
 (*
     (*****************************************************************)
     (* In CalcOffsets we must know if a region has runtime type REAL *)
