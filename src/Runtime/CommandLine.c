@@ -8,6 +8,11 @@
 #include "Flags.h"
 #include "Profiling.h"
 
+#ifdef ARGOBOTS
+#include "Spawn.h"
+#include <unistd.h>
+#endif
+
 #ifdef PROFILING
 #include <signal.h>      /* Used by signal. */
 #include <sys/time.h>    /* Used by setitimer. */
@@ -31,8 +36,8 @@ long only_major_gc = 0;
 #endif
 #endif
 
-void 
-printUsage(void) 
+void
+printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-help, -h] \n");
@@ -46,8 +51,11 @@ printUsage(void)
   fprintf(stderr,"      [-notimer n | -realtime | -virtualtime | -profiletime] \n");
   fprintf(stderr,"      [-microsec n | -sec n] \n");
   fprintf(stderr,"      [-file outFileName] [-noDatafile] [-showStat] \n");
-  fprintf(stderr,"      [-profTab] [-verbose] \n\n");
+  fprintf(stderr,"      [-profTab] [-verbose] \n");
 #endif /*PROFILING*/
+#if (PARALLEL && ARGOBOTS)
+  fprintf(stderr,"      [-P n] [-verbose_par, -vp] \n");
+#endif
   fprintf(stderr,"  where\n");
   fprintf(stderr,"      -help, -h                Print this help screen and exit.\n\n");
 #ifdef ENABLE_GC
@@ -60,6 +68,10 @@ printUsage(void)
 #endif // ENABLE_GEN_GC
   fprintf(stderr, "\n");
 #endif /*ENABLE_GC*/
+#ifdef ARGOBOTS
+  fprintf(stderr,"      -P n                     Number of execution streams.\n");
+  fprintf(stderr,"      -verbose_par, -vp        Show info about parallel streams.\n\n");
+#endif
 #ifdef PROFILING
   fprintf(stderr,"      -notimer n               Profile every n'th function call.\n");
   fprintf(stderr,"      -realtime                Profile with the real timer.\n");
@@ -84,19 +96,24 @@ printUsage(void)
   exit(0);
 }
 
-void 
-parseCmdLineArgs(int argc, char *argv[]) 
+void
+parseCmdLineArgs(int argc, char *argv[])
 {
 
-#if ( PROFILING || ENABLE_GC )
+#if ( PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS) )
   long match;
+#endif
+
+#ifdef ARGOBOTS
+  posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+  int verbosePar = 0;
 #endif
 
   /* initialize global variables to hold command line arguments */
   commandline_argc = argc;
   commandline_argv = argv;
 
-#if ( PROFILING || ENABLE_GC )
+#if ( PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS) )
   //  strcpy(exeName, (char *)argv[0]);
   match = 1;
   while ((--argc > 0) && match) {
@@ -221,13 +238,13 @@ parseCmdLineArgs(int argc, char *argv[])
       if ((argc-1)>0 && (*(argv+1))[0] != '-') {
 	--argc;
 	++argv;
-	strcpy(logName, (char *)argv[0]);     
+	strcpy(logName, (char *)argv[0]);
       } else {
 	fprintf(stderr,"No filename after the -file switch.\n");
 	printUsage();
       }
       fprintf(stderr,"Using output file %s.\n", logName);
-    } 
+    }
 
     if ((strcmp((char *)argv[0], "-v")==0) ||
 	(strcmp((char *)argv[0], "-verbose")==0)) {
@@ -248,29 +265,58 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 #endif /*PROFILING*/
 
-    if (match) { 
+#ifdef ARGOBOTS
+    if (strcmp((char *)argv[0],"-P")==0) {
+      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
+	if ((posixThreads = atoi((char *)argv[0])) == 0) {
+	  fprintf(stderr,"Expecting integer argument to the option -P.\n");
+	  printUsage();
+	}
+      } else {
+	fprintf(stderr,"No integer after the option -P.\n");
+	printUsage();
+      }
+      app_arg_index++; /* this is an two-word option */
+      match = 1;
+    }
+
+    if ((strcmp((char *)argv[0], "-vp")==0) ||
+	(strcmp((char *)argv[0], "-verbose_par")==0)) {
+      match = 1;
+      verbosePar = 1;
+    }
+#endif
+
+    if (match) {
       app_arg_index++;
     }
   }
-#endif /* PROFILING || ENABLE_GC */  
+
+#if (PARALLEL && ARGOBOTS)
+  if (verbosePar) {
+    printf("ARGOBOTS: Using %d execution streams.\n", posixThreads);
+  }
+#endif
+
+#endif /* PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS)*/
 
   return;
 }
 
 String
-REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr) 
+REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr)
 {
   return REG_POLY_CALL(convertStringToML, rAddr, commandline_argv[0]);
-} 
+}
 
-uintptr_t 
-REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho) 
+uintptr_t
+REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho)
 {
   uintptr_t *resList, *pairPtr;
   String mlStr;
   int counter = commandline_argc;
-  makeNIL(resList);  
-  while ( counter > app_arg_index ) 
+  makeNIL(resList);
+  while ( counter > app_arg_index )
     {
       mlStr = REG_POLY_CALL(convertStringToML, strRho, commandline_argv[--counter]);
       REG_POLY_CALL(allocPairML, pairRho, pairPtr);

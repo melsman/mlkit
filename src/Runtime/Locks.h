@@ -3,8 +3,10 @@
 #define LOCKS_H
 
 #ifdef PARALLEL
+
 void mutex_lock(int id);                      // defined in Spawn.c
 void mutex_unlock(int id);                    // defined in Spawn.c
+
 #define LOCK_LOCK(name) mutex_lock(name)
 #define LOCK_UNLOCK(name) mutex_unlock(name)
 #define FREELISTMUTEX      1
@@ -18,9 +20,6 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 
 #include "../config.h"
 
-#ifdef THREADS
-#ifdef PTHREADS
-
 #define CODECACHEMUTEX     0
 #define FREELISTMUTEX      1
 #define STACKPOOLMUTEX     2
@@ -28,18 +27,6 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 
 #define LOCK_LOCK(name) ;
 #define LOCK_UNLOCK(name) ;
-#endif // PTHREADS
-
-#else // THREADS
-
-#define CODECACHEMUTEX     0
-#define FREELISTMUTEX      1
-#define STACKPOOLMUTEX     2
-#define FUNCTIONTABLEMUTEX 3
-
-#define LOCK_LOCK(name) ;
-#define LOCK_UNLOCK(name) ;
-#endif // THREADS
 
 #endif // PARALLEL
 

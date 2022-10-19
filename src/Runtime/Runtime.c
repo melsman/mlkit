@@ -104,6 +104,10 @@ terminateML (long status)
 #endif
   debug(printf("[terminateML..."));
 
+#ifdef PARALLEL
+  thread_finalize();
+#endif
+
 #ifdef PROFILING
   outputProfilePost();
   Statistics();

@@ -163,6 +163,14 @@ structure ExecutionX64: EXECUTION =
 
     val par_alloc_unprotected_p = Flags.is_on0 "parallelism_alloc_unprotected"
 
+    val _ = Flags.add_bool_entry
+	{long="argobots", short=SOME "argo", neg=false,
+	 menu=["Control","use the Argobots lightweight thread library"], item=ref false,
+	 desc="When enabled, executables link with the Argobots\n\
+              \lightweight thread library."}
+
+    val argobots_p = Flags.is_on0 "argobots"
+
     local val default = ""
     in
 	val _ = Flags.add_string_entry
@@ -314,6 +322,7 @@ structure ExecutionX64: EXECUTION =
                    die "parallelism enabled - turn off prof"
                  else if tag_pairs_p() then
                    die "parallelism enabled - turn off pair tagging"
+                 else if argobots_p() then "runtimeSystemArPar.a"
                  else "runtimeSystemPar.a")
               else
 	      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
