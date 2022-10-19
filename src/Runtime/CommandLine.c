@@ -272,8 +272,12 @@ parseCmdLineArgs(int argc, char *argv[])
 	  fprintf(stderr,"Expecting integer argument to the option -P.\n");
 	  printUsage();
 	}
+	if (posixThreads < 1) {
+	  fprintf(stderr,"Expecting positive integer after option -P.\n");
+	  printUsage();
+	}
       } else {
-	fprintf(stderr,"No integer after the option -P.\n");
+	fprintf(stderr,"Expecting integer after the option -P.\n");
 	printUsage();
       }
       app_arg_index++; /* this is an two-word option */
