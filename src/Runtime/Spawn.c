@@ -105,7 +105,7 @@ thread_init_all(void) {
   // Initialize Argobots
   ABT_init(0,NULL);
 
-  int is_randws = 0;
+  int is_randws = 1;
   // Create pools
   for (int i = 0; i < posixThreads; i++) {
     if (is_randws) {
@@ -203,11 +203,10 @@ thread_new(void* (*f)(ThreadInfo*), ThreadInfo* ti) {
   ABT_thread_attr_create(&attr);
   int stacksize = 1024 * 1024; // 1Mb
   ABT_thread_attr_set_stacksize(attr,stacksize);
-  // pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   ti->fun = f;
   int rank;
   ABT_xstream_self_rank(&rank);
-  rc = ABT_thread_create_to(pools[rank], (void (*)(void*))callWrap, (void*)ti, attr, &(ti->thread));
+  rc = ABT_thread_create(pools[rank], (void (*)(void*))callWrap, (void*)ti, attr, &(ti->thread));
   if (rc) {
     printf("ERROR; return code from pthread_create() is %d (%s)\n", rc, strerror(rc));
     exit(-1);
