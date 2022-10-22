@@ -16,6 +16,8 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 #define GLOBALALLOCMUTEX 4
 #endif // PARALLEL_GLOBAL_ALLOC_LOCK
 
+#define SHAREDFREELISTMUTEX 5
+
 #else // PARALLEL
 
 #include "../config.h"

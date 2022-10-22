@@ -19,18 +19,21 @@
 
 #ifdef ARGOBOTS
 #include <abt.h>
-extern int posixThreads;
 
+extern int posixThreads;           // The number of execution streams
+extern Rp** freelists;             // Array of posixThreads freelists
 typedef ABT_thread thread_t;
 typedef ABT_mutex thread_mutex_t;
 typedef ABT_key thread_key_t;
 
-#define THREAD_MUTEX_LOCK(m) ABT_mutex_lock(m)
-#define THREAD_MUTEX_UNLOCK(m) ABT_mutex_unlock(m)
-#define THREAD_MUTEX_INIT(m) ABT_mutex_create(m)
-#define THREAD_MUTEX_DESTROY ABT_mutex_free
+#define MUTEX_LOCK(m) ABT_mutex_lock(m)
+#define MUTEX_UNLOCK(m) ABT_mutex_unlock(m)
+#define MUTEX_INIT(m) ABT_mutex_create(m)
+#define MUTEX_DESTROY ABT_mutex_free
 #define THREAD_KEY_CREATE(k) ABT_key_create((void (*)(void*))0,(k))
 #define THREAD_SETSPECIFIC ABT_key_set
+
+int execution_stream_rank(void);
 
 #else
 #include <pthread.h>
@@ -38,16 +41,21 @@ typedef pthread_t thread_t;
 typedef pthread_mutex_t thread_mutex_t;
 typedef pthread_key_t thread_key_t;
 
-#define THREAD_MUTEX_LOCK(m) pthread_mutex_lock(&(m))
-#define THREAD_MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
-#define THREAD_MUTEX_INIT(m) pthread_mutex_init((m),NULL)
-#define THREAD_MUTEX_DESTROY pthread_mutex_destroy
+#define MUTEX_LOCK(m) pthread_mutex_lock(&(m))
+#define MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+#define MUTEX_INIT(m) pthread_mutex_init((m),NULL)
+#define MUTEX_DESTROY pthread_mutex_destroy
 #define THREAD_KEY_CREATE(k) pthread_key_create((k),NULL)
 #define THREAD_SETSPECIFIC pthread_setspecific
 #endif
 
 void* thread_getspecific(thread_key_t k);
 
+// Each thread is associated with a threadinfo struct, which, for the
+// pthreads implementation, has a freelist. For the Argobots
+// implementation, a freelist is instead associated with each
+// execution stream through the global variable freelists (indexed by
+// the execution stream rank).
 typedef struct ti {
   void *arg;           // position in struct used by code generator
   int tid;
@@ -56,15 +64,16 @@ typedef struct ti {
   thread_mutex_t mutex;
   void* retval;
   int joined;
-  Rp* freelist;
 #ifdef ARGOBOTS
-  void* (*fun)(struct ti*);
+  void* (*fun)(struct ti*);  // only for Argobots
+#else
+  Rp* freelist;              // only for pthreads
 #endif
 } ThreadInfo;
 
 // Thread-local information; each thread has threadinfo associated
 // with it; initialize the key by calling thread_init_all.
-thread_key_t threadinfo_key;
+extern thread_key_t threadinfo_key;
 
 // Initialize thread handling. The function thread_init_all
 // initializes all thread handling and should be called in the main

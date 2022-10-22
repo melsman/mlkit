@@ -350,7 +350,7 @@ mk_from_space_gen(Gen *gen)
     else
       gen->fp = NULL;
   }
-  gen->a = alloc_new_block(gen);
+  gen->a = alloc_new_page(gen);
 }
 
 static void mk_from_space(Context ctx)
@@ -1335,7 +1335,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   unsigned long alloc_period_save = 0;
   Ro *r;
 
-  // Mutex on the garbage collector; used by alloc_new_block in
+  // Mutex on the garbage collector; used by alloc_new_page in
   // Region.c for determining whether the tospace-bit should be set on
   // new allocated pages.
   doing_gc = 1;

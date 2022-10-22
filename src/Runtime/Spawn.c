@@ -35,7 +35,7 @@
 #endif
 
 // Region page free-list mutex
-thread_mutex_t rp_freelist_mutex;
+thread_mutex_t freelist_mutex;
 
 // Global alloc mutex
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
@@ -46,11 +46,11 @@ thread_mutex_t global_alloc_mutex;
 void
 mutex_lock(int id) {
   if (id == FREELISTMUTEX) {
-    THREAD_MUTEX_LOCK(rp_freelist_mutex);
+    MUTEX_LOCK(freelist_mutex);
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
   } else if (id == GLOBALALLOCMUTEX) {
-    THREAD_MUTEX_LOCK(global_alloc_mutex);
+    MUTEX_LOCK(global_alloc_mutex);
 #endif
 
   } else {
@@ -62,11 +62,11 @@ mutex_lock(int id) {
 void
 mutex_unlock(int id) {
   if (id == FREELISTMUTEX) {
-    THREAD_MUTEX_UNLOCK(rp_freelist_mutex);
+    MUTEX_UNLOCK(freelist_mutex);
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
   } else if (id == GLOBALALLOCMUTEX) {
-    THREAD_MUTEX_UNLOCK(global_alloc_mutex);
+    MUTEX_UNLOCK(global_alloc_mutex);
 #endif
 
   } else {
@@ -76,11 +76,15 @@ mutex_unlock(int id) {
 }
 
 #ifdef ARGOBOTS
-ABT_pool* pools;
-ABT_xstream* xstreams;
-ABT_sched* scheds;
-int posixThreads;
+int posixThreads;           // Number of execution streams
+ABT_pool* pools;            // Array of posixThreads pools
+ABT_xstream* xstreams;      // Array of posixThreads execution streams
+ABT_sched* scheds;          // Array of posixThreads schedulers
+Rp** freelists;             // Array of posixThreads freelists
+ABT_mutex* freelist_mutexs; // Array of posixThreads freelist mutexs
 #endif
+
+thread_key_t threadinfo_key;
 
 void* thread_getspecific(thread_key_t k) {
 #ifdef ARGOBOTS
@@ -101,6 +105,12 @@ thread_init_all(void) {
   xstreams = (ABT_xstream *)malloc(sizeof(ABT_xstream) * posixThreads);
   pools = (ABT_pool *)malloc(sizeof(ABT_pool) * posixThreads);
   scheds = (ABT_sched *)malloc(sizeof(ABT_sched) * posixThreads);
+
+  // Allocate and initialise memory for freelists
+  freelists = (Rp**)malloc(sizeof(Rp*) * posixThreads);
+  for (int i=0 ; i < posixThreads ; i++) {
+    freelists[i] = NULL;
+  }
 
   // Initialize Argobots
   ABT_init(0,NULL);
@@ -143,18 +153,20 @@ thread_init_all(void) {
   ti->arg = NULL;
   ti->tid = 0;
   ti->top_region = NULL;
+#ifndef ARGOBOTS
   ti->freelist = NULL;
+#endif
   ti->thread = (thread_t)NULL;
   ti->retval = NULL;
   ti->joined = 0;
   THREAD_KEY_CREATE(&threadinfo_key);
   thread_init(ti);
-  if (THREAD_MUTEX_INIT(&rp_freelist_mutex) != 0) {
-    printf("ERROR: thread_init_all: rp_freelist_mutex init has failed\n");
+  if (MUTEX_INIT(&freelist_mutex) != 0) {
+    printf("ERROR: thread_init_all: freelist_mutex init has failed\n");
     exit(-1);
   }
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-  if (THREAD_MUTEX_INIT(&global_alloc_mutex) != 0) {
+  if (MUTEX_INIT(&global_alloc_mutex) != 0) {
     printf("ERROR: thread_init_all: global_alloc_mutex init has failed\n");
     exit(-1);
   }
@@ -190,6 +202,17 @@ callWrap (ThreadInfo* ti) {
   //  tdebug2("[Exiting callWrap - tid = %d, res = %p]\n", ti->tid, res);
   return;
 }
+
+int
+execution_stream_rank(void) {
+  int rank;
+  ABT_xstream_self_rank(&rank);
+  if (rank < 0 || rank >= posixThreads) {
+    printf("ERROR: wrong rank %d\n", rank);
+    exit(-1);
+  }
+  return rank;
+}
 #endif
 
 void
@@ -204,8 +227,7 @@ thread_new(void* (*f)(ThreadInfo*), ThreadInfo* ti) {
   int stacksize = 1024 * 1024; // 1Mb
   ABT_thread_attr_set_stacksize(attr,stacksize);
   ti->fun = f;
-  int rank;
-  ABT_xstream_self_rank(&rank);
+  int rank = execution_stream_rank();
   rc = ABT_thread_create(pools[rank], (void (*)(void*))callWrap, (void*)ti, attr, &(ti->thread));
   if (rc) {
     printf("ERROR; return code from pthread_create() is %d (%s)\n", rc, strerror(rc));
@@ -275,11 +297,12 @@ thread_get(ThreadInfo *ti)
     tdebug1("[Exiting thread_get (joined) - tid = %d]\n", ti->tid)
     return ti->retval;   // ti->joined is true; it is incremental..
   }
-  THREAD_MUTEX_LOCK(ti->mutex);  // use a mutex; different threads
+  MUTEX_LOCK(ti->mutex);            // use a mutex; different threads
   if (ti->joined == 0) {            // may call get on a thread
     thread_join(ti);
     ti->thread = (thread_t)NULL;
     ti->joined = 1;
+#ifndef ARGOBOTS
     if (ti->freelist) {
       // take freelist lock and add pages to global freelist
       LOCK_LOCK(FREELISTMUTEX);
@@ -287,8 +310,9 @@ thread_get(ThreadInfo *ti)
       LOCK_UNLOCK(FREELISTMUTEX);
       ti->freelist = NULL;
     }
+#endif
   }
-  THREAD_MUTEX_UNLOCK(ti->mutex);
+  MUTEX_UNLOCK(ti->mutex);
   tdebug1("[Exiting thread_get - tid = %d]\n", ti->tid)
   return ti->retval;
 }
@@ -309,8 +333,10 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
   ti->joined = 0;
   ti->tid = ++thread_counter;   // atomic?
   ti->top_region = NULL;
+#ifndef ARGOBOTS
   ti->freelist = NULL;
-  if (THREAD_MUTEX_INIT(&(ti->mutex)) != 0) {
+#endif
+  if (MUTEX_INIT(&(ti->mutex)) != 0) {
     printf("ERROR: thread_create: mutex init has failed\n");
     exit(-1);
   }
@@ -331,7 +357,7 @@ function_test(void* f) {
 void
 thread_free(ThreadInfo* t) {
   tdebug1("[Entering thread_free - t = %p]\n", t->thread);
-  THREAD_MUTEX_DESTROY(&(t->mutex));
+  MUTEX_DESTROY(&(t->mutex));
   if (t->thread) {
 #ifdef ARGOBOTS
     ABT_thread_free(&(t->thread));

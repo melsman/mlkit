@@ -380,7 +380,6 @@ typedef struct {
   Region topregion;             // toplevel region
   void *exnptr;                 // pointer to toplevel handler
   long int uncaught_exnname;    // > 0 implies uncaught exception
-  Rp *freelist;
 } context;
 
 typedef context* Context;
@@ -393,7 +392,11 @@ extern Rp * freelist;
 
 #ifdef PARALLEL
 #define TOP_REGION   (thread_info()->top_region)
+#ifdef ARGOBOTS
+#define FREELIST     (freelists[execution_stream_rank()])
+#else
 #define FREELIST     (thread_info()->freelist)
+#endif
 #else
 #define TOP_REGION   ctx->topregion
 #define FREELIST     freelist
@@ -407,7 +410,7 @@ void deallocateRegion(Context ctx);
 void deallocateRegionsUntil(Context ctx, Region rAddr);
 
 uintptr_t *alloc (Region r, size_t n);
-uintptr_t *alloc_new_block(Gen *gen);
+uintptr_t *alloc_new_page(Gen *gen);
 void callSbrk();
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK

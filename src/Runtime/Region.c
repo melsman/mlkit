@@ -372,16 +372,16 @@ size_free_list()
  *-------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*
- *alloc_new_block:                                                      *
- *  Allocates a new block in region.                                    *
+ *alloc_new_page:                                                       *
+ *  Allocates a new page in region.                                     *
  *  The second argument is a pointer to the generation in r to use      *
- *  Important: alloc_new_block must preserve all marks in fp (Region.h) *
+ *  Important: alloc_new_page must preserve all marks in fp (Region.h)  *
  *----------------------------------------------------------------------*/
 uintptr_t *
-alloc_new_block(Gen *gen)
+alloc_new_page(Gen *gen)
 {
   Rp* np;
-  debug(printf("[alloc_new_block: gen: %p", gen);)
+  debug(printf("[alloc_new_page: gen: %p", gen);)
 
 #ifdef PROFILING
   Ro *r;
@@ -414,38 +414,44 @@ alloc_new_block(Gen *gen)
     }
   #endif /* ENABLE_GC */
 
-  if ( FREELIST == NULL ) {          // FREELIST is the thread's own free-list (when PARALLEL is true)
-    #ifdef PARALLEL
+  if ( FREELIST ) {
+    np = FREELIST;
+    FREELIST = FREELIST->n;
+  } else {
+#ifdef PARALLEL
     LOCK_LOCK(FREELISTMUTEX);
-    // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
-    // FREELIST; allocate more pages in freelist if necessary, by
-    // calling callSbrk.
+    if ( FREELIST == NULL ) {
+      // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
+      // FREELIST; allocate more pages in freelist if necessary, by
+      // calling callSbrk.
 
-    // We know for sure that there are no pages in FREELIST
-    if (FREELIST) {
-      die("ERROR: alloc_new_block failed; expecting empty FREELIST\n");
-    }
-
-    for ( int k = REGION_PAGE_BAG_SIZE >> 1 ; k > 0 ;  k-- ) {
-      if ( freelist == NULL ) {
-	callSbrk();
+      // We know for sure that there are no pages in FREELIST
+      if (FREELIST) {
+	die("ERROR: alloc_new_page failed; expecting empty FREELIST\n");
       }
-      // Now we know there are pages in freelist
-      if ( freelist == NULL ) {
-	die ("ERROR: alloc_new_block failed; expecting non-empty freelist\n");
+      for ( int k = REGION_PAGE_BAG_SIZE >> 1 ; k > 0 ;  k-- ) {
+	if ( freelist == NULL ) {
+	  callSbrk();
+	}
+	// Now we know there are pages in freelist
+	if ( freelist == NULL ) {
+	  die ("ERROR: alloc_new_page failed; expecting non-empty freelist\n");
+	}
+	Rp * fl_tmp = FREELIST;
+	FREELIST = freelist;
+	freelist = freelist->n;
+	FREELIST->n = fl_tmp;
       }
-      Rp * fl_tmp = FREELIST;
-      FREELIST = freelist;
-      freelist = freelist->n;
-      FREELIST->n = fl_tmp;
     }
+    np = FREELIST;
+    FREELIST = FREELIST->n;
     LOCK_UNLOCK(FREELISTMUTEX);
-    #else
+#else
     callSbrk();
-    #endif /* PARALLEL */
+    np = FREELIST;
+    FREELIST = FREELIST->n;
+#endif
   }
-  np = FREELIST;
-  FREELIST = FREELIST->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
@@ -512,11 +518,11 @@ allocateRegion0(Context ctx, Region r)
   r->g0.fp = NULL;
   r->p = TOP_REGION;	                   // Push this region onto the region stack
   r->lobjs = NULL;                         // The list of large objects is empty
-  r->g0.a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  r->g0.a = alloc_new_page(&(r->g0));      // Allocate the first region page in g0
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);                        // Mark generation
-  r->g1.a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  r->g1.a = alloc_new_page(&(r->g1));      // Allocate the first region page in g1
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
@@ -857,7 +863,7 @@ allocGen (Gen *gen, size_t n
 #if defined(PROFILING) || defined(ENABLE_GC)
 	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-	t1 = alloc_new_block(gen);
+	t1 = alloc_new_page(gen);
 	t2 = t1 + n;
       }
       gen->a = t2;
@@ -911,7 +917,7 @@ allocGen (Gen *gen, size_t n
 	 * WELL, we need it for printing statistics with -verbose_gc... */
 	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-	t1 = alloc_new_block(gen);
+	t1 = alloc_new_page(gen);
 	t2 = t1+n;
 	asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
 	gen->a = t2;
@@ -930,7 +936,7 @@ allocGen (Gen *gen, size_t n
        * WELL, we need it for printing statistics with -verbose_gc... */
       for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-      gen->a = alloc_new_block(gen);
+      gen->a = alloc_new_page(gen);
       t1 = gen->a;
       t2 = t1+n;
     }
@@ -985,7 +991,7 @@ void resetGen(Gen *gen)
   if ( (clear_fp(gen->fp))->n ) { /* There are more than one page in the generation. */
 
 #ifdef ENABLE_GC
-    rp_used--;              // at least one page is freed; see comment in alloc_new_block
+    rp_used--;              // at least one page is freed; see comment in alloc_new_page
                             //   concerning conservative computation.
 #endif /* ENABLE_GC */
 
@@ -1125,12 +1131,12 @@ allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
   r->lobjs = NULL;               // The list of large objects is empty
 
   r->g0.fp = NULL;
-  (&(r->g0))->a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  (&(r->g0))->a = alloc_new_page(&(r->g0));     // Allocate the first region page in g0
 
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);              // Mark generation
-  (&(r->g1))->a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  (&(r->g1))->a = alloc_new_page(&(r->g1));     // Allocate the first region page in g1
 
 #endif /* ENABLE_GEN_GC */
 
