@@ -1224,9 +1224,10 @@ struct
                                             (* now initialize thread local data to point to the threadinfo struct *)
                                             @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
                                               [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
-                                               I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
-                                               I.movq(R rdi,R rax),                  (* move closure into closure register *)
-                                               I.movq(D(offset_codeptr,rdi), R r10), (* extract code pointer into %r10 from C arg *)
+                                               I.movq(D("0",rdi),R rax),             (* extract closure from threadinfo arg *)
+                                               (*I.movq(R rdi,R rax),*)                  (* move closure into closure register *)
+                                               I.leaq(D("8",rdi),R r14),             (* extract ctx from threadinfo and store it in ctx-register r14 *)
+                                               I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 from C arg *)
                                                I.push(I"0"),                         (* push dummy - for 16-byte alignment *)
                                                I.push (LA return_lab),               (* push return address *)
                                                I.jmp (R r10),                        (* call ML function *)
@@ -1559,6 +1560,89 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               end
           else C
 
+        (* allocinreg expects the following arguments:
+         *   tmp_reg0: size in bytes
+         *   tmp_reg1: region ptr
+         *   result in tmp_reg1
+         *)
+
+        fun allocinreg C =
+            if not(parallelism_p()) then C
+            else
+            let val allocinreg_protect = new_local_lab "allocinreg_protect"
+                val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())
+                val l_expand = new_local_lab "alloc_expand"
+                val l_expand_protect = new_local_lab "alloc_expand_protect"
+                val l = new_local_lab "return_from_allocate"
+                fun mk_expand_protect C =
+                    I.lab l_expand_protect ::                 (* expand_protect:                    *)
+                    I.pop(R I.rax) ::                         (*   restore rax                      *)
+                    I.pop(R tmp_reg1) ::
+                    I.pop(R tmp_reg0) ::
+                    I.push(LA l) ::                           (*   push continuation label          *)
+                    I.jmp(L(NameLab "__allocate")) :: C       (*   jmp to __allocate with args in   *)
+                                                              (*     tmp_reg1 and tmp_reg0; result  *)
+                                                              (*     in tmp_reg1.                   *)
+                fun mk_expand C =
+                    I.lab l_expand ::                             (* expand:                            *)
+                    I.pop(R tmp_reg1) ::                          (*   pop region ptr                   *)
+                    I.pop(R tmp_reg0) ::
+                    I.push(LA l) ::                               (*   push continuation label          *)
+                    I.jmp(L(NameLab "__allocate_unprotected")) :: (*   jmp to __allocate with args in   *)
+                    C                                             (*     tmp_reg1 and tmp_reg0; result  *)
+                                                                  (*     in tmp_reg1.                   *)
+           in I.dot_globl(NameLab "allocinreg") ::
+              I.lab (NameLab "allocinreg") ::
+              I.andq(I (i2s (~4)), R tmp_reg1) ::                    (*   tmp_reg1 = clearBits(tmp_reg1)   *)
+              I.cmpq(I "0",D(mutex_offset_bytes,tmp_reg1)) ::
+              I.jne allocinreg_protect ::
+              (* simple non-protected allocation *)
+              I.push(R tmp_reg0) ::                                   (*   push tmp_reg1                    *)
+              I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
+              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
+              I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
+              copy(tmp_reg1, tmp_reg0,
+              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
+              I.addq(D("8",rsp), R tmp_reg1) ::                       (*   tmp_reg1 = tmp_reg1 + 8n         *)
+              I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
+              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
+              I.pop (R tmp_reg1) ::
+              store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+              I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = 8n                    *)
+              I.subq(R tmp_reg1,R tmp_reg0) ::                        (*   tmp_reg0 = tmp_reg0 - tmp_reg1   *)
+              I.movq(R tmp_reg0,R tmp_reg1) ::
+              I.ret ::
+
+              (* complex atomic *)
+              I.lab allocinreg_protect ::
+              I.push(R tmp_reg0) ::                                  (*   push tmp_reg0                    *)
+              I.push(R tmp_reg1) ::                                  (*   push tmp_reg1                    *)
+              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,              (*   tmp_reg1 = tmp_reg1[0]           *)
+              I.push(R I.rax) ::                                     (*   save rax on the stack            *)
+              I.movq(R tmp_reg1, R I.rax) ::                         (*   rax = tmp_reg1                   *)
+              I.addq(I "-1", R tmp_reg1) ::                          (*   tmp_reg1 = tmp_reg1 - 1          *)
+              copy(tmp_reg1, tmp_reg0,
+              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
+              I.addq(D("16",rsp), R tmp_reg1) ::                     (*   tmp_reg1 = tmp_reg1 + 8n         *)
+              I.cmpq(R tmp_reg0, R tmp_reg1) ::                      (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              I.jg l_expand_protect ::                               (*        (a-1+8n > boundary-1)       *)
+              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                  (*   tmp_reg0 = tmp_reg1 + 1          *)
+              I.movq(D("8",rsp),R tmp_reg1) ::                       (*   restore tmp_reg1                 *)
+              I.cmpxchgq(R tmp_reg0,D("0",tmp_reg1)) ::              (*   tmp_reg1[0] = tmp_reg0           *)
+              I.jne l_expand_protect ::                              (*      (if rax = tmp_reg1[0])        *)
+              I.pop (R rax) ::
+              I.pop (R tmp_reg1) ::
+              I.pop (R tmp_reg1) ::                                  (*   tmp_reg1 = 8n                    *)
+              I.subq(R tmp_reg1,R tmp_reg0) ::                       (*   tmp_reg0 = tmp_reg0 - tmp_reg1   *)
+              I.movq(R tmp_reg0,R tmp_reg1) ::                       (*   tmp_reg1 = tmp_reg0              *)
+              I.lab l ::
+              I.ret ::
+
+              mk_expand (
+              mk_expand_protect C))))))
+            end
+
         fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)
           let
             val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
@@ -1728,7 +1812,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg0], true, C)
 
         fun allocate_unprotected C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
-            if parallelism_p() andalso par_alloc_unprotected_p() then
+            if parallelism_p() (*andalso par_alloc_unprotected_p()*) then
               ccall_stub("__allocate_unprotected", "alloc_unprotected", [tmp_reg1, tmp_reg0], true, C)
             else C
 
@@ -1965,7 +2049,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.ret :: C))))))))))))
 
         val init_link_code = (main_insts o raise_insts o
-                              toplevel_handler o allocate o allocate_unprotected o resetregion o
+                              toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include "Flags.h"
+#include "Locks.h"
 
 /*
 Overview
@@ -234,8 +235,7 @@ typedef struct ro {
   Gen g1;              /* g1 is the old generation. */
   #endif
 
-  struct ro * p;       /* Pointer to previous region descriptor. It has to be at
-                          the bottom of the structure */
+  struct ro * p;       // Pointer to previous region descriptor.
 
   /* here are the extra fields that are used when profiling is turned on: */
   #ifdef PROFILING
@@ -244,14 +244,21 @@ typedef struct ro {
   size_t regionId;     /* Id on region. */
   #endif
 
-  Lobjs *lobjs;     // large objects: a list of malloced memory in each region
+  Lobjs *lobjs;        // large objects: a list of malloced memory in each region
 
+  #ifdef PARALLEL
+  thread_mutex_list_t* mutex; // Lock that prevents race conditions for different
+                              // allocating threads (NULL if at most one thread can
+                              // allocate into the region.
+  #endif
 } Ro;
 
 typedef Ro* Region;
 
+#ifdef PROFILING
 #define sizeRo (sizeof(Ro)/(sizeof(long*))) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
+#endif
 
 #ifdef ENABLE_GEN_GC
 #define MIN_NO_OF_PAGES_IN_REGION 2
@@ -380,6 +387,10 @@ typedef struct {
   Region topregion;             // toplevel region
   void *exnptr;                 // pointer to toplevel handler
   long int uncaught_exnname;    // > 0 implies uncaught exception
+#if (PARALLEL && !ARGOBOTS)
+  Rp *freelist;                   // local freelist of pages
+  thread_mutex_list_t *mutex_freelist; // local freelist of region locks
+#endif
 } context;
 
 typedef context* Context;
@@ -388,18 +399,32 @@ typedef context* Context;
  * Type of freelist and top-level region                          *
  *----------------------------------------------------------------*/
 
-extern Rp * freelist;
+extern Rp * global_freelist;
 
 #ifdef PARALLEL
-#define TOP_REGION   (thread_info()->top_region)
+
+//#define TOP_REGION   ((thread_info()->ctx).topregion)
+#define TOP_REGION   (ctx->topregion)
 #ifdef ARGOBOTS
 #define FREELIST     (freelists[execution_stream_rank()])
+#define MAYBE_DEFINE_CONTEXT
+#define CHECK_CTX(x) ;
 #else
-#define FREELIST     (thread_info()->freelist)
+#define MAYBE_DEFINE_CONTEXT Context ctx = &(thread_info()->ctx)
+//#define MAYBE_DEFINE_CONTEXT
+//#define FREELIST     ((thread_info()->ctx).freelist)
+#define FREELIST     (ctx->freelist)
+
+//#define CHECK_CTX(x)   if (ctx != &(thread_info()->ctx)) { printf("uggh: %s\n", x); } ;
+#define CHECK_CTX(x)   ;
 #endif
+
 #else
-#define TOP_REGION   ctx->topregion
-#define FREELIST     freelist
+
+#define MAYBE_DEFINE_CONTEXT
+#define TOP_REGION   (ctx->topregion)
+#define FREELIST     global_freelist
+#define CHECK_CTX(x) ;
 #endif
 
 /*----------------------------------------------------------------*
@@ -413,9 +438,9 @@ uintptr_t *alloc (Region r, size_t n);
 uintptr_t *alloc_new_page(Gen *gen);
 void callSbrk();
 
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+#ifdef PARALLEL
 uintptr_t *alloc_unprotected (Region r, size_t n);
-uintptr_t *allocGen (Gen *gen, size_t n, int protect_p);
+uintptr_t *allocGen (Region r, Gen *gen, size_t n, int protect_p);
 #else
 uintptr_t *allocGen (Gen *gen, size_t n);
 #endif
@@ -528,7 +553,6 @@ extern unsigned long callsOfDeallocateRegionInf,
                     allocatedLobjs;
 
 extern FiniteRegionDesc * topFiniteRegion;
-// extern uintptr_t size_to_space;
 
 /* Profiling functions. */
 Region allocRegionInfiniteProfiling(Context ctx, Region roAddr, size_t regionId);
@@ -547,7 +571,5 @@ void pp_gen(Gen *gen);
 void chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
-
-void RegionLocksInit(void);
 
 #endif /*REGION_H*/

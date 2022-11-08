@@ -54,7 +54,7 @@ printUsage(void)
   fprintf(stderr,"      [-profTab] [-verbose] \n");
 #endif /*PROFILING*/
 #if (PARALLEL && ARGOBOTS)
-  fprintf(stderr,"      [-P n] [-verbose_par, -vp] \n");
+  fprintf(stderr,"      [-p n] [-verbose_par, -vp] \n");
 #endif
   fprintf(stderr,"  where\n");
   fprintf(stderr,"      -help, -h                Print this help screen and exit.\n\n");
@@ -69,7 +69,7 @@ printUsage(void)
   fprintf(stderr, "\n");
 #endif /*ENABLE_GC*/
 #ifdef ARGOBOTS
-  fprintf(stderr,"      -P n                     Number of execution streams.\n");
+  fprintf(stderr,"      -p n                     Number of execution streams.\n");
   fprintf(stderr,"      -verbose_par, -vp        Show info about parallel streams.\n\n");
 #endif
 #ifdef PROFILING
@@ -266,18 +266,18 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif /*PROFILING*/
 
 #ifdef ARGOBOTS
-    if (strcmp((char *)argv[0],"-P")==0) {
+    if (strcmp((char *)argv[0],"-p")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
 	if ((posixThreads = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Expecting integer argument to the option -P.\n");
+	  fprintf(stderr,"Expecting integer argument to the option -p.\n");
 	  printUsage();
 	}
 	if (posixThreads < 1) {
-	  fprintf(stderr,"Expecting positive integer after option -P.\n");
+	  fprintf(stderr,"Expecting positive integer after option -p.\n");
 	  printUsage();
 	}
       } else {
-	fprintf(stderr,"Expecting integer after the option -P.\n");
+	fprintf(stderr,"Expecting integer after the option -p.\n");
 	printUsage();
       }
       app_arg_index++; /* this is an two-word option */

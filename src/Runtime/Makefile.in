@@ -81,10 +81,10 @@ gen_syserror: gen_syserror.c
 	$(CC) -c -DTAG_VALUES -DPROFILING -DENABLE_GC $(OPT) -o $*-gc-tp-p.o $<
 
 %-par.o: %.c
-	$(CC) -c -DPARALLEL -DPARALLEL_GLOBAL_ALLOC_LOCK $(OPT) -o $*-par.o $<
+	$(CC) -c -DPARALLEL $(OPT) -o $*-par.o $<
 
 %-arpar.o: %.c
-	$(CC) -c -DARGOBOTS -DPARALLEL -DPARALLEL_GLOBAL_ALLOC_LOCK -I $(ARGOBOTS_ROOT)/src/include $(OPT) -o $@ $<
+	$(CC) -c -DARGOBOTS -DPARALLEL -I $(ARGOBOTS_ROOT)/src/include $(OPT) -o $@ $<
 
 runtimeSystem.a: $(OFILES) Makefile $(HEADER_FILES)
 	$(AR) $@ $(OFILES)

@@ -1315,7 +1315,7 @@ void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   long time_gc_one_ms = 0;
-  extern Rp* freelist;
+  extern Rp* global_freelist;
   uintptr_t **sp_ptr;
   uintptr_t *fd_ptr;
   unsigned long fd_size, fd_offset_to_return;
@@ -1634,8 +1634,8 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
 
   // We Are Done And Can Now Insert from-space Into The FreeList
-  from_space_end->n = freelist;
-  freelist = from_space_begin;
+  from_space_end->n = global_freelist;
+  global_freelist = from_space_begin;
 
   // If major GC run through all infinite regions and free all large
   // objects that have not been visited (are not marked as constant);

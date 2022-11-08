@@ -865,9 +865,9 @@ struct
             copy(t,tmp_reg1,
             move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
             I.jmp(L(NameLab "__allocate")) ::            (*   jmp to __allocate with args in   *)
-            maybe_update_alloc_period(
             I.lab l ::                                   (*     tmp_reg1 and tmp_reg0; result  *)
-            copy(tmp_reg1,t,C))))                        (*     in tmp_reg1.                   *)
+            maybe_update_alloc_period(                   (*     in tmp_reg1.                   *)
+            copy(tmp_reg1,t,C))))
           end
         else if parallelism_p() andalso not(par_alloc_unprotected_p()) then
           let val n = n0
@@ -908,9 +908,9 @@ struct
             I.pop (R rax) ::
             I.pop (R tmp_reg1) ::
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
-            maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+            maybe_update_alloc_period(                              (*     in tmp_reg1.                   *)
+            (copy(tmp_reg1,t,C))))))
           end
         else
           let val n = n0

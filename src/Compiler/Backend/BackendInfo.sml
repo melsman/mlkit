@@ -16,7 +16,8 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     (***********)
 
     fun pr_tag_w tag = "0X" ^ (Word32.fmt StringCvt.HEX tag)
-    (* For now, some tags are in integers but it should be eliminated; max size is then 2047 only 09/01/1999, Niels *)
+    (* For now, some tags are in integers but it should be eliminated; max size is
+       then 2047 only 09/01/1999, Niels *)
     fun pr_tag_i tag = "0X" ^ (Int.fmt StringCvt.HEX tag)
 
     fun pw (s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
@@ -24,7 +25,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     fun shift_left (num_bits,w) = Word32.<<(w,Word.fromInt num_bits)
 
     (* off is the offset at which values are traversed *)
-    fun gen_record_tag(s:int,off:int,i:bool,t:int) =
+    fun gen_record_tag (s:int,off:int,i:bool,t:int) =
       let
 	val size = Word32.fromInt s
 	val offset = Word32.fromInt off
@@ -38,7 +39,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
 	w_tag
       end
 
-    fun gen_string_tag(s:int,i:bool,t:int) =
+    fun gen_string_tag (s:int,i:bool,t:int) =
       let
 	val size = Word32.fromInt s
 	val immovable = if i then Word32.fromInt 1 else Word32.fromInt 0
@@ -71,16 +72,17 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     fun tag_excon1 (i:bool)            = gen_record_tag(2,0,i,6)
     val tag_ignore                     = Word32.fromInt 0
 
-    val inf_bit = 1   (* We add 1 to an address to set the infinite bit. *)
-    val atbot_bit = 2 (* We add 2 to an address to set the atbot bit. *)
+    val inf_bit           = 1   (* We add 1 to an address to set the infinite bit. *)
+    val atbot_bit         = 2   (* We add 2 to an address to set the atbot bit. *)
 
-    val tag_values       = Flags.is_on0 "tag_values"
-    val region_profiling = Flags.is_on0 "region_profiling"
-    val gengc_p          = Flags.is_on0 "generational_garbage_collection"
+    val tag_values        = Flags.is_on0 "tag_values"
+    val region_profiling  = Flags.is_on0 "region_profiling"
+    val gengc_p           = Flags.is_on0 "generational_garbage_collection"
+    fun parallelism_p ()  = Flags.is_on "parallelism"
 
-    val size_of_real = RegConst.size_of_real
-    val size_of_ref = RegConst.size_of_ref
-    val size_of_record = RegConst.size_of_record
+    val size_of_real      = RegConst.size_of_real
+    val size_of_ref       = RegConst.size_of_ref
+    val size_of_record    = RegConst.size_of_record
     fun size_of_handle () = 4
 
     fun size_region_page () = 8*1024  (* see also Region.h: REGION_PAGE_SIZE_BYTES *)
@@ -93,9 +95,14 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
       fun size_prev_ptr () = 1
       fun size_g1 () = if gengc_p() then size_gen else 0
       fun size_prof () = if region_profiling() then 3 else 0
+      fun size_par_lock () = if parallelism_p() then 1 else 0  (* pointer to a lock *)
     in
       fun size_of_reg_desc () =
-	size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()
+	  size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs() + size_par_lock()
+      fun region_mutex_offset_words () =
+          if parallelism_p() then
+            size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()
+          else die "region_mutex_offset_words"
     end
 
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
