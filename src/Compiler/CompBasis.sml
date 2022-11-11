@@ -23,6 +23,8 @@ structure CompBasis: COMP_BASIS =
     type mularefmap = Mul.mularefmap
     type drop_env = DropRegions.env
     type psi_env = PhysSizeInf.env
+    type protenv = MulExp.ProtInf.pe
+
     type CompBasis = {NEnv: NEnv,    (* type scheme normalize environment *)
                       TCEnv : TCEnv, (* lambda type check environment *)
                       EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
@@ -31,7 +33,8 @@ structure CompBasis: COMP_BASIS =
                       mulenv: mulenv,
                       mularefmap: mularefmap,
                       drop_env: drop_env,
-                      psi_env: psi_env}
+                      psi_env: psi_env,
+                      protenv: protenv}
 
     fun mk_CompBasis a = a
     fun de_CompBasis a = a
@@ -44,7 +47,8 @@ structure CompBasis: COMP_BASIS =
                  mulenv=Mul.empty_efenv,
                  mularefmap=Mul.empty_mularefmap,
                  drop_env=DropRegions.empty,
-                 psi_env=PhysSizeInf.empty}
+                 psi_env=PhysSizeInf.empty,
+                 protenv=MulExp.ProtInf.empPE}
 
     val initial = {NEnv=Normalize.initial,
                    TCEnv=LambdaStatSem.initial,
@@ -54,11 +58,12 @@ structure CompBasis: COMP_BASIS =
                    mulenv=Mul.initial,
                    mularefmap=Mul.initial_mularefmap,
                    drop_env=DropRegions.init,
-                   psi_env=PhysSizeInf.init}
+                   psi_env=PhysSizeInf.init,
+                   protenv=MulExp.ProtInf.initPE}
 
-    fun plus ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+    fun plus ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv},
               {NEnv=NEnv',TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
-               mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env'}) =
+               mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env',protenv=protenv'}) =
       {NEnv=Normalize.plus(NEnv,NEnv'),
        TCEnv=LambdaStatSem.plus(TCEnv,TCEnv'),
        EqEnv=EliminateEq.plus(EqEnv,EqEnv'),
@@ -67,10 +72,11 @@ structure CompBasis: COMP_BASIS =
        mulenv=Mul.plus(mulenv,mulenv'),
        mularefmap=Mul.plus_mularefmap(mularefmap, mularefmap'),
        drop_env=DropRegions.plus(drop_env, drop_env'),
-       psi_env=PhysSizeInf.plus(psi_env,psi_env')}
+       psi_env=PhysSizeInf.plus(psi_env,psi_env'),
+       protenv=MulExp.ProtInf.plus(protenv,protenv')}
 
     type StringTree = PP.StringTree
-    fun layout_CompBasis {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env} =
+    fun layout_CompBasis {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv} =
       PP.NODE{start="{", finish="}", indent=1, childsep=PP.RIGHT "; ",
               children=[Normalize.layout NEnv,
                         EliminateEq.layout_env EqEnv,
@@ -80,7 +86,8 @@ structure CompBasis: COMP_BASIS =
                         Mul.layout_efenv mulenv,
                         Mul.layout_mularefmap mularefmap,
                         DropRegions.layout_env drop_env,
-                        PhysSizeInf.layout_env psi_env
+                        PhysSizeInf.layout_env psi_env,
+                        MulExp.ProtInf.layoutPE protenv
                        ]
              }
 
@@ -110,10 +117,11 @@ structure CompBasis: COMP_BASIS =
       fun Mul_enrich_mularefmap a = Mul.enrich_mularefmap a
       fun DropRegions_enrich a = DropRegions.enrich a
       fun PhysSizeInf_enrich a = PhysSizeInf.enrich a
+      fun ProtEnv_enrich a = MulExp.ProtInf.enrich a
     in
-      fun enrich ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+      fun enrich ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv},
                   {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,rse=rse1,mulenv=mulenv1,
-                   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1}) =
+                   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1,protenv=protenv1}) =
         debug("NEnv", NEnv_enrich(NEnv,NEnv1)) andalso
         debug("EqEnv", EliminateEq_enrich(EqEnv,EqEnv1)) andalso
         debug("TCEnv", LambdaStatSem_enrich(TCEnv,TCEnv1)) andalso
@@ -122,18 +130,19 @@ structure CompBasis: COMP_BASIS =
         debug("mulenv", Mul_enrich_efenv((mulenv,rse),(mulenv1,rse1))) andalso
         debug("mularefmap", Mul_enrich_mularefmap(mularefmap,mularefmap1)) andalso
         debug("drop_env", DropRegions_enrich(drop_env,drop_env1)) andalso
-        debug("psi_env", PhysSizeInf_enrich(psi_env,psi_env1))
+        debug("psi_env", PhysSizeInf_enrich(psi_env,psi_env1)) andalso
+        debug("protenv", ProtEnv_enrich(protenv,protenv1))
     end
 
-    fun match ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+    fun match ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv},
                {NEnv=NEnv0,TCEnv=TCEnv0,EqEnv=EqEnv0,OEnv=OEnv0,rse=rse0,mulenv=mulenv0,
-                mularefmap=mularefmap0,drop_env=drop_env0,psi_env=psi_env0}) =
+                mularefmap=mularefmap0,drop_env=drop_env0,psi_env=psi_env0,protenv=protenv0}) =
       let val EqEnv = EliminateEq.match(EqEnv,EqEnv0)
       in {NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv,rse=rse,mulenv=mulenv,
-          mularefmap=mularefmap,drop_env=drop_env,psi_env=psi_env}
+          mularefmap=mularefmap,drop_env=drop_env,psi_env=psi_env,protenv=protenv}
       end
 
-    fun restrict ({NEnv,EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+    fun restrict ({NEnv,EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv},
                   (lvars,tynames,cons,excons)) =
       let
 
@@ -184,6 +193,7 @@ structure CompBasis: COMP_BASIS =
           val mularefmap1 = Mul.restrict_mularefmap(mularefmap,effectvars)
           val drop_env1 = DropRegions.restrict(drop_env,lvars)
           val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
+          val protenv1 = MulExp.ProtInf.restrict(protenv,lvars)
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,
            EqEnv=EqEnv1,
@@ -192,7 +202,8 @@ structure CompBasis: COMP_BASIS =
            mulenv=mulenv1,
            mularefmap=mularefmap1,
            drop_env=drop_env1,
-           psi_env=psi_env1}, lvars, cons, excons)
+           psi_env=psi_env1,
+           protenv=protenv1}, lvars, cons, excons)
       end
 
     fun subtractPredefinedCons cons =
@@ -213,7 +224,7 @@ structure CompBasis: COMP_BASIS =
         TyName.Set.list
         (TyName.Set.difference (TyName.Set.fromList tns) (TyName.Set.fromList TyName.tynamesPredefined))
 
-    fun restrict0 ({NEnv,EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+    fun restrict0 ({NEnv,EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,protenv},
                   (lvars,tynames,cons,excons)) =
       let
           (* Don't include identifiers that are declared by the initial basis *)
@@ -236,6 +247,7 @@ structure CompBasis: COMP_BASIS =
           val mularefmap1 = Mul.restrict_mularefmap(mularefmap,nil)
           val drop_env1 = DropRegions.restrict(drop_env,lvars)
           val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
+          val protenv1 = MulExp.ProtInf.restrict(protenv,lvars)
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,
            EqEnv=EqEnv1,
@@ -244,20 +256,21 @@ structure CompBasis: COMP_BASIS =
            mulenv=mulenv1,
            mularefmap=mularefmap1,
            drop_env=drop_env1,
-           psi_env=psi_env1}, lvars, cons, excons)
+           psi_env=psi_env1,
+           protenv=protenv1}, lvars, cons, excons)
       end
 
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-        let fun to (((ne,tce),eqe,oe,rse),(me,mm,de,pe)) =
+        let fun to (((ne,tce),eqe,oe,rse),(me,mm,de,pe),protenv) =
             {NEnv=ne,TCEnv=tce, EqEnv=eqe, OEnv=oe, rse=rse,
-             mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe}
+             mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe,protenv=protenv}
             fun from {NEnv=ne,TCEnv=tce, EqEnv=eqe, OEnv=oe, rse,
-                      mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe}
-                = (((ne,tce),eqe,oe,rse),(me,mm,de,pe))
+                      mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe,protenv}
+                = (((ne,tce),eqe,oe,rse),(me,mm,de,pe),protenv)
         in Pickle.convert (to,from)
-            (Pickle.pairGen0(Pickle.tup4Gen0(Pickle.pairGen0(Pickle.comment "NEnv.pu" Normalize.pu,
+            (Pickle.tup3Gen0(Pickle.tup4Gen0(Pickle.pairGen0(Pickle.comment "NEnv.pu" Normalize.pu,
                                                              Pickle.comment "LambdaStatSem.pu" LambdaStatSem.pu),
                                              Pickle.comment "EliminateEq.pu" EliminateEq.pu,
                                              OptLambda.pu,
@@ -265,6 +278,7 @@ structure CompBasis: COMP_BASIS =
                              Pickle.tup4Gen0(Pickle.comment "Mul.efenv" Mul.pu_efenv,
                                              Pickle.comment "Mul.mularefmap" Mul.pu_mularefmap,
                                              Pickle.comment "DropRegions.env" DropRegions.pu_env,
-                                             Pickle.comment "PhysSizeInf.env" PhysSizeInf.pu_env)))
+                                             Pickle.comment "PhysSizeInf.env" PhysSizeInf.pu_env),
+                             MulExp.ProtInf.pu_pe))
         end
   end

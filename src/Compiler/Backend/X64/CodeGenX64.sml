@@ -1561,7 +1561,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           else C
 
         (* allocinreg expects the following arguments:
-         *   tmp_reg0: size in bytes
+         *   tmp_reg0: size in words
          *   tmp_reg1: region ptr
          *   result in tmp_reg1
          *)
@@ -1573,50 +1573,61 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())
                 val l_expand = new_local_lab "alloc_expand"
                 val l_expand_protect = new_local_lab "alloc_expand_protect"
-                val l = new_local_lab "return_from_allocate"
                 fun mk_expand_protect C =
                     I.lab l_expand_protect ::                 (* expand_protect:                    *)
                     I.pop(R I.rax) ::                         (*   restore rax                      *)
                     I.pop(R tmp_reg1) ::
                     I.pop(R tmp_reg0) ::
-                    I.push(LA l) ::                           (*   push continuation label          *)
                     I.jmp(L(NameLab "__allocate")) :: C       (*   jmp to __allocate with args in   *)
                                                               (*     tmp_reg1 and tmp_reg0; result  *)
-                                                              (*     in tmp_reg1.                   *)
+                                                              (*     in tmp_reg1; return address is *)
+                                                              (*     already on the stack...        *)
                 fun mk_expand C =
                     I.lab l_expand ::                             (* expand:                            *)
                     I.pop(R tmp_reg1) ::                          (*   pop region ptr                   *)
                     I.pop(R tmp_reg0) ::
-                    I.push(LA l) ::                               (*   push continuation label          *)
                     I.jmp(L(NameLab "__allocate_unprotected")) :: (*   jmp to __allocate with args in   *)
                     C                                             (*     tmp_reg1 and tmp_reg0; result  *)
-                                                                  (*     in tmp_reg1.                   *)
-           in I.dot_globl(NameLab "allocinreg") ::
+                                                                  (*     in tmp_reg1; return address is *)
+                                                                  (*     already on the stack...        *)
+
+              (* remember to update alloc_period only when "alloc" or
+               * "alloc_protected" are not called, as these runtime
+               * routines themselves update alloc_period... *)
+              fun maybe_update_alloc_period r C =
+                  if gc_p() then
+                    I.addq(R r,L(NameLab "alloc_period")) :: C
+                  else C
+
+            in I.dot_globl(NameLab "allocinreg") ::
               I.lab (NameLab "allocinreg") ::
               I.andq(I (i2s (~4)), R tmp_reg1) ::                    (*   tmp_reg1 = clearBits(tmp_reg1)   *)
               I.cmpq(I "0",D(mutex_offset_bytes,tmp_reg1)) ::
               I.jne allocinreg_protect ::
               (* simple non-protected allocation *)
-              I.push(R tmp_reg0) ::                                   (*   push tmp_reg1                    *)
+              I.push(R tmp_reg0) ::                                   (*   push tmp_reg0 (n)                *)
               I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
               load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
               I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
               copy(tmp_reg1, tmp_reg0,
+              I.movq(D("8",rsp), R tmp_reg1) ::
+              I.leaq(DD("0",tmp_reg0,tmp_reg1,"8"),R tmp_reg1) ::     (*   tmp_reg1 = tmp_reg0 + 8n         *)
               I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
-              I.addq(D("8",rsp), R tmp_reg1) ::                       (*   tmp_reg1 = tmp_reg1 + 8n         *)
               I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
               I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
               I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
               I.pop (R tmp_reg1) ::
               store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
-              I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = 8n                    *)
-              I.subq(R tmp_reg1,R tmp_reg0) ::                        (*   tmp_reg0 = tmp_reg0 - tmp_reg1   *)
-              I.movq(R tmp_reg0,R tmp_reg1) ::
+              I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = n                     *)
+              I.imulq(I"8",R tmp_reg1) ::                             (*   tmp_reg1 = 8n                   *)
+              maybe_update_alloc_period tmp_reg1 (
+              I.subq (R tmp_reg1,R tmp_reg0) ::                       (*   tmp_reg0 = tmp_reg0-8n          *)
+              I.movq (R tmp_reg0,R tmp_reg1) ::
               I.ret ::
 
               (* complex atomic *)
               I.lab allocinreg_protect ::
-              I.push(R tmp_reg0) ::                                  (*   push tmp_reg0                    *)
+              I.push(R tmp_reg0) ::                                  (*   push tmp_reg0 (n)                *)
               I.push(R tmp_reg1) ::                                  (*   push tmp_reg1                    *)
               load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,              (*   tmp_reg1 = tmp_reg1[0]           *)
               I.push(R I.rax) ::                                     (*   save rax on the stack            *)
@@ -1624,7 +1635,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               I.addq(I "-1", R tmp_reg1) ::                          (*   tmp_reg1 = tmp_reg1 - 1          *)
               copy(tmp_reg1, tmp_reg0,
               I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
-              I.addq(D("16",rsp), R tmp_reg1) ::                     (*   tmp_reg1 = tmp_reg1 + 8n         *)
+              I.movq(D("16",rsp), R tmp_reg1) ::                     (*   tmp_reg1 = n                     *)
+              I.leaq(DD("-1",rax,tmp_reg1,"8"),R tmp_reg1) ::        (*   tmp_reg1 = a-1+8n                *)
               I.cmpq(R tmp_reg0, R tmp_reg1) ::                      (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
               I.jg l_expand_protect ::                               (*        (a-1+8n > boundary-1)       *)
               I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                  (*   tmp_reg0 = tmp_reg1 + 1          *)
@@ -1633,14 +1645,15 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               I.jne l_expand_protect ::                              (*      (if rax = tmp_reg1[0])        *)
               I.pop (R rax) ::
               I.pop (R tmp_reg1) ::
-              I.pop (R tmp_reg1) ::                                  (*   tmp_reg1 = 8n                    *)
-              I.subq(R tmp_reg1,R tmp_reg0) ::                       (*   tmp_reg0 = tmp_reg0 - tmp_reg1   *)
-              I.movq(R tmp_reg0,R tmp_reg1) ::                       (*   tmp_reg1 = tmp_reg0              *)
-              I.lab l ::
+              I.pop (R tmp_reg1) ::
+              I.imulq(I"8",R tmp_reg1) ::                            (*   tmp_reg1 = 8n                   *)
+              maybe_update_alloc_period tmp_reg1 (
+              I.subq (R tmp_reg1,R tmp_reg0) ::                      (*   tmp_reg0 = tmp_reg0-8n          *)
+              I.movq (R tmp_reg0,R tmp_reg1) ::
               I.ret ::
 
               mk_expand (
-              mk_expand_protect C))))))
+              mk_expand_protect C))))))))
             end
 
         fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)

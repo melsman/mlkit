@@ -37,6 +37,11 @@ sig
   val clearInstance: effect * effect -> unit
 
   val pix : effect -> int ref
+
+  val set_protect   : effect -> unit
+  val set_unprotect : effect -> unit
+  val get_protect   : effect -> bool option
+
   val remove_duplicates: effect list -> effect list
 
   val is_arrow_effect: effect -> bool

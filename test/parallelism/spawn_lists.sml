@@ -22,7 +22,7 @@ structure T :> THREAD = struct
 end
 *)
 
-structure T :> THREAD = struct
+structure T (*:> THREAD*) = struct
 
   (* Note: By representing a thread by a pair of the thread function
      and the pointer to the C-managed data structure for the thread, we

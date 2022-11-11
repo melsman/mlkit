@@ -74,6 +74,14 @@ structure Compile: COMPILE =
           item=ref false, neg=false, desc=
           "Print region-spreaded program."}
 
+    fun parallelism_p () : bool = Flags.is_on "parallelism"
+
+    val debug_parallelism_p = Flags.add_bool_entry
+         {long="debug_parallelism", short=SOME "Dpar",
+          menu=["Debugging","debug parallelism"],
+          item=ref false, neg=false, desc=
+          "Debug parallelism, including protection inference."}
+
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
     (* ---------------------------------------------------------------------- *)
@@ -340,14 +348,24 @@ structure Compile: COMPILE =
     (* of a lambda program are lowered to have level toplevel; i.e. 1.        *)
     (* ---------------------------------------------------------------------- *)
 
-    fun SpreadRegMul (rse, Psi, mulenv, opt_pgm) =
+    fun SpreadRegMul (rse, Psi, mulenv, protenv, opt_pgm) =
       let (* regionvar id is initialized by call in Manager.sml *)
           val cone = Effect.push (SpreadExp.RegionStatEnv.mkConeToplevel rse)
           val (cone, rse_con, spread_pgm) = spread(cone,rse,opt_pgm)
           val (cone, rse', reginf_pgm) = inferRegions(cone,rse,rse_con,spread_pgm)
           val (mul_pgm, mulenv', Psi') = mulInf(reginf_pgm,Psi,cone,mulenv)
           val _ = MulInf.contract mul_pgm
-      in (mul_pgm, rse', mulenv', Psi')
+          val protenv' =
+              if parallelism_p() then
+                let val protenv' = MulExp.ProtInf.protInf protenv mul_pgm
+                    val () = if debug_parallelism_p() orelse !Flags.DEBUG_COMPILER
+                             then display("\nReport: ResultEnvironment for ProtInf:\n",
+                                          MulExp.ProtInf.layoutPE protenv')
+                             else ()
+                in protenv'
+                end
+              else MulExp.ProtInf.empPE
+      in (mul_pgm, rse', mulenv', Psi', protenv')
       end
 
 
@@ -487,7 +505,7 @@ structure Compile: COMPILE =
     fun compile fe (CEnv, Basis, strdecs) : res =
       let
 (*        val _ = RegionExp.printcount:=1; *)
-        val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
+        val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env,protenv} =
           CompBasis.de_CompBasis Basis
         val BtoLamb = CompBasisToLamb.mk_CompBasis{NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}
       in
@@ -495,8 +513,9 @@ structure Compile: COMPILE =
           CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
         | CompileToLamb.CodeRes (CEnv1, BtoLamb1, lamb_opt, safe) =>
           let
-            val {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1} = CompBasisToLamb.de_CompBasis BtoLamb1
-            val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
+            val {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1} =
+                CompBasisToLamb.de_CompBasis BtoLamb1
+            val (mul_pgm, rse1, mulenv1, Psi1, protenv1) = SpreadRegMul(rse, Psi, mulenv, protenv, lamb_opt)
             val _ = MulExp.warn_puts(rse, mul_pgm)
             val k_mul_pgm = k_norm mul_pgm
             val sma_pgm = storagemodeanalysis k_mul_pgm
@@ -506,7 +525,7 @@ structure Compile: COMPILE =
             val app_conv_psi_pgm = appConvert psi_pgm
             val Basis' = CompBasis.mk_CompBasis {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
                                                  rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
-                                                 drop_env=drop_env1,psi_env=psi_env1}
+                                                 drop_env=drop_env1,psi_env=psi_env1,protenv=protenv1}
           in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe)
           end
       end

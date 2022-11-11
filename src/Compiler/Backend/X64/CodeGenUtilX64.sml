@@ -820,13 +820,9 @@ struct
      * t may be used in a call to alloc. *)
 
     fun reset_region (t:reg,tmp:reg,size_ff,C) =
-      let val l = new_local_lab "return_from_alloc"
-      in copy(t,tmp_reg1,
-         I.push(LA l) ::
-         I.jmp(L(NameLab "__reset_region")) ::
-         I.lab l ::
-         copy(tmp_reg1, t, C))
-      end
+        copy(t,tmp_reg1,
+        I.call (NameLab "__reset_region") ::
+        copy(tmp_reg1, t, C))
 
     fun simple_p () = false
 
@@ -835,7 +831,6 @@ struct
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
-              val l = new_local_lab "return_from_alloc"
               fun post_prof C =
                   (* tmp_reg1 now points at the object descriptor; initialize it *)
                   I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
@@ -843,32 +838,30 @@ struct
                   I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) ::
                   C                                                    (* make tmp_reg1 point at object *)
           in copy(t,tmp_reg1,
-             I.push(LA l) ::
              move_immed(IntInf.fromInt n, R tmp_reg0,
-             I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-             I.lab l ::
+             I.call (NameLab "__allocate") :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
              post_prof
              (copy(tmp_reg1,t,C))))
           end
         else if parallelism_p() andalso simple_p() then
           let val n = n0
-              val l = new_local_lab "return_from_alloc"
-              fun maybe_update_alloc_period C =
-                  if gc_p() then
-                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
-                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
-                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
-                    C
-                  else C
           in
-            I.push(LA l) ::                              (*   push continuation label          *)
             copy(t,tmp_reg1,
             move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-            I.jmp(L(NameLab "__allocate")) ::            (*   jmp to __allocate with args in   *)
-            I.lab l ::                                   (*     tmp_reg1 and tmp_reg0; result  *)
-            maybe_update_alloc_period(                   (*     in tmp_reg1.                   *)
-            copy(tmp_reg1,t,C))))
+            I.call (NameLab "__allocate") ::             (*   call __allocate with args in   *)
+            copy(tmp_reg1,t,C)))                         (*     tmp_reg1 and tmp_reg0; result  *)
+                                                         (*     in tmp_reg1.                   *)
           end
+        else if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
+          let val n = n0 (* size in words *)
+          in
+            copy(t,tmp_reg1,
+            move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
+            I.call (NameLab "allocinreg") ::             (*   call allocinreg with args in     *)
+            copy(tmp_reg1,t,C)))                         (*     tmp_reg1 and tmp_reg0; result  *)
+                                                         (*     in tmp_reg1.                   *)
+          end
+(*
         else if parallelism_p() andalso not(par_alloc_unprotected_p()) then
           let val n = n0
               val l = new_local_lab "return_from_alloc"
@@ -909,9 +902,10 @@ struct
             I.pop (R tmp_reg1) ::
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            maybe_update_alloc_period(                              (*     in tmp_reg1.                   *)
+            maybe_update_alloc_period n (                           (*     in tmp_reg1.                   *)
             (copy(tmp_reg1,t,C))))))
           end
+*)
         else
           let val n = n0
               val l = new_local_lab "return_from_alloc"
@@ -920,20 +914,23 @@ struct
                   if parallelism_p() andalso par_alloc_unprotected_p() then
                     NameLab "__allocate_unprotected"
                   else NameLab "__allocate"
-              fun maybe_update_alloc_period C =
-                  if gc_p() then
-                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
-                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
-                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
-                    C
-                  else C
               val () =
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
                        I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
                        I.push(LA l) ::                              (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-                       I.jmp(L allocate_lab) :: nil))      (*   jmp to __allocate with args in   *)
+                       I.jmp(L allocate_lab) :: nil))               (*   jmp to __allocate with args in   *)
+                                                                    (*     tmp_reg1 and tmp_reg0; result  *)
+                                                                    (*     in tmp_reg1.                   *)
+
+              (* remember to update alloc_period only when "alloc" or
+               * "alloc_protected" are not called, as these runtime
+               * routines themselves update alloc_period... *)
+              fun maybe_update_alloc_period nw C =
+                  if gc_p() then
+                    I.addq(I (i2s (8*nw)),L(NameLab "alloc_period")) :: C
+                  else C
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
@@ -949,7 +946,7 @@ struct
             I.pop (R tmp_reg1) ::
             store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
-            maybe_update_alloc_period(
+            maybe_update_alloc_period n (
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
             (copy(tmp_reg1,t,C)))))))                               (*     in tmp_reg1.                   *)
           end
