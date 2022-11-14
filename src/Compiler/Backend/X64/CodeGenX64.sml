@@ -38,12 +38,19 @@ struct
 
   val ctx_exnptr_offs = "8"
 
+  fun inlineable C =
+      case C of
+          (i as I.jmp _) :: C => SOME ([i], i :: rem_dead_code C)
+        | (i as I.ret) :: C => SOME ([i], i :: rem_dead_code C)
+        | (i1 as I.leaq _) :: (i2 as I.ret) :: C => SOME ([i1,i2], i1 :: i2 :: rem_dead_code C)
+        | _ => NONE
+
   local
      (*******************)
      (* Code Generation *)
      (*******************)
 
-     fun CG_lss(lss,size_ff,size_ccf,C) =
+     fun CG_lss (lss,size_ff,size_ccf,C) =
        let
          fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
          fun CG_ls (ls,C) =
@@ -438,26 +445,30 @@ struct
 (*val _ = if size_cc > 1 then die ("\nfncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                  (Int.toString size_rcf) ^ ".") else () (* debug 2001-01-08, Niels *)*)
 
-                    val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) =>
                              pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
-                    fun jmp C =
+                    fun jmp doit off C =
                       case opr (* We fetch the add from the closure and opr points at the closure *)
                         of SS.PHREG_ATY opr_reg =>
                           I.movq(D(offset_codeptr,opr_reg), R tmp_reg1) ::  (* Fetch code pointer *)
-                          I.jmp(R tmp_reg1) :: C
+                          doit(R tmp_reg1) :: C
                          | _ =>
-                          move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc,   (* rsp is now pointing after the call *)
+                          move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc-off,   (* rsp is now pointing after the call *)
                           I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) :: (* convention, i.e., size_ff+size_cc *)
-                          I.jmp(R tmp_reg1) :: C)
+                          doit(R tmp_reg1) :: C)
+                    val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                         (* Move rsp after rcf *)
-                    I.push(LA return_lab) ::                                          (* Push Return Label *)
-                    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
+                    if true orelse gc_p() orelse length spilled_args > 0
+                    then let val return_lab = new_local_lab "ret_fncall"
+                         in I.push(LA return_lab) ::                                       (* Push Return Label *)
+                            flush_args(jmp I.jmp 0 (gen_bv(bv, I.lab return_lab :: C')))
+                         end
+                    else jmp I.call' 1 C')
                   end)
                | LS.JMP(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
                   comment_fn (fn () => "JMP: " ^ pr_ls ls,
@@ -518,17 +529,22 @@ struct
                                                 {args=args, clos=clos, reg_args=reg_args,
                                                  fargs=fargs, res=res}
                     val size_rcf = List.length spilled_res
-                    val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
                     fun jmp C = I.jmp(L(MLFunLab opr)) :: C
+                    val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                          (* Move rsp after rcf *)
-                    I.push(LA return_lab) ::                                           (* Push Return Label *)
-                    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
+                    if gc_p() orelse length spilled_args > 0
+                    then
+                      let val return_lab = new_local_lab "ret_funcall"
+                      in I.push(LA return_lab) ::                                           (* Push Return Label *)
+                         flush_args(jmp(gen_bv(bv, I.lab return_lab :: C')))
+                      end
+                    else I.call(MLFunLab opr) :: C')
                   end)
                | LS.LETREGION{rhos,body} =>
                   comment ("LETREGION",
@@ -729,14 +745,22 @@ struct
                | LS.SWITCH_C(LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[((con,con_kind),lss)],default)) =>
                   let
                     val (t_lab,f_lab) = if Con.eq(con,Con.con_TRUE) then (lab_t,lab_f) else (lab_f,lab_t)
-                    val lab_exit = new_local_lab "lab_exit"
                   in
-                    I.lab(LocalLab t_lab) ::
-                    CG_lss(lss,size_ff,size_ccf,
-                    I.jmp(L lab_exit) ::
-                    I.lab(LocalLab f_lab) ::
-                    CG_lss(default,size_ff,size_ccf,
-                    I.lab lab_exit :: C))
+                    case inlineable C of
+                        SOME (C,C') =>
+                        I.lab(LocalLab t_lab) ::
+                        CG_lss(lss,size_ff,size_ccf,
+                               C @ I.lab(LocalLab f_lab) ::
+                               CG_lss(default,size_ff,size_ccf, C'))
+                      | NONE =>
+                        let val lab_exit = new_local_lab "lab_exit"
+                        in I.lab(LocalLab t_lab) ::
+                           CG_lss(lss,size_ff,size_ccf,
+                                  I.jmp(L lab_exit) ::
+                                  I.lab(LocalLab f_lab) ::
+                                  CG_lss(default,size_ff,size_ccf,
+                                         I.lab lab_exit :: C))
+                        end
                   end
                | LS.SWITCH_C(LS.SWITCH(opr_aty,[],default)) => CG_lss(default,size_ff,size_ccf,C)
                | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) =>
@@ -1437,18 +1461,19 @@ struct
         val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_and_float_args)
 
         val () = reset_code_blocks()
+
+        val return_code =
+            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+                             I.ret :: nil)
         val C =
             checkGC(
             base_plus_offset(rsp,WORDS(~size_ff),rsp,
             do_simple_memprof(
             do_prof(
-            CG_lss(lss,size_ff,size_ccf,
-            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-            I.pop (R tmp_reg1) ::
-            I.jmp (R tmp_reg1) ::
-            GCsnippet))))))
+            CG_lss(lss,size_ff,size_ccf, return_code
+            )))))
       in
-        gen_fn(lab, C @ get_code_blocks())
+        gen_fn(lab, C @ GCsnippet @ get_code_blocks())
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1820,8 +1845,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             push_callersave_regs
             (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, tmp_reg0,
               pop_callersave_regs
-                  (I.pop(R tmp_reg0) ::
-                   I.jmp(R tmp_reg0) :: C)))
+                  ( I.ret ::
+                    (*
+                    I.pop(R tmp_reg0) ::
+                    I.jmp(R tmp_reg0) :: *)
+                   C)))
           end
 
         fun allocate C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)

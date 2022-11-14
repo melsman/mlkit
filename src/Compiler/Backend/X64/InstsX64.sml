@@ -795,9 +795,15 @@ structure InstsX64: INSTS_X64 =
         let fun p (is,acc) =
                 case is of
                     nil => rev acc
+                  | (i as movq(R r1, R r2)) :: is =>
+                    if r1=r2 then p (is,acc) else p (is,i::acc)
                   | (i1 as movq(I "1",R r1)) :: (i2 as movq(I "1",R r2)) :: is =>
                     if r1 = r2 then p (i2 :: is,acc)
                     else p (i2 :: is, i1::acc)
+                  | (i1 as movq(R r1,ea1)) :: (i2 as movq(ea2,R r2)) :: is =>
+                    if ea1=ea2 andalso ea2 <> R r1 then
+                      p (movq(R r1,ea1) :: movq(R r1,R r2) :: is, acc)
+                    else p (i2::is,i1::acc)
                   | (i as jmp (L(LocalLab l1))) :: is =>
                     (case rem_dead_code is of
                          is as (lab (LocalLab l2) :: is') =>

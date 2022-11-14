@@ -1230,12 +1230,14 @@ struct
       (* Compile Switch Statements *)
       local
         fun new_label str = new_local_lab str
-        fun label(lab,C) = I.lab lab :: C
-        fun jmp(lab,C) = I.jmp(L lab) :: rem_dead_code C
+        fun label (lab,C) = I.lab lab :: C
+        fun jmp (lab,C) = I.jmp(L lab) :: rem_dead_code C
         fun inline_cont C =
-          case C
-            of (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
-             | _ => NONE
+            case C of
+                (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
+              | (i as I.ret) :: _ => SOME (fn C => i :: rem_dead_code C)
+              | (i1 as I.leaq _) :: (i2 as I.ret) :: _ => SOME (fn C => i1 :: i2 :: rem_dead_code C)
+              | _ => NONE
       in
         fun binary_search (sels,
                            default,
