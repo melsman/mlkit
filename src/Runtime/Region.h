@@ -427,10 +427,12 @@ extern Rp * global_freelist;
 #define CHECK_CTX(x) ;
 #endif
 
+typedef size_t Protect;
+
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-Region allocateRegion(Context ctx, Region roAddr);
+Region allocateRegion(Context ctx, Region roAddr, Protect p);
 void deallocateRegion(Context ctx);
 void deallocateRegionsUntil(Context ctx, Region rAddr);
 
@@ -450,10 +452,10 @@ void callSbrkArg(size_t no_of_region_pages);
 #endif
 
 #ifdef ENABLE_GC
-Region allocatePairRegion(Context ctx, Region roAddr);
-Region allocateArrayRegion(Context ctx, Region roAddr);
-Region allocateRefRegion(Context ctx, Region roAddr);
-Region allocateTripleRegion(Context ctx, Region roAddr);
+Region allocatePairRegion(Context ctx, Region roAddr, Protect p);
+Region allocateArrayRegion(Context ctx, Region roAddr, Protect p);
+Region allocateRefRegion(Context ctx, Region roAddr, Protect p);
+Region allocateTripleRegion(Context ctx, Region roAddr, Protect p);
 #ifdef PROFILING
 Region allocPairRegionInfiniteProfiling(Context ctx, Region r, size_t regionId);
 Region allocPairRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId);

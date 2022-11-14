@@ -591,18 +591,21 @@ struct
                            | LineStmt.WORDS i =>
                               maybe_store_tag (place,offset,C)  (* finite region; no code generated *)
                            | LineStmt.INF =>
-                              let val name =
-                                  if regions_holding_values_of_the_same_type_only place then
-                                      case Effect.get_place_ty place of
-                                          SOME Effect.PAIR_RT => "allocatePairRegion"
-                                        | SOME Effect.REF_RT => "allocateRefRegion"
-                                        | SOME Effect.TRIPLE_RT => "allocateTripleRegion"
-                                        | SOME Effect.ARRAY_RT => "allocateArrayRegion"
-                                        | _ => die "alloc_region_prim.name2"
-                                  else "allocateRegion"
+                             let val name =
+                                     if regions_holding_values_of_the_same_type_only place then
+                                       case Effect.get_place_ty place of
+                                           SOME Effect.PAIR_RT => "allocatePairRegion"
+                                         | SOME Effect.REF_RT => "allocateRefRegion"
+                                         | SOME Effect.TRIPLE_RT => "allocateTripleRegion"
+                                         | SOME Effect.ARRAY_RT => "allocateArrayRegion"
+                                         | _ => die "alloc_region_prim.name2"
+                                     else "allocateRegion"
+                                 val protect = if parallelism_p() then
+                                                 [mkIntAty (case Effect.get_protect place of SOME true => 1 | _ => 0)]
+                                               else []
                               in
                                   base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
-                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1],NONE,
+                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1] @ protect,NONE,
                                                         size_ff,tmp_reg0(*not used*),C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
@@ -1930,9 +1933,16 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         fun allocate_global_regions (region_labs,C) =
           let
-            fun maybe_pass_region_id (region_id,C) =
-              if region_profiling() then I.movq(I (i2s region_id), R rdx) :: C
-              else C
+            fun maybe_pass_region_id (rho,C) =
+                if region_profiling()
+                then let val region_id = Effect.key_of_eps_or_rho rho
+                     in I.movq(I (i2s region_id), R rdx) :: C
+                     end
+                else if parallelism_p()
+                then let val protect = "1"  (* use protection (mutexes) for global regions *)
+                     in I.movq(I protect, R rdx) :: C
+                     end
+                else C
             (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
             fun c_name rho =
@@ -1956,8 +1966,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                     else "allocateRegion"
           in
             foldl (fn ((rho,lab),C) =>
-                   let val region_id = Effect.key_of_eps_or_rho rho
-                       val name = c_name rho
+                   let val name = c_name rho
                        val C = I.movq(R rax, L (DatLab lab)) :: C
                        val sz_regdesc = BI.size_of_reg_desc()
                        val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
@@ -1970,7 +1979,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::
                        I.movq(R r14, R rdi) ::
                        I.movq(R rsp, R rsi) ::
-                       maybe_pass_region_id (region_id,
+                       maybe_pass_region_id (rho,
                                              I.call(NameLab name) ::
                                              C)
                    end) C region_labs

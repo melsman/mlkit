@@ -514,9 +514,9 @@ alloc_new_page(Gen *gen)
  *----------------------------------------------------------------------*/
 
 static inline Region
-allocateRegion0(Context ctx, Region r)
+allocateRegion0(Context ctx, Region r, Protect protect)
 {
-  debug(printf("[allocateRegion0 (rAddr=%p)...",r));
+  debug(printf("[allocateRegion0 (rAddr=%p, protect=%ui)...",r,protect));
   r = clearStatusBits(r);
 
   CHECK_CTX("allocateRegion0");
@@ -527,7 +527,8 @@ allocateRegion0(Context ctx, Region r)
   r->g0.a = alloc_new_page(&(r->g0));      // Allocate the first region page in g0
 
 #ifdef PARALLEL
-  r->mutex = mutex_freelist_pop(ctx);
+  if ( protect ) { r->mutex = mutex_freelist_pop(ctx); }
+  else { r->mutex = NULL; }
 #endif
 
 #ifdef ENABLE_GEN_GC
@@ -543,18 +544,18 @@ allocateRegion0(Context ctx, Region r)
 }
 
 Region
-allocateRegion(Context ctx, Region r)
+allocateRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
 #ifdef ENABLE_GC
 Region
-allocatePairRegion(Context ctx, Region r)
+allocatePairRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_pairregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_pairregion(r->g1);
@@ -564,9 +565,9 @@ allocatePairRegion(Context ctx, Region r)
 }
 
 Region
-allocateArrayRegion(Context ctx, Region r)
+allocateArrayRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_arrayregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_arrayregion(r->g1);
@@ -576,9 +577,9 @@ allocateArrayRegion(Context ctx, Region r)
 }
 
 Region
-allocateRefRegion(Context ctx, Region r)
+allocateRefRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_refregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_refregion(r->g1);
@@ -588,9 +589,9 @@ allocateRefRegion(Context ctx, Region r)
 }
 
 Region
-allocateTripleRegion(Context ctx, Region r)
+allocateTripleRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_tripleregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_tripleregion(r->g1);
