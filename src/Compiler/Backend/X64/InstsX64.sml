@@ -152,6 +152,17 @@ structure InstsX64: INSTS_X64 =
     | jbe of lab        (* jump if below or equal---unsigned *)
     | jo of lab         (* jump on overflow *)
 
+    | cmovlq of ea * ea
+    | cmovgq of ea * ea
+    | cmovleq of ea * ea
+    | cmovgeq of ea * ea
+    | cmoveq of ea * ea
+    | cmovneq of ea * ea
+    | cmovaq of ea * ea
+    | cmovbq of ea * ea
+    | cmovaeq of ea * ea
+    | cmovbeq of ea * ea
+
     | call of lab       (* C function calls and returns *)
     | call' of ea       (* C function calls and returns *)
     | ret
@@ -255,18 +266,19 @@ structure InstsX64: INSTS_X64 =
           | _ => false
 
     fun remove_ctrl s =
-        String.implode (List.filter (fn c =>
-                                     Char.isAlphaNum c orelse
-                                     c = #"_" orelse c = #".") (String.explode s))
+        CharVector.map (fn c =>
+                           if Char.isAlphaNum c orelse c = #"_" orelse c = #"."
+                           then c
+                           else #"_") s
 
     fun pr_namelab s =
         if sysname() = "Darwin" then "_" ^ s
         else s
 
-    fun pr_lab (DatLab l) = "DLab." ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (LocalLab l) = ".LLab." ^ remove_ctrl(Labels.pr_label l)
+    fun pr_lab (DatLab l) = "D." ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (LocalLab l) = "." ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (NameLab s) = pr_namelab(remove_ctrl s)
-      | pr_lab (MLFunLab l) = "FLab." ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (MLFunLab l) = "F." ^ remove_ctrl(Labels.pr_label l)
 
     (* Convert ~n to -n *)
     fun int_to_string i = if i >= 0 then Int.toString i
@@ -393,6 +405,17 @@ structure InstsX64: INSTS_X64 =
                | jae l => emit_jump("jae", l)
                | jbe l => emit_jump("jbe", l)
                | jo l => emit_jump("jo", l)
+
+               | cmovlq a => emit_bin("cmovlq", a)
+               | cmovgq a => emit_bin("cmovgq", a)
+               | cmovleq a => emit_bin("cmovleq", a)
+               | cmovgeq a => emit_bin("cmovgeq", a)
+               | cmoveq a => emit_bin("cmoveq", a)
+               | cmovneq a => emit_bin("cmovneq", a)
+               | cmovaq a => emit_bin("cmovaq", a)
+               | cmovbq a => emit_bin("cmovbq", a)
+               | cmovaeq a => emit_bin("cmovaeq", a)
+               | cmovbeq a => emit_bin("cmovbeq", a)
 
                | call l => emit_jump("call", l)
                | call' ea => (emit "\tcall *"; emit(pr_ea ea); emit_nl())
@@ -680,6 +703,16 @@ structure InstsX64: INSTS_X64 =
              | jae l => jae (Lm l)
              | jbe l => jbe (Lm l)
              | jo l => jo (Lm l)
+             | cmovlq (ea1,ea2) => cmovlq (Em ea1,Em ea2)
+             | cmovgq (ea1,ea2) => cmovgq (Em ea1,Em ea2)
+             | cmovleq (ea1,ea2) => cmovleq (Em ea1,Em ea2)
+             | cmovgeq (ea1,ea2) => cmovgeq (Em ea1,Em ea2)
+             | cmoveq (ea1,ea2) => cmoveq (Em ea1,Em ea2)
+             | cmovneq (ea1,ea2) => cmovneq (Em ea1,Em ea2)
+             | cmovaq (ea1,ea2) => cmovaq (Em ea1,Em ea2)
+             | cmovbq (ea1,ea2) => cmovbq (Em ea1,Em ea2)
+             | cmovaeq (ea1,ea2) => cmovaeq (Em ea1,Em ea2)
+             | cmovbeq (ea1,ea2) => cmovbeq (Em ea1,Em ea2)
              | call l => call (Lm l)
              | call' ea => call' (Em ea)
              | dot_globl l => dot_globl (Lm l)
@@ -795,6 +828,7 @@ structure InstsX64: INSTS_X64 =
         let fun p (is,acc) =
                 case is of
                     nil => rev acc
+                  | dot_data :: (is as dot_data :: _) => p (is,acc)
                   | (i as movq(R r1, R r2)) :: is =>
                     if r1=r2 then p (is,acc) else p (is,i::acc)
                   | (i1 as movq(I "1",R r1)) :: (i2 as movq(I "1",R r2)) :: is =>

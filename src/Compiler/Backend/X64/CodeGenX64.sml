@@ -712,7 +712,7 @@ struct
                   let
                     val (t_lab,f_lab) = if sel_val = IntInf.fromInt BI.ml_true then (lab_t,lab_f)
                                         else (lab_f,lab_t)
-                    val lab_exit = new_local_lab "lab_exit"
+                    val lab_exit = new_local_lab "done"
                   in
                     I.lab(LocalLab t_lab) ::
                     CG_lss(lss,size_ff,size_ccf,
@@ -753,7 +753,7 @@ struct
                                C @ I.lab(LocalLab f_lab) ::
                                CG_lss(default,size_ff,size_ccf, C'))
                       | NONE =>
-                        let val lab_exit = new_local_lab "lab_exit"
+                        let val lab_exit = new_local_lab "done"
                         in I.lab(LocalLab t_lab) ::
                            CG_lss(lss,size_ff,size_ccf,
                                   I.jmp(L lab_exit) ::
@@ -1005,26 +1005,26 @@ struct
                             | Int_to_f64     => int_to_f64 arg
                             | Blockf64_size  => blockf64_size arg
 
-                            | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je
-                                                         (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
-                                                                            precision=32},d,size_ff,C)
+                            | Is_null => cmpi_kill_tmp01_cmov {box=false,quad=false} I.cmoveq
+                                                              (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
+                                                                                 precision=32},d,size_ff,C)
                             | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
                        end
                      | [x,y] =>
                        let val arg = (x,y,d,size_ff,C)
                        in case name of
-                              Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
-                            | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
-                            | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
-                            | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
+                              Equal_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
+                            | Equal_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
 
                             | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
                             | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
@@ -1060,69 +1060,69 @@ struct
                             | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} arg
                             | Abs_real =>   absf_kill_tmp01 arg
 
-                            | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
-                            | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl arg
-                            | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
-                            | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
-                            | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
-                            | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb arg
-                            | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
-                            | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl arg
-                            | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
-                            | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
-                            | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
-                            | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb arg
+                            | Less_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
+                            | Less_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovlq arg
+                            | Less_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
+                            | Less_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
+                            | Less_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
+                            | Less_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbq arg
+                            | Less_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
+                            | Less_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovlq arg
+                            | Less_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
+                            | Less_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
+                            | Less_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
+                            | Less_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbq arg
 
-                            | Less_real => cmpf_kill_tmp01 LESSTHAN arg
-                            | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN arg
+                            | Less_real => cmpf_kill_tmp01_cmov I.cmovbq arg
+                            | Less_f64 => cmpf64_kill_tmp01_cmov I.cmovbq arg
 
-                            | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
-                            | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle arg
-                            | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
-                            | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
-                            | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
-                            | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe arg
-                            | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
-                            | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle arg
-                            | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
-                            | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
-                            | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
-                            | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe arg
+                            | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
+                            | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovleq arg
+                            | Lesseq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
+                            | Lesseq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
+                            | Lesseq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
+                            | Lesseq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbeq arg
+                            | Lesseq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
+                            | Lesseq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovleq arg
+                            | Lesseq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
+                            | Lesseq_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
+                            | Lesseq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
+                            | Lesseq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbeq arg
 
-                            | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL arg
-                            | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL arg
+                            | Lesseq_real => cmpf_kill_tmp01_cmov I.cmovbeq arg
+                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov I.cmovbeq arg
 
-                            | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
-                            | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg arg
-                            | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
-                            | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
-                            | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
-                            | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja arg
-                            | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
-                            | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg arg
-                            | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
-                            | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
-                            | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
-                            | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja arg
+                            | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
+                            | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgq arg
+                            | Greater_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
+                            | Greater_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
+                            | Greater_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
+                            | Greater_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaq arg
+                            | Greater_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
+                            | Greater_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgq arg
+                            | Greater_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
+                            | Greater_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
+                            | Greater_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
+                            | Greater_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaq arg
 
-                            | Greater_real => cmpf_kill_tmp01 GREATERTHAN arg
-                            | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN arg
+                            | Greater_real => cmpf_kill_tmp01_cmov I.cmovaq arg
+                            | Greater_f64 => cmpf64_kill_tmp01_cmov I.cmovaq arg
 
-                            | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
-                            | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge arg
-                            | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
-                            | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
-                            | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
-                            | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae arg
-                            | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
-                            | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge arg
-                            | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
-                            | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
-                            | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
-                            | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae arg
+                            | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
+                            | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgeq arg
+                            | Greatereq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
+                            | Greatereq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
+                            | Greatereq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
+                            | Greatereq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaeq arg
+                            | Greatereq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
+                            | Greatereq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgeq arg
+                            | Greatereq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
+                            | Greatereq_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
+                            | Greatereq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
+                            | Greatereq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaeq arg
 
-                            | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL arg
-                            | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL arg
+                            | Greatereq_real => cmpf_kill_tmp01_cmov I.cmovaeq arg
+                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov I.cmovaeq arg
 
                             | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
                             | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg
@@ -1597,10 +1597,10 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun allocinreg C =
             if not(parallelism_p()) then C
             else
-            let val allocinreg_protect = new_local_lab "allocinreg_protect"
+            let val allocinreg_protect = new_local_lab "alloc_protect"
                 val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())
-                val l_expand = new_local_lab "alloc_expand"
-                val l_expand_protect = new_local_lab "alloc_expand_protect"
+                val l_expand = new_local_lab "expand"
+                val l_expand_protect = new_local_lab "protect"
                 fun mk_expand_protect C =
                     I.lab l_expand_protect ::                 (* expand_protect:                    *)
                     I.pop(R I.rax) ::                         (*   restore rax                      *)

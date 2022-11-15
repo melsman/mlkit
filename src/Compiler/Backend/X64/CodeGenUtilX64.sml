@@ -908,8 +908,8 @@ struct
 *)
         else
           let val n = n0
-              val l = new_local_lab "return_from_alloc"
-              val l_expand = new_local_lab "alloc_expand"
+              val l = new_local_lab "ret_alloc"
+              val l_expand = new_local_lab "expand"
               val allocate_lab =
                   if parallelism_p() andalso par_alloc_unprotected_p() then
                     NameLab "__allocate_unprotected"
@@ -1310,7 +1310,7 @@ struct
                            toInt,
                            C))
         end
-
+(*
       fun cmpi_kill_tmp01 {box,quad} jump (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1339,6 +1339,32 @@ struct
            I.lab true_lab ::
            I.movq(I (i2s BI.ml_true), R d_reg) ::
            I.lab cont_lab :: C')))
+        end
+*)
+      fun cmpi_kill_tmp01_cmov {box,quad} cmov (x,y,d,size_ff,C) =
+        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+            val (inst_cmp, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.cmpq, fn r => r)
+                else (I.cmpl, I.doubleOfQuadReg)
+            fun compare C =
+              if box then
+                I.movq(D("8",y_reg), R tmp_reg1) ::
+                I.movq(D("8",x_reg), R tmp_reg0) ::
+                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
+                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
+              else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
+                            R (maybeDoubleOfQuadReg x_reg)) :: C
+        in
+           x_C(
+           y_C(
+           compare (
+           I.movq(I (i2s BI.ml_false), R d_reg) ::
+           I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+           cmov(R tmp_reg1, R d_reg) ::
+           C')))
         end
 
       fun doubleOfQuadEa ea =
@@ -1967,25 +1993,15 @@ struct
               I.maxsd (R tmp_freg0, R d) :: C')
        end
 
-     datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
-     fun pp_cond LESSTHAN = "LESSTHAN"
-       | pp_cond LESSEQUAL = "LESSEQUAL"
-       | pp_cond GREATERTHAN = "GREATERTHAN"
-       | pp_cond GREATEREQUAL = "GREATEREQUAL"
-     fun cmpf64_kill_tmp0 cond (x,y,d,size_ff,C) = (* ME MEMO *)
+(*
+     fun cmpf64_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
-             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong x register")
-             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong y register")
+             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01: wrong x register")
+             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01: wrong y register")
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
              val true_lab = new_local_lab "true"
              val cont_lab = new_local_lab "cont"
-             val jump = (* from gcc experiments *)
-                 case cond of
-                     LESSTHAN => I.jb      (*below*)
-                   | LESSEQUAL => I.jbe    (*below or equal*)
-                   | GREATERTHAN => I.ja   (*above*)
-                   | GREATEREQUAL => I.jae (*above or equal*)
          in x_C(y_C(I.ucomisd (R y, R x) ::
                     jump true_lab ::
                     I.movq(I (i2s BI.ml_false), R d_reg) ::
@@ -1994,6 +2010,20 @@ struct
                     I.movq(I (i2s BI.ml_true), R d_reg) ::
                     I.lab cont_lab ::
                     C'))
+         end
+*)
+
+     fun cmpf64_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
+             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
+             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+         in x_C(y_C(I.ucomisd (R y, R x) ::
+            I.movq(I (i2s BI.ml_false), R d_reg) ::
+            I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+            cmov(R tmp_reg1, R d_reg) ::
+            C'))
          end
 
      local
@@ -2063,18 +2093,13 @@ struct
          copy(b_reg,d_reg, C'))))
        end
 
-     fun cmpf_kill_tmp01 cond (x,y,d,size_ff,C) = (* ME MEMO *)
+(*
+     fun cmpf_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
        let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
            val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
            val true_lab = new_local_lab "true"
            val cont_lab = new_local_lab "cont"
-           val jump = (* from gcc experiments *)
-               case cond of
-                   LESSTHAN => I.jb      (*below*)
-                 | LESSEQUAL => I.jbe    (*below or equal*)
-                 | GREATERTHAN => I.ja   (*above*)
-                 | GREATEREQUAL => I.jae (*above or equal*)
            val load_args = x_C o y_C
        in
          load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
@@ -2084,6 +2109,20 @@ struct
          I.lab true_lab ::
          I.movq(I (i2s BI.ml_true), R d_reg) ::
          I.lab cont_lab ::
+         C')
+       end
+  *)
+
+     fun cmpf_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
+       let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
+           val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
+           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+           val load_args = x_C o y_C
+       in
+         load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
+         I.movq(I (i2s BI.ml_false), R d_reg) ::
+         I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+         cmov(R tmp_reg1, R d_reg) ::
          C')
        end
 
