@@ -463,7 +463,7 @@ struct
                     val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                         (* Move rsp after rcf *)
-                    if true orelse gc_p() orelse length spilled_args > 0
+                    if gc_p() orelse length spilled_args > 0
                     then let val return_lab = new_local_lab "ret_fncall"
                          in I.push(LA return_lab) ::                                       (* Push Return Label *)
                             flush_args(jmp I.jmp 0 (gen_bv(bv, I.lab return_lab :: C')))
@@ -774,15 +774,19 @@ struct
                                        of LS.ENUM i => (IntInf.fromInt i,sel_insts)
                                         | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
-                    fun UbTagCon(src_aty,C) =
-                      let val cont_lab = new_local_lab "cont"
+                    fun UbTagCon (src_aty,C) =
+                      let (*val cont_lab = new_local_lab "cont" *)
                       in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
                          copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
                          I.andq(I "3", R tmp_reg1) ::
-                         I.cmpq(I "3", R tmp_reg1) ::   (* do copy if tr = 3; in that case we      *)
-                         I.jne cont_lab ::              (* are dealing with a nullary constructor, *)
-                         copy(tmp_reg0, tmp_reg1,       (* and all bits are used. *)
+                         I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
+                         I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
+                         C))                                  (* and all bits are used. *)
+(*
+                         I.jne cont_lab ::
+                         copy(tmp_reg0, tmp_reg1,
                          I.lab cont_lab :: C)))
+*)
                       end
                     val (F, opr_aty) =
                       case con_kind
@@ -1447,6 +1451,11 @@ struct
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val size_ff = CallConv.get_frame_size cc
+        val size_ff = if not(gc_p()) andalso size_ff = 1 andalso basic_lss lss then 0
+                      else size_ff
+(*
+        val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
+*)
         val size_ccf = CallConv.get_ccf_size cc
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^

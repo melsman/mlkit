@@ -248,9 +248,14 @@ struct
 
         val size_ff0 = get_max_offset ()
         val size_cc = CallConv.get_cc_size cc
-(*        val () = print ("size_ff0: " ^ Int.toString size_ff0 ^ "; size_cc: " ^ Int.toString size_cc ^ "\n") *)
+(*
+        val () = print (Labels.pr_label lab ^ "size_ff0: " ^ Int.toString size_ff0
+                        ^ "; size_cc: " ^ Int.toString size_cc ^ "\n")
+        val () = print ("cc: " ^ CallConv.pr_cc cc ^ "\n")
+*)
         val size_ff = if (size_ff0 + size_cc) mod 2 = 0 then size_ff0 else size_ff0+1
-	val cc' = CallConv.add_frame_size(cc,size_ff)
+
+        val cc' = CallConv.add_frame_size(cc,size_ff)
       in
 	gen_fn(lab,cc',lss_co)
       end
@@ -514,7 +519,7 @@ struct
 	(* size_fd = size_cc + size_ff *)
 	val size_rcf = CallConv.get_rcf_size cc
 	val size_ccf = CallConv.get_ccf_size cc
-	val size_cc = CallConv.get_cc_size cc (* incl. return label *)
+	val size_cc = CallConv.get_cc_size cc (* incl. return address *)
 	val size_ff = CallConv.get_frame_size cc
 	val args_on_stack_cc = CallConv.get_spilled_args_with_offsets cc
 	val LVenv_cc = List.foldl (fn ((lv,offset),LVenv) => LvarFinMap.add(lv,offset+size_cc,LVenv))

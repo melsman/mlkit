@@ -1536,7 +1536,7 @@ struct
                        R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
-
+(*
       fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
@@ -1552,6 +1552,23 @@ struct
            jump_overflow (
            do_tag C')))
         end
+*)
+      fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
+        let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+            val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
+            val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.addq, I.negq, fn r => r)
+                else (I.addl, I.negl, I.doubleOfQuadReg)
+            fun do_tag C = if tag then inst_add (I "2", R (maybeDoubleOfQuadReg d_reg)) ::
+                                       jump_overflow C
+                           else C
+        in x_C(copy(x_reg, d_reg,
+           inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
+           jump_overflow (
+           do_tag C')))
+        end
+
 
       fun neg_int_boxed_kill_tmp0 {quad:bool} (b,x,d,size_ff,C) =
         if not(BI.tag_values()) then die "neg_int_boxed_kill_tmp0.tagging required"
@@ -2092,26 +2109,6 @@ struct
          b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
          copy(b_reg,d_reg, C'))))
        end
-
-(*
-     fun cmpf_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
-       let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
-           val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-           val true_lab = new_local_lab "true"
-           val cont_lab = new_local_lab "cont"
-           val load_args = x_C o y_C
-       in
-         load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
-         jump true_lab ::
-         I.movq(I (i2s BI.ml_false), R d_reg) ::
-         I.jmp(L cont_lab) ::
-         I.lab true_lab ::
-         I.movq(I (i2s BI.ml_true), R d_reg) ::
-         I.lab cont_lab ::
-         C')
-       end
-  *)
 
      fun cmpf_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
        let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
@@ -2818,5 +2815,159 @@ struct
               end
          end
 
+     local
+       fun basic_sw basic_lss (LS.SWITCH(_,xlsss,lss)) =
+           basic_lss lss andalso
+           List.all (fn (_,lss) => basic_lss lss) xlsss
 
+       fun basic_regions nil = true
+         | basic_regions _ = false
+
+       fun nonbasic_prim p : bool =
+           let open PrimName
+           in case p of
+                  Plus_int31 => true | Plus_int32ub => true | Plus_int32b => true
+                  | Plus_word31 => false | Plus_word32ub => false | Plus_word32b => false
+                  | Plus_int63 => true| Plus_int64ub => true | Plus_int64b => true
+                  | Plus_word63 => false | Plus_word64ub => false| Plus_word64b => false
+                  | Plus_real => false | Plus_f64 => false
+                  | Minus_int31 => true | Minus_int32ub => true | Minus_int32b => true
+                  | Minus_word31 => false | Minus_word32ub => false | Minus_word32b => false
+                  | Minus_int63 => true| Minus_int64ub => true | Minus_int64b => true
+                  | Minus_word63 => false | Minus_word64ub => false | Minus_word64b => false
+                  | Minus_real => false | Minus_f64 => false
+                  | Mul_int31 => true | Mul_int32ub => true | Mul_int32b => true
+                  | Mul_word31 => false | Mul_word32ub => false | Mul_word32b => false
+                  | Mul_int63  => true| Mul_int64ub => true | Mul_int64b => true
+                  | Mul_word63 => false | Mul_word64ub => false | Mul_word64b => false
+                  | Mul_real => false | Mul_f64 => false
+                  | Div_real => false | Div_f64 => false
+                  | Neg_int31 => true | Neg_int32ub => true | Neg_int32b => true
+                  | Neg_int63 => true | Neg_int64ub => true | Neg_int64b => true
+                  | Neg_real => false | Neg_f64 => false
+                  | Abs_int31 => true | Abs_int32ub => true | Abs_int32b => true
+                  | Abs_int63 => true | Abs_int64ub => true | Abs_int64b => true
+                  | Abs_real => false | Abs_f64 => false
+                  | Andb_word31 => false | Andb_word32ub => false | Andb_word32b => false
+                  | Andb_word63 => false | Andb_word64ub => false | Andb_word64b => false
+                  | Orb_word31 => false | Orb_word32ub => false | Orb_word32b => false
+                  | Orb_word63 => false | Orb_word64ub => false | Orb_word64b => false
+                  | Xorb_word31 => false | Xorb_word32ub => false | Xorb_word32b => false
+                  | Xorb_word63 => false | Xorb_word64ub => false | Xorb_word64b => false
+                  | Shift_left_word31 => false | Shift_left_word32ub => false | Shift_left_word32b => false
+                  | Shift_left_word63 => false | Shift_left_word64ub => false | Shift_left_word64b => false
+                  | Shift_right_signed_word31 => false | Shift_right_signed_word32ub => false
+                  | Shift_right_signed_word32b => false
+                  | Shift_right_signed_word63 => false | Shift_right_signed_word64ub => false
+                  | Shift_right_signed_word64b => false
+                  | Shift_right_unsigned_word31 => false | Shift_right_unsigned_word32ub => false
+                  | Shift_right_unsigned_word32b => false
+                  | Shift_right_unsigned_word63 => false | Shift_right_unsigned_word64ub => false
+                  | Shift_right_unsigned_word64b => false
+                  | Int31_to_int32b => false | Int31_to_int32ub => false | Int32b_to_int31 => true
+                  | Int32b_to_word32b => false | Int32ub_to_int31 => true
+                  | Int31_to_int64b => false | Int31_to_int64ub => false | Int64b_to_int31 => true
+                  | Word31_to_word32b => false | Word31_to_word32ub => false | Word32b_to_word31 => false
+                  | Word32ub_to_word31 => false
+                  | Word31_to_word32ub_X => false | Word31_to_word32b_X => false
+                  | Word32b_to_int32b => true | Word32b_to_int32b_X => false | Word32ub_to_int32ub => true
+                  | Word31_to_int31 => true
+                  | Word32b_to_int31 => true | Int32b_to_word31 => true | Word32b_to_int31_X => true
+                  | Word64ub_to_int32ub => true
+                  | Word32ub_to_word64ub => false | Word64ub_to_word32ub => false | Word64ub_to_int64ub => true
+                  | Word64ub_to_int64ub_X => false
+                  | Word31_to_word64b => false | Word31_to_word64b_X => false | Word64b_to_int31 => true
+                  | Word64b_to_int64b_X => true | Word64b_to_int64b => true | Word32b_to_word64b => false
+                  | Word32b_to_word64b_X => false | Word64b_to_word32b => false | Word64b_to_int31_X => true
+                  | Int32b_to_int64b => false | Int32ub_to_int64ub => false | Int64b_to_word64b => false
+                  | Int64ub_to_word64ub => false | Int64ub_to_int32ub => true
+                  | Int63_to_int64b => false | Int64b_to_int63 => true | Word32b_to_word63 => false
+                  | Word63_to_word32b => false
+                  | Word63_to_word31 => false | Word31_to_word63 => false | Word31_to_word63_X => false
+                  | Word63_to_word64b => false
+                  | Word63_to_word64b_X => false | Word64b_to_word63 => false
+                  | Int31_to_int63 => false | Int63_to_int31 => true | Int32b_to_int63 => false
+                  | Int63_to_int32b => true
+                  | Word32b_to_int63 => false | Word32b_to_int63_X => false | Word64b_to_word31 => false
+                  | Word64b_to_int63 => true | Word64b_to_int63_X => true | Int63_to_int64ub => false
+                  | Int64ub_to_int63 => true | Word63_to_word64ub => false | Word63_to_word64ub_X => false
+                  | Word64ub_to_word31 => false | Int64ub_to_int31 => true | Word31_to_word64ub => false
+                  | Word31_to_word64ub_X => false | Word32ub_to_int64ub => false
+                  | Word32ub_to_int64ub_X => false | Word32ub_to_word64ub_X => false
+                  | Exn_ptr => false | Fresh_exname => false | Get_ctx => false
+                  | Bytetable_sub => false | Bytetable_size => false | Bytetable_update => false
+                  | Word_sub0 => false | Word_update0 => false | Table_size => false | Is_null => false
+                  | ServerGetCtx => true
+                  | Max_f64 => false | Min_f64 => false | Real_to_f64 => false | F64_to_real => false
+                  | Sqrt_f64 => false
+                  | Int_to_f64 => false
+                  | Blockf64_update_real => false | Blockf64_sub_real => false | Blockf64_size => false
+                  | Blockf64_alloc => true
+                  | Blockf64_update_f64 => false | Blockf64_sub_f64 => false
+                  | _ => true
+           end
+
+       fun basic_prim p : bool =
+           PrimName.is_flow_prim p orelse
+           not(nonbasic_prim p)
+
+       fun basic_assign {bind,pat} : bool =
+           case bind of
+               LS.ATOM _ => true
+             | LS.LOAD _ => true
+             | LS.STORE _ => true
+             | LS.STRING _ => true
+             | LS.REAL _ => true
+             | LS.F64 _ => true
+             | LS.CLOS_RECORD _ => false
+             | LS.REGVEC_RECORD _ => false
+             | LS.SCLOS_RECORD _ => false
+             | LS.RECORD {elems=[],...} => true
+             | LS.RECORD _ => false
+             | LS.BLOCKF64 {elems=[],...} => true
+             | LS.BLOCKF64 _ => false
+             | LS.SCRATCHMEM{bytes=0,alloc,tag} => true
+             | LS.SCRATCHMEM _ => false
+             | LS.SELECT _ => true
+             | LS.CON0 {con_kind=LS.ENUM _,...} => true
+             | LS.CON0 _ => false
+             | LS.CON1 {con_kind=LS.UNBOXED _,...} => true
+             | LS.CON1 _ => false
+             | LS.DECON _ => true
+             | LS.REF _ => false
+             | LS.DEREF _ => true
+             | LS.ASSIGNREF _ => true
+             | LS.PASS_PTR_TO_MEM _ => false
+             | LS.PASS_PTR_TO_RHO _ => true
+
+       fun basic_lss lss : bool =
+           case lss of
+               nil => true
+             | ls::lss => basic_ls ls andalso basic_lss lss
+       and basic_ls ls : bool =
+           case ls of
+               LS.ASSIGN a => basic_assign a
+             | LS.FLUSH(atom,_) => false
+             | LS.FETCH(atom,_) => false
+             | LS.FNJMP a => false
+             | LS.FNCALL a => false
+             | LS.JMP a => true
+             | LS.FUNCALL a => false
+             | LS.LETREGION{rhos,body} => basic_regions rhos andalso basic_lss body
+             | LS.SCOPE{pat,scope} => basic_lss scope
+             | LS.HANDLE _ => false
+             | LS.RAISE a => false
+             | LS.SWITCH_I {switch,precision} => basic_sw basic_lss switch
+             | LS.SWITCH_W {switch,precision} => basic_sw basic_lss switch
+             | LS.SWITCH_S sw => basic_sw basic_lss sw
+             | LS.SWITCH_C sw => basic_sw basic_lss sw
+             | LS.SWITCH_E sw => basic_sw basic_lss sw
+             | LS.RESET_REGIONS a => false
+             | LS.PRIM a => basic_prim (#name a)
+             | LS.CCALL a => false
+             | LS.CCALL_AUTO a => false
+             | LS.EXPORT a => false
+     in
+     val basic_lss = basic_lss
+     end
 end
