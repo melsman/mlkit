@@ -766,28 +766,30 @@ struct
                | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) =>
                   let (* NOTE: selectors in sels are tagged in ClosExp; values are
                        * tagged here in CodeGenX64! *)
-                    val con_kind = case sels
-                                     of [] => die ("CG_ls: SWITCH_C sels is empty: " ^ (pr_ls ls))
-                                      | ((con,con_kind),_)::rest => con_kind
+                    (* if there are 1 or fewer nullary constructors, we can save some instructions *)
+                    val (con_kind, lte1_nullary) =
+                        case sels of [] => die ("CG_ls: SWITCH_C sels is empty: " ^ (pr_ls ls))
+                                   | ((con,con_kind),_)::rest => (con_kind,
+                                                                  Con.eq(Con.con_NIL,con) orelse
+                                                                  Con.eq(Con.con_CONS,con))
                     val sels' = map (fn ((con,con_kind),sel_insts) =>
                                      case con_kind
                                        of LS.ENUM i => (IntInf.fromInt i,sel_insts)
                                         | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon (src_aty,C) =
-                      let (*val cont_lab = new_local_lab "cont" *)
-                      in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
-                         copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
-                         I.andq(I "3", R tmp_reg1) ::
-                         I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
-                         I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
-                         C))                                  (* and all bits are used. *)
-(*
-                         I.jne cont_lab ::
-                         copy(tmp_reg0, tmp_reg1,
-                         I.lab cont_lab :: C)))
-*)
-                      end
+                        if lte1_nullary then
+                          (move_aty_into_reg(src_aty,tmp_reg1,size_ff,
+                           I.andq(I "3", R tmp_reg1) ::
+                           C))
+                        else
+                          (move_aty_into_reg(src_aty,tmp_reg0,size_ff,
+                           copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
+                           I.andq(I "3", R tmp_reg1) ::
+                           I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
+                           I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
+                           C)))                                 (* and all bits are used. *)
+
                     val (F, opr_aty) =
                       case con_kind
                         of LS.ENUM _ => (fn C => C, opr_aty)
