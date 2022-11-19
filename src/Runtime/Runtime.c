@@ -104,6 +104,10 @@ terminateML (long status)
 #endif
   debug(printf("[terminateML..."));
 
+#ifdef PARALLEL
+  thread_finalize();
+#endif
+
 #ifdef PROFILING
   outputProfilePost();
   Statistics();
@@ -366,10 +370,6 @@ extern void code(Context ctx);
 int
 main(int argc, char *argv[])
 {
-  Context ctx = (Context) malloc(sizeof(context));
-  ctx->topregion = NULL;
-  ctx->exnptr = NULL;
-
   //static struct sigaction sigact;
   //static sigset_t sigset;
 
@@ -382,7 +382,11 @@ main(int argc, char *argv[])
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
 
 #ifdef PARALLEL
-  thread_init_all();
+  Context ctx = thread_init_all();
+#else
+  Context ctx = (Context) malloc(sizeof(context));
+  ctx->topregion = NULL;
+  ctx->exnptr = NULL;
 #endif
 
 #ifdef REGION_PAGE_STAT

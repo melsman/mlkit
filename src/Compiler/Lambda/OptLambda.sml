@@ -644,6 +644,20 @@ structure OptLambda: OPT_LAMBDA =
      fun reset_lvar_bucket() = (map unmark_lvar (!lvar_bucket); lvar_bucket := [])
    end
 
+   (* Functionality for avoiding inlining and specialisation of certain functions *)
+   local
+     fun suffix suf lv =
+         let val s = Lvars.str lv
+             val i = String.size s - String.size suf
+         in i > 0 andalso
+            let val ext = String.extract(s,i,NONE)
+            in suf = ext
+            end
+         end
+   in
+   fun noinline_lvar lv = suffix "__noinline" lv
+   fun inline_lvar lv = suffix "__inline" lv
+   end
 
    (* -----------------------------------------------------------------
     * Specialization of recursive functions is performed during
@@ -654,19 +668,23 @@ structure OptLambda: OPT_LAMBDA =
 
    fun specializable {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype([tau_1'],[ARROWtype([tau_2'],_)]),
                       bind=FN{pat=[(lv_x,tau_1)],body=FN{pat=[(lv_y,tau_2)],body}}} =
-     let exception Fail
-         fun app_f_x (APP(VAR{lvar=lv_f',...}, VAR{lvar=lv_x',...}, _)) =
-             if Lvars.eq(lv_f',lv_f) then if Lvars.eq(lv_x',lv_x) then () else raise Fail
-             else if Lvars.eq(lv_x',lv_f) then raise Fail else ()
-           | app_f_x (VAR{lvar,...}) = if Lvars.eq(lvar,lv_f) then raise Fail else ()
-           | app_f_x e = app_lamb app_f_x e
-     in eq_Type(tau_1,tau_1') andalso eq_Type(tau_2,tau_2') andalso
-       ((app_f_x body; true) handle Fail => false)
-     end
+       if noinline_lvar lv_f then false
+       else
+         let exception Fail
+             fun app_f_x (APP(VAR{lvar=lv_f',...}, VAR{lvar=lv_x',...}, _)) =
+                 if Lvars.eq(lv_f',lv_f) then if Lvars.eq(lv_x',lv_x) then () else raise Fail
+                 else if Lvars.eq(lv_x',lv_f) then raise Fail else ()
+               | app_f_x (VAR{lvar,...}) = if Lvars.eq(lvar,lv_f) then raise Fail else ()
+               | app_f_x e = app_lamb app_f_x e
+         in eq_Type(tau_1,tau_1') andalso eq_Type(tau_2,tau_2') andalso
+            ((app_f_x body; true) handle Fail => false)
+         end
      | specializable _ = false
 
    fun specializableN {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype(taus,taus_res),
                        bind=FN{pat,body}} =
+       if noinline_lvar lv_f then NONE
+       else
        let exception Fail
            fun look (n, nil) = NONE
              | look (n, (lv_x,tau_x)::pat) =
@@ -1171,20 +1189,6 @@ structure OptLambda: OPT_LAMBDA =
                                       init scope)
            | FRAME {declared_lvars,...} => app (fn {lvar,...} => (incr_use lvar; incr_use lvar)) declared_lvars
            | _ => app_lamb init e
-
-      local
-        fun suffix suf lv =
-          let val s = Lvars.str lv
-              val i = String.size s - String.size suf
-          in i > 0 andalso
-             let val ext = String.extract(s,i,NONE)
-             in suf = ext
-             end
-          end
-      in
-        fun noinline_lvar lv = suffix "__noinline" lv
-        fun inline_lvar lv = suffix "__inline" lv
-      end
 
       fun is_inlinable_fn lvar lamb =
           case lamb of

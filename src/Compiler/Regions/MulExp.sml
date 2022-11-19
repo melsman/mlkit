@@ -32,6 +32,8 @@ struct
           \par-construct is passed functions with intersecting\n\
           \put effects."}
 
+    fun debug_parallelism_p () = Flags.is_on "debug_parallelism"
+
     fun uncurry f (a, b) = f a b
 
     fun quote s = "\"" ^ String.toString s ^ "\""
@@ -421,6 +423,316 @@ struct
       in
           warn_puts TE e
       end
+
+    (* -------------------------- *)
+    (* Region protection analysis *)
+    (* -------------------------- *)
+
+    (* Region protection analysis infers whether a region bound by a
+       letregion construct needs to be protected against allocation
+       race conditions. Protection analysis detects if a region is
+       allocated into by multiple threads. It does so by inferring a
+       set of constraints.
+     *)
+
+    structure ProtInf = struct
+
+      fun parallelism_p () : bool = Flags.is_on "parallelism"
+
+      datatype conset = BaseC of effect list * effect list
+                      | SeqC of conset list
+
+      val empC = SeqC[]
+
+      fun eq_list eq (nil,nil) = true
+        | eq_list eq (e1::es1,e2::es2) = eq (e1,e2) andalso eq_list eq (es1,es2)
+        | eq_list eq _ = false
+
+      infix &&
+      fun (SeqC[]) && c = c
+        | c && (SeqC[]) = c
+        | c && c' = SeqC[c,c']
+
+      fun putify es =
+          List.filter (fn e => Effect.is_put e orelse Effect.is_arrow_effect e) es
+
+      fun baseC (nil,_) = empC
+        | baseC (_, nil) = empC
+        | baseC (es1,es2) = BaseC (putify es1,putify es2)
+
+      fun isEmpC (SeqC[]) = true
+        | isEmpC _ = false
+
+      fun eq_c (BaseC(es1,es1'),BaseC(es2,es2')) =
+          eq_list Effect.eq_effect (es1,es2) andalso eq_list Effect.eq_effect (es1',es2')
+        | eq_c (SeqC cs1,SeqC cs2) = eq_list eq_c (cs1,cs2)
+        | eq_c _ = false
+
+      val pu_c : conset Pickle.pu =
+          Pickle.dataGen ("MulExp.c_pu",
+                          fn BaseC _ => 0 | SeqC _ => 1,
+                          [fn _ => Pickle.con1 BaseC (fn BaseC p => p | _ => die "c_pu.BaseC")
+                                               (Pickle.pairGen (Pickle.listGen Effect.pu_effect,
+                                                                Pickle.listGen Effect.pu_effect)),
+                           fn pu_c => Pickle.con1 SeqC (fn SeqC cs => cs | _ => die "c_pu.SeqC")
+                                                  (Pickle.listGen pu_c)])
+
+      fun pr_effect e = PP.flatten1 (Effect.layout_effect e)
+
+      fun pr_effects [e] = pr_effect e
+        | pr_effects es = PP.flatten1 (PP.layout_list Effect.layout_effect es)
+
+      fun layout_c c : PP.StringTree =
+          case c of
+              BaseC(es1,es2) => PP.LEAF ("(" ^ pr_effects es1 ^ " # " ^ pr_effects es2 ^ ")")
+            | SeqC cs => PP.layout_list layout_c cs
+
+      fun pr_c c = PP.flatten1 (layout_c c)
+
+      fun emem e es = List.exists (fn e' => Effect.eq_effect (e,e')) es
+
+      fun collect es es' =
+          let val es' = foldl (fn (e,a) =>
+                                  if emem e es
+                                  then collect es (Effect.mk_phi e) @ a
+                                  else e::a) nil es'
+              val es' = List.filter (fn e => not(emem e es)) es'
+          in es'
+          end
+
+      fun dischargeC (es : effect list) c =
+          case c of
+              BaseC(es1,es2) =>
+              let val es1 = collect es es1
+                  val es2 = collect es es2
+              in baseC(es1,es2)
+              end
+            | SeqC cs =>
+              foldl (fn (c,a) => dischargeC es c && a) empC cs
+
+      type scheme = place list * effect list * conset
+      val empSch : scheme = (nil,nil,empC)
+
+      fun eq_sch ((rhos1,epss1,c1),(rhos2,epss2,c2)) =
+          eq_list Effect.eq_effect (rhos1,rhos2) andalso
+          eq_list Effect.eq_effect (epss1,epss2) andalso
+          eq_c (c1,c2)
+
+      fun layout_effects es = PP.layout_list (PP.LEAF o pr_effect) es
+      fun layout_sch (rhos,epss,c) =
+          PP.layout_pair (PP.layout_pair layout_effects layout_effects)
+                         (layout_c) ((rhos,epss),c)
+      fun pr_sch sch = PP.flatten1 (layout_sch sch)
+
+      fun instSchC (rhos,epss,c) il =
+          if isEmpC c orelse (List.null rhos andalso List.null epss) then c
+          else
+            let val (rhos',epss',_) = RType.un_il il
+                val Se = ListPair.zipEq (epss, epss')
+                         handle _ => die "instSchC: zip instance problem, Se"
+                val Sr = ListPair.zipEq (rhos, rhos')
+                         handle _ => die "instSchC: zip instance problem, Sr"
+
+                fun substSe e =
+                    if Effect.is_get e then die "substSe:get"
+                    else if Effect.is_arrow_effect e
+                    then case List.find (fn (a,_) => Effect.eq_effect (a,e)) Se of
+                             SOME(_,e') => e'
+                           | NONE => e
+                    else e
+
+                fun substSr p =
+                    if Effect.is_get p then die "substSr:get"
+                    else if Effect.is_put p
+                    then let val r = Effect.rho_of p
+                         in case List.find (fn (a,_) => Effect.eq_effect (a,r)) Sr of
+                                SOME(_,r') => Effect.mkPut r'
+                              | NONE => p
+                         end
+                    else p
+                val S = substSe o substSr
+                fun inst c =
+                    case c of
+                        BaseC(es1,es2) => baseC(map S es1, map S es2)
+                      | SeqC cs => foldl (fn (c,a) => inst c && a) empC cs
+            in inst c
+            end
+
+      fun reachable es put =
+          foldl (fn (e,b) => b orelse emem put (Effect.mk_phi e)) false es
+
+      fun parallel_puts (rho:effect) c : bool =
+          case c of
+              BaseC(es1,es2) =>
+              let val put = Effect.mkPut rho
+              in reachable es1 put andalso reachable es2 put
+              end
+            | SeqC cs => foldl (fn (c,b) => b orelse parallel_puts rho c) false cs
+
+      structure PE = Lvars.Map
+      type pe = scheme PE.map
+      val empPE : pe = PE.empty
+      val initPE : pe = empPE
+      val plus : pe * pe -> pe = PE.plus
+      val enrich : pe * pe -> bool = PE.enrich eq_sch
+      val restrict : pe * lvar list -> pe =
+       fn (pe,lvs) =>
+          if parallelism_p() then
+            PE.restrict (Lvars.pr_lvar,pe,lvs)
+          else empPE
+      val layoutPE : pe -> PP.StringTree =
+          PE.layoutMap {start="ProtEnv={",finish="}",eq=" -> ", sep=", "}
+                       (PP.LEAF o Lvars.pr_lvar) layout_sch
+      val pu_scheme =
+          Pickle.tup3Gen(Pickle.listGen Effect.pu_effect,
+                         Pickle.listGen Effect.pu_effect,
+                         pu_c)
+      val pu_pe : pe Pickle.pu = PE.pu Lvars.pu pu_scheme
+
+      val frame_pe : pe option ref = ref NONE
+
+      val (layType,_) = RType.mk_layout false
+
+      fun protInfSw protInf (SWITCH(e,cs,opt)) =
+          let val c = foldl (fn ((_,e),c) => protInf e && c)
+                            (protInf e) cs
+          in case opt of
+                 SOME e => protInf e && c
+               | NONE => c
+          end
+
+      fun protInfTr (PE:pe) (TR(e,mt,_,_)) : conset =
+          case e of
+              VAR {lvar, il, fix_bound=true, rhos_actuals, ...} =>
+              (case PE.lookup PE lvar of
+                   SOME sch =>
+                   let val c = instSchC sch il
+(*
+                       val () = print ("instance " ^ Lvars.pr_lvar lvar
+                                       ^ " : " ^ pr_c c ^ "\n")
+*)
+                   in c
+                   end
+                 | NONE => die ("protInf.VAR: missing variable " ^ Lvars.pr_lvar lvar)
+              )
+            | VAR {lvar,...} => empC
+            | INTEGER _ => empC
+            | WORD _ => empC
+            | STRING _ => empC
+            | REAL _ => empC
+            | F64 _ => empC
+            | UB_RECORD trs => foldl (op &&) empC (map (protInfTr PE) trs)
+            | FN {pat,body,...} =>
+              let val PE = foldl (fn ((lv,_),PE) => PE.add(lv,empSch,PE)) PE pat
+              in protInfTr PE body
+              end
+            | LETREGION {B,rhos,body} =>
+              let val c = protInfTr PE body
+                  val () = app (fn r =>
+                                   if Effect.is_rho r andalso parallel_puts r c
+                                   then let val () =
+                                                if debug_parallelism_p()
+                                                then print ("** Region protection: "
+                                                            ^ pr_effect r ^ "\n")
+                                                else ()
+                                        in Effect.set_protect r
+                                        end
+                                   else ()) (!B)
+                  val c = dischargeC (!B) c
+              in c
+              end
+            | LET {pat,bind,scope,...} =>
+              let val c = protInfTr PE bind
+                  val PE' = foldl (fn (p,PE) => PE.add(#1 p,empSch,PE)) PE pat
+              in c && protInfTr PE' scope
+              end
+            | FIX {functions,scope,...} =>
+              let fun default () =
+                      let val PE' = foldl (fn (f,PE) => PE.add(#lvar f, (#rhos f,#epss f,empC),PE))
+                                          PE functions
+                          val lvschs = map (fn f => (#lvar f, (#rhos f,#epss f,protInfTr PE' (#bind f))))
+                                           functions
+                          val () =
+                              if debug_parallelism_p()
+                              then app (fn (lv,sch) =>
+                                           print (Lvars.pr_lvar lv ^ " : " ^ pr_sch sch ^ "\n")
+                                       ) lvschs
+                              else ()
+                          val PE'' = foldl (fn ((lv,sch),PE) => PE.add(lv,sch,PE)) PE lvschs
+                      in protInfTr PE'' scope
+                      end
+              in case functions of
+                     [{lvar,rhos,epss,Type,...}] =>
+                     if Lvars.pr_lvar lvar = "spawn__noinline" then
+                       let val c =
+                               case R.unFUN Type of
+                                   SOME([mu1,mu2],_,_) =>
+                                   (case (R.unBOX mu1, R.unBOX mu2) of
+                                        (SOME (ty1,_), SOME (ty2,_)) =>
+                                        (case (R.unFUN ty1, R.unFUN ty2) of
+                                             (SOME (_,ae1,_), SOME (_,ae2,_)) => BaseC([ae1],[ae2])
+                                           | _ => die ("protInf.spawn__noinline: expecting function types " ^
+                                                       "- got " ^ PP.flatten1 (layType Type)))
+                                      | _ => die ("protInf.spawn__noinline: expecting boxed types " ^
+                                                  "- got " ^ PP.flatten1 (layType Type)))
+                                 | _ => die ("protInf.spawn__noinline: expecting function type " ^
+                                             "- got " ^ PP.flatten1 (layType Type))
+                           val sch = (rhos,epss,c)
+                           val PE = PE.add(lvar,sch,PE)
+                       in protInfTr PE scope
+                       end
+                     else default()
+                   | _ => default()
+              end
+            | APP (_,_,tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
+            | EXCEPTION (_,_,_,_,tr1) => protInfTr PE tr1
+            | RAISE tr1 => protInfTr PE tr1
+            | HANDLE (tr1, tr2) => protInfTr PE tr1 && protInfTr PE tr2
+            | SWITCH_I {switch,...} => protInfSw (protInfTr PE) switch
+            | SWITCH_W {switch,...} => protInfSw (protInfTr PE) switch
+            | SWITCH_S switch => protInfSw (protInfTr PE) switch
+            | SWITCH_C switch => protInfSw (protInfTr PE) switch
+            | SWITCH_E switch => protInfSw (protInfTr PE) switch
+            | CON0 _ => empC
+            | CON1 (_,tr1) => protInfTr PE tr1
+            | DECON (_,tr1) => protInfTr PE tr1
+            | EXCON (_,SOME(_,tr1)) => protInfTr PE tr1
+            | EXCON (_,NONE) => empC
+            | DEEXCON (_,tr1) => protInfTr PE tr1
+            | RECORD (_, trs) => foldl (op &&) empC (map (protInfTr PE) trs)
+            | SELECT (_,tr1) => protInfTr PE tr1
+            | DEREF tr1 => protInfTr PE tr1
+            | REF (_,tr1) => protInfTr PE tr1
+            | ASSIGN (tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
+            | DROP tr1 => protInfTr PE tr1
+            | EQUAL (_,tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
+            | CCALL (_, trs) => foldl (op &&) empC (map (protInfTr PE) trs)
+            | BLOCKF64 (_, trs) => foldl (op &&) empC (map (protInfTr PE) trs)
+            | SCRATCHMEM _ => empC
+            | EXPORT (_,tr1) => protInfTr PE tr1
+            | RESET_REGIONS (_,tr1) => protInfTr PE tr1
+            | FRAME{declared_lvars, declared_excons} =>
+              (case !frame_pe of
+                   NONE =>
+                   let val lvs = map #lvar declared_lvars
+                       val PE' =
+                           PE.restrict (Lvars.pr_lvar, PE, lvs)
+                           handle PE.Restrict msg =>
+                                  die ("protInfE.restrict: " ^ msg)
+                   in frame_pe := SOME PE'
+                    ; empC
+                   end
+                 | SOME _ => die ("protInfTr.frame env already set"))
+
+      fun protInf (PE:pe) (PGM{expression = tr, ...} :(place,'a,'b) LambdaPgm) : pe =
+          let val () = frame_pe := NONE
+              val _ = protInfTr PE tr
+          in case !frame_pe of
+                 SOME pe => pe
+               | NONE => die "protInf: no frame"
+          end
+    end
+
 
   (**********************************)
   (* Reporting dangling pointers    *)

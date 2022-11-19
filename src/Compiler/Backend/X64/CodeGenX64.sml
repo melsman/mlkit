@@ -38,12 +38,19 @@ struct
 
   val ctx_exnptr_offs = "8"
 
+  fun inlineable C =
+      case C of
+          (i as I.jmp _) :: C => SOME ([i], i :: rem_dead_code C)
+        | (i as I.ret) :: C => SOME ([i], i :: rem_dead_code C)
+        | (i1 as I.leaq _) :: (i2 as I.ret) :: C => SOME ([i1,i2], i1 :: i2 :: rem_dead_code C)
+        | _ => NONE
+
   local
      (*******************)
      (* Code Generation *)
      (*******************)
 
-     fun CG_lss(lss,size_ff,size_ccf,C) =
+     fun CG_lss (lss,size_ff,size_ccf,C) =
        let
          fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
          fun CG_ls (ls,C) =
@@ -438,26 +445,30 @@ struct
 (*val _ = if size_cc > 1 then die ("\nfncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                  (Int.toString size_rcf) ^ ".") else () (* debug 2001-01-08, Niels *)*)
 
-                    val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) =>
                              pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
-                    fun jmp C =
+                    fun jmp doit off C =
                       case opr (* We fetch the add from the closure and opr points at the closure *)
                         of SS.PHREG_ATY opr_reg =>
                           I.movq(D(offset_codeptr,opr_reg), R tmp_reg1) ::  (* Fetch code pointer *)
-                          I.jmp(R tmp_reg1) :: C
+                          doit(R tmp_reg1) :: C
                          | _ =>
-                          move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc,   (* rsp is now pointing after the call *)
+                          move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc-off,   (* rsp is now pointing after the call *)
                           I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) :: (* convention, i.e., size_ff+size_cc *)
-                          I.jmp(R tmp_reg1) :: C)
+                          doit(R tmp_reg1) :: C)
+                    val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                         (* Move rsp after rcf *)
-                    I.push(LA return_lab) ::                                          (* Push Return Label *)
-                    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
+                    if gc_p() orelse length spilled_args > 0
+                    then let val return_lab = new_local_lab "ret_fncall"
+                         in I.push(LA return_lab) ::                                       (* Push Return Label *)
+                            flush_args(jmp I.jmp 0 (gen_bv(bv, I.lab return_lab :: C')))
+                         end
+                    else jmp I.call' 1 C')
                   end)
                | LS.JMP(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
                   comment_fn (fn () => "JMP: " ^ pr_ls ls,
@@ -518,17 +529,22 @@ struct
                                                 {args=args, clos=clos, reg_args=reg_args,
                                                  fargs=fargs, res=res}
                     val size_rcf = List.length spilled_res
-                    val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
                     fun jmp C = I.jmp(L(MLFunLab opr)) :: C
+                    val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                          (* Move rsp after rcf *)
-                    I.push(LA return_lab) ::                                           (* Push Return Label *)
-                    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
+                    if gc_p() orelse length spilled_args > 0
+                    then
+                      let val return_lab = new_local_lab "ret_funcall"
+                      in I.push(LA return_lab) ::                                           (* Push Return Label *)
+                         flush_args(jmp(gen_bv(bv, I.lab return_lab :: C')))
+                      end
+                    else I.call(MLFunLab opr) :: C')
                   end)
                | LS.LETREGION{rhos,body} =>
                   comment ("LETREGION",
@@ -591,18 +607,21 @@ struct
                            | LineStmt.WORDS i =>
                               maybe_store_tag (place,offset,C)  (* finite region; no code generated *)
                            | LineStmt.INF =>
-                              let val name =
-                                  if regions_holding_values_of_the_same_type_only place then
-                                      case Effect.get_place_ty place of
-                                          SOME Effect.PAIR_RT => "allocatePairRegion"
-                                        | SOME Effect.REF_RT => "allocateRefRegion"
-                                        | SOME Effect.TRIPLE_RT => "allocateTripleRegion"
-                                        | SOME Effect.ARRAY_RT => "allocateArrayRegion"
-                                        | _ => die "alloc_region_prim.name2"
-                                  else "allocateRegion"
+                             let val name =
+                                     if regions_holding_values_of_the_same_type_only place then
+                                       case Effect.get_place_ty place of
+                                           SOME Effect.PAIR_RT => "allocatePairRegion"
+                                         | SOME Effect.REF_RT => "allocateRefRegion"
+                                         | SOME Effect.TRIPLE_RT => "allocateTripleRegion"
+                                         | SOME Effect.ARRAY_RT => "allocateArrayRegion"
+                                         | _ => die "alloc_region_prim.name2"
+                                     else "allocateRegion"
+                                 val protect = if parallelism_p() then
+                                                 [mkIntAty (case Effect.get_protect place of SOME true => 1 | _ => 0)]
+                                               else []
                               in
                                   base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
-                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1],NONE,
+                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1] @ protect,NONE,
                                                         size_ff,tmp_reg0(*not used*),C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
@@ -693,7 +712,7 @@ struct
                   let
                     val (t_lab,f_lab) = if sel_val = IntInf.fromInt BI.ml_true then (lab_t,lab_f)
                                         else (lab_f,lab_t)
-                    val lab_exit = new_local_lab "lab_exit"
+                    val lab_exit = new_local_lab "done"
                   in
                     I.lab(LocalLab t_lab) ::
                     CG_lss(lss,size_ff,size_ccf,
@@ -726,37 +745,51 @@ struct
                | LS.SWITCH_C(LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[((con,con_kind),lss)],default)) =>
                   let
                     val (t_lab,f_lab) = if Con.eq(con,Con.con_TRUE) then (lab_t,lab_f) else (lab_f,lab_t)
-                    val lab_exit = new_local_lab "lab_exit"
                   in
-                    I.lab(LocalLab t_lab) ::
-                    CG_lss(lss,size_ff,size_ccf,
-                    I.jmp(L lab_exit) ::
-                    I.lab(LocalLab f_lab) ::
-                    CG_lss(default,size_ff,size_ccf,
-                    I.lab lab_exit :: C))
+                    case inlineable C of
+                        SOME (C,C') =>
+                        I.lab(LocalLab t_lab) ::
+                        CG_lss(lss,size_ff,size_ccf,
+                               C @ I.lab(LocalLab f_lab) ::
+                               CG_lss(default,size_ff,size_ccf, C'))
+                      | NONE =>
+                        let val lab_exit = new_local_lab "done"
+                        in I.lab(LocalLab t_lab) ::
+                           CG_lss(lss,size_ff,size_ccf,
+                                  I.jmp(L lab_exit) ::
+                                  I.lab(LocalLab f_lab) ::
+                                  CG_lss(default,size_ff,size_ccf,
+                                         I.lab lab_exit :: C))
+                        end
                   end
                | LS.SWITCH_C(LS.SWITCH(opr_aty,[],default)) => CG_lss(default,size_ff,size_ccf,C)
                | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) =>
                   let (* NOTE: selectors in sels are tagged in ClosExp; values are
                        * tagged here in CodeGenX64! *)
-                    val con_kind = case sels
-                                     of [] => die ("CG_ls: SWITCH_C sels is empty: " ^ (pr_ls ls))
-                                      | ((con,con_kind),_)::rest => con_kind
+                    (* if there are 1 or fewer nullary constructors, we can save some instructions *)
+                    val (con_kind, lte1_nullary) =
+                        case sels of [] => die ("CG_ls: SWITCH_C sels is empty: " ^ (pr_ls ls))
+                                   | ((con,con_kind),_)::rest => (con_kind,
+                                                                  Con.eq(Con.con_NIL,con) orelse
+                                                                  Con.eq(Con.con_CONS,con))
                     val sels' = map (fn ((con,con_kind),sel_insts) =>
                                      case con_kind
                                        of LS.ENUM i => (IntInf.fromInt i,sel_insts)
                                         | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
-                    fun UbTagCon(src_aty,C) =
-                      let val cont_lab = new_local_lab "cont"
-                      in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
-                         copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
-                         I.andq(I "3", R tmp_reg1) ::
-                         I.cmpq(I "3", R tmp_reg1) ::   (* do copy if tr = 3; in that case we      *)
-                         I.jne cont_lab ::              (* are dealing with a nullary constructor, *)
-                         copy(tmp_reg0, tmp_reg1,       (* and all bits are used. *)
-                         I.lab cont_lab :: C)))
-                      end
+                    fun UbTagCon (src_aty,C) =
+                        if lte1_nullary then
+                          (move_aty_into_reg(src_aty,tmp_reg1,size_ff,
+                           I.andq(I "3", R tmp_reg1) ::
+                           C))
+                        else
+                          (move_aty_into_reg(src_aty,tmp_reg0,size_ff,
+                           copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
+                           I.andq(I "3", R tmp_reg1) ::
+                           I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
+                           I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
+                           C)))                                 (* and all bits are used. *)
+
                     val (F, opr_aty) =
                       case con_kind
                         of LS.ENUM _ => (fn C => C, opr_aty)
@@ -978,26 +1011,26 @@ struct
                             | Int_to_f64     => int_to_f64 arg
                             | Blockf64_size  => blockf64_size arg
 
-                            | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je
-                                                         (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
-                                                                            precision=32},d,size_ff,C)
+                            | Is_null => cmpi_kill_tmp01_cmov {box=false,quad=false} I.cmoveq
+                                                              (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
+                                                                                 precision=32},d,size_ff,C)
                             | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
                        end
                      | [x,y] =>
                        let val arg = (x,y,d,size_ff,C)
                        in case name of
-                              Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
-                            | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je arg
-                            | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
-                            | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
-                            | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
-                            | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
+                              Equal_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
+                            | Equal_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
+                            | Equal_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
 
                             | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
                             | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
@@ -1033,69 +1066,69 @@ struct
                             | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} arg
                             | Abs_real =>   absf_kill_tmp01 arg
 
-                            | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
-                            | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl arg
-                            | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
-                            | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
-                            | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
-                            | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb arg
-                            | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
-                            | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl arg
-                            | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
-                            | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
-                            | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
-                            | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb arg
+                            | Less_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
+                            | Less_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovlq arg
+                            | Less_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
+                            | Less_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
+                            | Less_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
+                            | Less_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbq arg
+                            | Less_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
+                            | Less_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovlq arg
+                            | Less_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
+                            | Less_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
+                            | Less_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
+                            | Less_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbq arg
 
-                            | Less_real => cmpf_kill_tmp01 LESSTHAN arg
-                            | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN arg
+                            | Less_real => cmpf_kill_tmp01_cmov I.cmovbq arg
+                            | Less_f64 => cmpf64_kill_tmp01_cmov I.cmovbq arg
 
-                            | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
-                            | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle arg
-                            | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
-                            | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
-                            | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
-                            | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe arg
-                            | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
-                            | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle arg
-                            | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
-                            | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
-                            | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
-                            | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe arg
+                            | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
+                            | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovleq arg
+                            | Lesseq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
+                            | Lesseq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
+                            | Lesseq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
+                            | Lesseq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbeq arg
+                            | Lesseq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
+                            | Lesseq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovleq arg
+                            | Lesseq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
+                            | Lesseq_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
+                            | Lesseq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
+                            | Lesseq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbeq arg
 
-                            | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL arg
-                            | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL arg
+                            | Lesseq_real => cmpf_kill_tmp01_cmov I.cmovbeq arg
+                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov I.cmovbeq arg
 
-                            | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
-                            | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg arg
-                            | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
-                            | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
-                            | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
-                            | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja arg
-                            | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
-                            | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg arg
-                            | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
-                            | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
-                            | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
-                            | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja arg
+                            | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
+                            | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgq arg
+                            | Greater_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
+                            | Greater_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
+                            | Greater_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
+                            | Greater_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaq arg
+                            | Greater_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
+                            | Greater_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgq arg
+                            | Greater_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
+                            | Greater_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
+                            | Greater_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
+                            | Greater_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaq arg
 
-                            | Greater_real => cmpf_kill_tmp01 GREATERTHAN arg
-                            | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN arg
+                            | Greater_real => cmpf_kill_tmp01_cmov I.cmovaq arg
+                            | Greater_f64 => cmpf64_kill_tmp01_cmov I.cmovaq arg
 
-                            | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
-                            | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge arg
-                            | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
-                            | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
-                            | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
-                            | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae arg
-                            | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
-                            | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge arg
-                            | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
-                            | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
-                            | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
-                            | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae arg
+                            | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
+                            | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgeq arg
+                            | Greatereq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
+                            | Greatereq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
+                            | Greatereq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
+                            | Greatereq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaeq arg
+                            | Greatereq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
+                            | Greatereq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgeq arg
+                            | Greatereq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
+                            | Greatereq_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
+                            | Greatereq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
+                            | Greatereq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaeq arg
 
-                            | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL arg
-                            | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL arg
+                            | Greatereq_real => cmpf_kill_tmp01_cmov I.cmovaeq arg
+                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov I.cmovaeq arg
 
                             | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
                             | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg
@@ -1224,9 +1257,10 @@ struct
                                             (* now initialize thread local data to point to the threadinfo struct *)
                                             @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
                                               [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
-                                               I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
-                                               I.movq(R rdi,R rax),                  (* move closure into closure register *)
-                                               I.movq(D(offset_codeptr,rdi), R r10), (* extract code pointer into %r10 from C arg *)
+                                               I.movq(D("0",rdi),R rax),             (* extract closure from threadinfo arg *)
+                                               (*I.movq(R rdi,R rax),*)                  (* move closure into closure register *)
+                                               I.leaq(D("8",rdi),R r14),             (* extract ctx from threadinfo and store it in ctx-register r14 *)
+                                               I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 from C arg *)
                                                I.push(I"0"),                         (* push dummy - for 16-byte alignment *)
                                                I.push (LA return_lab),               (* push return address *)
                                                I.jmp (R r10),                        (* call ML function *)
@@ -1235,7 +1269,7 @@ struct
                                                I.movq(R rdi, R tmp_reg0),
                                                I.push(I"0")                          (* push dummy - for 16-byte alignment *)
                                               ]
-                                            @ compile_c_call_prim("pthread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
+                                            @ compile_c_call_prim("thread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
                                               [I.addq(I "16", R rsp),                 (* adjust stack - for 16-byte alignment *)
                                                I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
@@ -1419,6 +1453,11 @@ struct
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val size_ff = CallConv.get_frame_size cc
+        val size_ff = if not(gc_p()) andalso size_ff = 1 andalso basic_lss lss then 0
+                      else size_ff
+(*
+        val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
+*)
         val size_ccf = CallConv.get_ccf_size cc
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
@@ -1433,18 +1472,19 @@ struct
         val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_and_float_args)
 
         val () = reset_code_blocks()
+
+        val return_code =
+            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+                             I.ret :: nil)
         val C =
             checkGC(
             base_plus_offset(rsp,WORDS(~size_ff),rsp,
             do_simple_memprof(
             do_prof(
-            CG_lss(lss,size_ff,size_ccf,
-            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-            I.pop (R tmp_reg1) ::
-            I.jmp (R tmp_reg1) ::
-            GCsnippet))))))
+            CG_lss(lss,size_ff,size_ccf, return_code
+            )))))
       in
-        gen_fn(lab, C @ get_code_blocks())
+        gen_fn(lab, C @ GCsnippet @ get_code_blocks())
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1558,6 +1598,102 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                           I.movq(R rsp, L data_lab_ptr_lab) :: C) labs)
               end
           else C
+
+        (* allocinreg expects the following arguments:
+         *   tmp_reg0: size in words
+         *   tmp_reg1: region ptr
+         *   result in tmp_reg1
+         *)
+
+        fun allocinreg C =
+            if not(parallelism_p()) then C
+            else
+            let val allocinreg_protect = new_local_lab "alloc_protect"
+                val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())
+                val l_expand = new_local_lab "expand"
+                val l_expand_protect = new_local_lab "protect"
+                fun mk_expand_protect C =
+                    I.lab l_expand_protect ::                 (* expand_protect:                    *)
+                    I.pop(R I.rax) ::                         (*   restore rax                      *)
+                    I.pop(R tmp_reg1) ::
+                    I.pop(R tmp_reg0) ::
+                    I.jmp(L(NameLab "__allocate")) :: C       (*   jmp to __allocate with args in   *)
+                                                              (*     tmp_reg1 and tmp_reg0; result  *)
+                                                              (*     in tmp_reg1; return address is *)
+                                                              (*     already on the stack...        *)
+                fun mk_expand C =
+                    I.lab l_expand ::                             (* expand:                            *)
+                    I.pop(R tmp_reg1) ::                          (*   pop region ptr                   *)
+                    I.pop(R tmp_reg0) ::
+                    I.jmp(L(NameLab "__allocate_unprotected")) :: (*   jmp to __allocate with args in   *)
+                    C                                             (*     tmp_reg1 and tmp_reg0; result  *)
+                                                                  (*     in tmp_reg1; return address is *)
+                                                                  (*     already on the stack...        *)
+
+              (* remember to update alloc_period only when "alloc" or
+               * "alloc_protected" are not called, as these runtime
+               * routines themselves update alloc_period... *)
+              fun maybe_update_alloc_period r C =
+                  if gc_p() then
+                    I.addq(R r,L(NameLab "alloc_period")) :: C
+                  else C
+
+            in I.dot_globl(NameLab "allocinreg") ::
+              I.lab (NameLab "allocinreg") ::
+              I.andq(I (i2s (~4)), R tmp_reg1) ::                    (*   tmp_reg1 = clearBits(tmp_reg1)   *)
+              I.cmpq(I "0",D(mutex_offset_bytes,tmp_reg1)) ::
+              I.jne allocinreg_protect ::
+              (* simple non-protected allocation *)
+              I.push(R tmp_reg0) ::                                   (*   push tmp_reg0 (n)                *)
+              I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
+              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
+              I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
+              copy(tmp_reg1, tmp_reg0,
+              I.movq(D("8",rsp), R tmp_reg1) ::
+              I.leaq(DD("0",tmp_reg0,tmp_reg1,"8"),R tmp_reg1) ::     (*   tmp_reg1 = tmp_reg0 + 8n         *)
+              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
+              I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
+              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
+              I.pop (R tmp_reg1) ::
+              store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+              I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = n                     *)
+              I.imulq(I"8",R tmp_reg1) ::                             (*   tmp_reg1 = 8n                   *)
+              maybe_update_alloc_period tmp_reg1 (
+              I.subq (R tmp_reg1,R tmp_reg0) ::                       (*   tmp_reg0 = tmp_reg0-8n          *)
+              I.movq (R tmp_reg0,R tmp_reg1) ::
+              I.ret ::
+
+              (* complex atomic *)
+              I.lab allocinreg_protect ::
+              I.push(R tmp_reg0) ::                                  (*   push tmp_reg0 (n)                *)
+              I.push(R tmp_reg1) ::                                  (*   push tmp_reg1                    *)
+              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,              (*   tmp_reg1 = tmp_reg1[0]           *)
+              I.push(R I.rax) ::                                     (*   save rax on the stack            *)
+              I.movq(R tmp_reg1, R I.rax) ::                         (*   rax = tmp_reg1                   *)
+              I.addq(I "-1", R tmp_reg1) ::                          (*   tmp_reg1 = tmp_reg1 - 1          *)
+              copy(tmp_reg1, tmp_reg0,
+              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
+              I.movq(D("16",rsp), R tmp_reg1) ::                     (*   tmp_reg1 = n                     *)
+              I.leaq(DD("-1",rax,tmp_reg1,"8"),R tmp_reg1) ::        (*   tmp_reg1 = a-1+8n                *)
+              I.cmpq(R tmp_reg0, R tmp_reg1) ::                      (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              I.jg l_expand_protect ::                               (*        (a-1+8n > boundary-1)       *)
+              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                  (*   tmp_reg0 = tmp_reg1 + 1          *)
+              I.movq(D("8",rsp),R tmp_reg1) ::                       (*   restore tmp_reg1                 *)
+              I.cmpxchgq(R tmp_reg0,D("0",tmp_reg1)) ::              (*   tmp_reg1[0] = tmp_reg0           *)
+              I.jne l_expand_protect ::                              (*      (if rax = tmp_reg1[0])        *)
+              I.pop (R rax) ::
+              I.pop (R tmp_reg1) ::
+              I.pop (R tmp_reg1) ::
+              I.imulq(I"8",R tmp_reg1) ::                            (*   tmp_reg1 = 8n                   *)
+              maybe_update_alloc_period tmp_reg1 (
+              I.subq (R tmp_reg1,R tmp_reg0) ::                      (*   tmp_reg0 = tmp_reg0-8n          *)
+              I.movq (R tmp_reg0,R tmp_reg1) ::
+              I.ret ::
+
+              mk_expand (
+              mk_expand_protect C))))))))
+            end
 
         fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)
           let
@@ -1720,15 +1856,18 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             push_callersave_regs
             (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, tmp_reg0,
               pop_callersave_regs
-                  (I.pop(R tmp_reg0) ::
-                   I.jmp(R tmp_reg0) :: C)))
+                  ( I.ret ::
+                    (*
+                    I.pop(R tmp_reg0) ::
+                    I.jmp(R tmp_reg0) :: *)
+                   C)))
           end
 
         fun allocate C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
           ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg0], true, C)
 
         fun allocate_unprotected C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
-            if parallelism_p() andalso par_alloc_unprotected_p() then
+            if parallelism_p() (*andalso par_alloc_unprotected_p()*) then
               ccall_stub("__allocate_unprotected", "alloc_unprotected", [tmp_reg1, tmp_reg0], true, C)
             else C
 
@@ -1833,9 +1972,16 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         fun allocate_global_regions (region_labs,C) =
           let
-            fun maybe_pass_region_id (region_id,C) =
-              if region_profiling() then I.movq(I (i2s region_id), R rdx) :: C
-              else C
+            fun maybe_pass_region_id (rho,C) =
+                if region_profiling()
+                then let val region_id = Effect.key_of_eps_or_rho rho
+                     in I.movq(I (i2s region_id), R rdx) :: C
+                     end
+                else if parallelism_p()
+                then let val protect = "1"  (* use protection (mutexes) for global regions *)
+                     in I.movq(I protect, R rdx) :: C
+                     end
+                else C
             (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
             fun c_name rho =
@@ -1859,8 +2005,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                     else "allocateRegion"
           in
             foldl (fn ((rho,lab),C) =>
-                   let val region_id = Effect.key_of_eps_or_rho rho
-                       val name = c_name rho
+                   let val name = c_name rho
                        val C = I.movq(R rax, L (DatLab lab)) :: C
                        val sz_regdesc = BI.size_of_reg_desc()
                        val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
@@ -1873,7 +2018,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::
                        I.movq(R r14, R rdi) ::
                        I.movq(R rsp, R rsi) ::
-                       maybe_pass_region_id (region_id,
+                       maybe_pass_region_id (rho,
                                              I.call(NameLab name) ::
                                              C)
                    end) C region_labs
@@ -1965,7 +2110,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.ret :: C))))))))))))
 
         val init_link_code = (main_insts o raise_insts o
-                              toplevel_handler o allocate o allocate_unprotected o resetregion o
+                              toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then

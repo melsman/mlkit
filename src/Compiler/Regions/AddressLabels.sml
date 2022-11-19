@@ -15,21 +15,25 @@ structure AddressLabels: ADDRESS_LABELS =
     fun new_named name = (Name.new (), name)
     fun key (n,s) = Name.key n
 
-    fun eq(l1,l2) = key l1 = key l2
-    fun lt(l1,l2) =
+    fun renew ((_,s1):label) (s2:string) = (Name.new(), s1 ^ "." ^ s2)
+
+    fun eq (l1,l2) = key l1 = key l2
+    fun lt (l1,l2) =
 	let val (i1,s1) = key l1
 	    val (i2,s2) = key l2
 	in i1 < i2 orelse (i1=i2 andalso s1 < s2)
 	end
 
-    fun pr_label(l,s) =
+    val xx = "abcdefghijklmnopqrstuvxyzABCDEFGHIJKLMNOPQRSTUVXYZ0123456789"
+    fun pr_label (l,s) =
 	let val (i,b) = Name.key l
-	in s ^ "$" ^ Int.toString i ^ "$" ^ b
+            val k = "$" ^ Int.toString i ^ "$" ^ b
+	in s ^ "_" ^ MD5.fromStringP xx k
 	end
 
     type name = Name.name
     fun name (l,s) = l
-    fun match((l1,_),(l2,_)) = Name.match(l1,l2)
+    fun match ((l1,_),(l2,_)) = Name.match(l1,l2)
 
     val reg_top_lab = (Name.reg_top, "reg_top")                   (* label 0 *)
     val reg_bot_lab = (Name.reg_bot, "reg_bot")                   (* label 1 *)

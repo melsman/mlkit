@@ -820,13 +820,9 @@ struct
      * t may be used in a call to alloc. *)
 
     fun reset_region (t:reg,tmp:reg,size_ff,C) =
-      let val l = new_local_lab "return_from_alloc"
-      in copy(t,tmp_reg1,
-         I.push(LA l) ::
-         I.jmp(L(NameLab "__reset_region")) ::
-         I.lab l ::
-         copy(tmp_reg1, t, C))
-      end
+        copy(t,tmp_reg1,
+        I.call (NameLab "__reset_region") ::
+        copy(tmp_reg1, t, C))
 
     fun simple_p () = false
 
@@ -835,7 +831,6 @@ struct
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
-              val l = new_local_lab "return_from_alloc"
               fun post_prof C =
                   (* tmp_reg1 now points at the object descriptor; initialize it *)
                   I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
@@ -843,32 +838,30 @@ struct
                   I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) ::
                   C                                                    (* make tmp_reg1 point at object *)
           in copy(t,tmp_reg1,
-             I.push(LA l) ::
              move_immed(IntInf.fromInt n, R tmp_reg0,
-             I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-             I.lab l ::
+             I.call (NameLab "__allocate") :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
              post_prof
              (copy(tmp_reg1,t,C))))
           end
         else if parallelism_p() andalso simple_p() then
           let val n = n0
-              val l = new_local_lab "return_from_alloc"
-              fun maybe_update_alloc_period C =
-                  if gc_p() then
-                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
-                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
-                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
-                    C
-                  else C
           in
-            I.push(LA l) ::                              (*   push continuation label          *)
             copy(t,tmp_reg1,
             move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-            I.jmp(L(NameLab "__allocate")) ::            (*   jmp to __allocate with args in   *)
-            maybe_update_alloc_period(
-            I.lab l ::                                   (*     tmp_reg1 and tmp_reg0; result  *)
-            copy(tmp_reg1,t,C))))                        (*     in tmp_reg1.                   *)
+            I.call (NameLab "__allocate") ::             (*   call __allocate with args in   *)
+            copy(tmp_reg1,t,C)))                         (*     tmp_reg1 and tmp_reg0; result  *)
+                                                         (*     in tmp_reg1.                   *)
           end
+        else if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
+          let val n = n0 (* size in words *)
+          in
+            copy(t,tmp_reg1,
+            move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
+            I.call (NameLab "allocinreg") ::             (*   call allocinreg with args in     *)
+            copy(tmp_reg1,t,C)))                         (*     tmp_reg1 and tmp_reg0; result  *)
+                                                         (*     in tmp_reg1.                   *)
+          end
+(*
         else if parallelism_p() andalso not(par_alloc_unprotected_p()) then
           let val n = n0
               val l = new_local_lab "return_from_alloc"
@@ -908,32 +901,36 @@ struct
             I.pop (R rax) ::
             I.pop (R tmp_reg1) ::
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
-            maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+            maybe_update_alloc_period n (                           (*     in tmp_reg1.                   *)
+            (copy(tmp_reg1,t,C))))))
           end
+*)
         else
           let val n = n0
-              val l = new_local_lab "return_from_alloc"
-              val l_expand = new_local_lab "alloc_expand"
+              val l = new_local_lab "ret_alloc"
+              val l_expand = new_local_lab "expand"
               val allocate_lab =
                   if parallelism_p() andalso par_alloc_unprotected_p() then
                     NameLab "__allocate_unprotected"
                   else NameLab "__allocate"
-              fun maybe_update_alloc_period C =
-                  if gc_p() then
-                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
-                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
-                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
-                    C
-                  else C
               val () =
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
                        I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
                        I.push(LA l) ::                              (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-                       I.jmp(L allocate_lab) :: nil))      (*   jmp to __allocate with args in   *)
+                       I.jmp(L allocate_lab) :: nil))               (*   jmp to __allocate with args in   *)
+                                                                    (*     tmp_reg1 and tmp_reg0; result  *)
+                                                                    (*     in tmp_reg1.                   *)
+
+              (* remember to update alloc_period only when "alloc" or
+               * "alloc_protected" are not called, as these runtime
+               * routines themselves update alloc_period... *)
+              fun maybe_update_alloc_period nw C =
+                  if gc_p() then
+                    I.addq(I (i2s (8*nw)),L(NameLab "alloc_period")) :: C
+                  else C
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
@@ -949,7 +946,7 @@ struct
             I.pop (R tmp_reg1) ::
             store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
-            maybe_update_alloc_period(
+            maybe_update_alloc_period n (
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
             (copy(tmp_reg1,t,C)))))))                               (*     in tmp_reg1.                   *)
           end
@@ -1233,12 +1230,14 @@ struct
       (* Compile Switch Statements *)
       local
         fun new_label str = new_local_lab str
-        fun label(lab,C) = I.lab lab :: C
-        fun jmp(lab,C) = I.jmp(L lab) :: rem_dead_code C
+        fun label (lab,C) = I.lab lab :: C
+        fun jmp (lab,C) = I.jmp(L lab) :: rem_dead_code C
         fun inline_cont C =
-          case C
-            of (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
-             | _ => NONE
+            case C of
+                (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
+              | (i as I.ret) :: _ => SOME (fn C => i :: rem_dead_code C)
+              | (i1 as I.leaq _) :: (i2 as I.ret) :: _ => SOME (fn C => i1 :: i2 :: rem_dead_code C)
+              | _ => NONE
       in
         fun binary_search (sels,
                            default,
@@ -1311,7 +1310,7 @@ struct
                            toInt,
                            C))
         end
-
+(*
       fun cmpi_kill_tmp01 {box,quad} jump (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1340,6 +1339,32 @@ struct
            I.lab true_lab ::
            I.movq(I (i2s BI.ml_true), R d_reg) ::
            I.lab cont_lab :: C')))
+        end
+*)
+      fun cmpi_kill_tmp01_cmov {box,quad} cmov (x,y,d,size_ff,C) =
+        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+            val (inst_cmp, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.cmpq, fn r => r)
+                else (I.cmpl, I.doubleOfQuadReg)
+            fun compare C =
+              if box then
+                I.movq(D("8",y_reg), R tmp_reg1) ::
+                I.movq(D("8",x_reg), R tmp_reg0) ::
+                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
+                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
+              else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
+                            R (maybeDoubleOfQuadReg x_reg)) :: C
+        in
+           x_C(
+           y_C(
+           compare (
+           I.movq(I (i2s BI.ml_false), R d_reg) ::
+           I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+           cmov(R tmp_reg1, R d_reg) ::
+           C')))
         end
 
       fun doubleOfQuadEa ea =
@@ -1511,7 +1536,7 @@ struct
                        R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
-
+(*
       fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
@@ -1527,6 +1552,23 @@ struct
            jump_overflow (
            do_tag C')))
         end
+*)
+      fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
+        let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+            val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
+            val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.addq, I.negq, fn r => r)
+                else (I.addl, I.negl, I.doubleOfQuadReg)
+            fun do_tag C = if tag then inst_add (I "2", R (maybeDoubleOfQuadReg d_reg)) ::
+                                       jump_overflow C
+                           else C
+        in x_C(copy(x_reg, d_reg,
+           inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
+           jump_overflow (
+           do_tag C')))
+        end
+
 
       fun neg_int_boxed_kill_tmp0 {quad:bool} (b,x,d,size_ff,C) =
         if not(BI.tag_values()) then die "neg_int_boxed_kill_tmp0.tagging required"
@@ -1968,25 +2010,15 @@ struct
               I.maxsd (R tmp_freg0, R d) :: C')
        end
 
-     datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
-     fun pp_cond LESSTHAN = "LESSTHAN"
-       | pp_cond LESSEQUAL = "LESSEQUAL"
-       | pp_cond GREATERTHAN = "GREATERTHAN"
-       | pp_cond GREATEREQUAL = "GREATEREQUAL"
-     fun cmpf64_kill_tmp0 cond (x,y,d,size_ff,C) = (* ME MEMO *)
+(*
+     fun cmpf64_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
-             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong x register")
-             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong y register")
+             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01: wrong x register")
+             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01: wrong y register")
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
              val true_lab = new_local_lab "true"
              val cont_lab = new_local_lab "cont"
-             val jump = (* from gcc experiments *)
-                 case cond of
-                     LESSTHAN => I.jb      (*below*)
-                   | LESSEQUAL => I.jbe    (*below or equal*)
-                   | GREATERTHAN => I.ja   (*above*)
-                   | GREATEREQUAL => I.jae (*above or equal*)
          in x_C(y_C(I.ucomisd (R y, R x) ::
                     jump true_lab ::
                     I.movq(I (i2s BI.ml_false), R d_reg) ::
@@ -1995,6 +2027,20 @@ struct
                     I.movq(I (i2s BI.ml_true), R d_reg) ::
                     I.lab cont_lab ::
                     C'))
+         end
+*)
+
+     fun cmpf64_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
+             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
+             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+         in x_C(y_C(I.ucomisd (R y, R x) ::
+            I.movq(I (i2s BI.ml_false), R d_reg) ::
+            I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+            cmov(R tmp_reg1, R d_reg) ::
+            C'))
          end
 
      local
@@ -2064,27 +2110,16 @@ struct
          copy(b_reg,d_reg, C'))))
        end
 
-     fun cmpf_kill_tmp01 cond (x,y,d,size_ff,C) = (* ME MEMO *)
+     fun cmpf_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
        let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
            val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-           val true_lab = new_local_lab "true"
-           val cont_lab = new_local_lab "cont"
-           val jump = (* from gcc experiments *)
-               case cond of
-                   LESSTHAN => I.jb      (*below*)
-                 | LESSEQUAL => I.jbe    (*below or equal*)
-                 | GREATERTHAN => I.ja   (*above*)
-                 | GREATEREQUAL => I.jae (*above or equal*)
            val load_args = x_C o y_C
        in
          load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
-         jump true_lab ::
          I.movq(I (i2s BI.ml_false), R d_reg) ::
-         I.jmp(L cont_lab) ::
-         I.lab true_lab ::
-         I.movq(I (i2s BI.ml_true), R d_reg) ::
-         I.lab cont_lab ::
+         I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+         cmov(R tmp_reg1, R d_reg) ::
          C')
        end
 
@@ -2780,5 +2815,159 @@ struct
               end
          end
 
+     local
+       fun basic_sw basic_lss (LS.SWITCH(_,xlsss,lss)) =
+           basic_lss lss andalso
+           List.all (fn (_,lss) => basic_lss lss) xlsss
 
+       fun basic_regions nil = true
+         | basic_regions _ = false
+
+       fun nonbasic_prim p : bool =
+           let open PrimName
+           in case p of
+                  Plus_int31 => true | Plus_int32ub => true | Plus_int32b => true
+                  | Plus_word31 => false | Plus_word32ub => false | Plus_word32b => false
+                  | Plus_int63 => true| Plus_int64ub => true | Plus_int64b => true
+                  | Plus_word63 => false | Plus_word64ub => false| Plus_word64b => false
+                  | Plus_real => false | Plus_f64 => false
+                  | Minus_int31 => true | Minus_int32ub => true | Minus_int32b => true
+                  | Minus_word31 => false | Minus_word32ub => false | Minus_word32b => false
+                  | Minus_int63 => true| Minus_int64ub => true | Minus_int64b => true
+                  | Minus_word63 => false | Minus_word64ub => false | Minus_word64b => false
+                  | Minus_real => false | Minus_f64 => false
+                  | Mul_int31 => true | Mul_int32ub => true | Mul_int32b => true
+                  | Mul_word31 => false | Mul_word32ub => false | Mul_word32b => false
+                  | Mul_int63  => true| Mul_int64ub => true | Mul_int64b => true
+                  | Mul_word63 => false | Mul_word64ub => false | Mul_word64b => false
+                  | Mul_real => false | Mul_f64 => false
+                  | Div_real => false | Div_f64 => false
+                  | Neg_int31 => true | Neg_int32ub => true | Neg_int32b => true
+                  | Neg_int63 => true | Neg_int64ub => true | Neg_int64b => true
+                  | Neg_real => false | Neg_f64 => false
+                  | Abs_int31 => true | Abs_int32ub => true | Abs_int32b => true
+                  | Abs_int63 => true | Abs_int64ub => true | Abs_int64b => true
+                  | Abs_real => false | Abs_f64 => false
+                  | Andb_word31 => false | Andb_word32ub => false | Andb_word32b => false
+                  | Andb_word63 => false | Andb_word64ub => false | Andb_word64b => false
+                  | Orb_word31 => false | Orb_word32ub => false | Orb_word32b => false
+                  | Orb_word63 => false | Orb_word64ub => false | Orb_word64b => false
+                  | Xorb_word31 => false | Xorb_word32ub => false | Xorb_word32b => false
+                  | Xorb_word63 => false | Xorb_word64ub => false | Xorb_word64b => false
+                  | Shift_left_word31 => false | Shift_left_word32ub => false | Shift_left_word32b => false
+                  | Shift_left_word63 => false | Shift_left_word64ub => false | Shift_left_word64b => false
+                  | Shift_right_signed_word31 => false | Shift_right_signed_word32ub => false
+                  | Shift_right_signed_word32b => false
+                  | Shift_right_signed_word63 => false | Shift_right_signed_word64ub => false
+                  | Shift_right_signed_word64b => false
+                  | Shift_right_unsigned_word31 => false | Shift_right_unsigned_word32ub => false
+                  | Shift_right_unsigned_word32b => false
+                  | Shift_right_unsigned_word63 => false | Shift_right_unsigned_word64ub => false
+                  | Shift_right_unsigned_word64b => false
+                  | Int31_to_int32b => false | Int31_to_int32ub => false | Int32b_to_int31 => true
+                  | Int32b_to_word32b => false | Int32ub_to_int31 => true
+                  | Int31_to_int64b => false | Int31_to_int64ub => false | Int64b_to_int31 => true
+                  | Word31_to_word32b => false | Word31_to_word32ub => false | Word32b_to_word31 => false
+                  | Word32ub_to_word31 => false
+                  | Word31_to_word32ub_X => false | Word31_to_word32b_X => false
+                  | Word32b_to_int32b => true | Word32b_to_int32b_X => false | Word32ub_to_int32ub => true
+                  | Word31_to_int31 => true
+                  | Word32b_to_int31 => true | Int32b_to_word31 => true | Word32b_to_int31_X => true
+                  | Word64ub_to_int32ub => true
+                  | Word32ub_to_word64ub => false | Word64ub_to_word32ub => false | Word64ub_to_int64ub => true
+                  | Word64ub_to_int64ub_X => false
+                  | Word31_to_word64b => false | Word31_to_word64b_X => false | Word64b_to_int31 => true
+                  | Word64b_to_int64b_X => true | Word64b_to_int64b => true | Word32b_to_word64b => false
+                  | Word32b_to_word64b_X => false | Word64b_to_word32b => false | Word64b_to_int31_X => true
+                  | Int32b_to_int64b => false | Int32ub_to_int64ub => false | Int64b_to_word64b => false
+                  | Int64ub_to_word64ub => false | Int64ub_to_int32ub => true
+                  | Int63_to_int64b => false | Int64b_to_int63 => true | Word32b_to_word63 => false
+                  | Word63_to_word32b => false
+                  | Word63_to_word31 => false | Word31_to_word63 => false | Word31_to_word63_X => false
+                  | Word63_to_word64b => false
+                  | Word63_to_word64b_X => false | Word64b_to_word63 => false
+                  | Int31_to_int63 => false | Int63_to_int31 => true | Int32b_to_int63 => false
+                  | Int63_to_int32b => true
+                  | Word32b_to_int63 => false | Word32b_to_int63_X => false | Word64b_to_word31 => false
+                  | Word64b_to_int63 => true | Word64b_to_int63_X => true | Int63_to_int64ub => false
+                  | Int64ub_to_int63 => true | Word63_to_word64ub => false | Word63_to_word64ub_X => false
+                  | Word64ub_to_word31 => false | Int64ub_to_int31 => true | Word31_to_word64ub => false
+                  | Word31_to_word64ub_X => false | Word32ub_to_int64ub => false
+                  | Word32ub_to_int64ub_X => false | Word32ub_to_word64ub_X => false
+                  | Exn_ptr => false | Fresh_exname => false | Get_ctx => false
+                  | Bytetable_sub => false | Bytetable_size => false | Bytetable_update => false
+                  | Word_sub0 => false | Word_update0 => false | Table_size => false | Is_null => false
+                  | ServerGetCtx => true
+                  | Max_f64 => false | Min_f64 => false | Real_to_f64 => false | F64_to_real => false
+                  | Sqrt_f64 => false
+                  | Int_to_f64 => false
+                  | Blockf64_update_real => false | Blockf64_sub_real => false | Blockf64_size => false
+                  | Blockf64_alloc => true
+                  | Blockf64_update_f64 => false | Blockf64_sub_f64 => false
+                  | _ => true
+           end
+
+       fun basic_prim p : bool =
+           PrimName.is_flow_prim p orelse
+           not(nonbasic_prim p)
+
+       fun basic_assign {bind,pat} : bool =
+           case bind of
+               LS.ATOM _ => true
+             | LS.LOAD _ => true
+             | LS.STORE _ => true
+             | LS.STRING _ => true
+             | LS.REAL _ => true
+             | LS.F64 _ => true
+             | LS.CLOS_RECORD _ => false
+             | LS.REGVEC_RECORD _ => false
+             | LS.SCLOS_RECORD _ => false
+             | LS.RECORD {elems=[],...} => true
+             | LS.RECORD _ => false
+             | LS.BLOCKF64 {elems=[],...} => true
+             | LS.BLOCKF64 _ => false
+             | LS.SCRATCHMEM{bytes=0,alloc,tag} => true
+             | LS.SCRATCHMEM _ => false
+             | LS.SELECT _ => true
+             | LS.CON0 {con_kind=LS.ENUM _,...} => true
+             | LS.CON0 _ => false
+             | LS.CON1 {con_kind=LS.UNBOXED _,...} => true
+             | LS.CON1 _ => false
+             | LS.DECON _ => true
+             | LS.REF _ => false
+             | LS.DEREF _ => true
+             | LS.ASSIGNREF _ => true
+             | LS.PASS_PTR_TO_MEM _ => false
+             | LS.PASS_PTR_TO_RHO _ => true
+
+       fun basic_lss lss : bool =
+           case lss of
+               nil => true
+             | ls::lss => basic_ls ls andalso basic_lss lss
+       and basic_ls ls : bool =
+           case ls of
+               LS.ASSIGN a => basic_assign a
+             | LS.FLUSH(atom,_) => false
+             | LS.FETCH(atom,_) => false
+             | LS.FNJMP a => false
+             | LS.FNCALL a => false
+             | LS.JMP a => true
+             | LS.FUNCALL a => false
+             | LS.LETREGION{rhos,body} => basic_regions rhos andalso basic_lss body
+             | LS.SCOPE{pat,scope} => basic_lss scope
+             | LS.HANDLE _ => false
+             | LS.RAISE a => false
+             | LS.SWITCH_I {switch,precision} => basic_sw basic_lss switch
+             | LS.SWITCH_W {switch,precision} => basic_sw basic_lss switch
+             | LS.SWITCH_S sw => basic_sw basic_lss sw
+             | LS.SWITCH_C sw => basic_sw basic_lss sw
+             | LS.SWITCH_E sw => basic_sw basic_lss sw
+             | LS.RESET_REGIONS a => false
+             | LS.PRIM a => basic_prim (#name a)
+             | LS.CCALL a => false
+             | LS.CCALL_AUTO a => false
+             | LS.EXPORT a => false
+     in
+     val basic_lss = basic_lss
+     end
 end

@@ -47,6 +47,7 @@ signature BACKEND_INFO =
     val size_region_page : unit -> int  (* see also Region.h: REGION_PAGE_SIZE_BYTES *)
 
     val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
+    val region_mutex_offset_words : unit -> int
 
     val finiteRegionDescSizeP : int     (* Number of words in a finite region
 					 * descriptor when profiling is used. *)

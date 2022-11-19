@@ -49,6 +49,11 @@ struct
        menu=["Layout", "print effects"], desc=
        "Print effects in region types."}
 
+  val print_rho_protection = Flags.add_bool_entry
+      {long="print_rho_protection", short=SOME "Prho_protection", item=ref false, neg=false,
+       menu=["Layout", "print rho protection"], desc=
+       "Print protectedness of region variables if set (P or U)."}
+
   type StringTree = PP.StringTree
 
   fun die s = (print ("Effect." ^ s ^ "\n"); Crash.impossible("Effect." ^ s))
@@ -104,6 +109,10 @@ struct
   fun show_level (ref i) = Int.toString i
   fun layout_level l = PP.LEAF(show_level l)
 
+  fun show_protection (ref 0) = ""
+    | show_protection (ref 1) = "U"
+    | show_protection (ref _) = "P"
+
   type regvar = RegVar.regvar
 
   (* info in nodes of effect graphs *)
@@ -122,7 +131,8 @@ struct
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType,
                            rv_opt : regvar option,
-                           pinned: bool}
+                           pinned: bool,
+                           protected : int ref}
 
   fun layout_einfo einfo =
       case einfo of
@@ -134,12 +144,14 @@ struct
         | PUT => PP.LEAF "put"
         | GET => PP.LEAF "get"
         | UNION _ => PP.LEAF "U"
-        | RHO{key,level,ty,put,rv_opt,...} =>
+        | RHO{key,level,ty,put,rv_opt,protected,...} =>
           let val n = case rv_opt of
                           NONE => "r" ^ show_key key
                         | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
           in PP.LEAF (n ^
                       (if print_rho_types() then show_runType ty
+                       else "") ^
+                      (if print_rho_protection() then show_protection protected
                        else "") ^
                       (if print_rho_levels() then "(" ^ show_level level ^ ")"
                        else "")
@@ -254,6 +266,33 @@ struct
           [rho] => rho
         | _ => die "rho_of"
 
+  fun set_protect effect : unit =
+      case G.find_info effect of
+          RHO{protected,...} =>
+          (case !protected of
+               0 => protected := 2
+             | 1 => die "set_protect: rho already set to unprotected"
+             | _ => ())
+        | _ => die "set_protect: expecting rho"
+
+  fun set_unprotect effect : unit =
+      case G.find_info effect of
+          RHO{protected,...} =>
+          (case !protected of
+               0 => protected := 1
+             | 1 => ()
+             | _ => die "set_unprotect: rho already set to protected")
+        | _ => die "set_unprotect: expecting rho"
+
+  fun get_protect effect : bool option =
+      case G.find_info effect of
+          RHO{protected,...} =>
+          (case !protected of
+               0 => NONE
+             | 1 => SOME false
+             | _ => SOME true)
+        | _ => die "get_protect: expecting rho"
+
   fun edge (from,to) = G.mk_edge(from,to);
 
   local
@@ -261,7 +300,7 @@ struct
         G.mk_node(RHO{key = ref key, level = ref level,
                       put = NONE, get = NONE, instance = ref NONE,
                       pix = ref ~1, ty = BOT_RT, rv_opt=rv_opt,
-                      pinned=pinned})
+                      pinned=pinned,protected=ref 0})
   in fun mkRho x = mkRho0 false x
      fun mkRho_pinned x = mkRho0 true x
   end
@@ -269,11 +308,11 @@ struct
   fun mkPut (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{put=SOME n',...} => n'  (* hash consing *)
-        | RHO{put=NONE,key,level,get,instance,pix,ty,rv_opt,pinned} =>
+        | RHO{put=NONE,key,level,get,instance,pix,ty,rv_opt,pinned,protected} =>
           let val new = G.mk_node PUT (* create new node *)
           in G.set_info n (RHO{put=SOME new,
                                get=get,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned});
+                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
              G.mk_edge(new,n);
              new
           end
@@ -282,11 +321,11 @@ struct
   fun mkGet (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{get=SOME n',...} => n'  (* hash consing *)
-        | RHO{get=NONE,key,level,put,instance,pix,ty,rv_opt,pinned} =>
+        | RHO{get=NONE,key,level,put,instance,pix,ty,rv_opt,pinned,protected} =>
           let val new = G.mk_node GET  (* create new node *)
           in G.set_info n (RHO{get=SOME new,
                                put=put,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned});
+                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
              G.mk_edge(new,n);
              new
           end
@@ -619,13 +658,13 @@ struct
   fun rename_rhos_aux (rhos, c: cone as (n,_), f, g) : effect list * cone =
       foldr (fn (rho,(rhos',c)) =>
                   case G.find_info rho of
-                    RHO{level,pix,ty,...} =>
+                    RHO{level,pix,ty,protected=ref prot,...} =>
                      let val k = freshRhoInt()
                          val new_rho =
                              G.mk_node(RHO{key = ref k, level = ref(g level),
                                            put = NONE, get = NONE, instance = ref NONE,
                                            pix = ref(f pix), ty = ty, rv_opt=NONE,
-                                           pinned=false})
+                                           pinned=false,protected=ref prot})
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
                      end
@@ -667,7 +706,7 @@ struct
       let val key = freshRhoInt()
           val node =G.mk_node(RHO{key = ref key, level = ref n,
                                   put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
-                                  rv_opt=rv_opt,pinned=false})
+                                  rv_opt=rv_opt,pinned=false,protected=ref 0})
         in (node, add(node, n, key, cone))
       end
 
@@ -684,23 +723,23 @@ struct
 
   fun setRunType (place:place) (rt: runType) : unit =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned} =>
+          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} =>
           G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=rt,rv_opt=rv_opt,pinned=pinned})
+                                pix=pix,ty=rt,rv_opt=rv_opt,pinned=pinned,protected=protected})
         | _ => die "setRunType: node is not a region variable"
 
   fun setRegVar (place:place) (rv: RegVar.regvar) : unit =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt=NONE,pinned} =>
+          RHO{put,get,key,level,instance,pix,ty,rv_opt=NONE,pinned,protected} =>
           G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=ty,rv_opt=SOME rv,pinned=pinned})
+                                pix=pix,ty=ty,rv_opt=SOME rv,pinned=pinned,protected=protected})
         | RHO{rv_opt=SOME rv',...} => if RegVar.eq(rv,rv') then ()
                                       else die "setRegVar: explicit regvar already set"
         | _ => die "setRegVar: node is not a region variable"
 
   fun getRegVar (place:place) : RegVar.regvar option =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned} => rv_opt
+          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} => rv_opt
         | _ => die "getRegVar: node is not a region variable"
 
   (* freshEps(cone): Generate a fresh effect variable
@@ -847,17 +886,17 @@ struct
           val fun_GET = Pickle.con0 GET
           fun fun_RHO pu_einfo =
               Pickle.newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
-              (Pickle.con1 (fn ((k,p,g,l),px,t,y) => RHO {key=k,put=p,get=g,level=l,
-                                                          instance=ref NONE,pix=px,ty=t,rv_opt=y,
-                                                          pinned=false})
-               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,rv_opt=y,pinned=_} =>
+              (Pickle.con1 (fn ((k,p,g,l),px,t,(y,protected)) => RHO {key=k,put=p,get=g,level=l,
+                                                                      instance=ref NONE,pix=px,ty=t,rv_opt=y,
+                                                                      pinned=false,protected=protected})
+               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,rv_opt=y,pinned=_,protected} =>
                 ((* print ("Pickling rho(" ^ Int.toString (!k) ^ ") with level \t" ^ Int.toString (!l) ^ "\n"); *)
-                 ((k,p,g,l),px,t,y))
+                 ((k,p,g,l),px,t,(y,protected)))
                  | _ => die "pu_einfo.fun_RHO")
                (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
                                                 Pickle.nameGen "get" (pu_nodeopt pu_einfo),
                                                 pu_intref),
-                                pu_intref,pu_runType,Pickle.optionGen RegVar.pu)))
+                                pu_intref,pu_runType,Pickle.pairGen0(Pickle.optionGen RegVar.pu,pu_intref))))
       in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
                                               fun_RHO])
       end
@@ -1094,9 +1133,9 @@ struct
                                                  * have the same level *)
           case (einfo1, einfo2) of
               (RHO{level=l1,put=p1,get=g1,key=k1,instance=instance1,pix=pix1,ty=t1,
-                   rv_opt=rv_opt1,pinned=pinned1},
+                   rv_opt=rv_opt1,pinned=pinned1,protected=protected1},
                RHO{level=_,put=p2,get=g2,key=k2,instance=instance2,pix=pix2,ty=t2,
-                   rv_opt=rv_opt2,pinned=pinned2}) =>
+                   rv_opt=rv_opt2,pinned=pinned2,protected=protected2}) =>
               if !k1 <> !k2 andalso (!k1 < largest_toplevel_effect_key
                                      andalso !k2 < largest_toplevel_effect_key)
                  orelse !k1 = 2 andalso t2<>BOT_RT
@@ -1118,10 +1157,14 @@ struct
                                                               ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
                                        in raise DeepError (report0 // report)
                                        end
+                    val protected =
+                        case (!protected1,!protected2) of
+                            (p1,p2) => if p1 > p2 then protected1
+                                       else protected2
                 in RHO{level = l1, put = aux_combine(p1,p2),
                        get = aux_combine(g1,g2), key = min_key(k1,k2),
                        instance = instance1, pix = pix1, ty = lub_runType(t1,t2),
-                       rv_opt=rv_opt,pinned=pinned1 orelse pinned2}
+                       rv_opt=rv_opt,pinned=pinned1 orelse pinned2,protected=protected}
                 end
              | _ => die "einfo_combine_rho"
   end
