@@ -1376,6 +1376,97 @@ struct
       end
   end
 
+  (* ----------------------------------------------
+   * Determine if a function allocates in infinite
+   * regions. Only then do we need to check to see
+   * if a GC should be run...
+   * ---------------------------------------------- *)
+
+  local
+
+    fun one p nil = false
+      | one p (x::xs) = p x orelse one p xs
+
+    fun Asma sma =
+        case sma of
+            ATTOP_LI _ => true
+          | ATTOP_LF _ => false
+          | ATTOP_FI _ => true
+          | ATTOP_FF _ => false
+          | ATBOT_LI _ => true   (* we could choose not to gc in this case *)
+          | ATBOT_LF _ => false
+          | SAT_FI _ => true
+          | SAT_FF _ => false
+          | IGNORE => false
+
+    fun Ae e =
+        case e of
+            ATOM _ => false
+          | LOAD _ => false
+          | STORE _ => false
+          | STRING _ => false
+          | REAL _ => false
+          | F64 _ => false
+          | CLOS_RECORD {alloc,...} => Asma alloc
+          | REGVEC_RECORD {alloc,...} => Asma alloc
+          | SCLOS_RECORD {alloc,...} => Asma alloc
+          | RECORD {alloc,...} => Asma alloc
+          | BLOCKF64 {alloc,...} => Asma alloc
+          | SCRATCHMEM {alloc,...} => Asma alloc
+          | SELECT _ => false
+          | CON0 {alloc,...} => Asma alloc
+          | CON1 {alloc,...} => Asma alloc
+          | DECON _ => false
+          | DEREF _ => false
+          | REF (alloc,_) => Asma alloc
+          | ASSIGNREF (alloc,_,_) => Asma alloc       (* hmmm *)
+          | PASS_PTR_TO_MEM (alloc,_,_) => Asma alloc (* Used only by CCALL *)
+          | PASS_PTR_TO_RHO _ => true                 (* Used only by CCALL *)
+
+    fun Asw As (SWITCH (_,ss,s)) =
+        one As s orelse one (fn (_,s) => one As s) ss
+
+    fun Ap p =
+        case p of
+            PrimName.Blockf64_alloc => true
+          | _ => false
+
+    fun As s =
+        case s of
+            ASSIGN {pat, bind} => Ae bind
+          | FLUSH _ => false
+          | FETCH _ => false
+          | FNJMP _ => false
+          | FNCALL _ => false
+          | JMP _ => false
+          | FUNCALL _ => false
+          | LETREGION {rhos, body} =>
+            let fun Ab b =
+                    case b of
+                        ((_,INF),_) => true
+                      | _ => false
+            in one Ab rhos orelse one As body
+            end
+          | SCOPE {pat, scope} => one As scope
+          | HANDLE _ => true
+          | RAISE _ => false
+          | SWITCH_I {switch, precision} => Asw As switch
+          | SWITCH_W {switch, precision} => Asw As switch
+          | SWITCH_S sw => Asw As sw
+          | SWITCH_C sw => Asw As sw
+          | SWITCH_E sw => Asw As sw
+          | RESET_REGIONS _ => false
+          | PRIM {name, args, res} => Ap name
+          | CCALL {name, args, rhos_for_result=nil, res} => false
+          | CCALL {name, args, rhos_for_result=_, res} => true
+          | CCALL_AUTO _ => false
+          | EXPORT _ => false
+
+  in
+    fun allocating (lss : ('sty,'offset,'aty) LineStmt list) : bool =
+        one As lss
+  end
+
   (******************************)
   (* Linearise ClosExp          *)
   (******************************)
