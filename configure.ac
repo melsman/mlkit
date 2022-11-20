@@ -39,6 +39,13 @@ AC_ARG_WITH(
      ,
      )
 
+AC_ARG_WITH(
+     argobots,
+     AS_HELP_STRING(--with-argobpts[=ROOTDIR],[ARGOBOTS root-directory]),
+     AC_SUBST(ARGOBOTS_ROOT,${with_argobots})
+     ,
+     )
+
 AC_MSG_CHECKING(configure date)
 DATE=`date -u '+%Y-%m-%dT-%H:%M:%S'`
 AC_SUBST(DATE)

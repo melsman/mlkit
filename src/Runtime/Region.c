@@ -127,7 +127,7 @@ RegionPageMap* rpMap = NULL;
 /*----------------------------------------------------------------*
  * Global declarations                                            *
  *----------------------------------------------------------------*/
-Rp * freelist = NULL;
+Rp * global_freelist = NULL;
 
 #ifdef ENABLE_GC
 long rp_used = 0;
@@ -329,7 +329,7 @@ printFreeList()
 
   printf("Enter printFreeList\n");
   FREELIST_MUTEX_LOCK;
-  kp = freelist;
+  kp = global_freelist;
   while (kp != NULL) {
     printf(" %0x ",kp);
     kp = kp->n;
@@ -350,7 +350,7 @@ size_free_list()
 
   LOCK_LOCK(FREELISTMUTEX);
 
-  for ( rp = freelist ; rp ; rp = rp-> n )
+  for ( rp = global_freelist ; rp ; rp = rp-> n )
     i++;
 
   LOCK_UNLOCK(FREELISTMUTEX);
@@ -372,16 +372,17 @@ size_free_list()
  *-------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*
- *alloc_new_block:                                                      *
- *  Allocates a new block in region.                                    *
+ *alloc_new_page:                                                       *
+ *  Allocates a new page in region.                                     *
  *  The second argument is a pointer to the generation in r to use      *
- *  Important: alloc_new_block must preserve all marks in fp (Region.h) *
+ *  Important: alloc_new_page must preserve all marks in fp (Region.h)  *
  *----------------------------------------------------------------------*/
+
 uintptr_t *
-alloc_new_block(Gen *gen)
+alloc_new_page(Gen *gen)
 {
   Rp* np;
-  debug(printf("[alloc_new_block: gen: %p", gen);)
+  debug(printf("[alloc_new_page: gen: %p", gen);)
 
 #ifdef PROFILING
   Ro *r;
@@ -414,38 +415,46 @@ alloc_new_block(Gen *gen)
     }
   #endif /* ENABLE_GC */
 
-  if ( FREELIST == NULL ) {          // FREELIST is the thread's own free-list (when PARALLEL is true)
-    #ifdef PARALLEL
+  MAYBE_DEFINE_CONTEXT;
+
+  if ( FREELIST ) {
+    np = FREELIST;
+    FREELIST = FREELIST->n;
+  } else {
+#ifdef PARALLEL
     LOCK_LOCK(FREELISTMUTEX);
-    // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
-    // FREELIST; allocate more pages in freelist if necessary, by
-    // calling callSbrk.
+    if ( FREELIST == NULL ) {
+      // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
+      // FREELIST; allocate more pages in freelist if necessary, by
+      // calling callSbrk.
 
-    // We know for sure that there are no pages in FREELIST
-    if (FREELIST) {
-      die("ERROR: alloc_new_block failed; expecting empty FREELIST\n");
-    }
-
-    for ( int k = REGION_PAGE_BAG_SIZE >> 1 ; k > 0 ;  k-- ) {
-      if ( freelist == NULL ) {
-	callSbrk();
+      // We know for sure that there are no pages in FREELIST
+      if (FREELIST) {
+	die("ERROR: alloc_new_page failed; expecting empty FREELIST\n");
       }
-      // Now we know there are pages in freelist
-      if ( freelist == NULL ) {
-	die ("ERROR: alloc_new_block failed; expecting non-empty freelist\n");
+      for ( int k = REGION_PAGE_BAG_SIZE >> 1 ; k > 0 ;  k-- ) {
+	if ( global_freelist == NULL ) {
+	  callSbrk();
+	}
+	// Now we know there are pages in global_freelist
+	if ( global_freelist == NULL ) {
+	  die ("ERROR: alloc_new_page failed; expecting non-empty freelist\n");
+	}
+	Rp * fl_tmp = FREELIST;
+	FREELIST = global_freelist;
+	global_freelist = global_freelist->n;
+	FREELIST->n = fl_tmp;
       }
-      Rp * fl_tmp = FREELIST;
-      FREELIST = freelist;
-      freelist = freelist->n;
-      FREELIST->n = fl_tmp;
     }
+    np = FREELIST;
+    FREELIST = FREELIST->n;
     LOCK_UNLOCK(FREELISTMUTEX);
-    #else
+#else
     callSbrk();
-    #endif /* PARALLEL */
+    np = FREELIST;
+    FREELIST = FREELIST->n;
+#endif
   }
-  np = FREELIST;
-  FREELIST = FREELIST->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
@@ -503,20 +512,29 @@ alloc_new_block(Gen *gen)
  *  Put a region administrationsstructure on the stack. The address is  *
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
+
 static inline Region
-allocateRegion0(Context ctx, Region r)
+allocateRegion0(Context ctx, Region r, Protect protect)
 {
-  debug(printf("[allocateRegion (rAddr=%p)...",r));
+  debug(printf("[allocateRegion0 (rAddr=%p, protect=%ui)...",r,protect));
   r = clearStatusBits(r);
+
+  CHECK_CTX("allocateRegion0");
 
   r->g0.fp = NULL;
   r->p = TOP_REGION;	                   // Push this region onto the region stack
   r->lobjs = NULL;                         // The list of large objects is empty
-  r->g0.a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  r->g0.a = alloc_new_page(&(r->g0));      // Allocate the first region page in g0
+
+#ifdef PARALLEL
+  if ( protect ) { r->mutex = mutex_freelist_pop(ctx); }
+  else { r->mutex = NULL; }
+#endif
+
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);                        // Mark generation
-  r->g1.a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  r->g1.a = alloc_new_page(&(r->g1));      // Allocate the first region page in g1
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
@@ -526,18 +544,18 @@ allocateRegion0(Context ctx, Region r)
 }
 
 Region
-allocateRegion(Context ctx, Region r)
+allocateRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
 #ifdef ENABLE_GC
 Region
-allocatePairRegion(Context ctx, Region r)
+allocatePairRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_pairregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_pairregion(r->g1);
@@ -547,9 +565,9 @@ allocatePairRegion(Context ctx, Region r)
 }
 
 Region
-allocateArrayRegion(Context ctx, Region r)
+allocateArrayRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_arrayregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_arrayregion(r->g1);
@@ -559,9 +577,9 @@ allocateArrayRegion(Context ctx, Region r)
 }
 
 Region
-allocateRefRegion(Context ctx, Region r)
+allocateRefRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_refregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_refregion(r->g1);
@@ -571,9 +589,9 @@ allocateRefRegion(Context ctx, Region r)
 }
 
 Region
-allocateTripleRegion(Context ctx, Region r)
+allocateTripleRegion(Context ctx, Region r, Protect p)
 {
-  r = allocateRegion0(ctx,r);
+  r = allocateRegion0(ctx,r,p);
   set_tripleregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_tripleregion(r->g1);
@@ -624,6 +642,8 @@ void deallocateRegion(Context ctx) {
 
   debug(printf("[deallocateRegion... top region: %p\n", TOP_REGION));
 
+  CHECK_CTX("deallocateRegion");
+
 #ifdef PROFILING
   callsOfDeallocateRegionInf++;
   regionDescUseInf -= (sizeRo-sizeRoProf);
@@ -636,11 +656,19 @@ void deallocateRegion(Context ctx) {
   profTabDecrAllocNow(TOP_REGION->regionId, TOP_REGION->allocNow, "deallocateRegion");
 #endif
 
-  #ifdef ENABLE_GC
+#ifdef PARALLEL
+  if ( TOP_REGION->mutex ) {
+    mutex_freelist_push(TOP_REGION->mutex, ctx);
+  }
+#endif
+
+#ifdef ENABLE_GC
   rp_used -= MIN_NO_OF_PAGES_IN_REGION;
-  #endif /* ENABLE_GC */
+#endif /* ENABLE_GC */
 
   free_lobjs(TOP_REGION->lobjs);
+
+  //  MAYBE_DEFINE_CONTEXT;
 
   /* Insert the region pages in the freelist; there is always
    * at least one page in a generation. */
@@ -724,14 +752,14 @@ void callSbrk() {
     die("SBRK region page is not properly aligned.");
   }
 
-  old_free_list = freelist;
+  old_free_list = global_freelist;
   np = (Rp *) sb;
-  freelist = np;
+  global_freelist = np;
 
   rp_total++;
 
   /* fragment the SBRK-chunk into region pages */
-  while ((char *)(np+1) < ((char *)freelist)+BYTES_ALLOC_BY_SBRK) {
+  while ((char *)(np+1) < ((char *)global_freelist)+BYTES_ALLOC_BY_SBRK) {
     np++;
     (np-1)->n = np;
     rp_total++;
@@ -755,16 +783,20 @@ void callSbrk() {
  *  malloc.                                                             *
  *----------------------------------------------------------------------*/
 inline uintptr_t *
-allocGen (Gen *gen, size_t n
-
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-	  , int protect_p
+allocGen (
+#ifdef PARALLEL
+	  Region r, Gen *gen, size_t n, int protect_p
+#else
+	  Gen *gen, size_t n
 #endif
 	  ) {
   uintptr_t *t1;
   uintptr_t *t2;
   uintptr_t *t3;
-  Ro *r;
+
+#ifndef PARALLEL
+  Region r;
+#endif
 
 #if defined(PROFILING) || defined(ENABLE_GC)
   uintptr_t *i;
@@ -801,13 +833,14 @@ allocGen (Gen *gen, size_t n
 
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-      if (protect_p) {
-	LOCK_LOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
+#ifdef PARALLEL
+      if (protect_p && r->mutex) {
+	REGION_MUTEX_LOCK((r->mutex)->mutex);
       }
+#else
+      r = get_ro_from_gen(*gen);
 #endif
       Lobjs* lobjs;
-      r = get_ro_from_gen(*gen);
       //#ifdef ENABLE_GC
       // fprintf(stderr,"Allocating large object (of type %lu) of %zu words\n", rtype(*gen), n);
       //#endif
@@ -827,9 +860,9 @@ allocGen (Gen *gen, size_t n
 	}
 #endif
 
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-      if (protect_p) {
-	LOCK_UNLOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
+#ifdef PARALLEL
+      if (protect_p && r->mutex) {
+	REGION_MUTEX_UNLOCK((r->mutex)->mutex);
       }
 #endif
 
@@ -844,12 +877,12 @@ allocGen (Gen *gen, size_t n
   alloc_period += (sizeof(void*) * n);
 #endif
 
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+#ifdef PARALLEL
 
-  if (protect_p) {
+  if (protect_p && r->mutex) {
 
     if ( 0 ) {  // simple mutex-based locking (assumes simple_p is true in CodeGenUtilX64.sml)
-      LOCK_LOCK(GLOBALALLOCMUTEX);                ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
+      REGION_MUTEX_LOCK((r->mutex)->mutex);
       t1 = gen->a;
       t2 = t1 + n;
       t3 = rpBoundary(t1);
@@ -857,11 +890,11 @@ allocGen (Gen *gen, size_t n
 #if defined(PROFILING) || defined(ENABLE_GC)
 	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-	t1 = alloc_new_block(gen);
+	t1 = alloc_new_page(gen);
 	t2 = t1 + n;
       }
       gen->a = t2;
-      LOCK_UNLOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
+      REGION_MUTEX_UNLOCK((r->mutex)->mutex);
     } else {
 
       // Partial lock-free atomic allocation
@@ -877,7 +910,7 @@ allocGen (Gen *gen, size_t n
 	}
       } else {
 	// t2 > t3  -- not enough space for object
-	LOCK_LOCK(GLOBALALLOCMUTEX);               ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
+	REGION_MUTEX_LOCK((r->mutex)->mutex);
 	//printf("taking lock on %p\n", gen);
       locked_start:
 	t1 = gen->a;
@@ -892,7 +925,7 @@ allocGen (Gen *gen, size_t n
 	    goto locked_start;  // goto start if gen->a <> t1
 	  }
 	  // Allocation succeeded! Unlock and proceed to exit
-	  LOCK_UNLOCK(GLOBALALLOCMUTEX);                         ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
+	  REGION_MUTEX_UNLOCK((r->mutex)->mutex);
 	  goto finish; // t1 contains the pointer to the allocated memory and gen->a has been updated
 	}
 	// t2 > t3
@@ -911,11 +944,11 @@ allocGen (Gen *gen, size_t n
 	 * WELL, we need it for printing statistics with -verbose_gc... */
 	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-	t1 = alloc_new_block(gen);
+	t1 = alloc_new_page(gen);
 	t2 = t1+n;
 	asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
 	gen->a = t2;
-	LOCK_UNLOCK(GLOBALALLOCMUTEX);          ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
+	REGION_MUTEX_UNLOCK((r->mutex)->mutex);
       }
     }
   } else { // no protection
@@ -930,13 +963,13 @@ allocGen (Gen *gen, size_t n
        * WELL, we need it for printing statistics with -verbose_gc... */
       for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-      gen->a = alloc_new_block(gen);
+      gen->a = alloc_new_page(gen);
       t1 = gen->a;
       t2 = t1+n;
     }
     gen->a = t2;
 
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+#ifdef PARALLEL
   } // no protection
 
  finish:
@@ -957,18 +990,20 @@ allocGen (Gen *gen, size_t n
 }
 
 uintptr_t *alloc (Region r, size_t n) {
-  return allocGen(&(clearStatusBits(r)->g0),n
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-		  , TRUE
+  r = clearStatusBits(r);
+  return allocGen(
+#ifdef PARALLEL
+		  r, &(r->g0), n, TRUE
+#else
+		  &(r->g0), n
 #endif
 		  );
 }
 
-#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+#ifdef PARALLEL
 uintptr_t *alloc_unprotected (Region r, size_t n) {
-  return allocGen(&(clearStatusBits(r)->g0),n
-		  , FALSE
-		  );
+  r = clearStatusBits(r);
+  return allocGen(r, &(r->g0), n, FALSE);
 }
 #endif
 
@@ -985,9 +1020,11 @@ void resetGen(Gen *gen)
   if ( (clear_fp(gen->fp))->n ) { /* There are more than one page in the generation. */
 
 #ifdef ENABLE_GC
-    rp_used--;              // at least one page is freed; see comment in alloc_new_block
+    rp_used--;              // at least one page is freed; see comment in alloc_new_page
                             //   concerning conservative computation.
 #endif /* ENABLE_GC */
+
+    MAYBE_DEFINE_CONTEXT;
 
     (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
@@ -1125,12 +1162,12 @@ allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
   r->lobjs = NULL;               // The list of large objects is empty
 
   r->g0.fp = NULL;
-  (&(r->g0))->a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  (&(r->g0))->a = alloc_new_page(&(r->g0));     // Allocate the first region page in g0
 
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);              // Mark generation
-  (&(r->g1))->a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  (&(r->g1))->a = alloc_new_page(&(r->g1));     // Allocate the first region page in g1
 
 #endif /* ENABLE_GEN_GC */
 
@@ -1360,6 +1397,7 @@ allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 uintptr_t *
 allocProfiling(Region r, size_t n, size_t pPoint)
 {
-  return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
+  r = clearStatusBits(r);
+  return allocGenProfiling(&(r->g0),n,pPoint);
 }
 #endif /*PROFILING*/

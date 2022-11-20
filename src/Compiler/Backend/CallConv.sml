@@ -110,7 +110,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
     fun get_cc_size cc =
         get_rcf_size cc +
         get_ccf_size cc +
-        1 (* The return label occupies one word on the stack. *)
+        1 (* The return address occupies one word on the stack. *)
 
     fun add_frame_size ({clos,args,reg_args,fargs,res,frame_size},f_size) =
         {clos = clos,

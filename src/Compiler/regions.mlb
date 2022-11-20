@@ -18,7 +18,7 @@ in
   Regions/LOCALLY_LIVE_VARIABLES.sml
   local open Pickle in Regions/MUL.sig end
   local open SyntaxObjects in Regions/REGION_EXP.sml end
-  Regions/MUL_EXP.sml
+  local open Pickle in Regions/MUL_EXP.sml end
   Regions/MUL_INF.sml
   Regions/REGINF.sig
   local open Pickle SyntaxObjects in Regions/REGION_STAT_ENV.sml end
@@ -51,7 +51,7 @@ in
      local open Pickle in ../Common/QuasiEnv.sml end
      local open Edlib Pickle CompilerObjects in Regions/Mul.sml end
      local open CompilerObjects
-     in Regions/MulExp.sml
+     in local open Pickle in Regions/MulExp.sml end
         Regions/MulInf.sml
         Regions/LocallyLiveVariables.sml
         Regions/RegFlow.sml

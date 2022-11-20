@@ -134,6 +134,17 @@ signature INSTS_X64 =
     | jbe of lab        (* jump if below or equal---unsigned *)
     | jo of lab         (* jump on overflow *)
 
+    | cmovlq of ea * ea
+    | cmovgq of ea * ea
+    | cmovleq of ea * ea
+    | cmovgeq of ea * ea
+    | cmoveq of ea * ea
+    | cmovneq of ea * ea
+    | cmovaq of ea * ea
+    | cmovbq of ea * ea
+    | cmovaeq of ea * ea
+    | cmovbeq of ea * ea
+
     | call of lab       (* C function calls and returns *)
     | call' of ea       (* C function calls and returns *)
     | ret

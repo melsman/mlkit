@@ -6,6 +6,7 @@ local
   basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
   basis SpecialObjects = bas ../Common/special_objects.mlb end
   basis Basics = bas ../Common/basics.mlb end
+  basis Md5 = bas ../Common/md5.mlb end
   open BasLib
 in
   local open Tools Pickle
@@ -18,7 +19,7 @@ in
      in Lambda/Lvars.sml
         Lambda/Con.sml
         Lambda/Excon.sml
-        Regions/AddressLabels.sml
+        local open Md5 in Regions/AddressLabels.sml end
      end
   end
 

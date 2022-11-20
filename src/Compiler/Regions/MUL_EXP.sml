@@ -226,4 +226,17 @@ signature MUL_EXP =
                           ('b -> StringTree option) ->
                           ('c -> StringTree option) -> ('a,'b,'c)trip -> StringTree
 
+    (* Protection inference *)
+    structure ProtInf : sig
+      type pe
+      val empPE    : pe
+      val initPE   : pe
+      val plus     : pe * pe -> pe
+      val enrich   : pe * pe -> bool
+      val restrict : pe * lvar list -> pe
+      val layoutPE : pe -> StringTree
+      val pu_pe    : pe Pickle.pu
+      val protInf  : pe -> (place,'a,'b)LambdaPgm -> pe
+    end
+
   end

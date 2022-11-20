@@ -1592,7 +1592,7 @@ struct
                let
                  val free_vars = remove_zero_sized_region_closure_lvars env free_vars_all
 
-                 val new_lab = fresh_lab (Labels.pr_label lab ^ ".anon")
+                 val new_lab = Labels.renew lab "anon"
                  val lv_clos = fresh_lvar("clos")
                  val args = List.map #1 pat
                  val ress = gen_fresh_res_lvars metaType (* Result variables are not bound in env as they only exists in cc *)

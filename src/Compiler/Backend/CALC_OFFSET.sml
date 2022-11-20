@@ -7,7 +7,7 @@ signature CALC_OFFSET =
        and flush constructs.
     *)
 
-    type place 
+    type place
     type phsize
     type pp = int
     type lvar
@@ -38,11 +38,3 @@ signature CALC_OFFSET =
     val pr_atom   : Atom -> string
 
   end
-
-
-
-
-
-
-
-
