@@ -927,11 +927,11 @@ struct
                   (case args of
                        [] =>
                        (case name of
-                          Fresh_exname =>
-                          I.movq(L exn_counter_lab, R tmp_reg0) ::
-                          move_reg_into_aty(tmp_reg0,d,size_ff,
-                          I.addq(I "1", R tmp_reg0) ::
-                          I.movq(R tmp_reg0, L exn_counter_lab) :: C)
+                            Fresh_exname =>  (* result in tmp_reg0 *)
+                            I.movq(LA exn_counter_lab, R tmp_reg1) ::
+                            I.movq(I "1", R tmp_reg0) ::
+                            I.xaddq(R tmp_reg0, D("0",tmp_reg1)) ::
+                            move_reg_into_aty(tmp_reg0,d,size_ff,C)
                          | Get_ctx =>
                            move_reg_into_aty(r14,d,size_ff,C)
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
