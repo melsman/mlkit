@@ -80,6 +80,7 @@ jobs:
       - name: Run MLKit tests
         run: |
           make -C test_dev test
+          make -C test_dev test_prof
           make -C test test_mlkit
           make -C test test_mlkit_no_gc
           make -C test/explicit_regions all
