@@ -94,6 +94,7 @@ signature INSTS_X64 =
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
     | cmpxchgq of ea * ea
+    | xaddq of ea * ea
 
     | movsd of ea * ea  (* FLOAT OPERATIONS *)
     | mulsd of ea * ea
