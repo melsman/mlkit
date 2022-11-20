@@ -93,6 +93,10 @@ setStackSizeUnlimited(void)
 long
 terminateML (long status)
 {
+#ifdef ENABLE_GC
+  time_to_gc = 0; // avoid gc's after control has left ordinary ML execution
+  disable_gc = 1;
+#endif
   callExportFun("sml_exitCallback", convertIntToML(8)); // exported in Initial2.sml
 
 #ifdef ENABLE_GC
