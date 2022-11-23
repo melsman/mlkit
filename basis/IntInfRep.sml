@@ -334,6 +334,20 @@ structure IntInfRep (* : INT_INF_REP *)  =
                                 end
 	  | natInfToI64 (d::r) = ~(i32_i64(nbase())*natInfToI64 r) + i32_i64(i31_i32 d)
 
+	fun natInfToW64 [] : word64 = 0w0
+	  | natInfToW64 [d] = i64_w64(i32_i64(i31_i32 d))
+	  | natInfToW64 [d,e] = let val x00 = i32_i64(i31_i32 e)
+                                    val x01 = i32_i64(nbase())*x00
+                                    val x1 = ~ x01
+                                    val x2 = i32_i64(i31_i32 d)
+                                in i64_w64(x1 + x2)
+                                end
+	  | natInfToW64 (d::r) =
+            let val r' = natInfToW64 r
+                val w = i64_w64(~(i32_i64(nbase())))
+            in r'*w + i64_w64(i32_i64(i31_i32 d))
+            end
+
 	fun bigNatMinNeg () = BN.addOne (natInfFromI32 (~(minNeg()+1)))
 	fun bigNatMinNeg64 () = BN.addOne (natInfFromI64 (~(minNeg64()+1)))
 	fun negi digits = _IntInf{negative=true, digits=digits}
@@ -356,6 +370,14 @@ structure IntInfRep (* : INT_INF_REP *)  =
                        if digits = bigNatMinNeg64() then minNeg64()
 		       else raise Overflow
 
+	fun intInfToW64 (_IntInf{digits=[], ...}) = 0w0
+	  | intInfToW64 (_IntInf{negative=false, digits}) = natInfToW64 digits
+	  | intInfToW64 (_IntInf{negative=true, digits}) =
+            let val i = natInfToI64 digits
+	    in i64_w64 (~i)
+            end handle _ =>
+                       if digits = bigNatMinNeg64() then i64_w64 (minNeg64())
+		       else raise Overflow
 
 	fun zero () = _IntInf{negative=false, digits=BN.zero()}
 	fun i32ToIntInf (0:int32) = zero()
@@ -378,6 +400,8 @@ structure IntInfRep (* : INT_INF_REP *)  =
 	  fun toInt x = i64_i(intInfToI64 x)
 
 	  fun toInt64 x = intInfToI64 x
+
+          fun toWord64 x = intInfToW64 x
 
 	  fun fromInt x = i64ToIntInf(i_i64 x)
 	  fun fromInt32 x = i32ToIntInf x
@@ -452,22 +476,29 @@ structure IntInfRep (* : INT_INF_REP *)  =
       fun fromWordX (w:word) : intinf =
 	  fromInt(w_i_X w)
 
+(*
       exception IntInfRep_toWord32
-      exception IntInfRep_toWord63
       exception IntInfRep_toWord64
 
       fun toWord32 (x : intinf) : word32 =
 	  i32_w32(toInt32 x)
 	  handle _ => raise IntInfRep_toWord32
 
-      fun toWord63 (x : intinf) : word63 =
-	  i63_w63(toInt63 x)
-	  handle _ => raise IntInfRep_toWord63
-
       fun toWord64 (x : intinf) : word64 =
           let val y = toInt64 x
           in i64_w64 y
           end handle _ => raise IntInfRep_toWord64
+*)
+
+      val toWord64 = toWord64
+
+      fun toWord32 (x : intinf) : word32 =
+          w64_w32(toWord64 x)
+
+      exception IntInfRep_toWord63
+      fun toWord63 (x : intinf) : word63 =
+	  i63_w63(toInt63 x)
+	  handle _ => raise IntInfRep_toWord63
 
       fun fromWord (w : word) : intinf =
 	  fromWord64 (w_w64 w)

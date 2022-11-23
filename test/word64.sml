@@ -390,6 +390,8 @@ in
      else
        (Word64.toIntX 0wxbfffffffffffffff = (Int.-(~4611686018427387904, 1))))
 
+  val test24 = tst "test24"
+                   (Word64.fromLargeInt 0xffffffffffffffff = 0wxffffffffffffffff)
 end
 
 end

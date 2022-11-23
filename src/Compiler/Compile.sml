@@ -282,8 +282,9 @@ structure Compile: COMPILE =
 
                end handle _ => die "cannot form rse'")
              | _ => die "program does not have type frame"
-
+(*
         val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE' rse'
+*)
 (*
         val () = print ("RHOS: " ^ pr_effects rhos_rse' ^ "\n")
         val () = print ("EPSS: " ^ pr_effects epss_rse' ^ "\n")
