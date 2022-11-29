@@ -852,6 +852,54 @@ struct
       end handle MONOMORPHIC result => result
                | X => (print "regEffClos failed\n"; raise X)
 
+  (* New version below - mael 2022-11-23 *)
+  fun regEffClos0 (pr_lv, B: E.cone, B_0: int, phi: E.effect, tau: Type, ann: E.effect list) : E.cone * sigma =
+      let
+        val n = B_0
+        val B_1 = E.lower B_0 phi B
+        val annotations = ann_ty tau ann
+
+        (* if there are no potentially generalisable nodes, we can escape right away,
+           without going into the expensive operation of contracting effects *)
+        val _ = if List.exists (potentially_generalisable n) annotations then ()
+                else raise MONOMORPHIC(B_1,FORALL([],[],[],tau))
+
+        (* make sure there is at most one generalisable secondary effect variable *)
+        val B_2 = unify_generic_secondary_epss(B_1, n, E.subgraph annotations, annotations)
+
+        val subgraph = E.contract_effects annotations
+        (* nodes in "subgraph" are listed in bottom-up order, without
+           duplicates *)
+
+        val frv_tau = List.filter E.is_rho subgraph  (* no duplicates in frv_tau *)
+        val pfrv_tau = pfrv tau  (* syntactic order *)
+        val problematic_secondary_frv_tau =  (* no duplicates *)
+            List.filter (potentially_generalisable n)
+                        (E.setminus(frv_tau, pfrv_tau))
+
+        val (bound_secondary_rhos, B_3) =
+            unify_rho_partition(B_2,
+                                partition_rhos problematic_secondary_frv_tau)
+        val _ = set_pix_of_secondary_rhos bound_secondary_rhos
+
+        val primary_bound_rhos = E.remove_duplicates(List.filter (potentially_generalisable n) pfrv_tau)
+        val _ = set_pix_primary(primary_bound_rhos, pfrv_tau)
+        val bound_rhos = bound_secondary_rhos @ primary_bound_rhos
+
+        val fev_tau = List.filter E.is_arrow_effect subgraph (* bottom-up order, no duplicates *)
+        val pfev_tau = pfev tau @ ann     (* syntactic order *)
+        val problematic_secondary_fev_tau =  List.filter (potentially_generalisable n)
+                                                         (E.setminus(fev_tau,pfev_tau))
+        val _ = set_pix_of_secondary_epss problematic_secondary_fev_tau
+
+        val bound_epss = List.filter (potentially_generalisable n) fev_tau (* bottom-up order *)
+        val _ = set_pix_primary(E.setminus(bound_epss,problematic_secondary_fev_tau), pfev_tau)
+        val sigma = FORALL(bound_rhos, bound_epss, [], tau)
+      in
+        (B_3, sigma)
+      end handle MONOMORPHIC result => result
+               | X => (print "regEffClos failed\n"; raise X)
+
   fun regEffClos (B: E.cone, B_0: int, phi: E.effect, tau: Type) : E.cone * sigma =
       regEffClos0 (fn () => "uggh", B, B_0, phi, tau, nil)
 

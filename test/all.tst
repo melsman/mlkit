@@ -69,6 +69,8 @@ oh-no2.sml          ccl       nobasislib
 real_match.sml                nobasislib
 gc0.sml                       nobasislib nooptimiser
 gc01.sml                      nobasislib nooptimiser
+exn.sml                       nobasislib nooptimiser
+exn-alpha.sml                 nobasislib nooptimiser
 
 (* Tests of some benchmark programs *)
 
