@@ -362,15 +362,6 @@ struct
 
     val (freshType, freshMu) = R.freshType lookup
 
-(*
-    fun freshTypes (cone:cone, types: E.Type list) =
-        case types of
-            [] => ([],cone)
-          | (tau_ml::rest) => let val (tau, cone) = freshType(tau_ml,cone)
-                                  val (taus, cone) = freshTypes(cone,rest)
-                              in (tau::taus, cone)
-                              end
-*)
     fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
         case types of
             [] => ([],cone)
@@ -875,8 +866,9 @@ good *)
            with type variables and have runtime type BOT become global.) *)
 
             (* If GC is enabled, we need to lower all region and
-               effect variables in mu to avoid dangling pointers in
-               exception values that escape to toplevel, for instance!
+               effect variables in the possible argument type to avoid
+               dangling pointers in exception values that perhaps
+               escape to toplevel!
              *)
 
             val B = Eff.lower 2 rho B
