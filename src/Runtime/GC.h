@@ -7,7 +7,7 @@
 #ifndef GC_H
 #define GC_H
 
-#define CHECK_GC 1
+//#define CHECK_GC 1
 #ifdef ENABLE_GC
 extern size_t time_to_gc;
 extern size_t rp_gc_treshold;

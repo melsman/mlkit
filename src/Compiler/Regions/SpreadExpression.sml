@@ -879,9 +879,15 @@ good *)
                exception values that escape to toplevel, for instance!
              *)
 
-            val B = if dangling_pointers()
-                    then Eff.lower 2 rho B
-                    else foldl (fn (e,B) => Eff.lower 2 e B) B (R.ann_mus [mu] [])
+            val B = Eff.lower 2 rho B
+            val B = if dangling_pointers() then B
+                    else let val ty = #1(R.unbox mu)
+                         in case R.unFUN ty of
+                                SOME([mu],_,_) =>
+                                foldl (fn (e,B) => Eff.lower 2 e B) B (R.ann_mus [mu] [])
+                              | SOME _ => die "EXCEPTION.impossible"
+                              | NONE => B
+                         end
 
             (* if exception constructor is unary: unify place of exception
                constructor  and place of its result type. Note: I think
