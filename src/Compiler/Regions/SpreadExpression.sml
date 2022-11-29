@@ -91,9 +91,9 @@ struct
 
   infix footnote
   fun x footnote y = x
-  fun say(s) = TextIO.output(TextIO.stdOut, s ^ "\n");
-  fun logsay(s) = TextIO.output(!Flags.log, s);
-  fun logtree(t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
+  fun say s = TextIO.output(TextIO.stdOut, s ^ "\n");
+  fun logsay s = TextIO.output(!Flags.log, s);
+  fun logtree (t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
 
   fun log_sigma (sigma1, lvar) =
     case R.bv sigma1 of
@@ -225,11 +225,11 @@ struct
                  PP.flatten(PP.format(200, E.layoutLambdaExp e )) ^ "\n");
           raise Abort)
 
-  fun save_il(instances_opt, il_r) =
+  fun save_il (instances_opt, il_r) =
     (* record il in the environment ---
      to be picked up for letrec-bound variables at fix *)
-    (case instances_opt of
-       SOME(r as ref(list)) =>
+      case instances_opt of
+          SOME(r as ref(list)) =>
          (* lvar is fix bound or global
           (from earlier topdec);
           extend the instances list for
@@ -237,13 +237,12 @@ struct
           with the instantiation list of the lvar
          *)
          r:= il_r::list
-     | NONE => ()
-  );
+        | NONE => ()
 
-  fun pushIfNotTopLevel(toplevel,B) =
+  fun pushIfNotTopLevel (toplevel,B) =
       if toplevel then B else Eff.push B;
 
-  fun Below(B, mus) =
+  fun Below (B, mus) =
     let val free_rhos_and_epss = R.ann_mus mus []
         val B' = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
                             B free_rhos_and_epss
@@ -363,15 +362,6 @@ struct
 
     val (freshType, freshMu) = R.freshType lookup
 
-(*
-    fun freshTypes (cone:cone, types: E.Type list) =
-        case types of
-            [] => ([],cone)
-          | (tau_ml::rest) => let val (tau, cone) = freshType(tau_ml,cone)
-                                  val (taus, cone) = freshTypes(cone,rest)
-                              in (tau::taus, cone)
-                              end
-*)
     fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
         case types of
             [] => ([],cone)
@@ -467,7 +457,8 @@ struct
         in (rho, R.mkBOX(tau,rho), B)
         end
 
-    fun maybe_explicit_rho_opt (rse:rse) (B:cone) (tau:R.Type) (rv_opt:RegVar.regvar option) : place option * R.mu * cone =
+    fun maybe_explicit_rho_opt (rse:rse) (B:cone) (tau:R.Type) (rv_opt:RegVar.regvar option)
+        : place option * R.mu * cone =
         let val (rho:place option,B) =
                 case rv_opt of
                     NONE =>
@@ -569,10 +560,12 @@ struct
                        end
 
     fun spreadSwitch' (B:cone) spread con excon_mus
-                 (E.SWITCH(e0: E.LambdaExp,
-                           choices: (('c * 'ignore) * E.LambdaExp) list,
-                           last: E.LambdaExp option),toplevel,cont) : cone * (place,unit)E'.trip * cont * tyvar list =
-      spreadSwitch B spread con excon_mus (E.SWITCH(e0, map (fn ((c,_),e) => (c,e)) choices, last),toplevel,cont)
+                      (E.SWITCH(e0: E.LambdaExp,
+                                choices: (('c * 'ignore) * E.LambdaExp) list,
+                                last: E.LambdaExp option),toplevel,cont)
+        : cone * (place,unit)E'.trip * cont * tyvar list =
+        spreadSwitch B spread con excon_mus (E.SWITCH(e0, map (fn ((c,_),e) => (c,e)) choices, last),
+                                             toplevel,cont)
 
     fun S (B,e,toplevel:bool,cont:cont) : cone * (place,unit)E'.trip * cont * tyvar list =
       (case e of
@@ -872,7 +865,21 @@ good *)
           (*NO! Lower only rho! (Otherwise region variables that are associated
            with type variables and have runtime type BOT become global.) *)
 
+            (* If GC is enabled, we need to lower all region and
+               effect variables in the possible argument type to avoid
+               dangling pointers in exception values that perhaps
+               escape to toplevel!
+             *)
+
             val B = Eff.lower 2 rho B
+            val B = if dangling_pointers() then B
+                    else let val ty = #1(R.unbox mu)
+                         in case R.unFUN ty of
+                                SOME([mu],_,_) =>
+                                foldl (fn (e,B) => Eff.lower 2 e B) B (R.ann_mus [mu] [])
+                              | SOME _ => die "EXCEPTION.impossible"
+                              | NONE => B
+                         end
 
             (* if exception constructor is unary: unify place of exception
                constructor  and place of its result type. Note: I think
@@ -886,11 +893,14 @@ good *)
                       | _ => B
             val rse' = RSE.declareExcon(excon, mu, rse)
             val (B, t2 as E'.TR(e2', meta2, phi2), cont, tvs) = spreadExp(B,rse',e2, toplevel, cont)
+            val tvs' = if dangling_pointers()
+                       then nil
+                       else R.ftv_ty tau
         in
           retract(B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2,
                            Eff.mkUnion([Eff.mkPut rho,phi2])),
                   cont,
-                  tvs)
+                  RSE.spuriousJoin tvs tvs')
         end
 
     | E.RAISE(e1: E.LambdaExp, description) =>

@@ -615,7 +615,18 @@ struct
                (*(B, Effect.Lf[eps_phi0] && d1 && d2)*)
            end
        | Exp.EXCEPTION(excon, nullary:bool, mu, alloc, t1) =>
-                           R(B,RSE.declareExcon(excon,mu,rse),t1)
+         let val B =
+                 if dangling_pointers()
+                 then B
+                 else let val tvs = RType.ftv_ty (#1(RType.unbox mu))
+                      in foldl (fn (tv,B) =>
+                                   case RSE.lookupTyVar rse tv of
+                                       SOME e => Effect.lower 2 e B
+                                     | NONE => die "EXCEPTION: Expecting spurious type variable in rse")
+                               B tvs
+                      end
+         in R(B,RSE.declareExcon(excon,mu,rse),t1)
+         end
        | Exp.RAISE t1 => R(B,rse,t1)
        | Exp.HANDLE(t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
