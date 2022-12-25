@@ -16,7 +16,7 @@ fun sub (t:t,i:int) : real =
     prim("__blockf64_sub_real", (t,i))
 fun length (t:t) : int =
     prim ("__blockf64_size", t)
-val maxLen = 12345678 (* arbitrarily chosen *)
+val maxLen : int = 12345678910 (* arbitrarily chosen *)
 end
 
 structure RealTable = struct

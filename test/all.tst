@@ -107,6 +107,7 @@ check_arrays.sml
 array.sml
 arrayslice.sml
 array2.sml
+realarray2.sml
 general.sml
 int.sml
 int_2.sml

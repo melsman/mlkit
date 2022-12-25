@@ -5,8 +5,8 @@ fun e1 seq e2 = e2;
 fun check b = if b then "OK" else "WRONG";
 fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN";
 
-fun range (from, to) p = 
-    let open Int 
+fun range (from, to) p =
+    let open Int
     in
 	(from > to) orelse (p from) andalso (range (from+1, to) p)
     end;
@@ -17,56 +17,56 @@ fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n");
 fun tst  s b = tst0 s (check  b);
 fun tst' s f = tst0 s (check' f);
 
-fun tstrange s bounds = (tst s) o range bounds  
+fun tstrange s bounds = (tst s) o range bounds
 
 (* test/array2.sml -- some test cases for Array2
    PS 1995-09-12, 1997-03-12, 1998-04-07 *)
 
-val _ = print "Testing Array...\n"
+val _ = print "Testing Array2...\n"
 
-local 
+local
   open Array2
 in
   val a0 = tabulate RowMajor (0, 0, fn (i, j) => 1 div 0);
 
   fun fill (i, j) = 10 * i + j
 
-  local 
+  local
     val sequence = ref ([] : (int * int) list)
   in
-    val a = tabulate RowMajor 
+    val a = tabulate RowMajor
       (3, 4, fn args => (sequence := args :: !sequence; fill args));
 
-    val test0a = tst "test0a" (!sequence = [(2,3), (2,2), (2,1), (2,0), 
-					    (1,3), (1,2), (1,1), (1,0), 
+    val test0a = tst "test0a" (!sequence = [(2,3), (2,2), (2,1), (2,0),
+					    (1,3), (1,2), (1,1), (1,0),
 					    (0,3), (0,2), (0,1), (0,0)]);
   end
 
-  local 
+  local
     val sequence = ref ([] : (int * int) list)
-    val a' = 
-      tabulate ColMajor 
+    val a' =
+      tabulate ColMajor
       (3, 4, fn args => (sequence := args :: !sequence; fill args));
   in
     val test0b = tst "test0b" (!sequence = [(2,3), (1,3), (0,3),
 					    (2,2), (1,2), (0,2),
-					    (2,1), (1,1), (0,1), 
+					    (2,1), (1,1), (0,1),
 					    (2,0), (1,0), (0,0)]
 			       andalso foldi RowMajor
 			       (fn (i, j, aij, same) =>
 				same andalso sub(a, i, j) = aij)
-			       true {base=a', row=0, col=0, 
+			       true {base=a', row=0, col=0,
 				     nrows=NONE, ncols=NONE})
   end
 
-  val test1a = 
-    tst' "test1a" (fn _ => 
+  val test1a =
+    tst' "test1a" (fn _ =>
 		   sub(a, 1, 2) = 12
 		   andalso sub(a, 0, 0) = 0
 		   andalso sub(a, 0, 3) = 3
 		   andalso sub(a, 2, 0) = 20
 		   andalso sub(a, 2, 3) = 23);
-    
+
   val test1b = tst0 "test1b" ((sub(a, 3, 0) seq "WRONG")
     handle Subscript => "OK" | _ => "WRONG");
   val test1c = tst0 "test1c" ((sub(a, 0, 4) seq "WRONG")
@@ -81,7 +81,7 @@ in
   val _ = update(a, 1, 2, 112);
 
   val test2 =
-    tst' "test2" (fn _ => 
+    tst' "test2" (fn _ =>
 		  sub(a, 1, 2) = 112
 		  andalso sub(a, 1, 1) = 11
 		  andalso sub(a, 1, 3) = 13
@@ -92,10 +92,10 @@ in
   val test3b = tst' "test3b" (fn _ => nRows a = 3);
   val test3c = tst' "test3c" (fn _ => nCols a = 4);
 
-  val test4a = 
+  val test4a =
     tst' "test4a" (fn _ =>
 		   row(a, 0) = Vector.tabulate(4, fn j => fill(0, j)));
-  val test4b = 
+  val test4b =
     tst' "test4b" (fn _ =>
 		   row(a, 2) = Vector.tabulate(4, fn j => fill(2, j)));
   val test4c = tst0 "test4c" ((row(a, 4) seq "WRONG")
@@ -103,10 +103,10 @@ in
   val test4d = tst0 "test4d" ((row(a, ~1) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG");
 
-  val test5a = 
+  val test5a =
     tst' "test5a" (fn _ =>
 		   column(a, 0) = Vector.tabulate(3, fn i => fill(i, 0)));
-  val test5b = 
+  val test5b =
     tst' "test5b" (fn _ =>
 		   column(a, 3) = Vector.tabulate(3, fn i => fill(i, 3)));
   val test5c = tst0 "test5c" ((column(a,  4) seq "WRONG")
@@ -116,13 +116,13 @@ in
 
   val a1 = tabulate RowMajor (3, 4, fill); (* Supposed to be constant below *)
 
-  fun testcopy { row, col, nrows, ncols } dst_row dst_col reschk = 
-    check'(fn _ => 
-	   let 
+  fun testcopy { row, col, nrows, ncols } dst_row dst_col reschk =
+    check'(fn _ =>
+	   let
 	     val a2 = tabulate RowMajor (3, 4, fill);
 	     val src = { base=a2, row=row, col=col, nrows=nrows, ncols=ncols}
-	     val _ = copy {src=src, dst=a2, 
-			   dst_col=dst_col, dst_row=dst_row } 
+	     val _ = copy {src=src, dst=a2,
+			   dst_col=dst_col, dst_row=dst_row }
 	   in reschk a2 end);
 
   fun same a2 = List.all (fn i => row(a2, i) = row(a1, i)) [0, 1, 2]
@@ -146,30 +146,30 @@ in
  val test6h = tst0 "test6h"
     (testcopy {row=0,  col=0,  nrows=NONE, ncols=SOME 3 } 0 1
      (elts [ Vector.fromList[0, 0, 1, 2], Vector.fromList[10, 10, 11, 12], Vector.fromList[20, 20, 21, 22]]))
-  val test6i = 
+  val test6i =
     testcopy {row=0,  col=0,  nrows=SOME 2, ncols=NONE } 1 0
     (elts [ Vector.fromList[0, 1, 2, 3], Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13]])
-  val test6j = 
+  val test6j =
     testcopy {row=0,  col=0,  nrows=SOME 2, ncols=SOME 3 } 1 1
     (elts [ Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 0, 1, 2], Vector.fromList[20, 10, 11, 12]])
-  val test6k = 
+  val test6k =
     testcopy {row=1,  col=1,  nrows=SOME 2, ncols=SOME 3 } 0 0
     (elts [ Vector.fromList[11, 12, 13, 3], Vector.fromList[21, 22, 23, 13], Vector.fromList[20, 21, 22, 23]])
-  val test6l = 
+  val test6l =
     testcopy {row=0,  col=1,  nrows=SOME 2, ncols=SOME 3 } 1 0
     (elts [ Vector.fromList[0, 1, 2, 3], Vector.fromList[1, 2, 3, 13], Vector.fromList[11, 12, 13, 23]])
-  val test6m = 
+  val test6m =
     testcopy {row=0,  col=1,  nrows=SOME 2, ncols=SOME 3 } 1 1
     (elts [ Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 1, 2, 3], Vector.fromList[20, 11, 12, 13]])
-  val test6n = 
+  val test6n =
     testcopy {row=0,  col=1,  nrows=NONE, ncols=SOME 1 } 0 3
     (elts [ Vector.fromList[0, 1, 2, 1], Vector.fromList[10, 11, 12, 11], Vector.fromList[20, 21, 22, 21]])
-  val test6o = 
+  val test6o =
     testcopy {row=1,  col=0,  nrows=SOME 1, ncols=NONE } 2 0
     (elts [ Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13], Vector.fromList[10, 11, 12, 13]])
 
-  fun failcopy { row, col, nrows, ncols } dst_row dst_col = 
-    (copy {src={ base=a1, row=row, col=col, nrows=nrows, ncols=ncols}, 
+  fun failcopy { row, col, nrows, ncols } dst_row dst_col =
+    (copy {src={ base=a1, row=row, col=col, nrows=nrows, ncols=ncols},
 	   dst=a1, dst_col=dst_col, dst_row=dst_row } seq "WRONG")
     handle Subscript => "OK" | _ => "WRONG"
 
@@ -191,82 +191,82 @@ in
   val sequence = ref ([] : int list);
 
   fun collect a = sequence := a :: !sequence;
-    
-  fun collecti (i, j, a) = 
-    if fill(i, j) = a then 
+
+  fun collecti (i, j, a) =
+    if fill(i, j) = a then
       sequence := a :: !sequence
     else
       raise Fail ("collecti: Error in " ^ Int.toString a)
 
   val a3 = tabulate RowMajor (3, 4, fill);
 
-  val test8aa = tst' "test8aa" (fn _ => 
-				(sequence := []; 
+  val test8aa = tst' "test8aa" (fn _ =>
+				(sequence := [];
 				 app RowMajor collect a3;
-				 !sequence = [23, 22, 21, 20, 
-					      13, 12, 11, 10, 
+				 !sequence = [23, 22, 21, 20,
+					      13, 12, 11, 10,
 					      3,   2,  1,  0]));
-  val test8ab = tst' "test8ab" (fn _ => 
-				(sequence := []; 
+  val test8ab = tst' "test8ab" (fn _ =>
+				(sequence := [];
 				 app ColMajor collect a3;
-				 !sequence = [23, 13, 3, 
-					      22, 12, 2, 
-					      21, 11, 1, 
+				 !sequence = [23, 13, 3,
+					      22, 12, 2,
+					      21, 11, 1,
 					      20, 10, 0]));
-  val test8ba = tst' "test8ba" (fn _ => 
-				(sequence := []; 
+  val test8ba = tst' "test8ba" (fn _ =>
+				(sequence := [];
 				 appi RowMajor collecti { base=a3, row=0, col=0, nrows=NONE, ncols=NONE };
 				 !sequence = [23, 22, 21, 20, 13, 12, 11, 10, 3, 2, 1, 0]));
-  val test8bb = tst' "test8bb" (fn _ => 
-				(sequence := []; 
+  val test8bb = tst' "test8bb" (fn _ =>
+				(sequence := [];
 				 appi ColMajor collecti { base=a3, row=0, col=0, nrows=NONE, ncols=NONE };
 				 !sequence = [23, 13, 3, 22, 12, 2, 21, 11, 1, 20, 10, 0]));
-  val test8c = tst' "test8c" (fn _ => 
-			      (sequence := []; 
+  val test8c = tst' "test8c" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=0, col=1, nrows=NONE, ncols=NONE };
 			       !sequence = [23, 22, 21, 13, 12, 11, 3, 2, 1]));
-  val test8d = tst' "test8d" (fn _ => 
-			      (sequence := []; 
+  val test8d = tst' "test8d" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=0, nrows=NONE, ncols=NONE };
 			       !sequence = [23, 22, 21, 20, 13, 12, 11, 10]));
-  val test8e = tst' "test8e" (fn _ => 
-			      (sequence := []; 
+  val test8e = tst' "test8e" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=1, nrows=NONE, ncols=NONE };
 			       !sequence = [23, 22, 21, 13, 12, 11]));
-  val test8f = tst' "test8f" (fn _ => 
-			      (sequence := []; 
+  val test8f = tst' "test8f" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=3, col=0, nrows=NONE, ncols=NONE };
 			       !sequence = []));
-  val test8g = tst' "test8g" (fn _ => 
-			      (sequence := []; 
+  val test8g = tst' "test8g" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=0, col=4, nrows=NONE, ncols=NONE };
 			       !sequence = []));
-  val test8h = tst' "test8h" (fn _ => 
-			      (sequence := []; 
+  val test8h = tst' "test8h" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=1, nrows=SOME 0, ncols=NONE};
 			       !sequence = []));
-  val test8i = tst' "test8i" (fn _ => 
-			      (sequence := []; 
+  val test8i = tst' "test8i" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=1, nrows=NONE, ncols=SOME 0};
 			       !sequence = []));
-  val test8j = tst' "test8j" (fn _ => 
-			      (sequence := []; 
+  val test8j = tst' "test8j" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=1, nrows=SOME 1, ncols=NONE};
 			       !sequence = [13, 12, 11]));
-  val test8k = tst' "test8k" (fn _ => 
-			      (sequence := []; 
+  val test8k = tst' "test8k" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti { base=a3, row=1, col=1, nrows=NONE, ncols=SOME 1};
 			       !sequence = [21, 11]));
-  val test8l = tst' "test8l" (fn _ => 
-			      (sequence := []; 
+  val test8l = tst' "test8l" (fn _ =>
+			      (sequence := [];
 			       appi RowMajor collecti {base=a3, row=0, col=1, nrows=SOME 2, ncols=SOME 2};
 			       !sequence = [12, 11, 2, 1]));
 
   fun chkmodify resseq reschk =
     check'(fn _ =>
-	   let 
+	   let
 	     val a3 = tabulate RowMajor (3, 4, fill)
-	   in 
+	   in
 	     sequence := [];
 	     modify RowMajor (fn a => (collect a; a*10)) a3;
 	     !sequence = resseq andalso reschk a3
@@ -274,88 +274,88 @@ in
 
   fun chkmodifyi { row, col, nrows, ncols } resseq reschk =
     check'(fn _ =>
-	   let 
+	   let
 	     val a3 = tabulate RowMajor (3, 4, fill)
-	   in 
+	   in
 	     sequence := [];
-	     modifyi RowMajor (fn (args as (i, j, a)) => (collecti args; 
+	     modifyi RowMajor (fn (args as (i, j, a)) => (collecti args;
 							  a*10))
 	     {base=a3, row=row, col=col, nrows=nrows, ncols=ncols};
 	     !sequence = resseq andalso reschk a3
 	   end)
 
-  val test9a = 
-    chkmodify 
+  val test9a =
+    chkmodify
       [23, 22, 21, 20, 13, 12, 11, 10, 3, 2, 1, 0]
       (elts [Vector.fromList[0, 10, 20, 30], Vector.fromList[100, 110, 120, 130], Vector.fromList[200, 210, 220, 230]]);
-  val test9b = 
+  val test9b =
     chkmodifyi { row=0, col=0, nrows=NONE, ncols=NONE }
       [23, 22, 21, 20, 13, 12, 11, 10, 3, 2, 1, 0]
       (elts [Vector.fromList[0, 10, 20, 30], Vector.fromList[100, 110, 120, 130], Vector.fromList[200, 210, 220, 230]]);
-  val test9c = 
+  val test9c =
     chkmodifyi { row=0, col=1, nrows=NONE, ncols=NONE }
       [23, 22, 21, 13, 12, 11, 3, 2, 1]
       (elts [Vector.fromList[0, 10, 20, 30], Vector.fromList[10, 110, 120, 130], Vector.fromList[20, 210, 220, 230]]);
-  val test9d = 
+  val test9d =
     chkmodifyi { row=1, col=0, nrows=NONE, ncols=NONE }
       [23, 22, 21, 20, 13, 12, 11, 10]
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[100, 110, 120, 130], Vector.fromList[200, 210, 220, 230]]);
-  val test9e = 
+  val test9e =
     chkmodifyi { row=1, col=1, nrows=NONE, ncols=NONE }
       [23, 22, 21, 13, 12, 11]
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 110, 120, 130], Vector.fromList[20, 210, 220, 230]]);
-  val test9f =  
+  val test9f =
     chkmodifyi { row=3, col=0, nrows=NONE, ncols=NONE }
       []
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13], Vector.fromList[20, 21, 22, 23]]);
-  val test9g =  
+  val test9g =
     chkmodifyi { row=0, col=4, nrows=NONE, ncols=NONE }
       []
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13], Vector.fromList[20, 21, 22, 23]]);
-  val test9h =  
+  val test9h =
     chkmodifyi { row=1, col=1, nrows=SOME 0, ncols=NONE }
       []
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13], Vector.fromList[20, 21, 22, 23]]);
-  val test9i =  
+  val test9i =
     chkmodifyi { row=1, col=1, nrows=NONE, ncols=SOME 0 }
       []
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 11, 12, 13], Vector.fromList[20, 21, 22, 23]]);
-  val test9j =  
+  val test9j =
     chkmodifyi { row=1, col=1, nrows=SOME 1, ncols=NONE }
       [13, 12, 11]
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 110, 120, 130], Vector.fromList[20, 21, 22, 23]]);
-  val test9k =  
+  val test9k =
     chkmodifyi { row=1, col=1, nrows=NONE, ncols=SOME 1 }
       [21, 11]
       (elts [Vector.fromList[0, 1, 2, 3], Vector.fromList[10, 110, 12, 13], Vector.fromList[20, 210, 22, 23]]);
-  val test9l =  
+  val test9l =
     chkmodifyi { row=0, col=1, nrows=SOME 2, ncols=SOME 2 }
       [12, 11, 2, 1]
       (elts [Vector.fromList[0, 10, 20, 3], Vector.fromList[10, 110, 120, 13], Vector.fromList[20, 21, 22, 23]]);
 
   fun chkfold traversal resseq =
     check'(fn _ =>
-	   let 
+	   let
 	     val a3 = tabulate RowMajor (3, 4, fill)
-	     val sequence = 
+	     val sequence =
 	       fold traversal (fn (a, res) => a :: res) [] a3
-	   in 
-	     sequence = resseq 
+	   in
+	     sequence = resseq
 	   end)
 
   fun chkfoldi traversal { row, col, nrows, ncols } resseq =
     check'(fn _ =>
-	   let 
+	   let
 	     val a3 = tabulate RowMajor (3, 4, fill)
-	     fun chkidx i j a = 
-	       if fill(i, j) = a then () 
+	     fun chkidx i j a =
+	       if fill(i, j) = a then ()
 	       else raise Fail ("chkfoldi: Error in " ^ Int.toString a)
-	     val sequence = 
-	       foldi traversal 
-	       (fn (i, j, a, res) => (chkidx i j a; a :: res)) [] 
+	     val sequence =
+	       foldi traversal
+	       (fn (i, j, a, res) => (chkidx i j a; a :: res)) []
 	       { base=a3, row=row, col=col, nrows=nrows, ncols=ncols}
-	   in 
-	     sequence = resseq 
+	   in
+	     sequence = resseq
 	   end)
 
   val test10a1 = tst0 "test10a1"
@@ -431,21 +431,21 @@ in
     (chkfoldi ColMajor { row=0, col=1, nrows=SOME 2, ncols=SOME 2 }
      [12, 2, 11, 1]);
 
-  fun faili { row, col, nrows, ncols } = 
-    let 
+  fun faili { row, col, nrows, ncols } =
+    let
       val reg = {base=a1, row=row, col=col, nrows=nrows, ncols=ncols}
     in
-      (appi RowMajor ignore reg seq "WRONG") 
-      handle Subscript => 
-	(appi ColMajor ignore reg seq "WRONG") 
-	handle Subscript => 
+      (appi RowMajor ignore reg seq "WRONG")
+      handle Subscript =>
+	(appi ColMajor ignore reg seq "WRONG")
+	handle Subscript =>
 	  (modifyi RowMajor (fn (_, _, a) => a) reg seq "WRONG")
-	  handle Subscript => 
-	    (modifyi ColMajor (fn (_, _, a) => a) reg seq "WRONG") 
-	    handle Subscript => 
-	      (foldi RowMajor (fn _ => 1) 0 reg seq "WRONG") 
-	      handle Subscript => 
-		(foldi ColMajor (fn _ => 1) 0 reg seq "WRONG") 
+	  handle Subscript =>
+	    (modifyi ColMajor (fn (_, _, a) => a) reg seq "WRONG")
+	    handle Subscript =>
+	      (foldi RowMajor (fn _ => 1) 0 reg seq "WRONG")
+	      handle Subscript =>
+		(foldi ColMajor (fn _ => 1) 0 reg seq "WRONG")
 		handle Subscript => "OK"
 		     | _ => "WRONG"
     end
@@ -462,8 +462,8 @@ in
   fun chkfromlist xss =
     check'(fn _ =>
 	   let val a        = fromList xss
-	     val elements = 
-	       List.tabulate(nRows a, 
+	     val elements =
+	       List.tabulate(nRows a,
 			     fn i => Vector.foldr (op::) [] (row(a, i)))
 	   in elements = xss end)
 
