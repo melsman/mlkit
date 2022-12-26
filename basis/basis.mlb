@@ -35,6 +35,7 @@ local
               open Poly
               MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml
 	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
+              MONO_ARRAY2.sml
            end
         end
 
@@ -98,6 +99,7 @@ local
             end
             local open List ArrayVector
                   RealTable.sml
+                  RealArray2.sml
             in RealArrayVector.sml
             end
 	  end

@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2022-12-25: Added MONO_ARRAY2 signature and RealArray2
+  structure.
+
 * mael 2022-10-06: Reals may now be passed to functions unboxed in
   floating point registers. They may also be captured unboxed in
   closures (PR #73).

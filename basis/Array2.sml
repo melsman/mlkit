@@ -202,7 +202,7 @@ fun copy {src: 'a region, dst: 'a array, dst_row:int, dst_col:int} : unit =
                                             r + #row src,
                                             c + #col src))
     in appi RowMajor (fn (r,c,v) =>
-                         update2(#base src,nC,dst_row+r,dst_col+c,v))
+                         update2(dst,nC,dst_row+r,dst_col+c,v))
             {base=tmp,row=0,col=0,nrows=NONE,ncols=NONE}
     end
 
