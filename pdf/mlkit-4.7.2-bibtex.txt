@@ -1,0 +1,9 @@
+@TechReport{mlkit-4.7.2,
+  author      = {Mads Tofte and Lars Birkedal and Martin Elsman
+                 and Niels Hallenberg and Tommy H{\o}jfeld Olesen and
+                 Peter Sestoft},
+  title       = {Programming with Regions in the {MLKit} (Revised for Version 4.7.2)},
+  institution = {Department of Computer Science, University of Copenhagen, Denmark},
+  year        = {2022},
+  month       = {December}
+}

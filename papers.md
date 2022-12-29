@@ -6,6 +6,8 @@ group: navigation
 ---
 {% include JB/setup %}
 
+* Martin Elsman. __Garbage-Collection Safety for Region-Based Type-Polymorphic Programs__. Department of Computer Science, University of Copenhagen (DIKU), Denmark. DIKU Technical report. December 2022. [pdf](/pdf/gcsafety-revisited-tr-2022.pdf).
+
 * Martin Elsman and Niels Hallenberg. __Integrating region memory management and tag-free generational garbage collection__. In _Journal of Functional Programming (JFP)_. Volume 31, E4. [DOI](http://dx.doi.org/10.1017/S0956796821000010). Cambridge University Press. February 2021.
 
 * Martin Elsman and Niels Hallenberg. __On the Effects of Integrating Region-based Memory Management and Generational Garbage Collection in ML__. In

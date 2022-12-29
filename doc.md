@@ -23,7 +23,7 @@ A guide for programming with regions in the MLKit is available:
 
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, and Peter Sestoft. __Programming with Regions in the
-MLKit (revised for Version 4.6.0)__. Department of Computer Science, University of Copenhagen. December 2021. [pdf](/pdf/mlkit-4.6.0.pdf), [bibtex](/pdf/mlkit-4.6.0-bibtex.txt).
+MLKit (revised for Version 4.7.2)__. Department of Computer Science, University of Copenhagen. December 2022. [pdf](/pdf/mlkit-4.7.2.pdf), [bibtex](/pdf/mlkit-4.7.2-bibtex.txt).
 
 ### Other Resources
 

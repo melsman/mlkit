@@ -97,6 +97,7 @@ layout: front
    <div class="panel panel-default">
       <div class="panel-heading">News</div>
       <table class="table">
+	<tr><td><b>2022-12-29:</b> <a href="https://github.com/melsman/mlkit/releases/tag/v4.7.2">MLKit 4.7.2</a> is released and available in binary forms for Linux and macOS. The release features a <a href="/pdf/mlkit-4.7.2.pdf">revised version of the manual</a>, which reflects the changes since version 4.6.0</td></tr>
 	<tr><td><b>2021-12-31:</b> <a href="https://github.com/melsman/mlkit/releases/tag/v4.6.0">MLKit 4.6.0</a> is released and available in binary forms for Linux and macOS. The release features a <a href="/pdf/mlkit-4.6.0.pdf">revised version of the manual</a>, which reflects the changes since version 4.3.0</td></tr>
 	<tr><td><b>2021-01-31:</b> The <a href="https://diku-dk.github.io/sml-ide">Online SML IDE</a> is now more efficient and allows for linking with a dedicated Dropbox App folder.</td></tr>
 	<tr><td><b>2021-01-31:</b> The preferred library package solution to use with MLKit is now <a href="https://github.com/diku-dk/smlpkg">smlpkg</a>.</td></tr>
