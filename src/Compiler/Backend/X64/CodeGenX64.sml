@@ -47,7 +47,7 @@ struct
   val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
   val all_regs = map RI.lv_to_reg RI.all_regs
 
-  val ctx_exnptr_offs = "8"
+  val ctx_exnptr_offs = "8"  (* one word offset in Context struct *)
 
   fun inlineable C =
       case C of
@@ -676,12 +676,10 @@ struct
                       store_indexed(rsp,WORDS(size_ff-offset-1), R tmp_reg1,C))
                     fun store_exn_ptr C =
                       comment ("STORE EXN PTR: sp[offset+2] = exnPtr",
-(*                    I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
                       I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
                       store_indexed(rsp,WORDS(size_ff-offset-1+2), R tmp_reg1,
                       comment ("CALC NEW exnPtr: exnPtr = sp-size_ff+offset+size_of_handle",
                       base_plus_offset(rsp,WORDS(size_ff-offset-1(*-BI.size_of_handle()*)),tmp_reg1,        (*hmmm *)
-(*                    I.movq(R tmp_reg1, L exn_ptr_lab) :: *)
                       I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
                       C))))
                     fun store_sp C =
@@ -692,7 +690,6 @@ struct
                     fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
                       load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
-(*                    I.movq(R tmp_reg1, L exn_ptr_lab) :: *)
                       I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
                       I.jmp(L handl_join_lab) ::C))
                     fun handl_return_code C =
@@ -1257,32 +1254,23 @@ struct
                    val name = "spawnone"
                    val offset_codeptr = if BI.tag_values() then "8" else "0"
                    val call_closure_lab = new_local_lab (name ^ "_call_closure")
-                   val return_lab = new_local_lab ("return_" ^ name)
                    val _ = add_static_data ([I.dot_text,
                                              I.dot_align 8,
                                              (*I.dot_globl call_closure_lab, (* The C function entry *) *)
                                              I.lab call_closure_lab]
                                             @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
-                                            @ [I.subq(I "8", R rsp),    (* align stack *)
-                                               I.movq(R rdi,R tmp_reg0)]
+                                            @ [I.movq(R rdi,R tmp_reg0)]
                                             (* now initialize thread local data to point to the threadinfo struct *)
                                             @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
                                               [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
-                                               I.movq(D("0",rdi),R rax),             (* extract closure from threadinfo arg *)
-                                               (*I.movq(R rdi,R rax),*)                  (* move closure into closure register *)
+                                               I.movq(D("0",rdi),R rax),             (* extract closure from threadinfo arg into closure register *)
                                                I.leaq(D("8",rdi),R r14),             (* extract ctx from threadinfo and store it in ctx-register r14 *)
                                                I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 from C arg *)
-                                               I.push(I"0"),                         (* push dummy - for 16-byte alignment *)
-                                               I.push (LA return_lab),               (* push return address *)
-                                               I.jmp (R r10),                        (* call ML function *)
-                                               I.lab return_lab,                     (* ML result is now in rdi *)
-                                               I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
-                                               I.movq(R rdi, R tmp_reg0),
-                                               I.push(I"0")                          (* push dummy - for 16-byte alignment *)
+                                               I.call' (R r10),                      (* call ML function *)
+                                               I.movq(R rdi, R tmp_reg0)
                                               ]
                                             @ compile_c_call_prim("thread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
-                                              [I.addq(I "16", R rsp),                 (* adjust stack - for 16-byte alignment *)
-                                               I.movq(I "0", R rax)]                 (* move result to %rax *)
+                                              [I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                                             @ [I.ret])))
 
@@ -1719,18 +1707,16 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           in
             I.dot_globl(NameLab "raise_exn") ::
             I.lab (NameLab "raise_exn") ::
+            I.subq (I "8", R rsp) :: (* adjust stack pointer for alignment *)
             I.movq (R rdi, R r14) :: (* reinstall context pointer *)
             I.movq (R rsi, R r15) :: (* move argument to callee-save register *)
             comment ("DEALLOCATE REGIONS UNTIL",
-(*          I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
             I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
             compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY I.r14,SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
 
             comment ("RESTORE EXN PTR",
-(*          I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
             I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-            I.movq(D("16",tmp_reg1), R tmp_reg0) ::   (* was:8 *)
-(*          I.movq(R tmp_reg0, L exn_ptr_lab) :: *)
+            I.movq(D("16",tmp_reg1), R tmp_reg0) ::   (* two word offset *)
             I.movq(R tmp_reg0, D(ctx_exnptr_offs,r14)) ::
 
             comment ("INSTALL HANDLER EXN-ARGUMENT",

@@ -355,6 +355,8 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
   ti->joined = 0;
   ti->tid = ++thread_counter;   // atomic?
   (ti->ctx).topregion = NULL;
+  (ti->ctx).exnptr = NULL;
+  (ti->ctx).uncaught_exnname = 0;
 #ifndef ARGOBOTS
   (ti->ctx).freelist = NULL;
   (ti->ctx).mutex_freelist = NULL;

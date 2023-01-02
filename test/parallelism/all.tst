@@ -29,3 +29,5 @@ spawn_simple6.sml         nobasislib
 spawn100.sml              nobasislib
 spawn_lists.sml           nobasislib
 cores.sml                 nobasislib
+exn0.sml                  nobasislib
+exn1.sml                  nobasislib
