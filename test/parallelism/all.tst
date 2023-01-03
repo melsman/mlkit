@@ -31,3 +31,4 @@ spawn_lists.sml           nobasislib
 cores.sml                 nobasislib
 exn0.sml                  nobasislib
 exn1.sml                  nobasislib
+exn2.sml                  nobasislib
