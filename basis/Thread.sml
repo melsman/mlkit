@@ -1,8 +1,8 @@
 structure Thread :> THREAD = struct
   type thread = foreignptr
-  type 'a t = ((unit->'a) * thread) ref
-  fun get__noinline ((ref (f,t0)): 'a t) : 'a = prim("thread_get", t0)
-  fun spawn__noinline (f: unit->'a) (k: 'a t -> 'b) : 'b =
+  type 'a t0 = ((unit->'a) * thread) ref
+  fun get__noinline ((ref (f,t0)): 'a t0) : 'a = prim("thread_get", t0)
+  fun spawn__noinline (f: unit->'a) (k: 'a t0 -> 'b) : 'b =
       let val rf : (unit -> 'a) ref = ref f
           val fp_f : foreignptr = prim("pointer", !rf)
 
@@ -20,13 +20,16 @@ structure Thread :> THREAD = struct
            * in a local stack-allocated region inside the "pointer"
            * prim value, which cause the program to segfault.. *)
 
-          (* val () = prim("function_test", fp_f) *)
           val t0 : thread = prim("spawnone", fp_f)
-          val t: 'a t = ref (f,t0)
-          val res = k t
-          val _ = if !(ref true)          (* make sure the thread has terminated before returning *)
-                  then get__noinline t    (* and mimic that, from a type perspective, spawn has *)
-                  else !rf()              (* the effect of calling f *)
+          val t: 'a t0 = ref (f,t0)
+
+          fun force () =
+              if !(ref true)          (* make sure the thread has terminated before returning *)
+              then get__noinline t    (* and mimic that, from a type perspective, spawn has *)
+              else !rf()              (* the effect of calling f *)
+
+          val res = k t handle e => (force(); raise e)
+          val _ = force ()
 
           (* Notice that it is not safe to call `thread_free t0` here
            * as t0 may be live through later calls to `get t`.
@@ -40,8 +43,17 @@ structure Thread :> THREAD = struct
       in res
       end
 
-  fun spawn x = spawn__noinline x
-  fun get x = get__noinline x
+  (* Now, make it work when a thread raises an exception *)
+  datatype 'a res = Ok of 'a | Exn of exn
+  type 'a t = 'a res t0
+  fun spawn (f: unit->'a) (k: 'a t -> 'b) : 'b =
+      let fun f' () = Ok (f ()) handle e => Exn e
+      in spawn__noinline f' k
+      end
+  fun get (x:'a t) : 'a =
+      case get__noinline x of
+          Ok v => v
+        | Exn e => raise e
 
   fun numCores () : int =
       prim("numCores",())

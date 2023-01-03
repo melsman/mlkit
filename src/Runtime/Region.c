@@ -516,7 +516,7 @@ alloc_new_page(Gen *gen)
 static inline Region
 allocateRegion0(Context ctx, Region r, Protect protect)
 {
-  debug(printf("[allocateRegion0 (rAddr=%p, protect=%ui)...",r,protect));
+  debug(printf("[allocateRegion0 (rAddr=%p, protect=%zu)...",r,protect));
   r = clearStatusBits(r);
 
   CHECK_CTX("allocateRegion0");
@@ -1095,7 +1095,7 @@ deallocateRegionsUntil(Context ctx, Region r)
 {
   //  debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
-  debug(printf("[deallocateRegionsUntil(r = %p)...\n", r));
+  debug(printf("[deallocateRegionsUntil(r = %p, topr= %p)...\n", r, TOP_REGION));
 
   r = clearStatusBits(r);
 
@@ -1110,9 +1110,9 @@ deallocateRegionsUntil(Context ctx, Region r)
     }
 #endif
 
-  while (r >= TOP_REGION)
+  while (TOP_REGION && r >= TOP_REGION)
     {
-      /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
+      debug(printf("r: %p, top region %p\n",r,TOP_REGION));
       deallocateRegion(ctx);
     }
 
@@ -1324,7 +1324,7 @@ allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t siz
   objPtr->atId = notPrgPoint;
   objPtr->size = size;
 
-  debug(printf("exiting, topFiniteRegion = %x, topFiniteRegion->p = %x, &topFiniteRegion = %x]\n",
+  debug(printf("exiting, topFiniteRegion = %p, topFiniteRegion->p = %p, &topFiniteRegion = %p]\n",
   	       topFiniteRegion, topFiniteRegion->p, &topFiniteRegion));
 
   return;
@@ -1363,7 +1363,7 @@ deallocRegionFiniteProfiling(void)
 
   topFiniteRegion = topFiniteRegion->p;                   /* pop ptr. to prev. region desc. */
 
-  debug(printf("exiting, topFiniteRegion = %x]\n", topFiniteRegion));
+  debug(printf("exiting, topFiniteRegion = %p]\n", topFiniteRegion));
 }
 
 
@@ -1381,7 +1381,7 @@ allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 {
   uintptr_t *res;
 
-  debug(printf("[Entering allocProfiling... gen:%x, n:%d, pp:%d.", gen, n, pPoint));
+  debug(printf("[Entering allocProfiling... gen:%p, n:%zu, pp:%zu.", gen, n, pPoint));
 
   res = allocGen(gen, n+sizeObjectDesc);       // allocate object descriptor and object
 
