@@ -17,7 +17,7 @@
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
-\date{September 16, 2022 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
+\date{December 29, 2022 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
 \raggedbottom
 
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
@@ -6009,8 +6009,9 @@ lead to extra $\Get$ effects being added to $\epsilon.\varphi$ when
 garbage collection is enabled. In the example, an imposed $\Get$
 effect on the arrow effect in the type for {\tt f} makes it impossible
 to wrap a {\tt region} binding around the binding for {\tt f}. (See
-\cite[page 50]{total93} and \cite{elsman:tldi03} for more information
-about this requirement.)
+\cite[page 50]{total93}, \cite{elsman:tldi03}, and
+\cite{gcsafety-revisited-tr-2022} for more information about this
+requirement.)
 
 \section{Scanning Text Files with Stream IO and Garbage Collection}
 
@@ -8026,7 +8027,8 @@ type and places.
 A problem with garbage-collection safety was fixed and it is now
 properly ensured that no dangling pointers appear during evaluation,
 which is a necessary requirement for combining region inference and
-reference-tracing garbage collection.
+reference-tracing garbage collection. Details are described in a
+technical report \cite{gcsafety-revisited-tr-2022}.
 
 \section{Changes Since Version 4.3.0}
 \index{changes!since version 4.3.0}%

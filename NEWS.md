@@ -1,5 +1,11 @@
 ## MLKit NEWS
 
+* mael 2023-01-03: Preliminary parallelism support through the Thread
+  structure (basis/par.mlb). This feature is currently supported only
+  when GC is disabled.
+
+* mael 2023-01-03: Revised manual for version 4.7.2.
+
 * mael 2022-12-25: Added MONO_ARRAY2 signature and RealArray2
   structure.
 
