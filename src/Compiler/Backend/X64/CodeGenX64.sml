@@ -43,6 +43,13 @@ struct
            desc="Insert check for GC even in functions that do not\n\
                 \allocate."}
 
+  val alloc_protect_always_p =
+      Flags.add_bool_entry
+          {long="alloc_protect_always", short=NONE, item=ref false,
+           menu=["Compiler", "always protect allocation when parallelism is enabled"], neg=false,
+           desc="Always protect allocation when parallelism is enabled. That\n\
+                \is, disregard the result of protection inference."}
+
   val caller_save_regs_ccall = nil(*map RI.lv_to_reg RI.caller_save_ccall_phregs*)
   val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
   val all_regs = map RI.lv_to_reg RI.all_regs
@@ -628,7 +635,10 @@ struct
                                          | _ => die "alloc_region_prim.name2"
                                      else "allocateRegion"
                                  val protect = if parallelism_p() then
-                                                 [mkIntAty (case Effect.get_protect place of SOME true => 1 | _ => 0)]
+                                                 [mkIntAty (if alloc_protect_always_p() then 1
+                                                            else case Effect.get_protect place of
+                                                                     SOME true => 1
+                                                                   | _ => 0)]
                                                else []
                               in
                                   base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
