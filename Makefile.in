@@ -125,7 +125,7 @@ barry:
 
 .PHONY: clean
 clean:
-	$(CLEAN) bin run lib bootstrap dist man/man1/*.1 doc/README_BIN
+	$(CLEAN) bin run lib bootstrap dist man/man1/*.1
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -185,6 +185,7 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemPar.a $(LIBDIR)/lib
 
 .PHONY: install_include
 install_include:
@@ -413,7 +414,6 @@ mlkit_x64_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(MLKIT_DIST_BIN)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(MLKIT_DIST_BIN) prefix=
-	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
 
 # -----------------------------------------------------

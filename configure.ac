@@ -4,7 +4,6 @@ AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/Runtime/Makefile
                  src/Makefile
                  Makefile
-                 doc/README_BIN
                  man/man1/mlkit-mllex.1
                  man/man1/mlkit-mlyacc.1
                  man/man1/rp2ps.1
