@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.3 is released
+
 * mael 2023-01-03: Preliminary parallelism support through the Thread
   structure (basis/par.mlb). This feature is currently supported only
   when GC is disabled.
@@ -9,6 +11,10 @@
 * mael 2022-12-25: Added MONO_ARRAY2 signature and RealArray2
   structure.
 
+* mael 2023-03-02: Fixed problem with dangling pointers in exception
+  values, which caused generational garbage collection to fail in
+  bootstrapped MLKit compiler (issue #118).
+
 * mael 2022-10-06: Reals may now be passed to functions unboxed in
   floating point registers. They may also be captured unboxed in
   closures (PR #73).
@@ -16,7 +22,7 @@
 ### MLKit version 4.7.2 is released
 
 * mael 2022-09-15: The region type system has now been made simpler by
-  avoing word-regions all together and by limiting regions of type
+  avoiding word-regions altogether and by limiting regions of type
   RT_BOT to be related to explicit region annotated programs (PR
   #110). This change also eliminated a bug that prevented MLKit from
   compiling MLton (issue #103).
@@ -48,7 +54,7 @@
 * mael 2022-01-18: Fixed problem with dropped region variable being
   passed to a function. Such situations can arise if the particular
   function call instance cause no allocation in the dropped region,
-  while another function call instance will prowide a proper region
+  while another function call instance will provide a proper region
   which will be allocated into (by, for instance, a parameter-passed
   function) (problem mentioned in issue #97).
 
