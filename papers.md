@@ -6,7 +6,7 @@ group: navigation
 ---
 {% include JB/setup %}
 
-* Martin Elsman and Niels Hallenberg. __Integrating region memory management and tag-free generational garbage collection__. In _Journal of Functional Programming (JFP)_. Volume 31, E4. [DOI](http://dx.doi.org/10.1017/S0956796821000010). Cambridge University Press. February 2021.
+* Martin Elsman and Niels Hallenberg. __Integrating region memory management and tag-free generational garbage collection__. In _Journal of Functional Programming (JFP)_. Volume 31, E4. [DOI](http://dx.doi.org/10.1017/S0956796821000010). Cambridge University Press. February 2021. [PDF](/pdf/jfp2021.pdf).
 
 * Martin Elsman and Niels Hallenberg. __On the Effects of Integrating Region-based Memory Management and Generational Garbage Collection in ML__. In
 _International Symposium on Practical Aspects of Declarative Languages
