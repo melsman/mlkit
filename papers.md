@@ -6,6 +6,10 @@ group: navigation
 ---
 {% include JB/setup %}
 
+* Martin Elsman and Troels Henriksen. __Parallelism in a Region Inference Context__. In _Proceedings of the 44th ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI ’23)_, Orlando, Florida, USA. June 17-21, 2023. [DOI](https://doi.org/10.1145/3591256).
+
+* Martin Elsman. __Garbage-Collection Safety for Region-Based Type-Polymorphic Programs__. In _Proceedings of the 44th ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI ’23)_, Orlando, Florida, USA. June 17-21, 2023. [DOI](https://doi.org/10.1145/3591229).
+
 * Martin Elsman and Niels Hallenberg. __Integrating region memory management and tag-free generational garbage collection__. In _Journal of Functional Programming (JFP)_. Volume 31, E4. [DOI](http://dx.doi.org/10.1017/S0956796821000010). Cambridge University Press. February 2021. [PDF](/pdf/jfp2021.pdf).
 
 * Martin Elsman and Niels Hallenberg. __On the Effects of Integrating Region-based Memory Management and Generational Garbage Collection in ML__. In
