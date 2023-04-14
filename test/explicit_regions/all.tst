@@ -36,7 +36,7 @@ er14.sml              ccl ecte    (* It is an error to give multiple explicit re
 er15.sml              ccl ecte    (* It is an error to give multiple explicit regions to con0 *)
 er16.sml              ccl ecte    (* It is an error to give multiple explicit regions to con1 *)
 er17.sml              ccl ecte    (* It is an error to have constructors of different conditional branches to be allocated in different regions *)
-
+er18.sml              ccl ecte    (* Empty record types cannot be annotated with explicit regions *)
 param.sml                         (* Functions can be declared to take region parameters *)
 param1.sml                        (* Functions can be declared to take one region parameter *)
 tup.sml                           (* Tuples can be allocated in explicit regions *)
@@ -48,3 +48,4 @@ con0.sml                          (* Con0 constructor can be allocated in explic
 con1.sml                          (* Con1 constructor can be allocated in explicit regions *)
 call.sml
 call2.sml
+ty1.sml                           (* Types can be annotated with explicit regions *)

@@ -373,8 +373,11 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	of TYVARty(i, _) =>
 	     check i
 
-	 | RECORDty(i, tyrow_opt) =>
+	 | RECORDty(i, tyrow_opt, NONE) =>
 	     check i // walk_opt walk_Tyrow tyrow_opt
+
+	 | RECORDty(i, tyrow_opt, SOME(i2,_)) =>
+	     check i // walk_opt walk_Tyrow tyrow_opt // check i2
 
 	 | CONty(i, tys, _) =>
 	     check i // List.foldr (fn (a,b) => walk_Ty a // b) ok tys

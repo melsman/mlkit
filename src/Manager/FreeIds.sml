@@ -311,7 +311,7 @@ structure FreeIds:  FREE_IDS =
 
     and free_ty I =
       fn TYVARty _ => ()
-       | RECORDty(_,tyrow_opt) => free_tyrow_opt I tyrow_opt
+       | RECORDty(_,tyrow_opt,_) => free_tyrow_opt I tyrow_opt
        | CONty(_,tys,longtycon) => (List.app (free_ty I) tys; use_longtycon(I,longtycon))
        | FNty(_,ty1,ty2) => (free_ty I ty1; free_ty I ty2)
        | PARty(_,ty) => free_ty I ty

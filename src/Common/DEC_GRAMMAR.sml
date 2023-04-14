@@ -106,7 +106,7 @@ sig
 
   and ty =
         TYVARty of info * tyvar |
-        RECORDty of info * tyrow option |
+        RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
         PARty of info * ty

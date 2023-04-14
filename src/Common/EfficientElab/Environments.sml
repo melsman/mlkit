@@ -88,9 +88,9 @@ structure Environments: ENVIRONMENTS =
 	case ty of
 	  TYVARty(_, tyvar) =>
 	    EqSet.singleton tyvar
-	| RECORDty(_, NONE) =>
+	| RECORDty(_, NONE, _) =>
 	    EqSet.empty
-	| RECORDty(_, SOME tyrow) =>
+	| RECORDty(_, SOME tyrow, _) =>
 	    ExplicitTyVarsTyRow tyrow
 	| CONty(_, tylist, _) =>
 	    foldl (uncurry EqSet.union) EqSet.empty (map ExplicitTyVarsTy tylist)
@@ -195,7 +195,7 @@ structure Environments: ENVIRONMENTS =
 
       and unguarded_ty(DecGrammar.TYVARty(_,tyvar)) =
 	  [tyvar]
-	| unguarded_ty(DecGrammar.RECORDty(_,tyrow_opt)) =
+	| unguarded_ty(DecGrammar.RECORDty(_,tyrow_opt,_)) =
 	  unguarded_opt unguarded_tyrow tyrow_opt
 	| unguarded_ty(DecGrammar.CONty(_,ty_list,_)) =
 	  foldl (fn (ty, tyvarset) => unguarded_ty ty ++ tyvarset)

@@ -278,10 +278,10 @@ structure GrammarUtils: GRAMMAR_UTILS =
                 (List.nth (tyseq,i))
                 handle _ => impossible "rewriteDatBind---replaceTy"
               end
-          | RECORDty(i, NONE) =>
+          | RECORDty(i, NONE, _) =>
               ty
-          | RECORDty(i, SOME tyrow) =>
-              RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow))
+          | RECORDty(i, SOME tyrow, regvar) =>
+              RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow), regvar)
           | CONty(i, tylist, tycon) =>
               CONty(i, map (replaceTy tyvarseq tyseq) tylist, tycon)
           | FNty(i, ty1, ty2) =>
@@ -312,10 +312,10 @@ structure GrammarUtils: GRAMMAR_UTILS =
           case ty of
             TYVARty _ =>
               ty
-          | RECORDty(i, NONE) =>
+          | RECORDty(i, NONE, _) =>
               ty
-          | RECORDty(i, SOME tyrow) =>
-              RECORDty(i, SOME (rewriteTyrow tyrow))
+          | RECORDty(i, SOME tyrow, regvar) =>
+              RECORDty(i, SOME (rewriteTyrow tyrow), regvar)
           | CONty(i, tyseq', longtycon') =>
               let
                 val (strid_list, tycon') = TyCon.explode_LongTyCon longtycon'
@@ -442,7 +442,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
                   SOME (TYROW (info, mk_IntegerLab n, ty, f (n+1, tys)))
 	      | f (_, []) = NONE
 	  in
-	    RECORDty (info, f (1, tys))
+	    RECORDty (info, f (1, tys), NONE)
 	  end
 
     (*rewrite_type_abbreviation_spec: rewrite a derived form of spec,

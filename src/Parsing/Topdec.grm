@@ -1469,10 +1469,16 @@ TupleTy:  Ty_sans_STAR  ( [Ty_sans_STAR] )
                         ( Ty_sans_STAR :: TupleTy )
 
 Ty_sans_STAR:
-          LPAREN TyComma_seq2 RPAREN LongTypeIdent
+          LPAREN TyComma_seq2 RPAREN LongTypeIdent BACKQUOTE EqIdent
+                        ( CONty (PP LPARENleft LongTypeIdentright,
+				 TyComma_seq2, mk_LongTyCon LongTypeIdent) )
+        | LPAREN TyComma_seq2 RPAREN LongTypeIdent
                         ( CONty (PP LPARENleft LongTypeIdentright,
 				 TyComma_seq2, mk_LongTyCon LongTypeIdent) )
         | Ty_sans_STAR LongTypeIdent
+                        ( CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				 [Ty_sans_STAR], mk_LongTyCon LongTypeIdent) )
+        | Ty_sans_STAR LongTypeIdent BACKQUOTE EqIdent
                         ( CONty (PP Ty_sans_STARleft LongTypeIdentright,
 				 [Ty_sans_STAR], mk_LongTyCon LongTypeIdent) )
         | AtomicTy      ( AtomicTy )
@@ -1483,11 +1489,21 @@ TyComma_seq2:
         | Ty COMMA Ty   ( [Ty1, Ty2] )
 
 AtomicTy:
-          LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
+          LongTypeIdent BACKQUOTE EqIdent
+                        ( CONty (PP LongTypeIdentleft LongTypeIdentright,
 				 [], mk_LongTyCon LongTypeIdent) )
+        | LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
+				 [], mk_LongTyCon LongTypeIdent) )
+
         | TYVAR         ( TYVARty(PP TYVARleft TYVARright, mk_TyVar TYVAR) )
+        | LBRACE TyRow_opt RBRACE BACKQUOTE EqIdent
+                        ( RECORDty (PP LBRACEleft RBRACEright,
+                                    TyRow_opt,
+                                    SOME (PP BACKQUOTEleft EqIdentright, RegVar.mk_Named EqIdent)) )
         | LBRACE TyRow_opt RBRACE
-                        ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt) )
+                        ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt, NONE) )
+        | LPAREN Ty RPAREN BACKQUOTE EqIdent
+                        ( PARty (PP LPARENleft RPARENright, Ty) )
         | LPAREN Ty RPAREN
                         ( PARty (PP LPARENleft RPARENright, Ty) )
 

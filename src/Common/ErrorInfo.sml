@@ -105,6 +105,7 @@ structure ErrorInfo: ERROR_INFO =
       (* Explicit regions errors *)
       | REGVARS_IDONLY
       | REGVARS_SCOPED_TWICE of regvar list
+      | REGVAR_TY_UNBOXED
 
     type Report = Report.Report
     val line = Report.line
@@ -380,6 +381,9 @@ structure ErrorInfo: ERROR_INFO =
       | report (REGVARS_SCOPED_TWICE rs) =
           line ("Explicit region variable(s) already in scope: " ^ pp_list RegVar.pr rs)
 
+      | report REGVAR_TY_UNBOXED =
+          line "Unboxed types cannot be annotated with regions"
+
     structure ErrorCode =
       struct
 	type ErrorCode = string and ErrorInfo = ErrorInfo
@@ -440,6 +444,7 @@ structure ErrorInfo: ERROR_INFO =
 	     | RIGIDTYFUNEQERROR _ =>                   "RIGIDTYFUNEQERROR"
              | REGVARS_IDONLY =>                        "REGVARS_IDONLY"
              | REGVARS_SCOPED_TWICE _ =>                "REGVARS_SCOPED_TWICE"
+             | REGVAR_TY_UNBOXED =>                     "REGVAR_TY_UNBOXED"
 
 	val error_code_parse = "PARSE"
 

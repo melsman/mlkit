@@ -1794,13 +1794,24 @@ structure ElabDec: ELABDEC =
 	    end
 
           (* Record type *)                                     (*rule 45*)
-        | IG.RECORDty(i, NONE) =>  (SOME Type.Unit, OG.RECORDty (okConv i, NONE))
+         | IG.RECORDty(i, NONE, NONE) =>  (SOME Type.Unit,
+                                           OG.RECORDty (okConv i, NONE, NONE))
+
+         | IG.RECORDty(i, NONE, SOME (i2,rv)) =>
+           (SOME Type.Unit,
+            OG.RECORDty (okConv i, NONE,
+                         SOME (errorConv (i2, ErrorInfo.REGVAR_TY_UNBOXED),rv)))
 
           (* Record type *)
-        | IG.RECORDty(i, SOME tyrow) =>  (* The error has already been reported. *)
+        | IG.RECORDty(i, SOME tyrow, NONE) =>  (* The error has already been reported. *)
 	   (case elab_tyrow(C, tyrow)
-	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow))
-	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow)))
+	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow, NONE))
+	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, NONE)))
+
+        | IG.RECORDty(i, SOME tyrow, SOME(i2,rv)) =>  (* The error has already been reported. *)
+	   (case elab_tyrow(C, tyrow)
+	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i2,rv)))
+	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i, rv))))
 
 
         (* Constructed type *)                                  (*rule 46*)
