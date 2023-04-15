@@ -2066,6 +2066,7 @@ struct
                                          SOME (ty,rho) => (ty,SOME rho)
                                        | NONE => (mu,NONE)
                     val () = if R.isF64Type ty then Lvars.set_ubf64 lvar else ()
+                    val () = if R.isF256Type ty then Lvars.set_ubf64 lvar else ()
                 in [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
                 end
               | RegionExp.RaisedExnBind => []

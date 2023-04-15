@@ -257,6 +257,66 @@ structure OptLambda: OPT_LAMBDA =
       val f64_greatereq = f64_cmp "greatereq"
     end
 
+    (* Operations on unboxed vectors *)
+
+    local
+      type exp = LambdaExp
+      fun ccall name argtypes restype =
+          CCALLprim {name=name,instances=[],tyvars=[],
+		     Type=ARROWtype(argtypes,[restype])}
+      fun f256_bin opr (x:exp,y:exp) : exp =
+          PRIM(ccall ("__" ^ opr ^ "_f256") [f256Type,f256Type] f256Type, [x,y])
+      val allocVector : exp = PRIM(SCRATCHMEMprim 32, [])
+    in
+      fun f256_box (x:exp) : exp = PRIM(ccall "__f256_box" [f256Type] stringType,[x])
+      (* let val box = allocVector
+      *      val () = storeVector(x, box)
+      *   in box
+      *)
+      fun f256_box_alloc (x:exp) : exp =
+        let val box = Lvars.newLvar ()
+            val boxVar = VAR {lvar = box, instances = [], regvars = []}
+            val storeExp: exp =
+              LET { pat = [(Lvars.newLvar (), [], unitType)]
+                  , bind = PRIM(ccall "__f256_store" [f256Type, stringType] unitType, [x, boxVar])
+                  , scope = boxVar
+                  }
+         in
+           LET { pat = [(box, [], stringType)]
+               , bind = allocVector
+               , scope = storeExp
+               }
+        end
+
+      fun f256_unbox (x:exp) : exp = PRIM(ccall "__f256_unbox" [stringType] f256Type, [x])
+
+      fun f256_broadcast (x: exp) : exp = PRIM(ccall "__broadcast_f256" [f64Type] f256Type, [x])
+      fun f256_blend (a: exp, b: exp, mask: exp) : exp =
+          PRIM(ccall "__blend_f256" [f256Type, f256Type, f256Type] f256Type, [a,b,mask])
+      fun f256_product (a: exp) : exp =
+          PRIM(ccall "__product_f256" [f256Type] f64Type, [a])
+      fun f256_sum (a: exp) : exp =
+          PRIM(ccall "__sum_f256" [f256Type] f64Type, [a])
+
+      val f256_plus = f256_bin "plus"
+      val f256_minus = f256_bin "minus"
+      val f256_and = f256_bin "and"
+      val f256_or = f256_bin "or"
+      val f256_mul = f256_bin "mul"
+      val f256_div = f256_bin "div"
+      val f256_less = f256_bin "less"
+      val f256_lesseq = f256_bin "lesseq"
+      val f256_greater = f256_bin "greater"
+      val f256_greatereq = f256_bin "greatereq"
+
+	  fun f256_any (x: exp): exp = PRIM(ccall "__any_f256" [f256Type] boolType, [x])
+	  fun f256_all (x: exp): exp = PRIM(ccall "__all_f256" [f256Type] boolType, [x])
+	  fun f256_not (x: exp): exp = PRIM(ccall "__not_f256" [f256Type] f256Type, [x])
+
+	  val f256_true: exp = PRIM(ccall "__true_f256" [] f256Type, [])
+      val f256_false: exp = PRIM(ccall "__false_f256" [] f256Type, [])
+    end
+
    (* -----------------------------------------------------------------
     * Statistical functions
     * ----------------------------------------------------------------- *)
@@ -582,6 +642,7 @@ structure OptLambda: OPT_LAMBDA =
              case e of
                  REAL _ => true
                | F64 _ => true
+               | F256 _ => true
                | WORD _ => true
                | INTEGER _ => true
                | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else true
@@ -607,6 +668,7 @@ structure OptLambda: OPT_LAMBDA =
              case e of
                  REAL _ => e
                | F64 _ => e
+               | F256 _ => e
                | WORD _ => e
                | INTEGER _ => e
                | VAR _ => e
@@ -624,6 +686,112 @@ structure OptLambda: OPT_LAMBDA =
                | SWITCH_C(SWITCH(e,es,eopt)) =>
                  SWITCH_C(SWITCH(subst e, map (fn (x,e) => (x,subst e)) es, Option.map subst eopt))
                | _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
+                      else e
+       in subst lamb
+       end
+
+   fun string_lvar_f256_in_lamb (lv:lvar) (lamb:LambdaExp) : bool =
+     let exception Bad
+         fun ok n =
+             case n of
+                 "__m256d_plus" => true
+               | "__m256d_minus" => true
+               | "__m256d_mul" => true
+               | "__m256d_div" => true
+               | "__m256d_and" => true
+               | "__m256d_or" => true
+               | "__m256d_nor" => true
+               | "__m256d_less" => true
+               | "__m256d_lesseq" => true
+               | "__m256d_greater" => true
+               | "__m256d_greatereq" => true
+               | "__m256d_all" => true
+               | "__m256d_any" => true
+               | "__m256d_blend" => true
+               | "__m256d_true" => true
+               | "__m256d_false" => true
+               | "__m256d_sum" => true
+               | "__m256d_product" => true
+
+               | "__m256d_broadcast" => true
+               | "__f256_box" => true
+               | "__f256_unbox" => true
+
+               | "__plus_f256" => true
+               | "__minus_f256" => true
+               | "__mul_f256" => true
+               | "__div_f256" => true
+               | "__and_f256" => true
+               | "__or_f256" => true
+               | "__not_f256" => true
+               | "__less_f256" => true
+               | "__lesseq_f256" => true
+               | "__greater_f256" => true
+               | "__greatereq_f256" => true
+			   | "__all_f256" => true
+			   | "__any_f256" => true
+               | "__blend_f256" => true
+			   | "__true_f256" => true
+               | "__false_f256" => true
+			   | "__sum_f256" => true
+               | "__product_f256" => true
+
+               | "__broadcast_f256" => true
+               | "__real_to_f64" => true
+               | "__f64_to_real" => true
+               | "__blockf64_sub_f256" => true
+               | "__blockf64_update_f256" => true
+               | _ => false
+         fun check e = if lvar_in_lamb lv e then raise Bad else false
+         fun safeLook_sw safeLook (SWITCH(e,es,eopt)) =
+             if safeLook e then
+               let val ss = map (safeLook o #2) es
+                   val sopt = Option.map safeLook eopt
+               in Option.getOpt (sopt,true) andalso List.all (fn x => x) ss
+               end
+             else (app (ignore o check o #2) es; Option.app (ignore o check) eopt; false)
+         fun safeLook e =
+             case e of
+                 REAL _ => true
+               | F64 _ => true
+               | F256 _ => true
+               | WORD _ => true
+               | INTEGER _ => true
+               | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else true
+               | PRIM(CCALLprim{name="__f256_unbox",...},[VAR _]) => true
+               | PRIM(CCALLprim{name,...},es) =>
+                 if ok name then safeLooks es else raise Bad
+	       | LET{pat,bind,scope} => if safeLook bind then safeLook scope
+                                        else check scope
+               | PRIM(SELECTprim _, es) => safeLooks es
+               | PRIM(RECORDprim _, es) => safeLooks es
+               | PRIM(BLOCKF64prim, es) => safeLooks es
+               | PRIM(DROPprim, es) => safeLooks es
+               | PRIM(CONprim _, es) => safeLooks es
+               | SWITCH_C sw => safeLook_sw safeLook sw
+               | _ => check e
+         and safeLooks es =
+             List.foldl (fn (e,s) => if s then safeLook e else check e) true es
+     in
+       (safeLook lamb; true) handle Bad => false
+     end
+
+   fun subst_string_lvar_f256_in_lamb (lv:lvar) (lamb:LambdaExp) : LambdaExp =
+       let fun subst e =
+             case e of
+                 REAL _ => e
+               | F64 _ => e
+               | F256 _ => e
+               | WORD _ => e
+               | INTEGER _ => e
+               | VAR _ => e
+               | PRIM(CCALLprim{name="__f256_unbox",...},[e' as VAR {lvar,...}]) =>
+                 if Lvars.eq(lvar,lv) then e' else e
+               | PRIM(p,es) => PRIM(p,map subst es)
+	       | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
+               | SWITCH_C(SWITCH(e,es,eopt)) =>
+                 SWITCH_C(SWITCH(subst e, map (fn (x,e) => (x,subst e)) es, Option.map subst eopt))
+               | _ => if lvar_in_lamb lv e then die "subst_string_lvar_f256_in_lamb: impossible"
                       else e
        in subst lamb
        end
@@ -837,8 +1005,14 @@ structure OptLambda: OPT_LAMBDA =
            VAR{instances=[],regvars=[],...} => true
          | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) orelse eq_Type(t,int63Type) else true
          | F64 _ => true
+         | F256 _ => true
          | LET{pat,bind,scope} => simple_nonexpanding bind andalso simple_nonexpanding scope
          | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
+         | PRIM(CCALLprim{name,...},[]) =>
+         		 (case name of
+			     "__false_f256" => true
+			   | "__true_f256" => true
+			   | _ => false)
          | PRIM(CCALLprim{name,...},[e]) =>
            (case name of
                 "__real_to_f64" => true
@@ -846,6 +1020,11 @@ structure OptLambda: OPT_LAMBDA =
               | "__abs_f64" => true
               | "__sqrt_f64" => true
               | "__int_to_f64" => true
+              | "__f256_unbox" => true
+              | "__broadcast_f256" => true
+              | "__sum_f256" => true
+              | "__product_f256" => true
+              | "__not_f256" => true
               | _ => false) andalso simple_nonexpanding e
          | PRIM(CCALLprim{name,...},[e1,e2]) =>
            (case name of
@@ -856,8 +1035,23 @@ structure OptLambda: OPT_LAMBDA =
               | "__max_f64" => true
               | "__min_f64" => true
               | "__blockf64_sub_f64" => true
+              | "__blockf64_sub_f256" => true
               | "__less_f64" => true
+              | "__plus_f256" => true
+              | "__minus_f256" => true
+              | "__mul_f256" => true
+              | "__div_f256" => true
+              | "__and_f256" => true
+              | "__or_f256" => true
+              | "__less_f256" => true
+              | "__lesseq_f256" => true
+              | "__greater_f256" => true
+              | "__greatereq_f256" => true
               | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
+         | PRIM(CCALLprim{name,...},[e1,e2,e3]) =>
+         		 (case name of
+         		  "__blend_f256" => true
+				| _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2 andalso simple_nonexpanding e3
          | _ => false
 
    (* =================================================================
@@ -1141,6 +1335,7 @@ structure OptLambda: OPT_LAMBDA =
                     | WORD _ => NONE
                     | REAL _ => NONE
                     | F64 _ => NONE
+                    | F256 _ => NONE
                     | STRING _ => NONE
                     | FN _ => NONE
                     | HANDLE _ => NONE
@@ -1530,6 +1725,19 @@ structure OptLambda: OPT_LAMBDA =
           (tick "real_to_f64";
            (f64_to_real (f64binop (real_to_f64 e1, real_to_f64 e2)), CUNKNOWN))
 
+      fun reduce_f256bin f256binop (e1,e2) =
+          (tick "f256_unbox";
+           (f256_box (f256binop (f256_unbox e1, f256_unbox e2)), CUNKNOWN))
+
+      fun reduce_f256any e =
+          (tick "f256_unbox"; (f256_any (f256_unbox e), CUNKNOWN))
+
+      fun reduce_f256all e =
+          (tick "f256_unbox"; (f256_all (f256_unbox e), CUNKNOWN))
+
+      fun reduce_f256not e =
+          (tick "f256_unbox"; (f256_box (f256_not (f256_unbox e)), CUNKNOWN))
+
       fun reduce_f64cmp f64cmp (e1,e2) =
           (tick "real_to_f64";
            (f64cmp (real_to_f64 e1, real_to_f64 e2), CUNKNOWN))
@@ -1581,6 +1789,7 @@ structure OptLambda: OPT_LAMBDA =
            | STRING _ => (lamb, CCONST lamb)
            | REAL _ => (lamb, CCONST lamb)
            | F64 _ => (lamb, CCONST lamb)
+           | F256 _ => (lamb, CCONST lamb)
            | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
                let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
@@ -1606,12 +1815,20 @@ structure OptLambda: OPT_LAMBDA =
                                                  then hoist()
                                                  else default()
                        | _ => default()
-                 (* maybe unbox real binding *)
+                 (* maybe unbox real or vector binding *)
                  val (tau,bind,scope,fail) =
                      if unbox_reals() andalso eq_Type(realType,tau) andalso real_lvar_f64_in_lamb lvar scope then
                        (tick "reduce - unbox_real";
                         let val (tau,bind,scope) = (f64Type,real_to_f64 bind,
                                                     subst_real_lvar_f64_in_lamb lvar scope)
+                            val () = Lvars.set_ubf64 lvar
+                        in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
+                                            CUNKNOWN))
+                        end)
+                     else if unbox_reals() andalso eq_Type(stringType,tau) andalso string_lvar_f256_in_lamb lvar scope then
+                       (tick "reduce - unbox_vector";
+                        let val (tau,bind,scope) = (f256Type,f256_unbox bind,
+                                                    subst_string_lvar_f256_in_lamb lvar scope)
                             val () = Lvars.set_ubf64 lvar
                         in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
                                             CUNKNOWN))
@@ -1814,6 +2031,18 @@ structure OptLambda: OPT_LAMBDA =
                    end
                  | _ => default()
             end
+          | PRIM(CCALLprim{name="__f256_unbox",...},[e]) =>
+            let fun loop e f =
+                    case e of
+                        PRIM(CCALLprim{name="__f256_box",...},[e]) =>
+                        (tick "f256 unbox o box elimination - let";
+                         SOME (f e))
+                      | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
+                      | _ => NONE
+            in case loop e (fn x => x) of
+                   NONE => constantFolding env lamb fail
+                 | SOME e' => reduce(env,(e',CUNKNOWN))
+            end
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
           | PRIM(CCALLprim{name,Type,...},xs) =>
@@ -1859,6 +2088,48 @@ structure OptLambda: OPT_LAMBDA =
                            [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
                       CUNKNOWN)
                   end
+                | ("__blockf64_sub_m256d",[t,i]) =>
+                  let val argTypes =
+                          case Type of
+                              ARROWtype(argTypes, _) => argTypes
+                            | _ => die "prim(__blockf64_sub_m256d): expecting arrow type"
+                  in tick "f256_box";
+                     (f256_box (PRIM(CCALLprim{name="__blockf64_sub_f256",instances=[],tyvars=[],
+                                                  Type=ARROWtype(argTypes,[f256Type])},
+                                        [t,i])),
+                      CUNKNOWN)
+                  end
+                | ("__blockf64_update_m256d",[t,i,v]) =>
+                  let val (bType,iType) =
+                          case Type of
+                              ARROWtype([bType,iType,_], _) => (bType,iType)
+                            | _ => die "prim(__blockf64_update_m256d): expecting arrow type with three args"
+                  in tick "f256_unbox";
+                     (PRIM(CCALLprim{name="__blockf64_update_f256",instances=[],tyvars=[],
+                                     Type=ARROWtype([bType,iType,f256Type],[unitType])},
+                           [t,i,#1(reduce(env,(f256_unbox v,CUNKNOWN)))]),
+                      CUNKNOWN)
+                  end
+                | ("__m256d_broadcast", [x]) => (f256_box (f256_broadcast (real_to_f64 x)), CUNKNOWN)
+                | ("__m256d_blend", [a, b, mask]) =>
+                		(f256_box (f256_blend (f256_unbox a, f256_unbox b, f256_unbox mask)), CUNKNOWN)
+                | ("__m256d_plus", [x, y]) => reduce_f256bin f256_plus (x, y)
+                | ("__m256d_minus", [x, y]) => reduce_f256bin f256_minus (x, y)
+                | ("__m256d_and", [x, y]) => reduce_f256bin f256_and (x, y)
+                | ("__m256d_or", [x, y]) => reduce_f256bin f256_or (x, y)
+                | ("__m256d_mul", [x, y]) => reduce_f256bin f256_mul (x, y)
+                | ("__m256d_div", [x, y]) => reduce_f256bin f256_div (x, y)
+                | ("__m256d_less", [x, y]) => reduce_f256bin f256_less (x, y)
+                | ("__m256d_lesseq", [x, y]) => reduce_f256bin f256_lesseq (x, y)
+                | ("__m256d_greater", [x, y]) => reduce_f256bin f256_greater (x, y)
+                | ("__m256d_greatereq", [x, y]) => reduce_f256bin f256_greatereq (x, y)
+                | ("__m256d_all", [x]) => reduce_f256all x
+                | ("__m256d_not", [x]) => reduce_f256not x
+                | ("__m256d_any", [x]) => reduce_f256any x
+                | ("__m256d_sum", [a]) => (f64_to_real (f256_sum (f256_unbox a)), CUNKNOWN)
+                | ("__m256d_product", [a]) => (f64_to_real (f256_product (f256_unbox a)), CUNKNOWN)
+                | ("__m256d_true", []) => (f256_box f256_true, CUNKNOWN)
+                | ("__m256d_false", []) => (f256_box f256_false, CUNKNOWN)
                 | _ => constantFolding env lamb fail
             else constantFolding env lamb fail
           | _ => constantFolding env lamb fail
@@ -2273,7 +2544,7 @@ structure OptLambda: OPT_LAMBDA =
                                   | _ => die "eliminate_explicit_records2"
                     fun mk_lamb [] [] [] = transf env' scope
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
-                        ((if eq_Type(tau,f64Type) then Lvars.set_ubf64 lv else ());
+                        ((if eq_Type(tau,f64Type) orelse eq_Type(tau,f256Type) then Lvars.set_ubf64 lv else ());
                          LET{pat=[(lv,[],tau)],
                              bind=transf env lamb,
                              scope=mk_lamb lvs taus lambs})
@@ -3054,6 +3325,15 @@ structure OptLambda: OPT_LAMBDA =
          end
    end
 
+(* will convert the box primop into one the both allocs a blockf64 and then
+ * stores the vector register
+ *)
+fun alloc_vectors lamb =
+  case lamb of
+       PRIM(CCALLprim{name="__f256_box",...},[e]) => f256_box_alloc (alloc_vectors e)
+     | _ => map_lamb alloc_vectors lamb
+
+
    local
    fun exec (e: LambdaExp) (scope: LambdaExp) : LambdaExp =
        let val lv = Lvars.newLvar()
@@ -3537,6 +3817,7 @@ structure OptLambda: OPT_LAMBDA =
             val lamb = fix_conversion lamb
             val (lamb,inveta_env) = inverse_eta_for_fix_bound_lvars inveta_env lamb
             val lamb = table2d_simplify lamb
+            val lamb = alloc_vectors lamb
         in (lamb, (inveta_env, let_env))
         end
 

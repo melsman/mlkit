@@ -183,7 +183,7 @@ structure CompBasis: COMP_BASIS =
           val lvars = lvars' @ lvars
           val cons = cons' @ cons
           val tynames = tynames' @ tynames
-          val tynames = TyName.tyName_F64 :: tynames (* for optimiser float unboxing *)
+          val tynames = TyName.tyName_F64 :: TyName.tyName_F256 :: tynames (* for optimiser float unboxing *)
           val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
           val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
           val mulenv1 = Mul.restrict_efenv(mulenv,lvars)

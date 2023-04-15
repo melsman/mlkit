@@ -941,6 +941,8 @@ struct
                             move_reg_into_aty(tmp_reg0,d,size_ff,C)
                          | Get_ctx =>
                            move_reg_into_aty(r14,d,size_ff,C)
+                         | True_f256 => f256_true (d,size_ff,C)
+                         | False_f256 => f256_false (d,size_ff,C)
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
                      | [x] =>
                        let val arg = (x,d,size_ff,C)
@@ -1028,6 +1030,13 @@ struct
                             | Abs_f64        => abs_f64 arg
                             | Int_to_f64     => int_to_f64 arg
                             | Blockf64_size  => blockf64_size arg
+                            | Broadcast_f256 => broadcast_f256 arg
+                            | F256_unbox     => f256_unbox arg
+                            | Any_f256       => f256_any arg
+                            | All_f256       => f256_all arg
+                            | Product_f256   => f256_product arg
+                            | Sum_f256       => f256_sum arg
+                            | Not_f256       => not_f256 arg
 
                             | Is_null => cmpi_kill_tmp01_cmov {box=false,quad=false} I.cmoveq
                                                               (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
@@ -1216,6 +1225,21 @@ struct
                             | F64_to_real => f64_to_real_kill_tmp01 arg
                             | Blockf64_alloc => blockf64_alloc arg
                             | Blockf64_sub_f64 => blockf64_sub_f64 arg
+                            | Blockf64_sub_f256 => blockf64_sub_f256 arg
+
+                            | Plus_f256 => plus_f256 arg
+                            | Minus_f256 => minus_f256 arg
+                            | Mul_f256 => mul_f256 arg
+                            | Div_f256 => div_f256 arg
+                            | And_f256 => and_f256 arg
+                            | Or_f256 => or_f256 arg
+                            | Less_f256 => cmp_f256 "0x1" arg
+                            | Lesseq_f256 => cmp_f256 "0x2" arg
+                            | Greater_f256 => cmp_f256 "0xE" arg
+                            | Greatereq_f256 => cmp_f256 "0xD" arg
+
+                            | F256_store => f256_store_kill_tmp01 arg
+                            | M256d_broadcast => die "M256d_broadcast: boxed broadcast not implemented"
                             | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name)
                        end
                      | [b,x,y] =>
@@ -1253,6 +1277,8 @@ struct
                           | Blockf64_update_real => blockf64_update_real (b,x,y,d,size_ff,C)
                           | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,size_ff,C)
                           | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,size_ff,C)
+                          | Blockf64_update_f256 => blockf64_update_f256 (b,x,y,d,size_ff,C)
+                          | Blend_f256 => blend_f256 (b,x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end

@@ -1103,6 +1103,7 @@ struct
   val boolType      : Type = CONSTYPE(TyName.tyName_BOOL,[],[],[])
   val realType      : Type = CONSTYPE(TyName.tyName_REAL,[],[],[])
   val f64Type       : Type = CONSTYPE(TyName.tyName_F64,[],[],[])
+  val f256Type      : Type = CONSTYPE(TyName.tyName_F256,[],[],[])
   val stringType    : Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
   val chararrayType : Type = CONSTYPE(TyName.tyName_CHARARRAY,[],[],[])
 
@@ -1111,6 +1112,11 @@ struct
   fun isF64Type t =
       case t of
           CONSTYPE(tn,_,_,_) => TyName.eq(tn,TyName.tyName_F64)
+        | _ => false
+
+  fun isF256Type t =
+      case t of
+          CONSTYPE(tn,_,_,_) => TyName.eq(tn,TyName.tyName_F256)
         | _ => false
 
   fun unboxed t =

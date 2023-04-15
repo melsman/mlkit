@@ -109,6 +109,7 @@ structure TyName :> TYNAME =
 	val tyName_WORD64     = predef false{tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
 	val tyName_REAL       = predef false{tycon=TyCon.tycon_REAL,       arity=0, equality=false}
 	val tyName_F64        = predef true {tycon=TyCon.tycon_F64,        arity=0, equality=false}
+	val tyName_F256       = predef true {tycon=TyCon.tycon_F256,       arity=0, equality=false}
 	val tyName_STRING     = predef false{tycon=TyCon.tycon_STRING,     arity=0, equality=true}
 	val tyName_CHAR       = predef true {tycon=TyCon.tycon_CHAR,       arity=0, equality=true}
 	val tyName_LIST       = predef true {tycon=TyCon.tycon_LIST,       arity=1, equality=true}

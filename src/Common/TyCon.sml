@@ -41,6 +41,7 @@ structure TyCon: TYCON =
     val tycon_WORD64 = TYCON "word64"
     val tycon_REAL   = TYCON "real"
     val tycon_F64    = TYCON "f64"
+    val tycon_F256   = TYCON "f256"
     val tycon_STRING = TYCON "string"
     val tycon_CHAR   = TYCON "char"
     val tycon_EXN    = TYCON "exn"

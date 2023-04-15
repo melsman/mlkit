@@ -33,6 +33,10 @@ structure InstsX64: INSTS_X64 =
                  | xmm4 | xmm5 | xmm6 | xmm7
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
+                 | ymm0 | ymm1 | ymm2 | ymm3
+                 | ymm4 | ymm5 | ymm6 | ymm7
+                 | ymm8 | ymm9 | ymm10 | ymm11
+                 | ymm12 | ymm13 | ymm14 | ymm15
 
     type freg = int
 
@@ -73,6 +77,8 @@ structure InstsX64: INSTS_X64 =
     | movb of ea * ea
     | movzbq of ea * ea
     | movslq of ea * ea
+    | cmove of ea * ea (* conditional move *)
+    | cmovne of ea * ea  (* conditional move *)
     | push of ea
     | leaq of ea * ea
     | pop of ea
@@ -109,6 +115,7 @@ structure InstsX64: INSTS_X64 =
     | shrq of ea * ea   (* unsigned *)
     | salq of ea * ea
     | cmpq of ea * ea
+    | testq of ea * ea
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
     | cmpxchgq of ea * ea
@@ -125,6 +132,32 @@ structure InstsX64: INSTS_X64 =
     | xorps of ea * ea
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
+
+    | vmovupd of ea * ea
+
+    | vaddpd of ea * ea * ea (* AVX OPERATIONS *)
+    | vaddpd_128 of ea * ea * ea (* 128 bit version *)
+    | vaddsd of ea * ea * ea (* 64 bit version *)
+
+    | vmulpd of ea * ea * ea
+    | vmulpd_128 of ea * ea * ea (* 128 bit version *)
+    | vmulsd of ea * ea * ea (* 64 bit version *)
+
+    | vsubpd of ea * ea * ea
+    | vdivpd of ea * ea * ea
+
+    | vandpd of ea * ea * ea
+    | vorpd of ea * ea * ea
+
+    | vbroadcastsd of ea * ea
+    | vblendvpd of ea * ea * ea * ea (* conditional move based on mask *)
+    | vcmppd of ea * ea * ea * ea (* compare and make mask *)
+    | vmovmskpd of ea * ea (* extract mask *)
+    | vpcmpeqd of ea * ea * ea (* equality of packed vector, useful for generating all ones *)
+    | vpxor of ea * ea * ea (* xor of packed vector, useful for generating all zeroes *)
+    | vextractf128 of ea * ea * ea (* extract 128 bits of a 256 bit register *)
+    | vunpckhpd of ea * ea * ea
+    | vunpckhpd_128 of ea * ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)
@@ -245,6 +278,22 @@ structure InstsX64: INSTS_X64 =
       | pr_reg xmm13 = "%xmm13"
       | pr_reg xmm14 = "%xmm14"
       | pr_reg xmm15 = "%xmm15"
+      | pr_reg ymm0 = "%ymm0"
+      | pr_reg ymm1 = "%ymm1"
+      | pr_reg ymm2 = "%ymm2"
+      | pr_reg ymm3 = "%ymm3"
+      | pr_reg ymm4 = "%ymm4"
+      | pr_reg ymm5 = "%ymm5"
+      | pr_reg ymm6 = "%ymm6"
+      | pr_reg ymm7 = "%ymm7"
+      | pr_reg ymm8 = "%ymm8"
+      | pr_reg ymm9 = "%ymm9"
+      | pr_reg ymm10 = "%ymm10"
+      | pr_reg ymm11 = "%ymm11"
+      | pr_reg ymm12 = "%ymm12"
+      | pr_reg ymm13 = "%ymm13"
+      | pr_reg ymm14 = "%ymm14"
+      | pr_reg ymm15 = "%ymm15"
 
     fun is_xmm (r:reg) =
         case r of
@@ -265,6 +314,29 @@ structure InstsX64: INSTS_X64 =
           | xmm14 => true
           | xmm15 => true
           | _ => false
+
+    fun to_ymm (x: ea) =
+      case x of
+           R r => R (case r of
+                        xmm0 => ymm0
+                      | xmm1 => ymm1
+                      | xmm2 => ymm2
+                      | xmm3 => ymm3
+                      | xmm4 => ymm4
+                      | xmm5 => ymm5
+                      | xmm6 => ymm6
+                      | xmm7 => ymm7
+                      | xmm8 => ymm8
+                      | xmm9 => ymm9
+                      | xmm10 => ymm10
+                      | xmm11 => ymm11
+                      | xmm12 => ymm12
+                      | xmm13 => ymm13
+                      | xmm14 => ymm14
+                      | xmm15 => ymm15
+                      | _ => r)
+        | _ => x
+
 
     fun remove_ctrl s =
         CharVector.map (fn c =>
@@ -316,6 +388,15 @@ structure InstsX64: INSTS_X64 =
           fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " ";
                                           emit(pr_ea ea1); emit ",";
                                           emit(pr_ea ea2); emit_nl())
+          fun emit_ter (s, (ea1, ea2, ea3)) = (emit "\t"; emit s; emit " ";
+                                              emit(pr_ea ea1); emit ",";
+                                              emit(pr_ea ea2); emit ",";
+                                              emit(pr_ea ea3); emit_nl())
+          fun emit_quad (s, (ea1, ea2, ea3, ea4)) = (emit "\t"; emit s; emit " ";
+                                                    emit(pr_ea ea1); emit ",";
+                                                    emit(pr_ea ea2); emit ",";
+                                                    emit(pr_ea ea3); emit ",";
+                                                    emit(pr_ea ea4); emit_nl())
           fun emit_unary (s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit_nl())
           fun emit_nullary s = (emit "\t"; emit s; emit_nl())
           fun emit_nullary0 s = (emit s; emit_nl())
@@ -327,6 +408,8 @@ structure InstsX64: INSTS_X64 =
                | movb a => emit_bin ("movb", a)
                | movzbq a => emit_bin ("movzbq", a)
                | movslq a => emit_bin ("movslq", a)
+               | cmove a => emit_bin ("cmove", a)
+               | cmovne a => emit_bin ("cmovne", a)
                | leaq a => emit_bin ("leaq", a)
                | push ea => emit_unary ("pushq", ea)
                | pop ea => emit_unary ("popq", ea)
@@ -363,6 +446,7 @@ structure InstsX64: INSTS_X64 =
                | shrq a => emit_bin("shrq", a)
                | salq a => emit_bin("salq", a)
                | cmpq a => emit_bin("cmpq", a)
+               | testq a => emit_bin("testq", a)
                | btq a => emit_bin("btq", a)
                | btrq a => emit_bin("btrq", a)
                | cmpxchgq a => emit_bin("lock cmpxchgq", a)
@@ -379,6 +463,32 @@ structure InstsX64: INSTS_X64 =
                | xorps a => emit_bin("xorps", a)
                | sqrtsd a => emit_bin("sqrtsd", a)
                | cvtsi2sdq a => emit_bin("cvtsi2sdq", a)
+
+               | vmovupd (a1, a2) => emit_bin("vmovupd", (to_ymm a1, to_ymm a2))
+               | vbroadcastsd (a1, a2) => emit_bin("vbroadcastsd", (a1, to_ymm a2))
+
+               | vaddpd (a1, a2, a3) => emit_ter("vaddpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vaddpd_128 (a1, a2, a3) => emit_ter("vaddpd", (a1, a2, a3))
+               | vaddsd (a1, a2, a3) => emit_ter("vaddsd", (a1, a2, a3))
+
+               | vmulpd (a1, a2, a3) => emit_ter("vmulpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vmulpd_128 (a1, a2, a3) => emit_ter("vmulpd", (a1, a2, a3))
+               | vmulsd (a1, a2, a3) => emit_ter("vmulsd", (a1, a2, a3))
+
+               | vdivpd (a1, a2, a3) => emit_ter("vdivpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vsubpd (a1, a2, a3) => emit_ter("vsubpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vandpd (a1, a2, a3) => emit_ter("vandpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vorpd (a1, a2, a3) => emit_ter("vorpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+
+               | vblendvpd (a1, a2, a3, a4) => emit_quad("vblendvpd", (to_ymm a1, to_ymm a2, to_ymm a3, to_ymm a4))
+               | vcmppd (a1, a2, a3, a4) => emit_quad ("vcmppd", (a1, to_ymm a2, to_ymm a3, to_ymm a4))
+               | vmovmskpd (a1, a2) => emit_bin ("vmovmskpd", (to_ymm a1, a2))
+               | vpcmpeqd (a1, a2, a3) => emit_ter("vpcmpeqd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vpxor (a1, a2, a3) => emit_ter("vpxor", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vextractf128 (a1, a2, a3) => emit_ter("vextractf128", (a1, to_ymm a2, a3))
+
+               | vunpckhpd (a1, a2, a3) => emit_ter("vunpckhpd", (to_ymm a1, to_ymm a2, to_ymm a3))
+               | vunpckhpd_128 (a1, a2, a3) => emit_ter("vunpckhpd", (a1, a2, a3))
 
                | fstpq ea => emit_unary("fstpq", ea)
                | fldq ea => emit_unary("fldq", ea)
@@ -641,6 +751,8 @@ structure InstsX64: INSTS_X64 =
              | movb (ea1,ea2) => movb (Em ea1,Em ea2)
              | movzbq (ea1,ea2) => movzbq (Em ea1,Em ea2)
              | movslq (ea1,ea2) => movslq (Em ea1,Em ea2)
+             | cmove (ea1,ea2) => cmove (Em ea1,Em ea2)
+             | cmovne (ea1,ea2) => cmovne (Em ea1,Em ea2)
              | push ea => push (Em ea)
              | leaq (ea1,ea2) => leaq (Em ea1,Em ea2)
              | pop ea => pop (Em ea)
@@ -675,6 +787,7 @@ structure InstsX64: INSTS_X64 =
              | shrq (ea1,ea2) => shrq (Em ea1,Em ea2)
              | salq (ea1,ea2) => salq (Em ea1,Em ea2)
              | cmpq (ea1,ea2) => cmpq (Em ea1,Em ea2)
+             | testq (ea1,ea2) => testq (Em ea1,Em ea2)
              | btq (ea1,ea2) => btq (Em ea1,Em ea2)
              | btrq (ea1,ea2) => btrq (Em ea1,Em ea2)
              | cmpxchgq (ea1,ea2) => cmpxchgq (Em ea1,Em ea2)
@@ -690,6 +803,32 @@ structure InstsX64: INSTS_X64 =
              | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)
              | sqrtsd (ea1,ea2) => sqrtsd (Em ea1,Em ea2)
              | cvtsi2sdq (ea1,ea2) => cvtsi2sdq (Em ea1,Em ea2)
+
+             | vmovupd (ea1, ea2) => vmovupd (Em ea1,Em ea2)
+
+             | vaddpd (ea1, ea2, ea3) => vaddpd (Em ea1, Em ea2, Em ea3)
+             | vaddpd_128 (ea1, ea2, ea3) => vaddpd_128 (Em ea1, Em ea2, Em ea3)
+             | vaddsd (ea1, ea2, ea3) => vaddsd (Em ea1, Em ea2, Em ea3)
+
+             | vmulpd (ea1, ea2, ea3) => vmulpd (Em ea1, Em ea2, Em ea3)
+             | vmulpd_128 (ea1, ea2, ea3) => vmulpd_128 (Em ea1, Em ea2, Em ea3)
+             | vmulsd (ea1, ea2, ea3) => vmulsd (Em ea1, Em ea2, Em ea3)
+
+             | vdivpd (ea1, ea2, ea3) => vdivpd (Em ea1, Em ea2, Em ea3)
+             | vsubpd (ea1, ea2, ea3) => vsubpd (Em ea1, Em ea2, Em ea3)
+             | vandpd (ea1, ea2, ea3) => vandpd (Em ea1, Em ea2, Em ea3)
+             | vorpd (ea1, ea2, ea3) => vorpd (Em ea1, Em ea2, Em ea3)
+             | vpxor (ea1, ea2, ea3) => vpxor (Em ea1, Em ea2, Em ea3)
+
+             | vbroadcastsd (ea1, ea2) => vbroadcastsd (Em ea1, Em ea2)
+             | vblendvpd (ea1, ea2, ea3, ea4) => vblendvpd (Em ea1, Em ea2, Em ea3, Em ea4)
+             | vcmppd (ea1, ea2, ea3, ea4) => vcmppd (Em ea1, Em ea2, Em ea3, Em ea4)
+             | vmovmskpd (a1, a2) => vmovmskpd (Em a1, Em a2)
+             | vpcmpeqd (ea1, ea2, ea3) => vpcmpeqd (Em ea1, Em ea2, Em ea3)
+             | vextractf128 (ea1, ea2, ea3) => vextractf128 (Em ea1, Em ea2, Em ea3)
+             | vunpckhpd (ea1, ea2, ea3) => vunpckhpd (Em ea1, Em ea2, Em ea3)
+             | vunpckhpd_128 (ea1, ea2, ea3) => vunpckhpd_128 (Em ea1, Em ea2, Em ea3)
+
              | fstpq ea => fstpq (Em ea)
              | fldq ea => fldq (Em ea)
              | jmp ea => jmp (Em ea)

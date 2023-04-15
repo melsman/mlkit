@@ -30,26 +30,28 @@ datatype prim =
          (* other primitives *)
          Less_real | Lesseq_real | Greater_real | Greatereq_real |
          Less_f64 | Lesseq_f64 | Greater_f64 | Greatereq_f64 |
+         Less_f256 | Lesseq_f256 | Greater_f256 | Greatereq_f256 |
+         All_f256 | Any_f256 | And_f256 | Or_f256 | Not_f256 |
 
 	 Plus_int31 | Plus_int32ub | Plus_int32b |
 	 Plus_word31 | Plus_word32ub | Plus_word32b |
 	 Plus_int63 | Plus_int64ub | Plus_int64b |
 	 Plus_word63 | Plus_word64ub | Plus_word64b |
-         Plus_real | Plus_f64 |
+         Plus_real | Plus_f64 | Plus_f256 |
 
 	 Minus_int31 | Minus_int32ub | Minus_int32b |
 	 Minus_word31 | Minus_word32ub | Minus_word32b |
 	 Minus_int63 | Minus_int64ub | Minus_int64b |
 	 Minus_word63 | Minus_word64ub | Minus_word64b |
-         Minus_real | Minus_f64 |
+         Minus_real | Minus_f64 | Minus_f256 |
 
 	 Mul_int31 | Mul_int32ub | Mul_int32b |
 	 Mul_word31 | Mul_word32ub | Mul_word32b |
 	 Mul_int63 | Mul_int64ub | Mul_int64b |
 	 Mul_word63 | Mul_word64ub | Mul_word64b |
-         Mul_real | Mul_f64 |
+         Mul_real | Mul_f64 | Mul_f256 |
 
-	 Div_real | Div_f64 |
+	 Div_real | Div_f64 | Div_f256 |
 
 	 Neg_int31 | Neg_int32ub | Neg_int32b |
 	 Neg_int63 | Neg_int64ub | Neg_int64b |
@@ -153,8 +155,23 @@ datatype prim =
          Max_f64 | Min_f64 | Real_to_f64 | F64_to_real | Sqrt_f64 |
          Int_to_f64 |
 
+         Broadcast_f256 | Blend_f256 |
+
          Blockf64_update_real | Blockf64_sub_real | Blockf64_size | Blockf64_alloc |
-         Blockf64_update_f64 | Blockf64_sub_f64
+         Blockf64_update_f64 | Blockf64_sub_f64 |
+
+         Blockf64_update_m256d | Blockf64_update_f256 |
+         Blockf64_sub_m256d | Blockf64_sub_f256 |
+
+         F256_box | F256_store | F256_unbox |
+
+         M256d_plus | M256d_minus | M256d_mul | M256d_div |
+         M256d_less | M256d_lesseq | M256d_greater | M256d_greatereq |
+         M256d_all | M256d_any | M256d_blend | M256d_broadcast |
+         M256d_sum | M256d_product | Sum_f256 | Product_f256 |
+         M256d_and | M256d_or | M256d_not |
+
+         M256d_true | M256d_false | True_f256 | False_f256
 
 local
   structure M = StringFinMap
@@ -191,26 +208,28 @@ local
   val pairs =
         [("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
          ("__less_f64", Less_f64), ("__lesseq_f64", Lesseq_f64), ("__greater_f64", Greater_f64), ("__greatereq_f64", Greatereq_f64),
+         ("__less_f256", Less_f256), ("__lesseq_f256", Lesseq_f256), ("__greater_f256", Greater_f256), ("__greatereq_f256", Greatereq_f256),
+         ("__all_f256", All_f256), ("__any_f256", Any_f256), ("__and_f256", And_f256), ("__or_f256", Or_f256), ("__not_f256", Not_f256),
 
 	 ("__plus_int31", Plus_int31), ("__plus_int32ub", Plus_int32ub), ("__plus_int32b", Plus_int32b),
 	 ("__plus_word31", Plus_word31), ("__plus_word32ub", Plus_word32ub), ("__plus_word32b", Plus_word32b),
 	 ("__plus_int63", Plus_int63), ("__plus_int64ub", Plus_int64ub), ("__plus_int64b", Plus_int64b),
 	 ("__plus_word63", Plus_word63), ("__plus_word64ub", Plus_word64ub), ("__plus_word64b", Plus_word64b),
-         ("__plus_real", Plus_real), ("__plus_f64", Plus_f64),
+     ("__plus_real", Plus_real), ("__plus_f64", Plus_f64), ("__plus_f256", Plus_f256),
 
 	 ("__minus_int31", Minus_int31), ("__minus_int32ub", Minus_int32ub), ("__minus_int32b", Minus_int32b),
 	 ("__minus_word31", Minus_word31), ("__minus_word32ub", Minus_word32ub), ("__minus_word32b", Minus_word32b),
 	 ("__minus_int63", Minus_int63), ("__minus_int64ub", Minus_int64ub), ("__minus_int64b", Minus_int64b),
 	 ("__minus_word63", Minus_word63), ("__minus_word64ub", Minus_word64ub), ("__minus_word64b", Minus_word64b),
-         ("__minus_real", Minus_real), ("__minus_f64", Minus_f64),
+     ("__minus_real", Minus_real), ("__minus_f64", Minus_f64), ("__minus_f256", Minus_f256),
 
 	 ("__mul_int31", Mul_int31), ("__mul_int32ub", Mul_int32ub), ("__mul_int32b", Mul_int32b),
 	 ("__mul_word31", Mul_word31), ("__mul_word32ub", Mul_word32ub), ("__mul_word32b", Mul_word32b),
 	 ("__mul_int63", Mul_int63), ("__mul_int64ub", Mul_int64ub), ("__mul_int64b", Mul_int64b),
 	 ("__mul_word63", Mul_word63), ("__mul_word64ub", Mul_word64ub), ("__mul_word64b", Mul_word64b),
-         ("__mul_real", Mul_real), ("__mul_f64", Mul_f64),
+     ("__mul_real", Mul_real), ("__mul_f64", Mul_f64), ("__mul_f256", Mul_f256),
 
-	 ("__div_real", Div_real), ("__div_f64", Div_f64),
+	 ("__div_real", Div_real), ("__div_f64", Div_f64), ("__div_f256", Div_f256),
 
 	 ("__neg_int31", Neg_int31), ("__neg_int32ub", Neg_int32ub), ("__neg_int32b", Neg_int32b),
 	 ("__neg_int63", Neg_int63), ("__neg_int64ub", Neg_int64ub), ("__neg_int64b", Neg_int64b),
@@ -323,7 +342,49 @@ local
          ("__blockf64_size", Blockf64_size),
          ("__blockf64_alloc", Blockf64_alloc),
          ("__blockf64_update_f64", Blockf64_update_f64),
-         ("__blockf64_sub_f64", Blockf64_sub_f64)
+         ("__blockf64_sub_f64", Blockf64_sub_f64),
+         ("__broadcast_f256", Broadcast_f256),
+         ("__blend_f256", Blend_f256),
+
+         ("__blockf64_update_m256d", Blockf64_update_m256d),
+         ("__blockf64_sub_m256d", Blockf64_sub_m256d),
+         ("__blockf64_update_f256", Blockf64_update_f256),
+         ("__blockf64_sub_f256", Blockf64_sub_f256),
+
+         ("__f256_box", F256_box),
+         ("__f256_store", F256_store),
+         ("__f256_unbox", F256_unbox),
+
+         ("__m256d_less", M256d_less),
+         ("__m256d_lesseq", M256d_lesseq),
+         ("__m256d_greater", M256d_greater),
+         ("__m256d_greatereq", M256d_greatereq),
+
+         ("__m256d_plus", M256d_plus),
+         ("__m256d_minus", M256d_minus),
+         ("__m256d_mul", M256d_mul),
+         ("__m256d_div", M256d_div),
+         ("__m256d_any", M256d_any),
+         ("__m256d_all", M256d_all),
+         ("__m256d_and", M256d_and),
+         ("__m256d_or", M256d_or),
+         ("__m256d_not", M256d_not),
+
+         ("__m256d_blend", M256d_blend),
+         ("__m256d_sum", M256d_sum),
+         ("__m256d_product", M256d_product),
+
+         ("__m256d_broadcast", M256d_broadcast),
+
+         ("__m256d_sum", M256d_sum),
+         ("__m256d_product", M256d_product),
+         ("__sum_f256", Sum_f256),
+         ("__product_f256", Product_f256),
+
+         ("__false_f256", False_f256),
+         ("__true_f256", True_f256),
+         ("__m256d_true", M256d_true),
+         ("__m256d_false", M256d_false)
 ]
 
   val M = M.fromList pairs
@@ -485,6 +546,16 @@ fun pp_prim (p:prim) : string =
       | Greater_f64 => "Greater_f64"
       | Greatereq_f64 => "Greatereq_f64"
 
+      | Less_f256 => "Less_f256"
+      | Lesseq_f256 => "Lesseq_f256"
+      | Greater_f256 => "Greater_f256"
+      | Greatereq_f256 => "Greatereq_f256"
+      | All_f256 => "All_f256"
+      | Any_f256 => "Any_f256"
+      | And_f256 => "And_f256"
+      | Or_f256 => "Or_f256"
+      | Not_f256 => "Not_f256"
+
       | Plus_int31 => "Plus_int31"
       | Plus_int32ub => "Plus_int32ub"
       | Plus_int32b => "Plus_int32b"
@@ -499,6 +570,7 @@ fun pp_prim (p:prim) : string =
       | Plus_word64b => "Plus_word64b"
       | Plus_real => "Plus_real"
       | Plus_f64 => "Plus_f64"
+      | Plus_f256 => "Plus_f256"
 
       | Minus_int31 => "Minus_int31"
       | Minus_int32ub => "Minus_int32ub"
@@ -514,6 +586,7 @@ fun pp_prim (p:prim) : string =
       | Minus_word64b => "Minus_word64b"
       | Minus_real => "Minus_real"
       | Minus_f64 => "Minus_f64"
+      | Minus_f256 => "Minus_f256"
 
       | Mul_int31 => "Mul_int31"
       | Mul_int32ub => "Mul_int32ub"
@@ -529,9 +602,11 @@ fun pp_prim (p:prim) : string =
       | Mul_word64b => "Mul_word64b"
       | Mul_real => "Mul_real"
       | Mul_f64 => "Mul_f64"
+      | Mul_f256 => "Mul_f256"
 
       | Div_real => "Div_real"
       | Div_f64 => "Div_f64"
+      | Div_f256 => "Div_f256"
 
       | Neg_int31 => "Neg_int31"
       | Neg_int32ub => "Neg_int32ub"
@@ -699,6 +774,47 @@ fun pp_prim (p:prim) : string =
       | Blockf64_alloc => "Blockf64_alloc"
       | Blockf64_update_f64 => "Blockf64_update_f64"
       | Blockf64_sub_f64 => "Blockf64_sub_f64"
+
+      | Blockf64_update_m256d => "Blockf64_update_m256d"
+      | Blockf64_sub_m256d => "Blockf64_sub_m256d"
+      | Blockf64_update_f256 => "Blockf64_update_f256"
+      | Blockf64_sub_f256 => "Blockf64_sub_f256"
+
+      | Broadcast_f256 => "Broadcast_f256"
+      | Blend_f256 => "Blend_f256"
+      | F256_box => "M256_box"
+      | F256_store => "M256_store"
+      | F256_unbox => "M256_unbox"
+
+      | M256d_plus => "M256d_plus"
+      | M256d_minus => "M256d_minus"
+      | M256d_mul => "M256d_mul"
+      | M256d_div => "M256d_div"
+
+      | M256d_less => "M256d_less"
+      | M256d_lesseq => "M256d_lesseq"
+      | M256d_greater => "M256d_greater"
+      | M256d_greatereq => "M256d_greatereq"
+
+      | M256d_any => "M256d_any"
+      | M256d_all => "M256d_all"
+
+      | M256d_and => "M256d_and"
+      | M256d_or => "M256d_or"
+      | M256d_not => "M256d_not"
+
+      | M256d_broadcast => "M256d_broadcast"
+      | M256d_blend => "M256d_blend"
+    
+	  | M256d_sum => "M256d_sum"
+	  | M256d_product => "M256d_product"
+	  | Sum_f256 => "Sum_f256"
+	  | Product_f256 => "Product_f256"
+
+	  | True_f256 => "True_f256"
+	  | False_f256 => "False_f256"
+	  | M256d_true => "M256d_true"
+	  | M256d_false => "M256d_false"
 
 end
 
