@@ -536,6 +536,19 @@ struct
       else
         I.movsd (R freg,D("0",base_reg)) :: C
 
+    (* Load vector into register (freg) from string *)
+    fun load_vector (vector_aty, t, size_ff, freg) =
+      fn C => case vector_aty
+                   of SS.PHREG_ATY x => I.vmovupd(D("8", x),R freg) :: C
+                    | _ => move_aty_into_reg(vector_aty,t,size_ff,
+                           I.vmovupd(D("8", t),R freg) :: C)
+
+
+    (* Store vector in string (freg) *)
+
+    fun store_vector (base_reg, t:reg, freg, C) =
+      I.vmovupd (R freg, D("8", base_reg)) :: C
+
     (* When tag free collection of pairs is enabled, a bit is stored
        in the region descriptor if the region is an infinite region
        holding pairs, refs, triples and arrays. Here we arrange that
@@ -2071,6 +2084,82 @@ struct
             copy(b_reg,d_reg, C'))))
          end
 
+     (* unboxed operations on vectors *)
+
+     fun bin_f256_op s v_inst (x,y,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           x_C(y_C(v_inst(R y, R x, R d) :: C'))
+         end
+
+     val plus_f256 = bin_f256_op "vaddpd" I.vaddpd
+     val mul_f256 = bin_f256_op "vmulpd" I.vmulpd
+     val minus_f256 = bin_f256_op "vsubpd" I.vsubpd
+     val div_f256 = bin_f256_op "vdivpd" I.vdivpd
+     val and_f256 = bin_f256_op "vandpd" I.vandpd
+     val or_f256 = bin_f256_op "vorpd" I.vorpd
+
+    fun not_f256 (x,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           x_C(
+             I.vpcmpeqd (R tmp_freg0, R tmp_freg0, R tmp_freg0) :: (* This should return 1...1 *)
+             I.vpxor (R x, R tmp_freg0, R d) :: (* This should return 0...0 *)
+           C')
+         end
+
+    fun f256_sum (x,d,size_ff,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           x_C(
+            I.vextractf128 (I "0x1", R x, R tmp_freg0) ::
+            I.vaddpd_128 (R x, R tmp_freg0, R x) ::
+            I.vunpckhpd_128 (R x, R x, R tmp_freg0) ::
+            I.vaddsd (R tmp_freg0, R x, R d) :: C'
+           )
+         end
+
+    fun f256_product (x,d,size_ff,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           x_C(
+            I.vextractf128 (I "0x1", R x, R tmp_freg0) ::
+            I.vmulpd_128 (R x, R tmp_freg0, R x) ::
+            I.vunpckhpd_128 (R x, R x, R tmp_freg0) ::
+            I.vmulsd (R tmp_freg0, R x, R d) :: C'
+           )
+         end
+
+    fun cmp_f256 mode (x,y,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+           in x_C(y_C(I.vcmppd(I mode, R y, R x, R d) :: C'))
+         end
+
+
+    fun broadcast_f256 (x,d,size_ff:int, C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg1,size_ff, C)
+         in
+           x_C(I.vbroadcastsd(R x, R d) :: C')
+         end
+
+    fun blend_f256 (x,y,mask,d,size_ff:int, C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val (mask, mask_C) = resolve_arg_aty(mask,tmp_freg1,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           x_C(y_C(mask_C(
+           I.vblendvpd(R mask, R y, R x, R d) :: C')))
+         end
+
 
      (* boxed operations on reals (floats) *)
 
@@ -2815,11 +2904,84 @@ struct
               end
          end
 
+     fun blockf64_update_f256 (t,i,x,d,size_ff,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+              in x_C(
+              move_aty_into_reg(i,tmp_reg1,size_ff,                 (* tmp_reg1 = i *)
+              move_aty_into_reg(t,tmp_reg0,size_ff,                 (* tmp_reg0 = t *)
+              (I.vmovupd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::       (* *(8+tmp_reg0+8*tmp_reg1) = freg *)
+              C))))
+         end
+
+     fun blockf64_sub_f256 (t,i,d,size_ff,C) =
+         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+             val (d,C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
+         in let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+              in t_C(i_C(
+                 I.vmovupd(DD("8",t_reg,i_reg,"8"), R d) ::
+                 C'))
+              end
+         end
+
+     fun f256_unbox (x,d,size_ff,C) =
+         let val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
+         in load_vector (x, tmp_reg0, size_ff, d) C'
+         end
+
+     fun f256_store_kill_tmp01 (x,alloc,d,size_ff,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (a, a_C) = resolve_arg_aty(alloc,tmp_reg1,size_ff)
+             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+         in x_C(a_C(store_vector(a,tmp_reg1,x,
+            copy(a,d_reg, C'))))
+         end
+
+     fun f256_all (x,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+         in
+           x_C(
+           I.vmovmskpd (R x, R d) :: (* extract one bit from each mask *)
+           I.cmpq (I "0xF", R d) :: (* if all 4 are set *)
+           I.movq(I (i2s BI.ml_false), R d) ::
+           I.movq(I (i2s BI.ml_true), R tmp_reg0) ::
+           I.cmove(R tmp_reg0, R d) :: (* return true *)
+           C')
+         end
+
+     fun f256_any (x,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+         in
+           x_C(
+           I.vmovmskpd (R x, R d) ::
+           I.cmpq (I "0x0", R d) :: (* if just one is set *)
+           I.movq(I (i2s BI.ml_false), R d) ::
+           I.movq(I (i2s BI.ml_true), R tmp_reg0) ::
+           I.cmovne(R tmp_reg0, R d) :: (* return true *)
+           C')
+         end
+
+     fun f256_true (d,size_ff:int,C) =
+         let
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           I.vpcmpeqd (R d, R d, R d) :: (* This should return 1...1 *)
+           C'
+         end
+
+     fun f256_false (d,size_ff:int,C) =
+         let
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in
+           I.vpxor (R d, R d, R d) :: (* This should return 0...0 *)
+           C'
+         end
+
      local
        fun basic_sw basic_lss (LS.SWITCH(_,xlsss,lss)) =
            basic_lss lss andalso
            List.all (fn (_,lss) => basic_lss lss) xlsss
-
        fun basic_regions nil = true
          | basic_regions _ = false
 

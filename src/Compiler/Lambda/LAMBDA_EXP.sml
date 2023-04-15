@@ -57,6 +57,7 @@ signature LAMBDA_EXP =
     val wordDefaultType : unit -> Type  (* word63 if tag_values, otherwise word64 *)
     val realType: Type
     val f64Type: Type
+    val f256Type: Type
     val stringType: Type
     val chararrayType: Type
 
@@ -105,6 +106,7 @@ signature LAMBDA_EXP =
       | STRING   of string * regvar option
       | REAL     of string * regvar option
       | F64      of string
+      | F256     of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,

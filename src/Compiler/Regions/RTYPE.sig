@@ -43,6 +43,7 @@ sig
   val boolType   : Type
   val realType   : Type
   val f64Type    : Type
+  val f256Type    : Type
   val stringType : Type
   val unitType   : Type
   val chararrayType : Type
@@ -51,6 +52,7 @@ sig
   val runtype    : Type -> runType option
 
   val isF64Type  : Type -> bool
+  val isF256Type : Type -> bool
 
   (* ann_mu(mus)acc is a list of all the places and arrow effects that occur
    * in mus consed onto acc; word regions are not included in the result. *)

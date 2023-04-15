@@ -66,6 +66,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val tyname_env0= TyNameMap.add(TyName.tyName_STRING, (0,[],0),
 		     TyNameMap.add(TyName.tyName_REAL, (0,[],0),
 		     TyNameMap.add(TyName.tyName_F64, (0,[],0),
+		     TyNameMap.add(TyName.tyName_F256, (0,[],0),
 		     TyNameMap.add(TyName.tyName_EXN, (0,[],0),
 		     TyNameMap.add(TyName.tyName_REF, (1,[],0),
 		     TyNameMap.add(TyName.tyName_BOOL, (0,[],0),
@@ -90,7 +91,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 		     TyNameMap.add(TyName.tyName_FOREIGNPTR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_ARRAY, (1,[],0),
 		     TyNameMap.add(TyName.tyName_VECTOR, (1,[],0),
-		     TyNameMap.empty)))))))))))))))))))))))
+		     TyNameMap.empty))))))))))))))))))))))))
 
     local
 

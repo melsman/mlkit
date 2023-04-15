@@ -11,12 +11,14 @@ structure Lvars: LVARS =
 
     type name = Name.name
 
-    type lvar = {name     : name,
+    type lvar = {
+         name     : name,
 		 str      : string,
 		 free     : bool ref,
 		 inserted : bool ref,
 		 use      : int ref,
-                 ubf64    : bool ref}
+         ubf64    : bool ref
+     }
 
     fun new_named_lvar (str : string) : lvar =
         {name=Name.new(), str=str,

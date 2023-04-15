@@ -15,6 +15,10 @@ signature INSTS_X64 =
                  | xmm4 | xmm5 | xmm6 | xmm7
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
+                 | ymm0 | ymm1 | ymm2 | ymm3
+                 | ymm4 | ymm5 | ymm6 | ymm7
+                 | ymm8 | ymm9 | ymm10 | ymm11
+                 | ymm12 | ymm13 | ymm14 | ymm15
 
     val pr_reg : reg -> string
     val is_xmm : reg -> bool
@@ -55,6 +59,8 @@ signature INSTS_X64 =
     | movb of ea * ea
     | movzbq of ea * ea
     | movslq of ea * ea
+    | cmove of ea * ea (* conditional move *)
+    | cmovne of ea * ea  (* conditional move *)
     | push of ea
     | leaq of ea * ea
     | pop of ea
@@ -91,6 +97,7 @@ signature INSTS_X64 =
     | shrq of ea * ea   (* unsigned *)
     | salq of ea * ea
     | cmpq of ea * ea
+    | testq of ea * ea
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
     | cmpxchgq of ea * ea
@@ -107,6 +114,34 @@ signature INSTS_X64 =
     | xorps of ea * ea
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
+
+    | vmovupd of ea * ea
+
+    | vaddpd of ea * ea * ea (* AVX OPERATIONS *)
+    | vaddpd_128 of ea * ea * ea (* 128 bit version *)
+    | vaddsd of ea * ea * ea (* 64 bit version *)
+
+    | vsubpd of ea * ea * ea
+
+    | vmulpd of ea * ea * ea
+    | vmulpd_128 of ea * ea * ea (* 128 bit version *)
+    | vmulsd of ea * ea * ea (* 64 bit version *)
+
+    | vdivpd of ea * ea * ea
+
+    | vandpd of ea * ea * ea
+    | vorpd of ea * ea * ea
+
+    | vbroadcastsd of ea * ea
+    | vblendvpd of ea * ea * ea * ea (* conditional move based on mask *)
+    | vcmppd of ea * ea * ea * ea (* compare and make mask *)
+    | vmovmskpd of ea * ea (* extract mask *)
+    | vpcmpeqd of ea * ea * ea (* equality of packed vector, useful for generating all ones *)
+    | vpxor of ea * ea * ea (* xor of packed vector, useful for generating all zeroes *)
+    | vextractf128 of ea * ea * ea (* extract 128 bits of a 256 bit register *)
+
+    | vunpckhpd of ea * ea * ea (* unpack and interleave *)
+    | vunpckhpd_128 of ea * ea * ea (* unpack and interleave, 128 bit version *)
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)

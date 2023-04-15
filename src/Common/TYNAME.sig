@@ -74,7 +74,8 @@ signature TYNAME =
     val tyName_WordDefault : unit -> TyName  (* word31 or word32 dependent on tagging *)
     val tyName_REAL    : TyName
     val tyName_F64     : TyName              (* Internal unboxed float type *)
-    val tyName_STRING  : TyName
+    val tyName_F256    : TyName
+    val tyName_STRING  : TyName              (* Internal unboxed float vector type *)
     val tyName_CHAR    : TyName
     val tyName_LIST    : TyName
     val tyName_FRAG    : TyName
