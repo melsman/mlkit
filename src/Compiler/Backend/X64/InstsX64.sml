@@ -392,7 +392,7 @@ structure InstsX64: INSTS_X64 =
               (case l of
                    LocalLab _ => pr_lab l ^ "(%rip)"
                  | _ => pr_lab l ^ "@GOTPCREL(%rip)")
-	    else "$" ^ pr_lab l
+	    else "$" ^ pr_lab l ^ "(%rip)"
           | I s => "$" ^ s
           | D(d,r) => if d="0" then "(" ^ pr_reg r ^ ")"
                       else d ^ "(" ^ pr_reg r ^ ")"
