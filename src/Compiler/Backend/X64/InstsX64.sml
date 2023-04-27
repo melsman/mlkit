@@ -356,6 +356,11 @@ structure InstsX64: INSTS_X64 =
 
     fun tick s = () (* print (s ^ "\n") *)
 
+    local
+      fun amov (ea1,ea2) =                    (* address move *)
+          if isDarwin() then movq(ea1,ea2)
+          else leaq(ea1,ea2)
+    in
     fun patch K is =
         case is of
             nil => nil
@@ -363,16 +368,16 @@ structure InstsX64: INSTS_X64 =
             case i of
                 movq(L l,ea) =>
                 if LabSet.mem K l then i::patch K is
-                else (tick "movq: load"; movq(LA l, R r9) :: movq(D("0",r9),ea) :: patch K is)
+                else (tick "movq: load"; amov(LA l, R r9) :: movq(D("0",r9),ea) :: patch K is)
               | movq(ea,L l) =>
                 if LabSet.mem K l then i::patch K is
-                else (tick "movq:store"; movq(LA l, R r9) :: movq(ea,D("0",r9)) :: patch K is)
+                else (tick "movq:store"; amov(LA l, R r9) :: movq(ea,D("0",r9)) :: patch K is)
               | addq(ea,L l) =>
                 if LabSet.mem K l then i::patch K is
-                else (tick "addq:store"; movq(LA l, R r9) :: addq(ea,D("0",r9)) :: patch K is)
+                else (tick "addq:store"; amov(LA l, R r9) :: addq(ea,D("0",r9)) :: patch K is)
               | cmpq(ea,L l) =>
                 if LabSet.mem K l then i::patch K is
-                else (tick "cmpq:store"; movq(LA l, R r9) :: cmpq(ea,D("0",r9)) :: patch K is)
+                else (tick "cmpq:store"; amov(LA l, R r9) :: cmpq(ea,D("0",r9)) :: patch K is)
               | movq(LA (LocalLab l),ea) => leaq(LA(LocalLab l),ea) :: patch K is
               | push(LA (LocalLab l)) => leaq(LA(LocalLab l),R r9) :: push(R r9) :: patch K is
               | movq(LA l,ea) => if isDarwin() then i :: patch K is
@@ -380,6 +385,7 @@ structure InstsX64: INSTS_X64 =
               | push(LA l) => if isDarwin() then i :: patch K is
                               else leaq(LA l,R r9) :: push(R r9) :: patch K is
               | i => i :: patch K is
+    end
 
     (* For now, K is used only for patching, but it could potentially
        be used for statically resolving internal use of globally
