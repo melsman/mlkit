@@ -375,6 +375,10 @@ structure InstsX64: INSTS_X64 =
                 else (tick "cmpq:store"; movq(LA l, R r9) :: cmpq(ea,D("0",r9)) :: patch K is)
               | movq(LA (LocalLab l),ea) => leaq(LA(LocalLab l),ea) :: patch K is
               | push(LA (LocalLab l)) => leaq(LA(LocalLab l),R r9) :: push(R r9) :: patch K is
+              | movq(LA l,ea) => if isDarwin() then i :: patch K is
+                                 else leaq(LA l,ea) :: patch K is
+              | push(LA l) => if isDarwin() then i :: patch K is
+                              else leaq(LA l,R r9) :: push(R r9) :: patch K is
               | i => i :: patch K is
 
     (* For now, K is used only for patching, but it could potentially
