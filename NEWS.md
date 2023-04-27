@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2023-04-27: Generate position-independent machine code.
+
 ### MLKit version 4.7.3 is released
 
 * mael 2023-01-03: Preliminary parallelism support through the Thread

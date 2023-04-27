@@ -498,7 +498,7 @@ REG_POLY_FUN_HDR(sml_readlink, Region rAddr, Context ctx, String path, uintptr_t
   return REG_POLY_CALL(convertStringToML, rAddr, buffer);
 }
 
-extern char *realpath();
+extern char *realpath(const char *, char *);
 
 String
 REG_POLY_FUN_HDR(sml_realpath, Region rAddr, Context ctx, String path, uintptr_t exn)  /* SML Basis */

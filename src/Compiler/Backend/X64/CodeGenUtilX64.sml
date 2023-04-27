@@ -93,12 +93,32 @@ struct
 
   val rem_dead_code = I.rem_dead_code
 
+  (* ----------------------------------------------------------------
+   * Helper functions for generating position-independent code
+   * For position-independent code, we cannot directly store relative
+   * to a labeled address. Instead, we first compute the address and
+   * then store relative to that address.
+   * ---------------------------------------------------------------- *)
+(*
+  fun is_pic () = true
+
+  fun mov_to_labeled_content (ea,lab,treg,C) =          (* possibly uses treg *)
+      if is_pic() then
+        I.movq(LA lab, R treg) ::
+        I.movq(ea, D("0",treg)) :: C
+      else I.movq(ea,L lab) :: C
+
+  fun add_to_labeled_content (ea,lab,treg,C) =          (* possibly uses treg *)
+      if is_pic() then
+        I.movq(LA lab, R treg) ::
+        I.addq(ea, D("0",treg)) :: C
+      else I.addq(ea,L lab) :: C
+*)
   (********************************)
   (* CG on Top Level Declarations *)
   (********************************)
 
     (* Global Labels *)
-(*    val exn_ptr_lab = NameLab "exn_ptr" *)
     val exn_counter_lab = NameLab "exnameCounter"
     val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
     val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
@@ -346,7 +366,6 @@ struct
             I.movq(LA lab,R tmp1) :: move_num_generic (#precision w, fmtWord w, D("0",tmp1), C)
           | SS.UNIT_ATY =>
             I.movq(LA lab,R tmp1) :: move_unit(D("0",tmp1), C)
-(*        | SS.STACK_ATY offset => load_indexed(L lab, rsp, WORDS(size_ff-offset-1), C) *)
           | _ => move_aty_into_reg(src_aty,tmp1,size_ff,
                  I.movq(R tmp1, L lab) :: C)
 
@@ -918,7 +937,8 @@ struct
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
                        I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
-                       I.push(LA l) ::                              (*   push continuation label          *)
+                       I.leaq(LA l, R tmp_reg0) ::
+                       I.push(R tmp_reg0) ::                        (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
                        I.jmp(L allocate_lab) :: nil))               (*   jmp to __allocate with args in   *)
                                                                     (*     tmp_reg1 and tmp_reg0; result  *)
@@ -1270,12 +1290,14 @@ struct
                fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
                                     I.salq(I "3", R tmp_reg0) ::
                                     I.push(R tmp_reg1) ::
-                                    I.movq(LA lab,R tmp_reg1) ::
+                                    I.leaq(LA lab,R tmp_reg1) ::
+                                    I.addq(R tmp_reg1, R tmp_reg0) ::
+                                    I.movq(D(intToStr(~8*sel), tmp_reg0), R tmp_reg0) ::
                                     I.addq(R tmp_reg1, R tmp_reg0) ::
                                     I.pop(R tmp_reg1) ::
-                                    I.jmp(D(intToStr(~8*sel), tmp_reg0)) ::
+                                    I.jmp(R tmp_reg0) ::
                                     rem_dead_code C),
-               fn (lab,C) => I.dot_quad' lab :: C, (*add_label_to_jump_tab*)
+               fn (lab,lab_table,C) => I.dot_quad_sub (lab,lab_table) :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
                inline_cont,
                C)

@@ -26,7 +26,7 @@ sig
 
                                                          (*start*)   (*length*)
 			 (*jump_table_header*) ('label * IntInf.int * IntInf.int * 'inst list -> 'inst list) *
-			 (*add_label_to_jump_tab*) ('label * 'inst list -> 'inst list) *
+			 (*add_label_to_jump_tab*) ('label * 'label * 'inst list -> 'inst list) *
 			 (*eq_lab*) ('label * 'label -> bool) *
                          (*inline_cont*) ('inst list -> ('inst list -> 'inst list) option) *
 			 (*C*) 'inst list -> 'inst list

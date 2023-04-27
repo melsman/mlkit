@@ -1418,31 +1418,43 @@ struct
            val labCont2 = new_local_lab "profCont2-"
            val maxStackLab = NameLab "maxStack"
            val timeToProfLab = NameLab "timeToProfile"
-         in I.movq(L maxStackLab, R tmp_reg0) ::     (* The stack grows downwards!! *)
+
+           (* some intelligent operations *)
+           fun bin (tmp:I.reg) (inst:ea*ea->I.inst) (ea1:ea,ea2:ea,C:I.inst list) : I.inst list =
+               case ea1 of
+                   L (NameLab n) => I.movq(LA (NameLab n), R tmp) :: inst(D("",tmp),ea2) :: C
+                 | _ => case ea2 of
+                            L (NameLab n) => I.movq(LA (NameLab n), R tmp) :: inst(ea1, D("",tmp)) :: C
+                          | _ => inst(ea1,ea2) :: C
+           fun imov a = bin tmp_reg1 I.movq a
+           fun iadd a = bin tmp_reg1 I.addq a
+           fun isub a = bin tmp_reg1 I.subq a
+         in
+           imov(L maxStackLab, R tmp_reg0,     (* The stack grows downwards!! *)
            I.cmpq(R rsp, R tmp_reg0) ::
            I.jl labCont ::                                                    (* if ( rsp < *maxStack ) {     *)
-           I.movq(R rsp, L maxStackLab) ::                                    (*    *maxStack = rsp ;         *)
-           I.movq(L (NameLab "regionDescUseProfInf"), R tmp_reg0) ::          (*    maxProfStack =            *)
-           I.addq(L (NameLab "regionDescUseProfFin"), R tmp_reg0) ::          (*       regionDescUseProfInf   *)
-           I.addq(L (NameLab "allocProfNowFin"), R tmp_reg0) ::               (*     + regionDescUseProfFin   *)
-           I.movq(R tmp_reg0, L (NameLab "maxProfStack")) ::                  (*     + allocProfNowFin ;      *)
+           imov(R rsp, L maxStackLab,                                         (*    *maxStack = rsp ;         *)
+           imov(L (NameLab "regionDescUseProfInf"), R tmp_reg0,               (*    maxProfStack =            *)
+           iadd(L (NameLab "regionDescUseProfFin"), R tmp_reg0,               (*       regionDescUseProfInf   *)
+           iadd(L (NameLab "allocProfNowFin"), R tmp_reg0,                    (*     + regionDescUseProfFin   *)
+           iadd(R tmp_reg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
            I.lab labCont ::                                                   (* }                            *)
                                                                               (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
                                                                               (* if ( reg0 > maxMem ) maxMem = reg0; *)
-           I.movq(L (NameLab "allocNowInf"), R tmp_reg0) ::
-           I.subq(L (NameLab "regionDescUseProfInf"), R tmp_reg0) ::
-           I.subq(L (NameLab "regionDescUseProfFin"), R tmp_reg0) ::
-           I.subq(L (NameLab "allocProfNowFin"), R tmp_reg0) ::
+           imov(L (NameLab "allocNowInf"), R tmp_reg0,
+           isub(L (NameLab "regionDescUseProfInf"), R tmp_reg0,
+           isub(L (NameLab "regionDescUseProfFin"), R tmp_reg0,
+           isub(L (NameLab "allocProfNowFin"), R tmp_reg0,
            I.imulq(I "8", R tmp_reg0) ::
-           I.addq(L (NameLab "stackBot"), R tmp_reg0) ::
+           iadd(L (NameLab "stackBot"), R tmp_reg0,
            I.subq(R rsp, R tmp_reg0) ::
-           I.movq(L (NameLab "maxMem"), R tmp_reg1) ::
+           imov(L (NameLab "maxMem"), R tmp_reg1,                             (* we can store in tmp_reg1 even with imov *)
            I.cmpq(R tmp_reg1, R tmp_reg0) ::
            I.jl labCont1 ::
-           I.movq(R tmp_reg0, L (NameLab "maxMem")) ::
+           imov(R tmp_reg0, L (NameLab "maxMem"),
 
            I.lab labCont1 ::
-           I.movq(L timeToProfLab, R tmp_reg0) ::                             (* if ( timeToProfile )         *)
+           imov(L timeToProfLab, R tmp_reg0,                                  (* if ( timeToProfile )         *)
            I.cmpq(I "0", R tmp_reg0) ::                                       (*    call __proftick(rsp);     *)
            I.je labCont2 ::
            I.movq (R rsp, R tmp_reg1) ::              (* proftick assumes argument in tmp_reg1 *)
@@ -1450,7 +1462,7 @@ struct
            I.jmp (L(NameLab "__proftick")) ::
 
            I.lab labCont2 ::
-           C
+           C))))))))))))))
          end
        else C
 
@@ -1563,7 +1575,6 @@ struct
         val _ = reset_label_counter()
 
         val lab_exit = NameLab "__lab_exit"
-        val next_prog_unit = Labels.new_named "next_prog_unit"
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*
