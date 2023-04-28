@@ -54,7 +54,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 			  jmp: 'label * 'inst list -> 'inst list,
 			  sel_dist: IntInf.int * IntInf.int -> IntInf.int,
 			  jump_table_header: 'label * IntInf.int * IntInf.int * 'inst list -> 'inst list,
-			  add_label_to_jump_tab: 'label * 'inst list -> 'inst list,
+			  add_label_to_jump_tab: 'label * 'label * 'inst list -> 'inst list,
 			  eq_lab : 'label * 'label -> bool,
 			  inline_cont: 'inst list -> ('inst list -> 'inst list) option,
 			  C: 'inst list) =
@@ -144,13 +144,13 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 		      val C'' = label(selLabel,
 				      compile_insts(selCode, endsel C'))
 		    in
-		      (add_label_to_jump_tab(selLabel,jumpTable),C'')  (* DOT_WORD pp_lab selLabel :: jumpTable *)
+		      (add_label_to_jump_tab(selLabel,jumpTableLab,jumpTable),C'')  (* DOT_WORD pp_lab selLabel :: jumpTable *)
 		    end
 		  else
 		    let
 		      val (jumpTable,C') = make_sel_code(next+1,(sel,selCode)::rest,C)
 		    in
-		      (add_label_to_jump_tab(defaultLab,jumpTable),C')
+		      (add_label_to_jump_tab(defaultLab,jumpTableLab,jumpTable),C')
 		    end
 		fun merge([],C) = C
 		  | merge(x::xs,C) = x::merge(xs,C)

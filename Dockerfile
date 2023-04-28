@@ -11,10 +11,10 @@
 #  docker run -it mlkit
 #
 
-FROM ubuntu:21.10
+FROM --platform=linux/amd64 ubuntu:20.04
 
 RUN apt-get update && apt-get install -y \
-    gcc gcc-multilib autoconf make
+    gcc autoconf make
 
 ADD https://github.com/melsman/mlkit/releases/latest/download/mlkit-bin-dist-linux.tgz .
 

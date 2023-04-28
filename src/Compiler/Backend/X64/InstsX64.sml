@@ -179,6 +179,7 @@ structure InstsX64: INSTS_X64 =
     | dot_long of string
     | dot_quad of string
     | dot_quad' of lab
+    | dot_quad_sub of lab * lab
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int
@@ -192,6 +193,58 @@ structure InstsX64: INSTS_X64 =
     type AsmPrg = {top_decls: top_decl list,
                    init_code: inst list,
                    static_data: inst list}
+
+    structure LabSet : sig type t
+                           val insert : t -> lab -> unit
+                           val empty  : unit -> t
+                           val mem    : t -> lab -> bool
+                       end =
+    struct
+      structure H = Polyhash
+
+      fun hash_s (s:string) : int =
+          let val w = Pickle.Hash.hash(Pickle.Hash.string s Pickle.Hash.init)
+          in Word.toIntX w
+          end
+
+      type t = (lab,unit) H.hash_table
+
+      exception NotThere
+      fun key (l:label) = #1(Labels.key l)
+      fun hash_lab (l:lab) : int =
+          case l of
+              LocalLab l => key l
+            | DatLab l => key l
+            | MLFunLab l => key l
+            | NameLab n => hash_s n
+
+      fun empty () : t = H.mkTable (hash_lab,eq_lab) (23,NotThere)
+      fun mem (t:t) (l:lab) : bool =
+          case H.peek t l of
+              SOME _ => true
+            | NONE => false
+
+      fun insert (t:t) (l:lab) : unit =
+          H.insert t (l,())
+    end
+
+    fun labs_def_insts (is:inst list,acc:lab list) : lab list =
+        let fun loop (nil,acc) = acc
+              | loop (lab l::is,acc) = loop (is,l::acc)
+              | loop (_::is,acc) = loop (is,acc)
+        in loop (is,acc)
+        end
+
+    fun interns {top_decls: top_decl list,
+                 init_code: inst list,
+                 static_data: inst list} : lab list =
+        let fun loop (nil,acc) = acc
+              | loop (FUN (l,insts)::xs,acc) = loop(xs,labs_def_insts(insts,MLFunLab l::acc))
+              | loop (FN (l,insts)::xs,acc) = loop(xs,labs_def_insts(insts,MLFunLab l::acc))
+        in loop (top_decls,
+                 labs_def_insts(init_code,
+                                labs_def_insts(static_data, nil)))
+        end
 
     fun pr_reg rax = "%rax"
       | pr_reg rbx = "%rbx"
@@ -272,36 +325,98 @@ structure InstsX64: INSTS_X64 =
                            then c
                            else #"_") s
 
+    fun isDarwin () = sysname() = "Darwin"
+
     fun pr_namelab s =
-        if sysname() = "Darwin" then "_" ^ s
+        if isDarwin() then "_" ^ s
         else s
 
-    fun pr_lab (DatLab l) = "D." ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (LocalLab l) = "." ^ remove_ctrl(Labels.pr_label l)
+    fun pr_lab (DatLab l) = pr_namelab("D." ^ remove_ctrl(Labels.pr_label l))
+      | pr_lab (LocalLab l) = "L_" ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (NameLab s) = pr_namelab(remove_ctrl s)
-      | pr_lab (MLFunLab l) = "F." ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (MLFunLab l) = pr_namelab("F." ^ remove_ctrl(Labels.pr_label l))
 
     (* Convert ~n to -n *)
     fun int_to_string i = if i >= 0 then Int.toString i
                           else "-" ^ Int.toString (~i)
 
-    fun pr_ea (R r) = pr_reg r
-      | pr_ea (L l) = pr_lab l ^ "(%rip)"
-      | pr_ea (LA l) =
-      	if sysname() = "Darwin" then
-	  pr_lab l ^ "@GOTPCREL(%rip)"
-	else "$" ^ pr_lab l
-      | pr_ea (I s) = "$" ^ s
-      | pr_ea (D(d,r)) = if d="0" then "(" ^ pr_reg r ^ ")"
-                         else d ^ "(" ^ pr_reg r ^ ")"
-      | pr_ea (DD(d,r1,r2,m)) =
-        let val m = if m = "1" orelse m = "" then "" else "," ^ m
-            val d = if d = "0" orelse d = "" then "" else d
-        in d ^ "(" ^ pr_reg r1 ^ "," ^ pr_reg r2 ^ m ^ ")"
-        end
+    (* Patching patches moves (etc) to and from memory addresses
+       identified by labels are patched so that the involved memory
+       address is resolved first, which allows for
+       position-independent code through the GOT (Global Offset Table).
 
-    fun emit_insts (os, insts: inst list): unit =
-      let
+       MEMO: patching below uses r9, which, apparently is not really
+       used by the register allocation scheme (only for passing
+       arguments to external (C) functions).
+
+       The patching function takes a set K of all labels that are
+       defined by the program unit; moves involving labels in K need
+       not be patched, as such moves can be resolved statically by the
+       linker, without using the GOT. *)
+
+    fun tick s = () (* print (s ^ "\n") *)
+
+    local
+      fun amov (ea1,ea2) =                    (* address move *)
+          if isDarwin() then movq(ea1,ea2)
+          else leaq(ea1,ea2)
+    in
+    fun patch K is =
+        case is of
+            nil => nil
+          | i::is =>
+            case i of
+                movq(L l,ea) =>
+                if LabSet.mem K l then i::patch K is
+                else (tick "movq: load"; amov(LA l, R r9) :: movq(D("0",r9),ea) :: patch K is)
+              | movq(ea,L l) =>
+                if LabSet.mem K l then i::patch K is
+                else (tick "movq:store"; amov(LA l, R r9) :: movq(ea,D("0",r9)) :: patch K is)
+              | addq(ea,L l) =>
+                if LabSet.mem K l then i::patch K is
+                else (tick "addq:store"; amov(LA l, R r9) :: addq(ea,D("0",r9)) :: patch K is)
+              | cmpq(ea,L l) =>
+                if LabSet.mem K l then i::patch K is
+                else (tick "cmpq:store"; amov(LA l, R r9) :: cmpq(ea,D("0",r9)) :: patch K is)
+              | movq(LA (LocalLab l),ea) => leaq(LA(LocalLab l),ea) :: patch K is
+              | push(LA (LocalLab l)) => leaq(LA(LocalLab l),R r9) :: push(R r9) :: patch K is
+              | movq(LA l,ea) => if isDarwin() then i :: patch K is
+                                 else leaq(LA l,ea) :: patch K is
+              | push(LA l) => if isDarwin() then i :: patch K is
+                              else leaq(LA l,R r9) :: push(R r9) :: patch K is
+              | cmpq(LA l,ea) => if isDarwin() then i :: patch K is
+                                 else leaq(LA l,R r9) :: cmpq(R r9,ea) :: patch K is
+              | i => i :: patch K is
+    end
+
+    (* For now, K is used only for patching, but it could potentially
+       be used for statically resolving internal use of globally
+       accessible addresses without using the GOT; in the program unit
+       that defines the label, we can refer to the label and resolve
+       the address statically (with an offset to %rip). *)
+
+    fun pr_ea K ea =
+        case ea of
+            R r => pr_reg r
+          | L l => pr_lab l ^ "(%rip)"
+          | LA l =>
+      	    if isDarwin() then
+              (case l of
+                   LocalLab _ => pr_lab l ^ "(%rip)"
+                 | _ => pr_lab l ^ "@GOTPCREL(%rip)")
+	    else pr_lab l ^ "(%rip)"  (* same syntax as for L and independent of localness?! *)
+          | I s => "$" ^ s
+          | D(d,r) => if d="0" then "(" ^ pr_reg r ^ ")"
+                      else d ^ "(" ^ pr_reg r ^ ")"
+          | DD(d,r1,r2,m) =>
+            let val m = if m = "1" orelse m = "" then "" else "," ^ m
+                val d = if d = "0" orelse d = "" then "" else d
+            in d ^ "(" ^ pr_reg r1 ^ "," ^ pr_reg r2 ^ m ^ ")"
+            end
+
+    fun emit_insts (K: LabSet.t, os, insts: inst list): unit =
+        let
+          val insts = patch K insts
           val linecomments = true
           fun emit s = TextIO.output(os, s)
           val (set_comm : string -> unit, emit_comm : unit -> unit) =
@@ -314,9 +429,9 @@ structure InstsX64: INSTS_X64 =
           fun emit_n i = emit(Int.toString i)
           fun emit_nl () = (emit_comm(); emit "\n")
           fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " ";
-                                          emit(pr_ea ea1); emit ",";
-                                          emit(pr_ea ea2); emit_nl())
-          fun emit_unary (s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit_nl())
+                                          emit(pr_ea K ea1); emit ",";
+                                          emit(pr_ea K ea2); emit_nl())
+          fun emit_unary (s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea K ea); emit_nl())
           fun emit_nullary s = (emit "\t"; emit s; emit_nl())
           fun emit_nullary0 s = (emit s; emit_nl())
           fun emit_jump (s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
@@ -393,7 +508,7 @@ structure InstsX64: INSTS_X64 =
                | fnstsw => emit_nullary "fnstsw"
 
                | jmp (L l) => emit_jump("jmp", l)
-               | jmp ea => (emit "\tjmp *"; emit(pr_ea ea); emit_nl())
+               | jmp ea => (emit "\tjmp *"; emit(pr_ea K ea); emit_nl())
                | jl l => emit_jump("jl", l)
                | jg l => emit_jump("jg", l)
                | jle l => emit_jump("jle", l)
@@ -420,7 +535,7 @@ structure InstsX64: INSTS_X64 =
                | cmovbeq a => emit_bin("cmovbeq", a)
 
                | call l => emit_jump("call", l)
-               | call' ea => (emit "\tcall *"; emit(pr_ea ea); emit_nl())
+               | call' ea => (emit "\tcall *"; emit(pr_ea K ea); emit_nl())
                | ret => emit_nullary "ret"
                | leave => emit_nullary "leave"
 
@@ -433,6 +548,7 @@ structure InstsX64: INSTS_X64 =
                | dot_long s => (emit "\t.long "; emit s; emit_nl())
                | dot_quad s => (emit "\t.quad "; emit s; emit_nl())
                | dot_quad' l => (emit "\t.quad "; emit(pr_lab l); emit_nl())
+               | dot_quad_sub (l1,l2) => (emit "\t.quad "; emit(pr_lab l1 ^ "-" ^ pr_lab l2); emit_nl())
                | dot_double s => (emit "\t.double "; emit s; emit_nl())
                | dot_string s => (emit "\t.string \""; emit s; emit "\""; emit_nl())
                | dot_section s => (emit ".section \t"; emit s; emit_nl())
@@ -445,23 +561,25 @@ structure InstsX64: INSTS_X64 =
       in app emit_inst insts
       end
 
-    fun emit_topdecl os t =
+    fun emit_topdecl K os t =
       case t
-        of FUN (l, insts) => emit_insts(os, lab (MLFunLab l)::insts)
-         | FN (l, insts) =>  emit_insts(os, lab (MLFunLab l)::insts)
+        of FUN (l, insts) => emit_insts(K, os, lab (MLFunLab l)::insts)
+         | FN (l, insts) =>  emit_insts(K, os, lab (MLFunLab l)::insts)
 
-    fun emit ({top_decls: top_decl list,
-               init_code: inst list,
-               static_data: inst list}, filename) =
+    fun emit (prg as {top_decls: top_decl list,
+                      init_code: inst list,
+                      static_data: inst list}, filename) =
       let
         val os : TextIO.outstream = TextIO.openOut filename
+        val K = LabSet.empty ()
+        val () = List.app (LabSet.insert K) (interns prg)
         val static_data =
-            if sysname() = "Darwin" then
+            if isDarwin() then
               (* dot_section ".note.GNU-stack,\"\"" :: *) static_data
             else dot_section ".note.GNU-stack,\"\",@progbits" :: static_data
-      in (emit_insts (os, init_code);
-          app (emit_topdecl os) top_decls;
-          emit_insts (os, static_data);
+      in (emit_insts (K, os, init_code);
+          app (emit_topdecl K os) top_decls;
+          emit_insts (K, os, static_data);
           TextIO.closeOut os) handle E => (TextIO.closeOut os; raise E)
       end
 
@@ -594,8 +712,13 @@ structure InstsX64: INSTS_X64 =
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
       end
 
-    val tmp_reg0 = r10 (* CALLER saves scratch registers *)
-    val tmp_reg1 = r11
+    val tmp_reg0 = r10 (* CALLER saves scratch register *)
+    val tmp_reg1 = r11 (* CALLER saves scratch register *)
+
+    (* Notice also that r9 is used for generating position-independent
+     * code when emitting; see emit functions above. When we generate
+     * external calls, we may need to store an argument in r9, which is
+     * safe as the generated transfer code need no patching. *)
 
     val tmp_freg0 = xmm14
     val tmp_freg1 = xmm15
@@ -617,6 +740,7 @@ structure InstsX64: INSTS_X64 =
           | dot_long _ => C
           | dot_quad _ => C
           | dot_quad' _ => C
+          | dot_quad_sub _ => C
           | dot_byte _ => C
           | dot_align _ => C
           | dot_p2align _ => C
@@ -741,6 +865,7 @@ structure InstsX64: INSTS_X64 =
              | dot_long s => i
              | dot_quad s => i
              | dot_quad' l => dot_quad' (Lm l)
+             | dot_quad_sub (l1,l2) => dot_quad_sub (Lm l1,Lm l2)
              | dot_double s => i
              | dot_string s => i
              | comment s => i
@@ -889,4 +1014,6 @@ structure InstsX64: INSTS_X64 =
 
     type StringTree = PP.StringTree
     fun layout _ = PP.LEAF "not implemented"
+
+    val pr_ea = pr_ea (LabSet.empty())
   end
