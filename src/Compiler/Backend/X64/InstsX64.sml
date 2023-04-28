@@ -384,6 +384,8 @@ structure InstsX64: INSTS_X64 =
                                  else leaq(LA l,ea) :: patch K is
               | push(LA l) => if isDarwin() then i :: patch K is
                               else leaq(LA l,R r9) :: push(R r9) :: patch K is
+              | cmpq(LA l,ea) => if isDarwin() then i :: patch K is
+                                 else leaq(LA l,R r9) :: cmpq(R r9,ea) :: patch K is
               | i => i :: patch K is
     end
 
