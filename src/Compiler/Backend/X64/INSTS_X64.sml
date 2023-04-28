@@ -161,6 +161,7 @@ signature INSTS_X64 =
     | dot_long of string
     | dot_quad of string
     | dot_quad' of lab
+    | dot_quad_sub of lab * lab
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int

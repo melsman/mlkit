@@ -170,10 +170,10 @@ static void check_scanf_result(int result) {
  *   Go into interactive mode.                                    *
  *----------------------------------------------------------------*/
 static void interactive(void) {
-  char button = ' ';
+  char *button = "  ";
   int regionNo;
 
-  while (button != 'e') {
+  while (button[0] != 'e') {
     printf("\n\nInteractive mode.\n\n\n");
     printf("      (1)   Profile all regions with respect to size.\n");
     printf("      (2)   Profile all objects in a region.\n");
@@ -183,9 +183,9 @@ static void interactive(void) {
     printf("      (6)   Profile stack with respect to size.\n");
     printf("      (e)   Exit.\n");
     printf("\n\nType switch: ");
-    check_scanf_result(scanf("%1s", &button));
-    printf("\n\nYou typed %c.\n",button);
-    switch (button) {
+    check_scanf_result(scanf("%1s", button));
+    printf("\n\nYou typed %c.\n",button[0]);
+    switch (button[0]) {
     case '1':
       printf("\n Type name of output file: ");
       check_scanf_result(scanf("%s", rpName));

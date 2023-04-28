@@ -93,12 +93,35 @@ struct
 
   val rem_dead_code = I.rem_dead_code
 
+  (* ----------------------------------------------------------------
+   * Helper functions for generating position-independent code.
+   * For position-independent code, we cannot directly store relative
+   * to a labeled address. Instead, we must first compute the address and
+   * then store relative to that address. Currently, asm instructions are
+   * "patched" in the InstsX64 (using r9), but in the longer run, we should
+   * make sure that position independent code is generated correctly for
+   * different architectures/OSs (macos uses Mach-o and linux uses ELF).
+   * ---------------------------------------------------------------- *)
+(*
+  fun is_pic () = true
+
+  fun mov_to_labeled_content (ea,lab,treg,C) =          (* possibly uses treg *)
+      if is_pic() then
+        I.movq(LA lab, R treg) ::
+        I.movq(ea, D("0",treg)) :: C
+      else I.movq(ea,L lab) :: C
+
+  fun add_to_labeled_content (ea,lab,treg,C) =          (* possibly uses treg *)
+      if is_pic() then
+        I.movq(LA lab, R treg) ::
+        I.addq(ea, D("0",treg)) :: C
+      else I.addq(ea,L lab) :: C
+*)
   (********************************)
   (* CG on Top Level Declarations *)
   (********************************)
 
     (* Global Labels *)
-(*    val exn_ptr_lab = NameLab "exn_ptr" *)
     val exn_counter_lab = NameLab "exnameCounter"
     val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
     val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
@@ -346,7 +369,6 @@ struct
             I.movq(LA lab,R tmp1) :: move_num_generic (#precision w, fmtWord w, D("0",tmp1), C)
           | SS.UNIT_ATY =>
             I.movq(LA lab,R tmp1) :: move_unit(D("0",tmp1), C)
-(*        | SS.STACK_ATY offset => load_indexed(L lab, rsp, WORDS(size_ff-offset-1), C) *)
           | _ => move_aty_into_reg(src_aty,tmp1,size_ff,
                  I.movq(R tmp1, L lab) :: C)
 
@@ -918,7 +940,8 @@ struct
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
                        I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
-                       I.push(LA l) ::                              (*   push continuation label          *)
+                       I.leaq(LA l, R tmp_reg0) ::
+                       I.push(R tmp_reg0) ::                        (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
                        I.jmp(L allocate_lab) :: nil))               (*   jmp to __allocate with args in   *)
                                                                     (*     tmp_reg1 and tmp_reg0; result  *)
@@ -1270,12 +1293,14 @@ struct
                fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
                                     I.salq(I "3", R tmp_reg0) ::
                                     I.push(R tmp_reg1) ::
-                                    I.movq(LA lab,R tmp_reg1) ::
+                                    I.leaq(LA lab,R tmp_reg1) ::
+                                    I.addq(R tmp_reg1, R tmp_reg0) ::
+                                    I.movq(D(intToStr(~8*sel), tmp_reg0), R tmp_reg0) ::
                                     I.addq(R tmp_reg1, R tmp_reg0) ::
                                     I.pop(R tmp_reg1) ::
-                                    I.jmp(D(intToStr(~8*sel), tmp_reg0)) ::
+                                    I.jmp(R tmp_reg0) ::
                                     rem_dead_code C),
-               fn (lab,C) => I.dot_quad' lab :: C, (*add_label_to_jump_tab*)
+               fn (lab,lab_table,C) => I.dot_quad_sub (lab,lab_table) :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
                inline_cont,
                C)
@@ -1310,37 +1335,7 @@ struct
                            toInt,
                            C))
         end
-(*
-      fun cmpi_kill_tmp01 {box,quad} jump (x,y,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            val true_lab = new_local_lab "true"
-            val cont_lab = new_local_lab "cont"
-            val (inst_cmp, maybeDoubleOfQuadReg) =
-                if quad
-                then (I.cmpq, fn r => r)
-                else (I.cmpl, I.doubleOfQuadReg)
-            fun compare C =
-              if box then
-                I.movq(D("8",y_reg), R tmp_reg1) ::
-                I.movq(D("8",x_reg), R tmp_reg0) ::
-                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
-                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
-              else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
-                            R (maybeDoubleOfQuadReg x_reg)) :: C
-        in
-           x_C(
-           y_C(
-           compare (
-           jump true_lab ::
-           I.movq(I (i2s BI.ml_false), R d_reg) ::
-           I.jmp(L cont_lab) ::
-           I.lab true_lab ::
-           I.movq(I (i2s BI.ml_true), R d_reg) ::
-           I.lab cont_lab :: C')))
-        end
-*)
+
       fun cmpi_kill_tmp01_cmov {box,quad} cmov (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1536,23 +1531,7 @@ struct
                        R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
-(*
-      fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
-                if quad
-                then (I.addq, I.negq, fn r => r)
-                else (I.addl, I.negl, I.doubleOfQuadReg)
-            fun do_tag C = if tag then inst_add (I "2", R (maybeDoubleOfQuadReg d_reg)) ::
-                                       jump_overflow C
-                           else C
-        in x_C(copy(x_reg, d_reg,
-           inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
-           jump_overflow (
-           do_tag C')))
-        end
-*)
+
       fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
@@ -2009,26 +1988,6 @@ struct
               I.subsd (R tmp_freg0, R d) ::
               I.maxsd (R tmp_freg0, R d) :: C')
        end
-
-(*
-     fun cmpf64_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
-             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
-             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01: wrong x register")
-             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01: wrong y register")
-             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-             val true_lab = new_local_lab "true"
-             val cont_lab = new_local_lab "cont"
-         in x_C(y_C(I.ucomisd (R y, R x) ::
-                    jump true_lab ::
-                    I.movq(I (i2s BI.ml_false), R d_reg) ::
-                    I.jmp(L cont_lab) ::
-                    I.lab true_lab ::
-                    I.movq(I (i2s BI.ml_true), R d_reg) ::
-                    I.lab cont_lab ::
-                    C'))
-         end
-*)
 
      fun cmpf64_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
@@ -2627,10 +2586,7 @@ struct
             t_C(
             I.movq(D("0",t_reg), R d_reg) ::
             I.sarq (I "6", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) *)
-(*
-            I.salq(I "1", R d_reg) ::          (* d = tag d *)
-            I.addq(I "1", R d_reg) ::
-*)          I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
             C')
           else
             t_C(

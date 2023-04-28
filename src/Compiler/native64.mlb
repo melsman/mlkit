@@ -29,7 +29,7 @@ in
   local open Tools
   in
      local open CompilerObjects
-     in Backend/X64/InstsX64.sml
+     in local open Pickle in Backend/X64/InstsX64.sml end
         Backend/X64/CodeGenUtilX64.sml
         Backend/X64/CodeGenX64.sml
         local open Pickle Basics Manager
