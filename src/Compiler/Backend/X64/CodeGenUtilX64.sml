@@ -94,10 +94,13 @@ struct
   val rem_dead_code = I.rem_dead_code
 
   (* ----------------------------------------------------------------
-   * Helper functions for generating position-independent code
+   * Helper functions for generating position-independent code.
    * For position-independent code, we cannot directly store relative
-   * to a labeled address. Instead, we first compute the address and
-   * then store relative to that address.
+   * to a labeled address. Instead, we must first compute the address and
+   * then store relative to that address. Currently, asm instructions are
+   * "patched" in the InstsX64 (using r9), but in the longer run, we should
+   * make sure that position independent code is generated correctly for
+   * different architectures/OSs (macos uses Mach-o and linux uses ELF).
    * ---------------------------------------------------------------- *)
 (*
   fun is_pic () = true
@@ -1332,37 +1335,7 @@ struct
                            toInt,
                            C))
         end
-(*
-      fun cmpi_kill_tmp01 {box,quad} jump (x,y,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            val true_lab = new_local_lab "true"
-            val cont_lab = new_local_lab "cont"
-            val (inst_cmp, maybeDoubleOfQuadReg) =
-                if quad
-                then (I.cmpq, fn r => r)
-                else (I.cmpl, I.doubleOfQuadReg)
-            fun compare C =
-              if box then
-                I.movq(D("8",y_reg), R tmp_reg1) ::
-                I.movq(D("8",x_reg), R tmp_reg0) ::
-                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
-                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
-              else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
-                            R (maybeDoubleOfQuadReg x_reg)) :: C
-        in
-           x_C(
-           y_C(
-           compare (
-           jump true_lab ::
-           I.movq(I (i2s BI.ml_false), R d_reg) ::
-           I.jmp(L cont_lab) ::
-           I.lab true_lab ::
-           I.movq(I (i2s BI.ml_true), R d_reg) ::
-           I.lab cont_lab :: C')))
-        end
-*)
+
       fun cmpi_kill_tmp01_cmov {box,quad} cmov (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1558,23 +1531,7 @@ struct
                        R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
-(*
-      fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
-                if quad
-                then (I.addq, I.negq, fn r => r)
-                else (I.addl, I.negl, I.doubleOfQuadReg)
-            fun do_tag C = if tag then inst_add (I "2", R (maybeDoubleOfQuadReg d_reg)) ::
-                                       jump_overflow C
-                           else C
-        in x_C(copy(x_reg, d_reg,
-           inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
-           jump_overflow (
-           do_tag C')))
-        end
-*)
+
       fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
@@ -2031,26 +1988,6 @@ struct
               I.subsd (R tmp_freg0, R d) ::
               I.maxsd (R tmp_freg0, R d) :: C')
        end
-
-(*
-     fun cmpf64_kill_tmp01 jump (x,y,d,size_ff,C) = (* ME MEMO *)
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
-             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
-             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp01: wrong x register")
-             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01: wrong y register")
-             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-             val true_lab = new_local_lab "true"
-             val cont_lab = new_local_lab "cont"
-         in x_C(y_C(I.ucomisd (R y, R x) ::
-                    jump true_lab ::
-                    I.movq(I (i2s BI.ml_false), R d_reg) ::
-                    I.jmp(L cont_lab) ::
-                    I.lab true_lab ::
-                    I.movq(I (i2s BI.ml_true), R d_reg) ::
-                    I.lab cont_lab ::
-                    C'))
-         end
-*)
 
      fun cmpf64_kill_tmp01_cmov cmov (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
@@ -2649,10 +2586,7 @@ struct
             t_C(
             I.movq(D("0",t_reg), R d_reg) ::
             I.sarq (I "6", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) *)
-(*
-            I.salq(I "1", R d_reg) ::          (* d = tag d *)
-            I.addq(I "1", R d_reg) ::
-*)          I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
             C')
           else
             t_C(
