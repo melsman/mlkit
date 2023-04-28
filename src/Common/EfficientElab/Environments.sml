@@ -1112,7 +1112,7 @@ structure Environments: ENVIRONMENTS =
 		  val rt = Type.RecType.add_field(negative,boolTy)rt
 		  val rt = Type.RecType.add_field(digits,int31listTy)rt
 	      in
-		  Type.from_RecType rt
+		  Type.from_RecType (rt,NONE)
 	      end
 
 	  val intinfTy =

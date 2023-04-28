@@ -287,7 +287,7 @@ structure ElabDec: ELABDEC =
 
     fun addLabelIndexInfo(Type,patrow) =
       let
-        val recType = noSome (Type.to_RecType Type) "addLabelIndexInfo"
+        val recType = #1 (noSome (Type.to_RecType Type) "addLabelIndexInfo")
 
         val labtys = Type.RecType.to_list recType
         val sortedLabs = map (#1) labtys
@@ -475,10 +475,10 @@ structure ElabDec: ELABDEC =
 
           (* record expression *)
         | IG.RECORDatexp(i, SOME exprow, rv_opt) =>
-          let val rv_opt = Option.map (fn (i,rv) => (okConv i,rv)) rv_opt
+          let val rv_opt' = Option.map (fn (i,rv) => (okConv i,rv)) rv_opt
               val (S, rho, out_exprow) = elab_exprow(C,exprow)
-          in (S, Type.from_RecType rho,
-              OG.RECORDatexp (okConv i, SOME out_exprow, rv_opt))
+          in (S, Type.from_RecType (rho,rv_opt),
+              OG.RECORDatexp (okConv i, SOME out_exprow, rv_opt'))
           end
 
           (* let expression *)                                  (*rule 4*)
@@ -1565,9 +1565,9 @@ structure ElabDec: ELABDEC =
               val (S, (VE, rho), out_patrow) = elab_patrow(C, patrow)
             in
               (S,
-               (VE,Type.from_RecType rho, nil),
+               (VE,Type.from_RecType (rho,NONE), nil),
                 OG.RECORDatpat(addTypeInfo_RECORD_ATPAT(okConv i,
-                                                        Type.from_RecType rho),
+                                                        Type.from_RecType(rho,NONE)),
 		               SOME(out_patrow)))
             end
 
@@ -1805,12 +1805,13 @@ structure ElabDec: ELABDEC =
           (* Record type *)
         | IG.RECORDty(i, SOME tyrow, NONE) =>  (* The error has already been reported. *)
 	   (case elab_tyrow(C, tyrow)
-	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow, NONE))
+	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType (rho,NONE)), OG.RECORDty(okConv i, SOME out_tyrow, NONE))
 	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, NONE)))
 
         | IG.RECORDty(i, SOME tyrow, SOME(i2,rv)) =>  (* The error has already been reported. *)
 	   (case elab_tyrow(C, tyrow)
-	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i2,rv)))
+	     of (SOME rho, out_tyrow) => (SOME (Type.from_RecType (rho,SOME(i2,rv))),
+                                          OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i2,rv)))
 	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i, rv))))
 
 
@@ -1992,7 +1993,7 @@ let
 		  if Type.eq (typ',typ) then typ else loop typ'
 		end
 	in
-	  if Type.contains_row_variable (loop (Type.from_RecType rho))
+	  if Type.contains_row_variable (loop (Type.from_RecType (rho,NONE)))
 	  then FLEX_NOTRESOLVED else FLEX_RESOLVED
 	end
 

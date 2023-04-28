@@ -25,6 +25,8 @@ signature STATOBJECT =
     type scon
     type strid
 
+    type regvar_info = (ParseInfo.ParseInfo * RegVar.regvar) option
+
     structure ExplicitTyVarMap : MONO_FINMAP where type dom = ExplicitTyVar
 
     (*Level: for an explanation of type inference using `let levels'
@@ -84,8 +86,8 @@ signature STATOBJECT =
 	val to_TyVar                : Type -> TyVar option
 
 	(*record types*)
-	val from_RecType            : RecType -> Type
-	val to_RecType              : Type -> RecType option
+	val from_RecType            : RecType * regvar_info -> Type
+	val to_RecType              : Type -> (RecType * regvar_info) option
 	val contains_row_variable   : Type -> bool
 	    (*contains_row_variable rho = true iff there exists a
 	     row variable in the type rho*)

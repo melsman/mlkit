@@ -369,10 +369,10 @@ structure CompileDec: COMPILE_DEC =
 		     val tys' = map compileType tys
                  in CONStype(tys', compileTyName tyname)
                  end)
-        | SOME rho =>
+        | SOME (rho,rvi) =>
             let val labtys = Type.RecType.to_list rho
 	        val tys' = map (compileType o #2) labtys
-            in RECORDtype tys'
+            in RECORDtype tys' (* memo: mael 2023-04-16  add regvar_info*)
             end
 
       val domType : StatObject.Type -> StatObject.Type =
