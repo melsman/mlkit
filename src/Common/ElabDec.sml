@@ -10,30 +10,22 @@ structure ElabDec: ELABDEC =
 
     structure ListHacks =
       struct
-
 	fun member x [] = false
 	  | member x (y::ys) = x=y orelse member x ys
 
-	fun union(set1, set2) =
+	fun union (set1, set2) =
 	  set1 @ List.filter (fn x => not(member x set1)) set2
 
-	fun intersect(set1, set2) =
+	fun intersect (set1, set2) =
 	  List.filter (fn x => member x set1) set2
 
-	fun minus(set1, set2) =
+	fun minus (set1, set2) =
 	  List.filter (fn x => not(member x set2)) set1
-
       end
 
     fun impossible s = Crash.impossible ("ElabDec." ^ s)
     fun noSome NONE s = impossible s
       | noSome (SOME x) s = x
-    fun map_opt f (SOME x) = SOME (f x)
-      | map_opt f NONE = NONE
-    (*uniq [1,2,1,3] = [2,1,3]*)
-    fun uniq [] = []
-      | uniq (x::xs) = if List.exists (fn x' => x=x') xs then uniq xs
-		       else x::uniq xs
 
     (*import from StatObject:*)
     structure Level        = StatObject.Level
@@ -214,8 +206,8 @@ structure ElabDec: ELABDEC =
 
     val Type_bogus = Type.fresh_normal
 
-    fun Unify(tau, tau', i): Substitution * ElabInfo =
-      case Type.unify (tau, tau')
+    fun Unify (tau, tau', i): Substitution * ElabInfo =
+      case Type.unify {unify_regvars=false} (tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)  (* substitutions are dummies *)
          | Type.UnifyFail _ =>
              (Substitution.Id,
@@ -226,8 +218,8 @@ structure ElabDec: ELABDEC =
               errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
              )
 
-    fun UnifyWithTexts(text,tau,text', tau', i): Substitution * ElabInfo =
-      case Type.unify(tau, tau')
+    fun UnifyWithTexts0 {unify_regvars:bool} (text,tau,text', tau', i): Substitution * ElabInfo =
+      case Type.unify {unify_regvars=unify_regvars} (tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)
          | Type.UnifyFail _ =>
              (Substitution.Id,
@@ -237,6 +229,10 @@ structure ElabDec: ELABDEC =
              (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
              )
+
+    fun UnifyWithTexts a = UnifyWithTexts0 {unify_regvars=false} a
+    fun UnifyWithTexts' a = UnifyWithTexts0 {unify_regvars=true} a
+
 
    (* Traversal of patterns to build a VE. We only do this for `rec'
       bindings. Arguably, we should reject records and so on right here,
@@ -252,7 +248,7 @@ structure ElabDec: ELABDEC =
     There is no checking for multiply declared variables
     ********)
 
-    fun dom_vb(C: Context, vb: IG.valbind): id list =
+    fun dom_vb (C: Context, vb: IG.valbind): id list =
       case vb
         of IG.PLAINvalbind(_, pat, _, vb_opt) =>
              C.dom_pat (C, pat, true)
@@ -285,7 +281,7 @@ structure ElabDec: ELABDEC =
      * the index of 2 should be 1 but if it stands for { 3 = _ } the
      * index of 2 should be 0). *)
 
-    fun addLabelIndexInfo(Type,patrow) =
+    fun addLabelIndexInfo (Type,patrow) =
       let
         val recType = #1 (noSome (Type.to_RecType Type) "addLabelIndexInfo")
 
@@ -296,7 +292,7 @@ structure ElabDec: ELABDEC =
 	     of NONE =>
 	       let val index = where' sortedLabs lab
 	       in OG.PATROW (ElabInfo.plus_TypeInfo i (TypeInfo.LAB_INFO {index=index}),
-			     lab, pat, map_opt f patrow_opt)
+			     lab, pat, Option.map f patrow_opt)
 	       end
 	      | SOME _ => OG.PATROW(i, lab, pat, patrow_opt)
 	       )
@@ -349,13 +345,13 @@ structure ElabDec: ELABDEC =
 		       | _ => i
 	      in OG.LONGIDatpat(i', longid_op, regvars_opt)
 	      end
-	     | OG.RECORDatpat(i, patrowOpt) => OG.RECORDatpat (i, map_opt do_patrow patrowOpt)
+	     | OG.RECORDatpat(i, patrowOpt) => OG.RECORDatpat (i, Option.map do_patrow patrowOpt)
 	     | OG.PARatpat(i, pat) => OG.PARatpat(i, do_pat pat)
 
         and do_patrow patrow =
           case patrow
 	    of OG.DOTDOTDOT _ => patrow
-	     | OG.PATROW(i, l, pat, patrowOpt) => OG.PATROW(i, l, do_pat pat, map_opt do_patrow patrowOpt)
+	     | OG.PATROW(i, l, pat, patrowOpt) => OG.PATROW(i, l, do_pat pat, Option.map do_patrow patrowOpt)
 
         fun do_valbind (vb : OG.valbind) : OG.valbind =
           case vb
@@ -559,8 +555,8 @@ structure ElabDec: ELABDEC =
                val (S2, tau2, out_atexp) = elab_atexp(S1 onC C, atexp)
                val new   = Type.fresh_normal ()
                val arrow = Type.mk_Arrow(tau2,new)
-               val (S3, i') = UnifyWithTexts("operand suggests operator type",arrow,
-                                             "but I found operator type",S2 on tau1, i)
+               val (S3, i') = UnifyWithTexts ("operand suggests operator type",arrow,
+                                              "but I found operator type",S2 on tau1, i)
                val tau = S3 on new
              in
                (S3 oo S2 oo S1, tau,
@@ -572,7 +568,8 @@ structure ElabDec: ELABDEC =
              let val (S1, tau, out_exp) = elab_exp(C, exp)
 	     in case elab_ty(S1 onC C, ty)
 		  of (SOME tau', out_ty) =>
-		    let val (S2, i') = UnifyWithTexts("type of expression",tau,"disagrees with your type constraint", tau', i)
+		     let val (S2, i') =
+                             UnifyWithTexts' ("type of expression",tau,"disagrees with your type constraint", tau', i)
 		        val tau'' = S2 on tau'
 		    in (S2 oo S1, tau'', OG.TYPEDexp(addTypeInfo_EXP(i',tau''), out_exp, out_ty))
 		    end
@@ -924,8 +921,10 @@ structure ElabDec: ELABDEC =
 (*            val () = print ("PLAINvalbind: " ^ Int.toString (length R) ^ "\n") *)
             val (S1, tau1, out_exp) = elab_exp(C.plus_E(S0 onC C,E.from_R R), exp)
 
-            val (S2, i') = UnifyWithTexts("type of left-hand side pattern",(S1 oo S0) on tau,
-                                          "type of right-hand side expression", tau1, i)
+            val (S2, i') = UnifyWithTexts'("type of left-hand side pattern",(S1 oo S0) on tau,
+                                           "type of right-hand side expression", tau1, i)
+
+            val VE = VE.remove_regvars R VE
 
             (* if there was a unification error in the line above, change the right source
                info field of i' to become the right end of exp : *)
@@ -982,12 +981,12 @@ structure ElabDec: ELABDEC =
                                    variable in two VE's. The result is a
                                    substitution and an ErrorInfo tag. *)
 
-            fun processID(i, VE, VE', id): Substitution * ElabInfo =
+            fun processID (i, VE, VE', id): Substitution * ElabInfo =
                   (case (VE.lookup VE id, VE.lookup VE' id) of
 		     (SOME (VE.LONGVAR sigma1), SOME (VE.LONGVAR sigma2)) =>
 		       let val (_, tau1) = TypeScheme.to_TyVars_and_Type sigma1
 			   val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
-		       in (case Type.unify(tau1, tau2) of
+		       in (case Type.unify {unify_regvars=false} (tau1, tau2) of
 			     Type.UnifyOk => (Substitution.Id, i)   (* substitutions are dummies *)
 			   | Type.UnifyFail _ => (Substitution.Id,
 						ElabInfo.plus_ErrorInfo i
@@ -1004,7 +1003,7 @@ structure ElabDec: ELABDEC =
                                    ErrorInfo goes into the pattern...
                                    ...somewhere... *)
 
-            fun traverseRecValbind(VE, VE', vb): Substitution * OG.valbind =
+            fun traverseRecValbind (VE, VE', vb): Substitution * OG.valbind =
               case vb
                 of OG.PLAINvalbind(i, pat, exp, vb_opt) =>
                      let val (S, pat') = traverseRecPat(VE, VE', pat)
@@ -1025,7 +1024,7 @@ structure ElabDec: ELABDEC =
                        (S, OG.RECvalbind(i, vb'))
                      end
 
-            and traverseRecPat(VE, VE', pat): Substitution * OG.pat =
+            and traverseRecPat (VE, VE', pat): Substitution * OG.pat =
               case pat
                 of OG.ATPATpat(i, atpat) =>
                      let
@@ -1059,7 +1058,7 @@ structure ElabDec: ELABDEC =
                  | OG.UNRES_INFIXpat _ =>
                      impossible "traverseRecPat(UNRES_INFIX)"
 
-            and traverseRecAtpat(VE, VE', atpat): Substitution * OG.atpat =
+            and traverseRecAtpat (VE, VE', atpat): Substitution * OG.atpat =
               case atpat
                 of OG.WILDCARDatpat _ => (Substitution.Id, atpat)
 
@@ -1094,7 +1093,7 @@ structure ElabDec: ELABDEC =
                        (S, OG.PARatpat(i, pat'))
                      end
 
-            and traverseRecPatrow(VE, VE', patrow): Substitution * OG.patrow =
+            and traverseRecPatrow (VE, VE', patrow): Substitution * OG.patrow =
               case patrow of
                 OG.DOTDOTDOT i => (Substitution.Id, patrow)
               | OG.PATROW(i, l, pat, patrowOpt) =>
@@ -1644,7 +1643,7 @@ structure ElabDec: ELABDEC =
         (S, (VE, ty, R), pat')
       end
 
-    and elab_pat'(C, pat) =
+    and elab_pat' (C, pat) =
         case pat of
 
           (* Atomic pattern *)                                  (*rule 40*)
@@ -1809,7 +1808,7 @@ structure ElabDec: ELABDEC =
 	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, NONE)))
 
         | IG.RECORDty(i, SOME tyrow, SOME(i2,rv)) =>  (* The error has already been reported. *)
-	   (case elab_tyrow(C, tyrow)
+	  (case elab_tyrow(C, tyrow)
 	     of (SOME rho, out_tyrow) => (SOME (Type.from_RecType (rho,SOME(i2,rv))),
                                           OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i2,rv)))
 	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow, SOME(okConv i, rv))))
@@ -1856,10 +1855,22 @@ structure ElabDec: ELABDEC =
 		| ((_, out_ty), (_, out_ty')) => (NONE, OG.FNty(okConv i, out_ty, out_ty')))
 
           (* Parenthesised type *)                              (*rule 48*)
-        | IG.PARty(i, ty) =>
+        | IG.PARty(i, ty, rvopt) => (* MEMO mael 2023-05-02 *)
             let val (tau_opt, out_ty) = elab_ty(C, ty)
+                val rvopt' =
+                    case rvopt of
+                        NONE => NONE
+                      | SOME (i,rv) =>
+                        let val rvopt' = SOME(okConv i,rv)
+                        in case tau_opt of
+                               NONE => rvopt'
+                             | SOME tau =>
+                               (case Type.push_regvar (SOME(i,rv)) tau of
+                                    NONE => rvopt'
+                                  | SOME msg => SOME(errorConv (i, ErrorInfo.REGVAR_TY_ANNOTATE msg),rv))
+                        end
             in
-              (tau_opt, OG.PARty(okConv i, out_ty))
+              (tau_opt, OG.PARty(okConv i, out_ty, rvopt'))
             end
 
     (****** type rows ******)
@@ -1965,7 +1976,7 @@ let
 		     to put this resolve into work by unifying the tyvar with
 		     the default type:*)
 		 let val t = resolve_tv tv'
-		   val _ = Type.unify (t, tau')
+		   val _ = Type.unify {unify_regvars=false} (t, tau')
 		 in tau_to_overloadinginfo tau'
 		 end
 	       else (*repeat application of S:*) resolve_tau tau'

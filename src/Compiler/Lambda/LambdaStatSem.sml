@@ -50,7 +50,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       let fun f (TYVARtype tyvar, s) = NatSet.insert tyvar s
             | f (ARROWtype (tl1, tl2), s) = foldl f (foldl f s tl1) tl2
             | f (CONStype (ts, _), s) = foldl f s ts
-            | f (RECORDtype ts, s) = foldl f s ts
+            | f (RECORDtype (ts,_), s) = foldl f s ts
       in f (Type, NatSet.empty)
       end
 
@@ -138,8 +138,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               end
             val typescheme_CONS =
               let val tyvar = fresh_tyvar()
-              in close_Type (ARROWtype([RECORDtype[TYVARtype tyvar,
-                                                  CONStype([TYVARtype tyvar], tyName_LIST)]],
+              in close_Type (ARROWtype([RECORDtype([TYVARtype tyvar,
+                                                    CONStype([TYVARtype tyvar], tyName_LIST)],NONE)],
                                        [CONStype([TYVARtype tyvar], tyName_LIST)]))
               end
             val typescheme_QUOTE =
@@ -153,8 +153,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                        [CONStype([TYVARtype tyvar], tyName_FRAG)]))
               end
             val typescheme_INTINF =
-                close_Type(ARROWtype([RECORDtype[CONStype([CONStype([],tyName_INT31)],tyName_LIST),
-                                                 CONStype([],tyName_BOOL)]],
+                close_Type(ARROWtype([RECORDtype([CONStype([CONStype([],tyName_INT31)],tyName_LIST),
+                                                  CONStype([],tyName_BOOL)],NONE)],
                                      [CONStype([], tyName_INTINF)]))
 
           in
@@ -411,7 +411,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
           | ARROWtype(ts1,ts2) => (valid_ts e ts1; valid_ts e ts2)
           | TYVARtype tv => if isin_tv e tv then ()
                             else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
-          | RECORDtype ts => valid_ts e ts
+          | RECORDtype (ts,_) => valid_ts e ts
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
 
@@ -485,7 +485,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       | eqTypes s _ = die "eqTypes"
 
 
-    val unit_Type = RECORDtype []
+    val unit_Type = RECORDtype ([],NONE)
 
     fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
@@ -615,7 +615,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                          | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
                          | _ => die "DEEXCONprim.Wrong number of args")
            | RECORDprim _ =>
-             let val ts = [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
+             let val ts = [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps,NONE)]
              in check_ts_no_f64 "RECORDprim" ts
               ; ts
              end
@@ -623,7 +623,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                         (case lexps
                            of [lexp] =>
                              (case type_e lexp
-                                of Types [RECORDtype ts] => ([List.nth (ts,i)]
+                                of Types [RECORDtype (ts,_)] => ([List.nth (ts,i)]
                                                              handle _ => die "SELECTprim.Index out of range")
                                  | _ => die "SELECTprim.Arg not of record type")
                             | _ => die "SELECTprim.Wrong number of args.")
@@ -665,7 +665,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 check_t_no_f64 "ASSIGNprim" instance;
                 case lexps
                   of [lexp1, lexp2] => (case instance
-                                          of RECORDtype [CONStype([t], tyName_REF), t'] =>
+                                          of RECORDtype ([CONStype([t], tyName_REF), t'],_) =>
                                             let val ts1 = unTypeList "ASSIGNprim1" (type_e lexp1)
                                                 val ts2 = unTypeList "ASSIGNprim2" (type_e lexp2)
                                             in if eq_Type(t,t') andalso eq_Types(ts1,[CONStype([t], tyName_REF)])
@@ -682,7 +682,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                (valid_t env instance;
                 case lexps
                   of [lexp1,lexp2] => (case instance
-                                         of RECORDtype [t1,t2] =>
+                                         of RECORDtype ([t1,t2],_) =>
                                            let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)
                                                val ts2 = unTypeList "EQUALprim2" (type_e lexp2)
                                                val () = check_t_no_f64_but_top "EQUALprim.1" t1

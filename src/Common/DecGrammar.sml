@@ -118,7 +118,7 @@ struct
         RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
-        PARty of info * ty
+        PARty of info * ty * (info*regvar) option
 
   and tyrow =
         TYROW of info * lab * ty * tyrow option
@@ -379,11 +379,10 @@ struct
     and map_ty_info f (ty: ty) : ty =
       case ty of
         TYVARty(i,tyvar) => TYVARty(f i, tyvar)
-      | RECORDty(i,tyrow_opt,NONE) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),NONE)
-      | RECORDty(i,tyrow_opt,SOME(i2,r)) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),SOME(f i2,r))
+      | RECORDty(i,tyrow_opt,opt) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),Option.map (fn (i,rv) => (f i,rv)) opt)
       | CONty(i,tys,longtycon) => CONty(f i, map (map_ty_info f) tys,longtycon)
       | FNty(i,ty,ty') => FNty(f i, map_ty_info f ty, map_ty_info f ty')
-      | PARty(i,ty) => PARty(f i, map_ty_info f ty)
+      | PARty(i,ty,opt) => PARty(f i, map_ty_info f ty, Option.map (fn (i,rv) => (f i,rv)) opt)
 
     and map_tyrow_info f (TYROW(i,lab,ty,tyrow_opt)) : tyrow =
       TYROW(f i, lab, map_ty_info f ty, do_opt tyrow_opt (map_tyrow_info f))
@@ -428,7 +427,7 @@ struct
       | RECORDty(_, SOME tyrow, _) => fTyrow tyrow res
       | CONty(_, tys, _) => foldl (fn (ty,res) => fTy ty res) res tys
       | FNty(_, ty1, ty2) => fTy ty1 (fTy ty2 res)
-      | PARty(_, ty) => fTy ty res
+      | PARty(_, ty, _) => fTy ty res
 
     and fTyrow (TYROW(_, _, ty, tyrowopt)) res =
       case tyrowopt of
@@ -1091,11 +1090,14 @@ struct
                      childsep=LEFT " -> "
                     }
 
-         | PARty(_, ty) =>
-             NODE{start="(", finish=")", indent=1,
-                     children=[layoutTy ty],
-                     childsep=NOSEP
-                    }
+         | PARty(_, ty, regvar_opt) =>
+           let val finish = case regvar_opt of
+                                SOME (_,rv) => ")`" ^ RegVar.pr rv
+                              | NONE => ")"
+           in NODE{start="(", finish=finish, indent=1,
+                   children=[layoutTy ty],
+                   childsep=NOSEP}
+           end
 
     and layoutTyrow row : StringTree =
       let

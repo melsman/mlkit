@@ -106,6 +106,7 @@ structure ErrorInfo: ERROR_INFO =
       | REGVARS_IDONLY
       | REGVARS_SCOPED_TWICE of regvar list
       | REGVAR_TY_UNBOXED
+      | REGVAR_TY_ANNOTATE of string
 
     type Report = Report.Report
     val line = Report.line
@@ -384,6 +385,9 @@ structure ErrorInfo: ERROR_INFO =
       | report REGVAR_TY_UNBOXED =
           line "Unboxed types cannot be annotated with regions"
 
+      | report (REGVAR_TY_ANNOTATE msg) =
+          line ("Type " ^ msg ^ " cannot be annotated with regions")
+
     structure ErrorCode =
       struct
 	type ErrorCode = string and ErrorInfo = ErrorInfo
@@ -445,6 +449,7 @@ structure ErrorInfo: ERROR_INFO =
              | REGVARS_IDONLY =>                        "REGVARS_IDONLY"
              | REGVARS_SCOPED_TWICE _ =>                "REGVARS_SCOPED_TWICE"
              | REGVAR_TY_UNBOXED =>                     "REGVAR_TY_UNBOXED"
+             | REGVAR_TY_ANNOTATE _ =>                  "REGVAR_TY_ANNOTATE"
 
 	val error_code_parse = "PARSE"
 

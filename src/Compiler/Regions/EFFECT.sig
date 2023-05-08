@@ -7,8 +7,10 @@ sig
 
   val ord_runType: runType -> int
   val show_runType: runType -> string
+(*
   val lub_runType: runType * runType -> runType
-
+*)
+  val lub_runType0: runType * runType -> runType option
   type effect and place sharing type place = effect
   val ae_lt: effect * effect-> bool  (* compares atomic effects *)
   exception AE_LT                    (* raised by ae_lt when one of the effects is not atomic *)
@@ -170,6 +172,8 @@ sig
   val unifyEps: effect * effect -> cone -> cone
   val unifyRho: effect * effect -> cone -> cone
   val unifyRho_no_lowering: effect * effect -> unit  (* hack; mael 2002-11-19 *)
+
+  val unifyRho_explicit : (RegVar.regvar * effect) * effect -> cone -> cone
 
   val insertEps: effect -> cone -> cone
   val insertRho: effect -> cone -> cone

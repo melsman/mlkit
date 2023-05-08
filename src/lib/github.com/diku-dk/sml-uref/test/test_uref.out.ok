@@ -1,0 +1,8 @@
+Testing URef
+URef.eq.not: OK
+URef.eq.1: OK
+URef.eq.1: OK
+URef.find.1: OK
+URef.find.1: OK
+URef.update.1: OK
+URef.compare: OK

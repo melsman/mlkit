@@ -13,7 +13,11 @@ structure CompileDec: COMPILE_DEC =
     structure DecGrammar = TopdecGrammar.DecGrammar
     structure ElabInfo = AllInfo.ElabInfo
 
-    val report_SourceInfo_in_ElabInfo =
+    val loc_report_of_ParseInfo : ParseInfo.ParseInfo -> Report.Report =
+        ElabInfo.ParseInfo.SourceInfo.report
+	o ElabInfo.ParseInfo.to_SourceInfo
+
+    val loc_report_of_ElabInfo : ElabInfo.ElabInfo -> Report.Report =
         ElabInfo.ParseInfo.SourceInfo.report
 	o ElabInfo.ParseInfo.to_SourceInfo
 	o ElabInfo.to_ParseInfo
@@ -176,7 +180,7 @@ structure CompileDec: COMPILE_DEC =
 	case ty
 	  of CONStype(_,tn) => TyName.unboxed tn orelse List.exists (fn t => TyName.eq(t,tn)) tns
 	   | TYVARtype _ => true
-	   | RECORDtype [] => true (*unit*)
+	   | RECORDtype ([],_) => true (*unit*)
 	   | RECORDtype _ => false
 	   | ARROWtype _ => false
     in
@@ -280,9 +284,6 @@ structure CompileDec: COMPILE_DEC =
         | _ => die "type_of_match"
     end
 
-    fun map_opt f (SOME x) = SOME (f x)
-      | map_opt f NONE = NONE
-
     fun app_opt f (SOME x) = (f x)
       | app_opt f NONE = ()
 
@@ -295,20 +296,7 @@ structure CompileDec: COMPILE_DEC =
         (hd, hd', hd'') :: zip3(tl, tl', tl'')
       | zip3 (nil, nil, nil) = nil
       | zip3 _ = die "zip3"
-(*
-    local
-      fun unzip3' ((x, y, z) :: rest, xs, ys, zs) =
-            unzip3'(rest, x :: xs, y :: ys, z :: zs)
-        | unzip3' (nil, xs, ys, zs) = (xs, ys, zs)
-    in
-      fun unzip3 triples = unzip3'(rev triples, nil, nil, nil)
-    end
 
-    fun zip4 (hd :: tl, hd' :: tl', hd'' :: tl'', hd''' :: tl''') =
-          (hd, hd', hd'', hd''') :: zip4(tl, tl', tl'', tl''')
-      | zip4 (nil, nil, nil, nil) = nil
-      | zip4 _ = die "zip4"
-*)
     fun mk_env declare (xs,ys) =
       foldr (fn ((x,y), env) => declare(x,y,env))
                  CE.emptyCEnv
@@ -321,10 +309,10 @@ structure CompileDec: COMPILE_DEC =
       in "[" ^ pr_l l ^ "]"
       end
 
-(*
-    fun hd s (x::xs) = x
-      | hd s [] = die (s ^ ".hd")
-*)
+    fun attach_loc_info_pi NONE = ()
+      | attach_loc_info_pi (SOME(i,r)) =
+        RegVar.attach_location_report r (fn () => loc_report_of_ParseInfo i)
+
 
     (* ---------------------------------------------------------------------- *)
     (*           Utility functions used to compile constructors               *)
@@ -372,7 +360,9 @@ structure CompileDec: COMPILE_DEC =
         | SOME (rho,rvi) =>
             let val labtys = Type.RecType.to_list rho
 	        val tys' = map (compileType o #2) labtys
-            in RECORDtype tys' (* memo: mael 2023-04-16  add regvar_info*)
+                val () = attach_loc_info_pi rvi
+                val rvi = Option.map #2 rvi
+            in RECORDtype (tys',rvi)
             end
 
       val domType : StatObject.Type -> StatObject.Type =
@@ -751,7 +741,7 @@ Report: Opt:
 	  case CE.lookupPath e (to_spath 1 p) of
 	      SOME (lv,_) => SOME lv
 	    | NONE => NONE
-      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, RECORDtype nil, e)
+      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, RECORDtype (nil,NONE), e)
 
       fun lookupPath e p = CE.lookupPath e (to_spath 0 p)
       fun declarePath (p, lv, tau, e) = CE.declarePath (to_spath 0 p, lv, tau, e)
@@ -1183,7 +1173,7 @@ Det finder du nok aldrig ud af.*)
 		val (f,e,tau,env') = compile_path env obj path
 		val tau =
 		    case tau of
-			RECORDtype ts =>
+			RECORDtype (ts,_) =>
 			    if length ts = arity then List.nth (ts,i)
 			    else die "Wrong record arity"
 		      | _ => die ("compile_path0.RECORDtype expected. Type is "
@@ -1330,7 +1320,7 @@ in
                        fun convertCases ([(_,exp:LambdaExp)],NONE) :LambdaExp = exp
                          | convertCases (nil,SOME a)   = a
                          | convertCases ((x,b)::cases,def:LambdaExp option) =
-                           If(PRIM(EQUALprim {instance=RECORDtype[intinfType,intinfType]},
+                           If(PRIM(EQUALprim {instance=RECORDtype([intinfType,intinfType],NONE)},
                                    [VAR{lvar=lv,instances=[],regvars=[]},
                                     buildIntInf x]),
                               b,
@@ -2221,7 +2211,7 @@ end; (*match compiler local*)
 		FN {pat=[(lvar1, ty)],
 		    body=unoverload env info result [VAR{lvar=lvar1, instances=[], regvars=[]}]}
 	      else (*takes two arguments*)
-		FN {pat=[(lvar1, RECORDtype [ty, ty])],
+		FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
 		    body=unoverload env info result
 		    ([PRIM (SELECTprim 0,
 			    [VAR {lvar=lvar1, instances=[], regvars=[]}]),
@@ -2245,7 +2235,7 @@ end; (*match compiler local*)
 				    real=fn()=>TyName.tyName_REAL})
 	        val lvar1 = Lvars.newLvar ()
 	    in (*takes two arguments*)
-	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
+	      FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
 		  body=unoverload env info result
 		  [PRIM (SELECTprim 0,
 			 [VAR {lvar=lvar1, instances=[], regvars=[]}]),
@@ -2280,13 +2270,13 @@ end; (*match compiler local*)
 
     fun attach_loc_info NONE = ()
       | attach_loc_info (SOME(i,r)) =
-        RegVar.attach_location_report r (fn () => report_SourceInfo_in_ElabInfo i)
+        RegVar.attach_location_report r (fn () => loc_report_of_ElabInfo i)
 
     fun regvarsFromRegvarsAndInfoOpt regvars_opt =
         case regvars_opt of
             SOME (i,regvars) =>
             (List.app (fn r => RegVar.attach_location_report r
-                           (fn () => report_SourceInfo_in_ElabInfo i)) regvars;
+                           (fn () => loc_report_of_ElabInfo i)) regvars;
              regvars)
           | NONE => nil
 
@@ -2747,7 +2737,7 @@ the 12 lines above are very similar to the code below
 			(case List.length args of
 			   1 => [tau1]
 			 | n => (case tau1 of
-				   TLE.RECORDtype taus1 =>
+				   TLE.RECORDtype (taus1,_) =>
 				     if List.length taus1 = n then taus1
 				     else die ("prim " ^ name ^ " has wrong number of arguments")
 				 | _ => die ("give prim " ^ name ^ " a record argument type"))))
@@ -2774,7 +2764,7 @@ the 12 lines above are very similar to the code below
 
 
     (*flatten_c_function_type ([t1 * t2] -> [t3]) = [t1, t2] -> [t3]*)
-    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype taus1], taus2)) =
+    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype (taus1,_)], taus2)) =
           TLE.ARROWtype (taus1, taus2)
       | flatten_c_function_type (TLE.ARROWtype (taus1, taus2)) =
 	  TLE.ARROWtype (taus1, taus2)
@@ -2971,7 +2961,7 @@ the 12 lines above are very similar to the code below
 
          | REGIONdec (_,(i,regvars)) =>
            let val () = List.app (fn r => RegVar.attach_location_report r
-                                          (fn () => report_SourceInfo_in_ElabInfo i)) regvars
+                                          (fn () => loc_report_of_ElabInfo i)) regvars
            in (CE.emptyCEnv, fn x => LETREGION{regvars=regvars,scope=x})
            end
 
@@ -3261,7 +3251,7 @@ the 12 lines above are very similar to the code below
                             case rvs of SOME (i,rs) =>
                                         (List.app (fn r =>
                                                       RegVar.attach_location_report r
-                                                        (fn () => report_SourceInfo_in_ElabInfo i)) rs;
+                                                        (fn () => loc_report_of_ElabInfo i)) rs;
                                          rs)
                                       | NONE => []
                     in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,bind=compileExp recEnv exp}

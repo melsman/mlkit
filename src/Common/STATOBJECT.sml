@@ -91,6 +91,10 @@ signature STATOBJECT =
 	val contains_row_variable   : Type -> bool
 	    (*contains_row_variable rho = true iff there exists a
 	     row variable in the type rho*)
+
+        val push_regvar             : regvar_info -> Type -> string option (* returns (SOME ty) on error *)
+        val remove_regvars          : RegVar.regvar list -> Type -> Type
+
 	structure RecType :
 	  sig
 	    val empty               : RecType			(* "{}" *)
@@ -153,11 +157,11 @@ signature STATOBJECT =
                               | UnifyFail of string
                               | UnifyRankError of TyVar * TyName
 
-	val unify                   : Type * Type -> unify_result
+	val unify : {unify_regvars:bool} -> Type * Type -> unify_result
 
 	val match : Type * Type -> unit   (* for compilation manager *)
 
-	val pu : Type Pickle.pu
+	val pu    : Type Pickle.pu
 
       end (*Type*)
 
@@ -204,10 +208,12 @@ signature STATOBJECT =
 	 TE we tentatively assume to admit equality, and sigma will be the
 	 type scheme of a constructor.*)
 
-	val violates_equality       : TyName.Set.Set -> TypeScheme -> bool
+	val violates_equality : TyName.Set.Set -> TypeScheme -> bool
 
 	(*for compilation manager:*)
 	val match : TypeScheme * TypeScheme -> unit
+
+        val remove_regvars : RegVar.regvar list -> TypeScheme -> TypeScheme
 
 	val pu : TypeScheme Pickle.pu
 

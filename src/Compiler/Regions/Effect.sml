@@ -91,11 +91,16 @@ struct
          | TOP_RT => "T"
          | BOT_RT => "B"
 
+  fun lub_runType0 (rt1,rt2) =
+      if rt1 = rt2 then SOME rt1
+      else if rt1 = BOT_RT then SOME rt2
+      else if rt2 = BOT_RT then SOME rt1
+      else NONE
+
   fun lub_runType (rt1,rt2) =
-      if rt1 = rt2 then rt1
-      else if rt1 = BOT_RT then rt2
-      else if rt2 = BOT_RT then rt1
-      else die ("Trying to unify runtype " ^ show_runType rt1 ^ " with runtype " ^ show_runType rt2)
+      case lub_runType0 (rt1,rt2) of
+          SOME rt => rt
+        | NONE => die ("Trying to unify runtype " ^ show_runType rt1 ^ " with runtype " ^ show_runType rt2)
 
   type key = int ref (* for printing and sorting of nodes *)
   fun show_key (ref i) = Int.toString i
@@ -1109,6 +1114,15 @@ struct
                else (); einfo2)
         | _ => die "einfo_combine_eps"
 
+  fun deepError rv msg =
+      let open Report infix //
+          val report0 = case RegVar.get_location_report rv of
+                            SOME rep => rep
+                          | NONE => Report.null
+          val report = line msg
+      in raise DeepError (report0 // report)
+      end
+
   local
       val largest_toplevel_effect_key = 9
       fun aux_combine (op1,op2) =
@@ -1143,27 +1157,28 @@ struct
               then die ("illegal unification involving global region(s) " ^
                         Int.toString (!k1) ^ show_runType t1 ^ " / " ^ Int.toString (!k2) ^ show_runType t2)
               else
-                let val rv_opt = case (rv_opt1,rv_opt2) of
-                                     (NONE,_) => rv_opt2
-                                   | (_,NONE) => rv_opt1
-                                   | (SOME rv1,SOME rv2) =>
-                                     if RegVar.eq(rv1,rv2) then rv_opt1 (*memo:merge info*)
-                                     else
-                                       let open Report infix //
-                                           val report0 = case RegVar.get_location_report rv1 of
-                                                             SOME rep => rep
-                                                           | NONE => Report.null
-                                           val report = line ("Cannot unify the explicit region variables `"
-                                                              ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
-                                       in raise DeepError (report0 // report)
-                                       end
-                    val protected =
-                        case (!protected1,!protected2) of
-                            (p1,p2) => if p1 > p2 then protected1
-                                       else protected2
+                let fun lub_check rv1 t1 t2 =
+                        case lub_runType0 (t1,t2) of
+                            SOME ty => ty
+                          | NONE => deepError rv1 ("The explicit region variable `"
+                                                   ^ RegVar.pr rv1
+                                                   ^ " has type "
+                                                   ^ show_runType t1
+                                                   ^ " but is expected to have type "
+                                                   ^ show_runType t2)
+                    val (ty, rv_opt) =
+                        case (rv_opt1,rv_opt2) of
+                            (SOME rv1,SOME rv2) =>
+                            if RegVar.eq(rv1,rv2) then (lub_runType(t1,t2), rv_opt1) (*memo:merge info*)
+                            else deepError rv1 ("Cannot unify the explicit region variables `"
+                                                ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
+                          | (SOME rv1, _) => (lub_check rv1 t1 t2, rv_opt1)
+                          | (_, SOME rv2) => (lub_check rv2 t2 t1, rv_opt2)
+                          | (NONE, NONE) => (lub_runType(t1,t2), NONE)
+                    val protected = if !protected1 > !protected2 then protected1 else protected2
                 in RHO{level = l1, put = aux_combine(p1,p2),
                        get = aux_combine(g1,g2), key = min_key(k1,k2),
-                       instance = instance1, pix = pix1, ty = lub_runType(t1,t2),
+                       instance = instance1, pix = pix1, ty = ty,
                        rv_opt=rv_opt,pinned=pinned1 orelse pinned2,protected=protected}
                 end
              | _ => die "einfo_combine_rho"
@@ -1212,24 +1227,40 @@ struct
       if is_rho r then die ("checkNotRho." ^ s ^ ": " ^ PP.flatten1 (layout_effect r))
       else ()
 
+  fun checkRegVarTypes (rv1,r1) r2 =
+      case (get_place_ty r1, get_place_ty r2) of
+          (SOME t1, SOME t2) =>
+          (case lub_runType0 (t1,t2) of
+               SOME _ => ()
+             | NONE => deepError rv1 ("Expects a region variable of type "
+                                      ^ show_runType t2
+                                      ^ " but the explicit region variable `"
+                                      ^ RegVar.pr rv1
+                                      ^ " has type "
+                                      ^ show_runType t1))
+        | _ => die "checkRegVars.check_types: expecting region variables"
+
   fun checkRegVars r1 r2 : unit =
       case (pinned_explicit_rho r1, pinned_explicit_rho r2) of
           (SOME rv1, SOME rv2) =>
           if RegVar.eq(rv1,rv2) then ()
-          else let open Report infix //
-                   val report0 = case RegVar.get_location_report rv1 of
-                                     SOME rep => rep
-                                   | NONE => Report.null
-                   val report = line ("Cannot unify the explicit region variables `"
-                                      ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
-               in raise DeepError (report0 // report)
-               end
-        | _ => ()
+          else deepError rv1 ("Cannot unify the explicit region variables `"
+                              ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
+        | (SOME rv1,_) => checkRegVarTypes (rv1,r1) r2
+        | (_, SOME rv2) => checkRegVarTypes (rv2,r2) r1
+        | (NONE, NONE) => ()
 
   fun unifyRho (r1,r2) cone : cone =
       (checkRho "unifyRho1" r1;
        checkRho "unifyRho2" r2;
        checkRegVars r1 r2;
+       unifyNodes(G.union einfo_combine_rho)(r1, r2) cone)
+
+  fun unifyRho_explicit ((rv,r1),r2) cone : cone =
+      (checkRho "unifyRho1" r1;
+       checkRho "unifyRho2" r2;
+       checkRegVars r1 r2;
+       checkRegVarTypes (rv,r1) r2;
        unifyNodes(G.union einfo_combine_rho)(r1, r2) cone)
 
   fun unifyRho_no_lowering (r1,r2) : unit =

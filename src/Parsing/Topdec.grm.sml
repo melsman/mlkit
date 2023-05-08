@@ -4850,12 +4850,17 @@ end)
  in ( LrTable.NT 49, ( result, LBRACE1left, RBRACE1right), rest671)
 
 end
-|  ( 277, ( ( _, ( MlyValue.EqIdent EqIdent1, _, EqIdent1right)) :: _
- :: ( _, ( _, _, RPARENright)) :: ( _, ( MlyValue.Ty Ty1, _, _)) :: (
- _, ( _, (LPARENleft as LPAREN1left), _)) :: rest671)) => let val  
-result = MlyValue.AtomicTy (fn _ => let val  (Ty as Ty1) = Ty1 ()
- val  EqIdent1 = EqIdent1 ()
- in ( PARty (PP LPARENleft RPARENright, Ty) )
+|  ( 277, ( ( _, ( MlyValue.EqIdent EqIdent1, _, (EqIdentright as 
+EqIdent1right))) :: ( _, ( _, BACKQUOTEleft, _)) :: ( _, ( _, _, 
+RPARENright)) :: ( _, ( MlyValue.Ty Ty1, _, _)) :: ( _, ( _, (
+LPARENleft as LPAREN1left), _)) :: rest671)) => let val  result = 
+MlyValue.AtomicTy (fn _ => let val  (Ty as Ty1) = Ty1 ()
+ val  (EqIdent as EqIdent1) = EqIdent1 ()
+ in (
+ PARty (PP LPARENleft RPARENright,
+                                 Ty,
+                                 SOME (PP BACKQUOTEleft EqIdentright, RegVar.mk_Named EqIdent)) 
+)
 end)
  in ( LrTable.NT 49, ( result, LPAREN1left, EqIdent1right), rest671)
 
@@ -4864,7 +4869,7 @@ end
 MlyValue.Ty Ty1, _, _)) :: ( _, ( _, (LPARENleft as LPAREN1left), _))
  :: rest671)) => let val  result = MlyValue.AtomicTy (fn _ => let val 
  (Ty as Ty1) = Ty1 ()
- in ( PARty (PP LPARENleft RPARENright, Ty) )
+ in ( PARty (PP LPARENleft RPARENright, Ty, NONE) )
 end)
  in ( LrTable.NT 49, ( result, LPAREN1left, RPAREN1right), rest671)
 

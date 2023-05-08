@@ -287,8 +287,8 @@ structure GrammarUtils: GRAMMAR_UTILS =
           | FNty(i, ty1, ty2) =>
               FNty(i, replaceTy tyvarseq tyseq ty1,
                    replaceTy tyvarseq tyseq ty2)
-          | PARty(i, ty) =>
-              PARty(i, replaceTy tyvarseq tyseq ty)
+          | PARty(i, ty, regvar) =>
+              PARty(i, replaceTy tyvarseq tyseq ty,regvar)
 
         and replaceTyrow tyvarseq tyseq tyrow =
           case tyrow of
@@ -344,8 +344,8 @@ structure GrammarUtils: GRAMMAR_UTILS =
               end
           | FNty(i, ty1, ty2) =>
               FNty(i, rewriteTy ty1, rewriteTy ty2)
-          | PARty(i, ty) =>
-              PARty(i, rewriteTy ty)
+          | PARty(i, ty, regvar) =>
+              PARty(i, rewriteTy ty, regvar)
 
         and rewriteTyrow tyrow =
           case tyrow of

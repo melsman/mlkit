@@ -1,0 +1,4 @@
+local $(SML_LIB)/basis/basis.mlb
+      ../uref.mlb
+in test_uref.sml
+end

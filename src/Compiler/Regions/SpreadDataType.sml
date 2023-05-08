@@ -80,7 +80,7 @@ struct
 
   (* An {\sl arity} is a triple
 
-             (the number of tyvars, runtypes of  regvars, the number of effectvars).
+             (the number of tyvars, runtypes of regvars, the number of effectvars).
 
      The first of these is apparent from the source expression. The two others
      have to be found by analysis of the type declarations.
@@ -140,8 +140,8 @@ struct
                               | NONE => die ("infer_arity_ty. Type name: "
                                              ^ TyName.pr_TyName tyname)
                      end)
-       |  E.RECORDtype nil => arity0
-       |  E.RECORDtype types =>
+       |  E.RECORDtype (nil,_) => arity0
+       |  E.RECORDtype (types,_) =>
           foldr (uncurry plus) (0,[case types of [_,_] => Effect.PAIR_RT
                                                | [_,_,_] => Effect.TRIPLE_RT
                                                | _ => Effect.TOP_RT],zero)
@@ -227,7 +227,7 @@ struct
                                       \ undeclared type name: " ^ TyName.pr_TyName tyname)
                      )
                 )
-            | E.RECORDtype taus =>
+            | E.RECORDtype (taus,_) =>
               extend(R.mkRECORD(map ty_to_mu taus))
 
       and spread_constructed_type (rse, tyname, taus) : R.mu option =

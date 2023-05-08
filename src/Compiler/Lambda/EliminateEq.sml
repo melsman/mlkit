@@ -176,7 +176,7 @@ structure EliminateEq : ELIMINATE_EQ =
      * ------------------------------------------------------------ *)
 
     fun mk_eq_tau tv = let val tau = TYVARtype tv
-		       in ARROWtype([RECORDtype [tau,tau]],[boolType])
+		       in ARROWtype([RECORDtype ([tau,tau],NONE)],[boolType])
 		       end
     fun mk_eq_abs [] [] e = e
       | mk_eq_abs (lv::lvs) (tau::taus) e = FN {pat = [(lv,tau)], body=mk_eq_abs lvs taus e}
@@ -218,8 +218,8 @@ structure EliminateEq : ELIMINATE_EQ =
 					 * may be raised. *)
     fun mk_prim_eq tau =
       let val p = Lvars.newLvar()
-      in FN {pat = [(p, RECORDtype [tau, tau])],
-	     body = PRIM(EQUALprim {instance = RECORDtype[tau, tau]},
+      in FN {pat = [(p, RECORDtype ([tau, tau],NONE))],
+	     body = PRIM(EQUALprim {instance = RECORDtype([tau, tau],NONE)},
 			 [PRIM(SELECTprim 0, [lamb_var p]),
 			  PRIM(SELECTprim 1, [lamb_var p])])}
       end
@@ -230,7 +230,7 @@ structure EliminateEq : ELIMINATE_EQ =
 	 (case tau
 	    of (TYVARtype tv) => (case lookup_tyvar env tv
 				    of SOME lv => VAR {lvar=lv, instances=[], regvars=[]}
-				     | NONE => FN {pat=[(Lvars.newLvar(),RECORDtype [TYVARtype tv, TYVARtype tv])],
+				     | NONE => FN {pat=[(Lvars.newLvar(),RECORDtype ([TYVARtype tv, TYVARtype tv],NONE))],
 						   body=lamb_false}) (* the function will never be applied. *)
 				    (* --------------
 				     * old; check out testprogs/eq_1.sml
@@ -260,9 +260,9 @@ structure EliminateEq : ELIMINATE_EQ =
 			| NONE => die ("gen_type_eq. type name " ^ TyName.pr_TyName tn ^
 				       " not in env.")
 	      end
-	   | (tau as RECORDtype taus) =>
+	   | (tau as RECORDtype (taus,_)) =>
 		 let val p = Lvars.newLvar()
-		 in FN {pat = [(p, RECORDtype [tau,tau])],
+		 in FN {pat = [(p, RECORDtype ([tau,tau],NONE))],
 			body = gen_switch 0 p taus}
 		 end)
 
@@ -308,7 +308,7 @@ structure EliminateEq : ELIMINATE_EQ =
     (* Generate a fix abstraction for a single datatype binding *)
     fun gen_db env (tyvars,tn,cbs) = (* may raise DONT_SUPPORT_EQ *)
       let
-	fun mk_tau tau = let val tau_arg = RECORDtype [tau, tau]
+	fun mk_tau tau = let val tau_arg = RECORDtype ([tau, tau],NONE)
 			 in ARROWtype([tau_arg],[boolType])
 			 end
 	val tau_tn = CONStype (map TYVARtype tyvars, tn)
@@ -325,7 +325,7 @@ structure EliminateEq : ELIMINATE_EQ =
 		   in extend_env tyvars lvs env
 		   end
 
-	fun mk_abs_eq_fns [] [] e = FN {pat = [(p, RECORDtype [tau_tn,tau_tn])], body=e}
+	fun mk_abs_eq_fns [] [] e = FN {pat = [(p, RECORDtype ([tau_tn,tau_tn],NONE))], body=e}
 	  | mk_abs_eq_fns (tv::tvs) (lv::lvs) e =  FN {pat = [(lv, mk_tau (TYVARtype tv))],
 						       body = mk_abs_eq_fns tvs lvs e}
 	  | mk_abs_eq_fns _ _ _ = die "mk_abs_eq_fns"
@@ -468,7 +468,7 @@ structure EliminateEq : ELIMINATE_EQ =
         let val tn_list = TyName.tyName_LIST
 	    val tv = fresh_tyvar()
 	    val tau_tv = TYVARtype tv
-	    val cbs = [(Con.con_CONS, SOME (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
+	    val cbs = [(Con.con_CONS, SOME (RECORDtype ([tau_tv, CONStype([tau_tv], tn_list)],NONE))),
 		       (Con.con_NIL, NONE)]
 	    val dbss = [[([tv], tn_list,cbs)]]
 	in gen_datatype_eq empty dbss
@@ -477,7 +477,7 @@ structure EliminateEq : ELIMINATE_EQ =
 	let val int31 = CONStype([],TyName.tyName_INT31)
 	    val int31list = CONStype([int31],TyName.tyName_LIST)
 	    val bool = CONStype([],TyName.tyName_BOOL)
-	    val cbs = [(Con.con_INTINF, SOME (RECORDtype [int31list,bool]))]
+	    val cbs = [(Con.con_INTINF, SOME (RECORDtype ([int31list,bool],NONE)))]
 	    val dbss = [[([],TyName.tyName_INTINF,cbs)]]
 	in gen_datatype_eq e dbss
 	end
@@ -549,7 +549,7 @@ structure EliminateEq : ELIMINATE_EQ =
    val var_loop = lamb_var lvar_loop
    val var_j = lamb_var lvar_j
 
-   fun tau_for_eq_fun tau = ARROWtype ([RECORDtype [tau, tau]], [boolType])
+   fun tau_for_eq_fun tau = ARROWtype ([RECORDtype ([tau, tau],NONE)], [boolType])
 
    fun let_nX_equal_table_size_in_bytes lvar_nX var_tableX scope =
 	 let val alpha' = fresh_tyvar ()
@@ -619,7 +619,7 @@ structure EliminateEq : ELIMINATE_EQ =
 
    fun bind_eq_table () =
      FN {pat = [(lvar_eq_alpha, tau_for_eq_fun tau_alpha)], body =
-	 FN {pat = [(lvar_table_pair, RECORDtype [tau_tyname, tau_tyname])], body =
+	 FN {pat = [(lvar_table_pair, RECORDtype ([tau_tyname, tau_tyname],NONE))], body =
 	     monolet {lvar = lvar_table1, Type = tau_tyname, bind =
 		      PRIM (SELECTprim 0, [var_table_pair]), scope =
 		      monolet {lvar = lvar_table2, Type = tau_tyname, bind =
@@ -628,8 +628,8 @@ structure EliminateEq : ELIMINATE_EQ =
 			       (let_nX_equal_table_size_in_bytes lvar_n2 var_table2
 				(FIX {functions = [function_loop()], scope =
 				      SWITCH_C (SWITCH
-					(PRIM (EQUALprim {instance = RECORDtype [intDefaultType(),
-										 intDefaultType()]},
+					(PRIM (EQUALprim {instance = RECORDtype ([intDefaultType(),
+										  intDefaultType()],NONE)},
 					       [var_n1, var_n2]),
 					 [((Con.con_TRUE,NONE),
 					   APP (var_loop, PRIM (MINUS_INTprim(), [var_n2, INTEGER' 1]),NONE))],
@@ -764,7 +764,7 @@ structure EliminateEq : ELIMINATE_EQ =
 		| NONE => die "f.VAR.lvar not in env")
 	 | PRIM(EQUALprim {instance}, [lexp1, lexp2]) =>
 	       (case instance
-		  of RECORDtype [tau,_] =>
+		  of RECORDtype ([tau,_],_) =>
 		    let val e = PRIM(RECORDprim NONE, [t env lexp1,t env lexp2])
 		    in APP(gen_type_eq env tau, e, NONE)
 		    end

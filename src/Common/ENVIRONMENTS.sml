@@ -79,6 +79,7 @@ signature ENVIRONMENTS =
 	val report               : (id * range -> Report) * VarEnv -> Report
 	val ids_with_tyvar_in_type_scheme : VarEnv -> TyVar -> id list
 
+        val remove_regvars       : RegVar.regvar list -> VarEnv -> VarEnv
 	val pu                   : VarEnv Pickle.pu
       end (*VE*)
 

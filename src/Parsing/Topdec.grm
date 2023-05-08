@@ -1503,9 +1503,11 @@ AtomicTy:
         | LBRACE TyRow_opt RBRACE
                         ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt, NONE) )
         | LPAREN Ty RPAREN BACKQUOTE EqIdent
-                        ( PARty (PP LPARENleft RPARENright, Ty) )
+                        ( PARty (PP LPARENleft RPARENright,
+                                 Ty,
+                                 SOME (PP BACKQUOTEleft EqIdentright, RegVar.mk_Named EqIdent)) )
         | LPAREN Ty RPAREN
-                        ( PARty (PP LPARENleft RPARENright, Ty) )
+                        ( PARty (PP LPARENleft RPARENright, Ty, NONE) )
 
 TyRow_opt:
           TyRow         ( SOME TyRow )

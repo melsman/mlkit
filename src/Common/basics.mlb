@@ -5,6 +5,7 @@ local
   basis Tools = bas tools.mlb end
   basis SyntaxObjects = bas syntax_objects.mlb end
   basis SpecialObjects = bas special_objects.mlb end
+  basis URef = bas ../lib/github.com/diku-dk/sml-uref/uref.mlb end
   open BasLib SyntaxObjects SpecialObjects
 in
   local open Pickle Tools
@@ -41,7 +42,7 @@ in
      EfficientElab/MODULE_STATOBJECT.sml
      MODULE_ENVIRONMENTS.sml
      local open Tools
-     in local open SyntaxObjects in EfficientElab/StatObject.sml end
+     in local open SyntaxObjects URef in EfficientElab/StatObject.sml end
         EfficientElab/Environments.sml
         EfficientElab/ModuleStatObject.sml
         local open SyntaxObjects in EfficientElab/ModuleEnvironments.sml end

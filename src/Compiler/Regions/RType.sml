@@ -38,6 +38,8 @@ struct
   type place = E.effect
   type arroweffect = E.effect
 
+  type regvar = RegVar.regvar
+
   fun pr_place r = PP.flatten1(E.layout_effect r)
 
   datatype Type =
@@ -179,57 +181,92 @@ struct
     | repeat n f acc =
         repeat (n-1) f (f acc)
 
-  fun freshType (lookup: tyname -> (int*runType list*int)option) :
+  fun freshType (lookup_tn: tyname -> (int*runType list*int)option)
+                (lookup_rv: regvar -> place option)
+                (deep_err: regvar -> string -> unit) :
       (L.Type * cone -> Type * cone) * (L.Type * cone -> mu * cone) =
-    let
-      fun mkTy (ty,cone) =
-          case ty of
-              L.TYVARtype alpha  => (TYVAR alpha, cone)
-            | L.ARROWtype(tys1,tys2)=>
-                let val (eps,cone') = E.freshEps cone
-                    val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
-                    val (cone2,mus2) = List.foldr mkMus (cone1,[]) tys2
-                in (FUN(mus1,eps,mus2), cone2)
-                end
-            | L.CONStype(tys,tyname)=>
-              let val arity as (alpha_count, rhos_runtypes, eps_count) =
-                      case lookup tyname of
-                          SOME arity => arity
-                        | NONE => die ("mkTy: type name " ^ TyName.pr_TyName tyname ^ " not declared")
-                  val (cone, mus) = List.foldr mkMus (cone,[]) tys
-                  fun repeat2 ([],cone,rhos) = (cone, rev rhos)
-                    | repeat2 (rt::rts,cone,rhos) =
-                      let val (rho,cone') = E.freshRhoWithTy(rt,cone)
-                      in repeat2 (rts,cone',rho::rhos)
-                      end
-                  val (cone, rhos) = repeat2(rhos_runtypes,cone,[])
-                  val (cone, epss) =
-                    repeat eps_count (fn (cone, acc: arroweffect list) =>
-                                         let val (eps,cone') = E.freshEps cone
-                                         in (cone', eps::acc)
-                                         end) (cone,[])
-              in
-                 (CONSTYPE(tyname,mus,rhos,epss), cone)
+      let fun deepErr rv s = (deep_err rv s; raise Fail "RType: impossible to reach")
+          fun mkTy0 (ty,cone) =
+              case ty of
+                  L.TYVARtype alpha  => ((TYVAR alpha,NONE), cone)
+                | L.ARROWtype(tys1,tys2)=>
+                  let val (eps,cone') = E.freshEps cone
+                      val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
+                      val (cone2,mus2) = List.foldr mkMus (cone1,[]) tys2
+                  in ((FUN(mus1,eps,mus2),NONE), cone2)
+                  end
+                | L.CONStype(tys,tyname)=>
+                  let val arity as (alpha_count, rhos_runtypes, eps_count) =
+                          case lookup_tn tyname of
+                              SOME arity => arity
+                            | NONE => die ("mkTy: type name " ^ TyName.pr_TyName tyname ^ " not declared")
+                      val (cone, mus) = List.foldr mkMus (cone,[]) tys
+                      fun repeat2 ([],cone,rhos) = (cone, rev rhos)
+                        | repeat2 (rt::rts,cone,rhos) =
+                          let val (rho,cone') = E.freshRhoWithTy(rt,cone)
+                          in repeat2 (rts,cone',rho::rhos)
+                          end
+                      val (cone, rhos) = repeat2(rhos_runtypes,cone,[])
+                      val (cone, epss) =
+                          repeat eps_count (fn (cone, acc: arroweffect list) =>
+                                               let val (eps,cone') = E.freshEps cone
+                                               in (cone', eps::acc)
+                                               end) (cone,[])
+                  in
+                    ((CONSTYPE(tyname,mus,rhos,epss),NONE), cone)
+                  end
+                | L.RECORDtype (tys,rvopt) =>
+                  let val (cone,mus) = List.foldr mkMus (cone,[]) tys
+                  in ((RECORD mus, rvopt),cone)
+                  end
+          and mkMu (ty, B) =
+              let val ((tau,rvopt), B) = mkTy0(ty,B)
+              in case runtype tau of
+                     NONE =>
+                     (case rvopt of
+                          NONE => (tau,B)
+                        | SOME rv => deepErr rv ("Cannot associate explicit region variable `"
+                                                 ^ RegVar.pr rv ^ " with value of unboxed type"))
+                   | SOME rt =>
+                     let val (rho,B) =
+                             case rvopt of
+                                 NONE => E.freshRhoWithTy(rt,B)
+                               | SOME rv =>
+                                 (case lookup_rv rv of
+                                      SOME rho =>
+                                      let val () =
+                                              case E.get_place_ty rho of
+                                                  SOME rt' =>
+                                                  (case E.lub_runType0 (rt,rt') of
+                                                       SOME rt'' => if rt = rt'' then ()
+                                                                    else E.setRunType rho rt
+                                                     | NONE =>
+                                                       deepErr rv ("Explicit region variable "
+                                                                   ^ RegVar.pr rv
+                                                                   ^ " is of type "
+                                                                   ^ E.show_runType rt'
+                                                                   ^ " and cannot also be of type "
+                                                                   ^ E.show_runType rt))
+                                                | NONE => E.setRunType rho rt
+                                      in (rho,B)
+                                      end
+                                    | NONE => deepErr rv ("Explicit region variable `"
+                                                          ^ RegVar.pr rv
+                                                          ^ " is not in scope"))
+                     in (BOX(tau,rho),B)
+                     end
               end
-            | L.RECORDtype tys =>
-              let val (cone,mus) = List.foldr mkMus (cone,[]) tys
-              in (RECORD(mus),cone)
+          and mkMus (ty, (B, acc: mu list)) =
+              let val (mu,B) = mkMu(ty,B)
+              in (B, mu::acc)
               end
-      and mkMu (ty, cone) =
-          let val (tau, cone) = mkTy(ty,cone)
-          in case runtype tau of
-                 SOME rt => let val (rho,cone) = E.freshRhoWithTy(rt, cone)
-                            in (BOX(tau,rho),cone)
-                            end
-               | NONE => (tau, cone)
-          end
-      and mkMus (ty, (cone, acc: mu list)) =
-          let val (mu,cone') = mkMu(ty,cone)
-          in (cone', mu::acc)
-          end
-    in
-     (mkTy, mkMu)
-    end
+          fun mkTy (ty,B) =  (* used for fun's and ccalls *)
+              let val ((tau,rvopt),B) = mkTy0 (ty,B)
+              in (tau,B)
+              end
+      in
+        (mkTy, mkMu)
+      end
 
   (* pretty-printing of types *)
 

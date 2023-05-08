@@ -184,7 +184,7 @@ structure OptLambda: OPT_LAMBDA =
     * Some helpful functions
     * ----------------------------------------------------------------- *)
 
-    val unit_Type = RECORDtype []
+    val unit_Type = RECORDtype ([],NONE)
 
     fun log x = if statistics_after_optimisation() then TextIO.output(!Flags.log,x)
                 else ()
@@ -1600,7 +1600,7 @@ structure OptLambda: OPT_LAMBDA =
                        | _ => default()
                  val (lvar,tyvars,tau,bind,scope,fail) =
                      case (tyvars,tau) of
-                         ([],RECORDtype (_ :: _ :: _)) => hoist()
+                         ([],RECORDtype (_ :: _ :: _,_)) => hoist()
                        | ([],CONStype([],tn)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
                                                     TyName.eq(tn,TyName.tyName_CHARARRAY)
                                                  then hoist()
@@ -2269,7 +2269,7 @@ structure OptLambda: OPT_LAMBDA =
                 let val lvars = map (fn _ => Lvars.newLvar()) lambs
                     val env' = LvarMap.add(lvar,lvars,env)
                     val taus = case Type
-                                 of RECORDtype taus => taus
+                                 of RECORDtype (taus,_) => taus
                                   | _ => die "eliminate_explicit_records2"
                     fun mk_lamb [] [] [] = transf env' scope
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
@@ -2878,8 +2878,8 @@ structure OptLambda: OPT_LAMBDA =
                     let fun normal () = add_lv (lvar, NORMAL_ARGS, env)
                     in (* interesting only if the function takes a tuple of arguments *)
                       case Type of
-                          ARROWtype([RECORDtype nil],res) => normal()
-                        | ARROWtype([rt as RECORDtype ts],res) =>
+                          ARROWtype([RECORDtype (nil,_)],res) => normal()
+                        | ARROWtype([rt as RECORDtype (ts,_)],res) =>
                           if optimise_p() andalso unbox_function_arguments() then
                             case unbox_args lvar lv body ts of
                                 NONE => normal()
@@ -2954,7 +2954,7 @@ structure OptLambda: OPT_LAMBDA =
                                fun errFun () = "OptLambda.trans.app.lvar = " ^ Lvars.pr_lvar lvar
                                val S = mk_subst errFun (tyvars, instances)
                                val argTypes' = map f64TypeToRealTypeShallow argTypes
-                               val tau = on_Type S (RECORDtype argTypes')
+                               val tau = on_Type S (RECORDtype (argTypes',NONE))
                            in LET{pat=[(lv_tmp, nil, tau)], bind=trans env arg,
                                   scope=mk_app lv_tmp argTypes}
                            end
@@ -2968,7 +2968,7 @@ structure OptLambda: OPT_LAMBDA =
                       val lv = Lvars.newLvar()
                       val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
                       val argTypes' = map f64TypeToRealTypeShallow argTypes
-                      val tau = on_Type S (RECORDtype argTypes')
+                      val tau = on_Type S (RECORDtype (argTypes',NONE))
                       val args = unbox_args_exp lv argTypes
                   in FN{pat=[(lv,tau)],body=APP(lamb, args, NONE)}
                   end

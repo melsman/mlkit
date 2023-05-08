@@ -94,6 +94,7 @@ struct
   fun say s = TextIO.output(TextIO.stdOut, s ^ "\n");
   fun logsay s = TextIO.output(!Flags.log, s);
   fun logtree (t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
+  fun fst (a,b) = a
 
   fun log_sigma (sigma1, lvar) =
     case R.bv sigma1 of
@@ -186,13 +187,13 @@ struct
 
   fun declareMany (rho,rse)([],[]) = rse
     | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
-        declareMany(rho,RSE.declareLvar(lvar,(true,true,regvars,sigma_hat,SOME rho,SOME occ,NONE), rse))(rest1,occ1)
+        declareMany(rho,RSE.declareLvar(lvar,(true,true,map fst regvars,sigma_hat,SOME rho,SOME occ,NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
   fun repl ([],[]) = []
-    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, sigma_hat::sigma_hat_rests) =
-            (lvar,regvars,tyvars,sigma_hat,bind):: repl(fcns1,sigma_hat_rests)
+    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, (sigma_hat,regvars_with_rhos)::sigma_hats) =
+            (lvar,regvars_with_rhos,tyvars,sigma_hat,bind):: repl(fcns1,sigma_hats)
     | repl _ = die ".repl: sigma_hat_list and rhs lists have different lengths"
 
 
@@ -200,7 +201,7 @@ struct
       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
   fun mkRhs (rse,rho) ([],[],[]) = (rse,[])
-    | mkRhs (rse,rho) ((lvar,regvars,tyvars,sigma_hat,bind)::rest1,
+    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,sigma_hat,bind)::rest1,
                        (t1,tau1,sigma1,tvs1)::rest2,
                        occ::rest3) =
       let val (brhos, bepss,_) = R.bv sigma1
@@ -210,7 +211,7 @@ struct
           val _ = adjust_instances (transformer, occ)
           val function = {lvar = lvar, occ = occ, tyvars = ref tvs1, rhos = ref brhos, epss = ref bepss,
                           Type = tau1, formal_regions = NONE, bind = t1}
-          val rse2 = RSE.declareLvar(lvar,(true, true, regvars, R.insert_alphas(tvs1, sigma1),
+          val rse2 = RSE.declareLvar(lvar,(true, true, map fst regvars_with_rhos, R.insert_alphas(tvs1, sigma1),
                                            SOME rho, SOME occ, NONE), rse)
           val (rse2', l) = mkRhs (rse2,rho) (rest1,rest2,rest3)
       in (rse2', function::l)
@@ -350,17 +351,57 @@ struct
       LB.foldTD (fn a => (fn E.VAR {lvar=lv,...} => a orelse Lvars.eq(lv,lvar)
                            | _ => a)) false bind
 
+  (* Function for traversing a LambdaExp type simultaneously with a mu, trying to set explicit region variables *)
+  fun match_ty_regvars (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
+      let fun match B tau mu =
+              case tau of
+                  E.TYVARtype _ => B
+                | E.ARROWtype(ts,ts') => B
+                | E.CONStype(ts,tn) => B
+                | E.RECORDtype(nil,NONE) => B
+                | E.RECORDtype(nil,SOME rv) => deepError rv ("Cannot associate explicit region variable `"
+                                                             ^ RegVar.pr rv ^ " with the unboxed type unit")
+                | E.RECORDtype(ts,rvopt) =>
+                  (case R.unBOX mu of
+                       NONE => die "match: expecting boxed mu"
+                     | SOME(ty,p) =>
+                       case R.unRECORD ty of
+                           NONE => die "match: expecting record ty"
+                         | SOME mus =>
+                           let val B = matchs B ts mus
+                           in case rvopt of
+                                  NONE => B
+                                | SOME rv =>
+                                  case RSE.lookupRegVar rse rv of
+                                      NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
+                                    | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
+                           end)
+
+          and matchs B nil nil = B
+            | matchs B (tau::taus) (mu::mus) = matchs (match B tau mu) taus mus
+            | matchs B _ _ = die "matchs: mismatch in number of types and mus"
+      in match B tau mu
+      end
+
+  (* Spreading expressions *)
   fun spreadExp (B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont)
       : cone * (place,unit)E'.trip * cont * tyvar list =
   let
-    fun lookup tyname = case RSE.lookupTyName rse tyname of
+    fun lookup_tn tyname = case RSE.lookupTyName rse tyname of
           SOME arity =>
             let val (a, l, c) = RSE.un_arity arity
             in SOME(a, (*List.size*) (l), c)
             end
         | NONE => NONE
 
-    val (freshType, freshMu) = R.freshType lookup
+    val (freshType, freshMu) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
+
+    fun freshType' regvars_with_rhos =
+        let val rse = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse))
+                                 rse regvars_with_rhos
+            val (freshTy, _) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
+        in freshTy
+        end
 
     fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
         case types of
@@ -370,22 +411,27 @@ struct
                               in (mu::mus, cone)
                               end
 
-     fun mk_sigma_hat_list (B,retract_level) [] = (B,[])
-       | mk_sigma_hat_list (B,retract_level)({lvar,regvars,tyvars,Type,bind}::rest) =
+     fun mk_sigma_hats (B,retract_level) [] = (B,[])
+       | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,bind}::rest) =
           let
-            (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
+            (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hats: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val B = Eff.push B         (* for generalize_all *)
             val (tau_x_ml, tau_1_ml) =
                 case Type of
                     E.ARROWtype p => p
-                  | _ => die "mk_sigma_hat_list"
-              val (tau_0, B) = freshType(Type,B)
-              val (B,sigma) = R.generalize_all(B,retract_level,map (fn tv => (tv,NONE)) tyvars,tau_0)
-              val sigma_hat = R.drop_alphas sigma
+                  | _ => die "mk_sigma_hats"
+            val (regvars_with_rhos,B) =
+                List.foldr (fn (rv,(acc,B)) =>
+                               let val (rho,B) = Eff.freshRhoRegVar (B,rv)
+                               in ((rv,rho)::acc,B)
+                               end) (nil,B) regvars
+            val (tau_0, B) = freshType' regvars_with_rhos (Type,B)
+            val (B,sigma) = R.generalize_all(B,retract_level,map (fn tv => (tv,NONE)) tyvars,tau_0)
+            val sigma_hat = R.drop_alphas sigma
             val (_,B) = Eff.pop B (* back to retract level *)
-            val (B, l) = mk_sigma_hat_list(B,retract_level) rest
+            val (B,l) = mk_sigma_hats (B,retract_level) rest
           in
-             (B,sigma_hat::l)
+             (B,(sigma_hat,regvars_with_rhos)::l)
           end
 
     fun newInstance (lvopt:Lvars.lvar option,A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
@@ -476,7 +522,7 @@ struct
                                                    ^ RegVar.pr rv ^ " with value of unboxed type")
                            | SOME rt =>
                              (case Eff.get_place_ty rho of
-                                  NONE => die "impossible: maybe_explicit_rho"
+                                  NONE => die "impossible: maybe_explicit_rho_opt"
                                 | SOME Eff.BOT_RT => (SOME rho,B) before Eff.setRunType rho rt
                                 | SOME rt' => if rt = rt' then (SOME rho,B)
                                               else deepError rv ("Mismatching region types "
@@ -774,6 +820,7 @@ struct
              | loop_pat ((lvar,alphas,tau_ML):: rest_bind, mu1 :: mu_rest,
                          B, rse, pat'_list) =
                let val (tau1,rho_opt) = R.unbox mu1
+                   val B = match_ty_regvars B rse tau_ML mu1
                    val sigma = R.type_to_scheme tau1
 (*                 val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                    val alphas = map (fn tv => (tv,NONE)) alphas            (* TODO MAEL: for those in tvs1, SOME eps, where eps is fresh... *)
@@ -837,8 +884,8 @@ good *)
             val retract_level = Eff.level B
             val (rho,B) = Eff.freshRhoWithTy(Eff.TOP_RT,B) (* for shared region closure *)
             val phi1 = Eff.mkPut rho
-            val (B,sigma_hat_list) = mk_sigma_hat_list(B,retract_level) functions
-            val (B,rse2,functions',tvs) = spreadFcns(B,rho,retract_level,rse)(repl(functions,sigma_hat_list))
+            val (B,sigma_hats) = mk_sigma_hats(B,retract_level) functions
+            val (B,rse2,functions',tvs) = spreadFcns (B,rho,retract_level,rse) (repl(functions,sigma_hats))
             val (B, t2 as E'.TR(_, meta2, phi2), cont, tvs2) = spreadExp(B, rse2, scope,toplevel,cont)
             val e' = E'.FIX{shared_clos=rho,functions = functions',scope = t2}
         in
@@ -1506,7 +1553,7 @@ good *)
     S(B,e,toplevel,cont)
   end (* spreadExp *)
 
-  and spreadFcns (B,rho,retract_level,rse) functions (* each one: (lvar,tyvars,sigma_hat,bind) *) =
+  and spreadFcns (B,rho,retract_level,rse) functions (* each one: (lvar,regvars_with_rhos,tyvars,sigma_hat,bind) *) =
          let
             val occs = map (fn _ => ref []  : (R.il * (R.il * cone -> R.il * cone)) ref list ref) functions
             val rse1 = declareMany (rho,rse) (functions, occs)
@@ -1515,16 +1562,13 @@ good *)
                     [f] => proper_recursive f
                   | _ => true (* mutually declared functions are proper recursive *)
             fun spreadRhss B [] = (B,[],[])
-              | spreadRhss B ((lvar,regvars,tyvars,sigma_hat,bind)::rest) =
+              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,sigma_hat,bind)::rest) =
                   let
                      (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                       val B = Eff.push B
-                      (*val () = print ("spreadFcns - length(regvars) = " ^ Int.toString (length regvars) ^ "\n") *)
-                      val (B,rse1') = List.foldl (fn (rv,(B,rse)) =>
-                                                     let val (rho,B) = Eff.freshRhoRegVar (B,rv)
-                                                     in (B,RSE.declareRegVar(rv,rho,rse))
-                                                     end) (B,rse1) regvars
-                      val (B, t1 as E'.TR(_, meta1, phi1),_,tvs') = spreadExp(B, rse1', bind,false,NOTAIL)
+                      (*val () = print ("spreadFcns - length(regvars_with_rhos) = " ^ Int.toString (length regvars_with_rhos) ^ "\n") *)
+                      val rse1' = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse)) rse1 regvars_with_rhos
+                      val (B, t1 as E'.TR(_, meta1, phi1),_,tvs') = spreadExp(B,rse1', bind,false,NOTAIL)
                       val (tau1,rho1) =
                           case unMus "spreadFcns" meta1 of
                             [p] => noSome (R.unBOX p) "spreadRhss: expecting boxed function type"

@@ -99,7 +99,7 @@ structure CompilerEnv: COMPILER_ENV =
     val consType =
       let open LambdaExp
 	  val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST)
-      in ARROWtype([RECORDtype [TYVARtype tyvar_cons, t]],[t])
+      in ARROWtype([RECORDtype ([TYVARtype tyvar_cons, t],NONE)],[t])
       end
 
     val tyvar_quote = LambdaExp.fresh_eqtyvar()
@@ -122,7 +122,7 @@ structure CompilerEnv: COMPILER_ENV =
 	  val int31 = CONStype([],TyName.tyName_INT31)
 	  val int31list = CONStype([int31],TyName.tyName_LIST)
 	  val bool = CONStype([],TyName.tyName_BOOL)
-	  val record = RECORDtype [int31list,bool]
+	  val record = RECORDtype ([int31list,bool],NONE)
       in ARROWtype([record],[t])
       end
 
@@ -325,7 +325,7 @@ structure CompilerEnv: COMPILER_ENV =
 
     fun tynames_tau (LambdaExp.CONStype(taus,t), tns) = tynames_taus(taus,t::tns)
       | tynames_tau (LambdaExp.ARROWtype(taus1,taus2),tns) = tynames_taus(taus1,tynames_taus(taus2,tns))
-      | tynames_tau (LambdaExp.RECORDtype(taus), tns) = tynames_taus(taus,tns)
+      | tynames_tau (LambdaExp.RECORDtype(taus,_), tns) = tynames_taus(taus,tns)
       | tynames_tau (LambdaExp.TYVARtype _, tns) = tns
     and tynames_taus ([],tns) = tns
       | tynames_taus (tau::taus,tns) = tynames_tau(tau,tynames_taus(taus,tns))

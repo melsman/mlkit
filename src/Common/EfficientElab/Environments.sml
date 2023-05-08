@@ -97,7 +97,7 @@ structure Environments: ENVIRONMENTS =
 	| FNty(_,ty1,ty2) =>
 	    EqSet.union (ExplicitTyVarsTy ty1)
 	                (ExplicitTyVarsTy ty2)
-	| PARty(_,ty) =>
+	| PARty(_,ty,_) =>
 	    ExplicitTyVarsTy ty
 
       and ExplicitTyVarsTyRow (TYROW(_,_,ty,tyrowopt)) =
@@ -202,7 +202,7 @@ structure Environments: ENVIRONMENTS =
 	  [] ty_list
 	| unguarded_ty(DecGrammar.FNty(_,ty1,ty2)) =
 	  unguarded_ty ty1 ++ unguarded_ty ty2
-	| unguarded_ty(DecGrammar.PARty(_,ty)) =
+	| unguarded_ty(DecGrammar.PARty(_,ty,_)) =
 	  unguarded_ty ty
 
       and unguarded_tyrow(DecGrammar.TYROW(_,_,ty,tyrow_opt)) =
@@ -659,10 +659,16 @@ structure Environments: ENVIRONMENTS =
 		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
 		  else ids) [] VE
 
+      fun remove_regvars nil VE = VE
+        | remove_regvars regvars VE =
+          let fun f (LONGVARpriv s) = LONGVARpriv (TypeScheme.remove_regvars regvars s)
+                | f (LONGCONpriv (s,ids)) = LONGCONpriv (TypeScheme.remove_regvars regvars s,ids)
+                | f (LONGEXCONpriv t) = LONGEXCONpriv (Type.remove_regvars regvars t)
+          in map f VE
+          end
+
       val pu = pu_VarEnv
     end (*VE*)
-
-
 
 
     (*Type structures*)

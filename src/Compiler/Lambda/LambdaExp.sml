@@ -39,7 +39,7 @@ structure LambdaExp: LAMBDA_EXP =
         TYVARtype   of tyvar
       | ARROWtype   of Type list * Type list
       | CONStype    of Type list * TyName
-      | RECORDtype  of Type list
+      | RECORDtype  of Type list * regvar option
 
     fun foldl' (g: 'a -> 'b -> 'a) (acc: 'a) [] = acc
       | foldl' g acc (x::xs) = foldl' g (g acc x) xs
@@ -49,7 +49,7 @@ structure LambdaExp: LAMBDA_EXP =
         TYVARtype _ => g acc tau
       | ARROWtype(taus1,taus2) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
       | CONStype(taus,_) => g(foldTypes g acc taus)tau
-      | RECORDtype(taus) => g(foldTypes g acc taus)tau
+      | RECORDtype (taus,_) => g(foldTypes g acc taus)tau
     and foldTypes g acc taus = foldl' (foldType g) acc taus
 
     fun size_type tau = foldType (fn n:int => fn _ => n+1)
@@ -72,7 +72,7 @@ structure LambdaExp: LAMBDA_EXP =
     val f64Type = CONStype([], TyName.tyName_F64)
     val stringType = CONStype([], TyName.tyName_STRING)
     val chararrayType = CONStype([], TyName.tyName_CHARARRAY)
-    val unitType = RECORDtype([])
+    val unitType = RECORDtype([],NONE)
 
     val tyvars = foldType (fn tvs =>
 			      (fn TYVARtype tv =>
@@ -685,6 +685,9 @@ structure LambdaExp: LAMBDA_EXP =
 			       }
 		       )
 
+    fun pr_rvopt NONE = ""
+      | pr_rvopt (SOME rv) = "`" ^ RegVar.pr rv
+
    fun layoutType tau =
        case tau of
 	 TYVARtype tv => PP.LEAF (pr_tyvar tv)
@@ -697,10 +700,10 @@ structure LambdaExp: LAMBDA_EXP =
 	      NONE => PP.LEAF (TyName.pr_TyName tyname)
 	    | SOME x => PP.NODE{start="",finish=" " ^ TyName.pr_TyName tyname,indent=1,
 			       children=[x],childsep=PP.NOSEP})
-       | RECORDtype taus =>
+       | RECORDtype (taus,rvopt) =>
 	   (case taus of
-	      [] (* unit *) => PP.LEAF "{}"
-	    | _ => PP.NODE{start="(",finish=")",indent=1,
+	      [] (* unit *) => PP.LEAF ("{}" ^ pr_rvopt rvopt)
+	    | _ => PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
 			   children=map layoutType taus,
 			   childsep=PP.RIGHT"*"})
 
@@ -1394,7 +1397,7 @@ structure LambdaExp: LAMBDA_EXP =
 		(Pickle.pairGen0(pu_TypeList pu,TyName.pu))
 	    fun fun_RECORDtype pu =
 		Pickle.con1 RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
-		(pu_TypeList pu)
+		(Pickle.pairGen0(pu_TypeList pu,Pickle.optionGen RegVar.pu))
 	    val pu = Pickle.dataGen("LambdaExp.Type",toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
 	in (pu, pu_TypeList pu)
 	end
@@ -1676,7 +1679,7 @@ structure LambdaExp: LAMBDA_EXP =
                           else TVS.insert tv acc
         | ARROWtype(ts1,ts2) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
         | CONStype(ts,_) => tyvars_Types s ts acc
-        | RECORDtype ts => tyvars_Types s ts acc
+        | RECORDtype (ts,_) => tyvars_Types s ts acc
 
     and tyvars_Types (s: TVS.Set) nil (acc: TVS.Set) : TVS.Set = acc
       | tyvars_Types s (t::ts) acc = tyvars_Type s t (tyvars_Types s ts acc)

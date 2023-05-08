@@ -385,8 +385,11 @@ structure ErrorTraverse : ERROR_TRAVERSE =
          | FNty(i, ty1, ty2) =>
 	     check i // walk_Ty ty1 // walk_Ty ty2
 
-	 | PARty(i, ty) =>
+	 | PARty(i, ty, NONE) =>
 	     check i // walk_Ty ty
+
+	 | PARty(i, ty, SOME(i2,_)) =>
+	     check i // walk_Ty ty // check i2
 
     and walk_Tyrow tyrow =
       case tyrow

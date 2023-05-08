@@ -35,7 +35,7 @@ signature LAMBDA_EXP =
         TYVARtype   of tyvar
       | ARROWtype   of Type list * Type list
       | CONStype    of Type list * TyName
-      | RECORDtype  of Type list
+      | RECORDtype  of Type list * regvar option
 
     val tyvars : Type -> tyvar list  (* without duplicates *)
 
