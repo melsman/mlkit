@@ -189,11 +189,11 @@ struct
           fun mkTy0 (ty,cone) =
               case ty of
                   L.TYVARtype alpha  => ((TYVAR alpha,NONE), cone)
-                | L.ARROWtype(tys1,tys2)=>
+                | L.ARROWtype(tys1,tys2,rvopt)=>
                   let val (eps,cone') = E.freshEps cone
                       val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
                       val (cone2,mus2) = List.foldr mkMus (cone1,[]) tys2
-                  in ((FUN(mus1,eps,mus2),NONE), cone2)
+                  in ((FUN(mus1,eps,mus2),rvopt), cone2)
                   end
                 | L.CONStype(tys,tyname)=>
                   let val arity as (alpha_count, rhos_runtypes, eps_count) =

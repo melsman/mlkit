@@ -99,21 +99,21 @@ structure CompilerEnv: COMPILER_ENV =
     val consType =
       let open LambdaExp
 	  val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST)
-      in ARROWtype([RECORDtype ([TYVARtype tyvar_cons, t],NONE)],[t])
+      in ARROWtype([RECORDtype ([TYVARtype tyvar_cons, t],NONE)],[t],NONE)
       end
 
     val tyvar_quote = LambdaExp.fresh_eqtyvar()
     val quoteType =
       let open LambdaExp
 	  val t = CONStype([TYVARtype tyvar_quote], TyName.tyName_FRAG)
-      in ARROWtype([CONStype([],TyName.tyName_STRING)],[t])
+      in ARROWtype([CONStype([],TyName.tyName_STRING)],[t],NONE)
       end
 
     val tyvar_antiquote = LambdaExp.fresh_eqtyvar()
     val antiquoteType =
       let open LambdaExp
 	  val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG)
-      in ARROWtype([TYVARtype tyvar_antiquote],[t])
+      in ARROWtype([TYVARtype tyvar_antiquote],[t],NONE)
       end
 
     val intinfType =
@@ -123,7 +123,7 @@ structure CompilerEnv: COMPILER_ENV =
 	  val int31list = CONStype([int31],TyName.tyName_LIST)
 	  val bool = CONStype([],TyName.tyName_BOOL)
 	  val record = RECORDtype ([int31list,bool],NONE)
-      in ARROWtype([record],[t])
+      in ARROWtype([record],[t],NONE)
       end
 
     val boolVE =
@@ -324,7 +324,7 @@ structure CompilerEnv: COMPILER_ENV =
       | excons_result (_, cs) = cs
 
     fun tynames_tau (LambdaExp.CONStype(taus,t), tns) = tynames_taus(taus,t::tns)
-      | tynames_tau (LambdaExp.ARROWtype(taus1,taus2),tns) = tynames_taus(taus1,tynames_taus(taus2,tns))
+      | tynames_tau (LambdaExp.ARROWtype(taus1,taus2,_),tns) = tynames_taus(taus1,tynames_taus(taus2,tns))
       | tynames_tau (LambdaExp.RECORDtype(taus,_), tns) = tynames_taus(taus,tns)
       | tynames_tau (LambdaExp.TYVARtype _, tns) = tns
     and tynames_taus ([],tns) = tns

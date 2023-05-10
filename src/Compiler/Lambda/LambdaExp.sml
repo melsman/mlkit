@@ -37,7 +37,7 @@ structure LambdaExp: LAMBDA_EXP =
 
     datatype Type =
         TYVARtype   of tyvar
-      | ARROWtype   of Type list * Type list
+      | ARROWtype   of Type list * Type list * regvar option
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list * regvar option
 
@@ -47,7 +47,7 @@ structure LambdaExp: LAMBDA_EXP =
     fun foldType (g : 'a -> Type -> 'a) (acc: 'a) (tau : Type) : 'a =
       case tau of
         TYVARtype _ => g acc tau
-      | ARROWtype(taus1,taus2) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
+      | ARROWtype(taus1,taus2,_) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
       | CONStype(taus,_) => g(foldTypes g acc taus)tau
       | RECORDtype (taus,_) => g(foldTypes g acc taus)tau
     and foldTypes g acc taus = foldl' (foldType g) acc taus
@@ -691,8 +691,8 @@ structure LambdaExp: LAMBDA_EXP =
    fun layoutType tau =
        case tau of
 	 TYVARtype tv => PP.LEAF (pr_tyvar tv)
-       | ARROWtype(taus,taus') =>
-	   PP.NODE{start="(",finish=")",indent=1,
+       | ARROWtype(taus,taus',rvopt) =>
+	   PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
 		   children=[layoutTypes taus,layoutTypes taus'],
 		   childsep=PP.LEFT "->"}
        | CONStype(taus,tyname) =>
@@ -1391,7 +1391,7 @@ structure LambdaExp: LAMBDA_EXP =
 		pu_tyvar
 	    fun fun_ARROWtype pu =
 		Pickle.con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
-		(Pickle.pairGen0(pu_TypeList pu,pu_TypeList pu))
+		(Pickle.tup3Gen0(pu_TypeList pu,pu_TypeList pu,Pickle.optionGen RegVar.pu))
 	    fun fun_CONStype pu =
 		Pickle.con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
 		(Pickle.pairGen0(pu_TypeList pu,TyName.pu))
@@ -1677,7 +1677,7 @@ structure LambdaExp: LAMBDA_EXP =
         case t of
           TYVARtype tv => if TVS.member tv s then acc
                           else TVS.insert tv acc
-        | ARROWtype(ts1,ts2) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
+        | ARROWtype(ts1,ts2,_) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
         | CONStype(ts,_) => tyvars_Types s ts acc
         | RECORDtype (ts,_) => tyvars_Types s ts acc
 

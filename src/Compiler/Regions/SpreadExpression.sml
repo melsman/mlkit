@@ -186,14 +186,14 @@ struct
   val exn_ty  = E.CONStype([], TyName.tyName_EXN)
 
   fun declareMany (rho,rse)([],[]) = rse
-    | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
+    | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
         declareMany(rho,RSE.declareLvar(lvar,(true,true,map fst regvars,sigma_hat,SOME rho,SOME occ,NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
   fun repl ([],[]) = []
-    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, (sigma_hat,regvars_with_rhos)::sigma_hats) =
-            (lvar,regvars_with_rhos,tyvars,sigma_hat,bind):: repl(fcns1,sigma_hats)
+    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, (sigma_hat,regvar_opt,regvars_with_rhos)::sigma_hats) =
+            (lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind):: repl(fcns1,sigma_hats)
     | repl _ = die ".repl: sigma_hat_list and rhs lists have different lengths"
 
 
@@ -201,7 +201,7 @@ struct
       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
   fun mkRhs (rse,rho) ([],[],[]) = (rse,[])
-    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,sigma_hat,bind)::rest1,
+    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind)::rest1,
                        (t1,tau1,sigma1,tvs1)::rest2,
                        occ::rest3) =
       let val (brhos, bepss,_) = R.bv sigma1
@@ -347,34 +347,45 @@ struct
 
   val spuriousJoin = RSE.spuriousJoin
 
-  fun proper_recursive (lvar, _, _, _, bind) : bool = (* does lvar occur in bind? *)
+  fun proper_recursive (lvar, _, _, _, _, bind) : bool = (* does lvar occur in bind? *)
       LB.foldTD (fn a => (fn E.VAR {lvar=lv,...} => a orelse Lvars.eq(lv,lvar)
                            | _ => a)) false bind
 
   (* Function for traversing a LambdaExp type simultaneously with a mu, trying to set explicit region variables *)
   fun match_ty_regvars (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
-      let fun match B tau mu =
+      let fun match_rv B rvopt p =
+              case rvopt of
+                  NONE => B
+                | SOME rv =>
+                  case RSE.lookupRegVar rse rv of
+                      NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
+                    | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
+          fun match B tau mu =
               case tau of
                   E.TYVARtype _ => B
-                | E.ARROWtype(ts,ts') => B
+                | E.ARROWtype(ts,ts',rvopt) =>
+                  (case R.unBOX mu of
+                       NONE => die "match_ty_regvars: expecting boxed mu for function types"
+                     | SOME(ty,p) =>
+                       case R.unFUN ty of
+                           NONE => die "match_ty_regvars: expecting function type"
+                         | SOME (mus,ae,mus') =>
+                           let val B = match_rv B rvopt p
+                           in matchs (matchs B ts mus) ts' mus'
+                           end)
                 | E.CONStype(ts,tn) => B
                 | E.RECORDtype(nil,NONE) => B
                 | E.RECORDtype(nil,SOME rv) => deepError rv ("Cannot associate explicit region variable `"
                                                              ^ RegVar.pr rv ^ " with the unboxed type unit")
                 | E.RECORDtype(ts,rvopt) =>
                   (case R.unBOX mu of
-                       NONE => die "match: expecting boxed mu"
+                       NONE => die "match_ty_regvars: expecting boxed mu for non-empty records"
                      | SOME(ty,p) =>
                        case R.unRECORD ty of
-                           NONE => die "match: expecting record ty"
+                           NONE => die "match_ty_regvars: expecting record type"
                          | SOME mus =>
-                           let val B = matchs B ts mus
-                           in case rvopt of
-                                  NONE => B
-                                | SOME rv =>
-                                  case RSE.lookupRegVar rse rv of
-                                      NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
-                                    | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
+                           let val B = match_rv B rvopt p
+                           in matchs B ts mus
                            end)
 
           and matchs B nil nil = B
@@ -416,7 +427,7 @@ struct
           let
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hats: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val B = Eff.push B         (* for generalize_all *)
-            val (tau_x_ml, tau_1_ml) =
+            val (tau_x_ml, tau_1_ml, regvar_opt) =
                 case Type of
                     E.ARROWtype p => p
                   | _ => die "mk_sigma_hats"
@@ -431,7 +442,7 @@ struct
             val (_,B) = Eff.pop B (* back to retract level *)
             val (B,l) = mk_sigma_hats (B,retract_level) rest
           in
-             (B,(sigma_hat,regvars_with_rhos)::l)
+             (B,(sigma_hat,regvar_opt,regvars_with_rhos)::l)
           end
 
     fun newInstance (lvopt:Lvars.lvar option,A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
@@ -899,7 +910,7 @@ good *)
             val B = pushIfNotTopLevel(toplevel,B); (* for pop in retract *)
             val (ty,nullary) =
                 case ty_opt of
-                    SOME ty1 => (E.ARROWtype([ty1], [exn_ty]),false)
+                    SOME ty1 => (E.ARROWtype([ty1], [exn_ty], NONE),false)
                   | NONE => (exn_ty, true)
             val (mu, B) = freshMu(ty, B)
             val (tau,rho) = noSome (R.unBOX mu) "S.EXCEPTION: expecting boxed type"
@@ -1562,7 +1573,7 @@ good *)
                     [f] => proper_recursive f
                   | _ => true (* mutually declared functions are proper recursive *)
             fun spreadRhss B [] = (B,[],[])
-              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,sigma_hat,bind)::rest) =
+              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind)::rest) =
                   let
                      (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                       val B = Eff.push B
@@ -1574,6 +1585,12 @@ good *)
                             [p] => noSome (R.unBOX p) "spreadRhss: expecting boxed function type"
                           | _ => die "spreadFcns: expecting singleton mus"
                       val B = Eff.unifyRho (rho1,rho) B
+                      val B = case regvar_opt of
+                                  NONE => B
+                                | SOME rv => case RSE.lookupRegVar rse rv of
+                                                 NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
+                                               | SOME p => Eff.unifyRho_explicit ((rv,p),rho) B
+
                       val _ = count_RegEffClos:= !count_RegEffClos + 1
 
                       val ((tvs'',tvs1,B),sigma1) =

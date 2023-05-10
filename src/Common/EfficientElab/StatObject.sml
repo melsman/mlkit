@@ -76,7 +76,7 @@ structure StatObject: STATOBJECT =
 
     datatype TypeDesc =
         TYVAR of TyVar
-      | ARROW of Type * Type
+      | ARROW of Type * Type * regvar_info uref
       | RECTYPE of RecType * regvar_info uref
       | CONSTYPE of Type list * TyName.TyName
 
@@ -185,7 +185,7 @@ structure StatObject: STATOBJECT =
                              ref (SOME _) => die "norm_Type.TYVAR"
                            | _ => TypeDesc)
                   | TYVAR _ => die "norm_Type.TYVAR2"
-                  | ARROW(t1,t2) => ARROW(norm_Type t1, norm_Type t2)
+                  | ARROW(t1,t2,rvi) => ARROW(norm_Type t1, norm_Type t2,rvi)
                   | RECTYPE (rt,rvi) => RECTYPE(norm_RecType rt,rvi)
                   | CONSTYPE(ts,tn) => CONSTYPE(map norm_Type ts,tn)
         in {TypeDesc=TypeDesc,level=level}
@@ -398,10 +398,14 @@ structure StatObject: STATOBJECT =
                              children = map layout ty_list,
                              childsep = PP.LEFT ", "}
                    | RECTYPE (r,rvopt_u) => RecType_layout r (Option.map #2 (URef.!! rvopt_u))
-                   | ARROW (ty, ty') =>
-                    PP.NODE {start="(", finish=")", indent=1,
-                             children=[layout ty, layout ty'],
-                             childsep=PP.LEFT " -> "}
+                   | ARROW (ty, ty',rvopt_u) =>
+                     let val finish = case URef.!! rvopt_u of
+                                          NONE => ")"
+                                        | SOME (_,rv) => ")`" ^ RegVar.pr rv
+                     in PP.NODE {start="(", finish=finish, indent=1,
+                                 children=[layout ty, layout ty'],
+                                 childsep=PP.LEFT " -> "}
+                     end
                    | TYVAR tv => TyVar.layout tv
           in
             if !print_type_levels then PP.NODE{start="[", finish="]",childsep=PP.RIGHT ", ", indent=1,
@@ -434,8 +438,8 @@ structure StatObject: STATOBJECT =
               (case (TypeDesc, TypeDesc')
                  of (TYVAR (tv  as ref (NO_TY_LINK _)),
                      TYVAR (tv' as ref (NO_TY_LINK _))) => TyVar.eq' eq_significant (tv,tv')
-                   | (ARROW (ty1,ty1'), ARROW (ty2,ty2')) =>
-                   Type_eq0 eq_significant (ty1,ty2) andalso Type_eq0 eq_significant (ty1',ty2')
+                   | (ARROW (ty1,ty1',rvi1), ARROW (ty2,ty2',rvi2)) =>
+                   Type_eq0 eq_significant (ty1,ty2) andalso Type_eq0 eq_significant (ty1',ty2') (*andalso RegVarInfo_eq0(rvi1,rvi2)*)
                    | (RECTYPE (r1,rvi1), RECTYPE (r2,rvi2)) => RecType_eq0 eq_significant (r1,r2) (*andalso RegVarInfo_eq0(rvi1,rvi2)*)
                    | (CONSTYPE (tys1,tyname1), CONSTYPE (tys2,tyname2)) =>
                    TyName.eq (tyname1, tyname2) andalso
@@ -565,17 +569,22 @@ structure StatObject: STATOBJECT =
                            end
                     end
 
-                   | ARROW (t1, t2) =>
-                    parenthesize NONE
-                    (2, precedence,
-                     (case ty'_opt of
-                        SOME {TypeDesc = ARROW(t1', t2'), ...} =>
-                          pretty_string_as_opt names 3 (t1, SOME t1') ^ "->"
-                          ^ pretty_string_as_opt names 2 (t2, SOME t2')
-                      | _ =>
-                          pretty_string_as_opt names 3 (t1, NONE) ^ "->"
-                          ^ pretty_string_as_opt names 2 (t2, NONE)))
-
+                   | ARROW (t1,t2,rvi) =>
+                     let fun default () =
+                             pretty_string_as_opt names 3 (t1, NONE) ^ "->"
+                             ^ pretty_string_as_opt names 2 (t2, NONE)
+                         val inner =
+                             case ty'_opt of
+                                 SOME {TypeDesc = ARROW(t1', t2',rvi'), ...} =>
+                                 (case URef.!! rvi' of
+                                      NONE => pretty_string_as_opt names 3 (t1, SOME t1') ^ "->"
+                                              ^ pretty_string_as_opt names 2 (t2, SOME t2')
+                                    | SOME _ => default ())
+                               | _ => default ()
+                     in case URef.!! rvi of
+                            NONE => parenthesize NONE (2, precedence, inner)
+                          | SOME (_,rv) => "(" ^ inner ^ ")`" ^ RegVar.pr rv
+                     end
                    | CONSTYPE (tys, tyname) =>
                     let val (tys'_opt, tyname'_opt) =
                       case ty'_opt
@@ -661,7 +670,7 @@ structure StatObject: STATOBJECT =
       fun contains_row_variable t =
         case #TypeDesc (findType t)
           of TYVAR _ => false
-           | ARROW (t1, t2) => contains_row_variable t1 orelse contains_row_variable t2
+           | ARROW (t1, t2, _) => contains_row_variable t1 orelse contains_row_variable t2
            | RECTYPE (r,_) => RecType_contains_row_variable r
            | CONSTYPE (tylist, _) => List.exists contains_row_variable tylist
 
@@ -773,9 +782,9 @@ structure StatObject: STATOBJECT =
                      | BOUND => if !(#level ty) = Level.GENERIC then insert tl else ())
                 | TYVAR (ref (TY_LINK _))  => die "tyvars0"
                 | RECTYPE (r,_) => RecType.fold (fn (ty, ()) => tyvars0 f_b ty) () (findRecType r)
-                | ARROW (ty,ty') =>     (* For the compilation of value constructors, we
-                                         * extract the tyvars of ty' before those of ty.
-                                         * Martin-15/11/1998 *)
+                | ARROW (ty,ty',_) =>     (* For the compilation of value constructors, we
+                                           * extract the tyvars of ty' before those of ty.
+                                           * Martin-15/11/1998 *)
                     (tyvars0 f_b ty'; tyvars0 f_b ty)
 
                 | CONSTYPE (types,_) => foldr (fn (ty,()) => tyvars0 f_b ty) () types
@@ -801,7 +810,7 @@ structure StatObject: STATOBJECT =
                   | RECTYPE (r,_) => RecType.fold
                    (fn (ty, T) => TyName.Set.union (tynames ty) T)
                    TyName.Set.empty  r
-                 | ARROW (ty, ty') => TyName.Set.union (tynames ty) (tynames ty')
+                 | ARROW (ty, ty', _) => TyName.Set.union (tynames ty) (tynames ty')
                  | CONSTYPE (types, tyname) => foldl
                    (fn (ty, T) => TyName.Set.union (tynames ty) T)
                    (TyName.Set.singleton tyname) types
@@ -823,16 +832,17 @@ structure StatObject: STATOBJECT =
 
       fun from_FunType fty = fty
       fun to_FunType ty =
-            (case #TypeDesc (findType ty) of
-               ARROW (ty',ty'') => SOME ty
-             | _ => NONE)
-      fun mk_FunType (ty,ty') =
-            {TypeDesc = ARROW (ty,ty'), level = ref Level.NONGENERIC}
-      fun un_FunType ty =
-            (case #TypeDesc (findType ty) of
-               ARROW (ty,ty') => SOME (ty,ty')
-             | _ => NONE)
+          case #TypeDesc (findType ty) of
+              ARROW _ => SOME ty
+            | _ => NONE
 
+      fun mk_FunType (ty,ty',rvi) =
+          {TypeDesc = ARROW (ty,ty',URef.uref rvi), level = ref Level.NONGENERIC}
+
+      fun un_FunType ty =
+          case #TypeDesc (findType ty) of
+              ARROW (ty,ty',rvi) => SOME (ty,ty',URef.!! rvi)
+            | _ => NONE
 
       (* Constructed types *)
 
@@ -853,10 +863,10 @@ structure StatObject: STATOBJECT =
             (case #TypeDesc (findType ty) of
                CONSTYPE ([], name) => TyName.eq (name, TyName.tyName_EXN)
              | _ => false)
-      fun mk_Arrow (ty,ty') = {TypeDesc = ARROW (ty,ty'), level = ref Level.NONGENERIC}
+      fun mk_Arrow (ty,ty',rvi) = {TypeDesc = ARROW (ty,ty',URef.uref rvi), level = ref Level.NONGENERIC}
       fun un_Arrow ty =
             (case #TypeDesc (findType ty) of
-               ARROW (t, t') => SOME (t, t')
+               ARROW (t, t', rvi) => SOME (t, t', URef.!! rvi)
              | _ => NONE)
       fun is_Arrow ty =
             (case #TypeDesc (findType ty) of
@@ -994,7 +1004,7 @@ structure StatObject: STATOBJECT =
                               then level := Level.GENERIC
                             else level := Level.current ()
                      else ()
-                 | ARROW (tau1, tau2) =>
+                 | ARROW (tau1, tau2, _) =>
                      level := Int.min (generalise {ov=ov, imp=imp, tau=tau1},
                                        generalise {ov=ov, imp=imp, tau=tau2})
                  | RECTYPE (r,_) =>
@@ -1090,7 +1100,7 @@ structure StatObject: STATOBJECT =
             fun occursType ty =
               case findType ty
                 of {TypeDesc = TYVAR tv', ...} => TyVar.eq(tv,tv')
-                 | {TypeDesc = ARROW(ty1, ty2), ...} => occursType ty1 orelse occursType ty2
+                 | {TypeDesc = ARROW(ty1, ty2, _), ...} => occursType ty1 orelse occursType ty2
                  | {TypeDesc = CONSTYPE(tys, tn), ...} => foldl (fn (ty, b) => b orelse occursType ty) false tys
                  | {TypeDesc = RECTYPE (r,_), ...} => RecType.fold (fn (ty, b) => b orelse occursType ty) false r
           in occursType ty
@@ -1105,7 +1115,7 @@ structure StatObject: STATOBJECT =
         and occurs_rv_in_Type (rv, ty) =
           case #TypeDesc (findType ty)
             of TYVAR _ => false
-             | ARROW(ty1, ty2) => occurs_rv_in_Type(rv, ty1) orelse occurs_rv_in_Type(rv, ty2)
+             | ARROW(ty1, ty2, _) => occurs_rv_in_Type(rv, ty1) orelse occurs_rv_in_Type(rv, ty2)
              | RECTYPE (r,_) => occurs_rv_in_RecType(rv, r)
              | CONSTYPE(tys, _) => (foldl (fn (ty, result) => occurs_rv_in_Type(rv, ty) orelse result)
                                     false tys)
@@ -1116,7 +1126,7 @@ structure StatObject: STATOBJECT =
           let val ty = findType ty
           in case ty
                of {TypeDesc = TYVAR _, level} => if !level > lev then level := lev else ()
-                | {TypeDesc = ARROW(ty1, ty2), ...} => (decr_level_Type lev ty1; decr_level_Type lev ty2)
+                | {TypeDesc = ARROW(ty1, ty2, _), ...} => (decr_level_Type lev ty1; decr_level_Type lev ty2)
                 | {TypeDesc = CONSTYPE(tys, tn), ...} => app (decr_level_Type lev) tys
                 | {TypeDesc = RECTYPE (r,_), ...} => decr_level_RecType lev r
           end
@@ -1135,7 +1145,7 @@ structure StatObject: STATOBJECT =
           in case #TypeDesc ty
                of TYVAR (ref (NO_TY_LINK {rank,...})) => if Rank.<=(rnk,!rank) then rank := rnk else ()
                 | TYVAR (ref (TY_LINK _)) => die "decr_rank_Type"
-                | ARROW(ty1, ty2) => (decr_rank_Type p ty1; decr_rank_Type p ty2)
+                | ARROW(ty1, ty2, _) => (decr_rank_Type p ty1; decr_rank_Type p ty2)
                 | CONSTYPE(tys, tn) => (if Rank.<=(Rank.from_TyName tn, rnk) then app (decr_rank_Type p) tys
                                         else raise Rank(tv,tn))
                 | RECTYPE (r,_) => decr_rank_RecType p r
@@ -1299,6 +1309,15 @@ structure StatObject: STATOBJECT =
 
           | unifyTyVar _ = die "unifyTyVar"
 
+        fun unifyRegVar (rvi,rvi') =
+            if unify_regvars then
+              URef.unify (fn (NONE,rvopt) => rvopt
+                           | (rvopt,NONE) => rvopt
+                           | (SOME rv, SOME rv') =>
+                             if RegVar.eq(#2 rv,#2 rv') then SOME rv
+                             else raise Unify "unifyRegVar.diffent explicit region variables") (rvi,rvi')
+            else ()
+
         (*******************
          * Unify two types
          *******************)
@@ -1312,15 +1331,12 @@ structure StatObject: STATOBJECT =
                | (_, TYVAR _) => unifyTyVar (ty', ty)
                | (RECTYPE (r,rvi), RECTYPE (r',rvi')) =>
                  ( unifyRecType(r, r')
-                 ; if unify_regvars
-                   then URef.unify (fn (NONE,rvopt) => rvopt
-                                     | (rvopt,NONE) => rvopt
-                                     | (SOME rv, SOME rv') =>
-                                       if RegVar.eq(#2 rv,#2 rv') then SOME rv
-                                       else raise Unify "unifyType.diffent explicit region variables") (rvi,rvi')
-                   else ()
+                 ; unifyRegVar(rvi,rvi')
                  )
-               | (ARROW pair, ARROW pair') => unifyFunType(pair, pair')
+               | (ARROW (t1,t2,rvi), ARROW (t1',t2',rvi')) =>
+                 ( unifyFunType((t1,t2),(t1',t2'))
+                 ; unifyRegVar(rvi,rvi')
+                 )
                | (CONSTYPE pair, CONSTYPE pair') => unifyConsType(pair, pair')
                | (_, _) => raise Unify "unifyType"
           end
@@ -1394,7 +1410,7 @@ structure StatObject: STATOBJECT =
         fun match_Type (ty,ty0) : unit =
           let val (ty, ty0) = (findType ty, findType ty0)
           in case (#TypeDesc ty,#TypeDesc ty0)
-               of (ARROW (tau,tau'), ARROW (tau0,tau0')) =>
+               of (ARROW (tau,tau',_), ARROW (tau0,tau0',_)) =>
                  (match_Type(tau,tau0); match_Type (tau',tau0'))
                 | (RECTYPE (rect,_), RECTYPE (rect0,_)) =>
                   match_RecType (rect,rect0)
@@ -1428,6 +1444,9 @@ structure StatObject: STATOBJECT =
                  RECTYPE(_,rvopt_u) =>
                  ((URef.unify unfy (rvopt_u,rvopt_u'); NONE)
                   handle Fail msg => SOME msg)
+               | ARROW(_,_,rvopt_u) =>
+                 ((URef.unify unfy (rvopt_u,rvopt_u'); NONE)
+                  handle Fail msg => SOME msg)
                | _ => SOME "different from record types"
           end
 
@@ -1435,12 +1454,18 @@ structure StatObject: STATOBJECT =
           case regvars of
               nil =>  t
             | _ =>
-              let fun remt t : Type * bool =
+              let fun remrvi rvi =
+                      case URef.!! rvi of
+                          NONE => (rvi,false)
+                        | SOME (_,rv) => if List.exists (fn r => RegVar.eq (r,rv)) regvars
+                                         then (URef.uref NONE,true)
+                                         else (rvi,false)
+                  fun remt t : Type * bool =
                       let val t as {TypeDesc,level} = findType t
                           fun mkRecType (rt,rvopt_u) : Type * bool =
                               ({TypeDesc=RECTYPE(rt,rvopt_u),level=level},true)
-                          fun mkArrow (t1,t2) : Type * bool =
-                              ({TypeDesc=ARROW(t1,t2),level=level},true)
+                          fun mkArrow (t1,t2,rvi) : Type * bool =
+                              ({TypeDesc=ARROW(t1,t2,rvi),level=level},true)
                           fun mkConstype (ts,tn) : Type * bool =
                               ({TypeDesc=CONSTYPE(ts,tn),level=level},true)
                       in case TypeDesc of
@@ -1453,10 +1478,11 @@ structure StatObject: STATOBJECT =
                                                    then mkRecType (rt,URef.uref NONE)
                                                    else if b then mkRecType (rt,rvopt_u) else (t,false)
                              end
-                           | ARROW(tau1,tau2) =>
+                           | ARROW(tau1,tau2,rvi) =>
                              let val (tau1',b1) = remt tau1
                                  val (tau2',b2) = remt tau2
-                             in if b1 orelse b2 then mkArrow(tau1',tau2')
+                                 val (rvi',b3) = remrvi rvi
+                             in if b1 orelse b2 orelse b3 then mkArrow(tau1',tau2',rvi')
                                 else (t,false)
                              end
                            | CONSTYPE(ts,tn) =>
@@ -1465,7 +1491,6 @@ structure StatObject: STATOBJECT =
                                 else (t,false)
                              end
                            | TYVAR _ => (t,false)
-
                       end
                   and remts ts : Type list * bool =
                       let val tbs = List.map remt ts
@@ -1521,7 +1546,7 @@ structure StatObject: STATOBJECT =
                          | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
                           die "instanceType.generic tyvar not instantiated"
                          | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
-                         | ARROW (ty1,ty2) => Type.mk_Arrow (instanceType ty1, instanceType ty2)
+                         | ARROW (ty1,ty2,rvi) => Type.mk_Arrow (instanceType ty1, instanceType ty2, URef.!! rvi)
                          | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,URef.!! rvi)
                          | CONSTYPE (tys,tyname) => Type.mk_ConsType (map instanceType tys,tyname)
               end
@@ -1674,7 +1699,7 @@ structure StatObject: STATOBJECT =
               let val (_, tau) = to_TyVars_and_Type sigma
               in case Type.un_Arrow tau
                    of NONE => false                                (*nullary constructor*)
-                    | SOME (tau', _) => violates_equality0 T tau'  (*unary constructor*)
+                    | SOME (tau', _, _) => violates_equality0 T tau'  (*unary constructor*)
               end
       end (*local*)
 
@@ -1809,7 +1834,7 @@ structure StatObject: STATOBJECT =
            else
              case ty
                of {TypeDesc = TYVAR tv, level} => ()
-                | {TypeDesc = ARROW (ty1,ty2), level} =>
+                | {TypeDesc = ARROW (ty1,ty2,_), level} =>
                  level := Int.min (correct_levels_Type ty1, correct_levels_Type ty2)
                 | {TypeDesc = RECTYPE (r,_), level} =>
                  level := correct_levels_RecType r
@@ -1907,10 +1932,10 @@ structure StatObject: STATOBJECT =
            | {TypeDesc = RECTYPE (r,rvi), level} =>
                {TypeDesc = RECTYPE (Type.RecType.map (on_Type phi) r,rvi),
                 level = ref (!level)}
-           | {TypeDesc = ARROW(ty1, ty2), level} =>
-               {TypeDesc = ARROW(on_Type phi ty1, on_Type phi ty2),
+           | {TypeDesc = ARROW(ty1,ty2,rvi), level} =>
+               {TypeDesc = ARROW(on_Type phi ty1, on_Type phi ty2, rvi),
                 level = ref (!level)}
-           | {TypeDesc = CONSTYPE(tylist, t),level} =>
+           | {TypeDesc = CONSTYPE(tylist,t),level} =>
                (*definition pg 19. sec. 4.4 Types and Type Functions
                 beta-conversion carried out after substituting in type
                 functions for type names*)
@@ -2012,7 +2037,7 @@ structure StatObject: STATOBJECT =
 
       datatype pty =
           Tyvar of ptv
-        | Arrow of pty * pty
+        | Arrow of pty * pty * regvar_info
         | Rectype of (Lab.lab * pty) list * regvar_info
         | Constype of pty list * TyName.TyName
 
@@ -2049,7 +2074,7 @@ structure StatObject: STATOBJECT =
                               pu_ptv
               fun fun_Arrow pu_pty =
                   Pickle.con1 Arrow (fn Arrow a => a | _ => die "pu_pty.Arrow")
-                              (Pickle.pairGen0(pu_pty, pu_pty))
+                              (Pickle.tup3Gen0(pu_pty, pu_pty, pu_regvar_info))
               fun fun_Rectype pu_pty =
                   Pickle.con1 Rectype (fn Rectype a => a | _ => die "pu_pty.Rectype")
                               (Pickle.pairGen0(Pickle.listGen(Pickle.pairGen0(Lab.pu,pu_pty)),
@@ -2076,7 +2101,7 @@ structure StatObject: STATOBJECT =
                      SOME pty => pty
                    | NONE => die "type_to_pty0: lookup")
               | TYVAR _ => die "type_to_pty0.TYVAR link: impossible"
-              | ARROW (ty1,ty2) => Arrow(type_to_pty0 S ty1, type_to_pty0 S ty2)
+              | ARROW (ty1,ty2,rvi) => Arrow(type_to_pty0 S ty1, type_to_pty0 S ty2, URef.!! rvi)
               | RECTYPE (rt,rvi) => let fun collect (rt,acc) =
                                             case findRecType rt of
                                                 NILrec => rev acc
@@ -2117,7 +2142,9 @@ structure StatObject: STATOBJECT =
                                       SOME w => H.word w acc
                                     | NONE => die "type_hash: lookup") acc
               | TYVAR _ => die "type_hash.TYVAR link: impossible"
-              | ARROW (ty1,ty2) => H.comb (type_hash0 hm ty2) (H.comb (type_hash0 hm ty1) (H.comb (H.word 0w1377) acc))
+              | ARROW (ty1,ty2,rvi) =>
+                rvi_hash0 (URef.!! rvi)
+                          (H.comb (type_hash0 hm ty2) (H.comb (type_hash0 hm ty1) (H.comb (H.word 0w1377) acc)))
               | RECTYPE (rt,rvi) =>
                 let fun loop rt acc =
                         case findRecType rt of
@@ -2160,8 +2187,9 @@ structure StatObject: STATOBJECT =
                 (case IntFinMap.lookup im (#id tvd1) of
                      SOME i => i = #id tvd2 andalso #equality tvd1 = #equality tvd2
                    | NONE => false)
-              | (ARROW (ty1,ty2), ARROW (ty1',ty2')) =>
+              | (ARROW (ty1,ty2,rvi), ARROW (ty1',ty2',rvi')) =>
                 type_eq0 (im,ty1,ty1') andalso type_eq0 (im,ty2,ty2')
+                andalso rvi_eq(URef.!! rvi,URef.!! rvi')
               | (RECTYPE (rt1,rvi1), RECTYPE (rt2,rvi2)) =>
                 let fun loop (rt1,rt2) =
                         case (findRecType rt1, findRecType rt2) of
@@ -2229,10 +2257,10 @@ structure StatObject: STATOBJECT =
                             handle Subscript => die "pty_to_type0.id missing"
                 in t
                 end
-              | Arrow(pty1,pty2) =>
+              | Arrow(pty1,pty2,rvi) =>
                 let val ty1 = pty_to_type0 V pty1
                     val ty2 = pty_to_type0 V pty2
-                in {TypeDesc=ARROW(ty1,ty2),
+                in {TypeDesc=ARROW(ty1,ty2,URef.uref rvi),
                     level=ref(Int.min(!(#level ty1),
                                       !(#level ty2)))
                    }
