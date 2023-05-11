@@ -34,7 +34,8 @@ structure StatObject: STATOBJECT =
     type strid = Ident.strid
     type StringTree = PP.StringTree
 
-    type regvar_info = (ParseInfo.ParseInfo * RegVar.regvar) option
+    type regvar = RegVar.regvar
+    type regvar_info = (ParseInfo.ParseInfo * regvar) option
 
     (*
      * New, more efficient representation of types and substitutions on types
@@ -363,11 +364,7 @@ structure StatObject: STATOBJECT =
         List.filter (fn x => memberTyVarSet x set1) set2
 
       fun pr_tyvars (l : TyVar list) : string =
-        let fun pr_l [] = ""
-              | pr_l (a::b::rest) = string a ^ "," ^ pr_l (b::rest)
-              | pr_l [a] = string a
-        in "(" ^ pr_l l ^ ")"
-        end
+          "(" ^ String.concatWith "," (map string l) ^ ")"
 
     end (*TyVar*)
 
@@ -378,7 +375,7 @@ structure StatObject: STATOBJECT =
       val bogus = Id
       fun (S1 : Substitution) oo (S2 : Substitution) : Substitution = ()
       fun on (S : Substitution, tau : Type) : Type = findType tau
-      fun onScheme (S : Substitution, (tvs,tau)) = (tvs, findType tau)
+      fun onScheme (S : Substitution, (tvs,regvars,tau)) = (tvs, regvars,findType tau)
     end (*Substitution*)
 
     structure Type =
@@ -446,11 +443,13 @@ structure StatObject: STATOBJECT =
                    TypeList_eq0 eq_significant (tys1,tys2)
                    | _ => false)
             end
+(*
           and RegVarInfo_eq0 (rvi1,rvi2) =
               case (rvi1,rvi2) of
                   (NONE,NONE) => true
                 | (SOME (_,rv1), SOME (_,rv2)) => RegVar.eq (rv1,rv2)
                 | _ => false
+*)
           and RecType_eq0 eq_significant (r1,r2) =
             let val (r1,r2) = (findRecType r1, findRecType r2)
             in case (r1,r2)
@@ -632,7 +631,12 @@ structure StatObject: STATOBJECT =
               in
                 (case (fields, fields') of
                    (nil, _) => "unit"   (* Hard-wired *)
-                 | ([x], [x']) => "{1: " ^ pretty_string_as_opt  names 1 (x,x') ^ "}"
+                  | ([x], [x']) =>
+                    let val s = "{1: " ^ pretty_string_as_opt names 1 (x,x') ^ "}"
+                    in case URef.!!rvi of
+                           NONE => s
+                         | SOME (_,rv) => s ^ "`" ^ RegVar.pr rv
+                    end
                  | _ => parenthesize (URef.!! rvi)
                                      (3, precedence,
                                       ListUtils.stringSep "" "" " * "
@@ -640,10 +644,10 @@ structure StatObject: STATOBJECT =
                                       (ListPair.zip(fields, fields'))))
               end
       in
-        val pretty_string_as_ty = fn names => fn (ty,ty') =>
-              pretty_string_as_opt names 1 (ty, SOME ty') : string
-        val pretty_string = fn names =>  fn ty =>
-              pretty_string_as_opt names 1 (ty, NONE) : string
+        fun pretty_string_as_ty names (ty,ty') : string =
+            pretty_string_as_opt names 1 (ty, SOME ty')
+        fun pretty_string names ty : string =
+            pretty_string_as_opt names 1 (ty, NONE)
       end (*local*)
 
       val string_as_ty = pretty_string_as_ty NONAMES
@@ -1462,21 +1466,18 @@ structure StatObject: STATOBJECT =
                                          else (rvi,false)
                   fun remt t : Type * bool =
                       let val t as {TypeDesc,level} = findType t
-                          fun mkRecType (rt,rvopt_u) : Type * bool =
-                              ({TypeDesc=RECTYPE(rt,rvopt_u),level=level},true)
+                          fun mkRecType (rt,rvi) : Type * bool =
+                              ({TypeDesc=RECTYPE(rt,rvi),level=level},true)
                           fun mkArrow (t1,t2,rvi) : Type * bool =
                               ({TypeDesc=ARROW(t1,t2,rvi),level=level},true)
                           fun mkConstype (ts,tn) : Type * bool =
                               ({TypeDesc=CONSTYPE(ts,tn),level=level},true)
                       in case TypeDesc of
-                             RECTYPE(rt,rvopt_u) =>
-                             let val (rt,b) = remrt rt
-                             in case URef.!! rvopt_u of
-                                    NONE => if b then mkRecType (rt,rvopt_u)
-                                            else (t,false)
-                                  | SOME (_,rv) => if List.exists (fn r => RegVar.eq (r,rv)) regvars
-                                                   then mkRecType (rt,URef.uref NONE)
-                                                   else if b then mkRecType (rt,rvopt_u) else (t,false)
+                             RECTYPE(rt,rvi) =>
+                             let val (rt',b1) = remrt rt
+                                 val (rvi',b2) = remrvi rvi
+                             in if b1 orelse b2 then mkRecType (rt',rvi')
+                                else (t,false)
                              end
                            | ARROW(tau1,tau2,rvi) =>
                              let val (tau1',b1) = remt tau1
@@ -1486,8 +1487,8 @@ structure StatObject: STATOBJECT =
                                 else (t,false)
                              end
                            | CONSTYPE(ts,tn) =>
-                             let val (ts,b) = remts ts
-                             in if b then mkConstype(ts,tn)
+                             let val (ts',b) = remts ts
+                             in if b then mkConstype(ts',tn)
                                 else (t,false)
                              end
                            | TYVAR _ => (t,false)
@@ -1504,9 +1505,9 @@ structure StatObject: STATOBJECT =
                              NILrec => (rt,false)
                            | VARrec _ => (rt,false)
                            | ROWrec (lab,t,rt') =>
-                             let val (t,bt) = remt t
-                                 val (rt',brt) = remrt rt'
-                             in if bt orelse brt then (ROWrec(lab,t,rt'),true) else (rt,false)
+                             let val (t',b1) = remt t
+                                 val (rt',b2) = remrt rt'
+                             in if b1 orelse b2 then (ROWrec(lab,t',rt'),true) else (rt,false)
                              end
                       end
               in #1(remt t)
@@ -1516,27 +1517,29 @@ structure StatObject: STATOBJECT =
 
 
 
-    type TypeScheme = TyVar list * Type
+    type TypeScheme = TyVar list * regvar list * Type
 
     structure TypeScheme =
       struct
 
         (* Prettyprinting of type schemes *)
 
-        fun pretty_string tvn (_, tau) = Type.pretty_string tvn tau
-        fun layout (alphas, tau) =
-          PP.NODE{start="all" ^ TyVar.pr_tyvars alphas ^ ".",finish="",
+        fun pretty_string tvn (_, _, tau) = Type.pretty_string tvn tau
+        fun pr_regvars [] = ""
+          | pr_regvars rs = "(" ^ String.concatWith "," (map RegVar.pr rs) ^ ")"
+        fun layout (alphas, regvars, tau) =
+          PP.NODE{start="all" ^ TyVar.pr_tyvars alphas ^ pr_regvars regvars ^ ".",finish="",
                   indent=1,childsep=PP.NOSEP,children=[Type.layout tau]}
-        fun string (alphas, tau) = "all" ^ TyVar.pr_tyvars alphas ^ "." ^ Type.string tau
+        fun string (alphas, regvars, tau) = "all" ^ TyVar.pr_tyvars alphas ^ pr_regvars regvars ^ "." ^ Type.string tau
         fun debug_string s sigma = (s ^ ": sigma= " ^ string sigma ^ "\n")
 
         (* instance_with_types (sigma, taus); instantiate sigma with
          * taus for the bound type variables. Is it a good idea to
          * update the levels on the fly? ME 1998-11-20 *)
 
-        fun instance_with_types (([],tau),[]) = tau
-          | instance_with_types ((tvs,tau),taus) =
-          let
+        fun instance_with_types (([],[],tau),[]) = tau
+          | instance_with_types ((tvs,regvars,tau),taus) =
+            let val tau = Type.remove_regvars regvars tau
             fun instanceType ty =
               let val ty = findType ty
                   val {TypeDesc, level} = ty
@@ -1569,7 +1572,7 @@ structure StatObject: STATOBJECT =
 
         (* instance sigma; instantiate sigma with fresh type variables *)
 
-        fun instance' (sigma as (tyvars,ty)) =
+        fun instance' (sigma as (tyvars,_,ty)) =
           let
             fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
               | fresh _ = die ("instance'.fresh: tysch= " ^ string sigma)
@@ -1593,8 +1596,10 @@ structure StatObject: STATOBJECT =
          * instantiated variable. The equality function here is also
          * used to implement equality of type functions. *)
 
-        fun eq (([],ty1), ([],ty2)) = Type.eq(ty1,ty2)
-          | eq (sigma1 as (tvs1,_), sigma2 as (tvs2,_)) =
+        (* explicit region variables are ignored in comparisons (currently!) *)
+
+        fun eq (([],_,ty1), ([],_,ty2)) = Type.eq(ty1,ty2)
+          | eq (sigma1 as (tvs1,_,_), sigma2 as (tvs2,_,_)) =
           length tvs1 = length tvs2 andalso
           let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
                 | fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
@@ -1605,13 +1610,13 @@ structure StatObject: STATOBJECT =
           end
 
         fun to_TyVars_and_Type x = x
-        fun from_Type tau = ([],tau)
+        fun from_Type tau = ([],[],tau)
 
         (* Functions for finding free type variables and free type
          * names in a type scheme *)
 
-        fun tyvars (_,tau) = Type.tyvars tau
-        fun tynames (_,tau) = Type.tynames tau
+        fun tyvars (_,_,tau) = Type.tyvars tau
+        fun tynames (_,_,tau) = Type.tynames tau
 
         (* Functions for determining if a type scheme generalises a
          * type or another type scheme *)
@@ -1632,7 +1637,7 @@ structure StatObject: STATOBJECT =
                | _ => false
           end
 
-        fun generalises_TypeScheme (sigma, (betas,tau')) : bool =
+        fun generalises_TypeScheme (sigma, (betas,_,tau')) : bool =
             (TyVar.intersectTyVarSet (betas,tyvars sigma) = [])
             andalso
           let
@@ -1658,17 +1663,17 @@ structure StatObject: STATOBJECT =
         fun close_overload tau =
           let val tvs = (Type.generalise {ov=true, imp=true, tau=tau};
                          Type.generic_tyvars tau)
-          in (tvs, tau)
+          in (tvs, nil, tau)
           end
 
         (* close imp sigma; close a type scheme. The tyvars list
          * should be empty. The boolean imp should be false if the
          * valbind that tau is the type of is expansive. *)
 
-        fun close imp ([], tau) =
+        fun close imp ([], regvars, tau) =
           let val tvs = (Type.generalise {ov=false, imp=imp, tau=tau};
                          Type.generic_tyvars tau)
-          in (tvs, tau)
+          in (tvs, regvars, tau)
           end
           | close _ _ = die "TypeScheme.close"
 
@@ -1696,7 +1701,7 @@ structure StatObject: STATOBJECT =
              | ARROW _ => true
       in
         fun violates_equality (T : TyName.Set.Set) (sigma : TypeScheme) : bool =
-              let val (_, tau) = to_TyVars_and_Type sigma
+              let val (_, _, tau) = to_TyVars_and_Type sigma
               in case Type.un_Arrow tau
                    of NONE => false                                (*nullary constructor*)
                     | SOME (tau', _, _) => violates_equality0 T tau'  (*unary constructor*)
@@ -1705,14 +1710,13 @@ structure StatObject: STATOBJECT =
 
       (* Matching for the recompilation manager *)
 
-      fun match ((_,tau1),(_,tau2)) : unit = Type.match(tau1,tau2)
+      fun match ((_,_,tau1),(_,_,tau2)) : unit = Type.match(tau1,tau2)
 
-      fun remove_regvars regvars (tyvars,t) = (tyvars,Type.remove_regvars regvars t)
+      fun close_regvars R sigma =
+          case sigma of
+              (tvs,nil,t) => (tvs,R,t)
+            | _ => die "close_regvars: type scheme already abstract over a set of regvars"
 
-(*
-      val pu =
-          Pickle.pairGen(Pickle.listGen TyVar.pu,Type.pu)
-*)
     end (*TypeScheme*)
 
 
@@ -1732,14 +1736,14 @@ structure StatObject: STATOBJECT =
           end
 
         fun eq (TYPEFCN {tyvars, tau}, TYPEFCN {tyvars=tyvars', tau=tau'}) =
-          TypeScheme.eq((tyvars,tau),(tyvars',tau'))
+          TypeScheme.eq((tyvars,nil,tau),(tyvars',nil,tau'))
 
         fun from_TyVars_and_Type (tyvars : TyVar list, tau : Type) =
           (Type.generalise {ov=false, imp=true, tau=tau};
            TYPEFCN {tyvars=tyvars, tau=tau})
 
         fun apply (theta as (TYPEFCN {tyvars, tau}), taus : Type list) : Type =
-          TypeScheme.instance_with_types ((tyvars,tau),taus)
+          TypeScheme.instance_with_types ((tyvars,nil,tau),taus)
 
         fun arity (TYPEFCN {tyvars, tau}) = length tyvars
 
@@ -1748,7 +1752,7 @@ structure StatObject: STATOBJECT =
          * have already been renamed to admit equality. *)
 
         fun admits_equality (theta as TYPEFCN {tyvars, tau}) : bool =
-          case Type.make_equality (TypeScheme.instance (tyvars,tau))
+          case Type.make_equality (TypeScheme.instance (tyvars,nil,tau))
             of SOME _ => true
              | NONE => false
 
@@ -1955,10 +1959,10 @@ structure StatObject: STATOBJECT =
 
 
       fun on_TypeScheme Realisation_Id scheme = scheme
-        | on_TypeScheme phi (sigma as (tyvars,tau)) =
+        | on_TypeScheme phi (sigma as (tyvars,regvars,tau)) =
           if List.exists TyVar.is_overloaded tyvars then sigma  (* type schemes for overloaded identifiers are rigid *)
           else let val tau = on_Type phi tau
-               in (tyvars,tau)
+               in (tyvars,regvars,tau)
                end
 
       fun on_TypeFcn Realisation_Id theta = theta
@@ -2041,7 +2045,7 @@ structure StatObject: STATOBJECT =
         | Rectype of (Lab.lab * pty) list * regvar_info
         | Constype of pty list * TyName.TyName
 
-      type ptysch = ptv list * pty
+      type ptysch = ptv list * RegVar.regvar list * pty
 
       val pu_ptv : ptv Pickle.pu =
           Pickle.convert (fn (id,equality,overloaded) => {id=id,equality=equality,overloaded=overloaded},
@@ -2088,8 +2092,7 @@ structure StatObject: STATOBJECT =
           end
 
       val pu_ptysch : ptysch Pickle.pu =
-          Pickle.pairGen(Pickle.listGen pu_ptv, pu_pty)
-
+          Pickle.tup3Gen(Pickle.listGen pu_ptv, Pickle.listGen RegVar.pu, pu_pty)
 
       local
         type ptvMap = pty IntFinMap.map
@@ -2113,7 +2116,7 @@ structure StatObject: STATOBJECT =
       in
         fun type_to_pty (ty:Type) : pty =
             type_to_pty0 IntFinMap.empty ty
-        fun typesch_to_ptysch ((tyvars,ty): TyVar list * Type) : ptysch =
+        fun typesch_to_ptysch ((tyvars,regvars,ty): TyVar list * RegVar.regvar list * Type) : ptysch =
             let val l =
                     mapi (fn (tyvar as ref (NO_TY_LINK tvd), i) =>
                              (#id tvd, {id=i,
@@ -2122,7 +2125,7 @@ structure StatObject: STATOBJECT =
                            | _ => die "typesch_to_ptysch"
                          ) tyvars
                 val S = IntFinMap.fromList (map (fn (id,tv) => (id,Tyvar tv)) l)
-            in (map #2 l, type_to_pty0 S ty)
+            in (map #2 l, regvars, type_to_pty0 S ty)
             end
       end
 
@@ -2158,18 +2161,21 @@ structure StatObject: STATOBJECT =
                       | loop (ty::tys) acc = H.comb (loop tys) (H.comb (type_hash0 hm ty) acc)
                 in loop tys (H.int (#1(TyName.id tn)) acc)
                 end
+
+        fun regvars_hash nil (acc:H.acc) : H.acc = acc
+          | regvars_hash (rv::xs) acc = H.comb (H.string (RegVar.pr rv)) (regvars_hash xs acc)
       in
         fun type_hash (ty:Type) (acc:H.acc) : H.acc =
             type_hash0 IntFinMap.empty ty acc
 
-        fun typesch_hash ((tyvars,ty): TyVar list * Type) (acc:H.acc) : H.acc =
+        fun typesch_hash ((tyvars,regvars,ty): TyVar list * RegVar.regvar list * Type) (acc:H.acc) : H.acc =
             let val l =
                     mapi (fn (tyvar as ref (NO_TY_LINK tvd), i) =>
                              (#id tvd, Word.fromInt i)
                            | _ => die "typesch_hash"
                          ) tyvars
                 val hm = IntFinMap.fromList l
-            in type_hash0 hm ty acc
+            in regvars_hash regvars (type_hash0 hm ty acc)
             end
       end
 
@@ -2214,7 +2220,8 @@ structure StatObject: STATOBJECT =
           | map2 f (x::xs, y::ys) = f(x,y)::map2 f (xs,ys)
           | map2 f _ = nil
 
-        fun typesch_eq ((tvs1,ty1):TyVar list * Type, (tvs2,ty2):TyVar list * Type) : bool =
+        fun typesch_eq ((tvs1,regvars1,ty1):TyVar list * RegVar.regvar list * Type,
+                        (tvs2,regvars2,ty2):TyVar list * RegVar.regvar list * Type) : bool =   (* disregard regvars *)
             length tvs1 = length tvs2
             andalso
             let val l = map2 (fn (ref (NO_TY_LINK tvd1), ref (NO_TY_LINK tvd2)) =>
@@ -2289,7 +2296,8 @@ structure StatObject: STATOBJECT =
         fun pty_to_type (ty:pty) : Type =
             pty_to_type0 (Vector.tabulate (0, fn _ =>raise Fail "impossible")) ty
 
-        fun ptysch_to_typesch (ptvs:ptv list, pty:pty) : TyVar list * Type =
+        fun ptysch_to_typesch (ptvs:ptv list, regvars:RegVar.regvar list, pty:pty)
+            : TyVar list * RegVar.regvar list * Type =
             let val l = map (fn {id,equality,overloaded} =>
                                 TyVar.fresh0 { equality=equality
                                              , overloaded=overloaded
@@ -2297,7 +2305,7 @@ structure StatObject: STATOBJECT =
                                              }
                             ) ptvs
                 val V = Vector.fromList (map (tdToType o TYVAR) l)
-            in (l, pty_to_type0 V pty)
+            in (l, regvars, pty_to_type0 V pty)
             end
       end
 
@@ -2316,8 +2324,8 @@ structure StatObject: STATOBJECT =
       end
 
       val pu_TypeFcn =
-          let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
-              fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
+          let fun to (tvs,_,t) = TYPEFCN {tyvars=tvs,tau=t}
+              fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,nil,t)
           in Pickle.convert0 (to,from) pu_TypeScheme
           end
 

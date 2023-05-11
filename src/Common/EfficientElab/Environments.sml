@@ -659,13 +659,11 @@ structure Environments: ENVIRONMENTS =
                   if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
                   else ids) [] VE
 
-      fun remove_regvars nil VE = VE
-        | remove_regvars regvars VE =
-          let fun f (LONGVARpriv s) = LONGVARpriv (TypeScheme.remove_regvars regvars s)
-                | f (LONGCONpriv (s,ids)) = LONGCONpriv (TypeScheme.remove_regvars regvars s,ids)
-                | f (LONGEXCONpriv t) = LONGEXCONpriv (Type.remove_regvars regvars t)
-          in map f VE
-          end
+      fun close_regvars nil VE = VE
+        | close_regvars R VE =
+          map (fn LONGVARpriv s => LONGVARpriv(TypeScheme.close_regvars R s)
+                | LONGCONpriv(s,ids) => LONGCONpriv(TypeScheme.close_regvars R s,ids)
+                | LONGEXCONpriv _ => die "close_regvars: excon binding") VE
 
       val pu = pu_VarEnv
     end (*VE*)

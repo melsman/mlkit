@@ -170,7 +170,7 @@ signature STATOBJECT =
     structure TypeScheme :
       sig
 	val eq                      : TypeScheme * TypeScheme -> bool
-	val to_TyVars_and_Type      : TypeScheme -> TyVar list * Type      (* for the compiler *)
+	val to_TyVars_and_Type      : TypeScheme -> TyVar list * RegVar.regvar list * Type      (* for the compiler *)
 	(*Make a type into a typescheme with no bound variables:*)
 	val from_Type               : Type -> TypeScheme
 	val tyvars                  : TypeScheme -> TyVar list
@@ -213,7 +213,7 @@ signature STATOBJECT =
 	(*for compilation manager:*)
 	val match : TypeScheme * TypeScheme -> unit
 
-        val remove_regvars : RegVar.regvar list -> TypeScheme -> TypeScheme
+        val close_regvars : RegVar.regvar list -> TypeScheme -> TypeScheme
 
 	val pu : TypeScheme Pickle.pu
 

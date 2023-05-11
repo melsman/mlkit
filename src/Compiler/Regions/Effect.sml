@@ -1029,7 +1029,7 @@ struct
                                                         | NONE => Report.null
                                         val report = Report.line
                                                          ("Explicit region variable `" ^
-                                                          RegVar.pr rv ^ " is forced out of scope.")
+                                                          RegVar.pr rv ^ " has insufficient scope.")
                                     in raise Report.DeepError (report0 // report)
                                     end
                         val cone' = remove(effect,l,!key,cone) (* take node out of cone *)

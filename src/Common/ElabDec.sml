@@ -318,7 +318,7 @@ structure ElabDec: ELABDEC =
               let val i' =
                     case VE.lookup VE id
                       of SOME(VE.LONGVAR sigma) =>
-                        let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+                        let val (tyvars, _, Type) = TypeScheme.to_TyVars_and_Type sigma
                             val _ = add_tyvars tyvars
                         in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
                         end
@@ -337,7 +337,7 @@ structure ElabDec: ELABDEC =
                       of ([],id) =>
                         (case VE.lookup VE id
                            of SOME(VE.LONGVAR sigma) =>
-                             let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+                             let val (tyvars, _, Type) = TypeScheme.to_TyVars_and_Type sigma
                                  val _ = add_tyvars tyvars
                              in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
                              end
@@ -487,6 +487,8 @@ structure ElabDec: ELABDEC =
                               (Type.tynames tau) (TyName.Set.fromList T))
                              of [] => okConv i
                               | tynames => errorConv (i, ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames)
+              val R = E.to_R E
+              val tau = Type.remove_regvars R tau
             in
               (S2 oo S1, tau, OG.LETatexp (out_i, out_dec, out_exp))
             end
@@ -680,11 +682,11 @@ structure ElabDec: ELABDEC =
                val VE' = C.close (S onC C, valbind, VE)
 
 (*for debugging
-               fun pr_id id =
-                 case C.lookup_longid (C.plus_VE(C,VE')) (Ident.mk_LongId [id])
+               fun pr_id VE id =
+                 case C.lookup_longid (C.plus_VE(C,VE)) (Ident.mk_LongId [id])
                    of SOME(VE.LONGVAR sigma) => print (id ^ ": " ^ TypeScheme.string sigma ^ "\n")
                     | _ => ()
-*)
+ *)
 
                val out_i = case ListHacks.intersect (ExplicitTyVars, C.to_U C)
                              of [] => okConv i
@@ -924,7 +926,8 @@ structure ElabDec: ELABDEC =
             val (S2, i') = UnifyWithTexts'("type of left-hand side pattern",(S1 oo S0) on tau,
                                            "type of right-hand side expression", tau1, i)
 
-            val VE = VE.remove_regvars R VE
+            (* Here we modify the type schemes in VE to also abstract over the regvars R *)
+            val VE = VE.close_regvars R VE
 
             (* if there was a unification error in the line above, change the right source
                info field of i' to become the right end of exp : *)
@@ -984,8 +987,8 @@ structure ElabDec: ELABDEC =
             fun processID (i, VE, VE', id): Substitution * ElabInfo =
                   (case (VE.lookup VE id, VE.lookup VE' id) of
                      (SOME (VE.LONGVAR sigma1), SOME (VE.LONGVAR sigma2)) =>
-                       let val (_, tau1) = TypeScheme.to_TyVars_and_Type sigma1
-                           val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
+                       let val (_, _, tau1) = TypeScheme.to_TyVars_and_Type sigma1
+                           val (_, _, tau2) = TypeScheme.to_TyVars_and_Type sigma2
                        in (case Type.unify {unify_regvars=false} (tau1, tau2) of
                              Type.UnifyOk => (Substitution.Id, i)   (* substitutions are dummies *)
                            | Type.UnifyFail _ => (Substitution.Id,

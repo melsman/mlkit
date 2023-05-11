@@ -1,0 +1,7 @@
+[reading source file:	err_expty1.sml]
+> val a : int * int
+err_expty1.sml, line 3, column 19:
+  val a : (int * int)`greg_top = (4,6)
+                     ^^^^^^^^^
+Expects a region variable of type p but the explicit region variable `greg_top has type T
+Stopping compilation of MLB-file due to error (code 1).

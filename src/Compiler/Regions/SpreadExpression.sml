@@ -186,14 +186,14 @@ struct
   val exn_ty  = E.CONStype([], TyName.tyName_EXN)
 
   fun declareMany (rho,rse)([],[]) = rse
-    | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
+    | declareMany (rho,rse)((lvar,regvars,tyvars,tau_ML,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
         declareMany(rho,RSE.declareLvar(lvar,(true,true,map fst regvars,sigma_hat,SOME rho,SOME occ,NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
   fun repl ([],[]) = []
     | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, (sigma_hat,regvar_opt,regvars_with_rhos)::sigma_hats) =
-            (lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind):: repl(fcns1,sigma_hats)
+            (lvar,regvars_with_rhos,tyvars,Type,sigma_hat,regvar_opt,bind):: repl(fcns1,sigma_hats)
     | repl _ = die ".repl: sigma_hat_list and rhs lists have different lengths"
 
 
@@ -201,7 +201,7 @@ struct
       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
   fun mkRhs (rse,rho) ([],[],[]) = (rse,[])
-    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind)::rest1,
+    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,tau_ML,sigma_hat,regvar_opt,bind)::rest1,
                        (t1,tau1,sigma1,tvs1)::rest2,
                        occ::rest3) =
       let val (brhos, bepss,_) = R.bv sigma1
@@ -347,7 +347,7 @@ struct
 
   val spuriousJoin = RSE.spuriousJoin
 
-  fun proper_recursive (lvar, _, _, _, _, bind) : bool = (* does lvar occur in bind? *)
+  fun proper_recursive (lvar, _, _, _, _, _, bind) : bool = (* does lvar occur in bind? *)
       LB.foldTD (fn a => (fn E.VAR {lvar=lv,...} => a orelse Lvars.eq(lv,lvar)
                            | _ => a)) false bind
 
@@ -895,7 +895,7 @@ good *)
             val retract_level = Eff.level B
             val (rho,B) = Eff.freshRhoWithTy(Eff.TOP_RT,B) (* for shared region closure *)
             val phi1 = Eff.mkPut rho
-            val (B,sigma_hats) = mk_sigma_hats(B,retract_level) functions
+            val (B,sigma_hats) = mk_sigma_hats (B,retract_level) functions
             val (B,rse2,functions',tvs) = spreadFcns (B,rho,retract_level,rse) (repl(functions,sigma_hats))
             val (B, t2 as E'.TR(_, meta2, phi2), cont, tvs2) = spreadExp(B, rse2, scope,toplevel,cont)
             val e' = E'.FIX{shared_clos=rho,functions = functions',scope = t2}
@@ -1573,17 +1573,18 @@ good *)
                     [f] => proper_recursive f
                   | _ => true (* mutually declared functions are proper recursive *)
             fun spreadRhss B [] = (B,[],[])
-              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,sigma_hat,regvar_opt,bind)::rest) =
+              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,tau_ML,sigma_hat,regvar_opt,bind)::rest) =
                   let
                      (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                       val B = Eff.push B
                       (*val () = print ("spreadFcns - length(regvars_with_rhos) = " ^ Int.toString (length regvars_with_rhos) ^ "\n") *)
                       val rse1' = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse)) rse1 regvars_with_rhos
                       val (B, t1 as E'.TR(_, meta1, phi1),_,tvs') = spreadExp(B,rse1', bind,false,NOTAIL)
-                      val (tau1,rho1) =
-                          case unMus "spreadFcns" meta1 of
-                            [p] => noSome (R.unBOX p) "spreadRhss: expecting boxed function type"
-                          | _ => die "spreadFcns: expecting singleton mus"
+                      val mu = case unMus "spreadFcns" meta1 of
+                                   [mu] => mu
+                                 | _ => die "spreadFcns: expecting singleton mus"
+                      val B = match_ty_regvars B rse1' tau_ML mu
+                      val (tau1,rho1) = noSome (R.unBOX mu) "spreadRhss: expecting boxed function type"
                       val B = Eff.unifyRho (rho1,rho) B
                       val B = case regvar_opt of
                                   NONE => B

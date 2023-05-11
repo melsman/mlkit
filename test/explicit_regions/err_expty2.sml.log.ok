@@ -1,0 +1,7 @@
+[reading source file:	err_expty2.sml]
+> val f : (int->int)`greg_pair
+err_expty2.sml, line 3, column 20:
+  val f : (int -> int)`greg_pair = fn x => 4
+                      ^^^^^^^^^^
+Expects a region variable of type T but the explicit region variable `greg_pair has type p
+Stopping compilation of MLB-file due to error (code 1).

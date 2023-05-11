@@ -871,12 +871,7 @@ structure LambdaExp: LAMBDA_EXP =
 		  childsep=PP.RIGHT " => "
 		  }
       | LET _ => layout_let_fix_and_exception lamb
-      | LETREGION {regvars,scope} =>
-	  PP.NODE{start="letregion ",finish="end", indent=4,
-		  children=[layoutRegVars regvars,
-			    layoutLambdaExp(scope,0)],
-		  childsep=PP.LEFT "in "
-		  }
+      | LETREGION _ => layout_let_fix_and_exception lamb
       | FIX _ => layout_let_fix_and_exception lamb
       | EXCEPTION _ => layout_let_fix_and_exception lamb
 (*
@@ -1166,23 +1161,21 @@ structure LambdaExp: LAMBDA_EXP =
             fun layout_rec lexp =
                   case lexp of
                     LET{pat, bind, scope} =>
-                        let
-                          val (binds, body, frame) = layout_rec scope
-                        in
-                           (mk_valbind(pat,bind)::binds, body, frame)
-                        end
+                    let val (binds, body, frame) = layout_rec scope
+                    in (mk_valbind(pat,bind)::binds, body, frame)
+                    end
                   | FIX({functions,scope}) =>
-                        let
-                          val (binds', body, frame) = layout_rec scope
-                        in
-                          (mk_mutual_binding (rev functions):: binds', body, frame)
-                        end
+                    let val (binds', body, frame) = layout_rec scope
+                    in (mk_mutual_binding (rev functions):: binds', body, frame)
+                    end
                   | EXCEPTION(excon, ty_opt, scope) =>
-                        let
-                          val (binds', body, frame) = layout_rec scope
-                        in
-                           (mk_excon_binding(excon, ty_opt)::binds', body, frame)
-                        end
+                    let val (binds', body, frame) = layout_rec scope
+                    in (mk_excon_binding(excon, ty_opt)::binds', body, frame)
+                    end
+                  | LETREGION {regvars,scope} =>
+                    let val (binds', body, frame) = layout_rec scope
+                    in (mk_region_binding regvars::binds', body, frame)
+                    end
 		  | FRAME _ => ([],layoutLambdaExp(lexp,0),true)
                   | _ => ([],layoutLambdaExp(lexp,0),false)
 
@@ -1216,6 +1209,12 @@ structure LambdaExp: LAMBDA_EXP =
 			       finish="", childsep=PP.RIGHT " of ", indent=10,
 			       children=[PP.LEAF(pr_excon excon), layoutType ty]}
         )
+      and mk_region_binding regvars =
+            (* region r1 ... rn *)
+          PP.NODE{start = "region ",
+		  finish="", childsep=PP.RIGHT " ", indent=10,
+		  children=map (PP.LEAF o RegVar.pr) regvars}
+
       and mk_mutual_binding (functions) =
         let fun mk_fix({lvar,regvars,tyvars,Type, bind as (FN{pat, body, ...})})
                      (no, rest_of_mutual_binding) =
