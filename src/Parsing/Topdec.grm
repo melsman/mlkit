@@ -1514,6 +1514,10 @@ Ty_sans_STAR:
                           end )
         | AtomicTy      ( AtomicTy )
 
+        | AtomicTy WHERE EqIdent EQUALS EqIdent
+                        ( AtomicTy )
+
+
 TyComma_seq2:
           Ty COMMA TyComma_seq2
                         ( Ty :: TyComma_seq2 )
