@@ -50,17 +50,17 @@ structure TypeInfo: TYPE_INFO =
 
     fun on_TypeInfo' (phi,ti) =
       let fun phi_on_Type tau = StatObject.Realisation.on_Type phi tau
-          fun phi_on_Scheme tau = StatObject.Realisation.on_TypeScheme phi tau
+          fun phi_on_Scheme sigma = StatObject.Realisation.on_TypeScheme phi sigma
 	  fun phi_on_TE TE = Environments.Realisation.on_TyEnv phi TE (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
 	  fun phi_on_E E = Environments.Realisation.on_Env phi E        (* it used to be the identity *)
 	  fun phi_on_phi' phi' = StatObject.Realisation.oo(phi,phi')
 	  fun phi_on_T T = StatObject.Realisation.on_TyName_set phi T
-      in case ti 
+      in case ti
 	   of LAB_INFO _ => ti
 	    | RECORD_ATPAT_INFO{Type} => RECORD_ATPAT_INFO{Type=phi_on_Type Type}
 	    | VAR_INFO {instances} => VAR_INFO {instances = map phi_on_Type instances}
-	    | VAR_PAT_INFO {tyvars,Type} => 
-            let val (tyvars,Type) = phi_on_Scheme(tyvars,Type)
+	    | VAR_PAT_INFO {tyvars,Type} =>
+            let val (tyvars,_,Type) = phi_on_Scheme(tyvars,nil,Type)
             in VAR_PAT_INFO{tyvars=tyvars,Type=Type}
             end
 	    | CON_INFO {numCons, index, instances, longid} =>
@@ -74,12 +74,12 @@ structure TypeInfo: TYPE_INFO =
 	    | EXP_INFO {Type} => EXP_INFO{Type=phi_on_Type Type}
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
 	    | PLAINvalbind_INFO {tyvars, Type} =>
-            let val (tyvars,Type) = phi_on_Scheme(tyvars,Type)
+            let val (tyvars,_,Type) = phi_on_Scheme(tyvars,nil,Type)
             in PLAINvalbind_INFO {tyvars=tyvars,Type=Type}
             end
 	    | OPEN_INFO _ => ti
 	    | INCLUDE_INFO _ => ti
-	    | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} => 
+	    | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} =>
 	     FUNCTOR_APP_INFO {rea_inst=phi_on_phi' rea_inst, rea_gen=phi_on_phi' rea_gen, Env=phi_on_E Env}
             | FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt} => die "on_TypeInfo': FUNBIND_INFO"
 (*	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=SOME phi} *)
@@ -92,14 +92,14 @@ structure TypeInfo: TYPE_INFO =
 
     fun on_TypeInfo a = DELAYED_REALISATION a
     fun normalise (DELAYED_REALISATION(phi,ti)) = on_TypeInfo'(phi, ti)
-      | normalise ti = ti 
+      | normalise ti = ti
 
     type StringTree = PP.StringTree
-    fun layout_tyvars tyvars = 
+    fun layout_tyvars tyvars =
       PP.NODE{start="[",finish="]",indent=0,childsep=PP.RIGHT",",
 	      children=map layoutTyVar tyvars}
 
-    fun layout_list (s, lay_elem) elems = 
+    fun layout_list (s, lay_elem) elems =
       PP.NODE{start=s ^ " = [",finish="]",indent=0,childsep=PP.RIGHT",",
 	      children=map lay_elem elems}
 
@@ -109,14 +109,14 @@ structure TypeInfo: TYPE_INFO =
 
     fun layout info =
       case info
-	of LAB_INFO{index} => 
+	of LAB_INFO{index} =>
 	  PP.LEAF ("LAB_INFO{index=" ^ Int.toString index ^ "}")
 
          | RECORD_ATPAT_INFO {Type} =>
 	     PP.NODE{start="RECORD_ATPAT_INFO(",finish=")",indent=2,
 		  children=[layoutType Type],
 		  childsep = PP.NOSEP}
-         | VAR_INFO {instances} => 
+         | VAR_INFO {instances} =>
 	     PP.NODE{start="VAR_INFO(", finish=")",indent=2,
 		     children=map layoutType instances,
 		     childsep = PP.RIGHT ","}
@@ -160,15 +160,15 @@ structure TypeInfo: TYPE_INFO =
 	     PP.NODE{start="ABSTYPE_INFO(",finish=")",indent=2,
 		     children=[layoutTyEnv TE, PP.LEAF "phi"],
 		     childsep = PP.RIGHT ", "}
-	 | EXP_INFO{Type} => 
+	 | EXP_INFO{Type} =>
 	     PP.NODE{start="EXP_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
 		     childsep = PP.NOSEP}
-	 | MATCH_INFO{Type} => 
+	 | MATCH_INFO{Type} =>
 	     PP.NODE{start="MATCH_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
 		     childsep = PP.NOSEP}
-	 | PLAINvalbind_INFO{tyvars, Type} => 
+	 | PLAINvalbind_INFO{tyvars, Type} =>
 	     PP.NODE{start="PLAINvalbind_INFO(",finish=")",indent=2,
 		     children=[layout_tyvars tyvars,
 			       layoutType Type],

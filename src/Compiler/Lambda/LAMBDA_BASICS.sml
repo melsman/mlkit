@@ -32,6 +32,7 @@ signature LAMBDA_BASICS =
     val contains_f64Type : Type -> bool
     val contains_f64Types : Type list -> bool
 
+    (* Equality of types, but disregarding regvar information *)
     val eq_Type : Type * Type -> bool
     val eq_Types : Type list * Type list -> bool
     val eq_sigma : (tyvar list * Type) * (tyvar list * Type) -> bool

@@ -1,0 +1,7 @@
+[reading source file:	err_funty2.sml]
+> val f : unit->(int * int->int * int) * int * bool
+err_funty2.sml, line 4, column 64:
+  fun f `[r] () : (((int * int)`r -> (int * int)`r) * int * bool)`r =
+                                                                  ^
+Explicit region variable r is of type p and cannot also be of type t
+Stopping compilation of MLB-file due to error (code 1).

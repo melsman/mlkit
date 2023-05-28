@@ -1,7 +1,8 @@
 FLAGS=-no_gc -no_basislib --maximum_inline_size 0 -er -no_opt
 MLKIT=../../bin/mlkit $(FLAGS)
 
-SMLSOURCES=er*.sml param.sml rec.sml tup.sml call.sml call2.sml
+SMLSOURCES=er*.sml param.sml rec.sml tup.sml call.sml call2.sml ty1.sml err_expty1.sml err_expty2.sml \
+  err_expty3.sml err_patty1.sml err_funty1.sml err_funty2.sml err_funty3.sml expty1.sml expty2.sml
 
 .PHONY: all
 all:
@@ -13,6 +14,9 @@ all.sml: $(SMLSOURCES)
           echo "\n(*** $$x: ***)" >> $@; \
           cat $$x >> $@; \
         done
+
+.PHONY: test
+test: all
 
 .PHONY: clean
 clean:

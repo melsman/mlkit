@@ -34,7 +34,7 @@ in
 
      Lambda/LAMBDA_BASICS.sml
 
-     local open Edlib Tools SpecialObjects
+     local open Edlib Tools SpecialObjects SyntaxObjects
      in Lambda/LambdaBasics.sml
      end
 

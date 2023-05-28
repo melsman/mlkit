@@ -412,7 +412,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	 con_env=con_env_restrict(con_env,cons),
 	 excon_env=excon_env_restrict(excon_env,excons),
 	 lvar_env=lvar_env_restrict(lvar_env,lvars),
-         regvar_env=RegVar.Map.empty,
+         regvar_env=regvar_env0,
          tyvar_env=L.TyvarMap.empty}
     end
 

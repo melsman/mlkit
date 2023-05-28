@@ -46,35 +46,35 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
 
     fun reportVE (render, pathR, VE, bindings) =
       VE.report
-	(fn (id, VE.LONGVAR sigma) =>
-	      Report.line ("val "
-			   ^ Ident.pr_id id
-			   ^ (if bindings then " = " ^ render (pathR, id, sigma)
-			      else "")
-	                   ^ " : "
-	                   ^ TypeScheme.pretty_string
-	                       (StatObject.newTVNames ()) sigma)
+        (fn (id, VE.LONGVAR sigma) =>
+              Report.line ("val "
+                           ^ Ident.pr_id id
+                           ^ (if bindings then " = " ^ render (pathR, id, sigma)
+                              else "")
+                           ^ " : "
+                           ^ TypeScheme.pretty_string
+                               (StatObject.newTVNames ()) sigma)
           | (id, VE.LONGCON sigma) =>
-	      Report.null 	(*We'll get the cons when we walk over
-				 the TyStr's in the TE.*)
-	  | (id, VE.LONGEXCON tau) =>
-	      Report.line ("exception " ^ Ident.pr_id id
-			   ^ (if Type.is_Exn tau then ""
-			      else
-				" of "
-				^ (case Type.un_Arrow tau of
-				     SOME (domTy, _) => Type.string domTy
-				   | NONE => Crash.impossible "TopLevelReport.reportVE"))) ,
-	 VE)
+              Report.null       (*We'll get the cons when we walk over
+                                 the TyStr's in the TE.*)
+          | (id, VE.LONGEXCON tau) =>
+              Report.line ("exception " ^ Ident.pr_id id
+                           ^ (if Type.is_Exn tau then ""
+                              else
+                                " of "
+                                ^ (case Type.un_Arrow tau of
+                                     SOME (domTy, _, _) => Type.string domTy
+                                   | NONE => Crash.impossible "TopLevelReport.reportVE"))) ,
+         VE)
 
     fun reportSig(sigid, Sig) =
       let
-	val (_, E) = Sigma.to_T_and_E Sig
+        val (_, E) = Sigma.to_T_and_E Sig
       in
-	   Report.line ("signature " ^ SigId.pr_SigId sigid ^ " =")
-	// Report.line "  sig"
-	// Report.indent (4, reportEnvSTATIC E)
-	// Report.line "  end"
+           Report.line ("signature " ^ SigId.pr_SigId sigid ^ " =")
+        // Report.line "  sig"
+        // Report.indent (4, reportEnvSTATIC E)
+        // Report.line "  end"
       end
 
    (* I can't explain how I print out functors; run the damn thing and see
@@ -82,67 +82,67 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
 
     and reportFunSig(funid, funsig') =
       let
-	val (_, E, N'E') = Phi.to_T_and_E_and_Sigma funsig'
-	val (_, E') = Sigma.to_T_and_E N'E'
+        val (_, E, N'E') = Phi.to_T_and_E_and_Sigma funsig'
+        val (_, E') = Sigma.to_T_and_E N'E'
 
-	val heading = "functor " ^ FunId.pr_FunId funid ^ "("
-	val tab = String.size heading - 1
+        val heading = "functor " ^ FunId.pr_FunId funid ^ "("
+        val tab = String.size heading - 1
       in
-	Report.decorate (heading, reportEnvSTATIC E)
-	  // Report.indent (tab,    Report.line "): sig"
-			    // Report.indent(5, reportEnvSTATIC E')
-			    // Report.line "   end")
+        Report.decorate (heading, reportEnvSTATIC E)
+          // Report.indent (tab,    Report.line "): sig"
+                            // Report.indent(5, reportEnvSTATIC E')
+                            // Report.line "   end")
       end
 
     and reportSE(render, pathR, SE, bindings) =
       SE.report(
-	fn (strId, E) =>
-	  Report.line("structure "
-		      ^ StrId.pr_StrId strId
-		      ^ (if bindings then " =" else " :")
-		     )
-	  // Report.line(if bindings then "  struct" else "  sig")
-	  // Report.indent(4, reportEnv (render, strId :: pathR, E, bindings))
-	  // Report.line "  end",
-	SE
+        fn (strId, E) =>
+          Report.line("structure "
+                      ^ StrId.pr_StrId strId
+                      ^ (if bindings then " =" else " :")
+                     )
+          // Report.line(if bindings then "  struct" else "  sig")
+          // Report.indent(4, reportEnv (render, strId :: pathR, E, bindings))
+          // Report.line "  end",
+        SE
       )
 
     and reportEnvSTATIC E =
           reportEnv (fn _ => Crash.impossible "TopLevelReport.reportEnvSTATIC",
-		     [], E, false)
+                     [], E, false)
 
     and reportEnv(render, pathR, env, bindings) =
       let
-	val (SE, TE, VE, _) = E.un env
+        val (SE, TE, VE, _) = E.un env
       in
-	reportSE(render, pathR, SE, bindings)
-	// TE.report {tyEnv=TE, bindings=bindings}
-	// reportVE(render, pathR, VE, bindings)
+        reportSE(render, pathR, SE, bindings)
+        // TE.report {tyEnv=TE, bindings=bindings}
+        // reportVE(render, pathR, VE, bindings)
       end
 
     fun reportStaticBasis(render, sb: ElabBasis, bindings: bool)
           : Report =
       let
-	val funenv = B.to_F sb
-	val sigenv = B.to_G sb
-	val env = B.to_E sb
-      in		(* Sigs first; looks better (though in fact SML's
-			   top-level syntax is knobbled so they can't be
-			   mixed). *)
-	G.report (reportSig, sigenv)
-	// F.report (reportFunSig, funenv)
-	// reportEnv(render, nil, env, bindings)
+        val funenv = B.to_F sb
+        val sigenv = B.to_G sb
+        val env = B.to_E sb
+      in                (* Sigs first; looks better (though in fact SML's
+                           top-level syntax is knobbled so they can't be
+                           mixed). *)
+        G.report (reportSig, sigenv)
+        // F.report (reportFunSig, funenv)
+        // reportEnv(render, nil, env, bindings)
       end
 
     fun report{infB=ib,elabB=sb, bindings} =
       let
-(*	val db =  (* Might be void (ELAB_ONLY) *) *)
+(*      val db =  (* Might be void (ELAB_ONLY) *) *)
 
-	fun render(pathR, id, tyScheme) = ""
-(*	  ValPrint.print(ValPrint.locate(db, rev pathR, id), tyScheme) *)
+        fun render(pathR, id, tyScheme) = ""
+(*        ValPrint.print(ValPrint.locate(db, rev pathR, id), tyScheme) *)
       in
-	Report.decorate("> ", InfixBasis.reportBasis ib
-			      // reportStaticBasis(render, sb, bindings)
-		       )
+        Report.decorate("> ", InfixBasis.reportBasis ib
+                              // reportStaticBasis(render, sb, bindings)
+                       )
       end
-  end;
+  end

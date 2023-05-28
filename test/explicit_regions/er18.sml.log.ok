@@ -1,0 +1,7 @@
+[reading source file:	er18.sml]
+
+er18.sml, line 3, column 11:
+  type t = {}`r0
+             ^^^
+Unboxed types cannot be annotated with regions
+Stopping compilation of MLB-file due to error (code 1).

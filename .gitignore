@@ -1,8 +1,8 @@
 Makefile
 autom4te.cache
 bin
+lib
 config.log
 config.status
 configure
-lib
 *~

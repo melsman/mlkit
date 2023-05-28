@@ -1,4 +1,3 @@
-
 (*  TEST FILE
 
 A test file is a file that mentions a set of Standard ML sources and
@@ -18,7 +17,10 @@ Test files may contain Standard ML like comments.
 
 *)
 
-(* simple tests *)
+(* ------------------------------ *)
+(* Testing expression annotations *)
+(* ------------------------------ *)
+
 er1.sml               ccl ecte    (* It is an error to declare a region with a name that is already in scope (region decs) *)
 er2.sml               ccl ecte    (* It is an error to have duplicate region names in a region declaration *)
 er3.sml               ccl ecte    (* A region cannot be used for values that belong to different region types *)
@@ -36,7 +38,7 @@ er14.sml              ccl ecte    (* It is an error to give multiple explicit re
 er15.sml              ccl ecte    (* It is an error to give multiple explicit regions to con0 *)
 er16.sml              ccl ecte    (* It is an error to give multiple explicit regions to con1 *)
 er17.sml              ccl ecte    (* It is an error to have constructors of different conditional branches to be allocated in different regions *)
-
+er18.sml              ccl ecte    (* Empty record types cannot be annotated with explicit regions *)
 param.sml                         (* Functions can be declared to take region parameters *)
 param1.sml                        (* Functions can be declared to take one region parameter *)
 tup.sml                           (* Tuples can be allocated in explicit regions *)
@@ -48,3 +50,19 @@ con0.sml                          (* Con0 constructor can be allocated in explic
 con1.sml                          (* Con1 constructor can be allocated in explicit regions *)
 call.sml
 call2.sml
+ty1.sml                           (* Types can be annotated with explicit regions *)
+
+(* ----------------------------------- *)
+(* Testing the use of type annotations *)
+(* ----------------------------------- *)
+
+err_expty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type *)
+err_expty2.sml        ccl ecte    (* The global region variable of type pair cannot be associated with a function type *)
+err_expty3.sml        ccl ecte    (* Escaping functions cannot live in local regions *)
+err_patty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type (pattern) *)
+err_funty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type (function return type) *)
+err_funty2.sml        ccl ecte    (* Inconsistent use of a parameter region. A region cannot hold both pairs and triples. *)
+err_funty3.sml        ccl ecte    (* Inconsistent use of a parameter region. A region cannot hold both pairs and strings. *)
+
+expty1.sml                        (* A local function can be forced into a global region *)
+expty2.sml                        (* A locally generated function that is returned can be stored in a passed region *)

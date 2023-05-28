@@ -25,6 +25,8 @@ signature STATOBJECT =
     type scon
     type strid
 
+    type regvar_info = ParseInfo.ParseInfo * RegVar.regvar
+
     structure ExplicitTyVarMap : MONO_FINMAP where type dom = ExplicitTyVar
 
     (*Level: for an explanation of type inference using `let levels'
@@ -84,11 +86,15 @@ signature STATOBJECT =
 	val to_TyVar                : Type -> TyVar option
 
 	(*record types*)
-	val from_RecType            : RecType -> Type
-	val to_RecType              : Type -> RecType option
+	val from_RecType            : RecType * regvar_info option -> Type
+	val to_RecType              : Type -> (RecType * regvar_info option) option
 	val contains_row_variable   : Type -> bool
 	    (*contains_row_variable rho = true iff there exists a
 	     row variable in the type rho*)
+        val add_regvars             : ParseInfo.ParseInfo * regvar_info list -> Type -> Type (* raises Fail msg on error *)
+        val remove_regvars          : RegVar.regvar list -> Type -> Type
+        val contains_regvars        : Type -> bool (* used by CompileDec *)
+
 	structure RecType :
 	  sig
 	    val empty               : RecType			(* "{}" *)
@@ -107,19 +113,19 @@ signature STATOBJECT =
 	(*function types*)
 	val from_FunType            : FunType -> Type
 	val to_FunType              : Type -> FunType option
-	val mk_FunType              : Type * Type -> FunType
-	val un_FunType              : FunType -> (Type * Type) option
+	val mk_FunType              : Type * Type * regvar_info option -> FunType
+	val un_FunType              : FunType -> (Type * Type * regvar_info option) option
 
 	(*constructed types*)
 	val from_ConsType           : ConsType -> Type
 	val to_ConsType             : Type -> ConsType option
-	val mk_ConsType             : Type list * TyName -> ConsType
-	val un_ConsType             : ConsType -> (Type list * TyName) option
+	val mk_ConsType             : Type list * TyName * (ParseInfo.ParseInfo * regvar_info list) option -> ConsType
+	val un_ConsType             : ConsType -> (Type list * TyName * (ParseInfo.ParseInfo * regvar_info list) option) option
 
 	val Exn                     : Type
 	val is_Exn                  : Type -> bool
-	val mk_Arrow                : Type * Type -> Type
-	val un_Arrow                : Type -> (Type * Type) option
+	val mk_Arrow                : Type * Type * regvar_info option -> Type
+	val un_Arrow                : Type -> (Type * Type * regvar_info option) option
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 
@@ -151,11 +157,11 @@ signature STATOBJECT =
                               | UnifyFail of string
                               | UnifyRankError of TyVar * TyName
 
-	val unify                   : Type * Type -> unify_result
+	val unify : {unify_regvars:bool} -> Type * Type -> unify_result
 
 	val match : Type * Type -> unit   (* for compilation manager *)
 
-	val pu : Type Pickle.pu
+	val pu    : Type Pickle.pu
 
       end (*Type*)
 
@@ -164,7 +170,7 @@ signature STATOBJECT =
     structure TypeScheme :
       sig
 	val eq                      : TypeScheme * TypeScheme -> bool
-	val to_TyVars_and_Type      : TypeScheme -> TyVar list * Type      (* for the compiler *)
+	val to_TyVars_and_Type      : TypeScheme -> TyVar list * RegVar.regvar list * Type      (* for the compiler *)
 	(*Make a type into a typescheme with no bound variables:*)
 	val from_Type               : Type -> TypeScheme
 	val tyvars                  : TypeScheme -> TyVar list
@@ -202,10 +208,12 @@ signature STATOBJECT =
 	 TE we tentatively assume to admit equality, and sigma will be the
 	 type scheme of a constructor.*)
 
-	val violates_equality       : TyName.Set.Set -> TypeScheme -> bool
+	val violates_equality : TyName.Set.Set -> TypeScheme -> bool
 
 	(*for compilation manager:*)
 	val match : TypeScheme * TypeScheme -> unit
+
+        val close_regvars : RegVar.regvar list -> TypeScheme -> TypeScheme
 
 	val pu : TypeScheme Pickle.pu
 

@@ -264,6 +264,10 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Kitlib $(INSTDIR)/src/Pickle
 	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime
 	$(MKDIR) $(INSTDIR)/src/Tools
+	$(MKDIR) $(INSTDIR)/src/lib
+	$(MKDIR) $(INSTDIR)/src/lib/github.com
+	$(MKDIR) $(INSTDIR)/src/lib/github.com/diku-dk
+	$(MKDIR) $(INSTDIR)/src/lib/github.com/diku-dk/sml-uref
 	$(MKDIR) $(INSTDIR)/src/Common/EfficientElab
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend $(INSTDIR)/src/Compiler/Lambda $(INSTDIR)/src/Compiler/Regions
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy
@@ -271,6 +275,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(INSTALLDATA) src/Makefile src/*.{sml,in} $(INSTDIR)/src
+	$(INSTALLDATA) src/lib/github.com/diku-dk/sml-uref/*.{mlb,sig,sml} $(INSTDIR)/src/lib/github.com/diku-dk/sml-uref
 	$(INSTALLDATA) src/Common/*.{mlb,sig,sml} $(INSTDIR)/src/Common
 	$(INSTALLDATA) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
 	$(INSTALLDATA) src/Compiler/*.{mlb,sig,sml} $(INSTDIR)/src/Compiler

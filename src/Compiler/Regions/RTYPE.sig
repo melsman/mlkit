@@ -11,6 +11,8 @@ sig
   type place = effect
   type runType
 
+  type regvar   (* explicit region variables *)
+
   type Type
   type mu = Type
 
@@ -57,6 +59,8 @@ sig
   val ann_mus    : mu list -> effect list -> effect list
 
   val freshType  : (tyname -> (int*runType list*int)option) (* lookup function *)
+                   -> (regvar -> place option)
+                   -> (regvar -> string -> unit)              (* deep error function *)
                    -> (LambdaType * cone -> Type * cone)
                       * (LambdaType * cone -> mu * cone)
   val unify_ty   : Type * Type -> cone -> cone

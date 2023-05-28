@@ -950,7 +950,7 @@ structure ElabTopdec: ELABTOPDEC  =
                                  (noSome (lookup_tycon C tycon) "datdesc(1)")
               val t = noSome (TypeFcn.to_TyName theta) "datdesc(2)"
               val taus = map Type.from_TyVar tyvars
-              val tau = Type.from_ConsType (Type.mk_ConsType (taus, t))
+              val tau = Type.from_ConsType (Type.mk_ConsType (taus, t, NONE))
               val (constructor_map, out_condesc, ids) = elab_condesc (C', tau, condesc, ids)
               val VE = constructor_map.to_VE constructor_map
 
@@ -1026,7 +1026,7 @@ structure ElabTopdec: ELABTOPDEC  =
                                                            SOME out_ty, out_condesc_opt), ids)
            in case ElabDec.elab_ty (C, ty)
                 of (SOME tau', out_ty) =>
-                  let val arrow = Type.mk_Arrow (tau', tau)
+                  let val arrow = Type.mk_Arrow (tau', tau, NONE)
                       val sigma = TypeScheme.from_Type arrow
                       val cmap' = constructor_map.add con sigma constructor_map
                   in result out_ty cmap'
@@ -1072,7 +1072,7 @@ structure ElabTopdec: ELABTOPDEC  =
            in case ElabDec.elab_ty (C, ty)
                 of (SOME tau, out_ty) =>
                   let val tyvars = tyvars_Type tau
-                      val arrow = Type.mk_Arrow (tau, Type.Exn)
+                      val arrow = Type.mk_Arrow (tau, Type.Exn, NONE)
                       val out_i = case tyvars
                                     of [] => out_i_for_exdesc excon VE i error
                                      | _ => errorConv (i, ErrorInfo.EXDESC_SIDECONDITION)

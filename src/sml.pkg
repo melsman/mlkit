@@ -1,0 +1,3 @@
+require {
+  github.com/diku-dk/sml-uref 0.0.1 #bfce9ac7ce2e98abf02036ee33d78cae105a1d70
+}

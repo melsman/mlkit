@@ -80,7 +80,7 @@ struct
 
   (* An {\sl arity} is a triple
 
-             (the number of tyvars, runtypes of  regvars, the number of effectvars).
+             (the number of tyvars, runtypes of regvars, the number of effectvars).
 
      The first of these is apparent from the source expression. The two others
      have to be found by analysis of the type declarations.
@@ -116,14 +116,14 @@ struct
         All the other forms of types contribute at least with one region to
         the arity.                       *)
 
-       |  E.ARROWtype(taus1,taus2) =>
+       |  E.ARROWtype(taus1,taus2,_) =>
           foldl (uncurry plus)
                 (foldl (uncurry plus) (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
                        (map (infer_arity_ty rse current_tynames) taus1)
                 )
                 (map (infer_arity_ty rse current_tynames) taus2)
 
-       |  E.CONStype(types,tyname) =>
+       |  E.CONStype(types,tyname,_) =>
           foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
                 ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames
                     then arity0
@@ -140,8 +140,8 @@ struct
                               | NONE => die ("infer_arity_ty. Type name: "
                                              ^ TyName.pr_TyName tyname)
                      end)
-       |  E.RECORDtype nil => arity0
-       |  E.RECORDtype types =>
+       |  E.RECORDtype (nil,_) => arity0
+       |  E.RECORDtype (types,_) =>
           foldr (uncurry plus) (0,[case types of [_,_] => Effect.PAIR_RT
                                                | [_,_,_] => Effect.TRIPLE_RT
                                                | _ => Effect.TOP_RT],zero)
@@ -204,12 +204,13 @@ struct
       fun get_list_with_runtypes (runtypes: R.runType list): R.effect list =
           map get_with_rt runtypes
 
+      (* We disregard region variable info in datatype declarations *)
       fun ty_to_mu (tau: E.Type) : R.mu =
           case tau of
               E.TYVARtype alpha => R.mkTYVAR alpha
-            | E.ARROWtype(taus1,taus2) =>
+            | E.ARROWtype(taus1,taus2,_) =>
               extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
-            | E.CONStype(taus, tyname) =>
+            | E.CONStype(taus, tyname,_) =>
               if being_defined tyname
               then let val tau = R.mkCONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss)
                    in case common_place of
@@ -227,7 +228,7 @@ struct
                                       \ undeclared type name: " ^ TyName.pr_TyName tyname)
                      )
                 )
-            | E.RECORDtype taus =>
+            | E.RECORDtype (taus,_) =>
               extend(R.mkRECORD(map ty_to_mu taus))
 
       and spread_constructed_type (rse, tyname, taus) : R.mu option =
@@ -418,6 +419,6 @@ struct
          (* no need to pop cone *)
      in
         (rse1, E'.DATBINDS(rev reversed_target_datbind))
-     end;
+     end
 
 end

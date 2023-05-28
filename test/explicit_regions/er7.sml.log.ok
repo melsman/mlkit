@@ -6,5 +6,5 @@
 er7.sml, line 10, column 13:
     let region r2
                ^^
-Explicit region variable `r2 is forced out of scope.
+Explicit region variable `r2 has insufficient scope.
 Stopping compilation of MLB-file due to error (code 1).

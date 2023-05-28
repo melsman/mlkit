@@ -1,0 +1,7 @@
+[reading source file:	err_funty3.sml]
+> val f : string`r->int * string
+err_funty3.sml, line 4, column 41:
+  fun f `[r] (a:string`r) : (int * string)`r = (3, a)
+                                           ^
+Explicit region variable r is of type s and cannot also be of type p
+Stopping compilation of MLB-file due to error (code 1).

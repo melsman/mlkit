@@ -1469,12 +1469,49 @@ TupleTy:  Ty_sans_STAR  ( [Ty_sans_STAR] )
                         ( Ty_sans_STAR :: TupleTy )
 
 Ty_sans_STAR:
-          LPAREN TyComma_seq2 RPAREN LongTypeIdent
+          LPAREN TyComma_seq2 RPAREN LongTypeIdent BACKQUOTE EqIdent
+                        ( let val ty = CONty (PP LPARENleft LongTypeIdentright,
+				              TyComma_seq2, mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft EqIdentright,
+                                    ty,
+                                    SOME (PP BACKQUOTEleft EqIdentright,
+                                          [(PP EqIdentleft EqIdentright,
+                                            RegVar.mk_Named EqIdent)]))
+                          end )
+        | LPAREN TyComma_seq2 RPAREN LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( let val ty = CONty (PP LPARENleft LongTypeIdentright,
+				              TyComma_seq2, mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft RBRACKETright,
+                                    ty,
+                                    SOME (PP LBRACKETleft RBRACKETright,
+                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                        RegVar.mk_Named r)) EqIdent_seq1))
+                          end )
+
+        | LPAREN TyComma_seq2 RPAREN LongTypeIdent
                         ( CONty (PP LPARENleft LongTypeIdentright,
 				 TyComma_seq2, mk_LongTyCon LongTypeIdent) )
         | Ty_sans_STAR LongTypeIdent
                         ( CONty (PP Ty_sans_STARleft LongTypeIdentright,
 				 [Ty_sans_STAR], mk_LongTyCon LongTypeIdent) )
+        | Ty_sans_STAR LongTypeIdent BACKQUOTE EqIdent
+                        ( let val ty = CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				              [Ty_sans_STAR], mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft EqIdentright,
+                                    ty,
+                                    SOME (PP BACKQUOTEleft EqIdentright,
+                                          [(PP EqIdentleft EqIdentright,
+                                            RegVar.mk_Named EqIdent)]))
+                          end )
+        | Ty_sans_STAR LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( let val ty = CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				              [Ty_sans_STAR], mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft RBRACKETright,
+                                    ty,
+                                    SOME (PP LBRACKETleft RBRACKETright,
+                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                        RegVar.mk_Named r)) EqIdent_seq1))
+                          end )
         | AtomicTy      ( AtomicTy )
 
 TyComma_seq2:
@@ -1483,13 +1520,48 @@ TyComma_seq2:
         | Ty COMMA Ty   ( [Ty1, Ty2] )
 
 AtomicTy:
-          LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
+          LongTypeIdent BACKQUOTE EqIdent
+                        ( let val ty = CONty (PP LongTypeIdentleft LongTypeIdentright,
+				              [], mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft EqIdentright,
+                                    ty,
+                                    SOME (PP BACKQUOTEleft EqIdentright,
+                                          [(PP EqIdentleft EqIdentright,
+                                            RegVar.mk_Named EqIdent)]))
+                          end)
+        | LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( let val ty = CONty (PP LongTypeIdentleft LongTypeIdentright,
+				              [], mk_LongTyCon LongTypeIdent)
+                          in PARty (PP LongTypeIdentleft RBRACKETright,
+                                    ty,
+                                    SOME (PP LBRACKETleft RBRACKETright,
+                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                        RegVar.mk_Named r)) EqIdent_seq1))
+                          end)
+        | LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
 				 [], mk_LongTyCon LongTypeIdent) )
+
         | TYVAR         ( TYVARty(PP TYVARleft TYVARright, mk_TyVar TYVAR) )
+        | LBRACE TyRow_opt RBRACE BACKQUOTE EqIdent
+                        ( RECORDty (PP LBRACEleft RBRACEright,
+                                    TyRow_opt,
+                                    SOME (PP BACKQUOTEleft EqIdentright, RegVar.mk_Named EqIdent)) )
         | LBRACE TyRow_opt RBRACE
-                        ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt) )
+                        ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt, NONE) )
+        | LPAREN Ty RPAREN BACKQUOTE EqIdent
+                        ( PARty (PP LPARENleft RPARENright,
+                                 Ty,
+                                 SOME (PP BACKQUOTEleft EqIdentright,
+                                       [(PP EqIdentleft EqIdentright,
+                                         RegVar.mk_Named EqIdent)])) )
+        | LPAREN Ty RPAREN BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( PARty (PP LPARENleft RPARENright,
+                                 Ty,
+                                 SOME (PP BACKQUOTEleft RBRACKETright,
+                                       map (fn s => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                     RegVar.mk_Named s)) EqIdent_seq1)))
         | LPAREN Ty RPAREN
-                        ( PARty (PP LPARENleft RPARENright, Ty) )
+                        ( PARty (PP LPARENleft RPARENright, Ty, NONE) )
 
 TyRow_opt:
           TyRow         ( SOME TyRow )

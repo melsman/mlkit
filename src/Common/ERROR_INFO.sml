@@ -82,6 +82,8 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       (* Explicit regions errors *)
       | REGVARS_IDONLY
       | REGVARS_SCOPED_TWICE of regvar list
+      | REGVAR_TY_UNBOXED
+      | REGVAR_TY_ANNOTATE of string
 
     type Report
     val report : ErrorInfo -> Report

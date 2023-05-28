@@ -33,9 +33,9 @@ signature LAMBDA_EXP =
 
     datatype Type =
         TYVARtype   of tyvar
-      | ARROWtype   of Type list * Type list
-      | CONStype    of Type list * TyName
-      | RECORDtype  of Type list
+      | ARROWtype   of Type list * Type list * regvar option
+      | CONStype    of Type list * TyName * regvar list option
+      | RECORDtype  of Type list * regvar option
 
     val tyvars : Type -> tyvar list  (* without duplicates *)
 
@@ -63,7 +63,7 @@ signature LAMBDA_EXP =
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
-		  declared_excons: (excon * Type option) list}
+                  declared_excons: (excon * Type option) list}
       | RaisedExnBind
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
@@ -80,18 +80,18 @@ signature LAMBDA_EXP =
       | ASSIGNprim of {instance: 'Type}
       | EQUALprim of {instance: 'Type}
       | CCALLprim of {name : string,                  (* Primitives, etc. *)
-		      instances : 'Type list,
-		      tyvars : tyvar list,
-		      Type : 'Type}
+                      instances : 'Type list,
+                      tyvars : tyvar list,
+                      Type : 'Type}
       | BLOCKF64prim
       | SCRATCHMEMprim of int                         (* bytes *)
       | EXPORTprim of {name : string,
-		       instance_arg : 'Type,
-		       instance_res : 'Type}
+                       instance_arg : 'Type,
+                       instance_res : 'Type}
       | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed,
-						          but safe, resetting of regions *)
+                                                          but safe, resetting of regions *)
       | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled,
-						          unsafe resetting of regions *)
+                                                          unsafe resetting of regions *)
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 
@@ -107,16 +107,16 @@ signature LAMBDA_EXP =
       | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
-		     bind : LambdaExp,
-		     scope: LambdaExp}
+                     bind : LambdaExp,
+                     scope: LambdaExp}
       | LETREGION of {regvars: regvar list,
                       scope: LambdaExp}
       | FIX      of {functions : {lvar : lvar,
                                   regvars: regvar list,
-				  tyvars : tyvar list,
-				  Type : Type,
-				  bind : LambdaExp} list,
-		     scope : LambdaExp}
+                                  tyvars : tyvar list,
+                                  Type : Type,
+                                  bind : LambdaExp} list,
+                     scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp * bool option  (* tail call? *)
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
@@ -126,12 +126,13 @@ signature LAMBDA_EXP =
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
+      | TYPED    of LambdaExp * Type
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
                        (* a frame is the result of a structure-level
                         * declaration.
-			*)
+                        *)
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
 

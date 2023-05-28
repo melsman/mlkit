@@ -1,0 +1,7 @@
+[reading source file:	err_expty3.sml]
+> val f : unit->int->int
+err_expty3.sml, line 5, column 19:
+          let region r
+                     ^
+Explicit region variable `r has insufficient scope.
+Stopping compilation of MLB-file due to error (code 1).
