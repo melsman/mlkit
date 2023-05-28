@@ -118,7 +118,7 @@ struct
         RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
-        PARty of info * ty * (info*regvar) option
+        PARty of info * ty * (info*(info*regvar)list) option
 
   and tyrow =
         TYROW of info * lab * ty * tyrow option
@@ -382,7 +382,7 @@ struct
       | RECORDty(i,tyrow_opt,opt) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),Option.map (fn (i,rv) => (f i,rv)) opt)
       | CONty(i,tys,longtycon) => CONty(f i, map (map_ty_info f) tys,longtycon)
       | FNty(i,ty,ty') => FNty(f i, map_ty_info f ty, map_ty_info f ty')
-      | PARty(i,ty,opt) => PARty(f i, map_ty_info f ty, Option.map (fn (i,rv) => (f i,rv)) opt)
+      | PARty(i,ty,opt) => PARty(f i, map_ty_info f ty, Option.map (fn (i,rvis) => (f i,List.map (fn (i,rv) => (f i,rv)) rvis)) opt)
 
     and map_tyrow_info f (TYROW(i,lab,ty,tyrow_opt)) : tyrow =
       TYROW(f i, lab, map_ty_info f ty, do_opt tyrow_opt (map_tyrow_info f))
@@ -1092,7 +1092,8 @@ struct
 
          | PARty(_, ty, regvar_opt) =>
            let val finish = case regvar_opt of
-                                SOME (_,rv) => ")`" ^ RegVar.pr rv
+                                SOME (_,[(_,rv)]) => ")`" ^ RegVar.pr rv
+                              | SOME (_,rvis) => ")`[" ^ String.concatWith "," (map (fn (_,rv) => RegVar.pr rv) rvis) ^ "]"
                               | NONE => ")"
            in NODE{start="(", finish=finish, indent=1,
                    children=[layoutTy ty],

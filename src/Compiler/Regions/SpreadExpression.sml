@@ -183,7 +183,7 @@ struct
        \ is monomorphic (also in regions and effects)")
       end
 
-  val exn_ty  = E.CONStype([], TyName.tyName_EXN)
+  val exn_ty  = E.CONStype([], TyName.tyName_EXN, NONE)
 
   fun declareMany (rho,rse)([],[]) = rse
     | declareMany (rho,rse)((lvar,regvars,tyvars,tau_ML,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
@@ -353,13 +353,14 @@ struct
 
   (* Function for traversing a LambdaExp type simultaneously with a mu, trying to set explicit region variables *)
   fun match_ty_regvars (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
-      let fun match_rv B rvopt p =
+      let fun match_rv B rv p =
+              case RSE.lookupRegVar rse rv of
+                  NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
+                | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
+          fun match_rvopt B rvopt p =
               case rvopt of
                   NONE => B
-                | SOME rv =>
-                  case RSE.lookupRegVar rse rv of
-                      NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
-                    | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
+                | SOME rv => match_rv B rv p
           fun match B tau mu =
               case tau of
                   E.TYVARtype _ => B
@@ -370,10 +371,36 @@ struct
                        case R.unFUN ty of
                            NONE => die "match_ty_regvars: expecting function type"
                          | SOME (mus,ae,mus') =>
-                           let val B = match_rv B rvopt p
+                           let val B = match_rvopt B rvopt p
                            in matchs (matchs B ts mus) ts' mus'
                            end)
-                | E.CONStype(ts,tn) => B
+                | E.CONStype(ts,tn,rvsopt) =>
+                  let val (ty,rvsopt,B) =
+                          if TyName.unboxed tn then
+                            (mu,rvsopt,B)
+                          else (case R.unBOX mu of
+                                    NONE => die "match_ty_regvars: expecting boxed mu for boxed type constructor"
+                                  | SOME(ty,p) =>
+                                    (case rvsopt of
+                                         NONE => (ty,NONE,B)
+                                       | SOME [] => raise Report.DeepError (Report.line "expecting non-empty region sequence for boxed type constructor")
+                                       | SOME (rv::rvs) => (ty,SOME rvs,match_rv B rv p)))
+                  in case R.unCONSTYPE ty of
+                         NONE => die "match_ty_regvars: expecting constructed type"
+                       | SOME (tn',mus,rhos,eps) =>
+                         let val B = matchs B ts mus
+                         in case rvsopt of
+                                NONE => B
+                              | SOME rvs =>
+                                let val pairs = ListPair.zipEq (rvs,rhos)
+                                                handle _ =>
+                                                       let val msg = "wrong number of explicitly annotated regions for constructed type"
+                                                       in raise Report.DeepError (Report.line msg)
+                                                       end
+                                in foldl (fn ((rv,p),B) => match_rv B rv p) B pairs
+                                end
+                         end
+                  end
                 | E.RECORDtype(nil,NONE) => B
                 | E.RECORDtype(nil,SOME rv) => deepError rv ("Cannot associate explicit region variable `"
                                                              ^ RegVar.pr rv ^ " with the unboxed type unit")
@@ -384,7 +411,7 @@ struct
                        case R.unRECORD ty of
                            NONE => die "match_ty_regvars: expecting record type"
                          | SOME mus =>
-                           let val B = match_rv B rvopt p
+                           let val B = match_rvopt B rvopt p
                            in matchs B ts mus
                            end)
 
@@ -973,6 +1000,14 @@ good *)
           val (B, t2 as E'.TR(e2', meta2, phi2), _, tvs) = S(B,e1,false,NOTAIL)
           val _ = unMus "S.RAISE" meta2
       in (B,E'.TR(E'.RAISE(t2),description', phi2),NOTAIL,tvs)
+      end
+    | E.TYPED(e1: E.LambdaExp, tau) =>
+      let val (mu,B) = freshMu(tau,B)
+          val (B, t2 as E'.TR(e2', meta2, phi2), cont', tvs) = S(B,e1,false,cont)
+          val B = case unMus "S.TYPED" meta2 of
+                      [mu'] => R.unify_mu (mu',mu) B
+                    | _ => die "spreading of typed expression failed: expects a single mu"
+      in (B,t2,cont',tvs)
       end
     | E.LETREGION {regvars,scope} =>
       let val B = pushIfNotTopLevel(toplevel,B) (* for retract *)

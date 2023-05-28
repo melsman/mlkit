@@ -34,7 +34,7 @@ signature LAMBDA_EXP =
     datatype Type =
         TYVARtype   of tyvar
       | ARROWtype   of Type list * Type list * regvar option
-      | CONStype    of Type list * TyName
+      | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option
 
     val tyvars : Type -> tyvar list  (* without duplicates *)
@@ -126,6 +126,7 @@ signature LAMBDA_EXP =
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
+      | TYPED    of LambdaExp * Type
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}

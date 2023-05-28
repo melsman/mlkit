@@ -1028,6 +1028,10 @@ structure Environments: ENVIRONMENTS =
                                               [Ident.id_REF])
         end
 
+
+        fun mk_ConsType0 tn = Type.mk_ConsType ([],tn,NONE)
+        fun mk_ConsType1 ty tn = Type.mk_ConsType ([ty],tn,NONE)
+
                  (* environments for list type constructor *)
         local
           val _ = Level.push()
@@ -1038,7 +1042,7 @@ structure Environments: ENVIRONMENTS =
 
           val listTy =
                 Type.from_ConsType
-                  (Type.mk_ConsType ([alphaTy],TyName.tyName_LIST))
+                  (mk_ConsType1 alphaTy TyName.tyName_LIST)
 
           val nilVE = VE.singleton_con (Ident.id_NIL,
                                         TypeScheme.from_Type listTy,
@@ -1050,7 +1054,7 @@ structure Environments: ENVIRONMENTS =
           val alphaTy = Type.from_TyVar alpha1
           val listTy =
                 Type.from_ConsType
-                  (Type.mk_ConsType ([alphaTy],TyName.tyName_LIST))
+                  (mk_ConsType1 alphaTy TyName.tyName_LIST)
           val consTy = mk_Arrow0 (Type.from_pair (alphaTy,listTy) , listTy)
           val consVE = VE.singleton_con (Ident.id_CONS,
                                          TypeScheme.from_Type consTy,
@@ -1067,7 +1071,7 @@ structure Environments: ENVIRONMENTS =
 
           val listTy =
                 Type.from_ConsType
-                  (Type.mk_ConsType ([alphaTy],TyName.tyName_LIST))
+                  (mk_ConsType1 alphaTy TyName.tyName_LIST)
 
           val nilVE = VE.singleton_con (Ident.id_NIL,
                                         TypeScheme.from_Type listTy,
@@ -1078,7 +1082,7 @@ structure Environments: ENVIRONMENTS =
           val alphaTy = Type.from_TyVar alpha1
           val listTy =
                 Type.from_ConsType
-                  (Type.mk_ConsType ([alphaTy],TyName.tyName_LIST))
+                  (mk_ConsType1 alphaTy TyName.tyName_LIST)
           val consTy = mk_Arrow0 (Type.from_pair (alphaTy,listTy) , listTy)
           val consVE = VE.singleton_con (Ident.id_CONS,
                                          TypeScheme.from_Type consTy,
@@ -1097,13 +1101,13 @@ structure Environments: ENVIRONMENTS =
                  (* environments for intinf type constructor *)
         local
           val int31Ty =
-              Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_INT31))
+              Type.from_ConsType (mk_ConsType0 TyName.tyName_INT31)
 
           val int31listTy =
-              Type.from_ConsType (Type.mk_ConsType ([int31Ty],TyName.tyName_LIST))
+              Type.from_ConsType (mk_ConsType1 int31Ty TyName.tyName_LIST)
 
           val boolTy =
-              Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_BOOL))
+              Type.from_ConsType (mk_ConsType0 TyName.tyName_BOOL)
 
           val recordTy =
               let val negative = Lab.mk_IdentLab "negative"
@@ -1116,7 +1120,7 @@ structure Environments: ENVIRONMENTS =
               end
 
           val intinfTy =
-              Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_INTINF))
+              Type.from_ConsType (mk_ConsType0 TyName.tyName_INTINF)
 
           val ve =
               VE.singleton_con (Ident.id_INTINF,
@@ -1134,7 +1138,7 @@ structure Environments: ENVIRONMENTS =
           val _ = Level.push()
 
           fun fragTy ty =
-            Type.from_ConsType (Type.mk_ConsType ([ty],TyName.tyName_FRAG))
+            Type.from_ConsType (mk_ConsType1 ty TyName.tyName_FRAG)
 
           fun conVE id ty1 ty2 =
             VE.singleton_con (id,

@@ -123,7 +123,7 @@ struct
                 )
                 (map (infer_arity_ty rse current_tynames) taus2)
 
-       |  E.CONStype(types,tyname) =>
+       |  E.CONStype(types,tyname,_) =>
           foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
                 ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames
                     then arity0
@@ -210,7 +210,7 @@ struct
               E.TYVARtype alpha => R.mkTYVAR alpha
             | E.ARROWtype(taus1,taus2,_) =>
               extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
-            | E.CONStype(taus, tyname) =>
+            | E.CONStype(taus, tyname,_) =>
               if being_defined tyname
               then let val tau = R.mkCONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss)
                    in case common_place of

@@ -54,6 +54,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | SWITCH_S switch => SWITCH_S(passSwitch (passTD f) switch)
            | SWITCH_C switch => SWITCH_C(passSwitch (passTD f) switch)
            | SWITCH_E switch => SWITCH_E(passSwitch (passTD f) switch)
+           | TYPED(lamb,t) => TYPED(passTD f lamb,t)
            | PRIM(prim,lambs) => PRIM(prim,map (passTD f) lambs)
            | FRAME _ => lamb
       end
@@ -98,6 +99,7 @@ structure LambdaBasics: LAMBDA_BASICS =
               | SWITCH_S switch => SWITCH_S(passSwitch (passBU f) switch)
               | SWITCH_C switch => SWITCH_C(passSwitch (passBU f) switch)
               | SWITCH_E switch => SWITCH_E(passSwitch (passBU f) switch)
+              | TYPED(lamb,t) => TYPED(passBU f lamb,t)
               | PRIM(prim,lambs) => PRIM(prim,map (passBU f) lambs)
               | FRAME _ => lamb)
       end
@@ -135,6 +137,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | SWITCH_S switch => foldSwitch switch
            | SWITCH_C switch => foldSwitch switch
            | SWITCH_E switch => foldSwitch switch
+           | TYPED(lamb,t) => foldTD f new_acc lamb
            | PRIM(prim,lambs) => foldl' (foldTD f) new_acc lambs
            | FRAME _ => new_acc
       end
@@ -182,6 +185,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | SWITCH_S sw => SWITCH_S (map_lamb_sw f sw)
          | SWITCH_C sw => SWITCH_C (map_lamb_sw f sw)
          | SWITCH_E sw => SWITCH_E (map_lamb_sw f sw)
+         | TYPED(e,t) => TYPED(f e, t)
          | PRIM(prim, lambs) => PRIM(prim, map f lambs)
          | FRAME _ => lamb
 
@@ -219,6 +223,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | SWITCH_S sw => app_lamb_sw f sw
          | SWITCH_C sw => app_lamb_sw f sw
          | SWITCH_E sw => app_lamb_sw f sw
+         | TYPED(e,t) => f e
          | PRIM(prim, lambs) => app f lambs
          | FRAME _ => ()
 
@@ -334,7 +339,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun on_tau ren tau =
         let fun on_t (TYVARtype tv) = TYVARtype (on_tv ren tv)
               | on_t (ARROWtype (tl, tl',rv)) = ARROWtype(map on_t tl, map on_t tl',rv)
-              | on_t (CONStype (tl,tn)) = CONStype (map on_t tl, tn)
+              | on_t (CONStype (tl,tn,rvs)) = CONStype (map on_t tl,tn,rvs)
               | on_t (RECORDtype (tl,rv)) = RECORDtype (map on_t tl,rv)
         in on_t tau
         end
@@ -461,6 +466,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | SWITCH_S sw => SWITCH_S (on_sw (fn a => a) (on_e ren) sw)
             | SWITCH_C sw => SWITCH_C (on_sw (fn (c,lv_opt) => (c,on_lv_opt ren lv_opt)) (on_e ren) sw)
             | SWITCH_E sw => SWITCH_E (on_sw (fn (e,lv_opt) => (on_ex ren e, on_lv_opt ren lv_opt)) (on_e ren) sw)
+            | TYPED(e,t) => TYPED(on_e ren e, on_tau ren t)
             | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
             | FRAME _ => lamb
 
@@ -513,7 +519,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                                           of SOME res => #2 res
                                            | NONE => tau)
                   | ARROWtype(taus1,taus2,rv) => ARROWtype(map tv_Subst taus1,map tv_Subst taus2,rv)
-                  | CONStype(taus,tyname) => CONStype(map tv_Subst taus,tyname)
+                  | CONStype(taus,tyname,rvs) => CONStype(map tv_Subst taus,tyname,rvs)
                   | RECORDtype (taus,rv) => RECORDtype (map tv_Subst taus,rv)
             )
         in tv_Subst tau
@@ -554,7 +560,7 @@ structure LambdaBasics: LAMBDA_BASICS =
         case tau
           of TYVARtype tyvar => Set.singleton tyvar
            | ARROWtype(taus1,taus2,_) => Set.union equal_tyvar (tyvarsTypes taus1) (tyvarsTypes taus2)
-           | CONStype(taus,_) => tyvarsTypes taus
+           | CONStype(taus,_,_) => tyvarsTypes taus
            | RECORDtype (taus,_) => tyvarsTypes taus
       and tyvarsTypes taus =
         foldl (fn (tau, set) =>
@@ -643,6 +649,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                  | SWITCH_S switch => SWITCH_S(on_switch S switch)
                  | SWITCH_C switch => SWITCH_C(on_switch S switch)
                  | SWITCH_E switch => SWITCH_E(on_switch S switch)
+                 | TYPED(lamb,t) => TYPED(f S lamb,on_Type S t)
                  | PRIM (prim,lambs) => PRIM(on_prim S prim,map (f S) lambs)
                  | FRAME _ => lamb (*MEMO*)
             end
@@ -676,8 +683,8 @@ structure LambdaBasics: LAMBDA_BASICS =
           of (TYVARtype tv1, TYVARtype tv2) => tv1=tv2
            | (ARROWtype(taus1,taus1',rv1), ARROWtype(taus2,taus2',rv2)) =>
             eq_Types(taus1,taus2) andalso eq_Types(taus1',taus2') (*andalso eq_regvar_opt (rv1,rv2)*)
-           | (CONStype(taus1,tn1), CONStype(taus2,tn2)) =>
-            eq_Types(taus1,taus2) andalso TyName.eq(tn1,tn2)
+           | (CONStype(taus1,tn1,rvs1), CONStype(taus2,tn2,rvs2)) =>
+            eq_Types(taus1,taus2) andalso TyName.eq(tn1,tn2) (*andalso eq_regvar_list_opt (rvs1,rvs2)*)
            | (RECORDtype (taus1,rv1), RECORDtype (taus2,rv2)) => eq_Types(taus1,taus2) (*andalso eq_regvar_opt (rv1,rv2)*)
            | _ => false
       and eq_Types ([],[]) = true
@@ -715,7 +722,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                   in match_taus(S',taus1',taus2')
                   end
                  | (RECORDtype (taus, _), RECORDtype (taus',_)) => match_taus(S,taus,taus')
-                 | (CONStype(taus,tn), CONStype(taus', tn')) =>
+                 | (CONStype(taus,tn,_), CONStype(taus', tn',_)) =>
                   if TyName.eq(tn,tn') then match_taus(S,taus,taus')
                   else die ("match_tau.CONStype: type name " ^ TyName.pr_TyName tn ^ " <> " ^ TyName.pr_TyName tn')
                  | _ => die "match_tau3"
@@ -738,7 +745,7 @@ structure LambdaBasics: LAMBDA_BASICS =
           case t of
               TYVARtype _ => false
 	    | ARROWtype(ts1,ts2,_) => contains_f64Types ts1 orelse contains_f64Types ts2
-	    | CONStype(ts,tn) => TyName.eq(TyName.tyName_F64,tn) orelse contains_f64Types ts
+	    | CONStype(ts,tn,_) => TyName.eq(TyName.tyName_F64,tn) orelse contains_f64Types ts
 	    | RECORDtype (ts,_) => contains_f64Types ts
       and contains_f64Types nil = false
         | contains_f64Types (t::ts) = contains_f64Type t orelse contains_f64Types ts
@@ -847,6 +854,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | SWITCH_S switch => SWITCH_S(Ns switch)
             | SWITCH_C switch => SWITCH_C(Ns switch)
             | SWITCH_E switch => SWITCH_E(Ns switch)
+            | TYPED(e,t) => TYPED(N E e, t)
             | PRIM(p,es) => PRIM(p, map (N E) es)
             | FRAME fr => FRAME(Nf E fr)
           end
@@ -925,6 +933,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | SWITCH_S switch => SWITCH_S(t_sw tail switch)
                 | SWITCH_C switch => SWITCH_C(t_sw tail switch)
                 | SWITCH_E switch => SWITCH_E(t_sw tail switch)
+                | TYPED(e,tau) => TYPED(t false e, tau)
                 | PRIM(p,es) => PRIM(p, map (t false) es)
                 | FRAME fr => e
               end

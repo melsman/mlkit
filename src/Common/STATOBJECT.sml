@@ -25,7 +25,7 @@ signature STATOBJECT =
     type scon
     type strid
 
-    type regvar_info = (ParseInfo.ParseInfo * RegVar.regvar) option
+    type regvar_info = ParseInfo.ParseInfo * RegVar.regvar
 
     structure ExplicitTyVarMap : MONO_FINMAP where type dom = ExplicitTyVar
 
@@ -86,14 +86,14 @@ signature STATOBJECT =
 	val to_TyVar                : Type -> TyVar option
 
 	(*record types*)
-	val from_RecType            : RecType * regvar_info -> Type
-	val to_RecType              : Type -> (RecType * regvar_info) option
+	val from_RecType            : RecType * regvar_info option -> Type
+	val to_RecType              : Type -> (RecType * regvar_info option) option
 	val contains_row_variable   : Type -> bool
 	    (*contains_row_variable rho = true iff there exists a
 	     row variable in the type rho*)
-
-        val push_regvar             : regvar_info -> Type -> string option (* returns (SOME ty) on error *)
+        val add_regvars             : ParseInfo.ParseInfo * regvar_info list -> Type -> Type (* raises Fail msg on error *)
         val remove_regvars          : RegVar.regvar list -> Type -> Type
+        val contains_regvars        : Type -> bool (* used by CompileDec *)
 
 	structure RecType :
 	  sig
@@ -113,19 +113,19 @@ signature STATOBJECT =
 	(*function types*)
 	val from_FunType            : FunType -> Type
 	val to_FunType              : Type -> FunType option
-	val mk_FunType              : Type * Type * regvar_info -> FunType
-	val un_FunType              : FunType -> (Type * Type * regvar_info) option
+	val mk_FunType              : Type * Type * regvar_info option -> FunType
+	val un_FunType              : FunType -> (Type * Type * regvar_info option) option
 
 	(*constructed types*)
 	val from_ConsType           : ConsType -> Type
 	val to_ConsType             : Type -> ConsType option
-	val mk_ConsType             : Type list * TyName -> ConsType
-	val un_ConsType             : ConsType -> (Type list * TyName) option
+	val mk_ConsType             : Type list * TyName * (ParseInfo.ParseInfo * regvar_info list) option -> ConsType
+	val un_ConsType             : ConsType -> (Type list * TyName * (ParseInfo.ParseInfo * regvar_info list) option) option
 
 	val Exn                     : Type
 	val is_Exn                  : Type -> bool
-	val mk_Arrow                : Type * Type * regvar_info -> Type
-	val un_Arrow                : Type -> (Type * Type * regvar_info) option
+	val mk_Arrow                : Type * Type * regvar_info option -> Type
+	val un_Arrow                : Type -> (Type * Type * regvar_info option) option
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 

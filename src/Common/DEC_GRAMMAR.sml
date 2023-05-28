@@ -109,7 +109,7 @@ sig
         RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
-        PARty of info * ty * (info*regvar) option
+        PARty of info * ty * (info*(info*regvar)list) option
 
   and tyrow =
         TYROW of info * lab * ty * tyrow option

@@ -950,7 +950,7 @@ structure ElabTopdec: ELABTOPDEC  =
                                  (noSome (lookup_tycon C tycon) "datdesc(1)")
               val t = noSome (TypeFcn.to_TyName theta) "datdesc(2)"
               val taus = map Type.from_TyVar tyvars
-              val tau = Type.from_ConsType (Type.mk_ConsType (taus, t))
+              val tau = Type.from_ConsType (Type.mk_ConsType (taus, t, NONE))
               val (constructor_map, out_condesc, ids) = elab_condesc (C', tau, condesc, ids)
               val VE = constructor_map.to_VE constructor_map
 

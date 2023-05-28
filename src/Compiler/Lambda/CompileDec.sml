@@ -178,7 +178,7 @@ structure CompileDec: COMPILE_DEC =
       (* Return true if the type is potentially unboxed *)
       fun unboxed_ty tns ty =
         case ty
-          of CONStype(_,tn) => TyName.unboxed tn orelse List.exists (fn t => TyName.eq(t,tn)) tns
+          of CONStype(_,tn,_) => TyName.unboxed tn orelse List.exists (fn t => TyName.eq(t,tn)) tns
            | TYVARtype _ => true
            | RECORDtype ([],_) => true (*unit*)
            | RECORDtype _ => false
@@ -315,6 +315,14 @@ structure CompileDec: COMPILE_DEC =
         ; SOME r
         )
 
+    fun attach_loc_info_pis NONE = NONE
+      | attach_loc_info_pis (SOME (_,irs)) =
+        ( app (fn (i,r) =>
+                  RegVar.attach_location_report r (fn () => loc_report_of_ParseInfo i))
+              irs
+        ; SOME (map #2 irs)
+        )
+
     (* ---------------------------------------------------------------------- *)
     (*           Utility functions used to compile constructors               *)
     (* ---------------------------------------------------------------------- *)
@@ -346,18 +354,20 @@ structure CompileDec: COMPILE_DEC =
                          NONE => die "compileType(1)"
                        | SOME tyvar => TYVARtype(TV.lookup "compileType" tyvar))
                   | SOME funtype =>
-                      let val (ty1,ty2,rvi) = NoSome "compileType(2)"
-                                        (Type.un_FunType funtype)
-                          val ty1' = compileType ty1
-                          val ty2' = compileType ty2
-                          val rvi = attach_loc_info_pi rvi
-                      in ARROWtype([ty1'],[ty2'],rvi)
-                      end)
+                    let val (ty1,ty2,rvi) =
+                            NoSome "compileType(2)"
+                                   (Type.un_FunType funtype)
+                        val ty1' = compileType ty1
+                        val ty2' = compileType ty2
+                        val rvi = attach_loc_info_pi rvi
+                    in ARROWtype([ty1'],[ty2'],rvi)
+                    end)
              | SOME constype =>
-                 let val (tys,tyname) = NoSome "compileType(3)"
-                                        (Type.un_ConsType constype)
+                 let val (tys,tyname,rvis) = NoSome "compileType(3)"
+                                                    (Type.un_ConsType constype)
                      val tys' = map compileType tys
-                 in CONStype(tys', compileTyName tyname)
+                     val rvis = attach_loc_info_pis rvis
+                 in CONStype(tys',compileTyName tyname,rvis)
                  end)
         | SOME (rho,rvi) =>
             let val labtys = Type.RecType.to_list rho
@@ -410,8 +420,8 @@ structure CompileDec: COMPILE_DEC =
      let val con' = compileCon con
          val (tyvars, tauOpt) =
            case Type
-             of ARROWtype([tau],[CONStype(taus,tyname)],_) => (map unTyVarType taus, SOME tau)
-              | CONStype(taus,tyname) => (map unTyVarType taus, NONE)
+             of ARROWtype([tau],[CONStype(taus,tyname,_)],_) => (map unTyVarType taus, SOME tau)
+              | CONStype(taus,tyname,_) => (map unTyVarType taus, NONE)
               | _ => die "compile_cb: wrong type"
          (* tyvars should equal tyvars0 *)
      in
@@ -1146,7 +1156,7 @@ Det finder du nok aldrig ud af.*)
                            val tau = compileType instance
                        in
                            (f, PRIM (DEREFprim {instance=CONStype ([tau],
-                                                                   TyName.tyName_REF)},
+                                                                   TyName.tyName_REF,NONE)},
                                      [e]),
                             tau,
                             env')
@@ -1332,7 +1342,7 @@ in
                    end
                fun precision (t: Type) : int =
                  let val tn = case t
-                                of CONStype(nil, tn) => tn
+                                of CONStype(nil, tn, _) => tn
                                  | _ => die "precision.not CONStype"
                      open TyName
                  in if eq (tn, tyName_INTINF) then ~1
@@ -1527,9 +1537,18 @@ in
                                       (*because it appears in a CONSpat:*)nullary=false})
                       [(0, ATPATpat (DecGrammar.bogus_info, atpat))] (path)
                  | _ => die "declared_by_pat (CONSpat ...)")
-           | TYPEDpat (info, pat, ty) => declared_by_pat (pat, path)
+           | TYPEDpat (info, pat, ty) =>
+             let val res = declared_by_pat (pat, path)
+             in case to_TypeInfo info of
+                    SOME (TypeInfo.VAR_PAT_INFO{Type,...}) => res (* memo; mael 2023-05-26 *)
+                  | _ => res
+             end
            | LAYEREDpat (info, OP_OPT (id, _), ty_opt, pat) =>
-               declarations_to_be_made_for_id id info path :: declared_by_pat (pat, path)
+             let val res = declarations_to_be_made_for_id id info path :: declared_by_pat (pat, path)
+             in case to_TypeInfo info of
+                    SOME (TypeInfo.VAR_PAT_INFO{Type,...}) => res  (* memo; mael 2023-05-26 *)
+                  | _ => res
+             end
            | UNRES_INFIXpat _ => die "declared_by_pat (UNRES_INFIXpat ...)")
 
     and declared_by_atpat (atpat, path) =
@@ -1574,6 +1593,17 @@ in
           foldr (fn ((i, pat), declarations_to_be_made) =>
                       declared_by_pat (pat, Access (i, pcon, path))
                       @ declarations_to_be_made) [] argpats
+
+    fun simple_pat0 is (ATPATpat (_, atpat)) = simple_atpat0 is atpat
+      | simple_pat0 is (TYPEDpat (i, pat, _)) = simple_pat0 (i::is) pat
+      | simple_pat0 is _ = NONE
+    and simple_atpat0 is (LONGIDatpat (info, OP_OPT (longid, _), _)) =
+      (case to_TypeInfo info
+         of SOME (TypeInfo.VAR_PAT_INFO _) => (*it is a variable, not a nullary constructor*)
+           SOME(Ident.decompose0 longid, is)
+          | _ => NONE)
+      | simple_atpat0 is (PARatpat (_, pat)) = simple_pat0 is pat
+      | simple_atpat0 is _ = NONE
   in
     fun mk_success_node (pat : pat, rhs : rhs) : node =
           let val rhs' = (declared_by_pat (pat, Obj), rhs)
@@ -1581,16 +1611,7 @@ in
             mk_node (Success rhs') ("rhs" ^ string_from_rhs' rhs')
           end
 
-    fun simple_pat (ATPATpat (_, atpat)) = simple_atpat atpat
-      | simple_pat (TYPEDpat (_, pat, _)) = simple_pat pat
-      | simple_pat _ = NONE
-    and simple_atpat (LONGIDatpat (info, OP_OPT (longid, _), _)) =
-      (case to_TypeInfo info
-         of SOME (TypeInfo.VAR_PAT_INFO _) => (*it is a variable, not a nullary constructor*)
-           SOME(Ident.decompose0 longid)
-          | _ => NONE)
-      | simple_atpat (PARatpat (_, pat)) = simple_pat pat
-      | simple_atpat _ = NONE
+    fun simple_pat p = simple_pat0 nil p
 
     fun is_wild_pat (ATPATpat (_, WILDCARDatpat _)) = true
       | is_wild_pat (TYPEDpat (_, pat, _)) = is_wild_pat pat
@@ -2222,20 +2243,21 @@ end; (*match compiler local*)
                      @ exn_args)}
             end
       fun overloaded_prim_fn' env info result = (*e.g., CE.LESS, ... *)
-            let val ty = CONStype ([], string_or_int_or_word_or_real info ()
-                                   {string=fn()=>TyName.tyName_STRING,
-                                    int31=fn()=>TyName.tyName_INT31,
-                                    int32=fn()=>TyName.tyName_INT32,
-                                    int63=fn()=>TyName.tyName_INT63,
-                                    int64=fn()=>TyName.tyName_INT64,
-                                    intinf=fn()=>TyName.tyName_INTINF,
-                                    word8=TyName.tyName_WordDefault,
-                                    word31=fn()=>TyName.tyName_WORD31,
-                                    word32=fn()=>TyName.tyName_WORD32,
-                                    word63=fn()=>TyName.tyName_WORD63,
-                                    word64=fn()=>TyName.tyName_WORD64,
-                                    real=fn()=>TyName.tyName_REAL})
-                val lvar1 = Lvars.newLvar ()
+          let val tn = string_or_int_or_word_or_real info ()
+                                                     {string=fn()=>TyName.tyName_STRING,
+                                                      int31=fn()=>TyName.tyName_INT31,
+                                                      int32=fn()=>TyName.tyName_INT32,
+                                                      int63=fn()=>TyName.tyName_INT63,
+                                                      int64=fn()=>TyName.tyName_INT64,
+                                                      intinf=fn()=>TyName.tyName_INTINF,
+                                                      word8=TyName.tyName_WordDefault,
+                                                      word31=fn()=>TyName.tyName_WORD31,
+                                                      word32=fn()=>TyName.tyName_WORD32,
+                                                      word63=fn()=>TyName.tyName_WORD63,
+                                                      word64=fn()=>TyName.tyName_WORD64,
+                                                      real=fn()=>TyName.tyName_REAL}
+              val ty = CONStype ([], tn, NONE)
+              val lvar1 = Lvars.newLvar ()
             in (*takes two arguments*)
               FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
                   body=unoverload env info result
@@ -2266,7 +2288,7 @@ end; (*match compiler local*)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
 
-    fun typeIsIntInf (CONStype(nil,tn)) =
+    fun typeIsIntInf (CONStype(nil,tn,_)) =
         TyName.eq(tn,TyName.tyName_INTINF)
       | typeIsIntInf _ = false
 
@@ -2462,7 +2484,12 @@ end; (*match compiler local*)
                in APP(f',arg',NONE)
                end
 
-           | TYPEDexp(_, exp, _) => compileExp env exp
+           | TYPEDexp(_, exp', _) =>
+             let val e = compileExp env exp'
+                 val t = type_of_exp exp
+             in if Type.contains_regvars t then TYPED(e,compileType t)
+                else e
+             end
 
            | HANDLEexp (info, exp', match) =>
                let val e1' = compileExp env exp'
@@ -2532,7 +2559,7 @@ end; (*match compiler local*)
                 in
                   if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
                     case (instances', arg')
-                      of ([CONStype([], tyname)], PRIM(RECORDprim _, l)) =>
+                      of ([CONStype([], tyname, _)], PRIM(RECORDprim _, l)) =>
                         (if TyName.eq(tyname, TyName.tyName_INT31) then
                            PRIM(equal_int31(), l)
                          else if TyName.eq(tyname, TyName.tyName_INT32) then
@@ -2650,7 +2677,7 @@ end; (*match compiler local*)
 
                         (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
                         val prim' = case (isequal,instance') of
-                                      (true,CONStype([], tyname)) =>
+                                      (true,CONStype([], tyname, _)) =>
                                         if TyName.eq(tyname,TyName.tyName_INT31) then equal_int31()
                                         else if TyName.eq(tyname,TyName.tyName_INT32) then equal_int32()
                                         else if TyName.eq(tyname,TyName.tyName_INT63) then equal_int63()
@@ -3113,12 +3140,21 @@ the 12 lines above are very similar to the code below
         end
       else
       (case simple_pat pat
-         of SOME vid =>
+         of SOME (vid,is) =>
            let val lvar = Lvars.new_named_lvar (Ident.pr_id vid)
                val (tyvars', tau') = compileTypeScheme (tyvars, Type)
                  handle ? => (print ("compile_binding.SOME: lvar = " ^ Lvars.pr_lvar lvar ^ "\n"); raise ?)
                val env' = CE.declareVar (vid, (lvar, tyvars', tau'), CE.emptyCEnv)
                val bind = compileExp env exp
+               val bind = List.foldl (fn (i,b) =>
+                                         case to_TypeInfo i of
+                                             SOME (TypeInfo.VAR_PAT_INFO{Type,...}) =>
+                                             if Type.contains_regvars Type then
+                                               let val t = compileType Type
+                                               in TYPED(b,t)
+                                               end
+                                             else b
+                                           | _ => b) bind is
                val f = fn scope => LET {pat = [(lvar, tyvars', tau')],
                                         bind = bind, scope = scope}
            in (env', f)

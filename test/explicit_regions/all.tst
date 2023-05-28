@@ -59,6 +59,10 @@ ty1.sml                           (* Types can be annotated with explicit region
 err_expty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type *)
 err_expty2.sml        ccl ecte    (* The global region variable of type pair cannot be associated with a function type *)
 err_expty3.sml        ccl ecte    (* Escaping functions cannot live in local regions *)
+err_patty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type (pattern) *)
+err_funty1.sml        ccl ecte    (* The global region variable of type T cannot be associated with a pair type (function return type) *)
+err_funty2.sml        ccl ecte    (* Inconsistent use of a parameter region. A region cannot hold both pairs and triples. *)
+err_funty3.sml        ccl ecte    (* Inconsistent use of a parameter region. A region cannot hold both pairs and strings. *)
 
 expty1.sml                        (* A local function can be forced into a global region *)
 expty2.sml                        (* A locally generated function that is returned can be stored in a passed region *)

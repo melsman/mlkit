@@ -239,7 +239,7 @@ structure EliminateEq : ELIMINATE_EQ =
                                      * else die "gen_type_eq. ordinary type variable not in env.")
                                      ---------------- *)
            | (ARROWtype _) => die "gen_type_eq.arrow type."
-           | (CONStype (taus,tn)) =>
+           | (CONStype (taus,tn,_)) =>
               let fun apply e [] = e
                     | apply e (tau::taus) = apply (APP(e, gen tau, NONE)) taus
                 fun dont_support() =
@@ -311,7 +311,7 @@ structure EliminateEq : ELIMINATE_EQ =
         fun mk_tau tau = let val tau_arg = RECORDtype ([tau, tau],NONE)
                          in ARROWtype([tau_arg],[boolType],NONE)
                          end
-        val tau_tn = CONStype (map TYVARtype tyvars, tn)
+        val tau_tn = CONStype (map TYVARtype tyvars, tn, NONE)
         fun gen_tau [] = mk_tau tau_tn
           | gen_tau (tv :: tvs) = ARROWtype([mk_tau (TYVARtype tv)], [gen_tau tvs], NONE)
 
@@ -468,15 +468,15 @@ structure EliminateEq : ELIMINATE_EQ =
         let val tn_list = TyName.tyName_LIST
             val tv = fresh_tyvar()
             val tau_tv = TYVARtype tv
-            val cbs = [(Con.con_CONS, SOME (RECORDtype ([tau_tv, CONStype([tau_tv], tn_list)],NONE))),
+            val cbs = [(Con.con_CONS, SOME (RECORDtype ([tau_tv, CONStype([tau_tv],tn_list,NONE)],NONE))),
                        (Con.con_NIL, NONE)]
             val dbss = [[([tv], tn_list,cbs)]]
         in gen_datatype_eq empty dbss
         end
     and gen_datatype_for_intinf e =
-        let val int31 = CONStype([],TyName.tyName_INT31)
-            val int31list = CONStype([int31],TyName.tyName_LIST)
-            val bool = CONStype([],TyName.tyName_BOOL)
+        let val int31 = CONStype([],TyName.tyName_INT31,NONE)
+            val int31list = CONStype([int31],TyName.tyName_LIST,NONE)
+            val bool = CONStype([],TyName.tyName_BOOL,NONE)
             val cbs = [(Con.con_INTINF, SOME (RECORDtype ([int31list,bool],NONE)))]
             val dbss = [[([],TyName.tyName_INTINF,cbs)]]
         in gen_datatype_eq e dbss
@@ -486,7 +486,7 @@ structure EliminateEq : ELIMINATE_EQ =
         let
           val tv = fresh_tyvar()
           val tau_tv = TYVARtype tv
-          val cbs = [(Con.con_QUOTE, SOME (CONStype([], TyName.tyName_STRING))),
+          val cbs = [(Con.con_QUOTE, SOME (CONStype([], TyName.tyName_STRING, NONE))),
                      (Con.con_ANTIQUOTE, SOME tau_tv)]
           val dbss = [[([tv], TyName.tyName_FRAG, cbs)]]
         in gen_datatype_eq empty dbss
@@ -530,7 +530,7 @@ structure EliminateEq : ELIMINATE_EQ =
    val s = TyName.pr_TyName tyname
    val alpha = fresh_tyvar {}
    val tau_alpha = TYVARtype alpha
-   val tau_tyname = CONStype ([tau_alpha], tyname)
+   val tau_tyname = CONStype ([tau_alpha], tyname, NONE)
    val lvar_eq_table = Lvars.new_named_lvar ("eq_" ^ s)
    val lvar_eq_alpha = Lvars.new_named_lvar "eq_'a"
    val lvar_table_pair = Lvars.new_named_lvar (s ^ "_pair")
@@ -557,7 +557,7 @@ structure EliminateEq : ELIMINATE_EQ =
                      PRIM (CCALLprim {name = "table_size",
                                       (*alpha' is instantiated to alpha (from above):*)
                                       tyvars = [alpha'], instances = [TYVARtype alpha],
-                                      Type = ARROWtype ([CONStype ([TYVARtype alpha'], tyname)],
+                                      Type = ARROWtype ([CONStype ([TYVARtype alpha'], tyname, NONE)],
                                                         [intDefaultType()],
                                                         NONE)},
                            [var_tableX]),
@@ -570,7 +570,7 @@ structure EliminateEq : ELIMINATE_EQ =
          in PRIM (CCALLprim {name = "word_sub0",
                              (*alpha' is instantiated to alpha (from above):*)
                              tyvars = [alpha'], instances = [TYVARtype alpha],
-                             Type = ARROWtype ([CONStype ([tau_alpha'], tyname), intDefaultType()],
+                             Type = ARROWtype ([CONStype ([tau_alpha'], tyname, NONE), intDefaultType()],
                                                [tau_alpha'],
                                                NONE)},
                   [var_tableX, var_j])
@@ -693,6 +693,7 @@ structure EliminateEq : ELIMINATE_EQ =
                 | SWITCH_S sw => SWITCH_S(f_sw sw)
                 | SWITCH_C sw => SWITCH_C(f_sw sw)
                 | SWITCH_E sw => SWITCH_E(f_sw sw)
+                | TYPED(e,tau) => TYPED(f e, tau)
                 | PRIM(p, es) => PRIM(p, map f es)
                 | FRAME {declared_lvars,declared_excons} =>  (* frame is in global scope *)
                  let val new_declared_lvars =
@@ -835,6 +836,7 @@ structure EliminateEq : ELIMINATE_EQ =
          | SWITCH_S sw => SWITCH_S (t_switch t env sw)
          | SWITCH_C sw => SWITCH_C (t_switch t env sw)
          | SWITCH_E sw => SWITCH_E (t_switch t env sw)
+         | TYPED(lexp,tau) => TYPED(t env lexp,tau)
          | PRIM(prim, lexps) => PRIM(prim, map (t env) lexps)
          | _ => lexp
 

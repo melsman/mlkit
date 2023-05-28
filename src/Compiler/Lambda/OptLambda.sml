@@ -437,6 +437,7 @@ structure OptLambda: OPT_LAMBDA =
             eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Con.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
           | eq_lamb0 m (SWITCH_E sw, SWITCH_E sw') =
             eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Excon.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
+          | eq_lamb0 m (TYPED(e,t),TYPED(e',t')) = eq_lamb0 m (e,e') andalso eq_Type(t,t')
           | eq_lamb0 m (FN{pat,body},FN{pat=pat',body=body'}) =
             (case eq_pat m (pat,pat') of
                  SOME m => eq_lamb0 m (body,body')
@@ -1135,6 +1136,7 @@ structure OptLambda: OPT_LAMBDA =
                     | SWITCH_W {switch=SWITCH(e,_,_),...} => exn e
                     | SWITCH_S (SWITCH(e,_,_)) => exn e
                     | SWITCH_E (SWITCH(e,_,_)) => exn e
+                    | TYPED(e,_) => exn e
                     | FRAME _ => NONE
                     | VAR _ => NONE
                     | INTEGER _ => NONE
@@ -1601,10 +1603,10 @@ structure OptLambda: OPT_LAMBDA =
                  val (lvar,tyvars,tau,bind,scope,fail) =
                      case (tyvars,tau) of
                          ([],RECORDtype (_ :: _ :: _,_)) => hoist()
-                       | ([],CONStype([],tn)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
-                                                    TyName.eq(tn,TyName.tyName_CHARARRAY)
-                                                 then hoist()
-                                                 else default()
+                       | ([],CONStype([],tn,_)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
+                                                      TyName.eq(tn,TyName.tyName_CHARARRAY)
+                                                   then hoist()
+                                                   else default()
                        | _ => default()
                  (* maybe unbox real binding *)
                  val (tau,bind,scope,fail) =
@@ -2052,6 +2054,7 @@ structure OptLambda: OPT_LAMBDA =
                      | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
                in mklive sel; res
                end
+              | TYPED(lamb,t) => (TYPED(fst(contr (env, lamb)),t),CUNKNOWN)
               | FRAME{declared_excons,declared_lvars} =>
                let val lvars = map #lvar declared_lvars
                    val excons = map #1 declared_excons

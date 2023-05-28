@@ -94,34 +94,34 @@ structure CompilerEnv: COMPILER_ENV =
     val boolType = LambdaExp.boolType
     val exnType = LambdaExp.exnType
     val tyvar_nil = LambdaExp.fresh_eqtyvar()
-    val nilType = LambdaExp.CONStype([LambdaExp.TYVARtype tyvar_nil], TyName.tyName_LIST)
+    val nilType = LambdaExp.CONStype([LambdaExp.TYVARtype tyvar_nil], TyName.tyName_LIST, NONE)
     val tyvar_cons = LambdaExp.fresh_eqtyvar()
     val consType =
       let open LambdaExp
-	  val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST)
+	  val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST, NONE)
       in ARROWtype([RECORDtype ([TYVARtype tyvar_cons, t],NONE)],[t],NONE)
       end
 
     val tyvar_quote = LambdaExp.fresh_eqtyvar()
     val quoteType =
       let open LambdaExp
-	  val t = CONStype([TYVARtype tyvar_quote], TyName.tyName_FRAG)
-      in ARROWtype([CONStype([],TyName.tyName_STRING)],[t],NONE)
+	  val t = CONStype([TYVARtype tyvar_quote], TyName.tyName_FRAG, NONE)
+      in ARROWtype([CONStype([],TyName.tyName_STRING,NONE)],[t],NONE)
       end
 
     val tyvar_antiquote = LambdaExp.fresh_eqtyvar()
     val antiquoteType =
       let open LambdaExp
-	  val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG)
+	  val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG, NONE)
       in ARROWtype([TYVARtype tyvar_antiquote],[t],NONE)
       end
 
     val intinfType =
       let open LambdaExp
-	  val t = CONStype([], TyName.tyName_INTINF)
-	  val int31 = CONStype([],TyName.tyName_INT31)
-	  val int31list = CONStype([int31],TyName.tyName_LIST)
-	  val bool = CONStype([],TyName.tyName_BOOL)
+	  val t = CONStype([], TyName.tyName_INTINF, NONE)
+	  val int31 = CONStype([],TyName.tyName_INT31, NONE)
+	  val int31list = CONStype([int31],TyName.tyName_LIST,NONE)
+	  val bool = CONStype([],TyName.tyName_BOOL,NONE)
 	  val record = RECORDtype ([int31list,bool],NONE)
       in ARROWtype([record],[t],NONE)
       end
@@ -323,7 +323,7 @@ structure CompilerEnv: COMPILER_ENV =
     fun excons_result (EXCON (c,_), cs) = c :: cs
       | excons_result (_, cs) = cs
 
-    fun tynames_tau (LambdaExp.CONStype(taus,t), tns) = tynames_taus(taus,t::tns)
+    fun tynames_tau (LambdaExp.CONStype(taus,t,_), tns) = tynames_taus(taus,t::tns)
       | tynames_tau (LambdaExp.ARROWtype(taus1,taus2,_),tns) = tynames_taus(taus1,tynames_taus(taus2,tns))
       | tynames_tau (LambdaExp.RECORDtype(taus,_), tns) = tynames_taus(taus,tns)
       | tynames_tau (LambdaExp.TYVARtype _, tns) = tns

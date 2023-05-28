@@ -231,7 +231,7 @@ structure ElabDec: ELABDEC =
              )
 
     fun UnifyWithTexts a = UnifyWithTexts0 {unify_regvars=false} a
-    fun UnifyWithTexts' a = UnifyWithTexts0 {unify_regvars=true} a
+(*    fun UnifyWithTexts' a = UnifyWithTexts0 {unify_regvars=true} a *)
 
 
    (* Traversal of patterns to build a VE. We only do this for `rec'
@@ -480,7 +480,7 @@ structure ElabDec: ELABDEC =
           (* let expression *)                                  (*rule 4*)
         | IG.LETatexp(i, dec, exp) =>
             let
-              val (S1, T, E, out_dec)   = elab_dec(C,dec)
+              val (S1, T, E, out_dec) = elab_dec(C,dec)
               val (S2, tau, out_exp) = elab_exp((S1 onC C) C_plus_E E, exp)
               val out_i = case TyName.Set.list
                              (TyName.Set.intersect
@@ -571,8 +571,8 @@ structure ElabDec: ELABDEC =
              in case elab_ty(S1 onC C, ty)
                   of (SOME tau', out_ty) =>
                      let val (S2, i') =
-                             UnifyWithTexts' ("type of expression",tau,"disagrees with your type constraint", tau', i)
-                        val tau'' = S2 on tau'
+                             UnifyWithTexts ("type of expression",tau,"disagrees with your type constraint", tau', i)
+                         val tau'' = S2 on tau'
                     in (S2 oo S1, tau'', OG.TYPEDexp(addTypeInfo_EXP(i',tau''), out_exp, out_ty))
                     end
                    | (NONE, out_ty) => (S1, tau, OG.TYPEDexp(okConv i, out_exp, out_ty))
@@ -923,7 +923,7 @@ structure ElabDec: ELABDEC =
 (*            val () = print ("PLAINvalbind: " ^ Int.toString (length R) ^ "\n") *)
             val (S1, tau1, out_exp) = elab_exp(C.plus_E(S0 onC C,E.from_R R), exp)
 
-            val (S2, i') = UnifyWithTexts'("type of left-hand side pattern",(S1 oo S0) on tau,
+            val (S2, i') = UnifyWithTexts ("type of left-hand side pattern", (S1 oo S0) on tau,
                                            "type of right-hand side expression", tau1, i)
 
             (* Here we modify the type schemes in VE to also abstract over the regvars R *)
@@ -1253,7 +1253,7 @@ structure ElabDec: ELABDEC =
               map Type.from_TyVar TyVars
 
             val tau =
-              Type.from_ConsType (Type.mk_ConsType (tau_list, tyname))
+              Type.from_ConsType (Type.mk_ConsType (tau_list, tyname, NONE))
 
             val (constructor_map : constructor_map,
                  out_conbind) = elab_conbind (C', tau, conbind)
@@ -1715,7 +1715,9 @@ structure ElabDec: ELABDEC =
                    let val (S', i') = UnifyWithTexts("pattern has type", tau, "which conflicts \
                                                      \with your type constraint", tau', i)
                        val S'' = S' oo S
-                   in (S'', (S'' onVE VE, S'' on tau, R), OG.TYPEDpat(i', out_pat, out_ty))
+                       val tau'' = S' on tau'
+                   in (S'', (S'' onVE VE, S'' on tau, R),
+                       OG.TYPEDpat(addTypeInfo_VAR_PAT(i',tau''), out_pat, out_ty))
                    end
                   | (NONE, out_ty) => (S, (VE, tau, R), OG.TYPEDpat(okConv i, out_pat, out_ty))
             end
@@ -1858,22 +1860,27 @@ structure ElabDec: ELABDEC =
                 | ((_, out_ty), (_, out_ty')) => (NONE, OG.FNty(okConv i, out_ty, out_ty')))
 
           (* Parenthesised type *)                              (*rule 48*)
-        | IG.PARty(i, ty, rvopt) => (* MEMO mael 2023-05-02 *)
+        | IG.PARty(i, ty, rvsopt) =>
             let val (tau_opt, out_ty) = elab_ty(C, ty)
-                val rvopt' =
-                    case rvopt of
-                        NONE => NONE
-                      | SOME (i,rv) =>
-                        let val rvopt' = SOME(okConv i,rv)
+                val (tau_opt', rvsopt') =
+                    case rvsopt of
+                        NONE => (tau_opt, NONE)
+                      | SOME (i,rvs) =>
+                        let val rvs' = map (fn (i,rv) => (okConv i,rv)) rvs
+                            val rvsopt' = SOME (okConv i, rvs')
                         in case tau_opt of
-                               NONE => rvopt'
+                               NONE => (tau_opt, rvsopt')
                              | SOME tau =>
-                               (case Type.push_regvar (SOME(i,rv)) tau of
-                                    NONE => rvopt'
-                                  | SOME msg => SOME(errorConv (i, ErrorInfo.REGVAR_TY_ANNOTATE msg),rv))
+                               case rvs' of
+                                   nil => (tau_opt, rvsopt')
+                                 | _ =>
+                                   let val tau' = Type.add_regvars (i,rvs) tau
+                                   in (SOME tau', rvsopt')
+                                   end handle Fail msg =>
+                                              (SOME tau, SOME(errorConv (i, ErrorInfo.REGVAR_TY_ANNOTATE msg),rvs'))
                         end
             in
-              (tau_opt, OG.PARty(okConv i, out_ty, rvopt'))
+              (tau_opt', OG.PARty(okConv i, out_ty, rvsopt'))
             end
 
     (****** type rows ******)
