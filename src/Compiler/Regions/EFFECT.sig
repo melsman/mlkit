@@ -147,18 +147,19 @@ sig
                                                          preserve runtime types, pix = ~1 *)
   val freshRhoRegVar  : cone * RegVar.regvar -> effect * cone
   val freshRhoWithTy  : runType * cone -> effect * cone
-  val freshRhoWithTy' : RegVar.regvar option * runType * cone -> effect * cone
 
   val setRunType   : place -> runType -> unit
   val get_place_ty : place -> runType option
 
-  val setRegVar  : place -> RegVar.regvar -> unit
   val getRegVar  : place -> RegVar.regvar option
 
   val freshEps   : cone -> effect * cone
   val freshEpss  : effect list * cone -> effect list * cone
   val renameEpss : effect list * cone -> effect list * cone
   val cloneEpss  : effect list * cone -> effect list * cone
+
+  val freshEpsRegVar : cone * RegVar.regvar -> effect * cone
+  val freshRhoEpsRegVar : cone * RegVar.regvar -> effect * cone
 
   val mkPut: effect -> effect (* argument must
                                  represent a region variable *)
@@ -174,6 +175,7 @@ sig
   val unifyRho_no_lowering: effect * effect -> unit  (* hack; mael 2002-11-19 *)
 
   val unifyRho_explicit : (RegVar.regvar * effect) * effect -> cone -> cone
+  val unifyEps_explicit : (RegVar.regvar * effect) * effect -> cone -> cone
 
   val insertEps: effect -> cone -> cone
   val insertRho: effect -> cone -> cone

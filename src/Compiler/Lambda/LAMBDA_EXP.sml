@@ -23,6 +23,19 @@ signature LAMBDA_EXP =
     type TyName
     type regvar
 
+    datatype ateff =   (* ReML atomic effect *)
+        VARateff of regvar
+      | PUTateff of regvar
+      | GETateff of regvar
+
+    datatype eff =     (* ReML effect *)
+        SETeff of ateff list
+      | VAReff of regvar
+
+    datatype constr =  (* ReML constraints *)
+        DISJOINTconstr of eff * eff
+      | INCLconstr of regvar * eff
+
     eqtype tyvar
     val fresh_tyvar : unit -> tyvar
     val fresh_eqtyvar : unit -> tyvar
@@ -33,7 +46,7 @@ signature LAMBDA_EXP =
 
     datatype Type =
         TYVARtype   of tyvar
-      | ARROWtype   of Type list * Type list * regvar option
+      | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option
 
@@ -126,7 +139,7 @@ signature LAMBDA_EXP =
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
-      | TYPED    of LambdaExp * Type
+      | TYPED    of LambdaExp * Type * constr list
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}

@@ -125,7 +125,8 @@ struct
                            level:  level,
                            represents: einfo G.node list option,
                            instance : einfo G.node option ref,
-                           pix: int ref}
+                           pix: int ref,
+                           explicit : regvar option}
                  | UNION of {represents: einfo G.node list option}
                  | PUT | GET
                  | RHO of {put: einfo G.node option,
@@ -135,22 +136,24 @@ struct
                            instance : einfo G.node option ref,
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType,
-                           rv_opt : regvar option,
-                           pinned: bool,
+                           explicit : regvar option,
                            protected : int ref}
 
   fun layout_einfo einfo =
       case einfo of
-          EPS{key,level,...} =>
-          PP.LEAF("e" ^ show_key key
-                  ^ (if print_rho_levels() then
-                       "(" ^ show_level level ^ ")"
-                     else ""))
+          EPS{key,level,explicit,...} =>
+          let val n = case explicit of
+                          NONE => "e" ^ show_key key
+                        | SOME ev => "`" ^ RegVar.pr ev ^ "_" ^ show_key key
+          in PP.LEAF(n ^ (if print_rho_levels() then
+                            "(" ^ show_level level ^ ")"
+                          else ""))
+          end
         | PUT => PP.LEAF "put"
         | GET => PP.LEAF "get"
         | UNION _ => PP.LEAF "U"
-        | RHO{key,level,ty,put,rv_opt,protected,...} =>
-          let val n = case rv_opt of
+        | RHO{key,level,ty,put,explicit,protected,...} =>
+          let val n = case explicit of
                           NONE => "r" ^ show_key key
                         | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
           in PP.LEAF (n ^
@@ -201,10 +204,21 @@ struct
           (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect :: acc)
         | _ => acc
 
-  fun pinned_explicit_rho effect : regvar option =
+  fun explicit_rho effect : regvar option =
       case G.find_info effect of
-          RHO{pinned=true,rv_opt=SOME rv,...} => SOME rv
+          RHO{explicit=SOME rv,...} => SOME rv
         | _ => NONE
+
+  fun explicit_eps effect : regvar option =
+      case G.find_info effect of
+          EPS{explicit=SOME ev,...} => SOME ev
+        | _ => NONE
+
+  fun explicit_var e =
+      case G.find_info e of
+          RHO{explicit=SOME v,...} => SOME v
+       |  EPS{explicit=SOME v,...} => SOME v
+       | _ => NONE
 
   fun is_put effect =
       case G.find_info effect of
@@ -300,24 +314,22 @@ struct
 
   fun edge (from,to) = G.mk_edge(from,to);
 
-  local
-    fun mkRho0 pinned (level, key, rv_opt) =
-        G.mk_node(RHO{key = ref key, level = ref level,
-                      put = NONE, get = NONE, instance = ref NONE,
-                      pix = ref ~1, ty = BOT_RT, rv_opt=rv_opt,
-                      pinned=pinned,protected=ref 0})
-  in fun mkRho x = mkRho0 false x
-     fun mkRho_pinned x = mkRho0 true x
-  end
+  (* explicit region variables are created with a "pinned" level,
+     meaning that their level is not allowed to be lowered. *)
+  fun mkRho explicit (l,k) =
+      G.mk_node(RHO{key = ref k, level = ref l,
+                    put = NONE, get = NONE, instance = ref NONE,
+                    pix = ref ~1, ty = BOT_RT, explicit=explicit,
+                    protected=ref 0})
 
   fun mkPut (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{put=SOME n',...} => n'  (* hash consing *)
-        | RHO{put=NONE,key,level,get,instance,pix,ty,rv_opt,pinned,protected} =>
+        | RHO{put=NONE,key,level,get,instance,pix,ty,explicit,protected} =>
           let val new = G.mk_node PUT (* create new node *)
           in G.set_info n (RHO{put=SOME new,
                                get=get,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
+                               pix=pix,ty=ty,explicit=explicit,protected=protected});
              G.mk_edge(new,n);
              new
           end
@@ -326,11 +338,11 @@ struct
   fun mkGet (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{get=SOME n',...} => n'  (* hash consing *)
-        | RHO{get=NONE,key,level,put,instance,pix,ty,rv_opt,pinned,protected} =>
+        | RHO{get=NONE,key,level,put,instance,pix,ty,explicit,protected} =>
           let val new = G.mk_node GET  (* create new node *)
           in G.set_info n (RHO{get=SOME new,
                                put=put,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
+                               pix=pix,ty=ty,explicit=explicit,protected=protected});
              G.mk_edge(new,n);
              new
           end
@@ -342,9 +354,13 @@ struct
          new
       end
 
-  fun mkEps (level,key) = G.mk_node(EPS{key = ref key, level = ref level,
-                                        represents = NONE, pix = ref ~1,
-                                        instance = ref NONE})
+  (* Explicit effect variables are created with a "pinned" level,
+     meaning that their level is not allowed to be lowered. *)
+  fun mkEps explicit (l,k) =
+      G.mk_node(EPS{key = ref k, level = ref l,
+                    represents = NONE, pix = ref ~1,
+                    instance = ref NONE,
+                    explicit=explicit})
 
   fun remove_duplicates effects =
       let fun loop([], acc) = acc
@@ -639,17 +655,16 @@ struct
      at the topmost layer of   cone   and insert it in
      this topmost layer *)
 
-  fun freshRho (cone:cone as (n, c)): effect * cone =
-      let val key = freshRhoInt()
-          val node = mkRho(n,key,NONE)
-      in (node, add(node, n, key, cone))
-      end
-
-  fun freshRhoRegVar (cone:cone as (n, c), rv): effect * cone =
-      let val key = freshRhoInt()
-          val node = mkRho_pinned(n,key,SOME rv)
-      in (node, add(node, n, key, cone))
-      end
+  local
+    fun freshRho0 rvopt (cone:cone as (n, c)) : effect * cone =
+        let val key = freshRhoInt()
+            val node = mkRho rvopt (n,key)
+        in (node, add(node, n, key, cone))
+        end
+  in
+    fun freshRho B = freshRho0 NONE B
+    fun freshRhoRegVar (B,rv) = freshRho0 (SOME rv) B
+  end
 
   fun insertRho rho (cone as (n,c)) = add(rho,n, key_of_rho rho, cone)
   fun insertEps eps (cone as (n,c)) = add(eps,n, get_key_of_eps eps, cone)
@@ -668,8 +683,8 @@ struct
                          val new_rho =
                              G.mk_node(RHO{key = ref k, level = ref(g level),
                                            put = NONE, get = NONE, instance = ref NONE,
-                                           pix = ref(f pix), ty = ty, rv_opt=NONE,
-                                           pinned=false,protected=ref prot})
+                                           pix = ref(f pix), ty = ty, explicit=NONE,
+                                           protected=ref prot})
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
                      end
@@ -687,13 +702,14 @@ struct
   fun rename_epss_aux (epss, c: cone as (n,_), f, g) : effect list * cone =
       foldr (fn (eps,(epss',c)) =>
                   case G.find_info eps of
-                    EPS{level,pix,(*represents = NONE,*)...} =>
+                    EPS{level,pix,explicit,(*represents = NONE,*)...} =>
                      let val k = freshEpsInt()
-                         val new_eps=
-                      G.mk_node(EPS{key = ref(k), level = ref(g level),
-                                    instance = ref NONE,
-                                    represents = NONE,
-                                    pix = ref(f(pix))})
+                         val new_eps =
+                             G.mk_node(EPS{key = ref k, level = ref(g level),
+                                           instance = ref NONE,
+                                           represents = NONE,
+                                           pix = ref(f(pix)),
+                                           explicit=explicit})
                      in
                         (new_eps::epss', add(new_eps, n, k, c))
                      end
@@ -707,15 +723,13 @@ struct
   fun cloneEpss (epss, c: cone as (n,_)) : effect list * cone =
       rename_epss_aux(epss,c,fn(ref int) => ~1, fn _ => n)
 
-  fun freshRhoWithTy' (rv_opt:regvar option, rt: runType, cone:cone as (n, c)): effect * cone =
+  fun freshRhoWithTy (rt: runType, cone:cone as (n, c)): effect * cone =
       let val key = freshRhoInt()
           val node =G.mk_node(RHO{key = ref key, level = ref n,
                                   put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
-                                  rv_opt=rv_opt,pinned=false,protected=ref 0})
+                                  explicit=NONE,protected=ref 0})
         in (node, add(node, n, key, cone))
       end
-
-  fun freshRhoWithTy (rt,c) = freshRhoWithTy'(NONE,rt,c)
 
   fun freshRhosPreserveRT (rhos,c: cone): effect list * cone  =
       foldr (fn (rho,(rhos',c)) =>
@@ -728,34 +742,31 @@ struct
 
   fun setRunType (place:place) (rt: runType) : unit =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} =>
+          RHO{put,get,key,level,instance,pix,ty,explicit,protected} =>
           G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=rt,rv_opt=rv_opt,pinned=pinned,protected=protected})
+                                pix=pix,ty=rt,explicit=explicit,protected=protected})
         | _ => die "setRunType: node is not a region variable"
-
-  fun setRegVar (place:place) (rv: RegVar.regvar) : unit =
-      case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt=NONE,pinned,protected} =>
-          G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=ty,rv_opt=SOME rv,pinned=pinned,protected=protected})
-        | RHO{rv_opt=SOME rv',...} => if RegVar.eq(rv,rv') then ()
-                                      else die "setRegVar: explicit regvar already set"
-        | _ => die "setRegVar: node is not a region variable"
 
   fun getRegVar (place:place) : RegVar.regvar option =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} => rv_opt
-        | _ => die "getRegVar: node is not a region variable"
+          RHO{explicit,...} => explicit
+        | EPS{explicit,...} => explicit
+        | _ => die "getRegVar: node is not a region variable or an effect variable"
 
   (* freshEps(cone): Generate a fresh effect variable
      at the topmost layer of   cone   and insert it in
      this topmost layer *)
 
-  fun freshEps (cone:cone as (n, c)): effect * cone =
-      let val key = freshEpsInt()
-          val node = mkEps(n,key)
-      in (node, add(node, n, key, cone))
-      end
+  local
+    fun freshEps0 rvopt (cone:cone as (n,c)): effect * cone =
+        let val key = freshEpsInt()
+            val node = mkEps rvopt (n,key)
+        in (node, add(node, n, key, cone))
+        end
+  in
+    fun freshEpsRegVar (B,rv) = freshEps0 (SOME rv) B
+    fun freshEps B = freshEps0 NONE B
+  end
 
   fun freshEpss (epss, c: cone): effect list * cone =
       foldr (fn (eps,(epss',c)) =>
@@ -763,6 +774,9 @@ struct
                 in (eps'::epss',c)
                 end) ([],c) epss
 
+  fun freshRhoEpsRegVar (B,rv) =
+      if RegVar.is_effvar rv then freshEpsRegVar(B,rv)
+      else freshRhoRegVar(B,rv)
 
   (* Toplevel regions and arrow effect *)
 
@@ -780,7 +794,7 @@ struct
     val (toplevel_region_withtype_array, initCone) = freshRhoWithTy(ARRAY_RT,initCone)     (*5*)
     val (toplevel_region_withtype_ref, initCone) = freshRhoWithTy(REF_RT,initCone)         (*6*)
     val (toplevel_region_withtype_triple, initCone) = freshRhoWithTy(TRIPLE_RT,initCone)   (*7*)
-    val (toplevel_arreff, initCone) = freshEps(initCone)                                   (*8*)
+    val (toplevel_arreff, initCone) = freshEps initCone                                    (*8*)
     val _ = set_init_count()
 
     val toplevel_effects = [toplevel_region_withtype_top, toplevel_region_withtype_bot,
@@ -877,11 +891,12 @@ struct
             | toInt (RHO _) = 4
           fun fun_EPS pu_einfo =
               Pickle.newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
-              (Pickle.con1 (fn ((k,l,r),p) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p})
-               (fn EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p} => ((k,l,r),p)
+              (Pickle.con1 (fn ((k,l,r),p,y) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p,explicit=y})
+               (fn EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p,explicit=y} => ((k,l,r),p,y)
                  | _ => die "pu_einfo.fun_EPS")
-               (Pickle.pairGen0(Pickle.tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
-                                pu_intref)))
+               (Pickle.tup3Gen0(Pickle.tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
+                                pu_intref,
+                                Pickle.optionGen RegVar.pu)))
           fun fun_UNION pu_einfo =
               Pickle.con1 (fn r => UNION{represents=r})
               (fn UNION {represents=r} => r
@@ -892,11 +907,10 @@ struct
           fun fun_RHO pu_einfo =
               Pickle.newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
               (Pickle.con1 (fn ((k,p,g,l),px,t,(y,protected)) => RHO {key=k,put=p,get=g,level=l,
-                                                                      instance=ref NONE,pix=px,ty=t,rv_opt=y,
-                                                                      pinned=false,protected=protected})
-               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,rv_opt=y,pinned=_,protected} =>
-                ((* print ("Pickling rho(" ^ Int.toString (!k) ^ ") with level \t" ^ Int.toString (!l) ^ "\n"); *)
-                 ((k,p,g,l),px,t,(y,protected)))
+                                                                      instance=ref NONE,pix=px,ty=t,explicit=y,
+                                                                      protected=protected})
+               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,explicit=y,protected} =>
+                (((k,p,g,l),px,t,(y,protected)))
                  | _ => die "pu_einfo.fun_RHO")
                (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
                                                 Pickle.nameGen "get" (pu_nodeopt pu_einfo),
@@ -1020,16 +1034,19 @@ struct
                   SOME (l as ref n, key) =>
                   if newlevel >= n then cone
                   else   (* newlevel < level: lower level *)
-                    let val _ = case pinned_explicit_rho effect of
+                    let val _ = case explicit_var effect of
                                     NONE => ()
-                                  | SOME rv =>
+                                  | SOME v =>
                                     let open Report infix //
-                                        val report0 = case RegVar.get_location_report rv of
+                                        val report0 = case RegVar.get_location_report v of
                                                           SOME rep => rep
                                                         | NONE => Report.null
+                                        val kind = if is_rho effect then "region"
+                                                   else if is_arrow_effect effect then "effect"
+                                                   else die "lower - expecting region or effect variable"
                                         val report = Report.line
-                                                         ("Explicit region variable `" ^
-                                                          RegVar.pr rv ^ " has insufficient scope.")
+                                                         ("Explicit " ^ kind ^ " variable `" ^
+                                                          RegVar.pr v ^ " has insufficient scope.")
                                     in raise Report.DeepError (report0 // report)
                                     end
                         val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
@@ -1089,31 +1106,6 @@ struct
             SOME m => m
           | NONE => die "removeIncr"))
 
-  fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
-                                                      * have the same level *)
-      case (einfo1, einfo2) of
-          (EPS{key = key1 as ref k1, represents, instance, pix, ...},
-           EPS{key = key2 as ref k2, ...}) =>
-          if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
-          else (* merge increment information for einfo1 and einfo2 *)
-            if k1 < k2 then
-              (if !algorithm_R then
-                 case Increments.lookup(!globalIncs)eps2
-                  of SOME delta2 => (update_increment(eps1,delta2);
-                                     update_areff eps1 handle _ => die "einfo_combine_eps1";
-                                     removeIncr eps2)
-                   | NONE => ()
-               else (); einfo1)
-            else (* k2 < k1 *)
-              (if !algorithm_R then
-                 case Increments.lookup(!globalIncs)eps1
-                  of SOME delta1 => (update_increment(eps2,delta1);
-                                     update_areff eps2 handle _ => die "einfo_combine_eps2";
-                                     removeIncr eps1)
-                   | NONE => ()
-               else (); einfo2)
-        | _ => die "einfo_combine_eps"
-
   fun deepError rv msg =
       let open Report infix //
           val report0 = case RegVar.get_location_report rv of
@@ -1122,6 +1114,41 @@ struct
           val report = line msg
       in raise DeepError (report0 // report)
       end
+
+  fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
+                                                      * have the same level *)
+      case (einfo1, einfo2) of
+          (EPS{key = key1 as ref k1, represents, instance, pix, explicit=explicit1, ...},
+           EPS{key = key2 as ref k2, explicit=explicit2, ...}) =>
+          if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
+          else (* merge increment information for einfo1 and einfo2 *)
+            let val choose1 = case (explicit1,explicit2) of
+                                  (SOME ev1, SOME ev2) =>
+                                  if RegVar.eq(ev1,ev2)
+                                  then k1 < k2
+                                  else deepError ev1 ("Cannot unify the explicit effect variables `"
+                                                      ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+                                | (SOME _, NONE) => true
+                                | (NONE, SOME _) => false
+                                | (NONE, NONE) => k1 < k2
+            in if choose1 then
+                 (if !algorithm_R then
+                    case Increments.lookup (!globalIncs) eps2 of
+                        SOME delta2 => (update_increment(eps1,delta2);
+                                        update_areff eps1 handle _ => die "einfo_combine_eps1";
+                                        removeIncr eps2)
+                      | NONE => ()
+                  else (); einfo1)
+               else
+                 (if !algorithm_R then
+                    case Increments.lookup (!globalIncs) eps1 of
+                        SOME delta1 => (update_increment(eps2,delta1);
+                                        update_areff eps2 handle _ => die "einfo_combine_eps2";
+                                        removeIncr eps1)
+                      | NONE => ()
+                  else (); einfo2)
+            end
+        | _ => die "einfo_combine_eps"
 
   local
       val largest_toplevel_effect_key = 9
@@ -1147,9 +1174,9 @@ struct
                                                  * have the same level *)
           case (einfo1, einfo2) of
               (RHO{level=l1,put=p1,get=g1,key=k1,instance=instance1,pix=pix1,ty=t1,
-                   rv_opt=rv_opt1,pinned=pinned1,protected=protected1},
+                   explicit=explicit1,protected=protected1},
                RHO{level=_,put=p2,get=g2,key=k2,instance=instance2,pix=pix2,ty=t2,
-                   rv_opt=rv_opt2,pinned=pinned2,protected=protected2}) =>
+                   explicit=explicit2,protected=protected2}) =>
               if !k1 <> !k2 andalso (!k1 < largest_toplevel_effect_key
                                      andalso !k2 < largest_toplevel_effect_key)
                  orelse !k1 = 2 andalso t2<>BOT_RT
@@ -1166,20 +1193,20 @@ struct
                                                    ^ show_runType t1
                                                    ^ " but is expected to have type "
                                                    ^ show_runType t2)
-                    val (ty, rv_opt) =
-                        case (rv_opt1,rv_opt2) of
+                    val (ty, explicit) =
+                        case (explicit1,explicit2) of
                             (SOME rv1,SOME rv2) =>
-                            if RegVar.eq(rv1,rv2) then (lub_runType(t1,t2), rv_opt1) (*memo:merge info*)
+                            if RegVar.eq(rv1,rv2) then (lub_runType(t1,t2), explicit1) (*memo:merge info*)
                             else deepError rv1 ("Cannot unify the explicit region variables `"
                                                 ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
-                          | (SOME rv1, _) => (lub_check rv1 t1 t2, rv_opt1)
-                          | (_, SOME rv2) => (lub_check rv2 t2 t1, rv_opt2)
+                          | (SOME rv1, _) => (lub_check rv1 t1 t2, explicit1)
+                          | (_, SOME rv2) => (lub_check rv2 t2 t1, explicit2)
                           | (NONE, NONE) => (lub_runType(t1,t2), NONE)
                     val protected = if !protected1 > !protected2 then protected1 else protected2
                 in RHO{level = l1, put = aux_combine(p1,p2),
                        get = aux_combine(g1,g2), key = min_key(k1,k2),
                        instance = instance1, pix = pix1, ty = ty,
-                       rv_opt=rv_opt,pinned=pinned1 orelse pinned2,protected=protected}
+                       explicit=explicit,protected=protected}
                 end
              | _ => die "einfo_combine_rho"
   end
@@ -1241,7 +1268,7 @@ struct
         | _ => die "checkRegVars.check_types: expecting region variables"
 
   fun checkRegVars r1 r2 : unit =
-      case (pinned_explicit_rho r1, pinned_explicit_rho r2) of
+      case (explicit_rho r1, explicit_rho r2) of
           (SOME rv1, SOME rv2) =>
           if RegVar.eq(rv1,rv2) then ()
           else deepError rv1 ("Cannot unify the explicit region variables `"
@@ -1275,6 +1302,21 @@ struct
                   (einfo_combine_eps(e1,e2))
                   is_union) (e1,e2) cone)
 
+  fun checkEpsVars e1 e2 : unit =
+      case (explicit_eps e1, explicit_eps e2) of
+          (SOME ev1, SOME ev2) =>
+          if RegVar.eq(ev1,ev2) then ()
+          else deepError ev1 ("Cannot unify the explicit effect variables `"
+                              ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+        | _ => ()
+
+  fun unifyEps_explicit ((rv,e1),e2) cone : cone =
+      (checkNotRho "unifyEps_explicit1" e1;
+       checkNotRho "unifyEps_explicit2" e2;
+       checkEpsVars e1 e2;
+       unifyNodes(G.union_without_edge_duplication
+                  (einfo_combine_eps(e1,e2))
+                  is_union) (e1,e2) cone)
 
   (*****************************************************)
   (* generic instance of region- and effect variables  *)
@@ -1506,8 +1548,19 @@ struct
     case (einfo1,einfo2) of
         (UNION _ , _) => einfo2
       | (_, UNION _) => einfo1
-      | (EPS {key=ref k1,...}, EPS {key=ref k2,...}) =>
-          if k1 < k2 then einfo1 else einfo2  (* was einfo1 ; ME 2001-03-07 *)
+      | (EPS {key=ref k1,explicit=explicit1,...},
+         EPS {key=ref k2,explicit=explicit2,...}) =>
+        let val choose1 = case (explicit1,explicit2) of
+                                  (SOME ev1, SOME ev2) =>
+                                  if RegVar.eq(ev1,ev2)
+                                  then k1 < k2
+                                  else deepError ev1 ("Cannot unify the explicit effect variables `"
+                                                      ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+                                | (SOME _, NONE) => true
+                                | (NONE, SOME _) => false
+                                | (NONE, NONE) => k1 < k2
+        in if choose1 then einfo1 else einfo2
+        end
       | _ => die "einfo_scc_combine: strongly connected\
                  \ component in effect graph contained \
                   \\nnode which was neither an arrow effect nor a union"
@@ -1665,11 +1718,11 @@ struct
         | _ => raise AE_LT
 
   local (* sorting of atomic effects *)
-    fun merge([], ys) = ys:effect list
-      | merge(xs, []) = xs
-      | merge(l as x::xs, r as y:: ys) =
-             if ae_lt(x, y) then x::merge(xs, r)
-             else y:: merge(l, ys)
+    fun merge ([], ys) = ys:effect list
+      | merge (xs, []) = xs
+      | merge (l as x::xs, r as y:: ys) =
+        if ae_lt(x, y) then x::merge(xs, r)
+        else y:: merge(l, ys)
 
     (* sort: top-down mergesort *)
     fun sort [] = []
@@ -1839,13 +1892,13 @@ struct
             else
               (r:= true;
                case G.find_info n of
-                 EPS{represents, key,level,pix,instance} =>
+                 EPS{represents, key,level,pix,instance,explicit} =>
                    (let
                       val ns = G.out_of_node n
                       val result = MultiMerge.multimerge(map search ns)
                     in
                       G.set_info n (EPS{represents= SOME ((*check_represents*) result),
-                                        key=key,level=level,pix =pix,instance=instance});
+                                        key=key,level=level,pix =pix,instance=instance,explicit=explicit});
                       insert_into_list(n,result)
                     end)
                | UNION{represents} =>
@@ -1927,7 +1980,7 @@ fun etest(label,expected,found) =
 
 fun etest'(label,expected,found) = say found;
 
-
+val mkRho = mkRho NONE
 
 val rho1 = mkRho(5,1)
 val rho2 = mkRho(6,2)

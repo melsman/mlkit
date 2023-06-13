@@ -16,6 +16,19 @@ structure LambdaExp: LAMBDA_EXP =
     type TyName = TyName.TyName
     type regvar = RegVar.regvar
 
+    datatype ateff =   (* ReML atomic effect *)
+        VARateff of regvar
+      | PUTateff of regvar
+      | GETateff of regvar
+
+    datatype eff =     (* ReML effect *)
+        SETeff of ateff list
+      | VAReff of regvar
+
+    datatype constr =  (* ReML constraints *)
+        DISJOINTconstr of eff * eff
+      | INCLconstr of regvar * eff
+
     fun die s = Crash.impossible ("LambdaExp." ^ s)
 
     type tyvar = word
@@ -37,7 +50,7 @@ structure LambdaExp: LAMBDA_EXP =
 
     datatype Type =
         TYVARtype   of tyvar
-      | ARROWtype   of Type list * Type list * regvar option
+      | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option
 
@@ -47,7 +60,7 @@ structure LambdaExp: LAMBDA_EXP =
     fun foldType (g : 'a -> Type -> 'a) (acc: 'a) (tau : Type) : 'a =
       case tau of
         TYVARtype _ => g acc tau
-      | ARROWtype(taus1,taus2,_) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
+      | ARROWtype(taus1,_,taus2,_) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
       | CONStype(taus,_,_) => g(foldTypes g acc taus)tau
       | RECORDtype (taus,_) => g(foldTypes g acc taus)tau
     and foldTypes g acc taus = foldl' (foldType g) acc taus
@@ -149,7 +162,7 @@ structure LambdaExp: LAMBDA_EXP =
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
-      | TYPED    of LambdaExp * Type
+      | TYPED    of LambdaExp * Type * constr list
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -199,7 +212,7 @@ structure LambdaExp: LAMBDA_EXP =
         | SWITCH_S switch => foldSwitch switch
         | SWITCH_C switch => foldSwitch switch
         | SWITCH_E switch => foldSwitch switch
-        | TYPED (lamb,tau) => foldTD fcns new_acc lamb
+        | TYPED (lamb,tau,_) => foldTD fcns new_acc lamb
         | PRIM(prim,lambs) => foldl' (foldTD fcns) new_acc lambs
         | FRAME _ => acc
       end
@@ -349,7 +362,7 @@ structure LambdaExp: LAMBDA_EXP =
           | SWITCH_S sw                 => safe_sw safe sw
           | SWITCH_C sw                 => safe_sw safe sw
           | SWITCH_E sw                 => safe_sw safe sw
-          | TYPED (lamb,_)              => safe lamb
+          | TYPED (lamb,_,_)            => safe lamb
           | PRIM(prim,lambs)            => (safe_prim prim; app safe lambs)
           | FRAME _                     => ()
    in
@@ -700,10 +713,15 @@ structure LambdaExp: LAMBDA_EXP =
    fun layoutType tau =
        case tau of
          TYVARtype tv => PP.LEAF (pr_tyvar tv)
-       | ARROWtype(taus,taus',rvopt) =>
-         PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
-                 children=[layoutTypes taus,layoutTypes taus'],
-                 childsep=PP.LEFT "->"}
+        | ARROWtype(taus,rvopt0,taus',rvopt) =>
+          let val arrow =
+                  case rvopt0 of
+                      NONE => "->"
+                    | SOME rv => "-" ^ RegVar.pr rv ^ "->"
+          in PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
+                     children=[layoutTypes taus,layoutTypes taus'],
+                     childsep=PP.LEFT arrow}
+          end
        | CONStype(taus,tyname,rvsopt) =>
          (case layoutTypeseq taus of
               NONE => PP.LEAF (TyName.pr_TyName tyname ^ pr_rvsopt rvsopt)
@@ -730,8 +748,10 @@ structure LambdaExp: LAMBDA_EXP =
       | layoutTypes taus = PP.NODE {start="<", finish=">", childsep=PP.LEFT ", ", indent=0,
                                     children = map layoutType taus}
 
+    and layoutRegVar r = (PP.LEAF o RegVar.pr) r
+
     and layoutRegVars regvars = PP.NODE {start="", finish="", childsep=PP.LEFT " ", indent=0,
-                                         children = map (PP.LEAF o RegVar.pr) regvars}
+                                         children = map layoutRegVar regvars}
     and layoutTypeList tl =
       (case tl
          of Types taus => PP.NODE{start="Types(", finish=")", indent=1,
@@ -783,6 +803,36 @@ structure LambdaExp: LAMBDA_EXP =
                     children=[T,tauT],
                     childsep=PP.RIGHT"."}
       end
+
+   fun layoutInfix l1 sep l2 (e1,e2) =
+       PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT sep,
+               children=[l1 e1,l2 e2]}
+
+   fun layoutAtEff ateff =
+       case ateff of
+           VARateff r => layoutRegVar r
+         | PUTateff r => PP.LEAF("put " ^ RegVar.pr r)
+         | GETateff r => PP.LEAF("get " ^ RegVar.pr r)
+
+   fun layoutEff eff =
+       case eff of
+           SETeff ats => PP.layout_set layoutAtEff ats
+         | VAReff r => layoutRegVar r
+
+   fun layoutConstraint c =
+       case c of
+           DISJOINTconstr (e1,e2) => layoutInfix layoutEff " # " layoutEff (e1,e2)
+         | INCLconstr (r,eff) => layoutInfix layoutRegVar " <= " layoutEff (r,eff)
+
+   fun layoutConstraints nil = PP.LEAF "NONE"
+     | layoutConstraints [c] = layoutConstraint c
+     | layoutConstraints cs = PP.NODE{start="",finish="",indent=0,
+                                      children=map layoutConstraint cs, childsep=PP.RIGHT " and "}
+
+   fun layoutTypeWithConstraints t nil = layoutType t
+     | layoutTypeWithConstraints t cs =
+       PP.NODE{start="",finish="",indent=0,children=[layoutType t,layoutConstraints cs],
+               childsep=PP.LEFT " with "}
 
    fun layVarSigma (lvar,alphas,tau) =
      if !Flags.print_types
@@ -963,11 +1013,11 @@ structure LambdaExp: LAMBDA_EXP =
                                        else pr_excon e
           in layoutSwitch layoutLambdaExp pr_exc sw
           end
-      | TYPED (lamb,tau) =>
+      | TYPED (lamb,tau,cs) =>
           PP.NODE{start="",
                   finish="",
                   indent=0,
-                  children=[layoutLambdaExp(lamb,0),layoutType tau],
+                  children=[layoutLambdaExp(lamb,0),layoutTypeWithConstraints tau cs],
                   childsep=PP.RIGHT " : "
                   }
       | PRIM(prim,lambs) =>
@@ -1408,7 +1458,7 @@ structure LambdaExp: LAMBDA_EXP =
                 pu_tyvar
             fun fun_ARROWtype pu =
                 Pickle.con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
-                (Pickle.tup3Gen0(pu_TypeList pu,pu_TypeList pu,Pickle.optionGen RegVar.pu))
+                (Pickle.tup4Gen0(pu_TypeList pu,Pickle.optionGen RegVar.pu,pu_TypeList pu,Pickle.optionGen RegVar.pu))
             fun fun_CONStype pu =
                 Pickle.con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
                 (Pickle.tup3Gen0(pu_TypeList pu,TyName.pu,Pickle.optionGen (Pickle.listGen RegVar.pu)))
@@ -1561,6 +1611,46 @@ structure LambdaExp: LAMBDA_EXP =
                         IntInf.toString)
                        Pickle.string
 
+    val pu_ateff =
+        let fun toInt (VARateff _) = 0
+              | toInt (PUTateff _) = 1
+              | toInt (GETateff _) = 2
+            fun fun_VARateff _ =
+                Pickle.con1 VARateff (fn VARateff a => a | _ => die "pu_ateff.VARateff")
+                            RegVar.pu
+            fun fun_PUTateff _ =
+                Pickle.con1 PUTateff (fn PUTateff a => a | _ => die "pu_ateff.PUTateff")
+                            RegVar.pu
+            fun fun_GETateff _ =
+                Pickle.con1 GETateff (fn GETateff a => a | _ => die "pu_ateff.GETateff")
+                            RegVar.pu
+        in Pickle.dataGen("LambdaExp.pu_ateff",toInt,[fun_VARateff,fun_PUTateff,fun_GETateff])
+        end
+
+    val pu_eff =
+        let fun toInt (SETeff _) = 0
+              | toInt (VAReff _) = 1
+            fun fun_SETeff _ =
+                Pickle.con1 SETeff (fn SETeff a => a | _ => die "pu_eff.SETeff")
+                            (Pickle.listGen pu_ateff)
+            fun fun_VAReff _ =
+                Pickle.con1 VAReff (fn VAReff a => a | _ => die "pu_eff.VAReff")
+                            RegVar.pu
+        in Pickle.dataGen("LambdaExp.pu_eff",toInt,[fun_SETeff,fun_VAReff])
+        end
+
+    val pu_constr =
+        let fun toInt (DISJOINTconstr _) = 0
+              | toInt (INCLconstr _) = 1
+            fun fun_DISJOINTconstr _ =
+                Pickle.con1 DISJOINTconstr (fn DISJOINTconstr a => a | _ => die "pu_constr.DISJOINTconstr")
+                            (Pickle.pairGen (pu_eff,pu_eff))
+            fun fun_INCLconstr _ =
+                Pickle.con1 INCLconstr (fn INCLconstr a => a | _ => die "pu_constr.INCLconstr")
+                            (Pickle.pairGen (RegVar.pu,pu_eff))
+        in Pickle.dataGen("LambdaExp.pu_constr",toInt,[fun_DISJOINTconstr,fun_INCLconstr])
+        end
+
     val pu_LambdaExp =
         let fun toInt (VAR _) = 0
               | toInt (INTEGER _) = 1
@@ -1652,7 +1742,7 @@ structure LambdaExp: LAMBDA_EXP =
                 (pu_Switch pu_excon_lvopt pu_LambdaExp)
             fun fun_TYPED pu_LambdaExp =
                 Pickle.con1 TYPED (fn TYPED a => a | _ => die "pu_LambdaExp.TYPED")
-                (Pickle.pairGen0(pu_LambdaExp,pu_Type))
+                (Pickle.tup3Gen0(pu_LambdaExp,pu_Type,Pickle.listGen pu_constr))
             fun fun_PRIM pu_LambdaExp =
                 Pickle.con1 PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
                 (Pickle.pairGen0(pu_prim,Pickle.listGen pu_LambdaExp))
@@ -1699,7 +1789,7 @@ structure LambdaExp: LAMBDA_EXP =
         case t of
           TYVARtype tv => if TVS.member tv s then acc
                           else TVS.insert tv acc
-        | ARROWtype(ts1,ts2,_) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
+        | ARROWtype(ts1,_,ts2,_) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
         | CONStype(ts,_,_) => tyvars_Types s ts acc
         | RECORDtype (ts,_) => tyvars_Types s ts acc
 
@@ -1759,7 +1849,7 @@ structure LambdaExp: LAMBDA_EXP =
         | SWITCH_S switch => tyvars_Switch s switch acc
         | SWITCH_C switch => tyvars_Switch s switch acc
         | SWITCH_E switch => tyvars_Switch s switch acc
-        | TYPED (e,tau) => tyvars_Type s tau (tyvars_Exp s e acc)
+        | TYPED (e,tau,_) => tyvars_Type s tau (tyvars_Exp s e acc)
         | PRIM(p,es) => tyvars_Exps s es (tyvars_Prim s p acc)
         | FRAME fr => tyvars_Frame s fr acc
       end

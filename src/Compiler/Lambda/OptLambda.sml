@@ -232,7 +232,7 @@ structure OptLambda: OPT_LAMBDA =
       type exp = LambdaExp
       fun ccall name argtypes restype =
           CCALLprim {name=name,instances=[],tyvars=[],
-                     Type=ARROWtype(argtypes,[restype],NONE)}
+                     Type=ARROWtype(argtypes,NONE,[restype],NONE)}
       fun f64_bin opr (x:exp,y:exp) : exp =
           PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] f64Type, [x,y])
       fun f64_uno opr (x:exp) : exp =
@@ -414,6 +414,26 @@ structure OptLambda: OPT_LAMBDA =
             andalso eqAll (fn ((a,e),(a',e')) => eq(a,a') andalso eq_lamb0m (e,e')) (es,es')
             andalso eqOpt (eq_lamb0m) (eo,eo')
 
+        fun eq_ateff (ae1,ae2) =
+            case (ae1,ae2) of
+                (VARateff r, VARateff r') => RegVar.eq(r,r')
+              | (PUTateff r, PUTateff r') => RegVar.eq(r,r')
+              | (GETateff r, GETateff r') => RegVar.eq(r,r')
+              | _ => false
+
+        fun eq_eff (e1,e2) =
+            case (e1,e2) of
+                (SETeff ats,SETeff ats') => ListPair.allEq eq_ateff (ats,ats')
+              | (VAReff r, VAReff r') => RegVar.eq(r,r')
+              | _ => false
+
+        fun eq_constr (c1,c2) =
+            case (c1,c2) of
+                (DISJOINTconstr(e1,e2), DISJOINTconstr(e1',e2')) =>
+                eq_eff (e1,e1') andalso eq_eff(e2,e2')
+              | (INCLconstr (r,e), INCLconstr (r',e')) => RegVar.eq(r,r') andalso eq_eff(e,e')
+              | _ => false
+
         fun eq_regvars (nil,nil) = true
           | eq_regvars (x::xs,y::ys) = RegVar.eq(x,y) andalso eq_regvars(xs,ys)
           | eq_regvars _ = false
@@ -437,7 +457,7 @@ structure OptLambda: OPT_LAMBDA =
             eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Con.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
           | eq_lamb0 m (SWITCH_E sw, SWITCH_E sw') =
             eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Excon.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
-          | eq_lamb0 m (TYPED(e,t),TYPED(e',t')) = eq_lamb0 m (e,e') andalso eq_Type(t,t')
+          | eq_lamb0 m (TYPED(e,t,cs),TYPED(e',t',cs')) = eq_lamb0 m (e,e') andalso eq_Type(t,t') andalso ListPair.allEq eq_constr (cs,cs')
           | eq_lamb0 m (FN{pat,body},FN{pat=pat',body=body'}) =
             (case eq_pat m (pat,pat') of
                  SOME m => eq_lamb0 m (body,body')
@@ -667,7 +687,7 @@ structure OptLambda: OPT_LAMBDA =
     * of a specializable function.
     * ----------------------------------------------------------------- *)
 
-   fun specializable {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype([tau_1'],[ARROWtype([tau_2'],_,_)],_),
+   fun specializable {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype([tau_1'],_,[ARROWtype([tau_2'],_,_,_)],_),
                       bind=FN{pat=[(lv_x,tau_1)],body=FN{pat=[(lv_y,tau_2)],body}}} =
        if noinline_lvar lv_f then false
        else
@@ -682,7 +702,7 @@ structure OptLambda: OPT_LAMBDA =
          end
      | specializable _ = false
 
-   fun specializableN {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype(taus,taus_res,_),
+   fun specializableN {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype(taus,_,taus_res,_),
                        bind=FN{pat,body}} =
        if noinline_lvar lv_f then NONE
        else
@@ -718,13 +738,13 @@ structure OptLambda: OPT_LAMBDA =
    fun subst_e_for_lvar lv e (e' as VAR{lvar,...}) = if Lvars.eq(lvar,lv) then e else e'
      | subst_e_for_lvar lv e e' = map_lamb (subst_e_for_lvar lv e) e'
 
-   fun specialize_bind {lvar=lv_f, tyvars, Type=ARROWtype([tau_1],[ARROWtype([tau_2],[tau_3],rv)],_),
+   fun specialize_bind {lvar=lv_f, tyvars, Type=ARROWtype([tau_1],_,[ARROWtype([tau_2],rv0,[tau_3],rv)],_),
                         bind=FN{pat=[(lv_x,_)],body=FN{pat=[(lv_y,_)],body}}}
                        instances lamb' =
      let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
          val tau_2' = on_Type S tau_2
          val tau_1' = on_Type S tau_1
-         val tau = ARROWtype([tau_2'],[on_Type S tau_3],rv)
+         val tau = ARROWtype([tau_2'],rv0,[on_Type S tau_3],rv)
          val body' = subst_lvar_for_app lv_f body
          val body'' = on_LambdaExp S body'
          val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,
@@ -788,7 +808,7 @@ structure OptLambda: OPT_LAMBDA =
        end
 
 
-   fun specializeN_bind {lvar=lv_f, tyvars, Type=ARROWtype(taus,taus_res,rv),
+   fun specializeN_bind {lvar=lv_f, tyvars, Type=ARROWtype(taus,rv0,taus_res,rv),
                          bind=FN{pat,body}}
                         n (tailpos:bool option) instances (PRIM(UB_RECORDprim,args)) =
      let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
@@ -796,7 +816,7 @@ structure OptLambda: OPT_LAMBDA =
          val taus_res = on_Types S taus_res
          val (taus1',tau', taus2') = pick2 n taus
          val taus' = taus1' @ taus2'
-         val tau = ARROWtype(taus',taus_res,rv)
+         val tau = ARROWtype(taus',rv0,taus_res,rv)
          val pat = map (fn (lv,t) => (lv,on_Type S t)) pat
          val ((p_lv,p_t),pat') = pick n pat
          val body' = elim_app_arg lv_f n body
@@ -1136,7 +1156,7 @@ structure OptLambda: OPT_LAMBDA =
                     | SWITCH_W {switch=SWITCH(e,_,_),...} => exn e
                     | SWITCH_S (SWITCH(e,_,_)) => exn e
                     | SWITCH_E (SWITCH(e,_,_)) => exn e
-                    | TYPED(e,_) => exn e
+                    | TYPED(e,_,_) => exn e
                     | FRAME _ => NONE
                     | VAR _ => NONE
                     | INTEGER _ => NONE
@@ -1833,7 +1853,7 @@ structure OptLambda: OPT_LAMBDA =
                 | ("realInt",[x]) =>
                   (tick "real_to_f64";
                    (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],tyvars=[],
-                                                 Type=ARROWtype([intDefaultType()],[f64Type],NONE)},
+                                                 Type=ARROWtype([intDefaultType()],NONE,[f64Type],NONE)},
                                       [x])), CUNKNOWN))
                 | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
                 | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
@@ -1842,22 +1862,22 @@ structure OptLambda: OPT_LAMBDA =
                 | ("__blockf64_sub_real",[t,i]) =>
                   let val argTypes =
                           case Type of
-                              ARROWtype(argTypes, _, _) => argTypes
+                              ARROWtype(argTypes, _, _, _) => argTypes
                             | _ => die "prim(__blockf64_sub_real): expecting arrow type"
                   in tick "real_to_f64";
                      (f64_to_real (PRIM(CCALLprim{name="__blockf64_sub_f64",instances=[],tyvars=[],
-                                                  Type=ARROWtype(argTypes,[f64Type],NONE)},
+                                                  Type=ARROWtype(argTypes,NONE,[f64Type],NONE)},
                                         [t,i])),
                       CUNKNOWN)
                   end
                 | ("__blockf64_update_real",[t,i,v]) =>
                   let val (bType,iType) =
                           case Type of
-                              ARROWtype([bType,iType,_], _, _) => (bType,iType)
+                              ARROWtype([bType,iType,_], _, _, _) => (bType,iType)
                             | _ => die "prim(__blockf64_update_real): expecting arrow type with three args"
                   in tick "real_to_f64";
                      (PRIM(CCALLprim{name="__blockf64_update_f64",instances=[],tyvars=[],
-                                     Type=ARROWtype([bType,iType,f64Type],[unitType],NONE)},
+                                     Type=ARROWtype([bType,iType,f64Type],NONE,[unitType],NONE)},
                            [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
                       CUNKNOWN)
                   end
@@ -2054,7 +2074,7 @@ structure OptLambda: OPT_LAMBDA =
                      | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
                in mklive sel; res
                end
-              | TYPED(lamb,t) => (TYPED(fst(contr (env, lamb)),t),CUNKNOWN)
+              | TYPED(lamb,t,cs) => (TYPED(fst(contr (env, lamb)),t,cs),CUNKNOWN)
               | FRAME{declared_excons,declared_lvars} =>
                let val lvars = map #lvar declared_lvars
                    val excons = map #1 declared_excons
@@ -2675,7 +2695,7 @@ structure OptLambda: OPT_LAMBDA =
                             LET{pat=pat,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
                         | non_expansive_bind =>
                             (* make lambda abstraction *)
-                            let val Type' = ARROWtype([unit_Type], [Type], NONE)
+                            let val Type' = ARROWtype([unit_Type], NONE, [Type], NONE)
                                 val pat' = [(lvar,tyvars,Type')]
                                 val bind' = FN{pat=[(Lvars.newLvar(),unit_Type)],body=f env bind}
                                 val scope' = f (LvarMap.add(lvar,DELAY_SIMPLE,env)) scope
@@ -2881,13 +2901,13 @@ structure OptLambda: OPT_LAMBDA =
                     let fun normal () = add_lv (lvar, NORMAL_ARGS, env)
                     in (* interesting only if the function takes a tuple of arguments *)
                       case Type of
-                          ARROWtype([RECORDtype (nil,_)],res,_) => normal()
-                        | ARROWtype([rt as RECORDtype (ts,_)],res,rv) =>
+                          ARROWtype([RECORDtype (nil,_)],_,res,_) => normal()
+                        | ARROWtype([rt as RECORDtype (ts,_)],rv0,res,rv) =>
                           if optimise_p() andalso unbox_function_arguments() then
                             case unbox_args lvar lv body ts of
                                 NONE => normal()
                               | SOME ts => add_lv(lvar,UNBOXED_ARGS (if r then nil else tyvars,
-                                                                     ARROWtype(ts,res,rv)),env)
+                                                                     ARROWtype(ts,rv0,res,rv)),env)
                           else normal()
                         | _ => normal()
                     end
@@ -2897,7 +2917,7 @@ structure OptLambda: OPT_LAMBDA =
                                                        bind=FN{pat=argpat, body=body}}
                     in case lookup env lvar of
                            SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
-                         | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_,_))) =>
+                         | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_,_,_))) =>
                            let (* create argument env *)
                              val (body, argpat) = hoist_lvars(body,lv,argTypes)
                              val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
@@ -2942,7 +2962,7 @@ structure OptLambda: OPT_LAMBDA =
                        | (t::ts, e::es) => (if eq_Type(t,f64Type) then real_to_f64 e else e) :: maybe_unbox_reals ts es
                        | _ => die "trans.app.maybe_unbox_reals"
              in case lookup env lvar of
-                    SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,res,_))) =>
+                    SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,_,res,_))) =>
                     let val sz = length argTypes
                     in case arg of
                            PRIM(RECORDprim _, args) =>
@@ -2966,7 +2986,7 @@ structure OptLambda: OPT_LAMBDA =
              end
            | VAR{lvar,instances,regvars=[]} =>
              (case lookup env lvar of
-                  SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,res,_))) =>
+                  SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,_,res,_))) =>
                   let val _ = tick "unbox - inverse-eta"
                       val lv = Lvars.newLvar()
                       val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
@@ -3066,14 +3086,14 @@ structure OptLambda: OPT_LAMBDA =
    fun assign tyvars aType instances a (i:int) e =
        let val iType = intDefaultType()
        in PRIM(CCALLprim{name="word_update0",instances=instances,tyvars=tyvars,
-                         Type=ARROWtype([aType,iType,iType],[unit_Type],NONE)},
+                         Type=ARROWtype([aType,iType,iType],NONE,[unit_Type],NONE)},
                [a,INTEGER(IntInf.fromInt i,iType),e])
        end
    in
    fun table2d_simplify lamb =
        case lamb of
            PRIM(CCALLprim{name="word_table2d0",instances,tyvars,
-                          Type=ARROWtype([iType,_,_],[aType],rv)},lambs) =>
+                          Type=ARROWtype([iType,_,_],rv0,[aType],rv)},lambs) =>
            (case map table2d_simplify lambs of
                 [n,nr,nc] =>
                 let val lv = Lvars.newLvar()
@@ -3085,12 +3105,12 @@ structure OptLambda: OPT_LAMBDA =
                 in LET{pat=[(lv,nil,aType')],
                        bind=PRIM(CCALLprim{name="word_table0",instances=instances,
                                            tyvars=tyvars,
-                                           Type=ARROWtype([iType],[aType],rv)},[n]),
+                                           Type=ARROWtype([iType],rv0,[aType],rv)},[n]),
                        scope=exec e0 (exec e1 a)}
                 end
               | _ => die "table2d_simplify: word_table2d0")
          | PRIM(CCALLprim{name="word_table2d0_init",instances,tyvars,
-                          Type=ARROWtype([iType,eType,_,_],[aType],rv)},lambs) =>
+                          Type=ARROWtype([iType,eType,_,_],rv0,[aType],rv)},lambs) =>
            (case map table2d_simplify lambs of
                 [n,e,nr,nc] =>
                 let val lv = Lvars.newLvar()
@@ -3102,7 +3122,7 @@ structure OptLambda: OPT_LAMBDA =
                 in LET{pat=[(lv,nil,aType')],
                        bind=PRIM(CCALLprim{name="word_table_init",instances=instances,
                                            tyvars=tyvars,
-                                           Type=ARROWtype([iType,eType],[aType],rv)},[n,e]),
+                                           Type=ARROWtype([iType,eType],rv0,[aType],rv)},[n,e]),
                        scope=exec e0 (exec e1 a)}
                 end
               | _ => die "table2d_simplify: word_table2d0_init")
@@ -3188,8 +3208,8 @@ structure OptLambda: OPT_LAMBDA =
                        val lv_e = VAR{lvar=lv,instances=[],regvars=[]}
                        val (pat,arg) =
                            case on_Type subst Type of
-                               ARROWtype([tau],_,_) => ([(lv, tau)], lv_e)
-                             | ARROWtype(taus,_,_) => die "inverse_eta - multi-args"
+                               ARROWtype([tau],_,_,_) => ([(lv, tau)], lv_e)
+                             | ARROWtype(taus,_,_,_) => die "inverse_eta - multi-args"
 (*
                               let fun sels (n,acc) =
                                     if n < 0 then acc
@@ -3327,7 +3347,7 @@ structure OptLambda: OPT_LAMBDA =
    fun uc_tau 0 t = (nil,t)
      | uc_tau n t =
        case t of
-           ARROWtype([t1],[t2],_) =>
+           ARROWtype([t1],_,[t2],_) =>
                let val (ts,t) = uc_tau (n-1) t2
                in (t1::ts,t)
                end
@@ -3346,7 +3366,7 @@ structure OptLambda: OPT_LAMBDA =
          | LET{pat=[(lv,tyvars,tau)],bind=b as VAR{lvar,instances,regvars=[]},scope} =>
                if !uncurrying then
                (case LvarMap.lookup env lvar of
-                    SOME (SOME (n,(tvs,ARROWtype(ts,_,rv)))) =>
+                    SOME (SOME (n,(tvs,ARROWtype(ts,rv0,_,rv)))) =>
                         if n <> length ts then die "uncurry.LET-VAR.length"
                         else
                             let val S = mk_subst (fn _ => "uncurry.LET-VAR") (tvs,instances)
@@ -3354,7 +3374,7 @@ structure OptLambda: OPT_LAMBDA =
                                 val pat = map (fn t => (Lvars.newLvar(),t)) ts
                                 val args = PRIM(UB_RECORDprim, map (fn (lv,_) => VAR{lvar=lv,instances=[],regvars=[]}) pat)
                                 val (ts',t') = uc_tau n tau
-                                val tau' = ARROWtype(ts',[t'],rv)
+                                val tau' = ARROWtype(ts',rv0,[t'],rv)
                                 val env' = LvarMap.add(lv,SOME(n,(tyvars,tau')),env)
                                 val function = {lvar=lv,regvars=[],tyvars=tyvars,Type=tau',
                                                 bind=FN{pat=pat,body=APP(b,args,NONE)}}
@@ -3368,7 +3388,7 @@ structure OptLambda: OPT_LAMBDA =
                (uc_env_frame := restrict_uc_env (env, map #lvar declared_lvars); e)
          | VAR {lvar,instances,regvars=[]} =>
                (case LvarMap.lookup env lvar of
-                    SOME (SOME (n,(tvs,ARROWtype(ts,_,_)))) =>
+                    SOME (SOME (n,(tvs,ARROWtype(ts,_,_,_)))) =>
                         let (* val _ = print ("Eta-expanding application of uncurried function "
                                            ^ Lvars.pr_lvar lvar ^ "\n") *)
                             val _ = tick ("uncurry - eta-expand(" ^ Int.toString n ^ ")")
@@ -3392,7 +3412,7 @@ structure OptLambda: OPT_LAMBDA =
                   val (env_b,env_s) =
                       if !uncurrying andalso n >= 2 then
                           let val (ts,t) = uc_tau n Type
-                              val tau = ARROWtype(ts,[t],NONE)
+                              val tau = ARROWtype(ts,NONE,[t],NONE)
                           in (LvarMap.add(lvar,SOME(n,(nil,tau)),env_b),
                               LvarMap.add(lvar,SOME(n,(tyvars,tau)),env_s))
                           end

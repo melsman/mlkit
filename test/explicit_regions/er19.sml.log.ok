@@ -1,0 +1,9 @@
+[reading source file:	er19.sml]
+> val ! : 'a ref->'a
+  val f : unit->real
+  val x : real ref
+er19.sml, line 8, column 18:
+    if true then 3.4`e
+                    ^^
+Expecting explicit region variable but e is an explicit effect variable
+Stopping compilation of MLB-file due to error (code 1).

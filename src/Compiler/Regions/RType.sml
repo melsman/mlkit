@@ -192,7 +192,11 @@ struct
                 | SOME rv =>
                   (case lookup_rv rv of
                        SOME rho =>
-                       let val () =
+                       let val () = if E.is_rho rho then ()
+                                    else deepErr rv ("Expects explicit region variable but "
+                                                     ^ RegVar.pr rv
+                                                     ^ " is an explicit effect variable")
+                           val () =
                                case E.get_place_ty rho of
                                    SOME rt' =>
                                    (case E.lub_runType0 (rt,rt') of
@@ -211,11 +215,22 @@ struct
                      | NONE => deepErr rv ("Explicit region variable `"
                                            ^ RegVar.pr rv
                                            ^ " is not in scope"))
+          fun get_eps B rvopt =
+              case rvopt of
+                  NONE => E.freshEps B
+                | SOME rv =>
+                  case lookup_rv rv of
+                      SOME n =>
+                      if E.is_arrow_effect n then (n,B)
+                      else deepErr rv "Expecting explicit effect variable"
+                    | NONE => deepErr rv ("Explicit effect variable `"
+                                          ^ RegVar.pr rv
+                                          ^ " is not in scope")
           fun mkTy0 (ty,cone) =
               case ty of
                   L.TYVARtype alpha  => ((TYVAR alpha,NONE), cone)
-                | L.ARROWtype(tys1,tys2,rvopt)=>
-                  let val (eps,cone') = E.freshEps cone
+                | L.ARROWtype(tys1,rvopt0,tys2,rvopt)=>
+                  let val (eps,cone') = get_eps cone rvopt0
                       val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
                       val (cone2,mus2) = List.foldr mkMus (cone1,[]) tys2
                   in ((FUN(mus1,eps,mus2),rvopt), cone2)
@@ -292,6 +307,50 @@ struct
               end
       in
         (mkTy, mkMu)
+      end
+
+  (* ReML Stuff *)
+  type constr = L.constr
+  fun enforceConstraint (lookRegVar: regvar -> place option)
+                        (deepError: regvar -> string -> unit)       (* deep error function *)
+                        (c:constr) (B:cone) : cone =
+      let fun deepErr r s = (deepError r s; die "enforceConstraint.never gets here")
+      in case c of
+             L.INCLconstr (r,e) =>
+             let val (effvar, level) =
+                     case lookRegVar r of
+                         NONE => deepErr r "effect variable not in scope"
+                       | SOME node =>
+                         if E.is_arrow_effect node then
+                           (case E.level_of node of
+                                SOME l => (node,l)
+                              | NONE => die "enforceConstraint.no level")
+                         else deepErr r "expecing effect variable"
+                 fun lookEV r =
+                     case lookRegVar r of
+                         NONE => deepErr r "effect variable not in scope"
+                       | SOME n => if E.is_arrow_effect n then n
+                                   else deepErr r "expecting effect variable"
+                 fun lookRV r =
+                     case lookRegVar r of
+                         NONE => deepErr r "region variable not in scope"
+                       | SOME n => if E.is_rho n then n
+                                   else deepErr r "expecting region variable"
+                 fun to_ateff ae =
+                     case ae of
+                         L.VARateff r => lookEV r
+                       | L.PUTateff r => E.mkPut(lookRV r)
+                       | L.GETateff r => E.mkGet(lookRV r)
+                 fun to_ateffs e =
+                     case e of
+                         L.VAReff r => [lookEV r]
+                       | L.SETeff aes => map to_ateff aes
+                 val aes = to_ateffs e
+             in List.foldl (fn (ae,B) => let val B = E.lower level ae B
+                                         in E.edge (effvar,ae); B
+                                         end) B aes
+             end
+           | _ => B
       end
 
   (* pretty-printing of types *)

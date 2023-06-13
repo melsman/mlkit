@@ -11,6 +11,8 @@ signature REGVAR = sig
   val eqs      : regvar list * regvar list -> bool
   val eq_opt   : regvar option * regvar option -> bool
 
+  val is_effvar : regvar -> bool
+
   val attach_location_report : regvar -> (unit -> Report.Report) -> unit
   val get_location_report    : regvar -> Report.Report option
 

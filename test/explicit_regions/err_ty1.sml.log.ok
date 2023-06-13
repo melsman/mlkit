@@ -1,0 +1,7 @@
+[reading source file:	err_ty1.sml]
+> val x : string
+err_ty1.sml, line 6, column 22:
+      in (a 3) : string`e
+                        ^
+Expects explicit region variable but e is an explicit effect variable
+Stopping compilation of MLB-file due to error (code 1).

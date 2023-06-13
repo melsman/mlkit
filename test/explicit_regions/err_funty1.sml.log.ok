@@ -1,7 +1,7 @@
 [reading source file:	err_funty1.sml]
 > val f : unit->int * int
 err_funty1.sml, line 5, column 23:
-  fun f () : (int * int)`greg_top = (4,6)
-                         ^^^^^^^^
-Explicit region variable greg_top is of type T and cannot also be of type p
+  fun f () : (int * int)`r0top = (4,6)
+                         ^^^^^
+Explicit region variable r0top is of type T and cannot also be of type p
 Stopping compilation of MLB-file due to error (code 1).

@@ -94,10 +94,12 @@ structure Environments: ENVIRONMENTS =
             ExplicitTyVarsTyRow tyrow
         | CONty(_, tylist, _) =>
             foldl (uncurry EqSet.union) EqSet.empty (map ExplicitTyVarsTy tylist)
-        | FNty(_,ty1,ty2) =>
+        | FNty(_,ty1,_,ty2) =>
             EqSet.union (ExplicitTyVarsTy ty1)
                         (ExplicitTyVarsTy ty2)
         | PARty(_,ty,_) =>
+            ExplicitTyVarsTy ty
+        | WITHty(_,ty,_) =>
             ExplicitTyVarsTy ty
 
       and ExplicitTyVarsTyRow (TYROW(_,_,ty,tyrowopt)) =
@@ -200,9 +202,11 @@ structure Environments: ENVIRONMENTS =
         | unguarded_ty(DecGrammar.CONty(_,ty_list,_)) =
           foldl (fn (ty, tyvarset) => unguarded_ty ty ++ tyvarset)
           [] ty_list
-        | unguarded_ty(DecGrammar.FNty(_,ty1,ty2)) =
+        | unguarded_ty(DecGrammar.FNty(_,ty1,_,ty2)) =
           unguarded_ty ty1 ++ unguarded_ty ty2
         | unguarded_ty(DecGrammar.PARty(_,ty,_)) =
+          unguarded_ty ty
+        | unguarded_ty(DecGrammar.WITHty(_,ty,_)) =
           unguarded_ty ty
 
       and unguarded_tyrow(DecGrammar.TYROW(_,_,ty,tyrow_opt)) =
@@ -1002,7 +1006,7 @@ structure Environments: ENVIRONMENTS =
 
         (* constructor environments for ref type constructor *)
 
-        fun mk_Arrow0 (t1,t2) = Type.mk_Arrow(t1,t2,NONE)
+        fun mk_Arrow0 (t1,t2) = Type.mk_Arrow(t1,NONE,t2,NONE)
 
         local
           val _ = Level.push()

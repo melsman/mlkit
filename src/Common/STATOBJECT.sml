@@ -113,8 +113,8 @@ signature STATOBJECT =
 	(*function types*)
 	val from_FunType            : FunType -> Type
 	val to_FunType              : Type -> FunType option
-	val mk_FunType              : Type * Type * regvar_info option -> FunType
-	val un_FunType              : FunType -> (Type * Type * regvar_info option) option
+	val mk_FunType              : Type * regvar_info option * Type * regvar_info option -> FunType
+	val un_FunType              : FunType -> (Type * regvar_info option * Type * regvar_info option) option
 
 	(*constructed types*)
 	val from_ConsType           : ConsType -> Type
@@ -124,8 +124,8 @@ signature STATOBJECT =
 
 	val Exn                     : Type
 	val is_Exn                  : Type -> bool
-	val mk_Arrow                : Type * Type * regvar_info option -> Type
-	val un_Arrow                : Type -> (Type * Type * regvar_info option) option
+	val mk_Arrow                : Type * regvar_info option * Type * regvar_info option -> Type
+	val un_Arrow                : Type -> (Type * regvar_info option * Type * regvar_info option) option
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 

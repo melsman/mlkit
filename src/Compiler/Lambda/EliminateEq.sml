@@ -176,7 +176,7 @@ structure EliminateEq : ELIMINATE_EQ =
      * ------------------------------------------------------------ *)
 
     fun mk_eq_tau tv = let val tau = TYVARtype tv
-                       in ARROWtype([RECORDtype ([tau,tau],NONE)],[boolType],NONE)
+                       in ARROWtype([RECORDtype ([tau,tau],NONE)],NONE,[boolType],NONE)
                        end
     fun mk_eq_abs [] [] e = e
       | mk_eq_abs (lv::lvs) (tau::taus) e = FN {pat = [(lv,tau)], body=mk_eq_abs lvs taus e}
@@ -309,11 +309,11 @@ structure EliminateEq : ELIMINATE_EQ =
     fun gen_db env (tyvars,tn,cbs) = (* may raise DONT_SUPPORT_EQ *)
       let
         fun mk_tau tau = let val tau_arg = RECORDtype ([tau, tau],NONE)
-                         in ARROWtype([tau_arg],[boolType],NONE)
+                         in ARROWtype([tau_arg],NONE,[boolType],NONE)
                          end
         val tau_tn = CONStype (map TYVARtype tyvars, tn, NONE)
         fun gen_tau [] = mk_tau tau_tn
-          | gen_tau (tv :: tvs) = ARROWtype([mk_tau (TYVARtype tv)], [gen_tau tvs], NONE)
+          | gen_tau (tv :: tvs) = ARROWtype([mk_tau (TYVARtype tv)], NONE, [gen_tau tvs], NONE)
 
         val (p,p0,p1) = (Lvars.newLvar(), Lvars.newLvar(), Lvars.newLvar())
         val lvs = map (fn _ => Lvars.newLvar()) tyvars
@@ -549,7 +549,7 @@ structure EliminateEq : ELIMINATE_EQ =
    val var_loop = lamb_var lvar_loop
    val var_j = lamb_var lvar_j
 
-   fun tau_for_eq_fun tau = ARROWtype ([RECORDtype ([tau, tau],NONE)], [boolType], NONE)
+   fun tau_for_eq_fun tau = ARROWtype ([RECORDtype ([tau, tau],NONE)], NONE, [boolType], NONE)
 
    fun let_nX_equal_table_size_in_bytes lvar_nX var_tableX scope =
          let val alpha' = fresh_tyvar ()
@@ -558,6 +558,7 @@ structure EliminateEq : ELIMINATE_EQ =
                                       (*alpha' is instantiated to alpha (from above):*)
                                       tyvars = [alpha'], instances = [TYVARtype alpha],
                                       Type = ARROWtype ([CONStype ([TYVARtype alpha'], tyname, NONE)],
+                                                        NONE,
                                                         [intDefaultType()],
                                                         NONE)},
                            [var_tableX]),
@@ -571,6 +572,7 @@ structure EliminateEq : ELIMINATE_EQ =
                              (*alpha' is instantiated to alpha (from above):*)
                              tyvars = [alpha'], instances = [TYVARtype alpha],
                              Type = ARROWtype ([CONStype ([tau_alpha'], tyname, NONE), intDefaultType()],
+                                               NONE,
                                                [tau_alpha'],
                                                NONE)},
                   [var_tableX, var_j])
@@ -583,7 +585,7 @@ structure EliminateEq : ELIMINATE_EQ =
 
    fun ccall name argtypes restype =
      CCALLprim {name = name, instances = [], tyvars = [],
-                Type = ARROWtype (argtypes, [restype], NONE)}
+                Type = ARROWtype (argtypes, NONE, [restype], NONE)}
 
    fun MINUS_INTprim () =
        let val n = case (tag_values(),values_64bit()) of
@@ -616,7 +618,7 @@ structure EliminateEq : ELIMINATE_EQ =
 
    fun function_loop () = {lvar = lvar_loop,
                            regvars = [],
-                           tyvars = [], Type = ARROWtype ([intDefaultType()], [boolType], NONE),
+                           tyvars = [], Type = ARROWtype ([intDefaultType()], NONE, [boolType], NONE),
                            bind = bind_loop()}
 
    fun bind_eq_table () =
@@ -641,6 +643,7 @@ structure EliminateEq : ELIMINATE_EQ =
                                regvars = [],
                                tyvars = [alpha],
                                Type = ARROWtype ([tau_for_eq_fun tau_alpha],
+                                                 NONE,
                                                  [tau_for_eq_fun tau_tyname],
                                                  NONE),
                                bind = bind_eq_table()}
@@ -693,7 +696,7 @@ structure EliminateEq : ELIMINATE_EQ =
                 | SWITCH_S sw => SWITCH_S(f_sw sw)
                 | SWITCH_C sw => SWITCH_C(f_sw sw)
                 | SWITCH_E sw => SWITCH_E(f_sw sw)
-                | TYPED(e,tau) => TYPED(f e, tau)
+                | TYPED(e,tau,cs) => TYPED(f e, tau,cs)
                 | PRIM(p, es) => PRIM(p, map f es)
                 | FRAME {declared_lvars,declared_excons} =>  (* frame is in global scope *)
                  let val new_declared_lvars =
@@ -778,7 +781,7 @@ structure EliminateEq : ELIMINATE_EQ =
               val eq_lvs = map (fn _ => Lvars.newLvar()) eq_tvs
               val eq_taus = map mk_eq_tau eq_tvs
               fun mk_tau [] = tau
-                | mk_tau (tau::taus) = ARROWtype([tau],[mk_tau taus],NONE)
+                | mk_tau (tau::taus) = ARROWtype([tau],NONE,[mk_tau taus],NONE)
               val tau' = mk_tau eq_taus
               val env_bind = mk_env_tyvars eq_tvs eq_lvs env
               val env_scope = add_lvar (lvar,tvs,env)
@@ -805,7 +808,7 @@ structure EliminateEq : ELIMINATE_EQ =
                   val eq_lvs = map (fn _ => Lvars.newLvar()) eq_tvs
                   val eq_taus = map mk_eq_tau eq_tvs
                   fun mk_tau [] = Type
-                    | mk_tau (tau::taus) = ARROWtype([tau],[mk_tau taus],NONE)
+                    | mk_tau (tau::taus) = ARROWtype([tau],NONE,[mk_tau taus],NONE)
                   val Type' = mk_tau eq_taus
                   val env_bind = mk_env_tyvars eq_tvs eq_lvs env_bind_common
                   val bind' = mk_eq_abs eq_lvs eq_taus (t env_bind bind)
@@ -836,7 +839,7 @@ structure EliminateEq : ELIMINATE_EQ =
          | SWITCH_S sw => SWITCH_S (t_switch t env sw)
          | SWITCH_C sw => SWITCH_C (t_switch t env sw)
          | SWITCH_E sw => SWITCH_E (t_switch t env sw)
-         | TYPED(lexp,tau) => TYPED(t env lexp,tau)
+         | TYPED(lexp,tau,cs) => TYPED(t env lexp,tau,cs)
          | PRIM(prim, lexps) => PRIM(prim, map (t env) lexps)
          | _ => lexp
 

@@ -1459,6 +1459,14 @@ Ty:
 				(case TupleTy of
 				   [t] => t
 				 | ts => tuple_type (PP TupleTyleft Tyright) ts),
+				NONE,
+                                Ty) )
+        | TupleTy HASH Ident ARROW Ty
+                        ( FNty (PP TupleTyleft Tyright,
+				(case TupleTy of
+				   [t] => t
+				 | ts => tuple_type (PP TupleTyleft Tyright) ts),
+                                SOME(PP Identleft Identright, RegVar.mk_Named Ident),
 				Ty) )
         | TupleTy       ( (case TupleTy of
 			     [t] => t
@@ -1514,9 +1522,14 @@ Ty_sans_STAR:
                           end )
         | AtomicTy      ( AtomicTy )
 
-        | AtomicTy WHERE EqIdent EQUALS EqIdent
-                        ( AtomicTy )
-
+        | AtomicTy WHILE EqIdent COLONGREATER EqIdent
+                        ( WITHty (PP AtomicTyleft EqIdent2right,
+                                  AtomicTy,
+                                  INCLconstraint(PP EqIdent1left EqIdent2right,
+                                                 (PP EqIdent1left EqIdent2right,
+                                                  RegVar.mk_Named EqIdent1),
+                                                 VAReff (PP EqIdent2left EqIdent2right,
+                                                         RegVar.mk_Named EqIdent2))))
 
 TyComma_seq2:
           Ty COMMA TyComma_seq2

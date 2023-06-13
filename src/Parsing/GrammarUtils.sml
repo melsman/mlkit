@@ -280,15 +280,17 @@ structure GrammarUtils: GRAMMAR_UTILS =
               end
           | RECORDty(i, NONE, _) =>
               ty
-          | RECORDty(i, SOME tyrow, regvar) =>
-              RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow), regvar)
+          | RECORDty(i, SOME tyrow, rvopt) =>
+              RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow), rvopt)
           | CONty(i, tylist, tycon) =>
               CONty(i, map (replaceTy tyvarseq tyseq) tylist, tycon)
-          | FNty(i, ty1, ty2) =>
-              FNty(i, replaceTy tyvarseq tyseq ty1,
-                   replaceTy tyvarseq tyseq ty2)
+          | FNty(i, ty1, rvopt, ty2) =>
+            FNty(i, replaceTy tyvarseq tyseq ty1,
+                 rvopt, replaceTy tyvarseq tyseq ty2)
           | PARty(i, ty, regvar) =>
               PARty(i, replaceTy tyvarseq tyseq ty,regvar)
+          | WITHty(i, ty, C) =>
+              WITHty(i, replaceTy tyvarseq tyseq ty,C)
 
         and replaceTyrow tyvarseq tyseq tyrow =
           case tyrow of
@@ -342,10 +344,12 @@ structure GrammarUtils: GRAMMAR_UTILS =
 		   arguments*)
 		  CONty(i, map rewriteTy tyseq', longtycon')
               end
-          | FNty(i, ty1, ty2) =>
-              FNty(i, rewriteTy ty1, rewriteTy ty2)
+          | FNty(i, ty1, rvopt, ty2) =>
+              FNty(i, rewriteTy ty1, rvopt, rewriteTy ty2)
           | PARty(i, ty, regvar) =>
               PARty(i, rewriteTy ty, regvar)
+          | WITHty(i, ty, C) =>
+              WITHty(i, rewriteTy ty, C)
 
         and rewriteTyrow tyrow =
           case tyrow of

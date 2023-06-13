@@ -48,7 +48,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     fun ftv_Type Type : NatSet.Set =
       let fun f (TYVARtype tyvar, s) = NatSet.insert tyvar s
-            | f (ARROWtype (tl1, tl2, _), s) = foldl f (foldl f s tl1) tl2
+            | f (ARROWtype (tl1, _, tl2, _), s) = foldl f (foldl f s tl1) tl2
             | f (CONStype (ts, _, _), s) = foldl f s ts
             | f (RECORDtype (ts,_), s) = foldl f s ts
       in f (Type, NatSet.empty)
@@ -135,24 +135,28 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               let val tyvar = fresh_tyvar()
               in close_Type (ARROWtype([RECORDtype([TYVARtype tyvar,
                                                     CONStype([TYVARtype tyvar], tyName_LIST, NONE)],NONE)],
+                                       NONE,
                                        [CONStype([TYVARtype tyvar], tyName_LIST, NONE)],
                                        NONE))
               end
             val typescheme_QUOTE =
               let val tyvar = fresh_tyvar()
               in close_Type (ARROWtype([CONStype([],tyName_STRING, NONE)],
+                                       NONE,
                                        [CONStype([TYVARtype tyvar], tyName_FRAG, NONE)],
                                        NONE))
               end
             val typescheme_ANTIQUOTE =
               let val tyvar = fresh_tyvar()
               in close_Type (ARROWtype([TYVARtype tyvar],
+                                       NONE,
                                        [CONStype([TYVARtype tyvar], tyName_FRAG, NONE)],
                                        NONE))
               end
             val typescheme_INTINF =
                 close_Type(ARROWtype([RECORDtype([CONStype([CONStype([],tyName_INT31,NONE)],tyName_LIST,NONE),
                                                   CONStype([],tyName_BOOL,NONE)],NONE)],
+                                     NONE,
                                      [CONStype([],tyName_INTINF,NONE)],
                                      NONE))
 
@@ -407,7 +411,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     fun valid_t (e:env) (ty:Type) : unit =
         case ty of
             CONStype(ts,tn,_) => (lookup_tyname e tn; valid_ts e ts)
-          | ARROWtype(ts1,ts2,_) => (valid_ts e ts1; valid_ts e ts2)
+          | ARROWtype(ts1,_,ts2,_) => (valid_ts e ts1; valid_ts e ts2)
           | TYVARtype tv => if isin_tv e tv then ()
                             else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
           | RECORDtype (ts,_) => valid_ts e ts
@@ -443,7 +447,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     fun check_f64ok {ccall:bool} s t =
         if eq_Type(t, f64Type) then ()
         else case t of
-                 ARROWtype(ts,ts',_) =>
+                 ARROWtype(ts,_,ts',_) =>
                  ( (case ts' of
                         [t'] => if ccall andalso eq_Type(t', f64Type) then ()
                                 else check_ts_no_f64 "check_f64ok:fun.res: " ts'
@@ -568,7 +572,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                of [] => [mk_instance(lookup_con env con, instances)]
                 | [lexp] =>
                  (case mk_instance(lookup_con env con, instances)
-                    of ARROWtype([t1],[t2],_) =>
+                    of ARROWtype([t1],_,[t2],_) =>
                       let val ts = unTypeList "CONprim" (type_e lexp)
                       in (eqTypes ("CONprim: " (* ^ Con.pr_con con *)) ([t1],ts); [t2])
                       end
@@ -579,7 +583,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               check_ts_no_f64 "DECONprim" instances;
                 case lexps
                   of [lexp] => (case mk_instance(lookup_con env con, instances)
-                                  of ARROWtype([t1],[t2],_) =>
+                                  of ARROWtype([t1],_,[t2],_) =>
                                     let val ts = unTypeList "DECONprim0" (type_e lexp)
                                     in if eq_Types([t2],ts) then [t1]
                                        else die ("DECONprim: " ^ Con.pr_con con
@@ -643,14 +647,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
            | REFprim {instance,regvar} => (* as CONprim *)
                   let val typescheme_REF =
                          let val tyvar = fresh_tyvar()
-                         in close_Type (ARROWtype([TYVARtype tyvar], [CONStype([TYVARtype tyvar], tyName_REF, NONE)], NONE))
+                         in close_Type (ARROWtype([TYVARtype tyvar], NONE, [CONStype([TYVARtype tyvar], tyName_REF, NONE)], NONE))
                          end
                   in valid_t env instance;
                      check_t_no_f64 "REFprim" instance;
                       case lexps
                        of [lexp] =>
                          (case mk_instance(typescheme_REF, [instance])
-                            of ARROWtype([t1],[t2],_) =>
+                            of ARROWtype([t1],_,[t2],_) =>
                               let val s = "REFprim"
                                   val ts = unTypeList s (type_e lexp)
                               in if eq_Types(ts,[t1]) then [t2]
@@ -696,7 +700,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                (valid_ts env instances;
                 valid_s env (tyvars,Type);
                 case mk_instance_ccall ((tyvars, Type), instances) of
-                  ARROWtype (ts_arg, ts_res, _) =>
+                  ARROWtype (ts_arg, _, ts_res, _) =>
                     let val ts = map (unTypeListOne "CCALL" o type_e) lexps
                         val ts_res =
                           if eq_Types (ts, ts_arg) then ts_res
@@ -748,7 +752,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
            | EXPORTprim {name, instance_arg, instance_res} =>
                (valid_t env instance_arg;
                 valid_t env instance_res;
-                let val arrowType = ARROWtype([instance_arg],[instance_res],NONE)
+                let val arrowType = ARROWtype([instance_arg],NONE,[instance_res],NONE)
                     val ts = map (unTypeListOne "EXPORT" o type_e) lexps
                 in if eq_Types ([arrowType],ts) then [unitType]
                    else (log ("Exported function " ^ name ^ " expected function of type:\n");
@@ -794,7 +798,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                      add_lvar(lvar,([],Type),env)) env pat
               val ts_body = unTypeList "FN" (type_lexp env' body)
               val ts_arg = map #2 pat
-          in valid_ts env ts_arg; Types [ARROWtype(ts_arg, ts_body, NONE)]
+          in valid_ts env ts_arg; Types [ARROWtype(ts_arg, NONE, ts_body, NONE)]
           end
          | LET {pat=nil,bind,scope} =>   (* wild card *)
           let val ts = unTypeList "WILD" (type_lexp env bind)
@@ -858,7 +862,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
           end
          | APP (lexp1, lexp2, _) =>
           (case type_lexp env lexp1
-             of Types [ARROWtype(ts_arg,ts_res,_)] =>
+             of Types [ARROWtype(ts_arg,_,ts_res,_)] =>
                let val ts = unTypeList "APP" (type_lexp env lexp2)
                in if eq_Types(ts,ts_arg) then Types ts_res
                   else
@@ -885,7 +889,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                  | _ => die "RAISE.type not exn")
          | HANDLE (lexp1, lexp2) =>
                 (case type_lexp env lexp2
-                   of Types [ARROWtype([CONStype([],tyName_EXN,_)], ts_res, _)] =>
+                   of Types [ARROWtype([CONStype([],tyName_EXN,_)], _, ts_res, _)] =>
                      let val ts = unTypeList "HANDLE" (type_lexp env lexp1)
                      in if eq_Types(ts,ts_res) then Types ts_res
                         else die "HANDLE"
@@ -914,17 +918,17 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
          | SWITCH_C sw => type_switch (type_lexp env)
                    (fn (con:con,_) => case lookup_con env con
                                       of (_, CONStype(_,tyname,_)) => tyname
-                                       | (_, ARROWtype(_,[CONStype(_,tyname,_)],_)) => tyname
+                                       | (_, ARROWtype(_,_,[CONStype(_,tyname,_)],_)) => tyname
                                        | _ => die "SWITCH_C.Wrong con type") sw
          | SWITCH_E sw => type_switch (type_lexp env)
                    (fn (excon:excon,_) => (lookup_excon env excon; tyName_EXN)) sw
-         | TYPED (lexp, t) => ( valid_t env t;
-                                let val tl = type_lexp env lexp
-                                in case tl of
-                                       Types [t'] => if eq_Type(t,t') then tl
-                                                     else die "TYPED.types differ"
-                                     | _ => die "TYPED.expecting types"
-                                end )
+         | TYPED (lexp, t,_) => ( valid_t env t;
+                                  let val tl = type_lexp env lexp
+                                  in case tl of
+                                         Types [t'] => if eq_Type(t,t') then tl
+                                                       else die "TYPED.types differ"
+                                       | _ => die "TYPED.expecting types"
+                                  end )
          | PRIM (prim, lexps) => Types (type_prim env prim lexps)
          | FRAME {declared_lvars, declared_excons} =>
                    let
@@ -965,7 +969,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     let
       fun analyse_datbind (tyvars : tyvar list,tyname,conbind: (con * Type option) list) : env =
         let
-          fun gen_typescheme (SOME tau) = (tyvars, ARROWtype([tau],[CONStype (map TYVARtype tyvars, tyname,NONE)],NONE))
+          fun gen_typescheme (SOME tau) = (tyvars, ARROWtype([tau],NONE,[CONStype (map TYVARtype tyvars, tyname,NONE)],NONE))
             | gen_typescheme NONE = (tyvars, CONStype (map TYVARtype tyvars, tyname, NONE))
 
           val env = foldl (fn ((con, tauopt), env) =>

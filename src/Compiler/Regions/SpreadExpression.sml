@@ -353,25 +353,28 @@ struct
 
   (* Function for traversing a LambdaExp type simultaneously with a mu, trying to set explicit region variables *)
   fun match_ty_regvars (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
-      let fun match_rv B rv p =
+      let fun match_rv B k rv p =
               case RSE.lookupRegVar rse rv of
-                  NONE => deepError rv ("Explicit region variable " ^ RegVar.pr rv ^ " not in scope")
-                | SOME p' => Eff.unifyRho_explicit ((rv,p'),p) B
-          fun match_rvopt B rvopt p =
+                  NONE => deepError rv ("Explicit " ^ k ^ " variable " ^ RegVar.pr rv ^ " not in scope")
+                | SOME p' => if RegVar.is_effvar rv
+                             then Eff.unifyEps_explicit ((rv,p'),p) B
+                             else Eff.unifyRho_explicit ((rv,p'),p) B
+          fun match_rvopt B k rvopt p =
               case rvopt of
                   NONE => B
-                | SOME rv => match_rv B rv p
+                | SOME rv => match_rv B k rv p
           fun match B tau mu =
               case tau of
                   E.TYVARtype _ => B
-                | E.ARROWtype(ts,ts',rvopt) =>
+                | E.ARROWtype(ts,rvopt0,ts',rvopt) =>
                   (case R.unBOX mu of
                        NONE => die "match_ty_regvars: expecting boxed mu for function types"
                      | SOME(ty,p) =>
                        case R.unFUN ty of
                            NONE => die "match_ty_regvars: expecting function type"
                          | SOME (mus,ae,mus') =>
-                           let val B = match_rvopt B rvopt p
+                           let val B = match_rvopt B "region" rvopt p
+                               val B = match_rvopt B "effect" rvopt0 ae
                            in matchs (matchs B ts mus) ts' mus'
                            end)
                 | E.CONStype(ts,tn,rvsopt) =>
@@ -384,7 +387,7 @@ struct
                                     (case rvsopt of
                                          NONE => (ty,NONE,B)
                                        | SOME [] => raise Report.DeepError (Report.line "expecting non-empty region sequence for boxed type constructor")
-                                       | SOME (rv::rvs) => (ty,SOME rvs,match_rv B rv p)))
+                                       | SOME (rv::rvs) => (ty,SOME rvs,match_rv B "region" rv p)))
                   in case R.unCONSTYPE ty of
                          NONE => die "match_ty_regvars: expecting constructed type"
                        | SOME (tn',mus,rhos,eps) =>
@@ -397,7 +400,7 @@ struct
                                                        let val msg = "wrong number of explicitly annotated regions for constructed type"
                                                        in raise Report.DeepError (Report.line msg)
                                                        end
-                                in foldl (fn ((rv,p),B) => match_rv B rv p) B pairs
+                                in foldl (fn ((rv,p),B) => match_rv B "region" rv p) B pairs
                                 end
                          end
                   end
@@ -411,7 +414,7 @@ struct
                        case R.unRECORD ty of
                            NONE => die "match_ty_regvars: expecting record type"
                          | SOME mus =>
-                           let val B = match_rvopt B rvopt p
+                           let val B = match_rvopt B "region" rvopt p
                            in matchs B ts mus
                            end)
 
@@ -449,18 +452,20 @@ struct
                               in (mu::mus, cone)
                               end
 
+    val enforceConstraint = R.enforceConstraint (RSE.lookupRegVar rse) deepError
+
      fun mk_sigma_hats (B,retract_level) [] = (B,[])
        | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,bind}::rest) =
           let
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hats: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val B = Eff.push B         (* for generalize_all *)
-            val (tau_x_ml, tau_1_ml, regvar_opt) =
+            val (_, _, _, regvar_opt) =
                 case Type of
                     E.ARROWtype p => p
                   | _ => die "mk_sigma_hats"
             val (regvars_with_rhos,B) =
                 List.foldr (fn (rv,(acc,B)) =>
-                               let val (rho,B) = Eff.freshRhoRegVar (B,rv)
+                               let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
                                in ((rv,rho)::acc,B)
                                end) (nil,B) regvars
             val (tau_0, B) = freshType' regvars_with_rhos (Type,B)
@@ -527,15 +532,20 @@ struct
                   | SOME rv =>
                     case RSE.lookupRegVar rse rv of
                         SOME rho =>
-                        (case Eff.get_place_ty rho of
-                             NONE => die "impossible: maybe_explicit_rho"
-                           | SOME Eff.BOT_RT => (rho,B) before Eff.setRunType rho rt
-                           | SOME rt' => if rt = rt' then (rho,B)
-                                         else deepError rv ("Mismatching region types "
-                                                            ^ Eff.show_runType rt ^ " and "
-                                                            ^ Eff.show_runType rt' ^ " for "
-                                                            ^ "explicit region variable `"
-                                                            ^ RegVar.pr rv))
+                        let val () = if Eff.is_rho rho then ()
+                                     else deepError rv ("Expecting explicit region variable but "
+                                                        ^ RegVar.pr rv
+                                                        ^ " is an explicit effect variable")
+                        in case Eff.get_place_ty rho of
+                               NONE => die "impossible: maybe_explicit_rho"
+                             | SOME Eff.BOT_RT => (rho,B) before Eff.setRunType rho rt
+                             | SOME rt' => if rt = rt' then (rho,B)
+                                           else deepError rv ("Mismatching region types "
+                                                              ^ Eff.show_runType rt ^ " and "
+                                                              ^ Eff.show_runType rt' ^ " for "
+                                                              ^ "explicit region variable `"
+                                                              ^ RegVar.pr rv)
+                        end
                       | NONE => deepError rv ("Explicit region variable `" ^ RegVar.pr rv
                                               ^ " is not in scope.")
         in (rho, R.mkBOX(tau,rho), B)
@@ -555,19 +565,24 @@ struct
                   | SOME rv =>
                     case RSE.lookupRegVar rse rv of
                         SOME rho =>
-                        (case R.runtype tau of
-                             NONE => deepError rv ("Cannot associate explicit region variable `"
-                                                   ^ RegVar.pr rv ^ " with value of unboxed type")
-                           | SOME rt =>
-                             (case Eff.get_place_ty rho of
-                                  NONE => die "impossible: maybe_explicit_rho_opt"
-                                | SOME Eff.BOT_RT => (SOME rho,B) before Eff.setRunType rho rt
-                                | SOME rt' => if rt = rt' then (SOME rho,B)
-                                              else deepError rv ("Mismatching region types "
-                                                                 ^ Eff.show_runType rt ^ " and "
-                                                                 ^ Eff.show_runType rt' ^ " for "
-                                                                 ^ "explicit region variable `"
-                                                                 ^ RegVar.pr rv)))
+                        let val () = if Eff.is_rho rho then ()
+                                     else deepError rv ("Expecting explicit region variable but "
+                                                        ^ RegVar.pr rv
+                                                        ^ " is an explicit effect variable")
+                        in case R.runtype tau of
+                               NONE => deepError rv ("Cannot associate explicit region variable `"
+                                                     ^ RegVar.pr rv ^ " with value of unboxed type")
+                             | SOME rt =>
+                               case Eff.get_place_ty rho of
+                                   NONE => die "impossible: maybe_explicit_rho_opt"
+                                 | SOME Eff.BOT_RT => (SOME rho,B) before Eff.setRunType rho rt
+                                 | SOME rt' => if rt = rt' then (SOME rho,B)
+                                               else deepError rv ("Mismatching region types "
+                                                                  ^ Eff.show_runType rt ^ " and "
+                                                                  ^ Eff.show_runType rt' ^ " for "
+                                                                  ^ "explicit region variable `"
+                                                                  ^ RegVar.pr rv)
+                        end
                       | NONE => deepError rv ("Explicit region variable `" ^ RegVar.pr rv
                                               ^ " is not in scope.")
         in case rho of
@@ -937,7 +952,7 @@ good *)
             val B = pushIfNotTopLevel(toplevel,B); (* for pop in retract *)
             val (ty,nullary) =
                 case ty_opt of
-                    SOME ty1 => (E.ARROWtype([ty1], [exn_ty], NONE),false)
+                    SOME ty1 => (E.ARROWtype([ty1], NONE, [exn_ty], NONE),false)
                   | NONE => (exn_ty, true)
             val (mu, B) = freshMu(ty, B)
             val (tau,rho) = noSome (R.unBOX mu) "S.EXCEPTION: expecting boxed type"
@@ -1001,18 +1016,19 @@ good *)
           val _ = unMus "S.RAISE" meta2
       in (B,E'.TR(E'.RAISE(t2),description', phi2),NOTAIL,tvs)
       end
-    | E.TYPED(e1: E.LambdaExp, tau) =>
+    | E.TYPED(e1: E.LambdaExp, tau, cs) =>
       let val (mu,B) = freshMu(tau,B)
           val (B, t2 as E'.TR(e2', meta2, phi2), cont', tvs) = S(B,e1,false,cont)
           val B = case unMus "S.TYPED" meta2 of
                       [mu'] => R.unify_mu (mu',mu) B
                     | _ => die "spreading of typed expression failed: expects a single mu"
+          val B = List.foldl (fn (c,B) => enforceConstraint c B) B cs
       in (B,t2,cont',tvs)
       end
     | E.LETREGION {regvars,scope} =>
       let val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (B,rse) = List.foldl (fn (rv,(B,rse)) =>
-                                       let val (rho,B) = Eff.freshRhoRegVar (B,rv)
+                                       let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
                                        in (B,RSE.declareRegVar(rv,rho,rse))
                                        end) (B,rse) regvars
       in retract(spreadExp(B,rse,scope,toplevel,NOTAIL))

@@ -2,4 +2,4 @@
    (type in pattern version)
  *)
 
-val a : (int * int)`greg_top = (4,6)
+val a : (int * int)`r0top = (4,6)

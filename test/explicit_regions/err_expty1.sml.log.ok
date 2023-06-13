@@ -1,7 +1,7 @@
 [reading source file:	err_expty1.sml]
 > val a : int * int
 err_expty1.sml, line 3, column 28:
-  val a = (4,6) : (int * int)`greg_top
-                              ^^^^^^^^
-Explicit region variable greg_top is of type T and cannot also be of type p
+  val a = (4,6) : (int * int)`r0top
+                              ^^^^^
+Explicit region variable r0top is of type T and cannot also be of type p
 Stopping compilation of MLB-file due to error (code 1).

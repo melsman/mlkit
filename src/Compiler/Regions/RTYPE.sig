@@ -11,7 +11,8 @@ sig
   type place = effect
   type runType
 
-  type regvar   (* explicit region variables *)
+  type regvar   (* ReML explicit region variables *)
+  type constr   (* ReML constraint *)
 
   type Type
   type mu = Type
@@ -66,6 +67,10 @@ sig
   val unify_ty   : Type * Type -> cone -> cone
   val unify_mu   : mu * mu -> cone -> cone
   val unify_mus  : mu list * mu list -> cone -> cone
+
+  val enforceConstraint : (regvar -> place option)
+                          -> (regvar -> string -> unit)       (* deep error function *)
+                          -> constr -> cone -> cone
 
   type sigma and il
   val type_to_scheme : Type -> sigma

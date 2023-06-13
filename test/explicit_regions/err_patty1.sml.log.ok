@@ -1,7 +1,7 @@
 [reading source file:	err_patty1.sml]
 > val a : int * int
 err_patty1.sml, line 5, column 20:
-  val a : (int * int)`greg_top = (4,6)
-                      ^^^^^^^^
-Explicit region variable greg_top is of type T and cannot also be of type p
+  val a : (int * int)`r0top = (4,6)
+                      ^^^^^
+Explicit region variable r0top is of type T and cannot also be of type p
 Stopping compilation of MLB-file due to error (code 1).
