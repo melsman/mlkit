@@ -48,7 +48,9 @@ struct syserr_entry srcErr[] = {
   {"ENETUNREACH",ENETUNREACH},
   {"ENFILE",ENFILE},
   {"ENOBUFS",ENOBUFS},
+#if !defined(__FreeBSD__)
   {"ENODATA",ENODATA},
+#endif
   {"ENODEV",ENODEV},
   {"ENOENT",ENOENT},
   {"ENOEXEC",ENOEXEC},
@@ -58,8 +60,10 @@ struct syserr_entry srcErr[] = {
   {"ENOMSG",ENOMSG},
   {"ENOPROTOOPT",ENOPROTOOPT},
   {"ENOSPC",ENOSPC},
+#if !defined(__FreeBSD__)
   {"ENOSR",ENOSR},
   {"ENOSTR",ENOSTR},
+#endif
   {"ENOSYS", ENOSYS},
   {"ENOTCONN",ENOTCONN},
   {"ENOTDIR",ENOTDIR},
@@ -80,7 +84,9 @@ struct syserr_entry srcErr[] = {
   {"ESPIPE",ESPIPE},
   {"ESRCH",ESRCH},
   {"ESTALE",ESTALE},
+#if !defined(__FreeBSD__)
   {"ETIME",ETIME},
+#endif
   {"ETIMEDOUT",ETIMEDOUT},
   {"ETXTBSY",ETXTBSY},
   {"EWOULDBLOCK",EWOULDBLOCK},
