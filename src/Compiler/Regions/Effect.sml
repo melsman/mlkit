@@ -5,6 +5,10 @@ struct
   structure PP = PrettyPrint
   structure G = DiGraph
 
+  type lvar = LambdaExp.lvar
+
+  type Report = Report.Report
+
   (* Add some dynamic flags for pretty-printing region variables. *)
 
   val regionvarInitial = Flags.add_int_entry
@@ -53,6 +57,12 @@ struct
       {long="print_rho_protection", short=SOME "Prho_protection", item=ref false, neg=false,
        menu=["Layout", "print rho protection"], desc=
        "Print protectedness of region variables if set (P or U)."}
+
+  val print_constraints = Flags.add_bool_entry
+      {long="print_constraints", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print effect constraints"],
+       desc="Print effect constraints when printing region and\n\
+            \effect variables"}
 
   type StringTree = PP.StringTree
 
@@ -136,6 +146,7 @@ struct
                            instance : einfo G.node option ref,
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType,
+                           constraints: (Report * lvar option * einfo G.node) list ref, (* not-eq constraints *)
                            explicit : regvar option,
                            protected : int ref}
 
@@ -152,7 +163,7 @@ struct
         | PUT => PP.LEAF "put"
         | GET => PP.LEAF "get"
         | UNION _ => PP.LEAF "U"
-        | RHO{key,level,ty,put,explicit,protected,...} =>
+        | RHO{key,level,ty,put,explicit,protected,constraints,...} =>
           let val n = case explicit of
                           NONE => "r" ^ show_key key
                         | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
@@ -162,6 +173,11 @@ struct
                       (if print_rho_protection() then show_protection protected
                        else "") ^
                       (if print_rho_levels() then "(" ^ show_level level ^ ")"
+                       else "") ^
+                      (if print_constraints() then
+                         case !constraints of
+                             nil => ""
+                           | rhos => "[memo]"
                        else "")
                      )
           end
@@ -193,6 +209,17 @@ struct
       case G.find_info effect of
           RHO _ => true
         | _ => false
+
+  fun rho_add_constraint e (p : (Report * lvar option * effect)) : unit =
+      case G.find_info e of
+          RHO {constraints,...} =>
+          constraints := p :: (!constraints)
+        | _ => die "rho_add_constraint"
+
+  fun rho_get_constraints (e:effect) : (Report * lvar option * effect) list =
+      case G.find_info e of
+          RHO {constraints=ref cs,...} => cs
+        | _ => die "rho_get_constraint.expecting rho"
 
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
@@ -320,16 +347,18 @@ struct
       G.mk_node(RHO{key = ref k, level = ref l,
                     put = NONE, get = NONE, instance = ref NONE,
                     pix = ref ~1, ty = BOT_RT, explicit=explicit,
-                    protected=ref 0})
+                    protected=ref 0,
+                    constraints=ref nil})
 
   fun mkPut (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{put=SOME n',...} => n'  (* hash consing *)
-        | RHO{put=NONE,key,level,get,instance,pix,ty,explicit,protected} =>
+        | RHO{put=NONE,key,level,get,instance,pix,ty,explicit,protected,constraints} =>
           let val new = G.mk_node PUT (* create new node *)
           in G.set_info n (RHO{put=SOME new,
                                get=get,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,explicit=explicit,protected=protected});
+                               pix=pix,ty=ty,explicit=explicit,protected=protected,
+                               constraints=constraints});
              G.mk_edge(new,n);
              new
           end
@@ -338,11 +367,12 @@ struct
   fun mkGet (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{get=SOME n',...} => n'  (* hash consing *)
-        | RHO{get=NONE,key,level,put,instance,pix,ty,explicit,protected} =>
+        | RHO{get=NONE,key,level,put,instance,pix,ty,explicit,protected,constraints} =>
           let val new = G.mk_node GET  (* create new node *)
           in G.set_info n (RHO{get=SOME new,
                                put=put,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,explicit=explicit,protected=protected});
+                               pix=pix,ty=ty,explicit=explicit,protected=protected,
+                               constraints=constraints});
              G.mk_edge(new,n);
              new
           end
@@ -684,7 +714,7 @@ struct
                              G.mk_node(RHO{key = ref k, level = ref(g level),
                                            put = NONE, get = NONE, instance = ref NONE,
                                            pix = ref(f pix), ty = ty, explicit=NONE,
-                                           protected=ref prot})
+                                           protected=ref prot,constraints=ref nil})
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
                      end
@@ -727,7 +757,7 @@ struct
       let val key = freshRhoInt()
           val node =G.mk_node(RHO{key = ref key, level = ref n,
                                   put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
-                                  explicit=NONE,protected=ref 0})
+                                  explicit=NONE,protected=ref 0,constraints=ref nil})
         in (node, add(node, n, key, cone))
       end
 
@@ -742,9 +772,10 @@ struct
 
   fun setRunType (place:place) (rt: runType) : unit =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,explicit,protected} =>
+          RHO{put,get,key,level,instance,pix,ty,explicit,protected,constraints} =>
           G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=rt,explicit=explicit,protected=protected})
+                                pix=pix,ty=rt,explicit=explicit,protected=protected,
+                                constraints=constraints})
         | _ => die "setRunType: node is not a region variable"
 
   fun getRegVar (place:place) : RegVar.regvar option =
@@ -904,18 +935,20 @@ struct
               (pu_represents pu_einfo)
           val fun_PUT = Pickle.con0 PUT
           val fun_GET = Pickle.con0 GET
+          fun pu_constraints pu_einfo = Pickle.refOneGen (Pickle.listGen(Pickle.tup3Gen(Report.pu,Pickle.optionGen Lvars.pu,#1(pu_node_nodes pu_einfo))))
           fun fun_RHO pu_einfo =
               Pickle.newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
-              (Pickle.con1 (fn ((k,p,g,l),px,t,(y,protected)) => RHO {key=k,put=p,get=g,level=l,
-                                                                      instance=ref NONE,pix=px,ty=t,explicit=y,
-                                                                      protected=protected})
-               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,explicit=y,protected} =>
-                (((k,p,g,l),px,t,(y,protected)))
+              (Pickle.con1 (fn ((k,p,g,l),px,t,(y,protected,cs)) => RHO {key=k,put=p,get=g,level=l,
+                                                                         instance=ref NONE,pix=px,ty=t,explicit=y,
+                                                                         protected=protected,constraints=cs})
+               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,explicit=y,protected,constraints} =>
+                (((k,p,g,l),px,t,(y,protected,constraints)))
                  | _ => die "pu_einfo.fun_RHO")
                (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
                                                 Pickle.nameGen "get" (pu_nodeopt pu_einfo),
                                                 pu_intref),
-                                pu_intref,pu_runType,Pickle.pairGen0(Pickle.optionGen RegVar.pu,pu_intref))))
+                                pu_intref,pu_runType,Pickle.tup3Gen0(Pickle.optionGen RegVar.pu,pu_intref,
+                                                                     pu_constraints pu_einfo))))
       in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
                                               fun_RHO])
       end
@@ -1106,13 +1139,21 @@ struct
             SOME m => m
           | NONE => die "removeIncr"))
 
-  fun deepError rv msg =
+  fun deepErrorRep rv report =
       let open Report infix //
           val report0 = case RegVar.get_location_report rv of
                             SOME rep => rep
                           | NONE => Report.null
-          val report = line msg
       in raise DeepError (report0 // report)
+      end
+
+  fun deepError rv msg =
+      deepErrorRep rv (Report.line msg)
+
+  fun deepError0 rep msg =
+      let open Report infix //
+          val report = rep // line msg
+      in raise DeepError report
       end
 
   fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
@@ -1174,9 +1215,9 @@ struct
                                                  * have the same level *)
           case (einfo1, einfo2) of
               (RHO{level=l1,put=p1,get=g1,key=k1,instance=instance1,pix=pix1,ty=t1,
-                   explicit=explicit1,protected=protected1},
+                   explicit=explicit1,protected=protected1,constraints=ref cs1},
                RHO{level=_,put=p2,get=g2,key=k2,instance=instance2,pix=pix2,ty=t2,
-                   explicit=explicit2,protected=protected2}) =>
+                   explicit=explicit2,protected=protected2,constraints=ref cs2}) =>
               if !k1 <> !k2 andalso (!k1 < largest_toplevel_effect_key
                                      andalso !k2 < largest_toplevel_effect_key)
                  orelse !k1 = 2 andalso t2<>BOT_RT
@@ -1193,6 +1234,29 @@ struct
                                                    ^ show_runType t1
                                                    ^ " but is expected to have type "
                                                    ^ show_runType t2)
+                    fun pr_rho e = PP.flatten1 (layout_effect e)
+                    fun pr_einfo ei = PP.flatten1 (layout_einfo ei)
+                    fun check_constraint (k,explicit,ei) (rep,lvopt,c:effect) =
+                        if not (is_rho c) then die "check_constraint.expecting rho"
+                        else if key_of_rho c = k then
+                          let val opt = case lvopt of NONE => "."
+                                                        | SOME lv => " (instance of function " ^ Lvars.pr_lvar lv ^ ")."
+                          in case explicit of
+                                 SOME rv =>
+                                 let open Report infix //
+                                 in deepErrorRep rv (rep //
+                                                     line ("Region aliasing constraint violation: The explicit") //
+                                                     line ("region variable `" ^ RegVar.pr rv ^ " occurs") //
+                                                     line ("on both sides of (an instance of) the disjointness") //
+                                                     line ("constraint" ^ opt))
+                                 end
+                               | NONE =>
+                                 deepError0 rep ("Region aliasing constraint violation: The region variable " ^ pr_rho c ^
+                                                 " occurs\non both sides of (an instance of) the disjointness constraint"
+                                                 ^ opt)
+                          end
+                        else ()
+
                     val (ty, explicit) =
                         case (explicit1,explicit2) of
                             (SOME rv1,SOME rv2) =>
@@ -1203,10 +1267,12 @@ struct
                           | (_, SOME rv2) => (lub_check rv2 t2 t1, explicit2)
                           | (NONE, NONE) => (lub_runType(t1,t2), NONE)
                     val protected = if !protected1 > !protected2 then protected1 else protected2
+                    val () = List.app (check_constraint (!k1,explicit1,einfo1)) cs2
+                    val () = List.app (check_constraint (!k2,explicit2,einfo2)) cs1
                 in RHO{level = l1, put = aux_combine(p1,p2),
                        get = aux_combine(g1,g2), key = min_key(k1,k2),
                        instance = instance1, pix = pix1, ty = ty,
-                       explicit=explicit,protected=protected}
+                       explicit=explicit,protected=protected,constraints=ref(cs1 @ cs2)}
                 end
              | _ => die "einfo_combine_rho"
   end

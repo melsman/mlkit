@@ -38,9 +38,9 @@ in
      local open SpecialObjects
      in Regions/RegConst.sml
      end
-     local open Pickle SyntaxObjects
+     local open Pickle SyntaxObjects CompilerObjects
      in Regions/Effect.sml
-        local open Edlib CompilerObjects in Regions/RType.sml end
+        local open Edlib in Regions/RType.sml end
      end
      local open CompilerObjects SyntaxObjects
      in Regions/RegionExp.sml

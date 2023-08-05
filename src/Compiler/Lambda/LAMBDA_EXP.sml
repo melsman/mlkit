@@ -22,6 +22,7 @@ signature LAMBDA_EXP =
     type excon
     type TyName
     type regvar
+    type Report
 
     datatype ateff =   (* ReML atomic effect *)
         VARateff of regvar
@@ -33,8 +34,8 @@ signature LAMBDA_EXP =
       | VAReff of regvar
 
     datatype constr =  (* ReML constraints *)
-        DISJOINTconstr of eff * eff
-      | INCLconstr of regvar * eff
+        DISJOINTconstr of eff * eff * Report * lvar option
+      | INCLconstr of regvar * eff * Report * lvar option
 
     eqtype tyvar
     val fresh_tyvar : unit -> tyvar

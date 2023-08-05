@@ -6,8 +6,10 @@ local
 in
   CRASH.sig
   Crash.sml
-  REPORT.sig
-  Report.sml
+  local open Pickle
+  in REPORT.sig
+     Report.sml
+  end
   TIMESTAMP.sig
   Timestamp.sml
   PRETTYPRINT.sig

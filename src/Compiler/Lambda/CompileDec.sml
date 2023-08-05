@@ -2333,26 +2333,26 @@ end; (*match compiler local*)
             DG.SETeff(_,aes) => TLE.SETeff(map compileAtEff aes)
           | DG.VAReff (i,r) => (attach_loc_info (i,r); TLE.VAReff r)
 
-    fun compileConstraint c =
+    fun compileConstraint lvopt c =
         case c of
-            DG.DISJOINTconstraint (_,e1,e2) =>
-            TLE.DISJOINTconstr(compileEff e1, compileEff e2)
-          | DG.INCLconstraint (_,(i,r),e) =>
-            (attach_loc_info (i,r); TLE.INCLconstr(r,compileEff e))
+            DG.DISJOINTconstraint (i,e1,e2) =>
+            TLE.DISJOINTconstr(compileEff e1, compileEff e2,loc_report_of_ElabInfo i, lvopt)
+          | DG.INCLconstraint (i0,(i,r),e) =>
+            (attach_loc_info (i,r); TLE.INCLconstr(r,compileEff e,loc_report_of_ElabInfo i0,lvopt))
 
-    fun constraintsTy (t:ty) : constr list =
+    fun constraintsTy lvopt (t:ty) : constr list =
         case t of
             TYVARty _ => nil
-          | RECORDty (_, SOME tr, _) => constraintsTyRow tr
+          | RECORDty (_, SOME tr, _) => constraintsTyRow lvopt tr
           | RECORDty (_, NONE, _) => nil
-          | CONty (_, ts, _) => List.concat (map constraintsTy ts)
-          | FNty (_,t1,_,t2) => constraintsTy t1 @ constraintsTy t2
-          | PARty (_, t, _) => constraintsTy t
-          | WITHty (_, t, c) => compileConstraint c :: constraintsTy t
-    and constraintsTyRow (tr:tyrow) : constr list =
+          | CONty (_, ts, _) => List.concat (map (constraintsTy lvopt) ts)
+          | FNty (_,t1,_,t2) => constraintsTy lvopt t1 @ constraintsTy lvopt t2
+          | PARty (_, t, _) => constraintsTy lvopt t
+          | WITHty (_, t, c) => compileConstraint lvopt c :: constraintsTy lvopt t
+    and constraintsTyRow lvopt (tr:tyrow) : constr list =
         case tr of
-            TYROW (_, _, t, NONE) => constraintsTy t
-          | TYROW (_, _, t, SOME tr) => constraintsTy t @ constraintsTyRow tr
+            TYROW (_, _, t, NONE) => constraintsTy lvopt t
+          | TYROW (_, _, t, SOME tr) => constraintsTy lvopt t @ constraintsTyRow lvopt tr
 
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
@@ -2524,7 +2524,7 @@ end; (*match compiler local*)
 
            | TYPEDexp(_, exp', ty) =>
              let val e = compileExp env exp'
-                 val cs = constraintsTy ty  (* ReML *)
+                 val cs = constraintsTy NONE ty  (* ReML *)
                  val t = type_of_exp exp
              in if Type.contains_regvars t orelse not (List.null cs)
                 then TYPED(e,compileType t,cs)

@@ -1,5 +1,5 @@
 
-structure Name: NAME =
+structure Name :> NAME =
   struct
 
     fun die s = Crash.impossible ("Name." ^ s)

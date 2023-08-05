@@ -963,7 +963,7 @@ structure InstsX64: INSTS_X64 =
                     if r1 = r2 then p (i2 :: is,acc)
                     else p (i2 :: is, i1::acc)
                   | (i1 as movq(R r1,ea1)) :: (i2 as movq(ea2,R r2)) :: is =>
-                    if ea1=ea2 andalso ea2 <> R r1 then
+                    if eq_ea(ea1,ea2) andalso not (eq_ea(ea2,R r1)) then
                       p (movq(R r1,ea1) :: movq(R r1,R r2) :: is, acc)
                     else p (i2::is,i1::acc)
                   | (i as jmp (L(LocalLab l1))) :: is =>

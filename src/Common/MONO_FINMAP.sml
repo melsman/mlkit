@@ -39,11 +39,11 @@ signature MONO_FINMAP =
          such that b \in B and a \in (A \restrict dom(B))
 	 we have en(a,b). *)
 
-    type StringTree
+    type StringTree = PrettyPrint.StringTree
     val layoutMap : {start: string, eq: string, sep: string, finish: string} ->
       (dom -> StringTree) -> ('b -> StringTree) -> 'b map -> StringTree
 
-    type Report
+    type Report = PrettyPrint.Report
     val reportMap: (dom * 'b -> Report) -> 'b map -> Report
 
     val pu : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu

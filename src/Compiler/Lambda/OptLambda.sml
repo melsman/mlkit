@@ -1,6 +1,6 @@
 (* OptLambda - lambda code optimiser. *)
 
-structure OptLambda: OPT_LAMBDA =
+structure OptLambda : OPT_LAMBDA =
   struct
 
     structure LvarDiGraphScc =
@@ -427,11 +427,16 @@ structure OptLambda: OPT_LAMBDA =
               | (VAReff r, VAReff r') => RegVar.eq(r,r')
               | _ => false
 
+        fun eq_lvopt (NONE, NONE) = true
+          | eq_lvopt (SOME lv, SOME lv') = Lvars.eq(lv,lv')
+          | eq_lvopt _ = false
+
         fun eq_constr (c1,c2) =
             case (c1,c2) of
-                (DISJOINTconstr(e1,e2), DISJOINTconstr(e1',e2')) =>
-                eq_eff (e1,e1') andalso eq_eff(e2,e2')
-              | (INCLconstr (r,e), INCLconstr (r',e')) => RegVar.eq(r,r') andalso eq_eff(e,e')
+                (DISJOINTconstr(e1,e2,rep,lvopt), DISJOINTconstr(e1',e2',rep',lvopt')) =>
+                eq_eff (e1,e1') andalso eq_eff(e2,e2') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt')
+              | (INCLconstr (r,e,rep,lvopt), INCLconstr (r',e',rep',lvopt')) =>
+                RegVar.eq(r,r') andalso eq_eff(e,e') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt')
               | _ => false
 
         fun eq_regvars (nil,nil) = true

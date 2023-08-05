@@ -483,7 +483,7 @@ struct
           val (rhos', A) = Eff.freshRhosPreserveRT(rhos, A)
           val (epss', A) = Eff.freshEpss(epss, A)
           val il = R.mk_il(rhos',epss',taus')
-          val (tau', A1) = R.inst(sigma,il) A (* side-effects il *)
+          val (tau', A1) = R.inst(lvopt,sigma,il) A (* side-effects il *)
           val () = if warn_spurious_p() then
                      ListPair.appEq (fn ((tv,NONE),t) => ()
                                       | ((tv,SOME _),t) =>

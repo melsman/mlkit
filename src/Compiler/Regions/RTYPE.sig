@@ -16,6 +16,7 @@ sig
 
   type Type
   type mu = Type
+  type lvar
 
   val wf_mu      : Type -> bool
 
@@ -96,10 +97,10 @@ sig
   val ftv_ty      : Type -> tyvar list
   val ftv_minus   : tyvar list * tyvar list -> tyvar list
 
-  val inst        : sigma * il -> cone -> Type * cone
+  val inst        : lvar option * sigma * il -> cone -> Type * cone
 
   type delta_phi
-  val instClever  : sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
+  val instClever  : lvar option * sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
 
   val regEffClos0    : (unit -> string) * cone * int * effect * Type * effect list -> cone * sigma
   val regEffClos     : cone * int * effect * Type -> cone * sigma

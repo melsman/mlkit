@@ -425,7 +425,7 @@ structure Infixing: INFIXING =
 		   on these newly invented atexps, dixi.*)
 *)
 
-                fun mkMatch((atpats, exp, ty_opt) :: rest) =
+                fun mkMatch ((atpats, exp, ty_opt) :: rest) =
                       let
                         val exp' =
                           case ty_opt

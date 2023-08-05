@@ -1,6 +1,6 @@
 (* Exception constructors for the lambda language *)
 
-structure Excon: EXCON =
+structure Excon :> EXCON =
   struct
     structure PP = PrettyPrint
 

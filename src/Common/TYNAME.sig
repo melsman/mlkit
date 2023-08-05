@@ -98,9 +98,7 @@ signature TYNAME =
 
     val pu : TyName Pickle.pu
 
-    structure Map : MONO_FINMAP
-                        where type StringTree = StringTree
-                          and type dom = TyName
+    structure Map : MONO_FINMAP where type dom = TyName
     structure Set : KIT_MONO_SET
                         where type StringTree = StringTree
                           and type elt = TyName

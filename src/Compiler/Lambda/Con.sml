@@ -1,13 +1,12 @@
 (* Constructors for the lambda language *)
 
-structure Con :> CON where type name = Name.name
-                       and type Map.StringTree = PrettyPrint.StringTree =
+structure Con :> CON where type name = Name.name =
   struct
     structure PP = PrettyPrint
 
     (* Constructors are based on names which may be `matched'. In
      * particular, if two constructors, c1 and c2, are successfully
-     * matched, eq(c1,c2) = true. This may affect the ordering of 
+     * matched, eq(c1,c2) = true. This may affect the ordering of
      * constructors. *)
 
     type name = Name.name
@@ -20,7 +19,7 @@ structure Con :> CON where type name = Name.name
 
     fun name ({name,...}: con) : name = name
 
-    val op < = fn (con1, con2) => 
+    val op < = fn (con1, con2) =>
       let val s1 = pr_con con1
 	  val s2 = pr_con con2
       in if s1 = s2 then Name.lt (name con1, name con2)
@@ -31,19 +30,19 @@ structure Con :> CON where type name = Name.name
     fun match (con1, con2) = Name.match(name con1, name con2)
 
     (* Predefined Constructors *)
-    local 
+    local
 	val bucket = ref nil
-	fun predef s = 
+	fun predef s =
 	    let val c = mk_con s
-	    in bucket := c :: !bucket 
+	    in bucket := c :: !bucket
 		; c
-	    end	       
+	    end
     in
 	val con_REF   : con      = predef "ref"
 	val con_TRUE  : con      = predef "true"
 	val con_FALSE : con      = predef "false"
 	val con_NIL   : con      = predef "nil"
-	val con_CONS  : con      = predef "::"	    
+	val con_CONS  : con      = predef "::"
 	val con_QUOTE : con      = predef "QUOTE"
 	val con_ANTIQUOTE : con  = predef "ANTIQUOTE"
 
@@ -52,7 +51,7 @@ structure Con :> CON where type name = Name.name
 	val consPredefined = !bucket
     end
 
-    val pu = 
+    val pu =
 	Pickle.hashConsEq eq
 	(Pickle.register "Con" consPredefined
 	 let fun to (s,n) : con = {str=s,name=n}

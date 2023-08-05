@@ -1,5 +1,5 @@
 
-structure LambdaExp: LAMBDA_EXP =
+structure LambdaExp : LAMBDA_EXP =
   struct
     structure PP = PrettyPrint
     structure StrSet = OrderSet(struct type t = string
@@ -15,6 +15,7 @@ structure LambdaExp: LAMBDA_EXP =
     type excon = Excon.excon
     type TyName = TyName.TyName
     type regvar = RegVar.regvar
+    type Report = Report.Report
 
     datatype ateff =   (* ReML atomic effect *)
         VARateff of regvar
@@ -26,8 +27,8 @@ structure LambdaExp: LAMBDA_EXP =
       | VAReff of regvar
 
     datatype constr =  (* ReML constraints *)
-        DISJOINTconstr of eff * eff
-      | INCLconstr of regvar * eff
+        DISJOINTconstr of eff * eff * Report * lvar option
+      | INCLconstr of regvar * eff * Report * lvar option
 
     fun die s = Crash.impossible ("LambdaExp." ^ s)
 
@@ -821,8 +822,8 @@ structure LambdaExp: LAMBDA_EXP =
 
    fun layoutConstraint c =
        case c of
-           DISJOINTconstr (e1,e2) => layoutInfix layoutEff " # " layoutEff (e1,e2)
-         | INCLconstr (r,eff) => layoutInfix layoutRegVar " <= " layoutEff (r,eff)
+           DISJOINTconstr (e1,e2,_,_) => layoutInfix layoutEff " # " layoutEff (e1,e2)
+         | INCLconstr (r,eff,_,_) => layoutInfix layoutRegVar " <= " layoutEff (r,eff)
 
    fun layoutConstraints nil = PP.LEAF "NONE"
      | layoutConstraints [c] = layoutConstraint c
@@ -1644,10 +1645,10 @@ structure LambdaExp: LAMBDA_EXP =
               | toInt (INCLconstr _) = 1
             fun fun_DISJOINTconstr _ =
                 Pickle.con1 DISJOINTconstr (fn DISJOINTconstr a => a | _ => die "pu_constr.DISJOINTconstr")
-                            (Pickle.pairGen (pu_eff,pu_eff))
+                            (Pickle.tup4Gen (pu_eff,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
             fun fun_INCLconstr _ =
                 Pickle.con1 INCLconstr (fn INCLconstr a => a | _ => die "pu_constr.INCLconstr")
-                            (Pickle.pairGen (RegVar.pu,pu_eff))
+                            (Pickle.tup4Gen (RegVar.pu,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
         in Pickle.dataGen("LambdaExp.pu_constr",toInt,[fun_DISJOINTconstr,fun_INCLconstr])
         end
 

@@ -1529,7 +1529,21 @@ Ty_sans_STAR:
                                                  (PP EqIdent1left EqIdent2right,
                                                   RegVar.mk_Named EqIdent1),
                                                  VAReff (PP EqIdent2left EqIdent2right,
-                                                         RegVar.mk_Named EqIdent2))))
+                                                         RegVar.mk_Named EqIdent2)))
+                        )
+
+        | AtomicTy WHILE EqIdent HASH EqIdent
+                        ( WITHty (PP AtomicTyleft EqIdent2right,
+                                  AtomicTy,
+                                  DISJOINTconstraint(PP EqIdent1left EqIdent2right,
+                                                     VAReff (PP EqIdent1left EqIdent1right,
+                                                             RegVar.mk_Named EqIdent1),
+                                                     VAReff (PP EqIdent2left EqIdent2right,
+                                                             RegVar.mk_Named EqIdent2)
+                                                    )
+                                 )
+                        )
+
 
 TyComma_seq2:
           Ty COMMA TyComma_seq2

@@ -2,6 +2,8 @@
 signature EFFECT =
 sig
 
+  type lvar
+
   datatype runType = STRING_RT | PAIR_RT | TOP_RT | BOT_RT
                    | ARRAY_RT | REF_RT | TRIPLE_RT
 
@@ -12,6 +14,9 @@ sig
 *)
   val lub_runType0: runType * runType -> runType option
   type effect and place sharing type place = effect
+
+  type Report
+
   val ae_lt: effect * effect-> bool  (* compares atomic effects *)
   exception AE_LT                    (* raised by ae_lt when one of the effects is not atomic *)
   val lt_eps_or_rho: effect * effect -> bool (* compares effect variables and region variables *)
@@ -182,6 +187,11 @@ sig
 
   val unify_with_toplevel_rhos_eps : cone * effect list -> cone  (* assumes effects has top level *)
   val unify_with_toplevel_effect : effect -> unit
+
+  (* [rho_add_constraint r (lvopt,r')] adds a constraint to r saying it cannot be
+   * identical to r'; the optional lvar indicates the function with the constraint. *)
+  val rho_add_constraint : effect -> Report * lvar option * effect -> unit
+  val rho_get_constraints : effect -> (Report * lvar option * effect) list
 
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
   val observe: int * delta_phi * effect ->  unit
