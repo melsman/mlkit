@@ -2,7 +2,6 @@
 
 structure StrId :> STRID =
   struct
-
     type strid = string
 
     fun pr_StrId str = str
@@ -10,11 +9,7 @@ structure StrId :> STRID =
     type longstrid = strid list * strid
 
     fun pr_LongStrId (strids, strid) =
-      let
-        val strings = (map (fn s => pr_StrId s ^ ".") strids)
-      in
-        foldr (op ^) (pr_StrId strid) strings
-      end
+        String.concatWith "." (strids @ [strid])
 
     fun implode_longstrid p = p
 
@@ -23,7 +18,7 @@ structure StrId :> STRID =
     fun mk_StrId x = x
 
     fun mk_LongStrId strs =
-        case (rev strs) of
+        case rev strs of
             nil => Crash.impossible "StrId.mk_LongStrId"
           | (x :: xs) => (rev xs, x)
 
@@ -38,9 +33,7 @@ structure StrId :> STRID =
     val op < = fn (str1:string, str2) => str1 < str2
 
     val pu = Pickle.string
-
     val pu_longstrid = Pickle.pairGen0(Pickle.listGen pu, pu)
 
     structure Map = StringFinMap
-
   end

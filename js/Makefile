@@ -74,6 +74,8 @@ IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 # directory:
 #
 #   python -m SimpleHTTPServer 8000
+# or
+#   python3 -m http.server 8000
 #
 
 smltojsonline: Makefile doc favicon.ico

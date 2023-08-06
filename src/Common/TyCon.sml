@@ -12,18 +12,10 @@ structure TyCon :> TYCON where type strid = StrId.strid =
     type longtycon = strid list * tycon
 
     fun pr_LongTyCon (strid_list, tycon) =
-      let
-        val string_list = (map (fn s => StrId.pr_StrId s ^ ".") strid_list)
-
-        fun join [] = ""
-          | join (s :: rest) = s ^ join rest
-      in
-        join string_list ^ pr_TyCon tycon
-      end
+      String.concatWith "." (map StrId.pr_StrId strid_list @ [tycon])
 
     fun implode_LongTyCon p = p
     fun explode_LongTyCon p = p
-
 
     val tycon_INT    = "int"
     val tycon_INT31  = "int31"
