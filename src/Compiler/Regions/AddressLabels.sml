@@ -1,5 +1,5 @@
 
-structure AddressLabels: ADDRESS_LABELS =
+structure AddressLabels :> ADDRESS_LABELS where type name = Name.name =
   struct
 
     (* Address labels are based on names which may be `matched'. In

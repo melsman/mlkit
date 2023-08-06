@@ -1,6 +1,7 @@
 
-structure Effect: EFFECT =  (* comment out this signature before
-                             * running TestEffect *)
+structure Effect :> EFFECT where type lvar = Lvars.lvar =
+   (* comment out this signature before
+    * running TestEffect *)
 struct
   structure PP = PrettyPrint
   structure G = DiGraph
