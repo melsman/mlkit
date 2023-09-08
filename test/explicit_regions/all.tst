@@ -73,3 +73,6 @@ funty1.sml                        (* A local function can be forced to have topl
 err_copylist.sml      ccl ecte    (* Exomorphisms by non-unifiable explicit region variables *)
 
 effty1.sml            ccl ecte    (* A function with a local effect cannot escape *)
+
+nomut-err.sml         ccl ecte    (* Violation of nomut constraint on function *)
+nomut-ok.sml                      (* Satisfiability of nomut constraint on function *)

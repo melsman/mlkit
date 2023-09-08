@@ -33,9 +33,15 @@ signature LAMBDA_EXP =
         SETeff of ateff list
       | VAReff of regvar
 
+    datatype prop =
+        NOMUTprop | NOPUTprop | NOEXNprop
+
+    val pp_prop : prop -> string
+
     datatype constr =  (* ReML constraints *)
         DISJOINTconstr of eff * eff * Report * lvar option
       | INCLconstr of regvar * eff * Report * lvar option
+      | PROPconstr of prop * eff * Report * lvar option
 
     eqtype tyvar
     val fresh_tyvar : unit -> tyvar
@@ -129,6 +135,7 @@ signature LAMBDA_EXP =
                                   regvars: regvar list,
                                   tyvars : tyvar list,
                                   Type : Type,
+                                  constrs: constr list,
                                   bind : LambdaExp} list,
                      scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp * bool option  (* tail call? *)
@@ -180,6 +187,7 @@ signature LAMBDA_EXP =
     val pu_Types      : Type list Pickle.pu
     val pu_TypeScheme : (tyvar list * Type) Pickle.pu
     val pu_LambdaExp  : LambdaExp Pickle.pu
+    val pu_prop       : prop Pickle.pu
 
     structure TyvarSet : KIT_MONO_SET where type elt = tyvar
     val tyvars_Exp    : TyvarSet.Set -> LambdaExp -> TyvarSet.Set -> TyvarSet.Set

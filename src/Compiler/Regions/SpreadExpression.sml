@@ -186,14 +186,14 @@ struct
   val exn_ty  = E.CONStype([], TyName.tyName_EXN, NONE)
 
   fun declareMany (rho,rse)([],[]) = rse
-    | declareMany (rho,rse)((lvar,regvars,tyvars,tau_ML,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
+    | declareMany (rho,rse)((lvar,regvars,tyvars,tau_ML,constrs,sigma_hat,regvar_opt,bind):: rest1, occ::occ1) =
         declareMany(rho,RSE.declareLvar(lvar,(true,true,map fst regvars,sigma_hat,SOME rho,SOME occ,NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
   fun repl ([],[]) = []
-    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, (sigma_hat,regvar_opt,regvars_with_rhos)::sigma_hats) =
-            (lvar,regvars_with_rhos,tyvars,Type,sigma_hat,regvar_opt,bind):: repl(fcns1,sigma_hats)
+    | repl ({lvar,regvars,tyvars,Type,constrs,bind}::fcns1, (sigma_hat,regvar_opt,regvars_with_rhos)::sigma_hats) =
+            (lvar,regvars_with_rhos,tyvars,Type,constrs,sigma_hat,regvar_opt,bind):: repl(fcns1,sigma_hats)
     | repl _ = die ".repl: sigma_hat_list and rhs lists have different lengths"
 
 
@@ -201,7 +201,7 @@ struct
       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
   fun mkRhs (rse,rho) ([],[],[]) = (rse,[])
-    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,tau_ML,sigma_hat,regvar_opt,bind)::rest1,
+    | mkRhs (rse,rho) ((lvar,regvars_with_rhos,tyvars,tau_ML,constrs,sigma_hat,regvar_opt,bind)::rest1,
                        (t1,tau1,sigma1,tvs1)::rest2,
                        occ::rest3) =
       let val (brhos, bepss,_) = R.bv sigma1
@@ -347,7 +347,7 @@ struct
 
   val spuriousJoin = RSE.spuriousJoin
 
-  fun proper_recursive (lvar, _, _, _, _, _, bind) : bool = (* does lvar occur in bind? *)
+  fun proper_recursive (lvar, _, _, _, _, _, _, bind) : bool = (* does lvar occur in bind? *)
       LB.foldTD (fn a => (fn E.VAR {lvar=lv,...} => a orelse Lvars.eq(lv,lvar)
                            | _ => a)) false bind
 
@@ -452,10 +452,10 @@ struct
                               in (mu::mus, cone)
                               end
 
-    val enforceConstraint = R.enforceConstraint (RSE.lookupRegVar rse) deepError
+    fun enforceConstraint rse = R.enforceConstraint (RSE.lookupRegVar rse) deepError
 
-     fun mk_sigma_hats (B,retract_level) [] = (B,[])
-       | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,bind}::rest) =
+    fun mk_sigma_hats (B,retract_level) [] = (B,[])
+      | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,constrs,bind}::rest) =
           let
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hats: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val B = Eff.push B         (* for generalize_all *)
@@ -1022,7 +1022,7 @@ good *)
           val B = case unMus "S.TYPED" meta2 of
                       [mu'] => R.unify_mu (mu',mu) B
                     | _ => die "spreading of typed expression failed: expects a single mu"
-          val B = List.foldl (fn (c,B) => enforceConstraint c B) B cs
+          val B = List.foldl (fn (c,B) => enforceConstraint rse c B) B cs
       in (B,t2,cont',tvs)
       end
     | E.LETREGION {regvars,scope} =>
@@ -1108,19 +1108,13 @@ good *)
 
     | E.PRIM(E.ASSIGNprim{instance}, [e1, e2]) =>
 (*
+                        e1' : [(mu ref, rho1)], phi1        e2': [mu],phi2
+                       ----------------------------------------------------
+                        e1' := e2'   : [unit],    phi1 u phi2 u {get rho1}
 
-                        e1' : [(mu ref, rho1)], phi1                e2': [mu],phi2
-                       ---------------------------------------------------------------------
-                        e1' := e2'   : [(unit, rho3)],    phi1 u phi2 u {get rho1, put rho1, put rho3}
-
-        We have a get on rho1 since one needs to access the reference in order to update it;
-        and we have a put rho1, since we write the updated ref object back in memory.
-        (Note: in multiplicity inference, the put effect should not be counted: it does not
+        We have a get on rho1 since the reference needs to be accessed in order to update it.
+        Notice that there is no put-effect on rho1 as assignment does not
         generate a new ref object and hence does not require allocation of more space.
-
-        Moreover, the put effect causes the region to be passed to := at runtime; it seems more
-        natural to leave out the put effect.
-
 *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
@@ -1135,7 +1129,10 @@ good *)
                     (case R.unCONSTYPE ty1 of
                          SOME(ref_tyname, [mu1],[],[]) =>
                          let val B = R.unify_mu (mu1,mu2) B
-                             val phi = Eff.mkUnion([(*Eff.mkPut rho1,mael*) Eff.mkGet rho1,phi1, phi2])
+                             val phis = [Eff.mkGet rho1, phi1, phi2]
+                             val phis = if true then Eff.mkMut rho1 :: phis
+                                        else phis
+                             val phi = Eff.mkUnion phis
                          in retract(B, E'.TR(E'.ASSIGN(t1,t2), E'.Mus [R.unitType], phi),
                                     NOTAIL,
                                     spuriousJoin tvs1 tvs2)
@@ -1155,7 +1152,6 @@ good *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
           val (B, t1 as E'.TR(e1', meta1, phi1), _, tvs) = S(B,e1, false, NOTAIL)
-(*          val mus1 = unMus "S.DROPprim" meta1 *)
         in
           retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL, tvs)
         end
@@ -1392,15 +1388,10 @@ good *)
      assume `name' gets from every region in the argument type & puts in
      every region in the result type.  Except that we assume there are no
      effects on regions that are associated with tyvars.  (The polymorphic c
-     function with region type scheme "All 'a'r'rr.('a,'r) ->
-     (('a,'r)*('a,'r), 'rr)" does not really get or put on 'r (but it puts on
-     'rr).)  So it is a little troublesome to find the get & put regions.
-     Also, we must ensure that it is always the same region variable that is
-     paired with a specific tyvar.  (In the example above, if we just spread
-     the underlying ML type scheme we would get different region variables on
-     the occurences of 'a: "All 'a'r1'r2'r3'rr.('a,'r1) ->
-     (('a,'r2)*('a,'r3), 'rr)".  See?)  See also the chapter `Calling C
-     Functions' in the documentation.*)
+     function with region type scheme "All 'a'r.'a -> ('a*'a,'r)" puts
+     on 'r).)  See also the chapter `Calling C Functions' in the documentation. *)
+
+    (* MEMO: maybe we should add mut-effects for functions that mutate values... *)
 
     | E.PRIM (E.CCALLprim {name, instances, tyvars, Type}, es) =>
        (let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
@@ -1615,7 +1606,7 @@ good *)
     S(B,e,toplevel,cont)
   end (* spreadExp *)
 
-  and spreadFcns (B,rho,retract_level,rse) functions (* each one: (lvar,regvars_with_rhos,tyvars,sigma_hat,bind) *) =
+  and spreadFcns (B,rho,retract_level,rse) functions (* each one: (lvar,regvars_with_rhos,tyvars,tau_ML,constrs,sigma_hat,bind) *) =
          let
             val occs = map (fn _ => ref []  : (R.il * (R.il * cone -> R.il * cone)) ref list ref) functions
             val rse1 = declareMany (rho,rse) (functions, occs)
@@ -1624,13 +1615,16 @@ good *)
                     [f] => proper_recursive f
                   | _ => true (* mutually declared functions are proper recursive *)
             fun spreadRhss B [] = (B,[],[])
-              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,tau_ML,sigma_hat,regvar_opt,bind)::rest) =
+              | spreadRhss B ((lvar,regvars_with_rhos,tyvars,tau_ML,constrs,sigma_hat,regvar_opt,bind)::rest) =
                   let
                      (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                       val B = Eff.push B
                       (*val () = print ("spreadFcns - length(regvars_with_rhos) = " ^ Int.toString (length regvars_with_rhos) ^ "\n") *)
                       val rse1' = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse)) rse1 regvars_with_rhos
                       val (B, t1 as E'.TR(_, meta1, phi1),_,tvs') = spreadExp(B,rse1', bind,false,NOTAIL)
+                      val B = List.foldl (fn (c,B) => R.enforceConstraint (RSE.lookupRegVar rse1')
+                                                                          deepError c B) B constrs
+
                       val mu = case unMus "spreadFcns" meta1 of
                                    [mu] => mu
                                  | _ => die "spreadFcns: expecting singleton mus"

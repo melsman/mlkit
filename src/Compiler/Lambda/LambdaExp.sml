@@ -26,9 +26,13 @@ structure LambdaExp : LAMBDA_EXP =
         SETeff of ateff list
       | VAReff of regvar
 
+    datatype prop =
+        NOMUTprop | NOPUTprop | NOEXNprop
+
     datatype constr =  (* ReML constraints *)
         DISJOINTconstr of eff * eff * Report * lvar option
       | INCLconstr of regvar * eff * Report * lvar option
+      | PROPconstr of prop * eff * Report * lvar option
 
     fun die s = Crash.impossible ("LambdaExp." ^ s)
 
@@ -152,6 +156,7 @@ structure LambdaExp : LAMBDA_EXP =
                                   regvars: regvar list,
                                   tyvars : tyvar list,
                                   Type : Type,
+                                  constrs: constr list,
                                   bind : LambdaExp} list,
                      scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp * bool option (* tail call? *)
@@ -820,10 +825,18 @@ structure LambdaExp : LAMBDA_EXP =
            SETeff ats => PP.layout_set layoutAtEff ats
          | VAReff r => layoutRegVar r
 
+   fun pp_prop p =
+       case p of
+           NOMUTprop => "nomut"
+         | NOPUTprop => "noput"
+         | NOEXNprop => "noexn"
+
    fun layoutConstraint c =
        case c of
            DISJOINTconstr (e1,e2,_,_) => layoutInfix layoutEff " # " layoutEff (e1,e2)
          | INCLconstr (r,eff,_,_) => layoutInfix layoutRegVar " <= " layoutEff (r,eff)
+         | PROPconstr (p,eff,_,_) => PP.NODE{start=pp_prop p ^ " ",finish="",indent=0,
+                                             children=[layoutEff eff], childsep=PP.NOSEP}
 
    fun layoutConstraints nil = PP.LEAF "NONE"
      | layoutConstraints [c] = layoutConstraint c
@@ -1285,7 +1298,7 @@ structure LambdaExp : LAMBDA_EXP =
                   children=map (PP.LEAF o RegVar.pr) regvars}
 
       and mk_mutual_binding (functions) =
-        let fun mk_fix({lvar,regvars,tyvars,Type, bind as (FN{pat, body, ...})})
+        let fun mk_fix({lvar,regvars,tyvars,Type,constrs,bind as (FN{pat, body, ...})})
                      (no, rest_of_mutual_binding) =
               (*
                    fun f  : sigma
@@ -1314,9 +1327,15 @@ structure LambdaExp : LAMBDA_EXP =
                          if !Flags.print_types then
                              let val sigma_t = layoutTypeScheme(tyvars,Type)
                                  val s = pr_lvar lvar
-                             in
-                                 PP.NODE{start = s ^ s_regvars ^ ":", finish = "", indent = String.size s +1,
-                                         childsep = PP.NOSEP, children = [sigma_t]}
+                                 val t = PP.NODE{start = s ^ s_regvars ^ ":", finish = "",
+                                                 indent = String.size s +1,
+                                                 childsep = PP.NOSEP, children = [sigma_t]}
+                             in case constrs of
+                                    nil => t
+                                  | cs =>
+                                    PP.NODE{start="",finish="",indent=0,
+                                            children=[t,layoutConstraints cs],
+                                            childsep=PP.LEFT " with "}
                              end
                          else PP.LEAF (pr_lvar lvar ^ s_regvars)
                      val formals_t =
@@ -1640,16 +1659,23 @@ structure LambdaExp : LAMBDA_EXP =
         in Pickle.dataGen("LambdaExp.pu_eff",toInt,[fun_SETeff,fun_VAReff])
         end
 
+    val pu_prop =
+        Pickle.enumGen ("prop",[NOMUTprop,NOPUTprop,NOEXNprop])
+
     val pu_constr =
         let fun toInt (DISJOINTconstr _) = 0
               | toInt (INCLconstr _) = 1
+              | toInt (PROPconstr _) = 2
             fun fun_DISJOINTconstr _ =
                 Pickle.con1 DISJOINTconstr (fn DISJOINTconstr a => a | _ => die "pu_constr.DISJOINTconstr")
                             (Pickle.tup4Gen (pu_eff,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
             fun fun_INCLconstr _ =
                 Pickle.con1 INCLconstr (fn INCLconstr a => a | _ => die "pu_constr.INCLconstr")
                             (Pickle.tup4Gen (RegVar.pu,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
-        in Pickle.dataGen("LambdaExp.pu_constr",toInt,[fun_DISJOINTconstr,fun_INCLconstr])
+            fun fun_PROPconstr _ =
+                Pickle.con1 PROPconstr (fn PROPconstr a => a | _ => die "pu_constr.PROPconstr")
+                            (Pickle.tup4Gen (pu_prop,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
+        in Pickle.dataGen("LambdaExp.pu_constr",toInt,[fun_DISJOINTconstr,fun_INCLconstr,fun_PROPconstr])
         end
 
     val pu_LambdaExp =
@@ -1704,9 +1730,12 @@ structure LambdaExp : LAMBDA_EXP =
                                   pu_LambdaExp, pu_LambdaExp)))
             fun fun_FIX pu_LambdaExp =
                 let val pu_function =
-                    Pickle.convert (fn ((lv,rs,tvs),t,e) => {lvar=lv,regvars=rs,tyvars=tvs,Type=t,bind=e},
-                                    fn {lvar=lv,regvars=rs,tyvars=tvs,Type=t,bind=e} => ((lv,rs,tvs),t,e))
-                    (Pickle.tup3Gen0(Pickle.tup3Gen0(Lvars.pu,Pickle.listGen RegVar.pu,pu_tyvars),pu_Type,pu_LambdaExp))
+                        Pickle.convert (fn ((lv,rs,tvs),t,cs,e) =>
+                                           {lvar=lv,regvars=rs,tyvars=tvs,Type=t,constrs=cs,bind=e},
+                                        fn {lvar=lv,regvars=rs,tyvars=tvs,Type=t,constrs=cs,bind=e} =>
+                                           ((lv,rs,tvs),t,cs,e))
+                                       (Pickle.tup4Gen0(Pickle.tup3Gen0(Lvars.pu,Pickle.listGen RegVar.pu,pu_tyvars),
+                                                        pu_Type,Pickle.listGen pu_constr, pu_LambdaExp))
                 in Pickle.con1 FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
                     (Pickle.convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
                      (Pickle.pairGen0(Pickle.listGen pu_function,
@@ -1830,7 +1859,7 @@ structure LambdaExp : LAMBDA_EXP =
           end
         | LETREGION{regvars,scope} => tyvars_Exp s scope acc
         | FIX{functions,scope} =>
-          let val acc = foldl (fn ({lvar,regvars,tyvars,Type,bind},acc) =>
+          let val acc = foldl (fn ({lvar,regvars,tyvars,Type,constrs,bind},acc) =>
                                   let val s = TVS.addList tyvars s
                                   in tyvars_Type s Type (tyvars_Exp s bind acc)
                                   end) acc functions

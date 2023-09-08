@@ -30,7 +30,7 @@ structure CompileDec: COMPILE_DEC =
 
     open LambdaExp
     type function = {lvar : lvar, regvars: RegVar.regvar list, tyvars : tyvar list, Type : Type,
-                     bind : LambdaExp}
+                     constrs : constr list, bind : LambdaExp}
     open DG
 
     (*import from StatObject:*)
@@ -1410,6 +1410,7 @@ in
                                           [NoSome "compile_edge" tau_return_opt],
                                           NONE)
                     val function = {lvar= #lvar node, regvars=[], tyvars=[], Type=Type,
+                                    constrs=[],
                                     bind=FN {pat = [(Lvars.new_named_lvar "obj",
                                                      unitType)],
                                              body = lexp}}
@@ -1505,8 +1506,81 @@ in
     "Node{lvar=" ^ Lvars.pr_lvar lvar ^ ", kind=" ^ string_from_kind kind ^
     ", refs=" ^ Int.toString (!refs) ^ ", visited="^ Bool.toString(!visited) ^ "}"
 
+
+  (* Syntactic compilation of ReML features *)
+
+  fun attach_loc_info (i,r) =
+      RegVar.attach_location_report r (fn () => loc_report_of_ElabInfo i)
+
+  fun attach_loc_info_opt NONE = ()
+    | attach_loc_info_opt (SOME(i,r)) = attach_loc_info (i,r)
+
+  fun regvarsFromRegvarsAndInfoOpt regvars_opt =
+      case regvars_opt of
+          SOME (i,regvars) =>
+          (List.app (fn r => RegVar.attach_location_report r
+                           (fn () => loc_report_of_ElabInfo i)) regvars;
+           regvars)
+        | NONE => nil
+
+  fun regvarFromRegvarsAndInfoOpt f_con regvars_opt =
+      case regvarsFromRegvarsAndInfoOpt regvars_opt of
+          nil => NONE
+        | [rv] => SOME rv
+        | rv::_ =>
+          let val report0 = case RegVar.get_location_report rv of
+                                SOME rep => rep
+                              | NONE => Report.null
+              val report = line ("The constructor " ^ f_con() ^ " can take at most one explicit region as argument")
+          in raise Report.DeepError (report0 // report)
+          end
+
+  fun compileAtEff ae =
+      case ae of
+          DG.VARateff (i,r) => (attach_loc_info (i,r); TLE.VARateff r)
+        | DG.PUTateff (_,(i,r)) => (attach_loc_info (i,r); TLE.PUTateff r)
+        | DG.GETateff (_,(i,r)) => (attach_loc_info (i,r); TLE.GETateff r)
+
+  fun compileEff e =
+      case e of
+          DG.SETeff(_,aes) => TLE.SETeff(map compileAtEff aes)
+        | DG.VAReff (i,r) => (attach_loc_info (i,r); TLE.VAReff r)
+
+  fun compileProp p =
+      case p of
+          DG.NOMUTprop _ => TLE.NOMUTprop
+        | DG.NOPUTprop _ => TLE.NOPUTprop
+        | DG.NOEXNprop _ => TLE.NOEXNprop
+
+  fun compileConstraint lvopt c =
+      case c of
+          DG.DISJOINTconstraint (i,e1,e2) =>
+          TLE.DISJOINTconstr(compileEff e1, compileEff e2,loc_report_of_ElabInfo i, lvopt)
+        | DG.INCLconstraint (i0,(i,r),e) =>
+          (attach_loc_info (i,r); TLE.INCLconstr(r,compileEff e,loc_report_of_ElabInfo i0,lvopt))
+        | DG.PROPconstraint (i0,p,e) =>
+          (TLE.PROPconstr(compileProp p,compileEff e,loc_report_of_ElabInfo i0,lvopt))
+
+  fun constraintsTy lvopt (t:ty) : constr list =
+      case t of
+          TYVARty _ => nil
+        | RECORDty (_, SOME tr, _) => constraintsTyRow lvopt tr
+        | RECORDty (_, NONE, _) => nil
+        | CONty (_, ts, _) => List.concat (map (constraintsTy lvopt) ts)
+        | FNty (_,t1,_,t2) => constraintsTy lvopt t1 @ constraintsTy lvopt t2
+        | PARty (_, t, _) => constraintsTy lvopt t
+        | WITHty (_, t, c) => compileConstraint lvopt c :: constraintsTy lvopt t
+  and constraintsTyRow lvopt (tr:tyrow) : constr list =
+      case tr of
+          TYROW (_, _, t, NONE) => constraintsTy lvopt t
+        | TYROW (_, _, t, SOME tr) => constraintsTy lvopt t @ constraintsTyRow lvopt tr
+
+  (* Patterns *)
+
+  type iddecl = id * (lvar * TLE.tyvar list * Type) * path
+
   local
-    fun declarations_to_be_made_for_id (id : id) (info : ElabInfo.ElabInfo) (path : path) =
+    fun declarations_to_be_made_for_id (id : id) (info : ElabInfo.ElabInfo) (path : path) : iddecl =
           (case to_TypeInfo info of
              SOME (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
                let val alphas = map compileTyVar tyvars
@@ -1524,7 +1598,7 @@ in
 
      declares a, b & c.*)
 
-    fun declared_by_pat (pat : pat, path : path) =
+    fun declared_by_pat (pat : pat, path : path) : iddecl list =
           (case pat of
              ATPATpat (info, atpat) => declared_by_atpat (atpat, path)
            | CONSpat (info, longid_op_opt, atpat) =>
@@ -1541,6 +1615,9 @@ in
                  | _ => die "declared_by_pat (CONSpat ...)")
            | TYPEDpat (info, pat, ty) =>
              let val res = declared_by_pat (pat, path)
+                 val cs = constraintsTy NONE ty
+                 val () = if List.null cs then ()
+                          else print "TYPEDpat\n"
              in case to_TypeInfo info of
                     SOME (TypeInfo.VAR_PAT_INFO{Type,...}) => res (* memo; mael 2023-05-26 *)
                   | _ => res
@@ -1553,7 +1630,7 @@ in
              end
            | UNRES_INFIXpat _ => die "declared_by_pat (UNRES_INFIXpat ...)")
 
-    and declared_by_atpat (atpat, path) =
+    and declared_by_atpat (atpat, path) : iddecl list =
           (case atpat of
              WILDCARDatpat info => []
            | SCONatpat (info, scon) => []
@@ -1597,7 +1674,12 @@ in
                       @ declarations_to_be_made) [] argpats
 
     fun simple_pat0 is (ATPATpat (_, atpat)) = simple_atpat0 is atpat
-      | simple_pat0 is (TYPEDpat (i, pat, _)) = simple_pat0 (i::is) pat
+      | simple_pat0 is (TYPEDpat (i, pat, ty)) =
+        let val cs = constraintsTy NONE ty
+            val () = if List.null cs then ()
+                     else print "simple_pat0.TYPEDpat\n"
+        in simple_pat0 (i::is) pat
+        end
       | simple_pat0 is _ = NONE
     and simple_atpat0 is (LONGIDatpat (info, OP_OPT (longid, _), _)) =
       (case to_TypeInfo info
@@ -2293,66 +2375,6 @@ end; (*match compiler local*)
     fun typeIsIntInf (CONStype(nil,tn,_)) =
         TyName.eq(tn,TyName.tyName_INTINF)
       | typeIsIntInf _ = false
-
-    (* ReML Stuff *)
-
-    fun attach_loc_info (i,r) =
-        RegVar.attach_location_report r (fn () => loc_report_of_ElabInfo i)
-
-    fun attach_loc_info_opt NONE = ()
-      | attach_loc_info_opt (SOME(i,r)) = attach_loc_info (i,r)
-
-    fun regvarsFromRegvarsAndInfoOpt regvars_opt =
-        case regvars_opt of
-            SOME (i,regvars) =>
-            (List.app (fn r => RegVar.attach_location_report r
-                           (fn () => loc_report_of_ElabInfo i)) regvars;
-             regvars)
-          | NONE => nil
-
-    fun regvarFromRegvarsAndInfoOpt f_con regvars_opt =
-        case regvarsFromRegvarsAndInfoOpt regvars_opt of
-            nil => NONE
-          | [rv] => SOME rv
-          | rv::_ =>
-            let val report0 = case RegVar.get_location_report rv of
-                                  SOME rep => rep
-                                | NONE => Report.null
-                val report = line ("The constructor " ^ f_con() ^ " can take at most one explicit region as argument")
-            in raise Report.DeepError (report0 // report)
-            end
-
-    fun compileAtEff ae =
-        case ae of
-            DG.VARateff (i,r) => (attach_loc_info (i,r); TLE.VARateff r)
-          | DG.PUTateff (_,(i,r)) => (attach_loc_info (i,r); TLE.PUTateff r)
-          | DG.GETateff (_,(i,r)) => (attach_loc_info (i,r); TLE.GETateff r)
-
-    fun compileEff e =
-        case e of
-            DG.SETeff(_,aes) => TLE.SETeff(map compileAtEff aes)
-          | DG.VAReff (i,r) => (attach_loc_info (i,r); TLE.VAReff r)
-
-    fun compileConstraint lvopt c =
-        case c of
-            DG.DISJOINTconstraint (i,e1,e2) =>
-            TLE.DISJOINTconstr(compileEff e1, compileEff e2,loc_report_of_ElabInfo i, lvopt)
-          | DG.INCLconstraint (i0,(i,r),e) =>
-            (attach_loc_info (i,r); TLE.INCLconstr(r,compileEff e,loc_report_of_ElabInfo i0,lvopt))
-
-    fun constraintsTy lvopt (t:ty) : constr list =
-        case t of
-            TYVARty _ => nil
-          | RECORDty (_, SOME tr, _) => constraintsTyRow lvopt tr
-          | RECORDty (_, NONE, _) => nil
-          | CONty (_, ts, _) => List.concat (map (constraintsTy lvopt) ts)
-          | FNty (_,t1,_,t2) => constraintsTy lvopt t1 @ constraintsTy lvopt t2
-          | PARty (_, t, _) => constraintsTy lvopt t
-          | WITHty (_, t, c) => compileConstraint lvopt c :: constraintsTy lvopt t
-    and constraintsTyRow lvopt (tr:tyrow) : constr list =
-        case tr of
-            TYROW (_, _, t, NONE) => constraintsTy lvopt t
-          | TYROW (_, _, t, SOME tr) => constraintsTy lvopt t @ constraintsTyRow lvopt tr
 
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
@@ -3260,41 +3282,44 @@ the 12 lines above are very similar to the code below
           | add_rvs (SOME regvars, _) = SOME regvars
           | add_rvs (NONE, NONE) = NONE
 
-        fun ids_pat (TYPEDpat(_, pat, _), rvs, scheme, ids) = ids_pat (pat, rvs, scheme, ids)
-          | ids_pat (ATPATpat(_, atpat), rvs, scheme, ids) = ids_atpat (atpat, rvs, scheme, ids)
-          | ids_pat (LAYEREDpat(i, OP_OPT (id,_), _, pat), rvs, scheme, ids) =
-          ids_pat (pat, rvs, add_scheme(i,scheme), id::ids)
-          | ids_pat (UNRES_INFIXpat _, _, _, _) = die "ids_pat.UNRES_INFIXpat"
-          | ids_pat (CONSpat _, _, _, _) = die "ids_pat.CONSpat"
-        and ids_atpat (WILDCARDatpat _, rvs, scheme, ids) = (rvs, scheme, ids)
-          | ids_atpat (SCONatpat _, _, _, _) = die "ids_atpat.SCONatpat"
-          | ids_atpat (LONGIDatpat(i,OP_OPT(longid, _),rvs_opt), rvs, scheme, ids) =
-          (case Ident.decompose longid
-             of (nil, id) => (add_rvs(rvs_opt,rvs), add_scheme(i,scheme), id::ids)
-              | _ => die("compileREC.ids_atpat.LONGIDatpat.long: " ^ Ident.pr_longid longid ^ ")"))
-          | ids_atpat (RECORDatpat _, _, _, _) = die "compileREC.ids_atpat.RECORDatpat"
-          | ids_atpat (PARatpat(_,pat), rvs, scheme, ids) = ids_pat(pat, rvs, scheme, ids)
+        fun ids_pat (TYPEDpat(_, pat, ty), rvs, scheme, cs, ids) =
+            let val cs' = constraintsTy NONE ty
+            in ids_pat (pat, rvs, scheme, cs@cs', ids)
+            end
+          | ids_pat (ATPATpat(_, atpat), rvs, scheme, cs, ids) = ids_atpat (atpat, rvs, scheme, cs, ids)
+          | ids_pat (LAYEREDpat(i, OP_OPT (id,_), _, pat), rvs, scheme, cs, ids) =
+          ids_pat (pat, rvs, add_scheme(i,scheme), cs, id::ids)
+          | ids_pat (UNRES_INFIXpat _, _, _, _, _) = die "ids_pat.UNRES_INFIXpat"
+          | ids_pat (CONSpat _, _, _, _, _) = die "ids_pat.CONSpat"
+        and ids_atpat (WILDCARDatpat _, rvs, scheme, cs, ids) = (rvs, scheme, cs, ids)
+          | ids_atpat (SCONatpat _, _, _, _, _) = die "ids_atpat.SCONatpat"
+          | ids_atpat (LONGIDatpat(i,OP_OPT(longid, _),rvs_opt), rvs, scheme, cs, ids) =
+            (case Ident.decompose longid of
+                 (nil, id) => (add_rvs(rvs_opt,rvs), add_scheme(i,scheme), cs, id::ids)
+               | _ => die("compileREC.ids_atpat.LONGIDatpat.long: " ^ Ident.pr_longid longid ^ ")"))
+          | ids_atpat (RECORDatpat _, _, _, _, _) = die "compileREC.ids_atpat.RECORDatpat"
+          | ids_atpat (PARatpat(_,pat), rvs, scheme, cs, ids) = ids_pat(pat, rvs, scheme, cs, ids)
 
         val ids_lv_sch_exp__s =
           foldr (fn ((pat,exp),acc) =>
-                    case ids_pat (pat, NONE, NONE, nil) of
-                        (NONE, NONE, nil) => acc (* only wildcard involved; discard binding *)
-                      | (_, SOME _, nil) => die "compileREC.ids_sch_exp__s.scheme but no ids"
-                      | (rvs, SOME sch, ids as id :: _) =>
+                    case ids_pat (pat, NONE, NONE, nil, nil) of
+                        (NONE, NONE, _, nil) => acc (* only wildcard involved; discard binding *)
+                      | (_, SOME _, _, nil) => die "compileREC.ids_sch_exp__s.scheme but no ids"
+                      | (rvs, SOME sch, cs, ids as id :: _) =>
                         let val lv = Lvars.new_named_lvar(Ident.pr_id id)
-                        in (ids, lv, rvs, sch, exp) :: acc
+                        in (ids, lv, rvs, sch, cs, exp) :: acc
                         end
                       | _ => die "compileREC.ids_sch_exp__s.no scheme but ids")
                 nil pat_exp__s
 
-        val ids_lv_sch__s = map (fn (ids,lv,_,sch,_) => (ids,lv,sch)) ids_lv_sch_exp__s
+        val ids_lv_sch__s = map (fn (ids,lv,_,sch,_,_) => (ids,lv,sch)) ids_lv_sch_exp__s
         val ids_lv_ty__s = map (fn (ids,lv,(tvs,ty)) => (ids,lv,([],ty))) ids_lv_sch__s
 
         val recEnv : CE.CEnv = env plus (mk_env ids_lv_ty__s)
         val scopeEnv : CE.CEnv = mk_env ids_lv_sch__s
 
         val functions =
-            map (fn (_,lv,rvs,(tvs,ty),exp) =>
+            map (fn (_,lv,rvs,(tvs,ty),cs,exp) =>
                     let val regvars =
                             case rvs of SOME (i,rs) =>
                                         (List.app (fn r =>
@@ -3302,7 +3327,8 @@ the 12 lines above are very similar to the code below
                                                         (fn () => loc_report_of_ElabInfo i)) rs;
                                          rs)
                                       | NONE => []
-                    in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,bind=compileExp recEnv exp}
+                        val bind = compileExp recEnv exp
+                    in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,constrs=cs,bind=bind}
                     end)
                 ids_lv_sch_exp__s
         val f' = fn scope => FIX {functions=functions, scope=scope}

@@ -575,8 +575,9 @@ struct
             val _ = if test then say "  computing transitive closure ..." else ()
             val _ = eval_phis effects  (* computes transitive closure  of effect graph,
                                           including only PUT and EPS nodes *)
-                    handle exn =>
-                        (say "  eval_phis called from MulInf (transitive closure of all effects) "; raise exn)
+                    handle ? as Report.DeepError _ => raise ?
+                         | exn => (say "  eval_phis called from MulInf (transitive closure of all effects) ";
+                                   raise exn)
             val _ = if test then say "  making the arrow effect set Phi..." else ()
 
             val Psi =

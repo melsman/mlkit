@@ -362,7 +362,7 @@ struct
                    (case (lookRegVar e1, lookRegVar e2)  of
                         (SOME n1, SOME n2) =>
                         if E.is_arrow_effect n1 then
-                          if E.is_arrow_effect n2 then (* ok *) B
+                          if E.is_arrow_effect n2 then (* MEMO: ok, but add constraint *) B
                           else deepErr e2 "expecting explicit effect variable"
                         else if E.is_rho n1 then
                           if E.is_rho n2 then (E.rho_add_constraint n1 (rep,lvopt,n2); B)
@@ -373,6 +373,16 @@ struct
                       | _ => deepErr e1 "region or effect variable not in scope")
                  | _ => die "unimplemented DISJOINTconstr"
              end
+           | L.PROPconstr (p,e,rep,lvopt) =>
+             (case e of
+                  L.VAReff e =>
+                  (case lookRegVar e of
+                       SOME n =>
+                       if E.is_arrow_effect n then (* MEMO: ok, but add constraint *)
+                         (E.eps_add_prop_constraint n (rep,lvopt,p); B)
+                       else deepErr e "expecting explicit effect variable"
+                     | NONE => deepErr e "effect variable not in scope")
+                | _ => die "unimplemented PROPconstr")
       end
 
   (* pretty-printing of types *)
@@ -777,6 +787,7 @@ struct
                               end) Sr
 
         val () = List.app E.setInstance Se
+        (* memo: copy prop_constraints *)
 
         val Ty = #2(cp_ty tau)
         (* this is where arrow effects are instantiated*)

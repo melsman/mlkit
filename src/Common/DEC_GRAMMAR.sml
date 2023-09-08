@@ -114,7 +114,13 @@ sig
 
   and constraint =                                                     (* ReML *)
         DISJOINTconstraint of info * eff * eff |
-        INCLconstraint of info * (info*regvar) * eff
+        INCLconstraint of info * (info*regvar) * eff |
+        PROPconstraint of info * prop * eff
+
+  and prop =
+        NOMUTprop of info |
+        NOPUTprop of info |
+        NOEXNprop of info
 
   and eff =                                                            (* ReML *)
         SETeff of info * ateff list |

@@ -1544,6 +1544,24 @@ Ty_sans_STAR:
                                  )
                         )
 
+        | AtomicTy WHILE EqIdent EqIdent
+                  ( let fun toProp (i, s) =
+                           case s of
+                               "nomut" => NOMUTprop i
+                             | "noput" => NOPUTprop i
+                             | "noexn" => NOEXNprop i
+                             | _ => raise LEXICAL_ERROR (EqIdent1left, "expecting nomut, noput, or noexn")
+                   in
+                        WITHty (PP AtomicTyleft EqIdent2right,
+                                AtomicTy,
+                                PROPconstraint(PP EqIdent1left EqIdent2right,
+                                               toProp (PP EqIdent1left EqIdent1right,
+                                                       EqIdent1),
+                                               VAReff (PP EqIdent2left EqIdent2right,
+                                                       RegVar.mk_Named EqIdent2)
+                                              )
+                               )
+                   end )
 
 TyComma_seq2:
           Ty COMMA TyComma_seq2

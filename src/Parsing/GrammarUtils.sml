@@ -255,7 +255,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
     end
 
 
-    fun rewriteDatBind(datbind, typbind) =
+    fun rewriteDatBind (datbind, typbind) =
         (* XXX no check for different identifiers to be bound in datbind
            and typbind (as required, Def. p. 66) *)
       let

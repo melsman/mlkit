@@ -371,7 +371,7 @@ structure EliminateEq : ELIMINATE_EQ =
                      of SOME(MONOLVAR (lv,_)) => lv
                       | _ => die "gen_db.lvar"
       in
-        {lvar=lvar, regvars=[], tyvars=tyvars, Type=gen_tau tyvars, bind=bind}
+        {lvar=lvar, regvars=[], tyvars=tyvars, Type=gen_tau tyvars, constrs=[], bind=bind}
       end
 
 
@@ -619,6 +619,7 @@ structure EliminateEq : ELIMINATE_EQ =
    fun function_loop () = {lvar = lvar_loop,
                            regvars = [],
                            tyvars = [], Type = ARROWtype ([intDefaultType()], NONE, [boolType], NONE),
+                           constrs=[],
                            bind = bind_loop()}
 
    fun bind_eq_table () =
@@ -646,6 +647,7 @@ structure EliminateEq : ELIMINATE_EQ =
                                                  NONE,
                                                  [tau_for_eq_fun tau_tyname],
                                                  NONE),
+                               constrs=[],
                                bind = bind_eq_table()}
 
    val f = fn scope => FIX {functions = [function_eq_table()], scope = scope}
@@ -685,7 +687,9 @@ structure EliminateEq : ELIMINATE_EQ =
                 | LET {pat, bind, scope} => LET {pat=pat, bind=f bind,scope=f scope}
                 | LETREGION {regvars,scope} => LETREGION{regvars=regvars,scope=f scope}
                 | FIX {functions, scope} =>
-                 FIX {functions=map (fn {lvar,regvars,tyvars,Type,bind} => {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,bind=f bind}) functions,
+                  FIX {functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
+                                         {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,
+                                          bind=f bind}) functions,
                       scope=f scope}
                 | APP(e1,e2,_) => APP(f e1, f e2, NONE)
                 | EXCEPTION (excon,tauopt,scope) => EXCEPTION (excon, tauopt,f scope)
@@ -799,11 +803,11 @@ structure EliminateEq : ELIMINATE_EQ =
          | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=t env scope}
          | FIX {functions,scope} =>
             let fun env_fs [] env = env (* memo:regvars *)
-                  | env_fs ({lvar,regvars,tyvars,Type,bind}::fs) env = env_fs fs (add_lvar (lvar,tyvars,env))
+                  | env_fs ({lvar,regvars,tyvars,Type,constrs,bind}::fs) env = env_fs fs (add_lvar (lvar,tyvars,env))
               val env_scope = env_fs functions env
               val env_bind_common = env_scope (* common for all binds in functions *)
 
-              fun f {lvar,regvars,tyvars,Type,bind} =
+              fun f {lvar,regvars,tyvars,Type,constrs,bind} =
                 let val eq_tvs = eq_tyvars tyvars
                   val eq_lvs = map (fn _ => Lvars.newLvar()) eq_tvs
                   val eq_taus = map mk_eq_tau eq_tvs
@@ -812,7 +816,7 @@ structure EliminateEq : ELIMINATE_EQ =
                   val Type' = mk_tau eq_taus
                   val env_bind = mk_env_tyvars eq_tvs eq_lvs env_bind_common
                   val bind' = mk_eq_abs eq_lvs eq_taus (t env_bind bind)
-                in {lvar=lvar, regvars=regvars, tyvars=tyvars, Type=Type', bind=bind'}
+                in {lvar=lvar, regvars=regvars, tyvars=tyvars, Type=Type', constrs=constrs, bind=bind'}
                 end
 
               val functions' = map f functions

@@ -123,7 +123,13 @@ struct
 
   and constraint =
         DISJOINTconstraint of info * eff * eff |
-        INCLconstraint of info * (info*regvar) * eff
+        INCLconstraint of info * (info*regvar) * eff |
+        PROPconstraint of info * prop * eff
+
+  and prop =
+        NOMUTprop of info |
+        NOPUTprop of info |
+        NOEXNprop of info
 
   and eff =
         SETeff of info * ateff list |
@@ -232,6 +238,7 @@ struct
       case c of
           DISJOINTconstraint x => #1 x
         | INCLconstraint x => #1 x
+        | PROPconstraint x => #1 x
 
   fun get_info_eff e =
       case e of
@@ -423,6 +430,13 @@ struct
         case c of
             DISJOINTconstraint (i,e1,e2) => DISJOINTconstraint (f i,map_eff_info f e1,map_eff_info f e2)
           | INCLconstraint (i,(ir,r),e) => INCLconstraint (f i,(f ir,r),map_eff_info f e)
+          | PROPconstraint (i,p,e) => PROPconstraint (f i,map_prop_info f p,map_eff_info f e)
+
+    and map_prop_info f e =
+        case e of
+            NOMUTprop i => NOMUTprop (f i)
+          | NOPUTprop i => NOPUTprop (f i)
+          | NOEXNprop i => NOEXNprop (f i)
 
     and map_eff_info f e =
         case e of
@@ -1167,6 +1181,16 @@ struct
             NODE{start="", finish="", indent=0,
                  children=[LEAF (RegVar.pr r), layoutEff e],
                  childsep=LEFT " <= "}
+          | PROPconstraint (_, p,e) =>
+            NODE{start="", finish="", indent=0,
+                 children=[LEAF (pr_prop p), layoutEff e],
+                 childsep=LEFT " "}
+
+    and pr_prop p : string =
+        case p of
+            NOMUTprop _ => "nomut"
+          | NOPUTprop _ => "noput"
+          | NOEXNprop _ => "noexn"
 
     and layoutEff e : StringTree =
         case e of

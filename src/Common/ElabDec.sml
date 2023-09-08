@@ -1892,10 +1892,17 @@ structure ElabDec: ELABDEC =
               (tau_opt, OG.WITHty(okConv i, out_ty, c))
             end
 
+    and elab_prop p =
+        case p of
+            IG.NOMUTprop i => OG.NOMUTprop(okConv i)
+          | IG.NOPUTprop i => OG.NOPUTprop(okConv i)
+          | IG.NOEXNprop i => OG.NOEXNprop(okConv i)
+
     and elab_constraint c = (* ReML *)
         case c of
             IG.DISJOINTconstraint (i,e1,e2) => OG.DISJOINTconstraint (okConv i,elab_eff e1,elab_eff e2)
           | IG.INCLconstraint (i,(ir,r),e) => OG.INCLconstraint (okConv i,(okConv ir,r),elab_eff e)
+          | IG.PROPconstraint (i,p,e) => OG.PROPconstraint (okConv i,elab_prop p,elab_eff e)
 
     and elab_eff c = (* ReML *)
         case c of

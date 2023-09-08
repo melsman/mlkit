@@ -571,7 +571,7 @@ structure OptLambda : OPT_LAMBDA =
              end
             | FIX{functions,scope} =>
              let fun add [] b = b
-                   | add ({lvar,regvars,tyvars,Type,bind}::fcs) b = add fcs (lvar::b)
+                   | add ({lvar,regvars,tyvars,Type,constrs,bind}::fcs) b = add fcs (lvar::b)
                  val b' = add functions b
              in app ((c b' x) o #bind) functions; c b' x scope
              end
@@ -641,9 +641,9 @@ structure OptLambda : OPT_LAMBDA =
                | PRIM(p,es) => PRIM(p,map subst es)
                | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
                | FIX{functions,scope} =>
-                 FIX{functions=map (fn {lvar,regvars,tyvars,Type,bind} =>
+                 FIX{functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
                                        {lvar=lvar,regvars=regvars,
-                                        tyvars=tyvars,Type=Type,bind=subst bind}) functions,
+                                        tyvars=tyvars,Type=Type,constrs=constrs,bind=subst bind}) functions,
                      scope=subst scope}
                | FN{pat,body} => FN{pat=pat,body=subst body}
                | APP(e1,e2,b) => APP(subst e1,subst e2,b)
@@ -693,6 +693,7 @@ structure OptLambda : OPT_LAMBDA =
     * ----------------------------------------------------------------- *)
 
    fun specializable {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype([tau_1'],_,[ARROWtype([tau_2'],_,_,_)],_),
+                      constrs=[],
                       bind=FN{pat=[(lv_x,tau_1)],body=FN{pat=[(lv_y,tau_2)],body}}} =
        if noinline_lvar lv_f then false
        else
@@ -708,6 +709,7 @@ structure OptLambda : OPT_LAMBDA =
      | specializable _ = false
 
    fun specializableN {lvar=lv_f, regvars=[], tyvars, Type=ARROWtype(taus,_,taus_res,_),
+                       constrs=[],
                        bind=FN{pat,body}} =
        if noinline_lvar lv_f then NONE
        else
@@ -752,7 +754,7 @@ structure OptLambda : OPT_LAMBDA =
          val tau = ARROWtype([tau_2'],rv0,[on_Type S tau_3],rv)
          val body' = subst_lvar_for_app lv_f body
          val body'' = on_LambdaExp S body'
-         val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,
+         val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,constrs=[],
                                      bind=FN{pat=[(lv_y,tau_2')],body=body''}}],
                          scope=VAR{lvar=lv_f,instances=[],regvars=[]}}
          val e_0 = LET{pat=[(lv_x,[],tau_1')],bind=lamb',scope=scope}
@@ -828,7 +830,7 @@ structure OptLambda : OPT_LAMBDA =
          val lv_f' = Lvars.renew lv_f
          val body'' = on_LambdaExp S body'
          val body''' = replaceLv lv_f lv_f' body''
-         fun fixF x = FIX{functions=[{lvar=lv_f',regvars=[],tyvars=[],Type=tau,
+         fun fixF x = FIX{functions=[{lvar=lv_f',regvars=[],tyvars=[],Type=tau,constrs=[],
                                       bind=FN{pat=pat',body=body'''}}],
                           scope=x}
          val (args1,arg,args2) = pick2 n args
@@ -955,6 +957,7 @@ structure OptLambda : OPT_LAMBDA =
                                                                  regvars=[],       (* memo:regvars *)
                                                                  tyvars=tyvars,
                                                                  Type=Type,
+                                                                 constrs=[],       (* memo:constrs *)
                                                                  bind=bind}],
                                                      scope=STRING("",NONE)}))
            | CBLKSZ _ => true
@@ -1746,7 +1749,7 @@ structure OptLambda : OPT_LAMBDA =
                                          app (decr_uses o #bind) functions;
                                          reduce (env, (scope,cv)))
                   else case functions
-                         of [function as {lvar,regvars=[],tyvars,Type,bind}] =>
+                         of [function as {lvar,regvars=[],tyvars,Type,constrs,bind}] =>
                            if single_arg_fn bind andalso not(lvar_in_lamb lvar bind) then
                              (tick "reduce - fix-let";
                               reduce (env, (LET{pat=[(lvar,tyvars,Type)],
@@ -2032,12 +2035,12 @@ structure OptLambda : OPT_LAMBDA =
                let val lvs = map #lvar functions
                    val env0 = updateEnv lvs (map (fn _ => ([],CUNKNOWN)) functions) env
                    val _ = app mark_lvar lvs
-                   val functions' = map (fn {lvar,regvars,tyvars,Type,bind} =>
-                                         {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                   val functions' = map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
+                                         {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,
                                           bind=fst (contr (env0, bind))}) functions
                    val _ = app unmark_lvar lvs
                    val env' = case functions
-                                of [function as {lvar,regvars=[],tyvars,Type,bind}] =>  (* memo:regvars *)
+                                of [function as {lvar,regvars=[],tyvars,Type,constrs=[],bind}] =>  (* memo:regvars *)
                                    let val cv =
                                            if specialize_recursive_functions() then
                                              if specializable function then
@@ -2491,13 +2494,13 @@ structure OptLambda : OPT_LAMBDA =
    local
 
      (* Build graph *)
-     type fs = {lvar:lvar,regvars:RegVar.regvar list,tyvars:tyvar list,Type:Type,bind:LambdaExp}
-     fun mk_nodes(functions,G) =
+     type fs = {lvar:lvar,regvars:RegVar.regvar list,tyvars:tyvar list,Type:Type,constrs:constr list,bind:LambdaExp}
+     fun mk_nodes (functions,G) =
        let fun mn ([]:fs list) = ()
              | mn (f::fs) = (DG.addNode (DG.mkNode(#lvar f)) G; mn fs)
        in mn functions
        end
-     fun mk_edges(functions,G) =
+     fun mk_edges (functions,G) =
        let fun maybe_add_edge (lv,lv',G) =
              let val n = DG.findNode lv G
                  val n' = DG.findNode lv' G
@@ -2541,13 +2544,13 @@ structure OptLambda : OPT_LAMBDA =
 
      (* Update instances of lambda variables *)
      fun update_instances scc =
-       let fun on_f (IS : lvar -> Type list option) ({lvar,regvars,tyvars,Type,bind}:fs) : fs =
+       let fun on_f (IS : lvar -> Type list option) ({lvar,regvars,tyvars,Type,constrs,bind}:fs) : fs =
              let fun on_bind (lamb as VAR{lvar,instances=[],regvars=[]}) =
                    (case IS(lvar)
                       of SOME instances => VAR{lvar=lvar,instances=instances,regvars=[]}
                        | NONE => lamb)
                    | on_bind lamb = map_lamb on_bind lamb
-             in {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,bind=on_bind bind}
+             in {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,bind=on_bind bind}
              end
            fun extend_IS IS c =
              let fun ext [] lv = IS(lv)
@@ -2583,11 +2586,11 @@ structure OptLambda : OPT_LAMBDA =
                  | _ => die "on_tyvar"
 
             fun on_c S [] = []   (* memo:regvars *)
-              | on_c S (({lvar,regvars,tyvars,Type,bind}:fs)::c) =
+              | on_c S (({lvar,regvars,tyvars,Type,constrs,bind}:fs)::c) =
               let val tyvars' = map (on_tyvar S) tyvars
                   val Type' = on_Type S Type
                   val bind' = on_LambdaExp S bind
-              in {lvar=lvar,regvars=regvars,tyvars=tyvars',Type=Type',bind=bind'}::on_c S c
+              in {lvar=lvar,regvars=regvars,tyvars=tyvars',Type=Type',constrs=constrs,bind=bind'}::on_c S c
               end
 
             val tyvars = get_tyvars c []
@@ -2634,7 +2637,7 @@ structure OptLambda : OPT_LAMBDA =
    fun fix_conversion lamb =
      let fun f (LET{pat=[(lvar,tyvars,Type)],bind=bind as FN _,scope=scope}) =
                  (tick "fix conversion";
-                  FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,bind=bind}],
+                  FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,constrs=[],bind=bind}],
                       scope=scope})
            | f (FIX{functions=[],scope}) = (tick "fix conversion - empty"; f scope)
            | f lamb = lamb
@@ -2710,12 +2713,14 @@ structure OptLambda : OPT_LAMBDA =
                   | nil => LET{pat=pat,bind=f env bind, scope=f env scope}
                   | _ => die "functionalise_let. non-trivial patterns unimplemented.")
           | FIX{functions,scope} =>
-                 let val functions' = map (fn {lvar,regvars,tyvars,Type,bind} =>
-                                           {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,bind=f env bind}) functions
-                     val lvars = map #lvar functions
-                     val env' = List.foldl (fn (lv,acc) => add_lv(lv,IGNORE,acc)) env lvars
-                 in FIX{functions=functions', scope=f env' scope}
-                 end
+            let val functions' =
+                    map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
+                            {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,
+                             bind=f env bind}) functions
+                val lvars = map #lvar functions
+                val env' = List.foldl (fn (lv,acc) => add_lv(lv,IGNORE,acc)) env lvars
+            in FIX{functions=functions', scope=f env' scope}
+            end
           | FRAME {declared_lvars,...} =>
               let val env' = List.foldr (fn ({lvar,...},env') =>
                                        case lookup env lvar
@@ -2902,7 +2907,8 @@ structure OptLambda : OPT_LAMBDA =
      fun trans (env:unbox_fix_env) lamb =
          case lamb of
              FIX {functions, scope} =>   (* memo:regvars *)
-             (let fun add_env r ({lvar,regvars,tyvars,Type,bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
+             (let fun add_env r ({lvar,regvars,tyvars,Type,constrs,
+                                  bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
                     let fun normal () = add_lv (lvar, NORMAL_ARGS, env)
                     in (* interesting only if the function takes a tuple of arguments *)
                       case Type of
@@ -2917,23 +2923,24 @@ structure OptLambda : OPT_LAMBDA =
                         | _ => normal()
                     end
                     | add_env _ _ = die "unbox_fix_args.f.add_env"
-                  fun trans_function env {lvar,regvars,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} =
-                    let fun mk_fun Type argpat body = {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                                                       bind=FN{pat=argpat, body=body}}
-                    in case lookup env lvar of
-                           SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
-                         | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_,_,_))) =>
-                           let (* create argument env *)
-                             val (body, argpat) = hoist_lvars(body,lv,argTypes)
-                             val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
-                             val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
-                                                                     then add_lv(lv,F64_LOCAL,e)
-                                                                     else e) env' argpat
-                             val body' = trans env' body
-                           in mk_fun Type' argpat body'
-                           end
-                         | _ => die "unbox_fix_args.trans.trans_function"
-                    end
+                  fun trans_function env {lvar,regvars,tyvars,Type,constrs,bind=FN{pat=[(lv,pt)],body}} =
+                      let fun mk_fun Type argpat body =
+                              {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                               constrs=constrs,bind=FN{pat=argpat, body=body}}
+                      in case lookup env lvar of
+                             SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
+                           | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_,_,_))) =>
+                             let (* create argument env *)
+                               val (body, argpat) = hoist_lvars(body,lv,argTypes)
+                               val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
+                               val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
+                                                                       then add_lv(lv,F64_LOCAL,e)
+                                                                       else e) env' argpat
+                               val body' = trans env' body
+                             in mk_fun Type' argpat body'
+                             end
+                           | _ => die "unbox_fix_args.trans.trans_function"
+                      end
                     | trans_function _ _ = die "unbox_fix_args.f.do_fun"
                   val env_fix = List.foldl (add_env true) env functions
                   val env_scope = List.foldl (add_env false) env functions
@@ -3237,9 +3244,9 @@ structure OptLambda : OPT_LAMBDA =
              | FIX{functions,scope} =>
               let val env' = List.foldr (fn ({lvar, tyvars, Type, ...},env) =>
                                          LvarMap.add(lvar, FIXBOUND(tyvars, Type), env)) env functions
-              in FIX{functions=map (fn {lvar,regvars,tyvars,Type,bind} =>
+              in FIX{functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
                                    {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                                    bind=inverse_eta env' bind}) functions,
+                                    constrs=constrs,bind=inverse_eta env' bind}) functions,
                      scope=inverse_eta env' scope}
               end
              | APP(x as VAR _,lamb,_) => APP(x,inverse_eta env lamb,NONE)
@@ -3381,7 +3388,7 @@ structure OptLambda : OPT_LAMBDA =
                                 val (ts',t') = uc_tau n tau
                                 val tau' = ARROWtype(ts',rv0,[t'],rv)
                                 val env' = LvarMap.add(lv,SOME(n,(tyvars,tau')),env)
-                                val function = {lvar=lv,regvars=[],tyvars=tyvars,Type=tau',
+                                val function = {lvar=lv,regvars=[],tyvars=tyvars,Type=tau',constrs=[],
                                                 bind=FN{pat=pat,body=APP(b,args,NONE)}}
                             in
                                 tick ("uncurry - let-var(" ^ Int.toString n ^ ")");
@@ -3412,7 +3419,7 @@ structure OptLambda : OPT_LAMBDA =
              | SOME (v, sigma, il, es, n) => APP(v, PRIM(UB_RECORDprim, map (uc env) es),NONE)
    and uc_functions (env:uc_env) functions =
        let fun mk_envs (nil,env_b,env_s) = (env_b, env_s)
-             | mk_envs ({lvar:lvar,regvars,tyvars,Type:Type,bind:LambdaExp}::rest,env_b,env_s) =
+             | mk_envs ({lvar:lvar,regvars,tyvars,Type:Type,constrs,bind:LambdaExp}::rest,env_b,env_s) =
               let val n = uc_lambdas bind
                   val (env_b,env_s) =
                       if !uncurrying andalso n >= 2 then
@@ -3428,16 +3435,18 @@ structure OptLambda : OPT_LAMBDA =
            val (env_b,env_s) = mk_envs(functions,LvarMap.empty,LvarMap.empty)
        in (map (uc_function env_b env) functions,env_s)
        end
-   and uc_function env_b env {lvar:lvar,regvars:RegVar.regvar list,tyvars:tyvar list,Type:Type,bind:LambdaExp} =
+   and uc_function env_b env {lvar:lvar,regvars:RegVar.regvar list,tyvars:tyvar list,Type:Type,constrs,
+                              bind:LambdaExp} =
        case LvarMap.lookup env_b lvar of
            NONE => die "fix-bound lvar not in uc-env"
          | SOME NONE => {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                         constrs=constrs,
                          bind=uc (LvarMap.plus(env,env_b)) bind}
          | SOME(SOME(n,(tvs,tau))) =>
                ((* print ("Uncurrying function " ^ Lvars.pr_lvar lvar ^ " ("
                        ^ Int.toString n ^ ")\n"); *)
                 tick ("uncurry - fix(" ^ Int.toString n ^ ")");
-               {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=tau,
+               {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=tau,constrs=constrs,
                 bind= uc_function_bind (LvarMap.plus(env,env_b)) n bind})
    and uc_function_bind env n bind =
        let val (pat,e) = uc_rem_lambdas n bind
@@ -3449,7 +3458,7 @@ structure OptLambda : OPT_LAMBDA =
                (case uc env b of
                     b as FN _ =>
                         FIX{functions= [{lvar=lv,regvars=[],tyvars=tyvars,
-                                         Type=tau,bind=b}],
+                                         Type=tau,constrs=[],bind=b}],
                             scope=scope}
                   | _ => e)
          | _ => e

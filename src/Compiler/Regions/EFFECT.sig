@@ -3,6 +3,8 @@ signature EFFECT =
 sig
 
   type lvar
+  type excon
+  type prop
 
   datatype runType = STRING_RT | PAIR_RT | TOP_RT | BOT_RT
                    | ARRAY_RT | REF_RT | TRIPLE_RT
@@ -55,7 +57,8 @@ sig
   val is_rho            : effect -> bool
   val is_put            : effect -> bool
   val is_get            : effect -> bool
-  val rho_of            : effect -> place (* should only be applied to PUT and GET nodes *)
+  val is_mut            : effect -> bool
+  val rho_of            : effect -> place (* should only be applied to PUT, GET, and MUT nodes *)
 
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
@@ -170,6 +173,8 @@ sig
                                               represent a region variable *)
   val mkGet             : effect -> effect (* argument must
                                               represent a region variable *)
+  val mkMut             : effect -> effect (* argument must
+                                              represent a region variable *)
 
   val edge              : effect * effect -> unit
   val mkUnion           : effect list -> effect
@@ -190,8 +195,14 @@ sig
 
   (* [rho_add_constraint r (lvopt,r')] adds a constraint to r saying it cannot be
    * identical to r'; the optional lvar indicates the function with the constraint. *)
-  val rho_add_constraint : effect -> Report * lvar option * effect -> unit
+  val rho_add_constraint  : effect -> Report * lvar option * effect -> unit
   val rho_get_constraints : effect -> (Report * lvar option * effect) list
+
+  (* [eps_add_prop_constraint e (p,rep,lvopt)] adds a constraint to e saying it has
+   * to obey the property p; the optional lvar indicates the function with the
+   * constraint. *)
+  val eps_add_prop_constraint  : effect -> Report * lvar option * prop -> unit
+  val eps_get_prop_constraints : effect -> (Report * lvar option * prop) list
 
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
   val observe           : int * delta_phi * effect ->  unit
