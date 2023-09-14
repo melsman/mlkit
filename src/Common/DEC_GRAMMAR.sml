@@ -113,7 +113,7 @@ sig
         WITHty of info * ty * constraint                               (* ReML *)
 
   and constraint =                                                     (* ReML *)
-        DISJOINTconstraint of info * eff * eff |
+        DISJOINTconstraint of info * eff * eff * bool |                (* true if puts only *)
         INCLconstraint of info * (info*regvar) * eff |
         PROPconstraint of info * prop * eff
 

@@ -352,10 +352,10 @@ struct
                            | _ => a)) false bind
 
   (* Function for traversing a LambdaExp type simultaneously with a mu, trying to set explicit region variables *)
-  fun match_ty_regvars (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
+  fun match_ty_regvars s (B:cone) (rse:rse) (tau:E.Type) (mu:R.Type) : cone =
       let fun match_rv B k rv p =
               case RSE.lookupRegVar rse rv of
-                  NONE => deepError rv ("Explicit " ^ k ^ " variable " ^ RegVar.pr rv ^ " not in scope")
+                  NONE => deepError rv ("Explicit " ^ k ^ " variable " ^ RegVar.pr rv ^ " not in scope - " ^ s)
                 | SOME p' => if RegVar.is_effvar rv
                              then Eff.unifyEps_explicit ((rv,p'),p) B
                              else Eff.unifyRho_explicit ((rv,p'),p) B
@@ -873,7 +873,7 @@ struct
              | loop_pat ((lvar,alphas,tau_ML):: rest_bind, mu1 :: mu_rest,
                          B, rse, pat'_list) =
                let val (tau1,rho_opt) = R.unbox mu1
-                   val B = match_ty_regvars B rse tau_ML mu1
+                   val B = match_ty_regvars "let" B rse tau_ML mu1
                    val sigma = R.type_to_scheme tau1
 (*                 val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                    val alphas = map (fn tv => (tv,NONE)) alphas            (* TODO MAEL: for those in tvs1, SOME eps, where eps is fresh... *)
@@ -1617,9 +1617,9 @@ good *)
             fun spreadRhss B [] = (B,[],[])
               | spreadRhss B ((lvar,regvars_with_rhos,tyvars,tau_ML,constrs,sigma_hat,regvar_opt,bind)::rest) =
                   let
-                     (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
+(*                      val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n") *)
                       val B = Eff.push B
-                      (*val () = print ("spreadFcns - length(regvars_with_rhos) = " ^ Int.toString (length regvars_with_rhos) ^ "\n") *)
+(*                      val () = print ("spreadFcns - length(regvars_with_rhos) = " ^ Int.toString (length regvars_with_rhos) ^ "\n") *)
                       val rse1' = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse)) rse1 regvars_with_rhos
                       val (B, t1 as E'.TR(_, meta1, phi1),_,tvs') = spreadExp(B,rse1', bind,false,NOTAIL)
                       val B = List.foldl (fn (c,B) => R.enforceConstraint (RSE.lookupRegVar rse1')
@@ -1628,7 +1628,7 @@ good *)
                       val mu = case unMus "spreadFcns" meta1 of
                                    [mu] => mu
                                  | _ => die "spreadFcns: expecting singleton mus"
-                      val B = match_ty_regvars B rse1' tau_ML mu
+                      val B = match_ty_regvars "fix" B rse1' tau_ML mu
                       val (tau1,rho1) = noSome (R.unBOX mu) "spreadRhss: expecting boxed function type"
                       val B = Eff.unifyRho (rho1,rho) B
                       val B = case regvar_opt of

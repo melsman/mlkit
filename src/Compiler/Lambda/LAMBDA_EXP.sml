@@ -39,7 +39,7 @@ signature LAMBDA_EXP =
     val pp_prop : prop -> string
 
     datatype constr =  (* ReML constraints *)
-        DISJOINTconstr of eff * eff * Report * lvar option
+        DISJOINTconstr of eff * eff * bool * Report * lvar option  (* true if put-only *)
       | INCLconstr of regvar * eff * Report * lvar option
       | PROPconstr of prop * eff * Report * lvar option
 

@@ -122,7 +122,7 @@ struct
         WITHty of info * ty * constraint
 
   and constraint =
-        DISJOINTconstraint of info * eff * eff |
+        DISJOINTconstraint of info * eff * eff * bool |   (* true if puts only *)
         INCLconstraint of info * (info*regvar) * eff |
         PROPconstraint of info * prop * eff
 
@@ -428,7 +428,7 @@ struct
 
     and map_constraint_info f c =
         case c of
-            DISJOINTconstraint (i,e1,e2) => DISJOINTconstraint (f i,map_eff_info f e1,map_eff_info f e2)
+            DISJOINTconstraint (i,e1,e2,p) => DISJOINTconstraint (f i,map_eff_info f e1,map_eff_info f e2,p)
           | INCLconstraint (i,(ir,r),e) => INCLconstraint (f i,(f ir,r),map_eff_info f e)
           | PROPconstraint (i,p,e) => PROPconstraint (f i,map_prop_info f p,map_eff_info f e)
 
@@ -1173,10 +1173,10 @@ struct
 
     and layoutConstraint c : StringTree =
         case c of
-            DISJOINTconstraint (_,e1,e2) =>
+            DISJOINTconstraint (_,e1,e2,p) =>
             NODE{start="", finish="", indent=0,
                  children=[layoutEff e1, layoutEff e2],
-                 childsep=LEFT " # "}
+                 childsep=LEFT (if p then " ## " else " # ")}
           | INCLconstraint (_, (_,r),e) =>
             NODE{start="", finish="", indent=0,
                  children=[LEAF (RegVar.pr r), layoutEff e],

@@ -351,7 +351,7 @@ struct
                                          in E.edge (effvar,ae); B
                                          end) B aes
              end
-           | L.DISJOINTconstr (e1,e2,rep,lvopt) =>
+           | L.DISJOINTconstr (e1,e2,putonly,rep,lvopt) =>
              let fun err1 n e = (* error finding e given type of node n *)
                      if E.is_arrow_effect n then deepErr e "effect variable not in scope"
                      else if E.is_rho n then deepErr e "region variable not in scope"
@@ -362,7 +362,10 @@ struct
                    (case (lookRegVar e1, lookRegVar e2)  of
                         (SOME n1, SOME n2) =>
                         if E.is_arrow_effect n1 then
-                          if E.is_arrow_effect n2 then (* MEMO: ok, but add constraint *) B
+                          if E.is_arrow_effect n2 then (* MEMO: ok, but add constraint *)
+                            (E.eps_add_constraint n1 (rep,lvopt,n2,putonly);
+                             E.eps_add_constraint n2 (rep,lvopt,n1,putonly);
+                             B)
                           else deepErr e2 "expecting explicit effect variable"
                         else if E.is_rho n1 then
                           if E.is_rho n2 then (E.rho_add_constraint n1 (rep,lvopt,n2); B)
@@ -783,11 +786,35 @@ struct
         val () = List.app E.setInstance Sr
         val () = List.app (fn (s,t) =>
                               let val cs = E.rho_get_constraints s (* copy constraints to target *)
-                              in List.app (fn (rep,lv,c) => E.rho_add_constraint t (rep,lvopt,#2(cp_rho c))) cs
+                              in List.app (fn (rep,lv,c) =>
+                                              let val c' = #2(cp_rho c)
+                                                  val rep' = Report.line ("Instance " ^ E.pp_eff c ^ " -> "
+                                                                          ^ E.pp_eff c' ^ ".")
+                                              in E.rho_add_constraint t (Report.//(rep,rep'),lvopt,c')
+                                              end) cs
                               end) Sr
 
         val () = List.app E.setInstance Se
-        (* memo: copy prop_constraints *)
+        val () = List.app (fn (s,t) =>
+                              let val pcs = E.eps_get_prop_constraints s (* copy constraints to target *)
+                              in List.app (fn (rep,lv,p) =>
+                                              let val rep' = Report.line ("Instance " ^ E.pp_eff s ^ " -> "
+                                                                          ^ E.pp_eff t ^ ".")
+                                              in E.eps_add_prop_constraint t (Report.//(rep,rep'),lvopt,p)
+                                              end) pcs
+                              end) Se
+
+        val () = List.app (fn (s,t) =>
+                              let val cs = E.eps_get_constraints s (* copy constraints to target *)
+                              in List.app (fn (rep,lv,e,p) =>
+                                              let val e' = #2(cp_eps e)
+                                                  val rep' = Report.line ("Instance " ^ E.pp_eff e ^ " -> " ^ E.pp_eff e'
+                                                                          ^ " and " ^ E.pp_eff s ^ " -> " ^ E.pp_eff t ^ ".")
+                                              in E.eps_add_constraint t (Report.//(rep,rep'),lvopt,e',p)
+                                              end) cs
+                              end) Se
+
+        (* memo: copy epsilon constraints *)
 
         val Ty = #2(cp_ty tau)
         (* this is where arrow effects are instantiated*)

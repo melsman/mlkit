@@ -1621,7 +1621,7 @@ structure StatObject: STATOBJECT =
 
         fun instance_with_types (([],[],tau),[]) = tau
           | instance_with_types ((tvs,regvars,tau),taus) =
-            let (*val tau = Type.remove_regvars regvars tau*)
+            let val tau = Type.remove_regvars regvars tau
             fun instanceType ty =
               let val ty = findType ty
                   val {TypeDesc, level} = ty

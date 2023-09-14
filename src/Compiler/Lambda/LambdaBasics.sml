@@ -390,7 +390,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun on_constr ren c =
           case c of
-              DISJOINTconstr (e1,e2,rep,lvopt) => DISJOINTconstr (e1,e2,rep,on_lv_opt ren lvopt)
+              DISJOINTconstr (e1,e2,p,rep,lvopt) => DISJOINTconstr (e1,e2,p,rep,on_lv_opt ren lvopt)
             | INCLconstr (r,e,rep,lvopt) => INCLconstr (r,e,rep,on_lv_opt ren lvopt)
             | PROPconstr (p,e,rep,lvopt) => PROPconstr (p,e,rep,on_lv_opt ren lvopt)
 

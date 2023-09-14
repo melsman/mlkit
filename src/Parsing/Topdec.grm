@@ -126,7 +126,7 @@ type arg = unit
         | DARROW | ARROW | HASH
 
 (* Half-hearted reserved words, dealt with correctly in context: *)
-        | EQUALS | STAR
+        | EQUALS | STAR | HASHHASH
 
 (*Other core terminals. DECPOSINTEGER is the set of decimal
  unsigned integer constants which *aren't* single digits - they
@@ -291,11 +291,6 @@ type arg = unit
         | TyComma_seq2                  of ty list
         | OneDec_or_SEMICOLON           of dec option
         | NonEmptyDec                   of dec
-(*KILL 07/08/1996 09:51. tho.:
-        | Ident_seq1                    of string WithInfo list
-                                                (* used in "include." c/w
-                                                   info. *)
-*)
         | Ident_seq2                    of string WithInfo list
                                                 (* used in "include." c/w
                                                    info. *)
@@ -417,6 +412,7 @@ OpIdent:  Ident         ( OP_OPT(Ident, false) )
 
 EqIdent:  Ident         ( Ident )
         | EQUALS        ( "=" )
+        | HASHHASH      ( "##" )
 
 TypeIdent:
           ID            ( ID )
@@ -1522,46 +1518,62 @@ Ty_sans_STAR:
                           end )
         | AtomicTy      ( AtomicTy )
 
-        | AtomicTy WHILE EqIdent COLONGREATER EqIdent
-                        ( WITHty (PP AtomicTyleft EqIdent2right,
+        | AtomicTy WHILE Ident COLONGREATER Ident
+                        ( WITHty (PP AtomicTyleft Ident2right,
                                   AtomicTy,
-                                  INCLconstraint(PP EqIdent1left EqIdent2right,
-                                                 (PP EqIdent1left EqIdent2right,
-                                                  RegVar.mk_Named EqIdent1),
-                                                 VAReff (PP EqIdent2left EqIdent2right,
-                                                         RegVar.mk_Named EqIdent2)))
+                                  INCLconstraint(PP Ident1left Ident2right,
+                                                 (PP Ident1left Ident2right,
+                                                  RegVar.mk_Named Ident1),
+                                                 VAReff (PP Ident2left Ident2right,
+                                                         RegVar.mk_Named Ident2)))
                         )
 
-        | AtomicTy WHILE EqIdent HASH EqIdent
-                        ( WITHty (PP AtomicTyleft EqIdent2right,
-                                  AtomicTy,
-                                  DISJOINTconstraint(PP EqIdent1left EqIdent2right,
-                                                     VAReff (PP EqIdent1left EqIdent1right,
-                                                             RegVar.mk_Named EqIdent1),
-                                                     VAReff (PP EqIdent2left EqIdent2right,
-                                                             RegVar.mk_Named EqIdent2)
-                                                    )
-                                 )
-                        )
-
-        | AtomicTy WHILE EqIdent EqIdent
+        | AtomicTy WHILE Ident Ident
                   ( let fun toProp (i, s) =
                            case s of
                                "nomut" => NOMUTprop i
                              | "noput" => NOPUTprop i
                              | "noexn" => NOEXNprop i
-                             | _ => raise LEXICAL_ERROR (EqIdent1left, "expecting nomut, noput, or noexn")
-                   in
-                        WITHty (PP AtomicTyleft EqIdent2right,
+                             | _ => raise LEXICAL_ERROR (Ident1left, "expecting nomut, noput, or noexn")
+                    in
+                        WITHty (PP AtomicTyleft Ident2right,
                                 AtomicTy,
-                                PROPconstraint(PP EqIdent1left EqIdent2right,
-                                               toProp (PP EqIdent1left EqIdent1right,
-                                                       EqIdent1),
-                                               VAReff (PP EqIdent2left EqIdent2right,
-                                                       RegVar.mk_Named EqIdent2)
+                                PROPconstraint(PP Ident1left Ident2right,
+                                               toProp (PP Ident1left Ident1right,
+                                                       Ident1),
+                                               VAReff (PP Ident2left Ident2right,
+                                                       RegVar.mk_Named Ident2)
                                               )
                                )
-                   end )
+                    end )
+
+        | AtomicTy WHILE Ident HASH Ident
+                  ( let
+                    in WITHty (PP AtomicTyleft Ident2right,
+                               AtomicTy,
+                               DISJOINTconstraint(PP Ident1left Ident2right,
+                                                  VAReff (PP Ident1left Ident1right,
+                                                          RegVar.mk_Named Ident1),
+                                                  VAReff (PP Ident2left Ident2right,
+                                                          RegVar.mk_Named Ident2),
+                                                  false
+                                                 )
+                             )
+                  end )
+
+        | AtomicTy WHILE Ident HASHHASH Ident
+                  ( let
+                    in WITHty (PP AtomicTyleft Ident2right,
+                               AtomicTy,
+                               DISJOINTconstraint(PP Ident1left Ident2right,
+                                                  VAReff (PP Ident1left Ident1right,
+                                                          RegVar.mk_Named Ident1),
+                                                  VAReff (PP Ident2left Ident2right,
+                                                          RegVar.mk_Named Ident2),
+                                                  true
+                                                 )
+                             )
+                    end )
 
 TyComma_seq2:
           Ty COMMA TyComma_seq2

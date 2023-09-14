@@ -26,6 +26,7 @@ sig
   val setkey            : (unit -> int) -> effect -> unit
   val empty             : effect
   val eq_effect         : effect * effect -> bool
+  val pp_eff            : effect -> string
 
   val pu_effect         : effect Pickle.pu
   val pu_effects        : effect list Pickle.pu
@@ -204,9 +205,16 @@ sig
   val eps_add_prop_constraint  : effect -> Report * lvar option * prop -> unit
   val eps_get_prop_constraints : effect -> (Report * lvar option * prop) list
 
+  (* [eps_add_constraint e (rep,lvopt,e',putonly)] adds a constraint
+   * to e saying it cannot intersect with e' (up to the putonly boolean); the
+   * optional lvar indicates the function with the constraint. *)
+
+  val eps_add_constraint  : effect -> Report * lvar option * effect * bool -> unit
+  val eps_get_constraints : effect -> (Report * lvar option * effect * bool) list
+
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
-  val observe           : int * delta_phi * effect ->  unit
-  val observeDelta      : int * delta_phi * effect ->  effect list * delta_phi
+  val observe           : int * delta_phi * effect -> unit
+  val observeDelta      : int * delta_phi * effect -> effect list * delta_phi
 
   val update_increment  : effect * delta_phi -> unit
   val update_areff      : effect -> unit

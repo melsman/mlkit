@@ -433,8 +433,8 @@ structure OptLambda : OPT_LAMBDA =
 
         fun eq_constr (c1,c2) =
             case (c1,c2) of
-                (DISJOINTconstr(e1,e2,rep,lvopt), DISJOINTconstr(e1',e2',rep',lvopt')) =>
-                eq_eff (e1,e1') andalso eq_eff(e2,e2') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt')
+                (DISJOINTconstr(e1,e2,p,rep,lvopt), DISJOINTconstr(e1',e2',p',rep',lvopt')) =>
+                eq_eff (e1,e1') andalso eq_eff(e2,e2') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt') andalso p=p'
               | (INCLconstr (r,e,rep,lvopt), INCLconstr (r',e',rep',lvopt')) =>
                 RegVar.eq(r,r') andalso eq_eff(e,e') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt')
               | _ => false

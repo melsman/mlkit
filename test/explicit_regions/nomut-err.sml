@@ -17,7 +17,8 @@ val rec g `e : (unit #e -> unit) while nomut e =
     in r2 := "hi there\n" ; r := "yes"
      ; print (!r2)
     end
-
+(*
 val () = f()
 val () = g()
+*)
 end

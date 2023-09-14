@@ -220,6 +220,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | _		 => if !explicit_regions then
                               if text = "region" then keyword REGION
                               else if text = "`" then keyword BACKQUOTE
+                              else if text = "##" then keyword HASHHASH
                               else ID(text, p1, p2)
                             else ID(text, p1, p2)
       end

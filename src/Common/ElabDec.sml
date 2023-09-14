@@ -1900,7 +1900,7 @@ structure ElabDec: ELABDEC =
 
     and elab_constraint c = (* ReML *)
         case c of
-            IG.DISJOINTconstraint (i,e1,e2) => OG.DISJOINTconstraint (okConv i,elab_eff e1,elab_eff e2)
+            IG.DISJOINTconstraint (i,e1,e2,p) => OG.DISJOINTconstraint (okConv i,elab_eff e1,elab_eff e2,p)
           | IG.INCLconstraint (i,(ir,r),e) => OG.INCLconstraint (okConv i,(okConv ir,r),elab_eff e)
           | IG.PROPconstraint (i,p,e) => OG.PROPconstraint (okConv i,elab_prop p,elab_eff e)
 

@@ -1554,8 +1554,8 @@ in
 
   fun compileConstraint lvopt c =
       case c of
-          DG.DISJOINTconstraint (i,e1,e2) =>
-          TLE.DISJOINTconstr(compileEff e1, compileEff e2,loc_report_of_ElabInfo i, lvopt)
+          DG.DISJOINTconstraint (i,e1,e2,p) =>
+          TLE.DISJOINTconstr(compileEff e1, compileEff e2,p,loc_report_of_ElabInfo i, lvopt)
         | DG.INCLconstraint (i0,(i,r),e) =>
           (attach_loc_info (i,r); TLE.INCLconstr(r,compileEff e,loc_report_of_ElabInfo i0,lvopt))
         | DG.PROPconstraint (i0,p,e) =>

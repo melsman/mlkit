@@ -30,7 +30,7 @@ structure LambdaExp : LAMBDA_EXP =
         NOMUTprop | NOPUTprop | NOEXNprop
 
     datatype constr =  (* ReML constraints *)
-        DISJOINTconstr of eff * eff * Report * lvar option
+        DISJOINTconstr of eff * eff * bool * Report * lvar option  (* true if put-only *)
       | INCLconstr of regvar * eff * Report * lvar option
       | PROPconstr of prop * eff * Report * lvar option
 
@@ -833,7 +833,7 @@ structure LambdaExp : LAMBDA_EXP =
 
    fun layoutConstraint c =
        case c of
-           DISJOINTconstr (e1,e2,_,_) => layoutInfix layoutEff " # " layoutEff (e1,e2)
+           DISJOINTconstr (e1,e2,p,_,_) => layoutInfix layoutEff (if p then " ## " else " # ") layoutEff (e1,e2)
          | INCLconstr (r,eff,_,_) => layoutInfix layoutRegVar " <= " layoutEff (r,eff)
          | PROPconstr (p,eff,_,_) => PP.NODE{start=pp_prop p ^ " ",finish="",indent=0,
                                              children=[layoutEff eff], childsep=PP.NOSEP}
@@ -1667,8 +1667,8 @@ structure LambdaExp : LAMBDA_EXP =
               | toInt (INCLconstr _) = 1
               | toInt (PROPconstr _) = 2
             fun fun_DISJOINTconstr _ =
-                Pickle.con1 DISJOINTconstr (fn DISJOINTconstr a => a | _ => die "pu_constr.DISJOINTconstr")
-                            (Pickle.tup4Gen (pu_eff,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))
+                Pickle.con1 (fn ((a,b,c),d,e) => DISJOINTconstr (a,b,c,d,e)) (fn DISJOINTconstr (a,b,c,d,e) => ((a,b,c),d,e) | _ => die "pu_constr.DISJOINTconstr")
+                            (Pickle.tup3Gen (Pickle.tup3Gen(pu_eff,pu_eff,Pickle.bool),Report.pu,Pickle.optionGen Lvars.pu))
             fun fun_INCLconstr _ =
                 Pickle.con1 INCLconstr (fn INCLconstr a => a | _ => die "pu_constr.INCLconstr")
                             (Pickle.tup4Gen (RegVar.pu,pu_eff,Report.pu,Pickle.optionGen Lvars.pu))

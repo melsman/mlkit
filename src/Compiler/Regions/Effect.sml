@@ -68,8 +68,13 @@ struct
        desc="Print effect constraints when printing region and\n\
             \effect variables"}
 
+  val explicit_regions : unit -> bool = Flags.is_on0 "explicit_regions"
+
   fun mem x nil = false
     | mem x (y::ys) = x = y orelse mem x ys
+
+  fun memEq eq x nil = false
+    | memEq eq x (y::ys) = eq(x,y) orelse memEq eq x ys
 
   type StringTree = PP.StringTree
 
@@ -144,6 +149,7 @@ struct
                            instance : einfo G.node option ref,
                            pix: int ref,
                            explicit : regvar option,
+                           constraints : (Report * lvar option * einfo G.node * bool) list ref,
                            prop_constraints : (Report * lvar option * prop) list ref}
                  | UNION of {represents: einfo G.node list option}
                  | PUT | GET | MUT
@@ -161,7 +167,7 @@ struct
 
   fun layout_einfo einfo =
       case einfo of
-          EPS{key,level,explicit,prop_constraints,...} =>
+          EPS{key,level,explicit,prop_constraints,constraints,...} =>
           let val n = case explicit of
                           NONE => "e" ^ show_key key
                         | SOME ev => "`" ^ RegVar.pr ev ^ "_" ^ show_key key
@@ -169,9 +175,12 @@ struct
                             "(" ^ show_level level ^ ")"
                           else "")
                      ^ (if print_constraints() then
-                          case !prop_constraints of
-                              nil => ""
-                            | cs => "[" ^ String.concatWith "," (map (LambdaExp.pp_prop o #3) cs) ^ "]"
+                          let val cs1 = map (LambdaExp.pp_prop o #3) (!prop_constraints)
+                              val cs2 = map (fn _ => "memo") (!constraints)
+                              val cs = cs1 @ cs2
+                          in if List.null cs then ""
+                             else "[" ^ String.concatWith "," cs ^ "]"
+                          end
                         else "")
                     )
           end
@@ -252,6 +261,20 @@ struct
       case G.find_info e of
           EPS{prop_constraints,...} => !prop_constraints
         | _ => die "eps_get_prop_constraints.expecting eps"
+
+  fun eps_add_constraint e (rep,lvopt,e',putonly:bool) : unit =
+      case G.find_info e of
+          EPS{constraints,...} =>
+          let val cs = !constraints
+          in if List.exists (fn (_,_,e,p) => p=putonly andalso eq_effect (e,e')) cs then ()
+             else constraints := (rep,lvopt,e',putonly)::cs
+          end
+        | _ => die "eps_add_constraint.expecting eps"
+
+  fun eps_get_constraints (e: effect) : (Report * lvar option * effect * bool) list =
+      case G.find_info e of
+          EPS{constraints,...} => !constraints
+        | _ => die "eps_get_constraints.expecting eps"
 
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
@@ -460,7 +483,8 @@ struct
                     represents = NONE, pix = ref ~1,
                     instance = ref NONE,
                     explicit=explicit,
-                    prop_constraints=ref nil})
+                    prop_constraints=ref nil,
+                    constraints=ref nil})
 
   fun remove_duplicates effects =
       let fun loop([], acc) = acc
@@ -810,7 +834,8 @@ struct
                                            represents = NONE,
                                            pix = ref(f(pix)),
                                            explicit=explicit,
-                                           prop_constraints=ref nil})
+                                           prop_constraints=ref nil,
+                                           constraints=ref nil})
                      in
                         (new_eps::epss', add(new_eps, n, k, c))
                      end
@@ -993,20 +1018,26 @@ struct
             | toInt GET = 3
             | toInt MUT = 4
             | toInt (RHO _) = 5
+          fun pu_constraints pu_einfo =
+              Pickle.refOneGen (Pickle.listGen(Pickle.tup4Gen(Report.pu,Pickle.optionGen Lvars.pu,
+                                                              #1(pu_node_nodes pu_einfo),
+                                                              Pickle.bool)))
           fun fun_EPS pu_einfo =
               Pickle.newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
-                             (Pickle.con1 (fn ((k,l,r),p,y,cs) =>
+                             (Pickle.con1 (fn ((k,l,r,p),y,pcs,cs) =>
                                               EPS{key=k,level=l,represents=r,instance=ref NONE,
-                                                  pix=p,explicit=y,prop_constraints=cs})
+                                                  pix=p,explicit=y,prop_constraints=pcs,constraints=cs})
                                           (fn EPS{key=k,level=l,represents=r,instance=ref NONE,
-                                                  pix=p,explicit=y,prop_constraints=cs} => ((k,l,r),p,y,cs)
+                                                  pix=p,explicit=y,prop_constraints=pcs,constraints=cs} =>
+                                              ((k,l,r,p),y,pcs,cs)
                                           | _ => die "pu_einfo.fun_EPS")
-               (Pickle.tup4Gen0(Pickle.tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
-                                pu_intref,
+               (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref,pu_intref,pu_represents pu_einfo,pu_intref),
                                 Pickle.optionGen RegVar.pu,
                                 Pickle.refOneGen(Pickle.listGen (Pickle.tup3Gen(Report.pu,
                                                                                 Pickle.optionGen Lvars.pu,
-                                                                                LambdaExp.pu_prop))))))
+                                                                                LambdaExp.pu_prop))),
+                                pu_constraints pu_einfo
+                             )))
           fun fun_UNION pu_einfo =
               Pickle.con1 (fn r => UNION{represents=r})
               (fn UNION {represents=r} => r
@@ -1015,7 +1046,7 @@ struct
           val fun_PUT = Pickle.con0 PUT
           val fun_GET = Pickle.con0 GET
           val fun_MUT = Pickle.con0 MUT
-          fun pu_constraints pu_einfo =
+          fun pu_rho_constraints pu_einfo =
               Pickle.refOneGen (Pickle.listGen(Pickle.tup3Gen(Report.pu,Pickle.optionGen Lvars.pu,
                                                               #1(pu_node_nodes pu_einfo))))
           fun fun_RHO pu_einfo =
@@ -1033,7 +1064,7 @@ struct
                                                 pu_intref),
                                 pu_intref,pu_runType,Pickle.tup4Gen0(Pickle.nameGen "mut" (pu_nodeopt pu_einfo),
                                                                      Pickle.optionGen RegVar.pu,pu_intref,
-                                                                     pu_constraints pu_einfo))))
+                                                                     pu_rho_constraints pu_einfo))))
       in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET, fun_MUT,
                                               fun_RHO])
       end
@@ -1242,22 +1273,33 @@ struct
       in raise DeepError report
       end
 
-  fun merge_prop_constraints rcs1 rcs2 =
+  fun merge_prop_constraints pcs1 pcs2 =
       let fun ins (c:'a*'b*prop,nil) = [c]
             | ins (c,c'::cs) = if #3 c = #3 c' then c'::cs
                                else c'::ins(c,cs)
           fun mer (nil,cs) = cs
             | mer (cs,nil) = cs
             | mer (c::cs,cs') = mer (cs,ins(c,cs'))
-      in case (rcs1,rcs2) of
-             (ref cs1,ref cs2) => rcs1 := mer(cs1,cs2)
+      in case (pcs1,pcs2) of
+             (ref cs1,ref cs2) => pcs1 := mer(cs1,cs2)
+      end
+
+  fun merge_constraints cs1 cs2 =
+      let fun ins (c:'a*'b*effect*bool,nil) = [c]
+            | ins (c,c'::cs) = if eq_effect (#3 c,#3 c') andalso #4 c = #4 c' then c'::cs
+                               else c'::ins(c,cs)
+          fun mer (nil,cs) = cs
+            | mer (cs,nil) = cs
+            | mer (c::cs,cs') = mer (cs,ins(c,cs'))
+      in case (cs1,cs2) of
+             (ref cs1',ref cs2') => cs1 := mer (cs1',cs2')
       end
 
   fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
                                                       * have the same level *)
       case (einfo1, einfo2) of
-          (EPS{key = key1 as ref k1, explicit=explicit1, prop_constraints=rcs1, ...},
-           EPS{key = key2 as ref k2, explicit=explicit2, prop_constraints=rcs2, ...}) =>
+          (EPS{key = key1 as ref k1, explicit=explicit1, prop_constraints=pcs1, constraints=cs1, ...},
+           EPS{key = key2 as ref k2, explicit=explicit2, prop_constraints=pcs2, constraints=cs2, ...}) =>
           if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
           else (* merge increment information for einfo1 and einfo2 *)
             let val choose1 = case (explicit1,explicit2) of
@@ -1270,7 +1312,8 @@ struct
                                 | (NONE, SOME _) => false
                                 | (NONE, NONE) => k1 < k2
             in if choose1 then
-                 (merge_prop_constraints rcs1 rcs2;
+                 (merge_prop_constraints pcs1 pcs2;
+                  merge_constraints cs1 cs2;
                   if !algorithm_R then
                     case Increments.lookup (!globalIncs) eps2 of
                         SOME delta2 => (update_increment(eps1,delta2);
@@ -1279,7 +1322,8 @@ struct
                       | NONE => ()
                   else (); einfo1)
                else
-                 (merge_prop_constraints rcs2 rcs1;
+                 (merge_prop_constraints pcs2 pcs1;
+                  merge_constraints cs2 cs1;
                   if !algorithm_R then
                     case Increments.lookup (!globalIncs) eps1 of
                         SOME delta1 => (update_increment(eps2,delta1);
@@ -1725,8 +1769,8 @@ struct
     case (einfo1,einfo2) of
         (UNION _ , _) => einfo2
       | (_, UNION _) => einfo1
-      | (EPS {key=ref k1,explicit=explicit1,prop_constraints=rcs1,...},
-         EPS {key=ref k2,explicit=explicit2,prop_constraints=rcs2,...}) =>
+      | (EPS {key=ref k1,explicit=explicit1,prop_constraints=pcs1, constraints=cs1, ...},
+         EPS {key=ref k2,explicit=explicit2,prop_constraints=pcs2, constraints=cs2, ...}) =>
         let val choose1 = case (explicit1,explicit2) of
                                   (SOME ev1, SOME ev2) =>
                                   if RegVar.eq(ev1,ev2)
@@ -1736,8 +1780,12 @@ struct
                                 | (SOME _, NONE) => true
                                 | (NONE, SOME _) => false
                                 | (NONE, NONE) => k1 < k2
-        in if choose1 then (merge_prop_constraints rcs1 rcs2; einfo1)
-           else (merge_prop_constraints rcs2 rcs1; einfo2)
+        in if choose1 then (merge_prop_constraints pcs1 pcs2;
+                            merge_constraints cs1 cs2;
+                            einfo1)
+           else (merge_prop_constraints pcs2 pcs1;
+                 merge_constraints cs2 cs1;
+                 einfo2)
         end
       | _ => die "einfo_scc_combine: strongly connected\
                  \ component in effect graph contained \
@@ -2046,15 +2094,15 @@ struct
 
   fun check_prop_constraint (n:effect) (rep,lvopt,p:prop) (ae:effect) =  (*ae: atomic effect *)
       let fun violation p =
-              let val msg = "constraint violation. The effect "
-                            ^ pp_eff n ^ " contains\nthe atomic effect "
-                            ^ pr_atomic_effect ae ^
-                            (if is_arrow_effect ae then ", which has no " ^ LambdaExp.pp_prop p ^ " property"
-                             else "")
+              let fun msg s = s ^ " constraint violation. The effect "
+                              ^ pp_eff n ^ " contains\nthe atomic effect "
+                              ^ pr_atomic_effect ae ^
+                              (if is_arrow_effect ae then ", which has no " ^ LambdaExp.pp_prop p ^ " property"
+                               else "")
               in case p of
-                     LambdaExp.NOMUTprop => ("Mutation " ^ msg)
-                   | LambdaExp.NOPUTprop => ("Allocation " ^ msg)
-                   | LambdaExp.NOEXNprop => ("Exception " ^ msg)
+                     LambdaExp.NOMUTprop => msg "Mutation"
+                   | LambdaExp.NOPUTprop => msg "Allocation"
+                   | LambdaExp.NOEXNprop => msg "Exception"
               end
           fun err p = deepError0 rep (violation p)
       in if is_arrow_effect ae then
@@ -2071,7 +2119,29 @@ struct
                   if is_exn ae then err p else ()
       end
 
-  fun bottom_up_eval (g : effect list) : unit =
+  fun not_put ae = not(is_put ae)
+
+  fun check_constraint (n:effect) (rep,lvopt,e:effect,putonly:bool) (ae:effect) =  (*ae: atomic effect *)
+      if putonly andalso not_put ae then () else
+      let fun violation () =
+              if putonly then "Put-constraint violation"
+              else "Constraint violation"
+          fun msg () = violation() ^ ". The effect "
+                      ^ pp_eff n ^ " contains\nthe atomic effect "
+                      ^ pr_atomic_effect ae ^ ", which also appears in the effect of "
+                      ^ pr_atomic_effect e
+          fun err () = deepError0 rep (msg ())
+          val aes =
+              case G.find_info e of
+                  EPS{represents=SOME aes,...} => aes
+                | EPS _ => die "check_constraint.no represents"
+                | _ => die "check_constraint.expects eps"
+          val aes = if putonly then List.filter is_put aes else aes
+      in List.app (fn ae' => if eq_effect(ae,ae') then err ()
+                             else ()) aes
+      end
+
+  fun bottom_up_eval (g : effect list) : effect list =
       (*
        * bottom_up_eval g : every EPS or UNION node has a
        * 'represents' fields. bottom_up_eval g sets the represents
@@ -2112,16 +2182,15 @@ struct
             else
               (r:= true;
                case G.find_info n of
-                 EPS{represents, key,level,pix,instance,explicit,prop_constraints} =>
+                 EPS{represents, key,level,pix,instance,explicit,prop_constraints,constraints} =>
                    (let
                       val ns = G.out_of_node n
                       val result = MultiMerge.multimerge(map search ns)
-                      val () = List.app (fn c => List.app (fn ae => check_prop_constraint n c ae) result)
-                                        (!prop_constraints)
                     in
                       G.set_info n (EPS{represents= SOME ((*check_represents*) result),
                                         key=key,level=level,pix =pix,instance=instance,
-                                        explicit=explicit,prop_constraints=prop_constraints});
+                                        explicit=explicit,prop_constraints=prop_constraints,
+                                        constraints=constraints});
                       insert_into_list(n,result)
                     end)
                | UNION{represents} =>
@@ -2138,14 +2207,34 @@ struct
                | RHO _ => []
               )
           end
-      in
-        map search g;(* Each node may potentially begin a new tree, so
+        val nodess = map search g
+                            (* Each node may potentially begin a new tree, so
                              * we have to evaluate for each node. Note however,
                              * that the graph in total is only traversed once,
                              * (ensured by the use of the mark visited)
                              *)
-        G.unvisit g
+      in
+        ( G.unvisit g
+        ; if explicit_regions() then MultiMerge.multimerge nodess else nil
+        )
       end
+
+  fun check_node (n:effect) : unit =
+      case G.find_info n of
+          EPS{represents,prop_constraints,constraints,...} =>
+          let (*val () = print ("Checking " ^ pp_eff n
+                              ^ " pcs: " ^ Int.toString(length(!prop_constraints))
+                              ^ " cs: " ^ Int.toString (length(!constraints))
+                              ^ "\n")
+              *)
+              val aes = case represents of SOME aes => aes
+                                         | NONE => die "check_node.represents list not set"
+          in List.app (fn c => List.app (check_prop_constraint n c) aes)
+                      (!prop_constraints)
+           ; List.app (fn c => List.app (check_constraint n c) aes)
+                      (!constraints)
+          end
+        | _ => ()
 
   fun say s = TextIO.output(TextIO.stdOut, s^"\n")
 
@@ -2155,7 +2244,8 @@ struct
 
   fun eval_phis (phis: effect list) : unit =
       let val nodes = contract_effects phis
-      in bottom_up_eval nodes
+          val allnodes = bottom_up_eval nodes
+      in List.app check_node allnodes
          handle ? as Report.DeepError _ => raise ?
               | exn => (say "\neval_phis failed; nodes = ";
                         say_etas (layoutEtas nodes);

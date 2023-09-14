@@ -76,3 +76,7 @@ effty1.sml            ccl ecte    (* A function with a local effect cannot escap
 
 nomut-err.sml         ccl ecte    (* Violation of nomut constraint on function *)
 nomut-ok.sml                      (* Satisfiability of nomut constraint on function *)
+
+nomut2-err.sml        ccl ecte    (* Violation of nomut constraint on function instantiation *)
+
+disputs.sml           ccl ecte    (* Violation of disjoint put-effects (##) *)
