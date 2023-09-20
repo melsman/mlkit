@@ -362,7 +362,7 @@ struct
                    (case (lookRegVar e1, lookRegVar e2)  of
                         (SOME n1, SOME n2) =>
                         if E.is_arrow_effect n1 then
-                          if E.is_arrow_effect n2 then (* MEMO: ok, but add constraint *)
+                          if E.is_arrow_effect n2 then
                             (E.eps_add_constraint n1 (rep,lvopt,n2,putonly);
                              E.eps_add_constraint n2 (rep,lvopt,n1,putonly);
                              B)
@@ -813,8 +813,6 @@ struct
                                               in E.eps_add_constraint t (Report.//(rep,rep'),lvopt,e',p)
                                               end) cs
                               end) Se
-
-        (* memo: copy epsilon constraints *)
 
         val Ty = #2(cp_ty tau)
         (* this is where arrow effects are instantiated*)

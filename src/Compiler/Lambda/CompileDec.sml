@@ -3327,8 +3327,19 @@ the 12 lines above are very similar to the code below
                                                         (fn () => loc_report_of_ElabInfo i)) rs;
                                          rs)
                                       | NONE => []
-                        val bind = compileExp recEnv exp
-                    in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,constrs=cs,bind=bind}
+                        val (bind,cs') =
+                            case exp of
+                                TYPEDexp(_, exp', ty) =>
+                                let val e = compileExp recEnv exp'
+                                    val cs' = constraintsTy (SOME lv) ty  (* ReML *)
+                                    val t = type_of_exp exp
+                                    val e =  if Type.contains_regvars t
+                                             then TYPED(e,compileType t,nil)
+                                             else e
+                                in (e,cs')
+                                end
+                              | _ => (compileExp recEnv exp, nil)
+                    in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,constrs=cs@cs',bind=bind}
                     end)
                 ids_lv_sch_exp__s
         val f' = fn scope => FIX {functions=functions, scope=scope}

@@ -79,4 +79,5 @@ nomut-ok.sml                      (* Satisfiability of nomut constraint on funct
 
 nomut2-err.sml        ccl ecte    (* Violation of nomut constraint on function instantiation *)
 
-disputs.sml           ccl ecte    (* Violation of disjoint put-effects (##) *)
+disputs.sml           ccl ecte    (* Violation of disjoint put-effects (##) - let rec *)
+disputs2.sml          ccl ecte    (* Violation of disjoint put-effects (##) - fun *)

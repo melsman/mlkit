@@ -2134,7 +2134,7 @@ struct
           val aes =
               case G.find_info e of
                   EPS{represents=SOME aes,...} => aes
-                | EPS _ => die "check_constraint.no represents"
+                | EPS _ => die ("check_constraint.no represents for node " ^ pp_eff e)
                 | _ => die "check_constraint.expects eps"
           val aes = if putonly then List.filter is_put aes else aes
       in List.app (fn ae' => if eq_effect(ae,ae') then err ()
@@ -2188,7 +2188,7 @@ struct
                       val result = MultiMerge.multimerge(map search ns)
                     in
                       G.set_info n (EPS{represents= SOME ((*check_represents*) result),
-                                        key=key,level=level,pix =pix,instance=instance,
+                                        key=key,level=level,pix=pix,instance=instance,
                                         explicit=explicit,prop_constraints=prop_constraints,
                                         constraints=constraints});
                       insert_into_list(n,result)
