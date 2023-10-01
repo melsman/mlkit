@@ -161,4 +161,5 @@ structure Word64 : WORD =
     type word = word64
   end
 
+(** SigDoc *)
 structure LargeWord : WORD = Word64

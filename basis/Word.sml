@@ -157,4 +157,5 @@ structure Word : WORD =
 
   end
 
+(** SigDoc *)
 structure SysWord : WORD = Word
