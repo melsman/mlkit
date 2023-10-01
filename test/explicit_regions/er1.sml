@@ -3,8 +3,8 @@
  * scope *)
 
 fun f () =
-  let region r
+  let with r
       val a = 3.2`r
-      region r
+      with r
   in #1 (4,3.2`r,a)
   end

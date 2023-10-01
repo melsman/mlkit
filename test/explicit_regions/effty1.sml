@@ -3,7 +3,7 @@
 fun printNum (i:int) : unit = prim("printNum", i)
 
 val f =
-    let region e
+    let with e
         val g : int #e-> int = fn x => x
     in g
     end

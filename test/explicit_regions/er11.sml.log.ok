@@ -1,7 +1,7 @@
 [reading source file:	er11.sml]
 
 er11.sml, line 6, column 6:
-    let region r
-        ^^^^^^^^
+    let with r
+        ^^^^^^
 Explicit region variable(s) already in scope: r
 Stopping compilation of MLB-file due to error (code 1).

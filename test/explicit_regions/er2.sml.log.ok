@@ -1,7 +1,7 @@
 [reading source file:	er2.sml]
 
-er2.sml, line 5, column 13:
-    let region r1 r2 r10 r2 r3
-               ^^^^^^^^^^^^^^^
+er2.sml, line 5, column 11:
+    let with r1 r2 r10 r2 r3
+             ^^^^^^^^^^^^^^^
 Repeated identifiers r2 and r2.
 Stopping compilation of MLB-file due to error (code 1).

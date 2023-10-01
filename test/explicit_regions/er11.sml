@@ -3,7 +3,7 @@
  * the closure can be called *)
 
 fun f `[r] () : unit -> real =
-  let region r
+  let with r
       val y = if true then (3.4,3)`r else (2.0,3)
   in fn () => if true then #1 y else 5.0
   end

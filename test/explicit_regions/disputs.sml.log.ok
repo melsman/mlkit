@@ -3,7 +3,7 @@
 disputs.sml, line 5, column 79:
   val rec par `[e1 e2] : (unit #e1 -> 'a) -> (unit #e2 -> 'b) -> ('a * 'b) while e1 ## e2 =
                                                                                  ^^^^^^^^
-Instance `e1 -> e40 and `e2 -> e36.
-Put-constraint violation. The effect e36 contains
-the atomic effect put(r41), which also appears in the effect of e40
+Instance `e1 -> e32 and `e2 -> e28.
+Put-constraint violation. The effect e28 contains
+the atomic effect put(r29), which also appears in the effect of e32
 Stopping compilation of MLB-file due to error (code 1).

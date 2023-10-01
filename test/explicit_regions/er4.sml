@@ -3,6 +3,6 @@
 
 fun f () =
   let val a = 3.2`r
-      region r2
+      with r2
   in #1 (4,3.2`r2,a)
   end
