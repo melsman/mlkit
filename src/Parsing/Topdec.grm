@@ -147,7 +147,6 @@ type arg = unit
 (* Additional reserved keyword for supporting region annotations *)
 
         | BACKQUOTE
-        | REGION
 
 (* Junk: *)
         | EOF
@@ -382,8 +381,6 @@ type arg = unit
 %left   ID EQUALS       (* L/R fairly arbitrary: we resolve infixes later. *)
 
 %right  STAR
-
-%right  REGION          (* L/R is arbitrary. *)
 
 %pos            LexBasics.pos
 %eop            SEMICOLON EOF
@@ -1102,10 +1099,10 @@ OneDec_sans_LOCAL:
 			( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
 					TyVarSeq1, FValBind) )
 
-        | REGION EqIdent_seq1
-                        ( REGIONdec (PP REGIONleft EqIdent_seq1right,
-				     (PP EqIdent_seq1left EqIdent_seq1right,
-                                      map RegVar.mk_Named EqIdent_seq1)) )
+        | WITH EqIdent_seq1
+                        ( WITHdec (PP WITHleft EqIdent_seq1right,
+				   (PP EqIdent_seq1left EqIdent_seq1right,
+                                    map RegVar.mk_Named EqIdent_seq1)) )
 
 
 (* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)

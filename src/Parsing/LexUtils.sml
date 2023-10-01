@@ -14,7 +14,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 					    parStack: int ref list ref
 					   }
 
-    fun sourceReaderOf(LEX_ARGUMENT{sourceReader, ...}) = sourceReader
+    fun sourceReaderOf (LEX_ARGUMENT{sourceReader, ...}) = sourceReader
 
     type arg = LexArgument
 
@@ -151,7 +151,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 
     end (*local*)
 
-    fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev (!stringChars))
+    fun asString (LEX_ARGUMENT{stringChars, ...}) = concat(rev (!stringChars))
 
     val explicit_regions = ref false
     val _ = Flags.add_bool_entry
@@ -161,7 +161,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 
    (* Keyword detection (better done here than by the lexer). *)
 
-    fun identifier(text, p1, p2) =
+    fun identifier (text, p1, p2) =
       let
 	fun keyword tok = tok(p1, p2)
       in
@@ -218,17 +218,16 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | "*"	 => keyword STAR    (* Not actually reserved, but ... *)
 
 	   | _		 => if !explicit_regions then
-                              if text = "region" then keyword REGION
-                              else if text = "`" then keyword BACKQUOTE
+                              if text = "`" then keyword BACKQUOTE
                               else if text = "##" then keyword HASHHASH
                               else ID(text, p1, p2)
                             else ID(text, p1, p2)
       end
 
-    fun incComment(LEX_ARGUMENT{commentDepth,...}) =
+    fun incComment (LEX_ARGUMENT{commentDepth,...}) =
       commentDepth := !commentDepth + 1
 
-    fun decComment(LEX_ARGUMENT{commentDepth,...}) =
+    fun decComment (LEX_ARGUMENT{commentDepth,...}) =
       (commentDepth := !commentDepth - 1;
        !commentDepth)
 

@@ -3024,7 +3024,7 @@ the 12 lines above are very similar to the code below
 
          | EMPTYdec _ => (CE.emptyCEnv, fn x => x)
 
-         | REGIONdec (_,(i,regvars)) =>
+         | WITHdec (_,(i,regvars)) =>
            let val () = List.app (fn r => RegVar.attach_location_report r
                                           (fn () => loc_report_of_ElabInfo i)) regvars
            in (CE.emptyCEnv, fn x => LETREGION{regvars=regvars,scope=x})

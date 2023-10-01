@@ -237,7 +237,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
          | INFIXRdec(i, _, _) => check i
          | NONFIXdec(i, _) =>    check i
          | EMPTYdec i =>         check i
-         | REGIONdec(i, _) =>    check i
+         | WITHdec(i, _) =>      check i
 
     and walk_Valbind valbind =
       case valbind

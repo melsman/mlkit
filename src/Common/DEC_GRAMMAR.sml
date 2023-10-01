@@ -64,7 +64,7 @@ sig
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info |
-        REGIONdec of info * (info*regvar list)                      (* ReML *)
+        WITHdec of info * (info*regvar list)                      (* ReML *)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |

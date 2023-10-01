@@ -713,8 +713,8 @@ structure Infixing: INFIXING =
          | EMPTYdec i =>
              (emptyB, EMPTYdec i)
 
-         | REGIONdec(i, rvs) =>
-             (emptyB, REGIONdec(i, rvs))
+         | WITHdec(i, rvs) =>
+             (emptyB, WITHdec(i, rvs))
 
 
     and resolveValbind(iBas, valbind) =

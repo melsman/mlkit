@@ -73,7 +73,7 @@ struct
         INFIXRdec of info * int option * id list |
         NONFIXdec of info * id list |
         EMPTYdec of info |
-        REGIONdec of info * (info*regvar list)
+        WITHdec of info * (info*regvar list)
 
   and valbind =
         PLAINvalbind of info * pat * exp * valbind option |
@@ -189,7 +189,7 @@ struct
     | INFIXRdec x => (#1) x
     | NONFIXdec x => (#1) x
     | EMPTYdec x => x
-    | REGIONdec x => (#1) x
+    | WITHdec x => (#1) x
 
   and get_info_valbind obj =
     case obj of
@@ -334,7 +334,7 @@ struct
       | INFIXRdec(i,x,y) => INFIXRdec(f i,x,y)
       | NONFIXdec(i,x) => NONFIXdec(f i,x)
       | EMPTYdec i => EMPTYdec (f i)
-      | REGIONdec(i,x) => REGIONdec(f i,x)
+      | WITHdec(i,x) => WITHdec(f i,x)
 
     and map_FValBind_info f (FVALBIND(i,FClause,FValBind_opt)) : FValBind =
       FVALBIND(f i, map_FClause_info f FClause,
@@ -797,8 +797,8 @@ struct
          | EMPTYdec _ =>
              LEAF "(emptydec)"
 
-         | REGIONdec(_, (_,rvs)) =>
-             NODE{start="region ", finish="", indent=7,
+         | WITHdec(_, (_,rvs)) =>
+             NODE{start="with ", finish="", indent=7,
                      children=map (LEAF o RegVar.pr) rvs,
                      childsep=RIGHT " "
                     })

@@ -868,8 +868,8 @@ structure ElabDec: ELABDEC =
                (S,T,E, out_dec)
              end
 
-           (* Region declaration; added declaration *)
-         | IG.REGIONdec(i, (i2,regvars)) =>
+           (* Region and effect declaration; added declaration *)
+         | IG.WITHdec(i, (i2,regvars)) =>
            let val i2' = okConv i2
                val i' =
                    case getRepeatedElements RegVar.eq regvars of
@@ -883,7 +883,7 @@ structure ElabDec: ELABDEC =
                           nil => i'
                         | _ => ElabInfo.plus_ErrorInfo i' (ErrorInfo.REGVARS_SCOPED_TWICE dups)
                    end
-           in (Substitution.Id, [], E.from_R regvars, OG.REGIONdec(i',(i2',regvars)))
+           in (Substitution.Id, [], E.from_R regvars, OG.WITHdec(i',(i2',regvars)))
            end
         )
     and elab_decs(C : Context, dec : IG.dec) :  (* fast elaboration when SEQ associates to the left *)
@@ -2168,7 +2168,7 @@ let
      | INFIXRdec _ => dec
      | NONFIXdec _ => dec
      | EMPTYdec _ => dec
-     | REGIONdec _ => dec)
+     | WITHdec _ => dec)
 
   and resolve_valbind (valbind : valbind) : valbind =
     case valbind of

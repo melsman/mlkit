@@ -232,7 +232,7 @@ structure FreeIds:  FREE_IDS =
        | INFIXRdec _ => empty_ids
        | NONFIXdec _ => empty_ids
        | EMPTYdec _ => empty_ids
-       | REGIONdec _ => empty_ids
+       | WITHdec _ => empty_ids
 
     and free_valbind I =
       fn PLAINvalbind(_,pat,exp,valbind_opt) =>
