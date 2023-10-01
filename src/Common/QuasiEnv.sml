@@ -1,9 +1,9 @@
 (* Environment with a persistent part to be used accross program units
  * ('a map) and a combined persistent/non-persistent (hashing) map to
- * be used locally for each program unit ('a qmap).  
+ * be used locally for each program unit ('a qmap).
  *)
 
-functor QuasiEnv(structure OFinMap : MONO_FINMAP where type StringTree = PrettyPrint.StringTree
+functor QuasiEnv(structure OFinMap : MONO_FINMAP
 		 val key : OFinMap.dom -> int
 		 val eq  : OFinMap.dom * OFinMap.dom -> bool) : QUASI_ENV =
   struct
@@ -32,7 +32,7 @@ functor QuasiEnv(structure OFinMap : MONO_FINMAP where type StringTree = PrettyP
 	(* I guess its an error to make updates to entries that appear
 	 * in the persistent map -  mael 2004-04-07. We could insert a
 	 * check here to see if this ever happens... *)
-	
+
 
     fun Fold (f : ((dom * 'b) * 'a) -> 'a) (acc : 'a) ((m,h):'b qmap) =
       let fun not_in_hash_table (a,r) = 					(*******************************)

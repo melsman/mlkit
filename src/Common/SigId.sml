@@ -1,18 +1,15 @@
 (* Signature identifiers *)
 
-structure SigId: SIGID =
+structure SigId :> SIGID =
   struct
-    datatype sigid = SIGID of string
+    type sigid = string
 
-    val mk_SigId = SIGID
-    fun pr_SigId(SIGID str) = str
+    fun mk_SigId x = x
+    fun pr_SigId x = x
 
-    val op < = fn (SIGID str1, SIGID str2) => str1 < str2
+    val op < = fn (str1:string, str2) => str1 < str2
 
-    val pu = Pickle.convert (SIGID, fn SIGID s => s) Pickle.string
+    val pu = Pickle.string
 
-    structure Map = OrderFinMap(struct type t = sigid
-				       val lt = op<
-				end)
-
+    structure Map = StringFinMap
   end

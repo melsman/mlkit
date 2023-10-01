@@ -1,4 +1,4 @@
-structure Option: OPTION =
+structure Option : OPTION =
   struct
     exception Option = Option
     datatype option = datatype option
@@ -20,15 +20,14 @@ structure Option: OPTION =
 
     fun mapPartial f NONE = NONE
       | mapPartial f (SOME x) = f x
-      
-    fun compose (f, g) x = 
-      case g x 
+
+    fun compose (f, g) x =
+      case g x
 	of NONE => NONE
 	 | SOME y => SOME (f y)
 
-    fun composePartial (f, g) x = 
-      case g x 
+    fun composePartial (f, g) x =
+      case g x
 	of NONE => NONE
 	 | SOME y => f y
   end
-

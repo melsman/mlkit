@@ -218,6 +218,7 @@ functor CreateWriterReader (S : sig
         end
   end
 
+(** SigDoc *)
 structure Posix :> POSIX =
 struct
   fun getCtx () : foreignptr = prim("__get_ctx",())

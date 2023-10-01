@@ -1485,16 +1485,20 @@ struct
                         (mk_excon_binding(excon,nullary, layout_alloc alloc, mu)::binds', body)
                       end
                     | LETREGION{B, rhos = ref l, body=TR(e2,_,_,_)} =>
-                      if not(print_regions()) orelse List.null l then layout_rec e2 else
-                      let val (binds', body) = layout_rec e2
-                          val _ = inInfo := "(* region *)"
-                          fun mk_region_binding l =
-                              let val binders: StringTree list = layHseq layout_bind l
-                              in NODE{start = "region ", finish = "", childsep = NOSEP, indent = 10,
-                                      children = [HNODE{start = "", finish = "", childsep = RIGHT", ",
-                                                        children = binders}]}
+                      let val effects = if print_effects() then
+                                          layHseq (fn e => if Eff.is_arrow_effect e then SOME (Eff.layout_effect e) else NONE) (!B)
+                                        else []
+                      in if not(print_regions())
+                            orelse (List.null l andalso List.null effects) then layout_rec e2
+                         else let val (binds', body) = layout_rec e2
+                                  val _ = inInfo := "(* region *)"
+                                  val regions = layHseq layout_bind l
+                                  val binding =
+                                      NODE{start = "region ", finish = "", childsep = NOSEP, indent = 10,
+                                           children = [HNODE{start = "", finish = "", childsep = RIGHT", ",
+                                                             children = regions @ effects}]}
+                              in (binding :: binds', body)
                               end
-                      in (mk_region_binding l :: binds', body)
                       end
                     | _ => ([],lexp)
           in case layout_rec lexp of

@@ -3,7 +3,7 @@
 
 infix +
 fun f () : real =
-  let region r
+  let with r
       val y = 3.4`r
   in if true then 2.0 else y
   end

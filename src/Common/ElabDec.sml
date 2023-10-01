@@ -556,7 +556,7 @@ structure ElabDec: ELABDEC =
                val (S1, tau1, out_exp)   = elab_exp(C, exp)
                val (S2, tau2, out_atexp) = elab_atexp(S1 onC C, atexp)
                val new   = Type.fresh_normal ()
-               val arrow = Type.mk_Arrow(tau2,new,NONE)
+               val arrow = Type.mk_Arrow(tau2,NONE,new,NONE)
                val (S3, i') = UnifyWithTexts ("operand suggests operator type",arrow,
                                               "but I found operator type",S2 on tau1, i)
                val tau = S3 on new
@@ -583,7 +583,7 @@ structure ElabDec: ELABDEC =
              let
                val (S1, tau1, out_exp)   = elab_exp(C, exp)
                val (S2, tau2, out_match) = elab_match(S1 onC C, match)
-               val matchTy = Type.mk_Arrow(Type.Exn, tau1, NONE)
+               val matchTy = Type.mk_Arrow(Type.Exn, NONE, tau1, NONE)
                val (S3, i') = UnifyWithTexts("handled expression suggests handler type", matchTy,
                                              "but I found handler type", tau2, i)
                val tau3 = (S3 oo S2) on tau1
@@ -657,7 +657,7 @@ structure ElabDec: ELABDEC =
               val S'' = S' oo S
               val out_i = okConv i
             in
-              (S'', Type.mk_Arrow (S'' on tau,tau', NONE),
+              (S'', Type.mk_Arrow (S'' on tau, NONE, tau', NONE),
                OG.MRULE (out_i ,out_pat,out_exp))
             end
 
@@ -868,8 +868,8 @@ structure ElabDec: ELABDEC =
                (S,T,E, out_dec)
              end
 
-           (* Region declaration; added declaration *)
-         | IG.REGIONdec(i, (i2,regvars)) =>
+           (* Region and effect declaration; added declaration *)
+         | IG.WITHdec(i, (i2,regvars)) =>
            let val i2' = okConv i2
                val i' =
                    case getRepeatedElements RegVar.eq regvars of
@@ -883,7 +883,7 @@ structure ElabDec: ELABDEC =
                           nil => i'
                         | _ => ElabInfo.plus_ErrorInfo i' (ErrorInfo.REGVARS_SCOPED_TWICE dups)
                    end
-           in (Substitution.Id, [], E.from_R regvars, OG.REGIONdec(i',(i2',regvars)))
+           in (Substitution.Id, [], E.from_R regvars, OG.WITHdec(i',(i2',regvars)))
            end
         )
     and elab_decs(C : Context, dec : IG.dec) :  (* fast elaboration when SEQ associates to the left *)
@@ -1331,7 +1331,7 @@ structure ElabDec: ELABDEC =
                                               SOME out_ty, out_conbind_opt)
           in case elab_ty (C, ty)
                of (SOME tau', out_ty) =>
-                 let val arrow = TypeScheme.from_Type (Type.mk_Arrow (tau', tau, NONE))
+                 let val arrow = TypeScheme.from_Type (Type.mk_Arrow (tau', NONE, tau, NONE))
                  in (constructor_map.add con arrow constructor_map, result out_ty)
                  end
                 | (NONE, out_ty) => (constructor_map, result out_ty)
@@ -1377,7 +1377,7 @@ structure ElabDec: ELABDEC =
           let val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
           in case elab_ty (C, ty)
                of (SOME tau, out_ty) =>
-                 let val exnTy = Type.mk_Arrow (tau, Type.Exn, NONE)
+                 let val exnTy = Type.mk_Arrow (tau, NONE, Type.Exn, NONE)
                      val VE_this = VE.singleton_excon (excon, exnTy)
                  in
                    (VE.plus  (VE_this, VE_rest),
@@ -1664,7 +1664,7 @@ structure ElabDec: ELABDEC =
                 SOME(VE.LONGCON sigma) =>
                   let
                     val new = Type.fresh_normal ()
-                    val arrow = Type.mk_Arrow(tau', new, NONE)
+                    val arrow = Type.mk_Arrow(tau', NONE, new, NONE)
                     val (tau1,instances) = (TypeScheme.instance' sigma)
                     val (S1, i') = UnifyWithTexts("argument to long value constructor \
                                                   \in pattern suggests constructor type",
@@ -1682,7 +1682,7 @@ structure ElabDec: ELABDEC =
 
               | SOME(VE.LONGEXCON tau) =>
                   let
-                    val arrow = Type.mk_Arrow(tau',Type.Exn, NONE)
+                    val arrow = Type.mk_Arrow(tau', NONE, Type.Exn, NONE)
                     val (S1, i') = UnifyWithTexts("argument to long \
                           \exception constructor in pattern requires exception \
                           \constructor type ", arrow,
@@ -1853,12 +1853,14 @@ structure ElabDec: ELABDEC =
             end
 
           (* Function type *)                                   (*rule 47*)
-        | IG.FNty(i, ty, ty') =>
-            (case (elab_ty(C, ty ), elab_ty(C, ty'))
-               of ((SOME tau, out_ty), (SOME tau', out_ty')) =>
-                 (SOME (Type.mk_Arrow (tau, tau', NONE)), OG.FNty(okConv i, out_ty, out_ty'))
-                | ((_, out_ty), (_, out_ty')) => (NONE, OG.FNty(okConv i, out_ty, out_ty')))
-
+        | IG.FNty(i, ty, opt, ty') =>
+          let val opt' = case opt of SOME(i,r) => SOME(okConv i,r)
+                                   | NONE => NONE
+          in case (elab_ty(C, ty ), elab_ty(C, ty')) of
+                 ((SOME tau, out_ty), (SOME tau', out_ty')) =>
+                 (SOME (Type.mk_Arrow (tau, opt, tau', NONE)), OG.FNty(okConv i, out_ty, opt', out_ty'))
+               | ((_, out_ty), (_, out_ty')) => (NONE, OG.FNty(okConv i, out_ty, opt', out_ty'))
+          end
           (* Parenthesised type *)                              (*rule 48*)
         | IG.PARty(i, ty, rvsopt) =>
             let val (tau_opt, out_ty) = elab_ty(C, ty)
@@ -1882,6 +1884,36 @@ structure ElabDec: ELABDEC =
             in
               (tau_opt', OG.PARty(okConv i, out_ty, rvsopt'))
             end
+
+        | IG.WITHty(i, ty, c) =>
+            let val (tau_opt, out_ty) = elab_ty(C, ty)
+                val c = elab_constraint c
+            in
+              (tau_opt, OG.WITHty(okConv i, out_ty, c))
+            end
+
+    and elab_prop p =
+        case p of
+            IG.NOMUTprop i => OG.NOMUTprop(okConv i)
+          | IG.NOPUTprop i => OG.NOPUTprop(okConv i)
+          | IG.NOEXNprop i => OG.NOEXNprop(okConv i)
+
+    and elab_constraint c = (* ReML *)
+        case c of
+            IG.DISJOINTconstraint (i,e1,e2,p) => OG.DISJOINTconstraint (okConv i,elab_eff e1,elab_eff e2,p)
+          | IG.INCLconstraint (i,(ir,r),e) => OG.INCLconstraint (okConv i,(okConv ir,r),elab_eff e)
+          | IG.PROPconstraint (i,p,e) => OG.PROPconstraint (okConv i,elab_prop p,elab_eff e)
+
+    and elab_eff c = (* ReML *)
+        case c of
+            IG.SETeff (i,ats) => OG.SETeff(okConv i, map elab_ateff ats)
+          | IG.VAReff (i,r) => OG.VAReff (okConv i,r)
+
+    and elab_ateff ae = (* ReML *)
+        case ae of
+            IG.VARateff (i,r) => OG.VARateff (okConv i,r)
+          | IG.PUTateff (i, (ir,r)) => OG.PUTateff (okConv i, (okConv ir,r))
+          | IG.GETateff (i,(ir,r)) => OG.GETateff (okConv i,(okConv ir,r))
 
     (****** type rows ******)
 
@@ -2136,7 +2168,7 @@ let
      | INFIXRdec _ => dec
      | NONFIXdec _ => dec
      | EMPTYdec _ => dec
-     | REGIONdec _ => dec)
+     | WITHdec _ => dec)
 
   and resolve_valbind (valbind : valbind) : valbind =
     case valbind of

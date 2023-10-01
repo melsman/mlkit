@@ -3,6 +3,9 @@
 structure RegVar :> REGVAR = struct
   type regvar = {name:string,loc_rep:(unit->Report.Report) option ref}
 
+  fun is_effvar (v:regvar) =
+      String.isPrefix "e" (#name v)
+
   val mk_Fresh : string -> regvar =
       let val count = ref 0
       in fn s => {name=s ^ Int.toString (!count before count := !count + 1),

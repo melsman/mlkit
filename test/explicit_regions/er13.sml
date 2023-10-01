@@ -8,7 +8,7 @@ fun f `[rr rp] () : real*real =
   end
 
 fun g () =
-    let region r2
+    let with r2
         val (_,y) = f `[r2] ()
     in y + 0.0
     end

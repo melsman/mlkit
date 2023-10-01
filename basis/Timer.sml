@@ -2,6 +2,7 @@
 
 (* Under DOS, real time and cpu time are the same *)
 
+(** SigDoc *)
 structure Timer : TIMER =
   struct
 
@@ -19,9 +20,9 @@ structure Timer : TIMER =
     val fromSeconds = fn s => fromSeconds(LargeInt.fromInt s)
     val fromMicroseconds = fn s => fromMicroseconds(LargeInt.fromInt s)
 
-    fun CPUTimer rutime = 
-	let val {gcSec, gcUsec, sysSec, sysUsec, usrSec, usrUsec} 
-	        = rutime 
+    fun CPUTimer rutime =
+	let val {gcSec, gcUsec, sysSec, sysUsec, usrSec, usrUsec}
+	        = rutime
 	in {usr = fromSeconds usrSec + fromMicroseconds usrUsec,
 	    sys = fromSeconds sysSec + fromMicroseconds sysUsec,
 	    gc  = fromSeconds gcSec  + fromMicroseconds gcUsec}
@@ -29,9 +30,9 @@ structure Timer : TIMER =
 
     fun startCPUTimer () = CPUTimer (getrutime_ ())
 
-    fun checkCPUTimer {usr, sys, gc} = 
-	let val {gcSec, gcUsec, sysSec, sysUsec, usrSec, usrUsec} 
-	        = getrutime_ () 
+    fun checkCPUTimer {usr, sys, gc} =
+	let val {gcSec, gcUsec, sysSec, sysUsec, usrSec, usrUsec}
+	        = getrutime_ ()
 	    val gc  = fromSeconds gcSec  + fromMicroseconds gcUsec  - gc
 	in {usr = fromSeconds usrSec + fromMicroseconds usrUsec - usr,
 	    sys = fromSeconds sysSec + fromMicroseconds sysUsec - sys + gc

@@ -116,7 +116,7 @@ struct
         All the other forms of types contribute at least with one region to
         the arity.                       *)
 
-       |  E.ARROWtype(taus1,taus2,_) =>
+       |  E.ARROWtype(taus1,_,taus2,_) =>
           foldl (uncurry plus)
                 (foldl (uncurry plus) (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
                        (map (infer_arity_ty rse current_tynames) taus1)
@@ -208,7 +208,7 @@ struct
       fun ty_to_mu (tau: E.Type) : R.mu =
           case tau of
               E.TYVARtype alpha => R.mkTYVAR alpha
-            | E.ARROWtype(taus1,taus2,_) =>
+            | E.ARROWtype(taus1,_,taus2,_) =>
               extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
             | E.CONStype(taus, tyname,_) =>
               if being_defined tyname

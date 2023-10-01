@@ -39,6 +39,7 @@ er15.sml              ccl ecte    (* It is an error to give multiple explicit re
 er16.sml              ccl ecte    (* It is an error to give multiple explicit regions to con1 *)
 er17.sml              ccl ecte    (* It is an error to have constructors of different conditional branches to be allocated in different regions *)
 er18.sml              ccl ecte    (* Empty record types cannot be annotated with explicit regions *)
+er19.sml              ccl ecte    (* It is an error to use an effect variable for allocation *)
 param.sml                         (* Functions can be declared to take region parameters *)
 param1.sml                        (* Functions can be declared to take one region parameter *)
 tup.sml                           (* Tuples can be allocated in explicit regions *)
@@ -66,3 +67,17 @@ err_funty3.sml        ccl ecte    (* Inconsistent use of a parameter region. A r
 
 expty1.sml                        (* A local function can be forced into a global region *)
 expty2.sml                        (* A locally generated function that is returned can be stored in a passed region *)
+
+err_ty1.sml           ccl ecte    (* An effect variable (beginning with 'e') cannot be used as a region variable *)
+funty1.sml                        (* A local function can be forced to have toplevel effect *)
+err_copylist.sml      ccl ecte    (* Exomorphisms by non-unifiable explicit region variables *)
+
+effty1.sml            ccl ecte    (* A function with a local effect cannot escape *)
+
+nomut-err.sml         ccl ecte    (* Violation of nomut constraint on function *)
+nomut-ok.sml                      (* Satisfiability of nomut constraint on function *)
+
+nomut2-err.sml        ccl ecte    (* Violation of nomut constraint on function instantiation *)
+
+disputs.sml           ccl ecte    (* Violation of disjoint put-effects (##) - let rec *)
+disputs2.sml          ccl ecte    (* Violation of disjoint put-effects (##) - fun *)

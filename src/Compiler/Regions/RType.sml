@@ -35,6 +35,7 @@ struct
 
   type tyvar = L.tyvar
   type tyname = L.TyName
+  type lvar = L.lvar
   type place = E.effect
   type arroweffect = E.effect
 
@@ -192,7 +193,11 @@ struct
                 | SOME rv =>
                   (case lookup_rv rv of
                        SOME rho =>
-                       let val () =
+                       let val () = if E.is_rho rho then ()
+                                    else deepErr rv ("Expects explicit region variable but "
+                                                     ^ RegVar.pr rv
+                                                     ^ " is an explicit effect variable")
+                           val () =
                                case E.get_place_ty rho of
                                    SOME rt' =>
                                    (case E.lub_runType0 (rt,rt') of
@@ -211,11 +216,22 @@ struct
                      | NONE => deepErr rv ("Explicit region variable `"
                                            ^ RegVar.pr rv
                                            ^ " is not in scope"))
+          fun get_eps B rvopt =
+              case rvopt of
+                  NONE => E.freshEps B
+                | SOME rv =>
+                  case lookup_rv rv of
+                      SOME n =>
+                      if E.is_arrow_effect n then (n,B)
+                      else deepErr rv "Expecting explicit effect variable"
+                    | NONE => deepErr rv ("Explicit effect variable `"
+                                          ^ RegVar.pr rv
+                                          ^ " is not in scope")
           fun mkTy0 (ty,cone) =
               case ty of
                   L.TYVARtype alpha  => ((TYVAR alpha,NONE), cone)
-                | L.ARROWtype(tys1,tys2,rvopt)=>
-                  let val (eps,cone') = E.freshEps cone
+                | L.ARROWtype(tys1,rvopt0,tys2,rvopt)=>
+                  let val (eps,cone') = get_eps cone rvopt0
                       val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
                       val (cone2,mus2) = List.foldr mkMus (cone1,[]) tys2
                   in ((FUN(mus1,eps,mus2),rvopt), cone2)
@@ -292,6 +308,84 @@ struct
               end
       in
         (mkTy, mkMu)
+      end
+
+  (* ReML Stuff *)
+  type constr = L.constr
+  fun enforceConstraint (lookRegVar: regvar -> place option)
+                        (deepError: regvar -> string -> unit)       (* deep error function *)
+                        (c:constr) (B:cone) : cone =
+      let fun deepErr r s = (deepError r s; die "enforceConstraint.never gets here")
+          fun lookEV r =
+              case lookRegVar r of
+                  NONE => deepErr r "effect variable not in scope"
+                | SOME n => if E.is_arrow_effect n then n
+                            else deepErr r "expecting effect variable"
+          fun lookRV r =
+              case lookRegVar r of
+                  NONE => deepErr r "region variable not in scope"
+                | SOME n => if E.is_rho n then n
+                            else deepErr r "expecting region variable"
+      in case c of
+             L.INCLconstr (r,e,rep,lvopt) =>
+             let val (effvar, level) =
+                     case lookRegVar r of
+                         NONE => deepErr r "effect variable not in scope"
+                       | SOME node =>
+                         if E.is_arrow_effect node then
+                           (case E.level_of node of
+                                SOME l => (node,l)
+                              | NONE => die "enforceConstraint.no level")
+                         else deepErr r "expecing effect variable"
+                 fun to_ateff ae =
+                     case ae of
+                         L.VARateff r => lookEV r
+                       | L.PUTateff r => E.mkPut(lookRV r)
+                       | L.GETateff r => E.mkGet(lookRV r)
+                 fun to_ateffs e =
+                     case e of
+                         L.VAReff r => [lookEV r]
+                       | L.SETeff aes => map to_ateff aes
+                 val aes = to_ateffs e
+             in List.foldl (fn (ae,B) => let val B = E.lower level ae B
+                                         in E.edge (effvar,ae); B
+                                         end) B aes
+             end
+           | L.DISJOINTconstr (e1,e2,putonly,rep,lvopt) =>
+             let fun err1 n e = (* error finding e given type of node n *)
+                     if E.is_arrow_effect n then deepErr e "effect variable not in scope"
+                     else if E.is_rho n then deepErr e "region variable not in scope"
+                     else die "DISJOINTconstr.impossible..."
+             in
+               case (e1,e2) of
+                   (L.VAReff e1, L.VAReff e2) =>
+                   (case (lookRegVar e1, lookRegVar e2)  of
+                        (SOME n1, SOME n2) =>
+                        if E.is_arrow_effect n1 then
+                          if E.is_arrow_effect n2 then
+                            (E.eps_add_constraint n1 (rep,lvopt,n2,putonly);
+                             E.eps_add_constraint n2 (rep,lvopt,n1,putonly);
+                             B)
+                          else deepErr e2 "expecting explicit effect variable"
+                        else if E.is_rho n1 then
+                          if E.is_rho n2 then (E.rho_add_constraint n1 (rep,lvopt,n2); B)
+                          else deepErr e2 "expecting explicit region variable"
+                        else deepErr e2 "incompatiple constraint between region and effect variable"
+                      | (NONE, SOME n2) => err1 n2 e1
+                      | (SOME n1, NONE) => err1 n1 e2
+                      | _ => deepErr e1 "region or effect variable not in scope")
+                 | _ => die "unimplemented DISJOINTconstr"
+             end
+           | L.PROPconstr (p,e,rep,lvopt) =>
+             (case e of
+                  L.VAReff e =>
+                  (case lookRegVar e of
+                       SOME n =>
+                       if E.is_arrow_effect n then (* MEMO: ok, but add constraint *)
+                         (E.eps_add_prop_constraint n (rep,lvopt,p); B)
+                       else deepErr e "expecting explicit effect variable"
+                     | NONE => deepErr e "effect variable not in scope")
+                | _ => die "unimplemented PROPconstr")
       end
 
   (* pretty-printing of types *)
@@ -596,13 +690,14 @@ struct
 
   (* instantiation of type schemes *)
 
-  (* inst: sigma*il -> cone -> (Type * cone)
+  (* inst: lvar option*sigma*il -> cone -> (Type * cone)
 
-     let (tau,c') = inst(sigma,c)
+     let (tau,c') = inst(lvopt,sigma,c)
      Then tau is the result of instantiating sigma via il.
      Only the part of the body that has to be copied is copied (when
      a sub-term of the body of sigma does not contain bound variables it
-     is traversed, but not copied).
+     is traversed, but not copied). The optional lvar optionally identifies
+     the instantiated function.
   *)
 
   type il = effect list * effect list * mu list (* instantiation lists *)
@@ -610,7 +705,7 @@ struct
   fun mk_il x = x
   fun un_il x = x
 
-  fun instAux (S as (St,Sr,Se),tau) cone =
+  fun instAux (lvopt,S as (St,Sr,Se),tau) cone =
       let
         (* debugging
 
@@ -688,8 +783,36 @@ struct
 
         and cp_mu mu = cp_ty mu
 
-        val _ = List.app E.setInstance Sr
-        val _ = List.app E.setInstance Se
+        val () = List.app E.setInstance Sr
+        val () = List.app (fn (s,t) =>
+                              let val cs = E.rho_get_constraints s (* copy constraints to target *)
+                              in List.app (fn (rep,lv,c) =>
+                                              let val c' = #2(cp_rho c)
+                                                  val rep' = Report.line ("Instance " ^ E.pp_eff c ^ " -> "
+                                                                          ^ E.pp_eff c' ^ ".")
+                                              in E.rho_add_constraint t (Report.//(rep,rep'),lvopt,c')
+                                              end) cs
+                              end) Sr
+
+        val () = List.app E.setInstance Se
+        val () = List.app (fn (s,t) =>
+                              let val pcs = E.eps_get_prop_constraints s (* copy constraints to target *)
+                              in List.app (fn (rep,lv,p) =>
+                                              let val rep' = Report.line ("Instance " ^ E.pp_eff s ^ " -> "
+                                                                          ^ E.pp_eff t ^ ".")
+                                              in E.eps_add_prop_constraint t (Report.//(rep,rep'),lvopt,p)
+                                              end) pcs
+                              end) Se
+
+        val () = List.app (fn (s,t) =>
+                              let val cs = E.eps_get_constraints s (* copy constraints to target *)
+                              in List.app (fn (rep,lv,e,p) =>
+                                              let val e' = #2(cp_eps e)
+                                                  val rep' = Report.line ("Instance " ^ E.pp_eff e ^ " -> " ^ E.pp_eff e'
+                                                                          ^ " and " ^ E.pp_eff s ^ " -> " ^ E.pp_eff t ^ ".")
+                                              in E.eps_add_constraint t (Report.//(rep,rep'),lvopt,e',p)
+                                              end) cs
+                              end) Se
 
         val Ty = #2(cp_ty tau)
         (* this is where arrow effects are instantiated*)
@@ -724,8 +847,8 @@ struct
   fun ann_sigma (FORALL(_,_,alphas,ty)) : effect list -> effect list =
       ann_ty ty o ann_alphas alphas
 
-  fun instClever (FORALL([],[],[],tau),il) cone = (tau, cone, [], [])
-    | instClever (sigma as FORALL(rhos,epsilons,alphas,tau),
+  fun instClever (lvopt,FORALL([],[],[],tau),il) cone = (tau, cone, [], [])
+    | instClever (lvopt,sigma as FORALL(rhos,epsilons,alphas,tau),
                   il as (places,arreffs,types)) cone =
       let
         val S = (ListPair.zipEq(alphas,types),
@@ -733,7 +856,7 @@ struct
                  ListPair.zipEq(epsilons,arreffs))
                 handle _ => die "inst: type scheme and \
                                         \instantiation list have different arity"
-        val (Ty,cone,updates,spuriousPairs) = instAux(S, tau) cone
+        val (Ty,cone,updates,spuriousPairs) = instAux(lvopt, S, tau) cone
           handle X =>
                  let val () = print "\nFailed to instantiate type scheme (no ri):\n"
                      val () = print (PP.flatten1(mk_lay_sigma true sigma) ^ "\n")
@@ -744,8 +867,8 @@ struct
       in (Ty,cone,updates,spuriousPairs)
       end
 
-  fun inst sigma_il cone =
-      let val (a,cone,c,_) = instClever sigma_il cone
+  fun inst lvopt_sigma_il cone =
+      let val (a,cone,c,_) = instClever lvopt_sigma_il cone
       in (a,cone)
       end
 
@@ -933,7 +1056,7 @@ struct
         val c = E.push B
         val (rhos', c) = E.renameRhos(rhos,c)
         val (epss', c) = E.renameEpss(epss,c)
-        val (tau',c) = inst (FORALL(rhos,epss,[],tau),(rhos',epss',[])) c
+        val (tau',c) = inst (NONE,FORALL(rhos,epss,[],tau),(rhos',epss',[])) c
         val sigma' = FORALL(rhos', epss', [], tau')
         val (_, c) = E.pop c
     in
@@ -992,7 +1115,7 @@ struct
                           epsilons_and_ints1
 
             val (tau', cone, updates, _) =
-                 instAux(([],ListPair.zipEq(rhos1,fresh_rhos),Se'),tau1) cone
+                 instAux(NONE,([],ListPair.zipEq(rhos1,fresh_rhos),Se'),tau1) cone
                    handle x => (say "first call\n";
                       List.app (fn node => say(PP.flatten1(E.layout_effect node)))
                                  (rhos1 @ epsilons1); raise x)
@@ -1005,7 +1128,7 @@ struct
                           epsilons_and_ints2
 
             val (tau'', cone, updates, _) =
-                 instAux(([],ListPair.zipEq(rhos2,fresh_rhos), Se''),tau2) cone
+                 instAux(NONE,([],ListPair.zipEq(rhos2,fresh_rhos), Se''),tau2) cone
                    handle x => (say "second call\n";
                       List.app (fn node => say(PP.flatten1(E.layout_effect node)))
                                  (rhos2 @ epsilons2); raise x)

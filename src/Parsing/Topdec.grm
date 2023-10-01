@@ -126,7 +126,7 @@ type arg = unit
         | DARROW | ARROW | HASH
 
 (* Half-hearted reserved words, dealt with correctly in context: *)
-        | EQUALS | STAR
+        | EQUALS | STAR | HASHHASH
 
 (*Other core terminals. DECPOSINTEGER is the set of decimal
  unsigned integer constants which *aren't* single digits - they
@@ -147,7 +147,6 @@ type arg = unit
 (* Additional reserved keyword for supporting region annotations *)
 
         | BACKQUOTE
-        | REGION
 
 (* Junk: *)
         | EOF
@@ -291,11 +290,6 @@ type arg = unit
         | TyComma_seq2                  of ty list
         | OneDec_or_SEMICOLON           of dec option
         | NonEmptyDec                   of dec
-(*KILL 07/08/1996 09:51. tho.:
-        | Ident_seq1                    of string WithInfo list
-                                                (* used in "include." c/w
-                                                   info. *)
-*)
         | Ident_seq2                    of string WithInfo list
                                                 (* used in "include." c/w
                                                    info. *)
@@ -388,8 +382,6 @@ type arg = unit
 
 %right  STAR
 
-%right  REGION          (* L/R is arbitrary. *)
-
 %pos            LexBasics.pos
 %eop            SEMICOLON EOF
 %noshift        EOF
@@ -417,6 +409,7 @@ OpIdent:  Ident         ( OP_OPT(Ident, false) )
 
 EqIdent:  Ident         ( Ident )
         | EQUALS        ( "=" )
+        | HASHHASH      ( "##" )
 
 TypeIdent:
           ID            ( ID )
@@ -1106,10 +1099,10 @@ OneDec_sans_LOCAL:
 			( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
 					TyVarSeq1, FValBind) )
 
-        | REGION EqIdent_seq1
-                        ( REGIONdec (PP REGIONleft EqIdent_seq1right,
-				     (PP EqIdent_seq1left EqIdent_seq1right,
-                                      map RegVar.mk_Named EqIdent_seq1)) )
+        | WITH EqIdent_seq1
+                        ( WITHdec (PP WITHleft EqIdent_seq1right,
+				   (PP EqIdent_seq1left EqIdent_seq1right,
+                                    map RegVar.mk_Named EqIdent_seq1)) )
 
 
 (* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)
@@ -1459,6 +1452,14 @@ Ty:
 				(case TupleTy of
 				   [t] => t
 				 | ts => tuple_type (PP TupleTyleft Tyright) ts),
+				NONE,
+                                Ty) )
+        | TupleTy HASH Ident ARROW Ty
+                        ( FNty (PP TupleTyleft Tyright,
+				(case TupleTy of
+				   [t] => t
+				 | ts => tuple_type (PP TupleTyleft Tyright) ts),
+                                SOME(PP Identleft Identright, RegVar.mk_Named Ident),
 				Ty) )
         | TupleTy       ( (case TupleTy of
 			     [t] => t
@@ -1513,6 +1514,63 @@ Ty_sans_STAR:
                                                         RegVar.mk_Named r)) EqIdent_seq1))
                           end )
         | AtomicTy      ( AtomicTy )
+
+        | AtomicTy WHILE Ident COLONGREATER Ident
+                        ( WITHty (PP AtomicTyleft Ident2right,
+                                  AtomicTy,
+                                  INCLconstraint(PP Ident1left Ident2right,
+                                                 (PP Ident1left Ident2right,
+                                                  RegVar.mk_Named Ident1),
+                                                 VAReff (PP Ident2left Ident2right,
+                                                         RegVar.mk_Named Ident2)))
+                        )
+
+        | AtomicTy WHILE Ident Ident
+                  ( let fun toProp (i, s) =
+                           case s of
+                               "nomut" => NOMUTprop i
+                             | "noput" => NOPUTprop i
+                             | "noexn" => NOEXNprop i
+                             | _ => raise LEXICAL_ERROR (Ident1left, "expecting nomut, noput, or noexn")
+                    in
+                        WITHty (PP AtomicTyleft Ident2right,
+                                AtomicTy,
+                                PROPconstraint(PP Ident1left Ident2right,
+                                               toProp (PP Ident1left Ident1right,
+                                                       Ident1),
+                                               VAReff (PP Ident2left Ident2right,
+                                                       RegVar.mk_Named Ident2)
+                                              )
+                               )
+                    end )
+
+        | AtomicTy WHILE Ident HASH Ident
+                  ( let
+                    in WITHty (PP AtomicTyleft Ident2right,
+                               AtomicTy,
+                               DISJOINTconstraint(PP Ident1left Ident2right,
+                                                  VAReff (PP Ident1left Ident1right,
+                                                          RegVar.mk_Named Ident1),
+                                                  VAReff (PP Ident2left Ident2right,
+                                                          RegVar.mk_Named Ident2),
+                                                  false
+                                                 )
+                             )
+                  end )
+
+        | AtomicTy WHILE Ident HASHHASH Ident
+                  ( let
+                    in WITHty (PP AtomicTyleft Ident2right,
+                               AtomicTy,
+                               DISJOINTconstraint(PP Ident1left Ident2right,
+                                                  VAReff (PP Ident1left Ident1right,
+                                                          RegVar.mk_Named Ident1),
+                                                  VAReff (PP Ident2left Ident2right,
+                                                          RegVar.mk_Named Ident2),
+                                                  true
+                                                 )
+                             )
+                    end )
 
 TyComma_seq2:
           Ty COMMA TyComma_seq2

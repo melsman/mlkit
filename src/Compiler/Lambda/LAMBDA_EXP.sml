@@ -22,6 +22,26 @@ signature LAMBDA_EXP =
     type excon
     type TyName
     type regvar
+    type Report
+
+    datatype ateff =   (* ReML atomic effect *)
+        VARateff of regvar
+      | PUTateff of regvar
+      | GETateff of regvar
+
+    datatype eff =     (* ReML effect *)
+        SETeff of ateff list
+      | VAReff of regvar
+
+    datatype prop =
+        NOMUTprop | NOPUTprop | NOEXNprop
+
+    val pp_prop : prop -> string
+
+    datatype constr =  (* ReML constraints *)
+        DISJOINTconstr of eff * eff * bool * Report * lvar option  (* true if put-only *)
+      | INCLconstr of regvar * eff * Report * lvar option
+      | PROPconstr of prop * eff * Report * lvar option
 
     eqtype tyvar
     val fresh_tyvar : unit -> tyvar
@@ -33,7 +53,7 @@ signature LAMBDA_EXP =
 
     datatype Type =
         TYVARtype   of tyvar
-      | ARROWtype   of Type list * Type list * regvar option
+      | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option
 
@@ -115,6 +135,7 @@ signature LAMBDA_EXP =
                                   regvars: regvar list,
                                   tyvars : tyvar list,
                                   Type : Type,
+                                  constrs: constr list,
                                   bind : LambdaExp} list,
                      scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp * bool option  (* tail call? *)
@@ -126,7 +147,7 @@ signature LAMBDA_EXP =
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
-      | TYPED    of LambdaExp * Type
+      | TYPED    of LambdaExp * Type * constr list
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -166,6 +187,7 @@ signature LAMBDA_EXP =
     val pu_Types      : Type list Pickle.pu
     val pu_TypeScheme : (tyvar list * Type) Pickle.pu
     val pu_LambdaExp  : LambdaExp Pickle.pu
+    val pu_prop       : prop Pickle.pu
 
     structure TyvarSet : KIT_MONO_SET where type elt = tyvar
     val tyvars_Exp    : TyvarSet.Set -> LambdaExp -> TyvarSet.Set -> TyvarSet.Set

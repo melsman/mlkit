@@ -7,6 +7,7 @@ infix  4  = <> > >= < <=
 infix  3  := o
 infix  0  before
 
+(** SigDoc *)
 structure General : GENERAL =
   struct
     type unit = unit

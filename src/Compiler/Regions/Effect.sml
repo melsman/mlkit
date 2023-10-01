@@ -1,9 +1,17 @@
 
-structure Effect: EFFECT =  (* comment out this signature before
-                             * running TestEffect *)
+structure Effect :> EFFECT where type lvar = Lvars.lvar
+                             and type prop = LambdaExp.prop =
+   (* comment out this signature before
+    * running TestEffect *)
 struct
   structure PP = PrettyPrint
   structure G = DiGraph
+
+  type lvar = LambdaExp.lvar
+  type excon = LambdaExp.excon
+  type prop = LambdaExp.prop
+
+  type Report = Report.Report
 
   (* Add some dynamic flags for pretty-printing region variables. *)
 
@@ -53,6 +61,20 @@ struct
       {long="print_rho_protection", short=SOME "Prho_protection", item=ref false, neg=false,
        menu=["Layout", "print rho protection"], desc=
        "Print protectedness of region variables if set (P or U)."}
+
+  val print_constraints = Flags.add_bool_entry
+      {long="print_constraints", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print effect constraints"],
+       desc="Print effect constraints when printing region and\n\
+            \effect variables"}
+
+  val explicit_regions : unit -> bool = Flags.is_on0 "explicit_regions"
+
+  fun mem x nil = false
+    | mem x (y::ys) = x = y orelse mem x ys
+
+  fun memEq eq x nil = false
+    | memEq eq x (y::ys) = eq(x,y) orelse memEq eq x ys
 
   type StringTree = PP.StringTree
 
@@ -125,32 +147,49 @@ struct
                            level:  level,
                            represents: einfo G.node list option,
                            instance : einfo G.node option ref,
-                           pix: int ref}
+                           pix: int ref,
+                           explicit : regvar option,
+                           constraints : (Report * lvar option * einfo G.node * bool) list ref,
+                           prop_constraints : (Report * lvar option * prop) list ref}
                  | UNION of {represents: einfo G.node list option}
-                 | PUT | GET
+                 | PUT | GET | MUT
                  | RHO of {put: einfo G.node option,
                            get: einfo G.node option,
+                           mut: einfo G.node option,
                            key: key,
                            level: level,
                            instance : einfo G.node option ref,
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType,
-                           rv_opt : regvar option,
-                           pinned: bool,
+                           constraints: (Report * lvar option * einfo G.node) list ref, (* not-eq constraints *)
+                           explicit : regvar option,
                            protected : int ref}
 
   fun layout_einfo einfo =
       case einfo of
-          EPS{key,level,...} =>
-          PP.LEAF("e" ^ show_key key
-                  ^ (if print_rho_levels() then
-                       "(" ^ show_level level ^ ")"
-                     else ""))
+          EPS{key,level,explicit,prop_constraints,constraints,...} =>
+          let val n = case explicit of
+                          NONE => "e" ^ show_key key
+                        | SOME ev => "`" ^ RegVar.pr ev ^ "_" ^ show_key key
+          in PP.LEAF(n ^ (if print_rho_levels() then
+                            "(" ^ show_level level ^ ")"
+                          else "")
+                     ^ (if print_constraints() then
+                          let val cs1 = map (LambdaExp.pp_prop o #3) (!prop_constraints)
+                              val cs2 = map (fn _ => "memo") (!constraints)
+                              val cs = cs1 @ cs2
+                          in if List.null cs then ""
+                             else "[" ^ String.concatWith "," cs ^ "]"
+                          end
+                        else "")
+                    )
+          end
         | PUT => PP.LEAF "put"
         | GET => PP.LEAF "get"
+        | MUT => PP.LEAF "mut"
         | UNION _ => PP.LEAF "U"
-        | RHO{key,level,ty,put,rv_opt,protected,...} =>
-          let val n = case rv_opt of
+        | RHO{key,level,ty,put,explicit,protected,constraints,...} =>
+          let val n = case explicit of
                           NONE => "r" ^ show_key key
                         | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
           in PP.LEAF (n ^
@@ -159,6 +198,11 @@ struct
                       (if print_rho_protection() then show_protection protected
                        else "") ^
                       (if print_rho_levels() then "(" ^ show_level level ^ ")"
+                       else "") ^
+                      (if print_constraints() then
+                         case !constraints of
+                             nil => ""
+                           | rhos => "[memo]"
                        else "")
                      )
           end
@@ -171,6 +215,8 @@ struct
 
   fun layout_effect e = G.layout_node layout_einfo e
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [e]
+
+  fun pr_effect e = PP.flatten1 (layout_effect e)
 
   fun get_instance effect =
       case G.find_info effect of
@@ -191,6 +237,45 @@ struct
           RHO _ => true
         | _ => false
 
+  fun rho_add_constraint e (p : (Report * lvar option * effect)) : unit =
+      case G.find_info e of
+          RHO {constraints,...} =>
+          constraints := p :: (!constraints)
+        | _ => die "rho_add_constraint"
+
+  fun rho_get_constraints (e:effect) : (Report * lvar option * effect) list =
+      case G.find_info e of
+          RHO {constraints=ref cs,...} => cs
+        | _ => die "rho_get_constraint.expecting rho"
+
+  fun eps_add_prop_constraint e (rep,lvopt,p:prop) : unit =
+      case G.find_info e of
+          EPS{prop_constraints,...} =>
+          let val cs = !prop_constraints
+          in if mem p (map #3 cs) then ()
+             else prop_constraints := (rep,lvopt,p)::cs
+          end
+        | _ => die "eps_add_prop_constraint.expecting eps"
+
+  fun eps_get_prop_constraints (e: effect) : (Report * lvar option * prop) list =
+      case G.find_info e of
+          EPS{prop_constraints,...} => !prop_constraints
+        | _ => die "eps_get_prop_constraints.expecting eps"
+
+  fun eps_add_constraint e (rep,lvopt,e',putonly:bool) : unit =
+      case G.find_info e of
+          EPS{constraints,...} =>
+          let val cs = !constraints
+          in if List.exists (fn (_,_,e,p) => p=putonly andalso eq_effect (e,e')) cs then ()
+             else constraints := (rep,lvopt,e',putonly)::cs
+          end
+        | _ => die "eps_add_constraint.expecting eps"
+
+  fun eps_get_constraints (e: effect) : (Report * lvar option * effect * bool) list =
+      case G.find_info e of
+          EPS{constraints,...} => !constraints
+        | _ => die "eps_get_constraints.expecting eps"
+
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
      When effect is consed onto acc, its visited field is set.
@@ -201,10 +286,34 @@ struct
           (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect :: acc)
         | _ => acc
 
-  fun pinned_explicit_rho effect : regvar option =
+  fun explicit_rho effect : regvar option =
       case G.find_info effect of
-          RHO{pinned=true,rv_opt=SOME rv,...} => SOME rv
+          RHO{explicit=SOME rv,...} => SOME rv
         | _ => NONE
+
+  fun explicit_eps effect : regvar option =
+      case G.find_info effect of
+          EPS{explicit=SOME ev,...} => SOME ev
+        | _ => NONE
+
+  fun explicit_var e =
+      case G.find_info e of
+          RHO{explicit=SOME v,...} => SOME v
+       |  EPS{explicit=SOME v,...} => SOME v
+       | _ => NONE
+
+  fun pp_eff e =
+      case explicit_var e of
+          SOME rv => "`" ^ RegVar.pr rv
+        | NONE => pr_effect e
+
+  fun pr_atomic_effect e =
+      if is_arrow_effect e then pp_eff e
+      else let val n = case G.out_of_node e of
+                           n :: _ => n
+                         | _ => die "pr_atomic_effect.expecting an out-node"
+           in pr_effect e ^ "(" ^ pp_eff n ^ ")"
+           end
 
   fun is_put effect =
       case G.find_info effect of
@@ -216,10 +325,20 @@ struct
           GET => true
         | _ => false
 
-  fun is_put_or_get effect =
+  fun is_mut effect =
+      case G.find_info effect of
+          MUT => true
+        | _ => false
+
+  fun is_exn effect =
+      case G.find_info effect of
+          _ => false
+
+  fun is_put_or_get_or_mut effect =
       case G.find_info effect of
           GET => true
         | PUT => true
+        | MUT => true
         | _ => false
 
   fun get_level_and_key effect : (level*key) option =
@@ -300,24 +419,24 @@ struct
 
   fun edge (from,to) = G.mk_edge(from,to);
 
-  local
-    fun mkRho0 pinned (level, key, rv_opt) =
-        G.mk_node(RHO{key = ref key, level = ref level,
-                      put = NONE, get = NONE, instance = ref NONE,
-                      pix = ref ~1, ty = BOT_RT, rv_opt=rv_opt,
-                      pinned=pinned,protected=ref 0})
-  in fun mkRho x = mkRho0 false x
-     fun mkRho_pinned x = mkRho0 true x
-  end
+  (* explicit region variables are created with a "pinned" level,
+     meaning that their level is not allowed to be lowered. *)
+  fun mkRho explicit (l,k) =
+      G.mk_node(RHO{key = ref k, level = ref l,
+                    put = NONE, get = NONE, mut = NONE, instance = ref NONE,
+                    pix = ref ~1, ty = BOT_RT, explicit=explicit,
+                    protected=ref 0,
+                    constraints=ref nil})
 
   fun mkPut (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{put=SOME n',...} => n'  (* hash consing *)
-        | RHO{put=NONE,key,level,get,instance,pix,ty,rv_opt,pinned,protected} =>
+        | RHO{put=NONE,key,level,get,mut,instance,pix,ty,explicit,protected,constraints} =>
           let val new = G.mk_node PUT (* create new node *)
           in G.set_info n (RHO{put=SOME new,
-                               get=get,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
+                               get=get,mut=mut,key=key,level=level,instance=instance,
+                               pix=pix,ty=ty,explicit=explicit,protected=protected,
+                               constraints=constraints});
              G.mk_edge(new,n);
              new
           end
@@ -326,11 +445,26 @@ struct
   fun mkGet (n: effect) = (* n must represent a region variable*)
       case G.find_info n of
           RHO{get=SOME n',...} => n'  (* hash consing *)
-        | RHO{get=NONE,key,level,put,instance,pix,ty,rv_opt,pinned,protected} =>
+        | RHO{get=NONE,mut,key,level,put,instance,pix,ty,explicit,protected,constraints} =>
           let val new = G.mk_node GET  (* create new node *)
-          in G.set_info n (RHO{get=SOME new,
+          in G.set_info n (RHO{get=SOME new,mut=mut,
                                put=put,key=key,level=level,instance=instance,
-                               pix=pix,ty=ty,rv_opt=rv_opt,pinned=pinned,protected=protected});
+                               pix=pix,ty=ty,explicit=explicit,protected=protected,
+                               constraints=constraints});
+             G.mk_edge(new,n);
+             new
+          end
+        | _ => die "mkGet: node does not represent region variable"
+
+  fun mkMut (n: effect) = (* n must represent a region variable*)
+      case G.find_info n of
+          RHO{mut=SOME n',...} => n'  (* hash consing *)
+        | RHO{mut=NONE,get,key,level,put,instance,pix,ty,explicit,protected,constraints} =>
+          let val new = G.mk_node MUT  (* create new node *)
+          in G.set_info n (RHO{mut=SOME new,get=get,
+                               put=put,key=key,level=level,instance=instance,
+                               pix=pix,ty=ty,explicit=explicit,protected=protected,
+                               constraints=constraints});
              G.mk_edge(new,n);
              new
           end
@@ -342,9 +476,15 @@ struct
          new
       end
 
-  fun mkEps (level,key) = G.mk_node(EPS{key = ref key, level = ref level,
-                                        represents = NONE, pix = ref ~1,
-                                        instance = ref NONE})
+  (* Explicit effect variables are created with a "pinned" level,
+     meaning that their level is not allowed to be lowered. *)
+  fun mkEps explicit (l,k) =
+      G.mk_node(EPS{key = ref k, level = ref l,
+                    represents = NONE, pix = ref ~1,
+                    instance = ref NONE,
+                    explicit=explicit,
+                    prop_constraints=ref nil,
+                    constraints=ref nil})
 
   fun remove_duplicates effects =
       let fun loop([], acc) = acc
@@ -639,17 +779,16 @@ struct
      at the topmost layer of   cone   and insert it in
      this topmost layer *)
 
-  fun freshRho (cone:cone as (n, c)): effect * cone =
-      let val key = freshRhoInt()
-          val node = mkRho(n,key,NONE)
-      in (node, add(node, n, key, cone))
-      end
-
-  fun freshRhoRegVar (cone:cone as (n, c), rv): effect * cone =
-      let val key = freshRhoInt()
-          val node = mkRho_pinned(n,key,SOME rv)
-      in (node, add(node, n, key, cone))
-      end
+  local
+    fun freshRho0 rvopt (cone:cone as (n, c)) : effect * cone =
+        let val key = freshRhoInt()
+            val node = mkRho rvopt (n,key)
+        in (node, add(node, n, key, cone))
+        end
+  in
+    fun freshRho B = freshRho0 NONE B
+    fun freshRhoRegVar (B,rv) = freshRho0 (SOME rv) B
+  end
 
   fun insertRho rho (cone as (n,c)) = add(rho,n, key_of_rho rho, cone)
   fun insertEps eps (cone as (n,c)) = add(eps,n, get_key_of_eps eps, cone)
@@ -667,9 +806,9 @@ struct
                      let val k = freshRhoInt()
                          val new_rho =
                              G.mk_node(RHO{key = ref k, level = ref(g level),
-                                           put = NONE, get = NONE, instance = ref NONE,
-                                           pix = ref(f pix), ty = ty, rv_opt=NONE,
-                                           pinned=false,protected=ref prot})
+                                           put = NONE, get = NONE, mut = NONE, instance = ref NONE,
+                                           pix = ref(f pix), ty = ty, explicit=NONE,
+                                           protected=ref prot,constraints=ref nil})
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
                      end
@@ -687,13 +826,16 @@ struct
   fun rename_epss_aux (epss, c: cone as (n,_), f, g) : effect list * cone =
       foldr (fn (eps,(epss',c)) =>
                   case G.find_info eps of
-                    EPS{level,pix,(*represents = NONE,*)...} =>
+                    EPS{level,pix,explicit,(*represents = NONE,*)...} =>
                      let val k = freshEpsInt()
-                         val new_eps=
-                      G.mk_node(EPS{key = ref(k), level = ref(g level),
-                                    instance = ref NONE,
-                                    represents = NONE,
-                                    pix = ref(f(pix))})
+                         val new_eps =
+                             G.mk_node(EPS{key = ref k, level = ref(g level),
+                                           instance = ref NONE,
+                                           represents = NONE,
+                                           pix = ref(f(pix)),
+                                           explicit=explicit,
+                                           prop_constraints=ref nil,
+                                           constraints=ref nil})
                      in
                         (new_eps::epss', add(new_eps, n, k, c))
                      end
@@ -707,15 +849,13 @@ struct
   fun cloneEpss (epss, c: cone as (n,_)) : effect list * cone =
       rename_epss_aux(epss,c,fn(ref int) => ~1, fn _ => n)
 
-  fun freshRhoWithTy' (rv_opt:regvar option, rt: runType, cone:cone as (n, c)): effect * cone =
+  fun freshRhoWithTy (rt: runType, cone:cone as (n, c)): effect * cone =
       let val key = freshRhoInt()
-          val node =G.mk_node(RHO{key = ref key, level = ref n,
-                                  put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
-                                  rv_opt=rv_opt,pinned=false,protected=ref 0})
+          val node = G.mk_node(RHO{key = ref key, level = ref n,
+                                   put = NONE, get = NONE, mut = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
+                                   explicit=NONE,protected=ref 0,constraints=ref nil})
         in (node, add(node, n, key, cone))
       end
-
-  fun freshRhoWithTy (rt,c) = freshRhoWithTy'(NONE,rt,c)
 
   fun freshRhosPreserveRT (rhos,c: cone): effect list * cone  =
       foldr (fn (rho,(rhos',c)) =>
@@ -728,34 +868,32 @@ struct
 
   fun setRunType (place:place) (rt: runType) : unit =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} =>
-          G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=rt,rv_opt=rv_opt,pinned=pinned,protected=protected})
+          RHO{put,get,mut,key,level,instance,pix,ty,explicit,protected,constraints} =>
+          G.set_info place (RHO{put=put,get=get,mut=mut,key=key,level=level,instance=instance,
+                                pix=pix,ty=rt,explicit=explicit,protected=protected,
+                                constraints=constraints})
         | _ => die "setRunType: node is not a region variable"
-
-  fun setRegVar (place:place) (rv: RegVar.regvar) : unit =
-      case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt=NONE,pinned,protected} =>
-          G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
-                                pix=pix,ty=ty,rv_opt=SOME rv,pinned=pinned,protected=protected})
-        | RHO{rv_opt=SOME rv',...} => if RegVar.eq(rv,rv') then ()
-                                      else die "setRegVar: explicit regvar already set"
-        | _ => die "setRegVar: node is not a region variable"
 
   fun getRegVar (place:place) : RegVar.regvar option =
       case G.find_info place of
-          RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned,protected} => rv_opt
-        | _ => die "getRegVar: node is not a region variable"
+          RHO{explicit,...} => explicit
+        | EPS{explicit,...} => explicit
+        | _ => die "getRegVar: node is not a region variable or an effect variable"
 
   (* freshEps(cone): Generate a fresh effect variable
      at the topmost layer of   cone   and insert it in
      this topmost layer *)
 
-  fun freshEps (cone:cone as (n, c)): effect * cone =
-      let val key = freshEpsInt()
-          val node = mkEps(n,key)
-      in (node, add(node, n, key, cone))
-      end
+  local
+    fun freshEps0 rvopt (cone:cone as (n,c)): effect * cone =
+        let val key = freshEpsInt()
+            val node = mkEps rvopt (n,key)
+        in (node, add(node, n, key, cone))
+        end
+  in
+    fun freshEpsRegVar (B,rv) = freshEps0 (SOME rv) B
+    fun freshEps B = freshEps0 NONE B
+  end
 
   fun freshEpss (epss, c: cone): effect list * cone =
       foldr (fn (eps,(epss',c)) =>
@@ -763,6 +901,9 @@ struct
                 in (eps'::epss',c)
                 end) ([],c) epss
 
+  fun freshRhoEpsRegVar (B,rv) =
+      if RegVar.is_effvar rv then freshEpsRegVar(B,rv)
+      else freshRhoRegVar(B,rv)
 
   (* Toplevel regions and arrow effect *)
 
@@ -780,7 +921,7 @@ struct
     val (toplevel_region_withtype_array, initCone) = freshRhoWithTy(ARRAY_RT,initCone)     (*5*)
     val (toplevel_region_withtype_ref, initCone) = freshRhoWithTy(REF_RT,initCone)         (*6*)
     val (toplevel_region_withtype_triple, initCone) = freshRhoWithTy(TRIPLE_RT,initCone)   (*7*)
-    val (toplevel_arreff, initCone) = freshEps(initCone)                                   (*8*)
+    val (toplevel_arreff, initCone) = freshEps initCone                                    (*8*)
     val _ = set_init_count()
 
     val toplevel_effects = [toplevel_region_withtype_top, toplevel_region_withtype_bot,
@@ -846,6 +987,7 @@ struct
       case i of
           PUT => NONE
         | GET => NONE
+        | MUT => NONE
         | UNION _ => NONE
         | RHO {key=ref k,...} => SOME k
         | EPS {key=ref k,...} => SOME k
@@ -874,14 +1016,28 @@ struct
             | toInt (UNION _) = 1
             | toInt PUT = 2
             | toInt GET = 3
-            | toInt (RHO _) = 4
+            | toInt MUT = 4
+            | toInt (RHO _) = 5
+          fun pu_constraints pu_einfo =
+              Pickle.refOneGen (Pickle.listGen(Pickle.tup4Gen(Report.pu,Pickle.optionGen Lvars.pu,
+                                                              #1(pu_node_nodes pu_einfo),
+                                                              Pickle.bool)))
           fun fun_EPS pu_einfo =
               Pickle.newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
-              (Pickle.con1 (fn ((k,l,r),p) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p})
-               (fn EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p} => ((k,l,r),p)
-                 | _ => die "pu_einfo.fun_EPS")
-               (Pickle.pairGen0(Pickle.tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
-                                pu_intref)))
+                             (Pickle.con1 (fn ((k,l,r,p),y,pcs,cs) =>
+                                              EPS{key=k,level=l,represents=r,instance=ref NONE,
+                                                  pix=p,explicit=y,prop_constraints=pcs,constraints=cs})
+                                          (fn EPS{key=k,level=l,represents=r,instance=ref NONE,
+                                                  pix=p,explicit=y,prop_constraints=pcs,constraints=cs} =>
+                                              ((k,l,r,p),y,pcs,cs)
+                                          | _ => die "pu_einfo.fun_EPS")
+               (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref,pu_intref,pu_represents pu_einfo,pu_intref),
+                                Pickle.optionGen RegVar.pu,
+                                Pickle.refOneGen(Pickle.listGen (Pickle.tup3Gen(Report.pu,
+                                                                                Pickle.optionGen Lvars.pu,
+                                                                                LambdaExp.pu_prop))),
+                                pu_constraints pu_einfo
+                             )))
           fun fun_UNION pu_einfo =
               Pickle.con1 (fn r => UNION{represents=r})
               (fn UNION {represents=r} => r
@@ -889,20 +1045,27 @@ struct
               (pu_represents pu_einfo)
           val fun_PUT = Pickle.con0 PUT
           val fun_GET = Pickle.con0 GET
+          val fun_MUT = Pickle.con0 MUT
+          fun pu_rho_constraints pu_einfo =
+              Pickle.refOneGen (Pickle.listGen(Pickle.tup3Gen(Report.pu,Pickle.optionGen Lvars.pu,
+                                                              #1(pu_node_nodes pu_einfo))))
           fun fun_RHO pu_einfo =
               Pickle.newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
-              (Pickle.con1 (fn ((k,p,g,l),px,t,(y,protected)) => RHO {key=k,put=p,get=g,level=l,
-                                                                      instance=ref NONE,pix=px,ty=t,rv_opt=y,
-                                                                      pinned=false,protected=protected})
-               (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t,rv_opt=y,pinned=_,protected} =>
-                ((* print ("Pickling rho(" ^ Int.toString (!k) ^ ") with level \t" ^ Int.toString (!l) ^ "\n"); *)
-                 ((k,p,g,l),px,t,(y,protected)))
+                             (Pickle.con1 (fn ((k,p,g,l),px,t,(m,y,protected,cs)) =>
+                                              RHO {key=k,put=p,get=g,mut=m,level=l,
+                                                   instance=ref NONE,pix=px,ty=t,explicit=y,
+                                                   protected=protected,constraints=cs})
+                                          (fn RHO {key=k,put=p,get=g,mut=m,level=l,instance=ref NONE,
+                                                   pix=px,ty=t,explicit=y,protected,constraints} =>
+                (((k,p,g,l),px,t,(m,y,protected,constraints)))
                  | _ => die "pu_einfo.fun_RHO")
                (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
                                                 Pickle.nameGen "get" (pu_nodeopt pu_einfo),
                                                 pu_intref),
-                                pu_intref,pu_runType,Pickle.pairGen0(Pickle.optionGen RegVar.pu,pu_intref))))
-      in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
+                                pu_intref,pu_runType,Pickle.tup4Gen0(Pickle.nameGen "mut" (pu_nodeopt pu_einfo),
+                                                                     Pickle.optionGen RegVar.pu,pu_intref,
+                                                                     pu_rho_constraints pu_einfo))))
+      in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET, fun_MUT,
                                               fun_RHO])
       end
 
@@ -988,6 +1151,7 @@ struct
                           ns
                         | PUT => n::ns
                         | GET => n::ns
+                        | MUT => n::ns
                         | EPS _ =>
                           search'(G.out_of_node n,
                                   case Increments.lookup (!globalIncs) n of
@@ -1020,16 +1184,19 @@ struct
                   SOME (l as ref n, key) =>
                   if newlevel >= n then cone
                   else   (* newlevel < level: lower level *)
-                    let val _ = case pinned_explicit_rho effect of
+                    let val _ = case explicit_var effect of
                                     NONE => ()
-                                  | SOME rv =>
+                                  | SOME v =>
                                     let open Report infix //
-                                        val report0 = case RegVar.get_location_report rv of
+                                        val report0 = case RegVar.get_location_report v of
                                                           SOME rep => rep
                                                         | NONE => Report.null
+                                        val kind = if is_rho effect then "region"
+                                                   else if is_arrow_effect effect then "effect"
+                                                   else die "lower - expecting region or effect variable"
                                         val report = Report.line
-                                                         ("Explicit region variable `" ^
-                                                          RegVar.pr rv ^ " has insufficient scope.")
+                                                         ("Explicit " ^ kind ^ " variable `" ^
+                                                          RegVar.pr v ^ " has insufficient scope.")
                                     in raise Report.DeepError (report0 // report)
                                     end
                         val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
@@ -1089,39 +1256,83 @@ struct
             SOME m => m
           | NONE => die "removeIncr"))
 
-  fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
-                                                      * have the same level *)
-      case (einfo1, einfo2) of
-          (EPS{key = key1 as ref k1, represents, instance, pix, ...},
-           EPS{key = key2 as ref k2, ...}) =>
-          if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
-          else (* merge increment information for einfo1 and einfo2 *)
-            if k1 < k2 then
-              (if !algorithm_R then
-                 case Increments.lookup(!globalIncs)eps2
-                  of SOME delta2 => (update_increment(eps1,delta2);
-                                     update_areff eps1 handle _ => die "einfo_combine_eps1";
-                                     removeIncr eps2)
-                   | NONE => ()
-               else (); einfo1)
-            else (* k2 < k1 *)
-              (if !algorithm_R then
-                 case Increments.lookup(!globalIncs)eps1
-                  of SOME delta1 => (update_increment(eps2,delta1);
-                                     update_areff eps2 handle _ => die "einfo_combine_eps2";
-                                     removeIncr eps1)
-                   | NONE => ()
-               else (); einfo2)
-        | _ => die "einfo_combine_eps"
-
-  fun deepError rv msg =
+  fun deepErrorRep rv report =
       let open Report infix //
           val report0 = case RegVar.get_location_report rv of
                             SOME rep => rep
                           | NONE => Report.null
-          val report = line msg
       in raise DeepError (report0 // report)
       end
+
+  fun deepError rv msg =
+      deepErrorRep rv (Report.line msg)
+
+  fun deepError0 rep msg =
+      let open Report infix //
+          val report = rep // line msg
+      in raise DeepError report
+      end
+
+  fun merge_prop_constraints pcs1 pcs2 =
+      let fun ins (c:'a*'b*prop,nil) = [c]
+            | ins (c,c'::cs) = if #3 c = #3 c' then c'::cs
+                               else c'::ins(c,cs)
+          fun mer (nil,cs) = cs
+            | mer (cs,nil) = cs
+            | mer (c::cs,cs') = mer (cs,ins(c,cs'))
+      in case (pcs1,pcs2) of
+             (ref cs1,ref cs2) => pcs1 := mer(cs1,cs2)
+      end
+
+  fun merge_constraints cs1 cs2 =
+      let fun ins (c:'a*'b*effect*bool,nil) = [c]
+            | ins (c,c'::cs) = if eq_effect (#3 c,#3 c') andalso #4 c = #4 c' then c'::cs
+                               else c'::ins(c,cs)
+          fun mer (nil,cs) = cs
+            | mer (cs,nil) = cs
+            | mer (c::cs,cs') = mer (cs,ins(c,cs'))
+      in case (cs1,cs2) of
+             (ref cs1',ref cs2') => cs1 := mer (cs1',cs2')
+      end
+
+  fun einfo_combine_eps (eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2
+                                                      * have the same level *)
+      case (einfo1, einfo2) of
+          (EPS{key = key1 as ref k1, explicit=explicit1, prop_constraints=pcs1, constraints=cs1, ...},
+           EPS{key = key2 as ref k2, explicit=explicit2, prop_constraints=pcs2, constraints=cs2, ...}) =>
+          if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
+          else (* merge increment information for einfo1 and einfo2 *)
+            let val choose1 = case (explicit1,explicit2) of
+                                  (SOME ev1, SOME ev2) =>
+                                  if RegVar.eq(ev1,ev2)
+                                  then k1 < k2
+                                  else deepError ev1 ("Cannot unify the explicit effect variables `"
+                                                      ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+                                | (SOME _, NONE) => true
+                                | (NONE, SOME _) => false
+                                | (NONE, NONE) => k1 < k2
+            in if choose1 then
+                 (merge_prop_constraints pcs1 pcs2;
+                  merge_constraints cs1 cs2;
+                  if !algorithm_R then
+                    case Increments.lookup (!globalIncs) eps2 of
+                        SOME delta2 => (update_increment(eps1,delta2);
+                                        update_areff eps1 handle _ => die "einfo_combine_eps1";
+                                        removeIncr eps2)
+                      | NONE => ()
+                  else (); einfo1)
+               else
+                 (merge_prop_constraints pcs2 pcs1;
+                  merge_constraints cs2 cs1;
+                  if !algorithm_R then
+                    case Increments.lookup (!globalIncs) eps1 of
+                        SOME delta1 => (update_increment(eps2,delta1);
+                                        update_areff eps2 handle _ => die "einfo_combine_eps2";
+                                        removeIncr eps1)
+                      | NONE => ()
+                  else (); einfo2)
+            end
+        | _ => die "einfo_combine_eps"
 
   local
       val largest_toplevel_effect_key = 9
@@ -1139,6 +1350,7 @@ struct
                         case (a,b) of
                             (PUT,PUT) => a
                           | (GET,GET) => a
+                          | (MUT,MUT) => a
                           | _ => die ("aux_combine: (a,b) = (" ^ PP.flatten1 (layout_einfo a) ^ ", " ^
                                       PP.flatten1 (layout_einfo b) ^ ")\n"))
                        (n1, n2))
@@ -1146,10 +1358,10 @@ struct
       fun einfo_combine_rho (einfo1, einfo2) =  (* assume einfo1 and einfo2
                                                  * have the same level *)
           case (einfo1, einfo2) of
-              (RHO{level=l1,put=p1,get=g1,key=k1,instance=instance1,pix=pix1,ty=t1,
-                   rv_opt=rv_opt1,pinned=pinned1,protected=protected1},
-               RHO{level=_,put=p2,get=g2,key=k2,instance=instance2,pix=pix2,ty=t2,
-                   rv_opt=rv_opt2,pinned=pinned2,protected=protected2}) =>
+              (RHO{level=l1,put=p1,get=g1,mut=m1,key=k1,instance=instance1,pix=pix1,ty=t1,
+                   explicit=explicit1,protected=protected1,constraints=ref cs1},
+               RHO{level=_,put=p2,get=g2,mut=m2,key=k2,instance=instance2,pix=pix2,ty=t2,
+                   explicit=explicit2,protected=protected2,constraints=ref cs2}) =>
               if !k1 <> !k2 andalso (!k1 < largest_toplevel_effect_key
                                      andalso !k2 < largest_toplevel_effect_key)
                  orelse !k1 = 2 andalso t2<>BOT_RT
@@ -1166,20 +1378,45 @@ struct
                                                    ^ show_runType t1
                                                    ^ " but is expected to have type "
                                                    ^ show_runType t2)
-                    val (ty, rv_opt) =
-                        case (rv_opt1,rv_opt2) of
+                    fun pr_rho e = PP.flatten1 (layout_effect e)
+                    fun pr_einfo ei = PP.flatten1 (layout_einfo ei)
+                    fun check_constraint (k,explicit,ei) (rep,lvopt,c:effect) =
+                        if not (is_rho c) then die "check_constraint.expecting rho"
+                        else if key_of_rho c = k then
+                          let val opt = case lvopt of NONE => "."
+                                                        | SOME lv => " (instance of function " ^ Lvars.pr_lvar lv ^ ")."
+                          in case explicit of
+                                 SOME rv =>
+                                 let open Report infix //
+                                 in deepErrorRep rv (rep //
+                                                     line ("Region aliasing constraint violation: The explicit") //
+                                                     line ("region variable `" ^ RegVar.pr rv ^ " occurs") //
+                                                     line ("on both sides of (an instance of) the disjointness") //
+                                                     line ("constraint" ^ opt))
+                                 end
+                               | NONE =>
+                                 deepError0 rep ("Region aliasing constraint violation: The region variable " ^ pr_rho c ^
+                                                 " occurs\non both sides of (an instance of) the disjointness constraint"
+                                                 ^ opt)
+                          end
+                        else ()
+
+                    val (ty, explicit) =
+                        case (explicit1,explicit2) of
                             (SOME rv1,SOME rv2) =>
-                            if RegVar.eq(rv1,rv2) then (lub_runType(t1,t2), rv_opt1) (*memo:merge info*)
+                            if RegVar.eq(rv1,rv2) then (lub_runType(t1,t2), explicit1) (*memo:merge info*)
                             else deepError rv1 ("Cannot unify the explicit region variables `"
                                                 ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
-                          | (SOME rv1, _) => (lub_check rv1 t1 t2, rv_opt1)
-                          | (_, SOME rv2) => (lub_check rv2 t2 t1, rv_opt2)
+                          | (SOME rv1, _) => (lub_check rv1 t1 t2, explicit1)
+                          | (_, SOME rv2) => (lub_check rv2 t2 t1, explicit2)
                           | (NONE, NONE) => (lub_runType(t1,t2), NONE)
                     val protected = if !protected1 > !protected2 then protected1 else protected2
+                    val () = List.app (check_constraint (!k1,explicit1,einfo1)) cs2
+                    val () = List.app (check_constraint (!k2,explicit2,einfo2)) cs1
                 in RHO{level = l1, put = aux_combine(p1,p2),
-                       get = aux_combine(g1,g2), key = min_key(k1,k2),
+                       get = aux_combine(g1,g2), mut = aux_combine(m1,m2), key = min_key(k1,k2),
                        instance = instance1, pix = pix1, ty = ty,
-                       rv_opt=rv_opt,pinned=pinned1 orelse pinned2,protected=protected}
+                       explicit=explicit,protected=protected,constraints=ref(cs1 @ cs2)}
                 end
              | _ => die "einfo_combine_rho"
   end
@@ -1241,7 +1478,7 @@ struct
         | _ => die "checkRegVars.check_types: expecting region variables"
 
   fun checkRegVars r1 r2 : unit =
-      case (pinned_explicit_rho r1, pinned_explicit_rho r2) of
+      case (explicit_rho r1, explicit_rho r2) of
           (SOME rv1, SOME rv2) =>
           if RegVar.eq(rv1,rv2) then ()
           else deepError rv1 ("Cannot unify the explicit region variables `"
@@ -1275,6 +1512,21 @@ struct
                   (einfo_combine_eps(e1,e2))
                   is_union) (e1,e2) cone)
 
+  fun checkEpsVars e1 e2 : unit =
+      case (explicit_eps e1, explicit_eps e2) of
+          (SOME ev1, SOME ev2) =>
+          if RegVar.eq(ev1,ev2) then ()
+          else deepError ev1 ("Cannot unify the explicit effect variables `"
+                              ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+        | _ => ()
+
+  fun unifyEps_explicit ((rv,e1),e2) cone : cone =
+      (checkNotRho "unifyEps_explicit1" e1;
+       checkNotRho "unifyEps_explicit2" e2;
+       checkEpsVars e1 e2;
+       unifyNodes(G.union_without_edge_duplication
+                  (einfo_combine_eps(e1,e2))
+                  is_union) (e1,e2) cone)
 
   (*****************************************************)
   (* generic instance of region- and effect variables  *)
@@ -1323,6 +1575,15 @@ struct
                       | NONE => (* non-generic *) SOME node
                    )
                  | _ => die "instNodes: get node has no region argument"
+                 )
+            | MUT =>
+              (case G.out_of_node node of
+                   rho_origin :: _ =>
+                   (case !(get_instance rho_origin) of
+                        SOME node' => (* generic *) SOME(mkMut node')
+                      | NONE => (* non-generic *) SOME node
+                   )
+                 | _ => die "instNodes: mut node has no region argument"
                  )
             | UNION _ => NONE (* node not bound *)
             | EPS {instance as ref i,  ...} =>
@@ -1377,12 +1638,12 @@ struct
 
       val r_acc : effect list ref = ref []  (* for accumulating nodes of level > l *)
 
-      fun include_put_or_get node : bool =
+      fun include_put_or_get_or_mut node : bool =
         case G.out_of_node node of
           [rho] => (case G.find_info rho of
                       RHO{level as ref l', ...} => l'<=l
-                    | _ => die "include_rho: not RHO node")
-        | _ => die "include_rho: not precisely one child of PUT or GET node"
+                    | _ => die "include_put_or_get_or_mut: expecting RHO node")
+        | _ => die "include_put_or_get_or_mut: not precisely one child of PUT, GET, or MUT node"
 
       (* collect: see description below *)
       fun collect (l:int, source: delta_phi) =
@@ -1406,9 +1667,11 @@ struct
                         | RHO _ => (* do not include it; a PUT or GET will be
                                       included, when necessary *)
                           ns
-                        | PUT  => (if include_put_or_get n then n::ns
+                        | PUT  => (if include_put_or_get_or_mut n then n::ns
                                    else (r_acc:= n :: !r_acc; ns))
-                        | GET  => (if include_put_or_get n then n::ns
+                        | GET  => (if include_put_or_get_or_mut n then n::ns
+                                   else (r_acc:= n :: !r_acc; ns))
+                        | MUT  => (if include_put_or_get_or_mut n then n::ns
                                    else (r_acc:= n :: !r_acc; ns))
                         | EPS{level as ref l', ...} =>
                           if l'<=l then
@@ -1465,11 +1728,11 @@ struct
   (* all members of the scc must have the same level; otherwise the graph
      was ill-formed in the first place. Therefore we do not lower levels. *)
 
-  (* findPutAndGets(node) : node list;
+  (* findPutAndGetsAndMuts node : node list;
      find all the Put and Get nodes reachable from node *)
 
-  fun findPutAndGets node =
-      List.filter is_put_or_get (G.topsort [node])
+  fun findPutAndGetsAndMuts node =
+      List.filter is_put_or_get_or_mut (G.topsort [node])
 
   (* sameLists(l1, l2) : bool   returns true if l1 and l2 contain the same elements;
      neither l1 nor l2 contains duplicates
@@ -1500,14 +1763,30 @@ struct
      are reachable from eps1 and eps2 *)
 
   fun sameEffect (node1, node2) : bool=
-      sameLists(findPutAndGets node1, findPutAndGets node2)
+      sameLists(findPutAndGetsAndMuts node1, findPutAndGetsAndMuts node2)
 
   fun einfo_scc_combine (einfo1, einfo2) =
     case (einfo1,einfo2) of
         (UNION _ , _) => einfo2
       | (_, UNION _) => einfo1
-      | (EPS {key=ref k1,...}, EPS {key=ref k2,...}) =>
-          if k1 < k2 then einfo1 else einfo2  (* was einfo1 ; ME 2001-03-07 *)
+      | (EPS {key=ref k1,explicit=explicit1,prop_constraints=pcs1, constraints=cs1, ...},
+         EPS {key=ref k2,explicit=explicit2,prop_constraints=pcs2, constraints=cs2, ...}) =>
+        let val choose1 = case (explicit1,explicit2) of
+                                  (SOME ev1, SOME ev2) =>
+                                  if RegVar.eq(ev1,ev2)
+                                  then k1 < k2
+                                  else deepError ev1 ("Cannot unify the explicit effect variables `"
+                                                      ^ RegVar.pr ev1 ^ " and `" ^ RegVar.pr ev2)
+                                | (SOME _, NONE) => true
+                                | (NONE, SOME _) => false
+                                | (NONE, NONE) => k1 < k2
+        in if choose1 then (merge_prop_constraints pcs1 pcs2;
+                            merge_constraints cs1 cs2;
+                            einfo1)
+           else (merge_prop_constraints pcs2 pcs1;
+                 merge_constraints cs2 cs1;
+                 einfo2)
+        end
       | _ => die "einfo_scc_combine: strongly connected\
                  \ component in effect graph contained \
                   \\nnode which was neither an arrow effect nor a union"
@@ -1656,20 +1935,29 @@ struct
 
   exception AE_LT
 
-  fun ae_lt (node1, node2) = (* GET > PUT > EPS *)
+  fun ae_lt (node1, node2) = (* EPS < PUT < GET < MUT *)
       case (G.find_info node1, G.find_info node2) of
           (EPS _, EPS _) => get_key_of_eps node1 < get_key_of_eps node2
-        | (EPS _, _) => true
         | (PUT, PUT) => key_of_get_or_put node1 < key_of_get_or_put node2
+        | (GET, GET) => key_of_get_or_put node1 < key_of_get_or_put node2
+        | (MUT, MUT) => key_of_get_or_put node1 < key_of_get_or_put node2
         | (PUT, EPS _) => false
+        | (GET, EPS _) => false
+        | (MUT, EPS _) => false
+        | (GET, PUT) => false
+        | (MUT, PUT) => false
+        | (MUT, GET) => false
+        | (EPS _, _) => true
+        | (PUT, _) => true
+        | (GET, _) => true
         | _ => raise AE_LT
 
   local (* sorting of atomic effects *)
-    fun merge([], ys) = ys:effect list
-      | merge(xs, []) = xs
-      | merge(l as x::xs, r as y:: ys) =
-             if ae_lt(x, y) then x::merge(xs, r)
-             else y:: merge(l, ys)
+    fun merge ([], ys) = ys:effect list
+      | merge (xs, []) = xs
+      | merge (l as x::xs, r as y:: ys) =
+        if ae_lt(x, y) then x::merge(xs, r)
+        else y:: merge(l, ys)
 
     (* sort: top-down mergesort *)
     fun sort [] = []
@@ -1688,10 +1976,12 @@ struct
 
   fun mk_phi eps_node =
       case G.find_info eps_node of
-          EPS{represents = SOME l, ...} => l
+          EPS{represents = SOME l, ...} =>
+          List.filter (fn e => not(is_exn e) andalso not(is_mut e)) l
         | UNION{represents = SOME l} => l
         | PUT  => [eps_node]
         | GET  => []
+        | MUT  => []
         | RHO _ => []
         | _ => die "mk_phi"
 
@@ -1714,7 +2004,7 @@ struct
     | removeatomiceffects (psi: (effect * 'a) list, discharged_basis: effect list): (effect*'a) list =
       (* each member of discharged_basis is either a region variable or an arrow effect;
          now remove from psi all ae:m for which ae takes the form eps in discharged_basis
-         or PUT rho or GET rho for rho in discharged_basis:
+         or PUT rho or GET rho or MUT rho for rho in discharged_basis:
       *)
       let val refs = foldl (fn (a,b) => visit_eps_or_rho a b) [] discharged_basis
           fun keep (ae,mul): bool = not(!(G.find_visited ae))
@@ -1728,6 +2018,8 @@ struct
   (* handles represent. Only arrow effects*)
   (* and PUT effects are included      *)
   (*************************************)
+
+  (* Notice: We also check ReML constraints on atomic effects during this phase *)
 
   structure MultiMerge =
     struct
@@ -1794,12 +2086,62 @@ struct
                    EPS _ => ()
                  | PUT  => ()
                  | GET  => ()
+                 | MUT  => ()
                  | _ => (log_string "check_represents failed on effect:";
                          log_tree(layout_effect_deep n);
                          die "check_represents")) l;
      l)
 
-  fun bottom_up_eval (g : effect list) : unit =
+  fun check_prop_constraint (n:effect) (rep,lvopt,p:prop) (ae:effect) =  (*ae: atomic effect *)
+      let fun violation p =
+              let fun msg s = s ^ " constraint violation. The effect "
+                              ^ pp_eff n ^ " contains\nthe atomic effect "
+                              ^ pr_atomic_effect ae ^
+                              (if is_arrow_effect ae then ", which has no " ^ LambdaExp.pp_prop p ^ " property"
+                               else "")
+              in case p of
+                     LambdaExp.NOMUTprop => msg "Mutation"
+                   | LambdaExp.NOPUTprop => msg "Allocation"
+                   | LambdaExp.NOEXNprop => msg "Exception"
+              end
+          fun err p = deepError0 rep (violation p)
+      in if is_arrow_effect ae then
+           let val cs_ae = eps_get_prop_constraints ae
+           in if mem p (map #3 cs_ae) then ()
+              else err p
+           end
+         else case p of
+                  LambdaExp.NOMUTprop =>
+                  if is_mut ae then err p else ()
+                | LambdaExp.NOPUTprop =>
+                  if is_put ae then err p else ()
+                | LambdaExp.NOEXNprop =>
+                  if is_exn ae then err p else ()
+      end
+
+  fun not_put ae = not(is_put ae)
+
+  fun check_constraint (n:effect) (rep,lvopt,e:effect,putonly:bool) (ae:effect) =  (*ae: atomic effect *)
+      if putonly andalso not_put ae then () else
+      let fun violation () =
+              if putonly then "Put-constraint violation"
+              else "Constraint violation"
+          fun msg () = violation() ^ ". The effect "
+                      ^ pp_eff n ^ " contains\nthe atomic effect "
+                      ^ pr_atomic_effect ae ^ ", which also appears in the effect of "
+                      ^ pr_atomic_effect e
+          fun err () = deepError0 rep (msg ())
+          val aes =
+              case G.find_info e of
+                  EPS{represents=SOME aes,...} => aes
+                | EPS _ => die ("check_constraint.no represents for node " ^ pp_eff e)
+                | _ => die "check_constraint.expects eps"
+          val aes = if putonly then List.filter is_put aes else aes
+      in List.app (fn ae' => if eq_effect(ae,ae') then err ()
+                             else ()) aes
+      end
+
+  fun bottom_up_eval (g : effect list) : effect list =
       (*
        * bottom_up_eval g : every EPS or UNION node has a
        * 'represents' fields. bottom_up_eval g sets the represents
@@ -1832,6 +2174,7 @@ struct
                    )
               | PUT => [n]
               | GET => []
+              | MUT => [n]
               | _ => (say "bottom_up_eval: unexpected node(1): "  ;
                       say_eps n; say "\n";
                       []
@@ -1839,13 +2182,15 @@ struct
             else
               (r:= true;
                case G.find_info n of
-                 EPS{represents, key,level,pix,instance} =>
+                 EPS{represents, key,level,pix,instance,explicit,prop_constraints,constraints} =>
                    (let
                       val ns = G.out_of_node n
                       val result = MultiMerge.multimerge(map search ns)
                     in
                       G.set_info n (EPS{represents= SOME ((*check_represents*) result),
-                                        key=key,level=level,pix =pix,instance=instance});
+                                        key=key,level=level,pix=pix,instance=instance,
+                                        explicit=explicit,prop_constraints=prop_constraints,
+                                        constraints=constraints});
                       insert_into_list(n,result)
                     end)
                | UNION{represents} =>
@@ -1858,17 +2203,38 @@ struct
                     end)
                | PUT => [n]
                | GET => []
+               | MUT => [n]
                | RHO _ => []
               )
           end
-      in
-        map search g;(* Each node may potentially begin a new tree, so
+        val nodess = map search g
+                            (* Each node may potentially begin a new tree, so
                              * we have to evaluate for each node. Note however,
                              * that the graph in total is only traversed once,
                              * (ensured by the use of the mark visited)
                              *)
-        G.unvisit g
+      in
+        ( G.unvisit g
+        ; if explicit_regions() then MultiMerge.multimerge nodess else nil
+        )
       end
+
+  fun check_node (n:effect) : unit =
+      case G.find_info n of
+          EPS{represents,prop_constraints,constraints,...} =>
+          let (*val () = print ("Checking " ^ pp_eff n
+                              ^ " pcs: " ^ Int.toString(length(!prop_constraints))
+                              ^ " cs: " ^ Int.toString (length(!constraints))
+                              ^ "\n")
+              *)
+              val aes = case represents of SOME aes => aes
+                                         | NONE => die "check_node.represents list not set"
+          in List.app (fn c => List.app (check_prop_constraint n c) aes)
+                      (!prop_constraints)
+           ; List.app (fn c => List.app (check_constraint n c) aes)
+                      (!constraints)
+          end
+        | _ => ()
 
   fun say s = TextIO.output(TextIO.stdOut, s^"\n")
 
@@ -1877,16 +2243,19 @@ struct
       do a bottom-up evaluation of the graph *)
 
   fun eval_phis (phis: effect list) : unit =
-      let val nodes = contract_effects(phis)
-      in bottom_up_eval nodes handle exn =>
-          (say "\neval_phis failed; nodes = ";
-           say_etas (layoutEtas nodes);
-           raise exn)
+      let val nodes = contract_effects phis
+          val allnodes = bottom_up_eval nodes
+      in List.app check_node allnodes
+         handle ? as Report.DeepError _ => raise ?
+              | exn => (say "\neval_phis failed; nodes = ";
+                        say_etas (layoutEtas nodes);
+                        raise exn)
       end
 
   fun represents eps =
       case G.find_info eps of
-          EPS{represents = SOME l, ...} => l
+          EPS{represents = SOME l, ...} =>
+          List.filter (fn e => not(is_exn e) andalso not(is_mut e)) l
         | _ => (say "No info for eps\n";
                 say_eps eps;
                 die ("represents"))
@@ -1927,7 +2296,7 @@ fun etest(label,expected,found) =
 
 fun etest'(label,expected,found) = say found;
 
-
+val mkRho = mkRho NONE
 
 val rho1 = mkRho(5,1)
 val rho2 = mkRho(6,2)

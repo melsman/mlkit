@@ -9,6 +9,7 @@
  *
  *)
 
+(** SigDoc *)
 structure PackWord32Big : PACK_WORD =
   struct
     structure W = LargeWord

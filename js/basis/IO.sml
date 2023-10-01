@@ -1,7 +1,7 @@
-(*IO.sml*)
+(** Definitions of IO exceptions and buffer modes. *)
 
 signature IO = sig
-  exception Io of {name : string, function : string, cause : exn} 
+  exception Io of {name : string, function : string, cause : exn}
   exception BlockingNotSupported
   exception NonblockingNotSupported
   exception RandomAccessNotSupported
@@ -10,7 +10,7 @@ signature IO = sig
 end
 
 structure IO : IO = struct
-  exception Io of {name : string, function : string, cause : exn} 
+  exception Io of {name : string, function : string, cause : exn}
   exception BlockingNotSupported
   exception NonblockingNotSupported
   exception RandomAccessNotSupported
@@ -31,9 +31,9 @@ exception Io of {
     I/O subsystem. The components of Io are:
 
     name
-        The name component of the reader or writer. 
+        The name component of the reader or writer.
     function
-        The name of the function raising the exception. 
+        The name of the function raising the exception.
     cause
         The underlying exception raised by the reader or writer, or
         detected at the stream I/O level.
@@ -44,7 +44,7 @@ exception Io of {
         * Subscript if ill-formed arguments are given.
         * BlockingNotSupported
         * NonblockingNotSupported
-        * ClosedStream 
+        * ClosedStream
 
     The cause field of Io is not limited to these particular
     exceptions. Users who create their own readers or writers may

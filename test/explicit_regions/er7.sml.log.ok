@@ -3,8 +3,8 @@
   val ! : 'a ref->'a
   val f : unit->real
   val x : real ref
-er7.sml, line 10, column 13:
-    let region r2
-               ^^
+er7.sml, line 10, column 11:
+    let with r2
+             ^^
 Explicit region variable `r2 has insufficient scope.
 Stopping compilation of MLB-file due to error (code 1).

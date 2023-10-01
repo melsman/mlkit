@@ -3,7 +3,7 @@
 datatype t = A of int | B  (* t is boxed, which means that B and A are allocated *)
 
 fun f () : int =
-    let region r1 r2
+    let with r1 r2
         val x = if true then B`[r1 r2] else A`r1 9
     in case x of
            B => 1

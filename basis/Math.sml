@@ -1,7 +1,7 @@
-(*Math.sml*)
 
 fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
 
+(** SigDoc *)
 structure Math : MATH = struct
   type real = real
 
@@ -50,4 +50,4 @@ structure Math : MATH = struct
   fun cosh (a : real) : real = prim ("coshFloat", a)
   fun tanh (a : real) : real = prim ("tanhFloat", a)
 
-end (*structure Math*)
+end

@@ -716,7 +716,7 @@ end
 (* Monomorphic non recursive functions are compiled into simple
  * function expressions. *)
 
-fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_,regvars}] =
+fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_,regvars,constrs}] =
     if lvarInExp lvar body then NONE
     else SOME(lvar,pat,body)
   | monoNonRec _ = NONE
@@ -812,7 +812,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
                                | _ => die "LET.unimplemented"
     in toj_let C P (lvs, binds, scope)
     end
-  | L.LETREGION {scope,...} => toj C P e
+  | L.LETREGION {scope,...} => toj C P scope
   | L.FIX{functions,scope} =>
     (case monoNonRec functions of
        SOME (lv,pat,body) =>
@@ -954,6 +954,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
                   wrapRet k (toj C P scope))
     end
   | L.RAISE (e,_) => resolveS (toj1 C P e) (fn e' => fn k => J.Throw e')
+  | L.TYPED (e,_,_) => toj C P e
 
 and toj_let C P (lvs, binds, scope) =
     let

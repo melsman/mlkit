@@ -3,8 +3,8 @@
     con A : int->t
     con B : t
   val f : unit->int
-er17.sml, line 6, column 15:
-      let region r
-                 ^
+er17.sml, line 6, column 13:
+      let with r
+               ^
 Cannot unify the explicit region variables `r and `r0
 Stopping compilation of MLB-file due to error (code 1).

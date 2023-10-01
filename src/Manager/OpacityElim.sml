@@ -250,7 +250,7 @@ structure OpacityElim: OPACITY_ELIM =
 	   | INFIXRdec _ => (dec,Id)
 	   | NONFIXdec _ => (dec,Id)
 	   | EMPTYdec _ => (dec,Id)
-	   | REGIONdec _ => (dec,Id)
+	   | WITHdec _ => (dec,Id)
 
      and elim_valbind(rea,valbind) =
        case valbind

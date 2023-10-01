@@ -18,14 +18,30 @@ local
        structure RealArray2 : MONO_ARRAY2 = RealArray2
     end
 in
-structure RealVector = Tables.RealVector
-structure RealArray = Tables.RealArray
-structure RealArray2 = Tables.RealArray2
+(** SigDoc *)
+structure RealVector : MONO_VECTOR = Tables.RealVector
+
+(** SigDoc *)
+structure RealArray : MONO_ARRAY = Tables.RealArray
+
+(** SigDoc *)
+structure RealArray2 : MONO_ARRAY2 = Tables.RealArray2
 end
 
-structure Real64Vector = RealVector
-structure Real64Array = RealArray
-structure Real64Array2 = RealArray2
-structure LargeRealVector = RealVector
-structure LargeRealArray = RealArray
-structure LargeRealArray2 = RealArray2
+(** SigDoc *)
+structure Real64Vector : MONO_VECTOR = RealVector
+
+(** SigDoc *)
+structure Real64Array : MONO_ARRAY = RealArray
+
+(** SigDoc *)
+structure Real64Array2 : MONO_ARRAY2 = RealArray2
+
+(** SigDoc *)
+structure LargeRealVector : MONO_VECTOR = RealVector
+
+(** SigDoc *)
+structure LargeRealArray : MONO_ARRAY = RealArray
+
+(** SigDoc *)
+structure LargeRealArray2 : MONO_ARRAY2 = RealArray2

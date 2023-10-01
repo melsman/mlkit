@@ -2,7 +2,7 @@
 
 val f : unit -> int -> int =
     (fn () =>
-        let region r
+        let with r
             val g = (fn x => 4) : (int -> int)`r
         in g
         end)

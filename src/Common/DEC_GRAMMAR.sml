@@ -64,7 +64,7 @@ sig
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info |
-        REGIONdec of info * (info*regvar list)
+        WITHdec of info * (info*regvar list)                      (* ReML *)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |
@@ -108,8 +108,28 @@ sig
         TYVARty of info * tyvar |
         RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
-        FNty of info * ty * ty |
-        PARty of info * ty * (info*(info*regvar)list) option
+        FNty of info * ty * (info*regvar) option * ty |
+        PARty of info * ty * (info*(info*regvar)list) option |
+        WITHty of info * ty * constraint                               (* ReML *)
+
+  and constraint =                                                     (* ReML *)
+        DISJOINTconstraint of info * eff * eff * bool |                (* true if puts only *)
+        INCLconstraint of info * (info*regvar) * eff |
+        PROPconstraint of info * prop * eff
+
+  and prop =
+        NOMUTprop of info |
+        NOPUTprop of info |
+        NOEXNprop of info
+
+  and eff =                                                            (* ReML *)
+        SETeff of info * ateff list |
+        VAReff of info * regvar
+
+  and ateff =                                                          (* ReML *)
+        VARateff of info * regvar |
+        PUTateff of info * (info*regvar) |
+        GETateff of info * (info*regvar)
 
   and tyrow =
         TYROW of info * lab * ty * tyrow option
@@ -127,6 +147,9 @@ sig
   val get_info_atpat : atpat -> info
   val get_info_patrow : patrow -> info
   val get_info_ty : ty -> info
+  val get_info_constraint : constraint -> info    (* ReML *)
+  val get_info_eff : eff -> info                  (* ReML *)
+  val get_info_ateff : ateff -> info              (* ReML *)
   val get_info_typbind : typbind -> info
   val get_info_tyrow : tyrow -> info
   val get_info_exbind : exbind -> info
@@ -146,6 +169,9 @@ sig
   val map_atpat_info : (info -> info) -> atpat -> atpat
   val map_patrow_info : (info -> info) -> patrow -> patrow
   val map_ty_info : (info -> info) -> ty -> ty
+  val map_constraint_info : (info -> info) -> constraint -> constraint    (* ReML *)
+  val map_eff_info : (info -> info) -> eff -> eff                         (* ReML *)
+  val map_ateff_info : (info -> info) -> ateff -> ateff                   (* ReML *)
 
 
   val getExplicitTyVarsTy      : ty -> tyvar list

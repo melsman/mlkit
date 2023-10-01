@@ -3,7 +3,7 @@
 
 infix +
 fun f `[r1] () : real =
-  let region r2
+  let with r2
       val z = 8.0`r1
       val y = if true then 3.4`r2
               else z

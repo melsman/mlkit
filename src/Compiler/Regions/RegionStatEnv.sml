@@ -194,12 +194,13 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val regvar_env0 =
         RegVar.Map.fromList
             (map (fn (s,rv) => (RegVar.mk_Named s, rv))
-                 [("greg_top",    E.toplevel_region_withtype_top),
-                  ("greg_string", E.toplevel_region_withtype_string),
-                  ("greg_pair",   E.toplevel_region_withtype_pair),
-                  ("greg_triple", E.toplevel_region_withtype_triple),
-                  ("greg_array",  E.toplevel_region_withtype_array),
-                  ("greg_ref",    E.toplevel_region_withtype_ref)])
+                 [("r0top",    E.toplevel_region_withtype_top),
+                  ("r0string", E.toplevel_region_withtype_string),
+                  ("r0pair",   E.toplevel_region_withtype_pair),
+                  ("r0triple", E.toplevel_region_withtype_triple),
+                  ("r0array",  E.toplevel_region_withtype_array),
+                  ("r0ref",    E.toplevel_region_withtype_ref),
+                  ("e0",       E.toplevel_arreff)])
 
     val initial: regionStatEnv = {tyname_env = tyname_env0,
 				  con_env    = conenv0,

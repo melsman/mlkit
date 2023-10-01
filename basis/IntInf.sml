@@ -29,6 +29,7 @@
  *
  *)
 
+(** SigDoc *)
 structure IntInf : INT_INF =
   struct
 
@@ -1032,4 +1033,5 @@ structure IntInf : INT_INF =
     val ~>> = rshift
   end
 
+(** SigDoc *)
 structure LargeInt : INTEGER = IntInf

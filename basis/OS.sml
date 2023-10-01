@@ -1,5 +1,6 @@
+(**  Functionality for interacting with the operating system. *)
 
-signature OS = 
+signature OS =
   sig
     type syserror
 
@@ -15,14 +16,29 @@ signature OS =
     structure IO : OS_IO
   end
 
-(*  Various functions for interacting with the operating system.
+(**
 
-   [errorMsg err] returns a string explaining the error message system
-   error code err, as found in a SysErr exception.  The precise form
-   of the strings are operating system dependent.  
+[type syserror] Type of underlying system errors.
+
+[exception SysErr(s,erropt)] Represents a system error.
+
+[errorMsg err] Returns a string explaining the error message
+corresponding to a system error code (e.g., as found in a SysErr
+exception). The precise form of the returned string is operating
+system dependent.
+
+[structure FileSys] File system operations for the operating system.
+
+[structure Path] Path management operations for the operating system.
+
+[structure Process] Operating system processes.
+
+[structure IO] Input and output operations for the operating system.
+
 *)
 
-structure OS : OS = 
+(** SigDoc *)
+structure OS : OS =
   struct
     type syserror = OS.syserror
     exception SysErr = OS.SysErr
@@ -53,4 +69,3 @@ structure OS : OS =
         exception Poll
       end
   end
-

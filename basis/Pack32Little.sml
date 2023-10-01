@@ -1,5 +1,5 @@
 (* Pack32Little.sml
- * 
+ *
  * Implementation originates from SML/NJ;  mael 2001-10-31
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
@@ -9,6 +9,7 @@
  *
  *)
 
+(** SigDoc *)
 structure PackWord32Little : PACK_WORD =
   struct
     structure W = LargeWord

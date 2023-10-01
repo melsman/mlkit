@@ -73,7 +73,7 @@ struct
         INFIXRdec of info * int option * id list |
         NONFIXdec of info * id list |
         EMPTYdec of info |
-        REGIONdec of info * (info*regvar list)
+        WITHdec of info * (info*regvar list)
 
   and valbind =
         PLAINvalbind of info * pat * exp * valbind option |
@@ -117,8 +117,28 @@ struct
         TYVARty of info * tyvar |
         RECORDty of info * tyrow option * (info*regvar) option |
         CONty of info * ty list * longtycon |
-        FNty of info * ty * ty |
-        PARty of info * ty * (info*(info*regvar)list) option
+        FNty of info * ty * (info*regvar) option * ty |
+        PARty of info * ty * (info*(info*regvar)list) option |
+        WITHty of info * ty * constraint
+
+  and constraint =
+        DISJOINTconstraint of info * eff * eff * bool |   (* true if puts only *)
+        INCLconstraint of info * (info*regvar) * eff |
+        PROPconstraint of info * prop * eff
+
+  and prop =
+        NOMUTprop of info |
+        NOPUTprop of info |
+        NOEXNprop of info
+
+  and eff =
+        SETeff of info * ateff list |
+        VAReff of info * regvar
+
+  and ateff =
+        VARateff of info * regvar |
+        PUTateff of info * (info*regvar) |
+        GETateff of info * (info*regvar)
 
   and tyrow =
         TYROW of info * lab * ty * tyrow option
@@ -169,7 +189,7 @@ struct
     | INFIXRdec x => (#1) x
     | NONFIXdec x => (#1) x
     | EMPTYdec x => x
-    | REGIONdec x => (#1) x
+    | WITHdec x => (#1) x
 
   and get_info_valbind obj =
     case obj of
@@ -212,6 +232,24 @@ struct
     | CONty x => #1 x
     | FNty x => #1 x
     | PARty x => #1 x
+    | WITHty x => #1 x
+
+  and get_info_constraint c =
+      case c of
+          DISJOINTconstraint x => #1 x
+        | INCLconstraint x => #1 x
+        | PROPconstraint x => #1 x
+
+  fun get_info_eff e =
+      case e of
+          SETeff x => #1 x
+        | VAReff x => #1 x
+
+  fun get_info_ateff ae =
+      case ae of
+          VARateff x => #1 x
+        | PUTateff x => #1 x
+        | GETateff x => #1 x
 
   fun get_info_typbind (TYPBIND (info, tyvars, tycon, ty, typbind_opt)) = info
 
@@ -296,7 +334,7 @@ struct
       | INFIXRdec(i,x,y) => INFIXRdec(f i,x,y)
       | NONFIXdec(i,x) => NONFIXdec(f i,x)
       | EMPTYdec i => EMPTYdec (f i)
-      | REGIONdec(i,x) => REGIONdec(f i,x)
+      | WITHdec(i,x) => WITHdec(f i,x)
 
     and map_FValBind_info f (FVALBIND(i,FClause,FValBind_opt)) : FValBind =
       FVALBIND(f i, map_FClause_info f FClause,
@@ -381,11 +419,35 @@ struct
         TYVARty(i,tyvar) => TYVARty(f i, tyvar)
       | RECORDty(i,tyrow_opt,opt) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),Option.map (fn (i,rv) => (f i,rv)) opt)
       | CONty(i,tys,longtycon) => CONty(f i, map (map_ty_info f) tys,longtycon)
-      | FNty(i,ty,ty') => FNty(f i, map_ty_info f ty, map_ty_info f ty')
+      | FNty(i,ty,opt,ty') => FNty(f i, map_ty_info f ty, Option.map (fn (i,rv) => (f i,rv)) opt, map_ty_info f ty')
       | PARty(i,ty,opt) => PARty(f i, map_ty_info f ty, Option.map (fn (i,rvis) => (f i,List.map (fn (i,rv) => (f i,rv)) rvis)) opt)
+      | WITHty (i,t,c) => WITHty (f i, map_ty_info f t, map_constraint_info f c)
 
     and map_tyrow_info f (TYROW(i,lab,ty,tyrow_opt)) : tyrow =
       TYROW(f i, lab, map_ty_info f ty, do_opt tyrow_opt (map_tyrow_info f))
+
+    and map_constraint_info f c =
+        case c of
+            DISJOINTconstraint (i,e1,e2,p) => DISJOINTconstraint (f i,map_eff_info f e1,map_eff_info f e2,p)
+          | INCLconstraint (i,(ir,r),e) => INCLconstraint (f i,(f ir,r),map_eff_info f e)
+          | PROPconstraint (i,p,e) => PROPconstraint (f i,map_prop_info f p,map_eff_info f e)
+
+    and map_prop_info f e =
+        case e of
+            NOMUTprop i => NOMUTprop (f i)
+          | NOPUTprop i => NOPUTprop (f i)
+          | NOEXNprop i => NOEXNprop (f i)
+
+    and map_eff_info f e =
+        case e of
+            SETeff (i,aes) => SETeff (f i,List.map (map_ateff_info f) aes)
+          | VAReff (i,r) => VAReff (f i,r)
+
+    and map_ateff_info f ae =
+        case ae of
+            VARateff (i,r) => VARateff (f i,r)
+          | PUTateff (i,(ir,r)) => PUTateff (f i,(f ir,r))
+          | GETateff (i,(ir,r)) => GETateff (f i,(f ir,r))
   end
 
   fun expansive (harmless_con : longid -> bool) exp =
@@ -426,8 +488,9 @@ struct
       | RECORDty(_, NONE, _) => res
       | RECORDty(_, SOME tyrow, _) => fTyrow tyrow res
       | CONty(_, tys, _) => foldl (fn (ty,res) => fTy ty res) res tys
-      | FNty(_, ty1, ty2) => fTy ty1 (fTy ty2 res)
+      | FNty(_, ty1, _, ty2) => fTy ty1 (fTy ty2 res)
       | PARty(_, ty, _) => fTy ty res
+      | WITHty(_, ty, _) => fTy ty res
 
     and fTyrow (TYROW(_, _, ty, tyrowopt)) res =
       case tyrowopt of
@@ -734,8 +797,8 @@ struct
          | EMPTYdec _ =>
              LEAF "(emptydec)"
 
-         | REGIONdec(_, (_,rvs)) =>
-             NODE{start="region ", finish="", indent=7,
+         | WITHdec(_, (_,rvs)) =>
+             NODE{start="with ", finish="", indent=7,
                      children=map (LEAF o RegVar.pr) rvs,
                      childsep=RIGHT " "
                     })
@@ -1084,12 +1147,16 @@ struct
                                  )
              end
 
-         | FNty(_, ty1, ty2) =>
-             NODE{start="", finish="", indent=0,
-                     children=[layoutTy ty1, layoutTy ty2],
-                     childsep=LEFT " -> "
-                    }
-
+         | FNty(_, ty1, opt, ty2) =>
+           let val arrow =
+                   case opt of
+                       SOME (i,r) => " -" ^ RegVar.pr r ^ "-> "
+                     | NONE => " -> "
+           in NODE{start="", finish="", indent=0,
+                   children=[layoutTy ty1, layoutTy ty2],
+                   childsep=LEFT arrow
+                  }
+           end
          | PARty(_, ty, regvar_opt) =>
            let val finish = case regvar_opt of
                                 SOME (_,[(_,rv)]) => ")`" ^ RegVar.pr rv
@@ -1099,10 +1166,48 @@ struct
                    children=[layoutTy ty],
                    childsep=NOSEP}
            end
+         | WITHty(_, ty, c) =>
+           NODE{start="(", finish=")", indent=1,
+                children=[layoutTy ty, layoutConstraint c],
+                childsep=LEFT " where "}
+
+    and layoutConstraint c : StringTree =
+        case c of
+            DISJOINTconstraint (_,e1,e2,p) =>
+            NODE{start="", finish="", indent=0,
+                 children=[layoutEff e1, layoutEff e2],
+                 childsep=LEFT (if p then " ## " else " # ")}
+          | INCLconstraint (_, (_,r),e) =>
+            NODE{start="", finish="", indent=0,
+                 children=[LEAF (RegVar.pr r), layoutEff e],
+                 childsep=LEFT " <= "}
+          | PROPconstraint (_, p,e) =>
+            NODE{start="", finish="", indent=0,
+                 children=[LEAF (pr_prop p), layoutEff e],
+                 childsep=LEFT " "}
+
+    and pr_prop p : string =
+        case p of
+            NOMUTprop _ => "nomut"
+          | NOPUTprop _ => "noput"
+          | NOEXNprop _ => "noexn"
+
+    and layoutEff e : StringTree =
+        case e of
+            SETeff (_,aes) =>
+            NODE{start="{", finish="}", indent=1, children=map layoutAteff aes,
+                 childsep=LEFT ","}
+          | VAReff (_,r) => LEAF (RegVar.pr r)
+
+    and layoutAteff ae : StringTree =
+        case ae of
+            VARateff (_,r) => LEAF (RegVar.pr r)
+          | PUTateff (_,(_,r)) => LEAF ("put " ^ RegVar.pr r)
+          | GETateff (_,(_,r)) => LEAF ("get " ^ RegVar.pr r)
 
     and layoutTyrow row : StringTree =
       let
-        fun treesOfTyrow(TYROW(_, lab, ty, tyrow_opt)) =
+        fun treesOfTyrow (TYROW(_, lab, ty, tyrow_opt)) =
           let
             val this =
               NODE{start="", finish="", indent=0,

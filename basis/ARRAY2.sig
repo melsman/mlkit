@@ -1,4 +1,4 @@
-(**
+(** Polymorphic 2-dimensional arrays.
 
 The ARRAY2 signature is a polymorphic interface to mutable
 2-dimensional arrays. Two arrays are equal only if they are the same
@@ -23,34 +23,37 @@ signature ARRAY2 = sig
 
   datatype traversal = RowMajor | ColMajor
 
-  val array    : int * int * 'a -> 'a array
-  val fromList : 'a list list -> 'a array
-  val tabulate : traversal -> int * int * (int * int -> 'a) -> 'a array
+  val array      : int * int * 'a -> 'a array
+  val fromList   : 'a list list -> 'a array
+  val tabulate   : traversal -> int * int * (int * int -> 'a) -> 'a array
 
-  val sub : 'a array * int * int -> 'a
-  val update : 'a array * int * int * 'a -> unit
+  val sub        : 'a array * int * int -> 'a
+  val update     : 'a array * int * int * 'a -> unit
 
   val dimensions : 'a array -> int * int
   val nCols      : 'a array -> int
   val nRows      : 'a array -> int
 
-  val row    : 'a array * int -> 'a Vector.vector
-  val column : 'a array * int -> 'a Vector.vector
+  val row        : 'a array * int -> 'a Vector.vector
+  val column     : 'a array * int -> 'a Vector.vector
 
-  val copy : {src : 'a region,
-              dst : 'a array,
-              dst_row : int,
-              dst_col : int} -> unit
+  val copy       : {src : 'a region,
+                    dst : 'a array,
+                    dst_row : int,
+                    dst_col : int} -> unit
 
-  val appi : traversal -> (int * int * 'a -> unit) -> 'a region -> unit
-  val app  : traversal -> ('a -> unit) -> 'a array -> unit
-  val foldi : traversal -> (int * int * 'a * 'b -> 'b) -> 'b -> 'a region -> 'b
-  val fold  : traversal -> ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
-  val modifyi : traversal -> (int * int * 'a -> 'a) -> 'a region -> unit
-  val modify  : traversal -> ('a -> 'a) -> 'a array -> unit
+  val appi       : traversal -> (int * int * 'a -> unit) -> 'a region -> unit
+  val app        : traversal -> ('a -> unit) -> 'a array -> unit
+  val foldi      : traversal -> (int * int * 'a * 'b -> 'b) -> 'b -> 'a region -> 'b
+  val fold       : traversal -> ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+  val modifyi    : traversal -> (int * int * 'a -> 'a) -> 'a region -> unit
+  val modify     : traversal -> ('a -> 'a) -> 'a array -> unit
 end
 
 (**
+
+[eqtype 'a array] Type constructor for polyrmophic 2-dimensional
+arrays.
 
 [type 'a region] This type specifies a rectangular subregion of a
 2-dimensional array. If ncols equals SOME(w), with 0 <= w, the region

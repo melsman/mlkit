@@ -1,18 +1,15 @@
 (* Functor identifiers *)
 
-structure FunId: FUNID =
+structure FunId :> FUNID =
   struct
-    datatype funid = FUNID of string
+    type funid = string
 
-    val mk_FunId = FUNID
-    fun pr_FunId(FUNID str) = str
+    fun mk_FunId x = x
+    fun pr_FunId x = x
 
-    val op < = fn (FUNID str1, FUNID str2) => str1 < str2
+    val op < = fn (str1:string, str2) => str1 < str2
 
-    val pu = Pickle.convert (FUNID, fn FUNID s => s) Pickle.string
+    val pu = Pickle.string
 
-    structure Map = OrderFinMap(struct type t = funid
-				       val lt = op<
-				end)
-
+    structure Map = StringFinMap
   end

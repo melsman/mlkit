@@ -1,7 +1,8 @@
 (* Originally from SML/NJ sources, through MLton.  Very slightly
 modified for MLKit. *)
 
-structure Unix: UNIX =
+(** SigDoc *)
+structure Unix : UNIX =
   struct
 
     structure OSP = OS.Process

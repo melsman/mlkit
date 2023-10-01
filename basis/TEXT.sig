@@ -1,3 +1,9 @@
+(** Text structures related to a shared character type.
+
+The TEXT signature is matched by the required Text structure,
+which implements strings based on the extended ASCII 8-bit characters.
+*)
+
 signature TEXT =
   sig
     structure Char : CHAR
@@ -17,3 +23,27 @@ signature TEXT =
     sharing type CharVectorSlice.slice
       = CharArraySlice.vector_slice
   end
+
+(**
+
+[structure Char] The underlyng Char structure.
+
+[structure String] The String structure associated with the Char
+structure.
+
+[structure Substring] The Substring structure associated with the Char
+structure.
+
+[structure CharVector] The CharVector structure associated with the
+Char structure.
+
+[structure CharArray] The CharArray structure associated with the
+Char structure.
+
+[structure CharVectorSlice] The CharVectorSlice structure associated
+with the Char structure.
+
+[structure CharArraySlice] The CharArraySlice structure associated
+with the Char structure.
+
+*)

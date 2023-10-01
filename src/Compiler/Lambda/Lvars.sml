@@ -1,6 +1,6 @@
 (* Lambda variables *)
 
-structure Lvars: LVARS =
+structure Lvars :> LVARS where type name = Name.name =
   struct
     structure PP = PrettyPrint
 

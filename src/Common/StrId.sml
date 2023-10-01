@@ -1,52 +1,39 @@
 (* Structure identifiers *)
 
-structure StrId: STRID =
+structure StrId :> STRID =
   struct
+    type strid = string
 
-    datatype strid = STRID of string
+    fun pr_StrId str = str
 
-    fun pr_StrId(STRID str) = str
+    type longstrid = strid list * strid
 
-    datatype longstrid = LONGSTRID of strid list * strid
+    fun pr_LongStrId (strids, strid) =
+        String.concatWith "." (strids @ [strid])
 
-    fun pr_LongStrId(LONGSTRID(strids, strid)) =
-      let
-	val strings = (map (fn s => pr_StrId s ^ ".") strids)
-      in
-	foldr (op ^) (pr_StrId strid) strings
-      end
+    fun implode_longstrid p = p
 
-    fun implode_longstrid (strid_list, strid) = LONGSTRID(strid_list, strid)
+    fun explode_longstrid p = p
 
-    fun explode_longstrid (LONGSTRID(strid_list, strid)) = (strid_list, strid)
-
-    val mk_StrId = STRID
+    fun mk_StrId x = x
 
     fun mk_LongStrId strs =
-      case (rev strs)
-	of nil => Crash.impossible "StrId.mk_LongStrId"
-	 | (x :: xs) => LONGSTRID(map STRID (rev xs), STRID x)
+        case rev strs of
+            nil => Crash.impossible "StrId.mk_LongStrId"
+          | (x :: xs) => (rev xs, x)
 
-    fun inventStrId() =
-      STRID("<unique_StrId." ^ Timestamp.print(Timestamp.new()) ^ ">")
+    fun inventStrId () =
+        "<unique_StrId." ^ Timestamp.print(Timestamp.new()) ^ ">"
 
-    fun invented_StrId (STRID s) : bool =  (* only invented strids may start with `<' *)
-      String.isPrefix "<" s   (*(String.nth 0 s = "<")*)
-      (*handle _ => Crash.impossible "StrId.invented_StrId"*)
+    fun invented_StrId s : bool =  (* only invented strids may start with `<' *)
+        String.isPrefix "<" s
 
-    fun longStrIdOfStrId strid = LONGSTRID(nil, strid)
+    fun longStrIdOfStrId strid = (nil, strid)
 
-    val op < = fn (STRID str1, STRID str2) => str1 < str2
+    val op < = fn (str1:string, str2) => str1 < str2
 
-    val pu =
-	Pickle.convert (STRID, fn STRID s => s) Pickle.string
+    val pu = Pickle.string
+    val pu_longstrid = Pickle.pairGen0(Pickle.listGen pu, pu)
 
-    val pu_longstrid =
-	Pickle.convert (LONGSTRID, fn LONGSTRID a => a)
-	               (Pickle.pairGen0(Pickle.listGen pu, pu))
-
-    structure Map = OrderFinMap(struct type t = strid
-				       val lt = op<
-				end)
-
+    structure Map = StringFinMap
   end

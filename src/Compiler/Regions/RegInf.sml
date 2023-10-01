@@ -61,7 +61,7 @@ struct
 
   fun show_sigma sigma = PP.flatten1(RType.mk_lay_sigma false (sigma))
 
-  fun instClever (sigma,il) y = RType.instClever(sigma,il) y
+  fun instClever (lvopt,sigma,il) y = RType.instClever(lvopt,sigma,il) y
   fun unify_ty (tau,tau_1) = RType.unify_ty(tau,tau_1)
   fun matchSchemes x = RType.matchSchemes x
   fun insert_alphas x = RType.insert_alphas x
@@ -323,7 +323,7 @@ struct
                  SOME(_,_,_,sigma,_,_, _) =>
                  let val (tau_1, B, updates: (effect * Effect.delta_phi)list,
                           spuriousPairs: (effect * RType.Type)list) =
-                         instClever (sigma,il) B
+                         instClever (SOME lvar,sigma,il) B
                          handle Crash.CRASH =>
                                 die ("inst failed; type scheme:\n" ^
                                      PP.flatten1(RType.mk_lay_sigma false sigma) ^ "\n")

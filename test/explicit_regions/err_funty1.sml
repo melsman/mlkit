@@ -2,4 +2,4 @@
    (type in function return pattern)
  *)
 
-fun f () : (int * int)`greg_top = (4,6)
+fun f () : (int * int)`r0top = (4,6)

@@ -56,18 +56,22 @@ structure PrettyPrint: PRETTYPRINT =
 
     fun layout_pair layout_x layout_y (x,y) =
           NODE {start = "(", finish = ")", childsep = RIGHT ",", indent=1,
-		children = [layout_x x, layout_y y]}
+                children = [layout_x x, layout_y y]}
 
     fun layout_list layout xs =
           NODE {start = "[", finish = "]", indent = 1, childsep = RIGHT ", ",
-		children = map layout xs}
+                children = map layout xs}
+
+    fun layout_set layout xs =
+          NODE {start = "{", finish = "}", indent = 1, childsep = RIGHT ", ",
+                children = map layout xs}
 
     fun layout_together children indent =
           NODE {start = "", children = children, childsep = NOSEP,
-		indent = indent, finish = ""}
+                indent = indent, finish = ""}
 
     exception FlatString
-    fun consIfEnoughRoom(s,(acc: string list, width: int)) =
+    fun consIfEnoughRoom (s,(acc: string list, width: int)) =
       let val n = size s
       in
          if n<= width then ((s::acc), width-n) else raise FlatString
@@ -118,7 +122,7 @@ structure PrettyPrint: PRETTYPRINT =
 
     fun indent_line (ind: int) (text:string):string =  blanks ind ^ text
 
-    fun get_first_line(m: minipage): (string * minipage) option =
+    fun get_first_line (m: minipage): (string * minipage) option =
     let fun loop (ind,m) =
         case m of
             LINES [] => NONE
@@ -132,9 +136,9 @@ structure PrettyPrint: PRETTYPRINT =
 
     in
          loop(0,m)
-    end;
+    end
 
-    fun get_last_line(m: minipage): (string * minipage) option =
+    fun get_last_line (m: minipage): (string * minipage) option =
     let fun loop (ind,m) =
         case m of
              LINES list =>
@@ -151,14 +155,14 @@ structure PrettyPrint: PRETTYPRINT =
 
     in
          loop(0,m)
-    end;
+    end
 
    (* smash() - tries to prefix "line" (which will probably have some leading
       spaces) with "prefix", by replacing line's leading spaces with the
       prefix. If successful, returns a list of the new line :: rest. If
       not, returns prefix :: line :: rest. *)
 
-    fun smash(prefix, line: string, rest:minipage): minipage =
+    fun smash (prefix, line: string, rest:minipage): minipage =
       let
         exception No
         fun try(p :: pRest, #" " :: lRest) = p :: try(pRest, lRest)
@@ -454,4 +458,4 @@ old*)
     fun reportStringTree tree =
       reportStringTree' WIDTH tree
 
-   end;
+  end

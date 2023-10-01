@@ -63,7 +63,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
                               else
                                 " of "
                                 ^ (case Type.un_Arrow tau of
-                                     SOME (domTy, _, _) => Type.string domTy
+                                     SOME (domTy, _, _, _) => Type.string domTy
                                    | NONE => Crash.impossible "TopLevelReport.reportVE"))) ,
          VE)
 

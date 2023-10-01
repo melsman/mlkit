@@ -1,175 +1,149 @@
+(** Operations on character values.
+
+The CHAR signature defines a type char of characters, and provides
+basic operations and predicates on values of that type. There is a
+linear ordering defined on characters. In addition, there is an
+encoding of characters into a contiguous range of non-negative
+integers which preserves the linear ordering.
+
+There are two structures matching the CHAR signature. The Char
+structure provides the extended ASCII 8-bit character set and
+locale-independent operations on them. For this structure, Char.maxOrd
+= 255.
+*)
+
 signature CHAR =
   sig
     eqtype char
     eqtype string
 
-    val minChar : char
-    val maxChar : char
-    val maxOrd : int
+    val minChar     : char
+    val maxChar     : char
+    val maxOrd      : int
 
-    val ord : char -> int
-    val chr : int -> char
-    val succ : char -> char
-    val pred : char -> char
+    val ord         : char -> int
+    val chr         : int -> char
+    val succ        : char -> char
+    val pred        : char -> char
 
-    val compare : char * char -> order
-    val <  : char * char -> bool
-    val <= : char * char -> bool
-    val >  : char * char -> bool
-    val >= : char * char -> bool
+    val compare     : char * char -> order
+    val <           : char * char -> bool
+    val <=          : char * char -> bool
+    val >           : char * char -> bool
+    val >=          : char * char -> bool
 
-    val contains : string -> char -> bool
+    val contains    : string -> char -> bool
     val notContains : string -> char -> bool
 
-    val isAscii : char -> bool
-    val toLower : char -> char
-    val toUpper : char -> char
-    val isAlpha : char -> bool
-    val isAlphaNum : char -> bool
-    val isCntrl : char -> bool
-    val isDigit : char -> bool
-    val isGraph : char -> bool
-    val isHexDigit : char -> bool
-    val isLower : char -> bool
-    val isPrint : char -> bool
-    val isSpace : char -> bool
-    val isPunct : char -> bool
-    val isUpper : char -> bool
+    val isAscii     : char -> bool
+    val toLower     : char -> char
+    val toUpper     : char -> char
+    val isAlpha     : char -> bool
+    val isAlphaNum  : char -> bool
+    val isCntrl     : char -> bool
+    val isDigit     : char -> bool
+    val isGraph     : char -> bool
+    val isHexDigit  : char -> bool
+    val isLower     : char -> bool
+    val isPrint     : char -> bool
+    val isSpace     : char -> bool
+    val isPunct     : char -> bool
+    val isUpper     : char -> bool
 
-    val toString : char -> String.string
-    val scan       : (Char.char, 'a) StringCvt.reader
-                       -> (char, 'a) StringCvt.reader
-    val fromString : String.string -> char option
-    val toCString : char -> String.string
+    val toString    : char -> String.string
+    val scan        : (Char.char, 'a) StringCvt.reader -> (char, 'a) StringCvt.reader
+    val fromString  : String.string -> char option
+    val toCString   : char -> String.string
     val fromCString : String.string -> char option
   end
 
-(*
-Description
+(**
 
-val minChar : char
+[minChar] The least character in the ordering. It always equals chr 0.
 
-    The least character in the ordering. It always equals chr 0.
+[maxChar] The greatest character in the ordering; it equals chr
+maxOrd.
 
-val maxChar : char
+[maxOrd] The greatest character code; it equals ord maxChar.
 
-    The greatest character in the ordering; it equals chr maxOrd.
+[ord c] returns the (non-negative) integer code of the character c.
 
-val maxOrd : int
+[chr i] returns the character whose code is i; raises Chr if i < 0 or
+i > maxOrd.
 
-    The greatest character code; it equals ord maxChar.
+[succ c] returns the character immediately following c in the
+ordering, or raises Chr if c = maxChar. When defined, succ c is
+equivalent to chr(ord c + 1).
 
-ord c
+[pred c] returns the character immediately preceding c, or raises Chr
+if c = minChar. When defined, pred c is equivalent to chr(ord c - 1).
 
-    returns the (non-negative) integer code of the character c.
+[compare (c, d)] returns LESS, EQUAL, or GREATER, depending on whether
+c precedes, equals, or follows d in the character ordering.
 
-chr i
+[x < y]
 
-    returns the character whose code is i; raises Chr if i < 0 or i >
-    maxOrd.
+[x <= y]
 
-succ c
+[x > y]
 
-    returns the character immediately following c in the ordering, or
-    raises Chr if c = maxChar. When defined, succ c is equivalent to
-    chr(ord c + 1).
+[x >= y] These compare characters in the character ordering. Note that
+the functions ord and chr preserve orderings. For example, if we have
+x < y for characters x and y, then it is also true that ord x < ord y.
 
-pred c
+[contains s c] returns true if character c occurs in the string s;
+otherwise it returns false.
 
-    returns the character immediately preceding c, or raises Chr if c
-    = minChar. When defined, pred c is equivalent to chr(ord c - 1).
+[notContains s c] returns true if character c does not occur in the
+string s; it returns false otherwise. It is equivalent to
+(not(contains s c)).
 
-compare (c, d)
+[isAscii c] returns true if c is a (seven-bit) ASCII character, i.e.,
+0 <= ord c <= 127. Note that this function is independent of locale.
 
-    returns LESS, EQUAL, or GREATER, depending on whether c precedes,
-    equals, or follows d in the character ordering.
+[toLower c]
 
-val < : char * char -> bool
-val <= : char * char -> bool
-val > : char * char -> bool
-val >= : char * char -> bool
+[toUpper c] These return the lowercase (respectively, uppercase)
+letter corresponding to c if c is a letter; otherwise it returns c.
 
-    These compare characters in the character ordering. Note that the
-    functions ord and chr preserve orderings. For example, if we have
-    x < y for characters x and y, then it is also true that ord x <
-    ord y.
+[isAlpha c] returns true if c is a letter (lowercase or uppercase).
 
-contains s c
+[isAlphaNum c] returns true if c is alphanumeric (a letter or a
+decimal digit). Returns false otherwise.
 
-    returns true if character c occurs in the string s; otherwise it
-    returns false.
+[isCntrl c] returns true if c is a control character. Returns false
+otherwise.
 
-notContains s c
+[isDigit c] returns true if c is a decimal digit [0-9]. Returns false
+otherwise.
 
-    returns true if character c does not occur in the string s; it
-    returns false otherwise. It is equivalent to not(contains s c).
+[isGraph c] returns true if c is a graphical character, that is, it is
+printable and not a whitespace character. Returns false otherwise.
 
-isAscii c
+[isHexDigit c] returns true if c is a hexadecimal digit [0-9a-fA-F].
+Returns false otherwise.
 
-    returns true if c is a (seven-bit) ASCII character, i.e., 0 <= ord
-    c <= 127. Note that this function is independent of locale.
+[isLower c] returns true if c is a lowercase letter. Returns false
+otherwise.
 
-toLower c
-toUpper c
+[isPrint c] returns true if c is a printable character (space or
+visible), i.e., not a control character. Returns false otherwise.
 
-    These return the lowercase (respectively, uppercase) letter
-    corresponding to c if c is a letter; otherwise it returns c.
+[isSpace c] returns true if c is a whitespace character (space,
+newline, tab, carriage return, vertical tab, formfeed). Returns false
+otherwise.
 
-isAlpha c
+[isPunct c] returns true if c is a punctuation character: graphical
+but not alphanumeric. Returns false otherwise.
 
-    returns true if c is a letter (lowercase or uppercase).
+[isUpper c] returns true if c is an uppercase letter. Returns false
+otherwise.
 
-isAlphaNum c
-
-    returns true if c is alphanumeric (a letter or a decimal digit).
-
-isCntrl c
-
-    returns true if c is a control character.
-
-isDigit c
-
-    returns true if c is a decimal digit [0-9].
-
-isGraph c
-
-    returns true if c is a graphical character, that is, it is
-    printable and not a whitespace character.
-
-isHexDigit c
-
-    returns true if c is a hexadecimal digit [0-9a-fA-F].
-
-isLower c
-
-    returns true if c is a lowercase letter.
-
-isPrint c
-
-    returns true if c is a printable character (space or visible),
-    i.e., not a control character.
-
-isSpace c
-
-    returns true if c is a whitespace character (space, newline, tab,
-    carriage return, vertical tab, formfeed).
-
-isPunct c
-
-    returns true if c is a punctuation character: graphical but not
-    alphanumeric.
-
-isUpper c
-
-    returns true if c is an uppercase letter.
-
-toString c
-
-    returns a printable string representation of the character, using,
-    if necessary, SML escape sequences. Printable characters, except
-    for #"\\" and #"\"", are left unchanged. Backslash #"\\" becomes
-    "\\\\"; double quote #"\"" becomes "\\\"". The common control
-    characters are converted to two-character escape sequences:
+[toString c] returns a printable string representation of the
+character, using, if necessary, SML escape sequences. Printable
+characters, except for #"\\" and #"\"", are left unchanged. Backslash
+#"\\" becomes "\\\\"; double quote #"\"" becomes "\\\"". The common
+control characters are converted to two-character escape sequences:
 
     Alert (ASCII 0x07)                 "\\a"
     Backspace (ASCII 0x08)             "\\b"
@@ -179,36 +153,32 @@ toString c
     Form feed (ASCII 0x0C)             "\\f"
     Carriage return (ASCII 0x0D)       "\\r"
 
-    The remaining characters whose codes are less than 32 are
-    represented by three-character strings in ``control character''
-    notation, e.g., #"\000" maps to "\\^@", #"\001" maps to "\\^A",
-    etc. For characters whose codes are greater than 999, the
-    character is mapped to a six-character string of the form
-    "\\uxxxx", where xxxx are the four hexadecimal digits
-    corresponding to a character's code. All other characters (i.e.,
-    those whose codes are greater than 126 but less than 1000) are
-    mapped to four-character strings of the form "\\ddd", where ddd
-    are the three decimal digits corresponding to a character's code.
+The remaining characters whose codes are less than 32 are represented
+by three-character strings in ``control character'' notation, e.g.,
+#"\000" maps to "\\^@", #"\001" maps to "\\^A", etc. For characters
+whose codes are greater than 999, the character is mapped to a
+six-character string of the form "\\uxxxx", where xxxx are the four
+hexadecimal digits corresponding to a character's code. All other
+characters (i.e., those whose codes are greater than 126 but less than
+1000) are mapped to four-character strings of the form "\\ddd", where
+ddd are the three decimal digits corresponding to a character's code.
+To convert a character to a length-one string containing the
+character, use the function String.str.
 
-    To convert a character to a length-one string containing the
-    character, use the function String.str.
+[scan getc strm]
 
-scan getc strm
-fromString s
+[fromString s] These scan a character (including possibly a space) or
+an SML escape sequence representing a character from the prefix of a
+character stream or a string of printable characters, as allowed in an
+SML program. After a successful conversion, scan returns the remainder
+of the stream along with the character, whereas fromString ignores any
+additional characters in s and just returns the character. If the
+first character is non-printable (i.e., not in the ASCII range [0x20,0x7E])
+or starts an illegal escape sequence (e.g., "\q"), no
+conversion is possible and NONE is returned. The function fromString
+is equivalent to StringCvt.scanString scan. The allowable escape
+sequences are:
 
-    These scan a character (including possibly a space) or an SML
-    escape sequence representing a character from the prefix of a
-    character stream or a string of printable characters, as allowed
-    in an SML program. After a successful conversion, scan returns the
-    remainder of the stream along with the character, whereas
-    fromString ignores any additional characters in s and just returns
-    the character. If the first character is non-printable (i.e., not
-    in the ASCII range [0x20,0x7E]) or starts an illegal escape
-    sequence (e.g., "\q"), no conversion is possible and NONE is
-    returned. The function fromString is equivalent to
-    StringCvt.scanString scan.
-
-    The allowable escape sequences are:
     \a 	Alert (ASCII 0x07)
     \b 	Backspace (ASCII 0x08)
     \t 	Horizontal tab (ASCII 0x09)
@@ -230,17 +200,15 @@ fromString s
     	sequence of one or more formatting (space, newline, tab, etc.)
     	characters.
 
-    In the escape sequences involving decimal or hexadecimal digits,
-    if the resulting value cannot be represented in the character set,
-    NONE is returned. As the table indicates, escaped formatting
-    sequences (\f...f\) are passed over during scanning. Such
-    sequences are successfully scanned, so that the remaining stream
-    returned by scan will never have a valid escaped formatting
-    sequence as its prefix.
+In the escape sequences involving decimal or hexadecimal digits, if
+the resulting value cannot be represented in the character set, NONE
+is returned. As the table indicates, escaped formatting sequences
+(\f...f\) are passed over during scanning. Such sequences are
+successfully scanned, so that the remaining stream returned by scan
+will never have a valid escaped formatting sequence as its
+prefix. Here are some sample conversions:
 
-    Here are some sample conversions:
-
-      Input string s 	fromString s
+      Input string s      fromString s
       "\\q"               NONE
       "a\^D"              SOME #"a"
       "a\\ \\\q"          SOME #"a"
@@ -249,44 +217,41 @@ fromString s
       "\\ \\\^D"          NONE
       "\\ a"              NONE
 
-toCString c
+[toCString c] returns a printable string corresponding to c, with
+non-printable characters replaced by C escape sequences. Specifically,
+printable characters, except for #"\\", #"\"", #"?", and #"'" are left
+unchanged.  Backslash (#"\\") becomes "\\\\"; double quote (#"\"")
+becomes "\\\"", question mark (#"?") becomes "\\?", and single quote
+(#"'") becomes "\\'". The common control characters are converted to
+two-character escape sequences:
 
-    returns a printable string corresponding to c, with non-printable
-    characters replaced by C escape sequences. Specifically, printable
-    characters, except for #"\\", #"\"", #"?", and #"'" are left
-    unchanged.  Backslash (#"\\") becomes "\\\\"; double quote (#"\"")
-    becomes "\\\"", question mark (#"?") becomes "\\?", and single
-    quote (#"'") becomes "\\'".  The common control characters are
-    converted to two-character escape sequences: Alert (ASCII 0x07)
-    "\\a" Backspace (ASCII 0x08) "\\b" Horizontal tab (ASCII 0x09)
-    "\\t" Linefeed or newline (ASCII 0x0A) "\\n" Vertical tab (ASCII
-    0x0B) "\\v" Form feed (ASCII 0x0C) "\\f" Carriage return (ASCII
-    0x0D) "\\r"
+  Alert                (ASCII 0x07) "\\a"
+  Backspace            (ASCII 0x08) "\\b"
+  Horizontal tab       (ASCII 0x09) "\\t"
+  Linefeed or newline  (ASCII 0x0A) "\\n"
+  Vertical tab         (ASCII 0x0B) "\\v"
+  Form feed            (ASCII 0x0C) "\\f"
+  Carriage return      (ASCII 0x0D) "\\r"
 
-    All other characters are represented by three octal digits,
-    corresponding to a character's code, preceded by a backslash.
+All other characters are represented by three octal digits,
+corresponding to a character's code, preceded by a backslash.
 
-fromCString s
+[fromCString s] scans a character (including possibly a space) or a C
+escape sequence representing a character from the prefix of a
+string. After a successful conversion, fromCString ignores any
+additional characters in s. If no conversion is possible, e.g., if the
+first character is non-printable (i.e., not in the ASCII range [0x20-0x7E]
+or starts an illegal escape sequence, NONE is returned. The allowable
+escape sequences are given below (cf. Section 6.1.3.4 of the ISO C
+standard ISO/IEC 9899:1990).
 
-    scans a character (including possibly a space) or a C escape
-    sequence representing a character from the prefix of a
-    string. After a successful conversion, fromCString ignores any
-    additional characters in s. If no conversion is possible, e.g., if
-    the first character is non-printable (i.e., not in the ASCII range
-    [0x20-0x7E] or starts an illegal escape sequence, NONE is
-    returned.
-
-    The allowable escape sequences are given below (cf. Section
-    6.1.3.4 of the
-
-    ISO C standard ISO/IEC 9899:1990[CITE]).
-    \a 	Alert (ASCII 0x07)
-    \b 	Backspace (ASCII 0x08)
-    \t 	Horizontal tab (ASCII 0x09)
+    \a 	Alert               (ASCII 0x07)
+    \b 	Backspace           (ASCII 0x08)
+    \t 	Horizontal tab      (ASCII 0x09)
     \n 	Linefeed or newline (ASCII 0x0A)
-    \v 	Vertical tab (ASCII 0x0B)
-    \f 	Form feed (ASCII 0x0C)
-    \r 	Carriage return (ASCII 0x0D)
+    \v 	Vertical tab        (ASCII 0x0B)
+    \f 	Form feed           (ASCII 0x0C)
+    \r 	Carriage return     (ASCII 0x0D)
     \? 	Question mark
     \\ 	Backslash
     \" 	Double quote
@@ -299,11 +264,14 @@ fromCString s
     \xhh The character whose encoding is the number hh, where hh is a
     	sequence of hexadecimal digits.
 
-    Note that fromCString accepts an unescaped single quote character,
-    but does not accept an unescaped double quote character.
+Note that fromCString accepts an unescaped single quote character, but
+does not accept an unescaped double quote character. In the escape
+sequences involving octal or hexadecimal digits, the sequence of
+digits is taken to be the longest sequence of such characters. If the
+resulting value cannot be represented in the character set, NONE is
+returned.
 
-    In the escape sequences involving octal or hexadecimal digits, the
-    sequence of digits is taken to be the longest sequence of such
-    characters. If the resulting value cannot be represented in the
-    character set, NONE is returned.
 *)
+
+(** SigDoc *)
+structure Char : CHAR = Char

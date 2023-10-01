@@ -22,7 +22,7 @@ signature TEXT_IO = sig
   type vector
 
   (* Textual input *)
-  type instream 
+  type instream
   val openIn       : string -> instream
   val closeIn      : instream -> unit
   val input        : instream -> vector
@@ -35,7 +35,7 @@ signature TEXT_IO = sig
   val stdIn        : instream
 
   type cs (* character source state *)
-  val scanStream   : ((char, cs) StringCvt.reader -> ('a, cs) StringCvt.reader) 
+  val scanStream   : ((char, cs) StringCvt.reader -> ('a, cs) StringCvt.reader)
 		     -> instream -> 'a option
 
   (* Textual output *)
@@ -147,6 +147,5 @@ characters input streams, and type outstream is the type of
 state-based character output streams.  Type elem is the type char of
 characters, and type vector is the type of character vectors
 (strings).
-
 
 *)

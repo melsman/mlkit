@@ -3,7 +3,6 @@ sig
 type ('a,'b) token
 type svalue
 val EOF:  'a * 'a -> (svalue,'a) token
-val REGION:  'a * 'a -> (svalue,'a) token
 val BACKQUOTE:  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
@@ -18,6 +17,7 @@ val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
 val HEXINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
 val DECNEGINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
 val DECPOSINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
+val HASHHASH:  'a * 'a -> (svalue,'a) token
 val STAR:  'a * 'a -> (svalue,'a) token
 val EQUALS:  'a * 'a -> (svalue,'a) token
 val HASH:  'a * 'a -> (svalue,'a) token

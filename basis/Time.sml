@@ -33,6 +33,9 @@ structure Time : TIME =
 	if IntInf.<(us, 0) then raise Time else
 	    {sec=LargeInt.toInt us div 1000000+timebase, usec=LargeInt.toInt us mod 1000000}
 
+    fun fromNanoseconds ns =
+        fromMicroseconds (IntInf.div(ns, IntInf.fromInt 1000))
+
     fun toSeconds {sec, usec} =
 	IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase)
 
@@ -43,6 +46,9 @@ structure Time : TIME =
     fun toMicroseconds {sec, usec} =
 	IntInf.+(IntInf.*(IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase), 1000000),
 		 LargeInt.fromInt usec)
+
+    fun toNanoseconds t =
+        IntInf.*(IntInf.fromInt 1000, toMicroseconds t)
 
     fun fromReal r =
 	let

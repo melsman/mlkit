@@ -16,10 +16,10 @@ only provided for backwards compatability.)
 
     A StringTree can be one of three things:
       (1) a LEAF, containing a string which will not
-          be decomposed or split over lines; 
+          be decomposed or split over lines;
       (2) a NODE with a `start' string,
-          a `finish' string, a list of `children' and a 
-          `childsep', which is the separator that will be used 
+          a `finish' string, a list of `children' and a
+          `childsep', which is the separator that will be used
           between children if there are more than two;
       (3) a HNODE, (H for "horizontal") which is similar to a NODE,
           but has no indent field;
@@ -59,7 +59,7 @@ finish would be " end", and childsep would (probably, depending on
 taste) be (LEFT " in ").  LEAF trees don't need surrounding
 spaces. PrettyPrint removes leading spaces from any childsep or finish
 string which ends up at the start of a line (such as " in " or " end"
-above), to preserve left justification.  
+above), to preserve left justification.
 
 *)
 
@@ -73,7 +73,7 @@ signature PRETTYPRINT =
                         | NODE of {start : string, finish: string, indent: int,
                                    children: StringTree list,
                                    childsep: childsep}
-                        | HNODE of {start : string, finish: string, 
+                        | HNODE of {start : string, finish: string,
                                     children: StringTree list,
                                     childsep: childsep}
     and childsep = NOSEP | LEFT of string | RIGHT of string
@@ -90,6 +90,7 @@ signature PRETTYPRINT =
     val layout_pair : ('a -> StringTree) -> ('b -> StringTree)
                       -> 'a * 'b -> StringTree
     val layout_list : ('a -> StringTree) -> 'a list -> StringTree
+    val layout_set : ('a -> StringTree) -> 'a list -> StringTree
     val layout_together : StringTree list -> int -> StringTree
       (*int is the indent*)
 
@@ -116,7 +117,7 @@ signature PRETTYPRINT =
 
     val printTree : StringTree -> unit
 
-    (* The first argument is a function for pretty-printing n 
+    (* The first argument is a function for pretty-printing n
      * blanks (a multiply of 64) shortly. *)
     val outputTree' : (int -> string) -> (string -> unit) * StringTree * int -> unit
 

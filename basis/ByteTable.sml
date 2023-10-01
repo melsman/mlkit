@@ -304,15 +304,17 @@ functor ByteTable(eqtype table
       end
   end
 
-structure CharVector
-    :> MONO_VECTOR where type elem = char
-		     and type vector = string =
-    let structure V = ByteTable(type elem = char  type table = string)
+(** SigDoc *)
+structure CharVector :> MONO_VECTOR
+  where type elem = char
+    and type vector = string
+  = let structure V = ByteTable(type elem = char  type table = string)
     in struct open V
 	      val update = updatev
        end
     end
 
+(** SigDoc *)
 structure CharArray :> MONO_ARRAY
   where type vector = CharVector.vector
   where type elem = char
@@ -341,5 +343,9 @@ local
 	   sharing type Word8Vector.vector = Word8Array.vector
        end
 in
-    open Tmp
+    (** SigDoc *)
+    structure Word8Vector : MONO_VECTOR = Tmp.Word8Vector
+
+    (** SigDoc *)
+    structure Word8Array : MONO_ARRAY = Tmp.Word8Array
 end

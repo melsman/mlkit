@@ -11,10 +11,12 @@ sig
   type place = effect
   type runType
 
-  type regvar   (* explicit region variables *)
+  type regvar   (* ReML explicit region variables *)
+  type constr   (* ReML constraint *)
 
   type Type
   type mu = Type
+  type lvar
 
   val wf_mu      : Type -> bool
 
@@ -67,6 +69,10 @@ sig
   val unify_mu   : mu * mu -> cone -> cone
   val unify_mus  : mu list * mu list -> cone -> cone
 
+  val enforceConstraint : (regvar -> place option)
+                          -> (regvar -> string -> unit)       (* deep error function *)
+                          -> constr -> cone -> cone
+
   type sigma and il
   val type_to_scheme : Type -> sigma
   val bv             : sigma -> place list * effect list * (tyvar*arroweffect option) list
@@ -91,10 +97,10 @@ sig
   val ftv_ty      : Type -> tyvar list
   val ftv_minus   : tyvar list * tyvar list -> tyvar list
 
-  val inst        : sigma * il -> cone -> Type * cone
+  val inst        : lvar option * sigma * il -> cone -> Type * cone
 
   type delta_phi
-  val instClever  : sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
+  val instClever  : lvar option * sigma * il -> cone -> Type * cone * (effect * delta_phi)list * (arroweffect * Type)list
 
   val regEffClos0    : (unit -> string) * cone * int * effect * Type * effect list -> cone * sigma
   val regEffClos     : cone * int * effect * Type -> cone * sigma

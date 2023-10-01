@@ -5,6 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
+(** SigDoc *)
 structure TextPrimIO : PRIM_IO
                        where type array = CharArray.array
                        where type vector = CharVector.vector
@@ -16,4 +17,3 @@ structure TextPrimIO : PRIM_IO
           type pos = Position.int
           val compare = Position.compare
           val someElem = #"\000": Char.char)
-
