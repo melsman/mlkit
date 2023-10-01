@@ -372,6 +372,8 @@ local
   end
 
 in
-  structure Socket = All.Socket
+  (** SigDoc *)
+  structure Socket : SOCKET = All.Socket
+
   structure INetSock = All.INetSock
 end

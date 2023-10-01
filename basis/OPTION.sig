@@ -1,3 +1,13 @@
+(** Operations on optional values.
+
+The Option structure defines the option type, used for handling
+partial functions and optional values, and provides a collection of
+common combinators.
+
+The type, the Option exception, and the functions getOpt, valOf, and
+isSome are available in the top-level environment.
+*)
+
 signature OPTION =
   sig
     datatype 'a option = NONE | SOME of 'a
@@ -9,71 +19,47 @@ signature OPTION =
     val join       : 'a option option -> 'a option
     val app        : ('a -> unit) -> 'a option -> unit
     val map        : ('a -> 'b) -> 'a option -> 'b option
-    val mapPartial : ('a -> 'b option)
-	             -> 'a option -> 'b option
-    val compose    : ('a -> 'b) * ('c -> 'a option)
-	             -> 'c -> 'b option
-    val composePartial : ('a -> 'b option) * ('c -> 'a option)
-	                 -> 'c -> 'b option 
+    val mapPartial : ('a -> 'b option) -> 'a option -> 'b option
+    val compose    : ('a -> 'b) * ('c -> 'a option) -> 'c -> 'b option
+    val composePartial : ('a -> 'b option) * ('c -> 'a option) -> 'c -> 'b option
   end
 
-(*
-Description
+(**
 
-datatype 'a option = NONE | SOME of 'a
+[type 'a option] The type option provides a distinction between some
+value and no value, and is often used for representing the result of
+partially defined functions. It can be viewed as a typed version of
+the C convention of returning a NULL pointer to indicate no value.
 
-    The type option provides a distinction between some value and no
-    value, and is often used for representing the result of partially
-    defined functions. It can be viewed as a typed version of the C
-    convention of returning a NULL pointer to indicate no value.
+[getOpt (opt, a)] returns v if opt is SOME(v); otherwise it returns a.
 
-getOpt (opt, a)
+[isSome opt] returns true if opt is SOME(v); otherwise it returns
+false.
 
-    returns v if opt is SOME(v); otherwise it returns a.
+[valOf opt] returns v if opt is SOME(v); otherwise it raises the
+Option exception.
 
-isSome opt
+[filter f a] returns SOME(a) if f(a) is true and NONE otherwise.
 
-    returns true if opt is SOME(v); otherwise it returns false.
+[join x] returns NONE if x is NONE and v if x is SOME v.
 
-valOf opt
+[app f opt] applies the function f to the value v if opt is SOME(v),
+and otherwise does nothing.
 
-    returns v if opt is SOME(v); otherwise it raises the Option
-    exception.
+[map f opt] maps NONE to NONE and SOME(v) to SOME(f v).
 
-filter f a
+[mapPartial f opt] maps NONE to NONE and SOME(v) to f(v). The
+expression mapPartial f is equivalent to join o (map f).
 
-    returns SOME(a) if f(a) is true and NONE otherwise.
+[compose (f, g) a] returns NONE if g(a) is NONE; otherwise, if g(a) is
+SOME(v), it returns SOME(f v). Thus, the compose function composes f
+with the partial function g to produce another partial function. The
+expression compose (f, g) is equivalent to (map f) o g.
 
-val join : 'a option option -> 'a option
+[composePartial (f, g) a] returns NONE if g(a) is NONE; otherwise, if
+g(a) is SOME(v), it returns f(v). Thus, the composePartial function
+composes the two partial functions f and g to produce another partial
+function. The expression composePartial (f, g) is equivalent to
+(mapPartial f) o g.
 
-    The join function maps NONE to NONE and SOME(v) to v.
-
-app f opt
-
-    applies the function f to the value v if opt is SOME(v), and
-    otherwise does nothing.
-
-map f opt
-
-    maps NONE to NONE and SOME(v) to SOME(f v).
-
-mapPartial f opt
-
-    maps NONE to NONE and SOME(v) to f(v). The expression mapPartial f
-    is equivalent to join o (map f).
-
-compose (f, g) a
-
-    returns NONE if g(a) is NONE; otherwise, if g(a) is SOME(v), it
-    returns SOME(f v). Thus, the compose function composes f with the
-    partial function g to produce another partial function. The
-    expression compose (f, g) is equivalent to (map f) o g.
-
-composePartial (f, g) a
-
-    returns NONE if g(a) is NONE; otherwise, if g(a) is SOME(v), it
-    returns f(v). Thus, the composePartial function composes the two
-    partial functions f and g to produce another partial function. The
-    expression composePartial (f, g) is equivalent to (mapPartial f) o
-    g.
 *)

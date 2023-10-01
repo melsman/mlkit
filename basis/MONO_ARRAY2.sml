@@ -1,4 +1,4 @@
-(**
+(** Monomorphic 2-dimensional arrays.
 
 The MONO_ARRAY2 signature is a generic interface to mutable
 2-dimensional arrays. Two arrays are equal only if they are the same

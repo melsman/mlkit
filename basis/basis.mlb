@@ -197,7 +197,15 @@ local
                  end
              end
           end
-      in bas open Stream BinTextIO Imperative end
+        basis Unix =
+    	  let open General Word System Posix BinTextIO String
+       	  in bas UNIX.sig Unix.sml end
+          end
+	basis IOClose =
+	  let open BinTextIO
+	  in bas io/io-close.sml end
+	  end
+      in bas open Stream IOClose Imperative Unix end
       end
 (*
     basis Sml90 =
@@ -206,12 +214,7 @@ local
        end
 *)
 
-    basis Unix =
-       let open General Word System Posix IO String
-       in
-         bas UNIX.sig Unix.sml end
-       end
 in
   open General List ArrayVector String Bool Word Byte
-       Int Real IntInf IntInfRep Io System Text Posix IO Unix Socket (* Sml90 *)
+       Int Real IntInf IntInfRep Io System Text Posix IO Socket (* Sml90 *)
 end

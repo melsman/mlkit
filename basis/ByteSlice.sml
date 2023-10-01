@@ -244,6 +244,7 @@ struct
       end
 end
 
+(** SigDoc *)
 structure CharVectorSlice : MONO_VECTOR_SLICE =
     ByteSlice(type table  = CharVector.vector
 	      type array  = CharArray.array
@@ -251,6 +252,7 @@ structure CharVectorSlice : MONO_VECTOR_SLICE =
 	      type elem   = char
 	      val maxLen  = CharVector.maxLen)
 
+(** SigDoc *)
 structure Word8VectorSlice : MONO_VECTOR_SLICE =
     ByteSlice(type table  = Word8Vector.vector
 	      type array  = Word8Array.array
@@ -258,6 +260,7 @@ structure Word8VectorSlice : MONO_VECTOR_SLICE =
 	      type elem   = word8
 	      val maxLen  = Word8Vector.maxLen)
 
+(** SigDoc *)
 structure CharArraySlice : MONO_ARRAY_SLICE =
     ByteSlice(type table  = CharArray.array
 	      type array  = CharArray.array
@@ -265,6 +268,7 @@ structure CharArraySlice : MONO_ARRAY_SLICE =
 	      type elem   = char
 	      val maxLen  = CharArray.maxLen)
 
+(** SigDoc *)
 structure Word8ArraySlice : MONO_ARRAY_SLICE =
     ByteSlice(type table  = Word8Array.array
 	      type array  = Word8Array.array

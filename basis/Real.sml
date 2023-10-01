@@ -216,8 +216,11 @@ structure Real : REAL =
 
   end (*structure Real*)
 
-structure Real64 = Real
-structure LargeReal = Real
+(** SigDoc *)
+structure Real64 : REAL = Real
+
+(** SigDoc *)
+structure LargeReal : REAL = Real
 
 fun real a = Real.fromInt a
 fun floor a = Real.floor a

@@ -1,4 +1,37 @@
-signature PRIM_IO = 
+(** Primitive IO operations.
+
+The PRIM_IO signature is an abstraction of the fundamental system call
+operations commonly available on open file descriptors
+OS.IO.iodesc. Imperative and Stream I/O facilities do not access the
+operating system directly, but access the appropriate Primitive I/O
+reader and writer that accomplishes the required system call.
+
+Several operations in the PRIM_IO interface will raise exceptions that
+have been left intentionally unspecified. The actual exception raised
+will usually be operating system-dependent, but may vary. For example,
+a reader connected to a prime number generator might raise
+Overflow. More typically, the close operation on a reader or writer
+may cause an exception to be raised if there is a failure in the
+underlying file system, such as the disk being full or the file server
+being unavailable. In addition, one would expect readVec and readVecNB
+to raise Size if the resulting vector would exceed the maximum allowed
+vector size or if the input parameter is negative. Similarly, one
+would expect readArr, readArrNB, writeArr, writeArrNB, writeVec, and
+writeVecNB to raise Subscript if array bounds are violated. Readers
+and writers should not, in general, raise the IO.Io exception. It is
+assumed that the higher levels will catch the exceptions raised at the
+Primitive I/O level, and appropriately construct and raise the IO.Io
+exception.
+
+A reader is required to raise IO.Io if any of its functions, except
+close or getPos, is invoked after a call to close. A writer is
+required to raise IO.Io if any of its functions, except close, is
+invoked after a call to close. In both cases, the cause field of the
+exception should be IO.ClosedStream.
+
+*)
+
+signature PRIM_IO =
   sig
     type elem
     type vector
@@ -54,64 +87,36 @@ signature PRIM_IO =
     val augmentWriter : writer -> writer
   end
 
-(*
-Description
+(**
 
-type elem
+[type elem] The elem type is an abstraction that represents the
+``element'' of a file (or device, etc.). Typically, elements are
+either characters (char) or bytes (Word8.word).
 
-    The elem type is an abstraction that represents the ``element'' of
-    a file (or device, etc.). Typically, elements are either
-    characters (char) or bytes (Word8.word).
+[type vector]
+[type vector_slice]
+[type array]
+[type array_slice]
 
-type vector
-type vector_slice
-type array
-type array_slice
+One typically reads or writes a sequence of elements in one
+operation. The vector type is an immutable vector of elements; the
+vector_slice type is a slice of a vector; the array type is an mutable
+array of elements; and the array_slice type is a slice of an array.
 
-    One typically reads or writes a sequence of elements in one
-    operation. The vector type is an immutable vector of elements; the
-    vector_slice type is a slice of a vector; the array type is an
-    mutable array of elements; and the array_slice type is a slice of
-    an array.
+[eqtype pos] This is an abstraction of a position in a file, usually
+used for random access.
 
-eqtype pos
+[compare (pos, pos')] returns LESS, EQUAL, or GREATER when pos is less
+than, equal to, or greater than pos', respectively, in some underlying
+linear ordering on pos values.
 
-    This is an abstraction of a position in a file, usually used for
-    random access.
-
-compare (pos, pos')
-
-    returns LESS, EQUAL, or GREATER when pos is less than, equal to,
-    or greater than pos', respectively, in some underlying linear
-    ordering on pos values.
-
-datatype reader
-  = RD of {
-    name : string,
-    chunkSize : int,
-    readVec : (int -> vector) option,
-    readArr : (array_slice -> int) option,
-    readVecNB : (int -> vector option) option,
-    readArrNB : (array_slice -> int option) option,
-    block : (unit -> unit) option,
-    canInput : (unit -> bool) option,
-    avail : unit -> int option,
-    getPos : (unit -> pos) option,
-    setPos : (pos -> unit) option,
-    endPos : (unit -> pos) option,
-    verifyPos : (unit -> pos) option,
-    close : unit -> unit,
-    ioDesc : OS.IO.iodesc option
-  }
-
-    A reader is an abstraction for a source of items of type
-    elem. Usually, it will correspond to a file or device opened for
-    reading. It can also represent the output of some algorithm or
-    function, not necessarily connected to the outside world, that
-    produces elements. The resulting sequence of elements is
-    potentially unbounded. In the description below, we will usually
-    refer to the limit sequence as a ``file,'' as this is the most
-    common instance.
+[datatype reader] A reader is an abstraction for a source of items of
+type elem. Usually, it will correspond to a file or device opened for
+reading. It can also represent the output of some algorithm or
+function, not necessarily connected to the outside world, that
+produces elements. The resulting sequence of elements is potentially
+unbounded. In the description below, we will usually refer to the
+limit sequence as a ``file,'' as this is the most common instance.
 
     name
 
@@ -192,7 +197,7 @@ datatype reader
 
     setPos(i)
 
-        when present, moves to position i in file. 
+        when present, moves to position i in file.
 
     endPos()
 
@@ -237,7 +242,7 @@ datatype reader
           array requires extra copying. Note that the ``lazy
           functional stream'' model does not use arrays at all.
 
-        * Absence of setPos prevents random access. 
+        * Absence of setPos prevents random access.
 
     Having avail return a value helps the client perform very large
     input more efficiently, with one system call and no copying.
@@ -254,32 +259,16 @@ datatype reader
     clients not concerned with efficiency or requiring certain
     operations can use the reader constructed by augmentReader.
 
-datatype writer
-  = WR of {
-    name : string,
-    chunkSize : int,
-    writeVec : (vector_slice -> int) option,
-    writeArr : (array_slice -> int) option,
-    writeVecNB : (vector_slice -> int option) option,
-    writeArrNB : (array_slice -> int option) option,
-    block : (unit -> unit) option,
-    canOutput : (unit -> bool) option,
-    getPos : (unit -> pos) option,
-    setPos : (pos -> unit) option,
-    endPos : (unit -> pos) option,
-    verifyPos : (unit -> pos) option,
-    close : unit -> unit,
-    ioDesc : OS.IO.iodesc option
-  }
+[datatype writer]
 
-    A writer is a file (device, etc.) opened for writing. A writer is
-    an abstraction for a store of items of type elem. Usually, it will
-    correspond to a file or device opened for writing. It can also
-    represent input to some algorithm or function, not necessarily
-    connected to the outside world, which consumes the output to guide
-    its computations. The resulting store of elements is potentially
-    unbounded. In the description below, we will usually refer to the
-    store as a ``file,'' as this is the most common instance.
+A writer is a file (device, etc.) opened for writing. A writer is an
+abstraction for a store of items of type elem. Usually, it will
+correspond to a file or device opened for writing. It can also
+represent input to some algorithm or function, not necessarily
+connected to the outside world, which consumes the output to guide its
+computations. The resulting store of elements is potentially
+unbounded. In the description below, we will usually refer to the
+store as a ``file,'' as this is the most common instance.
 
     name
 
@@ -336,7 +325,7 @@ datatype writer
 
     getPos()
 
-        when present, returns the current position within the file. 
+        when present, returns the current position within the file.
 
     endPos()
 
@@ -390,79 +379,68 @@ datatype writer
         * Absence of writeArr or writeArrNB means that extra copying
           will be required to write from an array.
 
-        * Absence of setPos prevents random access. 
+        * Absence of setPos prevents random access.
 
-openVector v
+[openVector v] creates a reader whose content is v.
 
-    creates a reader whose content is v.
+[nullRd()]
+[nullWr()]
 
-val nullRd : unit -> reader
-val nullWr : unit -> writer
+These functions create readers and writers for a null device
+abstraction. The reader nullRd acts like a reader that is always at
+end-of-stream. The writer nullWr serves as a sink; any data written
+using it is thrown away. Null readers and writers can be closed; if
+closed, they are expected to behave the same as any other closed
+reader or writer.
 
-    These functions create readers and writers for a null device
-    abstraction. The reader nullRd acts like a reader that is always
-    at end-of-stream. The writer nullWr serves as a sink; any data
-    written using it is thrown away. Null readers and writers can be
-    closed; if closed, they are expected to behave the same as any
-    other closed reader or writer.
+[augmentReader rd] produces a reader in which as many as possible of
+readVec, readArr, readVecNB, and readArrNB are provided, by
+synthesizing these from the operations of rd.
 
-augmentReader rd
-
-    produces a reader in which as many as possible of readVec,
-    readArr, readVecNB, and readArrNB are provided, by synthesizing
-    these from the operations of rd.
-
-    For example, augmentReader can synthesize readVec from readVecNB
-    and block, synthesize vector reads from array reads, synthesize
-    array reads from vector reads, as needed. The following table
-    indicates how each synthesis can be accomplished.
+For example, augmentReader can synthesize readVec from readVecNB and
+block, synthesize vector reads from array reads, synthesize array
+reads from vector reads, as needed. The following table indicates how
+each synthesis can be accomplished.
 
     Synthesize: 	From:
-    readVec             readVec or readArr or (block and (readVecNB 
+    readVec             readVec or readArr or (block and (readVecNB
                           or readArrNB))
-    readArr             readArr or readVec or (block and (readArrNB 
+    readArr             readArr or readVec or (block and (readArrNB
                           or readVecNB))
-    readVecNB           readVecNB or readArrNB or (canInput and 
+    readVecNB           readVecNB or readArrNB or (canInput and
                           (readVec or readArr))
-    readArrNB           readArrNB or readVecNB or (canInput and 
+    readArrNB           readArrNB or readVecNB or (canInput and
                           (readArr or readVec))
 
-    In each case, the synthesized operation may not be as efficient as
-    a more direct implementation --- for example, it is faster to read
-    data directly into an array than it is to read it into a vector
-    and then copy it into the array. But augmentReader should do no
-    harm: if a reader rd supplies some operation (such as readArr),
-    then augmentReader(rd) provides the same implementation of that
-    operation, not a synthesized one.
+In each case, the synthesized operation may not be as efficient as a
+more direct implementation --- for example, it is faster to read data
+directly into an array than it is to read it into a vector and then
+copy it into the array. But augmentReader should do no harm: if a
+reader rd supplies some operation (such as readArr), then
+augmentReader(rd) provides the same implementation of that operation,
+not a synthesized one.
 
-augmentWriter wr
+[augmentWriter wr] produces a writer in which as many as possible of
+writeVec, writeArr, writeVecNB, and writeArrNB are provided, by
+synthesizing these from the operations of wr.
 
-    produces a writer in which as many as possible of writeVec,
-    writeArr, writeVecNB, and writeArrNB are provided, by synthesizing
-    these from the operations of wr.
-
-    The following table indicates how each synthesis can be accomplished.
+The following table indicates how each synthesis can be accomplished.
 
     Synthesize: 	From:
-    writeVec            writeVec or writeArr or (block and (writeVecNB 
+    writeVec            writeVec or writeArr or (block and (writeVecNB
                           or writeArrNB))
-    writeArr            writeArr or writeVec or (block and (writeArrNB 
+    writeArr            writeArr or writeVec or (block and (writeArrNB
                           or writeVecNB))
-    writeVecNB          writeVecNB or writeArrNB or (canOutput and 
+    writeVecNB          writeVecNB or writeArrNB or (canOutput and
                           (writeVec or writeArr))
-    writeArrNB          writeArrNB or writeVecNB or (canOutput and 
+    writeArrNB          writeArrNB or writeVecNB or (canOutput and
                           (writeArr or writeVec))
 
-    The synthesized operation may not be as efficient as a more direct
-    implementation, but if a writer supplies some operation, then the
-    augmented writer provides the same implementation of that
-    operation.
+The synthesized operation may not be as efficient as a more direct
+implementation, but if a writer supplies some operation, then the
+augmented writer provides the same implementation of that operation.
 
-See Also
-
-    BinIO, IMPERATIVE_IO, OS.IO, Posix.IO, PrimIO, STREAM_IO, TextIO 
-
-Discussion
+[Discussion]
 
 It may not be possible to use augmentReader or augmentWriter to
 synthesize operations in a way that is thread-safe in concurrent

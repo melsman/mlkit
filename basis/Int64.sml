@@ -122,4 +122,5 @@ structure Int64 : INTEGER =
 
   end (*structure Int64*)
 
+(** SigDoc *)
 structure FixedInt : INTEGER = Int64

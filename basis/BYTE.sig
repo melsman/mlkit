@@ -1,4 +1,12 @@
-signature BYTE = 
+(** Conversion operations between Word8.word values and characters.
+
+Bytes are 8-bit integers as provided by the Word8 structure, but serve
+the dual role as elements composing the extended ASCII character
+set. The Byte structure provides functions for converting values
+between these two roles.
+*)
+
+signature BYTE =
   sig
     val byteToChar      : Word8.word -> char
     val charToByte      : char -> Word8.word
@@ -9,54 +17,43 @@ signature BYTE =
     val packString      : Word8Array.array * int * substring -> unit
   end
 
-(*
-Description
+(**
 
-byteToChar i
+[byteToChar i] returns the character whose code is i.
 
-    returns the character whose code is i.
+[charToByte c] returns an 8-bit word holding the code for the
+character c.
 
-charToByte c
+[bytesToString v]
 
-    returns an 8-bit word holding the code for the character c.
+[stringToBytes s] These functions convert between a vector of
+character codes and the corresponding string. Note that these
+functions do not perform end-of-line, or other character,
+translations. The semantics of these functions can be defined as
+follows, although one expects actual implementations will be more
+efficient:
 
-val bytesToString : Word8Vector.vector -> string
-val stringToBytes : string -> Word8Vector.vector
+    fun bytesToString bv =
+      CharVector.tabulate(
+        Word8Vector.length bv,
+        fn i => byteToChar(Word8Vector.sub(bv, i)))
+    fun stringToBytes s =
+      Word8Vector.tabulate(
+        String.size s,
+        fn i => charToByte(String.sub(s, i)))
 
-    These functions convert between a vector of character codes and
-    the corresponding string. Note that these functions do not perform
-    end-of-line, or other character, translations. The semantics of
-    these functions can be defined as follows, although one expects
-    actual implementations will be more efficient:
+For implementations where the underlying representation of the
+Word8Vector.vector and string types are the same, these functions
+should be constant-time operations.
 
-	    fun bytesToString bv =
-		  CharVector.tabulate(
-        	    Word8Vector.length bv,
-        	    fn i => byteToChar(Word8Vector.sub(bv, i)))
-	    fun stringToBytes s =
-		  Word8Vector.tabulate(
-        	    String.size s,
-        	    fn i => charToByte(String.sub(s, i)))
-	  
-        Implementation note:
+[unpackStringVec slice] returns the string consisting of characters
+whose codes are held in the vector slice slice.
 
-        For implementations where the underlying representation of the
-        Word8Vector.vector and string types are the same, these
-        functions should be constant-time operations.
+[unpackString slice] returns the string consisting of characters whose
+codes are held in the array slice slice.
 
-unpackStringVec slice
+[packString (arr, i, s)] puts the substring s into the array arr
+starting at offset i. It raises Subscript if i < 0 or size s + i >
+|arr|.
 
-    returns the string consisting of characters whose codes are held
-    in the vector slice slice.
-
-unpackString slice
-
-    returns the string consisting of characters whose codes are held
-    in the array slice slice.
-
-packString (arr, i, s)
-
-    puts the substring s into the array arr starting at offset i. It
-    raises Subscript if i < 0 or size s + i > |arr|.
 *)
-

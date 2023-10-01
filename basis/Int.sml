@@ -118,4 +118,5 @@ structure Int : INTEGER =
 
   end (*structure Int*)
 
-structure Position = Int
+(** SigDoc *)
+structure Position : INTEGER = Int

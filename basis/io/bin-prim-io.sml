@@ -5,6 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
+(** SigDoc *)
 structure BinPrimIO : PRIM_IO
                       where type array = Word8Array.array
                       where type vector = Word8Vector.vector

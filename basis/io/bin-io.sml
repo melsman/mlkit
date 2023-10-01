@@ -5,7 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-structure BinIO: BIN_IO_EXTRA =
+structure BinIO : BIN_IO_EXTRA =
    ImperativeIOExtra
    (structure Array =
        struct
@@ -24,4 +24,3 @@ structure BinIO: BIN_IO_EXTRA =
     val someElem = 0wx0: Word8.word
     val xlatePos = SOME {fromInt = fn i => i,
                          toInt = fn i => i})
-       

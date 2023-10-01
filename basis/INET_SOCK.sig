@@ -1,4 +1,4 @@
-(** InetSock interface
+(** InetSock interface.
 
 This structure provides operations for creating and manipulating
 Internet-domain addresses and sockets.
@@ -25,3 +25,29 @@ signature INET_SOCK = sig
 *)
   end
 end
+
+(**
+
+[type 'st sock] The type of internet sockets.
+
+[type 'm stream_sock] The type of streaming internet sockets.
+
+[type sock_addr] The type of internet socket addresses.
+
+[inetAF] The internet socket address family.
+
+[toAddr(ia,p)] Given an internet address and a port, return a socket
+address.
+
+[fromAddr sa] Given a socket address, return the underlying internet
+address and port.
+
+[structure TCP] TCP/IP Sockets.
+
+    [socket()] creates a TCP/IP socket.
+
+*)
+
+
+(** SigDoc *)
+structure INetSock : INET_SOCK = INetSock
