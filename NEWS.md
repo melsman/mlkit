@@ -1,5 +1,15 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.4 is released
+
+* mael 2023-10-01: Improved basis library documentation.
+
+* mael 2023-10-01: Initial support for explicit region and effect
+  annotations, including constraints on function invocations. The
+  modified source language, which we call ReML (a Standard ML program
+  is also a ReML program) is enabled with the -er flag. Examples are
+  available in the test/explicit_regions folder.
+
 * mael 2023-04-27: Generate position-independent machine code.
 
 ### MLKit version 4.7.3 is released
