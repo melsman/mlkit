@@ -104,9 +104,6 @@ signature REAL = sig
 (*
   val toDecimal    : real -> IEEEReal.decimal_approx
   val fromDecimal  : IEEEReal.decimal_approx -> real option
-
-  val toDefault    : real -> real
-  val fromDefault  : real -> real
 *)
 end
 

@@ -878,7 +878,7 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
   char buf[64];
   sprintf(buf, "%.12g", get_d(arg));
   mkSMLMinus(buf);
-  if( countChar('.', buf) == 0 && countChar('E', buf) == 0 )
+  if( countChar('.', buf) == 0 && countChar('E', buf) == 0 && countChar('n', buf) == 0)  // protect for nan and inf
     {
       strcat(buf, ".0");
     }

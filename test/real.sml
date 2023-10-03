@@ -369,11 +369,129 @@ val test13c =
 	    (1.6,              "2.0", "1.6",  "1.6", "1.6"),
     	    (1.45,             "1.0", "1.4",  "1.45", "1.45"),
 	    (3.141592653589,   "3.0", "3.1",  "3.14159", "3.14159265359"),
-	    (91827364509182.0, "9E13", "9.2E13",  "9.18274E13",
-							"9.18273645092E13")]);
-end
+	    (91827364509182.0, "9E13", "9.2E13",  "9.18274E13", "9.18273645092E13")])
 
-(*
-fun f r n = Real.fmt (StringCvt.GEN (SOME n)) r;
-fun ff r = map (f r) [1,2,6,12];
- *)
+val nan = Math.sqrt ~1.0
+
+val test14 =
+    tst "test14" (radix = 2 andalso precision = 53)
+
+val test15 =
+    tst "test15" (maxFinite > 100000.0 andalso maxFinite < posInf)
+
+val test16 =
+    tst "test16" (minPos > 0.0 andalso minPos < 0.5E~322)
+
+val test17 =
+    tst "test17" (minNormalPos > 0.0 andalso minNormalPos < 0.5E~300)
+
+val test18 =
+    tst "test18" (toString posInf = "inf")
+
+val test19 =
+    tst "test19" (toString negInf = "~inf")
+
+val test20 =
+    tst "test20" (toString nan = "nan")
+
+val test21 =
+    tst "test21" ( *+(34.0,~23.4,12.2) == 34.0 * ~23.4 + 12.2 )
+
+val test22 =
+    tst "test22" ( *-(34.0,~23.4,12.2) == 34.0 * ~23.4 - 12.2 )
+
+val test23 =
+    tst "test23" (not(signBit posInf) andalso signBit negInf andalso signBit ~2.1 andalso not (signBit 2.0))
+
+val test24 =
+    tst "test24" (copySign(1.2,~300.0) == ~1.2 andalso copySign(~1.2,300.0) == 1.2)
+
+val test25 =
+    tst "test25" (compareReal (nan,2.0) = IEEEReal.UNORDERED andalso
+                  compareReal (~2.0,nan) = IEEEReal.UNORDERED andalso
+                  compareReal (nan,nan) = IEEEReal.UNORDERED andalso
+                  compareReal (2.0,posInf) = IEEEReal.LESS)
+
+val test26a =
+    tst "test26a" ((compare(nan,2.0); false) handle IEEEReal.Unordered => true)
+
+val test26b =
+    tst "test26b" ((compare(nan,nan); false) handle IEEEReal.Unordered => true)
+
+val test26c =
+    tst "test26c" ((compare(~2.0,nan); false) handle IEEEReal.Unordered => true)
+
+val test27 =
+    tst "test27" (unordered(nan,2.0))
+
+val test28 =
+    tst "test28" (isNan nan andalso not(isNan posInf) andalso not(isNan 2.0))
+
+val test29 =
+    tst "test29" (isFinite 2.0 andalso not (isFinite posInf) andalso not (isFinite negInf))
+
+fun isoManExp r = fromManExp(toManExp r)
+
+val test30 =
+    tst "test30" (2.3 == isoManExp 2.3 andalso posInf == isoManExp posInf andalso isNan(isoManExp nan))
+
+fun whole r = #whole(split r)
+
+val test31 =
+    tst "test31" (whole 2.3 == 2.0 andalso whole posInf == posInf andalso isNan(whole nan) andalso whole ~2.4 == ~2.0)
+
+val test32 =
+    tst "test32" (realMod 2.5 == 0.5)
+
+val test33 =
+    tst "test33" (realMod posInf == 0.0)
+
+val test34 =
+    tst "test34" (isNan(realMod nan))
+
+val test35 =
+    tst "test35" (nextAfter (2.0, 3.0) > 2.0 andalso nextAfter (2.0, 3.0) < 2.0001)
+
+val test36 =
+    tst "test36" (nextAfter (2.0, ~3.0) < 2.0 andalso nextAfter (2.0, ~3.0) > 1.9999)
+
+val test37 =
+    tst "test37" (nextAfter (2.0, 2.0) == 2.0)
+
+val test38 =
+    tst "test38" (isNan(nextAfter (nan, 2.0)) andalso isNan(nextAfter (2.0,nan)))
+
+val test39 =
+    tst "test39" (nextAfter (negInf, 0.0) > negInf andalso nextAfter (posInf, 0.0) < posInf)
+
+val test40 =
+    tst "test40" ((checkFloat nan; false) handle General.Div => true)
+
+val test41 =
+    tst "test41" ((checkFloat posInf; false) handle General.Overflow => true)
+
+val test42 =
+    tst "test42" ((checkFloat 3.4; true) handle _ => false)
+
+fun pr r = Real.fmt (StringCvt.FIX(SOME 0)) r
+
+fun try t s expected =
+    let val res = pr (fromLargeInt (valOf (LargeInt.fromString s)))
+    in tst t (res = expected)
+    end
+
+val test43 = try "test43" "123456789123456789123456789" "123456789123456791337762816"
+
+fun try2 t rm r expected =
+    let val res = IntInf.toString (toLargeInt rm r)
+    in tst t (res = expected)
+    end
+
+val test44 =
+    try2 "test44" IEEEReal.TO_POSINF 123456789123456789123456789123456789123456789123456789.0E200
+         "12345678912345679076198071096244527781560870137019946199603053023437034345861166751654846484345015072896161860739481140984032537425287193418804458844483168788367356521095598566212295492892610317287470596434332346080596003132423633511547282430231173922816"
+
+val test45 =
+    try2 "test45" IEEEReal.TO_ZERO 12345678.6
+         "12345678"
+end
