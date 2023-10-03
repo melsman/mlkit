@@ -1,0 +1,236 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>CHAR</code> <tt><i>(basis)</i></tt></h4><p> Operations on character values.</p>The CHAR signature defines a type char of characters, and provides
+basic operations and predicates on values of that type. There is a
+linear ordering defined on characters. In addition, there is an
+encoding of characters into a contiguous range of non-negative
+integers which preserves the linear ordering.
+
+There are two structures matching the CHAR signature. The Char
+structure provides the extended ASCII 8-bit character set and
+locale-independent operations on them. For this structure, Char.maxOrd
+= 255.
+<hr /><pre><b>structure Char : CHAR <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> CHAR =
+  <b>sig</b>
+    <b>eqtype</b> char
+    <b>eqtype</b> string
+
+    <b>val</b> <a href='#minChar'>minChar</a>     : char
+    <b>val</b> <a href='#maxChar'>maxChar</a>     : char
+    <b>val</b> <a href='#maxOrd'>maxOrd</a>      : int
+
+    <b>val</b> <a href='#ord'>ord</a>         : char -> int
+    <b>val</b> <a href='#chr'>chr</a>         : int -> char
+    <b>val</b> <a href='#succ'>succ</a>        : char -> char
+    <b>val</b> <a href='#pred'>pred</a>        : char -> char
+
+    <b>val</b> <a href='#compare'>compare</a>     : char * char -> order
+    <b>val</b> <a href='#$04'><</a>           : char * char -> bool
+    <b>val</b> <a href='#$04$16'><=</a>          : char * char -> bool
+    <b>val</b> <a href='#$05'>></a>           : char * char -> bool
+    <b>val</b> <a href='#$05$16'>>=</a>          : char * char -> bool
+
+    <b>val</b> <a href='#contains'>contains</a>    : string -> char -> bool
+    <b>val</b> <a href='#notContains'>notContains</a> : string -> char -> bool
+
+    <b>val</b> <a href='#isAscii'>isAscii</a>     : char -> bool
+    <b>val</b> <a href='#toLower'>toLower</a>     : char -> char
+    <b>val</b> <a href='#toUpper'>toUpper</a>     : char -> char
+    <b>val</b> <a href='#isAlpha'>isAlpha</a>     : char -> bool
+    <b>val</b> <a href='#isAlphaNum'>isAlphaNum</a>  : char -> bool
+    <b>val</b> <a href='#isCntrl'>isCntrl</a>     : char -> bool
+    <b>val</b> <a href='#isDigit'>isDigit</a>     : char -> bool
+    <b>val</b> <a href='#isGraph'>isGraph</a>     : char -> bool
+    <b>val</b> <a href='#isHexDigit'>isHexDigit</a>  : char -> bool
+    <b>val</b> <a href='#isLower'>isLower</a>     : char -> bool
+    <b>val</b> <a href='#isPrint'>isPrint</a>     : char -> bool
+    <b>val</b> <a href='#isSpace'>isSpace</a>     : char -> bool
+    <b>val</b> <a href='#isPunct'>isPunct</a>     : char -> bool
+    <b>val</b> <a href='#isUpper'>isUpper</a>     : char -> bool
+
+    <b>val</b> <a href='#toString'>toString</a>    : char -> <a href='STRING.sml.html'>String</a>.string
+    <b>val</b> <a href='#scan'>scan</a>        : (<a href='CHAR.sml.html'>Char</a>.char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader -> (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+    <b>val</b> <a href='#fromString'>fromString</a>  : <a href='STRING.sml.html'>String</a>.string -> char option
+    <b>val</b> <a href='#toCString'>toCString</a>   : char -> <a href='STRING.sml.html'>String</a>.string
+    <b>val</b> <a href='#fromCString'>fromCString</a> : <a href='STRING.sml.html'>String</a>.string -> char option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='minChar'>minChar</a></tt>]</b></dt> <dd>The least character in the ordering. It always equals chr 0.
+</dd><br /><dt><b>[<tt><a name='maxChar'>maxChar</a></tt>]</b></dt> <dd>The greatest character in the ordering; it equals chr
+maxOrd.
+</dd><br /><dt><b>[<tt><a name='maxOrd'>maxOrd</a></tt>]</b></dt> <dd>The greatest character code; it equals ord maxChar.
+</dd><br /><dt><b>[<tt><a name='ord'>ord c</a></tt>]</b></dt> <dd>returns the (non-negative) integer code of the character c.
+</dd><br /><dt><b>[<tt><a name='chr'>chr i</a></tt>]</b></dt> <dd>returns the character whose code is i; raises Chr if i &lt; 0 or
+i &gt; maxOrd.
+</dd><br /><dt><b>[<tt><a name='succ'>succ c</a></tt>]</b></dt> <dd>returns the character immediately following c in the
+ordering, or raises Chr if c = maxChar. When defined, succ c is
+equivalent to chr(ord c + 1).
+</dd><br /><dt><b>[<tt><a name='pred'>pred c</a></tt>]</b></dt> <dd>returns the character immediately preceding c, or raises Chr
+if c = minChar. When defined, pred c is equivalent to chr(ord c - 1).
+</dd><br /><dt><b>[<tt><a name='compare'>compare (c, d)</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER, depending on whether
+c precedes, equals, or follows d in the character ordering.
+</dd><br /><dt><b>[<tt><a name='$04'>x &lt; y</a></tt>]</b></dt><dt><b>[<tt><a name='$04$16'>x &lt;= y</a></tt>]</b></dt><dt><b>[<tt><a name='$05'>x &gt; y</a></tt>]</b></dt><dt><b>[<tt><a name='$05$16'>x &gt;= y</a></tt>]</b></dt> <dd>These compare characters in the character ordering. Note that
+the functions ord and chr preserve orderings. For example, if we have
+x &lt; y for characters x and y, then it is also true that ord x &lt; ord y.
+</dd><br /><dt><b>[<tt><a name='contains'>contains s c</a></tt>]</b></dt> <dd>returns true if character c occurs in the string s;
+otherwise it returns false.
+</dd><br /><dt><b>[<tt><a name='notContains'>notContains s c</a></tt>]</b></dt> <dd>returns true if character c does not occur in the
+string s; it returns false otherwise. It is equivalent to
+(not(contains s c)).
+</dd><br /><dt><b>[<tt><a name='isAscii'>isAscii c</a></tt>]</b></dt> <dd>returns true if c is a (seven-bit) ASCII character, i.e.,
+0 &lt;= ord c &lt;= 127. Note that this function is independent of locale.
+</dd><br /><dt><b>[<tt><a name='toLower'>toLower c</a></tt>]</b></dt><dt><b>[<tt><a name='toUpper'>toUpper c</a></tt>]</b></dt> <dd>These return the lowercase (respectively, uppercase)
+letter corresponding to c if c is a letter; otherwise it returns c.
+</dd><br /><dt><b>[<tt><a name='isAlpha'>isAlpha c</a></tt>]</b></dt> <dd>returns true if c is a letter (lowercase or uppercase).
+</dd><br /><dt><b>[<tt><a name='isAlphaNum'>isAlphaNum c</a></tt>]</b></dt> <dd>returns true if c is alphanumeric (a letter or a
+decimal digit). Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='isCntrl'>isCntrl c</a></tt>]</b></dt> <dd>returns true if c is a control character. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='isDigit'>isDigit c</a></tt>]</b></dt> <dd>returns true if c is a decimal digit [0-9]. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='isGraph'>isGraph c</a></tt>]</b></dt> <dd>returns true if c is a graphical character, that is, it is
+printable and not a whitespace character. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='isHexDigit'>isHexDigit c</a></tt>]</b></dt> <dd>returns true if c is a hexadecimal digit [0-9a-fA-F].
+Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='isLower'>isLower c</a></tt>]</b></dt> <dd>returns true if c is a lowercase letter. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='isPrint'>isPrint c</a></tt>]</b></dt> <dd>returns true if c is a printable character (space or
+visible), i.e., not a control character. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='isSpace'>isSpace c</a></tt>]</b></dt> <dd>returns true if c is a whitespace character (space,
+newline, tab, carriage return, vertical tab, formfeed). Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='isPunct'>isPunct c</a></tt>]</b></dt> <dd>returns true if c is a punctuation character: graphical
+but not alphanumeric. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='isUpper'>isUpper c</a></tt>]</b></dt> <dd>returns true if c is an uppercase letter. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='toString'>toString c</a></tt>]</b></dt> <dd>returns a printable string representation of the
+character, using, if necessary, SML escape sequences. Printable
+characters, except for #&quot;\\&quot; and #&quot;\&quot;&quot;, are left unchanged. Backslash
+#&quot;\\&quot; becomes &quot;\\\\&quot;; double quote #&quot;\&quot;&quot; becomes &quot;\\\&quot;&quot;. The common
+control characters are converted to two-character escape sequences:
+<pre>
+    Alert (ASCII 0x07)                 &quot;\\a&quot;
+    Backspace (ASCII 0x08)             &quot;\\b&quot;
+    Horizontal tab (ASCII 0x09)        &quot;\\t&quot;
+    Linefeed or newline (ASCII 0x0A)   &quot;\\n&quot;
+    Vertical tab (ASCII 0x0B)          &quot;\\v&quot;
+    Form feed (ASCII 0x0C)             &quot;\\f&quot;
+    Carriage return (ASCII 0x0D)       &quot;\\r&quot;
+</pre>
+
+The remaining characters whose codes are less than 32 are represented
+by three-character strings in ``control character'' notation, e.g.,
+#&quot;\000&quot; maps to &quot;\\^@&quot;, #&quot;\001&quot; maps to &quot;\\^A&quot;, etc. For characters
+whose codes are greater than 999, the character is mapped to a
+six-character string of the form &quot;\\uxxxx&quot;, where xxxx are the four
+hexadecimal digits corresponding to a character's code. All other
+characters (i.e., those whose codes are greater than 126 but less than
+1000) are mapped to four-character strings of the form &quot;\\ddd&quot;, where
+ddd are the three decimal digits corresponding to a character's code.
+To convert a character to a length-one string containing the
+character, use the function String.str.
+</dd><br /><dt><b>[<tt><a name='scan'>scan getc strm</a></tt>]</b></dt><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>These scan a character (including possibly a space) or
+an SML escape sequence representing a character from the prefix of a
+character stream or a string of printable characters, as allowed in an
+SML program. After a successful conversion, scan returns the remainder
+of the stream along with the character, whereas fromString ignores any
+additional characters in s and just returns the character. If the
+first character is non-printable (i.e., not in the ASCII range [0x20,0x7E])
+or starts an illegal escape sequence (e.g., &quot;\q&quot;), no
+conversion is possible and NONE is returned. The function fromString
+is equivalent to StringCvt.scanString scan. The allowable escape
+sequences are:
+<pre>
+    \a 	Alert (ASCII 0x07)
+    \b 	Backspace (ASCII 0x08)
+    \t 	Horizontal tab (ASCII 0x09)
+    \n 	Linefeed or newline (ASCII 0x0A)
+    \v 	Vertical tab (ASCII 0x0B)
+    \f 	Form feed (ASCII 0x0C)
+    \r 	Carriage return (ASCII 0x0D)
+    \\ 	Backslash
+    \&quot; 	Double quote
+    \^c A control character whose encoding is ord c - 64, with the
+    	character c having ord c in the range [64,95]. For example,
+    	\^H (control-H) is the same as \b (backspace).
+    \ddd The character whose encoding is the number ddd, three decimal
+    	digits denoting an integer in the range [0,255].
+    \uxxxx The character whose encoding is the number xxxx, four
+    	hexadecimal digits denoting an integer in the ordinal range of
+    	the alphabet.
+    \f...f\ This sequence is ignored, where f...f stands for a
+    	sequence of one or more formatting (space, newline, tab, etc.)
+    	characters.
+</pre>
+
+In the escape sequences involving decimal or hexadecimal digits, if
+the resulting value cannot be represented in the character set, NONE
+is returned. As the table indicates, escaped formatting sequences
+(\f...f\) are passed over during scanning. Such sequences are
+successfully scanned, so that the remaining stream returned by scan
+will never have a valid escaped formatting sequence as its
+prefix. Here are some sample conversions:
+<pre>
+      Input string s      fromString s
+      &quot;\\q&quot;               NONE
+      &quot;a\^D&quot;              SOME #&quot;a&quot;
+      &quot;a\\ \\\q&quot;          SOME #&quot;a&quot;
+      &quot;\\ \\&quot;             NONE
+      &quot;&quot;                  NONE
+      &quot;\\ \\\^D&quot;          NONE
+      &quot;\\ a&quot;              NONE
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='toCString'>toCString c</a></tt>]</b></dt> <dd>returns a printable string corresponding to c, with
+non-printable characters replaced by C escape sequences. Specifically,
+printable characters, except for #&quot;\\&quot;, #&quot;\&quot;&quot;, #&quot;?&quot;, and #&quot;'&quot; are left
+unchanged.  Backslash (#&quot;\\&quot;) becomes &quot;\\\\&quot;; double quote (#&quot;\&quot;&quot;)
+becomes &quot;\\\&quot;&quot;, question mark (#&quot;?&quot;) becomes &quot;\\?&quot;, and single quote
+(#&quot;'&quot;) becomes &quot;\\'&quot;. The common control characters are converted to
+two-character escape sequences:
+<pre>
+  Alert                (ASCII 0x07) &quot;\\a&quot;
+  Backspace            (ASCII 0x08) &quot;\\b&quot;
+  Horizontal tab       (ASCII 0x09) &quot;\\t&quot;
+  Linefeed or newline  (ASCII 0x0A) &quot;\\n&quot;
+  Vertical tab         (ASCII 0x0B) &quot;\\v&quot;
+  Form feed            (ASCII 0x0C) &quot;\\f&quot;
+  Carriage return      (ASCII 0x0D) &quot;\\r&quot;
+</pre>
+
+All other characters are represented by three octal digits,
+corresponding to a character's code, preceded by a backslash.
+</dd><br /><dt><b>[<tt><a name='fromCString'>fromCString s</a></tt>]</b></dt> <dd>scans a character (including possibly a space) or a C
+escape sequence representing a character from the prefix of a
+string. After a successful conversion, fromCString ignores any
+additional characters in s. If no conversion is possible, e.g., if the
+first character is non-printable (i.e., not in the ASCII range [0x20-0x7E]
+or starts an illegal escape sequence, NONE is returned. The allowable
+escape sequences are given below (cf. Section 6.1.3.4 of the ISO C
+standard ISO/IEC 9899:1990).
+<pre>
+    \a 	Alert               (ASCII 0x07)
+    \b 	Backspace           (ASCII 0x08)
+    \t 	Horizontal tab      (ASCII 0x09)
+    \n 	Linefeed or newline (ASCII 0x0A)
+    \v 	Vertical tab        (ASCII 0x0B)
+    \f 	Form feed           (ASCII 0x0C)
+    \r 	Carriage return     (ASCII 0x0D)
+    \? 	Question mark
+    \\ 	Backslash
+    \&quot; 	Double quote
+    \' 	Single quote
+    \^c A control character whose encoding is ord c - 64, with the
+    	character c having ord c in the range [64,95]. For example,
+    	\^H (control-H) is the same as \b (backspace).
+    \ooo The character whose encoding is the number ooo, where ooo
+    	consists of one to three octal digits
+    \xhh The character whose encoding is the number hh, where hh is a
+    	sequence of hexadecimal digits.
+</pre>
+
+Note that fromCString accepts an unescaped single quote character, but
+does not accept an unescaped double quote character. In the escape
+sequences involving octal or hexadecimal digits, the sequence of
+digits is taken to be the longest sequence of such characters. If the
+resulting value cannot be represented in the character set, NONE is
+returned.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

@@ -1,0 +1,172 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>IMPERATIVE_IO</code> <tt><i>(basis)</i></tt></h4><p> Imperative IO operations.</p>The IMPERATIVE_IO signature defines the interface of the Imperative
+I/O layer in the I/O stack. This layer provides buffered I/O using
+mutable, redirectable streams.
+
+<hr /><pre><b>signature</b> IMPERATIVE_IO =
+  <b>sig</b>
+    <b>structure</b> StreamIO : <a href='STREAM_IO.sml.html'>STREAM_IO</a>
+
+    <b>type</b> vector = StreamIO.vector
+    <b>type</b> elem = StreamIO.elem
+
+    <b>type</b> instream
+    <b>type</b> outstream
+
+    <b>val</b> <a href='#input'>input</a>        : instream -> vector
+    <b>val</b> <a href='#input1'>input1</a>       : instream -> elem option
+    <b>val</b> <a href='#inputN'>inputN</a>       : instream * int -> vector
+    <b>val</b> <a href='#inputAll'>inputAll</a>     : instream -> vector
+    <b>val</b> <a href='#canInput'>canInput</a>     : instream * int -> int option
+    <b>val</b> <a href='#lookahead'>lookahead</a>    : instream -> elem option
+    <b>val</b> <a href='#closeIn'>closeIn</a>      : instream -> unit
+    <b>val</b> <a href='#endOfStream'>endOfStream</a>  : instream -> bool
+
+    <b>val</b> <a href='#output'>output</a>       : outstream * vector -> unit
+    <b>val</b> <a href='#output1'>output1</a>      : outstream * elem -> unit
+    <b>val</b> <a href='#flushOut'>flushOut</a>     : outstream -> unit
+    <b>val</b> <a href='#closeOut'>closeOut</a>     : outstream -> unit
+
+    <b>val</b> <a href='#mkInstream'>mkInstream</a>   : StreamIO.instream -> instream
+    <b>val</b> <a href='#getInstream'>getInstream</a>  : instream -> StreamIO.instream
+    <b>val</b> <a href='#setInstream'>setInstream</a>  : instream * StreamIO.instream -> unit
+
+    <b>val</b> <a href='#mkOutstream'>mkOutstream</a>  : StreamIO.outstream -> outstream
+    <b>val</b> <a href='#getOutstream'>getOutstream</a> : outstream -> StreamIO.outstream
+    <b>val</b> <a href='#setOutstream'>setOutstream</a> : outstream * StreamIO.outstream -> unit
+    <b>val</b> <a href='#getPosOut'>getPosOut</a>    : outstream -> StreamIO.out_pos
+    <b>val</b> <a href='#setPosOut'>setPosOut</a>    : outstream * StreamIO.out_pos -> unit
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>structure StreamIO</tt>]</b></dt> <dd>This substructure provides lower-level stream
+I/O, as defined by the STREAM_IO interface, which is compatible with
+the instream and outstream types, in the sense that the conversion
+functions mkInstream, getInstream, mkOutstream, and getOutstream allow
+the programmer to convert between low-level streams and redirectable
+streams. Typically, the redirectable streams are implemented in terms
+of low-level streams. Note that StreamIO.outstream is not a functional
+stream. The only difference between a StreamIO.outstream and an
+outstream is that the latter can be redirected.
+</dd><br /><dt><b>[<tt>type vector</tt>]</b></dt><dt><b>[<tt>type elem</tt>]</b></dt> <dd>These are the abstract types of stream elements and vectors of
+elements. For text streams, these are Char.char and String.string,
+while for binary streams, they correspond to Word8.word and
+Word8Vector.vector.
+</dd><br /><dt><b>[<tt>type instream</tt>]</b></dt> <dd>The type of redirectable imperative input streams. Two
+imperative streams may share an underlying functional stream or
+reader. Closing one of them effectively closes the underlying
+functional stream, which will affect subsequent operations on the
+other.
+</dd><br /><dt><b>[<tt>type outstream</tt>]</b></dt> <dd>The type of redirectable output streams. Two
+redirectable streams may share an underlying stream or writer. If this
+is the case, writing or positioning the file pointer on one of them,
+or closing it, also affects the other.
+</dd><br /><dt><b>[<tt><a name='input'>input strm</a></tt>]</b></dt> <dd>attempts to read from strm, starting from the current
+input file position. When elements are available, it returns a vector
+of at least one element. When strm is at end-of-stream or is closed,
+it returns an empty vector. Otherwise, input blocks until one of these
+conditions is met, and returns accordingly. It may raise the exception
+Io.
+</dd><br /><dt><b>[<tt><a name='input1'>input1 strm</a></tt>]</b></dt> <dd>reads one element from strm. It returns SOME(e) if one
+element was available; it returns NONE if at end-of-stream. It may
+block, and may raise the exception Io.  After a call to input1
+returning NONE to indicate an end-of-stream, the input stream should
+be positioned after the end-of-stream.
+</dd><br /><dt><b>[<tt><a name='inputN'>inputN (strm, n)</a></tt>]</b></dt> <dd>reads at most n elements from strm. It returns a
+vector containing n elements if at least n elements are available
+before end-of-stream; it returns a shorter (and possibly empty) vector
+of all elements remaining before end-of-stream otherwise. It may
+block, and may raise the exception Io. It raises Size if n &lt; 0 or if n
+is greater than the maxLen value for the vector type.
+</dd><br /><dt><b>[<tt><a name='inputAll'>inputAll strm</a></tt>]</b></dt> <dd>returns all elements of strm up to end-of-stream. It
+may block, and may raise the exception Io. It raises Size if the
+amount of data exceeds the maxLen of the vector type.
+</dd><br /><dt><b>[<tt><a name='canInput'>canInput (strm, n)</a></tt>]</b></dt> <dd>returns NONE if any attempt at input would
+block. It returns SOME(k), where 0 &lt;= k &lt;= n, if a call to input would
+return immediately with at least k characters. Note that k = 0
+corresponds to the stream being at end-of-stream.  Some streams may
+not support this operation, in which case the Io exception will be
+raised. This function also raises the Io exception if there is an
+error in the underlying system calls. It raises the Size exception if
+n &lt; 0.
+<pre>
+    Implementation note:
+</pre>
+
+<pre>
+    It is suggested that implementations of canInput should attempt to
+    return as large a k as possible. For example, if the buffer
+    contains 10 characters and the user calls canInput (f, 15),
+    canInput should call readVecNB(5) to see if an additional 5
+    characters are available.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='lookahead'>lookahead strm</a></tt>]</b></dt> <dd>determines whether one element is available on strm
+before end-of-stream and returns SOME(e) in this case; it returns NONE
+if at end-of-stream. In the former case, e is not removed from strm
+but stays available for further input operations. It may block, and
+may raise the exception Io.  The underlying STREAM_IO stream can be
+used to easily implement arbitrary lookahead.
+</dd><br /><dt><b>[<tt><a name='closeIn'>closeIn strm</a></tt>]</b></dt> <dd>closes the input stream strm, freeing resources of the
+underlying I/O layers associated with it. Closing an already closed
+stream will be ignored. Other operations on a closed stream will
+behave as if the stream is at end-of-stream. The function is
+implemented in terms of StreamIO.closeIn. It may also raise Io when
+another error occurs.
+</dd><br /><dt><b>[<tt><a name='endOfStream'>endOfStream strm</a></tt>]</b></dt> <dd>returns true if strm is at end-of-stream, and false
+if elements are still available. It may block until one of these
+conditions is determined, and may raise the exception Io.  When
+endOfStream returns true on an untruncated stream, this denotes the
+current situation. After a read from strm to consume the
+end-of-stream, it is possible that the next call to endOfStream strm
+may return false, and input operations will deliver new elements. For
+further information, consult the description of STREAM_IO.endOfStream.
+</dd><br /><dt><b>[<tt><a name='output'>output (strm, vec)</a></tt>]</b></dt> <dd>attempts to write the contents of vec to strm,
+starting from the current output file position. It may block until the
+underlying layers (and eventually the operating system) can accept all
+of vec. It may raise the exception Io. In that case, it is unspecified
+how much of vec was actually written.
+</dd><br /><dt><b>[<tt><a name='output1'>output1 (strm, el)</a></tt>]</b></dt> <dd>writes exactly one element el to strm. It may
+block, and may raise the exception Io if an error occurs. In that
+case, it is unspecified how much of el was actually written,
+especially if its physical representation is larger than just one
+byte. At this level, more than this cannot be guaranteed. Programs
+that need more control over this possibility need to make use of more
+primitive or OS-specific I/O routines.
+</dd><br /><dt><b>[<tt><a name='flushOut'>flushOut strm</a></tt>]</b></dt> <dd>causes any buffers associated with strm to be written
+out. It is implemented in terms of StreamIO.flushOut. The function may
+block, and may raise the exception Io when an error occurs.
+</dd><br /><dt><b>[<tt><a name='closeOut'>closeOut strm</a></tt>]</b></dt> <dd>flushes any buffers associated with strm, then closes
+strm, freeing resources of the underlying I/O layers associated with
+it. It is implemented in terms of StreamIO.closeOut. A write attempt
+on a closed outstream will cause the exception
+Io{cause=ClosedStream,...} to be raised. It may also raise Io if
+another error occurs (e.g., buffers cannot be flushed out).
+</dd><br /><dt><b>[<tt><a name='mkInstream'>mkInstream strm</a></tt>]</b></dt> <dd>constructs a redirectable input stream from a
+functional one. The current version of strm returned by input
+operations will be kept internally and used for the next input. They
+can be obtained by getInstream.
+</dd><br /><dt><b>[<tt><a name='getInstream'>getInstream strm</a></tt>]</b></dt> <dd>returns the current version of the underlying
+functional input stream of strm. Using getInstream, it is possible to
+get input directly from the underlying functional stream. After having
+done so, it may be necessary to reassign the newly obtained functional
+stream to strm using setInstream; otherwise the previous input will be
+read again when reading from strm the next time.
+</dd><br /><dt><b>[<tt><a name='setInstream'>setInstream (strm, strm')</a></tt>]</b></dt> <dd>assigns a new functional stream strm' to
+strm. Future input on strm will be read from strm'. This is useful for
+redirecting input or interleaving input from different streams, e.g.,
+when handling nested include files in a lexer.
+</dd><br /><dt><b>[<tt><a name='mkOutstream'>mkOutstream strm</a></tt>]</b></dt> <dd>constructs a redirectable output stream from a
+low-level functional one. Output to the imperative stream will be
+redirected to strm.
+</dd><br /><dt><b>[<tt><a name='getOutstream'>getOutstream strm</a></tt>]</b></dt> <dd>flushes strm and returns the underlying StreamIO
+output stream. Using getOutstream, it is possible to write output
+directly to the underlying stream, or to save it and restore it using
+setOutstream after strm has been redirected.
+</dd><br /><dt><b>[<tt><a name='setOutstream'>setOutstream (strm, strm')</a></tt>]</b></dt> <dd>flushes the stream underlying strm, and
+then assigns a new low-level stream strm' to it. Future output on strm
+will be redirected to strm'.
+</dd><br /><dt><b>[<tt><a name='getPosOut'>getPosOut strm</a></tt>]</b></dt> <dd>returns the current position in the stream strm. This
+raises the exception Io if the stream does not support the operation,
+among other reasons. See StreamIO.getPosOut.
+</dd><br /><dt><b>[<tt><a name='setPosOut'>setPosOut (strm, pos)</a></tt>]</b></dt> <dd>sets the current position of the stream strm
+to be pos. This raises the exception Io if the stream does not support
+the operation, among other reasons. See StreamIO.setPosOut.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

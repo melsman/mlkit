@@ -1,0 +1,104 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>LIST_PAIR</code> <tt><i>(basis)</i></tt></h4><p> Operations on pairs of lists.</p>The ListPair structure provides operations on pairs of lists. The
+operations fall into two categories. Those in the first category,
+whose names do not end in &quot;Eq&quot;, do not require that the lists have the
+same length. When the lists are of uneven lengths, the excess elements
+from the tail of the longer list are ignored. The operations in the
+second category, whose names have the suffix &quot;Eq&quot;, differ from their
+similarly named operations in the first category only when the list
+arguments have unequal lengths, in which case they typically raise the
+UnequalLengths exception.
+<hr /><pre><b>structure ListPair : LIST_PAIR <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> LIST_PAIR =
+  <b>sig</b>
+    <b>exception</b> UnequalLengths
+    <b>val</b> <a href='#zip'>zip</a>     : 'a list * 'b list -> ('a * 'b) list
+    <b>val</b> <a href='#zipEq'>zipEq</a>   : 'a list * 'b list -> ('a * 'b) list
+    <b>val</b> <a href='#unzip'>unzip</a>   : ('a * 'b) list -> 'a list * 'b list
+    <b>val</b> <a href='#app'>app</a>     : ('a * 'b -> unit) -> 'a list * 'b list -> unit
+    <b>val</b> <a href='#appEq'>appEq</a>   : ('a * 'b -> unit) -> 'a list * 'b list -> unit
+    <b>val</b> <a href='#map'>map</a>     : ('a * 'b -> 'c) -> 'a list * 'b list -> 'c list
+    <b>val</b> <a href='#mapEq'>mapEq</a>   : ('a * 'b -> 'c) -> 'a list * 'b list -> 'c list
+    <b>val</b> <a href='#foldl'>foldl</a>   : ('a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    <b>val</b> <a href='#foldr'>foldr</a>   : ('a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    <b>val</b> <a href='#foldlEq'>foldlEq</a> : ('a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    <b>val</b> <a href='#foldrEq'>foldrEq</a> : ('a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    <b>val</b> <a href='#all'>all</a>     : ('a * 'b -> bool) -> 'a list * 'b list -> bool
+    <b>val</b> <a href='#exists'>exists</a>  : ('a * 'b -> bool) -> 'a list * 'b list -> bool
+    <b>val</b> <a href='#allEq'>allEq</a>   : ('a * 'b -> bool) -> 'a list * 'b list -> bool
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>exception UnequalLengths</tt>]</b></dt> <dd>This exception is raised by those functions
+that require arguments of identical length.
+</dd><br /><dt><b>[<tt><a name='zip'>zip (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='zipEq'>zipEq (l1, l2)</a></tt>]</b></dt> <dd>These functions combine the two lists l1 and l2 into
+a list of pairs, with the first element of each list comprising the
+first element of the result, the second elements comprising the second
+element of the result, and so on.  If the lists are of unequal
+lengths, zip ignores the excess elements from the tail of the longer
+one, while zipEq raises the exception UnequalLengths.
+</dd><br /><dt><b>[<tt><a name='unzip'>unzip l</a></tt>]</b></dt> <dd>returns a pair of lists formed by splitting the elements of
+l. This is the inverse of zip for equal length lists.
+</dd><br /><dt><b>[<tt><a name='app'>app f (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='appEq'>appEq f (l1, l2)</a></tt>]</b></dt> <dd>These apply the function f to the list of pairs of
+elements generated from left to right from the lists l1 and l2. If the
+lists are of unequal lengths, the former ignores the excess elements
+from the tail of the longer one, and the latter raises
+UnequalLengths. The above expressions are respectively equivalent to:
+<pre>
+      List.app f (zip (l1, l2))
+      List.app f (zipEq (l1, l2))
+</pre>
+
+ignoring possible side-effects of the function f.
+</dd><br /><dt><b>[<tt><a name='map'>map f (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='mapEq'>mapEq f (l1, l2)</a></tt>]</b></dt> <dd>These map the function f over the list of pairs of
+elements generated from left to right from the lists l1 and l2,
+returning the list of results. If the lists are of unequal lengths,
+the former ignores the excess elements from the tail of the longer
+one, and the latter raises UnequalLengths. The above expressions are
+respectively equivalent to:
+<pre>
+      List.map f (zip (l1, l2))
+      List.map f (zipEq (l1, l2))
+</pre>
+
+ignoring possible side-effects of the function f.
+</dd><br /><dt><b>[<tt><a name='foldl'>foldl f init (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='foldr'>foldr f init (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='foldlEq'>foldlEq f init (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='foldrEq'>foldrEq f init (l1, l2)</a></tt>]</b></dt> <dd>These return the result of folding the
+function f in the specified direction over the pair of lists l1 and l2
+starting with the value init. They are respectively equivalent to:
+<pre>
+      List.foldl f' init (zip (l1, l2))
+      List.foldr f' init (zip (l1, l2))
+      List.foldl f' init (zipEq (l1, l2))
+      List.foldr f' init (zipEq (l1, l2))
+</pre>
+
+where f' is fn ((a,b),c) =&gt; f(a,b,c) and ignoring possible
+side-effects of the function f.
+</dd><br /><dt><b>[<tt><a name='all'>all f (l1, l2)</a></tt>]</b></dt><dt><b>[<tt><a name='exists'>exists f (l1, l2)</a></tt>]</b></dt> <dd>These functions provide short-circuit testing of a
+predicate over a pair of lists. They are respectively equivalent to:
+<pre>
+      List.all f (zip (l1, l2))
+      List.exists f (zip (l1, l2))
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='allEq'>allEq f (l1, l2)</a></tt>]</b></dt> <dd>returns true if l1 and l2 have equal length and all
+pairs of elements satisfy the predicate f. That is, the expression is
+equivalent to:
+<pre>
+      (List.length l1 = List.length l2) andalso
+      (List.all f (zip (l1, l2)))
+</pre>
+
+This function does not appear to have any nice algebraic relation with
+the other functions, but it is included as providing a useful notion
+of equality, analogous to the notion of equality of lists over
+equality types. The implementation is simple:
+<pre>
+      fun allEq p ([], []) = true
+        | allEq p (x::xs, y::ys) = p(x,y) andalso allEq p (xs,ys)
+        | allEq _ _ = false
+</pre>
+
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>Note that a function requiring equal length arguments
+should determine this lazily, i.e., it should act as though the lists
+have equal length and invoke the user-supplied function argument, but
+raise the exception if it arrives at the end of one list before the
+end of the other.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

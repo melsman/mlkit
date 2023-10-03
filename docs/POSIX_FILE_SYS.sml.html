@@ -1,0 +1,575 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_FILE_SYS</code> <tt><i>(basis)</i></tt></h4><p> POSIX file system operations.</p>The structure Posix.FileSys provides access to file system operations
+as described in Section 5 of the POSIX standard 1003.1,1996.
+
+<hr /><pre><b>signature</b> POSIX_FILE_SYS =
+  <b>sig</b>
+    <b>eqtype</b> uid
+    <b>eqtype</b> gid
+    <b>eqtype</b> file_desc
+
+    <b>val</b> <a href='#fdToWord'>fdToWord</a>  : file_desc -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#wordToFD'>wordToFD</a>  : <a href='WORD.sml.html'>SysWord</a>.word -> file_desc
+    <b>val</b> <a href='#fdToIOD'>fdToIOD</a>   : file_desc -> OS.IO.iodesc
+    <b>val</b> <a href='#iodToFD'>iodToFD</a>   : OS.IO.iodesc -> file_desc option
+
+    <b>type</b> dirstream
+
+    <b>val</b> <a href='#opendir'>opendir</a>   : string -> dirstream
+    <b>val</b> <a href='#readdir'>readdir</a>   : dirstream -> string option
+    <b>val</b> <a href='#rewinddir'>rewinddir</a> : dirstream -> unit
+    <b>val</b> <a href='#closedir'>closedir</a>  : dirstream -> unit
+    <b>val</b> <a href='#chdir'>chdir</a>     : string -> unit
+    <b>val</b> <a href='#getcwd'>getcwd</a>    : unit -> string
+    <b>val</b> <a href='#stdin'>stdin</a>     : file_desc
+    <b>val</b> <a href='#stdout'>stdout</a>    : file_desc
+    <b>val</b> <a href='#stderr'>stderr</a>    : file_desc
+
+    <b>structure</b> S :
+      <b>sig</b>
+        <b>eqtype</b> mode
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a> <b>where</b> <b>type</b> flags = mode
+        <b>val</b> <a href='#irwxu'>irwxu</a> : mode
+        <b>val</b> <a href='#irusr'>irusr</a> : mode
+        <b>val</b> <a href='#iwusr'>iwusr</a> : mode
+        <b>val</b> <a href='#ixusr'>ixusr</a> : mode
+        <b>val</b> <a href='#irwxg'>irwxg</a> : mode
+        <b>val</b> <a href='#irgrp'>irgrp</a> : mode
+        <b>val</b> <a href='#iwgrp'>iwgrp</a> : mode
+        <b>val</b> <a href='#ixgrp'>ixgrp</a> : mode
+        <b>val</b> <a href='#irwxo'>irwxo</a> : mode
+        <b>val</b> <a href='#iroth'>iroth</a> : mode
+        <b>val</b> <a href='#iwoth'>iwoth</a> : mode
+        <b>val</b> <a href='#ixoth'>ixoth</a> : mode
+        <b>val</b> <a href='#isuid'>isuid</a> : mode
+        <b>val</b> <a href='#isgid'>isgid</a> : mode
+      <b>end</b>
+
+    <b>structure</b> FD :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#cloexec'>cloexec</a> : flags
+      <b>end</b>
+
+    <b>structure</b> O :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#append'>append</a>   : flags
+        <b>val</b> <a href='#excl'>excl</a>     : flags
+        <b>val</b> <a href='#noctty'>noctty</a>   : flags
+        <b>val</b> <a href='#nonblock'>nonblock</a> : flags
+        <b>val</b> <a href='#sync'>sync</a>     : flags
+        <b>val</b> <a href='#trunc'>trunc</a>    : flags
+      <b>end</b>
+
+    <b>datatype</b> open_mode =
+        O_RDONLY
+      | O_WRONLY
+      | O_RDWR
+
+    <b>val</b> <a href='#openf'>openf</a>     : string * open_mode * O.flags -> file_desc
+    <b>val</b> <a href='#createf'>createf</a>   : string * open_mode * O.flags * S.mode -> file_desc
+    <b>val</b> <a href='#creat'>creat</a>     : string * S.mode -> file_desc
+    <b>val</b> <a href='#umask'>umask</a>     : S.mode -> S.mode
+    <b>val</b> <a href='#link'>link</a>      : {old : string, new : string} -> unit
+    <b>val</b> <a href='#mkdir'>mkdir</a>     : string * S.mode -> unit
+    <b>val</b> <a href='#mkfifo'>mkfifo</a>    : string * S.mode -> unit
+    <b>val</b> <a href='#unlink'>unlink</a>    : string -> unit
+    <b>val</b> <a href='#rmdir'>rmdir</a>     : string -> unit
+    <b>val</b> <a href='#rename'>rename</a>    : {old : string, new : string} -> unit
+    <b>val</b> <a href='#symlink'>symlink</a>   : {old : string, new : string} -> unit
+    <b>val</b> <a href='#readlink'>readlink</a>  : string -> string
+
+    <b>eqtype</b> dev
+    <b>val</b> <a href='#wordToDev'>wordToDev</a> : <a href='WORD.sml.html'>SysWord</a>.word -> dev
+    <b>val</b> <a href='#devToWord'>devToWord</a> : dev -> <a href='WORD.sml.html'>SysWord</a>.word
+
+    <b>eqtype</b> ino
+    <b>val</b> <a href='#wordToIno'>wordToIno</a> : <a href='WORD.sml.html'>SysWord</a>.word -> ino
+    <b>val</b> <a href='#inoToWord'>inoToWord</a> : ino -> <a href='WORD.sml.html'>SysWord</a>.word
+
+    <b>structure</b> ST :
+      <b>sig</b>
+        <b>type</b> stat
+        <b>val</b> <a href='#isDir'>isDir</a>  : stat -> bool
+        <b>val</b> <a href='#isChr'>isChr</a>  : stat -> bool
+        <b>val</b> <a href='#isBlk'>isBlk</a>  : stat -> bool
+        <b>val</b> <a href='#isReg'>isReg</a>  : stat -> bool
+        <b>val</b> <a href='#isFIFO'>isFIFO</a> : stat -> bool
+        <b>val</b> <a href='#isLink'>isLink</a> : stat -> bool
+        <b>val</b> <a href='#isSock'>isSock</a> : stat -> bool
+        <b>val</b> <a href='#mode'>mode</a>   : stat -> S.mode
+        <b>val</b> <a href='#ino'>ino</a>    : stat -> ino
+        <b>val</b> <a href='#dev'>dev</a>    : stat -> dev
+        <b>val</b> <a href='#nlink'>nlink</a>  : stat -> int
+        <b>val</b> <a href='#uid'>uid</a>    : stat -> uid
+        <b>val</b> <a href='#gid'>gid</a>    : stat -> gid
+        <b>val</b> <a href='#size'>size</a>   : stat -> <a href='INTEGER.sml.html'>Position</a>.int
+      (*  val atime : stat -> Time.time
+        val mtime : stat -> Time.time
+        val ctime : stat -> Time.time *)
+      <b>end</b>
+
+    <b>val</b> <a href='#stat'>stat</a>  : string -> ST.stat
+    <b>val</b> <a href='#lstat'>lstat</a> : string -> ST.stat
+    <b>val</b> <a href='#fstat'>fstat</a> : file_desc -> ST.stat
+
+    <b>datatype</b> access_mode = A_READ | A_WRITE | A_EXEC
+
+    <b>val</b> <a href='#access'>access</a>    : string * access_mode list -> bool
+    <b>val</b> <a href='#chmod'>chmod</a>     : string * S.mode -> unit
+    <b>val</b> <a href='#fchmod'>fchmod</a>    : file_desc * S.mode -> unit
+    <b>val</b> <a href='#chown'>chown</a>     : string * uid * gid -> unit
+    <b>val</b> <a href='#fchown'>fchown</a>    : file_desc * uid * gid -> unit
+  (*  val utime : string
+                   * {actime : Time.time, modtime : Time.time} option
+                   -> unit *)
+    <b>val</b> <a href='#ftruncate'>ftruncate</a> : file_desc * <a href='INTEGER.sml.html'>Position</a>.int -> unit
+    <b>val</b> <a href='#pathconf'>pathconf</a>  : string * string -> <a href='WORD.sml.html'>SysWord</a>.word option
+    <b>val</b> <a href='#fpathconf'>fpathconf</a> : file_desc * string -> <a href='WORD.sml.html'>SysWord</a>.word option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype uid</tt>]</b></dt> <dd>The type of a user identifier; identical to
+Posix.ProcEnv.uid.
+</dd><br /><dt><b>[<tt>eqtype gid</tt>]</b></dt> <dd>The type of a group identifier; identical to
+Posix.ProcEnv.gid.
+</dd><br /><dt><b>[<tt>eqtype file_desc</tt>]</b></dt> <dd>The type of an open file descriptor.
+</dd><br /><dt><b>[<tt><a name='fdToWord'>fdToWord fd</a></tt>]</b></dt><dt><b>[<tt><a name='wordToFD'>wordToFD w</a></tt>]</b></dt> <dd>These functions convert between an abstract open file descriptor and
+the integer representation used by the operating system. These calls
+should be avoided where possible, for the SML implementation may be
+able to garbage collect (i.e., automatically close) any file_desc
+value that is not accessible, but it cannot do this for any file_desc
+that has ever been made concrete by fdToWord. Also, there is no
+validation that the file descriptor created by wordToFD corresponds to
+an actually open file.
+</dd><br /><dt><b>[<tt><a name='fdToIOD'>fdToIOD fd</a></tt>]</b></dt><dt><b>[<tt><a name='iodToFD'>iodToFD iod</a></tt>]</b></dt> <dd>These functions convert between a POSIX open file descriptor and the
+handle used by the OS subsystem. The function iodToFD returns an
+option type because, on certain systems, some open I/O devices are not
+associated with an underlying open file descriptor.
+</dd><br /><dt><b>[<tt>type dirstream</tt>]</b></dt> <dd>The type of a directory stream opened for reading. A
+directory stream is an ordered sequence of all the directory entries
+in a particular directory. This type is identical to
+OS.FileSys.dirstream.
+</dd><br /><dt><b>[<tt><a name='opendir'>opendir dirName</a></tt>]</b></dt> <dd>opens the directory designated by the dirName
+parameter and associates a directory stream with it. The directory
+stream is positioned at the first entry.
+</dd><br /><dt><b>[<tt><a name='readdir'>readdir dir</a></tt>]</b></dt> <dd>returns and removes one filename from the directory
+stream dir. When the directory stream is empty (that is, when all
+entries have been read from the stream), NONE is returned. Entries for
+&quot;.&quot; (current directory) and &quot;..&quot; (parent directory) are never
+returned.
+<pre>
+    Rationale: The reason for filtering out the current and parent
+    directory entries is that it makes recursive walks of a directory
+    tree easier.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='rewinddir'>rewinddir d</a></tt>]</b></dt> <dd>repositions the directory stream d for reading at the
+beginning.
+</dd><br /><dt><b>[<tt><a name='closedir'>closedir d</a></tt>]</b></dt> <dd>closes the directory stream d. Closing a previously
+closed dirstream does not raise an exception.
+</dd><br /><dt><b>[<tt><a name='chdir'>chdir s</a></tt>]</b></dt> <dd>changes the current working directory to s.
+</dd><br /><dt><b>[<tt><a name='getcwd'>getcwd()</a></tt>]</b></dt> <dd>Returns the absolute pathname of the current working
+directory.
+</dd><br /><dt><b>[<tt><a name='stdin'>stdin</a></tt>]</b></dt><dt><b>[<tt><a name='stdout'>stdout</a></tt>]</b></dt><dt><b>[<tt><a name='stderr'>stderr</a></tt>]</b></dt> <dd>The standard input, output, and error file descriptors.
+</dd><br /><dt><b>[<tt>structure S</tt>]</b></dt> <dd>The structure Posix.FileSys.S contains file modes.
+<pre>
+    [eqtype mode] A file mode is a set of (read, write, execute)
+    permissions for the owner of the file, members of the file's
+    group, and others.
+</pre>
+
+<pre>
+    [irwxu] Read, write, and execute permission for ``user'' (the
+    file's owner).
+</pre>
+
+<pre>
+    [irusr] Read permission for ``user'' (the file's owner).
+</pre>
+
+<pre>
+    [iwusr] Write permission for ``user'' (the file's owner).
+</pre>
+
+<pre>
+    [ixusr] Execute permission for ``user'' (the file's owner).
+</pre>
+
+<pre>
+    [irwxg] Read, write, and execute permission for members of the
+    file's group.
+</pre>
+
+<pre>
+    [irgrp] Read permission for members of the file's group.
+</pre>
+
+<pre>
+    [iwgrp] Write permission for members of the file's group.
+</pre>
+
+<pre>
+    [ixgrp] Execute permission for members of the file's group.
+</pre>
+
+<pre>
+    [irwxo] Read, write, and execute permission for ``others'' (all
+    users).
+</pre>
+
+<pre>
+    [iroth] Read permission for ``others'' (all users).
+</pre>
+
+<pre>
+    [iwoth] Write permission for ``others'' (all users).
+</pre>
+
+<pre>
+    [ixoth] Execute permission for ``others'' (all users).
+</pre>
+
+<pre>
+    [isuid] Set-user-id mode, indicating that the effective user ID of
+    any user executing the file should be made the same as that of the
+    owner of the file.
+</pre>
+
+<pre>
+    [isgid] Set-group-id mode, indicating that the effective group ID
+    of any user executing the file should be made the same as the
+    group of the file.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure O</tt>]</b></dt> <dd>The structure Posix.FileSys.O contains file status flags
+used in calls to openf.
+<pre>
+    [append] If set, the file pointer is set to the end of the file
+    prior to each write.
+</pre>
+
+<pre>
+    [excl] This flag causes the open to fail if the file already
+    exists.
+</pre>
+
+<pre>
+    [noctty] If the path parameter identifies a terminal device, this
+    flag assures that the terminal device does not become the
+    controlling terminal for the process.
+</pre>
+
+<pre>
+    [nonblock] Open, read, and write operations on the file will be
+    nonblocking.
+</pre>
+
+<pre>
+    [sync] If set, updates and writes to regular files and block
+    devices are synchronous updates. On return from a function that
+    performs a synchronous update (writeVec, writeArr, ftruncate,
+    openf with trunc), the calling process is assured that all data
+    for the file has been written to permanent storage, even if the
+    file is also open for deferred update.
+</pre>
+
+<pre>
+    [trunc] This causes the file to be truncated (to zero length) upon
+    opening.
+</pre>
+
+</dd><br /><dt><b>[<tt>datatype open_mode</tt>]</b></dt> <dd>Operations allowed on an open file.
+<pre>
+    O_RDONLY : Open a file for reading only.
+    O_WRONLY : Open a file for writing only.
+    O_RDWR   : Open a file for reading and writing.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='openf'>openf (s, om, f)</a></tt>]</b></dt><dt><b>[<tt><a name='createf'>createf (s, om, f, m)</a></tt>]</b></dt> <dd>These calls open a file named s for reading, writing, or both
+(depending on the open mode om). The flags f specify the state of the
+open file. If the file does not exist, openf raises the OS.SysErr
+exception whereas createf creates the file, setting its protection
+mode to m (as modified by the umask).
+Note that, in C, the roles of openf and createf are combined in the
+function open. The first acts like open without the O_CREAT flag; the
+second acts like open with the O_CREAT flag and the specified
+permission mode. Also, the createf function should not be confused
+with the creat function below, which behaves like its C namesake.
+</dd><br /><dt><b>[<tt><a name='creat'>creat (s, m)</a></tt>]</b></dt> <dd>opens a file s for writing. If the file exists, this
+call truncates the file to zero length. If the file does not exist, it
+creates the file, setting its protection mode to m (as modified by the
+umask). This is equivalent to the expression:
+createf(s,O_WRONLY,O.trunc,m)
+</dd><br /><dt><b>[<tt><a name='umask'>umask cmask</a></tt>]</b></dt> <dd>sets the file mode creation mask of the process to cmask
+and returns the previous value of the mask.  Whenever a file is
+created (by openf, creat, mkdir, etc.), all file permission set in the
+file mode creation mask are removed from the mode of the created
+file. This clearing allows users to restrict the default access to
+their files.
+The mask is inherited by child processes.
+</dd><br /><dt><b>[<tt><a name='link'>link {old, new}</a></tt>]</b></dt> <dd>creates an additional hard link (directory entry)
+for an existing file. Both the old and the new link share equal access
+rights to the underlying object.  Both old and new must reside on the
+same file system. A hard link to a directory cannot be created.
+Upon successful completion, link updates the file status change time
+of the old file, and updates the file status change and modification
+times of the directory containing the new entry. (See
+Posix.FileSys.ST.)
+</dd><br /><dt><b>[<tt><a name='mkdir'>mkdir (s, m)</a></tt>]</b></dt> <dd>creates a new directory named s with protection mode m
+(as modified by the umask).
+</dd><br /><dt><b>[<tt><a name='mkfifo'>mkfifo (s, m)</a></tt>]</b></dt> <dd>makes a FIFO special file (or named pipe) s, with
+protection mode m (as modified by the umask).
+</dd><br /><dt><b>[<tt><a name='unlink'>unlink path</a></tt>]</b></dt> <dd>removes the directory entry specified by path and, if
+the entry is a hard link, decrements the link count of the file
+referenced by the link.  When all links to a file are removed and no
+process has the file open or mapped, all resources associated with the
+file are reclaimed, and the file is no longer accessible. If one or
+more processes have the file open or mapped when the last link is
+removed, the link is removed before unlink returns, but the removal of
+the file contents is postponed until all open or map references to the
+file are removed. If the path parameter names a symbolic link, the
+symbolic link itself is removed.
+</dd><br /><dt><b>[<tt><a name='rmdir'>rmdir s</a></tt>]</b></dt> <dd>removes a directory s, which must be empty.
+</dd><br /><dt><b>[<tt><a name='rename'>rename {old, new}</a></tt>]</b></dt> <dd>changes the name of a file system object from old
+to new.
+</dd><br /><dt><b>[<tt><a name='symlink'>symlink {old, new}</a></tt>]</b></dt> <dd>creates a symbolic link new. Any component of a
+pathname resolving to new will be replaced by the text old. Note that
+old may be a relative or absolute pathname, and might not be the
+pathname of any existing file.
+</dd><br /><dt><b>[<tt><a name='readlink'>readlink s</a></tt>]</b></dt> <dd>reads the value of a symbolic link s.
+</dd><br /><dt><b>[<tt>eqtype dev</tt>]</b></dt> <dd>The type of a device identifier. The device identifier
+and the file serial number (inode or ino) uniquely identify a file.
+</dd><br /><dt><b>[<tt><a name='wordToDev'>wordToDev w</a></tt>]</b></dt><dt><b>[<tt><a name='devToWord'>devToWord dev</a></tt>]</b></dt> <dd>These functions convert between dev values and words by which the
+operating system identifies a device. There is no verification that a
+value created by wordToDev corresponds to a to a valid device
+identifier.
+</dd><br /><dt><b>[<tt>eqtype ino</tt>]</b></dt> <dd>The type of a file serial number (inode).
+</dd><br /><dt><b>[<tt><a name='wordToIno'>wordToIno w</a></tt>]</b></dt><dt><b>[<tt><a name='inoToWord'>inoToWord ino</a></tt>]</b></dt> <dd>These functions convert between ino values and words by which the
+operating system identifies an inode. There is no verification that a
+value created by wordToIno corresponds to a to a valid inode.
+</dd><br /><dt><b>[<tt>structure ST</tt>]</b></dt> <dd>The structure Posix.FileSys.ST contains file status
+operations.
+<pre>
+    [type stat] This type models status information concerning a file.
+</pre>
+
+<pre>
+    [isDir stat]
+    [isChr stat]
+    [isBlk stat]
+    [isReg stat]
+    [isFIFO stat]
+    [isLink stat]
+    [isSock stat]
+</pre>
+
+<pre>
+    These functions return true if the file described by the parameter
+    is, respectively, a directory, a character special device, a block
+    special device, a regular file, a FIFO, a symbolic link, or a
+    socket.
+</pre>
+
+<pre>
+    [mode st] returns the protection mode of the file described by st.
+</pre>
+
+<pre>
+    [ino stat]
+    [dev stat]
+</pre>
+
+<pre>
+    These functions return the file serial number (inode) and the
+    device identifier, respectively, of the corresponding file.
+</pre>
+
+<pre>
+    [nlink st] returns the number of hard links to the file described
+    by st.
+</pre>
+
+<pre>
+    [uid stat]
+    [gid stat]
+</pre>
+
+<pre>
+    These functions return the owner and group ID of the file.
+</pre>
+
+<pre>
+    [size st] returns the size (number of bytes) of the file described
+    by st.
+</pre>
+
+<pre>
+    [atime stat]
+    [mtime stat]
+    [ctime stat]
+</pre>
+
+<pre>
+    These functions return, respectively, the last access time, the
+    last modification time or the last status change time of the file.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='stat'>stat string</a></tt>]</b></dt><dt><b>[<tt><a name='lstat'>lstat string</a></tt>]</b></dt><dt><b>[<tt><a name='fstat'>fstat file_desc</a></tt>]</b></dt> <dd>These functions return information on a file system object. For stat
+and lstat, the object is specified by its pathname. Note that an empty
+string causes an exception. For fstat, an open file descriptor is
+supplied.  lstat differs from stat in that, if the pathname argument
+is a symbolic link, the information concerns the link itself, not the
+file to which the link points.
+</dd><br /><dt><b>[<tt>datatype access_mode</tt>]</b></dt> <dd>This type is identical to
+OS.FileSys.access_mode.
+</dd><br /><dt><b>[<tt><a name='access'>access (s, l)</a></tt>]</b></dt> <dd>checks for accessibility of file s. If l is the empty
+list, it checks for the existence of the file; if l contains A_READ,
+it checks for the readability of s based on the real user and group
+IDs of the process; and so on.  The value returned depends only the
+appropriate privileges of the process and the permissions of the
+file. A directory may be indicated as writable by access, but an
+attempt to open it for writing will fail (although files may be
+created there). A file's permissions may indicate that it is
+executable, but the exec can fail if the file is not in the proper
+format. Conversely, if the process has appropriate privileges, access
+will return true if none of the appropriate file permissions are set.
+</dd><br /><dt><b>[<tt><a name='chmod'>chmod (s, mode)</a></tt>]</b></dt> <dd>changes the permissions of s to mode.
+</dd><br /><dt><b>[<tt><a name='fchmod'>fchmod (fd, mode)</a></tt>]</b></dt> <dd>changes the permissions of the file opened as fd
+to mode.
+</dd><br /><dt><b>[<tt><a name='chown'>chown (s, uid, gid)</a></tt>]</b></dt> <dd>changes the owner and group of file s to uid and
+gid, respectively.
+</dd><br /><dt><b>[<tt><a name='fchown'>fchown (fd, uid, gid)</a></tt>]</b></dt> <dd>changes the owner and group of the file opened
+as fd to uid and gid, respectively.
+</dd><br /><dt><b>[<tt>utime (f, SOME{actime,modtime})</tt>]</b></dt> <dd>sets the access and modification
+times of the file f to actime and modtime, respectively.
+</dd><br /><dt><b>[<tt>utime (f, NONE)</tt>]</b></dt> <dd>sets the access and modification times of a file to
+the current time.
+</dd><br /><dt><b>[<tt><a name='ftruncate'>ftruncate (fd, n)</a></tt>]</b></dt> <dd>changes the length of a file opened as fd to n
+bytes. If the new length is less than the previous length, all data
+beyond n bytes is discarded. If the new length is greater than the
+previous length, the file is extended to its new length by the
+necessary number of zero bytes.
+</dd><br /><dt><b>[<tt><a name='pathconf'>pathconf (s, p)</a></tt>]</b></dt><dt><b>[<tt><a name='fpathconf'>fpathconf (fd, p)</a></tt>]</b></dt> <dd>These functions return the value of property p of the file system
+underlying the file specified by s or fd. For integer-valued
+properties, if the value is unbounded, NONE is returned. If the value
+is bounded, SOME(v) is returned, where v is the value. For
+boolean-value properties, if the value is true, SOME(1) is returned;
+otherwise, SOME(0) or NONE is returned. The OS.SysErr exception is
+raised if something goes wrong, including when p is not a valid
+property or when the implementation does not associate the property
+with the file.  In the case of pathconf, read, write, or execute
+permission of the named file is not required, but all directories in
+the path leading to the file must be searchable.
+The properties required by POSIX are described below. A given
+implementation may support additional properties.
+<pre>
+    &quot;CHOWN_RESTRICTED&quot; True if the use of chown on any files (other
+                       than directories) in the specified directory is
+                       restricted to processes with appropriate
+                       privileges. This property only applies to
+                       directories.
+</pre>
+
+<pre>
+    &quot;LINK_MAX&quot;         The maximum value of a file's link count as
+                       returned by the ST.nlink function.
+</pre>
+
+<pre>
+    &quot;MAX_CANON&quot;        The maximum number of bytes that can be stored
+                       in an input queue. This property only applies
+                       to terminal devices.
+</pre>
+
+<pre>
+    &quot;MAX_INPUT&quot;        The maximum number of bytes allowed in an input
+                       queue before being read by a process. This
+                       property only applies to terminal devices.
+</pre>
+
+<pre>
+    &quot;NAME_MAX&quot;         The maximum number of bytes in a filename. This
+                       value may be as small as 13, but is never
+                       larger than 255. This property only applies to
+                       directories and its value applies to filenames
+                       within the directory.
+</pre>
+
+<pre>
+    &quot;NO_TRUNC&quot;         True if supplying a filename longer than
+                       allowed by &quot;NAME_MAX&quot; causes an error; false if
+                       long filenames are truncated. This property
+                       only applies to directories.
+</pre>
+
+<pre>
+    &quot;PATH_MAX&quot;         The maximum number of bytes in a pathname. This
+                       value is never larger than 65,535 and is the
+                       maximum length of a relative pathname when the
+                       specified directory is the working
+                       directory. This property only applies to
+                       directories.
+</pre>
+
+<pre>
+    &quot;PIPE_BUF&quot;         Maximum number of bytes guaranteed to be
+                       written atomically. This is applicable only to
+                       a FIFO. The value returned applies to the
+                       referenced object. If the path or file
+                       descriptor parameter refers to a directory, the
+                       value returned applies to any FIFO that exists
+                       or can be created within the directory.
+</pre>
+
+<pre>
+    &quot;VDISABLE&quot;         If defined, the integer code ord(c) of the
+                       character c which can be used to disable the
+                       terminal special characters specified in
+                       Posix.TTY.V. This property only applies to
+                       terminal devices.
+</pre>
+
+<pre>
+    &quot;ASYNC_IO&quot;         True if asynchronous input or output operations
+                       may be performed on the file.
+</pre>
+
+<pre>
+    &quot;SYNC_IO&quot;          True if synchronous input or output operations
+                       may be performed on the file.
+</pre>
+
+<pre>
+    &quot;PRIO_IO&quot;          True if prioritized input or output operations
+                       may be performed on the file.
+</pre>
+
+Implementation note: An implementation can call the operating system's
+pathconf or fpathconf functions, which return an integer. If the
+returned value is -1 and errno has been set, an exception is
+raised. Otherwise, a returned value of -1 should be mapped to NONE,
+and other values should be wrapped in SOME and returned.
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>The encoding of boolean values as int option, with false having two
+values, is an unpleasant choice. It would be preferable to split these
+two functions into four, with one pair handling integer-valued
+properties, with the present return type, and the other pair handling
+boolean-valued properties, returning values of type
+bool. Unfortunately, the nature of the POSIX pathconf and fpathconf
+functions would make this a nightmare for the implementor.
+First, the specification of these functions provides a non-negative
+integer return value for both booleans and numbers. System include
+files provide no inherent information as to the type of a
+property. Although the basic properties specified by POSIX have fixed
+types, each system is allowed to add its own non-standard
+properties. Thus, for an SML implementation to make the distinction,
+it would have to rely on somehow gleaning the information from, e.g.,
+system-specific manual pages.
+In addition, the POSIX specification is unclear on how boolean values
+are encoded. Some systems return 0 for false; others appear to return
+-1 without setting errno. Technically, the latter value may be
+interpreted as meaning that the property value is unknown or
+unspecified. From the programmer's point of view, this means that the
+property is not usable.
+This situation probably precludes automatically generating these
+functions on a per system basis. Given this, the current return types
+and values appear to be the only reasonable choice.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

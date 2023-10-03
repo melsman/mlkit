@@ -1,0 +1,156 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>INTEGER</code> <tt><i>(basis)</i></tt></h4><p> Operations on signed integer values.</p>Instances of the INTEGER signature provide a type of signed integers
+of either a fixed or arbitrary precision, and arithmetic and
+conversion operations. For fixed precision implementations, most
+arithmetic operations raise the exception Overflow when their result
+is not representable.
+<hr /><pre><b>structure Position : INTEGER <i>(basis)</i>
+</b><b>structure LargeInt : INTEGER <i>(basis)</i>
+</b><b>structure Int64 : INTEGER <i>(basis)</i>
+</b><b>structure Int63 : INTEGER <i>(basis)</i>
+</b><b>structure Int32 : INTEGER <i>(basis)</i>
+</b><b>structure Int31 : INTEGER <i>(basis)</i>
+</b><b>structure Int : INTEGER <i>(basis)</i>
+</b><b>structure FixedInt : INTEGER <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> INTEGER =
+  <b>sig</b>
+      <b>eqtype</b> int
+
+      <b>val</b> <a href='#toLarge'>toLarge</a>   : int -> intinf
+      <b>val</b> <a href='#fromLarge'>fromLarge</a> : intinf -> int
+      <b>val</b> <a href='#toInt'>toInt</a>   : int -> Initial.int0
+      <b>val</b> <a href='#fromInt'>fromInt</a> : Initial.int0 -> int
+
+      <b>val</b> <a href='#precision'>precision</a> : Initial.int0 option
+      <b>val</b> <a href='#minInt'>minInt</a> : int option
+      <b>val</b> <a href='#maxInt'>maxInt</a> : int option
+
+      <b>val</b> <a href='#$08'>+</a> : int * int -> int
+      <b>val</b> <a href='#$06'>-</a> : int * int -> int
+      <b>val</b> <a href='#*'>*</a> : int * int -> int
+      <b>val</b> <a href='#div'>div</a> : int * int -> int
+      <b>val</b> <a href='#mod'>mod</a> : int * int -> int
+      <b>val</b> <a href='#quot'>quot</a> : int * int -> int
+      <b>val</b> <a href='#rem'>rem</a> : int * int -> int
+
+      <b>val</b> <a href='#compare'>compare</a> : int * int -> order
+      <b>val</b> <a href='#$04'><</a>  : int * int -> bool
+      <b>val</b> <a href='#$04$16'><=</a> : int * int -> bool
+      <b>val</b> <a href='#$05'>></a>  : int * int -> bool
+      <b>val</b> <a href='#$05$16'>>=</a> : int * int -> bool
+
+      <b>val</b> <a href='#$10'>~</a> : int -> int
+      <b>val</b> <a href='#abs'>abs</a> : int -> int
+      <b>val</b> <a href='#min'>min</a> : int * int -> int
+      <b>val</b> <a href='#max'>max</a> : int * int -> int
+      <b>val</b> <a href='#sign'>sign</a> : int -> Initial.int0
+      <b>val</b> <a href='#sameSign'>sameSign</a> : int * int -> bool
+
+      <b>val</b> <a href='#fmt'>fmt</a>      : <a href='STRING_CVT.sml.html'>StringCvt</a>.radix -> int -> string
+      <b>val</b> <a href='#toString'>toString</a> : int -> string
+      <b>val</b> <a href='#scan'>scan</a>     : <a href='STRING_CVT.sml.html'>StringCvt</a>.radix
+	             -> (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+	             -> (int, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+    <b>val</b> <a href='#fromString'>fromString</a> : string -> int option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type int</tt>]</b></dt><dt><b>[<tt><a name='toLarge'>toLarge i</a></tt>]</b></dt> <dd>returns the LargeInt.int representation of the value i.
+</dd><br /><dt><b>[<tt><a name='fromLarge'>fromLarge i</a></tt>]</b></dt> <dd>returns the int representation of the LargeInt.int value
+i. Raises Overflow if the value does not fit. Int&lt;M&gt;.fromLarge o
+Int&lt;N&gt;.toLarge converts an integer from type Int&lt;N&gt;.int to Int&lt;M&gt;.int.
+</dd><br /><dt><b>[<tt><a name='toInt'>toInt i</a></tt>]</b></dt> <dd>converts the value i to the default integer type. Raises
+Overflow if the value does not fit.
+</dd><br /><dt><b>[<tt><a name='fromInt'>fromInt i</a></tt>]</b></dt> <dd>returns the int representation of the value i. Raises
+Overflow if the value does not fit.
+</dd><br /><dt><b>[<tt><a name='precision'>precision</a></tt>]</b></dt> <dd>If SOME(n), this denotes the number n of significant bits
+in type int, including the sign bit. If it is NONE, int has arbitrary
+precision. The precision need not necessarily be a power of two.
+</dd><br /><dt><b>[<tt><a name='minInt'>minInt</a></tt>]</b></dt> <dd>is the minimal (most negative) integer, representable by
+int. If NONE, int can represent all negative integers, within the
+limits of the heap size.  If precision is SOME(n), then we have minInt
+= -2(n-1).
+</dd><br /><dt><b>[<tt><a name='maxInt'>maxInt</a></tt>]</b></dt> <dd>is the maximal (most positive) integer, representable by
+int. If NONE, int can represent all positive integers, within the
+limits of the heap size.  If precision is SOME(n), then we have maxInt
+= 2(n-1) - 1.
+</dd><br /><dt><b>[<tt><a name='$08'>a + b</a></tt>]</b></dt> <dd>returns the sum of a and b. Raises Overflow when the result is
+not representable.
+</dd><br /><dt><b>[<tt><a name='$06'>a - b</a></tt>]</b></dt> <dd>returns the difference between a and b. Raises Overflow when
+the result is not representable.
+</dd><br /><dt><b>[<tt><a name='*'>a * b</a></tt>]</b></dt> <dd>returns the product of a and b. Raises Overflow when the
+result is not representable.
+</dd><br /><dt><b>[<tt><a name='div'>i div j</a></tt>]</b></dt> <dd>returns the greatest integer less than or equal to the
+quotient of i by j, i.e., floor(((i / j))). It raises Overflow when
+the result is not representable, or Div when j = 0. Note that rounding
+is towards negative infinity, not zero.
+</dd><br /><dt><b>[<tt><a name='mod'>i mod j</a></tt>]</b></dt> <dd>returns the remainder of the division of i by j. It raises
+Div when j = 0. When defined, (i mod j) has the same sign as j, and
+<pre>
+        (i div j) * j + (i mod j) = i
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='quot'>quot (i, j)</a></tt>]</b></dt> <dd>returns the truncated quotient of the division of i by
+j, i.e., it computes (i / j) and then drops any fractional part of the
+quotient. It raises Overflow when the result is not representable, or
+Div when j = 0. Note that unlike div, quot rounds towards zero. In
+addition, unlike div and mod, neither quot nor rem are infix by
+default; an appropriate infix declaration would be infix 7 quot rem.
+This is the semantics of most hardware divide instructions, so quot
+may be faster than div.
+</dd><br /><dt><b>[<tt><a name='rem'>i rem j</a></tt>]</b></dt> <dd>returns the remainder of the division of i by j. It raises
+Div when j = 0. (i rem j) has the same sign as i, and it holds that
+<pre>
+        (i quot j) * j + (i rem j) = i
+</pre>
+
+This is the semantics of most hardware divide instructions, so rem may
+be faster than mod.
+</dd><br /><dt><b>[<tt><a name='compare'>compare (i, j)</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER when i is less than,
+equal to, or greater than j, respectively.
+</dd><br /><dt><b>[<tt><a name='$04'>a &lt; b</a></tt>]</b></dt> <dd>returns true if a is strictly less than b.
+</dd><br /><dt><b>[<tt><a name='$04$16'>a &lt;= b</a></tt>]</b></dt> <dd>returns true if a is less than or equal to b.
+</dd><br /><dt><b>[<tt><a name='$05'>a &gt; b</a></tt>]</b></dt> <dd>returns true if a is strictly greater than b.
+</dd><br /><dt><b>[<tt><a name='$05$16'>a &gt;= b</a></tt>]</b></dt> <dd>returns true if a is greater than or equal to b.
+</dd><br /><dt><b>[<tt><a name='$10'>~ i</a></tt>]</b></dt> <dd>returns the negation of i, i.e., (0 - i). It raises Overflow
+when the result is not representable. This can happen, for example,
+when int is an n-bit 2's-complement integer type, and ~ is applied to
+-2 (n-1).
+</dd><br /><dt><b>[<tt><a name='abs'>abs i</a></tt>]</b></dt> <dd>returns the absolute value (magnitude) of i. It raises Overflow
+when the result is not representable.
+</dd><br /><dt><b>[<tt><a name='min'>min (a,b)</a></tt>]</b></dt> <dd>returns the smaller of a and b.
+</dd><br /><dt><b>[<tt><a name='max'>max (a,b)</a></tt>]</b></dt> <dd>returns the larger of a and b.
+</dd><br /><dt><b>[<tt><a name='sign'>sign i</a></tt>]</b></dt> <dd>returns ~1, 0, or 1 when i is less than, equal to, or greater
+than 0, respectively.
+</dd><br /><dt><b>[<tt><a name='sameSign'>sameSign (i, j)</a></tt>]</b></dt> <dd>returns true if i and j have the same sign. It is
+equivalent to (sign i = sign j).
+</dd><br /><dt><b>[<tt><a name='fmt'>fmt radix i</a></tt>]</b></dt> <dd>returns a string containing a representation of i with
+#&quot;~&quot; used as the sign for negative numbers. The string is formatted
+according to radix. The hexadecimal digits 10 through 15 are
+represented as #&quot;A&quot; through #&quot;F&quot;, respectively. No prefix &quot;0x&quot; is
+generated for the hexadecimal representation.
+</dd><br /><dt><b>[<tt><a name='toString'>toString i</a></tt>]</b></dt> <dd>returns a string containing a decimal representation of i
+with #&quot;~&quot; used as the sign for negative numbers. Equivalent to fmt
+StringCvt.DEC i.
+</dd><br /><dt><b>[<tt><a name='scan'>scan radix getc strm</a></tt>]</b></dt> <dd>returns SOME(i,rest) if an integer in the
+format denoted by radix can be parsed from a prefix of the character
+stream strm after skipping initial whitespace, where i is the value of
+the integer parsed and rest is the rest of the character stream. NONE
+is returned otherwise. Raises Overflow when an integer can be parsed,
+but is too large to be represented by type int.
+The format that scan accepts depends on the radix argument. Regular
+expressions defining these formats are as follows:
+<pre>
+	  Radix                 Format
+	  StringCvt.BIN         [+~-]?[0-1]+
+	  StringCvt.OCT         [+~-]?[0-7]+
+	  StringCvt.DEC         [+~-]?[0-9]+
+	  StringCvt.HEX         [+~-]?(0x | 0X)?[0-9a-fA-F]+
+</pre>
+
+Note that strings such as &quot;0xg&quot; and &quot;0x 123&quot; are scanned as SOME(0),
+even using a hexadecimal radix.
+</dd><br /><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>returns SOME(i) if an integer i in the format
+</dd><br /><dt><b>[<tt>+~-</tt>]</b></dt> <dd>?[0-9]+ can be parsed from a prefix of the string s, ignoring
+initial whitespace; NONE is returned otherwise. Raises Overflow when
+an integer can be parsed, but is too large to fit in type int. It is
+equivalent to the expression StringCvt.scanString (scan
+StringCvt.DEC).
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

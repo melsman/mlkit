@@ -1,0 +1,116 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>ARRAY_SLICE</code> <tt><i>(basis)</i></tt></h4><p> Operations on polymorphic array slices.</p>The ArraySlice structure provides an abstraction of subarrays for
+polymorphic arrays. A slice value can be viewed as a triple (a, i, n),
+where a is the underlying array, i is the starting index, and n is the
+length of the subarray, with the constraint that 0 &lt;= i &lt;= i + n &lt;=
+|a|. Slices provide a convenient notation for specifying and operating
+on a contiguous subset of elements in an array.
+<hr /><pre><b>structure ArraySlice : ARRAY_SLICE <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> ARRAY_SLICE =
+  <b>sig</b>
+    <b>type</b> 'a slice
+    <b>val</b> <a href='#length'>length</a>   : 'a slice -> int
+    <b>val</b> <a href='#sub'>sub</a>      : 'a slice * int -> 'a
+    <b>val</b> <a href='#update'>update</a>   : 'a slice * int * 'a -> unit
+    <b>val</b> <a href='#full'>full</a>     : 'a <a href='ARRAY.sml.html'>Array</a>.array -> 'a slice
+    <b>val</b> <a href='#slice'>slice</a>    : 'a <a href='ARRAY.sml.html'>Array</a>.array * int * int option -> 'a slice
+    <b>val</b> <a href='#subslice'>subslice</a> : 'a slice * int * int option -> 'a slice
+    <b>val</b> <a href='#base'>base</a>     : 'a slice -> 'a <a href='ARRAY.sml.html'>Array</a>.array * int * int
+    <b>val</b> <a href='#vector'>vector</a>   : 'a slice -> 'a <a href='VECTOR.sml.html'>Vector</a>.vector
+    <b>val</b> <a href='#copy'>copy</a>     : {
+		      src : 'a slice,
+		      dst : 'a <a href='ARRAY.sml.html'>Array</a>.array,
+		      di : int
+		   } -> unit
+    <b>val</b> <a href='#copyVec'>copyVec</a>  : {
+		      src : 'a <a href='VECTOR_SLICE.sml.html'>VectorSlice</a>.slice,
+		      dst : 'a <a href='ARRAY.sml.html'>Array</a>.array,
+		      di : int
+		   } -> unit
+    <b>val</b> <a href='#isEmpty'>isEmpty</a>  : 'a slice -> bool
+    <b>val</b> <a href='#getItem'>getItem</a>  : 'a slice -> ('a * 'a slice) option
+    <b>val</b> <a href='#appi'>appi</a>     : (int * 'a -> unit) -> 'a slice -> unit
+    <b>val</b> <a href='#app'>app</a>      : ('a -> unit) -> 'a slice -> unit
+    <b>val</b> <a href='#modifyi'>modifyi</a>  : (int * 'a -> 'a) -> 'a slice -> unit
+    <b>val</b> <a href='#modify'>modify</a>   : ('a -> 'a) -> 'a slice -> unit
+    <b>val</b> <a href='#foldli'>foldli</a>   : (int * 'a * 'b -> 'b) -> 'b -> 'a slice -> 'b
+    <b>val</b> <a href='#foldri'>foldri</a>   : (int * 'a * 'b -> 'b) -> 'b -> 'a slice -> 'b
+    <b>val</b> <a href='#foldl'>foldl</a>    : ('a * 'b -> 'b) -> 'b -> 'a slice -> 'b
+    <b>val</b> <a href='#foldr'>foldr</a>    : ('a * 'b -> 'b) -> 'b -> 'a slice -> 'b
+    <b>val</b> <a href='#findi'>findi</a>    : (int * 'a -> bool) -> 'a slice -> (int * 'a) option
+    <b>val</b> <a href='#find'>find</a>     : ('a -> bool) -> 'a slice -> 'a option
+    <b>val</b> <a href='#exists'>exists</a>   : ('a -> bool) -> 'a slice -> bool
+    <b>val</b> <a href='#all'>all</a>      : ('a -> bool) -> 'a slice -> bool
+    <b>val</b> <a href='#collate'>collate</a>  : ('a * 'a -> order) -> 'a slice * 'a slice -> order
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='length'>length sl</a></tt>]</b></dt> <dd>returns |sl|, the length (i.e., number of elements) of the
+slice. This is equivalent to #3 (base sl).
+</dd><br /><dt><b>[<tt><a name='sub'>sub (sl, i)</a></tt>]</b></dt> <dd>returns the i(th) element of the slice sl. If i &lt; 0 or
+|sl| &lt;= i, then the Subscript exception is raised.
+</dd><br /><dt><b>[<tt><a name='update'>update (sl, i, a)</a></tt>]</b></dt> <dd>sets the i(th) element of the slice sl to a. If i
+&lt; 0 or |sl| &lt;= i, then the Subscript exception is raised.
+</dd><br /><dt><b>[<tt><a name='full'>full arr</a></tt>]</b></dt> <dd>creates a slice representing the entire array arr. It is
+equivalent to (slice(arr, 0, NONE)).
+</dd><br /><dt><b>[<tt><a name='slice'>slice (arr, i, sz)</a></tt>]</b></dt> <dd>creates a slice based on the array arr starting
+at index i of the array. If sz is NONE, the slice includes all of the
+elements to the end of the array, i.e., arr[i..|arr|-1]. This raises
+Subscript if i &lt; 0 or |arr| &lt; i. If sz is SOME(j), the slice has
+length j, that is, it corresponds to arr[i..i+j-1]. It raises
+Subscript if i &lt; 0 or j &lt; 0 or |arr| &lt; i + j. Note that, if defined,
+slice returns an empty slice when i = |arr|.
+</dd><br /><dt><b>[<tt><a name='subslice'>subslice (sl, i, sz)</a></tt>]</b></dt> <dd>creates a slice based on the given slice sl
+starting at index i of sl. If sz is NONE, the slice includes all of
+the elements to the end of the slice, i.e., sl[i..|sl|-1]. This raises
+Subscript if i &lt; 0 or |sl| &lt; i. If sz is SOME(j), the slice has length
+j, that is, it corresponds to sl[i..i+j-1]. It raises Subscript if i &lt;
+0 or j &lt; 0 or |sl| &lt; i + j. Note that, if defined, subslice returns an
+empty slice when i = |sl|.
+</dd><br /><dt><b>[<tt><a name='base'>base sl</a></tt>]</b></dt> <dd>returns a triple (arr, i, n) representing the concrete
+representation of the slice. arr is the underlying array, i is the
+starting index, and n is the length of the slice.
+</dd><br /><dt><b>[<tt><a name='vector'>vector sl</a></tt>]</b></dt> <dd>generates a vector from the slice sl. Specifically, the
+result is equivalent to (Vector.tabulate (length sl, fn i =&gt; sub (sl,
+i))).
+</dd><br /><dt><b>[<tt><a name='copy'>copy {src, dst, di}</a></tt>]</b></dt><dt><b>[<tt><a name='copyVec'>copyVec {src, dst, di}</a></tt>]</b></dt> <dd>These functions copy the given slice into the
+array dst, with the i(th) element of src, for 0 &lt;= i &lt; |src|, being
+copied to position di + i in the destination array. If di &lt; 0 or if
+|dst| &lt; di+|src|, then the Subscript exception is raised.  The copy
+function must correctly handle the case in which dst and the base
+array of src are equal, and the source and destination slices overlap.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty sl</a></tt>]</b></dt> <dd>returns true if sl has length 0.
+</dd><br /><dt><b>[<tt><a name='getItem'>getItem sl</a></tt>]</b></dt> <dd>returns the first item in sl and the rest of the slice,
+or NONE if sl is empty.
+</dd><br /><dt><b>[<tt><a name='appi'>appi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='app'>app f sl</a></tt>]</b></dt> <dd>These functions apply the function f to the elements of a
+slice in order of increasing indices. The more general appi function
+supplies f with the index of the corresponding element in the
+slice. The expression app f sl is equivalent to appi (f o #2) sl.
+</dd><br /><dt><b>[<tt><a name='modifyi'>modifyi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='modify'>modify f sl</a></tt>]</b></dt> <dd>These functions apply the function f to the elements of
+a slice in order of increasing indices, and replace each element with
+the result. The more general modifyi supplies f with the index of the
+corresponding element in the slice. The expression modify f sl is
+equivalent to modifyi (f o #2) sl.
+</dd><br /><dt><b>[<tt><a name='foldli'>foldli f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldri'>foldri f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldl'>foldl f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldr'>foldr f init sl</a></tt>]</b></dt> <dd>These functions fold the function f over the
+elements of a slice, using the value init as the initial value. The
+functions foldli and foldl apply the function f from left to right
+(increasing indices), while the functions foldri and foldr work from
+right to left (decreasing indices). The more general functions foldli
+and foldri supply f with the index of the corresponding element in the
+slice.  See the MONO_ARRAY manual pages for reference implementations
+of the indexed versions.  The expression foldl f init sl is equivalent
+to (foldli (fn (_, a, x) =&gt; f(a, x)) init sl). The analogous
+equivalence holds for foldri and foldr.
+</dd><br /><dt><b>[<tt><a name='findi'>findi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='find'>find f sl</a></tt>]</b></dt> <dd>These functions apply f to each element of the slice sl,
+in order of increasing indices, until a true value is returned. If
+this occurs, the functions return the element; otherwise, they return
+NONE. The more general version findi also supplies f with the index of
+the element in the slice and, upon finding an entry satisfying the
+predicate, returns that index with the element.
+</dd><br /><dt><b>[<tt><a name='exists'>exists f sl</a></tt>]</b></dt> <dd>applies f to each element x of the slice sl, in order of
+increasing indices, until f x evaluates to true; it returns true if
+such an x exists and false otherwise.
+</dd><br /><dt><b>[<tt><a name='all'>all f sl</a></tt>]</b></dt> <dd>applies f to each element x of the slice sl, from left to
+right (i.e., increasing indices), until f x evaluates to false; it
+returns false if such an x exists and true otherwise. It is equivalent
+to not(exists (not o f) l)).
+</dd><br /><dt><b>[<tt><a name='collate'>collate f (sl, sl2)</a></tt>]</b></dt> <dd>performs lexicographic comparison of the two
+slices using the given ordering f on elements.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

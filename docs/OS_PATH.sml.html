@@ -1,0 +1,238 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>OS_PATH</code> <tt><i>(basis)</i></tt></h4><p> Path management operations for the operating system. </p><hr /><pre><b>structure Path : OS_PATH <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> OS_PATH =
+  <b>sig</b>
+    <b>exception</b> Path
+    <b>exception</b> InvalidArc
+
+    <b>val</b> <a href='#parentArc'>parentArc</a>  : string
+    <b>val</b> <a href='#currentArc'>currentArc</a> : string
+    <b>val</b> <a href='#fromString'>fromString</a> : string -> {isAbs : bool,
+			        vol : string,
+			        arcs : string list
+			       }
+    <b>val</b> <a href='#toString'>toString</a>   : {isAbs : bool,
+		      vol : string,
+		      arcs : string list
+		     } -> string
+
+    <b>val</b> <a href='#validVolume'>validVolume</a>  : {isAbs: bool, vol: string} -> bool
+
+    <b>val</b> <a href='#getVolume'>getVolume</a>    : string -> string
+    <b>val</b> <a href='#getParent'>getParent</a>    : string -> string
+
+    <b>val</b> <a href='#splitDirFile'>splitDirFile</a> : string -> {dir: string, file: string}
+    <b>val</b> <a href='#joinDirFile'>joinDirFile</a>  : {dir : string, file : string} -> string
+    <b>val</b> <a href='#dir'>dir</a>          : string -> string
+    <b>val</b> <a href='#file'>file</a>         : string -> string
+
+    <b>val</b> <a href='#splitBaseExt'>splitBaseExt</a> : string -> {base: string, ext: string option}
+    <b>val</b> <a href='#joinBaseExt'>joinBaseExt</a>  : {base: string, ext: string option} -> string
+    <b>val</b> <a href='#base'>base</a>         : string -> string
+    <b>val</b> <a href='#ext'>ext</a>          : string -> string option
+
+    <b>val</b> <a href='#mkCanonical'>mkCanonical</a>  : string -> string
+    <b>val</b> <a href='#isCanonical'>isCanonical</a>  : string -> bool
+    <b>val</b> <a href='#mkAbsolute'>mkAbsolute</a>   : {path: string, relativeTo: string} -> string
+    <b>val</b> <a href='#mkRelative'>mkRelative</a>   : {path: string, relativeTo: string} -> string
+    <b>val</b> <a href='#isAbsolute'>isAbsolute</a>   : string -> bool
+    <b>val</b> <a href='#isRelative'>isRelative</a>   : string -> bool
+    <b>val</b> <a href='#isRoot'>isRoot</a>       : string -> bool
+
+    <b>val</b> <a href='#concat'>concat</a>       : string * string -> string
+
+    <b>val</b> <a href='#fromUnixPath'>fromUnixPath</a> : string -> string
+    <b>val</b> <a href='#toUnixPath'>toUnixPath</a>   : string -> string
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='parentArc'>parentArc</a></tt>]</b></dt> <dd>The string denoting the parent directory (e.g., &quot;..&quot; on
+Microsoft Windows and Unix).
+</dd><br /><dt><b>[<tt><a name='currentArc'>currentArc</a></tt>]</b></dt> <dd>The string denoting the current directory (e.g., &quot;.&quot; on
+Microsoft Windows and Unix).
+</dd><br /><dt><b>[<tt><a name='fromString'>fromString path</a></tt>]</b></dt> <dd>returns the decomposition {isAbs, vol, arcs} of the
+path specified by path.  vol is the volume name and arcs is the list
+of (possibly empty) arcs of the path. isAbs is true if the path is
+absolute. Under Unix, the volume name is always the empty string;
+under Microsoft Windows, in addition it can have the form &quot;A:&quot;, &quot;C:&quot;,
+etc.
+Here are some examples for Unix paths:
+<pre>
+    path 	fromString path
+    &quot;&quot;  	{isAbs=false, vol=&quot;&quot;, arcs=[]}
+    &quot;/&quot; 	{isAbs=true, vol=&quot;&quot;, arcs=[&quot;&quot;]}
+    &quot;//&quot; 	{isAbs=true, vol=&quot;&quot;, arcs=[&quot;&quot;, &quot;&quot;]}
+    &quot;a&quot; 	{isAbs=false, vol=&quot;&quot;, arcs=[&quot;a&quot;]}
+    &quot;/a&quot; 	{isAbs=true, vol=&quot;&quot;, arcs=[&quot;a&quot;]}
+    &quot;//a&quot; 	{isAbs=true, vol=&quot;&quot;, arcs=[&quot;&quot;,&quot;a&quot;]}
+    &quot;a/&quot; 	{isAbs=false, vol=&quot;&quot;, arcs=[&quot;a&quot;, &quot;&quot;]}
+    &quot;a//&quot; 	{isAbs=false, vol=&quot;&quot;, arcs=[&quot;a&quot;, &quot;&quot;, &quot;&quot;]}
+    &quot;a/b&quot; 	{isAbs=false, vol=&quot;&quot;, arcs=[&quot;a&quot;, &quot;b&quot;]}
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='toString'>toString {isAbs, vol, arcs}</a></tt>]</b></dt> <dd>makes a string out of a path represented
+as a list of arcs. isAbs specifies whether or not the path is
+absolute, and vol provides a corresponding volume. It returns &quot;&quot; when
+applied to {isAbs=false, vol=&quot;&quot;, arcs=[]}. The exception Path is
+raised if validVolume{isAbs, vol} is false, or if isAbs is false and
+arcs has an initial empty arc. The exception InvalidArc is raised if
+any component in arcs is not a valid representation of an arc.  The
+exception Size is raised if the resulting string would have size
+greater than String.maxSize.
+The composition (toString o fromString) is the identity. The
+composition (fromString o toString) is also the identity, provided no
+exception is raised and none of the strings in arcs contains an
+embedded arc separator character. In addition, isRelative(toString
+{isAbs=false, vol, arcs}) evaluates to true when defined.
+</dd><br /><dt><b>[<tt><a name='validVolume'>validVolume {isAbs, vol}</a></tt>]</b></dt> <dd>returns true if vol is a valid volume name
+for an absolute or relative path, respectively as isAbs is true or
+false. Under Unix, the only valid volume name is &quot;&quot;. Under Microsoft
+Windows, the valid volume names have the form &quot;a:&quot;, &quot;A:&quot;, &quot;b:&quot;, &quot;B:&quot;,
+etc. and, if isAbs = false, also &quot;&quot;. Under MacOS, isAbs can be true if
+and only if vol is &quot;&quot;.
+</dd><br /><dt><b>[<tt><a name='getVolume'>getVolume path</a></tt>]</b></dt> <dd>returns the volume portion of the path path.
+</dd><br /><dt><b>[<tt><a name='getParent'>getParent path</a></tt>]</b></dt> <dd>returns a string denoting the parent directory of
+path. It holds that getParent path = path if and only if path is a
+root. If the last arc is empty or the parent arc, then getParent
+appends a parent arc. If the last arc is the current arc, then it is
+replaced with the parent arc. Note that if path is canonical, then the
+result of getParent will also be canonical.
+Here are some examples for Unix paths:
+<pre>
+    path 	getParent path
+    &quot;/&quot; 	&quot;/&quot;
+    &quot;a&quot; 	&quot;.&quot;
+    &quot;a/&quot; 	&quot;a/..&quot;
+    &quot;a///&quot; 	&quot;a///..&quot;
+    &quot;a/b&quot; 	&quot;a&quot;
+    &quot;a/b/&quot; 	&quot;a/b/..&quot;
+    &quot;..&quot; 	&quot;../..&quot;
+    &quot;.&quot; 	&quot;..&quot;
+    &quot;&quot; 	&quot;..&quot;
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='splitDirFile'>splitDirFile path</a></tt>]</b></dt> <dd>splits the string path path into its directory and
+file parts, where the file part is defined to be the last arc. The
+file will be &quot;&quot;, if the last arc is &quot;&quot;.
+Here are some examples for Unix paths:
+<pre>
+    path 	splitDirFile path
+    &quot;&quot;  	{dir = &quot;&quot;, file = &quot;&quot;}
+    &quot;.&quot; 	{dir = &quot;&quot;, file = &quot;.&quot;}
+    &quot;b&quot; 	{dir = &quot;&quot;, file = &quot;b&quot;}
+    &quot;b/&quot; 	{dir = &quot;b&quot;, file = &quot;&quot;}
+    &quot;a/b&quot; 	{dir = &quot;a&quot;, file = &quot;b&quot;}
+    &quot;/a&quot; 	{dir = &quot;/&quot;, file = &quot;a&quot;}
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='joinDirFile'>joinDirFile {dir, file}</a></tt>]</b></dt> <dd>creates a whole path out of a directory and
+a file by extending the path dir with the arc file. If the string file
+does not correspond to an arc, raises InvalidArc. The exception Size
+is raised if the resulting string would have size greater than
+String.maxSize.
+</dd><br /><dt><b>[<tt><a name='dir'>dir path</a></tt>]</b></dt><dt><b>[<tt><a name='file'>file path</a></tt>]</b></dt> <dd>These functions return the directory and file parts of a path,
+respectively. They are equivalent to #dir o splitDirFile and #file o
+splitDirFile, respectively, although they are probably more efficient.
+</dd><br /><dt><b>[<tt><a name='splitBaseExt'>splitBaseExt path</a></tt>]</b></dt> <dd>splits the path path into its base and extension
+parts. The extension is a non-empty sequence of characters following
+the right-most, non-initial, occurrence of &quot;.&quot; in the last arc; NONE
+is returned if the extension is not defined. The base part is
+everything to the left of the extension except the final &quot;.&quot;. Note
+that if there is no extension, a terminating &quot;.&quot; is included with the
+base part.
+Here are some examples for Unix paths:
+<pre>
+    path 	splitBaseExt path
+    &quot;&quot;  	{base = &quot;&quot;, ext = NONE}
+    &quot;.login&quot; 	{base = &quot;.login&quot;, ext = NONE}
+    &quot;/.login&quot; 	{base = &quot;/.login&quot;, ext = NONE}
+    &quot;a&quot; 	{base = &quot;a&quot;, ext = NONE}
+    &quot;a.&quot; 	{base = &quot;a.&quot;, ext = NONE}
+    &quot;a.b&quot; 	{base = &quot;a&quot;, ext = SOME &quot;b&quot;}
+    &quot;a.b.c&quot; 	{base = &quot;a.b&quot;, ext = SOME &quot;c&quot;}
+    &quot;.news/comp&quot; 	{base = &quot;.news/comp&quot;, ext = NONE}
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='joinBaseExt'>joinBaseExt {base, ext}</a></tt>]</b></dt> <dd>returns an arc composed of the base name and
+the extension (if different from NONE). It is a left inverse of
+splitBaseExt, i.e., joinBaseExt o splitBaseExt is the identity. The
+opposite does not hold, since the extension may be empty, or may
+contain extension separators. Note that although splitBaseExt will
+never return the extension SOME(&quot;&quot;), joinBaseExt treats this as
+equivalent to NONE. The exception Size is raised if the resulting
+string would have size greater than String.maxSize.
+</dd><br /><dt><b>[<tt><a name='base'>base path</a></tt>]</b></dt><dt><b>[<tt><a name='ext'>ext path</a></tt>]</b></dt> <dd>These functions return the base and extension parts of a path,
+respectively. They are equivalent to #base o splitBaseExt and #ext o
+splitBaseExt, respectively, although they are probably more efficient.
+</dd><br /><dt><b>[<tt><a name='mkCanonical'>mkCanonical path</a></tt>]</b></dt> <dd>returns the canonical path equivalent to
+path. Redundant occurrences of the parent arc, the current arc, and
+the empty arc are removed. The canonical path will never be the empty
+string; the empty path is converted to the current directory path (&quot;.&quot;
+under Unix and Microsoft Windows).
+Note that the syntactic canonicalization provided by mkCanonical may
+not preserve file system meaning in the presence of symbolic links
+(see concat).
+</dd><br /><dt><b>[<tt><a name='isCanonical'>isCanonical path</a></tt>]</b></dt> <dd>returns true if path is a canonical path. It is
+equivalent to (path = mkCanonical path).
+</dd><br /><dt><b>[<tt><a name='mkAbsolute'>mkAbsolute {path, relativeTo}</a></tt>]</b></dt> <dd>returns an absolute path that is
+equivalent to the path path relative to the absolute path
+relativeTo. If path is already absolute, it is returned
+unchanged. Otherwise, the function returns the canonical concatenation
+of relativeTo with path, i.e., mkCanonical (concat (abs, p)). Thus, if
+path and relativeTo are canonical, the result will be canonical. If
+relativeTo is not absolute, or if the two paths refer to different
+volumes, then the Path exception is raised. The exception Size is
+raised if the resulting string would have size greater than
+String.maxSize.
+</dd><br /><dt><b>[<tt><a name='mkRelative'>mkRelative {path, relativeTo}</a></tt>]</b></dt> <dd>returns a relative path p that, when
+taken relative to the canonical form of the absolute path relativeTo,
+is equivalent to the path path. If path is relative, it is returned
+unchanged. If path is absolute, the procedure for computing the
+relative path is to first compute the canonical form abs of
+relativeTo. If path and abs are equal, then the current arc is the
+result.  Otherwise, the common prefix is stripped from path and abs
+giving p' and abs'.  The resulting path is then formed by appending p'
+to a path consisting of one parent arc for each arc in abs'. Note that
+if both paths are canonical, then the result will be canonical.
+If relativeTo is not absolute, or if path and relativeTo are both
+absolute but have different roots, the Path exception is raised. The
+exception Size is raised if the resulting string would have size
+greater than String.maxSize.
+Here are some examples for Unix paths:
+<pre>
+    path 	relativeTo 	mkRelative{path, relativeTo}
+    &quot;a/b&quot; 	&quot;/c/d&quot; 	&quot;a/b&quot;
+    &quot;/&quot; 	&quot;/a/b/c&quot; 	&quot;../../..&quot;
+    &quot;/a/b/&quot; 	&quot;/a/c&quot; 	&quot;../b/&quot;
+    &quot;/a/b&quot; 	&quot;/a/c&quot; 	&quot;../b&quot;
+    &quot;/a/b/&quot; 	&quot;/a/c/&quot; 	&quot;../b/&quot;
+    &quot;/a/b&quot; 	&quot;/a/c/&quot; 	&quot;../b&quot;
+    &quot;/&quot; 	&quot;/&quot; 	&quot;.&quot;
+    &quot;/&quot; 	&quot;/.&quot; 	&quot;.&quot;
+    &quot;/&quot; 	&quot;/..&quot; 	&quot;.&quot;
+    &quot;/a/b/../c&quot; 	&quot;/a/d&quot; 	&quot;../b/../c&quot;
+    &quot;/a/b&quot; 	&quot;/c/d&quot; 	&quot;../../a/b&quot;
+    &quot;/c/a/b&quot; 	&quot;/c/d&quot; 	&quot;../a/b&quot;
+    &quot;/c/d/a/b&quot; 	&quot;/c/d&quot; 	&quot;a/b&quot;
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='isAbsolute'>isAbsolute path</a></tt>]</b></dt><dt><b>[<tt><a name='isRelative'>isRelative path</a></tt>]</b></dt> <dd>These functions return true if path is, respectively, absolute or relative.
+</dd><br /><dt><b>[<tt><a name='isRoot'>isRoot path</a></tt>]</b></dt> <dd>returns true if path is a canonical specification of a
+root directory.
+</dd><br /><dt><b>[<tt><a name='concat'>concat (path, t)</a></tt>]</b></dt> <dd>returns the path consisting of path followed by
+t. It raises the exception Path if t is not a relative path or if path
+and t refer to different volumes. The exception Size is raised if the
+resulting string would have size greater than String.maxSize.
+An implementation of concat might be:
+<pre>
+     fun concat (p1, p2) = (case (fromString p1, fromString p2)
+       of (_, {isAbs=true, ...}) =&gt; raise Path
+        | ({isAbs, vol=v1, arcs=al1},
+           {vol=v2, arcs=al2, ...}
+          ) =&gt; if ((v2 = &quot;&quot;) orelse (v1 = v2))
+              then toString{
+                  isAbs=isAbs, vol=v1,
+                  arcs=concatArcs(al1, al2)
+                }
+              else raise Path
+      (* end case 
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

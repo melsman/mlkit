@@ -1,0 +1,110 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>OS_IO</code> <tt><i>(basis)</i></tt></h4><p> Interface for I/O devices.</p>The OS.IO structure provides a general interface for polling I/O
+devices. This interface has been modeled after the Unix SVR4 poll
+interface. A poll_desc, created from an I/O descriptor, can be used to
+test for various polling conditions.
+
+<hr /><pre><b>signature</b> OS_IO =
+  <b>sig</b>
+    <b>eqtype</b> iodesc
+    <b>val</b> <a href='#hash'>hash</a> : iodesc -> word
+    <b>val</b> <a href='#compare'>compare</a> : iodesc * iodesc -> order
+    <b>eqtype</b> iodesc_kind
+(*
+    val kind : iodesc -> iodesc_kind
+*)
+    <b>structure</b> Kind : <b>sig</b>
+      <b>val</b> <a href='#file'>file</a>    : iodesc_kind
+      <b>val</b> <a href='#dir'>dir</a>     : iodesc_kind
+      <b>val</b> <a href='#symlink'>symlink</a> : iodesc_kind
+      <b>val</b> <a href='#tty'>tty</a>     : iodesc_kind
+      <b>val</b> <a href='#pipe'>pipe</a>    : iodesc_kind
+      <b>val</b> <a href='#socket'>socket</a>  : iodesc_kind
+      <b>val</b> <a href='#device'>device</a>  : iodesc_kind
+    <b>end</b>
+(*
+    eqtype poll_desc
+    type poll_info
+    val pollDesc : iodesc -> poll_desc option
+    val pollToIODesc : poll_desc -> iodesc
+    exception Poll
+    val pollIn  : poll_desc -> poll_desc
+    val pollOut : poll_desc -> poll_desc
+    val pollPri : poll_desc -> poll_desc
+    val poll : poll_desc list * Time.time option -> poll_info list
+    val isIn  : poll_info -> bool
+    val isOut : poll_info -> bool
+    val isPri : poll_info -> bool
+    val infoToPollDesc : poll_info -> poll_desc
+*)
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype iodesc</tt>]</b></dt> <dd>An iodesc is an abstraction for an opened OS object
+that supports I/O (e.g., a file, console, or socket). In Unix, an
+iodesc corresponds to a file descriptor, while in Microsoft Windows it
+corresponds to a file handle.  Since iodesc values correspond to
+low-level, OS-specific objects, they are not typically created
+explicitly by the user, but are generated as a side-effect of the
+creation of a more high-level abstraction. For example, TextIO.openIn
+creates an instream value, from which the underlying PrimIO.reader can
+be accessed. This latter value may contain the corresponding iodesc
+value.
+If the underlying operating system is known, there will usually be
+mechanisms for converting between iodesc values and the type of value
+used by the operating system. For example, the functions
+Posix.FileSys.fdToIOD and Posix.FileSys.iodToFD provide this service
+for POSIX implementations, translating between iodescs and open file
+descriptors.
+</dd><br /><dt><b>[<tt><a name='hash'>hash iod</a></tt>]</b></dt> <dd>returns a hash value for the I/O descriptor iod.
+Implementation note:
+<pre>
+    hash must have the property that values produced are well
+    distributed when taken modulo 2(n) for any n.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='compare'>compare (iod, iod')</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER when iod is less
+than, equal to, or greater than iod', respectively, in some underlying
+linear ordering on iodesc values.
+</dd><br /><dt><b>[<tt>eqtype iodesc_kind</tt>]</b></dt> <dd>This abstract type is used to represent the kind
+of system object that an iodesc represents. The possible values are
+defined in the Kind substructure.
+</dd><br /><dt><b>[<tt>kind iod</tt>]</b></dt> <dd>returns the kind of system object that the I/O descriptor
+iod represents. This will raise OS.SysErr if, for example, iod refers
+to a closed file.
+</dd><br /><dt><b>[<tt>structure Kind</tt>]</b></dt> <dd>These values represent the various kinds of system
+objects that an I/O descriptor might represent. Note that a given
+implementation may define other iodesc values not covered by these
+definitions.
+<pre>
+    [file] A regular file in the file system. The I/O descriptor
+    associated with a stream produced by one of the BinIO or TextIO
+    file opening operations will always have this kind.
+</pre>
+
+<pre>
+    [dir] A directory in the file system. I/O descriptors associated
+    with file system objects for which OS.FileSys.isDir returns true
+    will have this kind.
+</pre>
+
+<pre>
+    [symlink] A symbolic link or file system alias. I/O descriptors
+    associated with file system objects for which OS.FileSys.isLink
+    returns true will have this kind.
+</pre>
+
+<pre>
+    [tty] A terminal console.
+</pre>
+
+<pre>
+    [pipe] A pipe to another system process.
+</pre>
+
+<pre>
+    [socket] A network socket.
+</pre>
+
+<pre>
+    [device] A logical or physical hardware device.
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

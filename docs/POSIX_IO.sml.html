@@ -1,0 +1,235 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_IO</code> <tt><i>(basis)</i></tt></h4><p> Posix IO operations.</p>The structure Posix.IO specifies functions that provide the primitive
+POSIX input/output operations, as described in Section 6 of the POSIX
+standard 1003.1,1996.
+
+<hr /><pre><b>signature</b> POSIX_IO =
+  <b>sig</b>
+    <b>eqtype</b> file_desc
+    <b>eqtype</b> pid
+
+    <b>datatype</b> whence =
+        SEEK_SET
+      | SEEK_CUR
+      | SEEK_END
+
+    <b>datatype</b> open_mode =
+        O_RDONLY
+      | O_WRONLY
+      | O_RDWR
+
+    <b>structure</b> FD :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#cloexec'>cloexec</a> : flags
+      <b>end</b>
+
+    <b>structure</b> O :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#append'>append</a>   : flags
+        <b>val</b> <a href='#nonblock'>nonblock</a> : flags
+        <b>val</b> <a href='#sync'>sync</a>     : flags
+      <b>end</b>
+
+    <b>val</b> <a href='#close'>close</a> : file_desc -> unit
+    <b>val</b> <a href='#dup'>dup</a>   : file_desc -> file_desc
+    <b>val</b> <a href='#dup2'>dup2</a>  : {old : file_desc, new : file_desc} -> unit
+    <b>val</b> <a href='#dupfd'>dupfd</a> : {old : file_desc, base : file_desc} -> file_desc
+    <b>val</b> <a href='#pipe'>pipe</a>  : unit -> {infd : file_desc, outfd : file_desc}
+    <b>val</b> <a href='#getfd'>getfd</a> : file_desc -> FD.flags
+    <b>val</b> <a href='#setfd'>setfd</a> : file_desc * FD.flags -> unit
+
+    <b>datatype</b> lock_type
+      = F_RDLCK
+      | F_WRLCK
+      | F_UNLCK
+
+    <b>val</b> <a href='#setfl'>setfl</a> : file_desc * O.flags -> unit
+    <b>val</b> <a href='#getfl'>getfl</a> : file_desc -> O.flags * open_mode
+    <b>val</b> <a href='#lseek'>lseek</a> : file_desc * <a href='INTEGER.sml.html'>Position</a>.int * whence -> <a href='INTEGER.sml.html'>Position</a>.int
+
+    <b>val</b> <a href='#readVec'>readVec</a>  : file_desc * int -> <a href='MONO_VECTOR.sml.html'>Word8Vector</a>.vector
+    <b>val</b> <a href='#readArr'>readArr</a>  : file_desc * <a href='MONO_ARRAY_SLICE.sml.html'>Word8ArraySlice</a>.slice -> int
+    <b>val</b> <a href='#writeVec'>writeVec</a> : file_desc * <a href='MONO_VECTOR_SLICE.sml.html'>Word8VectorSlice</a>.slice -> int
+    <b>val</b> <a href='#writeArr'>writeArr</a> : file_desc * <a href='MONO_ARRAY_SLICE.sml.html'>Word8ArraySlice</a>.slice -> int
+
+    <b>val</b> <a href='#mkTextReader'>mkTextReader</a> : { fd : file_desc,
+                         name : string,
+                         initBlkMode : bool
+                       } -> <a href='PRIM_IO.sml.html'>TextPrimIO</a>.reader
+
+    <b>val</b> <a href='#mkTextWriter'>mkTextWriter</a> : { fd : file_desc,
+                         name : string,
+                         appendMode : bool,
+                         initBlkMode : bool,
+                         chunkSize : int
+                       } -> <a href='PRIM_IO.sml.html'>TextPrimIO</a>.writer
+
+    <b>val</b> <a href='#mkBinReader'>mkBinReader</a>  : { fd : file_desc,
+                         name : string,
+                         initBlkMode : bool
+                       } -> <a href='PRIM_IO.sml.html'>BinPrimIO</a>.reader
+
+    <b>val</b> <a href='#mkBinWriter'>mkBinWriter</a>  : { fd : file_desc,
+                         name : string,
+                         appendMode : bool,
+                         initBlkMode : bool,
+                         chunkSize : int
+                       } -> <a href='PRIM_IO.sml.html'>BinPrimIO</a>.writer
+
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype file_desc</tt>]</b></dt> <dd>Type of posix file descriptors.
+</dd><br /><dt><b>[<tt>eqtype pid</tt>]</b></dt> <dd>Type of posix process ids.
+</dd><br /><dt><b>[<tt><a name='pipe'>pipe()</a></tt>]</b></dt> <dd>This function creates a pipe (channel) and returns two file
+descriptors that refer to the read (infd) and write (outfd) ends of
+the pipe.
+</dd><br /><dt><b>[<tt><a name='dup'>dup fd</a></tt>]</b></dt> <dd>returns a new file descriptor that refers to the same open
+file, with the same file pointer and access mode, as fd. The
+underlying word (see Posix.FileSys.fdToWord) of the returned file
+descriptor is the lowest one available. It is equivalent to dupfd
+{old=fd, base=Posix.FileSys.wordToFD 0w0}.
+</dd><br /><dt><b>[<tt><a name='dup2'>dup2 {old, new}</a></tt>]</b></dt> <dd>duplicates the open file descriptor old as file
+descriptor new.
+</dd><br /><dt><b>[<tt><a name='close'>close fd</a></tt>]</b></dt> <dd>closes the file descriptor fd.
+</dd><br /><dt><b>[<tt><a name='readVec'>readVec (fd, n)</a></tt>]</b></dt> <dd>reads at most n bytes from the file referred to by
+fd. The size of the resulting vector is the number of bytes that were
+successfully read, which may be less than n. This function returns the
+empty vector if end-of-stream is detected (or if n is 0). It raises
+the Size exception if n &lt; 0.
+</dd><br /><dt><b>[<tt><a name='readArr'>readArr (fd, slice)</a></tt>]</b></dt> <dd>reads bytes from the file specified by fd into
+the array slice slice and returns the number of bytes actually
+read. The end-of-file condition is marked by returning 0, although 0
+is also returned if the slice is empty. This function will raise
+OS.SysErr if there is some problem with the underlying system call
+(e.g., the file is closed).
+</dd><br /><dt><b>[<tt><a name='writeVec'>writeVec (fd, slice)</a></tt>]</b></dt><dt><b>[<tt><a name='writeArr'>writeArr (fd, slice)</a></tt>]</b></dt> <dd>These functions write the bytes the vector or array slice slice to the
+open file fd. Both functions return the number bytes actually written
+and will raise OS.SysErr if there is some problem with the underlying
+system call (e.g., the file is closed or there is insufficient disk
+space).
+</dd><br /><dt><b>[<tt>structure FD</tt>]</b></dt> <dd>File descriptor flags.
+<pre>
+    [cloexec] File descriptor flag that, if set, will cause the file
+    descriptor to be closed should the opening process replace itself
+    (through exec, etc.). If cloexec is not set, the open file
+    descriptor will be inherited by the new process.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure O</tt>]</b></dt> <dd>File status flags.
+<pre>
+    [append] File status flag which forces the file offset to be set
+    to the end of the file prior to each write.
+</pre>
+
+<pre>
+    [nonblock] File status flag used to enable non-blocking I/O.
+</pre>
+
+<pre>
+    [sync] File status flag enabling writes using ``synchronized I/O
+    file integrity completion.''
+</pre>
+
+</dd><br /><dt><b>[<tt>datatype open_mode</tt>]</b></dt> <dd>Type specifying operations allowed on an open
+file.
+<pre>
+    O_RDONLY : Open a file for reading only.
+    O_WRONLY : Open a file for writing only.
+    O_RDWR   : Open a file for reading and writing.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='dupfd'>dupfd {old, base}</a></tt>]</b></dt> <dd>returns a new file descriptor bound to old. The
+returned descriptor is greater than or equal to the file descriptor
+base based on the underlying integer mapping defined by
+Posix.FileSys.fdToWord and Posix.FileSys.wordToFD. It corresponds to
+the POSIX fcntl function with the F_DUPFD command.
+</dd><br /><dt><b>[<tt><a name='getfd'>getfd fd</a></tt>]</b></dt> <dd>gets the file descriptor flags associated with fd. It
+corresponds to the POSIX fcntl function with the F_GETFD command.
+</dd><br /><dt><b>[<tt><a name='setfd'>setfd (fd, fl)</a></tt>]</b></dt> <dd>sets the flags of file descriptor fd to fl. It
+corresponds to the POSIX fcntl function with the F_SETFD command.
+</dd><br /><dt><b>[<tt><a name='getfl'>getfl fd</a></tt>]</b></dt> <dd>gets the file status flags for the open file descriptor fd
+and the access mode in which the file was opened. It corresponds to
+the POSIX fcntl function with the F_GETFL command.
+</dd><br /><dt><b>[<tt><a name='setfl'>setfl (fd, fl)</a></tt>]</b></dt> <dd>sets the file status flags for the open file
+descriptor fd to fl. It corresponds to the POSIX fcntl function with
+the F_SETFL command.
+</dd><br /><dt><b>[<tt><a name='lseek'>lseek (fd, off, wh)</a></tt>]</b></dt> <dd>sets the file offset for the open file
+descriptor fd to off if wh is SEEK_SET; to its current value plus off
+bytes if wh is SEEK_CUR; or, to the size of the file plus off bytes if
+wh is SEEK_END. Note that off may be negative.
+</dd><br /><dt><b>[<tt>fsync fd</tt>]</b></dt> <dd>indicates that all data for the open file descriptor fd is
+to be transferred to the device associated with the descriptor; it is
+similar to a ``flush'' operation.
+</dd><br /><dt><b>[<tt>datatype lock_type</tt>]</b></dt> <dd>Constructors of this type denote the lock
+types. F_RDLCK indicates a shared or read lock. F_WRLCK indicates an
+exclusive or write lock. F_WRLCK indicates a lock is unlocked or
+inactive.
+</dd><br /><dt><b>[<tt>structure FLock</tt>]</b></dt> <dd>File locks.
+<pre>
+    [type flock] Type representing an advisory lock. It can be
+    considered an abstraction of the record used as the argument to
+    the flock function below.
+</pre>
+
+<pre>
+    [flock {ltype, whence, start, len, pid}] creates a flock value
+    described by the parameters. The whence and start parameters give
+    the beginning file position as in lseek. The len value provides
+    the number of bytes to be locked. If the section starts at the
+    beginning of the file and len = 0, then the entire file is
+    locked. Normally, pid will be NONE. This value is only used in a
+    flock returned by getlk.
+</pre>
+
+<pre>
+    [ltype flock]
+    [whence flock]
+    [start flock]
+    [len flock]
+    [pid flock]
+</pre>
+
+<pre>
+    These are projection functions for the fields composing a flock
+    value.
+</pre>
+
+</dd><br /><dt><b>[<tt>getlk (fd, fl)</tt>]</b></dt> <dd>gets the first lock that blocks the lock description
+fl on the open file descriptor fd. It corresponds to the POSIX fcntl
+function with the F_GETLK command.
+</dd><br /><dt><b>[<tt>setlk (fd, fl)</tt>]</b></dt> <dd>sets or clears a file segment lock according to the
+lock description fl on the open file descriptor fd. An exception is
+raised immediately if a shared or exclusive lock cannot be set. It
+corresponds to the POSIX fcntl function with the F_SETLK command.
+</dd><br /><dt><b>[<tt>setlkw (file_desc,flock)</tt>]</b></dt> <dd>This is similar to the setlk function above
+except that setlkw waits on blocked locks until they are released. It
+corresponds to the POSIX fcntl function with the F_SETLKW command.
+</dd><br /><dt><b>[<tt><a name='mkBinReader'>mkBinReader arg</a></tt>]</b></dt><dt><b>[<tt><a name='mkTextReader'>mkTextReader arg</a></tt>]</b></dt> <dd>These functions convert an open POSIX file descriptor into a
+reader. From this, one can then construct an input stream. The
+functions are comparable to the POSIX function fdopen.  The argument
+fields have the following meanings:
+<pre>
+    fd          : A file descriptor for a file opened for reading.
+    name        : The name associated with the file, used in error
+                  messages shown to the user.
+    initBlkMode : False if the file is currently in non-blocking mode,
+                  i.e., if the flag O.nonblock is set in #1(getfl fd).
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='mkBinWriter'>mkBinWriter arg</a></tt>]</b></dt><dt><b>[<tt><a name='mkTextWriter'>mkTextWriter arg</a></tt>]</b></dt> <dd>These functions convert an open POSIX file descriptor into a
+writer. From this, one can then construct an output stream. The
+functions are comparable to the POSIX function fdopen.  The argument
+fields have the following meanings:
+<pre>
+    fd          : A file descriptor for a file opened for writing.
+    name        : The name associated with the file, used in error
+                  messages shown to the user.
+    initBlkMode : False if the file is currently in non-blocking mode,
+                  i.e., if the flag O.nonblock is set in #1(getfl fd).
+    appendMode  : True if the file is in append mode, i.e., if the
+                  flag O.append is set in #1(getfl fd).
+    chunkSize   : The recommended size of write operations for
+                  efficient writing.
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

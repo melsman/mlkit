@@ -1,0 +1,62 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_SIGNAL</code> <tt><i>(basis)</i></tt></h4><p> Symbolic names of POSIX signals.</p>The structure Posix.Signal defines the symbolic names of all the POSIX
+signals (see Section 3.3 of the POSIX standard 1003.1,1996), and
+provides conversion functions between them and their underlying
+representations.
+
+<hr /><pre><b>signature</b> POSIX_SIGNAL =
+  <b>sig</b>
+    <b>eqtype</b> signal
+
+    <b>val</b> <a href='#toWord'>toWord</a>   : signal -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#fromWord'>fromWord</a> : <a href='WORD.sml.html'>SysWord</a>.word -> signal
+
+    <b>val</b> <a href='#abrt'>abrt</a> : signal
+    <b>val</b> <a href='#alrm'>alrm</a> : signal
+    <b>val</b> <a href='#bus'>bus</a>  : signal
+    <b>val</b> <a href='#fpe'>fpe</a>  : signal
+    <b>val</b> <a href='#hup'>hup</a>  : signal
+    <b>val</b> <a href='#ill'>ill</a>  : signal
+    <b>val</b> <a href='#int'>int</a>  : signal
+    <b>val</b> <a href='#kill'>kill</a> : signal
+    <b>val</b> <a href='#pipe'>pipe</a> : signal
+    <b>val</b> <a href='#quit'>quit</a> : signal
+    <b>val</b> <a href='#segv'>segv</a> : signal
+    <b>val</b> <a href='#term'>term</a> : signal
+    <b>val</b> <a href='#usr1'>usr1</a> : signal
+    <b>val</b> <a href='#usr2'>usr2</a> : signal
+    <b>val</b> <a href='#chld'>chld</a> : signal
+    <b>val</b> <a href='#cont'>cont</a> : signal
+    <b>val</b> <a href='#stop'>stop</a> : signal
+    <b>val</b> <a href='#tstp'>tstp</a> : signal
+    <b>val</b> <a href='#ttin'>ttin</a> : signal
+    <b>val</b> <a href='#ttou'>ttou</a> : signal
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype signal</tt>]</b></dt> <dd>The type of a POSIX signal, an asynchronous
+notification of an event.
+</dd><br /><dt><b>[<tt><a name='toWord'>toWord signal</a></tt>]</b></dt><dt><b>[<tt><a name='fromWord'>fromWord w</a></tt>]</b></dt> <dd>These funtions convert between a signal identifier and its underlying
+integer representation. Note that fromWord does not check that the
+result corresponds to a valid POSIX signal.
+</dd><br /><dt><b>[<tt><a name='abrt'>abrt</a></tt>]</b></dt> <dd>End process (abort).
+</dd><br /><dt><b>[<tt><a name='alrm'>alrm</a></tt>]</b></dt> <dd>Alarm clock.
+</dd><br /><dt><b>[<tt><a name='bus'>bus</a></tt>]</b></dt> <dd>Bus error.
+</dd><br /><dt><b>[<tt><a name='fpe'>fpe</a></tt>]</b></dt> <dd>Floating-point exception.
+</dd><br /><dt><b>[<tt><a name='hup'>hup</a></tt>]</b></dt> <dd>Hangup.
+</dd><br /><dt><b>[<tt><a name='ill'>ill</a></tt>]</b></dt> <dd>Illegal instruction.
+</dd><br /><dt><b>[<tt><a name='int'>int</a></tt>]</b></dt> <dd>Interrupt.
+</dd><br /><dt><b>[<tt><a name='kill'>kill</a></tt>]</b></dt> <dd>Kill. (It cannot be caught or ignored.)
+</dd><br /><dt><b>[<tt><a name='pipe'>pipe</a></tt>]</b></dt> <dd>Write on a pipe when there is no process to read it.
+</dd><br /><dt><b>[<tt><a name='quit'>quit</a></tt>]</b></dt> <dd>Quit.
+</dd><br /><dt><b>[<tt><a name='segv'>segv</a></tt>]</b></dt> <dd>Segmentation violation.
+</dd><br /><dt><b>[<tt><a name='term'>term</a></tt>]</b></dt> <dd>Software termination signal.
+</dd><br /><dt><b>[<tt><a name='usr1'>usr1</a></tt>]</b></dt> <dd>User-defined signal 1.
+</dd><br /><dt><b>[<tt><a name='usr2'>usr2</a></tt>]</b></dt> <dd>User-defined signal 2.
+</dd><br /><dt><b>[<tt><a name='chld'>chld</a></tt>]</b></dt> <dd>Sent to parent on child stop or exit.
+</dd><br /><dt><b>[<tt><a name='cont'>cont</a></tt>]</b></dt> <dd>Continue if stopped. (It cannot be caught or ignored.)
+</dd><br /><dt><b>[<tt><a name='stop'>stop</a></tt>]</b></dt> <dd>Stop. (It cannot be caught or ignored.)
+</dd><br /><dt><b>[<tt><a name='tstp'>tstp</a></tt>]</b></dt> <dd>Interactive stop.
+</dd><br /><dt><b>[<tt><a name='ttin'>ttin</a></tt>]</b></dt> <dd>Background read attempted from control terminal.
+</dd><br /><dt><b>[<tt><a name='ttou'>ttou</a></tt>]</b></dt> <dd>Background write attempted from control terminal.
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>The name of the corresponding POSIX signal can be derived by
+capitalizing all letters and adding the string ``SIG'' as a
+prefix. For example, the POSIX signal associated with usr2 is SIGUSR2.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

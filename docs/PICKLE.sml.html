@@ -1,0 +1,124 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>PICKLE</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-pickle'>github.com/diku-dk/sml-pickle</a>)</i></tt></h4><p> Generic pickle/serialisation library. </p><hr /><pre><b>structure Pickle : PICKLE <i>(pkg <a href='http://github.com/diku-dk/sml-pickle'>github.com/diku-dk/sml-pickle</a>)</i>
+</b></pre><hr /><pre><b>signature</b> PICKLE = <b>sig</b>
+    <b>type</b> 'a pu
+
+    <b>val</b> <a href='#pickle'>pickle</a>    : 'a pu -> 'a -> string
+    <b>val</b> <a href='#unpickle'>unpickle</a>  : 'a pu -> string -> 'a
+
+    <b>type</b> hce
+    <b>val</b> <a href='#empty$07hce'>empty_hce</a> : unit -> hce
+    <b>val</b> <a href='#unpickle$09'>unpickle'</a> : 'a pu -> hce -> string -> 'a * hce
+
+    <b>val</b> <a href='#word'>word</a>      : word pu
+    <b>val</b> <a href='#word8'>word8</a>     : <a href='WORD.sml.html'>Word8</a>.word pu
+    <b>val</b> <a href='#word32'>word32</a>    : <a href='WORD.sml.html'>Word32</a>.word pu
+    <b>val</b> <a href='#word64'>word64</a>    : <a href='WORD.sml.html'>Word64</a>.word pu
+    <b>val</b> <a href='#int'>int</a>       : int pu
+    <b>val</b> <a href='#int32'>int32</a>     : <a href='INTEGER.sml.html'>Int32</a>.int pu
+    <b>val</b> <a href='#int64'>int64</a>     : <a href='INTEGER.sml.html'>Int64</a>.int pu
+    <b>val</b> <a href='#bool'>bool</a>      : bool pu
+    <b>val</b> <a href='#string'>string</a>    : string pu
+    <b>val</b> <a href='#string0'>string0</a>   : string pu
+    <b>val</b> <a href='#char'>char</a>      : char pu
+    <b>val</b> <a href='#time'>time</a>      : <a href='TIME.sml.html'>Time</a>.time pu
+    <b>val</b> <a href='#real'>real</a>      : real pu
+    <b>val</b> <a href='#unit'>unit</a>      : unit pu
+    <b>val</b> <a href='#pairGen'>pairGen</a>   : 'a pu * 'b pu -> ('a * 'b) pu
+    <b>val</b> <a href='#tup3Gen'>tup3Gen</a>   : 'a pu * 'b pu * 'c pu -> ('a * 'b * 'c) pu
+    <b>val</b> <a href='#tup4Gen'>tup4Gen</a>   : 'a pu * 'b pu * 'c pu * 'd pu -> ('a * 'b * 'c * 'd) pu
+    <b>val</b> <a href='#pairGen0'>pairGen0</a>  : 'a pu * 'b pu -> ('a * 'b) pu
+    <b>val</b> <a href='#tup3Gen0'>tup3Gen0</a>  : 'a pu * 'b pu * 'c pu -> ('a * 'b * 'c) pu
+    <b>val</b> <a href='#tup4Gen0'>tup4Gen0</a>  : 'a pu * 'b pu * 'c pu * 'd pu -> ('a * 'b * 'c * 'd) pu
+    <b>val</b> <a href='#refEqGen'>refEqGen</a>  : ('a ref * 'a ref -> bool) -> 'a -> 'a pu -> 'a ref pu
+    <b>val</b> <a href='#refGen'>refGen</a>    : 'a -> 'a pu -> 'a ref pu
+    <b>val</b> <a href='#ref0Gen'>ref0Gen</a>   : 'a pu -> 'a ref pu
+    <b>val</b> <a href='#refOneGen'>refOneGen</a> : 'a pu -> 'a ref pu
+    <b>val</b> <a href='#ref0EqGen'>ref0EqGen</a> : ('a ref * 'a ref -> bool) -> 'a pu -> 'a ref pu
+    <b>val</b> <a href='#ref0ShGen'>ref0ShGen</a> : 'a pu -> 'a ref pu
+    <b>val</b> <a href='#listGen'>listGen</a>   : 'a pu -> 'a list pu
+    <b>val</b> <a href='#listGen0'>listGen0</a>  : 'a pu -> 'a list pu
+    <b>val</b> <a href='#optionGen'>optionGen</a> : 'a pu -> 'a option pu
+    <b>val</b> <a href='#vectorGen'>vectorGen</a> : 'a pu -> 'a <a href='VECTOR.sml.html'>Vector</a>.vector pu
+    <b>val</b> <a href='#shareGen'>shareGen</a>  : 'a pu -> 'a pu
+    <b>val</b> <a href='#enumGen'>enumGen</a>   : string * ''a list -> ''a pu
+
+    <b>val</b> <a href='#dataGen'>dataGen</a>   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
+    <b>val</b> <a href='#data2Gen'>data2Gen</a>  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
+                    -> 'a pu * 'b pu
+
+    <b>val</b> <a href='#data3Gen'>data3Gen</a>  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list
+	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list
+                    -> 'a pu * 'b pu * 'c pu
+
+    <b>val</b> <a href='#con0'>con0</a>      : 'a -> 'b -> 'a pu
+    <b>val</b> <a href='#con1'>con1</a>      : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
+
+    <b>val</b> <a href='#convert'>convert</a>   : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
+    <b>val</b> <a href='#convert0'>convert0</a>  : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
+
+    <b>val</b> <a href='#cache'>cache</a>     : string -> ('a -> 'b pu) -> 'a -> 'b pu
+    <b>val</b> <a href='#cache2'>cache2</a>    : string -> ('a -> 'b pu * 'c pu) -> 'a -> 'b pu * 'c pu
+
+    <b>val</b> <a href='#register'>register</a>  : string -> 'a list -> 'a pu -> 'a pu
+
+    <b>val</b> <a href='#registerEq'>registerEq</a>: ('a*'a->bool) -> ('a->int)
+	            -> string -> 'a list -> 'a pu -> 'a pu
+
+    <b>val</b> <a href='#hashCons'>hashCons</a>  : 'a pu -> 'a pu
+    <b>val</b> <a href='#hashConsEq'>hashConsEq</a>: ('a*'a->bool) -> 'a pu -> 'a pu
+
+    <b>val</b> <a href='#newHash'>newHash</a>      : ('a -> int) -> 'a pu -> 'a pu
+    <b>val</b> <a href='#combHash'>combHash</a>     : ('a -> int) -> 'a pu -> 'a pu
+    <b>val</b> <a href='#maybeNewHash'>maybeNewHash</a> : ('a -> int option) -> 'a pu -> 'a pu
+
+    <b>val</b> <a href='#debug'>debug</a>     : string -> 'a pu -> 'a pu
+    <b>val</b> <a href='#nameGen'>nameGen</a>   : string -> 'a pu -> 'a pu
+    <b>val</b> <a href='#comment'>comment</a>   : string -> 'a pu -> 'a pu
+    <b>val</b> <a href='#checkUnpickle'>checkUnpickle</a> : ('a -> unit) -> 'a pu -> 'a pu
+    <b>val</b> <a href='#debugUnpickle'>debugUnpickle</a> : string -> 'a pu -> 'a pu
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>'a pu</tt>]</b></dt> <dd>parameterized type of a pair of a pickler and an unpickler.
+</dd><br /><dt><b>[<tt><a name='word'>word</a></tt>]</b></dt> <dd>pickler-unpickler pair for word values.
+</dd><br /><dt><b>[<tt><a name='int'>int</a></tt>]</b></dt> <dd>pickler-unpickler pair for int values.
+</dd><br /><dt><b>[<tt><a name='bool'>bool</a></tt>]</b></dt> <dd>pickler-unpickler pair for bool values.
+</dd><br /><dt><b>[<tt><a name='string'>string</a></tt>]</b></dt> <dd>pickler-unpickler pair for string values.
+</dd><br /><dt><b>[<tt><a name='char'>char</a></tt>]</b></dt> <dd>pickler-unpickler pair for char values.
+</dd><br /><dt><b>[<tt><a name='pairGen'>pairGen(pu1,pu2)</a></tt>]</b></dt> <dd>generates a pickler-unpickler for a pair given
+pickler-unpicklers (pu1 and pu2) for the two components of the pair.
+</dd><br /><dt><b>[<tt><a name='refGen'>refGen v pu</a></tt>]</b></dt> <dd>generates a ref-pickler given (1) a dummy value v of
+the argument type (to deal with cycles) and (2) a pickler-unpickler
+for the argument type.
+</dd><br /><dt><b>[<tt><a name='ref0Gen'>ref0Gen pu</a></tt>]</b></dt> <dd>generates a ref-pickler given a pickler-unpickler
+for the argument type. The function assumes that the refs are
+not involved in cycles.
+</dd><br /><dt><b>[<tt><a name='listGen'>listGen pu</a></tt>]</b></dt> <dd>generates a pickler-unpickler for a list given a
+pickler-unpickler pu for the type of the elements.
+</dd><br /><dt><b>[<tt><a name='optionGen'>optionGen pu</a></tt>]</b></dt> <dd>generates a pickler-unpickler for an option type given
+a pickler-unpickler pu for the argument type to the option type.
+</dd><br /><dt><b>[<tt><a name='shareGen'>shareGen pu</a></tt>]</b></dt> <dd>given a pickler-unpickler for some type, the function
+generates a pickler-unpickler, which implements sharing of equivalent
+values (defined by structural equality).
+</dd><br /><dt><b>[<tt><a name='enumGen'>enumGen cs</a></tt>]</b></dt> <dd>generates a pickler-unpickler for an enumeration
+datatype, given each value of the datatype.
+</dd><br /><dt><b>[<tt><a name='dataGen'>dataGen (toInt, puCons)</a></tt>]</b></dt> <dd>generates a pickler-unpickler for a
+datatype given (1) a function toInt mapping a constructed value of
+the datatype into the position of the pickler-unpickler for the
+datatype in the puCons list and (2) a list of pickler-unpicklers for
+each of the constructors of the datatype. Notice that the
+pickler-unpickler for a contructor is parameterized over a
+pickler-unpickler for the entire datatype, so that a
+pickler-unpickler for a construtor may work for recursive
+datatypes. Also notice, that the dataGen function implements sharing
+(upto polymorphic equality) for the generated pickler-unpickler.
+</dd><br /><dt><b>[<tt>dataGen2 (aToInt, aPuCons, bToInt, bPuCons)</tt>]</b></dt> <dd>works as dataGen, but
+for two mutually recursive datatypes.
+</dd><br /><dt><b>[<tt><a name='pickle'>pickle pu v</a></tt>]</b></dt> <dd>returns the result of serializing (pickling) v.
+</dd><br /><dt><b>[<tt><a name='unpickle'>unpickle pu s</a></tt>]</b></dt> <dd>returns the result of unpickling s.
+</dd><br /><dt><b>[<tt><a name='unpickle$09'>unpickle' pu hce s</a></tt>]</b></dt> <dd>returns a pair of the result of unpickling s and
+an accumulated hashcons environment.
+</dd><br /><dt><b>[<tt><a name='register'>register vs pu</a></tt>]</b></dt> <dd>returns a pickler-unpickler with the property
+that a pickled value equal to a value in vs is equal to the
+value in vs when unpickled.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

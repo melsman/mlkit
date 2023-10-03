@@ -1,0 +1,197 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>WORD</code> <tt><i>(basis)</i></tt></h4><p> Operations on unsigned word values.</p>Instances of the signature WORD provide a type of unsigned integer
+with modular arithmetic and logical operations and conversion
+operations. They are also meant to give efficient access to the
+primitive machine word types of the underlying hardware, and support
+bit-level operations on integers. They are not meant to be a
+&quot;larger&quot; int.
+
+In order to provide a more intuitive description of the shift
+operators below, we assume a bit ordering in which the most
+significant bit is leftmost, and the least significant bit is
+rightmost.
+<hr /><pre><b>structure Word8 : WORD <i>(basis)</i>
+</b><b>structure Word64 : WORD <i>(basis)</i>
+</b><b>structure Word63 : WORD <i>(basis)</i>
+</b><b>structure Word32 : WORD <i>(basis)</i>
+</b><b>structure Word31 : WORD <i>(basis)</i>
+</b><b>structure Word : WORD <i>(basis)</i>
+</b><b>structure SysWord : WORD <i>(basis)</i>
+</b><b>structure LargeWord : WORD <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> WORD =
+  <b>sig</b>
+    <b>eqtype</b> word
+
+    <b>val</b> <a href='#wordSize'>wordSize</a> : int
+
+    <b>val</b> <a href='#toLarge'>toLarge</a>      : word -> word64
+    <b>val</b> <a href='#toLargeX'>toLargeX</a>     : word -> word64
+    <b>val</b> <a href='#toLargeWord'>toLargeWord</a>  : word -> word64
+    <b>val</b> <a href='#toLargeWordX'>toLargeWordX</a> : word -> word64
+    <b>val</b> <a href='#fromLarge'>fromLarge</a>     : word64 -> word
+    <b>val</b> <a href='#fromLargeWord'>fromLargeWord</a> : word64 -> word
+    <b>val</b> <a href='#toLargeInt'>toLargeInt</a>  : word -> intinf
+    <b>val</b> <a href='#toLargeIntX'>toLargeIntX</a> : word -> intinf
+    <b>val</b> <a href='#fromLargeInt'>fromLargeInt</a> : intinf -> word
+    <b>val</b> <a href='#toInt'>toInt</a>  : word -> int
+    <b>val</b> <a href='#toIntX'>toIntX</a> : word -> int
+    <b>val</b> <a href='#fromInt'>fromInt</a> : int -> word
+
+    <b>val</b> <a href='#andb'>andb</a> : word * word -> word
+    <b>val</b> <a href='#orb'>orb</a>  : word * word -> word
+    <b>val</b> <a href='#xorb'>xorb</a> : word * word -> word
+    <b>val</b> <a href='#notb'>notb</a> : word -> word
+    <b>val</b> <a href='#$04$04'><<</a> : word * Initial.word0 -> word
+    <b>val</b> <a href='#$05$05'>>></a> : word * Initial.word0 -> word
+    <b>val</b> <a href='#$10$05$05'>~>></a> : word * Initial.word0 -> word
+
+    <b>val</b> <a href='#$08'>+</a> : word * word -> word
+    <b>val</b> <a href='#$06'>-</a> : word * word -> word
+    <b>val</b> <a href='#*'>*</a> : word * word -> word
+    <b>val</b> <a href='#div'>div</a> : word * word -> word
+    <b>val</b> <a href='#mod'>mod</a> : word * word -> word
+
+    <b>val</b> <a href='#compare'>compare</a> : word * word -> order
+    <b>val</b> <a href='#$04'><</a>  : word * word -> bool
+    <b>val</b> <a href='#$04$16'><=</a> : word * word -> bool
+    <b>val</b> <a href='#$05'>></a>  : word * word -> bool
+    <b>val</b> <a href='#$05$16'>>=</a> : word * word -> bool
+
+    <b>val</b> <a href='#$10'>~</a> : word -> word
+    <b>val</b> <a href='#min'>min</a> : word * word -> word
+    <b>val</b> <a href='#max'>max</a> : word * word -> word
+
+    <b>val</b> <a href='#fmt'>fmt</a>      : <a href='STRING_CVT.sml.html'>StringCvt</a>.radix -> word -> string
+    <b>val</b> <a href='#toString'>toString</a> : word -> string
+    <b>val</b> <a href='#scan'>scan</a>     : <a href='STRING_CVT.sml.html'>StringCvt</a>.radix
+	-> (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+	-> (word, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+    <b>val</b> <a href='#fromString'>fromString</a> : string -> word option
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='wordSize'>wordSize</a></tt>]</b></dt> <dd>The number of bits in type word. wordSize need not be a power of
+two. Note that word has a fixed, finite precision.
+</dd><br /><dt><b>[<tt><a name='toLarge'>toLarge w</a></tt>]</b></dt><dt><b>[<tt><a name='toLargeX'>toLargeX w</a></tt>]</b></dt> <dd>These convert w to a value of type LargeWord.word. In the
+first case, w is converted to its equivalent LargeWord.word value in
+the range [0,2(wordSize)-1]. In the second case, w is
+``sign-extended,'' i.e., the wordSize low-order bits of w and toLargeX
+w are the same, and the remaining bits of toLargeX w are all equal to
+the most significant bit of w. toLargeWord and toLargeWordX are
+respective synonyms of the first two, and are deprecated.
+</dd><br /><dt><b>[<tt><a name='fromLarge'>fromLarge w</a></tt>]</b></dt><dt><b>[<tt><a name='fromLargeWord'>fromLargeWord w</a></tt>]</b></dt> <dd>These functions convert w to the value w(mod
+(2(wordSize))) of type word. This has the effect of taking the
+low-order wordSize bits of the 2's complement representation of w. The
+function fromLargeWord is a deprecated synonym for fromLarge.
+</dd><br /><dt><b>[<tt><a name='toLargeInt'>toLargeInt w</a></tt>]</b></dt><dt><b>[<tt><a name='toLargeIntX'>toLargeIntX w</a></tt>]</b></dt> <dd>These convert w to a value of type LargeInt.int. In
+the former case, w is viewed as an integer value in the
+range [0,2(wordSize)-1].  In the latter case, w is treated as a 2's
+complement signed integer with wordSize precision, thereby having a
+value in the range [-2(wordSize-1),2(wordSize-1)-1]. toLargeInt raises
+Overflow if the target integer value cannot be represented as a
+LargeInt.int. Since the precision of LargeInt.int is always at least
+wordSize (see the discussion below), toLargeIntX will never raise an
+exception.
+</dd><br /><dt><b>[<tt><a name='fromLargeInt'>fromLargeInt i</a></tt>]</b></dt> <dd>converts i of type LargeInt.int to a value of type
+word. This has the effect of taking the low-order wordSize bits of the
+2's complement representation of i.
+</dd><br /><dt><b>[<tt><a name='toInt'>toInt w</a></tt>]</b></dt><dt><b>[<tt><a name='toIntX'>toIntX w</a></tt>]</b></dt> <dd>These convert w to a value of default integer type. In the
+former case, w is viewed as an integer value in the
+range [0,2(wordSize)-1]. In the latter case, w is treated as a 2's
+complement signed integer with wordSize precision, thereby having a
+value in the range [-2(wordSize-1),2(wordSize-1)-1]. They raise
+Overflow if the target integer value cannot be represented as an
+Int.int.
+</dd><br /><dt><b>[<tt><a name='fromInt'>fromInt i</a></tt>]</b></dt> <dd>converts i of the default integer type to a value of type
+word. This has the effect of taking the low-order wordSize bits of the
+2's complement representation of i. If the precision of Int.int is
+less than wordSize, then i is sign-extended to wordSize bits.
+</dd><br /><dt><b>[<tt><a name='orb'>x orb y</a></tt>]</b></dt><dt><b>[<tt><a name='xorb'>x xorb y</a></tt>]</b></dt><dt><b>[<tt><a name='andb'>x andb y</a></tt>]</b></dt> <dd>These functions return the bit-wise OR, bit-wise exclusive
+OR, and bit-wise AND, respectively, of x and y.
+</dd><br /><dt><b>[<tt><a name='notb'>notb i</a></tt>]</b></dt> <dd>returns the bit-wise complement (NOT) of i.
+</dd><br /><dt><b>[<tt><a name='$04$04'>&lt;&lt; (i, n)</a></tt>]</b></dt> <dd>shifts i to the left by n bit positions, filling in zeros
+from the right. When i and n are interpreted as unsigned binary
+numbers, this returns (i* 2(n))(mod (2 (wordSize))). In particular,
+shifting by greater than or equal to wordSize results in 0. This
+operation is similar to the ``(logical) shift left'' instruction in
+many processors.
+</dd><br /><dt><b>[<tt><a name='$05$05'>&gt;&gt; (i, n)</a></tt>]</b></dt> <dd>shifts i to the right by n bit positions, filling in zeros
+from the left. When i and n are interpreted as unsigned binary
+numbers, it returns floor((i / 2(n))). In particular, shifting by
+greater than or equal to wordSize results in 0. This operation is
+similar to the ``logical shift right'' instruction in many processors.
+</dd><br /><dt><b>[<tt><a name='$10$05$05'>~&gt;&gt; (i, n)</a></tt>]</b></dt> <dd>shifts i to the right by n bit positions. The value of
+the leftmost bit of i remains the same; in a 2's-complement
+interpretation, this corresponds to sign extension. When i is
+interpreted as a wordSize-bit 2's-complement integer and n is
+interpreted as an unsigned binary number, it returns floor((i /
+2(n))). In particular, shifting by greater than or equal to wordSize
+results in either 0 or all 1's. This operation is similar to the
+``arithmetic shift right'' instruction in many processors.
+</dd><br /><dt><b>[<tt><a name='$08'>i + j</a></tt>]</b></dt> <dd>returns (i+j)(mod (2 (wordSize))) when i and j are interpreted
+as unsigned binary numbers. It does not raise Overflow.
+</dd><br /><dt><b>[<tt><a name='$06'>i - j</a></tt>]</b></dt> <dd>returns the difference of i and j modulo (2(wordSize)):
+<pre>
+     (2(wordSize) + i - j)(mod (2(wordSize)))
+</pre>
+
+when i and j are interpreted as unsigned binary numbers. It does not
+raise Overflow.
+</dd><br /><dt><b>[<tt><a name='*'>i * j</a></tt>]</b></dt> <dd>returns the product (i*j)(mod (2(wordSize))) when i and j are
+interpreted as unsigned binary numbers. It does not raise Overflow.
+</dd><br /><dt><b>[<tt><a name='div'>i div j</a></tt>]</b></dt> <dd>returns the truncated quotient of i and j, floor((i / j)),
+when i and j are interpreted as unsigned binary numbers. It raises Div
+when j = 0.
+</dd><br /><dt><b>[<tt><a name='mod'>i mod j</a></tt>]</b></dt> <dd>returns the remainder of the division of i by j:
+<pre>
+    i - j * floor((i / j))
+</pre>
+
+when i and j are interpreted as unsigned binary numbers. It raises Div
+when j = 0.
+</dd><br /><dt><b>[<tt><a name='compare'>compare (i, j)</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER if and only if i is
+less than, equal to, or greater than j, respectively, considered as
+unsigned binary numbers.
+</dd><br /><dt><b>[<tt><a name='$05'>x &gt; y</a></tt>]</b></dt> <dd>returns true if x is strictly larger than y. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='$05$16'>x &gt;= y</a></tt>]</b></dt> <dd>returns true if x is larger than or equal to y. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='$04'>x &lt; y</a></tt>]</b></dt> <dd>returns true if x is strictly smaller than y. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='$04$16'>x &lt;= y</a></tt>]</b></dt> <dd>returns true if x is smaller than or equal to y. Returns
+false otherwise.
+</dd><br /><dt><b>[<tt><a name='$10'>~ i</a></tt>]</b></dt> <dd>returns the 2's complement of i.
+</dd><br /><dt><b>[<tt><a name='min'>min(x, y)</a></tt>]</b></dt> <dd>is the smaller of x and y.
+</dd><br /><dt><b>[<tt><a name='max'>max(x, y)</a></tt>]</b></dt> <dd>is the larger of x and y.
+</dd><br /><dt><b>[<tt><a name='fmt'>fmt radix i</a></tt>]</b></dt><dt><b>[<tt><a name='toString'>toString i</a></tt>]</b></dt> <dd>These return a string containing a numeric representation
+of i. No prefix &quot;Ow&quot;, &quot;OwX&quot;, etc. is generated. The version using fmt
+creates a representation specified the given radix. The hexadecimal
+digits in the range [10,15] are represented by the characters #&quot;A&quot;
+through #&quot;F&quot;. The version using toString is equivalent to fmt
+StringCvt.HEX i.
+</dd><br /><dt><b>[<tt><a name='scan'>scan radix getc strm</a></tt>]</b></dt><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>These functions scan a word from a character source. In
+the first version, if an unsigned number in the format denoted by
+radix can be parsed from a prefix of the character strm strm using the
+character input function getc, the expression evaluates to
+SOME(w,rest), where w is the value of the number parsed and rest is
+the remainder of the character stream. Initial whitespace is
+ignored. NONE is returned otherwise. It raises Overflow when a number
+can be parsed, but is too large to fit in type word. The format that
+scan accepts depends on the radix argument. Regular expressions
+defining these formats are as follows:
+<pre>
+       Radix            Format
+       StringCvt.BIN    (0w)?[0-1]+
+       StringCvt.OCT    (0w)?[0-7]+
+       StringCvt.DEC    (0w)?[0-9]+
+       StringCvt.HEX    (0wx | 0wX | 0x | 0X)?[0-9a-fA-F]+
+</pre>
+
+The fromString version returns SOME(w) if an unsigned hexadecimal
+number in the format (0wx | 0wX | 0x | 0X)?[0-9a-fA-F]+ can be parsed
+from a prefix of string s, ignoring initial whitespace, where w is the
+value of the number parsed. NONE is returned otherwise. This function
+raises Overflow when a hexadecimal numeral can be parsed, but is too
+large to be represented by type word. It is equivalent to
+<pre>
+       StringCvt.scanString (scan StringCvt.HEX)
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

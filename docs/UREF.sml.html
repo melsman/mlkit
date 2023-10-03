@@ -1,0 +1,64 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>UREF</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-uref'>github.com/diku-dk/sml-uref</a>)</i></tt></h4><p> Unifiable references.</p>Unifiable references provide a Union/Find data type with a ref-like
+interface.  A Union/Find structure consists of a type constructor 'a
+uref with operations for creating an element of type 'a uref (uRef),
+getting the contents of an element (!!), checking for equality of two
+elements (equal), and for unifying two elements (unify).
+
+<hr /><pre><b>structure URef : UREF <i>(pkg <a href='http://github.com/diku-dk/sml-uref'>github.com/diku-dk/sml-uref</a>)</i>
+</b></pre><hr /><pre><b>signature</b> UREF = <b>sig</b>
+  <b>type</b> 'a uref
+
+  <b>val</b> <a href='#uref'>uref</a>    : 'a -> 'a uref
+  <b>val</b> <a href='#$13$13'>!!</a>      : 'a uref -> 'a
+  <b>val</b> <a href='#$12$12$16'>::=</a>     : 'a uref * 'a -> unit
+
+  <b>val</b> <a href='#unify'>unify</a>   : ('a * 'a -> 'a) -> 'a uref * 'a uref -> unit
+
+  <b>val</b> <a href='#eq'>eq</a>      : 'a uref * 'a uref -> bool
+  <b>val</b> <a href='#compare'>compare</a> : ('a * 'a -> order) -> 'a uref * 'a uref -> order
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type 'a uref</tt>]</b></dt> <dd>is the type of uref-elements with contents of type 'a.
+</dd><br /><dt><b>[<tt><a name='uref'>uref x</a></tt>]</b></dt> <dd>creates a new element with contents x.
+</dd><br /><dt><b>[<tt>!!e</tt>]</b></dt> <dd>returns the contents of e.
+</dd><br /><dt><b>[<tt><a name='$12$12$16'>e ::= x</a></tt>]</b></dt> <dd>updates the contents of e to be x.
+</dd><br /><dt><b>[<tt><a name='unify'>unify f (e, e')</a></tt>]</b></dt> <dd>makes e and e' equal; if v and v' are the contents
+of e and e', respectively, before unioning them, then the contents of
+the unioned element is f(v,v').
+</dd><br /><dt><b>[<tt><a name='eq'>eq (e, e')</a></tt>]</b></dt> <dd>returns true if and only if e and e' are either made by
+the same call to uref or if they have been unioned (see below).
+</dd><br /><dt><b>[<tt><a name='compare'>compare cmp (e, e')</a></tt>]</b></dt> <dd>returns EQUAL if eq (e, e') returns true;
+otherwise return cmp (!!e, !!e').
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>The uref type constructor is analogous to the ref type constructor as
+expressed in the following table:
+<pre>
+ -------------------------------------------------------------------
+ type                  'a ref                'a uref
+ -------------------------------------------------------------------
+ introduction          ref                   uref
+ elimination           !                     !!
+ equality              =                     eq
+ updating              :=                    ::=
+ unioning                                    unify
+ -------------------------------------------------------------------
+</pre>
+
+The main difference between 'a ref and 'a uref is in the unify
+operation.  Without unify, 'a ref and 'a uref can be used
+interchangebly.  An assignment to a reference changes only the
+contents of the reference, but not the reference itself.  In
+particular, any two pointers that were different (in the sense of the
+equality predicate = returning false) before an assignment will still
+be so.  Their contents may or may not be equal after the assignment,
+though.  In contrast, applying the unify operation to two uref
+elements makes the two elements themselves equal (in the sense of the
+predicate equal returning true).  As a consequence their contents will
+also be identical; the actual content is determined by a binary
+function parameter to unify.
+AUTHOR:
+This software was originally authored by Fritz
+Henglein. Simplifications have been made by Henning Niss (eliminating
+redundant matches) and Martin Elsman (removed some exposed
+functionality such as link and union.
+Copyright (c) 199x-2020 Fritz Henglein, Henning Niss, University of
+Copenhagen.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

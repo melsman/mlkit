@@ -1,0 +1,433 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_TTY</code> <tt><i>(basis)</i></tt></h4><p> Model of the POSIX terminal interface.</p>The structure Posix.TTY specifies a model of a general terminal
+interface, as described in Section 7 of the POSIX standard
+1003.1,1996.
+
+<hr /><pre><b>signature</b> POSIX_TTY =
+  <b>sig</b>
+    <b>eqtype</b> pid
+    <b>eqtype</b> file_desc
+
+    <b>structure</b> V :
+      <b>sig</b>
+        <b>val</b> <a href='#eof'>eof</a>   : int
+        <b>val</b> <a href='#eol'>eol</a>   : int
+        <b>val</b> <a href='#erase'>erase</a> : int
+        <b>val</b> <a href='#intr'>intr</a>  : int
+        <b>val</b> <a href='#kill'>kill</a>  : int
+        <b>val</b> <a href='#min'>min</a>   : int
+        <b>val</b> <a href='#quit'>quit</a>  : int
+        <b>val</b> <a href='#susp'>susp</a>  : int
+        <b>val</b> <a href='#time'>time</a>  : int
+        <b>val</b> <a href='#start'>start</a> : int
+        <b>val</b> <a href='#stop'>stop</a>  : int
+        <b>val</b> <a href='#nccs'>nccs</a>  : int
+        <b>type</b> cc
+        <b>val</b> <a href='#cc'>cc</a>     : (int * char) list -> cc
+        <b>val</b> <a href='#update'>update</a> : cc * (int * char) list -> cc
+        <b>val</b> <a href='#sub'>sub</a>    : cc * int -> char
+      <b>end</b>
+
+    <b>structure</b> I :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#brkint'>brkint</a> : flags
+        <b>val</b> <a href='#icrnl'>icrnl</a>  : flags
+        <b>val</b> <a href='#ignbrk'>ignbrk</a> : flags
+        <b>val</b> <a href='#igncr'>igncr</a>  : flags
+        <b>val</b> <a href='#ignpar'>ignpar</a> : flags
+        <b>val</b> <a href='#inlcr'>inlcr</a>  : flags
+        <b>val</b> <a href='#inpck'>inpck</a>  : flags
+        <b>val</b> <a href='#istrip'>istrip</a> : flags
+        <b>val</b> <a href='#ixoff'>ixoff</a>  : flags
+        <b>val</b> <a href='#ixon'>ixon</a>   : flags
+        <b>val</b> <a href='#parmrk'>parmrk</a> : flags
+      <b>end</b>
+
+    <b>structure</b> O :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#opost'>opost</a> : flags
+      <b>end</b>
+
+    <b>structure</b> C :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#clocal'>clocal</a> : flags
+        <b>val</b> <a href='#cread'>cread</a>  : flags
+        <b>val</b> <a href='#cs5'>cs5</a>    : flags
+        <b>val</b> <a href='#cs6'>cs6</a>    : flags
+        <b>val</b> <a href='#cs7'>cs7</a>    : flags
+        <b>val</b> <a href='#cs8'>cs8</a>    : flags
+        <b>val</b> <a href='#csize'>csize</a>  : flags
+        <b>val</b> <a href='#cstopb'>cstopb</a> : flags
+        <b>val</b> <a href='#hupcl'>hupcl</a>  : flags
+        <b>val</b> <a href='#parenb'>parenb</a> : flags
+        <b>val</b> <a href='#parodd'>parodd</a> : flags
+      <b>end</b>
+
+    <b>structure</b> L :
+      <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#echo'>echo</a>   : flags
+        <b>val</b> <a href='#echoe'>echoe</a>  : flags
+        <b>val</b> <a href='#echok'>echok</a>  : flags
+        <b>val</b> <a href='#echonl'>echonl</a> : flags
+        <b>val</b> <a href='#icanon'>icanon</a> : flags
+        <b>val</b> <a href='#iexten'>iexten</a> : flags
+        <b>val</b> <a href='#isig'>isig</a>   : flags
+        <b>val</b> <a href='#noflsh'>noflsh</a> : flags
+        <b>val</b> <a href='#tostop'>tostop</a> : flags
+      <b>end</b>
+
+    <b>eqtype</b> speed
+
+    <b>val</b> <a href='#compareSpeed'>compareSpeed</a> : speed * speed -> order
+    <b>val</b> <a href='#speedToWord'>speedToWord</a>  : speed -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#wordToSpeed'>wordToSpeed</a>  : <a href='WORD.sml.html'>SysWord</a>.word -> speed
+
+    <b>val</b> <a href='#b0'>b0</a>     : speed
+    <b>val</b> <a href='#b50'>b50</a>    : speed
+    <b>val</b> <a href='#b75'>b75</a>    : speed
+    <b>val</b> <a href='#b110'>b110</a>   : speed
+    <b>val</b> <a href='#b134'>b134</a>   : speed
+    <b>val</b> <a href='#b150'>b150</a>   : speed
+    <b>val</b> <a href='#b200'>b200</a>   : speed
+    <b>val</b> <a href='#b300'>b300</a>   : speed
+    <b>val</b> <a href='#b600'>b600</a>   : speed
+    <b>val</b> <a href='#b1200'>b1200</a>  : speed
+    <b>val</b> <a href='#b1800'>b1800</a>  : speed
+    <b>val</b> <a href='#b2400'>b2400</a>  : speed
+    <b>val</b> <a href='#b4800'>b4800</a>  : speed
+    <b>val</b> <a href='#b9600'>b9600</a>  : speed
+    <b>val</b> <a href='#b19200'>b19200</a> : speed
+    <b>val</b> <a href='#b38400'>b38400</a> : speed
+
+    <b>type</b> termios
+
+    <b>val</b> <a href='#termios'>termios</a> : { iflag : I.flags,
+                    oflag : O.flags,
+                    cflag : C.flags,
+                    lflag : L.flags,
+                    cc : V.cc,
+                    ispeed : speed,
+                    ospeed : speed
+                  } -> termios
+    <b>val</b> <a href='#fieldsOf'>fieldsOf</a> : termios
+                   -> { iflag : I.flags,
+                        oflag : O.flags,
+                        cflag : C.flags,
+                        lflag : L.flags,
+                        cc : V.cc,
+                        ispeed : speed,
+                        ospeed : speed
+                      }
+    <b>val</b> <a href='#getiflag'>getiflag</a> : termios -> I.flags
+    <b>val</b> <a href='#getoflag'>getoflag</a> : termios -> O.flags
+    <b>val</b> <a href='#getcflag'>getcflag</a> : termios -> C.flags
+    <b>val</b> <a href='#getlflag'>getlflag</a> : termios -> L.flags
+    <b>val</b> <a href='#getcc'>getcc</a>    : termios -> V.cc
+
+    <b>structure</b> CF :
+      <b>sig</b>
+        <b>val</b> <a href='#getospeed'>getospeed</a> : termios -> speed
+        <b>val</b> <a href='#getispeed'>getispeed</a> : termios -> speed
+        <b>val</b> <a href='#setospeed'>setospeed</a> : termios * speed -> termios
+        <b>val</b> <a href='#setispeed'>setispeed</a> : termios * speed -> termios
+      <b>end</b>
+
+    <b>structure</b> TC :
+      <b>sig</b>
+        <b>eqtype</b> set_action
+
+        <b>val</b> <a href='#sanow'>sanow</a>   : set_action
+        <b>val</b> <a href='#sadrain'>sadrain</a> : set_action
+        <b>val</b> <a href='#saflush'>saflush</a> : set_action
+
+        <b>eqtype</b> flow_action
+
+        <b>val</b> <a href='#ooff'>ooff</a> : flow_action
+        <b>val</b> <a href='#oon'>oon</a>  : flow_action
+        <b>val</b> <a href='#ioff'>ioff</a> : flow_action
+        <b>val</b> <a href='#ion'>ion</a>  : flow_action
+
+        <b>eqtype</b> queue_sel
+
+        <b>val</b> <a href='#iflush'>iflush</a>  : queue_sel
+        <b>val</b> <a href='#oflush'>oflush</a>  : queue_sel
+        <b>val</b> <a href='#ioflush'>ioflush</a> : queue_sel
+
+        <b>val</b> <a href='#getattr'>getattr</a>   : file_desc -> termios
+        <b>val</b> <a href='#setattr'>setattr</a>   : file_desc * set_action * termios -> unit
+        <b>val</b> <a href='#sendbreak'>sendbreak</a> : file_desc * int -> unit
+        <b>val</b> <a href='#drain'>drain</a>     : file_desc -> unit
+        <b>val</b> <a href='#flush'>flush</a>     : file_desc * queue_sel -> unit
+        <b>val</b> <a href='#flow'>flow</a>      : file_desc * flow_action -> unit
+        <b>val</b> <a href='#getpgrp'>getpgrp</a>   : file_desc -> pid
+        <b>val</b> <a href='#setpgrp'>setpgrp</a>   : file_desc * pid -> unit
+      <b>end</b>
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype pid</tt>]</b></dt> <dd>The type of a process identifier.
+</dd><br /><dt><b>[<tt>eqtype file_desc</tt>]</b></dt> <dd>The type of an open file descriptor.
+</dd><br /><dt><b>[<tt>structure V</tt>]</b></dt> <dd>The V substructure provides means for specifying the
+special control characters.
+<pre>
+    [eof]
+    [eol]
+    [erase]
+    [intr]
+    [kill]
+    [min]
+    [quit]
+    [susp]
+    [time]
+    [start]
+    [stop]
+</pre>
+
+<pre>
+    Indices for the special control characters EOF, EOL, ERASE, INTR,
+    KILL, MIN, QUIT, SUSP, TIME, START, and STOP, respectively. These
+    are the indices used in the functions cc and sub.
+</pre>
+
+<pre>
+    [nccs] The total number of special characters. Thus, valid indices
+    range from 0 to nccs-1.
+</pre>
+
+<pre>
+    [type cc] A vector of special control characters used by the
+    device driver.
+</pre>
+
+<pre>
+    [cc l] creates a value of type cc, mapping an index to its paired
+    character. Unspecified indices are associated with #&quot;\000&quot;. For
+    example, to have the character #&quot;\^D&quot; (control-D) serve as the EOF
+    (end-of-file) character, one would use cc [(V.eof, #&quot;\^D&quot;)] to
+    create a cc value, embed this in a termios type, and invoke
+    TC.setattr.
+</pre>
+
+<pre>
+    [update (cs, l)] returns a copy of cs, but with the new mappings
+    specified by l overwriting the original mappings.
+</pre>
+
+<pre>
+    [sub (cs, i)] returns the special control character associated in
+    cs with the index i. It raises Subscript if i is negative or i &gt;=
+    nccs.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure I</tt>]</b></dt> <dd>The I substructure contains flags for specifying input
+control. The following table provides a brief description of the
+flags.
+<pre>
+    Flag name     Description
+    brkint        Signal interrupt on break.
+    icrnl         Map CR (#&quot;\^M&quot;) to NL (#&quot;\n&quot;) on input.
+    ignbrk        Ignore a break condition.
+    igncr         Ignore CR characters.
+    ignpar        Ignore characters with parity errors.
+    inlcr         Map NL to CR on input.
+    inpck         Enable input parity check.
+    istrip        Strip the eighth bit of a byte.
+    ixoff         Enable start/stop input control.
+    ixon          Enable start/stop output control.
+    parmrk        Mark parity errors.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure O</tt>]</b></dt> <dd>The O substructure contains flags for specifying output
+control.
+<pre>
+    [opost] Perform output processing.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure C</tt>]</b></dt> <dd>The C substructure contains flags for specifying basic
+terminal hardware control. The following table provides a brief
+description of the flags.
+<pre>
+    Flag name      Description
+    clocal         Ignore modem status lines.
+    cread          Enable the receiver.
+    csize          Mask for the number of bits per byte used for both
+                   transmission and reception. This is the union of
+                   cs5, cs6, cs7, and cs8.
+    cs5            5 bits per byte.
+    cs6            6 bits per byte.
+    cs7            7 bits per byte.
+    cs8            8 bits per byte.
+    cstopb         Specifies sending two stop bits rather than one.
+    hupcl          Hang up the modem connection when the last process
+                   with the port open closes it.
+    parenb         Enable parity generation and detection.
+    parodd         Use odd parity rather than even if parenb is set.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure L</tt>]</b></dt> <dd>The L substructure contains flags for specifying various
+local control modes. The following table provides a brief description
+of the flags.
+<pre>
+    Flag name      Description
+    echo           Echo input characters back to the terminal.
+    echoe          Echo the ERASE character on backspace in canonical
+                   mode.
+    echok          Echo the KILL character in canonical mode.
+    echonl         In canonical mode, echo a NL character even if echo
+                   is not set.
+    icanon         Set canonical mode, enabling erase and kill
+                   processing, and providing line-based input.
+    iexten         Enable extended functions.
+    isig           Enable input characters to be mapped to signals.
+    noflsh         Disable the normal input and output flushing
+                   connected with the INTR, QUIT, and SUSP
+                   characters. (See the Posix.TTY.V substructure.)
+    tostop         Send Posix.Signal.ttou for background output.
+</pre>
+
+</dd><br /><dt><b>[<tt>eqtype speed</tt>]</b></dt> <dd>Terminal input and output baud rates.
+</dd><br /><dt><b>[<tt><a name='compareSpeed'>compareSpeed (sp, sp')</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER when the baud
+rate sp is less than, equal to, or greater than that of sp',
+respectively.
+</dd><br /><dt><b>[<tt><a name='speedToWord'>speedToWord speed</a></tt>]</b></dt><dt><b>[<tt><a name='wordToSpeed'>wordToSpeed w</a></tt>]</b></dt> <dd>These functions converts between a speed value and its underlying word
+representation. No checking is performed by wordToSpeed to ensure the
+resulting value corresponds to an allowed speed in the given system.
+</dd><br /><dt><b>[<tt>type termios</tt>]</b></dt> <dd>The attributes associated with a terminal. It acts as
+an abstract representation of the record used as the argument to the
+termios function.
+</dd><br /><dt><b>[<tt><a name='termios'>termios args</a></tt>]</b></dt> <dd>This function creates a termios value using the given
+flags, special characters, and speeds.
+</dd><br /><dt><b>[<tt><a name='fieldsOf'>fieldsOf termios</a></tt>]</b></dt> <dd>This function returns a concrete representation of
+a termios value.
+</dd><br /><dt><b>[<tt><a name='getiflag'>getiflag termios</a></tt>]</b></dt><dt><b>[<tt><a name='getoflag'>getoflag termios</a></tt>]</b></dt><dt><b>[<tt><a name='getcflag'>getcflag termios</a></tt>]</b></dt><dt><b>[<tt><a name='getlflag'>getlflag termios</a></tt>]</b></dt><dt><b>[<tt><a name='getcc'>getcc termios</a></tt>]</b></dt> <dd>These functions are the obvious projection functions from a termios
+value to its constituent fields.
+</dd><br /><dt><b>[<tt>structure CF</tt>]</b></dt> <dd>The CF substructure contains functions for getting and
+setting the input and output baud rates in a termios value.
+<pre>
+    [getospeed termios]
+    [getispeed termios]
+</pre>
+
+<pre>
+    These functions return the output and input baud rates,
+    respectively, of the argument.
+</pre>
+
+<pre>
+    [setospeed (t, speed)]
+    [setispeed (t, speed)]
+</pre>
+
+<pre>
+    These functions return a copy of t, but with the output (input)
+    speed set to speed.
+</pre>
+
+</dd><br /><dt><b>[<tt>structure TC</tt>]</b></dt> <dd>The TC substructure contains various types and
+functions used for handling terminal line control.
+<pre>
+    [eqtype set_action] Values of this type specify the behavior of
+    the setattr function.
+</pre>
+
+<pre>
+    [sanow] Changes occur immediately.
+</pre>
+
+<pre>
+    [sadrain] Changes occur after all output is transmitted.
+</pre>
+
+<pre>
+    [saflush] Changes occur after all output is transmitted and after
+    all received but unread input is discarded.
+</pre>
+
+<pre>
+    [eqtype flow_action] Values of this type specify the behavior of
+    the flow function.
+</pre>
+
+<pre>
+    [ooff] Causes suspension of output.
+</pre>
+
+<pre>
+    [oon] Restarts suspended output.
+</pre>
+
+<pre>
+    [ioff] Causes the transmission of a STOP character to the terminal
+    device, to stop it from transmitting data.
+</pre>
+
+<pre>
+    [ion] Causes the transmission of a START character to the terminal
+    device, to restart it transmitting data.
+</pre>
+
+<pre>
+    [eqtype queue_sel] Values of this type specify the behavior of the
+    flush function.
+</pre>
+
+<pre>
+    [iflush] Causes all data received but not read to be flushed.
+</pre>
+
+<pre>
+    [oflush] Causes all data written but not transmitted to be
+    flushed.
+</pre>
+
+<pre>
+    [ioflush] Discards all data written but not transmitted, or
+    received but not read.
+</pre>
+
+<pre>
+    [getattr fd] gets the attributes of the terminal associated with
+    file descriptor fd.
+</pre>
+
+<pre>
+    [setattr (fd, action, termios)] sets the attributes of the
+    terminal associated with file descriptor fd as specified in
+    termios. When the change occurs is specified by action.
+</pre>
+
+<pre>
+    [sendbreak (fd, t)] causes the transmission of a sequence of
+    zero-valued bits to be sent, if the associated terminal is using
+    asynchronous serial data transmission. If t is 0, this will send
+    zero-valued bits for at least a quarter second, and no more than
+    half a second. If t is not zero, zero-valued bits are transmitted
+    for an implementation-defined period of time.
+</pre>
+
+<pre>
+    [drain fd] waits for all output written on fd to be transmitted.
+</pre>
+
+<pre>
+    [flush (fd, qs)] discards any data written but not transmitted, or
+    received but not read, depending on the value of qs.
+</pre>
+
+<pre>
+    [flow (fd, action)] suspends and restarts transmission or
+    reception of data, depending on the value of action.
+</pre>
+
+<pre>
+    [getpgrp fd] returns the process group ID of the foreground
+    process group associated with the terminal attached to fd.
+</pre>
+
+<pre>
+    [setpgrp (fd, pid)] sets the foreground process group ID
+    associated with fd to pid.
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

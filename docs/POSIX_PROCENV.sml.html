@@ -1,0 +1,157 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_PROCENV</code> <tt><i>(basis)</i></tt></h4><p> Operations for accessing POSIC process environments.</p>The structure Posix.ProcEnv specifies functions, as described in
+Section 4 of the POSIX standard 1003.1,1996[CITE], which provide
+primitive POSIX access to the process environment.
+
+<hr /><pre><b>signature</b> POSIX_PROCENV =
+  <b>sig</b>
+    <b>eqtype</b> pid
+    <b>eqtype</b> uid
+    <b>eqtype</b> gid
+    <b>eqtype</b> file_desc
+    <b>val</b> <a href='#uidToWord'>uidToWord</a> : uid -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#wordToUid'>wordToUid</a> : <a href='WORD.sml.html'>SysWord</a>.word -> uid
+    <b>val</b> <a href='#gidToWord'>gidToWord</a> : gid -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#wordToGid'>wordToGid</a> : <a href='WORD.sml.html'>SysWord</a>.word -> gid
+    <b>val</b> <a href='#getpid'>getpid</a>    : unit -> pid
+    <b>val</b> <a href='#getppid'>getppid</a>   : unit -> pid
+    <b>val</b> <a href='#getuid'>getuid</a>    : unit -> uid
+    <b>val</b> <a href='#geteuid'>geteuid</a>   : unit -> uid
+    <b>val</b> <a href='#getgid'>getgid</a>    : unit -> gid
+    <b>val</b> <a href='#getegid'>getegid</a>   : unit -> gid
+    <b>val</b> <a href='#setuid'>setuid</a>    : uid -> unit
+    <b>val</b> <a href='#setgid'>setgid</a>    : gid -> unit
+    <b>val</b> <a href='#getgroups'>getgroups</a> : unit -> gid list
+    <b>val</b> <a href='#getlogin'>getlogin</a>  : unit -> string
+    <b>val</b> <a href='#getpgrp'>getpgrp</a>   : unit -> pid
+    <b>val</b> <a href='#setsid'>setsid</a>    : unit -> pid
+    <b>val</b> <a href='#setpgid'>setpgid</a>   : {pid : pid option, pgid : pid option} -> unit
+    <b>val</b> <a href='#uname'>uname</a>     : unit -> (string * string) list
+    <b>val</b> <a href='#time'>time</a>      : unit -> <a href='TIME.sml.html'>Time</a>.time
+    <b>val</b> <a href='#times'>times</a>     : unit -> { elapsed : <a href='TIME.sml.html'>Time</a>.time,
+                              utime : <a href='TIME.sml.html'>Time</a>.time,
+                              stime : <a href='TIME.sml.html'>Time</a>.time,
+                              cutime : <a href='TIME.sml.html'>Time</a>.time,
+                              cstime : <a href='TIME.sml.html'>Time</a>.time
+                            }
+    <b>val</b> <a href='#getenv'>getenv</a>    : string -> string option
+    <b>val</b> <a href='#environ'>environ</a>   : unit -> string list
+    <b>val</b> <a href='#ctermid'>ctermid</a>   : unit -> string
+    <b>val</b> <a href='#ttyname'>ttyname</a>   : file_desc -> string
+    <b>val</b> <a href='#isatty'>isatty</a>    : file_desc -> bool
+    <b>val</b> <a href='#sysconf'>sysconf</a>   : string -> <a href='WORD.sml.html'>SysWord</a>.word
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype pid</tt>]</b></dt> <dd>The type of a process ID, used as an identifier for an
+operating system process.
+</dd><br /><dt><b>[<tt>eqtype uid</tt>]</b></dt> <dd>The type of a user identifier.
+</dd><br /><dt><b>[<tt>eqtype gid</tt>]</b></dt> <dd>The type of a group identifier.
+</dd><br /><dt><b>[<tt>eqtype file_desc</tt>]</b></dt> <dd>The type of an open file descriptor.
+</dd><br /><dt><b>[<tt><a name='uidToWord'>uidToWord uid</a></tt>]</b></dt><dt><b>[<tt><a name='wordToUid'>wordToUid w</a></tt>]</b></dt> <dd>These functions convert between an abstract user ID and an underlying
+unique unsigned integer. Note that wordToUid does not ensure that it
+returns a valid uid.
+</dd><br /><dt><b>[<tt><a name='gidToWord'>gidToWord gid</a></tt>]</b></dt><dt><b>[<tt><a name='wordToGid'>wordToGid w</a></tt>]</b></dt> <dd>These functions convert between an abstract group ID and an underlying
+unique unsigned integer. Note that wordToGid does not ensure that it
+returns a valid gid.
+</dd><br /><dt><b>[<tt><a name='getpid'>getpid()</a></tt>]</b></dt><dt><b>[<tt><a name='getppid'>getppid()</a></tt>]</b></dt> <dd>Returns the process ID and the parent process ID, respectively, of the
+calling process.
+</dd><br /><dt><b>[<tt><a name='getuid'>getuid()</a></tt>]</b></dt><dt><b>[<tt><a name='geteuid'>geteuid()</a></tt>]</b></dt> <dd>Returns the real and effective user IDs, respectively, of the calling
+process.
+</dd><br /><dt><b>[<tt><a name='getgid'>getgid()</a></tt>]</b></dt><dt><b>[<tt><a name='getegid'>getegid()</a></tt>]</b></dt> <dd>Returns the real and effective group IDs, respectively, of the calling
+process.
+</dd><br /><dt><b>[<tt><a name='setuid'>setuid u</a></tt>]</b></dt> <dd>sets the real user ID and effective user ID to u.
+</dd><br /><dt><b>[<tt><a name='setgid'>setgid g</a></tt>]</b></dt> <dd>sets the real group ID and effective group ID to g.
+</dd><br /><dt><b>[<tt><a name='getgroups'>getgroups()</a></tt>]</b></dt> <dd>Returns the list of supplementary group IDs of the
+calling process.
+</dd><br /><dt><b>[<tt><a name='getlogin'>getlogin()</a></tt>]</b></dt> <dd>Returns the user name associated with the calling
+process, i.e., the login name associated with the calling process.
+</dd><br /><dt><b>[<tt><a name='getpgrp'>getpgrp()</a></tt>]</b></dt> <dd>Returns the process group ID of the calling process.
+</dd><br /><dt><b>[<tt><a name='setsid'>setsid()</a></tt>]</b></dt> <dd>This function creates a new session if the calling process
+is not a process group leader, and returns the process group ID of the
+calling process.
+</dd><br /><dt><b>[<tt><a name='setpgid'>setpgid (SOME pid, SOME pgid)</a></tt>]</b></dt><dt><b>[<tt><a name='setpgid'>setpgid (NONE, SOME pgid)</a></tt>]</b></dt><dt><b>[<tt><a name='setpgid'>setpgid (SOME pid, NONE)</a></tt>]</b></dt><dt><b>[<tt><a name='setpgid'>setpgid (NONE, NONE)</a></tt>]</b></dt> <dd>The first (second) usage sets the process group ID of the process with
+process ID pid (of the calling process, respectively) to pgid. In the
+third (fourth) usage, the process with process ID pid (the calling
+process, respectively) becomes a process group leader.
+</dd><br /><dt><b>[<tt><a name='uname'>uname()</a></tt>]</b></dt> <dd>Returns a list of name-value pairs including, at least, the
+names: &quot;sysname&quot;, &quot;nodename&quot;, &quot;release&quot;, &quot;version&quot;, and &quot;machine&quot;. (A
+POSIX implementation may provide additional values beyond this set.)
+The respective values are strings that describe the named system
+component.
+</dd><br /><dt><b>[<tt><a name='time'>time()</a></tt>]</b></dt> <dd>Returns the elapsed wall time since the Epoch.
+</dd><br /><dt><b>[<tt><a name='times'>times()</a></tt>]</b></dt> <dd>Returns a record containing the wall time (elapsed), user
+time (utime), system time (stime), user CPU time of terminated child
+processes (cutime), and system CPU time of terminated child processes
+(cstime), for the calling process.
+</dd><br /><dt><b>[<tt><a name='getenv'>getenv name</a></tt>]</b></dt> <dd>searches the environment list for a string of the form
+name=value and returns SOME(value) if name is present; it returns NONE
+if name is not present. This is equivalent to OS.Process.getEnv.
+</dd><br /><dt><b>[<tt><a name='environ'>environ()</a></tt>]</b></dt> <dd>Returns the environment of the calling process as a list
+of strings.
+</dd><br /><dt><b>[<tt><a name='ctermid'>ctermid()</a></tt>]</b></dt> <dd>Rerturns a string that represents the pathname of the
+controlling terminal for the calling process.
+</dd><br /><dt><b>[<tt><a name='ttyname'>ttyname fd</a></tt>]</b></dt> <dd>produces a string that represents the pathname of the
+terminal associated with file descriptor fd. It raises OS.SysErr if fd
+does not denote a valid terminal device.
+</dd><br /><dt><b>[<tt><a name='isatty'>isatty fd</a></tt>]</b></dt> <dd>returns true if fd is a valid file descriptor associated
+with a terminal. Note that isatty will return false if fd is a bad
+file descriptor.
+</dd><br /><dt><b>[<tt><a name='sysconf'>sysconf s</a></tt>]</b></dt> <dd>returns the integer value for the POSIX configurable
+system variable s. It raises OS.SysErr if s does not denote a
+supported POSIX system variable.  The properties required by POSIX are
+described below. This list is a minimal set required for POSIX
+compliance, and an implementation may extend it with additional
+properties.
+<pre>
+    &quot;ARG_MAX&quot;     Maximum length of arguments, in bytes, for the
+                  functions Posix.Process.exec, Posix.Process.exece,
+                  and Posix.Process.execp. This also applies to
+                  environment data.
+</pre>
+
+<pre>
+    &quot;CHILD_MAX&quot;   Maximum number of concurrent processes
+                  associated with a real user ID.
+</pre>
+
+<pre>
+    &quot;CLK_TCK&quot;     Number of clock ticks per second.
+</pre>
+
+<pre>
+    &quot;NGROUPS_MAX&quot; Maximum number of supplementary group IDs
+                  associated with a process, in addition to the
+                  effective group ID.
+</pre>
+
+<pre>
+    &quot;OPEN_MAX&quot;    Maximum number of files that one process can
+                  have open concurrently.
+</pre>
+
+<pre>
+    &quot;STREAM_MAX&quot;  Maximum number of streams that one process can
+                  have open concurrently.
+</pre>
+
+<pre>
+    &quot;TZNAME_MAX&quot;  Maximum number bytes allowed for a time zone
+                  name.
+</pre>
+
+<pre>
+    &quot;JOB_CONTROL&quot; Non-zero if the implementation supports job
+                  control.
+</pre>
+
+<pre>
+    &quot;SAVED_IDS&quot;   Non-zero if each process has a saved set-user-ID
+                  and saved set-group-ID.
+</pre>
+
+<pre>
+    &quot;VERSION&quot;     A version number.
+</pre>
+
+Consult Section 4.8 of POSIX standard 1003.1,1996 for additional
+information. Note that a property in SML has the same name as the
+property in C, but without the prefix &quot;_SC_&quot;.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

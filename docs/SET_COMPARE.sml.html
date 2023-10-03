@@ -1,0 +1,51 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>SET_COMPARE</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i></tt></h4><p> Base signature for polymorphic sets.</p>The SET_COMPARE signature is a generic interface to polymorphic sets.
+<hr /><pre><b>structure SetEq : SET_COMPARE <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b></pre><hr /><pre><b>signature</b> SET_COMPARE = <b>sig</b>
+  <b>type</b> 'a t
+  <b>type</b> cmp
+
+  <b>val</b> <a href='#empty'>empty</a>      : unit -> 'a t
+  <b>val</b> <a href='#singleton'>singleton</a>  : 'a -> 'a t
+  <b>val</b> <a href='#size'>size</a>       : 'a t -> int
+  <b>val</b> <a href='#isEmpty'>isEmpty</a>    : 'a t -> bool
+  <b>val</b> <a href='#member'>member</a>     : ('a * 'a -> cmp) -> 'a * 'a t -> bool
+  <b>val</b> <a href='#eq'>eq</a>         : ('a * 'a -> cmp) -> 'a t * 'a t -> bool
+  <b>val</b> <a href='#list'>list</a>       : 'a t -> 'a list
+  <b>val</b> <a href='#fromList'>fromList</a>   : ('a * 'a -> cmp) -> 'a list -> 'a t
+  <b>val</b> <a href='#insert'>insert</a>     : ('a * 'a -> cmp) -> 'a * 'a t -> 'a t
+  <b>val</b> <a href='#remove'>remove</a>     : ('a * 'a -> cmp) -> 'a * 'a t -> 'a t
+  <b>val</b> <a href='#difference'>difference</a> : ('a * 'a -> cmp) -> 'a t * 'a t -> 'a t
+  <b>val</b> <a href='#intersect'>intersect</a>  : ('a * 'a -> cmp) -> 'a t * 'a t -> 'a t
+  <b>val</b> <a href='#union'>union</a>      : ('a * 'a -> cmp) -> 'a t * 'a t -> 'a t
+  <b>val</b> <a href='#partition'>partition</a>  : ('a -> bool) -> 'a t -> 'a t * 'a t
+  <b>val</b> <a href='#fold'>fold</a>       : ('a * 'b -> 'b) -> 'b -> 'a t -> 'b
+  <b>val</b> <a href='#app'>app</a>        : ('a -> unit) -> 'a t -> unit
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='empty'>empty ()</a></tt>]</b></dt> <dd>returns the empty set of elements.
+</dd><br /><dt><b>[<tt><a name='singleton'>singleton e</a></tt>]</b></dt> <dd>returns the singleton set containing the element e.
+</dd><br /><dt><b>[<tt><a name='size'>size s</a></tt>]</b></dt> <dd>returns the cardinality of the set s.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty s</a></tt>]</b></dt> <dd>returns true if the set s is empty. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='member'>member cmp (e,s)</a></tt>]</b></dt> <dd>returns true if the element e appears in s
+according to cmp. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='eq'>eq cmp (a,b)</a></tt>]</b></dt> <dd>returns true if the two sets a and b contains the same
+set of elements, according to cmp. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='list'>list s</a></tt>]</b></dt> <dd>returns the elements of s as a list.
+</dd><br /><dt><b>[<tt><a name='fromList'>fromList cmp l</a></tt>]</b></dt> <dd>returns the elements in l as a set according to the
+relation cmp.
+</dd><br /><dt><b>[<tt><a name='insert'>insert cmp (e,s)</a></tt>]</b></dt> <dd>returns the set s with the element e added
+according to the relation cmp.
+</dd><br /><dt><b>[<tt><a name='remove'>remove cmp (e,s)</a></tt>]</b></dt> <dd>returns the set s with the element e removed
+according to the relation cmp.
+</dd><br /><dt><b>[<tt><a name='difference'>difference cmp (a,b)</a></tt>]</b></dt> <dd>returns the set a with the elements of b
+removed according to the relation cmp.
+</dd><br /><dt><b>[<tt><a name='intersect'>intersect cmp (a,b)</a></tt>]</b></dt> <dd>returns the set of elements that appear in both
+a and b according to the relation cmp.
+</dd><br /><dt><b>[<tt><a name='union'>union cmp (a,b)</a></tt>]</b></dt> <dd>returns the set containing the elements from a and
+b according to the relation cmp.
+</dd><br /><dt><b>[<tt><a name='partition'>partition f a</a></tt>]</b></dt> <dd>returns a pair of sets (b,c) where b contains elements
+for which f is true and c contains elements for which f is false.
+</dd><br /><dt><b>[<tt><a name='fold'>fold f e s</a></tt>]</b></dt> <dd>folds over the elements of the set s using the function f
+and e as the initial accumulated value.
+</dd><br /><dt><b>[<tt><a name='app'>app f s</a></tt>]</b></dt> <dd>applies the function f to each element in s.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

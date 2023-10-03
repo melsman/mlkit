@@ -1,0 +1,104 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>UNIX</code> <tt><i>(basis)</i></tt></h4><p> Operations for managing UNIX processes. </p><hr /><pre><b>structure Unix : UNIX <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> UNIX =
+  <b>sig</b>
+    <b>type</b> ('a,'b) proc
+    <b>type</b> signal
+    <b>datatype</b> exit_status
+      = W_EXITED
+      | W_EXITSTATUS of <a href='WORD.sml.html'>Word8</a>.word
+      | W_SIGNALED of signal
+      | W_STOPPED of signal
+    <b>val</b> <a href='#fromStatus'>fromStatus</a>      : OS.Process.status -> exit_status
+    <b>val</b> <a href='#executeInEnv'>executeInEnv</a>    : string * string list * string list -> ('a, 'b) proc
+    <b>val</b> <a href='#execute'>execute</a>         : string * string list -> ('a, 'b) proc
+    <b>val</b> <a href='#textInstreamOf'>textInstreamOf</a>  : (<a href='TEXT_IO.sml.html'>TextIO</a>.instream, 'a) proc -> <a href='TEXT_IO.sml.html'>TextIO</a>.instream
+    <b>val</b> <a href='#binInstreamOf'>binInstreamOf</a>   : (<a href='BIN_IO.sml.html'>BinIO</a>.instream, 'a) proc -> <a href='BIN_IO.sml.html'>BinIO</a>.instream
+    <b>val</b> <a href='#textOutstreamOf'>textOutstreamOf</a> : ('a, <a href='TEXT_IO.sml.html'>TextIO</a>.outstream) proc -> <a href='TEXT_IO.sml.html'>TextIO</a>.outstream
+    <b>val</b> <a href='#binOutstreamOf'>binOutstreamOf</a>  : ('a, <a href='BIN_IO.sml.html'>BinIO</a>.outstream) proc -> <a href='BIN_IO.sml.html'>BinIO</a>.outstream
+    <b>val</b> <a href='#streamsOf'>streamsOf</a>       : (<a href='TEXT_IO.sml.html'>TextIO</a>.instream, <a href='TEXT_IO.sml.html'>TextIO</a>.outstream) proc -> <a href='TEXT_IO.sml.html'>TextIO</a>.instream * <a href='TEXT_IO.sml.html'>TextIO</a>.outstream
+    <b>val</b> <a href='#reap'>reap</a>            : ('a, 'b) proc -> OS.Process.status
+    <b>val</b> <a href='#kill'>kill</a>            : ('a, 'b) proc * signal -> unit
+    <b>val</b> <a href='#exit'>exit</a>            : <a href='WORD.sml.html'>Word8</a>.word -> 'a
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type ('a,'b) proc</tt>]</b></dt> <dd>A type representing a handle for an operating
+system process.
+</dd><br /><dt><b>[<tt>type signal</tt>]</b></dt> <dd>A Unix-like signal which can be sent to another
+process. Note that signal values must be obtained from some other
+structure. For example, an implementation providing the Posix module
+would probably equate the signal and Posix.Signal.signal types.
+</dd><br /><dt><b>[<tt>datatype exit_status</tt>]</b></dt> <dd>Values of this datatype represent the ways in
+which a Unix process might stop. They correspond to, respectively,
+successful termination (W_EXITED), termination with the given exit
+value (W_EXITSTATUS), termination upon receipt of the given signal
+(W_SIGNALED), and stopping upon receipt of the given signal
+(W_STOPPED). The value carried by W_EXITSTATUS will be non-zero.
+If an implementation provides both the Posix and Unix structures, then
+Posix.Process.exit_status and exit_status must be the same type.
+</dd><br /><dt><b>[<tt><a name='fromStatus'>fromStatus sts</a></tt>]</b></dt> <dd>returns a concrete view of the given status.
+</dd><br /><dt><b>[<tt><a name='executeInEnv'>executeInEnv (cmd, args, env)</a></tt>]</b></dt> <dd>asks the operating system to execute
+the program named by the string cmd with the argument list args and
+the environment env. The program is run as a child process of the
+calling program; the return value of this function is an abstract proc
+value naming the child process.  Strings in the env list typically
+have the form &quot;name=value&quot; (see OS.Process.getEnv).
+The executeInEnv function raises the OS.SysErr exception if it fails.
+Reasons for failure include insufficient memory, too many processes,
+and the case where cmd does not name an executable file. If the child
+process fails to execute the command (i.e., the execve call fails),
+then it should exit with a status code of 126.
+</dd><br /><dt><b>[<tt><a name='execute'>execute (cmd, args)</a></tt>]</b></dt> <dd>asks the operating system to execute the program
+named by the string cmd with the argument list args. The program is
+run as a child process of the calling program and it inherits the
+calling process's environment; the return value of this function is an
+abstract proc value naming the child process. The failure semantics of
+this function are the same as for executeInEnv.
+For implementations providing the Posix modules, this function is
+equivalent to
+<pre>
+    fun execute (cmd, args) =
+       executeInEnv (cmd, args, Posix.ProcEnv.environ ())
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='textInstreamOf'>textInstreamOf pr</a></tt>]</b></dt><dt><b>[<tt><a name='binInstreamOf'>binInstreamOf pr</a></tt>]</b></dt> <dd>These functions return a text or binary instream connected to the
+standard output stream of the process pr.
+Note that multiple calls to these functions on the same proc value
+will result in multiple streams that all share the same underlying
+open file descriptor, which can lead to unpredictable effects because
+of the state inherent in file descriptors.
+</dd><br /><dt><b>[<tt><a name='textOutstreamOf'>textOutstreamOf pr</a></tt>]</b></dt><dt><b>[<tt><a name='binOutstreamOf'>binOutstreamOf pr</a></tt>]</b></dt> <dd>These functions return a text or binary outstream connected to the
+standard input stream of the process pr.
+Note that multiple calls to these functions on the same proc value
+will result in multiple streams that all share the same underlying
+open file descriptor, which can lead to unpredictable effects due to
+buffering.
+</dd><br /><dt><b>[<tt><a name='streamsOf'>streamsOf pr</a></tt>]</b></dt> <dd>returns a pair of input and output text streams
+associated with pr. This function is equivalent to (textInstream pr,
+textOutstream pr) and is provided for backward compatibility.
+</dd><br /><dt><b>[<tt><a name='reap'>reap pr</a></tt>]</b></dt> <dd>closes the input and output streams associated with pr, and
+then suspends the current process until the system process
+corresponding to pr terminates. It returns the exit status given by pr
+when it terminated. If reap is applied again to pr, it should
+immediately return the previous exit status.
+Implementation note:
+<pre>
+    Typically, one cannot rely on the underlying operating system to
+    provide the exit status of a terminated process after it has done
+    so once. Thus, the exit status probably needs to be cached. Also
+    note that reap should not return until the process being monitored
+    has terminated. In particular, implementations should be careful
+    not to return if the process has only been suspended.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='kill'>kill (pr,s)</a></tt>]</b></dt> <dd>sends the signal s to the process pr.
+</dd><br /><dt><b>[<tt><a name='exit'>exit st</a></tt>]</b></dt> <dd>executes all actions registered with OS.Process.atExit,
+flushes and closes all I/O streams opened using the Library, then
+terminates the SML process with termination status st.
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>Note that the interpretation of the string cmd in the execute and
+executeInEnv functions depends very much on the underlying operating
+system. Typically, the cmd argument will be a full pathname.
+The semantics of Unix necessitates that processes that have terminated
+need to be reaped. If this is not done, information concerning the
+dead process continues to reside in system tables. Thus, a program
+using execute or executeInEnv should invoke reap on any subprocess it
+creates.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

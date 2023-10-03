@@ -1,0 +1,96 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>SCAN_UTIL</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-parse'>github.com/diku-dk/sml-parse</a>)</i></tt></h4><p> Utilities for basis library scan functionality.</p>This utility library features combinators for assembling scanners
+(parsers) from more basic scanners. The library is designed to work
+well together with the scanner functionality provided in the Standard
+ML Basis Library (i.e., StringCvt.reader).
+
+A scanner (or parser) of type `('a,'st) p` parses values of type
+`'a`. Such a parser is a function that takes a char-reader (of type
+`(char,'st) reader`, and returns a reader that reads values of type
+`'a`.
+
+When opening ScanUtil, include the following infix-declaration:
+
+    infix &gt;&gt;&gt; -&gt;&gt; &gt;&gt;- &gt;&gt;? || &gt;&gt;@ &gt;&gt;* ??
+
+<hr /><pre><b>structure ScanUtil : SCAN_UTIL <i>(pkg <a href='http://github.com/diku-dk/sml-parse'>github.com/diku-dk/sml-parse</a>)</i>
+</b></pre><hr /><pre><b>signature</b> SCAN_UTIL =
+<b>sig</b>
+  <b>type</b> ('a,'st) reader = ('a,'st) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+  <b>type</b> ('a,'st) p = (char,'st) reader -> ('a,'st) reader
+
+  <b>val</b> <a href='#$05$05$05'>>>></a> : ('a,'st) p * ('b,'st) p -> ('a * 'b,'st) p
+  <b>val</b> <a href='#$05$05$14'>>>@</a> : ('a,'st) p * ('a -> 'b) -> ('b,'st) p
+  <b>val</b> <a href='#$18$18'>||</a>  : ('a,'st) p * ('a,'st) p -> ('a,'st) p
+  <b>val</b> <a href='#$06$05$05'>->></a> : ('a,'st) p * ('b,'st) p -> ('b,'st) p
+  <b>val</b> <a href='#$05$05$06'>>>-</a> : ('a,'st) p * ('b,'st) p -> ('a,'st) p
+  <b>val</b> <a href='#$05$05$17'>>>?</a> : ('a,'st) p * ('b,'st) p -> ('a * 'b -> 'a) -> ('a,'st) p
+  <b>val</b> <a href='#$05$05*'>>>*</a> : ('a,'st) p * ('b,'st) p -> ('a * 'b -> 'a) -> ('a,'st) p
+  <b>val</b> <a href='#$17$17'>??</a>  : ('a,'st) p * ('a -> 'b option) -> ('b,'st) p
+
+  <b>val</b> <a href='#ign'>ign</a> : ('a,'st) p -> (unit,'st) p
+  <b>val</b> <a href='#con'>con</a> : string * 'a -> ('a,'st) p
+  <b>val</b> <a href='#str'>str</a> : string -> (string,'st) p
+  <b>val</b> <a href='#eos'>eos</a> : (unit,'st) p
+
+  <b>val</b> <a href='#scanChar'>scanChar</a>  : (char -> bool) -> (char,'st) p
+  <b>val</b> <a href='#scanChars'>scanChars</a> : (char -> bool) -> (string,'st) p
+
+  <b>val</b> <a href='#list'>list</a>      : ('a,'st) p -> ('a list,'st) p
+  <b>val</b> <a href='#option'>option</a>    : ('a,'st) p -> ('a option,'st) p
+
+  <b>val</b> <a href='#skipChars'>skipChars</a> : (char -> bool) -> ('a,'st) p -> ('a,'st) p
+  <b>val</b> <a href='#skipWS'>skipWS</a>    : ('a,'st) p -> ('a,'st) p
+  <b>val</b> <a href='#noSkipWS'>noSkipWS</a>  : ('a,'st) p -> ('a,'st) p
+
+  <b>val</b> <a href='#remainder'>remainder</a> : (string,'st) p
+
+  <b>val</b> <a href='#scanId'>scanId</a>    : (string,'st) p
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type ('a,'st) reader</tt>]</b></dt> <dd>The generic reader type, which is a type
+abbreviation for the type `'st -&gt; ('a * 'st) option`.
+</dd><br /><dt><b>[<tt><a name='$05$05$05'>a &gt;&gt;&gt; b</a></tt>]</b></dt> <dd>returns a scanner that first scans using `a`, then scans
+using `b`, and finally returns the pair of the two scan results.
+</dd><br /><dt><b>[<tt><a name='$06$05$05'>a -&gt;&gt; b</a></tt>]</b></dt> <dd>returns a scanner that first scans using `a`, then scans
+using `b`, and finally returns the second scan result.
+</dd><br /><dt><b>[<tt><a name='$05$05$06'>a &gt;&gt;- b</a></tt>]</b></dt> <dd>returns a scanner that first scans using `a`, then scans
+using `b`, and finally returns the first scan result.
+</dd><br /><dt><b>[<tt><a name='$05$05$17'>(a &gt;&gt;? b) f</a></tt>]</b></dt> <dd>first scans using `a` and maybe continues using `b`, if
+both succeeds, combines the scan results using `f`.
+</dd><br /><dt><b>[<tt><a name='$05$05*'>(a &gt;&gt;* b) f</a></tt>]</b></dt> <dd>first scans using `a` followed by scanning zero or more
+times using `b`, while iteratively combining successful scan results
+using `f`.
+</dd><br /><dt><b>[<tt><a name='$18$18'>a || b</a></tt>]</b></dt> <dd>returns a scanner that first attempts to scan using `a`. On
+success, the result is returned. Otherwise, returns the result of
+scanning using `b`.
+</dd><br /><dt><b>[<tt><a name='$05$05$14'>p &gt;&gt;@ f</a></tt>]</b></dt> <dd>returns a scanner that scans using `p` and applies `f` to the
+result on success.
+</dd><br /><dt><b>[<tt><a name='ign'>ign p</a></tt>]</b></dt> <dd>returns a scanner that discards the result of scanning using
+`p`.
+</dd><br /><dt><b>[<tt><a name='$17$17'>p ?? f</a></tt>]</b></dt> <dd>returns a scanner that scans using `p` and applies `f` on the
+result, which will either succeed or fail.
+</dd><br /><dt><b>[<tt><a name='eos'>eos</a></tt>]</b></dt> <dd>a scanner that accepts only the empty stream.
+</dd><br /><dt><b>[<tt><a name='skipWS'>skipWS p</a></tt>]</b></dt> <dd>returns a scanner that will skip initial white space before
+scanning using `p`.
+</dd><br /><dt><b>[<tt><a name='noSkipWS'>noSkipWS p</a></tt>]</b></dt> <dd>returns a scanner that does not skip initial white space
+when scanning using `p`.
+</dd><br /><dt><b>[<tt><a name='str'>str s</a></tt>]</b></dt> <dd>returns a scanner that will accept only the initial string `s`
+and returns the string value `s`.
+</dd><br /><dt><b>[<tt><a name='con'>con (s,v)</a></tt>]</b></dt> <dd>returns a scanner that will accept only the initial string
+`s` and which returns the value `v`.
+</dd><br /><dt><b>[<tt><a name='scanChar'>scanChar P</a></tt>]</b></dt> <dd>returns a scanner that accepts a character if it
+satisfies the predicate `P`.
+</dd><br /><dt><b>[<tt><a name='scanChars'>scanChars P</a></tt>]</b></dt> <dd>returns a scanner that accepts a string of characters
+for which each character satisfies the predicate `P`.
+</dd><br /><dt><b>[<tt><a name='skipChars'>skipChars P p</a></tt>]</b></dt> <dd>returns a scanner identical to `p` but that skips
+initial characters that satisfy the predicate `P`.
+</dd><br /><dt><b>[<tt><a name='list'>list p</a></tt>]</b></dt> <dd>returns a scanner that constructs a list of values by
+repeatedly scanning using p until p does not succeed.
+</dd><br /><dt><b>[<tt><a name='option'>option p</a></tt>]</b></dt> <dd>returns a scanner that constructs an option value by trying
+to scan using p.
+</dd><br /><dt><b>[<tt><a name='remainder'>remainder</a></tt>]</b></dt> <dd>scans all remaining characters (until end-of-stream). For
+large input streams, it may be more efficient to apply a
+state-specific extractor.
+</dd><br /><dt><b>[<tt><a name='scanId'>scanId</a></tt>]</b></dt> <dd>returns a scanner that scans identifiers consisting of an
+initial alphabetic character followed by zero or more alpha-numerical
+characters.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

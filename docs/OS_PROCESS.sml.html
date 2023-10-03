@@ -1,0 +1,76 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>OS_PROCESS</code> <tt><i>(basis)</i></tt></h4><p> Operating system processes. </p><hr /><pre><b>structure Process : OS_PROCESS <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> OS_PROCESS =
+  <b>sig</b>
+    <b>type</b> status
+    <b>val</b> <a href='#success'>success</a>   : status
+    <b>val</b> <a href='#failure'>failure</a>   : status
+    <b>val</b> <a href='#isSuccess'>isSuccess</a> : status -> bool
+    <b>val</b> <a href='#system'>system</a>    : string -> status
+    <b>val</b> <a href='#atExit'>atExit</a>    : (unit -> unit) -> unit
+    <b>val</b> <a href='#exit'>exit</a>      : status -> 'a
+    <b>val</b> <a href='#terminate'>terminate</a> : status -> 'a
+    <b>val</b> <a href='#getEnv'>getEnv</a>    : string -> string option
+    <b>val</b> <a href='#sleep'>sleep</a>     : <a href='TIME.sml.html'>Time</a>.time -> unit
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type status</tt>]</b></dt> <dd>The status type represents various termination
+conditions for processes. On POSIX-based systems, status will
+typically be an integral value.
+</dd><br /><dt><b>[<tt><a name='success'>success</a></tt>]</b></dt> <dd>The unique status value that signifies successful
+termination of a process.
+</dd><br /><dt><b>[<tt><a name='failure'>failure</a></tt>]</b></dt> <dd>A status value that signifies an error during execution of a
+process. Note that, in contrast to the success value, there may be
+other failure values.
+</dd><br /><dt><b>[<tt><a name='isSuccess'>isSuccess sts</a></tt>]</b></dt> <dd>returns true if the status denotes success.
+</dd><br /><dt><b>[<tt><a name='system'>system cmd</a></tt>]</b></dt> <dd>passes the command string cmd to the operating system's
+default shell to execute. It returns the termination status resulting
+from executing the command. It raises SysErr if the command cannot be
+executed.
+Note that, although this function is independent of the operating
+system, the interpretation of the string cmd depends very much on the
+underlying operating system and shell. On Unix systems, the default
+shell is &quot;/bin/sh&quot;; on Microsoft Windows systems, the default shell is
+the Microsoft Windows shell; on MacOS systems, the command is compiled
+and executed as an Apple script.
+</dd><br /><dt><b>[<tt><a name='atExit'>atExit f</a></tt>]</b></dt> <dd>registers an action f to be executed when the current SML
+program calls exit. Actions will be executed in the reverse order of
+registration.
+Exceptions raised when f is invoked that escape it are trapped and
+ignored.  Calls in f to atExit are ignored. Calls to exit do not
+return, but should cause the remainder of the functions registered
+with atExit to be executed.  Calls to terminate (or similar functions
+such as Posix.Process.exit) will terminate the process immediately.
+</dd><br /><dt><b>[<tt><a name='exit'>exit st</a></tt>]</b></dt> <dd>executes all actions registered with atExit, flushes and
+closes all I/O streams opened using the Library, then terminates the
+SML process with termination status st.
+Implementation note:
+<pre>
+    If the argument to exit comes from system or some other function
+    (such as Unix.reap) returning a status value, then the
+    implementation should attempt to preserve the meaning of the exit
+    code from the subprocess.  For example, on a POSIX system, if
+    Posix.Process.fromStatus st yields Posix.Process.W_EXITSTATUS v,
+    then v should be passed to Posix.Process.exit after all necessary
+    cleanup is done.
+</pre>
+
+<pre>
+    If st does not connote an exit value, exit should act as though
+    called with failure.  For example, on a POSIX system, this would
+    occur if Posix.Process.fromStatus st is Posix.Process.W_SIGNALED
+    or Posix.Process.W_STOPPED.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='terminate'>terminate st</a></tt>]</b></dt> <dd>terminates the SML process with termination status st,
+without executing the actions registered with atExit or flushing open
+I/O streams.
+</dd><br /><dt><b>[<tt><a name='getEnv'>getEnv s</a></tt>]</b></dt> <dd>returns the value of the environment variable s, if
+defined. Otherwise, it returns NONE.
+An environment is associated with each SML process, modeled as a list
+of pairs of strings, corresponding to name-value pairs. (The way the
+environment is established depends on the host operating system.) The
+getEnv function scans the environment for a pair whose first component
+equals s. If successful, it returns the second component.
+</dd><br /><dt><b>[<tt><a name='sleep'>sleep t</a></tt>]</b></dt> <dd>suspends the calling process for the time specified by t. If
+t is zero or negative, then the calling process does not sleep, but
+returns immediately.  No exception is raised.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

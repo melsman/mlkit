@@ -1,0 +1,67 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>INT_INF</code> <tt><i>(basis)</i></tt></h4><p> Operations on arbitrarily large integers.</p>The optional IntInf structure is one of the possible implementations
+of the INTEGER interface. In addition to the INTEGER operations, it
+provides some operations useful for programming with arbitrarily large
+integers. Operations in IntInf that return a value of type IntInf.int
+should never raise the Overflow exception. Note that, as it extends
+the INTEGER interface, IntInf defines a type int. Any use of this type
+below, unmodified by a structure, refers to the local type int defined
+in IntInf.
+<hr /><pre><b>structure IntInf : INT_INF <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> INT_INF =
+  <b>sig</b>
+    <b>include</b> <a href='INTEGER.sml.html'>INTEGER</a>
+    <b>val</b> <a href='#divMod'>divMod</a>  : int * int -> int * int
+    <b>val</b> <a href='#quotRem'>quotRem</a> : int * int -> int * int
+    <b>val</b> <a href='#pow'>pow</a>     : int * <a href='INTEGER.sml.html'>Int</a>.int -> int
+    <b>val</b> <a href='#log2'>log2</a>    : int -> <a href='INTEGER.sml.html'>Int</a>.int
+    <b>val</b> <a href='#orb'>orb</a>     : int * int -> int
+    <b>val</b> <a href='#xorb'>xorb</a>    : int * int -> int
+    <b>val</b> <a href='#andb'>andb</a>    : int * int -> int
+    <b>val</b> <a href='#notb'>notb</a>    : int -> int
+    <b>val</b> <a href='#$04$04'><<</a>      : int * <a href='WORD.sml.html'>Word</a>.word -> int
+    <b>val</b> <a href='#$10$05$05'>~>></a>     : int * <a href='WORD.sml.html'>Word</a>.word -> int
+  <b>end</b> <b>where</b> <b>type</b> int = intinf</pre><hr /><dl><dt><b>[<tt><a name='divMod'>divMod (i, j)</a></tt>]</b></dt> <dd>returns the pair (i div j, i mod j), but is likely to
+be more efficient than computing both components separately. It raises
+Div if j = 0.
+</dd><br /><dt><b>[<tt><a name='quotRem'>quotRem (i, j)</a></tt>]</b></dt> <dd>returns the pair (i quot j, i rem j), but is likely
+to be more efficient than computing both components separately. It
+raises Div if j = 0.
+</dd><br /><dt><b>[<tt><a name='pow'>pow (i, j)</a></tt>]</b></dt> <dd>returns the result of raising i to the j(th) power. This
+is well-defined when j &gt; 0. When j = 0, pow(i, j) is 1; in particular,
+pow(0, 0) is 1. When j &lt; 0, we define the following exceptional cases:
+<pre>
+    i 	        pow(i,j)
+    0 	        Raise Div
+    |i| = 1 	i(j)
+    |i| &gt; 1 	0
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='log2'>log2 i</a></tt>]</b></dt> <dd>returns the truncated base-2 logarithm of its argument, i.e.,
+the largest integer k for which pow(2, k) &lt;= i. It raises Domain if i
+&lt;= 0 and Overflow if the result is not representable as an Int.int.
+</dd><br /><dt><b>[<tt><a name='orb'>x orb y</a></tt>]</b></dt><dt><b>[<tt><a name='xorb'>x xorb y</a></tt>]</b></dt><dt><b>[<tt><a name='andb'>x andb y</a></tt>]</b></dt> <dd>These functions return the bit-wise OR, bit-wise exclusive
+OR, and bit-wise AND, respectively, of x and y.
+</dd><br /><dt><b>[<tt><a name='notb'>notb i</a></tt>]</b></dt> <dd>returns the bit-wise complement (NOT) of i. It is equivalent
+to ~(i + 1).
+</dd><br /><dt><b>[<tt><a name='$04$04'>&lt;&lt; (i, n)</a></tt>]</b></dt> <dd>shifts i to the left by n bit positions, filling in zeros
+from the right.  When i and n are interpreted as integers, the latter
+non-negative, this returns (i * 2(n)).
+</dd><br /><dt><b>[<tt><a name='$10$05$05'>~&gt;&gt; (i, n)</a></tt>]</b></dt> <dd>shifts i to the right by n bit positions. When i and n
+are interpreted as integers, the latter non-negative, this returns
+floor(((i / 2(n)))).
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>If an implementation provides the IntInf structure, then
+the type LargeInt.int must be the same as the type IntInf.int. The
+bit-wise operations (andb, orb, notb, &lt;&lt;, etc.) treat the integer
+arguments as having 2's complement representation. In particular, if
+we let bit = 2(n), we have, for all sufficiently large values of n:
+<pre>
+        andb(i, bit) = 0 if i &gt;= 0
+        andb(i, bit) = bit if i &lt; 0
+</pre>
+
+The rationale is that it is useful to have a module providing bit-wise
+operations on an unbounded domain. Such a module can serve as the
+basis for implementing sets or bit-vectors. These operations seemed to
+naturally fit into the specification of the IntInf module, rather than
+require an additional WordInf structure.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

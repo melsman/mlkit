@@ -1,0 +1,51 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>MONO_SET</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i></tt></h4><p> Monomorphic sets.</p>The MONO_SET signature is a generic interface to monomorphic sets.
+<hr /><pre><b>structure WordSet : MONO_SET <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b><b>structure StringSet : MONO_SET <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b><b>structure IntSet : MONO_SET <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b></pre><hr /><pre><b>signature</b> MONO_SET = <b>sig</b>
+  <b>type</b> set
+  <b>type</b> elem
+
+  <b>val</b> <a href='#empty'>empty</a>      : set
+  <b>val</b> <a href='#singleton'>singleton</a>  : elem -> set
+  <b>val</b> <a href='#size'>size</a>       : set -> int
+  <b>val</b> <a href='#isEmpty'>isEmpty</a>    : set -> bool
+  <b>val</b> <a href='#member'>member</a>     : elem * set -> bool
+  <b>val</b> <a href='#eq'>eq</a>         : set * set -> bool
+  <b>val</b> <a href='#list'>list</a>       : set -> elem list
+  <b>val</b> <a href='#fromList'>fromList</a>   : elem list -> set
+  <b>val</b> <a href='#insert'>insert</a>     : elem * set -> set
+  <b>val</b> <a href='#remove'>remove</a>     : elem * set -> set
+  <b>val</b> <a href='#difference'>difference</a> : set * set -> set
+  <b>val</b> <a href='#intersect'>intersect</a>  : set * set -> set
+  <b>val</b> <a href='#union'>union</a>      : set * set -> set
+  <b>val</b> <a href='#partition'>partition</a>  : (elem -> bool) -> set -> set * set
+  <b>val</b> <a href='#fold'>fold</a>       : (elem * 'b -> 'b) -> 'b -> set -> 'b
+  <b>val</b> <a href='#app'>app</a>        : (elem -> unit) -> set -> unit
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type set</tt>]</b></dt> <dd>The set type.
+</dd><br /><dt><b>[<tt>type elem</tt>]</b></dt> <dd>The type of elements.
+</dd><br /><dt><b>[<tt><a name='empty'>empty</a></tt>]</b></dt> <dd>The empty set.
+</dd><br /><dt><b>[<tt><a name='singleton'>singleton e</a></tt>]</b></dt> <dd>The singleton set {e}.
+</dd><br /><dt><b>[<tt><a name='size'>size s</a></tt>]</b></dt> <dd>The cardinality of the set s.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty s</a></tt>]</b></dt> <dd>returns true if the set is empty. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='member'>member (e, s)</a></tt>]</b></dt> <dd>returns true if e is in s Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='eq'>eq (s1, s2)</a></tt>]</b></dt> <dd>returns true if the two sets s1 and s2 are
+equal. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='list'>list s</a></tt>]</b></dt> <dd>returns the elements of s as a list. The order is
+implementation dependent.
+</dd><br /><dt><b>[<tt><a name='fromList'>fromList l</a></tt>]</b></dt> <dd>returns the set consisting of the elements in the list l.
+</dd><br /><dt><b>[<tt><a name='insert'>insert (e, s)</a></tt>]</b></dt> <dd>returns s with e inserted.
+</dd><br /><dt><b>[<tt><a name='remove'>remove (e, s)</a></tt>]</b></dt> <dd>returns s with e removed.
+</dd><br /><dt><b>[<tt><a name='difference'>difference (s1, s2)</a></tt>]</b></dt> <dd>returns s1 with the elements in s2 removed.
+</dd><br /><dt><b>[<tt><a name='intersect'>intersect (s1, s2)</a></tt>]</b></dt> <dd>returns the intersection of s1 and s2.
+</dd><br /><dt><b>[<tt><a name='union'>union (s1, s2)</a></tt>]</b></dt> <dd>returns the union of s1 and s2.
+</dd><br /><dt><b>[<tt><a name='partition'>partition f s</a></tt>]</b></dt> <dd>returns a pair of sets (s1, s2) where f returns true
+for each element in s1 and false for each element in s2 and where s is
+the union of s1 and s2. The order in which f is applied to the
+elements of s is implementation dependent.
+</dd><br /><dt><b>[<tt><a name='fold'>fold f base s</a></tt>]</b></dt> <dd>folds using f over the base element. The order in
+which f is applied to the elements of s is implementation dependent.
+</dd><br /><dt><b>[<tt><a name='app'>app f s</a></tt>]</b></dt> <dd>applies f to each element of s (the order is implementation
+dependent).
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

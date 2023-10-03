@@ -1,0 +1,107 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>MONO_VECTOR_SLICE</code> <tt><i>(basis)</i></tt></h4><p> Monomorphic vector slice operations.</p>The MONO_VECTOR_SLICE signature provides an abstraction of subarrays
+for monomorphic immutable arrays or vectors. A slice value can be
+viewed as a triple (v, i, n), where v is the underlying vector, i is
+the starting index, and n is the length of the subarray, with the
+constraint that 0 &lt;= i &lt;= i + n &lt;= |v|, where |v| is the length of the
+vector v. Slices provide a convenient notation for specifying and
+operating on a contiguous subset of elements in a vector.
+<hr /><pre><b>structure Word8VectorSlice : MONO_VECTOR_SLICE <i>(basis)</i>
+</b><b>structure CharVectorSlice : MONO_VECTOR_SLICE <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> MONO_VECTOR_SLICE =
+  <b>sig</b>
+    <b>type</b> elem
+    <b>type</b> vector
+    <b>type</b> slice
+    <b>val</b> <a href='#length'>length</a>   : slice -> int
+    <b>val</b> <a href='#sub'>sub</a>      : slice * int -> elem
+    <b>val</b> <a href='#full'>full</a>     : vector -> slice
+    <b>val</b> <a href='#slice'>slice</a>    : vector * int * int option -> slice
+    <b>val</b> <a href='#subslice'>subslice</a> : slice * int * int option -> slice
+    <b>val</b> <a href='#base'>base</a>     : slice -> vector * int * int
+    <b>val</b> <a href='#vector'>vector</a>   : slice -> vector
+    <b>val</b> <a href='#concat'>concat</a>   : slice list -> vector
+    <b>val</b> <a href='#isEmpty'>isEmpty</a>  : slice -> bool
+    <b>val</b> <a href='#getItem'>getItem</a>  : slice -> (elem * slice) option
+    <b>val</b> <a href='#appi'>appi</a>     : (int * elem -> unit) -> slice -> unit
+    <b>val</b> <a href='#app'>app</a>      : (elem -> unit) -> slice -> unit
+    <b>val</b> <a href='#mapi'>mapi</a>     : (int * elem -> elem) -> slice -> vector
+    <b>val</b> <a href='#map'>map</a>      : (elem -> elem) -> slice -> vector
+    <b>val</b> <a href='#foldli'>foldli</a>   : (int * elem * 'b -> 'b) -> 'b -> slice -> 'b
+    <b>val</b> <a href='#foldr'>foldr</a>    : (elem * 'b -> 'b) -> 'b -> slice -> 'b
+    <b>val</b> <a href='#foldl'>foldl</a>    : (elem * 'b -> 'b) -> 'b -> slice -> 'b
+    <b>val</b> <a href='#foldri'>foldri</a>   : (int * elem * 'b -> 'b) -> 'b -> slice -> 'b
+    <b>val</b> <a href='#findi'>findi</a>    : (int * elem -> bool) -> slice -> (int * elem) option
+    <b>val</b> <a href='#find'>find</a>     : (elem -> bool) -> slice -> elem option
+    <b>val</b> <a href='#exists'>exists</a>   : (elem -> bool) -> slice -> bool
+    <b>val</b> <a href='#all'>all</a>      : (elem -> bool) -> slice -> bool
+    <b>val</b> <a href='#collate'>collate</a>  : (elem * elem -> order) -> slice * slice -> order
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type vector</tt>]</b></dt> <dd>The underlying monomorphic vector type. We denote the
+length of a vector vec of type vector by |vec|.
+</dd><br /><dt><b>[<tt><a name='length'>length sl</a></tt>]</b></dt> <dd>returns |sl|, the length (i.e., number of elements) of the
+slice.
+</dd><br /><dt><b>[<tt><a name='sub'>sub (sl, i)</a></tt>]</b></dt> <dd>returns the i(th) element of the slice sl. If i &lt; 0 or
+|sl| &lt;= i, then the Subscript exception is raised.
+</dd><br /><dt><b>[<tt><a name='full'>full vec</a></tt>]</b></dt> <dd>creates a slice representing the entire vector vec. It is
+equivalent to (slice(vec, 0, NONE)).
+</dd><br /><dt><b>[<tt><a name='slice'>slice (vec, i, sz)</a></tt>]</b></dt> <dd>creates a slice based on the vector vec starting
+at index i of the vector vec. If sz is NONE, the slice includes all of
+the elements to the end of the vector, i.e., vec[i..|vec|-1]. This
+raises Subscript if i &lt; 0 or |vec| &lt; i. If sz is SOME(j), the slice
+has length j, that is, it corresponds to vec[i..i+j-1]. It raises
+Subscript if i &lt; 0 or j &lt; 0 or |vec| &lt; i + j. Note that, if defined,
+slice returns an empty slice when i = |vec|.
+</dd><br /><dt><b>[<tt><a name='subslice'>subslice (sl, i, sz)</a></tt>]</b></dt> <dd>creates a slice based on the given slice sl
+starting at index i of sl. If sz is NONE, the slice includes all of
+the elements to the end of the slice, i.e., sl[i..|sl|-1]. This raises
+Subscript if i &lt; 0 or |sl| &lt; i. If sz is SOME(j), the slice has length
+j, that is, it corresponds to sl[i..i+j-1]. It raises Subscript if i &lt;
+0 or j &lt; 0 or |sl| &lt; i + j. Note that, if defined, slice returns an
+empty slice when i = |sl|.
+</dd><br /><dt><b>[<tt><a name='base'>base sl</a></tt>]</b></dt> <dd>returns a triple (vec, i, n) representing the concrete
+representation of the slice. vec is the underlying vector, i is the
+starting index, and n is the length of the slice.
+</dd><br /><dt><b>[<tt><a name='vector'>vector sl</a></tt>]</b></dt> <dd>generates a vector from the slice sl. Specifically, if vec
+is the resulting vector, we have |vec| = |sl| and, for 0 &lt;= i &lt; |sl|,
+element i of vec is sub (sl, i).
+</dd><br /><dt><b>[<tt><a name='concat'>concat l</a></tt>]</b></dt> <dd>is the concatenation of all the vectors in l. This raises
+Size if the sum of all the lengths is greater than the maximum length
+allowed by vectors of type vector.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty sl</a></tt>]</b></dt> <dd>returns true if sl has length 0.
+</dd><br /><dt><b>[<tt><a name='getItem'>getItem sl</a></tt>]</b></dt> <dd>returns the first item in sl and the rest of the slice,
+or NONE if sl is empty.
+</dd><br /><dt><b>[<tt><a name='appi'>appi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='app'>app f sl</a></tt>]</b></dt> <dd>These apply the function f to the elements of a slice in
+left to right order (i.e., increasing indices). The more general appi
+function supplies f with the index of the corresponding element in the
+slice. The expression app f sl is equivalent to appi (f o #2) sl.
+</dd><br /><dt><b>[<tt><a name='mapi'>mapi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='map'>map f sl</a></tt>]</b></dt> <dd>These functions generate new vectors by mapping the
+function f from left to right over the argument slice. The more
+general mapi function supplies both the element and the element's
+index in the slice to the function f. The latter expression is
+equivalent to (mapi (f o #2) sl).
+</dd><br /><dt><b>[<tt><a name='foldli'>foldli f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldr'>foldr f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldl'>foldl f init sl</a></tt>]</b></dt><dt><b>[<tt><a name='foldri'>foldri f init sl</a></tt>]</b></dt> <dd>These fold the function f over all the elements of
+a vector slice, using the value init as the initial value. The
+functions foldli and foldl apply the function f from left to right
+(increasing indices), while the functions foldri and foldr work from
+right to left (decreasing indices). The more general functions foldli
+and foldri supply f with the index of the corresponding element in the
+slice. See the MONO_ARRAY manual pages for reference implementations
+of the indexed versions. The expression foldl f init sl is equivalent
+to (foldli (fn (_, a, x) =&gt; f(a, x)) init sl). The analogous
+equivalence holds for foldri and foldr.
+</dd><br /><dt><b>[<tt><a name='findi'>findi f sl</a></tt>]</b></dt><dt><b>[<tt><a name='find'>find f sl</a></tt>]</b></dt> <dd>These apply f to each element of the slice sl, from left
+to right (i.e., increasing indices), until a true value is
+returned. If this occurs, the functions return the element; otherwise,
+they return NONE. The more general version findi also supplies f with
+the index of the element in the slice and, upon finding an entry
+satisfying the predicate, returns that index with the element.
+</dd><br /><dt><b>[<tt><a name='exists'>exists f sl</a></tt>]</b></dt> <dd>applies f to each element x of the slice sl, from left
+to right (i.e., increasing indices), until f x evaluates to true; it
+returns true if such an x exists and false otherwise.
+</dd><br /><dt><b>[<tt><a name='all'>all f sl</a></tt>]</b></dt> <dd>applies f to each element x of the slice sl, from left to
+right (i.e., increasing indices), until f x evaluates to false; it
+returns false if such an x exists and true otherwise. It is equivalent
+to not(exists (not o f) sl)).
+</dd><br /><dt><b>[<tt><a name='collate'>collate f (sl, sl2)</a></tt>]</b></dt> <dd>performs lexicographic comparison of the two
+slices using the given ordering f on elements.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

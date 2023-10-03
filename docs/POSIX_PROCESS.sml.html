@@ -1,0 +1,161 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>POSIX_PROCESS</code> <tt><i>(basis)</i></tt></h4><p> POSIX process operations.</p>The structure Posix.Process describes the primitive POSIX operations
+dealing with processes, as described in Section 3 of the POSIX
+standard 1003.1,1996.
+
+<hr /><pre><b>signature</b> POSIX_PROCESS =
+  <b>sig</b>
+    <b>eqtype</b> signal
+    <b>eqtype</b> pid
+    <b>val</b> <a href='#wordToPid'>wordToPid</a> : <a href='WORD.sml.html'>SysWord</a>.word -> pid
+    <b>val</b> <a href='#pidToWord'>pidToWord</a> : pid -> <a href='WORD.sml.html'>SysWord</a>.word
+    <b>val</b> <a href='#fork'>fork</a>      : unit -> pid option
+    <b>val</b> <a href='#exec'>exec</a>      : string * string list -> 'a
+    <b>val</b> <a href='#exece'>exece</a>     : string * string list * string list -> 'a
+    <b>val</b> <a href='#execp'>execp</a>     : string * string list -> 'a
+    <b>datatype</b> waitpid_arg
+      = W_ANY_CHILD
+      | W_CHILD of pid
+      | W_SAME_GROUP
+      | W_GROUP of pid
+    <b>datatype</b> exit_status
+      = W_EXITED
+      | W_EXITSTATUS of <a href='WORD.sml.html'>Word8</a>.word
+      | W_SIGNALED of signal
+      | W_STOPPED of signal
+    <b>val</b> <a href='#fromStatus'>fromStatus</a> : OS.Process.status -> exit_status
+    <b>structure</b> W : <b>sig</b>
+        <b>include</b> <a href='BIT_FLAGS.sml.html'>BIT_FLAGS</a>
+        <b>val</b> <a href='#untraced'>untraced</a> : flags
+      <b>end</b>
+    <b>val</b> <a href='#wait'>wait</a>       : unit -> pid * exit_status
+    <b>val</b> <a href='#waitpid'>waitpid</a>    : waitpid_arg * W.flags list -> pid * exit_status
+    <b>val</b> <a href='#waitpid$07nh'>waitpid_nh</a> : waitpid_arg * W.flags list -> (pid * exit_status) option
+    <b>val</b> <a href='#exit'>exit</a>       : <a href='WORD.sml.html'>Word8</a>.word -> 'a
+
+    <b>datatype</b> killpid_arg
+      = K_PROC of pid
+      | K_SAME_GROUP
+      | K_GROUP of pid
+
+    <b>val</b> <a href='#kill'>kill</a>  : killpid_arg * signal -> unit
+    <b>val</b> <a href='#alarm'>alarm</a> : <a href='TIME.sml.html'>Time</a>.time -> <a href='TIME.sml.html'>Time</a>.time
+    <b>val</b> <a href='#pause'>pause</a> : unit -> unit
+    <b>val</b> <a href='#sleep'>sleep</a> : <a href='TIME.sml.html'>Time</a>.time -> <a href='TIME.sml.html'>Time</a>.time
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>eqtype signal</tt>]</b></dt> <dd>The type of a POSIX signal, an asynchronous
+notification of an event.
+</dd><br /><dt><b>[<tt>eqtype pid</tt>]</b></dt> <dd>The type of a process ID, used as an identifier for an
+operating system process.
+</dd><br /><dt><b>[<tt><a name='wordToPid'>wordToPid w</a></tt>]</b></dt><dt><b>[<tt><a name='pidToWord'>pidToWord pid</a></tt>]</b></dt> <dd>These functions convert between a process ID and the integer
+representation used by the operating system. Note that there is no
+validation that a pid value generated using wordToPid is legal on the
+given system or that it corresponds to a currently running process.
+</dd><br /><dt><b>[<tt><a name='fork'>fork()</a></tt>]</b></dt> <dd>This function creates a new process. The new child process is
+a copy of the calling parent process. After execution of fork, both
+the parent and child process execute independently, but share various
+system resources. Upon successful completion, fork returns NONE in the
+child process, and the pid of the child in the parent process. It
+raises OS.SysErr on failure.
+</dd><br /><dt><b>[<tt><a name='exec'>exec (path, args)</a></tt>]</b></dt><dt><b>[<tt><a name='exece'>exece (path, args, env)</a></tt>]</b></dt><dt><b>[<tt><a name='execp'>execp (file, args)</a></tt>]</b></dt> <dd>These functions replace the current process image with a new process
+image. There is no return from a successful call, as the calling
+process image is overlaid by the new process image. In the first two
+forms, the path argument specifies the pathname of the executable
+file. In the last form, if file contains a slash character, it is
+treated as the pathname for the executable file; otherwise, an
+executable file with name file is searched for in the directories
+specified by the environment variable PATH.
+Normally, the new image is given the same environment as the calling
+program. The env argument in exece allows the program to specify a new
+environment.
+The args argument is a list of string arguments to be passed to the
+new program. By convention, the first item in args is some form of the
+filename of the new program, usually the last arc in the path or
+filename.
+</dd><br /><dt><b>[<tt>datatype waitpid_arg</tt>]</b></dt> <dd>Type with constructors specifying what
+processes to wait for:
+<pre>
+    W_ANY_CHILD  : Any child process
+</pre>
+
+<pre>
+    W_CHILD pid  : The child process with the given pid
+</pre>
+
+<pre>
+    W_SAME_GROUP : Any child process in the same process group as the
+                   calling process
+</pre>
+
+<pre>
+    W_GROUP pid  : Any child process whose process group ID is given
+                   by pid.
+</pre>
+
+</dd><br /><dt><b>[<tt>datatype exit_status</tt>]</b></dt> <dd>These values represent the ways in which a
+process might stop. They correspond to, respectively, terminate
+successfully (W_EXITED), terminate with the given value
+(W_EXITSTATUS), terminate upon receipt of the given signal
+(W_SIGNALED), and stop upon receipt of the given signal
+(W_STOPPED). The value carried by W_EXITSTATUS must never be zero.  If
+an implementation provides both the Posix and Unix structures, then
+the datatypes Posix.Process.exit_status and Unix.exit_status must be
+the same.
+</dd><br /><dt><b>[<tt><a name='fromStatus'>fromStatus sts</a></tt>]</b></dt> <dd>returns a concrete view of the given status.
+</dd><br /><dt><b>[<tt>structure W</tt>]</b></dt> <dd>[untraced] In systems supporting job control, this flag requests
+<pre>
+    the status of child processes that are stopped.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='wait'>wait()</a></tt>]</b></dt> <dd>This function allows a calling process to obtain status
+information on any of its child processes. Execution of wait suspends
+execution until status information on one of its child processes is
+available. If status information is available prior to the execution
+of wait, return is immediate. wait returns the process ID of the child
+and its exit status.
+</dd><br /><dt><b>[<tt><a name='waitpid'>waitpid (procs, l)</a></tt>]</b></dt> <dd>is identical to wait except that the status is
+reported only for child processes specified by procs. A set of flags l
+may be used to modify the behavior of waitpid.
+</dd><br /><dt><b>[<tt><a name='waitpid$07nh'>waitpid_nh (procs, l)</a></tt>]</b></dt> <dd>is identical to waitpid, except that the call
+does not suspend if status information for one of the children
+specified by procs is not immediately available.
+Rationale: In C, waitpid_nh is handled by waitpid, using an additional
+flag to indicate no hanging. In SML, the semantics of waitpid_nh
+indicated a different return type from that of waitpid, hence the
+split into two functions.
+</dd><br /><dt><b>[<tt><a name='exit'>exit i</a></tt>]</b></dt> <dd>terminates the calling process. If the parent process is
+executing a wait related call, the exit status i is made available to
+it. exit does not return to the caller.  Calling exit does not flush
+or close any open IO streams, nor does it call OS.Process.atExit. It
+does close any open POSIX files, and performs the actions associated
+with the C version of exit.
+</dd><br /><dt><b>[<tt>datatype killpid_arg</tt>]</b></dt> <dd>Type with constructors specifying processes to
+kill:
+<pre>
+    K_PROC pid   : The process with ID pid.
+</pre>
+
+<pre>
+    K_SAME_GROUP : All processes in the same process group as the
+                   calling process.
+</pre>
+
+<pre>
+    K_GROUP pid  : All processes in the process group specified by
+                   pid.
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='kill'>kill (procs, sig)</a></tt>]</b></dt> <dd>sends the signal sig to the process or group of
+processes specified by procs.
+</dd><br /><dt><b>[<tt><a name='alarm'>alarm t</a></tt>]</b></dt> <dd>causes the system to send an alarm signal (alrm) to the
+calling process after t seconds have elapsed. If there is a previous
+alarm request with time remaining, the alarm function returns a
+nonzero value corresponding to the number of seconds remaining on the
+previous request. Zero time is returned if there are no outstanding
+calls.
+</dd><br /><dt><b>[<tt><a name='pause'>pause()</a></tt>]</b></dt> <dd>This function suspends the calling process until the
+delivery of a signal that is either caught or that terminates the
+process.
+</dd><br /><dt><b>[<tt><a name='sleep'>sleep t</a></tt>]</b></dt> <dd>causes the current process to be suspended from execution
+until either t seconds have elapsed, or until the receipt of a signal
+that is either caught or that terminates the process.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

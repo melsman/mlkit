@@ -1,0 +1,137 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>TEXT_IO</code> <tt><i>(basis)</i></tt></h4><p> Operations for input and output of characters and strings.</p>The TEXT_IO interface provides input/output of characters and
+strings. Most of the operations themselves are defined in the
+IMPERATIVE_IO signature.
+
+The TEXT_IO interface is matched by two structures, the required
+TextIO and the optional WideTextIO. The former implements strings
+based on the extended ASCII 8-bit characters. The latter provides
+strings of characters of some size greater than or equal to 8 bits.
+
+The signature given below for TEXT_IO is not valid SML, in that the
+substructure StreamIO is respecified. (It is initially specified as a
+substructure having signature STREAM_IO in the included signature
+IMPERATIVE_IO.) This abuse of notation seems acceptable in that the
+intended meaning is clear (a structure matching TEXT_IO also matches
+IMPERATIVE_IO and has a substructure StreamIO that matches
+TEXT_STREAM_IO) while avoiding a textual inclusion of the whole
+signature of IMPERATIVE_IO except its StreamIO substructure.
+<hr /><pre><b>structure TextIO : TEXT_IO <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> TEXT_IO =
+  <b>sig</b>
+      <b>structure</b> StreamIO : <a href='TEXT_STREAM_IO.sml.html'>TEXT_STREAM_IO</a>
+         <b>where</b> <b>type</b> pos = <a href='PRIM_IO.sml.html'>TextPrimIO</a>.pos
+         <b>where</b> <b>type</b> reader = <a href='PRIM_IO.sml.html'>TextPrimIO</a>.reader
+         <b>where</b> <b>type</b> writer = <a href='PRIM_IO.sml.html'>TextPrimIO</a>.writer
+
+      <b>type</b> elem = StreamIO.elem
+      <b>type</b> instream
+      <b>type</b> outstream
+      <b>type</b> vector = StreamIO.vector
+
+      <b>val</b> <a href='#canInput'>canInput</a>     : instream * int -> int option
+      <b>val</b> <a href='#closeIn'>closeIn</a>      : instream -> unit
+      <b>val</b> <a href='#closeOut'>closeOut</a>     : outstream -> unit
+      <b>val</b> <a href='#endOfStream'>endOfStream</a>  : instream -> bool
+      <b>val</b> <a href='#flushOut'>flushOut</a>     : outstream -> unit
+      <b>val</b> <a href='#getInstream'>getInstream</a>  : instream -> StreamIO.instream
+      <b>val</b> <a href='#getOutstream'>getOutstream</a> : outstream -> StreamIO.outstream
+      <b>val</b> <a href='#getPosOut'>getPosOut</a>    : outstream -> StreamIO.out_pos
+      <b>val</b> <a href='#input1'>input1</a>       : instream -> elem option
+      <b>val</b> <a href='#input'>input</a>        : instream -> vector
+      <b>val</b> <a href='#inputAll'>inputAll</a>     : instream -> vector
+      <b>val</b> <a href='#inputLine'>inputLine</a>    : instream -> string option
+      <b>val</b> <a href='#inputN'>inputN</a>       : instream * int -> vector
+      <b>val</b> <a href='#lookahead'>lookahead</a>    : instream -> elem option
+      <b>val</b> <a href='#mkInstream'>mkInstream</a>   : StreamIO.instream -> instream
+      <b>val</b> <a href='#mkOutstream'>mkOutstream</a>  : StreamIO.outstream -> outstream
+      <b>val</b> <a href='#openAppend'>openAppend</a>   : string -> outstream
+      <b>val</b> <a href='#openIn'>openIn</a>       : string -> instream
+      <b>val</b> <a href='#openOut'>openOut</a>      : string -> outstream
+      <b>val</b> <a href='#openString'>openString</a>   : string -> instream
+      <b>val</b> <a href='#output1'>output1</a>      : outstream * elem -> unit
+      <b>val</b> <a href='#output'>output</a>       : outstream * vector -> unit
+      <b>val</b> <a href='#outputSubstr'>outputSubstr</a> : outstream * substring -> unit
+      <b>val</b> <a href='#scanStream'>scanStream</a>   : ((<a href='CHAR.sml.html'>Char</a>.char, StreamIO.instream) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+                         -> ('a, StreamIO.instream) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader)
+                         -> instream -> 'a option
+      <b>val</b> <a href='#setInstream'>setInstream</a>  : (instream * StreamIO.instream) -> unit
+      <b>val</b> <a href='#setOutstream'>setOutstream</a> : outstream * StreamIO.outstream -> unit
+      <b>val</b> <a href='#setPosOut'>setPosOut</a>    : outstream * StreamIO.out_pos -> unit
+      <b>val</b> <a href='#stdIn'>stdIn</a>        : instream
+      <b>val</b> <a href='#stdOut'>stdOut</a>       : outstream
+      <b>val</b> <a href='#stdErr'>stdErr</a>       : outstream
+      <b>val</b> <a href='#print'>print</a>        : string -> unit
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='openIn'>openIn s</a></tt>]</b></dt> <dd>creates a new instream associated with the file named s.
+Raises Io.Io is file s does not exist or is not accessible.
+</dd><br /><dt><b>[<tt><a name='closeIn'>closeIn istr</a></tt>]</b></dt> <dd>closes stream istr.  Has no effect if istr is closed
+already.  Further operations on istr will behave as if istr is at
+end of stream (that is, will return &quot;&quot; or NONE or true).
+</dd><br /><dt><b>[<tt><a name='input'>input istr</a></tt>]</b></dt> <dd>reads some elements from istr, returning a vector v of
+those elements.  The vector will be empty (size v = 0) if and only
+if istr is at end of stream or is closed.  May block (not return
+until data are available in the external world).
+</dd><br /><dt><b>[<tt><a name='inputAll'>inputAll istr</a></tt>]</b></dt> <dd>reads and returns the string v of all characters
+remaining in istr up to end of stream.
+</dd><br /><dt><b>[<tt>inputNoBlock istr</tt>]</b></dt> <dd>returns SOME(v) if some elements v can be read
+without blocking; returns SOME(&quot;&quot;) if it can be determined without
+blocking that istr is at end of stream; returns NONE otherwise.  If
+istr does not support non-blocking input, raises
+Io.NonblockingNotSupported.
+</dd><br /><dt><b>[<tt><a name='input1'>input1 istr</a></tt>]</b></dt> <dd>returns SOME(e) if at least one element e of istr is
+available; returns NONE if istr is at end of stream or is closed;
+blocks if necessary until one of these conditions holds.
+</dd><br /><dt><b>[<tt><a name='inputN'>inputN(istr, n)</a></tt>]</b></dt> <dd>returns the next n characters from istr as a string,
+if that many are available; returns all remaining characters if end of
+stream is reached before n characters are available; blocks if
+necessary until one of these conditions holds.  (This is the behaviour
+of the `input' function prescribed in the 1990 Definition of Standard
+ML).
+</dd><br /><dt><b>[<tt><a name='inputLine'>inputLine istr</a></tt>]</b></dt> <dd>returns one line of text, including the terminating
+newline character.  If end of stream is reached before a newline
+character, then the remaining part of the stream is returned, with a
+newline character added.  If istr is at end of stream or is closed,
+then the empty string &quot;&quot; is returned.
+</dd><br /><dt><b>[<tt><a name='endOfStream'>endOfStream istr</a></tt>]</b></dt> <dd>returns false if any elements are available in
+istr; returns true if istr is at end of stream or closed; blocks if
+necessary until one of these conditions holds.
+</dd><br /><dt><b>[<tt><a name='lookahead'>lookahead istr</a></tt>]</b></dt> <dd>returns SOME(e) where e is the next element in the
+stream; returns NONE if istr is at end of stream or is closed; blocks
+if necessary until one of these conditions holds.  Does not advance
+the stream.
+</dd><br /><dt><b>[<tt><a name='stdIn'>stdIn</a></tt>]</b></dt> <dd>is the buffered state-based standard input stream.
+</dd><br /><dt><b>[<tt><a name='scanStream'>scanStream scan istr</a></tt>]</b></dt> <dd>turns the instream istr into a character source
+and applies the scanner `scan' to that source.  See StringCvt for more
+on character sources and scanners.  The Moscow ML implementation
+currently can backtrack only 512 characters, and raises Fail if the
+scanner backtracks further than that.
+</dd><br /><dt><b>[<tt><a name='openOut'>openOut s</a></tt>]</b></dt> <dd>creates a new outstream associated with the file named s.
+If file s does not exist, and the directory exists and is writable,
+then a new file is created.  If file s exists, it is truncated (any
+existing contents are lost).
+</dd><br /><dt><b>[<tt><a name='openAppend'>openAppend s</a></tt>]</b></dt> <dd>creates a new outstream associated with the file named
+s.  If file s does not exist, and the directory exists and is
+writable, then a new file is created.  If file s exists, any existing
+contents are retained, and output goes at the end of the file.
+</dd><br /><dt><b>[<tt><a name='closeOut'>closeOut ostr</a></tt>]</b></dt> <dd>closes stream ostr; further operations on ostr (except
+for additional close operations) will raise exception Io.Io.
+</dd><br /><dt><b>[<tt><a name='output'>output(ostr, v)</a></tt>]</b></dt> <dd>writes the string v on outstream ostr.
+</dd><br /><dt><b>[<tt><a name='output1'>output1(ostr, e)</a></tt>]</b></dt> <dd>writes the character e on outstream ostr.
+</dd><br /><dt><b>[<tt><a name='flushOut'>flushOut ostr</a></tt>]</b></dt> <dd>flushes the outstream ostr, so that all data written
+to ostr becomes available to the underlying file or device.
+</dd><br /><dt><b>[<tt><a name='stdOut'>stdOut</a></tt>]</b></dt> <dd>is the buffered state-based standard output stream.
+</dd><br /><dt><b>[<tt><a name='stdErr'>stdErr</a></tt>]</b></dt> <dd>is the unbuffered state-based standard error stream.  That
+is, it is always kept flushed, so flushOut(stdErr) is redundant.
+</dd><br /><dt><b>[<tt><a name='print'>print s</a></tt>]</b></dt> <dd>prints the string s to stdOut and flushes the stdOut stream.
+</dd><br /><dt><b><i>Discussion</i></b></dt> <dd>This structure provides input/output functions on text
+streams.  The functions are state-based: reading from or writing to a
+stream changes the state of the stream.  The streams are buffered:
+output to a stream may not immediately affect the underlying file or
+device. Note that under DOS, Windows, OS/2, and MacOS, text streams
+will be `translated' by converting (e.g.) the double newline CRLF to a
+single newline character \n. Type instream is the type of state-based
+characters input streams, and type outstream is the type of
+state-based character output streams.  Type elem is the type char of
+characters, and type vector is the type of character vectors
+(strings).
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

@@ -1,0 +1,153 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>STRING</code> <tt><i>(basis)</i></tt></h4><p> Operations on string values.</p>The STRING signature specifies the basic operations on a string type,
+which is a vector of the underlying character type char as defined in
+the structure.
+
+The STRING signature is matched by two structures, the required String
+and the optional WideString. The former implements strings based on
+the extended ASCII 8-bit characters, and is a companion structure to
+the Char structure. The latter provides strings of characters of some
+size greater than or equal to 8 bits, and is related to the structure
+WideChar. In particular, the type String.char is identical to the type
+Char.char and, when WideString is defined, the type WideString.char is
+identical to the type WideChar.char. These connections are made
+explicit in the Text and WideText structures, which match the TEXT
+signature.
+<hr /><pre><b>structure String : STRING <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> STRING =
+  <b>sig</b>
+    <b>eqtype</b> string
+    <b>eqtype</b> char
+    <b>val</b> <a href='#maxSize'>maxSize</a> : int
+    <b>val</b> <a href='#size'>size</a> : string -> int
+    <b>val</b> <a href='#sub'>sub</a> : string * int -> char
+    <b>val</b> <a href='#extract'>extract</a>   : string * int * int option -> string
+    <b>val</b> <a href='#substring'>substring</a> : string * int * int -> string
+    <b>val</b> <a href='#$11'>^</a> : string * string -> string
+    <b>val</b> <a href='#concat'>concat</a> : string list -> string
+    <b>val</b> <a href='#concatWith'>concatWith</a> : string -> string list -> string
+    <b>val</b> <a href='#str'>str</a> : char -> string
+    <b>val</b> <a href='#implode'>implode</a> : char list -> string
+    <b>val</b> <a href='#explode'>explode</a> : string -> char list
+    <b>val</b> <a href='#map'>map</a> : (char -> char) -> string -> string
+    <b>val</b> <a href='#translate'>translate</a> : (char -> string) -> string -> string
+    <b>val</b> <a href='#tokens'>tokens</a> : (char -> bool) -> string -> string list
+    <b>val</b> <a href='#fields'>fields</a> : (char -> bool) -> string -> string list
+    <b>val</b> <a href='#isPrefix'>isPrefix</a>    : string -> string -> bool
+    <b>val</b> <a href='#isSubstring'>isSubstring</a> : string -> string -> bool
+    <b>val</b> <a href='#isSuffix'>isSuffix</a>    : string -> string -> bool
+    <b>val</b> <a href='#compare'>compare</a> : string * string -> order
+    <b>val</b> <a href='#collate'>collate</a> : (char * char -> order) -> string * string -> order
+    <b>val</b> <a href='#$04'><</a>  : string * string -> bool
+    <b>val</b> <a href='#$04$16'><=</a> : string * string -> bool
+    <b>val</b> <a href='#$05'>></a>  : string * string -> bool
+    <b>val</b> <a href='#$05$16'>>=</a> : string * string -> bool
+    <b>val</b> <a href='#toString'>toString</a> : string -> <a href='STRING.sml.html'>String</a>.string
+(*    val scan       : (char, 'a) StringCvt.reader -> (string, 'a) StringCvt.reader *)
+    <b>val</b> <a href='#fromString'>fromString</a> : <a href='STRING.sml.html'>String</a>.string -> string option
+    <b>val</b> <a href='#toCString'>toCString</a> : string -> <a href='STRING.sml.html'>String</a>.string
+    <b>val</b> <a href='#fromCString'>fromCString</a> : <a href='STRING.sml.html'>String</a>.string -> string option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='maxSize'>maxSize</a></tt>]</b></dt> <dd>contains the longest allowed size of a string.
+</dd><br /><dt><b>[<tt><a name='size'>size s</a></tt>]</b></dt> <dd>returns |s|, the number of characters in string s.
+</dd><br /><dt><b>[<tt><a name='sub'>sub (s, i)</a></tt>]</b></dt> <dd>returns the i(th) character of s, counting from
+zero. This raises Subscript if i &lt; 0 or |s| &lt;= i.
+</dd><br /><dt><b>[<tt><a name='extract'>extract (s, i, opt)</a></tt>]</b></dt> <dd>When opt = NONE, the function returns the
+substring of s from the i(th) character to the end of the string,
+i.e., the string s[i..|s|-1]. Raises Subscript if i &lt; 0 or |s| &lt;
+i. When opt = SOME j, the function returns the substring of size j
+starting at index i, i.e., the string s[i..i+j-1]. It raises Subscript
+if i &lt; 0 or j &lt; 0 or |s| &lt; i + j. Note that, if defined, extract
+returns the empty string when i = |s|.
+</dd><br /><dt><b>[<tt><a name='substring'>substring (s, i, j)</a></tt>]</b></dt> <dd>returns the substring s[i..i+j-1], i.e., the
+substring of size j starting at index i. Equivalent to extract(s, i,
+SOME j). The functions extract and substring perform bounds checking
+in such a way that the Overflow exception is not raised.
+</dd><br /><dt><b>[<tt><a name='$11'>s ^ t</a></tt>]</b></dt> <dd>is the concatenation of the strings s and t. Raises Size if
+|s| + |t| &gt; maxSize.
+</dd><br /><dt><b>[<tt><a name='concat'>concat l</a></tt>]</b></dt> <dd>returns the concatenation of all the strings in l. Raises
+Size if the sum of all the sizes is greater than maxSize.
+</dd><br /><dt><b>[<tt><a name='concatWith'>concatWith s l</a></tt>]</b></dt> <dd>returns the concatenation of the strings in the list
+l using the string s as a separator. Raises Size if the size of
+the resulting string would be greater than maxSize.
+</dd><br /><dt><b>[<tt><a name='str'>str c</a></tt>]</b></dt> <dd>returns a string of size one containing the character c.
+</dd><br /><dt><b>[<tt><a name='implode'>implode l</a></tt>]</b></dt> <dd>generates the string containing the characters in the list
+l. This is equivalent to concat (List.map str l). Raises Size if the
+resulting string would have size greater than maxSize.
+</dd><br /><dt><b>[<tt><a name='explode'>explode s</a></tt>]</b></dt> <dd>returns the list of characters in the string s.
+</dd><br /><dt><b>[<tt><a name='map'>map f s</a></tt>]</b></dt> <dd>applies f to each element of s from left to right, returning
+the resulting string. It is equivalent to implode(List.map f (explode
+s)).
+</dd><br /><dt><b>[<tt><a name='translate'>translate f s</a></tt>]</b></dt> <dd>returns the string generated from s by mapping each
+character in s by f. It is equivalent to concat(List.map f (explode
+s)).
+</dd><br /><dt><b>[<tt><a name='tokens'>tokens f s</a></tt>]</b></dt> <dd>returns a list of tokens derived from s from left to
+right. A token is a non-empty maximal substring of s not containing
+any delimiter. A delimiter is a character satisfying the predicate
+f. Two tokens may be separated by more than one delimiter. For
+example, if the only delimiter is the character #&quot;|&quot;, then the string
+&quot;|abc||def&quot; contains two tokens &quot;abc&quot; and &quot;def&quot;.
+</dd><br /><dt><b>[<tt><a name='fields'>fields f s</a></tt>]</b></dt> <dd>returns a list of fields derived from s from left to
+right. A field is a (possibly empty) maximal substring of s not
+containing any delimiter. A delimiter is a character satisfying the
+predicate f. Two fields are separated by exactly one delimiter. For
+example, if the only delimiter is the character #&quot;|&quot;, then the string
+&quot;|abc||def&quot; contains the four fields &quot;&quot;, &quot;abc&quot;, &quot;&quot; and &quot;def&quot;.
+</dd><br /><dt><b>[<tt><a name='isPrefix'>isPrefix s1 s2</a></tt>]</b></dt> <dd>returns true if the string s1 is a prefix of the
+string s2. Note that the empty string is a prefix of any string and
+that a string is a prefix of itself.
+</dd><br /><dt><b>[<tt><a name='isSubstring'>isSubstring s1 s2</a></tt>]</b></dt> <dd>returns true if the string s1 is a substring of
+the string s2. Note that the empty string is a substring of any string
+and that a string is a substring of itself.
+</dd><br /><dt><b>[<tt><a name='isSuffix'>isSuffix s1 s2</a></tt>]</b></dt> <dd>returns true if the string s1 is a suffix of the
+string s2. Note that the empty string is a suffix of any string and
+that a string is a suffix of itself.
+</dd><br /><dt><b>[<tt><a name='compare'>compare (s, t)</a></tt>]</b></dt> <dd>does a lexicographic comparison of the two strings
+using the ordering Char.compare on the characters. It returns LESS,
+EQUAL, or GREATER, if s is less than, equal to, or greater than t,
+respectively.
+</dd><br /><dt><b>[<tt><a name='collate'>collate f (s, t)</a></tt>]</b></dt> <dd>performs lexicographic comparison of the two
+strings using the given ordering f on characters.
+</dd><br /><dt><b>[<tt><a name='$04'>a &lt; b</a></tt>]</b></dt> <dd>returns true if the string a is lexicographically, strictly
+less than b. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='$04$16'>a &lt;= b</a></tt>]</b></dt> <dd>returns true if the string a is lexicographically less than
+or equal to b. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='$05'>a &gt; b</a></tt>]</b></dt> <dd>returns true if the string a is lexicographically, strictly
+greater than b. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='$05$16'>a &gt;= b</a></tt>]</b></dt> <dd>returns true if the string a is lexicographically greater than
+or equal to b. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='toString'>toString s</a></tt>]</b></dt> <dd>returns a string corresponding to s, with non-printable
+characters replaced by SML escape sequences. This is equivalent to
+(translate Char.toString s).
+</dd><br /><dt><b>[<tt>scan getc strm</tt>]</b></dt> <dd>This function scan its character source as a sequence
+of printable characters, converting SML escape sequences into the
+appropriate characters. The function does not skip leading
+whitespace. It returns as many characters as can successfully be
+scanned, stopping when they reach the end of the source or a
+non-printing character (i.e., one not satisfying isPrint), or if it
+encounters an improper escape sequence. The function returns the
+remaining characters as the rest of the stream. If no conversion is
+possible, e.g., if the first character is non-printable or begins an
+illegal escape sequence, NONE is returned. For more information on the
+allowed escape sequences, see the entry for CHAR.fromString. SML
+source also allows escaped formatting sequences, which are ignored
+during conversion. The rule is that if any prefix of the input is
+successfully scanned, including an escaped formatting sequence, the
+function returns some string. It only returns NONE in the case where
+the prefix of the input cannot be scanned at all.
+</dd><br /><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>Equivalent to (StringCvt.scanString scan s). Because of
+the special cases, such as fromString &quot;&quot; = SOME &quot;&quot;, fromString &quot;\\
+\\\^D&quot; = SOME &quot;&quot;, and fromString &quot;\^D&quot; = NONE, the functions
+fromString and scan cannot be implemented as a simple iterative
+application of CHAR.scan.
+</dd><br /><dt><b>[<tt><a name='toCString'>toCString s</a></tt>]</b></dt> <dd>returns a string corresponding to s, with non-printable
+characters replaced by C escape sequences. This is equivalent to
+(translate Char.toCString s).
+</dd><br /><dt><b>[<tt><a name='fromCString'>fromCString s</a></tt>]</b></dt> <dd>scans the string s as a string in the C language,
+converting C escape sequences into the appropriate characters. The
+semantics are identical to fromString above, except that C escape
+sequences are used (see ISO C standard ISO/IEC 9899:1990). For more
+information on the allowed escape sequences, see the entry for
+CHAR.fromCString. Note that fromCString accepts an unescaped single
+quote character, but does not accept an unescaped double quote
+character.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

@@ -1,0 +1,68 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>JSON</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-json'>github.com/diku-dk/sml-json</a>)</i></tt></h4><p> JSON library.</p>This library provides operations for parsing and constructing JSON
+values (represented by strings). JSON values are represented in SML by
+the type t, which may include key-value object maps that are
+represented by the type obj.
+
+<hr /><pre><b>structure Json : JSON <i>(pkg <a href='http://github.com/diku-dk/sml-json'>github.com/diku-dk/sml-json</a>)</i>
+</b></pre><hr /><pre><b>signature</b> JSON = <b>sig</b>
+  <b>type</b> obj                      (* object map *)
+  <b>datatype</b> t = RAW of string    (* embedded JSON string *)
+             | OBJECT of obj
+             | STRING of string
+             | ARRAY of t list
+             | NULL
+             | BOOL of bool
+             | NUMBER of string
+
+  (* Operations on object maps *)
+  <b>val</b> <a href='#objFromList'>objFromList</a>      : (string * t) list -> obj
+  <b>val</b> <a href='#objFromKeyValues'>objFromKeyValues</a> : (string * string) list -> obj
+  <b>val</b> <a href='#objLook'>objLook</a>          : obj -> string -> t option
+  <b>val</b> <a href='#objFold'>objFold</a>          : ((string * t) * 'a -> 'a) -> 'a -> obj -> 'a
+  <b>val</b> <a href='#objList'>objList</a>          : obj -> (string * t) list
+  <b>val</b> <a href='#objAdd'>objAdd</a>           : obj -> string -> t -> obj
+  <b>val</b> <a href='#objEmp'>objEmp</a>           : obj
+
+  (* Operations on JSON values *)
+  <b>val</b> <a href='#toString'>toString</a>      : t -> string
+  <b>val</b> <a href='#fromKeyValues'>fromKeyValues</a> : (string * string) list -> t
+
+  <b>val</b> <a href='#foldlArray'>foldlArray</a>    : (t * 'a -> 'a) -> 'a -> t -> 'a
+  <b>val</b> <a href='#foldrArray'>foldrArray</a>    : (t * 'a -> 'a) -> 'a -> t -> 'a
+
+  <b>val</b> <a href='#getBool'>getBool</a>       : t -> string -> bool   (* may raise Fail *)
+  <b>val</b> <a href='#getString'>getString</a>     : t -> string -> string (* may raise Fail *)
+  <b>val</b> <a href='#getStringOpt'>getStringOpt</a>  : t -> string -> string -> string
+
+  (* Operations directly on strings containing json *)
+  <b>val</b> <a href='#fromString'>fromString</a>     : string -> t
+  <b>val</b> <a href='#foldlArrayJson'>foldlArrayJson</a> : (t * 'a -> 'a) -> 'a -> string -> 'a
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type obj</tt>]</b></dt> <dd>object map type.
+</dd><br /><dt><b>[<tt>datatype t</tt>]</b></dt> <dd>JSON representation type.
+</dd><br /><dt><b>[<tt>obj*</tt>]</b></dt> <dd>various operations for constructing and deconstructing object
+maps.
+</dd><br /><dt><b>[<tt><a name='toString'>toString v</a></tt>]</b></dt> <dd>returns a string representation of the JSON value v.
+</dd><br /><dt><b>[<tt><a name='fromKeyValues'>fromKeyValues kvs</a></tt>]</b></dt> <dd>returns an object map representation of the
+key-value pairs in kvs.
+</dd><br /><dt><b>[<tt><a name='foldlArray'>foldlArray f a t</a></tt>]</b></dt> <dd>results in a leftfold over a JSON array value in
+t. Raises Fail(msg) if t is not a JSON array.
+</dd><br /><dt><b>[<tt><a name='foldrArray'>foldrArray f a t</a></tt>]</b></dt> <dd>results in a rightfold over a JSON array value in
+t. Raises Fail(msg) if t is not a JSON array.
+</dd><br /><dt><b>[<tt><a name='getBool'>getBool t k</a></tt>]</b></dt> <dd>returns the boolean value associated with k in the JSON
+object map t. Raises fail if t is not a JSON object map or if k is not
+associated with a boolean value in t.
+</dd><br /><dt><b>[<tt><a name='getString'>getString t k</a></tt>]</b></dt> <dd>returns the string associated with k in the JSON
+object map t. Raises fail if t is not a JSON object map or if k is not
+associated with a string in t.
+</dd><br /><dt><b>[<tt><a name='getStringOpt'>getStringOpt t k v</a></tt>]</b></dt> <dd>returns the string associated with k in the JSON
+object map t or v in case no value is associated with k in t. Raises
+fail if t is not a JSON object map or if k is associated with a value
+in t that is not a string.
+</dd><br /><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>returns a JSON representation of the JSON string
+s. Raises Fail(msg) in case of a parse error.
+</dd><br /><dt><b>[<tt><a name='foldlArrayJson'>foldlArrayJson f a s</a></tt>]</b></dt> <dd>returns the result of folding over the JSON
+array in s. This function avoids building the intermediate list
+representation of the JSON array value. Raises Fail(msg) in case s
+does not contain a JSON array.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

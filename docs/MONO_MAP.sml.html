@@ -1,0 +1,49 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>MONO_MAP</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i></tt></h4><p> Monomorphic finite maps.</p>The MONO_MAP signature is a generic interface to monomorphic finite
+maps.
+<hr /><pre><b>structure StringMap : MONO_MAP <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b><b>structure IntMap : MONO_MAP <i>(pkg <a href='http://github.com/diku-dk/sml-setmap'>github.com/diku-dk/sml-setmap</a>)</i>
+</b></pre><hr /><pre><b>signature</b> MONO_MAP = <b>sig</b>
+  <b>type</b> dom
+  <b>type</b> 'b map
+
+  <b>val</b> <a href='#empty'>empty</a>      : 'a map
+  <b>val</b> <a href='#singleton'>singleton</a>  : dom * 'a -> 'a map
+  <b>val</b> <a href='#isEmpty'>isEmpty</a>    : 'a map -> bool
+  <b>val</b> <a href='#lookup'>lookup</a>     : 'a map -> dom -> 'a option
+  <b>val</b> <a href='#add'>add</a>        : dom * 'a * 'a map -> 'a map
+  <b>val</b> <a href='#plus'>plus</a>       : 'a map * 'a map -> 'a map
+  <b>val</b> <a href='#remove'>remove</a>     : dom * 'a map -> 'a map option
+  <b>val</b> <a href='#dom'>dom</a>        : 'a map -> dom list
+  <b>val</b> <a href='#range'>range</a>      : 'a map -> 'a list
+  <b>val</b> <a href='#list'>list</a>       : 'a map -> (dom * 'a) list
+  <b>val</b> <a href='#fromList'>fromList</a>   : (dom * 'a) list -> 'a map
+  <b>val</b> <a href='#map'>map</a>        : ('a -> 'b) -> 'a map -> 'b map
+  <b>val</b> <a href='#Map'>Map</a>        : (dom * 'a -> 'b) -> 'a map -> 'b map
+  <b>val</b> <a href='#fold'>fold</a>       : ('a * 'b -> 'b) -> 'b -> 'a map -> 'b
+  <b>val</b> <a href='#Fold'>Fold</a>       : ((dom * 'a) * 'b -> 'b) -> 'b -> 'a map -> 'b
+  <b>val</b> <a href='#filter'>filter</a>     : (dom * 'b -> bool) -> 'b map -> 'b map
+  <b>val</b> <a href='#addList'>addList</a>    : (dom * 'b) list -> 'b map -> 'b map
+  <b>val</b> <a href='#merge'>merge</a>      : ('a * 'a -> 'a) -> 'a map -> 'a map -> 'a map
+
+  <b>exception</b> Restrict of dom
+  <b>val</b> <a href='#restrict'>restrict</a>   : 'b map * dom list -> 'b map
+  <b>val</b> <a href='#enrich'>enrich</a>     : ('b * 'b -> bool) -> 'b map * 'b map -> bool
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type dom</tt>]</b></dt> <dd>The domain type for the map.
+</dd><br /><dt><b>[<tt>type 'a map</tt>]</b></dt> <dd>The type of map.
+</dd><br /><dt><b>[<tt><a name='empty'>empty</a></tt>]</b></dt> <dd>The empty map.
+</dd><br /><dt><b>[<tt><a name='singleton'>singleton (k, v)</a></tt>]</b></dt> <dd>The singleton map {k -&gt; v}.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty m</a></tt>]</b></dt> <dd>returns true if m is empty and false otherwise.
+</dd><br /><dt><b>[<tt><a name='lookup'>lookup m k</a></tt>]</b></dt> <dd>returns SOME v if k is associated with v in m. Returns
+NONE otherwise.
+</dd><br /><dt><b>[<tt><a name='add'>add (k, v, m)</a></tt>]</b></dt> <dd>returns m with k associated to v.
+</dd><br /><dt><b>[<tt><a name='plus'>plus (m1, m2)</a></tt>]</b></dt> <dd>returns m1 with the associations in m2 added.
+</dd><br /><dt><b>[<tt><a name='addList'>addList l m</a></tt>]</b></dt> <dd>adds a list of associations to a map.
+</dd><br /><dt><b>[<tt><a name='merge'>merge f m1 m2</a></tt>]</b></dt> <dd>merges two finite maps, with a composition function
+to apply to the codomains of domains which clash.
+</dd><br /><dt><b>[<tt><a name='restrict'>restrict (m,d)</a></tt>]</b></dt> <dd>returns a map with domain d and values as in m.
+Raises exception Restrict if an element of the list is not in the
+domain of the map.
+</dd><br /><dt><b>[<tt><a name='enrich'>enrich en (A, B)</a></tt>]</b></dt> <dd>returns true if for all a and b such that b \in B
+and a \in (A \restrict dom(B)) we have en(a,b).
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

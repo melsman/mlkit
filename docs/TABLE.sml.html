@@ -1,0 +1,51 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>TABLE</code> <tt><i>(pkg <a href='http://github.com/diku-dk/sml-hashtable'>github.com/diku-dk/sml-hashtable</a>)</i></tt></h4><p> Polymorphic hash tables </p><hr /><pre><b>structure Table : TABLE <i>(pkg <a href='http://github.com/diku-dk/sml-hashtable'>github.com/diku-dk/sml-hashtable</a>)</i>
+</b></pre><hr /><pre><b>signature</b> TABLE = <b>sig</b>
+
+  <b>type</b> ('k,'v) table
+
+  <b>val</b> <a href='#new'>new</a>    : {hash: 'k -> word, eq: 'k * 'k -> bool} -> ('k,'v) table
+  <b>val</b> <a href='#size'>size</a>   : ('k,'v) table -> int
+  <b>val</b> <a href='#add'>add</a>    : 'k * 'v * ('k,'v) table -> unit
+  <b>val</b> <a href='#lookup'>lookup</a> : ('k,'v) table -> 'k -> 'v option
+  <b>val</b> <a href='#delete'>delete</a> : ('k,'v) table -> 'k -> unit
+  <b>val</b> <a href='#list'>list</a>   : ('k,'v) table -> ('k * 'v) list
+  <b>val</b> <a href='#app'>app</a>    : ('k * 'v -> unit) -> ('k,'v) table -> unit
+  <b>val</b> <a href='#map'>map</a>    : ('v -> 'r) -> ('k,'v) table -> ('k, 'r) table
+  <b>val</b> <a href='#Map'>Map</a>    : ('k * 'v -> 'r) -> ('k,'v) table -> ('k,'r) table
+  <b>val</b> <a href='#filter'>filter</a> : ('k * 'v -> bool) -> ('k,'v) table -> unit
+  <b>val</b> <a href='#copy'>copy</a>   : ('k,'v) table -> ('k,'v) table
+  <b>val</b> <a href='#clear'>clear</a>  : ('k,'v) table -> unit
+
+  (* profiling functions *)
+  <b>val</b> <a href='#peekSameHash'>peekSameHash</a>: ('k,'v) table -> 'k -> word * int
+  <b>val</b> <a href='#bucketSizes'>bucketSizes</a> : ('k,'v) table -> int list
+
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>('k,'v) table</tt>]</b></dt> <dd>is the type of hashtables with keys of type 'k and
+values of type 'v.
+</dd><br /><dt><b>[<tt><a name='new'>new {hash,eq}</a></tt>]</b></dt> <dd>returns a new hashtable, using hash as the hash
+function and eq for the equality predicate. It is assumed that
+eq(k1,k2) implies hash k1 = hash k2 for all k1, k2.
+</dd><br /><dt><b>[<tt><a name='size'>size t</a></tt>]</b></dt> <dd>returns the number of items in t.
+</dd><br /><dt><b>[<tt><a name='add'>add (k,v,t)</a></tt>]</b></dt> <dd>inserts the association of k to v in t. Overwrites any
+existing association of k in t.
+</dd><br /><dt><b>[<tt><a name='lookup'>lookup t k</a></tt>]</b></dt> <dd>returns SOME v if k is associated with k in t. Returns
+NONE otherwise.
+</dd><br /><dt><b>[<tt><a name='delete'>delete t k</a></tt>]</b></dt> <dd>deletes any possible association of k in t.
+</dd><br /><dt><b>[<tt><a name='list'>list t</a></tt>]</b></dt> <dd>returns a list of the (key, value) pairs in t.
+</dd><br /><dt><b>[<tt><a name='app'>app f t</a></tt>]</b></dt> <dd>applies the function f to each of the (key, value) pairs in
+t.
+</dd><br /><dt><b>[<tt><a name='map'>map f t</a></tt>]</b></dt> <dd>creates a copy of t with the values substituted by applying
+f to each of the values in t.
+</dd><br /><dt><b>[<tt><a name='Map'>Map f t</a></tt>]</b></dt> <dd>returns a new hashtable, whose data items have been
+obtained by applying f to the (key, value) pairs in t.  The new table
+has the same keys, hash function and equality predicate as t.
+</dd><br /><dt><b>[<tt><a name='filter'>filter p t</a></tt>]</b></dt> <dd>deletes from t all data items that do not satisfy the
+predicate p.
+</dd><br /><dt><b>[<tt><a name='copy'>copy t</a></tt>]</b></dt> <dd>returns a copy of t.
+</dd><br /><dt><b>[<tt><a name='clear'>clear t</a></tt>]</b></dt> <dd>empties all data in t.
+</dd><br /><dt><b>[<tt><a name='peekSameHash'>peekSameHash t k</a></tt>]</b></dt> <dd>returns the number of items associated with the
+same hash as k in t. Useful for profiling.
+</dd><br /><dt><b>[<tt><a name='bucketSizes'>bucketSizes t</a></tt>]</b></dt> <dd>returns a list of the sizes of the buckets in
+t. Useful for profiling.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

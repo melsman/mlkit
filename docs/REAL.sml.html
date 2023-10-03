@@ -1,0 +1,301 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>REAL</code> <tt><i>(basis)</i></tt></h4><p> Operations on floating point values.</p>The REAL signature specifies structures that implement floating-point
+numbers. The semantics of floating-point numbers should follow the
+IEEE standard 754-1985 and the ANSI/IEEE standard 854-1987. In
+addition, implementations of the REAL signature are required to use
+non-trapping semantics. Additional aspects of the design of the REAL
+and MATH signatures were guided by the Floating-Point C Extensions
+developed by the X3J11 ANSI committee and the lecture notes by
+W. Kahan on the IEEE standard 754.
+
+Although there can be many representations for NaN values, the Library
+models them as a single value and currently provides no explicit way
+to distinguish among them, ignoring the sign bit. Thus, in the
+descriptions below and in the Math structure, we just refer to the NaN
+value.
+<hr /><pre><b>structure Real64 : REAL <i>(basis)</i>
+</b><b>structure Real : REAL <i>(basis)</i>
+</b><b>structure LargeReal : REAL <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> REAL = <b>sig</b>
+  <b>type</b> real
+
+  <b>structure</b> Math : <a href='MATH.sml.html'>MATH</a>
+
+  <b>val</b> <a href='#radix'>radix</a>        : int
+  <b>val</b> <a href='#precision'>precision</a>    : int
+  <b>val</b> <a href='#maxFinite'>maxFinite</a>    : real
+  <b>val</b> <a href='#minPos'>minPos</a>       : real
+  <b>val</b> <a href='#minNormalPos'>minNormalPos</a> : real
+  <b>val</b> <a href='#posInf'>posInf</a>       : real
+  <b>val</b> <a href='#negInf'>negInf</a>       : real
+
+  <b>val</b> <a href='#$08'>+</a>            : real * real -> real
+  <b>val</b> <a href='#$06'>-</a>            : real * real -> real
+  <b>val</b> <a href='#*'>*</a>            : real * real -> real
+  <b>val</b> <a href='#$03'>/</a>            : real * real -> real
+  <b>val</b> <a href='#rem'>rem</a>          : real * real -> real
+  <b>val</b> <a href='#*$08'>*+</a>           : real * real * real -> real
+  <b>val</b> <a href='#*$06'>*-</a>           : real * real * real -> real
+  <b>val</b> <a href='#$10'>~</a>            : real -> real
+  <b>val</b> <a href='#abs'>abs</a>          : real -> real
+
+  <b>val</b> <a href='#min'>min</a>          : real * real -> real
+  <b>val</b> <a href='#max'>max</a>          : real * real -> real
+
+  <b>val</b> <a href='#sign'>sign</a>         : real -> int
+  <b>val</b> <a href='#signBit'>signBit</a>      : real -> bool
+
+  <b>val</b> <a href='#sameSign'>sameSign</a>     : real * real -> bool
+  <b>val</b> <a href='#copySign'>copySign</a>     : real * real -> real
+
+  <b>val</b> <a href='#compare'>compare</a>      : real * real -> order
+  <b>val</b> <a href='#compareReal'>compareReal</a>  : real * real -> <a href='IEEE_REAL.sml.html'>IEEEReal</a>.real_order
+
+  <b>val</b> <a href='#$04'><</a>            : real * real -> bool
+  <b>val</b> <a href='#$04$16'><=</a>           : real * real -> bool
+  <b>val</b> <a href='#$05'>></a>            : real * real -> bool
+  <b>val</b> <a href='#$05$16'>>=</a>           : real * real -> bool
+  <b>val</b> <a href='#$16$16'>==</a>           : real * real -> bool
+  <b>val</b> <a href='#$13$16'>!=</a>           : real * real -> bool
+
+  <b>val</b> <a href='#$17$16'>?=</a>           : real * real -> bool
+  <b>val</b> <a href='#unordered'>unordered</a>    : real * real -> bool
+
+  <b>val</b> <a href='#isFinite'>isFinite</a>     : real -> bool
+  <b>val</b> <a href='#isNan'>isNan</a>        : real -> bool
+  <b>val</b> <a href='#isNormal'>isNormal</a>     : real -> bool
+  <b>val</b> <a href='#class'>class</a>        : real -> <a href='IEEE_REAL.sml.html'>IEEEReal</a>.float_class
+
+  <b>val</b> <a href='#toManExp'>toManExp</a>     : real -> {man : real, exp : int}
+  <b>val</b> <a href='#fromManExp'>fromManExp</a>   : {man : real, exp : int} -> real
+  <b>val</b> <a href='#split'>split</a>        : real -> {whole : real, frac : real}
+  <b>val</b> <a href='#realMod'>realMod</a>      : real -> real
+
+  <b>val</b> <a href='#nextAfter'>nextAfter</a>    : real * real -> real
+  <b>val</b> <a href='#checkFloat'>checkFloat</a>   : real -> real
+
+  <b>val</b> <a href='#realFloor'>realFloor</a>    : real -> real
+  <b>val</b> <a href='#realCeil'>realCeil</a>     : real -> real
+  <b>val</b> <a href='#realTrunc'>realTrunc</a>    : real -> real
+  <b>val</b> <a href='#realRound'>realRound</a>    : real -> real
+  <b>val</b> <a href='#floor'>floor</a>        : real -> int
+  <b>val</b> <a href='#ceil'>ceil</a>         : real -> int
+  <b>val</b> <a href='#trunc'>trunc</a>        : real -> int
+  <b>val</b> <a href='#round'>round</a>        : real -> int
+
+  <b>val</b> <a href='#toInt'>toInt</a>        : <a href='IEEE_REAL.sml.html'>IEEEReal</a>.rounding_mode -> real -> int
+  <b>val</b> <a href='#toLargeInt'>toLargeInt</a>   : <a href='IEEE_REAL.sml.html'>IEEEReal</a>.rounding_mode -> real -> <a href='INTEGER.sml.html'>LargeInt</a>.int
+  <b>val</b> <a href='#fromInt'>fromInt</a>      : int -> real
+  <b>val</b> <a href='#fromLargeInt'>fromLargeInt</a> : <a href='INTEGER.sml.html'>LargeInt</a>.int -> real
+
+  <b>val</b> <a href='#toLarge'>toLarge</a>      : real -> <a href='REAL.sml.html'>LargeReal</a>.real
+  <b>val</b> <a href='#fromLarge'>fromLarge</a>    : <a href='IEEE_REAL.sml.html'>IEEEReal</a>.rounding_mode -> <a href='REAL.sml.html'>LargeReal</a>.real -> real
+
+  <b>val</b> <a href='#fmt'>fmt</a>          : <a href='STRING_CVT.sml.html'>StringCvt</a>.realfmt -> real -> string
+  <b>val</b> <a href='#toString'>toString</a>     : real -> string
+  <b>val</b> <a href='#scan'>scan</a>         : (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader -> (real, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+  <b>val</b> <a href='#fromString'>fromString</a>   : string -> real option
+
+(*
+  val toDecimal    : real -> IEEEReal.decimal_approx
+  val fromDecimal  : IEEEReal.decimal_approx -> real option
+*)
+<b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type real</tt>]</b></dt> <dd>The type of reals. Notice that real is not an equality
+type.
+</dd><br /><dt><b>[<tt>structure Math</tt>]</b></dt> <dd>Mathematical operations on real values.
+</dd><br /><dt><b>[<tt><a name='radix'>radix</a></tt>]</b></dt> <dd>The base of the representation, e.g., 2 or 10 for IEEE
+floating point.
+</dd><br /><dt><b>[<tt><a name='precision'>precision</a></tt>]</b></dt> <dd>The number of digits, each between 0 and radix-1, in the
+mantissa. Note that the precision includes the implicit (or hidden)
+bit used in the IEEE representation (e.g., the value of
+Real64.precision is 53).
+</dd><br /><dt><b>[<tt><a name='maxFinite'>maxFinite</a></tt>]</b></dt><dt><b>[<tt><a name='minPos'>minPos</a></tt>]</b></dt><dt><b>[<tt><a name='minNormalPos'>minNormalPos</a></tt>]</b></dt> <dd>The maximum finite number, the minimum non-zero positive number, and
+the minimum non-zero normalized number, respectively.
+</dd><br /><dt><b>[<tt><a name='posInf'>posInf</a></tt>]</b></dt><dt><b>[<tt><a name='negInf'>negInf</a></tt>]</b></dt> <dd>Positive and negative infinity values.
+</dd><br /><dt><b>[<tt><a name='$08'>x + y</a></tt>]</b></dt> <dd>returns the sum of x and y.
+</dd><br /><dt><b>[<tt><a name='$06'>x - y</a></tt>]</b></dt> <dd>returns the difference between x and y.
+</dd><br /><dt><b>[<tt><a name='*'>x * y</a></tt>]</b></dt> <dd>returns the product of x and y.
+</dd><br /><dt><b>[<tt><a name='$03'>x / y</a></tt>]</b></dt> <dd>returns the division of x by y.
+</dd><br /><dt><b>[<tt><a name='rem'>rem (x, y)</a></tt>]</b></dt> <dd>returns the remainder x - n*y, where n = trunc (x /
+y). The result has the same sign as x and has absolute value less than
+the absolute value of y.  If x is an infinity or y is 0, rem returns
+NaN. If y is an infinity, rem returns x.
+</dd><br /><dt><b>[<tt><a name='*$08'>*+ (a, b, c)</a></tt>]</b></dt><dt><b>[<tt><a name='*$06'>*- (a, b, c)</a></tt>]</b></dt> <dd>These return a*b + c and a*b - c, respectively. Their behaviors on
+infinities follow from the behaviors derived from addition,
+subtraction, and multiplication.  The precise semantics of these
+operations depend on the language implementation and the underlying
+hardware. Specifically, certain architectures provide these operations
+as a single instruction, possibly using a single rounding
+operation. Thus, the use of these operations may be faster than
+performing the individual arithmetic operations sequentially, but may
+also cause different rounding behavior.
+</dd><br /><dt><b>[<tt><a name='$10'>~ x</a></tt>]</b></dt> <dd>returns the negation of x.
+</dd><br /><dt><b>[<tt><a name='abs'>abs r</a></tt>]</b></dt> <dd>returns the absolute value |r| of r.
+</dd><br /><dt><b>[<tt><a name='min'>min(x, y)</a></tt>]</b></dt> <dd>is the smaller of x and y.
+</dd><br /><dt><b>[<tt><a name='max'>max(x, y)</a></tt>]</b></dt> <dd>is the larger of x and y.
+</dd><br /><dt><b>[<tt><a name='sign'>sign x</a></tt>]</b></dt> <dd>is ~1, 0, or 1, according to whether x is negative, zero, or
+positive. An infinity returns its sign; a zero returns 0 regardless of
+its sign. It raises Domain on NaN.
+</dd><br /><dt><b>[<tt><a name='signBit'>signBit r</a></tt>]</b></dt> <dd>returns true if and only if the sign of r (infinities,
+zeros, and NaN, included) is negative.
+</dd><br /><dt><b>[<tt><a name='sameSign'>sameSign (x, y)</a></tt>]</b></dt> <dd>is true iff sign x = sign y.
+</dd><br /><dt><b>[<tt><a name='copySign'>copySign (x, y)</a></tt>]</b></dt> <dd>returns x with the sign of y, even if y is NaN.
+</dd><br /><dt><b>[<tt><a name='compare'>compare (x, y)</a></tt>]</b></dt><dt><b>[<tt><a name='compareReal'>compareReal (x, y)</a></tt>]</b></dt> <dd>The function compare returns LESS, EQUAL, or GREATER according to
+whether its first argument is less than, equal to, or greater than the
+second. It raises IEEEReal.Unordered on unordered arguments.  The
+function compareReal behaves similarly except that the values it
+returns have the extended type IEEEReal.real_order and it returns
+IEEEReal.UNORDERED on unordered arguments.
+</dd><br /><dt><b>[<tt><a name='$04'>x &lt; y</a></tt>]</b></dt> <dd>returns true if x is strictly smaller than y. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='$04$16'>x &lt;= y</a></tt>]</b></dt> <dd>returns true if x is smaller than or equal to y. Returns
+false otherwise.
+</dd><br /><dt><b>[<tt><a name='$05'>x &gt; y</a></tt>]</b></dt> <dd>returns true if x is strictly larger than y. Returns false
+otherwise.
+</dd><br /><dt><b>[<tt><a name='$05$16'>x &gt;= y</a></tt>]</b></dt> <dd>returns true if x is larger than or equal to y. Returns false
+otherwise.
+Note that these operators return false on unordered arguments, i.e.,
+if either argument is NaN, so that the usual reversal of comparison
+under negation does not hold, e.g., a &lt; b is not the same as not (a &gt;=
+b).
+</dd><br /><dt><b>[<tt><a name='$16$16'>== (x, y)</a></tt>]</b></dt><dt><b>[<tt><a name='$13$16'>!= (x, y)</a></tt>]</b></dt> <dd>The first returns true if and only if neither y nor x is NaN, and y
+and x are equal, ignoring signs on zeros. This is equivalent to the
+IEEE = operator.  The second function != is equivalent to not o op ==
+and the IEEE ?&lt;&gt; operator.
+</dd><br /><dt><b>[<tt><a name='$17$16'>?= (x, y)</a></tt>]</b></dt> <dd>returns true if either argument is NaN or if the arguments
+are bitwise equal, ignoring signs on zeros. It is equivalent to the
+IEEE ?= operator.
+</dd><br /><dt><b>[<tt><a name='unordered'>unordered (x, y)</a></tt>]</b></dt> <dd>returns true if x and y are unordered, i.e., at
+least one of x and y is NaN.
+</dd><br /><dt><b>[<tt><a name='isFinite'>isFinite x</a></tt>]</b></dt> <dd>returns true if x is neither NaN nor an infinity.
+</dd><br /><dt><b>[<tt><a name='isNan'>isNan x</a></tt>]</b></dt> <dd>returns true if x is NaN.
+</dd><br /><dt><b>[<tt><a name='isNormal'>isNormal x</a></tt>]</b></dt> <dd>returns true if x is normal, i.e., neither zero,
+subnormal, infinite nor NaN.
+</dd><br /><dt><b>[<tt><a name='class'>class x</a></tt>]</b></dt> <dd>returns the IEEEReal.float_class to which x belongs.
+</dd><br /><dt><b>[<tt><a name='toManExp'>toManExp r</a></tt>]</b></dt> <dd>returns {man, exp}, where man and exp are the mantissa
+and exponent of r, respectively. Specifically, we have the relation
+<pre>
+    r = man * radix^(exp)
+</pre>
+
+where 1.0 &lt;= man * radix &lt; radix. This function is comparable to frexp
+in the C library.  If r is +-0, man is +-0 and exp is +0. If r is
++-infinity, man is +-infinity and exp is unspecified. If r is NaN, man
+is NaN and exp is unspecified.
+</dd><br /><dt><b>[<tt><a name='fromManExp'>fromManExp {man, exp}</a></tt>]</b></dt> <dd>returns man * radix^(exp). This function is
+comparable to ldexp in the C library. Note that, even if man is a
+non-zero, finite real value, the result of fromManExp can be zero or
+infinity because of underflows and overflows.  If man is +-0, the
+result is +-0. If man is +-infinity, the result is +-infinity. If man
+is NaN, the result is NaN.
+</dd><br /><dt><b>[<tt><a name='split'>split r</a></tt>]</b></dt><dt><b>[<tt><a name='realMod'>realMod r</a></tt>]</b></dt> <dd>The former returns {whole, frac}, where frac and whole are the
+fractional and integral parts of r, respectively. Specifically, whole
+is integral, |frac| &lt; 1.0, whole and frac have the same sign as r, and
+r = whole + frac. This function is comparable to modf in the C
+library.  If r is +-infinity, whole is +-infinity and frac is +-0. If
+r is NaN, both whole and frac are NaN.  The realMod function is
+equivalent to #frac o split.
+</dd><br /><dt><b>[<tt><a name='nextAfter'>nextAfter (r, t)</a></tt>]</b></dt> <dd>returns the next representable real after r in the
+direction of t. Thus, if t is less than r, nextAfter returns the
+largest representable floating-point number less than r. If r = t then
+it returns r. If either argument is NaN, this returns NaN. If r is
++-infinity, it returns +-infinity.
+</dd><br /><dt><b>[<tt><a name='checkFloat'>checkFloat x</a></tt>]</b></dt> <dd>raises Overflow if x is an infinity, and raises Div if
+x is NaN. Otherwise, it returns its argument.  This can be used to
+synthesize trapping arithmetic from the non-trapping operations given
+here. Note, however, that infinities can be converted to NaNs by some
+operations, so that if accurate exceptions are required, checks must
+be done after each operation.
+</dd><br /><dt><b>[<tt><a name='realFloor'>realFloor r</a></tt>]</b></dt><dt><b>[<tt><a name='realCeil'>realCeil r</a></tt>]</b></dt><dt><b>[<tt><a name='realTrunc'>realTrunc r</a></tt>]</b></dt><dt><b>[<tt><a name='realRound'>realRound r</a></tt>]</b></dt> <dd>These functions convert real values to integer-valued reals. realFloor
+produces floor(r), the largest integer not larger than r. realCeil
+produces ceil(r), the smallest integer not less than r. realTrunc
+rounds r towards zero, and realRound rounds to the integer-values real
+value that is nearest to r. If r is NaN or an infinity, these
+functions return r.
+</dd><br /><dt><b>[<tt><a name='floor'>floor r</a></tt>]</b></dt> <dd>is the largest integer &lt;= r (rounds towards minus infinity).
+May raise Overflow.
+</dd><br /><dt><b>[<tt><a name='ceil'>ceil r</a></tt>]</b></dt> <dd>is the smallest integer &gt;= r (rounds towards plus infinity).
+May raise Overflow.
+</dd><br /><dt><b>[<tt><a name='trunc'>trunc r</a></tt>]</b></dt> <dd>is numerically largest integer between r and zero (rounds
+towards zero). May raise Overflow.
+</dd><br /><dt><b>[<tt><a name='round'>round r</a></tt>]</b></dt> <dd>is the integer nearest to r, using the default rounding
+mode.  NOTE: This isn't the required behaviour: it should round to
+nearest even integer in case of a tie.  May raise Overflow.
+</dd><br /><dt><b>[<tt><a name='toInt'>toInt mode x</a></tt>]</b></dt><dt><b>[<tt><a name='toLargeInt'>toLargeInt mode x</a></tt>]</b></dt> <dd>These functions convert the argument x to an integral type using the
+specified rounding mode. They raise Overflow if the result is not
+representable, in particular, if x is an infinity. They raise Domain
+if the input real is NaN.
+</dd><br /><dt><b>[<tt><a name='fromInt'>fromInt i</a></tt>]</b></dt><dt><b>[<tt><a name='fromLargeInt'>fromLargeInt i</a></tt>]</b></dt> <dd>These functions convert the integer i to a real value. If the absolute
+value of i is larger than maxFinite, then the appropriate infinity is
+returned. If i cannot be exactly represented as a real value, then the
+current rounding mode is used to determine the resulting value. The
+top-level function real is an alias for Real.fromInt.
+</dd><br /><dt><b>[<tt><a name='toLarge'>toLarge r</a></tt>]</b></dt><dt><b>[<tt><a name='fromLarge'>fromLarge r</a></tt>]</b></dt> <dd>These convert between values of type real and type LargeReal.real. If
+r is too small or too large to be represented as a real, fromLarge
+will convert it to a zero or an infinity.
+</dd><br /><dt><b>[<tt><a name='fmt'>fmt spec r</a></tt>]</b></dt> <dd>returns a string representing r, in the format specified
+by spec.
+<pre>
+      spec          description                            C printf
+      ---------------------------------------------------------------
+      SCI NONE      scientific,   6 digits after point       %e
+      SCI (SOME n)  scientific,   n digits after point       %.ne
+      FIX NONE      fixed-point,  6 digits after point       %f
+      FIX (SOME n)  fixed-point,  n digits after point       %.nf
+      GEN NONE      auto choice, 12 significant digits       %.12g
+      GEN (SOME n)  auto choice,  n significant digits       %.ng
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='toString'>toString r</a></tt>]</b></dt> <dd>returns a string representing r, with automatic choice of
+format according to the magnitude of r. Equivalent to (fmt (GEN NONE)
+r).
+</dd><br /><dt><b>[<tt><a name='scan'>scan getc charsrc</a></tt>]</b></dt> <dd>attempts to scan a floating-point number from the
+character source charsrc, using the accessor getc, and ignoring any
+initial whitespace.  If successful, it returns SOME(r, rest) where r
+is the number scanned, and rest is the unused part of the character
+source. The valid forms of floating-point numerals are described by
+<pre>
+	[+~-]?(([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+~-]?[0-9]+)?
+</pre>
+
+</dd><br /><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>returns SOME(r) if a floating-point numeral can be
+scanned from a prefix of string s, ignoring any initial whitespace;
+returns NONE otherwise.  The valid forms of floating-point numerals
+are described by
+<pre>
+	[+~-]?(([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+~-]?[0-9]+)?
+</pre>
+
+</dd><br /><dt><b>[<tt>toDecimal r</tt>]</b></dt><dt><b>[<tt>fromDecimal d</tt>]</b></dt> <dd>These convert between real values and decimal approximations. Decimal
+approximations are to be converted using the IEEEReal.TO_NEAREST
+rounding mode. toDecimal should produce only as many digits as are
+necessary for fromDecimal to convert back to the same number. In
+particular, for any normal or subnormal real value r, we have the
+bit-wise equality: fromDecimal (toDecimal r) = r.  For toDecimal, when
+the r is not normal or subnormal, then the exp field is set to 0 and
+the digits field is the empty list. In all cases, the sign and class
+field capture the sign and class of r.
+For fromDecimal, if class is ZERO or INF, the resulting real is the
+appropriate signed zero or infinity. If class is NAN, a signed NaN is
+generated. If class is NORMAL or SUBNORMAL, the sign, digits and exp
+fields are used to produce a real number whose value is
+<pre>
+    s * 0.d(1)d(2)...d(n) 10^(exp)
+</pre>
+
+where digits = [d(1), d(2), ..., d(n)] and where s is -1 if sign is
+true and 1 otherwise. Note that the conversion itself should ignore
+the class field, so that the resulting value might have class NORMAL,
+SUBNORMAL, ZERO, or INF. For example, if digits is empty or a list of
+all 0's, the result should be a signed zero. More generally, very
+large or small magnitudes are converted to infinities or zeros.  If
+the argument to fromDecimal does not have a valid format, i.e., if the
+digits field contains integers outside the range [0,9], it returns
+NONE.
+<pre>
+    Implementation note: Algorithms for accurately and efficiently
+    converting between binary and decimal real representations are
+    readily available, e.g., see the technical report by Gay.
+</pre>
+
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

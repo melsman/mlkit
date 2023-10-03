@@ -1,0 +1,103 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>GENERAL</code> <tt><i>(basis)</i></tt></h4><p> General exceptions and operations.</p>The structure General defines exceptions, datatypes, and functions
+which are used throughout the SML Basis Library, and are useful in a
+wide range of programs.
+
+All of the types and values defined in General are available
+unqualified at the top-level.
+<hr /><pre><b>structure General : GENERAL <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> GENERAL =
+  <b>sig</b>
+    <b>eqtype</b> unit
+    <b>type</b> exn = exn
+
+    <b>exception</b> Bind
+    <b>exception</b> Match
+    <b>exception</b> Chr
+    <b>exception</b> Div
+    <b>exception</b> Domain
+    <b>exception</b> Fail of string
+    <b>exception</b> Overflow
+    <b>exception</b> Size
+    <b>exception</b> Span
+    <b>exception</b> Subscript
+
+    <b>val</b> <a href='#exnName'>exnName</a>    : exn -> string
+    <b>val</b> <a href='#exnMessage'>exnMessage</a> : exn -> string
+
+    <b>datatype</b> order = LESS | EQUAL | GREATER
+
+    <b>val</b> <a href='#$13'>!</a>      : 'a ref -> 'a
+    <b>val</b> <a href='#$12$16'>:=</a>     : 'a ref * 'a -> unit
+    <b>val</b> <a href='#o'>o</a>      : ('b -> 'c) * ('a -> 'b) -> 'a -> 'c
+    <b>val</b> <a href='#before'>before</a> : 'a * unit -> 'a
+    <b>val</b> <a href='#ignore'>ignore</a> : 'a -> unit
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type unit</tt>]</b></dt> <dd>The type containing a single value denoted (), which is
+typically used as a trivial argument or as a return value for a
+side-effecting function.
+</dd><br /><dt><b>[<tt>type exn</tt>]</b></dt> <dd>The type of values transmitted when an exception is raised
+and handled. This type is special in that it behaves like a datatype
+with an extensible set of data constructors, where new constructors
+are created by exception declarations.
+</dd><br /><dt><b>[<tt>exception Bind</tt>]</b></dt><dt><b>[<tt>exception Match</tt>]</b></dt> <dd>Exceptions indicating that pattern matching failed
+in a val binding or, respectively, in a case expression or function
+application. This occurs when the matched value is not an instance of
+any of the supplied patterns.
+</dd><br /><dt><b>[<tt>exception Chr</tt>]</b></dt> <dd>The exception indicating an attempt to create a
+character with a code outside the range supported by the underlying
+character type (see CHAR.chr).
+</dd><br /><dt><b>[<tt>exception Div</tt>]</b></dt> <dd>The exception indicating an attempt to divide by
+zero. It replaces the Mod exception required by the SML'90 Definition.
+</dd><br /><dt><b>[<tt>exception Domain</tt>]</b></dt> <dd>The exception indicating that the argument of a
+mathematical function is outside the domain of the function. It is
+raised by functions in structures matching the MATH or INT_INF
+signatures. It replaces the Sqrt and Ln exceptions required by the
+SML'90 Definition.
+</dd><br /><dt><b>[<tt>exception Fail</tt>]</b></dt> <dd>A general-purpose exception used to signify the
+failure of an operation. It is not raised by any function in the SML
+Basis Library, but is provided for use by users and user-defined
+libraries.
+</dd><br /><dt><b>[<tt>exception Overflow</tt>]</b></dt> <dd>The exception indicating that the result of an
+arithmetic function is not representable, in particular, is too
+large. It replaces the Abs, Exp, Neg, Prod, Quot, and Sum exceptions
+required by the SML'90 Definition.
+</dd><br /><dt><b>[<tt>exception Size</tt>]</b></dt> <dd>The exception indicating an attempt to create an
+aggregate data structure (such as an array, string, or vector) whose
+size is too large or negative.
+</dd><br /><dt><b>[<tt>exception Span</tt>]</b></dt> <dd>The exception indicating an attempt to apply
+SUBSTRING.span to two incompatible substrings.
+</dd><br /><dt><b>[<tt>exception Subscript</tt>]</b></dt> <dd>The exception indicating that an index is out of
+range, typically arising when the program is accessing an element in
+an aggregate data structure (such as a list, string, array, or
+vector).
+</dd><br /><dt><b>[<tt><a name='exnName'>exnName ex</a></tt>]</b></dt> <dd>returns a name for the exception ex. The name returned
+may be that of any exception constructor aliasing with ex. For
+instance, the expression
+<pre>
+       let exception E1; exception E2 = E1 in exnName E2 end
+</pre>
+
+might evaluate to &quot;E1&quot; or &quot;E2&quot;.
+</dd><br /><dt><b>[<tt><a name='exnMessage'>exnMessage ex</a></tt>]</b></dt> <dd>returns a message corresponding to exception ex. The
+precise format of the message may vary between implementations and
+locales, but will at least contain the string (exnName ex). Example:
+<pre>
+  exnMessage Div = &quot;Div&quot;
+  exnMessage (OS.SysErr (&quot;No such file&quot;, NONE)) =
+     &quot;OS.SysErr \&quot;No such file\&quot;&quot;
+</pre>
+
+</dd><br /><dt><b>[<tt>type order</tt>]</b></dt> <dd>Values of type order are used when comparing elements of
+a type that has a linear ordering.
+</dd><br /><dt><b>[<tt><a name='$13'>! re</a></tt>]</b></dt> <dd>returns the value referred to by the reference re.
+</dd><br /><dt><b>[<tt><a name='$12$16'>re := a</a></tt>]</b></dt> <dd>makes the reference re refer to the value a.
+</dd><br /><dt><b>[<tt><a name='o'>f o g</a></tt>]</b></dt> <dd>is the function composition of f and g. Thus, (f o g) a is
+equivalent to f(g a).
+</dd><br /><dt><b>[<tt><a name='before'>a before b</a></tt>]</b></dt> <dd>returns a. It provides a notational shorthand for
+evaluating a, then b, before returning the value of a.
+</dd><br /><dt><b>[<tt><a name='ignore'>ignore a</a></tt>]</b></dt> <dd>returns (). The purpose of ignore is to discard the result
+of a computation, returning () instead. This is useful, for example,
+when a higher-order function, such as List.app, requires a function
+returning unit, but the function to be used returns values of some
+other type.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

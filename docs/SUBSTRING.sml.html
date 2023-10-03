@@ -1,0 +1,221 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>SUBSTRING</code> <tt><i>(basis)</i></tt></h4><p> Operations on substrings.</p>The SUBSTRING signature specifies manipulations on an abstract
+representation of a sequence of contiguous characters in a string. A
+substring value can be modeled as a triple (s, i, n), where s is the
+underlying string, i is the starting index, and n is the size of the
+substring, with the constraint that 0 &lt;= i &lt;= i + n &lt;= |s|.
+
+The substring type and its attendant functions provide a convenient
+abstraction for performing a variety of common analyses of strings,
+such as finding the leftmost occurrence, if any, of a character in a
+string. In addition, using the substring functions avoids much of the
+copying and bounds checking that occur if similar operations are
+implemented solely in terms of strings.
+
+The SUBSTRING signature is matched by two structures, the required
+Substring and the optional WideSubstring. The former is a companion
+structure to the Char and String structures, which are based on the
+extended ASCII 8-bit character set. The structure WideSubstring is
+related in the same way to the structures WideChar and WideString,
+which are based on characters of some size greater than or equal to 8
+bits. In particular, the types Substring.string and Substring.char are
+identical to those types in the structure String and, when
+WideSubstring is defined, the types WideSubstring.string and
+WideSubstring.char are identical to those types in the structure
+WideString.
+
+All of these connections are made explicit in the Text and WideText
+structures, which match the TEXT signature. In the exposition below,
+references to a String structure refers to the substructure of that
+name defined in either the Text or the WideText structure, which ever
+is appropriate.
+<hr /><pre><b>structure Substring : SUBSTRING <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> SUBSTRING =
+  <b>sig</b>
+    <b>type</b> substring
+    <b>eqtype</b> char
+    <b>eqtype</b> string
+
+    <b>val</b> <a href='#sub'>sub</a>         : substring * int -> char
+    <b>val</b> <a href='#size'>size</a>        : substring -> int
+    <b>val</b> <a href='#base'>base</a>        : substring -> string * int * int
+    <b>val</b> <a href='#extract'>extract</a>     : string * int * int option -> substring
+    <b>val</b> <a href='#substring'>substring</a>   : string * int * int -> substring
+    <b>val</b> <a href='#full'>full</a>        : string -> substring
+    <b>val</b> <a href='#string'>string</a>      : substring -> string
+    <b>val</b> <a href='#isEmpty'>isEmpty</a>     : substring -> bool
+    <b>val</b> <a href='#getc'>getc</a>        : substring -> (char * substring) option
+    <b>val</b> <a href='#first'>first</a>       : substring -> char option
+    <b>val</b> <a href='#triml'>triml</a>       : int -> substring -> substring
+    <b>val</b> <a href='#trimr'>trimr</a>       : int -> substring -> substring
+    <b>val</b> <a href='#slice'>slice</a>       : substring * int * int option -> substring
+    <b>val</b> <a href='#concat'>concat</a>      : substring list -> string
+    <b>val</b> <a href='#concatWith'>concatWith</a>  : string -> substring list -> string
+    <b>val</b> <a href='#explode'>explode</a>     : substring -> char list
+    <b>val</b> <a href='#isPrefix'>isPrefix</a>    : string -> substring -> bool
+    <b>val</b> <a href='#isSubstring'>isSubstring</a> : string -> substring -> bool
+    <b>val</b> <a href='#isSuffix'>isSuffix</a>    : string -> substring -> bool
+    <b>val</b> <a href='#compare'>compare</a>     : substring * substring -> order
+    <b>val</b> <a href='#collate'>collate</a>     : (char * char -> order) -> substring * substring -> order
+    <b>val</b> <a href='#splitl'>splitl</a>      : (char -> bool) -> substring -> substring * substring
+    <b>val</b> <a href='#splitr'>splitr</a>      : (char -> bool) -> substring -> substring * substring
+    <b>val</b> <a href='#splitAt'>splitAt</a>     : substring * int -> substring * substring
+    <b>val</b> <a href='#dropl'>dropl</a>       : (char -> bool) -> substring -> substring
+    <b>val</b> <a href='#dropr'>dropr</a>       : (char -> bool) -> substring -> substring
+    <b>val</b> <a href='#takel'>takel</a>       : (char -> bool) -> substring -> substring
+    <b>val</b> <a href='#taker'>taker</a>       : (char -> bool) -> substring -> substring
+    <b>val</b> <a href='#position'>position</a>    : string -> substring -> substring * substring
+    <b>val</b> <a href='#span'>span</a>        : substring * substring -> substring
+    <b>val</b> <a href='#translate'>translate</a>   : (char -> string) -> substring -> string
+    <b>val</b> <a href='#tokens'>tokens</a>      : (char -> bool) -> substring -> substring list
+    <b>val</b> <a href='#fields'>fields</a>      : (char -> bool) -> substring -> substring list
+    <b>val</b> <a href='#app'>app</a>         : (char -> unit) -> substring -> unit
+    <b>val</b> <a href='#foldl'>foldl</a>       : (char * 'a -> 'a) -> 'a -> substring -> 'a
+    <b>val</b> <a href='#foldr'>foldr</a>       : (char * 'a -> 'a) -> 'a -> substring -> 'a
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt><a name='sub'>sub (s, i)</a></tt>]</b></dt> <dd>returns the i(th) character in the substring, counting
+from the beginning of s. It is equivalent to String.sub(string s,
+i). The exception Subscript is raised unless 0 &lt;= i &lt; |s|.
+</dd><br /><dt><b>[<tt><a name='size'>size s</a></tt>]</b></dt> <dd>returns the size of s. Equivalent to #3 o base and
+String.size o string.
+</dd><br /><dt><b>[<tt><a name='base'>base ss</a></tt>]</b></dt> <dd>returns a triple (s, i, n) giving a concrete representation
+of the substring. Here s is the underlying string, i is the starting
+index, and n is the size of the substring. It holds that 0 &lt;= i &lt;= i +
+n &lt;= |s|.
+</dd><br /><dt><b>[<tt><a name='extract'>extract (s, i, opt)</a></tt>]</b></dt> <dd>If opt=NONE, the function returns the substring
+of s from the i(th) character to the end of the string, i.e., the
+string s[i..|s|-1].  If opt=SOME j, the function returns the substring
+of size j starting at index i, i.e., the string s[i..i+j-1].  Raises
+Subscript unless 0 &lt;= i &lt;= |s|. The function must perform bounds
+checking in such a way that the Overflow exception is not raised.
+</dd><br /><dt><b>[<tt><a name='substring'>substring (s, i, j)</a></tt>]</b></dt> <dd>returns the substring s[i..i+j-1], i.e., the
+substring of size j starting at index i. This is equivalent to
+extract(s, i, SOME j). We require that base o substring be the
+identity function on valid arguments. An implementation must perform
+bounds checking in such a way that the Overflow exception is not
+raised.
+</dd><br /><dt><b>[<tt><a name='full'>full s</a></tt>]</b></dt> <dd>creates a substring representing the entire string s. It is
+equivalent to the expression substring(s, 0, String.size s).
+</dd><br /><dt><b>[<tt><a name='string'>string s</a></tt>]</b></dt> <dd>creates a string value corresponding to the substring. It
+is equivalent to String.substring o base for the corresponding String
+structure.
+</dd><br /><dt><b>[<tt><a name='isEmpty'>isEmpty s</a></tt>]</b></dt> <dd>returns true if s has size 0. Returns false otherwise.
+</dd><br /><dt><b>[<tt><a name='getc'>getc s</a></tt>]</b></dt> <dd>returns the first character in s and the rest of the
+substring, or NONE if s is empty.
+</dd><br /><dt><b>[<tt><a name='first'>first s</a></tt>]</b></dt> <dd>returns the first character in s, or NONE if s is empty.
+</dd><br /><dt><b>[<tt><a name='triml'>triml k s</a></tt>]</b></dt> <dd>removes k characters from the left of the substring s. If
+k is greater than the size of the substring, an empty substring is
+returned. Specifically, for substring ss = substring(s, i, j) and k &lt;=
+j, we have (triml k ss = substring(s, i+k, j-k)). The exception
+Subscript is raised if k &lt; 0. This exception is raised when (triml k)
+is evaluated.
+</dd><br /><dt><b>[<tt><a name='trimr'>trimr k s</a></tt>]</b></dt> <dd>removes k characters from the right of the substring s. If
+k is greater than the size of the substring, an empty substring is
+returned. Specifically, for substring ss = substring(s, i, j) and k &lt;=
+j, we have (trimr k ss = substring(s, i, j-k)). The exception
+Subscript is raised if k &lt; 0. This exception is raised when (trimr k)
+is evaluated.
+</dd><br /><dt><b>[<tt><a name='slice'>slice (s, i, opt)</a></tt>]</b></dt> <dd>returns a substring of s starting at the i(th)
+character. If opt=SOME m, the size of the resulting substring is
+m. Otherwise, the size is |s| - i. To be valid, the arguments in the
+first case must satisfy 0 &lt;= i, 0 &lt;= m and i + m &lt;= |s|. In the second
+case, the arguments must satisfy 0 &lt;= i &lt;= |s|. If the arguments are
+not valid, the exception Subscript is raised.
+</dd><br /><dt><b>[<tt><a name='concat'>concat l</a></tt>]</b></dt> <dd>returns a string that is the concatenation of the
+substrings in l. This is equivalent to String.concat o (List.map
+string). This raises Size if the sum of all the sizes is greater than
+the corresponding maxSize for the string type.
+</dd><br /><dt><b>[<tt><a name='concatWith'>concatWith s l</a></tt>]</b></dt> <dd>returns the concatenation of the substrings in the
+list l using the string s as a separator. Raises Size if the size of
+the resulting string would be greater than maxSize for the string
+type.
+</dd><br /><dt><b>[<tt><a name='explode'>explode s</a></tt>]</b></dt> <dd>returns the list of characters composing the
+substring. This is equivalent to String.explode (string s).
+</dd><br /><dt><b>[<tt><a name='isPrefix'>isPrefix s ss</a></tt>]</b></dt> <dd>returns true if the string s is a prefix of the
+substring ss. Equivalent to String.isPrefix s (string ss).
+</dd><br /><dt><b>[<tt><a name='isSubstring'>isSubstring s ss</a></tt>]</b></dt> <dd>returns true if the string s is a substring of the
+substring ss. Equivalent to String.isSubstring s (string ss).
+</dd><br /><dt><b>[<tt><a name='isSuffix'>isSuffix s ss</a></tt>]</b></dt> <dd>returns true if the string s is a suffix of the
+substring ss. Equivalent to String.isSuffix s (string ss).
+</dd><br /><dt><b>[<tt><a name='compare'>compare (s, t)</a></tt>]</b></dt> <dd>compares the two substrings lexicographically using
+the default character comparison function. Equivalent to
+(String.compare (string s, string t)).
+</dd><br /><dt><b>[<tt><a name='collate'>collate f (s, t)</a></tt>]</b></dt> <dd>compares the two substrings lexicographically using
+the character comparison function f. Equivalent to (String.collate f
+(string s, string t)).
+</dd><br /><dt><b>[<tt><a name='splitl'>splitl f s</a></tt>]</b></dt> <dd>scans s from left to right looking for the first
+character that does not satisfy the predicate f. It returns the pair
+(ls, rs) giving the split of the substring into the span up to that
+character and the rest. ls is the left side of the split, and rs is
+the right side.
+</dd><br /><dt><b>[<tt><a name='splitr'>splitr f s</a></tt>]</b></dt> <dd>scans s from right to left looking for the first
+character that does not satisfy the predicate f. It returns the pair
+(ls, rs) giving the split of the substring into the span up to that
+character and the rest. ls is the left side of the split, and rs is
+the right side.
+</dd><br /><dt><b>[<tt><a name='splitAt'>splitAt (s, i)</a></tt>]</b></dt> <dd>returns the pair of substring (ss, ss'), where ss
+contains the first i characters of s and ss' contains the rest,
+assuming 0 &lt;= i &lt;= size s. Otherwise, it raises Subscript.
+</dd><br /><dt><b>[<tt><a name='dropl'>dropl p s</a></tt>]</b></dt> <dd>scans the substring s, left to right, for the first
+character not satisfying the predicate p. The function drops the
+maximal substring consisting of characters satisfying the
+predicate. Equivalent to #2(splitl p s).
+</dd><br /><dt><b>[<tt><a name='dropr'>dropr f s</a></tt>]</b></dt> <dd>scans the substring s, right to left, for the first
+character not satisfying the predicate p. The function drops the
+maximal substring consisting of characters satisfying the
+predicate. Equivalent to #2(splitr p s).
+</dd><br /><dt><b>[<tt><a name='takel'>takel f s</a></tt>]</b></dt> <dd>scans the substring s, left to right, for the first
+character not satisfying the predicate p. The function returns the
+maximal substring consisting of characters satisfying the
+predicate. Equivalent to #1(splitl p s).
+</dd><br /><dt><b>[<tt><a name='taker'>taker f s</a></tt>]</b></dt> <dd>scans the substring s, right to left, for the first
+character not satisfying the predicate p. The function returns the
+maximal substring consisting of characters satisfying the
+predicate. Equivalent to #1(splitr p s).
+</dd><br /><dt><b>[<tt><a name='position'>position s ss</a></tt>]</b></dt> <dd>splits the substring ss into a pair (pref, suff) of
+substrings, where suff is the longest suffix of ss that has s as a
+prefix and pref is the prefix of ss preceding suff. More precisely,
+let m be the size of s and let ss correspond to the substring (s', i,
+n). If there is a least index k &gt;= i such that s = s'[k..k+m-1], then
+suff corresponds to (s', k, n+i-k) and pref corresponds to (s', i,
+k-i). If there is no such k, then suff is the empty substring
+corresponding to (s', i+n, 0) and pref corresponds to (s', i, n),
+i.e., all of ss.
+</dd><br /><dt><b>[<tt><a name='span'>span (ss, ss')</a></tt>]</b></dt> <dd>produces a substring composed of a prefix ss, suffix
+ss', plus all intermediate characters in the underlying string. It
+raises Span if ss and ss' are not substrings of the same underlying
+string or if the start of ss is to the right of the end of ss'. More
+precisely, if we have ((s, i, n) = base ss) and ((s', i', n') = base
+ss'), then span returns substring(s, i, (i'+n')-i) unless s &lt;&gt; s' or
+i'+n' &lt; i, in which case it raises Span. Note that this does not
+preclude ss' from beginning to the left of ss, or ss from ending to
+the right of ss'.  This function allows one to scan for a substring
+using multiple pieces and then coalescing the pieces. When applied to
+substrings derived from the identical base string, the string equality
+test should be constant time. This can be achieved by first doing a
+pointer test and, only if that fails, then checking the strings
+character by character.
+</dd><br /><dt><b>[<tt><a name='translate'>translate f s</a></tt>]</b></dt> <dd>applies f to every character of s, from left to right,
+and returns the concatenation of the results. This is equivalent to
+String.concat(List.map f (explode s)).
+</dd><br /><dt><b>[<tt><a name='tokens'>tokens f s</a></tt>]</b></dt> <dd>decomposes a substring into a list of tokens from left to
+right. A token is a non-empty maximal substring not containing any
+delimiter. A delimiter is a character satisfying predicate f.  Two
+tokens may be separated by more than one delimiter. For example, if
+the only delimiter is the character #&quot;|&quot;, then the substring
+&quot;|abc||def&quot; contains two tokens &quot;abc&quot; and &quot;def&quot;.
+</dd><br /><dt><b>[<tt><a name='fields'>fields f s</a></tt>]</b></dt> <dd>decomposes a substring into a list of fields from left to
+right. A field is a (possibly empty) maximal substring of s not
+containing any delimiter. A delimiter is a character satisfying
+predicate f. Two fields are separated by exactly one delimiter. For
+example, if the only delimiter is the character #&quot;|&quot;, then the
+substring &quot;|abc||def&quot; contains the four fields &quot;&quot;, &quot;abc&quot;, &quot;&quot; and
+&quot;def&quot;.
+</dd><br /><dt><b>[<tt><a name='app'>app f s</a></tt>]</b></dt> <dd>applies f to each character of s from left to
+right. Equivalent to List.app f (explode s).
+</dd><br /><dt><b>[<tt><a name='foldl'>foldl f a s</a></tt>]</b></dt> <dd>fold the function f over the substring s, starting with
+the value a, from left to right. Equivalent to List.foldl f a (explode
+s).
+</dd><br /><dt><b>[<tt><a name='foldr'>foldr f a s</a></tt>]</b></dt> <dd>fold the function f over the substring s, starting with
+the value a, from right to left. Equivalent to List.foldr f a (explode
+s).
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

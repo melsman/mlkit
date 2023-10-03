@@ -1,0 +1,146 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>DATE</code> <tt><i>(basis)</i></tt></h4><p> Operations on dates.</p>The Date structure provides functions for converting between times and
+dates, and formatting and scanning dates.
+<hr /><pre><b>structure Date : DATE <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> DATE =
+  <b>sig</b>
+    <b>datatype</b> weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
+    <b>datatype</b> month = Jan | Feb | Mar | Apr | May | Jun
+                   | Jul | Aug | Sep | Oct | Nov | Dec
+    <b>type</b> date
+
+    <b>exception</b> Date
+
+    <b>val</b> <a href='#date'>date</a> : {year : int,
+		month : month,
+		day : int,
+		hour : int,
+		minute : int,
+		second : int,
+		offset : <a href='TIME.sml.html'>Time</a>.time option}
+	-> date
+
+    <b>val</b> <a href='#year'>year</a>    : date -> int
+    <b>val</b> <a href='#month'>month</a>   : date -> month
+    <b>val</b> <a href='#day'>day</a>     : date -> int
+    <b>val</b> <a href='#hour'>hour</a>    : date -> int
+    <b>val</b> <a href='#minute'>minute</a>  : date -> int
+    <b>val</b> <a href='#second'>second</a>  : date -> int
+    <b>val</b> <a href='#weekDay'>weekDay</a> : date -> weekday
+    <b>val</b> <a href='#yearDay'>yearDay</a> : date -> int
+    <b>val</b> <a href='#offset'>offset</a>  : date -> <a href='TIME.sml.html'>Time</a>.time option
+    <b>val</b> <a href='#isDst'>isDst</a>   : date -> bool option
+
+    <b>val</b> <a href='#localOffset'>localOffset</a> : unit -> <a href='TIME.sml.html'>Time</a>.time
+
+    <b>val</b> <a href='#fromTimeLocal'>fromTimeLocal</a> : <a href='TIME.sml.html'>Time</a>.time -> date
+    <b>val</b> <a href='#fromTimeUniv'>fromTimeUniv</a>  : <a href='TIME.sml.html'>Time</a>.time -> date
+    <b>val</b> <a href='#toTime'>toTime</a>        : date -> <a href='TIME.sml.html'>Time</a>.time
+
+    <b>val</b> <a href='#compare'>compare</a> : date * date -> order
+
+    <b>val</b> <a href='#fmt'>fmt</a>        : string -> date -> string
+    <b>val</b> <a href='#toString'>toString</a>   : date -> string
+    <b>val</b> <a href='#scan'>scan</a>       : (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+                       -> (date, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+    <b>val</b> <a href='#fromString'>fromString</a> : string -> date option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>type date</tt>]</b></dt> <dd>An abstract type whose values represents an instant in a
+specific time zone.
+</dd><br /><dt><b>[<tt><a name='date'>date di</a></tt>]</b></dt> <dd>creates a canonical date from the given date information
+di. If the resulting date is outside the range supported by the
+implementation, the Date exception is raised. Seconds outside the
+range [0,59] are converted to the equivalent minutes and added to the
+minutes argument. Similar conversions are performed for minutes to
+hours, hours to days, days to months, and months to years.  Negative
+values are similarly translated into a canonical range, with the extra
+borrowed from the next larger unit. Thus, minute = 10, second = ~140
+becomes minute = 7, second = 40. The offset argument provides time
+zone information. A value of NONE represents the local time zone. A
+value of SOME(t) corresponds to time t west of UTC. In particular,
+SOME(Time.zeroTime) is UTC.  Negative offsets denote time zones to the
+east of UTC, as is traditional. Offsets are taken modulo 24
+hours. That is, we express t, in hours, as sgn(t)(24*d + r), where d
+and r are non-negative, d is integral, and r &lt; 24. The offset then
+becomes sgn(t)*r and sgn(t)(24*d) is added to the hours (before
+converting hours to days).  Leap years follow the Gregorian
+calendar. Leap seconds may or may not be ignored. In an implementation
+that takes account of leap seconds, the second function may return 60
+or 61 in the rare cases that this is appropriate.
+</dd><br /><dt><b>[<tt><a name='year'>year d</a></tt>]</b></dt><dt><b>[<tt><a name='month'>month d</a></tt>]</b></dt><dt><b>[<tt><a name='day'>day d</a></tt>]</b></dt><dt><b>[<tt><a name='hour'>hour d</a></tt>]</b></dt><dt><b>[<tt><a name='minute'>minute d</a></tt>]</b></dt><dt><b>[<tt><a name='second'>second d</a></tt>]</b></dt><dt><b>[<tt><a name='weekDay'>weekDay d</a></tt>]</b></dt><dt><b>[<tt><a name='yearDay'>yearDay d</a></tt>]</b></dt><dt><b>[<tt><a name='offset'>offset d</a></tt>]</b></dt><dt><b>[<tt><a name='isDst'>isDst d</a></tt>]</b></dt> <dd>These functions extract the attributes of a date value. The
+year returned by year uses year 0 as its base. The function yearDay
+returns the day of the year, starting from 0, i.e., 1 January is day
+0. The value returned by offset reports time zone information as the
+amount of time west of UTC. A value of NONE represents the local time
+zone. The function isDst returns NONE if the system has no information
+concerning daylight savings time.  Otherwise, it returns SOME(dst)
+where dst is true if daylight savings time is in effect.
+</dd><br /><dt><b>[<tt><a name='localOffset'>localOffset()</a></tt>]</b></dt> <dd>returns the offset from UTC for the local time zone.
+</dd><br /><dt><b>[<tt><a name='fromTimeLocal'>fromTimeLocal t</a></tt>]</b></dt><dt><b>[<tt><a name='fromTimeUniv'>fromTimeUniv t</a></tt>]</b></dt> <dd>These convert the (UTC) time t into a corresponding
+date. fromTimeLocal represents the date in the local time zone; it is
+the analogue of the ISO C function localtime. The returned date will
+have offset=NONE. fromTimeUniv returns the date in the UTC time zone;
+it is the analogue of the ISO C function gmtime. The returned date
+will have offset=SOME(0).  If these functions are applied to the same
+time value, the resulting dates will differ by the offset of the local
+time zone from UTC.
+</dd><br /><dt><b>[<tt><a name='toTime'>toTime d</a></tt>]</b></dt> <dd>returns the (UTC) time corresponding to the date d. It
+raises Date if the date d cannot be represented as a Time.time
+value. It is the analogue of the ISO C function mktime.
+</dd><br /><dt><b>[<tt><a name='compare'>compare (date1, date2)</a></tt>]</b></dt> <dd>returns LESS, EQUAL, or GREATER, according as
+date1 precedes, equals, or follows date2 in time. It lexicographically
+compares the dates, using the year, month, day, hour, minute, and
+second information, but ignoring the offset and daylight savings time
+information. It does not detect invalid dates.  In order to compare
+dates in two different time zones, the user would have to handle the
+normalization.
+</dd><br /><dt><b>[<tt><a name='fmt'>fmt s d</a></tt>]</b></dt><dt><b>[<tt><a name='toString'>toString d</a></tt>]</b></dt> <dd>These return a string representation of the date
+d. The result may be wrong if the date is outside the representable
+Time.time range. They raise Date if the given date is invalid.  The
+former formats the date according to the format string s, following
+the semantics of the ISO C function strftime. In particular, fmt is
+locale-dependent. The allowed formats are:
+<pre>
+ %a  locale's abbreviated weekday name
+ %A  locale's full weekday name
+ %b  locale's abbreviated month name
+ %B  locale's full month name
+ %c  locale's date and time representation (e.g., &quot;Dec 2 06:55:15 1979&quot;)
+ %d  day of month [01-31]
+ %H  hour [00-23] %I hour [01-12]
+ %j  day of year [001-366]
+ %m  month number [01-12]
+ %M  minutes [00-59]
+ %p  locale's equivalent of the AM/PM designation
+ %S  seconds [00-61]
+ %U  week number of year [00-53], with the first Sunday as the first day of week 01
+ %w  day of week [0-6], with 0 representing Sunday
+ %W  week number of year [00-53], with the first Monday as the first day of week 01
+ %x  locale's appropriate date representation
+ %X  locale's appropriate time representation
+ %y  year of century [00-99]
+ %Y  year including century (e.g., 1997)
+ %Z  time zone name or abbreviation, or the empty string if no time zone information exists
+ %%  the percent character
+ %c  the character c, if c is not one of the format characters listed above
+</pre>
+
+For instance, (fmt &quot;%A&quot; d) returns the full name of the weekday
+specified by d (e.g., &quot;Monday&quot;). For a full description of the
+format-string syntax, consult a description of strftime. Note,
+however, that unlike strftime, the behavior of fmt is defined for the
+directive %c for any character c. The function toString returns a
+24-character string representing the date d in the format &quot;Wed Mar 08
+19:06:45 1995&quot;. The function is equivalent to Date.fmt &quot;%a %b %d
+%H:%M:%S %Y&quot;.
+</dd><br /><dt><b>[<tt><a name='scan'>scan getc strm</a></tt>]</b></dt><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>These scan a 24-character date from a character source
+after ignoring possible initial whitespace. The format of the string
+must be precisely as produced by toString. In particular, the
+functions do not parse time zone abbreviations. No check of the
+consistency of the date (weekday, date in the month, ...) is
+performed. If the scanning fails, NONE is returned.  The function scan
+takes a character stream reader getc and a stream strm.  In case of
+success, it returns SOME(date, rest), where date is the scanned date
+and rest is the remainder of the stream.  The function fromString
+takes a string s as its source of characters. It is equivalent to
+StringCvt.scanString scan.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>

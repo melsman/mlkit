@@ -1,0 +1,114 @@
+<html><head><head><link rel='stylesheet' href='jslib/jquery-ui.css'></link><script src='jslib/jquery-1.9.1.js'></script><script src='jslib/jquery-ui.js'></script><script src='generated_tags.js'></script><link rel='stylesheet' href='jslib/style.css'></link><script>function copyText(text) { console.log('hi'); try { navigator.clipboard.writeText(text); console.log('Text copied!'); } catch (err) { console.error('error copying text', err); } }</script><script>$(function() {   $( '#tags' ).autocomplete({    source: availableTags,    select: function(event,ui){ window.location = ui.item.value; }  });});</script></head></head><body><table width='100%'><tr><td><a href="https://elsman.com/mlkit/"><img height="30pt" src="mlkit.png"/></a></td><td>Library Documentation</td><td align='center'><a href='str_idx.html'>Structures</a></td><td align='center'><a href='sig_idx.html'>Signatures</a></td><td align='center'><a href='id_idx.html'>Identifiers</a></td><td align='center'><a href='pkg_idx.html'>Packages</a></td><td align='right'><a href='about.html'>About</a></td></tr></table><p style='width:100%'><input id='tags' placeholder='Search' style='width:100%; margin-right:20px;'></input></p><h4>Signature <code>IEEE_REAL</code> <tt><i>(basis)</i></tt></h4><p> Types and operations related to an IEEE implementation of reals.</p>The IEEEReal structure defines types associated with an IEEE
+implementation of floating-point numbers. In addition, it provides
+control for the floating-point hardware's rounding mode. Refer to the
+IEEE standard 754-1985 and the ANSI/IEEE standard 854-1987 for
+additional information.
+
+<hr /><pre><b>structure IEEEReal : IEEE_REAL <i>(basis)</i>
+</b></pre><hr /><pre><b>signature</b> IEEE_REAL =
+  <b>sig</b>
+    <b>exception</b> Unordered
+
+    <b>datatype</b> real_order = LESS | EQUAL | GREATER | UNORDERED
+
+    <b>datatype</b> float_class
+      = NAN
+      | INF
+      | ZERO
+      | NORMAL
+      | SUBNORMAL
+
+    <b>datatype</b> rounding_mode
+      = TO_NEAREST
+      | TO_NEGINF
+      | TO_POSINF
+      | TO_ZERO
+
+    <b>val</b> <a href='#setRoundingMode'>setRoundingMode</a> : rounding_mode -> unit
+    <b>val</b> <a href='#getRoundingMode'>getRoundingMode</a> : unit -> rounding_mode
+
+    <b>type</b> decimal_approx = {
+      class : float_class,
+      sign : bool,
+      digits : int list,
+      exp : int
+    }
+
+    <b>val</b> <a href='#toString'>toString</a>   : decimal_approx -> string
+    <b>val</b> <a href='#scan'>scan</a>       : (char, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader -> (decimal_approx, 'a) <a href='STRING_CVT.sml.html'>StringCvt</a>.reader
+    <b>val</b> <a href='#fromString'>fromString</a> : string -> decimal_approx option
+  <b>end</b>
+</pre><hr /><dl><dt><b>[<tt>exception Unordered</tt>]</b></dt><dt><b>[<tt><a name='setRoundingMode'>setRoundingMode m</a></tt>]</b></dt><dt><b>[<tt><a name='getRoundingMode'>getRoundingMode()</a></tt>]</b></dt> <dd>These set and get the rounding mode of the underlying hardware. The
+IEEE standard requires TO_NEAREST as the default rounding mode.
+<pre>
+    Implementation note:
+</pre>
+
+<pre>
+    Some platforms do not support all of the rounding modes. An SML
+    implementation built on these platforms will necessarily be
+    non-conforming with, presumably, setRoundingMode raising an
+    exception for the unsupported modes.
+</pre>
+
+</dd><br /><dt><b>[<tt>type decimal_approx</tt>]</b></dt> <dd>This type provides a structured decimal
+representation of a real. The class field indicates the real class. If
+sign is true, the number is negative. The integers in the digits list
+must be digits, i.e., between 0 and 9.  When class is NORMAL or
+SUBNORMAL, a value of type decimal_approx with digits = [d(1), d(2),
+..., d(n)] corresponds to the real number s * 0.d(1)d(2)...d(n)
+10(exp), where s is -1 if sign is true and 1 otherwise. When class is
+ZERO or INF, the value corresponds to zero or infinity, respectively,
+with its sign determined by sign. When class is NAN, the value
+corresponds to an unspecified NaN value.
+</dd><br /><dt><b>[<tt><a name='toString'>toString d</a></tt>]</b></dt> <dd>returns a string representation of d. Assuming digits =
+</dd><br /><dt><b>[<tt>d(1), d(2), ..., d(n)</tt>]</b></dt> <dd>and ignoring the sign and exp fields, toString
+generates the following strings depending on the class field:
+<pre>
+    ZERO        &quot;0.0&quot;
+    NORMAL      &quot;0.d(1)d(2)...d(n)&quot;
+    SUBNORMAL   &quot;0.d(1)d(2)...d(n)&quot;
+    INF         &quot;inf&quot;
+    NAN         &quot;nan&quot;
+</pre>
+
+If the sign field is true, a #&quot;~&quot; is prepended. If the exp field is
+non-zero and the class is NORMAL or SUBNORMAL, the string
+&quot;E&quot;^(Integer.toString exp) is appended.  The composition toString o
+REAL.toDecimal is equivalent to REAL.fmt StringCvt.EXACT.
+</dd><br /><dt><b>[<tt><a name='scan'>scan getc strm</a></tt>]</b></dt><dt><b>[<tt><a name='fromString'>fromString s</a></tt>]</b></dt> <dd>These functions scan a decimal approximation from a prefix of a
+character source. Initial whitespace is ignored. The first reads from
+the character stream src using the character input function getc. It
+returns SOME(d, rest) if the decimal approximation d can be parsed;
+rest is the remainder of the character stream. NONE is returned
+otherwise.  The second form uses the string s as input. It returns the
+decimal approximation on success and NONE otherwise. The fromString
+function is equivalent to StringCvt.scanString scan.
+The functions accept real numbers with the following format:
+<pre>
+    [+~-]?([0-9]+.[0-9]+? | .[0-9]+)(e | E)[+~-]?[0-9]+?
+</pre>
+
+The optional sign determines the value of the sign field, with a
+default of false. Initial zeros are stripped from the integer part and
+trailing zeros are stripped from the fractional part, yielding two
+lists il and fl, respectively, of digits. If il is non-empty, then
+class is set to NORMAL, digits is set to il@fl with any trailing zeros
+removed and exp is set to the length of il plus the value of the
+scanned exponent, if any. If il is empty and so is fl, then class is
+set to ZERO, digits = [] and exp = 0. Finally, if il is empty but fl
+is not, let m be the number of leading zeros in fl and let fl' be fl
+after the leading zeros are removed. Then, class is set to NORMAL,
+digits is set to fl' and exp is set to -m plus the value of the
+scanned exponent, if any.  They also accept the following string
+representations of non-finite values:
+<pre>
+    [+~-]?(inf | infinity | nan)
+</pre>
+
+where the alphabetic characters are case-insensitive. The optional
+sign determines the value of the sign field, with a default of
+false. In the first and second cases, d will have class set to INF. In
+the third case, class is set to NAN. In all these cases, d will have
+digits = [] and exp = 0.
+</dd><br /></dl><hr /><i>Generated by <a href='http://github.com/melsman/sigdoc'>SigDoc</a></i></body></html>
