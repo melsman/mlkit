@@ -321,7 +321,9 @@ structure Real : REAL =
                   in IntInf.+(IntInf.*(N, factor), rem)
                   end
                 else Int.toLarge (toInt rm r)
-        in if r < 0.0 then IntInf.~ (toLargePos (~r))
+        in if isNan r then raise Domain
+           else if r == negInf orelse r == posInf then raise Overflow
+           else if r < 0.0 then IntInf.~ (toLargePos (~r))
            else toLargePos r
         end
 

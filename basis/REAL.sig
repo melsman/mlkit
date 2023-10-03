@@ -104,12 +104,10 @@ signature REAL = sig
 (*
   val toDecimal    : real -> IEEEReal.decimal_approx
   val fromDecimal  : IEEEReal.decimal_approx -> real option
-*)
 
-  (* Extra? *)
   val toDefault    : real -> real
   val fromDefault  : real -> real
-
+*)
 end
 
 (**
@@ -367,8 +365,39 @@ are described by
 
 	[+~-]?(([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+~-]?[0-9]+)?
 
-[toDefault x] is x.
+[toDecimal r]
 
-[fromDefault x] is x.
+[fromDecimal d]
+
+These convert between real values and decimal approximations. Decimal
+approximations are to be converted using the IEEEReal.TO_NEAREST
+rounding mode. toDecimal should produce only as many digits as are
+necessary for fromDecimal to convert back to the same number. In
+particular, for any normal or subnormal real value r, we have the
+bit-wise equality: fromDecimal (toDecimal r) = r.  For toDecimal, when
+the r is not normal or subnormal, then the exp field is set to 0 and
+the digits field is the empty list. In all cases, the sign and class
+field capture the sign and class of r.
+
+For fromDecimal, if class is ZERO or INF, the resulting real is the
+appropriate signed zero or infinity. If class is NAN, a signed NaN is
+generated. If class is NORMAL or SUBNORMAL, the sign, digits and exp
+fields are used to produce a real number whose value is
+
+    s * 0.d(1)d(2)...d(n) 10^(exp)
+
+where digits = [d(1), d(2), ..., d(n)] and where s is -1 if sign is
+true and 1 otherwise. Note that the conversion itself should ignore
+the class field, so that the resulting value might have class NORMAL,
+SUBNORMAL, ZERO, or INF. For example, if digits is empty or a list of
+all 0's, the result should be a signed zero. More generally, very
+large or small magnitudes are converted to infinities or zeros.  If
+the argument to fromDecimal does not have a valid format, i.e., if the
+digits field contains integers outside the range [0,9], it returns
+NONE.
+
+    Implementation note: Algorithms for accurately and efficiently
+    converting between binary and decimal real representations are
+    readily available, e.g., see the technical report by Gay.
 
 *)
