@@ -39,9 +39,13 @@ structure Initial =
     local
       fun get_posInf () : real = prim ("posInfFloat", ())
       fun get_negInf () : real = prim ("negInfFloat", ())
+      fun get_maxFinite () : real = prim("maxFiniteFloat", ())
     in
       val posInf = get_posInf()
       val negInf = get_negInf()
+      val minPos = 0.5E~323
+      val maxFinite : real = get_maxFinite()
+      val minNormalPos = 0.22250738585072014E~307
     end
 
     (* Math structure *)
@@ -53,12 +57,16 @@ structure Initial =
       val NaN = sqrt ~1.0
     end
 
+    (* ByteTable and WordTable functors *)
+    val bytetable_maxlen : int = 4 * 1024 * 1024 * 1024  (* 4Gb *)
+    val wordtable_maxlen : int = 123456789*100 (* arbitrary chosen. *)
+
     (* Int structure. Integers are untagged (or tagged if GC is enabled),
      * and there is a limit to the size of immediate integers that the Kit
      * accepts. We should change the lexer such that it does not convert a
      * string representation of an integer constant into an internal
      * integer, as this makes the the kit dependent on the precision of
-     * the compiler (SML/NJ) that we use to compile the Kit. *)
+     * the compiler that we use to compile the Kit. *)
 
     type int0 = int
 
@@ -80,11 +88,6 @@ structure Initial =
     val (minInt0:int,maxInt0:int) =
         if precisionInt0 = 63 then (fromI63 minInt63, fromI63 maxInt63)
         else (fromI64 minInt64, fromI64 maxInt64)
-
-(*
-    val maxInt0 : int = prim("max_fixed_int", 0)
-    val minInt0 : int = prim("min_fixed_int", 0)
-*)
 
     (* TextIO *)
     val stdIn_stream : int = prim ("stdInStream", 0)
@@ -337,5 +340,31 @@ structure Initial =
             val all   = 0wx3FFF
           end
         end
+
+      structure SocketDefs = struct
+
+      val { AF_INET      : int
+          , AF_UNIX      : int
+          , INADDR_ANY   : int
+          , SHUT_RD      : int
+          , SHUT_RDWR    : int
+          , SHUT_WR      : int
+          , SOCK_DGRAM   : int
+          , SOCK_RAW     : int
+          , SOCK_STREAM  : int
+          , SO_BROADCAST : int
+          , SO_DEBUG     : int
+          , SO_DONTROUTE : int
+          , SO_ERROR     : int
+          , SO_KEEPALIVE : int
+          , SO_LINGER    : int
+          , SO_OOBINLINE : int
+          , SO_RCVBUF    : int
+          , SO_REUSEADDR : int
+          , SO_SNDBUF    : int
+          , SO_TYPE      : int
+          } = prim("sml_sock_getDefines",())
+
+      end
 
   end

@@ -4,29 +4,48 @@ structure Real : REAL =
 
     (* Primitives *)
 
-    fun real (x : int) : real = prim ("realInt", x)
+    val radix = 2
+    val precision = 53
+
+    fun real (x:int) : real = prim ("realInt", x)
 
     fun getCtx () : foreignptr = prim("__get_ctx",())
 
-    fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
-    fun ceil (x : real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
-    fun trunc (x : real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun floor (x:real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun ceil (x:real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
+    fun trunc (x:real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
 
-    fun realFloor (x: real) : real = prim ("realFloor", x)
-    fun realCeil (x: real) : real = prim ("realCeil", x)
-    fun realTrunc (x: real) : real = prim ("realTrunc", x)
-    fun realRound (x: real) : real = prim ("realRound", x)
+    fun realFloor (x:real) : real = prim ("realFloor", x)
+    fun realCeil (x:real) : real = prim ("realCeil", x)
+    fun realTrunc (x:real) : real = prim ("realTrunc", x)
+    fun realRound (x:real) : real = prim ("realRound", x)
 
-    fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
-    fun rem (x: real, y: real): real = prim ("remFloat", (x, y))
+    fun (x:real) / (y:real) : real = prim ("divFloat", (x, y))
+    fun rem (x:real, y:real) : real = prim ("remFloat", (x, y))
     fun to_string_gen (s : string) (x : real) : string =
-      prim ("generalStringOfFloat", (s,x))
-    fun toString (x : real) : string = prim ("stringOfFloat", x)
-    fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
-    fun isNan (x : real) : bool = prim ("isnanFloat", x)
+        prim ("generalStringOfFloat", (s,x))
+    fun toString (x:real) : string = prim ("stringOfFloat", x)
+    fun sub_unsafe (s:string, i:int) : char = prim ("__bytetable_sub", (s,i))
+    fun isNan (x:real) : bool = prim ("isnanFloat", x)
 
-    fun max (x: real, y: real) : real = prim ("__max_real", (x, y))
-    fun min (x: real, y: real) : real = prim ("__min_real", (x, y))
+    fun max (x:real, y:real) : real = prim ("__max_real", (x, y))
+    fun min (x:real, y:real) : real = prim ("__min_real", (x, y))
+
+    fun copySign (x:real, y:real) : real = prim("copysignFloat", (x, y))
+    fun signBit (x:real) : bool = prim("signbitFloat", x)
+    fun isNormal (x:real) : bool = prim("isnormalFloat", x)
+
+    fun ldexp (x:real, e:int) : real = prim("ldexpFloat", (x, e))
+    fun frexp (x:real) : real * int = prim("frexpFloat", x)
+
+    fun nextAfter (r:real, d:real) : real = prim("nextafterFloat", (r, d))
+
+    fun split (r:real) : {whole:real, frac:real} =
+        let val (w,f) = prim("splitFloat", r)
+        in {whole=w,frac=f}
+        end
+
+    val realMod : real -> real = #frac o split
 
     type real = real
 
@@ -34,8 +53,29 @@ structure Real : REAL =
 
     val posInf = Initial.posInf
     val negInf = Initial.negInf
+    val minPos = Initial.minPos
+    val maxFinite = Initial.maxFinite
+    val minNormalPos = Initial.minNormalPos
 
     val fromInt = real
+
+    fun fromLargeInt i =
+        let val N_i = 1073741824  (* pow2 30 *)
+            val N = IntInf.fromInt N_i
+            val N_r = real N_i
+            val op < = IntInf.<
+            fun fromLargePos i =
+                if N < i then
+                  let val factor = IntInf.div(i, N)
+                      val rem = IntInf.-(i, IntInf.*(factor, N))
+                      val factor_r = fromLargePos factor
+                      val rem_r = fromLargePos rem
+                  in N_r * factor_r + rem_r
+                  end
+                else real (Int.fromLarge i)
+        in if i < 0 then ~ (fromLargePos (IntInf.~ i))
+           else fromLargePos i
+        end
 
     (* The following should be replaced by numerically better conversion
      functions; see
@@ -174,24 +214,73 @@ structure Real : REAL =
     val op <    : real * real -> bool = op <
     val op <=   : real * real -> bool = op <=
     val abs     : real -> real = abs
-    fun sign i = if i > 0.0 then 1 else if i < 0.0 then ~1 else 0
+
+    fun *+ (a,b,c) = a * b + c
+    fun *- (a,b,c) = a * b - c
+
+    fun unordered (x:real, y:real) : bool = isNan x orelse isNan y
+
+    fun compareReal (x:real, y:real) : IEEEReal.real_order =
+        let open IEEEReal
+        in if unordered(x,y) then UNORDERED
+           else if x < y then LESS
+           else if y < x then GREATER
+           else EQUAL
+        end
+
+    fun sign i =
+        if i > 0.0 then 1
+        else if i < 0.0 then ~1
+        else if isNan i then raise Domain
+        else 0
 
     fun compare (x, y: real) =
-      if x<y then LESS else if x>y then GREATER else EQUAL
+        if unordered (x,y) then raise IEEEReal.Unordered
+        else if x < y then LESS
+        else if y < x then GREATER
+        else EQUAL
 
-    fun op == (x, y) = case compare (x,y)
-		     of EQUAL => true
-		      | _ => false
-    fun op != (x,y) = case compare (x,y)
-			of EQUAL => false
-			 | _ => true
+    fun op == (x, y) =
+        case compareReal (x,y) of
+            IEEEReal.EQUAL => true
+	  | _ => false
+
+    fun op != (x,y) =
+        case compareReal (x,y) of
+            IEEEReal.EQUAL => false
+	  | _ => true
+
+    fun op ?= (a,b) =
+        isNan a orelse isNan b orelse op == (a, b)
 
     infix != ==
     fun isFinite r =
       if isNan r then false
       else r != posInf andalso r != negInf
 
+    fun checkFloat (r:real) =
+        if r == posInf orelse r == negInf then raise Overflow
+        else if isNan r then raise Div
+        else r
+
     fun sameSign (i, j) = sign i = sign j
+
+    fun class (r:real) : IEEEReal.float_class =
+        let open IEEEReal
+        in if isNan r then NAN
+           else if r == posInf orelse r == negInf then INF
+           else if r == 0.0 then ZERO
+           else if isNormal r then NORMAL
+           else SUBNORMAL
+        end
+
+    fun fromManExp {man,exp} : real =
+        ldexp(man,exp)
+
+    fun toManExp (r:real) : {man:real, exp:int} =
+        let val (m,e) = frexp r
+        in {man=m,exp=e}
+        end
 
     fun round (x : real) : int =
       let (* val _ = print "**R1**\n" *)
@@ -211,8 +300,36 @@ structure Real : REAL =
 	else floor_t0
       end
 
-    fun toDefault   i   = i
-    fun fromDefault i   = i
+    fun toInt (rm:IEEEReal.rounding_mode) (r:real) : int =
+        case rm of
+            IEEEReal.TO_NEAREST => round r
+          | IEEEReal.TO_NEGINF => floor r
+          | IEEEReal.TO_POSINF => ceil r
+          | IEEEReal.TO_ZERO => trunc r
+
+    fun toLargeInt rm (r:real) =
+        let val N_i = 1073741824  (* pow2 30 *)
+            val N = IntInf.fromInt N_i
+            val N_r = real N_i
+            fun whole r = #whole(split r)
+            fun toLargePos r =
+                if N_r < r then
+                  let val factor_r = whole(r / N_r)
+                      val rem_r = r - factor_r * N_r
+                      val factor = toLargePos factor_r
+                      val rem = toLargePos rem_r
+                  in IntInf.+(IntInf.*(N, factor), rem)
+                  end
+                else Int.toLarge (toInt rm r)
+        in if r < 0.0 then IntInf.~ (toLargePos (~r))
+           else toLargePos r
+        end
+
+    fun toLarge r = r
+    fun fromLarge _ r = r
+
+    fun toDefault i = i
+    fun fromDefault i = i
 
   end (*structure Real*)
 

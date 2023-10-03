@@ -32,28 +32,7 @@ local
   end = struct
 
     (* see socket.c *)
-
-    val { AF_INET      : int
-        , AF_UNIX      : int
-        , INADDR_ANY   : int
-        , SHUT_RD      : int
-        , SHUT_RDWR    : int
-        , SHUT_WR      : int
-        , SOCK_DGRAM   : int
-        , SOCK_RAW     : int
-        , SOCK_STREAM  : int
-        , SO_BROADCAST : int
-        , SO_DEBUG     : int
-        , SO_DONTROUTE : int
-        , SO_ERROR     : int
-        , SO_KEEPALIVE : int
-        , SO_LINGER    : int
-        , SO_OOBINLINE : int
-        , SO_RCVBUF    : int
-        , SO_REUSEADDR : int
-        , SO_SNDBUF    : int
-        , SO_TYPE      : int
-        } = prim("sml_sock_getDefines",())
+    open Initial.SocketDefs
 
     datatype af = Inet_af | Unix_af
 
