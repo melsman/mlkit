@@ -494,4 +494,19 @@ val test44 =
 val test45 =
     try2 "test45" IEEEReal.TO_ZERO 12345678.6
          "12345678"
+
+fun withRM rm f =
+    let val rm' = IEEEReal.getRoundingMode()
+        val () = IEEEReal.setRoundingMode rm
+        val res = f()
+    in IEEEReal.setRoundingMode rm'
+     ; res
+    end
+
+val test46a =
+    tst "test46a" (toInt IEEEReal.TO_NEAREST 2.8 = 3)
+
+val test46b =
+    tst "test46b" (toInt IEEEReal.TO_ZERO 2.8 = 2)
+
 end
