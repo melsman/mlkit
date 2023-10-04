@@ -344,7 +344,6 @@ structure IntInf : INT_INF =
 	val nbase : int31 = ~0x40000000     (* = ~2^lgBase *)
 
 	fun maxDigit() : int31 = Int31.~(nbase + 1)
-(*	fun realBase() = (real (maxDigit())) + 1.0 *)
 
 	fun lgHBase() : int31 = Int31.quot (lgBase, 2)    (* half digits *)
 	fun hbase() : word31 = Word31.<<(0w1, itow' (lgHBase()))

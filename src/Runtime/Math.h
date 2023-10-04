@@ -104,6 +104,9 @@ ssize_t isnanFloat(ssize_t s);
 ssize_t posInfFloat(ssize_t d);
 ssize_t negInfFloat(ssize_t d);
 
+void floatSetRoundingMode(ssize_t m); // 0:TONEAREST, 1: DOWNWARD, 2: UPWARD, 3: ZERO
+ssize_t floatGetRoundingMode(void);
+
 // #ifdef PROFILING
 // String stringOfFloatProf(Region rAddr, long f, uintptr_t pPoint);
 // String generalStringOfFloatProf(Region rAddr, String str, long f, long pPoint);

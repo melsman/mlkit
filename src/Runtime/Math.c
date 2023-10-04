@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
+#include <fenv.h>
 #include "Math.h"
 #include "Tagging.h"
 #include "Exception.h"
@@ -709,6 +711,54 @@ isnanFloat(ssize_t s)
 }
 
 ssize_t
+signbitFloat(ssize_t s)
+{
+  if (signbit(get_d(s)))
+    {
+      return mlTRUE;
+    }
+  return mlFALSE;
+}
+
+ssize_t
+isnormalFloat(ssize_t s)
+{
+  if (isnormal(get_d(s)))
+    {
+      return mlTRUE;
+    }
+  return mlFALSE;
+}
+
+ssize_t
+copysignFloat (ssize_t d, ssize_t y, ssize_t x)
+{
+  get_d (d) = copysign (get_d (y), get_d (x));
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+ldexpFloat (ssize_t d, ssize_t x, ssize_t e)
+{
+  long int e2 = convertIntToC((long int)e);
+  get_d (d) = ldexp (get_d (x), e2);
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+frexpFloat (ssize_t p, ssize_t d, ssize_t x)
+{
+  int e = 0;
+  get_d (d) = frexp (get_d (x), &e);
+  set_dtag(d);
+  first(p) = d;
+  second(p) = convertIntToML((long int)e);
+  return p;
+}
+
+ssize_t
 posInfFloat(ssize_t d)
 {
   get_d(d) = HUGE_VAL;
@@ -722,6 +772,73 @@ negInfFloat(ssize_t d)
   get_d(d) = -HUGE_VAL;
   set_dtag(d);
   return d;
+}
+
+ssize_t
+maxFiniteFloat(ssize_t d)
+{
+  get_d(d) = DBL_MAX;
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+nextafterFloat (ssize_t d, ssize_t x, ssize_t y)
+{
+  get_d (d) = nextafter (get_d (x), get_d (y));
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+splitFloat (ssize_t p, ssize_t w, ssize_t f, ssize_t r)
+{
+  double whole;
+  get_d (f) = modf (get_d (r), &whole);
+  get_d (w) = whole;
+  set_dtag(w);
+  set_dtag(f);
+  first(p) = w;
+  second(p) = f;
+  return p;
+}
+
+// IEEE rounding modes
+// 0:TONEAREST, 1: DOWNWARD, 2: UPWARD, 3: ZERO
+void
+floatSetRoundingMode (ssize_t m) {
+  long int rm = convertIntToC((long int)m);
+  if ( rm == 0 ) {
+    fesetround(FE_TONEAREST);
+  } else if ( rm == 1 ) {
+    fesetround(FE_DOWNWARD);
+  } else if ( rm == 2 ) {
+    fesetround(FE_UPWARD);
+  } else if ( rm == 3 ) {
+    fesetround(FE_TOWARDZERO);
+  } else {
+    printf("ERROR floatSetRoundingMode: %ld\n", rm);
+    exit(1);
+  }
+}
+
+ssize_t
+floatGetRoundingMode(void) {
+  long int m = 0;
+  int rm = fegetround();
+  if ( rm == FE_TONEAREST ) {
+    m = 0;
+  } else if ( rm == FE_DOWNWARD) {
+    m = 1;
+  } else if ( rm == FE_UPWARD) {
+    m = 2;
+  } else if ( rm == FE_TOWARDZERO) {
+    m = 3;
+  } else {
+    printf("ERROR floatGetRoundingMode: %d\n", rm);
+    exit(1);
+  }
+  return convertIntToML(m);
 }
 
 // countChar: count the number of times the character `c'
@@ -761,7 +878,7 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
   char buf[64];
   sprintf(buf, "%.12g", get_d(arg));
   mkSMLMinus(buf);
-  if( countChar('.', buf) == 0 && countChar('E', buf) == 0 )
+  if( countChar('.', buf) == 0 && countChar('E', buf) == 0 && countChar('n', buf) == 0)  // protect for nan and inf
     {
       strcat(buf, ".0");
     }

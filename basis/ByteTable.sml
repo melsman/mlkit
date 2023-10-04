@@ -30,13 +30,13 @@ functor ByteTable(eqtype table
     fun sub_vector_unsafe (v:vector,i:int) : elem = prim ("__bytetable_sub", (v,i))
     fun alloc_table_unsafe (i:int) : table = prim("allocStringML", i)
     fun alloc_vector_unsafe (i:int) : vector = prim("allocStringML", i)
-    fun update_unsafe(t:table,i:int,c:elem) : unit = prim("__bytetable_update", (t, i, c))
-    fun update_vector_unsafe(v:vector,i:int,c:elem) : unit = prim("__bytetable_update", (v, i, c))
+    fun update_unsafe (t:table,i:int,c:elem) : unit = prim("__bytetable_update", (t, i, c))
+    fun update_vector_unsafe (v:vector,i:int,c:elem) : unit = prim("__bytetable_update", (v, i, c))
     fun fromList (es : elem list) : table = prim ("implodeCharsML", es)
     fun concat (vs : table list) : table = prim ("implodeStringML", vs)
     fun length (t:table): int = prim ("__bytetable_size", t)
     fun length_vector (v:vector): int = prim ("__bytetable_size", v)
-    fun null() : elem = prim("id",0:int)
+    fun null () : elem = prim("id",0:int)
 
     (* Body *)
     fun explode (t:table) : elem list  =
@@ -45,7 +45,7 @@ functor ByteTable(eqtype table
       in h (length t - 1, nil)
       end
 
-    val maxLen = 4 * 1024 * 1024 * 1024  (* 4Gb *)
+    val maxLen = Initial.bytetable_maxlen
 
     fun sub (t : table, i) : elem =
       if i < 0 orelse i >= length t then raise Subscript

@@ -91,9 +91,24 @@ local
        in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml end
        end
 
+    basis IEEEReal =
+       let open General String Int List
+       in bas IEEE_REAL.sig IEEEReal.sml end
+       end
+
+    basis IntInf =
+       let open General List ArrayVector String Word Int
+       in bas ann safeLinkTimeElimination
+              in INT_INF.sml IntInf.sml
+              end
+          end
+       end
+
     basis Real =
        let open General String Int
-       in bas MATH.sig Math.sml REAL.sig Real.sml
+       in bas
+            MATH.sig Math.sml
+            local open IEEEReal IntInf in REAL.sig Real.sml end
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
@@ -102,14 +117,7 @@ local
                   RealArray2.sml
             in RealArrayVector.sml
             end
-	  end
-       end
-
-    basis IntInf =
-       let open General List ArrayVector String Word Int Real
-       in bas ann safeLinkTimeElimination
-              in INT_INF.sml IntInf.sml
-              end
+            open IEEEReal
           end
        end
 

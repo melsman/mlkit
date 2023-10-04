@@ -41,16 +41,16 @@ SML/NJ      SMLNJ-LICENSE (BSD-style)      Ported some libraries for
 SML/NJ Lib  SMLNJ-LIB-LICENSE (BSD-style)  Ported some libraries for
                                            kitlib.mlb (in basis/); see
                                            individual files for
-                                           details.
+					   details.
 
             copyright.att (BSD-style)      1993 versions of
                                            Polyhash.sml, POLYHASH.sml
-                                           (in basis/ and src/Pickle/)
+                                           (in basis/ and src/Pickle/).
 
 MLton       MLton-LICENSE (BSD-style)      Ported some libraries for
                                            basis.mlb: PrimIO, StreamIO,
-                                           TextIO, ImperativeIO, BinIO
-                                           (in basis/).
+                                           TextIO, ImperativeIO, BinIO,
+					   IEEEReal (in basis/).
 
 MLton    MLton-HPND-LICENSE (HPND-style)   Made use of some functionality for
                                            basis.mlb: NetHostDb scan function, e.g.

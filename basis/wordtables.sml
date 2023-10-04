@@ -33,8 +33,8 @@ struct
 
   fun array0 (n : int, x:'a) : 'a array = prim ("word_table_init", (n, x))
 
-  (* 26 bits are reserved for the length in the tag field; maxLen = 2^26 *)
-  val maxLen = 123456789*100 (* arbitrary chosen. *)
+  (* quite a few bits are available for the length in the tag field! *)
+  val maxLen = Initial.wordtable_maxlen
 
   fun check_index (n, i) =
     if 0 <= i andalso i < n then ()
