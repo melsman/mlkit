@@ -1,3 +1,35 @@
+structure Random =
+  struct (* Generating random numbers.  Paulson, page 96 *)
+
+    type generator = {seedref : real ref}
+    val a = 16807.0
+    val m = 2147483647.0
+    fun nextrand seed = let val t = a*seed
+			in t - m * real(floor(t/m))
+			end
+    fun newgenseed seed = {seedref = ref (nextrand seed)}
+    fun random {seedref as ref seed} = (seedref := nextrand seed; seed / m)
+    fun randomlist (n, {seedref as ref seed0}) =
+      let fun h 0 seed res = (seedref := seed; res)
+	    | h i seed res = h (i-1) (nextrand seed) (seed / m :: res)
+      in h n seed0 []
+      end
+    exception Random_range
+    fun range (min, max) =
+      if min >= max then raise Random_range
+      else fn {seedref as ref seed} =>
+	   (seedref := nextrand seed; min + (floor(real(max-min) * seed / m)))
+    fun rangelist (min, max) =
+      if min >= max then raise Random_range
+      else fn (n, {seedref as ref seed0}) =>
+	   let fun h 0 seed res = (seedref := seed; res)
+		 | h i seed res = h (i-1) (nextrand seed)
+	                    (min + floor(real(max-min) * seed / m) :: res)
+	   in h n seed0 []
+	   end
+  end
+
+
 signature MONO_SET =
   sig
     type elt
@@ -12,7 +44,7 @@ signature MONO_SET =
     val eq : Set -> Set -> bool
 
     val list : Set -> elt list
-    val fromList : elt list -> Set 
+    val fromList : elt list -> Set
     val addList : elt list -> Set -> Set
       (* addList l s : Add elements in list l to s. *)
 
@@ -37,7 +69,7 @@ signature MONO_SET =
   end
 
 structure NatSet : MONO_SET =
-  struct 
+  struct
     structure Bits =
       struct
 	val xorb : word * word -> word = Word.xorb
@@ -53,9 +85,9 @@ structure NatSet : MONO_SET =
     fun setb(w,n) = Bits.orb(w,bit n)
     fun isb(w,n) = Bits.andb(Bits.rshift(w,n),0w1) <> 0w0
     fun unsetb(w,n) = Bits.andb(w, Bits.notb (bit n))
-      
-    datatype natset = 
-        empty 
+
+    datatype natset =
+        empty
       | some of word * natset * natset
 
     type Set = natset
@@ -67,7 +99,7 @@ structure NatSet : MONO_SET =
 	 else if Bits.andb(n,0w1) <> 0w0 then member (Bits.rshift(n-bits_word,0w1), t1)
          else member(Bits.rshift(n-bits_word-0w1,0w1), t2)
 
-    fun add0(empty,n) = 
+    fun add0(empty,n) =
          if n < bits_word then some(setb(0w0,n),empty,empty)
 	 else if Bits.andb(n,0w1) <> 0w0 then some(0w0,add0(empty, Bits.rshift(n-bits_word,0w1)), empty)
 	 else some(0w0, empty, add0(empty, Bits.rshift(n-bits_word-0w1,0w1)))
@@ -77,10 +109,10 @@ structure NatSet : MONO_SET =
 	 else some(w, t1, add0(t2, Bits.rshift(n-bits_word-0w1,0w1)))
 
     fun singleton i = add0(empty,i)
-      
+
     fun add(is,n) = if member(n,is) then is else add0(is,n)
-	
-    fun count(w,n) = if n < bits_word then 
+
+    fun count(w,n) = if n < bits_word then
                        if isb(w,n) then 1 + count(w,n+0w1)
 		       else count(w,n+0w1)
 		     else 0
@@ -93,20 +125,20 @@ structure NatSet : MONO_SET =
 	    | c (some(w,t1,t2),a) = c(t2,c(t1,count(w,0w0,a)))
       in c (is,0)
       end
-    
+
     fun mksome (0w0, empty, empty) = empty
       | mksome t = some t
-	
+
     fun union (empty, ns2) = ns2
       | union (ns1, empty) = ns1
       | union (some(w1, t11, t12), some(w2, t21, t22)) =
 	some(Bits.orb(w1,w2), union(t11, t21), union(t12, t22))
-	
+
     fun intersection (empty, ns2) = empty
       | intersection (ns1, empty) = empty
       | intersection (some(w1, t11, t12), some(w2, t21, t22)) =
 	mksome(Bits.andb(w1,w2), intersection(t11, t21), intersection(t12, t22))
-	
+
     fun difference (empty, ns2) = empty
       | difference (ns1, empty) = ns1
       | difference (some(w1, t11, t12), some(w2, t21, t22)) =
@@ -117,15 +149,15 @@ structure NatSet : MONO_SET =
          if n < bits_word then mksome(unsetb(w,n),t1,t2)
 	 else if Bits.andb(n,0w1) <> 0w0 then mksome(w,delete0(t1, Bits.rshift(n-bits_word,0w1)), t2)
 	 else mksome(w, t1, delete0(t2, Bits.rshift(n-bits_word-0w1,0w1)))
-      
+
     fun delete(is,n) = if member(n,is) then delete0(is,n) else is
 
     fun disjoint (empty, ns2) = true
       | disjoint (ns1, empty) = true
       | disjoint (some(w1, t11, t12), some(w2, t21, t22)) =
-	(Bits.andb(w1,w2) = 0w0) 
-	andalso disjoint(t11, t21) 
-	andalso disjoint(t12, t22)  
+	(Bits.andb(w1,w2) = 0w0)
+	andalso disjoint(t11, t21)
+	andalso disjoint(t12, t22)
 
     fun foldset f (e, t) =
 	let fun slb (n, d, w, a) =
@@ -133,15 +165,15 @@ structure NatSet : MONO_SET =
 		    | slb' (w,i,a) = if isb(w,i) then slb'(unsetb(w,i),i+0w1,f(a,n+d*i))
 				     else slb'(w,i+0w1,a)
 	      in slb' (w,0w0,a)
-	      end     
+	      end
 	  fun sl (n, d, empty, a) = a
 	    | sl (n, d, some(w, t1, t2), a) =
 	      let val temp = n+d*bits_word
 		  val d' = 0w2*d
-	      in sl(temp, d', t1, 
+	      in sl(temp, d', t1,
 		   sl(temp+d, d', t2, slb(n, d, w, a)))
 	      end
-	in sl(0w0, 0w1, t, e) 
+	in sl(0w0, 0w1, t, e)
 	end
 
     fun mapset f t = foldset (fn (a,i) => f i :: a) ([], t)
@@ -164,9 +196,9 @@ structure NatSet : MONO_SET =
 	    in h'' (0w0,0w0)
 	    end
 	  fun h (n, d, empty) = empty
-	    | h (n, d, some(w, t1, t2)) = 
+	    | h (n, d, some(w, t1, t2)) =
 		mksome(h' (n, d, w), h(n+d*bits_word, 0w2*d, t1), h(n+d*(bits_word+0w1), 0w2*d, t2))
-	in h(0w0, 0w1, t) 
+	in h(0w0, 0w1, t)
 	end
 
     val size = cardinality
@@ -221,7 +253,7 @@ local
 fun check b = if b then "OK" else "WRONG";
 fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN";
 
-fun range (from, to) p = 
+fun range (from, to) p =
     let open Word
     in
 	(from > to) orelse (p from) andalso (range (from+0w1, to) p)
@@ -236,13 +268,13 @@ fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n");
 fun tst  s b = tst0 s (check  b);
 fun tst' s f = tst0 s (check' f);
 
-fun tstrange s bounds = (tst s) o range bounds  
+fun tstrange s bounds = (tst s) o range bounds
 fun tstlist s l = (tst s) o list0 l
 
 val _ = print "Testing implementation of sets using word structure...\n"
 
 open NatSet
-in	
+in
 fun mem w s = member s w
 val s1 = fromList[0w100,0w101,0w102,0w103,0w104,0w105,0w106,0w107,0w108]
 val s2 = fromList[0w106,0w107,0w108,0w109,0w110,0w111]
@@ -266,7 +298,7 @@ val _ = tstrange "test10" (0w104,0w107) (not o mem s5)
 val _ = tstrange "test11" (0w108,0w111) (mem s5)
 val _ = tstrange "test12" (0w112,0w200) (not o mem s5)
 
-val _ = tst "test13" (size s1 = 9 andalso size s2 = 6 andalso size s3 = 12 
+val _ = tst "test13" (size s1 = 9 andalso size s2 = 6 andalso size s3 = 12
 		      andalso size s4 = 3 andalso size s5 = 8)
 
 val s6 = remove 0w101 s5
@@ -278,21 +310,21 @@ val _ = tstrange "test18" (0w108,0w111) (mem s6)
 val _ = tstrange "test19" (0w112,0w200) (not o mem s6)
 
 fun T N str =
-    let 
-	fun mkN n = List.map Word.fromInt (Random.rangelist(0,N)(n,Random.newgen()))
-	    
+    let
+	fun mkN n = List.map Word.fromInt (Random.rangelist(0,N)(n,Random.newgenseed 2.0))
+
 	val l7 = mkN 1000
 	val l8 = mkN 1000
 	val s7 = fromList l7
 	val s8 = fromList l8
-	    
+
 	val _ = tstlist ("test20"^str) l7 (mem s7)
 	val _ = tstlist ("test21"^str) l8 (mem s8)
 	val _ = tstlist ("test22"^str) (l7@l8) (mem (union s7 s8))
-	    
+
 	val _ = tst ("test23"^str) (eq (union s7 s8)
-				    (union(union(intersect s7 s8) 
-					   (difference s7 s8)) 
+				    (union(union(intersect s7 s8)
+					   (difference s7 s8))
 				     (difference s8 s7)))
     in ()
     end
