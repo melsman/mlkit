@@ -6,7 +6,7 @@ primitive POSIX access to the process environment.
 
 *)
 
-signature POSIX_PROCENV =
+signature POSIX_PROC_ENV =
   sig
     eqtype pid
     eqtype uid

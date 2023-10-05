@@ -28,3 +28,6 @@ structure PackRealBig : PACK_REAL =
         Word8Array.copyVec {src=toBytes r, dst=arr, di=i*bytesPerElem}
 
   end
+
+(** SigDoc *)
+structure PackReal64Big : PACK_REAL = PackRealBig

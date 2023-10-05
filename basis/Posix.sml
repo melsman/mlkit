@@ -390,7 +390,7 @@ struct
 
   end
 
-  structure ProcEnv : POSIX_PROCENV
+  structure ProcEnv : POSIX_PROC_ENV
                           where type pid = Process.pid =
   struct
     type uid = int

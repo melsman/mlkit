@@ -170,3 +170,6 @@ atExit0.sml
 
 stringsz.sml
 with-escape.sml
+
+sigs-avail.sml                                (* basis library available signatures *)
+structs-avail.sml                             (* basis library available structures *)

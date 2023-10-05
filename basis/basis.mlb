@@ -140,7 +140,7 @@ local
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
               basis Date = let open Int Real Time IntInf in bas DATE.sig Date.sml end end
               basis Timer = let open Int Time IntInf in bas TIMER.sig Timer.sml end end
-          in bas open Time Random Path FileSys
+          in bas open Time Path FileSys
                       Process Os CommandLine Date Timer
              end
           end
@@ -177,7 +177,7 @@ local
      basis Posix =
        let open General Word System List Int Real PrimIO Byte ArrayVector
                 IntInf OSError BitFlags
-       in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml
+       in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROC_ENV.sig
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml
               POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig Posix.sml
           end
@@ -215,14 +215,7 @@ local
 	  end
       in bas open Stream IOClose Imperative Unix end
       end
-(*
-    basis Sml90 =
-       let open General List String Real IO
-       in bas SML90.sml end
-       end
-*)
-
 in
   open General List ArrayVector String Bool Word Byte
-       Int Real IntInf IntInfRep Io System Text Posix IO Socket (* Sml90 *)
+       Int Real IntInf IntInfRep Io System Text Posix IO Socket PrimIO
 end

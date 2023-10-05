@@ -1,5 +1,12 @@
 ## MLKit NEWS
 
+* mael 2023-10-04: Improved documentation of basis library, which is
+  now documented with [sigdoc](http://github.com/diku-dk/sigdoc) at
+  https://elsman.com/mlkit/docs/pkg_idx.html.
+
+* mael 2023-10-04: Addition of IEEE_REAL signature and IEEEReal
+  structure. Improved Real support.
+
 ### MLKit version 4.7.4 is released
 
 * mael 2023-10-01: Improved basis library documentation.

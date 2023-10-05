@@ -1,0 +1,71 @@
+(* Required signatures - see https://smlfamily.github.io/Basis/overview.html *)
+
+signature X = ARRAY
+signature X = ARRAY_SLICE
+signature X = BIN_IO
+signature X = BOOL
+signature X = BYTE
+signature X = CHAR
+signature X = COMMAND_LINE
+signature X = DATE
+signature X = GENERAL
+signature X = IEEE_REAL
+signature X = IMPERATIVE_IO
+signature X = INTEGER
+signature X = IO
+signature X = LIST
+signature X = LIST_PAIR
+signature X = MATH
+signature X = MONO_ARRAY
+signature X = MONO_ARRAY_SLICE
+signature X = MONO_VECTOR
+signature X = MONO_VECTOR_SLICE
+signature X = OPTION
+signature X = OS
+signature X = OS_FILE_SYS
+signature X = OS_IO
+signature X = OS_PATH
+signature X = OS_PROCESS
+signature X = PRIM_IO
+signature X = REAL
+signature X = STREAM_IO
+signature X = STRING
+signature X = STRING_CVT
+signature X = SUBSTRING
+signature X = TEXT
+signature X = TEXT_IO
+signature X = TEXT_STREAM_IO
+signature X = TIME
+signature X = TIMER
+signature X = VECTOR
+signature X = VECTOR_SLICE
+signature X = WORD
+
+(* Optional signatures - see https://smlfamily.github.io/Basis/overview.html *)
+
+signature X = ARRAY2
+signature X = BIT_FLAGS
+(*signature X = GENERIC_SOCK*)
+signature X = INET_SOCK
+signature X = INT_INF
+signature X = MONO_ARRAY2
+signature X = NET_HOST_DB
+(*signature X = NET_PROT_DB*)
+(*signature X = NET_SERV_DB*)
+signature X = PACK_REAL
+signature X = PACK_WORD
+signature X = POSIX
+signature X = POSIX_ERROR
+signature X = POSIX_FILE_SYS
+signature X = POSIX_IO
+signature X = POSIX_PROC_ENV
+signature X = POSIX_PROCESS
+signature X = POSIX_SIGNAL
+signature X = POSIX_SYS_DB
+signature X = POSIX_TTY
+signature X = SOCKET
+signature X = UNIX
+(*signature X = UNIX_SOCK*)
+(*signature X = WINDOWS*)
+
+val () = print "All ok!\n"
