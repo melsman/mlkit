@@ -29,3 +29,6 @@ structure PackRealLittle : PACK_REAL =
     fun update (a,i,r) =
         Word8Array.copyVec {src=toBytes r, dst=a, di=i*bytesPerElem}
   end
+
+(** SigDoc *)
+structure PackReal64Little : PACK_REAL = PackRealLittle
