@@ -92,7 +92,7 @@ jobs:
         if: ${{ matrix.mlcomp == 'mlkit' }}
         run: |
           mlkit --version
-	  smlpkg --version
+          smlpkg --version
           echo 'github.event_name: ' ${{ github.event_name }}
           echo 'github.ref: ' ${{ github.ref }}
 
