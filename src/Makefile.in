@@ -48,6 +48,11 @@ smltojs: basics mlbmake mllex-yacc
 	$(MLCOMP) -output smltojs Compiler/smltojs.mlb
 	$(INSTALL) -p smltojs $(BINDIR)
 
+.PHONY: reml
+reml: mlkit_tools mlkit_runtime
+	$(MLCOMP) -output reml Compiler/reml.mlb
+	$(INSTALL) -p reml $(BINDIR)
+
 .PHONY: mllex-yacc
 mllex-yacc: Parsing/Topdec.lex.sml Parsing/Topdec.grm.sml
 

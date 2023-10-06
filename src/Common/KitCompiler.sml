@@ -14,8 +14,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
   struct
     open Execution
 
-
-    fun cmd_name() = OS.Path.file(CommandLine.name())
+    fun cmd_name () = OS.Path.file(CommandLine.name())
 
     structure ManagerObjects =
 	ManagerObjects(struct

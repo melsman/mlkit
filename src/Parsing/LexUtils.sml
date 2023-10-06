@@ -153,11 +153,18 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 
     fun asString (LEX_ARGUMENT{stringChars, ...}) = concat(rev (!stringChars))
 
-    val explicit_regions = ref false
-    val _ = Flags.add_bool_entry
-       {long="explicit_regions", short=SOME "er", neg=false, item=explicit_regions,
-	menu=["Control", "Explicit regions"],
-	desc="Support programming with explicit regions."}
+    val is_reml =
+        let val reml = ref false
+        in Flags.add_bool_entry
+               {long="reml", short=NONE, item=reml,
+	        menu=["Control", "ReML"], neg=false,
+	        desc="ReML is Standard ML with support for programming with \n\
+                     \explicit regions, explicit effects, and effect \n\
+                     \constraints. With ReML, atomic effects also include \n\
+                     \mutation effects. Whereas ReML include parallel \n\
+                     \thread support, ReML does not support integration \n\
+                     \with reference-tracing garbage collection."}
+        end
 
    (* Keyword detection (better done here than by the lexer). *)
 
@@ -217,7 +224,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | "#"	 => keyword HASH
 	   | "*"	 => keyword STAR    (* Not actually reserved, but ... *)
 
-	   | _		 => if !explicit_regions then
+	   | _		 => if is_reml() then
                               if text = "`" then keyword BACKQUOTE
                               else if text = "##" then keyword HASHHASH
                               else ID(text, p1, p2)

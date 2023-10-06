@@ -1,4 +1,4 @@
-FLAGS=-no_gc -no_basislib --maximum_inline_size 0 -er -no_opt
+FLAGS=-no_gc -no_basislib --maximum_inline_size 0 -reml -no_opt
 MLKIT=../../bin/mlkit $(FLAGS)
 
 SMLSOURCES=er*.sml param.sml rec.sml tup.sml call.sml call2.sml ty1.sml err_expty1.sml err_expty2.sml \

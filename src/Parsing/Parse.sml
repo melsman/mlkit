@@ -120,9 +120,7 @@ structure Parse: PARSE =
         STATE stream
       end
 
-    val explicit_regions = LexUtils.explicit_regions
-
-    fun parse(ib, state) =
+    fun parse (ib, state) =
       (case parseStream state of
 	 PS_SUCCESS(topdec, state') =>
 	   (case Infixing.resolve(ib, topdec) of

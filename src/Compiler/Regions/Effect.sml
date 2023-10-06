@@ -68,7 +68,7 @@ struct
        desc="Print effect constraints when printing region and\n\
             \effect variables"}
 
-  val explicit_regions : unit -> bool = Flags.is_on0 "explicit_regions"
+  val reml_p : unit -> bool = Flags.is_on0 "reml"
 
   fun mem x nil = false
     | mem x (y::ys) = x = y orelse mem x ys
@@ -2215,7 +2215,7 @@ struct
                              *)
       in
         ( G.unvisit g
-        ; if explicit_regions() then MultiMerge.multimerge nodess else nil
+        ; if reml_p() then MultiMerge.multimerge nodess else nil
         )
       end
 

@@ -99,15 +99,31 @@ signature FLAGS =
 		     item: 'a ref,
 		     desc: string}
 
+    type baentry = {long: string,           (* long option for use with mlkit command
+					     *   using `--', script files, and internally
+					     *   in the mlkit to lookup the current setting
+					     *   during execution. *)
+		    short: string option,   (* short option used in commands with - *)
+		    menu: string list,      (* entry::path; nil means no-show*)
+		    item: bool ref,         (* the actual flag *)
+		    on: unit->unit,         (* function to apply to turn entry on *)
+		    off: unit->unit,        (* function to apply to turn entry off;
+					     * a toggling function can be made from
+					     * these two and the item. *)
+		    desc: string}           (* description string; format manually
+					     *   with new-lines *)
+
+
     (* Functions to add entries dynamically; remember to add a description
      * telling what the flag is used for. If a nil-menu is given, the
      * entry is not shown in help and the option cannot be given at the
      * command line. *)
 
-    val add_bool_entry       : bentry -> (unit -> bool)
-    val add_string_entry     : string entry -> (unit -> string)
-    val add_stringlist_entry : string list entry -> (unit -> string list)
-    val add_int_entry        : int entry -> (unit -> int)
+    val add_bool_entry        : bentry -> (unit -> bool)
+    val add_string_entry      : string entry -> (unit -> string)
+    val add_stringlist_entry  : string list entry -> (unit -> string list)
+    val add_int_entry         : int entry -> (unit -> int)
+    val add_bool_action_entry : baentry -> (unit -> bool)
 
     (* Read and interpret option list by looking in directory and
      * the extra nullary list and unary list *)
@@ -126,6 +142,13 @@ signature FLAGS =
                     kind : string option, default : string option}
 
     val getOptions : unit -> options list
+
+    (* Blocked entries are flag entries that do not show up in help
+       information and that cannot be altered by commandline. Blocking an
+       entry makes it possible to specialize man-pages and --help info for
+       ReML and SMLtoJs. It also guards against mis-configurations and some
+       non-supported combination of flags. *)
+    val block_entry : string -> unit
 
     structure Statistics :
       sig

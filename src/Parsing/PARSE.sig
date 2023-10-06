@@ -28,10 +28,6 @@ signature PARSE =
 				   (EOF in the middle of a phrase is an
 				   error) *)
 
-    val explicit_regions : bool ref (* support parsing of explicit region
-                                     * annotations, such as 'region'
-                                     * declarations. *)
-
     val begin: SourceReader -> State
     val parse: InfixBasis * State -> Result
   end

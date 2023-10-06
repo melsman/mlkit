@@ -253,16 +253,13 @@ structure ExecutionX64: EXECUTION =
     val delete_target_files = Flags.is_on0 "delete_target_files"
     val libs = Flags.lookup_string_entry "libs"
 
-    fun gas0() =
+    fun gas0 () =
         !(Flags.lookup_string_entry "assembler")
-(*
-        if onmac_p() then "as -arch x64" else "as --64"
-*)
 
-    fun gas() = if gdb_support() then
-                  if onmac_p() then gas0() ^ " -g"
-                  else gas0() ^ " --gstabs"
-                else gas0()
+    fun gas () = if gdb_support() then
+                   if onmac_p() then gas0() ^ " -g"
+                   else gas0() ^ " --gstabs"
+                 else gas0()
 
     fun assemble (file_s, file_o) =
       (execute_command (gas() ^ " -o " ^ file_o ^ " " ^ file_s);
@@ -312,32 +309,33 @@ structure ExecutionX64: EXECUTION =
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
 
           fun path_to_runtime () =
-            let fun file () =
-              if parallelism_p() then
-                (if tag_values() then
-                   die "parallelism enabled - turn off value tagging"
-                 else if gc_p() then
-                   die "parallelism enabled - turn off gc"
-                 else if !region_profiling then
-                   die "parallelism enabled - turn off prof"
-                 else if tag_pairs_p() then
-                   die "parallelism enabled - turn off pair tagging"
-                 else if argobots_p() then "runtimeSystemArPar.a"
-                 else "runtimeSystemPar.a")
-              else
-              if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
-              if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
-              if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
-              if !region_profiling                                      then "runtimeSystemProf.a"      else
-              if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
-              if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
-              if                           gc_p()                       then "runtimeSystemGC.a"        else
-              if tag_values()                     andalso tag_pairs_p() then
-                  die "no runtime system supports tagging of values with tagging of pairs"             else
-              if tag_values()                                           then "runtimeSystemTag.a"      else
-                                                                             "runtimeSystem.a"
-            in !Flags.install_dir ## "lib" ## file()
-            end
+              let
+                fun file () =
+                    if parallelism_p() then
+                      (if tag_values() then
+                         die "parallelism enabled - turn off value tagging"
+                       else if gc_p() then
+                         die "parallelism enabled - turn off gc"
+                       else if !region_profiling then
+                         die "parallelism enabled - turn off prof"
+                       else if tag_pairs_p() then
+                         die "parallelism enabled - turn off pair tagging"
+                       else if argobots_p() then "runtimeSystemArPar.a"
+                       else "runtimeSystemPar.a")
+                    else
+                      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
+                      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
+                      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
+                      if !region_profiling                                      then "runtimeSystemProf.a"      else
+                      if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
+                      if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
+                      if                           gc_p()                       then "runtimeSystemGC.a"        else
+                      if tag_values()                     andalso tag_pairs_p() then
+                        die "no runtime system supports tagging of values with tagging of pairs"                else
+                      if tag_values()                                           then "runtimeSystemTag.a"       else
+                      "runtimeSystem.a"
+              in !Flags.install_dir ## "lib" ## file()
+              end
     in
        val link_files_with_runtime_system = link_files_with_runtime_system0 path_to_runtime
     end

@@ -51,7 +51,13 @@ smltojs:
 	$(MAKE) -C src smltojs
 	$(MAKE) man_smltojs
 
-all: mlkit mlkit_basislibs smltojs smltojs_basislibs
+.PHONY: reml
+reml:
+	$(MKDIR) bin
+	$(MAKE) -C src reml
+	$(MAKE) man_reml
+
+all: mlkit reml mlkit_basislibs smltojs smltojs_basislibs
 
 .PHONY: mlkit_basislibs
 mlkit_basislibs: mlkit
@@ -354,6 +360,11 @@ man_smltojs:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/smltojs bin/smltojs -man > man/man1/smltojs.1
 
+.PHONY: man_reml
+man_reml:
+	$(MKDIR) man/man1
+	SML_LIB=$(exec_prefix)/lib/reml bin/reml -man > man/man1/reml.1
+
 .PHONY: man_barry
 man_barry:
 	$(MKDIR) man/man1
@@ -406,6 +417,16 @@ install_smltojs: install_smltojs0
            else echo "SML_LIB $(exec_prefix)/lib/smltojs" > $(SYSCONFDIR)/smltojs/mlb-path-map; \
         fi
 
+# ReML install shares data with MLKit install
+.PHONY: install_reml
+install_reml:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/reml $(BINDIR)
+	$(MKDIR) $(LIBDIR)/reml
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/reml.1 $(MANDIR)/man1
+
 # -----------------------------------------------------
 # Target for building MLKit binary package. The target
 # assumes that the mlkit has been build using
@@ -443,6 +464,7 @@ smltojs_x64_tgz:
 #  $ ./autobuild
 #  $ ./configure
 #  $ make mlkit
+#  $ make reml
 #  $ make mlkit_libs
 #  $ make smltojs
 #  $ make smltojs_basislibs
@@ -455,6 +477,7 @@ mlkit_bin_dist:
 	rm -rf dist/$(BIN_DIST)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
+	$(MAKE) install_reml DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	echo 'PREFIX?=/usr/local' > $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo '.PHONY: install' >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo 'install:' >> $(CWD)/dist/$(BIN_DIST)/Makefile

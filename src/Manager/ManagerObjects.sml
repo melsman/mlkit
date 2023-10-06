@@ -118,13 +118,6 @@ functor ManagerObjects(
 		       in if OS.Path.file p = filename then p else p ^ "." ^ filename
 		       end
 		   else
-(*
-		       let
-			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ esc filename
-			   val target_filename = pmdir() ^ target_filename
-		       in OS.Path.mkAbsolute{path=target_filename, relativeTo=OS.FileSys.getDir()}
-		       end
-*)
 		       let val {dir,file} = OS.Path.splitDirFile filename
 			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ file
 			   val target_filename = mlbdir() ## target_filename
@@ -179,9 +172,9 @@ functor ManagerObjects(
 	      end
 	  end
 
-	fun unsafe(tf,li) = Execution.unsafe_linkinfo li
-	fun exports(tf,li) = Execution.exports_of_linkinfo li
-	fun imports(tf,li) = Execution.imports_of_linkinfo li
+	fun unsafe (tf,li) = Execution.unsafe_linkinfo li
+	fun exports (tf,li) = Execution.exports_of_linkinfo li
+	fun imports (tf,li) = Execution.imports_of_linkinfo li
 	fun dead_code_elim tfiles_with_linkinfos =
 	  let
 	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
@@ -264,7 +257,7 @@ functor ManagerObjects(
       struct
 	val empty = EMPTY_MODC
 	val seq = SEQ_MODC
-        fun mk_modcode(t,l,f) = NOTEMITTED_MODC(t,l,f)
+        fun mk_modcode (t,l,f) = NOTEMITTED_MODC(t,l,f)
 
 	fun exist EMPTY_MODC = true
 	  | exist (SEQ_MODC(mc1,mc2)) = exist mc1 andalso exist mc2
@@ -275,7 +268,7 @@ functor ManagerObjects(
 	     else (print ("File " ^ file ^ " not present\n"); res)
 	  end
 
-	fun emit(absprjid: absprjid, modc) =
+	fun emit (absprjid: absprjid, modc) =
 	  let
 	    fun em EMPTY_MODC = EMPTY_MODC
 	      | em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
@@ -329,12 +322,6 @@ functor ManagerObjects(
 	     | EMPTY_MODC => 0
 	     | EMITTED_MODC(tfile,_) => 1
 	     | NOTEMITTED_MODC _ => 0
-(*
-	fun timeStampFileName absprjid =
-	  let val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
-	  in "PM/" ^ base_absprjid ^ ".timestamp"
-	  end
-*)
 
 	fun list_minus (xs,nil) = xs
 	  | list_minus (x::xs,y::ys) =

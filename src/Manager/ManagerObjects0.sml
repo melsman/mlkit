@@ -58,7 +58,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    (PP.LEAF o SigId.pr_SigId)
 	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
 
-	fun layoutIntBasis(IB(ife,ise,ce,cb)) =
+	fun layoutIntBasis (IB(ife,ise,ce,cb)) =
 	    PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
 		    children=[layoutIntFunEnv ife,
 			      layoutIntSigEnv ise,
@@ -166,7 +166,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		    of SOME e => SigId.Map.add(sigid,e,acc)
 		     | NONE => die ("IntSigEnv.restrict: could not find sigid " ^ SigId.pr_SigId sigid))
 	   SigId.Map.empty sigids)
-	fun enrich(ISE ise0, ISE ise) : bool =
+	fun enrich (ISE ise0, ISE ise) : bool =
 	  SigId.Map.Fold(fn ((sigid, T), b) => b andalso
 		      case SigId.Map.lookup ise0 sigid
 			of SOME T0 => TyName.Set.eq T T0
@@ -299,7 +299,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    in IB (ife',ise',ce',cb'')
 	    end
 
-	fun match(IB(ife1,ise1,ce1,cb1),IB(ife2,ise2,ce2,cb2)) =
+	fun match (IB(ife1,ise1,ce1,cb1),IB(ife2,ise2,ce2,cb2)) =
 	  let val _ = CompilerEnv.match(ce1,ce2)
 	      val cb1' = CompileBasis.match(cb1,cb2)
 	  in IB(ife1,ise1,ce1,cb1')
@@ -314,13 +314,13 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    fun CompilerEnv_enrichCEnv a = db_f "CompilerEnv" (CompilerEnv.enrichCEnv a)
 	    fun CompileBasis_enrich a = db_f "CompileBasis" (CompileBasis.enrich a)
 	in
-	  fun enrich(IB(ife0,ise0,ce0,cb0),IB(ife,ise,ce,cb)) =
+	  fun enrich (IB(ife0,ise0,ce0,cb0),IB(ife,ise,ce,cb)) =
 	    IntFunEnv_enrich(ife0,ife) andalso IntSigEnv_enrich(ise0,ise)
 	    andalso CompilerEnv_enrichCEnv(ce0,ce) andalso CompileBasis_enrich(cb0,cb)
 	end
 
 	local
-	  fun agree1(longstrid, (_,_,ce1,cb1), (_,_,ce2,cb2)) =
+	  fun agree1 (longstrid, (_,_,ce1,cb1), (_,_,ce2,cb2)) =
 	    let val ce1 = CompilerEnv.lookup_longstrid ce1 longstrid
 	        val ce2 = CompilerEnv.lookup_longstrid ce2 longstrid
 	    in
@@ -440,11 +440,6 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
 	fun closure (B': Basis, B: Basis) : Basis =
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)
-(*was:
-	    let val dom = domain B
-	    in #1 (restrict(plus(B',B),dom))
-	    end
-*)
 	    let val BASIS(infB',eB',oe',iB') = B'
 		val BASIS(infB,eB,oe,iB) = B
 (*
@@ -504,17 +499,17 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	type Basis1 = opaq_env * IntBasis
 	val pu_Basis1 =
 	    puSay "Basis1" (Pickle.pairGen(OpacityEnv.pu, IntBasis.pu))
-	fun plusBasis1((oe,ib),(oe',ib')) =
+	fun plusBasis1 ((oe,ib),(oe',ib')) =
 	    (OpacityEnv.plus(oe,oe'),
 	     IntBasis.plus(ib,ib'))
-	fun initialBasis1() = (OpacityEnv.initial,
-			       IntBasis.initial())
+	fun initialBasis1 () = (OpacityEnv.initial,
+			        IntBasis.initial())
 	fun matchBasis1 ((oe,iB), (oe0,iB0)) =
 	    let val _ = OpacityEnv.match(oe,oe0)
 		val iB = IntBasis.match(iB,iB0)
 	    in (oe,iB)
 	    end
-	fun eqBasis1((oe1,iB1), (oe2,iB2)) =
+	fun eqBasis1 ((oe1,iB1), (oe2,iB2)) =
 	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
