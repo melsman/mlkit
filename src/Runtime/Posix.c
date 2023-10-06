@@ -1012,14 +1012,17 @@ String
 REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {
   int r;
-  char buf[L_cuserid+1];
+  char* buf = (char*) malloc(L_cuserid+1);
+  if (!buf) return NULL;
   r = getlogin_r(buf, L_cuserid);
   buf[L_cuserid] = '\0';
-  if (r != 0)
-    {
+  if (r != 0) {
+    free(buf);
     return NULL;
   }
-  return REG_POLY_CALL(convertStringToML, rs, buf);
+  String s = REG_POLY_CALL(convertStringToML, rs, buf);
+  free(buf);
+  return s;
 }
 
 uintptr_t
