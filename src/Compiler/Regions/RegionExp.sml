@@ -198,6 +198,56 @@ and mkPhiExp e acc =
 fun mkPhi (tr,exported_regvars_and_arroweffects) =
     mkPhiTr tr exported_regvars_and_arroweffects
 
+fun letregionBound tr =
+    let
+      fun sw f (SWITCH(tr0, l, opt)) acc =
+          f tr0 (foldl (uncurry f) acc
+                       (cons_if_there(opt,map #2 l)))
+      fun f (TR(e,_,_)) acc = g e acc
+      and g e acc =
+          case e of
+              UB_RECORD ts => foldl (uncurry f) acc ts
+            | FN {body, ...} => f body acc
+            | LETREGION_B{B, body, ...} => f body (!B @ acc)
+            | LET{pat,bind,scope} => f scope (f bind acc)
+            | FIX{shared_clos,functions,scope} =>
+              let val acc' = foldl (fn ({epss as ref arreffs,bind, ...}, acc) =>
+                                       f bind acc)
+                                   acc functions
+              in f scope acc'
+              end
+            | APP(tr1, tr2) => f tr1 (f tr2 acc)
+            | EXCEPTION(_,_,_,_, tr) => f tr acc
+            | RAISE tr => f tr acc
+            | HANDLE(tr1, tr2) => f tr1 (f tr2 acc)
+            | SWITCH_I {switch,...} => sw f switch acc
+            | SWITCH_W {switch,...} => sw f switch acc
+            | SWITCH_S switch => sw f switch acc
+            | SWITCH_C switch => sw f switch acc
+            | SWITCH_E switch => sw f switch acc
+            | CON0 _ => acc
+            | CON1 (_,tr) => f tr acc
+            | DECON (_,tr) => f tr acc
+            | EXCON (_,NONE) => acc
+            | EXCON (_,SOME(_,tr)) => f tr acc
+            | DEEXCON (_,tr) => f tr acc
+            | RECORD (_,trs) => foldl (uncurry f) acc trs
+            | SELECT (_,tr) => f tr acc
+            | DEREF tr => f tr acc
+            | REF (_,tr) => f tr acc
+            | DROP tr => f tr acc
+            | ASSIGN (tr1,tr2) => f tr1 (f tr2 acc)
+            | EQUAL (_,tr1,tr2) => f tr1 (f tr2 acc)
+            | CCALL (_,trs) => foldl (uncurry f) acc trs
+            | BLOCKF64 (_,trs) => foldl (uncurry f) acc trs
+            | SCRATCHMEM _ => acc
+            | EXPORT (_,tr) => f tr acc
+            | RESET_REGIONS (_, tr) => f tr acc
+            | FRAME _ => acc
+            | _ => acc
+    in f tr nil
+    end
+
 (*****************************)
 (*                           *)
 (* Pretty printing           *)

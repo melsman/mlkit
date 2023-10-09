@@ -74,6 +74,12 @@ structure Compile: COMPILE =
           item=ref false, neg=false, desc=
           "Print region-spreaded program."}
 
+    val print_region_inferred_program = Flags.add_bool_entry
+         {long="print_region_inferred_program", short=SOME "Prip",
+          menu=["Printing of intermediate forms","print region-inferred program"],
+          item=ref false, neg=false, desc=
+          "Print region-inferred program."}
+
     fun parallelism_p () : bool = Flags.is_on "parallelism"
 
     val debug_parallelism_p = Flags.add_bool_entry
@@ -254,8 +260,8 @@ structure Compile: COMPILE =
         val _ = chat "]\n"
 
         val pgm' = RegionExp.PGM{expression = spread_lamb_exp, (*side-effected*)
-                      export_datbinds = datbinds, (*unchanged*)
-                      export_basis= new_layer  (* list of region variables and arrow effects *)}
+                                 export_datbinds = datbinds, (*unchanged*)
+                                 export_basis= new_layer  (* list of region variables and arrow effects *)}
 
         (* call of normPgm no longer commented out; mads *)
 (*
@@ -301,13 +307,14 @@ structure Compile: COMPILE =
             end
           else ()
 *)
-    in
-      if !Flags.DEBUG_COMPILER then
-        (say "Resulting region-static environment:\n";
-         sayenv(rse');
-         display("\nReport: After Region Inference", layoutRegionPgm pgm'))
-      else ();
-      (cone,rse',pgm')       (* rse' contains rse_con *)
+    in if !Flags.DEBUG_COMPILER then
+         (say "Resulting region-static environment:\n";
+          sayenv(rse'))
+       else ()
+     ; if !Flags.DEBUG_COMPILER orelse print_region_inferred_program() then
+         display("\nReport: After Region Inference", layoutRegionPgm pgm')
+       else ()
+     ; (cone,rse',pgm')       (* rse' contains rse_con *)
     end
 
     (* ---------------------------------------------------------------------- *)

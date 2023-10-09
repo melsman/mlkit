@@ -3,7 +3,8 @@
 disputs2.sml, line 5, column 75:
   fun par `[e1 e2] (f: unit #e1 -> 'a) (g: unit #e2 -> 'b) : ('a * 'b) while e1 ## e2 =
                                                                              ^^^^^^^^
-Instance `e1 -> e28 and `e2 -> e24.
+Instance `e1_12 -> e28
+Instance `e2_10 -> e24
 Put-constraint violation. The effect e24 contains
 the atomic effect put(r31), which also appears in the effect of e28
 Stopping compilation of MLB-file due to error (code 1).

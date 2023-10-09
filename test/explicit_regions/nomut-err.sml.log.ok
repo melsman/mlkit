@@ -4,6 +4,6 @@
 nomut-err.sml, line 14, column 39:
   val rec g `e : (unit #e -> unit) while nomut e =
                                          ^^^^^^^
-Mutation constraint violation. The effect `e contains
+Mutation constraint violation. The effect `e_44 contains
 the atomic effect mut(r6)
 Stopping compilation of MLB-file due to error (code 1).

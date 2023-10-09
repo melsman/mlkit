@@ -7,5 +7,5 @@ nomut2-err.sml, line 28, column 91:
                                                                                              ^^^^^^^^^
 Instance `eee -> e88.
 Mutation constraint violation. The effect e88 contains
-the atomic effect mut(r6)
+the atomic effect e92, which has no nomut property
 Stopping compilation of MLB-file due to error (code 1).

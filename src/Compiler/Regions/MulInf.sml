@@ -571,13 +571,20 @@ struct
             val _ = if test then say "  collecting all effects..." else ()
                     (* collect all region variables, locally bound within tr,
                        plus the region and effect variables that are exported by tr *)
-            val effects= mkPhi(tr,export_basis)
+            val effects = mkPhi(tr,export_basis)
             val _ = if test then say "  computing transitive closure ..." else ()
-            val _ = eval_phis effects  (* computes transitive closure  of effect graph,
-                                          including only PUT and EPS nodes *)
-                    handle ? as Report.DeepError _ => raise ?
-                         | exn => (say "  eval_phis called from MulInf (transitive closure of all effects) ";
-                                   raise exn)
+
+            val () =
+                let val allnodes = eval_phis effects  (* computes transitive closure  of effect graph,
+                                                         including only PUT and EPS nodes *)
+                                   handle ? as Report.DeepError _ => raise ?
+                                        | exn => (say "  eval_phis called from MulInf (transitive closure of all effects) ";
+                                                  raise exn)
+                    val () = Eff.check_nodes {allnodes=allnodes,
+                                              letregions=RegionExp.letregionBound tr}
+                in ()
+                end
+
             val _ = if test then say "  making the arrow effect set Phi..." else ()
 
             val Psi =
