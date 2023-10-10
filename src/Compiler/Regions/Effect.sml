@@ -2354,7 +2354,21 @@ struct
                          then
                            ( debug_const (fn () => "  CHECK satisfied - noput2")
                            ; NoConstraintError)
-                         else ConstraintError (fn () => err ())
+                         else
+                           if mem_effect e letregions then
+                             case List.filter is_arrow_effect aes of
+                                 nil => NoConstraintError
+                               | eps :: _ => ConstraintError
+                                               (fn () =>
+                                                   deepError0 (mkrep())
+                                                              (violation() ^ ". The effect "
+                                                               ^ (case nopt of SOME n => pr_effect n ^ " "
+                                                                             | NONE => "")
+                                                               ^ "contains\nthe atomic effect "
+                                                               ^ pp_atomic_effect ae
+                                                               ^ ", which I cannot conclude does not appear in "
+                                                               ^ pp_atomic_effect e ^ ", which contains " ^ pr_effect eps))
+                           else ConstraintError (fn () => err())
                       end
               end
       end
@@ -2368,10 +2382,7 @@ struct
   fun check_constraint (letregions:effect list) (n:effect) c ae =
       case check_constraint_normal letregions (SOME n) c ae of
           NoConstraintError => ()
-        | ConstraintError err =>(*
-          case check_constraint_reversed letregions c ae of
-              NoConstraintError => ()
-            | ConstraintError _ =>*) err()
+        | ConstraintError err => err()
 
   fun bottom_up_eval (g : effect list) : effect list =
       (*

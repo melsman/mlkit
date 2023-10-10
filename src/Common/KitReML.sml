@@ -3,6 +3,7 @@ structure K =
   let structure KC = KitCompiler(ExecutionX64)
       val _ = Flags.turn_on "reml"
       val _ = Flags.turn_on "aggresive_opt"
+      val _ = Flags.turn_on "parallelism"
       val _ = Flags.turn_off "tag_values"
       val _ = Flags.turn_on "preserve_tail_calls"
       val () = List.app Flags.block_entry

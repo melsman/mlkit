@@ -2,9 +2,9 @@
 > val get : 'a->'a
   val par : (unit-e1->'a) * (unit-e2->'b)->'a * 'b
   val spawn : (unit-e1->'a)->('a-e2->'b)->'b
-par-no.sml, line 14, column 82:
-      fun spawn__noinline `[e1 e2] (f: unit #e1 -> 'a) (k: 'a #e2 -> 'b) : 'b while e1 ## e2 =
-                                                                                    ^^^^^^^^
+par-no.sml, line 14, column 79:
+      fun sp__noinline `[e1 e2] (f: unit #e1 -> 'a) (k: 'a #e2 -> 'b) : 'b while e1 ## e2 =
+                                                                                 ^^^^^^^^
 Instance `e1_60 -> e106
 Instance `e2_58 -> e102
 Instance `e1_44 -> `e1_60
