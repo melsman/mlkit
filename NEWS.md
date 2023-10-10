@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.5 is released
+
+* mael 2023-10-10: ReML released as part of the distribution.
+
 * mael 2023-10-04: Improved documentation of basis library, which is
   now documented with [sigdoc](http://github.com/diku-dk/sigdoc) at
   https://elsman.com/mlkit/docs/pkg_idx.html.
