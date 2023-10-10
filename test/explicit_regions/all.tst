@@ -81,3 +81,7 @@ nomut2-err.sml        ccl ecte    (* Violation of nomut constraint on function i
 
 disputs.sml           ccl ecte    (* Violation of disjoint put-effects (##) - let rec *)
 disputs2.sml          ccl ecte    (* Violation of disjoint put-effects (##) - fun *)
+
+par.sml                           (* A sound implementation of par with constraint *)
+par-no.sml            ccl ecte    (* But it needs to be satisfied *)
+par-no2.sml           ccl ecte    (* The trivial definition of par is not ok *)

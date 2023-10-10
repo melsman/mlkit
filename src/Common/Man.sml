@@ -12,6 +12,9 @@ struct
   fun isSMLtoJs exe : bool =
       String.isSubstring "smltojs" exe
 
+  fun isReML exe : bool =
+      String.isSubstring "reml" exe
+
   val homepage = "http://melsman.github.io/mlkit"
   val homepage_smltojs = "http://www.smlserver.org/smltojs"
 
@@ -83,7 +86,7 @@ struct
 			    "Peter Sestoft"]
 
         val smltojs_developers = ["Martin Elsman"]
-
+        val reml_developers = ["Martin Elsman"]
       end
 
     fun mkStr s = "\"" ^ s ^ "\""
@@ -106,6 +109,8 @@ struct
 	let val text =
 		if isSMLtoJs exe then
                   "Standard ML to JavaScript compiler"
+                else if isReML exe then
+                  "Standard ML with Explicit Regions and Effects"
 		else "A fullblown Standard ML compiler"
 	in
 	    ".SH NAME\n" ^ exe ^ " \\- " ^ text ^ " \n"
@@ -122,21 +127,34 @@ struct
 		       "All possible options are listed below.\n"]
 
     fun description exe =
-	let val (name, result, homepage) =
-		if isSMLtoJs exe then
-                  ("SMLtoJs", "an HTML-file, containing references to generated JavaScript files, ", homepage_smltojs)
-		else
-                  ("MLKit", "an executable file\n.B run\n", homepage)
+	let val name =
+                if isSMLtoJs exe then "SMLtoJs"
+                else if isReML exe then "ReML"
+                else "MLKit"
+            val (result, homepage) =
+		if isSMLtoJs exe
+                then ("an HTML-file, containing references to generated JavaScript files, ", homepage_smltojs)
+		else ("an executable file\n.B run\n", homepage)
+
+            val what =
+                if isReML exe then
+                  "ReML is Standard ML with support for programming with explicit regions, \n\
+                  \explicit effects, and effect constraints. With ReML, atomic effects \n\
+                  \include get-effects, put-effects, and mut-effects. Whereas ReML include\n\
+                  \parallel thread support, ReML does not support integration with \n\
+                  \reference-tracing garbage collection."
+                else ""
 	in
-	    String.concat[".SH DESCRIPTION\n",
-			  "When invoked, \n.B ", exe, "\nwill compile the specified sources into ", result,
-			  "through a series of translation phases. Various options (see below) can be used to control the ",
-			  "printing of intermediate forms and to control to which degree various optimizations are performed. If source files ",
-			  "are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table ",
-			  "information and object code in the dedicated MLB directories located together with the source files, so ",
-			  "as to minimize necessary recompilation upon changes of source code.\n\n",
-			  "To learn more about programming with ", name, ", consult the ", name, " web page at\n\n",
-			  ".B ", homepage, "\n"]
+	  String.concat[".SH DESCRIPTION\n",
+                        what,
+			"When invoked, \n.B ", exe, "\nwill compile the specified sources into ", result,
+			"through a series of translation phases. Various options (see below) can be used to control the ",
+			"printing of intermediate forms and to control to which degree various optimizations are performed. If source files ",
+			"are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table ",
+			"information and object code in the dedicated MLB directories located together with the source files, so ",
+			"as to minimize necessary recompilation upon changes of source code.\n\n",
+			"To learn more about programming with ", name, ", consult the ", if isReML exe then "MLKit" else name, " web page at\n\n",
+			".B ", homepage, "\n"]
 	end
 
     fun options extraOptions =
@@ -163,6 +181,10 @@ struct
         if isSMLtoJs exe then
           String.concat [".SH EXAMPLES\n",
                          "For examples, consult the SMLtoJs home page.\n"]
+        else if isReML exe then
+          String.concat [".SH EXAMPLES\n",
+                         "For examples, consult the files in the 'test/reml' folder within \n\
+                         \the github repository at http://github.com/melsman/mlkit.\n"]
         else
 	  let val (name, title) =
 		  ("MLKit", "MLKit manual \"Programming with Regions in the MLKit\"")
@@ -177,7 +199,9 @@ struct
           val based_on_mlkit_maybe =
 	      if isSMLtoJs exe then
                 "SMLtoJs is based on the MLKit. "
-	      else ""
+	      else if isReML exe then
+                "ReML is based on the MLKit. "
+              else ""
           val maybe_all_basis =
               if isSMLtoJs exe then ["\n"]
               else ["See the MLKit home page ",
@@ -194,6 +218,9 @@ struct
               if isSMLtoJs exe then
                 ["SMLtoJs was developed by " ^ concatWith2 (", ", " and ") Devel.smltojs_developers ^ ". ",
                  "Many people have helped developing the MLKit on which SMLtoJs is built; see the MLKit home page for details."]
+              else if isReML exe then
+                ["ReML was developed by " ^ concatWith2 (", ", " and ") Devel.reml_developers ^ ". ",
+                 "Many people have helped developing the MLKit on which ReML is built; see the MLKit home page for details."]
               else
                 ["The MLKit (version 2 and beyond) was developed by ",
 	         concatWith2 (", "," and ") Devel.developers,

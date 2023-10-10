@@ -14,13 +14,16 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
   struct
     open Execution
 
-
-    fun cmd_name() = OS.Path.file(CommandLine.name())
+    fun cmd_name () = OS.Path.file(CommandLine.name())
 
     structure ManagerObjects =
 	ManagerObjects(struct
                          structure Execution = Execution
-                         val program_name = cmd_name
+                         fun program_name () =
+                             let val n = cmd_name()
+                             in if n = "reml" then "mlkit"
+                                else n
+                             end  (* read info from mlkit's mlb-path-map file *)
                        end)
 
     structure ModCodeMini = struct
@@ -57,8 +60,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    let val version = Version.version ^ " (" ^ Version.gitversion ^ " - " ^ date ^ ")"
               val msg =
                   if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
-                  else ("MLKit " ^ version ^ " ["
-                        ^ backend_name ^ " Backend]\n")
+                  else
+                    let val m = if cmd_name() = "reml" then "ReML" else "MLKit"
+                    in m ^ " " ^ version ^ " [" ^ backend_name ^ " Backend]\n"
+                    end
             in print msg
 	    end
 
@@ -115,10 +120,18 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		    val baseDir =
 			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of
 			     SOME v => v
-			   | NONE => raise Fail ("A library install directory must be provided in an\n" ^
-						 "environment variable SML_LIB or as a path-definition\n" ^
-						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/" ^ (cmd_name()) ^ "/mlb-path-map\n" ^
-						 "or in your personal path-map ~/." ^ (cmd_name()) ^ "/mlb-path-map.")
+			   | NONE =>
+                             let val d = if cmd_name() = "smltojs" then "smltojs" else "mlkit"
+                                 val notice = if cmd_name() <> "reml" then ""
+                                              else ("Notice that ReML shares the runtime system and the compiled\n\
+                                                    \basis library with MLKit.")
+                             in raise Fail ("A library install directory must be provided in an\n" ^
+					    "environment variable SML_LIB or as a path-definition\n" ^
+					    "in either the system wide path-map " ^ Configuration.etcdir ^
+                                            "/" ^ d ^ "/mlb-path-map\n" ^
+                                            "or in your personal path-map ~/." ^ d ^ "/mlb-path-map.\n" ^
+                                            notice)
+                             end
 
 		in set_paths baseDir ; go_files rest
 		end

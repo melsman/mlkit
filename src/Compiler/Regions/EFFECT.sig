@@ -199,21 +199,24 @@ sig
   val rho_add_constraint  : effect -> Report * lvar option * effect -> unit
   val rho_get_constraints : effect -> (Report * lvar option * effect) list
 
-  (* [eps_add_prop_constraint e (p,rep,lvopt)] adds a constraint to e saying it has
+  (* [eps_add_prop_constraint e (i,p,rep,lvopt)] adds a constraint to e saying it has
    * to obey the property p; the optional lvar indicates the function with the
-   * constraint. *)
-  val eps_add_prop_constraint  : effect -> Report * lvar option * prop -> unit
-  val eps_get_prop_constraints : effect -> (Report * lvar option * prop) list
+   * constraint. i specifies if it is an instantiated constraint. *)
+  val eps_add_prop_constraint  : effect -> bool * Report * lvar option * prop -> unit
+  val eps_get_prop_constraints : effect -> (bool * Report * lvar option * prop) list
 
-  (* [eps_add_constraint e (rep,lvopt,e',putonly)] adds a constraint
+  (* [eps_add_constraint e (i,rep,lvopt,e',putonly)] adds a constraint
    * to e saying it cannot intersect with e' (up to the putonly boolean); the
-   * optional lvar indicates the function with the constraint. *)
+   * optional lvar indicates the function with the constraint. i specifies if
+   * it is an instantiated constraint. *)
 
-  val eps_add_constraint  : effect -> Report * lvar option * effect * bool -> unit
-  val eps_get_constraints : effect -> (Report * lvar option * effect * bool) list
+  type instlist = (effect * effect) list
+  val rep_instlist : instlist -> Report
+
+  val eps_add_constraint  : effect -> bool * Report * instlist * lvar option * effect * bool -> unit
+  val eps_get_constraints : effect -> (bool * Report * instlist * lvar option * effect * bool) list
 
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
-  val observe           : int * delta_phi * effect -> unit
   val observeDelta      : int * delta_phi * effect -> effect list * delta_phi
 
   val update_increment  : effect * delta_phi -> unit
@@ -247,7 +250,9 @@ sig
   val topsort           : effect list -> effect list
   val subgraph          : effect list -> effect list
 
-  val eval_phis         : effect list -> unit
+  val eval_phis         : effect list -> effect list (* returns all nodes in graph *)
+  val check_nodes       : {allnodes:effect list, letregions:effect list} -> unit (* check ReML constraints *)
+
   val represents        : effect -> effect list
 
   val reset_cone        : cone -> unit
@@ -255,12 +260,13 @@ sig
 
   type StringTree = PrettyPrint.StringTree
 
-  val layout_effect_deep: effect -> StringTree       (* sets and clears visited field *)
-  val layout_effect     : effect->StringTree         (* no side-effect *)
-  val layoutLayer       : coneLayer -> StringTree    (* sets and clears visited field *)
-  val layoutLayerRng    : coneLayer -> StringTree    (* sets and clears visited field *)
-  val layoutCone        : cone -> StringTree         (* sets and clears visited field *)
-  val layoutEtas        : effect list -> StringTree list (* sets and clears visited field *)
+  val layout_effect_deep    : effect -> StringTree       (* sets and clears visited field *)
+  val layout_effect         : effect->StringTree         (* no side-effect *)
+  val layout_effect_binding : effect->StringTree         (* no side-effect; prints constraints *)
+  val layoutLayer           : coneLayer -> StringTree    (* sets and clears visited field *)
+  val layoutLayerRng        : coneLayer -> StringTree    (* sets and clears visited field *)
+  val layoutCone            : cone -> StringTree         (* sets and clears visited field *)
+  val layoutEtas            : effect list -> StringTree list (* sets and clears visited field *)
 
   structure PlaceOrEffectMap : MONO_FINMAP where type dom = effect
 end

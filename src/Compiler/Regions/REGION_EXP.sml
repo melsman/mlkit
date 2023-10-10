@@ -129,6 +129,8 @@ signature REGION_EXP = sig
 
     val mkPhi: (place,'b)trip * effect list -> effect list
 
+    val letregionBound : (place,'b)trip -> effect list
+
     val normPgm: (place, 'b)LambdaPgm * (unit -> int) -> unit
 
     val pr_tyvar : tyvar -> string

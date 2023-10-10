@@ -15,6 +15,7 @@ struct
   fun log_tree t = PP.outputTree(logsay, t, !Flags.colwidth)
   fun show_rho rho = PP.flatten1(E.layout_effect rho)
   fun show_eps e = PP.flatten1(E.layout_effect e)
+  fun show_eps_binding e = PP.flatten1(E.layout_effect_binding e)
   fun show_rhos rhos = ListUtils.stringSep "[" "]" ", " show_rho rhos
 
   fun die (s:string) = Crash.impossible ("RType." ^ s)
@@ -363,8 +364,8 @@ struct
                         (SOME n1, SOME n2) =>
                         if E.is_arrow_effect n1 then
                           if E.is_arrow_effect n2 then
-                            (E.eps_add_constraint n1 (rep,lvopt,n2,putonly);
-                             E.eps_add_constraint n2 (rep,lvopt,n1,putonly);
+                            (E.eps_add_constraint n1 (false,rep,nil,lvopt,n2,putonly);
+                             E.eps_add_constraint n2 (false,rep,nil,lvopt,n1,putonly);
                              B)
                           else deepErr e2 "expecting explicit effect variable"
                         else if E.is_rho n1 then
@@ -382,7 +383,7 @@ struct
                   (case lookRegVar e of
                        SOME n =>
                        if E.is_arrow_effect n then (* MEMO: ok, but add constraint *)
-                         (E.eps_add_prop_constraint n (rep,lvopt,p); B)
+                         (E.eps_add_prop_constraint n (false,rep,lvopt,p); B)
                        else deepErr e "expecting explicit effect variable"
                      | NONE => deepErr e "effect variable not in scope")
                 | _ => die "unimplemented PROPconstr")
@@ -640,7 +641,7 @@ struct
                  let val children =
                          if print_effects() then
                            (*print regions and effect and -perhaps- types: *)
-                           rho_trees  @  map lay_node_short epsilons @
+                           rho_trees  @  map E.layout_effect_binding epsilons @
                            (if !Flags.print_types then map layout_tyvar' alphas
                             else [])
                          else (if print_regions() then rho_trees
@@ -728,6 +729,16 @@ struct
 
         fun cp_rho rho = cp_var rho
         fun cp_eps eps = cp_var eps
+        fun cp_atomic ae =
+            if E.is_arrow_effect ae then #2(cp_eps ae)
+            else if E.is_put ae then
+              E.mkPut(#2(cp_rho(E.rho_of ae)))
+            else if E.is_get ae then
+              E.mkGet(#2(cp_rho(E.rho_of ae)))
+            else if E.is_mut ae then
+              E.mkMut(#2(cp_rho(E.rho_of ae)))
+            else if E.is_rho ae then die "cp_atomic.expects atomic effect - got rho!"
+            else die "cp_atomic.expects atomic effect - not a rho"
 
         fun cp_ty ty =
             case ty of
@@ -797,20 +808,23 @@ struct
         val () = List.app E.setInstance Se
         val () = List.app (fn (s,t) =>
                               let val pcs = E.eps_get_prop_constraints s (* copy constraints to target *)
-                              in List.app (fn (rep,lv,p) =>
+                              in List.app (fn (_,rep,lv,p) =>
                                               let val rep' = Report.line ("Instance " ^ E.pp_eff s ^ " -> "
                                                                           ^ E.pp_eff t ^ ".")
-                                              in E.eps_add_prop_constraint t (Report.//(rep,rep'),lvopt,p)
+                                              in E.eps_add_prop_constraint t (true,Report.//(rep,rep'),lvopt,p)
                                               end) pcs
                               end) Se
 
         val () = List.app (fn (s,t) =>
                               let val cs = E.eps_get_constraints s (* copy constraints to target *)
-                              in List.app (fn (rep,lv,e,p) =>
-                                              let val e' = #2(cp_eps e)
+                              in List.app (fn (_,rep,il,lv,ae,p) =>
+                                              let val ae' = cp_atomic ae
+(*
                                                   val rep' = Report.line ("Instance " ^ E.pp_eff e ^ " -> " ^ E.pp_eff e'
                                                                           ^ " and " ^ E.pp_eff s ^ " -> " ^ E.pp_eff t ^ ".")
-                                              in E.eps_add_constraint t (Report.//(rep,rep'),lvopt,e',p)
+*)
+                                                  val il' = (ae,ae')::(s,t)::il
+                                              in E.eps_add_constraint t (true,rep,il',lvopt,ae',p)
                                               end) cs
                               end) Se
 

@@ -43,6 +43,7 @@ CLEAN=rm -rf MLB *~ .\#*
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
+	$(MAKE) -C src reml
 	$(MAKE) man_mlkit
 
 .PHONY: smltojs
@@ -56,6 +57,7 @@ all: mlkit mlkit_basislibs smltojs smltojs_basislibs
 .PHONY: mlkit_basislibs
 mlkit_basislibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -log_to_file basis.mlb)
@@ -197,6 +199,7 @@ install0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
 	$(INSTALL) bin/mlkit $(BINDIR)
+	$(INSTALL) bin/reml $(BINDIR)
 	$(INSTALL) bin/mlkit-mllex $(BINDIR)
 	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
 	$(INSTALL) bin/rp2ps $(BINDIR)
@@ -209,6 +212,7 @@ install0:
 	$(MKDIR) $(MANDIR)
 	$(MKDIR) $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/reml.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/rp2ps.1 $(MANDIR)/man1
@@ -348,6 +352,7 @@ bootstrap:
 man_mlkit:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/mlkit bin/mlkit -man > man/man1/mlkit.1
+	SML_LIB=$(exec_prefix)/lib/reml bin/reml -man > man/man1/reml.1
 
 .PHONY: man_smltojs
 man_smltojs:
@@ -443,6 +448,7 @@ smltojs_x64_tgz:
 #  $ ./autobuild
 #  $ ./configure
 #  $ make mlkit
+#  $ make reml
 #  $ make mlkit_libs
 #  $ make smltojs
 #  $ make smltojs_basislibs

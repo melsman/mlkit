@@ -769,7 +769,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                  of Posix.Process.W_EXITED => (remove pid ; pid)
                   | Posix.Process.W_EXITSTATUS n => (remove pid ; killrest (); raise IsolateFunExn (Word8.toInt n))
                   | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
-                  | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
+                  | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED - wait" s)
               end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
 
           fun isolate (f : 'a -> unit) (a:'a) : unit =
@@ -781,14 +781,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                         Posix.Process.W_EXITED => ()
                       | Posix.Process.W_EXITSTATUS n => raise IsolateFunExn (Word8.toInt n)
                       | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
-                      | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
+                      | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED - isolate" s)
                    else raise Fail "isolate error 2"
                 end
               | NONE => (f a before Posix.Process.exit 0w0        (* child *)
                          handle e =>
                                 (errSubProcess NONE e;
                                  Posix.Process.exit 0w1))
-
         end
 
         local

@@ -3,7 +3,7 @@
 # "build-test-deploy". It is triggered on push or pull request events
 # on the master branch. It is also triggered when a tag is pushed, in
 # which case a binary distribution is deployed. The build matrix is
-# currently setup to run only with mlton as the primary SML compiler.
+# currently setup to run only with mlkit as the primary SML compiler.
 
 name: CI
 
@@ -28,8 +28,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-latest]
-#        mlcomp: [mlkit, mlton]
-        mlcomp: [mlton]
+        mlcomp: [mlkit, mlton]
+#        mlcomp: [mlton]
+#        mlcomp: [mlkit]
 
     runs-on: ${{ matrix.os }}
 
@@ -43,30 +44,69 @@ jobs:
           echo "RUNHOME=$(echo $HOME)" >> $GITHUB_ENV
 
       - name: Install dependencies (linux)
+        if: ${{ env.OS == 'linux' }}
+        run: |
+          # sudo apt-get -qq update
+          sudo apt-get install -y gcc autoconf make
+
+      - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
         run: |
           # sudo apt-get -qq update
-          sudo apt-get install -y gcc mlton autoconf make
+          sudo apt-get install -y mlton
 
       - name: Install dependencies (macos)
-        if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
+        if: ${{ env.OS == 'darwin' }}
         run: |
           brew install gcc autoconf make
-          # The brew version of MLton has a bug
-          brew install mlton --HEAD
           brew tap homebrew/cask
           brew install --cask phantomjs
 
-      - name: Check
+      - name: Install dependencies (macos, mlton)
+        if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
+        run: |
+          # The brew version of MLton has a bug
+          brew install mlton --HEAD
+
+      - name: Install MLKit and smlpkg
+        working-directory: ${{ env.RUNHOME }}
+        run: |
+          echo "[OS: $OS, HOME: $RUNHOME]"
+          wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
+          tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
+          echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
+          wget https://github.com/melsman/mlkit/releases/download/v4.7.4/mlkit-bin-dist-${{env.OS}}.tgz
+          tar xzf mlkit-bin-dist-${{env.OS}}.tgz
+          echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
+          mkdir -p .mlkit
+          echo "SML_LIB $HOME/mlkit-bin-dist-${{env.OS}}/lib/mlkit" > .mlkit/mlb-path-map
+
+      - name: Check MLton
+        if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           mlton
           echo 'github.event_name: ' ${{ github.event_name }}
           echo 'github.ref: ' ${{ github.ref }}
 
-      - name: Configure
+      - name: Check MLKit
+        if: ${{ matrix.mlcomp == 'mlkit' }}
+        run: |
+          mlkit --version
+          smlpkg --version
+          echo 'github.event_name: ' ${{ github.event_name }}
+          echo 'github.ref: ' ${{ github.ref }}
+
+      - name: Configure With MLton
+        if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./autobuild
           ./configure
+
+      - name: Configure With MLKit
+        if: ${{ matrix.mlcomp == 'mlkit' }}
+        run: |
+          ./autobuild
+          ./configure --with-compiler=mlkit
 
       - name: Build MLKit
         run: |
@@ -87,6 +127,7 @@ jobs:
           make -C test/parallelism all
 
       - name: Configure SmlToJs
+        if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
 

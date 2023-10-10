@@ -1,0 +1,14 @@
+[reading source file:	par-no2.sml]
+> val get : 'a->'a
+  val par : (unit-e1->'a) * (unit-e2->'b)->'a * 'b
+  val spawn : (unit-e1->'a)->('a-e2->'b)->'b
+par-no2.sml, line 14, column 79:
+      fun sp__noinline `[e1 e2] (f: unit #e1 -> 'a) (k: 'a #e2 -> 'b) : 'b while e1 ## e2 =
+                                                                                 ^^^^^^^^
+Instance `e1_60 -> `e2_84
+Instance `e2_58 -> e92
+Instance `e1_44 -> `e1_60
+Instance `e2_42 -> `e2_58
+Put-constraint violation. The effect e92 contains
+the atomic effect put(r125), which also appears in the effect of `e2_84
+Stopping compilation of MLB-file due to error (code 1).

@@ -64,11 +64,16 @@ struct
 
   val print_constraints = Flags.add_bool_entry
       {long="print_constraints", short=NONE, item=ref false, neg=false,
-       menu=["Layout", "print effect constraints"],
-       desc="Print effect constraints when printing region and\n\
-            \effect variables"}
+       menu=["Layout", "print ReML effect constraints"],
+       desc="Print ReML effect constraints when printing region and\n\
+            \effect variables."}
 
-  val explicit_regions : unit -> bool = Flags.is_on0 "explicit_regions"
+  val debug_constraint_solving = Flags.add_bool_entry
+      {long="debug_constraint_solving", short=SOME "dcs", item=ref false, neg=false,
+       menu=["ReML", "debug ReML constraint solving"],
+       desc="Debug ReML constraint solving."}
+
+  val reml_p : unit -> bool = Flags.is_on0 "reml"
 
   fun mem x nil = false
     | mem x (y::ys) = x = y orelse mem x ys
@@ -130,8 +135,6 @@ struct
 
   fun key_lt (ref i, ref (j:int)) = i<j
 
-  fun show_key (ref i) = Int.toString i
-
   type level = int ref (* for stratification of cones *)
   fun show_level (ref i) = Int.toString i
   fun layout_level l = PP.LEAF(show_level l)
@@ -149,8 +152,8 @@ struct
                            instance : einfo G.node option ref,
                            pix: int ref,
                            explicit : regvar option,
-                           constraints : (Report * lvar option * einfo G.node * bool) list ref,
-                           prop_constraints : (Report * lvar option * prop) list ref}
+                           constraints : (bool * Report * ((einfo G.node) * (einfo G.node)) list * lvar option * einfo G.node * bool) list ref,
+                           prop_constraints : (bool * Report * lvar option * prop) list ref}
                  | UNION of {represents: einfo G.node list option}
                  | PUT | GET | MUT
                  | RHO of {put: einfo G.node option,
@@ -165,7 +168,55 @@ struct
                            explicit : regvar option,
                            protected : int ref}
 
-  fun layout_einfo einfo =
+  fun layout_rho0 (key,level,ty,explicit,protected,constraints) =
+      let val n = case explicit of
+                      NONE => "r" ^ show_key key
+                    | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
+      in PP.LEAF (n ^
+                  (if print_rho_types() then show_runType ty
+                   else "") ^
+                  (if print_rho_protection() then show_protection protected
+                       else "") ^
+                  (if print_rho_levels() then "(" ^ show_level level ^ ")"
+                   else "") ^
+                  (if print_constraints() then
+                         case !constraints of
+                             nil => ""
+                           | rhos => "[memo]"
+                   else "")
+                 )
+      end
+
+  type effect = einfo G.node
+
+  fun pp_atomic_effect (ae:effect) =
+      let fun layout_einfo_rho_simple einfo =
+              case einfo of
+                  RHO{key,level,ty,explicit,protected,constraints,...} =>
+                  layout_rho0 (key,level,ty,explicit,protected,constraints)
+                | _ => die "layout_einfo_rho_simple: expecting rho"
+          fun pp_rho_simple r =
+              PP.flatten1(G.layout_node layout_einfo_rho_simple r)
+          fun pp base n =
+              case G.out_of_node n of
+                  [n] => PP.LEAF (base ^ "(" ^ pp_rho_simple n ^ ")")
+                | _ => die "layout_einfo_ae_simple.pp.expecting exactly one out node"
+          fun layout_einfo_ae_simple node einfo =
+              case einfo of
+                  EPS{key,explicit,...} =>
+                  let val n = case explicit of
+                                  NONE => "e" ^ show_key key
+                                | SOME ev => "`" ^ RegVar.pr ev ^ "_" ^ show_key key
+                  in PP.LEAF n
+                  end
+                | PUT => pp "put" node
+                | GET => pp "get" node
+                | MUT => pp "mut" node
+                | _ => die "layout_einfo_ae_simple.expecting atomic effect"
+      in PP.flatten1(G.layout_node (layout_einfo_ae_simple ae) ae)
+      end
+
+  fun layout_einfo0 {binding:bool} einfo =
       case einfo of
           EPS{key,level,explicit,prop_constraints,constraints,...} =>
           let val n = case explicit of
@@ -174,9 +225,20 @@ struct
           in PP.LEAF(n ^ (if print_rho_levels() then
                             "(" ^ show_level level ^ ")"
                           else "")
-                     ^ (if print_constraints() then
-                          let val cs1 = map (LambdaExp.pp_prop o #3) (!prop_constraints)
-                              val cs2 = map (fn _ => "memo") (!constraints)
+                     ^ (if binding andalso print_constraints() then
+                          let val cs1 = map (fn (i,_,_,p) =>
+                                                if i then "?" ^ LambdaExp.pp_prop p
+                                                else LambdaExp.pp_prop p)
+                                            (!prop_constraints)
+                              val cs2 = map (fn (i,_,_,_,ae,p) =>
+                                                let val s =
+                                                        case (p,i) of
+                                                             (true,true) => "?? "
+                                                           | (false,true) => "? "
+                                                           | (true,false) => "## "
+                                                           | (false,false) => "# "
+                                                in s ^ pp_atomic_effect ae
+                                                end) (!constraints)
                               val cs = cs1 @ cs2
                           in if List.null cs then ""
                              else "[" ^ String.concatWith "," cs ^ "]"
@@ -188,33 +250,26 @@ struct
         | GET => PP.LEAF "get"
         | MUT => PP.LEAF "mut"
         | UNION _ => PP.LEAF "U"
-        | RHO{key,level,ty,put,explicit,protected,constraints,...} =>
-          let val n = case explicit of
-                          NONE => "r" ^ show_key key
-                        | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
-          in PP.LEAF (n ^
-                      (if print_rho_types() then show_runType ty
-                       else "") ^
-                      (if print_rho_protection() then show_protection protected
-                       else "") ^
-                      (if print_rho_levels() then "(" ^ show_level level ^ ")"
-                       else "") ^
-                      (if print_constraints() then
-                         case !constraints of
-                             nil => ""
-                           | rhos => "[memo]"
-                       else "")
-                     )
-          end
+        | RHO{key,level,ty,explicit,protected,constraints,...} =>
+          layout_rho0 (key,level,ty,explicit,protected,constraints)
 
-  type effect = einfo G.node
+  fun layout_einfo ei =
+      layout_einfo0 {binding=false} ei
+
+  fun layout_einfo_binding ei =
+      layout_einfo0 {binding=true} ei
+
+  type instlist = (effect * effect) list   (* for constraints *)
   type place = effect
+
   val empty = G.mk_node (UNION{represents = NONE})
 
   fun eq_effect (node1, node2) = G.eq_nodes(node1,node2)
+  fun mem_effect e es = List.exists (fn e' => eq_effect(e,e')) es
 
   fun layout_effect e = G.layout_node layout_einfo e
-  fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [e]
+  fun layout_effect_binding e = G.layout_node layout_einfo_binding e
+  fun layout_effect_deep e = G.layout_nodes_deep layout_einfo_binding [e]
 
   fun pr_effect e = PP.flatten1 (layout_effect e)
 
@@ -248,30 +303,30 @@ struct
           RHO {constraints=ref cs,...} => cs
         | _ => die "rho_get_constraint.expecting rho"
 
-  fun eps_add_prop_constraint e (rep,lvopt,p:prop) : unit =
+  fun eps_add_prop_constraint e (inst,rep,lvopt,prop) : unit =
       case G.find_info e of
           EPS{prop_constraints,...} =>
           let val cs = !prop_constraints
-          in if mem p (map #3 cs) then ()
-             else prop_constraints := (rep,lvopt,p)::cs
+          in if List.exists (fn (i,_,_,p) => inst=i andalso prop=p) cs then ()
+             else prop_constraints := (inst,rep,lvopt,prop)::cs
           end
         | _ => die "eps_add_prop_constraint.expecting eps"
 
-  fun eps_get_prop_constraints (e: effect) : (Report * lvar option * prop) list =
+  fun eps_get_prop_constraints (e: effect) : (bool * Report * lvar option * prop) list =
       case G.find_info e of
           EPS{prop_constraints,...} => !prop_constraints
         | _ => die "eps_get_prop_constraints.expecting eps"
 
-  fun eps_add_constraint e (rep,lvopt,e',putonly:bool) : unit =
+  fun eps_add_constraint e (i,rep,il,lvopt,ae',putonly:bool) : unit =
       case G.find_info e of
           EPS{constraints,...} =>
           let val cs = !constraints
-          in if List.exists (fn (_,_,e,p) => p=putonly andalso eq_effect (e,e')) cs then ()
-             else constraints := (rep,lvopt,e',putonly)::cs
+          in if List.exists (fn (i',_,_,_,ae,p) => i=i' andalso p=putonly andalso eq_effect (ae,ae')) cs then ()
+             else constraints := (i,rep,il,lvopt,ae',putonly)::cs
           end
         | _ => die "eps_add_constraint.expecting eps"
 
-  fun eps_get_constraints (e: effect) : (Report * lvar option * effect * bool) list =
+  fun eps_get_constraints (e: effect) : (bool * Report * instlist * lvar option * effect * bool) list =
       case G.find_info e of
           EPS{constraints,...} => !constraints
         | _ => die "eps_get_constraints.expecting eps"
@@ -306,14 +361,6 @@ struct
       case explicit_var e of
           SOME rv => "`" ^ RegVar.pr rv
         | NONE => pr_effect e
-
-  fun pr_atomic_effect e =
-      if is_arrow_effect e then pp_eff e
-      else let val n = case G.out_of_node e of
-                           n :: _ => n
-                         | _ => die "pr_atomic_effect.expecting an out-node"
-           in pr_effect e ^ "(" ^ pp_eff n ^ ")"
-           end
 
   fun is_put effect =
       case G.find_info effect of
@@ -368,7 +415,12 @@ struct
   fun get_level_of_rho effect : int =
       case G.find_info effect of
           RHO{level as ref l,...} => l
-        | _ => die "GetLevelOfRho"
+        | _ => die "get_level_of_rho"
+
+  fun get_level_of_eps effect : int =
+      case G.find_info effect of
+          EPS{level as ref l,...} => l
+        | _ => die "get_level_of_eps"
 
   fun key_of_rho effect : int =
       case G.find_info effect of
@@ -1011,6 +1063,12 @@ struct
       Pickle.cache "Effect.nodeopt"
       (Pickle.optionGen o #1 o pu_node_nodes)
 
+  fun tup6Gen (a,b,c,d,e,f) =
+      let fun to ((a,b,c),(d,e,f)) = (a,b,c,d,e,f)
+          fun from (a,b,c,d,e,f) = ((a,b,c),(d,e,f))
+      in Pickle.shareGen(Pickle.convert0 (to,from) (Pickle.pairGen0(Pickle.tup3Gen0(a,b,c),Pickle.tup3Gen0(d,e,f))))
+      end
+
   val pu_einfo =
       let fun toInt (EPS _) = 0
             | toInt (UNION _) = 1
@@ -1019,9 +1077,15 @@ struct
             | toInt MUT = 4
             | toInt (RHO _) = 5
           fun pu_constraints pu_einfo =
-              Pickle.refOneGen (Pickle.listGen(Pickle.tup4Gen(Report.pu,Pickle.optionGen Lvars.pu,
-                                                              #1(pu_node_nodes pu_einfo),
-                                                              Pickle.bool)))
+              let val pu_effect = #1(pu_node_nodes pu_einfo)
+                  val pu_instlist = Pickle.listGen(Pickle.pairGen(pu_effect,pu_effect))
+              in Pickle.refOneGen (Pickle.listGen(tup6Gen(Pickle.bool,
+                                                          Report.pu,
+                                                          pu_instlist,
+                                                          Pickle.optionGen Lvars.pu,
+                                                          pu_effect,
+                                                          Pickle.bool)))
+              end
           fun fun_EPS pu_einfo =
               Pickle.newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
                              (Pickle.con1 (fn ((k,l,r,p),y,pcs,cs) =>
@@ -1033,7 +1097,8 @@ struct
                                           | _ => die "pu_einfo.fun_EPS")
                (Pickle.tup4Gen0(Pickle.tup4Gen0(pu_intref,pu_intref,pu_represents pu_einfo,pu_intref),
                                 Pickle.optionGen RegVar.pu,
-                                Pickle.refOneGen(Pickle.listGen (Pickle.tup3Gen(Report.pu,
+                                Pickle.refOneGen(Pickle.listGen (Pickle.tup4Gen(Pickle.bool,
+                                                                                Report.pu,
                                                                                 Pickle.optionGen Lvars.pu,
                                                                                 LambdaExp.pu_prop))),
                                 pu_constraints pu_einfo
@@ -1165,7 +1230,7 @@ struct
 
   fun current_increment eps =
       case Increments.lookup (!globalIncs) eps of
-          SOME delta =>  delta
+          SOME delta => delta
         | NONE => Lf []
 
   (*****************************************************)
@@ -1177,12 +1242,12 @@ struct
   *)
 
   fun lower (newlevel:int) : effect -> cone -> cone =
-      let fun low' ([],b) = b
-            | low' (x::xs,b) = low'(xs,low(x, b))
-          and low (effect, cone:cone) : cone =
+      let fun lows ([],B) = B
+            | lows (x::xs,B) = lows(xs,low(x, B))
+          and low (effect, B:cone) : cone =
               case get_level_and_key effect of
                   SOME (l as ref n, key) =>
-                  if newlevel >= n then cone
+                  if newlevel >= n then B
                   else   (* newlevel < level: lower level *)
                     let val _ = case explicit_var effect of
                                     NONE => ()
@@ -1199,17 +1264,34 @@ struct
                                                           RegVar.pr v ^ " has insufficient scope.")
                                     in raise Report.DeepError (report0 // report)
                                     end
-                        val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
-                                    handle ? => (print "lower\n"; raise ?)
+                        val B = remove(effect,l,!key,B) (* take node out of cone *)
+                                handle ? => (print "lower\n"; raise ?)
                         val _  = l:= newlevel
-                        val cone'' = add(effect, newlevel, !key,cone')
-                                     (* put node back in cone at lower level *)
-                    in low' (G.out_of_node effect, cone'')
+                        val B = add(effect, newlevel, !key,B) (* put node back in cone at lower level *)
+                        (* we now need to lower children and effects in constraints *)
+(*
+                        val B = if is_arrow_effect effect then
+                                  let val effs = List.map #3 (eps_get_constraints effect)
+                                  in lows(effs,B)
+                                  end
+                                else B
+*)
+                        (* when lowering the level of an eps node, we keep only those constraints that involve
+                           other epss with lower or identical level *)
+(*
+                        val () =
+                            case G.find_info effect of
+                                EPS{constraints,...} =>
+                                constraints:=List.filter (fn (_,_,e,_) =>
+                                                             get_level_of_eps e <= newlevel) (!constraints)
+                              | _ => ()
+*)
+                    in lows (G.out_of_node effect, B)
                     end
                 | NONE => (* not EPS or RHO, no level; just lower children *)
-                  low'(G.out_of_node effect,cone)
-   in fn effect => fn cone => low(effect,cone)
-   end
+                  lows(G.out_of_node effect,B)
+      in fn effect => fn B => low(effect,B)
+      end
 
   fun lower_delta level delta B =
       case delta of
@@ -1274,8 +1356,8 @@ struct
       end
 
   fun merge_prop_constraints pcs1 pcs2 =
-      let fun ins (c:'a*'b*prop,nil) = [c]
-            | ins (c,c'::cs) = if #3 c = #3 c' then c'::cs
+      let fun ins (c:bool*'b*'c*prop,nil) = [c]
+            | ins (c,c'::cs) = if #4 c = #4 c' andalso #1 c = #1 c' then c'::cs
                                else c'::ins(c,cs)
           fun mer (nil,cs) = cs
             | mer (cs,nil) = cs
@@ -1285,8 +1367,8 @@ struct
       end
 
   fun merge_constraints cs1 cs2 =
-      let fun ins (c:'a*'b*effect*bool,nil) = [c]
-            | ins (c,c'::cs) = if eq_effect (#3 c,#3 c') andalso #4 c = #4 c' then c'::cs
+      let fun ins (c:bool*'b*'c*'d*effect*bool,nil) = [c]
+            | ins (c,c'::cs) = if eq_effect (#5 c,#5 c') andalso #6 c = #6 c' andalso #1 c = #1 c' then c'::cs
                                else c'::ins(c,cs)
           fun mer (nil,cs) = cs
             | mer (cs,nil) = cs
@@ -1620,6 +1702,52 @@ struct
 
   fun say s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s))
 
+  (* [elim_constraints dest effects] Eliminate constraints in dest that involve effects *)
+  fun elim_constraints (dest:effect) (effects:effect list) : unit =
+      let fun ins (c,cs) =
+              if memEq (fn (c,c') => #5 c = #5 c' andalso #1 c = #1 c') c cs then cs
+              else c::cs
+          val nodes : effect list ref = ref nil
+          fun visited e = !(G.find_visited e)
+          fun visit e = G.find_visited e := true
+          fun elim d =
+              if visited d then ()
+              else ( visit d
+                   ; nodes := d :: !nodes
+                   ; case G.find_info d of
+                         EPS{constraints,...} =>
+                         ( constraints :=
+                           List.foldl (fn (c as (i,r,il,lv,ae,p),cs) =>
+                                          if is_arrow_effect ae then
+                                            if mem_effect ae effects then
+                                              let val outs = G.out_of_node ae
+                                                  val outs_es = List.filter (fn e => not(mem_effect e effects)) outs
+                                                  val cs' = List.map (fn ae' => (i,r,il,lv,ae',p)) outs_es
+                                                  val cs' = List.filter (fn c => not(#6 c) orelse is_put (#5 c) orelse is_arrow_effect (#5 c)) cs'
+                                              in List.foldl ins cs cs'
+                                              end
+                                            else ins (c,cs)
+                                          else
+                                            (* put, mut, or get *)
+                                            let val r = rho_of ae
+                                            in if mem_effect r effects then cs
+                                               else ins (c,cs)
+                                            end
+                                      ) nil (!constraints)
+                         ; List.app elim (G.out_of_node d)
+                         )
+                       | UNION _ => List.app elim (G.out_of_node d)
+                       | _ => ())
+      in elim dest
+       ; G.unvisit (!nodes)
+      end
+
+  (*
+        l+1; TE |- e : t, phi   (B,_) = observeDelta(l,phi,phi')
+        --------------------------------------------------------
+        l; TE |- letregion B in e : t, phi'
+  *)
+
   fun observeDelta (l: int, source: delta_phi, destination: effect): effect list * delta_phi =
     let
       (*val _ = Profile.profileOn()*)
@@ -1717,12 +1845,11 @@ struct
 (*        say("\nDESTINATION AFTER OBSERVE= ");
         PP.outputTree(say, layout_effect_deep destination, !Flags.colwidth);
         (*input(std_in, 1);*)
-*)
+ *)
+        elim_constraints destination (!r_acc);   (* eliminate constraints involving abstracted effects in source *)
         (!r_acc, Lf nodes_to_add)
       end
     end
-
-  fun observe x = (observeDelta x; ())
 
   (* collapse of cycles in effects: *)
   (* all members of the scc must have the same level; otherwise the graph
@@ -2092,11 +2219,20 @@ struct
                          die "check_represents")) l;
      l)
 
-  fun check_prop_constraint (n:effect) (rep,lvopt,p:prop) (ae:effect) =  (*ae: atomic effect *)
-      let fun violation p =
+  fun debug_const f =
+      if debug_constraint_solving() then print(f() ^ "\n")
+      else ()
+
+  fun check_prop_constraint (n:effect) (i,rep,lvopt,p:prop) (ae:effect) =  (*ae: atomic effect *)
+      (*if not i then ()   (* check only instantiation constraints *)
+      else*)
+      let
+          val () = debug_const (fn () => "Checking " ^ pr_effect n ^ " -> "
+                                         ^ pp_atomic_effect ae ^ " " ^ LambdaExp.pp_prop p)
+          fun violation p =
               let fun msg s = s ^ " constraint violation. The effect "
-                              ^ pp_eff n ^ " contains\nthe atomic effect "
-                              ^ pr_atomic_effect ae ^
+                              ^ pr_effect n ^ " contains\nthe atomic effect "
+                              ^ pp_atomic_effect ae ^
                               (if is_arrow_effect ae then ", which has no " ^ LambdaExp.pp_prop p ^ " property"
                                else "")
               in case p of
@@ -2107,39 +2243,146 @@ struct
           fun err p = deepError0 rep (violation p)
       in if is_arrow_effect ae then
            let val cs_ae = eps_get_prop_constraints ae
-           in if mem p (map #3 cs_ae) then ()
+           in if List.exists (fn (i,_,_,p') => p=p' andalso not i) cs_ae then
+                debug_const (fn () => "  CHECK - effect var with " ^ LambdaExp.pp_prop p)
               else err p
            end
          else case p of
                   LambdaExp.NOMUTprop =>
-                  if is_mut ae then err p else ()
+                  if is_mut ae then err p else debug_const (fn () => "  CHECK - not arrow effect and not mut")
                 | LambdaExp.NOPUTprop =>
-                  if is_put ae then err p else ()
+                  if is_put ae then err p else debug_const (fn () => "  CHECK - not arrow effect and not put")
                 | LambdaExp.NOEXNprop =>
-                  if is_exn ae then err p else ()
+                  if is_exn ae then err p else debug_const (fn () => "  CHECK - not arrow effect and not exn")
       end
 
   fun not_put ae = not(is_put ae)
+  infix implies
+  fun a implies b = b orelse not a
 
-  fun check_constraint (n:effect) (rep,lvopt,e:effect,putonly:bool) (ae:effect) =  (*ae: atomic effect *)
-      if putonly andalso not_put ae then () else
+  (* check that ae is consistent with the constraint (second argument);
+      ae: atomic effect of n
+      e: e # n (not putonly) and e ## n (putonly)
+   *)
+  datatype cerr = ConstraintError of unit -> unit | NoConstraintError
+
+  fun rep_inst (s,t) = Report.line ("Instance " ^ pr_effect s ^ " -> " ^ pr_effect t)
+  fun rep_instlist nil = Report.null
+    | rep_instlist [i1,i2] = Report.//(rep_inst i1,rep_inst i2)
+    | rep_instlist (i::is) = Report.//(rep_inst i,rep_instlist is)
+
+  (* [check_constraint_normal n c ae] checks that the atomic effect
+     ae, pointed to by the effect variable node n, is satisfied by the
+     constraint c *)
+
+  fun check_constraint_normal (letregions:effect list) (nopt:effect option) (c as (i,rep,instlist,lvopt,e:effect,putonly:bool)) (ae:effect) : cerr =  (*ae: atomic effect *)
+      (*if not i then NoConstraintError  (* check only instantiation constraints *)
+      else*)
       let fun violation () =
               if putonly then "Put-constraint violation"
               else "Constraint violation"
-          fun msg () = violation() ^ ". The effect "
-                      ^ pp_eff n ^ " contains\nthe atomic effect "
-                      ^ pr_atomic_effect ae ^ ", which also appears in the effect of "
-                      ^ pr_atomic_effect e
-          fun err () = deepError0 rep (msg ())
-          val aes =
-              case G.find_info e of
-                  EPS{represents=SOME aes,...} => aes
-                | EPS _ => die ("check_constraint.no represents for node " ^ pp_eff e)
-                | _ => die "check_constraint.expects eps"
-          val aes = if putonly then List.filter is_put aes else aes
-      in List.app (fn ae' => if eq_effect(ae,ae') then err ()
-                             else ()) aes
+          fun mkrep () = Report.//(rep,rep_instlist instlist)
+          val () = debug_const (fn () => "Checking " ^ (case nopt of SOME n => pr_effect n ^ " -> "
+                                                                   | NONE => "")
+                                         ^ pp_atomic_effect ae ^ " satisfies " ^
+                                         (if putonly then "?? " else "? ") ^ pr_effect e)
+      in if is_arrow_effect ae then
+           (* two possibilities: (1) putonly and there is a noput prop_constraint in ae or on n
+              or (2) there is a #e or a ##e in ae.
+            *)
+           let val cs = eps_get_constraints ae
+               val pcs = eps_get_prop_constraints ae
+               val pcs2 = case nopt of
+                              SOME n => eps_get_prop_constraints n
+                            | NONE => nil
+           in if List.exists (fn (i,_,_,p) => not i andalso p = LambdaExp.NOPUTprop) (pcs @ pcs2) then
+                ( debug_const (fn () => "  CHECK satisfied - noput")
+                ; NoConstraintError)
+              else if List.exists (fn (i,_,_,_,e',p) => not i andalso eq_effect (e,e') andalso (p implies putonly)) cs then
+                ( debug_const (fn () => "  CHECK satisfied")
+                ; NoConstraintError)
+              else
+                (* look in children if ae is letregion-bound *)
+                if mem_effect ae letregions then
+                  let val () = debug_const (fn () => "  LETREGION Bound ae (start sub): " ^ pr_effect ae)
+                      val aes = case G.find_info ae of
+                                    EPS{represents=SOME aes,...} => aes
+                                  | _ => die "check_constraint_normal.expects EPS"
+                      fun loop nil =
+                          ( debug_const (fn () => "  CHECK satisfied - sub")
+                          ; NoConstraintError)
+                        | loop (ae::aes) =
+                          case check_constraint_normal letregions nopt c ae of
+                              NoConstraintError => loop aes
+                            | ConstraintError rep =>
+                              case check_constraint_reversed letregions c ae of
+                                  NoConstraintError => loop aes
+                                | _ => ConstraintError rep
+                  in loop aes
+                  end
+                else if mem_effect e letregions then
+                  check_constraint_reversed letregions c ae
+                else
+                  ConstraintError (fn () => deepError0 (mkrep())
+                                                       (violation() ^ ". Constraint not discharged by a satisfying constraint."))
+           end
+         else if putonly andalso not_put ae then
+           ( debug_const (fn () => "  CHECK satisfied noput")
+           ; NoConstraintError)
+         else
+           (* ae is not an effect variable! *)
+           let fun msg () = violation() ^ ". The effect "
+                               ^ (case nopt of SOME n => pr_effect n ^ " "
+                                             | NONE => "") ^ "contains\nthe atomic effect "
+                               ^ pp_atomic_effect ae ^ ", which also appears in the effect of "
+                               ^ pp_atomic_effect e
+                  fun err () = deepError0 (mkrep()) (msg())
+                  val aes =
+                      case G.find_info e of
+                          EPS{represents=SOME aes,...} => aes
+                        | EPS _ => die ("check_constraint.no represents for node " ^ pr_effect e)
+                        | PUT => [e]
+                        | GET => [e]
+                        | MUT => [e]
+                        | _ => die "check_constraint.expects atomic effect"
+                  val aes' = if putonly then List.filter is_put aes else aes
+              in if List.exists (fn ae' => eq_effect(ae,ae')) aes'
+                 then ConstraintError (fn () => err ())
+                 else let val pcs = eps_get_prop_constraints e
+                      in if putonly andalso
+                            List.exists (fn (i,_,_,p) => not i andalso p = LambdaExp.NOPUTprop) pcs
+                         then
+                           ( debug_const (fn () => "  CHECK satisfied - noput2")
+                           ; NoConstraintError)
+                         else
+                           if mem_effect e letregions then
+                             case List.filter is_arrow_effect aes of
+                                 nil => NoConstraintError
+                               | eps :: _ => ConstraintError
+                                               (fn () =>
+                                                   deepError0 (mkrep())
+                                                              (violation() ^ ". The effect "
+                                                               ^ (case nopt of SOME n => pr_effect n ^ " "
+                                                                             | NONE => "")
+                                                               ^ "contains\nthe atomic effect "
+                                                               ^ pp_atomic_effect ae
+                                                               ^ ", which I cannot conclude does not appear in "
+                                                               ^ pp_atomic_effect e ^ ", which contains " ^ pr_effect eps))
+                           else ConstraintError (fn () => err())
+                      end
+              end
       end
+
+  and check_constraint_reversed letregions (i,rep,il,lvopt,e,putonly) ae : cerr =
+      if is_arrow_effect e then
+        ( debug_const(fn() => "Reverse check")
+        ; check_constraint_normal letregions NONE (i,rep,il,lvopt,ae,putonly) e)
+      else NoConstraintError
+
+  fun check_constraint (letregions:effect list) (n:effect) c ae =
+      case check_constraint_normal letregions (SOME n) c ae of
+          NoConstraintError => ()
+        | ConstraintError err => err()
 
   fun bottom_up_eval (g : effect list) : effect list =
       (*
@@ -2215,23 +2458,25 @@ struct
                              *)
       in
         ( G.unvisit g
-        ; if explicit_regions() then MultiMerge.multimerge nodess else nil
+        ; if reml_p() then MultiMerge.multimerge nodess else nil
         )
       end
 
-  fun check_node (n:effect) : unit =
+  fun check_node (letregions:effect list) (n:effect) : unit =
       case G.find_info n of
           EPS{represents,prop_constraints,constraints,...} =>
-          let (*val () = print ("Checking " ^ pp_eff n
+          let
+(*
+              val () = print ("Checking " ^ pr_effect n
                               ^ " pcs: " ^ Int.toString(length(!prop_constraints))
                               ^ " cs: " ^ Int.toString (length(!constraints))
                               ^ "\n")
-              *)
+*)
               val aes = case represents of SOME aes => aes
                                          | NONE => die "check_node.represents list not set"
           in List.app (fn c => List.app (check_prop_constraint n c) aes)
                       (!prop_constraints)
-           ; List.app (fn c => List.app (check_constraint n c) aes)
+           ; List.app (fn c => List.app (check_constraint letregions n c) aes)
                       (!constraints)
           end
         | _ => ()
@@ -2242,15 +2487,19 @@ struct
       we now first contract all cycles, then
       do a bottom-up evaluation of the graph *)
 
-  fun eval_phis (phis: effect list) : unit =
+  fun eval_phis (phis: effect list) : effect list =
       let val nodes = contract_effects phis
           val allnodes = bottom_up_eval nodes
-      in List.app check_node allnodes
-         handle ? as Report.DeepError _ => raise ?
-              | exn => (say "\neval_phis failed; nodes = ";
-                        say_etas (layoutEtas nodes);
-                        raise exn)
+                         handle ? as Report.DeepError _ => raise ?
+                              | exn => (say "\neval_phis failed; nodes = ";
+                                        say_etas (layoutEtas nodes);
+                                        raise exn)
+      in allnodes
       end
+
+  fun check_nodes {allnodes:effect list, letregions: effect list} =
+      List.app (check_node letregions) allnodes
+      handle ? as Report.DeepError _ => raise ?
 
   fun represents eps =
       case G.find_info eps of
