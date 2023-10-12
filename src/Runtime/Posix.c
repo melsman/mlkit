@@ -520,13 +520,12 @@ sml_stat(uintptr_t pair, String file)
 }
 
 uintptr_t
-sml_fstat(uintptr_t pair, long fd)
+sml_fstat(uintptr_t pair, size_t fd)
 {
-  fd = convertIntToC(fd);
   int res;
   struct stat b;
   mkTagPairML(pair);
-  res = fstat((int) fd, &b);
+  res = fstat(convertIntToC(fd), &b);
   if (res == -1)
   {
     elemRecordML(pair,0) = convertIntToML(-1);
