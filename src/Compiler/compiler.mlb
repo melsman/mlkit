@@ -39,7 +39,7 @@ in
   end
 
   local open Tools Manager Environment
-        ../Version.sml
+            ../Version.sml
   in ../Common/KitCompiler.sml
   end
   ../Common/KitMain.sml

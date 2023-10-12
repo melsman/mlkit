@@ -112,6 +112,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    fun go_files [file] =
 		((Manager.comp file; OS.Process.success)
 		 handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
+              | go_files nil = ( print_greetings()
+                               ; Repl.run() )
 	      | go_files _ = (print_greetings(); print_usage(); print_options(); raise Fail "")
 
 	    fun go_options options =

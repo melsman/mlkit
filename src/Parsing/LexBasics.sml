@@ -7,7 +7,7 @@ structure LexBasics: LEX_BASICS =
 					getLine: int -> string
 				       }
 		 | DUMMY
-    
+
 
     datatype SourceReader =
 	SOURCE_READER of {name: string,
@@ -28,7 +28,7 @@ structure LexBasics: LEX_BASICS =
       SOURCE_TEXT of {filename: string,
 		      lines: {absCharacter: int, line: string} list
 		     }
-		      
+
    (* Reports, diags etc. *)
 
     type Report = Report.Report
@@ -40,32 +40,32 @@ structure LexBasics: LEX_BASICS =
       fun spaces (n,a) = if n<=0 then a
 			 else spaces(n-1,#" "::a)
 
-      fun untabifyL(col, #"\t" :: rest) =
+      fun untabifyL (col, #"\t" :: rest) =
 	let val gap = 8 - col mod 8
 	in spaces (gap, untabifyL(col + gap, rest))
 	end
-	| untabifyL(col, x :: rest) = x :: untabifyL(col + 1, rest)
-	| untabifyL(_, nil) = nil
+	| untabifyL (col, x :: rest) = x :: untabifyL(col + 1, rest)
+	| untabifyL (_, nil) = nil
     in
       fun untabify indent line = implode(untabifyL(indent, explode line))
     end
 
 
-    fun withAbsCharacter(n, (x :: xs)) =
+    fun withAbsCharacter (n, (x :: xs)) =
       {absCharacter=n, line=x} :: withAbsCharacter(n+size x, xs)
-      | withAbsCharacter(_, nil) = nil
+      | withAbsCharacter (_, nil) = nil
 
     fun sourceReader getc cs =
-      let 
+      let
 	fun loop (cs, l, ll) =
 	  case getc cs
 	    of SOME(#"\n",cs) => loop(cs, [], implode(rev(#"\n"::l)) :: ll)
-	     | SOME(c, cs) => loop(cs, c::l, ll) 
+	     | SOME(c, cs) => loop(cs, c::l, ll)
 	     | NONE => SOME(rev(implode(rev l) :: ll),cs)
       in loop (cs, [], [])
       end
-      
-    fun stringToSourceText(filename, string) =
+
+    fun stringToSourceText (filename, string) =
       let
 	fun process s =
 	  case StringCvt.scanString sourceReader s
@@ -86,7 +86,7 @@ structure LexBasics: LEX_BASICS =
 	    of SOME lines => lines
 	     | NONE => [""]
 	val lines = map (untabify 0) (process stream)
-      in 
+      in
 	TextIO.closeIn stream;
 	SOURCE_TEXT{filename=filename, lines=withAbsCharacter(0, lines)}
       end
@@ -96,7 +96,7 @@ structure LexBasics: LEX_BASICS =
       function), and we also use it when reading interactively and
       making up a SourceText as we go. *)
 
-    fun positionFn(sourceTextRef, absPos) =
+    fun positionFn (sourceTextRef, absPos) =
 					(* Must start from very top... *)
       let
 	fun pr n =
@@ -123,7 +123,7 @@ structure LexBasics: LEX_BASICS =
 	  let
 	    val ref(SOURCE_TEXT{filename, lines}) = sourceTextRef
 
-	    fun search(n, previousLine, (L as {absCharacter, line}) :: rest) =
+	    fun search (n, previousLine, (L as {absCharacter, line}) :: rest) =
 		  if absPos < absCharacter
 				(* The next line in the list is beyond
 				   this character position, so we must want
@@ -160,7 +160,7 @@ structure LexBasics: LEX_BASICS =
 	)
       end
 
-    fun lexFromSourceText(source as SOURCE_TEXT{filename, lines=allLines}) =
+    fun lexFromSourceText (source as SOURCE_TEXT{filename, lines=allLines}) =
       let
 	val theLines = ref allLines
 
@@ -198,20 +198,20 @@ structure LexBasics: LEX_BASICS =
 
     val prompt = ". "
 
-(*
-    fun lexFromStdIn() =
+    fun lexFromStdIn () =
       let
 	val name = "std_in"
 	val theSource = ref(SOURCE_TEXT{filename=name, lines=nil})
 
-	fun getLine() =
+	fun getLine () =
 	  let
 	   (* Prompt and get the line: *)
-	    val _ = BasicIO.print prompt
+	    val _ = print prompt
 
 	    val line =
-	      untabify (String.size prompt) (case TextIO.inputLine TextIO.stdIn of
-						 NONE => "" | SOME s => s)
+	        untabify (String.size prompt)
+                         (case TextIO.inputLine TextIO.stdIn of
+			      NONE => "" | SOME s => s)
 
 	   (* The lines (and character positions) that we've got so far,
 	      in reverse order (latest at front of list): *)
@@ -240,12 +240,11 @@ structure LexBasics: LEX_BASICS =
 	  positionFn=fn absPos => positionFn(theSource, absPos)
 	}
       end
-*)
 
    (* highlight underlines part of a line. Oh, the line will probably
       still carry the trailing `\n'. *)
 
-    fun highlight(line, column, width) =
+    fun highlight (line, column, width) =
       let
 	fun drop_nl [] = []
 	  | drop_nl (#"\n"::rest) = drop_nl rest
@@ -289,7 +288,7 @@ structure LexBasics: LEX_BASICS =
 	    val len1 = String.size theLine1 - 1	(* remove `\n'. *)
 	    val len2 = String.size theLine2 - 1
 
-	    fun highlightAll(fromL, toL) =
+	    fun highlightAll (fromL, toL) =
 		  if fromL > toL then Report.null
 		  else let val line = getLine fromL
 			   val width = String.size line - 1
@@ -322,7 +321,7 @@ structure LexBasics: LEX_BASICS =
     fun output_source {os: TextIO.outstream, left=POSITION posLfn, right=POSITION posRfn} : unit =
       let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
 	  val {line=line2:int, column=column2:int, ...} = posRfn()
-	    
+
 	    (* If the first character is not `:' or `=' (it shows!!) then we emit `='. *)
 	  fun patch s = case explode s
 			     of [] => Crash.impossible "LexBasics.output_source"
@@ -331,21 +330,21 @@ structure LexBasics: LEX_BASICS =
 			      | _ => " = " ^ s
 
 	  fun extract s a = String.extract a handle e => (print ("extract : " ^ s ^ "\n"); raise e)
-      in if line1 = line2 then 
+      in if line1 = line2 then
 	   let val line = getLine line1
 	       (* val _ = print ("line = " ^ line ^ "\n"); *)
 	   in TextIO.output(os,patch(extract "line" (line, column1, SOME (column2-column1))))
 	   end
-	 else 
+	 else
 	   let val first = getLine line1
 	       (* val _ = print ("first = " ^ first ^ "\n"); *)
 	       val first = patch(extract "first" (first, column1, NONE))
 	       (* val _ = print ("first = " ^ first ^ "\n"); *)
 	       val last = getLine line2
 	       (* val _ = print ("last = " ^ last ^ "\n"); *)
-	       val last = extract "last" (last, 0, SOME column2) 
+	       val last = extract "last" (last, 0, SOME column2)
 	       (* val _ = print ("last = " ^ last ^ "\n"); *)
-	       fun get_lines (l, lines) = 
+	       fun get_lines (l, lines) =
 		 if l = line1 then first :: lines
 		 else get_lines(l-1,getLine l :: lines)
 	   in List.app (fn s => TextIO.output(os,s)) (get_lines(line2-1,[last]))
@@ -356,9 +355,9 @@ structure LexBasics: LEX_BASICS =
     fun get_source {left=POSITION posLfn, right=POSITION posRfn} : string =
       let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
 	  val {line=line2:int, column=column2:int, ...} = posRfn()
-	    
+
 	    (* If the first character is not `:' or `=' (it shows!!) then we emit `='. *)
-	  fun patch s = 
+	  fun patch s =
               (case String.sub(s,0) of
                   #":" => s
                 | #"=" => s
@@ -366,21 +365,21 @@ structure LexBasics: LEX_BASICS =
               ) handle _ => Crash.impossible "LexBasics.get_source"
 
 	  fun extract s a = String.extract a handle e => (print ("extract : " ^ s ^ "\n"); raise e)
-      in if line1 = line2 then 
+      in if line1 = line2 then
 	   let val line = getLine line1
 	       (* val _ = print ("line = " ^ line ^ "\n"); *)
 	   in patch(extract "line" (line, column1, SOME (column2-column1)))
 	   end
-	 else 
+	 else
 	   let val first = getLine line1
 	       (* val _ = print ("first = " ^ first ^ "\n"); *)
 	       val first = patch(extract "first" (first, column1, NONE))
 	       (* val _ = print ("first = " ^ first ^ "\n"); *)
 	       val last = getLine line2
 	       (* val _ = print ("last = " ^ last ^ "\n"); *)
-	       val last = extract "last" (last, 0, SOME column2) 
+	       val last = extract "last" (last, 0, SOME column2)
 	       (* val _ = print ("last = " ^ last ^ "\n"); *)
-	       fun get_lines (l, lines) = 
+	       fun get_lines (l, lines) =
 		 if l = line1 then first :: lines
 		 else get_lines(l-1,getLine l :: lines)
 	   in String.concat (get_lines(line2-1,[last]))
@@ -393,4 +392,4 @@ structure LexBasics: LEX_BASICS =
 
     exception LEXICAL_ERROR of pos * string
 			(* Used to signal lexical errors to the parser. *)
-  end;
+  end

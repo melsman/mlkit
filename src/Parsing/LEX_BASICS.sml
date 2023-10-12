@@ -20,7 +20,7 @@ signature LEX_BASICS =
 				   lot of calculation for every token lexed.
 				   We don't mind paying the price when the
 				   position needs to be printed. *)
-    
+
 
     datatype SourceReader =
       SOURCE_READER of {name: string,
@@ -37,7 +37,7 @@ signature LEX_BASICS =
 
     val lexFromFile: string -> SourceReader (*may raise Io s*)
     val lexFromString: string -> SourceReader
-(*    val lexFromStdIn: unit -> SourceReader *)
+    val lexFromStdIn: unit -> SourceReader
 
     exception LEXICAL_ERROR of pos * string
 				(* The (generated) lexer raises this on a

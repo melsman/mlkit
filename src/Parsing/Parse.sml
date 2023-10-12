@@ -3,7 +3,7 @@
    on the base support modules for MLYacc (MyBase.sml), and my support functors
    - these are the functors that are referred to freely. *)
 
-structure Parse: PARSE =
+structure Parse : PARSE =
   struct
     structure Stream = Stream()
 
@@ -56,28 +56,23 @@ structure Parse: PARSE =
 
     (* For profiling *)
     fun sameToken a = LrParser.Token.sameToken a
-    fun Stream_get a = Stream.get a
-    fun Stream_cons a = Stream.cons a
-    fun TopdecParser_parse a = TopdecParser.parse a
 
-    fun parseStream(STATE lazyStream) =
+    fun parseStream (STATE lazyStream) =
       let
-        val (firstToken, rest) = Stream_get lazyStream
-        val lazyStream = Stream_cons(firstToken, rest)
+        val (firstToken, rest) = Stream.get lazyStream
+        val lazyStream = Stream.cons(firstToken, rest)
                                       (* Streams side-effect (yuck). *)
       in
         if sameToken(firstToken, eof)
-        then
-          (PS_EOF
-          )
+        then PS_EOF
+
         else if sameToken(firstToken, sc)
-        then
-          (parseStream(STATE rest)
-          )
+        then parseStream(STATE rest)
+
         else
           (let
              val (topdec, lazyStream') =
-               TopdecParser_parse(0, lazyStream,
+               TopdecParser.parse(0, lazyStream,
                                   fn (x, l, r) => raise ESCAPE (x, (l, r)),
                                   ()
                                  )
@@ -89,19 +84,19 @@ structure Parse: PARSE =
              PS_SUCCESS(topdec, STATE lazyStream')
            end
           ) handle ESCAPE (text, (lPos, rPos)) =>
-                     PS_ERROR (LexBasics.reportPosition {left=lPos, right=rPos}
-			       // Report.line text)
+                   PS_ERROR (LexBasics.reportPosition {left=lPos, right=rPos}
+			                              // Report.line text)
       end
 
     type topdec = TopdecGrammar.topdec
     type InfixBasis = Infixing.InfixBasis
     type SourceReader = LexBasics.SourceReader
 
-(*    val sourceFromStdIn = LexBasics.lexFromStdIn *)
+    val sourceFromStdIn = LexBasics.lexFromStdIn
     val sourceFromFile = LexBasics.lexFromFile (*may raise Io s*)
     val sourceFromString = LexBasics.lexFromString
 
-    fun nameOf(LexBasics.SOURCE_READER{name, ...}) = name
+    fun nameOf (LexBasics.SOURCE_READER{name, ...}) = name
 
     datatype Result = SUCCESS of InfixBasis * topdec * State
                     | ERROR of Report
