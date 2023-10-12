@@ -8,3 +8,4 @@ Posix.IO.close    	OK
 Posix.Process.fork    	OK
 Posix.IO.close    	OK
 Posix.uname    	OK
+Posix.FileSys.fstat    	OK
