@@ -280,11 +280,14 @@ fun repl (stepno, B:Basis, state, rp:rp, libs_acc) : OS.Process.status =
            end
          | (_, PE.FAILURE (report,errs)) =>
            ( Report.print report
-           ; repl (stepno+1,
+           ; (*repl (stepno+1,
                    B,
                    PE.begin_stdin(),
                    rp,
-                   libs_acc)
+                   libs_acc)*)
+             Posix.Process.kill (Posix.Process.K_PROC (#pid rp), Posix.Signal.kill)
+           ; Posix.Process.wait()
+           ; OS.Process.exit OS.Process.failure
            )
          | (NONE, PE.SUCCESS _) => die "repl - impossible"
     end
