@@ -98,7 +98,7 @@ fun receive_EXN_or_DONE (fd:Posix.FileSys.file_desc) : loadrun_msg =
         val msg_done = "DONE;"
         fun try_msg msg s =
             let val m = Posix.IO.readVec (fd, size msg - size s)
-                val s = s ^ m
+                val s = s ^ Byte.bytesToString m
             in if size s < size msg_exn then try_msg msg s
                else if s = msg then NONE
                else SOME s
