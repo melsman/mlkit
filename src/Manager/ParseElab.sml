@@ -25,11 +25,13 @@ structure ParseElab: PARSE_ELAB =
     type InfixBasis = InfixBasis.Basis
     type ElabBasis = ElabTopdec.StaticBasis
 
+    type renderer = TopLevelReport.renderer
+
     datatype Result =
-        SUCCESS of {report: Report, infB: InfixBasis, elabB: ElabBasis, topdec: topdec}
+        SUCCESS of {doreport: renderer option -> Report, infB: InfixBasis, elabB: ElabBasis, topdec: topdec}
       | FAILURE of Report * ErrorCode.ErrorCode list
 
-    fun elab (absprjid : absprjid, infB, elabB, topdec) : Result =
+    fun elab (absprjid : absprjid, infB', elabB, topdec) : Result =
           let
 	      val (elabB', topdec') =
                   ElabTopdec.elab_topdec (absprjid, elabB, topdec)
@@ -37,13 +39,13 @@ structure ParseElab: PARSE_ELAB =
 	    (case ErrorTraverse.traverse topdec' of
 	       ErrorTraverse.SUCCESS =>
 		 let
-		     val report =
+		     val doreport =
                          if !report_file_sig then
-			   TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
-			 else Report.null
+			   fn render => TopLevelReport.report {infB=infB', elabB=elabB', render=render}
+			 else fn _ => Report.null
 		 in
-		   SUCCESS {report =report,
-			    infB = infB, elabB = elabB', topdec = topdec'}
+		   SUCCESS {doreport = doreport,
+			    infB = infB', elabB = elabB', topdec = topdec'}
 		 end
 	     | ErrorTraverse.FAILURE (error_report, error_codes) =>
                FAILURE (error_report, error_codes))
@@ -115,7 +117,7 @@ structure ParseElab: PARSE_ELAB =
 	else ()
 
     fun empty_success () =
-        SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
+        SUCCESS{doreport=fn _ => Report.null, infB=InfixBasis.emptyB,
 		elabB=ModuleEnvironments.B.empty,
                 topdec=PostElabTopdecGrammar.empty_topdec}
 
@@ -129,11 +131,11 @@ structure ParseElab: PARSE_ELAB =
 	  val _ = chat "[elaboration..."
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res
-			  of (infB, SOME topdec) =>
+			  of (infB', SOME topdec) =>
                              (maybe_print_topdec topdec;
-			      elab (absprjid, infB, elabB, topdec)
+			      elab (absprjid, infB', elabB, topdec)
 			      handle E => (Timing.timing_end "Elab" ; raise E))
-			   | (infB, NONE) => empty_success()
+			   | (_, NONE) => empty_success()
 	  val _ = Timing.timing_end "Elab"
 	  val _ = chat "]\n"
       in elab_res
@@ -159,7 +161,7 @@ structure ParseElab: PARSE_ELAB =
                  val () = maybe_print_topdec topdec
                  val _ = chat "[elaboration..."
 	         val _ = Timing.timing_begin()
-	         val elab_res = elab (absprjid, infB, elabB, topdec)
+	         val elab_res = elab (absprjid, infB', elabB, topdec)
 			        handle E => (Timing.timing_end "Elab" ; raise E)
                  val _ = Timing.timing_end "Elab"
 	         val _ = chat "]\n"

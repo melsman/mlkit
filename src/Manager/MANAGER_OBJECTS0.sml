@@ -11,11 +11,11 @@ signature MANAGER_OBJECTS0 =
        path. This special treatment of basis.pm makes it possible
        to relocate the distribution of the kit, with the basis library
        compiled. *)
-		    
+
     type absprjid = ModuleEnvironments.absprjid
 
     type funid = FunId.funid
-    type IntFunEnv and IntBasis 
+    type IntFunEnv and IntBasis
     type ElabEnv = Environments.Env
     type strid = StrId.strid
     type InfixBasis = InfixBasis.Basis
@@ -37,14 +37,14 @@ signature MANAGER_OBJECTS0 =
 	val initial : IntFunEnv
 	val plus : IntFunEnv * IntFunEnv -> IntFunEnv
 	val add : funid * (absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis) * IntFunEnv -> IntFunEnv
-	val lookup : IntFunEnv -> funid -> absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis  
+	val lookup : IntFunEnv -> funid -> absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis
 	val restrict : IntFunEnv * funid list -> IntFunEnv
 	val enrich : IntFunEnv * IntFunEnv -> bool
 	val layout : IntFunEnv -> StringTree
 	val pu : IntFunEnv Pickle.pu
       end
 
-    type IntSigEnv 
+    type IntSigEnv
     type sigid = SigId.sigid
     structure IntSigEnv :
       sig
@@ -124,6 +124,8 @@ signature MANAGER_OBJECTS0 =
 	val initialBasis1 : unit -> Basis1
 	val matchBasis1 : Basis1 * Basis1 -> Basis1
 	val eqBasis1 : Basis1 * Basis1 -> bool
-      end    
+      end
 
+    datatype 'a cval = VAR of 'a | STR of string | UNKN
+    val retrieve_longid : Basis -> Ident.longid -> string cval
   end

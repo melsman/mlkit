@@ -2540,4 +2540,10 @@ struct
     end
 
   val pu = ClosConvEnv.pu
+
+  fun retrieve_lvar (env:env) (lvar:lvar) : label option =
+      case ClosConvEnv.lookupVarOpt env lvar of
+          SOME (ClosConvEnv.LABEL l) => SOME l
+        | _ => NONE
+
 end

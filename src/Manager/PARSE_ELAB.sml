@@ -10,8 +10,9 @@ signature PARSE_ELAB =
     datatype src = SrcFile of string
                  | SrcString of string
 
-
-    datatype Result = SUCCESS of {report: Report, infB: InfixBasis,
+    type renderer = TopLevelReport.renderer
+    datatype Result = SUCCESS of {doreport: renderer option -> Report,
+                                  infB: InfixBasis,
 				  elabB: ElabBasis, topdec: topdec}
 		    | FAILURE of Report * ErrorCode.ErrorCode list
 

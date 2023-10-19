@@ -44,7 +44,13 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
       can happily handle the cases where no dynamic information is needed.
       Oh: we deal with the infix basis here as well. *)
 
-    fun reportVE (render, pathR, VE, bindings) =
+    type id = Ident.id
+    type strid = StrId.strid
+
+    type TypeScheme = StatObject.TypeScheme
+    type renderer = strid list * id * TypeScheme -> string
+
+    fun reportVE (render:renderer, pathR, VE, bindings) =
       VE.report
         (fn (id, VE.LONGVAR sigma) =>
               Report.line ("val "
@@ -67,7 +73,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
                                    | NONE => Crash.impossible "TopLevelReport.reportVE"))) ,
          VE)
 
-    fun reportSig(sigid, Sig) =
+    fun reportSig (sigid, Sig) =
       let
         val (_, E) = Sigma.to_T_and_E Sig
       in
@@ -94,7 +100,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
                             // Report.line "   end")
       end
 
-    and reportSE(render, pathR, SE, bindings) =
+    and reportSE (render, pathR, SE, bindings) =
       SE.report(
         fn (strId, E) =>
           Report.line("structure "
@@ -111,7 +117,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
           reportEnv (fn _ => Crash.impossible "TopLevelReport.reportEnvSTATIC",
                      [], E, false)
 
-    and reportEnv(render, pathR, env, bindings) =
+    and reportEnv (render, pathR, env, bindings) =
       let
         val (SE, TE, VE, _) = E.un env
       in
@@ -120,7 +126,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
         // reportVE(render, pathR, VE, bindings)
       end
 
-    fun reportStaticBasis(render, sb: ElabBasis, bindings: bool)
+    fun reportStaticBasis (render, sb: ElabBasis, bindings: bool)
           : Report =
       let
         val funenv = B.to_F sb
@@ -134,12 +140,12 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
         // reportEnv(render, nil, env, bindings)
       end
 
-    fun report{infB=ib,elabB=sb, bindings} =
+    fun report {infB=ib,elabB=sb,render:renderer option} =
       let
-(*      val db =  (* Might be void (ELAB_ONLY) *) *)
-
-        fun render(pathR, id, tyScheme) = ""
-(*        ValPrint.print(ValPrint.locate(db, rev pathR, id), tyScheme) *)
+        val (bindings, render) =
+            case render of
+                NONE => (false, fn _ => "")
+              | SOME render => (true, fn (p,id,sch) => render (rev p, id, sch))
       in
         Report.decorate("> ", InfixBasis.reportBasis ib
                               // reportStaticBasis(render, sb, bindings)

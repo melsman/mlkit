@@ -1573,10 +1573,10 @@ good *)
            [])
         end
     | _ => die "S: unknown expression"
-    ) handle
+    ) (*handle
         Crash.CRASH => die_from_S e
       | Bind => die_from_S e
-      | Match => die_from_S e
+      | Match => die_from_S e *)
 
   (*
    and S_built_in(B,lvar, es) =

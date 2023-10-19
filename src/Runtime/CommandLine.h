@@ -9,7 +9,7 @@
 #include "Flags.h"
 #include "String.h"
 
-/* 
+/*
 
 The executable run may take command line arguments to either the
 runtime system or the application. Command line arguments for the
@@ -23,7 +23,7 @@ for the runtime system are first. For instance, in
 
 the first commandline argument for the application is -arg1 because
 -tags_only is recognized as a Kit command line argument.
- 
+
 */
 
 /*----------------------------------------*
@@ -36,6 +36,8 @@ extern long report_gc;
 extern long only_major_gc;
 #endif
 extern double heap_to_live_ratio;
+extern char * command_pipe;  // Named command pipe for REPL
+extern char * reply_pipe;    // Named reply pipe for REPL
 
 /*----------------------------------------*
  * Prototypes                             *

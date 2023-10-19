@@ -27,6 +27,7 @@ signature NATIVE_COMPILE =
     type 'a at
     type phsize
     type ('a,'b,'c) LambdaPgm
+    type lvar
 
     type label
     type ('sty,'offset,'aty) LinePrg
@@ -41,6 +42,8 @@ signature NATIVE_COMPILE =
 		    imports:label list * label list,
 		    exports:label list * label list,
 		    safe:bool}
+
+    val retrieve_lvar : BackendEnv -> lvar -> label option
   end
 
 
@@ -91,6 +94,7 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
     type 'a at = 'a PhysSizeInf.at
     type phsize = PhysSizeInf.phsize
     type ('a, 'b, 'c) LambdaPgm = ('a, 'b, 'c) PhysSizeInf.LambdaPgm
+    type lvar = Lvars.lvar
     type label = SubstAndSimplify.label
     type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
     type offset = SubstAndSimplify.offset
@@ -104,7 +108,7 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
             TextIO.output(!Flags.log, "\n\n"))
 
-    fun display(title, tree) =
+    fun display (title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
                    indent=3,
@@ -162,5 +166,8 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 	 {main_lab=main_lab, code=code, imports=imports, exports=exports,
 	  safe=safe})
       end
+
+    fun retrieve_lvar (closenv:BackendEnv) (lvar:lvar) : label option =
+        ClosExp.retrieve_lvar closenv lvar
 
   end

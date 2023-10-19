@@ -45,7 +45,7 @@ in
      local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
 
-  local open Tools Basics CompilerObjects
+  local open Tools Basics SyntaxObjects CompilerObjects Pickle
   in Repl.sml
   end
 end

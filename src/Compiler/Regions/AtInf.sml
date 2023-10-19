@@ -589,7 +589,7 @@ structure AtInf: AT_INF =
                       let fun f {lvar,sigma,other,place} = {lvar=lvar,sigma=sigma,other=(),place=place}
                       in FRAME{declared_lvars=map f declared_lvars, declared_excons = declared_excons}
                       end
-                   ) handle Crash.CRASH =>
+                   ) handle _ =>
                            (log "\nStorage Mode Analysis failed at expression:";
                             dump(MulExp.layoutLambdaExp(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)
                              e);

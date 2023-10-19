@@ -169,7 +169,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       end
 
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
-    fun log_st (st) : unit = PP.outputTree (log, st, 70)
     fun pr_st (st) : unit = PP.outputTree (print, st, 120)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
     fun chatf f = if !Flags.chat then log (f() ^ "\n") else ()
@@ -399,28 +398,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                     in process(lfs,hce,modc)
                     end
             end
-(*
-        fun doUnpickleBases ebfiles : Basis =
-            let val _ = chat "\n [Begin unpickling...]\n"
-                fun process (nil,is,B) = B
-                  | process (ebfile::ebfiles,is,B) =
-                    let val s = readFile ebfile
-                        val ((_,B'),is) = Pickle.unpickler pu_NB
-                            (Pickle.fromStringHashCons is s)
-                    in process(ebfiles,is,Basis.plus(B,B'))
-                    end
-                val B0 = Basis.initial()
-                val B =
-                    case ebfiles of
-                        nil => B0
-                      | ebfile::ebfiles =>
-                            let val s = readFile ebfile
-                                val ((_,B),is) = Pickle.unpickler pu_NB (Pickle.fromString s)
-                            in process(ebfiles,is,Basis.plus(B0,B))
-                            end handle _ => die ("doUnpickleBases. error \n")
-            in B
-            end
-*)
+
         fun doUnpickleBases0 ebfiles
             : Pickle.hce * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
             let val _ = chat "\n [Begin unpickling elaboration bases...]\n"
@@ -599,7 +577,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                     (  print "\n"
                      ; print_error_report report
                      ; raise PARSE_ELAB_ERROR error_codes)
-              | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
+              | ParseElab.SUCCESS {doreport,infB=infB',elabB=elabB',topdec} =>
               let
 	        val _ = maybe_print_topdec "AST after elaboration" topdec
                 val _ = chat "[finding free identifiers begin...]"
@@ -681,9 +659,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val () = if export_basis_js() then writeBasisJs smlfile B'Closed
                          else ()
 
-              in print_result_report report;
+              in print_result_report (doreport NONE);
                 log_cleanup()
-              end handle ? => (print_result_report report; raise ?)
+              end handle ? => (print_result_report (doreport NONE); raise ?)
                 ) handle XX => (log_cleanup(); raise XX)
       end
 

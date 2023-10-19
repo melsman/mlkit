@@ -22,6 +22,7 @@ structure CompileJS: COMPILE_JS =
     structure PP = PrettyPrint
 
     structure CE = CompilerEnv
+    type lvar = CE.lvar
 
     type jse = ExpToJs.Env.t
 
@@ -30,6 +31,7 @@ structure CompileJS: COMPILE_JS =
     type strdec = CompileToLamb.strdec
     type funid = CompileToLamb.funid
     type strid = CompileToLamb.strid
+    type longid = CompileToLamb.longid
     type Env = CompileToLamb.Env
     type strexp = CompileToLamb.strexp
     type LambdaPgm = CompileToLamb.target
@@ -66,5 +68,11 @@ structure CompileJS: COMPILE_JS =
          ; print ("[wrote JavaScript file:\t" ^ filename ^ "]\n")
          ; filename
 	end
+
+    datatype cval = datatype CompileToLamb.cval
+    fun retrieve_longid (CE:CEnv) (B',_) (longid:longid) : lvar cval =
+        let (*val (B',_) = CompileBasisJS.de_CompileBasis B *)
+        in CompileToLamb.retrieve_longid CE B' longid
+        end
 
   end

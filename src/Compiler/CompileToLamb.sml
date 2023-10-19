@@ -11,6 +11,8 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     type strexp = CompileDec.strexp
     type funid = CompileDec.funid
     type strid = CompileDec.strid
+    type longid = CompilerEnv.longid
+    type lvar = CompilerEnv.lvar
 
     fun die s = Crash.impossible ("CompileToLamb." ^ s)
 
@@ -22,10 +24,10 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     val type_check_lambda_p = Flags.is_on0 "type_check_lambda"
 
-    val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression" 
+    val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression"
 
-    val safeLinkTimeElimination = Flags.add_bool_entry 
-	{long="safeLinkTimeElimination", short=NONE, 
+    val safeLinkTimeElimination = Flags.add_bool_entry
+	{long="safeLinkTimeElimination", short=NONE,
 	 menu=["Control",
 	       "safeLinkTimeElimination"],
 	 item=ref false, neg=false, desc=
@@ -38,17 +40,17 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
 
     local
-      fun msg(s: string) = 
+      fun msg(s: string) =
 	  (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     in
       fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
     end
 
-    fun fast_pr stringtree = 
+    fun fast_pr stringtree =
 	(PP.outputTree ((fn s => TextIO.output(!Flags.log, s)),
 			stringtree, !Flags.colwidth);
 	 TextIO.output(!Flags.log, "\n\n"))
-	
+
     fun display(title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
@@ -64,8 +66,8 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
     (*  Abbreviations                                                         *)
     (* ---------------------------------------------------------------------- *)
-      
-    val layoutLambdaPgm = LambdaExp.layoutLambdaPgm 
+
+    val layoutLambdaPgm = LambdaExp.layoutLambdaPgm
 
     (* ---------------------------------------------------------------------- *)
     (*  Compile the declaration using old compiler environment, ce            *)
@@ -74,30 +76,30 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     fun ast2lambda fe (ce, ne, strdecs) =
       (chat "[Compiling abstract syntax tree into lambda language..";
 
-(*       Timing.timing_begin(); *)  
+(*       Timing.timing_begin(); *)
 
        (* timing does not work with functor inlining because it triggers reelaboration,
 	* which is also timed. mael 2003-02-18 *)
 
        let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
-				       * Lambda programs are closed w.r.t. type variables, because code 
-				       * generation of the strdecs is done after an entire top-level 
+				       * Lambda programs are closed w.r.t. type variables, because code
+				       * generation of the strdecs is done after an entire top-level
 				       * declaration is elaborated. ME 1998-09-04 *)
 (*
-	   val (ce1, lamb) =  Timing.timing_end_res 
+	   val (ce1, lamb) =  Timing.timing_end_res
 	        ("ToLam", CompileDec.compileStrdecs fe ce strdecs)
 *)
 	   val (ce1, lamb) = CompileDec.compileStrdecs fe ce strdecs
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
            val _ = chat "."
-           val (lamb,ne1) = LambdaBasics.Normalize.norm(ne,lamb) 
+           val (lamb,ne1) = LambdaBasics.Normalize.norm(ne,lamb)
            val _ = chat "."
            val lamb = LambdaBasics.close lamb
-       in  
+       in
 	 chat "]\n";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
-	 (lamb, ce1, ne1, declared_lvars, declared_excons) 
+	 (lamb, ce1, ne1, declared_lvars, declared_excons)
      end)
 
     (* ------------------------------------ *)
@@ -123,9 +125,9 @@ structure CompileToLamb: COMPILE_TO_LAMB =
       if type_check_lambda_p() then
 	(chat "[Type checking lambda term...";
 	 Timing.timing_begin();
-	 let 
+	 let
 	   val env' = Timing.timing_end_res ("CheckLam",
-                                             LambdaStatSem.type_check {env = a,  
+                                             LambdaStatSem.type_check {env = a,
                                                                        letrec_polymorphism_only = false,  (* MEMO: shouldn't this be true? *)
                                                                        pgm =  b})
 	 in
@@ -143,12 +145,12 @@ structure CompileToLamb: COMPILE_TO_LAMB =
       if eliminate_polymorphic_equality_p() then
 	(chat "[Eliminating polymorphic equality...";
 	 Timing.timing_begin();
-	 let val (lamb', env') = 
+	 let val (lamb', env') =
 	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
 	 in
 	   chat "]\n";
-	   if !Flags.DEBUG_COMPILER then 
-	     (display("Lambda Program After Elimination of Pol. Eq.", 
+	   if !Flags.DEBUG_COMPILER then
+	     (display("Lambda Program After Elimination of Pol. Eq.",
 		      layoutLambdaPgm lamb');
 	      display("Pol. Eq. Environment", EliminateEq.layout_env env'))
 	   else ();
@@ -167,8 +169,8 @@ structure CompileToLamb: COMPILE_TO_LAMB =
           ((if optimise_p() then chat "[Optimising lambda term..."
 	    else chat "[Rewriting lambda term...");
 	   Timing.timing_begin();
-	   let 
-	     val (lamb_opt, env') = 
+	   let
+	     val (lamb_opt, env') =
 	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
 	   in
 	     chat "]\n";
@@ -212,9 +214,15 @@ structure CompileToLamb: COMPILE_TO_LAMB =
       end
 
     (* Hook to be run before any compilation *)
-    fun preHook():unit = ()
-    
+    fun preHook ():unit = ()
+
     (* Hook to be run after all compilations (for one compilation unit) *)
     fun postHook {unitname:string} : unit = ()
+
+    datatype 'a cval = VAR of 'a | STR of string | UNKN
+    fun retrieve_longid (CE:CEnv) (CB:CompBasis) (longid:longid) : lvar cval =
+        case CompilerEnv.lookup_longid CE longid of
+            SOME (CompilerEnv.LVAR (lv,nil,t',nil)) => VAR lv
+          | _ => UNKN
 
   end

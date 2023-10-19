@@ -1569,18 +1569,8 @@ struct
     (* ------------------------------------------------------------------------------ *)
     (*              Generate Link Code for Incremental Compilation                    *)
     (* ------------------------------------------------------------------------------ *)
-    fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg =
-      let
-        val _ = reset_static_data()
-        val _ = reset_label_counter()
 
-        val lab_exit = NameLab "__lab_exit"
-        val progunit_labs = map MLFunLab linkinfos
-        val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
-(*
-val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data labels in the root set. ")
-val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
-*)
+    local
 
         fun slot_for_datlab ((_,l),C) =
             let fun maybe_dotsize C =
@@ -1601,15 +1591,18 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
             val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
             val offset = if BI.tag_values() then 1 else 0
+            val nlab = NameLab "TopLevelHandlerLab"
           in
-              I.lab (NameLab "TopLevelHandlerLab") ::
+              I.dot_globl nlab ::
+              I.lab nlab ::
               I.movq (R arg_reg, R tmp_reg0)::
               load_indexed(R arg_reg,arg_reg,WORDS offset,
               load_indexed(R tmp_reg1,arg_reg, WORDS offset,
               load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
               compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY r14,   (* evaluation context *)
                                                         SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
-                                                        SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,C))))
+                                                        SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,
+              I.ret :: C))))
           end
 
         fun store_exported_data_for_gc (labs,C) =
@@ -1808,29 +1801,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               load_label_addr(exn_flush_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0, (* Now flush the exception *)
               I.movq(R tmp_reg0,D("0",tmp_reg1)) :: C))))
           end
-
-        val primitive_exceptions = [(0, "Match", NameLab "exn_MATCH", DatLab BI.exn_MATCH_lab),
-                                    (1, "Bind", NameLab "exn_BIND", DatLab BI.exn_BIND_lab),
-                                    (2, "Overflow", NameLab "exn_OVERFLOW", DatLab BI.exn_OVERFLOW_lab),
-                                    (3, "Interrupt", NameLab "exn_INTERRUPT", DatLab BI.exn_INTERRUPT_lab),
-                                    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab),
-                                    (5, "Subscript", NameLab "exn_SUBSCRIPT", DatLab BI.exn_SUBSCRIPT_lab),
-                                    (6, "Size", NameLab "exn_SIZE", DatLab BI.exn_SIZE_lab)
-                                   ]
-        val initial_exnname_counter = List.length primitive_exceptions
-
-        fun init_primitive_exception_constructors_code C =
-            foldl setup_primitive_exception C primitive_exceptions
-
-        val static_data =
-          slots_for_datlabs(global_region_labs,
-                            I.dot_data ::
-                            I.dot_globl exn_counter_lab ::
-                            I.lab exn_counter_lab :: (* The Global Exception Counter *)
-                            I.dot_quad (i2s initial_exnname_counter) ::
-                            nil)
-        val _  = add_static_data static_data
-
 
         fun push_reg (r,C) =
             if I.is_xmm r then
@@ -2071,6 +2041,52 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             C))
           end
 
+(*
+
+      rsp+40   &TopLevelHandlerLab   (closure, and alignment)
+H[24] rsp+32   rsp+8
+H[16] rsp+24   Prev exnPtr (NULL)
+H[8]  rsp+16   rsp+40
+H[0]  rsp+8    &TopExnContLab        <-- exnPtr
+      rsp      1                     (alignment)
+
+    An exception handler H on the stack consists of four words:
+        H[24]: stack pointer for handler code
+        H[16]: previous exn slot
+        H[8] : closure pointer
+        H[0] : return address,
+*)
+
+        fun push_top_level_handler_ret retlab C =
+          let
+            fun gen_clos C =               (* store closure under handler *)
+              if BI.tag_values() then
+                I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
+                I.movq(R tmp_reg1, D("32", rsp)) ::
+                I.leaq(D("24", rsp), R tmp_reg1) ::
+                I.movq(R tmp_reg1, D("8", rsp)) ::
+                C
+              else
+                I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
+                I.movq(R tmp_reg1, D("32", rsp)) ::
+                I.leaq(D("32", rsp), R tmp_reg1) ::   (* compute closure address *)
+                I.movq(R tmp_reg1, D("8", rsp)) ::   (* store closure address in second word of exn handler *)
+                C
+          in
+            comment ("PUSH CLOSURE AND TOP-LEVEL HANDLER ON STACK",
+            I.subq(I "8", R rsp) ::                                   (* anti-align, closure *)
+            I.subq(I "32", R rsp) ::                                  (* space for exception handler *)
+            gen_clos (                                                (* create closure and store closure address in handler *)
+            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
+            I.movq(R tmp_reg1, D("16", rsp)) ::                       (* store previous exnPtr in handler *)
+            I.movq(R rsp, D("24", rsp)) ::                            (* store current stack address in handler *)
+            I.movq(LA (NameLab retlab), R tmp_reg1) ::
+            I.movq(R tmp_reg1, D("0", rsp)) ::                        (* store retlab in handler *)
+            I.movq(R rsp, D(ctx_exnptr_offs,r14)) ::                  (* store handler address in context's exnPtr *)
+            I.push(I "1") ::                                          (* align *)
+            C))
+          end
+
         fun init_stack_bot_gc C =
           if gc_p() then  (* stack_bot_gc[0] = rsp *)
               let val C = if simple_memprof_p() then I.movq(R rsp, L stack_min) :: C
@@ -2087,6 +2103,59 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(R rsp, L (NameLab "maxStackP")) ::
             C
           else C
+
+        fun data_begin C =
+            if gc_p() then
+              (I.lab (data_begin_init_lab) :: C)
+            else C
+
+        fun data_end C =
+            if gc_p() then
+                (I.dot_align 8 ::
+                 I.dot_globl data_begin_addr ::
+                 I.lab data_begin_addr ::
+                 I.dot_quad "0" ::
+                 I.dot_globl data_end_addr ::
+                 I.lab data_end_addr ::
+                 I.dot_quad "0" ::
+                 I.lab (data_end_init_lab) ::   C)
+            else C
+
+        fun declare_exceptions_and_regions C =
+            let val primitive_exceptions =
+                    [(0, "Match", NameLab "exn_MATCH", DatLab BI.exn_MATCH_lab),
+                     (1, "Bind", NameLab "exn_BIND", DatLab BI.exn_BIND_lab),
+                     (2, "Overflow", NameLab "exn_OVERFLOW", DatLab BI.exn_OVERFLOW_lab),
+                     (3, "Interrupt", NameLab "exn_INTERRUPT", DatLab BI.exn_INTERRUPT_lab),
+                     (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab),
+                     (5, "Subscript", NameLab "exn_SUBSCRIPT", DatLab BI.exn_SUBSCRIPT_lab),
+                     (6, "Size", NameLab "exn_SIZE", DatLab BI.exn_SIZE_lab)
+                    ]
+                val initial_exnname_counter =
+                    List.length primitive_exceptions
+                val static_data =
+                    slots_for_datlabs(global_region_labs,
+                                      I.dot_data ::
+                                      I.dot_globl exn_counter_lab ::
+                                      I.lab exn_counter_lab :: (* The Global Exception Counter *)
+                                      I.dot_quad (i2s initial_exnname_counter) ::
+                                      nil)
+                val _  = add_static_data static_data
+            in foldl setup_primitive_exception C primitive_exceptions
+            end
+    in
+
+    fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg =
+      let
+        val _ = reset_static_data()
+        val _ = reset_label_counter()
+
+        val progunit_labs = map MLFunLab linkinfos
+        val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
+(*
+val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data labels in the root set. ")
+val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
+*)
 
         fun main_insts C =
            (I.dot_text ::
@@ -2115,7 +2184,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             allocate_global_regions(global_region_labs,
 
             (* Initialize primitive exceptions *)
-            init_primitive_exception_constructors_code(
+            declare_exceptions_and_regions(
 
             (* Push top-level handler on stack *)
             push_top_level_handler(
@@ -2135,22 +2204,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val init_link_code = (main_insts o raise_insts o
                               toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
                               overflow_stub o gc_stub o proftick) nil
-        fun data_begin C =
-            if gc_p() then
-              (I.lab (data_begin_init_lab) :: C)
-            else C
-
-        fun data_end C =
-            if gc_p() then
-                (I.dot_align 8 ::
-                 I.dot_globl data_begin_addr ::
-                 I.lab data_begin_addr ::
-                 I.dot_quad "0" ::
-                 I.dot_globl data_end_addr ::
-                 I.lab data_end_addr ::
-                 I.dot_quad "0" ::
-                 I.lab (data_end_init_lab) ::   C)
-            else C
       in
         {top_decls = [],
          init_code = init_link_code,
@@ -2161,15 +2214,136 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                         data_end (
                         comment ("END OF STATIC DATA AREA",nil))))))}
       end
+
+    fun generate_repl_init_code () : I.AsmPrg =
+      let
+        val _ = reset_static_data()
+        val _ = reset_label_counter()
+
+        fun main_insts C =
+           (I.dot_text ::
+            I.dot_align 8 ::
+            I.dot_globl (NameLab "code") ::
+            I.lab (NameLab "code") ::
+            I.push(I "1") ::                           (* 16-align stack *)
+
+            (* Install argument context in context register *)
+            I.movq(R rdi, R r14) ::
+
+            (* Initialize profiling *)
+            init_prof(
+
+            (* Initialize stack_bot_gc. *)
+            init_stack_bot_gc(
+
+            (* Allocate global regions and push them on stack *)
+            comment ("Allocate global regions and push them on the stack",
+            allocate_global_regions(global_region_labs,
+
+            (* Initialize primitive exceptions and global regions - datlabs *)
+            declare_exceptions_and_regions(
+
+            (* Call repl loop, which will terminate and never return *)
+            I.movq(R r14, R rdi) ::
+            I.call(NameLab "repl_interp") ::
+
+            (* Exit instructions - never gets here... *)
+            I.ret :: C))))))
+
+        val init_code = (main_insts o raise_insts o
+                         toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
+                         overflow_stub o gc_stub o proftick) nil
+      in
+        {top_decls = [],
+         init_code = init_code,
+         static_data = (I.dot_data ::
+                        comment ("START OF STATIC DATA AREA",
+                        data_begin (
+                        get_static_data (
+                        data_end (
+                        comment ("END OF STATIC DATA AREA",nil))))))}
+      end
+
+    fun generate_repl_link_code (lab:string, labs:label list) : I.AsmPrg =
+      let
+        val _ = reset_static_data()
+        val _ = reset_label_counter()
+
+        val progunit_labs = map MLFunLab labs
+        val topretlab = "topretlab"
+
+        local
+          val callee_save_regs_ccall = r14::callee_save_regs_ccall
+        in
+          fun push_callee C =
+              List.foldl (fn (r,C) => I.push (R r) :: C) C
+                         callee_save_regs_ccall
+          fun pop_callee C =
+              List.foldr (fn (r,C) => I.pop (R r) :: C) C
+                         callee_save_regs_ccall
+        end
+
+        fun main_insts C =
+           (I.dot_text ::
+            I.dot_align 8 ::
+            I.dot_globl (NameLab lab) ::
+            I.lab (NameLab lab) ::
+            I.push(I "1") ::     (* 16-align stack *)
+
+            (* Push callee-save regs *)
+            push_callee(
+
+            (* Install top context in context register; setup in Runtime.c *)
+            I.movq(L(NameLab "top_ctx"), R r14) ::
+
+            (* Push top-level handler on stack *)
+            push_top_level_handler_ret topretlab (
+
+            (* Code that jump to progunits. *)
+            comment ("JUMP CODE TO PROGRAM UNITS",
+            generate_jump_code_progunits(progunit_labs,
+
+            I.addq(I "8", R rsp) ::    (* align *)
+
+            I.lab(NameLab topretlab) ::
+            I.addq(I "40", R rsp) ::   (* 40: top-level handler *)
+
+            pop_callee(
+            I.addq(I "8", R rsp) ::    (* align *)
+            I.ret :: C))))))
+
+      in
+        {top_decls = [],
+         init_code = main_insts nil,
+         static_data = (I.dot_data ::
+                        comment ("START OF STATIC DATA AREA",
+                        data_begin (
+                        get_static_data (
+                        data_end (
+                        comment ("END OF STATIC DATA AREA",nil))))))}
+      end
+
+
+    end
   end
 
+  local
+    val messages_p =
+        Flags.add_bool_entry
+            {long="messages", short=NONE, neg=true,
+             menu=["Control","messages"], item=ref true,
+             desc="Print messages about generated target files."}
+  in
+    fun message f = if messages_p() then print (f())
+                    else ()
+  end
 
   (* ------------------------------------------------------------ *)
   (*  Emitting Target Code                                        *)
   (* ------------------------------------------------------------ *)
-  fun emit(prg: AsmPrg,filename: string) : unit =
+  fun emit (prg: AsmPrg,filename: string) : unit =
     (I.emit(prg,filename);
-     print ("[wrote X64 code file:\t" ^ filename ^ "]\n"))
+     message (fn () => "[wrote X64 code file:\t" ^ filename ^ "]\n"))
     handle IO.Io {name,...} => Crash.impossible ("CodeGenX64.emit:\nI cannot open \""
                                                  ^ filename ^ "\":\n" ^ name)
 

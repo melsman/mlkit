@@ -498,21 +498,7 @@ structure Environments: ENVIRONMENTS =
         | range_private_to_range (LONGCONpriv(sigma, _)) = LONGCON sigma
         | range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
       fun lookup (VARENV v) id : range option =
-            map_opt range_private_to_range (Ident.Map.lookup v id)
-                  handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.lookup\n");
-                             let
-                               val st = Ident.Map.layoutMap{start="{",finish="}",
-                                         eq="", sep= ", "} (fn id => PP.LEAF(Ident.pr_id id))
-                                                         (fn _ => PP.LEAF "")
-                                                         v
-                               val os = TextIO.openOut "madsdebug"
-                             in
-                               TextIO.output(os, PP.flatten1(st));
-                               TextIO.closeOut os
-                             end;
-                             raise Crash.CRASH
-                            )
+          map_opt range_private_to_range (Ident.Map.lookup v id)
 
       fun dom (VARENV m) = EqSet.fromList(Ident.Map.dom m)
       fun is_empty (VARENV v) = Ident.Map.isEmpty v
@@ -590,14 +576,9 @@ structure Environments: ENVIRONMENTS =
                  empty VE
 
       fun lookup_fellow_constructors (VARENV v) id : id list option =
-            (case Ident.Map.lookup v id of
-               SOME (LONGCONpriv(sigma, ids)) => SOME ids
-             | _ => NONE)
-                  handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.lookup_fellow_constructors\n");
-                             raise Crash.CRASH
-                            )
-
+          case Ident.Map.lookup v id of
+              SOME (LONGCONpriv(sigma, ids)) => SOME ids
+            | _ => NONE
 
       fun on (S : Substitution, VE as VARENV m) : VarEnv = VE
 
@@ -607,11 +588,6 @@ structure Environments: ENVIRONMENTS =
                        let val r = case Ident.Map.lookup m id
                                      of SOME r => r
                                       | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
-                                   handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.restrict\n");
-                             raise Crash.CRASH
-                            )
-
                        in Ident.Map.add(id,r,m_new)
                        end) Ident.Map.empty ids)
 
@@ -1486,11 +1462,6 @@ structure Environments: ENVIRONMENTS =
       fun to_R (CONTEXT{E,...}) = E.to_R E
       fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
           ExplicitTyVarMap.lookup m ExplicitTyVar
-            handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.ExplicitTyVar_lookup\n");
-                             raise Crash.CRASH
-                            )
-
 (*
             (case FinMap.lookup m ExplicitTyVar of
                NONE => impossible "ExplicitTyVar_lookup" (*Level.GENERIC*)
@@ -1616,18 +1587,11 @@ structure Environments: ENVIRONMENTS =
 
           (* isVar is true iff id is a variable in dom VE *)
           fun remake isVar id (sigma : TypeScheme) : TypeScheme =
-            let val isExp =
-                 (case Ident.Map.lookup isExpansiveId_map id
-                    of NONE => false
-                     | SOME b => b
-                 )
-                  handle Crash.CRASH  =>
-                            (TextIO.output(TextIO.stdOut, "Environments.remake\n");
-                             raise Crash.CRASH
-                            )
-
-            in TypeScheme.close (not (isExp andalso isVar)) sigma
-            end
+              let val isExp = case Ident.Map.lookup isExpansiveId_map id of
+                                  NONE => false
+                                | SOME b => b
+              in TypeScheme.close (not (isExp andalso isVar)) sigma
+              end
 
           val VARENV m = VE
           val m = Ident.Map.Fold

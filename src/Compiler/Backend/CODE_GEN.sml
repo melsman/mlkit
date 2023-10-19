@@ -1,7 +1,7 @@
 (* Generate Target Code *)
+
 signature CODE_GEN =
   sig
-
     type label
     type ('sty,'offset,'aty) LinePrg
     type offset = int
@@ -15,15 +15,10 @@ signature CODE_GEN =
 	      exports:label list * label list,
 	      safe:bool} -> AsmPrg
 
+    val emit                    : AsmPrg * string -> unit
+    val generate_link_code      : label list * (label list * label list) -> AsmPrg
+    val generate_repl_init_code : unit -> AsmPrg
+    val generate_repl_link_code : string * label list -> AsmPrg
 
-    val emit : AsmPrg * string -> unit
-    val generate_link_code : label list * (label list * label list) -> AsmPrg
+    val message : (unit -> string) -> unit
   end
-
-
-
-
-
-
-
-

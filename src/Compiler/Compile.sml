@@ -12,6 +12,8 @@ structure Compile: COMPILE =
     type strexp = CompileToLamb.strexp
     type funid = CompileToLamb.funid
     type strid = CompileToLamb.strid
+    type longid = CompileToLamb.longid
+    type lvar = CompileToLamb.lvar
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -540,7 +542,7 @@ structure Compile: COMPILE =
 
     (* Hook to be run before any compilation.
      * Overwrite hook for CompileToLamb, which is a noop. *)
-    fun preHook():unit =
+    fun preHook ():unit =
         let (* val _ = print ("In preHook\n") *)
         in
             Effect.resetCount() (* if "-regionvar n" is provided,
@@ -571,4 +573,13 @@ structure Compile: COMPILE =
             val file = unitname ^ ".rev" (* region/effect variable *)
         in pairToFile pair file
         end
-  end;
+
+    datatype cval = datatype CompileToLamb.cval
+    fun retrieve_longid (CE:CEnv) B (longid:longid) : lvar cval =
+        let val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env,protenv} =
+                CompBasis.de_CompBasis B
+            val B' = CompBasisToLamb.mk_CompBasis{NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}
+        in CompileToLamb.retrieve_longid CE B' longid
+        end
+
+  end
