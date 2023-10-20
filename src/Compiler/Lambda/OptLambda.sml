@@ -49,7 +49,7 @@ structure OptLambda : OPT_LAMBDA =
     * ----------------------------------------------------------------- *)
 
     val optimise_p = Flags.add_bool_entry
-        {long="optimiser",short=SOME "opt", menu=["Control", "Optimiser", "optimiser"],
+        {long="optimiser",short=SOME "opt", menu=["Optimiser Control", "optimiser"],
          item=ref true, neg=true, desc=
          "Enable optimisation of intermediate language code\n\
           \(Lambda Expressions). Which optimisations are performed\n\
@@ -60,13 +60,13 @@ structure OptLambda : OPT_LAMBDA =
 
     val statistics_after_optimisation = Flags.add_bool_entry
         {long="statistics_after_optimisation", short=NONE,
-         menu=["Control", "Optimiser", "statistics after optimisation"],
+         menu=["Optimiser Control", "statistics after optimisation"],
          item=ref false, neg=false, desc=
          "Report optimisation statistics after optimisation of\n\
           \Lambda Expression."}
 
     val minimize_fixs = Flags.add_bool_entry
-         {long="minimize_fixs", short=NONE, menu=["Control", "Optimiser", "minimize fixs"],
+         {long="minimize_fixs", short=NONE, menu=["Optimiser Control", "minimize fixs"],
           item=ref true, neg=true, desc=
           "Minimize fix constructs (Lambda Expression Optimiser)."}
 
@@ -75,7 +75,7 @@ structure OptLambda : OPT_LAMBDA =
                                         * with polymorphism in type variables *)
 
     val contract_p = Flags.add_bool_entry
-         {long="contract", short=NONE, menu=["Control", "Optimiser", "contract"],
+         {long="contract", short=NONE, menu=["Optimiser Control", "contract"],
           item=ref true, neg=true, desc=
           "Contract is responsible for inlining, specialization,\n\
            \elimination of dead code, and much else (Lambda\n\
@@ -83,7 +83,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val specialize_recursive_functions = Flags.add_bool_entry
           {long="specialize_recursive_functions", short=NONE,
-           menu=["Control", "Optimiser", "specialize recursive functions"],
+           menu=["Optimiser Control", "specialize recursive functions"],
            item=ref true, neg=true, desc=
            "Specialise recursive functions. Use the option\n\
             \maximum_specialise_size to control which functions\n\
@@ -93,7 +93,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val eliminate_explicit_records_p = Flags.add_bool_entry
            {long="eliminate_explicit_records", short=NONE,
-            menu=["Control", "Optimiser", "eliminate explicit records"],
+            menu=["Optimiser Control", "eliminate explicit records"],
             item=ref true, neg=true, desc=
             "Eliminate bindings of explicit records only used for\n\
              \selections. Transform\n\
@@ -104,7 +104,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val unbox_function_arguments = Flags.add_bool_entry
             {long="unbox_function_arguments", short=NONE,
-             menu=["Control", "Optimiser", "unbox function arguments"],
+             menu=["Optimiser Control", "unbox function arguments"],
              item=ref true, neg=true, desc=
              "Unbox arguments to fix-bound functions, for which the\n\
               \argument `a' is used only in contexts `#i a'. All call \n\
@@ -113,7 +113,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val unbox_reals = Flags.add_bool_entry
             {long="unbox_reals", short=NONE,
-             menu=["Control", "Optimiser", "unbox real values"],
+             menu=["Optimiser Control", "unbox real values"],
              item=ref true, neg=true, desc=
              "Unbox real values and computations on real values inside\n\
              \functions. Real values stored in data structures and\n\
@@ -122,7 +122,7 @@ structure OptLambda : OPT_LAMBDA =
     (* max size of recursive function defs. to be specialised. *)
     val max_specialise_size = Flags.add_int_entry
         {long="maximum_specialise_size",short=NONE,
-         menu=["Control", "Optimiser", "maximum specialise size"],
+         menu=["Optimiser Control", "maximum specialise size"],
          item=ref 200, desc=
          "Curried functions smaller than this size (counted in\n\
           \abstract syntax tree nodes) are specialised if all\n\
@@ -135,7 +135,7 @@ structure OptLambda : OPT_LAMBDA =
     (* max size of non-recursive function defs. to be inlined. *)
     val max_inline_size = Flags.add_int_entry
         {long="maximum_inline_size", short=NONE,
-         menu=["Control", "Optimiser", "maximum inline size"],
+         menu=["Optimiser Control", "maximum inline size"],
          item=ref 70, desc=
          "Functions smaller than this size (counted in abstract\n\
           \syntax tree nodes) are inlined, even if they are used\n\
@@ -146,7 +146,7 @@ structure OptLambda : OPT_LAMBDA =
      * maximum_inline_size. *)
     val inline_names = Flags.add_stringlist_entry
         {long="inline_names",short=NONE,
-         menu=["Control", "Optimiser", "inline names"],
+         menu=["Optimiser Control", "inline names"],
          item=ref [], desc=
          "Names of functions that should always be inlined\n\
           \if possible, no matter the setting of the flag\n\
@@ -160,7 +160,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val cross_module_opt = Flags.add_bool_entry
         {long="cross_module_opt",short=SOME "cross_opt",
-         menu=["Control", "Optimiser", "cross module optimisation"],
+         menu=["Optimiser Control", "cross module optimisation"],
          item=ref true,neg=true,
          desc=
          "Enable cross-module optimisation including inlining\n\
@@ -171,7 +171,7 @@ structure OptLambda : OPT_LAMBDA =
 
     val aggressive_opt = Flags.add_bool_entry
         {long="aggresive_opt",short=SOME "aopt",
-         menu=["Control", "Optimiser", "aggressive optimisation"],
+         menu=["Optimiser Control", "aggressive optimisation"],
          item=ref true,neg=true,
          desc=
          "Enable aggressive optimisations, including constant\n\
@@ -3297,7 +3297,7 @@ structure OptLambda : OPT_LAMBDA =
 
    val _ = Flags.add_bool_entry
        {long="uncurrying",short=SOME "uncurry",
-        menu=["Control", "Optimiser", "uncurrying"],
+        menu=["Optimiser Control", "uncurrying"],
         item=uncurrying,neg=true,
         desc=
         "Enable uncurrying of curried functions. The uncurried\n\

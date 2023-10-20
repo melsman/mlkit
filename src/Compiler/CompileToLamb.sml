@@ -28,7 +28,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     val safeLinkTimeElimination = Flags.add_bool_entry
 	{long="safeLinkTimeElimination", short=NONE,
-	 menu=["Control",
+	 menu=["General Control",
 	       "safeLinkTimeElimination"],
 	 item=ref false, neg=false, desc=
 	 "Treat this module as a library in the sense that\n\
@@ -40,18 +40,18 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
 
     local
-      fun msg(s: string) =
+      fun msg (s: string) =
 	  (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     in
-      fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
+      fun chat (s: string) = if !Flags.chat then msg (s^"\n") else ()
     end
 
     fun fast_pr stringtree =
 	(PP.outputTree ((fn s => TextIO.output(!Flags.log, s)),
 			stringtree, !Flags.colwidth);
-	 TextIO.output(!Flags.log, "\n\n"))
+	 TextIO.output(!Flags.log, "\n"))
 
-    fun display(title, tree) =
+    fun display (title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
                    indent=3,
@@ -98,7 +98,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
            val lamb = LambdaBasics.close lamb
        in
 	 chat "]\n";
-	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
+	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Unoptimised Lambda Program", layoutLambdaPgm lamb));
 	 (lamb, ce1, ne1, declared_lvars, declared_excons)
      end)
 
@@ -150,9 +150,9 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	 in
 	   chat "]\n";
 	   if !Flags.DEBUG_COMPILER then
-	     (display("Lambda Program After Elimination of Pol. Eq.",
+	     (display("Lambda Program After Elimination of Equality",
 		      layoutLambdaPgm lamb');
-	      display("Pol. Eq. Environment", EliminateEq.layout_env env'))
+	      display("Equality Environment", EliminateEq.layout_env env'))
 	   else ();
 	   (lamb', env')
 	 end)
@@ -175,7 +175,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	   in
 	     chat "]\n";
 	     if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
-	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
+	     then display("Optimised Lambda Program", layoutLambdaPgm lamb_opt) else () ;
 	     (lamb_opt, env')
 	   end)
 

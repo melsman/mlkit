@@ -59,7 +59,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         (Flags.add_bool_entry
          {long="export_basis_js", short=SOME "ebjs", neg=false,
           item=ref false,
-          menu=["Control", "export basis in js file (SmlToJs)"],
+          menu=["General Control", "export basis in js file (SmlToJs)"],
           desc="When this flag is enabled, SmlToJs writes\n\
            \pickled bases to file.eb.js files to be read by\n\
            \js-client."}
@@ -69,7 +69,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         (Flags.add_bool_entry
          {long="print_export_bases", short=SOME "Peb", neg=false,
           item=ref false,
-          menu=["Debug", "print export bases"],
+          menu=["Printing of environments", "print export bases"],
           desc="Controls printing of export bases."}
           ; Flags.is_on0 "print_export_bases")
 
@@ -77,7 +77,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         (Flags.add_bool_entry
          {long="print_closed_export_bases", short=SOME "Pceb", neg=false,
           item=ref false,
-          menu=["Debug", "print closed export bases"],
+          menu=["Printing of environments", "print closed export bases"],
           desc="Controls printing of closed export bases."}
           ; Flags.is_on0 "print_closed_export_bases")
 
@@ -115,7 +115,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         Flags.add_bool_entry
          {long="print_post_elab_ast", short=SOME "Ppeast", neg=false,
           item=ref false,
-          menu=["Debug", "print ast after elaboation"],
+          menu=["Printing of intermediate forms", "print ast after elaboation"],
           desc="Print ast after elaboration."}
 
     exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR
@@ -806,7 +806,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         val getParallelN =
             Flags.add_int_entry
                 {long="parallel_compilation", short = SOME "j",
-                 menu=["Control", "number of parallel compilation processes"],
+                 menu=["General Control", "number of parallel compilation processes"],
                  item=ref 1,
                  desc="The maximum number of parallel processes used\n\
                       \for compilation."

@@ -146,6 +146,7 @@ signature FLAGS =
 
     val getOptions : unit -> options list
     val getOptions_noneg : unit -> options list
+    val menu_width : int
 
     (* Blocked entries are flag entries that do not show up in help
        information and that cannot be altered by commandline. Blocking an

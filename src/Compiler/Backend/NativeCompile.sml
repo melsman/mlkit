@@ -106,7 +106,7 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 
     fun fast_pr stringtree =
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-            TextIO.output(!Flags.log, "\n\n"))
+            TextIO.output(!Flags.log, "\n"))
 
     fun display (title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
@@ -137,7 +137,7 @@ functor NativeCompile (structure BackendInfo : BACKEND_INFO
 	(* Show region flow graph and generate .vcg file *)
 	val _ =
 	  if print_region_flow_graph() then
-	    (display("Report: REGION FLOW GRAPH FOR PROFILING:",
+	    (display("Region Flow Graph",
 		     RegionFlowGraphProfiling.layout_graph());
 	     let val outStreamVCG = TextIO.openOut vcg_file
 	     in RegionFlowGraphProfiling.export_graph outStreamVCG;

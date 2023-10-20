@@ -192,7 +192,8 @@ structure Directory : sig
 
                         val block_entry : string -> unit
                         val is_blocked : string -> bool
-                      end =
+                        val menu_width : int
+          end =
 struct
 
     val blocked_entries = ref nil
@@ -477,9 +478,10 @@ struct
           | NONE => raise Fail ("no help available for option: " ^ key)
       end
 
+  val menu_width = 60
+
   fun print_help {dashes:bool} tail x =
     let
-      val width = 60
       fun indent s =
         map (fn s => "     " ^ s ^ "\n") (String.tokens (fn c => c = #"\n") s)
 
@@ -500,7 +502,7 @@ struct
                       (List.map (fn x => ", " ^ dash1 ^ x ^ (pkind kind)) short) @ [" "])
           val firstline = case default
                           of NONE => name ^ "\n"
-                           | SOME default => StringCvt.padRight #" " (width - (String.size default)) name ^ "(" ^ default ^ ")\n"
+                           | SOME default => StringCvt.padRight #" " (menu_width - (String.size default)) name ^ "(" ^ default ^ ")\n"
           val body = indent desc
         in String.concat(firstline :: body @ [tail])
         end
@@ -619,7 +621,7 @@ val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width 
 
 val recompile_basislib = ref false
 val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
-                        menu=["Control", "recompile basis library"],
+                        menu=["General Control", "recompile basis library"],
                         item=recompile_basislib,neg=false,
                         desc=
                         "Recompile basis library from scratch. This option\n\
@@ -628,7 +630,7 @@ val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
 
 val preserve_tail_calls = ref false
 val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preserve_tail_calls,
-                        menu=["Control", "preserve tail calls"], neg=true,
+                        menu=["Control Region Analyses", "preserve tail calls"], neg=true,
                         desc=
                         "Avoid the wrapping of letregion constructs around\n\
                          \tail calls. Turning on garbage collection\n\
@@ -636,7 +638,7 @@ val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preser
 
 val dangling_pointers = ref true
 val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangling_pointers,
-                        menu=["Control", "dangling pointers"], neg=true,
+                        menu=["Control Region Analyses", "dangling pointers"], neg=true,
                         desc=
                         "When this option is disabled, dangling pointers\n\
                         \are avoided by forcing values captured in\n\
@@ -647,14 +649,14 @@ val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangl
 
 val tag_values = ref false
 val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
-                        menu=["Control", "tag values"], neg=false,
+                        menu=["General Control", "tag values"], neg=false,
                         desc=
                         "Enable tagging of values as used when garbage\n\
                         \collection is enabled for implementing pointer\n\
                         \traversal."}
 
 val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
-                        menu=["Control", "tag pairs"], neg=false,
+                        menu=["General Control", "tag pairs"], neg=false,
                         desc=
                         "Use a tagged representation of pairs for garbage\n\
                          \collection. Garbage collection works fine with a\n\
@@ -662,7 +664,7 @@ val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
                          \is here for measurement purposes."}
 
 val _ = add_bool_entry {long="values_64bit", short=NONE, item=ref true,
-                        menu=["Control", "values 64bit"], neg=false,
+                        menu=["General Control", "values 64bit"], neg=false,
                         desc=
                         "Support 64-bit values. Should be enabled for \n\
                         \backends supporting 64-bit integers and words."}
@@ -689,7 +691,7 @@ local
                      gengc := true)
 in
   val _ = add_bool_action_entry
-    {long="garbage_collection", menu=["Control", "garbage collection"],
+    {long="garbage_collection", menu=["Control Garbage Collection", "garbage collection"],
      item=gc, on=on, off=off, short=SOME "gc",
      desc="Enable garbage collection. When enabled, regions are\n\
       \garbage collected during execution of the program. When\n\
@@ -703,7 +705,7 @@ in
       \collection implicitly enables the preservation of tail\n\
       \calls (see the option ``preserve_tail_calls''.)"}
   val _ = add_bool_action_entry
-    {long="generational_garbage_collection", menu=["Control", "generational garbage collection"],
+    {long="generational_garbage_collection", menu=["Control Garbage Collection", "generational garbage collection"],
      item=gengc, on=on_gengc, off=off_gengc, short=SOME "gengc",
      desc="Enable generational garbage collection. Same as option\n\
           \garbage collection except that two generations are used\n\
@@ -711,8 +713,10 @@ in
 end
 
 local
-  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control",s],
+  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["General Control",s],
                                                             item=r, neg=neg, desc=desc}; ())
+  fun addRA neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
+                                                              item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
   [
@@ -736,7 +740,7 @@ in
       \in your projects, this option should be turned on, unless\n\
       \you wish to import the Basis Library manually in your\n\
       \projects.")
-  val _ = add true
+  val _ = addRA true
      ("region_inference", SOME "ri", "region_inference", region_inference,
       "With this flag disabled, all values are allocated in\n\
        \global regions.")
@@ -769,7 +773,7 @@ val _ = add_string_entry
   (*5. Profiling menu*)
 
 local
-  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Profiling",s],
+  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
                                                      item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
@@ -836,7 +840,7 @@ end
 
   val _ = add_bool_entry
       {long="compile_only", short=SOME "c",
-       menu=["Control","compile only"],
+       menu=["General Control","compile only"],
        item=ref false, neg=false, desc=
        "Compile only. Suppresses generation of executable"}
 
@@ -859,6 +863,8 @@ type options = {desc : string, long : string list, short : string list,
                 kind : string option, default : string option, menu:string list}
 val getOptions = Directory.getOptions : unit -> options list
 val getOptions_noneg = Directory.getOptions_noneg : unit -> options list
+
+val menu_width = Directory.menu_width
 
 datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)

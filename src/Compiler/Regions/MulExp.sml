@@ -19,14 +19,14 @@ struct
           \only after storage mode analysis has been applied."}
 
     val warn_on_escaping_puts = Flags.add_bool_entry
-        {long="warn_on_escaping_puts", short=NONE, menu=["Control","warn on escaping put effects"],
+        {long="warn_on_escaping_puts", short=NONE, menu=["Control Region Analyses","warn on escaping put effects"],
          item=ref false, neg=false, desc=
          "Enable the compiler to issue a warning whenever a \n\
           \region type scheme contains a put effect on a region\n\
           \that is not quantified."}
 
     val warn_on_parallel_puts = Flags.add_bool_entry
-        {long="warn_on_parallel_puts", short=NONE, menu=["Control","warn on parallel put effects"],
+        {long="warn_on_parallel_puts", short=NONE, menu=["Control Region Analyses","warn on parallel put effects"],
          item=ref false, neg=false, desc=
          "Enable the compiler to issue a warning whenever a \n\
           \par-construct is passed functions with intersecting\n\

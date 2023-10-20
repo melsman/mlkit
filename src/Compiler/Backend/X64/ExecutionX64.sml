@@ -43,7 +43,7 @@ structure ExecutionX64: EXECUTION =
     in
         val _ = Flags.add_string_entry
             {long="libs", short=NONE, item=ref default,
-             menu=["Control", "foreign libraries (archives)"],
+             menu=["General Control", "foreign libraries (archives)"],
              desc="For accessing a foreign function residing in\n\
               \an archive named libNAME.a from Standard ML code\n\
               \(using prim), you need to add 'NAME' to this\n\
@@ -58,7 +58,7 @@ structure ExecutionX64: EXECUTION =
 
     val _ = Flags.add_string_entry
       {long="libdirs", short=NONE, item=ref "",
-       menu=["Control", "library directories (paths to archives)"],
+       menu=["General Control", "library directories (paths to archives)"],
        desc="This option controls where ld looks for\n\
         \archives. The format is a comma-separated list\n\
         \of directories; see the -libs entry. The default\n\
@@ -73,7 +73,7 @@ structure ExecutionX64: EXECUTION =
                       else "gcc"
         in
             {long="c_compiler", short=SOME "cc", item=ref gcc,
-             menu=["Control", "C compiler (used for linking)"],
+             menu=["General Control", "C compiler (used for linking)"],
              desc="This option specifies which C compiler is\n\
                   \used for linking. When linking with c++\n\
                   \libraries, 'g++' is the linker you want.\n\
@@ -88,7 +88,7 @@ structure ExecutionX64: EXECUTION =
             val ass = if onmac_p() then mac_as else linux_as
         in
             {long="assembler", short=SOME "as", item=ref ass,
-             menu=["Control", "Assembler command"],
+             menu=["General Control", "Assembler command"],
              desc="This option specifies the assembler used.\n\
                   \On Linux the default is '" ^ linux_as ^ "'. On macOS,\n\
                   \the default is '" ^ mac_as ^ "'."}
@@ -97,7 +97,7 @@ structure ExecutionX64: EXECUTION =
     val strip_p = ref false
     val _ = Flags.add_bool_entry
        {long="strip", short=NONE, neg=false, item=strip_p,
-        menu=["Control", "strip executable"],
+        menu=["General Control", "strip executable"],
         desc="If enabled, the Kit strips the generated executable."}
 
     val _ = Flags.add_bool_entry
@@ -151,7 +151,7 @@ structure ExecutionX64: EXECUTION =
 
     val _ = Flags.add_bool_entry
         {long="parallelism", short=SOME "par", neg=false,
-         menu=["Control","parallelism"], item=ref false,
+         menu=["General Control","parallelism"], item=ref false,
          desc="When enabled, the runtime system supports\n\
           \parallel threads."}
 
@@ -159,7 +159,7 @@ structure ExecutionX64: EXECUTION =
 
     val _ = Flags.add_bool_entry
         {long="parallelism_alloc_unprotected", short=SOME "par0", neg=false,
-         menu=["Control","parallelism allocation unprotected"], item=ref false,
+         menu=["General Control","parallelism allocation unprotected"], item=ref false,
          desc="When enabled, allocation into a region is not\n\
           \guaranteed to be atomic."}
 
@@ -167,7 +167,7 @@ structure ExecutionX64: EXECUTION =
 
     val _ = Flags.add_bool_entry
         {long="argobots", short=SOME "argo", neg=false,
-         menu=["Control","use the Argobots lightweight thread library"], item=ref false,
+         menu=["General Control","use the Argobots lightweight thread library"], item=ref false,
          desc="When enabled, executables link with the Argobots\n\
               \lightweight thread library."}
 
@@ -177,7 +177,7 @@ structure ExecutionX64: EXECUTION =
     in
         val _ = Flags.add_string_entry
             {long="mlb-subdir", short=NONE, item=ref default,
-             menu=["Control", "Use MLB subdir-postfix"],
+             menu=["General Control", "Use MLB subdir-postfix"],
              desc="For ensuring that the smart recompilation scheme\n\
               \is not reusing target-code compiled with different\n\
               \settings, a string provided with the mlb-subdir\n\

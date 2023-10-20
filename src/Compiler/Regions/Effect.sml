@@ -17,7 +17,7 @@ struct
 
   val regionvarInitial = Flags.add_int_entry
       {long="regionvar", short=NONE, item=ref ~1,
-       menu=["Control", "region variable initial value"], desc=
+       menu=["Control Region Analyses", "region variable initial value"], desc=
        "Uses the provided number as the id of the first\n\
         \generated region variable. When this option is\n\
         \provided together with the -c option, a file f.rv\n\
@@ -70,7 +70,7 @@ struct
 
   val debug_constraint_solving = Flags.add_bool_entry
       {long="debug_constraint_solving", short=SOME "dcs", item=ref false, neg=false,
-       menu=["ReML", "debug ReML constraint solving"],
+       menu=["Debug", "debug ReML constraint solving"],
        desc="Debug ReML constraint solving."}
 
   val reml_p : unit -> bool = Flags.is_on0 "reml"

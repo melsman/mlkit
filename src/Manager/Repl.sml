@@ -39,10 +39,6 @@ fun pr_st (st) : unit = PP.outputTree (print, st, 120)
  * Debugging and reporting
  * ------------------------------------------- *)
 
-fun print_error_report report = Report.print' report (!Flags.log)
-fun print_result_report report = (Report.print' report (!Flags.log);
-                                  Flags.report_warnings ())
-
 val debug_p = Flags.is_on0 "debug_compiler"
 
 fun debug s =
@@ -214,64 +210,133 @@ fun render rp B (strids,id,sch) =
  * ------------------------------------------------- *)
 
 local
-  fun mem s ss = List.exists (fn s' => s=s') ss
 
-  fun is_flag0 s =
-      List.exists (fn opt => #kind opt = NONE (* no args *)
+  fun pr "" = ()
+    | pr s =
+      let val s = "|" ^ String.translate (fn c => if c = #"\n" then "\n|" else str c) s
+          val s = if String.isSuffix "|" s then
+                    String.extract (s,0,SOME (size s-1))
+                  else s
+      in print s
+      end
+
+  fun mem s ss = List.exists (fn s' => s=s') ss
+  fun ins a acc = if mem a acc then acc else a::acc
+
+  fun is_flag_kind (f:string option -> bool) s =
+      List.exists (fn opt => f(#kind opt)
                              andalso (mem s (#long opt) orelse mem s (#short opt)))
                   (Flags.getOptions_noneg())
 
-  fun is_flag s =
-      List.exists (fn opt => mem s (#long opt) orelse mem s (#short opt))
-                  (Flags.getOptions_noneg())
+  fun is_flag0 s = is_flag_kind (fn k => k = NONE) s
+  fun is_flagN s = is_flag_kind (fn k => k = SOME "N") s
+  fun is_flagS s = is_flag_kind (fn k => k = SOME "S") s
+  fun is_flag s = is_flag_kind (fn k => true) s
 
-  fun err s =
-      print ("** [" ^ s ^ "]\n")
+  fun string_to_nat s =
+      if CharVector.all Char.isDigit s then
+        Int.fromString s
+      else NONE
+
+  fun err s = print ("!" ^ s ^ "\n")
 
   fun print_help () =
-      print ("The REPL accepts commands and toplevel declarations. Commands\n\
-             \are of the form:\n\
-             \\n\
-             \  cmd ::= :help            -- general help\n\
-             \        | :set flag [arg]  -- set flag [maybe with arg]\n\
-             \        | :unset flag      -- unset the flag\n\
-             \        | :help flag       -- get help about a flag\n\
-             \        | :quit            -- quit\n\
-             \        | :flags           -- list all flags\n\
-             \")
+      pr ("The REPL accepts toplevel declarations and commands on the\n\
+          \form ':cmd;' where cmd is one of the following:\n\n\
+          \  cmd ::= flags           -- describe all flags\n\
+          \        | help            -- general help\n\
+          \        | help flag       -- get help about a flag\n\
+          \        | menu [N]        -- print flag menu [N]\n\
+          \        | quit            -- quit\n\
+          \        | search s        -- search for help about s\n\
+          \        | set flag [arg]  -- set flag [maybe with arg]\n\
+          \        | unset flag      -- unset the flag\n\n\
+          \Notice that more flags are available from the command-line\n\
+          \at REPL initialisation time.\n\
+          \")
 
-  fun print_flags () =
-      let fun pr_flag fl =
-              case #long fl of
-                  [n] =>
-                  let val shorts =
-                          case #short fl of
-                              nil => ""
-                            | shorts => " [" ^ String.concatWith "," shorts ^ "]"
-                  in case #kind fl of
-                         NONE => SOME(n ^ shorts)
-                       | SOME arg => SOME(n ^ " (" ^ arg ^ ")" ^ shorts)
-                  end
-                | _ => NONE
-          val flags = List.mapPartial pr_flag (Flags.getOptions_noneg())
-      in
-        print("Available flags:\n" ^ Flags.help_all_nodash_noneg())
+  fun menu_headings () =
+      let val menus = List.map #menu (Flags.getOptions_noneg())
+          val h1s = List.foldl (fn (nil,acc) => acc
+                               | (a::_,acc) => ins a acc) nil menus
+      in h1s
       end
 
+  fun center w s =
+      let val i = (w-size s) div 2
+          val p = CharVector.tabulate (i,fn _ => #" ")
+      in p ^ s
+      end
+
+  fun print_menuN s =
+      case string_to_nat s of
+          NONE => err ("No menu item " ^ s)
+        | SOME n =>
+          let val h1s = menu_headings()
+              val h = List.nth (h1s,n-1)
+              val H = "--- " ^ " (" ^ s ^ ") " ^ h ^ " ---"
+              val () = pr (center Flags.menu_width H ^ "\n")
+              val opts = List.filter (fn {menu=(h'::_),...} => h=h' | _ => false)
+                                     (Flags.getOptions_noneg())
+          in case List.concat (List.map #long opts) of
+                 nil => err ("No help available for menu '" ^ s ^ "'")
+               | ks => List.app (pr o Flags.help_nodash) ks
+          end handle _ => err ("No menu item " ^ s)
+
+  fun print_menu () =
+      let val h1s = menu_headings()
+          val (_,s) = List.foldl (fn (h,(i,acc)) =>
+                                     (i+1,
+                                      "  (" ^ Int.toString i ^ ") " ^ h ^ "\n" :: acc)) (1,nil)
+                                 h1s
+      in pr (String.concat (rev s))
+      end
+
+  fun print_flags () =
+      pr("Available flags:\n" ^ Flags.help_all_nodash_noneg())
+
   fun print_flag_help k =
-      if is_flag k then print (Flags.help_nodash k)
-      else err ("Invalid flag '" ^ k ^ "'")
+      if is_flag k then pr (Flags.help_nodash k)
+      else err ("No flag '" ^ k ^ "'")
+
+  fun print_search k =
+      let val opts =
+              List.filter (fn {long,short,desc,...} =>
+                              List.exists (fn l => String.isSubstring k l) long
+                              orelse List.exists (fn s => String.isSubstring k s) short
+                              orelse mem k (String.tokens Char.isSpace desc)
+                          )
+                          (Flags.getOptions_noneg())
+      in case List.concat (List.map #long opts) of
+             nil => err ("No help available for '" ^ k ^ "'")
+           | ks => List.app (pr o Flags.help_nodash) ks
+      end
+
 in
 exception Quit
 fun process_cmd (cmd:string) =
     let val ts = String.tokens Char.isSpace cmd
     in case ts of
-           [":set", s] => if is_flag0 s then Flags.turn_on s
-                          else err ("Invalid flag '" ^ s ^ "'")
-         | [":unset", s] => if is_flag0 s then Flags.turn_off s
-                            else err ("Invalid flag '" ^ s ^ "'")
+           [":set", s] =>
+           if is_flag0 s then Flags.turn_on s
+           else err ("Invalid flag '" ^ s ^ "'")
+         | [":set", s, a] =>
+           if is_flagN s then
+             case string_to_nat a of
+                 SOME n => Flags.lookup_int_entry s := n
+               | NONE => err ("Flag '" ^ s ^ "' expects a positive integer - got '"
+                              ^ a ^ "'")
+           else if is_flagS s then
+             Flags.lookup_string_entry s := a
+           else err ("Flag '" ^ s ^ "' is not a flag accepting an argument!")
+         | [":unset", s] =>
+           if is_flag0 s then Flags.turn_off s
+           else err ("Invalid flag '" ^ s ^ "'")
          | [":help"] => print_help()
          | [":help", fl] => print_flag_help fl
+         | [":menu"] => print_menu()
+         | [":menu", n] => print_menuN n
+         | [":search", s] => print_search s
          | [":flags"] => print_flags()
          | [":quit"] => raise Quit
          | _ => err ("Invalid command '" ^ cmd ^ "'")
@@ -380,9 +445,9 @@ fun repl (stepno, B:Basis, state, rp:rp, libs_acc) : OS.Process.status =
     end handle Quit => do_exit rp OS.Process.success
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
-    "safeLinkTimeElimination", "repository", "reml", "strip",
-    "tag_pairs", "tag_values", "unbox_reals", "warn_spurious",
-    "region_profiling", "recompile_basislib", "print_K_normal_forms",
+    "safeLinkTimeElimination", "repository", "strip", "tag_pairs",
+    "tag_values", "unbox_reals", "warn_spurious", "region_profiling",
+    "recompile_basislib", "print_K_normal_forms",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
     "mlb-subdir", "link_time_dead_code_elimination", "link_code",
@@ -393,7 +458,8 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "SML_LIB", "quotation", "warn_on_parallel_puts", "mlb_path_maps",
     "load_basis_files", "disable_spurious_type_variables",
     "dangling_pointers_statistics", "dangling_pointers",
-    "statistics_spurious", "type_check_lambda", "report_file_sig"]
+    "statistics_spurious", "type_check_lambda", "report_file_sig",
+    "log_to_file"]
 
 fun run () : OS.Process.status =
     let val () = Flags.turn_on "report_file_sig"
@@ -403,8 +469,8 @@ fun run () : OS.Process.status =
                    ; Flags.turn_off "garbage_collection"
                    )
                  else ()
+        val () = print "Type :help; for help...\n";
         val () = Flags.turn_off "messages"
-        val cc = !(Flags.lookup_string_entry "c_compiler")
     in case MO.mk_repl_runtime of
            SOME f =>
            let val rt_exe = f()

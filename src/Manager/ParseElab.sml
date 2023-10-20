@@ -113,6 +113,7 @@ structure ParseElab: PARSE_ELAB =
 	    let val _ = print "AST before elaboration:\n"
 		val st = PreElabTopdecGrammar.layoutTopdec topdec
 	    in PP.printTree st
+             ; print "\n"
 	    end
 	else ()
 

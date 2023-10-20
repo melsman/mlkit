@@ -32,7 +32,7 @@ structure AtInf: AT_INF =
        "Debug storage mode analysis."}
 
   val disable_atbot_analysis = Flags.add_bool_entry
-      {long="disable_atbot_analysis", short=NONE, menu=["Control","all storage modes attop (for POPL 96)"],
+      {long="disable_atbot_analysis", short=NONE, menu=["Control Region Analyses","all storage modes attop (for POPL 96)"],
        item=ref false, neg=false, desc=
        "Disable storage mode analysis. That is, turn all\n\
         \allocation directives into attop."}
