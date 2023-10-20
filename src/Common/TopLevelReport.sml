@@ -86,7 +86,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
    (* I can't explain how I print out functors; run the damn thing and see
       for yourself. *)
 
-    and reportFunSig(funid, funsig') =
+    and reportFunSig (funid, funsig') =
       let
         val (_, E, N'E') = Phi.to_T_and_E_and_Sigma funsig'
         val (_, E') = Sigma.to_T_and_E N'E'

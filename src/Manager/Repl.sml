@@ -208,12 +208,98 @@ fun render rp B (strids,id,sch) =
        else "fun"
     end
 
+(* --------------------------------------------------
+ * Command management. Commands are prefixed with
+ * a ':' and terminated with a ';'
+ * ------------------------------------------------- *)
+
+local
+  fun mem s ss = List.exists (fn s' => s=s') ss
+
+  fun is_flag0 s =
+      List.exists (fn opt => #kind opt = NONE (* no args *)
+                             andalso (mem s (#long opt) orelse mem s (#short opt)))
+                  (Flags.getOptions_noneg())
+
+  fun is_flag s =
+      List.exists (fn opt => mem s (#long opt) orelse mem s (#short opt))
+                  (Flags.getOptions_noneg())
+
+  fun err s =
+      print ("** [" ^ s ^ "]\n")
+
+  fun print_help () =
+      print ("The REPL accepts commands and toplevel declarations. Commands\n\
+             \are of the form:\n\
+             \\n\
+             \  cmd ::= :help            -- general help\n\
+             \        | :set flag [arg]  -- set flag [maybe with arg]\n\
+             \        | :unset flag      -- unset the flag\n\
+             \        | :help flag       -- get help about a flag\n\
+             \        | :quit            -- quit\n\
+             \        | :flags           -- list all flags\n\
+             \")
+
+  fun print_flags () =
+      let fun pr_flag fl =
+              case #long fl of
+                  [n] =>
+                  let val shorts =
+                          case #short fl of
+                              nil => ""
+                            | shorts => " [" ^ String.concatWith "," shorts ^ "]"
+                  in case #kind fl of
+                         NONE => SOME(n ^ shorts)
+                       | SOME arg => SOME(n ^ " (" ^ arg ^ ")" ^ shorts)
+                  end
+                | _ => NONE
+          val flags = List.mapPartial pr_flag (Flags.getOptions_noneg())
+      in
+        print("Available flags:\n" ^ Flags.help_all_nodash_noneg())
+      end
+
+  fun print_flag_help k =
+      if is_flag k then print (Flags.help_nodash k)
+      else err ("Invalid flag '" ^ k ^ "'")
+in
+exception Quit
+fun process_cmd (cmd:string) =
+    let val ts = String.tokens Char.isSpace cmd
+    in case ts of
+           [":set", s] => if is_flag0 s then Flags.turn_on s
+                          else err ("Invalid flag '" ^ s ^ "'")
+         | [":unset", s] => if is_flag0 s then Flags.turn_off s
+                            else err ("Invalid flag '" ^ s ^ "'")
+         | [":help"] => print_help()
+         | [":help", fl] => print_flag_help fl
+         | [":flags"] => print_flags()
+         | [":quit"] => raise Quit
+         | _ => err ("Invalid command '" ^ cmd ^ "'")
+    end
+end
+
 (* -------------------------------------------
  * The REPL
  * ------------------------------------------- *)
 
+fun do_exit (rp:rp) status =
+    ( print "Exiting\n"
+    ; Posix.Process.kill (Posix.Process.K_PROC (#pid rp), Posix.Signal.kill)
+    ; Posix.Process.wait()
+    ; OS.Process.exit status
+    )
+
 fun repl (stepno, B:Basis, state, rp:rp, libs_acc) : OS.Process.status =
-    let val absprjid = ME.mk_absprjid "repl"
+    let val state =
+            let fun loop state =
+                    case PE.colonLine (PE.stripSemiColons state) of
+                        SOME(cmd,state) => ( process_cmd cmd
+                                           ; loop state
+                                           )
+                      | NONE => state
+            in loop state
+            end
+        val absprjid = ME.mk_absprjid "repl"
         val smlfile = "stdin_" ^ Int.toString stepno
         val (infB, elabB, _, _) = B.un B
         val _ = Name.bucket := []
@@ -262,11 +348,11 @@ fun repl (stepno, B:Basis, state, rp:rp, libs_acc) : OS.Process.status =
 
            in case receive_EXN_or_DONE(#reply_pipe rp) of
                   EXN =>
-                  ( repl (stepno+1,       (* No reporting! *)
-                          B,              (* No added toplevel binding *)
-                          state',         (* hmm *)
+                  ( repl (stepno+1,         (* No reporting! *)
+                          B,                (* No added toplevel binding *)
+                          PE.begin_stdin(), (* Clear the state *)
                           rp,
-                          libs_acc)       (* nothing from this unit to link to later, I think *)
+                          libs_acc)         (* Nothing from this unit to link to later, I think *)
                   )
                 | DONE =>
                   let val B'' = B.plus(B,B')
@@ -278,22 +364,40 @@ fun repl (stepno, B:Basis, state, rp:rp, libs_acc) : OS.Process.status =
                            smlfile::libs_acc)
                   end
            end
+         | (SOME state', PE.FAILURE (report,errs)) =>
+           ( Report.print report
+           ; repl (stepno+1,
+                   B,
+                   PE.begin_stdin(),   (* Clear the state *)
+                   rp,
+                   libs_acc)
+           )
          | (_, PE.FAILURE (report,errs)) =>
            ( Report.print report
-           ; (*repl (stepno+1,
-                   B,
-                   PE.begin_stdin(),
-                   rp,
-                   libs_acc)*)
-             Posix.Process.kill (Posix.Process.K_PROC (#pid rp), Posix.Signal.kill)
-           ; Posix.Process.wait()
-           ; OS.Process.exit OS.Process.failure
+           ; do_exit rp OS.Process.failure
            )
          | (NONE, PE.SUCCESS _) => die "repl - impossible"
-    end
+    end handle Quit => do_exit rp OS.Process.success
+
+val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
+    "safeLinkTimeElimination", "repository", "reml", "strip",
+    "tag_pairs", "tag_values", "unbox_reals", "warn_spurious",
+    "region_profiling", "recompile_basislib", "print_K_normal_forms",
+    "parallelism_alloc_unprotected", "print_bit_vectors",
+    "print_all_program_points", "parallelism", "output", "namebase",
+    "mlb-subdir", "link_time_dead_code_elimination", "link_code",
+    "libs", "libdirs", "import_basislib",
+    "generational_garbage_collection", "gdb_support",
+    "garbage_collection", "extra_gc_checks", "compile_only",
+    "c_compiler", "assembler", "argobots", "alloc_protect_always",
+    "SML_LIB", "quotation", "warn_on_parallel_puts", "mlb_path_maps",
+    "load_basis_files", "disable_spurious_type_variables",
+    "dangling_pointers_statistics", "dangling_pointers",
+    "statistics_spurious", "type_check_lambda", "report_file_sig"]
 
 fun run () : OS.Process.status =
     let val () = Flags.turn_on "report_file_sig"
+        val () = List.app Flags.block_entry flags_to_block
         val () = if Flags.is_on "garbage_collection" then
                    ( print("Disabling garbage collection - it is not supported with the REPL\n")
                    ; Flags.turn_off "garbage_collection"

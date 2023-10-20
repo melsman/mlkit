@@ -1,5 +1,3 @@
-(*$MyBase*)
-
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi *)
 
 (* This file is (roughly) the concatenation of base.sig, stream.sml,
@@ -9,11 +7,11 @@
 (* STREAM: signature for a lazy stream.*)
 
 signature STREAM =
- sig type 'xa stream
-     val streamify : (unit -> '_a) -> '_a stream
-     val cons : '_a * '_a stream -> '_a stream
-     val get : '_a stream -> '_a * '_a stream
- end
+sig type 'a stream
+    val streamify : (unit -> 'a) -> 'a stream
+    val cons      : 'a * 'a stream -> 'a stream
+    val get       : 'a stream -> 'a * 'a stream
+end
 
 (* LR_TABLE: signature for an LR Table.
 
@@ -33,7 +31,7 @@ signature LR_TABLE =
 			| ACCEPT
 			| ERROR
 	type table
-	
+
 	val numStates : table -> int
 	val numRules : table -> int
 	val describeActions : table -> state ->
@@ -55,9 +53,9 @@ signature LR_TABLE =
     end
 
 (* TOKEN: signature revealing the internal structure of a token. This signature
-   TOKEN distinct from the signature {parser name}_TOKENS produced by ML-Yacc.
+   TOKEN is distinct from the signature {parser name}_TOKENS produced by ML-Yacc.
    The {parser name}_TOKENS structures contain some types and functions to
-    construct tokens from values and positions.
+   construct tokens from values and positions.
 
    The representation of token was very carefully chosen here to allow the
    polymorphic parser to work without knowing the types of semantic values
@@ -69,7 +67,7 @@ signature LR_TABLE =
    constructor function for a integer token might be
 
 	  INT: int * 'a * 'a -> 'a token.
- 
+
    This is not possible because we need to have tokens with the representation
    given below for the polymorphic parser.
 
@@ -106,7 +104,7 @@ signature LR_PARSER =
 		     arg: 'arg,
 		     saction : int *
 			       '_c *
-				(LrTable.state * ('_b * '_c * '_c)) list * 
+				(LrTable.state * ('_b * '_c * '_c)) list *
 				'arg ->
 				     LrTable.nonterm *
 				     ('_b * '_c * '_c) *
@@ -146,7 +144,7 @@ signature LEXER =
 		type pos
 		type svalue
 	   end
-	val makeLexer : (int -> string) -> unit -> 
+	val makeLexer : (int -> string) -> unit ->
          (UserDeclarations.svalue,UserDeclarations.pos) UserDeclarations.token
    end
 
@@ -163,12 +161,12 @@ signature ARG_LEXER =
 		type svalue
 		type arg
 	   end
-	val makeLexer : (int -> string) -> UserDeclarations.arg -> unit -> 
+	val makeLexer : (int -> string) -> UserDeclarations.arg -> unit ->
          (UserDeclarations.svalue,UserDeclarations.pos) UserDeclarations.token
    end
 
 (* PARSER_DATA: the signature of ParserData structures in {parser name}LrValsFun
-   produced by  SML-Yacc.  All such structures match this signature.  
+   produced by  SML-Yacc.  All such structures match this signature.
 
    The {parser name}LrValsFun produces a structure which contains all the values
    except for the lexer needed to call the polymorphic parser mentioned
@@ -188,7 +186,7 @@ signature PARSER_DATA =
 
          (* the type of the user-supplied argument to the parser *)
  	type arg
- 
+
 	(* the intended type of the result of the parser.  This value is
 	   produced by applying extract from the structure Actions to the
 	   final semantic value resultiing from a parse.
@@ -205,7 +203,7 @@ signature PARSER_DATA =
 	   a default value for the semantic stack.
 	 *)
 
-	structure Actions : 
+	structure Actions :
 	  sig
 	      val actions : int * pos *
 		   (LrTable.state * (svalue * pos * pos)) list * arg->
@@ -235,7 +233,7 @@ signature PARSER_DATA =
 	val table : LrTable.table
     end
 
-(* signature PARSER is the signature that most user parsers created by 
+(* signature PARSER is the signature that most user parsers created by
    SML-Yacc will match.
 *)
 
@@ -255,7 +253,7 @@ signature PARSER =
 
          (* the type of the user-supplied argument to the parser *)
  	type arg
-	
+
 	(* type svalue is the type of semantic values for the semantic value
 	   stack
 	 *)
@@ -284,7 +282,7 @@ signature PARSER =
     lexer takes an additional argument.
 *)
 
-signature ARG_PARSER = 
+signature ARG_PARSER =
     sig
         structure Token : TOKEN
 	structure Stream : STREAM
@@ -302,8 +300,7 @@ signature ARG_PARSER =
 		    (string * pos * pos -> unit) * arg ->
 				result * (svalue,pos) Token.token Stream.stream
 
-	val sameToken : (svalue,pos) Token.token * (svalue,pos) Token.token ->
-				bool
+	val sameToken : (svalue,pos) Token.token * (svalue,pos) Token.token -> bool
      end;
 
 functor Stream(): STREAM =
@@ -312,16 +309,16 @@ struct
 
    type 'a stream = 'a str ref
 
-   fun get(ref(EVAL t)) = t
-     | get(s as ref(UNEVAL f)) = 
-	    let val t = (f(), ref(UNEVAL f)) in s := EVAL t; t end
+   fun get (ref(EVAL t)) = t
+     | get (s as ref(UNEVAL f)) =
+       let val t = (f(), ref(UNEVAL f)) in s := EVAL t; t end
 
    fun streamify f = ref(UNEVAL f)
-   fun cons(a,s) = ref(EVAL(a,s))
+   fun cons (a,s) = ref(EVAL(a,s))
 
 end;
 
-functor LrTable(): LR_TABLE = 
+functor LrTable(): LR_TABLE =
     struct
 
 	infix 9 sub
@@ -344,7 +341,7 @@ functor LrTable(): LR_TABLE =
 	val numStates = fn ({states,...} : table) => states
 	val numRules = fn ({rules,...} : table) => rules
 	val describeActions =
-	   fn ({action,...} : table) => 
+	   fn ({action,...} : table) =>
 	           fn (STATE s) => action sub s
 	val describeGoto =
 	   fn ({goto,...} : table) =>
@@ -402,7 +399,7 @@ functor Join(structure Lex : LEXER
 struct
     structure Token = ParserData.Token
     structure Stream = LrParser.Stream
- 
+
     exception ParseError = LrParser.ParseError
 
     type arg = ParserData.arg
@@ -430,7 +427,7 @@ struct
      val sameToken = Token.sameToken
 end
 
-(* functor JoinWithArg creates a variant of the parser structure produced 
+(* functor JoinWithArg creates a variant of the parser structure produced
    above.  In this case, the makeLexer take an additional argument before
    yielding a value of type unit -> (svalue,pos) token
  *)
@@ -468,7 +465,7 @@ struct
 		void= ParserData.Actions.void,
 	        ec = {is_keyword = ParserData.EC.is_keyword,
 		      noShift = ParserData.EC.noShift,
-		      preferred_subst = (*ParserData.EC.preferred_subst*) fn _ => nil,    (* see comment above *)  
+		      preferred_subst = (*ParserData.EC.preferred_subst*) fn _ => nil,    (* see comment above *)
 		      preferred_insert= (*ParserData.EC.preferred_insert*) fn _ => false,
 		      errtermvalue = ParserData.EC.errtermvalue,
 		      error=error,
@@ -489,7 +486,7 @@ end;
 
     This program is an implementation is the partial, deferred method discussed
     in the article.  The algorithm and data structures used in the program
-    are described below.  
+    are described below.
 
     This program assumes that all semantic actions are delayed.  A semantic
     action should produce a function from unit -> value instead of producing the
@@ -501,7 +498,7 @@ end;
 
     Data Structures:
     ----------------
-	
+
 	* The parser:
 
 	   The state stack has the type
@@ -509,7 +506,7 @@ end;
 		 (state * (semantic value * line # * line #)) list
 
 	   The parser keeps a queue of (state stack * lexer pair).  A lexer pair
-	 consists of a terminal * value pair and a lexer.  This allows the 
+	 consists of a terminal * value pair and a lexer.  This allows the
 	 parser to reconstruct the states for terminals to the left of a
 	 syntax error, and attempt to make error corrections there.
 
@@ -521,7 +518,7 @@ end;
     Algorithm:
     ----------
 
-	* The steady-state parser:  
+	* The steady-state parser:
 
 	    This parser keeps the length of the queue of state stacks at
 	a steady state by always removing an element from the front when
@@ -557,7 +554,7 @@ end;
 	tokens left unparsed, a queue, and an action option.
 *)
 
-signature MYFIFO = 
+signature MYFIFO =
   sig type 'a queue
       val empty : 'a queue
       exception Empty
@@ -606,11 +603,11 @@ functor ParserGen(structure LrTable : LR_TABLE
       type ('a,'b) lexpair = ('a,'b) lexv * (('a,'b) lexv Stream.stream)
       type ('a,'b) distanceParse =
 		 ('a,'b) lexpair *
-		 ('a,'b) stack * 
+		 ('a,'b) stack *
 		 (('a,'b) stack * ('a,'b) lexpair) MyFifo.queue *
 		 int ->
 		   ('a,'b) lexpair *
-		   ('a,'b) stack * 
+		   ('a,'b) stack *
 		   (('a,'b) stack * ('a,'b) lexpair) MyFifo.queue *
 		   int *
 		   action option
@@ -625,7 +622,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 	  showTerminal : term -> string,
 	  noShift : term -> bool}
 
-      local 
+      local
 	 val showState = fn (STATE s) => "STATE " ^ (Int.toString s)
       in
         fun printStack(stack: ('a,'b) stack, n: int) =
@@ -635,13 +632,13 @@ functor ParserGen(structure LrTable : LR_TABLE
                   println(showState state);
                   printStack(rest, n+1))
             | nil => ()
-                
+
         fun prAction showTerminal
 		 (stack as (state,_) :: _, next as (TOKEN (term,_),_), action) =
              (println "Parse: state stack:";
               printStack(stack, 0);
               TextIO.output(TextIO.stdOut, "       state="
-                         ^ showState state	
+                         ^ showState state
                          ^ " next="
                          ^ showTerminal term
                          ^ " action="
@@ -661,7 +658,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 	fixError is called with the arguments of parseStep (lexv,stack,and
 	queue).  It returns the lexv, and a new stack and queue adjusted so
 	that the lexv can be parsed *)
-	
+
     val ssParse =
       fn (table,showTerminal,saction,fixError,arg) =>
 	let val prAction = prAction showTerminal
@@ -691,7 +688,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 				    queue)
 		       | _ => raise (ParseImpossible 197))
 		 | ERROR => parseStep(fixError args)
-		 | ACCEPT => 
+		 | ACCEPT =>
 			(case stack
 			 of (_,(topvalue,_,_)) :: _ =>
 				let val (token,restLexer) = lexPair
@@ -742,7 +739,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		 | ACCEPT => (lexPair,stack,queue,distance,SOME nextAction)
 	      end
 	   | parseStep _ = raise (ParseImpossible 242)
-	in parseStep : ('_a,'_b) distanceParse 
+	in parseStep : ('_a,'_b) distanceParse
 	end
 
 (* mkFixError: function to create fixError function which adjusts parser state
@@ -766,7 +763,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 
 	(* pull all the state * lexv elements from the queue *)
 
-	val stateList = 
+	val stateList =
 	   let fun f q = let val (elem,newQueue) = MyFifo.get q
 			 in elem :: (f newQueue)
 			 end handle MyFifo.Empty => nil
@@ -796,7 +793,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	   {oper : oper, pos : int, distance : int,
 	    new : ('a,'b) lexv, orig : ('a,'b) lexv}
 
-	val operToString = 
+	val operToString =
 	       fn INSERT => "INSERT "
 		| SUBST  => "SUBST "
 		| DELETE => "DELETE "
@@ -885,7 +882,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 			  (foldStateList substFold nil) @
 				(foldStateList deleteFold nil)
 
-	val findMaxDist = fn l => 
+	val findMaxDist = fn l =>
 	  foldr (fn (CHANGE {distance,...}, high) => Int.max (distance, high)) 0 l
 
 (* maxDist: max distance past error taken that we could parse *)
@@ -894,7 +891,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 
 (* sieve: keep only the elements of a list for which pred is true *)
 
-	val sieve = fn pred => fn l => 
+	val sieve = fn pred => fn l =>
 	  foldr (fn (elem,rest) => if pred elem then elem::rest else rest) l nil
 
 (* remove changes which did not parse maxDist tokens past the error token *)
@@ -904,7 +901,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 (* Find preferred elements *)
 
         val preferredInsertChanges =
-		sieve (fn CHANGE {new=TOKEN (term,_),oper=INSERT,...} => 
+		sieve (fn CHANGE {new=TOKEN (term,_),oper=INSERT,...} =>
 				 preferred_insert term
 		        | _ => false) changes
 
@@ -934,12 +931,12 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
          val changes =
 	       preferredInsertChanges @ (preferredSubstChanges @ changes)
 
-         in case changes 
+         in case changes
 	     of (l as _ :: _) =>
 	        let fun print_msg (CHANGE {new=TOKEN (term,_),oper,
 					   orig=TOKEN (t',(_,leftPos,rightPos)),
 					   ...}) =
-		     let val s = 
+		     let val s =
 		       case oper
 			 of DELETE => "deleting " ^ (showTerminal t')
 			  | INSERT => "inserting " ^ (showTerminal term)
@@ -947,12 +944,12 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 				   " with " ^ (showTerminal term)
 		     in error ("syntax error: " ^ s,leftPos,rightPos)
 		     end
-		   
+
 		   exception Hd
 		   fun hd(x :: _) = x
 		     | hd _ = raise Hd
 
-		   val a = 
+		   val a =
 		     (if length l > 1 andalso DEBUG2 then
 			(println "multiple fixes possible; could fix it by:";
 		 	 map print_msg l;
@@ -980,7 +977,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 					   end
 		     in f (rev stateList,n)
 		     end
-		
+
 		    val CHANGE {pos,oper,new=TOKEN (term,(value,_,_)),...} = a
 		    val (last,queueFront) = findNth pos
 		    val (stack,lexPair as (orig,lexer)) = last
@@ -993,7 +990,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 			 | SUBST => (newLexV,lexer)
 			 | INSERT => (newLexV,Stream.cons lexPair)
 
-		    val restQueue = 
+		    val restQueue =
 		     MyFifo.put((stack,newLexPair),
 			      foldl MyFifo.put MyFifo.empty queueFront)
 

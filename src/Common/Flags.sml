@@ -178,12 +178,17 @@ structure Directory : sig
 
                         (* help key  provides help information for the key *)
                         val help : string -> string
+                        val help_nodash : string -> string
 
                         (* help_all()  provides help on all options in the directory *)
                         val help_all : unit -> string
-                        val getOptions  : unit ->
+                        val help_all_nodash_noneg : unit -> string
+                        val getOptions : unit ->
                           {desc : string, long : string list, short : string list,
-                           kind : string option, default : string option} list
+                           kind : string option, default : string option, menu:string list} list
+                        val getOptions_noneg : unit ->
+                          {desc : string, long : string list, short : string list,
+                           kind : string option, default : string option, menu:string list} list
 
                         val block_entry : string -> unit
                         val is_blocked : string -> bool
@@ -427,7 +432,7 @@ struct
   datatype kindOfHelp = HELP | OPTIONS | DEFAULTS
 
   (* help key  provides help information for the key *)
-  fun help' (key: string) =
+  fun help' {neg:bool} (key: string) =
       let fun optToList NONE = []
             | optToList (SOME a) = [a]
 
@@ -437,40 +442,42 @@ struct
             | opt NONE = ""
 
           fun negationNew (e:bentry, kind) =
-              if not(#neg e) then []
+              if not(#neg e) orelse not neg then []
               else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
+                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ ".",
+                     menu= #menu e}]
 
           fun negationNew' (e:baentry, kind) =
-              [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-                kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
-
+              if not neg then nil
+              else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
+                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ ".",
+                     menu= #menu e}]
       in
         case lookup_notnull_menu (!dir) key of
             SOME (BOOL_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), kind = NONE,
-             default = SOME (bitem (!(#item e))), desc = #desc e} ::
+             default = SOME (bitem (!(#item e))), desc = #desc e, menu= #menu e} ::
             (negationNew (e,NONE))
           | SOME (BOOLA_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = SOME (bitem (!(#item e))),
-             desc = #desc e, kind = NONE} ::
+             desc = #desc e, kind = NONE, menu= #menu e} ::
             negationNew' (e,NONE)
           | SOME (STRING_ENTRY e) =>
             {long = [#long e], short = optToList (#short e),
              default = let val a = (String.toString(!(#item e)))
                        in if a = "" then NONE else SOME a
                        end,
-             desc = #desc e, kind = SOME "S"} :: []
+             desc = #desc e, kind = SOME "S", menu= #menu e} :: []
           | SOME (STRINGLIST_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = NONE,
-             desc = #desc e, kind = SOME "S"} :: []
+             desc = #desc e, kind = SOME "S", menu= #menu e} :: []
           | SOME (INT_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = SOME (Int.toString (!(#item e))),
-             desc = #desc e, kind = SOME "N"} :: []
+             desc = #desc e, kind = SOME "N", menu= #menu e} :: []
           | NONE => raise Fail ("no help available for option: " ^ key)
       end
 
-  fun print_help tail x =
+  fun print_help {dashes:bool} tail x =
     let
       val width = 60
       fun indent s =
@@ -483,12 +490,14 @@ struct
       fun pkind NONE = ""
         | pkind (SOME k) = " " ^ k
 
-      fun p {long,short,kind,default,desc} =
+      val dash1 = if dashes then "-" else ""
+      val dash2 = dash1 ^ dash1
+      fun p {long,short,kind,default,desc,menu} =
         let
           val name = String.concat (
                       (addBetween ", "
-                        (List.map (fn x => "--" ^ x ^ (pkind kind)) long)) @
-                      (List.map (fn x => ", -" ^ x ^ (pkind kind)) short) @ [" "])
+                        (List.map (fn x => dash2 ^ x ^ (pkind kind)) long)) @
+                      (List.map (fn x => ", " ^ dash1 ^ x ^ (pkind kind)) short) @ [" "])
           val firstline = case default
                           of NONE => name ^ "\n"
                            | SOME default => StringCvt.padRight #" " (width - (String.size default)) name ^ "(" ^ default ^ ")\n"
@@ -498,19 +507,21 @@ struct
     in String.concat (List.map p x)
     end
 
-  fun help x = print_help "" (help' x)
+  fun help x = print_help {dashes=true} "" (help' {neg=true} x)
+
+  fun help_nodash x = print_help {dashes=false} "" (help' {neg=false} x)
 
   (* help_all()  provides help on all options in the directory *)
-  fun help_all' () =
+  fun help_all' {neg:bool} =
       let val dom = rev(M.dom (!dir))
           fun add (key, acc) =
               let  (* add only if (1) menu is non-empty and
                     * (2) the entry is not a short key and (3) entry is not blocked *)
                 fun check (SOME k) l =
                     if k = key orelse is_blocked l then acc
-                    else (help' key) @ acc
+                    else (help' {neg=neg} key) @ acc
                   | check NONE l =
-                    if is_blocked l then acc else (help' key) @ acc
+                    if is_blocked l then acc else (help' {neg=neg} key) @ acc
               in
                 case lookup_notnull_menu (!dir) key
                  of SOME (INT_ENTRY e) => check(#short e)(#long e)
@@ -532,8 +543,13 @@ struct
              (foldl add [] dom)
       end
 
-  fun help_all () = print_help "\n" (help_all' ())
-  val getOptions = help_all'
+  fun help_all () = print_help {dashes=true} "\n" (help_all' {neg=true})
+
+  fun help_all_nodash_noneg () = print_help {dashes=false} "\n" (help_all' {neg=false})
+
+  fun getOptions () = help_all' {neg=true}
+
+  fun getOptions_noneg () = help_all' {neg=false}
 
 end (* Directory *)
 
@@ -836,10 +852,13 @@ val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_options = Directory.read_options
 val help = Directory.help
+val help_nodash = Directory.help_nodash
 val help_all = Directory.help_all
+val help_all_nodash_noneg = Directory.help_all_nodash_noneg
 type options = {desc : string, long : string list, short : string list,
-                kind : string option, default : string option}
+                kind : string option, default : string option, menu:string list}
 val getOptions = Directory.getOptions : unit -> options list
+val getOptions_noneg = Directory.getOptions_noneg : unit -> options list
 
 datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)

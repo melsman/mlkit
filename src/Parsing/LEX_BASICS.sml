@@ -35,19 +35,19 @@ signature LEX_BASICS =
 				   pass characters one at a time, we don't
 				   actually know the real lexing position. *)
 
-    val lexFromFile: string -> SourceReader (*may raise Io s*)
-    val lexFromString: string -> SourceReader
-    val lexFromStdIn: unit -> SourceReader
+    val lexFromFile   : string -> SourceReader (*may raise Io s*)
+    val lexFromString : string -> SourceReader
+    val lexFromStdIn  : unit -> SourceReader
 
     exception LEXICAL_ERROR of pos * string
 				(* The (generated) lexer raises this on a
 				   lex error. We must catch it in Parse(). *)
 
     type Report
-    val reportPosition: {left: pos, right: pos} -> Report
-    val output_source : {os: TextIO.outstream, left: pos, right: pos} -> unit
-    val get_source : {left: pos, right: pos} -> string
+    val reportPosition : {left: pos, right: pos} -> Report
+    val output_source  : {os: TextIO.outstream, left: pos, right: pos} -> unit
+    val get_source     : {left: pos, right: pos} -> string
 
     type StringTree
     val layoutPos: pos -> StringTree
-  end;
+  end

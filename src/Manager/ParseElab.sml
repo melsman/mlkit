@@ -148,6 +148,9 @@ structure ParseElab: PARSE_ELAB =
     fun begin_stdin () : State =
         Parse.begin(Parse.sourceFromStdIn())
 
+    val colonLine = Parse.colonLine
+    val stripSemiColons = Parse.stripSemiColons
+
     fun parse_elab_stdin {infB, elabB, absprjid, state: State} : State option * Result =
       let val _ = chat "[parsing..."
 	  val _ = Timing.timing_begin()

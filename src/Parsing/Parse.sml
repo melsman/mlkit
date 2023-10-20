@@ -29,6 +29,7 @@ structure Parse : PARSE =
 
     val eof = TopdecLrVals.Tokens.EOF(LexBasics.DUMMY, LexBasics.DUMMY)
     val sc = TopdecLrVals.Tokens.SEMICOLON(LexBasics.DUMMY, LexBasics.DUMMY)
+    val colon = TopdecLrVals.Tokens.COLON(LexBasics.DUMMY, LexBasics.DUMMY)
 
     type Report = Report.Report
     infix //
@@ -103,24 +104,53 @@ structure Parse : PARSE =
                     | LEGAL_EOF
 
     fun begin sourceReader =
-      let
-        val LexBasics.SOURCE_READER{clearFn, lexingFn, ...} = sourceReader
-        val _ = clearFn()               (* Forget any stored lines *)
+      let val LexBasics.SOURCE_READER{clearFn, lexingFn, ...} = sourceReader
+          val _ = clearFn()               (* Forget any stored lines *)
 
-        val lex_fn =
-          TopdecLex.makeLexer lexingFn (LexUtils.initArg sourceReader)
+          val lex_fn =
+              TopdecLex.makeLexer lexingFn (LexUtils.initArg sourceReader)
 
-        val stream = Stream.streamify lex_fn
-      in
-        STATE stream
+          val stream = Stream.streamify lex_fn
+      in STATE stream
       end
 
     fun parse (ib, state) =
-      (case parseStream state of
-	 PS_SUCCESS(topdec, state') =>
-	   (case Infixing.resolve(ib, topdec) of
-	      Infixing.SUCCESS (ib', topdec') => SUCCESS(ib', topdec', state')
-	    | Infixing.FAILURE report => ERROR report)
-       | PS_ERROR report => ERROR report
-       | PS_EOF => LEGAL_EOF)
-  end;
+        case parseStream state of
+	    PS_SUCCESS(topdec, state') =>
+	    (case Infixing.resolve(ib, topdec) of
+	         Infixing.SUCCESS (ib', topdec') => SUCCESS(ib', topdec', state')
+	       | Infixing.FAILURE report => ERROR report)
+          | PS_ERROR report => ERROR report
+          | PS_EOF => LEGAL_EOF
+
+    fun read_until_semicolon s acc =
+        let val (h,tl) = Stream.get s
+        in if sameToken(h,sc) then
+             (rev acc,tl)
+           else read_until_semicolon tl (h::acc)
+        end
+
+    fun pp_token (LrParser.Token.TOKEN(_,(_,l,r))) =
+        LexBasics.get_source{left=l,right=r}
+
+    fun stripSemiColons (st as STATE stream) : State =
+        let val (h,tl) = Stream.get stream
+        in if sameToken(h,sc) then stripSemiColons (STATE tl)
+           else st
+        end
+
+    fun colonLine (STATE stream) : (string * State) option =
+        let val (h,tl) = Stream.get stream
+        in if sameToken(h,colon) then
+             let val (ts,s) = read_until_semicolon tl [h]
+                 val line = case (ts,rev ts) of
+                                (LrParser.Token.TOKEN(_,(_,l,_)) :: _,
+                                 LrParser.Token.TOKEN(_,(_,_,r)) :: _) =>
+                                LexBasics.get_source{left=l,right=r}
+                              | _ => ""
+             in SOME (line, STATE s)
+             end
+           else NONE
+        end
+
+  end

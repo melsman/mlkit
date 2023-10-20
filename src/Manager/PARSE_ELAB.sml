@@ -24,6 +24,9 @@ signature PARSE_ELAB =
     val parse_elab_stdin : {infB: InfixBasis, elabB: ElabBasis,
 		            absprjid: absprjid, state: State}
                            -> State option * Result
+
+    val colonLine        : State -> (string * State) option
+    val stripSemiColons  : State -> State
   end
 
 

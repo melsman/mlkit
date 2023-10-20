@@ -26,6 +26,8 @@ signature PARSE =
 				   (EOF in the middle of a phrase is an
 				   error) *)
 
-    val begin : SourceReader -> State
-    val parse : InfixBasis * State -> Result
+    val begin           : SourceReader -> State
+    val parse           : InfixBasis * State -> Result
+    val colonLine       : State -> (string * State) option   (* for commands *)
+    val stripSemiColons : State -> State
   end

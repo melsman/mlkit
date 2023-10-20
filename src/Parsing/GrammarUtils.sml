@@ -1,5 +1,5 @@
 
-structure GrammarUtils: GRAMMAR_UTILS =
+structure GrammarUtils : GRAMMAR_UTILS =
   struct
     structure TopdecGrammar = PreElabTopdecGrammar
     fun impossible s = Crash.impossible ("GrammarUtils." ^ s)
@@ -92,7 +92,6 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
          | nil => nil
 
-
    (* Complex constructor functions. *)
 
     fun expOfAtexp atexp = ATEXPexp (get_info_atexp atexp, atexp)
@@ -115,13 +114,13 @@ structure GrammarUtils: GRAMMAR_UTILS =
 	    STRtopdec (info, strdec, NONE)
 	  end
 
-    fun composeStrDec(i, strdec1, strdec2) =
+    fun composeStrDec (i, strdec1, strdec2) =
       case (strdec1, strdec2)
         of (EMPTYstrdec _, _) => strdec2
          | (_, EMPTYstrdec _) => strdec1
          | _ => SEQstrdec(i, strdec1, strdec2)
 
-    fun composeSpec(i, spec1, spec2) =
+    fun composeSpec (i, spec1, spec2) =
       case (spec1, spec2)
         of (EMPTYspec _, _) => spec2
          | (_, EMPTYspec _) => spec1
@@ -130,7 +129,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
     val inventStrId = StrId.inventStrId
     val inventId = Ident.inventId
 
-    fun composeDec(i, dec1, dec2) =
+    fun composeDec (i, dec1, dec2) =
       case (dec1, dec2)
         of (EMPTYdec _, _) => dec2
          | (_, EMPTYdec _) => dec1
@@ -482,4 +481,4 @@ structure GrammarUtils: GRAMMAR_UTILS =
       | raise_lexical_error_if_none pos (SOME a) = a
 
     val reportPosition_from_info = SourceInfo.report o ParseInfo.to_SourceInfo
-  end;
+  end
