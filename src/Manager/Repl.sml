@@ -42,7 +42,7 @@ fun chatf f = if !Flags.chat then log (f() ^ "\n") else ()
 fun pr_st (st) : unit = PP.outputTree (print, st, 120)
 
 infix ##
-val ## = OS.Path.concat
+val op ## = OS.Path.concat
 
 (* -------------------------------------------
  * Debugging and reporting
