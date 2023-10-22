@@ -264,8 +264,10 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
+(*
 		val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()
+*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
 		fun tynames_ife(IFE ife) =
 		  let fun tynames_obj ((_,_,_,_,obj),tns) =

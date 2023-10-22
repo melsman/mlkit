@@ -495,12 +495,12 @@ struct
           val op ## = OS.Path.concat
           val file = (dir ## (!depDir) ## (file ^ ".d")) handle OS.Path.Path => die "Path: maybeWriteDep"
         in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .d-file if the current .d-file *)
-           else                                                  (*  is newer than the mlb-file or any imported mlb-file. *)
+           else                                                (*  is newer than the mlb-file or any imported mlb-file. *)
              let
                val L = DepEnv.getL D
                val L = map (subtractDir (hasLinks dir) dir) L
                val s = concat (map (fn s => s ^ " ") L)
-               fun write() =
+               fun write () =
                    ((if dir = "" then ()
                      else maybe_create_depdir dir);
                     writeDep file s)
@@ -510,6 +510,30 @@ struct
                 | NONE => write()
              end
         end
+
+    fun maybeWriteDef mlbfile (modTimeMlbFileMax:Time.time) D : unit =  (* much similar to maybeWriteDep! *)
+        let
+          val {dir,file} = OS.Path.splitDirFile mlbfile
+          infix ##
+          val op ## = OS.Path.concat
+          val file = (dir ## (!depDir) ## (file ^ ".df")) handle OS.Path.Path => die "Path: maybeWriteDef"
+        in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .df-file if the current .df-file *)
+           else                                                (*  is newer than the mlb-file or any imported mlb-file. *)
+             let
+               val L = DepEnv.getL D
+               val L = map (subtractDir (hasLinks dir) dir) L
+               val s = concat (map (fn s => s ^ " ") L)
+               fun write () =
+                   ((if dir = "" then ()
+                     else maybe_create_depdir dir);
+                    writeDep file s)
+             in case fromFile' file of
+                  SOME s' => if s = s' then ()                  (* Don't write .df-file if its content already *)
+                             else write()                       (*  specifies the correct dependencies. *)
+                | NONE => write()
+             end
+        end
+
   end
 
   local
@@ -594,7 +618,9 @@ struct
                                val A = {modTimeMlbFileMax=modTimeMlbFileMaxNew,
                                         mlbfiles= #mlbfiles A}
                                val (D,A) = dep_bdec DepEnv.empty A bdec
-                           in  cd_old() ;
+
+                           in  maybeWriteDef mlbfile (#modTimeMlbFileMax A) D ;
+                               cd_old() ;
                                (D, {modTimeMlbFileMax=timeMax(modTimeMlbFileMaxOld,modTimeMlbFileMaxNew),
                                     mlbfiles=(unique,D) :: #mlbfiles A})
                            end handle X => (cd_old(); raise X)

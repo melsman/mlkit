@@ -47,7 +47,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		structure IntModules = IntModules)
 
     structure Repl = Repl(structure ManagerObjects = ManagerObjects
-      		          structure IntModules = IntModules)
+      		          structure IntModules = IntModules
+                          structure Manager = Manager)
 
     val import_basislib = Flags.lookup_flag_entry "import_basislib"
 

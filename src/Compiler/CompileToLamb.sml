@@ -74,7 +74,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
 
     fun ast2lambda fe (ce, ne, strdecs) =
-      (chat "[Compiling abstract syntax tree into lambda language..";
+      (chat "[begin compiling AST into lambda language]";
 
 (*       Timing.timing_begin(); *)
 
@@ -92,12 +92,10 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	   val (ce1, lamb) = CompileDec.compileStrdecs fe ce strdecs
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
-           val _ = chat "."
            val (lamb,ne1) = LambdaBasics.Normalize.norm(ne,lamb)
-           val _ = chat "."
            val lamb = LambdaBasics.close lamb
        in
-	 chat "]\n";
+	 chat "[end compiling AST into lambda language]";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Unoptimised Lambda Program", layoutLambdaPgm lamb));
 	 (lamb, ce1, ne1, declared_lvars, declared_excons)
      end)
@@ -123,7 +121,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     fun type_check_lambda (a,b) =
       if type_check_lambda_p() then
-	(chat "[Type checking lambda term...";
+	(chat "[begin type checking lambda term]";
 	 Timing.timing_begin();
 	 let
 	   val env' = Timing.timing_end_res ("CheckLam",
@@ -131,7 +129,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
                                                                        letrec_polymorphism_only = false,  (* MEMO: shouldn't this be true? *)
                                                                        pgm =  b})
 	 in
-	   chat "]\n";
+	   chat "[end type checking lambda term]";
 	   env'
 	 end)
       else LambdaStatSem.empty
@@ -143,12 +141,12 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     fun elim_eq_lambda (env,lamb) =
       if eliminate_polymorphic_equality_p() then
-	(chat "[Eliminating polymorphic equality...";
+	(chat "[begin eliminating polymorphic equality]";
 	 Timing.timing_begin();
 	 let val (lamb', env') =
 	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
 	 in
-	   chat "]\n";
+	   chat "[end eliminating polymorphic equality]";
 	   if !Flags.DEBUG_COMPILER then
 	     (display("Lambda Program After Elimination of Equality",
 		      layoutLambdaPgm lamb');
@@ -166,14 +164,15 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     val optimise_p = Flags.is_on0 "optimiser"
 
     fun optlambda (env, lamb) =
-          ((if optimise_p() then chat "[Optimising lambda term..."
-	    else chat "[Rewriting lambda term...");
+          ((if optimise_p() then chat "[begin optimising lambda term]"
+	    else chat "[begin rewriting lambda term]");
 	   Timing.timing_begin();
 	   let
 	     val (lamb_opt, env') =
 	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
 	   in
-	     chat "]\n";
+	     if optimise_p() then chat "[end optimising lambda term]"
+	     else chat "[end rewriting lambda term]";
 	     if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
 	     then display("Optimised Lambda Program", layoutLambdaPgm lamb_opt) else () ;
 	     (lamb_opt, env')

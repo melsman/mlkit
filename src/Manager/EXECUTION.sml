@@ -52,10 +52,10 @@ signature EXECUTION =
      * runtime system (also partially linked) and produce an executable
      * called `run'.
      *
-     * create_repl_runtime files "librun.so" : Creates a shared object
-     * file librun.so for the runtime system, which also has a main
+     * create_repl_runtime files "libruntime.so" : Creates a shared object
+     * file libruntime.so for the runtime system, which also has a main
      * function and which can be executed (transformed into an
-     * executable using gcc -o run.exe -L . -lrun).
+     * executable using gcc -o run.exe -L . -lruntime).
      * ----------------------------------------------------------- *)
 
     val link_files_with_runtime_system : string list -> string -> unit

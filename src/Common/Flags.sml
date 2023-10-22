@@ -31,8 +31,8 @@ structure Flags : FLAGS =
     val install_dir = ref "You_did_not_set_path_to_install_dir"
 
     (* Pretty Printing *)
-
     val raggedRight = PrettyPrint.raggedRight
+    val colwidth = PrettyPrint.colwidth
 
     (* Debugging Flags *)
     val DEBUG_COMPILER          = ref false
@@ -60,12 +60,7 @@ structure Flags : FLAGS =
     val region_paths = (ref[]): (int*int) list ref
 
     (* Flags for Lambda Backend *)
-
     val log_to_file = ref false
-    val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
-
-    val colwidth = PrettyPrint.colwidth
-
     val log = ref TextIO.stdOut
 
     (* Program manager *)
@@ -81,7 +76,6 @@ structure Flags : FLAGS =
           (*                   warnings                    *)
           (*                                               *)
           (*************************************************)
-
 
     type Report = Report.Report
 
