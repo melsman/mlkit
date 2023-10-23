@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#define _GNU_SOURCE
 #include <dlfcn.h>
 
 #include "Runtime.h"
