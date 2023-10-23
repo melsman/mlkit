@@ -14,7 +14,7 @@ BINDIR=@top_srcdir@/bin
 LIBDIR=@top_srcdir@/lib
 
 OFILES=Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
-       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o Socket.o
+       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o Socket.o Repl.o
 OFILESWITHGC=$(OFILES) GC.o
 OFILESWITHPAR=$(OFILES) Spawn.o
 CFILES_PAR=$(OFILESWITHPAR:%.o=%.c)
@@ -31,7 +31,7 @@ OFILES_GC_TP = $(OFILESWITHGC:%.o=%-gc-tp.o)
 OFILES_GC_TP_PROF = $(OFILESWITHGC:%.o=%-gc-tp-p.o)
 HEADER_FILES=SysErrTable.h
 
-OPT:=-Wall -std=gnu99
+OPT:=-Wall -std=gnu99 -fPIC
 OPT:=$(OPT) $(CFLAGS)
 
 AR=ar rc
