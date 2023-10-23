@@ -1,3 +1,9 @@
+// _GNU_SOURCE is necessary on Linux for dlfcn.h to define
+// RTLD_DEFAULT - and it must be defined before other
+// #includes...
+
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -7,8 +13,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-
-#define _GNU_SOURCE
 #include <dlfcn.h>
 
 #include "Runtime.h"
