@@ -511,6 +511,7 @@ local
           \  cmd ::= flags           -- describe all flags\n\
           \        | help            -- general help\n\
           \        | help flag       -- get help about a flag\n\
+          \        | load mlb-file   -- load an mlb-file\n\
           \        | menu [N]        -- print flag menu [N]\n\
           \        | quit            -- quit\n\
           \        | search s        -- search for help about s\n\
