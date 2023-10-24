@@ -1353,15 +1353,15 @@ struct
                       val _ = add_static_data
                           ([I.dot_data,
                             I.dot_align 8,
-                            I.dot_globl ctx_lab,  (* Slot for storing ctx *)
+                            I.dot_globl (ctx_lab,I.OBJ),  (* Slot for storing ctx *)
                             I.lab ctx_lab,
                             I.dot_quad (i2s BI.ml_unit),
-                            I.dot_globl clos_lab,
+                            I.dot_globl (clos_lab,I.OBJ),
                             I.lab clos_lab,  (* Slot for storing a pointer to the ML closure; the
                                               * ML closure object may move due to GCs. *)
                             I.dot_quad (i2s BI.ml_unit),
                             I.dot_text,
-                            I.dot_globl lab, (* The C function entry *)
+                            I.dot_globl (lab,I.FUNC), (* The C function entry *)
                             I.lab lab]
                          @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
                          @ [I.movq (L ctx_lab, R r14),            (* load ctx into ctx register *)
@@ -1521,7 +1521,7 @@ struct
         fun data_x_lab x (l:label, C) =
             if gc_p() then
                 let val lab = data_x_progunit_lab x l
-                in I.dot_globl lab ::
+                in I.dot_globl (lab,I.OBJ) ::
                     I.lab lab :: C
                 end
             else C
@@ -1555,8 +1555,10 @@ struct
         val _ = chat "[X64 Code Generation..."
         val _ = reset_static_data()
         val _ = reset_label_counter()
-        val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab)) (main_lab::(#1 exports)))
-        val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab)) (#2 exports))
+        val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
+                                                   (main_lab::(#1 exports)))
+        val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab,I.OBJ))
+                                                   (#2 exports))
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab}
@@ -1577,7 +1579,7 @@ struct
                     if I.sysname() = "Darwin" then C
                     else I.dot_size(DatLab l, 8) :: C
             in
-                I.dot_globl (DatLab l) ::
+                I.dot_globl (DatLab l,I.OBJ) ::
                 I.dot_data ::
                 I.dot_align 8 ::
                 maybe_dotsize (I.lab (DatLab l) ::
@@ -1593,7 +1595,7 @@ struct
             val offset = if BI.tag_values() then 1 else 0
             val nlab = NameLab "TopLevelHandlerLab"
           in
-              I.dot_globl nlab ::
+              I.dot_globl (nlab,I.FUNC) ::
               I.lab nlab ::
               I.movq (R arg_reg, R tmp_reg0)::
               load_indexed(R arg_reg,arg_reg,WORDS offset,
@@ -1656,7 +1658,7 @@ struct
                     I.addq(R r,L(NameLab "alloc_period")) :: C
                   else C
 
-            in I.dot_globl(NameLab "allocinreg") ::
+            in I.dot_globl(NameLab "allocinreg",I.FUNC) ::
               I.lab (NameLab "allocinreg") ::
               I.andq(I (i2s (~4)), R tmp_reg1) ::                    (*   tmp_reg1 = clearBits(tmp_reg1)   *)
               I.cmpq(I "0",D(mutex_offset_bytes,tmp_reg1)) ::
@@ -1719,7 +1721,7 @@ struct
             val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
             val offset_codeptr = if BI.tag_values() then "8" else "0"
           in
-            I.dot_globl(NameLab "raise_exn") ::
+            I.dot_globl(NameLab "raise_exn",I.FUNC) ::
             I.lab (NameLab "raise_exn") ::
             I.subq (I "8", R rsp) :: (* adjust stack pointer for alignment *)
             I.movq (R rdi, R r14) :: (* reinstall context pointer *)
@@ -1754,7 +1756,7 @@ struct
               if BI.tag_values() then       (* Exception Name and Exception must be tagged. *)
                 add_static_data [I.dot_data,
                                  I.dot_align 8,
-                                 I.dot_globl exn_lab,
+                                 I.dot_globl (exn_lab,I.OBJ),
                                  I.lab exn_lab,
                                  I.dot_quad(BI.pr_tag_w(BI.tag_exname(true))),
                                  I.dot_quad "0", (*dummy for pointer to next word*)
@@ -1763,20 +1765,20 @@ struct
                                  I.dot_quad "0"  (*dummy for pointer to string*),
                                  I.dot_data,
                                  I.dot_align 8,
-                                 I.dot_globl exn_flush_lab,
+                                 I.dot_globl (exn_flush_lab,I.OBJ),
                                  I.lab exn_flush_lab, (* The Primitive Exception is Flushed at this Address *)
                                  I.dot_quad "0"]
               else
                 add_static_data [I.dot_data,
                                  I.dot_align 8,
-                                 I.dot_globl exn_lab,
+                                 I.dot_globl (exn_lab,I.OBJ),
                                  I.lab exn_lab,
                                  I.dot_quad "0", (*dummy for pointer to next word*)
                                  I.dot_quad(i2s n),
                                  I.dot_quad "0",  (*dummy for pointer to string*)
                                  I.dot_data,
                                  I.dot_align 8,
-                                 I.dot_globl exn_flush_lab,
+                                 I.dot_globl (exn_flush_lab,I.OBJ),
                                  I.lab exn_flush_lab, (* The Primitive Exception is Flushed at this Address *)
                                  I.dot_quad "0"]
           in
@@ -1844,7 +1846,7 @@ struct
             val res = if ret then SOME (SS.PHREG_ATY tmp_reg1) else NONE
           in
             I.dot_text ::
-            I.dot_globl stublab ::
+            I.dot_globl (stublab,I.FUNC) ::
             I.lab stublab ::
             push_callersave_regs
             (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, tmp_reg0,
@@ -1881,7 +1883,7 @@ struct
                              (NameLab "__raise_subscript", BI.exn_SUBSCRIPT_lab),
                              (NameLab "__raise_size", BI.exn_SIZE_lab)]
           in I.dot_text ::(List.foldr (fn ((nl,dl),C') =>
-                                          I.dot_globl nl ::
+                                          I.dot_globl (nl,I.FUNC) ::
                                           I.lab nl::
                                           I.movq(R r14, R rdi) ::            (* arg1: context *)
                                           I.movq(L(DatLab dl),R rsi)::       (* arg2: exception value *)
@@ -1901,7 +1903,7 @@ struct
               val size_ff = 0 (*dummy*)
             in
               I.dot_text ::
-              I.dot_globl gc_stub_lab ::
+              I.dot_globl (gc_stub_lab,I.FUNC) ::
               I.lab gc_stub_lab ::
               push_all_regs                             (* The return lab and rcx are also preserved (16 regs) *)
               (copy(rsp,tmp_reg0,
@@ -2112,10 +2114,10 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
         fun data_end C =
             if gc_p() then
                 (I.dot_align 8 ::
-                 I.dot_globl data_begin_addr ::
+                 I.dot_globl (data_begin_addr,I.OBJ) ::
                  I.lab data_begin_addr ::
                  I.dot_quad "0" ::
-                 I.dot_globl data_end_addr ::
+                 I.dot_globl (data_end_addr,I.OBJ) ::
                  I.lab data_end_addr ::
                  I.dot_quad "0" ::
                  I.lab (data_end_init_lab) ::   C)
@@ -2136,7 +2138,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
                 val static_data =
                     slots_for_datlabs(global_region_labs,
                                       I.dot_data ::
-                                      I.dot_globl exn_counter_lab ::
+                                      I.dot_globl (exn_counter_lab,I.OBJ) ::
                                       I.lab exn_counter_lab :: (* The Global Exception Counter *)
                                       I.dot_quad (i2s initial_exnname_counter) ::
                                       nil)
@@ -2160,7 +2162,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun main_insts C =
            (I.dot_text ::
             I.dot_align 8 ::
-            I.dot_globl (NameLab "code") ::
+            I.dot_globl (NameLab "code", I.FUNC) ::
             I.lab (NameLab "code") ::
             I.push(I "1") ::                           (* 16-align stack *)
 
@@ -2223,7 +2225,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun main_insts C =
            (I.dot_text ::
             I.dot_align 8 ::
-            I.dot_globl (NameLab "code") ::
+            I.dot_globl (NameLab "code",I.FUNC) ::
             I.lab (NameLab "code") ::
             I.push(I "1") ::                           (* 16-align stack *)
 
@@ -2286,7 +2288,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun main_insts C =
            (I.dot_text ::
             I.dot_align 8 ::
-            I.dot_globl (NameLab lab) ::
+            I.dot_globl (NameLab lab,I.FUNC) ::
             I.lab (NameLab lab) ::
             I.push(I "1") ::     (* 16-align stack *)
 

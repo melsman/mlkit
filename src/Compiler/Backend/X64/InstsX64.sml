@@ -67,6 +67,11 @@ structure InstsX64: INSTS_X64 =
       | eq_ea (DD p,DD p') = p=p'
       | eq_ea _ = false
 
+    datatype ty = OBJ | FUNC             (* @function or @object *)
+
+    fun pr_ty OBJ = "@object"
+      | pr_ty FUNC = "@function"
+
     datatype inst =                 (* general instructions *)
       movq of ea * ea
     | mov of ea * ea
@@ -171,7 +176,7 @@ structure InstsX64: INSTS_X64 =
 
     | dot_align of int  (* pseudo instructions *)
     | dot_p2align of string
-    | dot_globl of lab
+    | dot_globl of lab * ty
     | dot_text
     | dot_data
     | dot_section of string
@@ -562,7 +567,11 @@ structure InstsX64: INSTS_X64 =
 
                | dot_align i => (emit "\t.align "; emit_n i; emit_nl())
                | dot_p2align s => (emit "\t.p2align "; emit s; emit_nl())
-               | dot_globl l => (emit ".globl "; emit(pr_lab l); emit_nl())
+               | dot_globl (l,ty) =>
+                 if isDarwin() then
+                   (emit ".globl "; emit(pr_lab l); emit_nl())
+                 else (emit ".globl "; emit(pr_lab l); emit_nl();
+                       emit ".type "; emit(pr_lab l); emit ","; emit(pr_ty ty); emit_nl())
                | dot_text => emit_nullary0 ".text"
                | dot_data => emit_nullary0 ".data"
                | dot_byte s => (emit "\t.byte "; emit s; emit_nl())
@@ -863,7 +872,7 @@ structure InstsX64: INSTS_X64 =
              | cmovbeq (ea1,ea2) => cmovbeq (Em ea1,Em ea2)
              | call l => call (Lm l)
              | call' ea => call' (Em ea)
-             | dot_globl l => dot_globl (Lm l)
+             | dot_globl (l,ty) => dot_globl (Lm l,ty)
              | dot_size (l, i) => dot_size (Lm l, i)
              | lab l => lab (Lm l)
              | fldz => i
