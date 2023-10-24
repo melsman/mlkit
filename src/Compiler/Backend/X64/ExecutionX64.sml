@@ -429,7 +429,10 @@ structure ExecutionX64: EXECUTION =
           val libs_str = String.concat (map (fn l => "-l" ^ l ^ " ") libs)
           val ofiles = filenameo::ofiles
           val ofiles_str = String.concat (map (fn l => l ^ " ") ofiles)
-          val shell_cmd = link_shared() ^ " -o " ^ sofile ^ " -shared " ^ ofiles_str ^ " -L " ^ mlbdir() ^ " " ^ libs_str
+          val rpath = if onmac_p() then ""
+                      else " -Wl,-rpath," ^ mlbdir()
+          val shell_cmd = link_shared() ^ rpath ^ " -o " ^ sofile ^ " -shared "
+                          ^ ofiles_str ^ " -L " ^ mlbdir() ^ " " ^ libs_str
         in execute_command shell_cmd;
            message(fn () => "[wrote " ^ sofile ^ "]\n")
         end
