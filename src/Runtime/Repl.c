@@ -49,7 +49,7 @@ void*
 load(char* sopath) {
   fprintf(repllog, "{loading '%s'}\n", sopath);
   fflush(repllog);
-  void* h_lib = dlopen(sopath, RTLD_NOW);
+  void* h_lib = dlopen(sopath, RTLD_NOW|RTLD_GLOBAL);
   if ( !h_lib ) {
     fprintf(stderr, "Repl.load.dlopen: Error openening %s: %s", sopath, dlerror());
     exit(EXIT_FAILURE);
