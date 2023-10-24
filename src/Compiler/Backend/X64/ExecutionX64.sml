@@ -310,7 +310,7 @@ structure ExecutionX64: EXECUTION =
           val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
-
+    in
           fun path_to_runtime () =
               let
                 fun file () =
@@ -339,43 +339,11 @@ structure ExecutionX64: EXECUTION =
                       "runtimeSystem.a"
               in !Flags.install_dir ## "lib" ## file()
               end
-    in
+
       val link_files_with_runtime_system =
           link_files_with_runtime_system0 path_to_runtime
 
-      (* files should include generated assembler code (or object file)
-       for stubs, allocation of global regions, exception
-       constructors, and the like *)
-
-      fun create_repl_runtime files dir  =
-          let val files = map (fn s => s ^ " ") files
-              val libdirs =
-                  case libdirs() of
-                      "" => ""
-                    | libdirs => " " ^ libdirsConvertList libdirs
-
-              val pthread = if parallelism_p() andalso not(onmac_p())
-                            then " -pthread"
-                            else ""
-              val runtime_lib = OS.Path.concat(dir, "libruntime.so")
-              val runtime_exe = OS.Path.concat(dir, "runtime.exe")
-
-              val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
-                              else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
-              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
-                               ^ concat files ^ wa ^ path_to_runtime() ^ nwa
-                               ^ libdirs ^ libConvertList(libs()) ^ pthread
-              val shell_cmd2 = link_exe() ^ " -o " ^ runtime_exe ^ " -L " ^ dir ^ " -lruntime"
-          in
-            execute_command shell_cmd1;
-            message(fn () => "[wrote shared runtime library:\t" ^ runtime_lib ^ "]\n");
-            execute_command shell_cmd2;
-            message(fn () => "[wrote runtime executable:\t" ^ runtime_exe ^ "]\n");
-            (runtime_exe, "runtime")
-          end
-
     end
-
 
     local
       val region_profiling = Flags.is_on0 "region_profiling"
@@ -417,6 +385,39 @@ structure ExecutionX64: EXECUTION =
           in "MLB" ## subdir
           end
     end
+
+      (* files should include generated assembler code (or object file)
+       for stubs, allocation of global regions, exception
+       constructors, and the like *)
+
+    fun create_repl_runtime files dir  =
+          let val files = map (fn s => s ^ " ") files
+              val libdirs =
+                  case libdirs() of
+                      "" => ""
+                    | libdirs => " " ^ libdirsConvertList libdirs
+
+              val pthread = if parallelism_p() andalso not(onmac_p())
+                            then " -pthread"
+                            else ""
+              val runtime_lib = OS.Path.concat(dir, "libruntime.so")
+              val runtime_exe = OS.Path.concat(dir, "runtime.exe")
+
+              val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
+                              else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
+              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
+                               ^ concat files ^ wa ^ path_to_runtime() ^ nwa
+                               ^ libdirs ^ libConvertList(libs()) ^ pthread
+              val rpath = if onmac_p() then ""
+                          else " -Wl,-rpath," ^ mlbdir()
+              val shell_cmd2 = link_exe() ^ rpath ^ " -o " ^ runtime_exe ^ " -L " ^ dir ^ " -lruntime"
+          in
+            execute_command shell_cmd1;
+            message(fn () => "[wrote shared runtime library:\t" ^ runtime_lib ^ "]\n");
+            execute_command shell_cmd2;
+            message(fn () => "[wrote runtime executable:\t" ^ runtime_exe ^ "]\n");
+            (runtime_exe, "runtime")
+          end
 
     fun mk_sharedlib (ofiles,labs,libs,name,sofile) : unit =
         (* gcc -o sofile -shared -init name -llib1 ... -libn f1.o ... fm.o init.o *)
