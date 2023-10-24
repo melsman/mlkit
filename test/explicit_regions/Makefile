@@ -7,7 +7,7 @@ SMLSOURCES=er*.sml param.sml rec.sml tup.sml call.sml call2.sml ty1.sml err_expt
 
 .PHONY: all
 all:
-	@echo --- Testing Explicit Regions Support (REML) ---
+	@echo --- Testing Explicit Regions Support - REML ---
 	../../bin/kittester "SML_LIB=../.. $(REML)" --logdirect all.tst
 
 all.sml: $(SMLSOURCES)
