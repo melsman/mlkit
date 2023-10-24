@@ -37,11 +37,11 @@ runtime:
 .PHONY: test
 test: $(RESFILES)
 #	@cat $(RESFILES)
-	@echo "-------T E S T --- R E P O R T-------"
+	@echo "------- R E P L --- T E S T --- R E P O R T -------"
 	@echo "Tests succeeded:   `grep "OK" $(RESFILES) | wc -l` /`grep "Test" $(RESFILES) | wc -l`"
 	@echo "Test errors:       `grep "ERR" $(RESFILES) | wc -l` /`grep "Test" $(RESFILES) | wc -l`"
 	@echo "See complog.txt"
-	@echo "-------------------------------------"
+	@echo "---------------------------------------------------"
 	@exit `grep "ERR" $(RESFILES) | wc -l`
 
 .PHONY: clean

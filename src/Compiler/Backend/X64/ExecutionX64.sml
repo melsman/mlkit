@@ -360,10 +360,11 @@ structure ExecutionX64: EXECUTION =
               val runtime_lib = OS.Path.concat(dir, "libruntime.so")
               val runtime_exe = OS.Path.concat(dir, "runtime.exe")
 
-              val whole_archive = if onmac_p() then " -Wl,-all_load "
-                                  else " -Wl,-whole-archive "
-              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " " ^
-                               concat files ^ whole_archive ^ path_to_runtime() ^ libdirs ^ libConvertList(libs()) ^ pthread
+              val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
+                              else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
+              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
+                               ^ concat files ^ wa ^ path_to_runtime() ^ nwa
+                               ^ libdirs ^ libConvertList(libs()) ^ pthread
               val shell_cmd2 = link_exe() ^ " -o " ^ runtime_exe ^ " -L " ^ dir ^ " -lruntime"
           in
             execute_command shell_cmd1;

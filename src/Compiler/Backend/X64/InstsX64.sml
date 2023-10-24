@@ -356,10 +356,18 @@ structure InstsX64: INSTS_X64 =
 
     fun tick s = () (* print (s ^ "\n") *)
 
+    fun is_LA_local (LA (LocalLab _)) = true
+      | is_LA_local _ = false
+
+    fun is_GOTPCREL ea = not(is_LA_local ea)
+
     local
+
       fun amov (ea1,ea2) =                    (* address move *)
-          if isDarwin() then movq(ea1,ea2)
+          if isDarwin() orelse is_GOTPCREL ea1
+          then movq(ea1,ea2)
           else leaq(ea1,ea2)
+
     in
     fun patch K is =
         case is of
@@ -367,25 +375,27 @@ structure InstsX64: INSTS_X64 =
           | i::is =>
             case i of
                 movq(L l,ea) =>
-                if LabSet.mem K l then i::patch K is
+                if isDarwin() andalso LabSet.mem K l then i::patch K is
                 else (tick "movq: load"; amov(LA l, R r9) :: movq(D("0",r9),ea) :: patch K is)
               | movq(ea,L l) =>
-                if LabSet.mem K l then i::patch K is
+                if isDarwin() andalso LabSet.mem K l then i::patch K is
                 else (tick "movq:store"; amov(LA l, R r9) :: movq(ea,D("0",r9)) :: patch K is)
               | addq(ea,L l) =>
-                if LabSet.mem K l then i::patch K is
+                if isDarwin() andalso LabSet.mem K l then i::patch K is
                 else (tick "addq:store"; amov(LA l, R r9) :: addq(ea,D("0",r9)) :: patch K is)
               | cmpq(ea,L l) =>
-                if LabSet.mem K l then i::patch K is
+                if isDarwin() andalso LabSet.mem K l then i::patch K is
                 else (tick "cmpq:store"; amov(LA l, R r9) :: cmpq(ea,D("0",r9)) :: patch K is)
               | movq(LA (LocalLab l),ea) => leaq(LA(LocalLab l),ea) :: patch K is
               | push(LA (LocalLab l)) => leaq(LA(LocalLab l),R r9) :: push(R r9) :: patch K is
+(*
               | movq(LA l,ea) => if isDarwin() then i :: patch K is
                                  else leaq(LA l,ea) :: patch K is
+*)
               | push(LA l) => if isDarwin() then i :: patch K is
-                              else leaq(LA l,R r9) :: push(R r9) :: patch K is
+                              else movq(LA l,R r9) :: push(R r9) :: patch K is
               | cmpq(LA l,ea) => if isDarwin() then i :: patch K is
-                                 else leaq(LA l,R r9) :: cmpq(R r9,ea) :: patch K is
+                                 else amov(LA l,R r9) :: cmpq(R r9,ea) :: patch K is
               | i => i :: patch K is
     end
 
@@ -399,12 +409,9 @@ structure InstsX64: INSTS_X64 =
         case ea of
             R r => pr_reg r
           | L l => pr_lab l ^ "(%rip)"
-          | LA l =>
-      	    if isDarwin() then
-              (case l of
-                   LocalLab _ => pr_lab l ^ "(%rip)"
-                 | _ => pr_lab l ^ "@GOTPCREL(%rip)")
-	    else pr_lab l ^ "(%rip)"  (* same syntax as for L and independent of localness?! *)
+          | LA l => (case l of
+                         LocalLab _ => pr_lab l ^ "(%rip)"
+                       | _ => pr_lab l ^ "@GOTPCREL(%rip)")
           | I s => "$" ^ s
           | D(d,r) => if d="0" then "(" ^ pr_reg r ^ ")"
                       else d ^ "(" ^ pr_reg r ^ ")"
@@ -418,7 +425,9 @@ structure InstsX64: INSTS_X64 =
         let
           val insts = patch K insts
           val linecomments = true
+
           fun emit s = TextIO.output(os, s)
+
           val (set_comm : string -> unit, emit_comm : unit -> unit) =
               let val comm : string option ref = ref NONE
               in (fn c => comm := SOME c,
@@ -426,15 +435,27 @@ structure InstsX64: INSTS_X64 =
                                SOME c => (emit ("\t\t\t" ^ c); comm := NONE)
                              | NONE => ())
               end
+
           fun emit_n i = emit(Int.toString i)
+
           fun emit_nl () = (emit_comm(); emit "\n")
+
           fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " ";
                                           emit(pr_ea K ea1); emit ",";
                                           emit(pr_ea K ea2); emit_nl())
+
           fun emit_unary (s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea K ea); emit_nl())
+
           fun emit_nullary s = (emit "\t"; emit s; emit_nl())
+
           fun emit_nullary0 s = (emit s; emit_nl())
-          fun emit_jump (s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
+
+          fun emit_jump (s,l) =
+              if isDarwin() then (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
+              else case l of
+                       LocalLab _ => (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
+                     | _ => (emit "\t"; emit s; emit " "; emit(pr_lab l ^"@PLT"); emit_nl())
+
           fun emit_inst i =
              case i of
                  movq a => emit_bin ("movq", a)

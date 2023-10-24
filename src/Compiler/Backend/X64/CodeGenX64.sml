@@ -2243,7 +2243,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             (* Initialize primitive exceptions and global regions - datlabs *)
             declare_exceptions_and_regions(
 
-            (* Call repl loop, which will terminate and never return *)
+            (* Call repl loop, which will terminate (exit) and never return *)
             I.movq(R r14, R rdi) ::
             I.call(NameLab "repl_interp") ::
 
