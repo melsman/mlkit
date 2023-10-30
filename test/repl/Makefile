@@ -35,7 +35,7 @@ runtime:
 	@cat $@ >> complog.txt
 
 .PHONY: test
-test: $(RESFILES)
+test: prepare $(RESFILES)
 #	@cat $(RESFILES)
 	@echo "------- R E P L --- T E S T --- R E P O R T -------"
 	@echo "Tests succeeded:   `grep "OK" $(RESFILES) | wc -l` /`grep "Test" $(RESFILES) | wc -l`"
@@ -43,6 +43,10 @@ test: $(RESFILES)
 	@echo "See complog.txt"
 	@echo "---------------------------------------------------"
 	@exit `grep "ERR" $(RESFILES) | wc -l`
+
+.PHONY: prepare
+prepare:
+	SML_LIB=../.. $(MLKIT) -no_gc ../../basis/repl.mlb
 
 .PHONY: clean
 clean:
