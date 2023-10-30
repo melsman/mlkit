@@ -33,6 +33,7 @@ runtime:
          ; fi)
 	@cat $@
 	@cat $@ >> complog.txt
+	cat $<
 
 .PHONY: test
 test: prepare $(RESFILES)
