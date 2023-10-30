@@ -384,6 +384,7 @@ fun pretty_exported (i:int) : int =
                                   z_strong)
                       | C ([], "intinf") => (IntInf.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "int") => (Int.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "word") => ("0wx" ^ Word.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "real") => (Real.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "bool") => (Bool.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "string") => ("\"" ^  String.toString (prim("unsafe_cast", v)) ^ "\"",
@@ -443,7 +444,9 @@ fun pretty_exported (i:int) : int =
                                 let val tag = con_tag v
                                 in (lookNullaryTag cs tag, z_strong)
                                 end
-                         end handle Fail s => ("con: " ^ s, z_con1)
+                         end handle Fail s =>
+                                    if List.null ts then ("<" ^ tn ^ ">", z_strong)
+                                    else ("<" ^ tn ^ "," ^ Int.toString (length ts) ^ ">", z_strong)
                         )
                       | A _ => ("fn", z_strong)
                       | V s => ("tv: " ^ s, z_con1)
@@ -454,6 +457,5 @@ fun pretty_exported (i:int) : int =
      ; size s'
     end
 in
-val () = print ("[Installing pretty-printer!]\n");
 val () = _export("pretty_exported", pretty_exported)
 end

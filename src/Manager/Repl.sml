@@ -51,6 +51,8 @@ fun mapi (f:int*'a->'b) (xs:'a list) : 'b list =
  * Debugging and reporting
  * ------------------------------------------- *)
 
+val basislib_p = Flags.is_on0 "basislib"
+
 val debug_p = Flags.is_on0 "debug_compiler"
 
 fun debug s =
@@ -58,7 +60,6 @@ fun debug s =
     else ()
 
 val print_post_elab_ast = Flags.is_on0 "print_post_elab_ast"
-
 val print_export_bases = Flags.is_on0 "print_export_bases"
 
 fun maybe_print_topdec s topdec =
@@ -859,11 +860,11 @@ fun run () : OS.Process.status =
     let val () = Flags.turn_on "report_file_sig"
         val () = List.app Flags.block_entry flags_to_block
         val () = if Flags.is_on "garbage_collection" then
-                   ( print("Disabling garbage collection - it is not supported with the REPL\n")
+                   ( print("|Garbage collection disabled - it is not supported in the REPL!\n")
                    ; Flags.turn_off "garbage_collection"
                    )
                  else ()
-        val () = print "Type :help; for help...\n";
+        val () = print "|Type :help; for help...\n";
         val () = Flags.turn_off "messages"
     in case MO.mk_repl_runtime of
            SOME f =>
@@ -898,7 +899,16 @@ fun run () : OS.Process.status =
                                 handle _ => die "run: failed to open reply_pipe"
                val () = debug "opened reply_pipe"
                val rp = {command_pipe=command_pipe,reply_pipe=reply_pipe,pid=childpid}
-           in repl (0, PE.begin_stdin(), rp, ["runtime"], nil)
+               val init = (0, PE.begin_stdin(), rp, ["runtime"], nil)
+               val init = if basislib_p() then
+                            let val (stepno,state,rp,libs_acc,deps) = init
+                                val cmd = ":load " ^ (!Flags.install_dir ## "basis/repl.mlb")
+                                val (stepno,libs_acc,deps) = process_cmd stepno rp cmd libs_acc deps
+                            in (stepno,state,rp,libs_acc,deps)
+                            end
+                          else ( print ("!Basis Library and Pretty Printing are not loaded!\n")
+                               ; init )
+           in repl init
            end
          | NONE => die "run - not possible to build runtime"
     end
