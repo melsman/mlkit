@@ -70,11 +70,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                     val initial : env
                     val plus : env * env -> env
                     val add_con : con * TypeScheme * env -> env
-                    val add_tyname : TyName * con list * env -> env
+                    val add_tyname : TyName * (con*TypeScheme) list * env -> env
                     val add_lvar : lvar * TypeScheme * env -> env
                     val add_excon : excon * Type option * env -> env
                     val lookup_con : env -> con -> TypeScheme
-                    val lookup_tyname : env -> TyName -> con list
+                    val lookup_tyname : env -> TyName -> (con*TypeScheme) list
+                    val lookup_tyname_opt : env -> TyName -> (con*TypeScheme) list option
                     val lookup_lvar : env -> lvar -> TypeScheme
                     val lookup_excon : env -> excon -> Type option
                     val ftv_env : env -> NatSet.Set
@@ -108,7 +109,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
         type env = {ftv : NatSet.Set,
                     con_env : TypeScheme ConMap.map,
-                    tyname_env : (con list) TyNameMap.map,   (* the con list is the domain of TE *)
+                    tyname_env : ((con*TypeScheme) list) TyNameMap.map,
                     lvar_env : TypeScheme LvarMap.map,
                     excon_env : (Type option) ExconMap.map}
 
@@ -123,8 +124,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                            lvar_env = empty_lvar_env,
                            excon_env = empty_excon_env}
 
-        val initial_con_env =
-          let
+        local
             val typescheme_TRUE = close_Type (CONStype([], tyName_BOOL, NONE))
             val typescheme_FALSE = close_Type (CONStype([], tyName_BOOL, NONE))
             val typescheme_NIL =
@@ -159,8 +159,9 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                      NONE,
                                      [CONStype([],tyName_INTINF,NONE)],
                                      NONE))
+        in
 
-          in
+        val initial_con_env =
             ConMap.fromList [ (Con.con_TRUE, typescheme_TRUE),
                               (Con.con_FALSE, typescheme_FALSE),
                               (Con.con_NIL, typescheme_NIL),
@@ -168,32 +169,35 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                               (Con.con_QUOTE, typescheme_QUOTE),
                               (Con.con_ANTIQUOTE, typescheme_ANTIQUOTE),
                               (Con.con_INTINF, typescheme_INTINF)]
-          end
 
         val initial_tyname_env =
-          TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
-                               (tyName_INT31, []),
-                               (tyName_INT32, []),
-                               (tyName_INT63, []),
-                               (tyName_INT64, []),
-                               (tyName_INTINF, [Con.con_INTINF]),
-                               (tyName_WORD8, []),
-                               (tyName_WORD31, []),
-                               (tyName_WORD32, []),
-                               (tyName_WORD63, []),
-                               (tyName_WORD64, []),
-                               (tyName_REAL, []),
-                               (tyName_F64, []),
-                               (tyName_STRING, []),
-                               (tyName_CHAR, []),
-                               (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
-                               (tyName_FRAG, [Con.con_QUOTE, Con.con_ANTIQUOTE]),
-                               (tyName_CHARARRAY, []),
-                               (tyName_FOREIGNPTR, []),
-                               (tyName_ARRAY, []),
-                               (tyName_VECTOR, []),
-                               (tyName_REF, [(*Con.con_REF*)]),
-                               (tyName_EXN, [])]
+            TyNameMap.fromList  [(tyName_BOOL, [(Con.con_TRUE, typescheme_TRUE),
+                                                (Con.con_FALSE, typescheme_FALSE)]),
+                                 (tyName_INT31, []),
+                                 (tyName_INT32, []),
+                                 (tyName_INT63, []),
+                                 (tyName_INT64, []),
+                                 (tyName_INTINF, [(Con.con_INTINF, typescheme_INTINF)]),
+                                 (tyName_WORD8, []),
+                                 (tyName_WORD31, []),
+                                 (tyName_WORD32, []),
+                                 (tyName_WORD63, []),
+                                 (tyName_WORD64, []),
+                                 (tyName_REAL, []),
+                                 (tyName_F64, []),
+                                 (tyName_STRING, []),
+                                 (tyName_CHAR, []),
+                                 (tyName_LIST, [(Con.con_NIL, typescheme_NIL),
+                                                (Con.con_CONS, typescheme_CONS)]),
+                                 (tyName_FRAG, [(Con.con_QUOTE, typescheme_QUOTE),
+                                                (Con.con_ANTIQUOTE, typescheme_ANTIQUOTE)]),
+                                 (tyName_CHARARRAY, []),
+                                 (tyName_FOREIGNPTR, []),
+                                 (tyName_ARRAY, []),
+                                 (tyName_VECTOR, []),
+                                 (tyName_REF, [(*Con.con_REF*)]),
+                                 (tyName_EXN, [])]
+        end
 
         val initial_lvar_env = empty_lvar_env
 
@@ -264,6 +268,9 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
             of SOME r => r
              | NONE => die ("lookup_con.Cannot find " ^ Con.pr_con con)
 
+        fun lookup_tyname_opt ({tyname_env,...} : env) tyname =
+            TyNameMap.lookup tyname_env tyname
+
         fun lookup_tyname ({tyname_env,...} : env) tyname =
           case TyNameMap.lookup tyname_env tyname
             of SOME r => r
@@ -294,9 +301,13 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
         type StringTree = PP.StringTree
 
         fun layout_con con = PP.LEAF (Con.pr_con con)
-        fun layout_seq start finish layout_elem l = PP.NODE {start=start, finish=finish, indent=0, childsep=PP.RIGHT ",",
-                                                             children=map layout_elem l}
-        fun layout_cons cons = layout_seq "[" "]" layout_con cons
+        fun layout_conts (con,ts) =
+            PP.NODE {start="",finish="",indent=0,childsep=PP.RIGHT ":",
+                     children=[layout_con con,layoutTypeScheme ts]}
+        fun layout_seq start finish layout_elem l =
+            PP.NODE {start=start, finish=finish, indent=0, childsep=PP.RIGHT ",",
+                     children=map layout_elem l}
+        fun layout_cons cons = layout_seq "[" "]" layout_conts cons
         fun layout_tyname tyname = PP.LEAF (TyName.pr_TyName tyname)
         fun layout_excon excon = PP.LEAF (Excon.pr_excon excon)
         fun layoutTypeOpt (SOME Type) = layoutType Type
@@ -393,7 +404,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                           lvar_env=le,excon_env=ee} = ((f,ce,te,le),ee)
                 val pu_f = NatSet.pu LambdaExp.pu_tyvar
                 val pu_ce = Con.Map.pu Con.pu LambdaExp.pu_TypeScheme
-                val pu_te = TyName.Map.pu TyName.pu (Pickle.listGen Con.pu)
+                val pu_te = TyName.Map.pu TyName.pu (Pickle.listGen (Pickle.pairGen(Con.pu,LambdaExp.pu_TypeScheme)))
                 val pu_le = Lvars.Map.pu Lvars.pu LambdaExp.pu_TypeScheme
                 val pu_ee = Excon.Map.pu Excon.pu (Pickle.optionGen LambdaExp.pu_Type)
             in Pickle.convert (to,from)
@@ -968,15 +979,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
   fun analyse_datbinds (DATBINDS dbs) : env =
     let
       fun analyse_datbind (tyvars : tyvar list,tyname,conbind: (con * Type option) list) : env =
-        let
-          fun gen_typescheme (SOME tau) = (tyvars, ARROWtype([tau],NONE,[CONStype (map TYVARtype tyvars, tyname,NONE)],NONE))
-            | gen_typescheme NONE = (tyvars, CONStype (map TYVARtype tyvars, tyname, NONE))
+          let val ty2 = CONStype (map TYVARtype tyvars, tyname,NONE)
+              fun gen_typescheme (SOME tau) = (tyvars, ARROWtype([tau],NONE,[ty2],NONE))
+                | gen_typescheme NONE = (tyvars, ty2)
 
-          val env = foldl (fn ((con, tauopt), env) =>
-                                add_con(con, gen_typescheme tauopt, env)) empty conbind
+              val cts = map (fn (c,opt) => (c, gen_typescheme opt)) conbind
+              val env = foldl (fn ((con,ts),env) => add_con(con,ts,env))
+                              empty cts
 
-        in add_tyname(tyname, map #1 conbind, env)
-        end
+          in add_tyname(tyname, cts, env)
+          end
       val concat = foldl (op @) []
     in
       foldl (fn (datbind,env) => (env plus (analyse_datbind datbind)))
@@ -1004,5 +1016,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       val env'' = env_from_frame fr
     in env' plus env''
     end
+
+  fun look_tyname e tn : (con * (tyvar list * Type)) list option =
+      E.lookup_tyname_opt e tn
 
   end

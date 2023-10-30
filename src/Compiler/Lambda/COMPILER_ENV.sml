@@ -9,10 +9,10 @@ signature COMPILER_ENV =
     type tycon and longtycon            (* type constructors *)
     type strid and longstrid            (* structure identifiers *)
     type con                            (* unqualified value constructors *)
-    type excon				(* unqualified exception constructors *)
-    type Type				(* lambda Type *)
+    type excon                          (* unqualified exception constructors *)
+    type Type                           (* lambda Type *)
     type tyvar                          (* lambda tyvar *)
-    type lvar				(* unique lambda identifiers *)
+    type lvar                           (* unique lambda identifiers *)
     type TyName
 
     val emptyCEnv: CEnv
@@ -48,58 +48,58 @@ signature COMPILER_ENV =
     val declareCon    : (id * (con * tyvar list * Type) * CEnv) -> CEnv
     val declareExcon  : (id * (excon * Type) * CEnv) -> CEnv
     val declare_strid : strid * CEnv * CEnv -> CEnv
-    val declare_tycon : tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
-								     * holding bindings for value 
-								     * constructors. *)
+    val declare_tycon : tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment
+                                                                     * holding bindings for value
+                                                                     * constructors. *)
     (* For pattern-match compilation - see CompileDec.sml *)
     type spath = int list
     val declarePath  : spath * lvar * Type * CEnv -> CEnv
     val lookupPath   : CEnv -> spath -> (lvar * Type) option
     val clearPathEnv : CEnv -> CEnv
 
-    val plus: CEnv * CEnv -> CEnv         
+    val plus: CEnv * CEnv -> CEnv
 
-    datatype result = 
+    datatype result =
         LVAR of lvar * tyvar list * Type * Type list
       | CON of con * tyvar list * Type * Type list
       | EXCON of excon * Type
       | REF
-      | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS 
+      | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS
       | GREATER | LESSEQ | GREATEREQ
       | RESET_REGIONS | FORCE_RESET_REGIONS
-      | PRIM		(* Looking up a value identifier will
-			 either get you a real lvar,
-			 an overloaded operator,
-			 or PRIM (which means you have to
-			 extract the integer argument and
-			 use it in a PRIM lambda-exp). *)
+      | PRIM            (* Looking up a value identifier will
+                         either get you a real lvar,
+                         an overloaded operator,
+                         or PRIM (which means you have to
+                         extract the integer argument and
+                         use it in a PRIM lambda-exp). *)
 
-        (* Only `prim' should give you back `PRIM' (and even then it can be 
-	 * overwritten). *)
+        (* Only `prim' should give you back `PRIM' (and even then it can be
+         * overwritten). *)
 
       | EXPORT      (* Support for exporting ML functions to be used in
-		     * C programs. The function _export has type 
-		     * \/'a,'b. string * ('a -> 'b) -> unit. In a call 
-		     * _export("myFun",fn a:int => a+1)
-		     * the string "myFun" is the name of the assembled 
-		     * function (following C calling conventions), and the
-		     * function (fn a:int => a+1) is the ML function 
-		     * called when the C function "myFun" is called from C 
-		     * code. *)
+                     * C programs. The function _export has type
+                     * \/'a,'b. string * ('a -> 'b) -> unit. In a call
+                     * _export("myFun",fn a:int => a+1)
+                     * the string "myFun" is the name of the assembled
+                     * function (following C calling conventions), and the
+                     * function (fn a:int => a+1) is the ML function
+                     * called when the C function "myFun" is called from C
+                     * code. *)
 
     val lookup_longid : CEnv -> longid -> result option
     val lookup_strid : CEnv -> strid -> CEnv
     val lookup_longstrid : CEnv -> longstrid -> CEnv
-    val lookup_longtycon : CEnv -> longtycon -> TyName list * CEnv   (* The resulting cenv holds bindings 
-								      * for value constructors; the tyname
-								      * list contains the tynames of the
-								      * associated tystr. *)
+    val lookup_longtycon : CEnv -> longtycon -> TyName list * CEnv   (* The resulting cenv holds bindings
+                                                                      * for value constructors; the tyname
+                                                                      * list contains the tynames of the
+                                                                      * associated tystr. *)
     type ElabEnv and TypeScheme
     val constrain : CEnv * ElabEnv -> CEnv
- 
+
     (* compileTypeScheme is used by constrain *)
     val set_compileTypeScheme : (TypeScheme -> tyvar list * Type) -> unit   (* MEGA HACK *)
-                                                                            (* We should clean this *) 
+                                                                            (* We should clean this *)
                                                                             (* up at some point!! - Martin *)
     val tynamesOfCEnv: CEnv -> TyName list
       (* Return the list of tynames occurring in CEnv *)
@@ -108,7 +108,7 @@ signature COMPILER_ENV =
 
 (*
     val primlvarsOfCEnv: CEnv -> lvar list
-      (* Adds the list of `primitive' lvars associated with overloaded primitives in CEnv *) 
+      (* Adds the list of `primitive' lvars associated with overloaded primitives in CEnv *)
 *)
 
     val exconsOfCEnv: CEnv -> excon list
@@ -116,8 +116,8 @@ signature COMPILER_ENV =
     val consOfCEnv: CEnv -> con list
       (* Return the list of cons which the declared ids in CEnv are mapped to *)
 
-    val restrictCEnv : CEnv * {longstrids: longstrid list, longvids: longid list, 
-			       longtycons: longtycon list} -> CEnv
+    val restrictCEnv : CEnv * {longstrids: longstrid list, longvids: longid list,
+                               longtycons: longtycon list} -> CEnv
     val enrichCEnv : CEnv * CEnv -> bool
 
     val match : CEnv * CEnv -> unit
@@ -126,4 +126,4 @@ signature COMPILER_ENV =
     val layoutCEnv: CEnv -> StringTree
 
     val pu : CEnv Pickle.pu
-  end;
+  end

@@ -165,6 +165,13 @@ structure ExecutionJS : EXECUTION =
 
     datatype cval = datatype Compile.cval
     fun retrieve_longid (CE: CEnv) CBE (longid:CompilerEnv.longid) : string cval =
-        UNKN
+        die "retrieve_longid.unimplemented"
+
+    datatype conkind = UNB | ENU | BOX
+    type tyvar = CompilerEnv.tyvar
+    type Type = CompilerEnv.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (CB: CompileBasis) (tn: TyName.TyName) : coninfo list option =
+        die "tyname_reps.unimplemented"
 
   end

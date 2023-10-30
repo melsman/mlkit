@@ -144,6 +144,7 @@ signature CLOS_EXP =
     val pu : env Pickle.pu
 
     val retrieve_lvar : env -> lvar -> label option
+    val conkind : env -> con -> con_kind
 
     val cc : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
                                                                     code:ClosPrg,

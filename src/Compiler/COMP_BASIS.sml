@@ -38,4 +38,7 @@ signature COMP_BASIS =
     val layout_CompBasis: CompBasis -> StringTree
 
     val pu : CompBasis Pickle.pu
+
+    type tyvar and Type
+    val look_tyname : CompBasis -> TyName -> (con * (tyvar list * Type)) list option
   end

@@ -11,7 +11,9 @@ structure ExecutionX64: EXECUTION =
     structure NativeCompile = NativeCompile(structure BackendInfo = BackendInfo
                                             structure RegisterInfo = InstsX64.RI)
 
-    structure CompileBasis = CompileBasis(structure ClosExp = NativeCompile.ClosExp)
+    structure ClosExp = NativeCompile.ClosExp
+
+    structure CompileBasis = CompileBasis(structure ClosExp = ClosExp)
 
     structure JumpTables = JumpTables(BackendInfo)
 
@@ -455,6 +457,17 @@ structure ExecutionX64: EXECUTION =
                   | NONE => STR ("<" ^ Lvars.pr_lvar lv ^ ">"))
              | STR s => STR s
              | UNKN => UNKN
+        end
+
+    datatype conkind = UNB | ENU | BOX
+    type tyvar = CompilerEnv.tyvar
+    type Type = CompilerEnv.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (CB: CompileBasis) (tn: TyName.TyName) : coninfo list option =
+        let val (cB,_) = CompileBasis.de_CompileBasis CB
+        in case CompBasis.look_tyname cB tn of
+               SOME cs => SOME (map (fn (c,ts) => (Con.pr_con c,ts)) cs)
+             | NONE => NONE
         end
 
   end

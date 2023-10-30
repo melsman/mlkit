@@ -18,13 +18,12 @@ signature EXECUTION =
     type target
     type linkinfo
 
-    val pr_lab : lab -> string
+    val pr_lab                 : lab -> string
     val code_label_of_linkinfo : linkinfo -> lab
-    val imports_of_linkinfo : linkinfo -> lab list * lab list
-    val exports_of_linkinfo : linkinfo -> lab list * lab list
-    val unsafe_linkinfo : linkinfo -> bool
-
-    val be_rigid : bool
+    val imports_of_linkinfo    : linkinfo -> lab list * lab list
+    val exports_of_linkinfo    : linkinfo -> lab list * lab list
+    val unsafe_linkinfo        : linkinfo -> bool
+    val be_rigid               : bool
 
     (* Hook to be run before any compilation *)
     val preHook : unit -> unit
@@ -73,4 +72,8 @@ signature EXECUTION =
     datatype 'a cval = VAR of 'a | STR of string | UNKN
     val retrieve_longid : CEnv -> CompileBasis -> Ident.longid -> string cval
 
+    type tyvar = CompilerEnv.tyvar
+    type Type = CompilerEnv.Type
+    type coninfo = string * (tyvar list * Type)
+    val tyname_reps : CompileBasis -> TyName.TyName -> coninfo list option
   end

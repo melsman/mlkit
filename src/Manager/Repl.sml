@@ -31,7 +31,7 @@ type IntBasis = MO.IntBasis
 type opaq_env = MO.opaq_env
 
 (* -------------------------------------------
- * Logging
+ * Logging and various utitlity functions
  * ------------------------------------------- *)
 
 fun die (s:string) : 'a =
@@ -44,6 +44,9 @@ fun pr_st (st) : unit = PP.outputTree (print, st, 120)
 infix ##
 val op ## = OS.Path.concat
 
+fun mapi (f:int*'a->'b) (xs:'a list) : 'b list =
+    List.rev (#2 (List.foldl (fn (x,(i,acc)) => (i+1,f(i,x)::acc)) (0,nil) xs))
+
 (* -------------------------------------------
  * Debugging and reporting
  * ------------------------------------------- *)
@@ -55,6 +58,8 @@ fun debug s =
     else ()
 
 val print_post_elab_ast = Flags.is_on0 "print_post_elab_ast"
+
+val print_export_bases = Flags.is_on0 "print_export_bases"
 
 fun maybe_print_topdec s topdec =
     if print_post_elab_ast() orelse debug_p() then
@@ -161,7 +166,7 @@ in
       send_cmd (fd, "LOADRUN " ^ lib ^ ";")
 
   fun send_PRINT (fd, ty, lab) : unit =
-      send_cmd (fd, "PRINT " ^ ty ^ " " ^ lab ^ ";")
+      send_cmd (fd, "PRINT \"" ^ ty ^ "\" " ^ lab ^ ";")
 end
 
 datatype loadrun_msg = EXN | DONE
@@ -323,9 +328,13 @@ in
       let val _ = chat "[begin unpickling elaboration bases...]"
           fun process (nil,hce,acc) = (hce, rev acc)
             | process (ebfile::ebfiles,hce,acc) =
-              let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
-                  val ((_,infixElabBasis),hce) = Pickle.unpickle' pu_NB0 hce s
-                                                 handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
+              let val s = readFile ebfile
+                          handle _ => die("doUnpickleBases0.error reading file "
+                                          ^ ebfile)
+                  val ((_,infixElabBasis),hce) =
+                      Pickle.unpickle' pu_NB0 hce s
+                      handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file "
+                                      ^ ebfile)
                   val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
                                used=ref false}
               in process(ebfiles,hce,entry::acc)
@@ -389,36 +398,61 @@ fun retrieve (rp:rp) B t longid =
       | MO.STR s => s
       | MO.UNKN => "unknown"
 
-fun str_t t =
-    if Ty.eq(t,Ty.IntDefault()) then SOME "int"
-    else if Ty.eq(t,Ty.Bool) then SOME "bool"
-    else if Ty.eq(t,Ty.Real) then SOME "real"
-    else if Ty.eq(t,Ty.Char) then SOME "char"
-    else if Ty.eq(t,Ty.Int31) then SOME "int31"
-    else if Ty.eq(t,Ty.Int32) then SOME "int32"
-    else if Ty.eq(t,Ty.Int63) then SOME "int63"
-    else if Ty.eq(t,Ty.Int64) then SOME "int64"
-    else if Ty.eq(t,Ty.Word8) then SOME "word8"
-    else if Ty.eq(t,Ty.WordDefault()) then SOME "word"
-    else if Ty.eq(t,Ty.Word31) then SOME "word31"
-    else if Ty.eq(t,Ty.Word32) then SOME "word32"
-    else if Ty.eq(t,Ty.Word63) then SOME "word63"
-    else if Ty.eq(t,Ty.Word64) then SOME "word64"
-    else if Ty.eq(t,Ty.String) then SOME "string"
-    else NONE
+local
 
+  type tyvar = LambdaExp.tyvar
+  type Type = LambdaExp.Type
+  type TyName = TyName.TyName
+  type TypeScheme = tyvar list * Type
+
+  fun pp_TypeScheme (nil,t) = PP.flatten1 (LambdaExp.layoutType t)
+    | pp_TypeScheme (tvs,t) =
+      "(" ^ String.concatWith "," (map LambdaExp.pr_tyvar tvs) ^ ")." ^
+      PP.flatten1 (LambdaExp.layoutType t)
+
+  fun isArrow (_,t) =
+      case t of
+          LambdaExp.ARROWtype _ => true
+        | _ => false
+
+  fun pp_crep (name:string, sch) =
+      String.concat [name, ":", pp_TypeScheme sch]
+
+  fun pp_def (tn, creps) =
+      String.concat [
+        TyName.pr_TyName tn
+      , (if TyName.unboxed tn then " (u)"
+         else " (b)")
+      , " = ["
+      , String.concatWith "," (map pp_crep creps)
+      , "]; "
+      ]
+
+  fun str_t B t =
+      let val tns = Ty.tynames t
+          val predefined = TyName.Set.fromList (TyName.tynamesPredefined)
+          val tns = TyName.Set.list (TyName.Set.difference tns predefined)
+          val defs = List.mapPartial (fn tn =>
+                                         case MO.tyname_reps B tn of
+                                             SOME info => SOME (tn, info)
+                                           | NONE => NONE) tns
+          val alldefs = String.concat (map pp_def defs)
+          (* val () = print (alldefs ^ "\n") *)
+      in SOME(alldefs ^ Ty.string t)
+      end
+in
 fun render rp B (strids,id,sch) =
     let val longid = Ident.implode_LongId(strids,id)
         val (tvs,rvs,t) = StatObject.TypeScheme.to_TyVars_and_Type sch
     in if List.null tvs then
          if Ty.is_Arrow t then "fn"
          else if Ty.eq(Ty.Unit, t) then "()"
-         else case str_t t of
+         else case str_t B t of
                   SOME t => retrieve rp B t longid
                 | NONE => ".."
        else "fun"
     end
-
+end
 
 (* --------------------------------------------------
  * Operations on dependencies
@@ -741,6 +775,13 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                (* compute result basis *)
                val B' = B.mk(infB',elabB',oE',intB')
 
+               val _ =
+                   if print_export_bases() then
+                     (  print ("[Export basis for " ^ smlfile ^ " before closure:]\n")
+                      ; pr_st (MO.Basis.layout B')
+                      ; print "\n")
+                   else ()
+
                (* create a shared library *)
                val modc = ModCode.emit (absprjid,modc)
                val sofile = MO.mlbdir() ## ("lib" ^ smlfile ^ ".so")
@@ -769,7 +810,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                           deps)             (* No contribution to static basis *)
                   )
                 | DONE =>
-                  ( Report.print (doreport (SOME (render rp B'Closed)))
+                  ( Report.print (doreport (SOME (render rp (B.plus(B_im, B'Closed)))))
                   ; repl (stepno+1,
                           state',
                           rp,

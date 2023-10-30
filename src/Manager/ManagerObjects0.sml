@@ -527,4 +527,13 @@ functor ManagerObjects0(structure Execution : EXECUTION)
         in Execution.retrieve_longid CE CB longid
         end
 
+    type tyvar = LambdaExp.tyvar
+    type Type = LambdaExp.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (B: Basis) (tn: TyName.TyName) : coninfo list option =
+        let val (_,_,_,iB) = Basis.un B
+            val (_,_,_,CB) = IntBasis.un iB
+        in Execution.tyname_reps CB tn
+        end
+
   end

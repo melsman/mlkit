@@ -47,14 +47,14 @@ signature TYNAME =
 
     structure Rank :
       sig
-	type rank
-	val current : unit -> rank
-	val reset : unit -> unit
-	val <= : rank * rank -> bool
-	val min : rank * rank -> rank
-	val from_TyName : TyName -> rank
-	val pu : rank Pickle.pu
-	val pu_rankrefOne : rank ref Pickle.pu
+        type rank
+        val current : unit -> rank
+        val reset : unit -> unit
+        val <= : rank * rank -> bool
+        val min : rank * rank -> rank
+        val from_TyName : TyName -> rank
+        val pu : rank Pickle.pu
+        val pu_rankrefOne : rank ref Pickle.pu
         val pp : rank -> string
       end
 
@@ -86,10 +86,10 @@ signature TYNAME =
     val tyName_EXN     : TyName
 
     val unboxed : TyName -> bool   (* Returns true for type names that are
-				    * implemented unboxed; depends on whether
-				    * tagging of integers is enabled. *)
+                                    * implemented unboxed; depends on whether
+                                    * tagging of integers is enabled. *)
     val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t)
-				     * returns true. *)
+                                     * returns true. *)
 
     val tynamesPredefined : TyName list
 

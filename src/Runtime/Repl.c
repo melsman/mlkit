@@ -23,6 +23,7 @@
 #include "Exception.h"
 #include "Region.h"
 #include "Table.h"
+#include "String.h"
 
 FILE* repllog = NULL;
 
@@ -44,6 +45,62 @@ read_str(int fd, char* buf, int len) {
   fflush(repllog);
   return start;
 }
+
+char *
+read_qstr(int fd, char* buf, int len) {
+  char *start = buf;
+  char sp;
+  int ret;
+  if ( 1 == (ret = read(fd,buf,1)) && *buf != '"' ) {
+    die ("read_qstr: expecting double quote");
+  }
+  while ( 1 == (ret = read(fd,buf,1)) && *buf != '"' && len > 1 ) {
+    buf++; len--;
+  }
+  if (ret == 0) {
+    die ("Repl.read_qstr: end-of-file");
+  }
+  if (ret == -1) {
+    die ("Repl.read_qstr: cannot read file");
+  }
+  if ( read(fd,&sp,1) != 1 || sp != ' ' ) {
+    die ("read_qstr: failed to read final space");
+  }
+  *buf = '\0';
+  fprintf(repllog, "{read quoted string '%s'}\n", start);
+  fflush(repllog);
+  return start;
+}
+
+#define BUF_LEN  1000
+#define BUF_LEN2 2000
+
+// ------------------
+// printing support
+// ------------------
+
+char* pretty_topbuf200;
+char* pretty_hidden_ty = "int";   // type
+void* pretty_hidden_v = NULL;     // value
+
+String
+REG_POLY_FUN_HDR(pretty_ML_GetTy, Region rAddr) {
+  return REG_POLY_CALL(convertStringToML, rAddr, pretty_hidden_ty);
+}
+
+void*
+pretty_ML_GetVal (void) {
+  return *(void**)pretty_hidden_v;
+}
+
+void
+REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
+  convertStringToC(ctx, s, pretty_topbuf200, 200, exn);
+}  // side-effecting toplevel buffer topbuf200...
+
+// ------------------
+// Command handling
+// ------------------
 
 void*
 load(char* sopath) {
@@ -108,6 +165,37 @@ print_value(char* tau, char* lab, size_t len, char* buf) {
 }
 
 void
+print_value2(char* tau, char* lab, size_t len, char* buf) {
+  fprintf(repllog, "{attempt printing with pretty_exported function %s : %s}\n", lab, tau);
+  fflush(repllog);
+  size_t(*pretty_exported)() = (size_t(*)())dlsym(RTLD_DEFAULT,"pretty_exported");
+  if ( !pretty_exported ) {
+    print_value(tau,lab,len,buf);
+    return;
+  }
+  fprintf(repllog, "{found pretty_exported function}\n");
+  fflush(repllog);
+  void* symb = (void*)dlsym(RTLD_DEFAULT,lab);
+  if ( !symb ) {
+    fprintf(stderr, "Repl.print_value2: Error resolving %s: %s\n", lab, dlerror());
+    exit(EXIT_FAILURE);
+  }
+  pretty_hidden_ty = tau;
+  pretty_hidden_v = symb;
+  int sz = pretty_exported(0);
+  if ( sz != strlen(pretty_topbuf200) ) {
+    fprintf(stderr, "Repl.print_value2: sz error: %d - %s: %s\n", sz, pretty_topbuf200, dlerror());
+    exit(EXIT_FAILURE);
+  }
+  int ret = snprintf(buf, len, "%s", pretty_topbuf200);
+  if ( ret < 0 ) {
+    fprintf(stderr, "Repl.print_value2: Error printing into buffer: %s\n", dlerror());
+    exit(EXIT_FAILURE);
+  }
+  return;
+}
+
+void
 write_str(int fd, char* s) {
   fprintf(repllog, "{writing reply %s}\n", s);
   fflush(repllog);
@@ -123,10 +211,6 @@ write_str(int fd, char* s) {
 extern const char* command_pipe;
 extern const char* reply_pipe;
 extern const char* repl_logfile;
-
-
-#define BUF_LEN  100
-#define BUF_LEN2 200
 
 void
 repl_interp(Context ctx) {
@@ -181,6 +265,7 @@ repl_interp(Context ctx) {
   char* buf3 = (char *) malloc(BUF_LEN);
   char* buf4 = (char *) malloc(BUF_LEN);
   char* buf5 = (char *) malloc(BUF_LEN2);
+  pretty_topbuf200 = (char *) malloc(BUF_LEN2);
 
   while (1)  {
     fprintf(repllog, "{reading command}\n");
@@ -188,9 +273,9 @@ repl_interp(Context ctx) {
     char* cmd = read_str(command_fd, buf, BUF_LEN);
 
     if ( strcmp(cmd, "PRINT") == 0 ) {
-      char* tau = read_str(command_fd, buf2, BUF_LEN);
+      char* tau = read_qstr(command_fd, buf2, BUF_LEN);
       char* lab = read_str(command_fd, buf3, BUF_LEN);
-      print_value(tau,lab,BUF_LEN,buf4);
+      print_value2(tau,lab,BUF_LEN,buf4);
       int sz = strlen(buf4);
       snprintf(buf5,BUF_LEN2,"STR %d %s;",sz,buf4);
       write_str(reply_fd, buf5);
@@ -217,4 +302,64 @@ repl_interp(Context ctx) {
     }
   }
 
+}
+
+// ------------------------
+// Tuple selector function
+// (for REPL pretty printing)
+// ------------------------
+void*
+selectTuple(void* x, size_t i) {
+  i = convertIntToC(i);
+  return (void*)elemRecordML(x,i);
+}
+
+// -------------------------------------------
+// Deconstructors for datatype constructors
+// -------------------------------------------
+unsigned long
+val_con_tag(void* x) {
+  x = *(void **)x;
+  return convertIntToML(((unsigned long)x) >> 6);
+}
+
+unsigned long
+val_is_con1(void* x) {
+  x = *(void **)x;
+  if ( (((unsigned long)x) & 0x3) == 3 ) {
+    return mlTRUE;
+  } else {
+    return mlFALSE;
+  }
+}
+
+unsigned long
+val_ubcon_tag(void* x) {
+  // return the three least significant bits
+  unsigned long y = ((unsigned long)x) & 0x3;
+  if ( y == 0x3 ) {  // con0
+    return convertIntToML((unsigned long)x >> 2);
+  } else { // con1
+    return convertIntToML(y);
+  }
+}
+
+unsigned long
+val_is_ubcon1(void* x) {
+  if ( (((unsigned long)x) & 0x3) == 0x3 ) {
+    return mlFALSE;
+  } else {
+    return mlTRUE;
+  }
+}
+
+void *
+val_con1_prj(void* x) {
+  return *(((void **)x)+1);
+}
+
+void *
+val_ubcon1_prj(void* x) {
+  // clear the three least significant bits
+  return (void *)(((unsigned long)x) & (UINTPTR_MAX ^ 0x7));
 }
