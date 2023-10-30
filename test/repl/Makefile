@@ -16,7 +16,7 @@ runtime:
 	@echo "SML_LIB=../.. $(MLKIT) < $< | .. | > $@" >> complog.txt
 	@SML_LIB=../.. $(MLKIT) < $< \
            | grep -v 'MLKit v' \
-           | grep -v 'Disabling garbage collection' \
+           | grep -v 'Garbage collection disabled' \
            | grep -v 'Type :help;' \
            | grep -v '. Exiting' > $@
 
