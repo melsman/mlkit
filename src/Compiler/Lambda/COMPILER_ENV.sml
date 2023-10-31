@@ -101,6 +101,7 @@ signature COMPILER_ENV =
     val set_compileTypeScheme : (TypeScheme -> tyvar list * Type) -> unit   (* MEGA HACK *)
                                                                             (* We should clean this *)
                                                                             (* up at some point!! - Martin *)
+
     val tynamesOfCEnv: CEnv -> TyName list
       (* Return the list of tynames occurring in CEnv *)
     val lvarsOfCEnv: CEnv -> lvar list

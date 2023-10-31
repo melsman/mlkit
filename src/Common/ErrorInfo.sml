@@ -452,8 +452,9 @@ structure ErrorInfo: ERROR_INFO =
              | REGVAR_TY_ANNOTATE _ =>                  "REGVAR_TY_ANNOTATE"
 
 	val error_code_parse = "PARSE"
+        val error_code_eof = "EOF"
 
-	fun eq(ec1 : ErrorCode, ec2: ErrorCode): bool = ec1=ec2
+	fun eq (ec1 : ErrorCode, ec2: ErrorCode): bool = ec1=ec2
 	fun pr (ec: ErrorCode) :string = ("ERR#" ^ ec)
       end
 

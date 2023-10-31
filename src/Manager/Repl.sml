@@ -406,10 +406,12 @@ local
   type TyName = TyName.TyName
   type TypeScheme = tyvar list * Type
 
-  fun pp_TypeScheme (nil,t) = PP.flatten1 (LambdaExp.layoutType t)
+  fun pp_Type t = PP.flatten1 (LambdaExp.layoutType t)
+
+  fun pp_TypeScheme (nil,t) = pp_Type t
     | pp_TypeScheme (tvs,t) =
       "(" ^ String.concatWith "," (map LambdaExp.pr_tyvar tvs) ^ ")." ^
-      PP.flatten1 (LambdaExp.layoutType t)
+      pp_Type t
 
   fun isArrow (_,t) =
       case t of
@@ -552,8 +554,8 @@ local
           \        | search s        -- search for help about s\n\
           \        | set flag [arg]  -- set flag [maybe with arg]\n\
           \        | unset flag      -- unset the flag\n\n\
-          \Notice that more flags are available from the command-line\n\
-          \at REPL initialisation time.\n\
+          \Notice that more flags are available from the command-line at\n\
+          \REPL initialisation time.\n\
           \")
 
   fun menu_headings () =
@@ -827,14 +829,15 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                    libs_acc,
                    deps)
            )
-         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so we shouldn't exit... *)
+         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so we shouldn't exit unless we have an eof... *)
            ( Report.print report
-           ; repl (stepno+1,
-                   PE.begin_stdin(),   (* Clear the state *)
-                   rp,
-                   libs_acc,
-                   deps)
-           ; do_exit rp OS.Process.failure
+           ; if List.exists (fn e => PE.ErrorCode.eq(e,PE.ErrorCode.error_code_eof)) errs then
+               do_exit rp OS.Process.failure
+             else repl (stepno+1,
+                        PE.begin_stdin(),   (* Clear the state *)
+                        rp,
+                        libs_acc,
+                        deps)
            )
          | (NONE, PE.SUCCESS _) => die "repl - impossible"
     end handle Quit => do_exit rp OS.Process.success
@@ -906,7 +909,7 @@ fun run () : OS.Process.status =
                                 val (stepno,libs_acc,deps) = process_cmd stepno rp cmd libs_acc deps
                             in (stepno,state,rp,libs_acc,deps)
                             end
-                          else ( print ("!Basis Library and Pretty Printing are not loaded!\n")
+                          else ( print ("!Basis Library and Pretty Printing not loaded!\n")
                                ; init )
            in repl init
            end

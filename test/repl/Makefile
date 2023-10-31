@@ -14,9 +14,10 @@ runtime:
 
 %-ri.out: %.sml Makefile
 	@echo "SML_LIB=../.. $(MLKIT) < $< | .. | > $@" >> complog.txt
-	@SML_LIB=../.. $(MLKIT) < $< \
+	@SML_LIB=../.. $(MLKIT) -no_basislib < $< \
            | grep -v 'MLKit v' \
            | grep -v 'Garbage collection disabled' \
+           | grep -v 'Basis Library and Pretty Printing not loaded' \
            | grep -v 'Type :help;' \
            | grep -v '. Exiting' > $@
 
@@ -47,7 +48,7 @@ test: prepare $(RESFILES)
 
 .PHONY: prepare
 prepare:
-	SML_LIB=../.. $(MLKIT) -no_gc ../../basis/repl.mlb
+	SML_LIB=../.. $(MLKIT) -no_gc -c ../../basis/repl.mlb
 
 .PHONY: clean
 clean:

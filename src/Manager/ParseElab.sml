@@ -174,7 +174,7 @@ structure ParseElab: PARSE_ELAB =
            | NONE =>
              (chat "[parsing end...]\n";
               (NONE, FAILURE (Report.line ("Parse error - no input!"),
-                              [ErrorCode.error_code_parse])))
+                              [ErrorCode.error_code_eof])))
       end handle Parse report =>
                  (chat "[parsing end...]\n";
                   (NONE, FAILURE (report, [ErrorCode.error_code_parse])))
