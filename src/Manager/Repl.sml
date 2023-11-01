@@ -407,7 +407,10 @@ end
  * Value Rendering
  * ------------------------------------------- *)
 
-type rp = {command_pipe:Posix.IO.file_desc,reply_pipe:Posix.IO.file_desc,pid:Posix.Process.pid}
+type rp = {command_pipe : Posix.IO.file_desc,
+           reply_pipe : Posix.IO.file_desc,
+           pid : Posix.Process.pid,
+           sessionid: string}
 
 fun retrieve (rp:rp) B t longid =
     case MO.retrieve_longid B longid of
@@ -682,7 +685,7 @@ local
                       end
               in modc
               end
-          val punit = "stdin_" ^ Int.toString stepno
+          val punit = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno
           val sofile = MO.mlbdir() ## ("lib" ^ punit ^ ".so")
           (* create a so-file with initialisation code as we do for sml-files *)
           val () = ModCode.mk_sharedlib (modc, ["runtime"], punit, sofile)
@@ -782,7 +785,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
             in loop stepno state libs_acc deps
             end
         val absprjid = ME.mk_absprjid "repl"
-        val smlfile = "stdin_" ^ Int.toString stepno
+        val smlfile = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno
 
         (* load the bases that smlfile depends on *)
         val ebfiles = map depToEb (files_deps deps)
@@ -937,14 +940,19 @@ fun run () : OS.Process.status =
     in case MO.mk_repl_runtime of
            SOME f =>
            let val rt_exe = f()
-               val () = debug ("wrote runtime executable " ^ rt_exe)
                (* Now, start the runtime executable in a child process,
                   but first create two named pipes *)
-               val command_pipe_name = MO.mlbdir() ## "command_pipe"
-               val reply_pipe_name = MO.mlbdir() ## "reply_pipe"
-               val repl_logfile = MO.mlbdir() ## "repl.log"
-               val () = OS.FileSys.remove command_pipe_name handle _ => ()
-               val () = OS.FileSys.remove reply_pipe_name handle _ => ()
+               val sessionid =
+                   let fun loop i =
+                           let val f = MO.mlbdir() ## "command_pipe-" ^ Int.toString i
+                           in if OS.FileSys.access(f, [OS.FileSys.A_READ]) then loop (i+1)
+                              else Int.toString i
+                           end
+                   in loop 0
+                   end
+               val command_pipe_name = MO.mlbdir() ## "command_pipe-" ^ sessionid
+               val reply_pipe_name = MO.mlbdir() ## "reply_pipe-" ^ sessionid
+               val repl_logfile = MO.mlbdir() ## "repl-" ^ sessionid ^ ".log"
                val () = Posix.FileSys.mkfifo (command_pipe_name, Posix.FileSys.S.irwxu)
                val () = Posix.FileSys.mkfifo (reply_pipe_name, Posix.FileSys.S.irwxu)
                val childpid =
@@ -958,15 +966,17 @@ fun run () : OS.Process.status =
                        ; OS.Process.exit OS.Process.failure (* never gets here *)
                        )
                val () = debug "created fifos"
-               val command_pipe = Posix.FileSys.openf(command_pipe_name,Posix.FileSys.O_WRONLY,
+               val command_pipe = Posix.FileSys.openf(command_pipe_name,
+                                                      Posix.FileSys.O_WRONLY,
                                                       Posix.FileSys.O.flags[])
                                   handle _ => die "run: failed to open command_pipe"
                val () = debug "opened command_pipe"
-               val reply_pipe = Posix.FileSys.openf(reply_pipe_name,Posix.FileSys.O_RDONLY,
+               val reply_pipe = Posix.FileSys.openf(reply_pipe_name,
+                                                    Posix.FileSys.O_RDONLY,
                                                     Posix.FileSys.O.flags[])
                                 handle _ => die "run: failed to open reply_pipe"
                val () = debug "opened reply_pipe"
-               val rp = {command_pipe=command_pipe,reply_pipe=reply_pipe,pid=childpid}
+               val rp = {command_pipe=command_pipe,reply_pipe=reply_pipe,pid=childpid,sessionid=sessionid}
                val init = (0, PE.begin_stdin(), rp, ["runtime"], nil)
                val init = if basislib_p() then
                             let val (stepno,state,rp,libs_acc,deps) = init

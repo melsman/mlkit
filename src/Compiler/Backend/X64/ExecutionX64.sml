@@ -418,7 +418,7 @@ structure ExecutionX64: EXECUTION =
             message(fn () => "[wrote shared runtime library:\t" ^ runtime_lib ^ "]\n");
             execute_command shell_cmd2;
             message(fn () => "[wrote runtime executable:\t" ^ runtime_exe ^ "]\n");
-            (runtime_exe, "runtime")
+            runtime_exe
           end
 
     fun mk_sharedlib (ofiles,labs,libs,name,sofile) : unit =

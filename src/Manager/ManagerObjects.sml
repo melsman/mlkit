@@ -404,14 +404,20 @@ functor ManagerObjects(
     val mk_repl_runtime =
         case Execution.generate_repl_init_code of
             SOME f =>
-            SOME(fn () =>
-                    let val t = f()
-                        val link_file_base = mlbdir() ## "repl-link"
-                        val () = SystemTools.maybe_create_mlbdir {prepath=""}
-                        val link_file_object = Execution.emit{target=t,filename=link_file_base}
-                        val (exe,lib) = Execution.create_repl_runtime [link_file_object] (mlbdir())
-                    in exe
-                    end)
+            SOME (fn () =>
+                     let val exe = mlbdir() ## "runtime.exe"
+                     in if OS.FileSys.access (exe, [OS.FileSys.A_EXEC])
+                        then ( pr_debug_linking ("[reusing runtime system " ^ exe ^ "]\n")
+                             ; exe )
+                        else let val t = f()
+                                 val link_file_base = mlbdir() ## "repl-link"
+                                 val () = SystemTools.maybe_create_mlbdir {prepath=""}
+                                 val link_file_object = Execution.emit{target=t,filename=link_file_base}
+                                 val exe = Execution.create_repl_runtime [link_file_object] (mlbdir())
+                             in pr_debug_linking ("[created runtime system " ^ exe ^ "]\n")
+                              ; exe
+                             end
+                     end)
           | NONE => NONE
 
   end

@@ -59,7 +59,7 @@ signature EXECUTION =
 
     val link_files_with_runtime_system : string list -> string -> unit
 
-    val create_repl_runtime : string list -> string -> string * string
+    val create_repl_runtime : string list -> string -> string
 
     val mk_sharedlib : string list * lab list * string list * string * string -> unit
 
