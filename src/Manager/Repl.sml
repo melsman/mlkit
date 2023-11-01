@@ -71,6 +71,22 @@ fun maybe_print_topdec s topdec =
       end
     else ()
 
+val pretty_depth =
+    Flags.add_int_entry {long="pretty_depth", short=NONE,
+                         menu=["REPL Pretty Printing", "pretty depth"],
+                         item=ref 5,
+                         desc="This flag controls the pretty-printing depth of\n\
+                              \values printed in the REPL. The value must be an\n\
+                              \integer larger than zero."}
+
+val pretty_string_size =
+    Flags.add_int_entry {long="pretty_string_size", short=NONE,
+                         menu=["REPL Pretty Printing", "pretty string size"],
+                         item=ref 80,
+                         desc="This flag controls the pretty-printing size of\n\
+                              \string printed in the REPL. The value must be an\n\
+                              \integer larger than zero."}
+
 (* -------------------------------
  * Compute actual dependencies
  * ------------------------------- *)
@@ -169,6 +185,9 @@ in
 
   fun send_PRINT (fd, ty, lab) : unit =
       send_cmd (fd, "PRINT \"" ^ ty ^ "\" " ^ lab ^ ";")
+
+  fun send_SET (fd, key, value) : unit =
+      send_cmd (fd, "SET " ^ key ^ " " ^ Int.toString value ^ ";")
 end
 
 datatype loadrun_msg = EXN | DONE
@@ -555,6 +574,13 @@ local
       in print s
       end
 
+  fun string_to_nat s =
+      if CharVector.all Char.isDigit s then
+        Int.fromString s
+      else NONE
+
+  fun err s = print ("!" ^ s ^ "\n")
+
   fun mem s ss = List.exists (fn s' => s=s') ss
   fun ins a acc = if mem a acc then acc else a::acc
 
@@ -567,13 +593,6 @@ local
   fun is_flagN s = is_flag_kind (fn k => k = SOME "N") s
   fun is_flagS s = is_flag_kind (fn k => k = SOME "S") s
   fun is_flag s = is_flag_kind (fn k => true) s
-
-  fun string_to_nat s =
-      if CharVector.all Char.isDigit s then
-        Int.fromString s
-      else NONE
-
-  fun err s = print ("!" ^ s ^ "\n")
 
   fun print_help () =
       pr ("The REPL accepts toplevel declarations and commands on the\n\
@@ -687,8 +706,20 @@ local
              ( pr msg
              ; (stepno+1, libs_acc, deps)
              )
-
 in
+
+fun maybe_set_rtflag (rp:rp) k n =
+    if k = "pretty_depth" orelse k = "pretty_string_size" then
+      if n > 0 then
+        ( Flags.lookup_int_entry k := n
+        ; send_SET (#command_pipe rp, k, n)
+        ; receive_DONE (#reply_pipe rp)
+        ; true)
+      else
+        ( err ("Flag '" ^ k ^ "' expects an interger larger than 0")
+        ; true
+        )
+    else false
 
 exception Quit
 fun process_cmd stepno (rp:rp) (cmd:string) libs_acc deps =
@@ -702,7 +733,8 @@ fun process_cmd stepno (rp:rp) (cmd:string) libs_acc deps =
          | [":set", s, a] =>
            ( if is_flagN s then
                case string_to_nat a of
-                   SOME n => Flags.lookup_int_entry s := n
+                   SOME n => if maybe_set_rtflag rp s n then ()
+                             else Flags.lookup_int_entry s := n
                  | NONE => err ("Flag '" ^ s ^ "' expects a positive integer - got '"
                                 ^ a ^ "'")
              else if is_flagS s then
@@ -944,6 +976,14 @@ fun run () : OS.Process.status =
                             end
                           else ( print ("!Basis Library and Pretty Printing not loaded!\n")
                                ; init )
+
+               val () = if pretty_depth() <= 0 orelse pretty_string_size() <= 0 then
+                          die "Only positive values for 'pretty_depth' and 'pretty_string_size' are supported"
+                        else
+                          ( maybe_set_rtflag rp "pretty_depth" (pretty_depth())
+                          ; maybe_set_rtflag rp "pretty_string_size" (pretty_string_size())
+                          ; ()
+                          )
            in repl init
            end
          | NONE => die "run - not possible to build runtime"

@@ -348,6 +348,12 @@ fun ubcon1_prj (v:foreignptr) : foreignptr =
 fun con1_prj (v:foreignptr) : foreignptr =
     prim("val_con1_prj", v)
 
+fun pretty_depth () : int =
+    prim("get_pretty_depth",())
+
+fun pretty_string_size () : int =
+    prim("get_pretty_string_size",())
+
 (* The pretty printer *)
 
 val z_strong = 0        (* precedense values *)
@@ -360,25 +366,28 @@ fun par_conarg (s,z) =
 
 fun pretty_exported (i:int) : int =
     let val ty : string = prim("pretty_ML_GetTy", ())
-        val () = print ("pretty_exported: " ^ ty ^ "\n")
+(*        val () = print ("pretty_exported: " ^ ty ^ "\n") *)
         val v : foreignptr = prim("pretty_ML_GetVal", ())
+        val depth = pretty_depth()
+        val max_string_size = pretty_string_size()
         val str =
             let val (dbs,t) = parse ty
                 val dbs = map analyse_db dbs
-                fun pr (t,v) =
-                    case t of
+                fun pr (d,t,v) =
+                    if d < 0 then ("..", z_strong) else
+                    (case t of
                         T [t] => ("single",z_strong)
                       | T ts => ("(" ^ String.concatWith ","
                                                          (mapi (fn (i,t) =>
                                                                    let val v = selectTuple(v,i)
-                                                                   in nopar(pr(t,v))
+                                                                   in nopar(pr(d,t,v))
                                                                    end) ts
                                                          ) ^ ")",
                                  z_strong)
                       | R lts => ("{" ^ String.concatWith ","
                                                           (mapi (fn (i,(l,t)) =>
                                                                     let val v = selectTuple(v,i)
-                                                                    in l ^ "=" ^ nopar(pr(t,v))
+                                                                    in l ^ "=" ^ nopar(pr(d,t,v))
                                                                     end) lts
                                                           ) ^ "}",
                                   z_strong)
@@ -398,12 +407,17 @@ fun pretty_exported (i:int) : int =
                       | C ([], "char") => ("#\"" ^ Char.toString (prim("unsafe_cast", v)) ^ "\"",
                                            z_strong)
                       | C ([], "bool") => (Bool.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "string") => ("\"" ^  String.toString (prim("unsafe_cast", v)) ^ "\"",
-                                             z_strong)
+                      | C ([], "string") =>
+                        let val s : string = prim("unsafe_cast", v)
+                            val s = if size s <= max_string_size then s
+                                    else (String.extract(s, 0, SOME max_string_size) ^ "..")
+                        in ("\"" ^  String.toString s ^ "\"",
+                            z_strong)
+                        end
                       | C ([t], "option") =>
                         let val v : foreignptr option = prim("unsafe_cast", v)
                         in case v of
-                               SOME v => ("SOME" ^ par_conarg (pr(t,v)), z_con1)
+                               SOME v => ("SOME" ^ par_conarg (pr(d-1,t,v)), z_con1)
                              | NONE => ("NONE", z_strong)
                         end
                       | C ([t], "list") =>
@@ -412,14 +426,14 @@ fun pretty_exported (i:int) : int =
                                 if n < 0 then rev (".."::acc)
                                 else case v of
                                          nil => rev acc
-                                       | v::vs => loop (n-1) (nopar(pr(t,v))::acc) vs
+                                       | v::vs => loop (n-1) (nopar(pr(d-1,t,v))::acc) vs
                             val ss = loop 10 nil v
                         in ("[" ^ String.concatWith "," ss ^ "]", z_strong)
                         end
                       | C([t], "ref") =>
                         let val v : foreignptr ref = prim("unsafe_cast", v)
                         in case v of
-                               ref v => ("ref" ^ par_conarg (pr(t,v)), z_con1)
+                               ref v => ("ref" ^ par_conarg (pr(d-1,t,v)), z_con1)
                         end
                       | U => ("unknown", z_strong)
                       | C (ts,tn) =>
@@ -437,7 +451,7 @@ fun pretty_exported (i:int) : int =
                                 in case lookUnaryTag cs tag ts of
                                        NONE => ("?",z_strong)
                                      | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(t,ubcon1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(d-1,t,ubcon1_prj v)), z_con1)
                                 end
                               else (* nullary *)
                                 let val tag = ubcon_tag v
@@ -449,7 +463,7 @@ fun pretty_exported (i:int) : int =
                                 in case lookUnaryTag cs tag ts of
                                        NONE => ("?",z_strong)
                                      | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(t,con1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(d-1,t,con1_prj v)), z_con1)
                                 end
                               else (* nullary *)
                                 let val tag = con_tag v
@@ -460,8 +474,8 @@ fun pretty_exported (i:int) : int =
                                     else ("<" ^ tn ^ "," ^ Int.toString (length ts) ^ ">", z_strong)
                         )
                       | A _ => ("fn", z_strong)
-                      | V s => ("tv: " ^ s, z_con1)
-            in nopar (pr(t,v))
+                      | V s => ("tv: " ^ s, z_con1))
+            in nopar (pr(depth,t,v))
             end handle _ => "_"
         val s' : string = String.extract(str,0,SOME(Int.min(199,size str)))
     in prim("pretty_ML_Print", (getCtx(),s',Match)) : unit

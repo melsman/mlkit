@@ -32,6 +32,9 @@ max(size_t a, size_t b) {
 
 FILE* repllog = NULL;
 
+size_t pretty_string_size = 100;
+size_t pretty_depth = 5;
+
 char *
 read_str(int fd, char** pbuf, size_t* buf_sz) {
   int ret;
@@ -334,6 +337,28 @@ repl_interp(Context ctx) {
       }
       snprintf(buf4,buf4_sz,"STR %d %s;",sz,pretty_topbuf);
       write_str(reply_fd, buf4);
+    } else if ( strcmp(cmd, "SET") == 0 ) {
+      char *key = read_str(command_fd, &buf2, &buf2_sz);
+      char *value = read_str(command_fd, &buf3, &buf3_sz);
+      if ( strcmp(key, "pretty_depth") == 0 || strcmp(key, "pretty_string_size") == 0 ) {
+	size_t val = strtol(value, NULL, 10);
+	if ( val <= 0 ) {
+	  fprintf(repllog, "{failed to set %s - expecting integer larger than 0}\n", key);
+	  fflush(repllog);
+	} else {
+	  fprintf(repllog, "{setting %s to %ld}\n", key, val);
+	  fflush(repllog);
+	  if ( strcmp(key, "pretty_depth") == 0 ) {
+	    pretty_depth = val;
+	  } else if ( strcmp(key, "pretty_string_size") == 0 ) {
+	    pretty_string_size = val;
+	  }
+	}
+      } else {
+	fprintf(repllog, "{unknown variable %s}\n", key);
+	fflush(repllog);
+      }
+      write_str(reply_fd, "DONE;");
     } else if ( strcmp(cmd, "LOADRUN") == 0 ) {
       char* sofile = read_str(command_fd, &buf2, &buf2_sz);
       load_run(sofile, "main");
@@ -415,4 +440,18 @@ void *
 val_ubcon1_prj(void* x) {
   // clear the three least significant bits
   return (void *)(((unsigned long)x) & (UINTPTR_MAX ^ 0x7));
+}
+
+// -------------------------------------------
+// Pretty-printing control
+// -------------------------------------------
+
+size_t
+get_pretty_depth() {
+  return convertIntToML(pretty_depth);
+}
+
+size_t
+get_pretty_string_size() {
+  return convertIntToML(pretty_string_size);
 }
