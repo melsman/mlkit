@@ -143,7 +143,7 @@ print_value(char* tau, char* lab, size_t len, char* buf) {
     exit(EXIT_FAILURE);
   }
   int ret = 0;
-  if ( strcmp(tau, "int") == 0 ) {
+  if ( strcmp(tau, "int") == 0 || strcmp(tau, "int64") == 0 ) {
     ret = snprintf(buf, len, "%lld", convertIntToC(*(long long*)symb));
   } else if ( strcmp(tau, "bool") == 0 ) {
     if ( *(long long*)symb == mlTRUE ) {
