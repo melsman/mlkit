@@ -21,6 +21,7 @@ structure PP = PrettyPrint
 structure ModCode = MO.ModCode
 structure CEnv = CompilerEnv
 structure Ty = StatObject.Type
+structure L = LambdaExp
 
 type Basis = MO.Basis
 type modcode = MO.modcode
@@ -401,21 +402,21 @@ fun retrieve (rp:rp) B t longid =
 
 local
 
-  type tyvar = LambdaExp.tyvar
-  type Type = LambdaExp.Type
+  type tyvar = L.tyvar
+  type Type = L.Type
   type TyName = TyName.TyName
   type TypeScheme = tyvar list * Type
 
-  fun pp_Type t = PP.flatten1 (LambdaExp.layoutType t)
+  fun pp_Type t = PP.flatten1 (L.layoutType_repl t)
 
   fun pp_TypeScheme (nil,t) = pp_Type t
     | pp_TypeScheme (tvs,t) =
-      "(" ^ String.concatWith "," (map LambdaExp.pr_tyvar tvs) ^ ")." ^
+      "(" ^ String.concatWith "," (map L.pr_tyvar tvs) ^ ")." ^
       pp_Type t
 
   fun isArrow (_,t) =
       case t of
-          LambdaExp.ARROWtype _ => true
+          L.ARROWtype _ => true
         | _ => false
 
   fun pp_crep (name:string, sch) =
@@ -423,7 +424,7 @@ local
 
   fun pp_def (tn, creps) =
       String.concat [
-        TyName.pr_TyName tn
+        TyName.pr_TyName_repl tn
       , (if TyName.unboxed tn then " (u)"
          else " (b)")
       , " = ["
@@ -431,17 +432,49 @@ local
       , "]; "
       ]
 
+  fun unions nil = TyName.Set.empty
+    | unions (s::ss) = TyName.Set.union s (unions ss)
+
+  fun tynames seen t =
+      case t of
+          L.TYVARtype _ => TyName.Set.empty
+        | L.ARROWtype(ts,_,ts',_) =>
+          unions (map (tynames seen) ts @
+                  map (tynames seen) ts')
+        | L.CONStype (ts,tn,_) =>
+          let val s = unions (map (tynames seen) ts)
+          in if TyName.Set.member tn seen then s
+             else TyName.Set.insert tn s
+          end
+        | L.RECORDtype (ts,_) => unions (map (tynames seen) ts)
+
+  fun tynames_crep seen (_,(_,t)) = tynames seen t
+
+  fun tynames_defs seen ds =
+      unions(map (fn (_,creps) =>
+                     unions (map (tynames_crep seen) creps)) ds)
+
+  fun defsClosure B tns_seen tns =
+      let val tns = TyName.Set.difference tns tns_seen
+      in case TyName.Set.fold (fn tn => fn acc =>
+                                  case MO.tyname_reps B tn of
+                                      SOME info => (tn, info) :: acc
+                                    | NONE => acc
+                              ) nil tns of
+             nil => nil
+           | defs =>
+             let val tns_seen' = TyName.Set.union tns_seen tns
+             in defs @ defsClosure B tns_seen'
+                                   (tynames_defs tns_seen' defs)
+             end
+      end
+
   fun str_t B t =
-      let val tns = Ty.tynames t
-          val predefined = TyName.Set.fromList (TyName.tynamesPredefined)
-          val tns = TyName.Set.list (TyName.Set.difference tns predefined)
-          val defs = List.mapPartial (fn tn =>
-                                         case MO.tyname_reps B tn of
-                                             SOME info => SOME (tn, info)
-                                           | NONE => NONE) tns
+      let val predefined = TyName.Set.fromList (TyName.tynamesPredefined)
+          val defs = defsClosure B predefined (Ty.tynames t)
           val alldefs = String.concat (map pp_def defs)
           (* val () = print (alldefs ^ "\n") *)
-      in SOME(alldefs ^ Ty.string t)
+      in SOME(alldefs ^ Ty.string_repl t)
       end
 in
 fun render rp B (strids,id,sch) =

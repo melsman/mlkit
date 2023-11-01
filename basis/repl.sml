@@ -95,7 +95,7 @@ fun scanAnyChar get s = get s
 
 fun scanId get =
     (scanChar Char.isAlpha >>@ String.str >>?
-     scanChars Char.isAlphaNum
+     scanChars (fn c => Char.isAlphaNum c orelse c = #"_")
     ) (op ^) get
 
 end
@@ -382,10 +382,21 @@ fun pretty_exported (i:int) : int =
                                                                     end) lts
                                                           ) ^ "}",
                                   z_strong)
-                      | C ([], "intinf") => (IntInf.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "int31") => (Int31.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "int32") => (Int32.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "int63") => (Int63.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "int64") => (Int64.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "int") => (Int.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "intinf") => (IntInf.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "word8") => ("0wx" ^ Word8.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "word31") => ("0wx" ^ Word31.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "word32") => ("0wx" ^ Word32.toString (prim("unsafe_cast", v)), z_strong)
+(*                      | C ([], "word63") => ("0wx" ^ Word63.toString (prim("unsafe_cast", v)), z_strong) *)
+                      | C ([], "word64") => ("0wx" ^ Word64.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "word") => ("0wx" ^ Word.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "real") => (Real.toString (prim("unsafe_cast", v)), z_strong)
+                      | C ([], "char") => ("#\"" ^ Char.toString (prim("unsafe_cast", v)) ^ "\"",
+                                           z_strong)
                       | C ([], "bool") => (Bool.toString (prim("unsafe_cast", v)), z_strong)
                       | C ([], "string") => ("\"" ^  String.toString (prim("unsafe_cast", v)) ^ "\"",
                                              z_strong)

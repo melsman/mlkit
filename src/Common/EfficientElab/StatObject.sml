@@ -538,93 +538,111 @@ structure StatObject: STATOBJECT =
                        Int.toString i , "-", b, ">"]
             end
 
-        fun TyName_string_as_opt ((tyname,rvis), tyname'_opt) =
-             case tyname'_opt of
-               SOME tyname' =>
-                  if TyName.eq (tyname,tyname') then TyName.pr_TyName tyname ^ pr_rvis rvis
-                  else if TyName.tycon tyname = TyName.tycon tyname'
-                       then full_works (tyname,rvis)
-                       else TyName.pr_TyName tyname ^ pr_rvis rvis
-             | NONE => TyName.pr_TyName tyname ^ pr_rvis rvis
+        (* The (config:{repl:bool}) argument specifies whether the
+           call is used for type-indexed pretty-printing of values in
+           the REPL. In that case, pretty printing should not include
+           regvars and type names should be printed with their
+           internal stamps.
+         *)
 
-        fun pretty_string_as_opt names precedence (ty : Type, ty'_opt : Type option) =
+        type config = {repl:bool}
+
+        fun TyName_string_as_opt (config:config) ((tn,rvis), tn'_opt) =
+            if #repl config then TyName.pr_TyName_repl tn
+            else let val str =
+                         case tn'_opt of
+                             SOME tn' =>
+                             if TyName.eq (tn,tn') then TyName.pr_TyName tn
+                             else if TyName.tycon tn = TyName.tycon tn'
+                             then full_works (tn,rvis)
+                             else TyName.pr_TyName tn
+                           | NONE => TyName.pr_TyName tn
+                 in str ^ pr_rvis rvis
+                 end
+
+        fun pretty_string_as_opt (config:config) names precedence (ty : Type, ty'_opt : Type option) =
           let val ty = findType ty
               val ty'_opt = Option.map findType ty'_opt
               val st_ty =
-                case #TypeDesc ty
-                  of TYVAR tv => TyVar.pretty_string names tv
+                  case #TypeDesc ty of
+                      TYVAR tv => TyVar.pretty_string names tv
 
-                   | RECTYPE (r,rvi) =>         (* See if we can print it as `a * b * ...'
-                                                 * rather than `{1: a, 2: b, ...}' *)
-                    let val r = findRecType r
-                        val (m, rv) = sanitiseRecType r
-                    in case (is_tuple_type m, rv)
-                         of (true, NONE) => (* A possible (t1 * t2 * ...) type, and
-                                             * no rowvar. *)
-                           print_tuple names precedence (m, ty'_opt)
-                          | _ => (*Have to do the general print.*)
+                    | RECTYPE (r,rvi) =>         (* See if we can print it as `a * b * ...'
+                                                  * rather than `{1: a, 2: b, ...}' *)
+                      let val r = findRecType r
+                          val (m, rv) = sanitiseRecType r
+                      in case (is_tuple_type m, rv) of
+                             (true, NONE) => (* A possible (t1 * t2 * ...) type, and
+                                              * no rowvar. *)
+                             print_tuple config names precedence (m, ty'_opt)
+                           | _ => (*Have to do the general print.*)
                            let val fields = Lab.Map.range m
-                             val fields' = fields_of_other_record (ty'_opt, fields)
-                             val field_types = map (pretty_string_as_opt names 1)
-                               (ListPair.zip (fields,fields'))
-                             val labels = map Lab.pr_Lab (Lab.Map.dom m)
-                             fun colon_between (lab, ty) = lab ^ ": " ^ ty
-                             val finish = case URef.!! rvi of NONE => "}"
-                                                            | SOME (_,rv) => "}`" ^ RegVar.pr rv
-                           in
-                             ListUtils.stringSep "{" finish ", " colon_between
-                             (ListPair.zip (labels,field_types))
+                               val fields' = fields_of_other_record (ty'_opt, fields)
+                               val field_types = map (pretty_string_as_opt config names 1)
+                                                     (ListPair.zip (fields,fields'))
+                               val labels = map Lab.pr_Lab (Lab.Map.dom m)
+                               fun colon_between (lab, ty) = lab ^ ": " ^ ty
+                               val finish = case URef.!! rvi of
+                                                NONE => "}"
+                                              | SOME (_,rv) =>
+                                                if #repl config then "}"
+                                                else "}`" ^ RegVar.pr rv
+                           in ListUtils.stringSep "{" finish ", " colon_between
+                                                  (ListPair.zip (labels,field_types))
                            end
-                    end
-
-                   | ARROW (t1,rvi0,t2,rvi) =>
-                     let
-                         val arrow = case URef.!! rvi0 of
-                                         NONE => "->"
-                                       | SOME (_,rv) => "-" ^ RegVar.pr rv ^ "->"
-                         fun default () =
-                             pretty_string_as_opt names 3 (t1, NONE) ^ arrow
-                             ^ pretty_string_as_opt names 2 (t2, NONE)
-                         val inner =
-                             case ty'_opt of
-                                 SOME {TypeDesc = ARROW(t1', rvi0', t2',rvi'), ...} =>
-                                 (case URef.!! rvi' of
-                                      NONE =>
-                                      (case URef.!! rvi0' of
-                                           NONE => pretty_string_as_opt names 3 (t1, SOME t1') ^ "->"
-                                                   ^ pretty_string_as_opt names 2 (t2, SOME t2')
-                                         | SOME _ => default())
-                                    | SOME _ => default())
-                               | _ => default()
-                     in case URef.!! rvi of
-                            NONE => parenthesize NONE (2, precedence, inner)
-                          | SOME (_,rv) => "(" ^ inner ^ ")`" ^ RegVar.pr rv
-                     end
-                   | CONSTYPE (tys, tyname, rvis) =>
-                    let val (tys'_opt, tyname'_opt) =
-                      case ty'_opt
-                        of SOME {TypeDesc = CONSTYPE(tys', tyname', _), ...} =>
-                          (ziptypes tys' tys, SOME tyname')
-                         | _ => (map (fn _ => NONE) tys, NONE)
-                    in
-                      case (tys, tys'_opt)
-                        of (nil,_) => TyName_string_as_opt ((tyname,rvis), tyname'_opt)
-                         | ([ty], [ty']) =>
-                          concat [pretty_string_as_opt names 4 (ty,ty'), " ",
-                                  TyName_string_as_opt ((tyname,rvis), tyname'_opt)]
-                         | _ =>
-                          concat [ListUtils.stringSep "(" ") " ", "
-                                  (pretty_string_as_opt names 1)
-                                  (ListPair.zip (tys,tys'_opt)),
-                                  " ",
-                                  TyName_string_as_opt ((tyname,rvis), tyname'_opt)]
-                    end
+                      end
+                    | ARROW (t1,rvi0,t2,rvi) =>
+                      let val arrow = case URef.!! rvi0 of
+                                          NONE => "->"
+                                        | SOME (_,rv) =>
+                                          if #repl config then "->"
+                                          else "-" ^ RegVar.pr rv ^ "->"
+                          fun default () =
+                              pretty_string_as_opt config names 3 (t1, NONE) ^ arrow
+                              ^ pretty_string_as_opt config names 2 (t2, NONE)
+                          val inner =
+                              case ty'_opt of
+                                  SOME {TypeDesc = ARROW(t1', rvi0', t2',rvi'), ...} =>
+                                  (case URef.!! rvi' of
+                                       NONE =>
+                                       (case URef.!! rvi0' of
+                                            NONE => pretty_string_as_opt config names 3 (t1, SOME t1') ^ "->"
+                                                    ^ pretty_string_as_opt config names 2 (t2, SOME t2')
+                                          | SOME _ => default())
+                                     | SOME _ => default())
+                                | _ => default()
+                      in case URef.!! rvi of
+                             NONE => parenthesize NONE (2, precedence, inner)
+                           | SOME (_,rv) =>
+                             if #repl config then parenthesize NONE (2, precedence, inner)
+                             else "(" ^ inner ^ ")`" ^ RegVar.pr rv
+                      end
+                    | CONSTYPE (tys, tyname, rvis) =>
+                      let val (tys'_opt, tyname'_opt) =
+                              case ty'_opt of
+                                  SOME {TypeDesc = CONSTYPE(tys', tyname', _), ...} =>
+                                  (ziptypes tys' tys, SOME tyname')
+                                | _ => (map (fn _ => NONE) tys, NONE)
+                      in
+                        case (tys, tys'_opt) of
+                            (nil,_) => TyName_string_as_opt config ((tyname,rvis), tyname'_opt)
+                          | ([ty], [ty']) =>
+                            concat [pretty_string_as_opt config names 4 (ty,ty'), " ",
+                                    TyName_string_as_opt config ((tyname,rvis), tyname'_opt)]
+                          | _ =>
+                            concat [ListUtils.stringSep "(" ") " ", "
+                                                        (pretty_string_as_opt config names 1)
+                                                        (ListPair.zip (tys,tys'_opt)),
+                                    " ",
+                                    TyName_string_as_opt config ((tyname,rvis), tyname'_opt)]
+                      end
           in
-            if !print_type_levels then concat ["[", st_ty, ",", Int.toString (!(#level ty)), "]"]
+            if !print_type_levels andalso not(#repl config)
+            then concat ["[", st_ty, ",", Int.toString (!(#level ty)), "]"]
             else st_ty
           end
 
-        and print_tuple names precedence (m, ty'_opt: Type option)  =
+        and print_tuple config names precedence (m, ty'_opt: Type option) =
 
           (* Careful: "{1=x}" does not print as "(x)", and "{ }"
            * should be "unit". We don't do this folding at all if
@@ -645,25 +663,29 @@ structure StatObject: STATOBJECT =
                         end
                       | _ => (map (fn field => NONE) fields,URef.uref NONE)
               in
-                (case (fields, fields') of
-                   (nil, _) => "unit"   (* Hard-wired *)
+                case (fields, fields') of
+                    (nil, _) => "unit"   (* Hard-wired *)
                   | ([x], [x']) =>
-                    let val s = "{1: " ^ pretty_string_as_opt names 1 (x,x') ^ "}"
+                    let val s = "{1: " ^ pretty_string_as_opt config names 1 (x,x') ^ "}"
                     in case URef.!!rvi of
                            NONE => s
-                         | SOME (_,rv) => s ^ "`" ^ RegVar.pr rv
+                         | SOME (_,rv) =>
+                           if #repl config then s
+                           else s ^ "`" ^ RegVar.pr rv
                     end
-                 | _ => parenthesize (URef.!! rvi)
-                                     (3, precedence,
-                                      ListUtils.stringSep "" "" " * "
-                                      (pretty_string_as_opt names 4)
-                                      (ListPair.zip(fields, fields'))))
+                  | _ => parenthesize (if #repl config then NONE else (URef.!! rvi))
+                                      (3, precedence,
+                                       ListUtils.stringSep "" "" " * "
+                                                           (pretty_string_as_opt config names 4)
+                                                           (ListPair.zip(fields, fields')))
               end
       in
         fun pretty_string_as_ty names (ty,ty') : string =
-            pretty_string_as_opt names 1 (ty, SOME ty')
+            pretty_string_as_opt {repl=false} names 1 (ty, SOME ty')
         fun pretty_string names ty : string =
-            pretty_string_as_opt names 1 (ty, NONE)
+            pretty_string_as_opt {repl=false} names 1 (ty, NONE)
+        fun string_repl ty =
+            pretty_string_as_opt {repl=true} NONAMES 1 (ty, NONE)
       end (*local*)
 
       val string_as_ty = pretty_string_as_ty NONAMES

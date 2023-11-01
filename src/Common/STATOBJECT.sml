@@ -77,6 +77,8 @@ signature STATOBJECT =
 	val tyvars                  : Type -> TyVar list
 	val tynames                 : Type -> TyName.Set.Set
 	val string                  : Type -> string
+	val string_repl             : Type -> string                (* for use with type-indexed value printing in the REPL *)
+
 	val pretty_string           : TVNames -> Type -> string
 	val string_as_ty            : Type * Type -> string
 	      (*The second type is a guide for printing*)

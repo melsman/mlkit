@@ -58,11 +58,10 @@ structure TyName :> TYNAME =
 
 
     fun fresh unboxed {tycon: tycon, arity: int, equality: bool} =
-      let val name = Name.new()
-      in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^
-                                                   Int.toString(Name.key name) ^ ")\n") else (); *)
-        {tycon=tycon, name=name, rank=Rank.new(), arity=arity, equality=equality, unboxed=ref unboxed}
-      end
+        let val name = Name.new()
+        in {tycon=tycon, name=name, rank=Rank.new(), arity=arity,
+            equality=equality, unboxed=ref unboxed}
+        end
 
     fun freshTyName r = fresh false r
 
@@ -79,7 +78,7 @@ structure TyName :> TYNAME =
     (* We should only allow matching of type names when their attributes
      * are equal; otherwise changes in attributes are not caught by
      * the system.. *)
-    fun match(tn1,tn2) =
+    fun match (tn1,tn2) =
       if (equality tn1 = equality tn2
           andalso arity tn1 = arity tn2
           andalso !(#unboxed tn1) = !(#unboxed tn2)) then
@@ -200,6 +199,19 @@ structure TyName :> TYNAME =
     structure Map = QuasiMap(QD)
 
     structure Set = QuasiSet(QD)
+
+    val predefined = Set.fromList tynamesPredefined
+
+    fun pr_TyName_repl (tn: TyName) : string =
+      let val str = TyCon.pr_TyCon (tycon tn)
+      in if Set.member tn predefined then str
+         else let val (i,b) = Name.key(name tn)
+              in str ^ "_" ^ Int.toString i
+              end
+      end
+
+
+
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName
