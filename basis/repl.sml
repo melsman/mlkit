@@ -356,11 +356,11 @@ val z_con1 = 5
 fun nopar (s,_) = s
 fun par_conarg (s,z) =
     if z > z_strong then "(" ^ s ^ ")"
-    else s
+    else " " ^ s
 
 fun pretty_exported (i:int) : int =
     let val ty : string = prim("pretty_ML_GetTy", ())
-(*        val () = print ("pretty_exported: " ^ ty ^ "\n") *)
+        val () = print ("pretty_exported: " ^ ty ^ "\n")
         val v : foreignptr = prim("pretty_ML_GetVal", ())
         val str =
             let val (dbs,t) = parse ty
@@ -403,7 +403,7 @@ fun pretty_exported (i:int) : int =
                       | C ([t], "option") =>
                         let val v : foreignptr option = prim("unsafe_cast", v)
                         in case v of
-                               SOME v => ("SOME " ^ par_conarg (pr(t,v)), z_con1)
+                               SOME v => ("SOME" ^ par_conarg (pr(t,v)), z_con1)
                              | NONE => ("NONE", z_strong)
                         end
                       | C ([t], "list") =>
@@ -419,7 +419,7 @@ fun pretty_exported (i:int) : int =
                       | C([t], "ref") =>
                         let val v : foreignptr ref = prim("unsafe_cast", v)
                         in case v of
-                               ref v => ("ref " ^ par_conarg (pr(t,v)), z_con1)
+                               ref v => ("ref" ^ par_conarg (pr(t,v)), z_con1)
                         end
                       | U => ("unknown", z_strong)
                       | C (ts,tn) =>
@@ -437,7 +437,7 @@ fun pretty_exported (i:int) : int =
                                 in case lookUnaryTag cs tag ts of
                                        NONE => ("?",z_strong)
                                      | SOME (cn, t) =>
-                                       (cn ^ " " ^ par_conarg (pr(t,ubcon1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(t,ubcon1_prj v)), z_con1)
                                 end
                               else (* nullary *)
                                 let val tag = ubcon_tag v
@@ -449,7 +449,7 @@ fun pretty_exported (i:int) : int =
                                 in case lookUnaryTag cs tag ts of
                                        NONE => ("?",z_strong)
                                      | SOME (cn, t) =>
-                                       (cn ^ " " ^ par_conarg (pr(t,con1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(t,con1_prj v)), z_con1)
                                 end
                               else (* nullary *)
                                 let val tag = con_tag v

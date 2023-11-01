@@ -25,61 +25,93 @@
 #include "Table.h"
 #include "String.h"
 
+size_t
+max(size_t a, size_t b) {
+  return (a > b) ? a : b;
+}
+
 FILE* repllog = NULL;
 
 char *
-read_str(int fd, char* buf, int len) {
-  char *start = buf;
+read_str(int fd, char** pbuf, size_t* buf_sz) {
   int ret;
-  while ( 1 == (ret = read(fd,buf,1)) && *buf != ' ' && *buf != ';' && len > 1 ) {
-    buf++; len--;
+  size_t n = 0;
+  char *buf = *pbuf;
+  while ( 1 == (ret = read(fd,buf,1)) && *buf != ' ' && *buf != ';' ) {
+    buf++; n++;
+    if ( n >= *buf_sz ) {  // resize
+      size_t new_sz = 2 * (*buf_sz);
+      char* new = (char*) malloc(new_sz);
+      if ( !new ) {
+	die ("read_str: failed to increase size of buffer");
+      }
+      *buf_sz = new_sz;
+      buf = stpncpy(new,*pbuf,n);
+      free(*pbuf);
+      *pbuf = new;
+    }
   }
-  if (ret == 0) {
+  if ( ret == 0 ) {
     die ("Repl.read_str: end-of-file");
   }
-  if (ret == -1) {
+  if ( ret == -1 ) {
     die ("Repl.read_str: cannot read file");
   }
   *buf = '\0';
+  char *start = *pbuf;
   fprintf(repllog, "{read string '%s'}\n", start);
   fflush(repllog);
   return start;
 }
 
 char *
-read_qstr(int fd, char* buf, int len) {
-  char *start = buf;
+read_qstr(int fd, char** pbuf, size_t* buf_sz) {
   char sp;
   int ret;
+  size_t n = 0;
+  char* buf = *pbuf;
   if ( 1 == (ret = read(fd,buf,1)) && *buf != '"' ) {
     die ("read_qstr: expecting double quote");
   }
-  while ( 1 == (ret = read(fd,buf,1)) && *buf != '"' && len > 1 ) {
-    buf++; len--;
+  while ( 1 == (ret = read(fd,buf,1)) && *buf != '"' ) {
+    buf++; n++;
+    if ( n >= *buf_sz ) {  // resize
+      size_t new_sz = 2 * (*buf_sz);
+      char* new = (char*) malloc(new_sz);
+      if ( !new ) {
+	die ("read_qstr: failed to increase buffer size");
+      }
+      *buf_sz = new_sz;
+      buf = stpncpy(new,*pbuf,n);
+      free(*pbuf);
+      *pbuf = new;
+    }
   }
-  if (ret == 0) {
+  if ( ret == 0 ) {
     die ("Repl.read_qstr: end-of-file");
   }
-  if (ret == -1) {
+  if ( ret == -1 ) {
     die ("Repl.read_qstr: cannot read file");
   }
   if ( read(fd,&sp,1) != 1 || sp != ' ' ) {
     die ("read_qstr: failed to read final space");
   }
-  *buf = '\0';
+  *buf = '\0';         // overwrite double-quote
+  char *start = *pbuf;
   fprintf(repllog, "{read quoted string '%s'}\n", start);
   fflush(repllog);
   return start;
 }
 
-#define BUF_LEN  1000
-#define BUF_LEN2 2000
+#define BUF_LEN 100
 
 // ------------------
 // printing support
 // ------------------
 
-char* pretty_topbuf200;
+char* pretty_topbuf;
+size_t pretty_topbuf_sz;
+
 char* pretty_hidden_ty = "int";   // type
 void* pretty_hidden_v = NULL;     // value
 
@@ -95,8 +127,18 @@ pretty_ML_GetVal (void) {
 
 void
 REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
-  convertStringToC(ctx, s, pretty_topbuf200, 200, exn);
-}  // side-effecting toplevel buffer topbuf200...
+  // side-effecting toplevel buffer pretty_topbuf
+  size_t sz = get_string_size(s->size);
+  if ( pretty_topbuf_sz < sz + 2) {
+    pretty_topbuf_sz = max (2 * pretty_topbuf_sz, sz + 2);
+    free(pretty_topbuf);
+    pretty_topbuf = (char*) malloc(pretty_topbuf_sz);
+    if ( !pretty_topbuf ) {
+      die ("pretty_ML_Print: failed to increase size of pretty_topbuf");
+    }
+  }
+  convertStringToC(ctx, s, pretty_topbuf, pretty_topbuf_sz, exn);
+}
 
 // ------------------
 // Command handling
@@ -133,8 +175,9 @@ load_run(char* sopath, char* lab) {
   return;
 }
 
+// prints into pretty_topbuf
 void
-print_value(char* tau, char* lab, size_t len, char* buf) {
+print_value(char* tau, char* lab) {
   fprintf(repllog, "{printing content of %s : %s}\n", lab, tau);
   fflush(repllog);
   void* symb = (void*)dlsym(RTLD_DEFAULT,lab);
@@ -144,18 +187,18 @@ print_value(char* tau, char* lab, size_t len, char* buf) {
   }
   int ret = 0;
   if ( strcmp(tau, "int") == 0 || strcmp(tau, "int64") == 0 ) {
-    ret = snprintf(buf, len, "%lld", convertIntToC(*(long long*)symb));
+    ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "%lld", convertIntToC(*(long long*)symb));
   } else if ( strcmp(tau, "bool") == 0 ) {
     if ( *(long long*)symb == mlTRUE ) {
-      ret = snprintf(buf, len, "true");
+      ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "true");
     } else {
-      ret = snprintf(buf, len, "false");
+      ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "false");
     }
   } else if ( strcmp(tau, "real") == 0 ) {
-    ret = snprintf(buf, len, "%f", convertRealToC(*(size_t**)symb));
+    ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "%f", convertRealToC(*(size_t**)symb));
   } else {
     fprintf(stderr, "WARNING: Repl.print_value cannot print values of type %s\n", tau);
-    snprintf(buf, len, "unknown");
+    snprintf(pretty_topbuf, pretty_topbuf_sz, "unknown");
   }
   if ( ret < 0 ) {
     fprintf(stderr, "Repl.print_value: Error printing into buffer: %s\n", dlerror());
@@ -165,12 +208,12 @@ print_value(char* tau, char* lab, size_t len, char* buf) {
 }
 
 void
-print_value2(char* tau, char* lab, size_t len, char* buf) {
+print_value2(char* tau, char* lab) {
   fprintf(repllog, "{attempt printing with pretty_exported function %s : %s}\n", lab, tau);
   fflush(repllog);
   size_t(*pretty_exported)() = (size_t(*)())dlsym(RTLD_DEFAULT,"pretty_exported");
   if ( !pretty_exported ) {
-    print_value(tau,lab,len,buf);
+    print_value(tau,lab);
     return;
   }
   fprintf(repllog, "{found pretty_exported function}\n");
@@ -183,13 +226,8 @@ print_value2(char* tau, char* lab, size_t len, char* buf) {
   pretty_hidden_ty = tau;
   pretty_hidden_v = symb;
   int sz = pretty_exported(0);
-  if ( sz != strlen(pretty_topbuf200) ) {
-    fprintf(stderr, "Repl.print_value2: sz error: %d - %s: %s\n", sz, pretty_topbuf200, dlerror());
-    exit(EXIT_FAILURE);
-  }
-  int ret = snprintf(buf, len, "%s", pretty_topbuf200);
-  if ( ret < 0 ) {
-    fprintf(stderr, "Repl.print_value2: Error printing into buffer: %s\n", dlerror());
+  if ( sz != strlen(pretty_topbuf) ) {
+    fprintf(stderr, "Repl.print_value2: sz error: %d - %s: %s\n", sz, pretty_topbuf, dlerror());
     exit(EXIT_FAILURE);
   }
   return;
@@ -260,27 +298,44 @@ repl_interp(Context ctx) {
     exit(EXIT_FAILURE);
   }
 
-  char* buf = (char *) malloc(BUF_LEN);
-  char* buf2 = (char *) malloc(BUF_LEN);
-  char* buf3 = (char *) malloc(BUF_LEN);
-  char* buf4 = (char *) malloc(BUF_LEN);
-  char* buf5 = (char *) malloc(BUF_LEN2);
-  pretty_topbuf200 = (char *) malloc(BUF_LEN2);
+  // Initialize string buffers and their sizes
+  size_t buf1_sz = BUF_LEN;
+  size_t buf2_sz = BUF_LEN;
+  size_t buf3_sz = BUF_LEN;
+  size_t buf4_sz = BUF_LEN;
+  char* buf1 = (char *) malloc(buf1_sz);
+  char* buf2 = (char *) malloc(buf2_sz);
+  char* buf3 = (char *) malloc(buf3_sz);
+  char* buf4 = (char *) malloc(buf4_sz);
+  pretty_topbuf_sz = BUF_LEN;
+  pretty_topbuf = (char *) malloc(pretty_topbuf_sz);
+
+  if ( !buf1 || !buf2 || !buf3 || !buf4 || !pretty_topbuf ) {
+    die ("repl_interp: failed to allocate buffers");
+  }
 
   while (1)  {
     fprintf(repllog, "{reading command}\n");
     fflush(repllog);
-    char* cmd = read_str(command_fd, buf, BUF_LEN);
+    char* cmd = read_str(command_fd, &buf1, &buf1_sz);
 
     if ( strcmp(cmd, "PRINT") == 0 ) {
-      char* tau = read_qstr(command_fd, buf2, BUF_LEN);
-      char* lab = read_str(command_fd, buf3, BUF_LEN);
-      print_value2(tau,lab,BUF_LEN,buf4);
-      int sz = strlen(buf4);
-      snprintf(buf5,BUF_LEN2,"STR %d %s;",sz,buf4);
-      write_str(reply_fd, buf5);
+      char* tau = read_qstr(command_fd, &buf2, &buf2_sz);
+      char* lab = read_str(command_fd, &buf3, &buf3_sz);
+      print_value2(tau,lab);      // prints into pretty_topbuf;
+      int sz = strlen(pretty_topbuf);
+      if ( sz+50 > buf4_sz ) {    // resize buf4
+	buf4_sz = buf4_sz * 2;
+	free(buf4);
+	buf4 = (char*)malloc(buf4_sz);
+	if ( !buf4 ) {
+	  die ("repl_interp: failed to increase size of buffer buf4 for printing");
+	}
+      }
+      snprintf(buf4,buf4_sz,"STR %d %s;",sz,pretty_topbuf);
+      write_str(reply_fd, buf4);
     } else if ( strcmp(cmd, "LOADRUN") == 0 ) {
-      char* sofile = read_str(command_fd, buf2, BUF_LEN);
+      char* sofile = read_str(command_fd, &buf2, &buf2_sz);
       load_run(sofile, "main");
       if ( uncaught_exn_raised ) {
 	uncaught_exn_raised = 0;
@@ -291,7 +346,6 @@ repl_interp(Context ctx) {
     } else if ( strcmp(cmd, "TERMINATE") == 0 ) {
       close(command_fd);
       close(reply_fd);
-      free(buf); free(buf2); free(buf3);
       write_str(reply_fd, "DONE;");
       fclose(repllog);
       exit(0);
@@ -301,7 +355,6 @@ repl_interp(Context ctx) {
       exit(EXIT_FAILURE);
     }
   }
-
 }
 
 // ------------------------
