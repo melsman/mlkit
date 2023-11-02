@@ -180,6 +180,8 @@ sml_setFailNumber(uintptr_t ep, int i)
 // in the thread context and raise it if the parent thread tries to
 // join the thread.
 
+int uncaught_exn_raised = 0;
+
 void
 uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
 {
@@ -212,7 +214,11 @@ uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
   Statistics();
 #endif
 
-  exit (-1);
+  if (!command_pipe) {
+    exit (-1);            // exit unless it is the REPL.
+  }
+  uncaught_exn_raised = 1;  // for REPL - see Repl.c
+  return;                   // see CodeGenX86.generate_repl_link_code...
 }
 
 #ifdef TAG_VALUES
@@ -371,6 +377,8 @@ sig_handler_segv(int sig, siginfo_t *info, void *extra)
 
 extern void code(Context ctx);
 
+Context top_ctx;   // only for REPL
+
 int
 main(int argc, char *argv[])
 {
@@ -392,6 +400,7 @@ main(int argc, char *argv[])
   ctx->topregion = NULL;
   ctx->exnptr = NULL;
 #endif
+  top_ctx = ctx;
 
 #ifdef REGION_PAGE_STAT
 rpMap = regionPageMapNew();

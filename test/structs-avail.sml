@@ -136,7 +136,7 @@ structure X = Word<N> : WORD
 structure X = Word8 : WORD
 structure X = Word31 : WORD
 structure X = Word32 : WORD
-structure X = Word63 : WORD
+(*structure X = Word63 : WORD*)
 structure X = Word64 : WORD
 
 val () = print "All ok\n"

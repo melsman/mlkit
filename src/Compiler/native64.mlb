@@ -1,10 +1,9 @@
 local
   prebackend.mlb
   basis Regions = bas regions.mlb end
-  open BasLib (* Compiler *) Regions
+  open BasLib Regions
 in
   (* Native Backend *)
-
   Backend/LINE_STMT.sml
   Backend/REG_ALLOC.sml
   Backend/FETCH_AND_FLUSH.sml
@@ -36,7 +35,6 @@ in
         in Backend/X64/ExecutionX64.sml
         end
      end
-
      local open Compiler
      in ../Common/KitX64.sml
      end

@@ -57,7 +57,7 @@ struct
         fun printOps ({long,short,desc,kind,...} : Flags.options) =
                String.concat [".IP \"\\fB", pLong (long,short,kind), "\\fR\" 4\n",".IX Item \"", pLong (long,short,kind), "\"\n",
                               desc,"\n"]
-        fun genExtra (l,s,d) = {long = [l], short = s, desc = String.concat d, kind = NONE, default = NONE}
+        fun genExtra (l,s,d) = {long = [l], short = s, desc = String.concat d, kind = NONE, default = NONE, menu=nil}
         val extra' = List.map genExtra extra
 
         fun cmp c ([],[]) = EQUAL
@@ -83,7 +83,8 @@ struct
 			    "Vesa Karvonen",
 			    "Ken Friis Larsen",
 			    "Henning Niss",
-			    "Peter Sestoft"]
+			    "Peter Sestoft",
+                            "Troels Henriksen"]
 
         val smltojs_developers = ["Martin Elsman"]
         val reml_developers = ["Martin Elsman"]
@@ -148,11 +149,15 @@ struct
 	  String.concat[".SH DESCRIPTION\n",
                         what,
 			"When invoked, \n.B ", exe, "\nwill compile the specified sources into ", result,
-			"through a series of translation phases. Various options (see below) can be used to control the ",
-			"printing of intermediate forms and to control to which degree various optimizations are performed. If source files ",
+			"through a series of translation phases. The various options can be used to control the ",
+			"printing of intermediate forms and to control which optimizations are performed. If source files ",
 			"are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table ",
-			"information and object code in the dedicated MLB directories located together with the source files, so ",
-			"as to minimize necessary recompilation upon changes of source code.\n\n",
+			"information and object code in the dedicated MLB directories located relative to the source files.\n\n",
+                        if not(isSMLtoJs exe) then
+                          "If " ^ exe ^ " is invoked without source files, an interactive REPL is started. Type " ^
+                          "':help;' within the REPL to learn more about its use.\n\n"
+                        else
+                          "",
 			"To learn more about programming with ", name, ", consult the ", if isReML exe then "MLKit" else name, " web page at\n\n",
 			".B ", homepage, "\n"]
 	end
@@ -173,10 +178,7 @@ struct
     val files = fn exe =>
         String.concat [".SH FILES\n",
 		       String.concat (List.map (fn (f,e) => ".IP " ^ f ^ "\n" ^ e ^ "\n" ) (files exe))]
-(*
-    val diag = String.concat [".SH DIAGNOSTICS\n",
-                              "The following diagnostics may be issued on stderr:\n"]
-*)
+
     fun examples exe =
         if isSMLtoJs exe then
           String.concat [".SH EXAMPLES\n",

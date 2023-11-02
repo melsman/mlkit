@@ -23,6 +23,10 @@ char **commandline_argv;  // when discharging object file arguments.
 static int app_arg_index = 1; /* index for first argument to application. Set by parseArgs */
 // static char exeName[100];
 
+char * command_pipe = NULL;  // Named command pipe for REPL
+char * reply_pipe = NULL;    // Named reply pipe for REPL
+char * repl_logfile = NULL;  // Name of REPL log file
+
 /*----------------------------------------*
  * Flags recognized by the runtime system *
  *----------------------------------------*/
@@ -41,6 +45,9 @@ printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-help, -h] \n");
+  fprintf(stderr,"      [-command_pipe n] \n");
+  fprintf(stderr,"      [-reply_pipe n] \n");
+  fprintf(stderr,"      [-repl_logfile n] \n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
 #ifdef ENABLE_GENGC
@@ -58,6 +65,9 @@ printUsage(void)
 #endif
   fprintf(stderr,"  where\n");
   fprintf(stderr,"      -help, -h                Print this help screen and exit.\n\n");
+  fprintf(stderr,"      -command_pipe n          Named pipe for REPL commands.\n\n");
+  fprintf(stderr,"      -reply_pipe n            Named pipe for REPL replies.\n\n");
+  fprintf(stderr,"      -repl_logfile n          Name of REPL log file.\n\n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      -disable_gc              Disable garbage collector.\n");
   fprintf(stderr,"      -verbose_gc              Show info after each garbage collection.\n");
@@ -99,10 +109,7 @@ printUsage(void)
 void
 parseCmdLineArgs(int argc, char *argv[])
 {
-
-#if ( PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS) )
   long match;
-#endif
 
 #ifdef ARGOBOTS
   posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -113,8 +120,6 @@ parseCmdLineArgs(int argc, char *argv[])
   commandline_argc = argc;
   commandline_argv = argv;
 
-#if ( PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS) )
-  //  strcpy(exeName, (char *)argv[0]);
   match = 1;
   while ((--argc > 0) && match) {
     ++argv;    /* next parameter. */
@@ -124,6 +129,39 @@ parseCmdLineArgs(int argc, char *argv[])
 	(strcmp((char *)argv[0], "-help")==0)) {
       match = 1;
       printUsage();  /* exits */
+    }
+
+    if (strcmp((char *)argv[0],"-command_pipe")==0) {
+      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+	command_pipe = (char *)argv[0];
+      } else {
+	fprintf(stderr,"Missing argument to -command_pipe switch.\n");
+	printUsage();
+      }
+      app_arg_index++; /* two-word option */
+      match = 1;
+    }
+
+    if (strcmp((char *)argv[0],"-reply_pipe")==0) {
+      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+	reply_pipe = (char *)argv[0];
+      } else {
+	fprintf(stderr,"Missing argument to -reply_pipe switch.\n");
+	printUsage();
+      }
+      app_arg_index++; /* two-word option */
+      match = 1;
+    }
+
+    if (strcmp((char *)argv[0],"-repl_logfile")==0) {
+      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+	repl_logfile = (char *)argv[0];
+      } else {
+	fprintf(stderr,"Missing argument to -repl_logfile switch.\n");
+	printUsage();
+      }
+      app_arg_index++; /* two-word option */
+      match = 1;
     }
 
 #ifdef ENABLE_GC
@@ -301,8 +339,6 @@ parseCmdLineArgs(int argc, char *argv[])
     printf("ARGOBOTS: Using %d execution streams.\n", posixThreads);
   }
 #endif
-
-#endif /* PROFILING || ENABLE_GC || (PARALLEL && ARGOBOTS)*/
 
   return;
 }

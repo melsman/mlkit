@@ -22,9 +22,17 @@ structure Real : REAL =
 
     fun (x:real) / (y:real) : real = prim ("divFloat", (x, y))
     fun rem (x:real, y:real) : real = prim ("remFloat", (x, y))
-    fun to_string_gen (s : string) (x : real) : string =
-        prim ("generalStringOfFloat", (s,x))
-    fun toString (x:real) : string = prim ("stringOfFloat", x)
+
+    local
+      fun repair_negnan (s:string) : string =
+          if s = "~nan" then "nan" else s
+    in
+      fun to_string_gen (s : string) (x : real) : string =
+          repair_negnan (prim ("generalStringOfFloat", (s,x)))
+      fun toString (x:real) : string =
+          repair_negnan (prim ("stringOfFloat", x))
+    end
+
     fun sub_unsafe (s:string, i:int) : char = prim ("__bytetable_sub", (s,i))
     fun isNan (x:real) : bool = prim ("isnanFloat", x)
 

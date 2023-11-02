@@ -1,0 +1,2 @@
+. . > infix 0 +
+  val a = 3457 : int

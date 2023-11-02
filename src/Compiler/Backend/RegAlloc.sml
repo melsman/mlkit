@@ -22,7 +22,7 @@ struct
 
   val _ = Flags.add_bool_entry
     {long="register_allocation", short=NONE, item=ref true, neg=true,
-     menu=["Control", "register allocation"],
+     menu=["General Control", "register allocation"],
      desc="Perform register allocation. Without register allocation\n\
       \enabled, programs run somewhat slower--but they run and\n\
       \you save about 15 percent on compile time."}

@@ -522,7 +522,7 @@ struct
            (fromList (map #lvar declared_lvars), map #1 declared_excons)
           )
       end
-      handle Crash.CRASH  =>
+      handle _ =>
              (log "Locally Live Variables failed at expression:\n";
               dump(MulInf.layoutExp e);
               raise AbortExpression)

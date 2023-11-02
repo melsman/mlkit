@@ -124,6 +124,7 @@ jobs:
           make -C test test_mlkit
           make -C test test_mlkit_no_gc
           make -C test/explicit_regions all
+          make -C test/repl all
           make -C test/parallelism all
 
       - name: Configure SmlToJs

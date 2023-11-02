@@ -236,16 +236,24 @@ functor ManagerObjects(
 	      List.foldr (fn ((fs,ds),(acc_f,acc_d)) =>  (fs@acc_f, ds@acc_d)) ([],[])
 	      (map Execution.exports_of_linkinfo linkinfos)  (* 2001-01-09, Niels *)
 	    val extobjs = elim_dupl (extobjs,[])
-	  in case Execution.generate_link_code
-	       of SOME generate_link_code =>
+	  in case Execution.generate_link_code of
+                 SOME generate_link_code =>
 		 let val target_link = generate_link_code (labs, exports)
-		   val linkfile_o = emit(target_link, "base", "link_objects")
+		     val linkfile_o = emit(target_link, "base", "link_objects")
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-		     delete_file linkfile_o
+		    delete_file linkfile_o
 		 end
-		| NONE =>
+	       | NONE =>
 		 link_files_with_runtime_system target_files run
 	  end
+
+        fun mk_sharedlib (tfiles_with_linkinfos, libs, name, sofile) : unit =
+            let val linkinfos = map (fn (a,b) => b) tfiles_with_linkinfos
+	        val ofiles = map #1 tfiles_with_linkinfos
+	        val labs = map Execution.code_label_of_linkinfo linkinfos
+            in Execution.mk_sharedlib(ofiles,labs,libs,name,sofile)
+            end
+
       end (*structure SystemTools*)
 
     datatype modcode = EMPTY_MODC
@@ -306,7 +314,7 @@ functor ManagerObjects(
 	     | SEQ_MODC(mc1,mc2) => all_emitted mc1 andalso all_emitted mc2
 	     | _ => true
 
-	fun emitted_files(mc,acc) =
+	fun emitted_files (mc,acc) =
 	  case mc
 	    of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
 	     | EMITTED_MODC(tfile,_) => tfile::acc
@@ -380,6 +388,36 @@ functor ManagerObjects(
 	fun absDirMod absd m =
 	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
 
+        fun mk_sharedlib (modc: modcode, libs, name, sofile) : unit =
+            (* something like gcc -o sofile -shared (eval.o::files) -init eval_step -llib1 ... -llibn
+               where (1) files are the object files in modc and (2) eval.o contains a function that
+               calls evaluate code in each modc object file.
+             *)
+	    let fun get (EMPTY_MODC, acc) = acc
+		  | get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
+		  | get (EMITTED_MODC p, acc) = p::acc
+		  | get (NOTEMITTED_MODC(target,li,filename), acc) = die "mk_sharedlib"
+	    in SystemTools.mk_sharedlib(get(modc,[]), libs, name, sofile)
+	    end
       end
+
+    val mk_repl_runtime =
+        case Execution.generate_repl_init_code of
+            SOME f =>
+            SOME (fn () =>
+                     let val exe = mlbdir() ## "runtime.exe"
+                     in if OS.FileSys.access (exe, [OS.FileSys.A_EXEC])
+                        then ( pr_debug_linking ("[reusing runtime system " ^ exe ^ "]\n")
+                             ; exe )
+                        else let val t = f()
+                                 val link_file_base = mlbdir() ## "repl-link"
+                                 val () = SystemTools.maybe_create_mlbdir {prepath=""}
+                                 val link_file_object = Execution.emit{target=t,filename=link_file_base}
+                                 val exe = Execution.create_repl_runtime [link_file_object] (mlbdir())
+                             in pr_debug_linking ("[created runtime system " ^ exe ^ "]\n")
+                              ; exe
+                             end
+                     end)
+          | NONE => NONE
 
   end

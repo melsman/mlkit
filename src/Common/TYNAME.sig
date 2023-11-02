@@ -30,66 +30,67 @@ signature TYNAME =
     type TyName
     type tycon = TyCon.tycon
 
-    val freshTyName  : {tycon : tycon, arity : int, equality : bool} -> TyName
-    val pr_TyName : TyName -> string
-
-    val eq : TyName * TyName -> bool
-
-    val arity    : TyName -> int
-    val equality : TyName -> bool
-    val tycon    : TyName -> tycon
-    val id       : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
+    val freshTyName    : {tycon : tycon, arity : int, equality : bool} -> TyName
+    val pr_TyName      : TyName -> string
+    val pr_TyName_repl : TyName -> string        (* for type-index value printing in the REPL,
+                                                  * non-predefined type names are printed with
+                                                  * their internal id... *)
+    val eq             : TyName * TyName -> bool
+    val arity          : TyName -> int
+    val equality       : TyName -> bool
+    val tycon          : TyName -> tycon
+    val id             : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
 
     (* Names *)
     type name = Name.name
-    val match : TyName * TyName -> unit
-    val name : TyName -> name
+    val match          : TyName * TyName -> unit
+    val name           : TyName -> name
 
     structure Rank :
       sig
-	type rank
-	val current : unit -> rank
-	val reset : unit -> unit
-	val <= : rank * rank -> bool
-	val min : rank * rank -> rank
-	val from_TyName : TyName -> rank
-	val pu : rank Pickle.pu
-	val pu_rankrefOne : rank ref Pickle.pu
-        val pp : rank -> string
+        type rank
+        val current       : unit -> rank
+        val reset         : unit -> unit
+        val <=            : rank * rank -> bool
+        val min           : rank * rank -> rank
+        val from_TyName   : TyName -> rank
+        val pu            : rank Pickle.pu
+        val pu_rankrefOne : rank ref Pickle.pu
+        val pp            : rank -> string
       end
 
     (* Predefined type names *)
-    val tyName_BOOL    : TyName
-    val tyName_INT31   : TyName
-    val tyName_INT32   : TyName
-    val tyName_INT63   : TyName
-    val tyName_INT64   : TyName
-    val tyName_INTINF  : TyName
-    val tyName_IntDefault : unit -> TyName   (* int31 or int32 dependent on tagging *)
-    val tyName_WORD8   : TyName
-    val tyName_WORD31   : TyName
-    val tyName_WORD32  : TyName
-    val tyName_WORD63   : TyName
-    val tyName_WORD64  : TyName
+    val tyName_BOOL        : TyName
+    val tyName_INT31       : TyName
+    val tyName_INT32       : TyName
+    val tyName_INT63       : TyName
+    val tyName_INT64       : TyName
+    val tyName_INTINF      : TyName
+    val tyName_IntDefault  : unit -> TyName   (* int31 or int32 dependent on tagging *)
+    val tyName_WORD8       : TyName
+    val tyName_WORD31      : TyName
+    val tyName_WORD32      : TyName
+    val tyName_WORD63      : TyName
+    val tyName_WORD64      : TyName
     val tyName_WordDefault : unit -> TyName  (* word31 or word32 dependent on tagging *)
-    val tyName_REAL    : TyName
-    val tyName_F64     : TyName              (* Internal unboxed float type *)
-    val tyName_STRING  : TyName
-    val tyName_CHAR    : TyName
-    val tyName_LIST    : TyName
-    val tyName_FRAG    : TyName
-    val tyName_REF     : TyName
-    val tyName_ARRAY   : TyName
-    val tyName_VECTOR  : TyName
-    val tyName_CHARARRAY : TyName
-    val tyName_FOREIGNPTR : TyName
-    val tyName_EXN     : TyName
+    val tyName_REAL        : TyName
+    val tyName_F64         : TyName              (* Internal unboxed float type *)
+    val tyName_STRING      : TyName
+    val tyName_CHAR        : TyName
+    val tyName_LIST        : TyName
+    val tyName_FRAG        : TyName
+    val tyName_REF         : TyName
+    val tyName_ARRAY       : TyName
+    val tyName_VECTOR      : TyName
+    val tyName_CHARARRAY   : TyName
+    val tyName_FOREIGNPTR  : TyName
+    val tyName_EXN         : TyName
 
     val unboxed : TyName -> bool   (* Returns true for type names that are
-				    * implemented unboxed; depends on whether
-				    * tagging of integers is enabled. *)
+                                    * implemented unboxed; depends on whether
+                                    * tagging of integers is enabled. *)
     val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t)
-				     * returns true. *)
+                                     * returns true. *)
 
     val tynamesPredefined : TyName list
 
@@ -99,7 +100,6 @@ signature TYNAME =
     val pu : TyName Pickle.pu
 
     structure Map : MONO_FINMAP where type dom = TyName
-    structure Set : KIT_MONO_SET
-                        where type StringTree = StringTree
-                          and type elt = TyName
+    structure Set : KIT_MONO_SET where type StringTree = StringTree
+                                   and type elt = TyName
   end

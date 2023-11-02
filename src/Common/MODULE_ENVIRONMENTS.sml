@@ -81,7 +81,7 @@ signature MODULE_ENVIRONMENTS =
 	val empty            : Basis
 	val initial          : unit -> Basis
 	val bogus            : Basis
-	val plus             : Basis * Basis   -> Basis
+	val plus             : Basis * Basis -> Basis
 	val on               : realisation -> Basis -> Basis
 	val tyvars           : Basis -> TyVar list
 	val tynames          : Basis -> TyName.Set.Set

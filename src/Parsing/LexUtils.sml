@@ -157,7 +157,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
         let val reml = ref false
         in Flags.add_bool_entry
                {long="reml", short=NONE, item=reml,
-	        menu=["Control", "ReML"], neg=false,
+	        menu=["General Control", "ReML"], neg=false,
 	        desc="ReML is Standard ML with support for programming with \n\
                      \explicit regions, explicit effects, and effect \n\
                      \constraints. With ReML, atomic effects also include \n\
@@ -254,4 +254,4 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	of nil => true
 	 | _ => false
 
-  end;
+  end

@@ -6,6 +6,7 @@ MLKIT=SML_LIB=../.. ../../bin/mlkit
 
 .PHONY: all
 all:
+	@echo --- Testing Parallelism Support ---
 	../../bin/kittester "$(MLKIT) $(FLAGS)" --logdirect all.tst
 
 .PHONY: argo

@@ -3,7 +3,7 @@
    on the base support modules for MLYacc (MyBase.sml), and my support functors
    - these are the functors that are referred to freely. *)
 
-structure Parse: PARSE =
+structure Parse : PARSE =
   struct
     structure Stream = Stream()
 
@@ -29,6 +29,7 @@ structure Parse: PARSE =
 
     val eof = TopdecLrVals.Tokens.EOF(LexBasics.DUMMY, LexBasics.DUMMY)
     val sc = TopdecLrVals.Tokens.SEMICOLON(LexBasics.DUMMY, LexBasics.DUMMY)
+    val colon = TopdecLrVals.Tokens.COLON(LexBasics.DUMMY, LexBasics.DUMMY)
 
     type Report = Report.Report
     infix //
@@ -56,28 +57,23 @@ structure Parse: PARSE =
 
     (* For profiling *)
     fun sameToken a = LrParser.Token.sameToken a
-    fun Stream_get a = Stream.get a
-    fun Stream_cons a = Stream.cons a
-    fun TopdecParser_parse a = TopdecParser.parse a
 
-    fun parseStream(STATE lazyStream) =
+    fun parseStream (STATE lazyStream) =
       let
-        val (firstToken, rest) = Stream_get lazyStream
-        val lazyStream = Stream_cons(firstToken, rest)
+        val (firstToken, rest) = Stream.get lazyStream
+        val lazyStream = Stream.cons(firstToken, rest)
                                       (* Streams side-effect (yuck). *)
       in
         if sameToken(firstToken, eof)
-        then
-          (PS_EOF
-          )
+        then PS_EOF
+
         else if sameToken(firstToken, sc)
-        then
-          (parseStream(STATE rest)
-          )
+        then parseStream(STATE rest)
+
         else
           (let
              val (topdec, lazyStream') =
-               TopdecParser_parse(0, lazyStream,
+               TopdecParser.parse(0, lazyStream,
                                   fn (x, l, r) => raise ESCAPE (x, (l, r)),
                                   ()
                                  )
@@ -89,43 +85,72 @@ structure Parse: PARSE =
              PS_SUCCESS(topdec, STATE lazyStream')
            end
           ) handle ESCAPE (text, (lPos, rPos)) =>
-                     PS_ERROR (LexBasics.reportPosition {left=lPos, right=rPos}
-			       // Report.line text)
+                   PS_ERROR (LexBasics.reportPosition {left=lPos, right=rPos}
+			                              // Report.line text)
       end
 
     type topdec = TopdecGrammar.topdec
     type InfixBasis = Infixing.InfixBasis
     type SourceReader = LexBasics.SourceReader
 
-(*    val sourceFromStdIn = LexBasics.lexFromStdIn *)
+    val sourceFromStdIn = LexBasics.lexFromStdIn
     val sourceFromFile = LexBasics.lexFromFile (*may raise Io s*)
     val sourceFromString = LexBasics.lexFromString
 
-    fun nameOf(LexBasics.SOURCE_READER{name, ...}) = name
+    fun nameOf (LexBasics.SOURCE_READER{name, ...}) = name
 
     datatype Result = SUCCESS of InfixBasis * topdec * State
                     | ERROR of Report
                     | LEGAL_EOF
 
     fun begin sourceReader =
-      let
-        val LexBasics.SOURCE_READER{clearFn, lexingFn, ...} = sourceReader
-        val _ = clearFn()               (* Forget any stored lines *)
+      let val LexBasics.SOURCE_READER{clearFn, lexingFn, ...} = sourceReader
+          val _ = clearFn()               (* Forget any stored lines *)
 
-        val lex_fn =
-          TopdecLex.makeLexer lexingFn (LexUtils.initArg sourceReader)
+          val lex_fn =
+              TopdecLex.makeLexer lexingFn (LexUtils.initArg sourceReader)
 
-        val stream = Stream.streamify lex_fn
-      in
-        STATE stream
+          val stream = Stream.streamify lex_fn
+      in STATE stream
       end
 
     fun parse (ib, state) =
-      (case parseStream state of
-	 PS_SUCCESS(topdec, state') =>
-	   (case Infixing.resolve(ib, topdec) of
-	      Infixing.SUCCESS (ib', topdec') => SUCCESS(ib', topdec', state')
-	    | Infixing.FAILURE report => ERROR report)
-       | PS_ERROR report => ERROR report
-       | PS_EOF => LEGAL_EOF)
-  end;
+        case parseStream state of
+	    PS_SUCCESS(topdec, state') =>
+	    (case Infixing.resolve(ib, topdec) of
+	         Infixing.SUCCESS (ib', topdec') => SUCCESS(ib', topdec', state')
+	       | Infixing.FAILURE report => ERROR report)
+          | PS_ERROR report => ERROR report
+          | PS_EOF => LEGAL_EOF
+
+    fun read_until_semicolon s acc =
+        let val (h,tl) = Stream.get s
+        in if sameToken(h,sc) then
+             (rev acc,tl)
+           else read_until_semicolon tl (h::acc)
+        end
+
+    fun pp_token (LrParser.Token.TOKEN(_,(_,l,r))) =
+        LexBasics.get_source{left=l,right=r}
+
+    fun stripSemiColons (st as STATE stream) : State =
+        let val (h,tl) = Stream.get stream
+        in if sameToken(h,sc) then stripSemiColons (STATE tl)
+           else st
+        end
+
+    fun colonLine (STATE stream) : (string * State) option =
+        let val (h,tl) = Stream.get stream
+        in if sameToken(h,colon) then
+             let val (ts,s) = read_until_semicolon tl [h]
+                 val line = case (ts,rev ts) of
+                                (LrParser.Token.TOKEN(_,(_,l,_)) :: _,
+                                 LrParser.Token.TOKEN(_,(_,_,r)) :: _) =>
+                                LexBasics.get_source{left=l,right=r}
+                              | _ => ""
+             in SOME (line, STATE s)
+             end
+           else NONE
+        end
+
+  end
