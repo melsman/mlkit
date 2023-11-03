@@ -45,14 +45,14 @@ signature TYNAME =
 
     structure Rank :
       sig
-	type rank
-	val current       : unit -> rank
-	val reset         : unit -> unit
-	val <=            : rank * rank -> bool
-	val min           : rank * rank -> rank
-	val from_TyName   : TyName -> rank
-	val pu            : rank Pickle.pu
-	val pu_rankrefOne : rank ref Pickle.pu
+        type rank
+        val current       : unit -> rank
+        val reset         : unit -> unit
+        val <=            : rank * rank -> bool
+        val min           : rank * rank -> rank
+        val from_TyName   : TyName -> rank
+        val pu            : rank Pickle.pu
+        val pu_rankrefOne : rank ref Pickle.pu
         val pp            : rank -> string
       end
 
