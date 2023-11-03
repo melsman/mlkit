@@ -44,7 +44,7 @@ structure Compile: COMPILE =
                "print drop regions expression with storage modes"],
          item=ref false, neg=false, desc=
          "Print Region Expression after dropping word regions and\n\
-          \regions arguments with only get-effects. Also print\n\
+          \region arguments with only get-effects. Also print\n\
           \atbot and attop annotations resulting from storage mode\n\
           \analysis."}
 
@@ -53,7 +53,7 @@ structure Compile: COMPILE =
          menu=["Printing of intermediate forms","print drop regions expression"],
          item=ref false, neg=false, desc=
          "Print Region Expression after dropping word regions and\n\
-          \regions arguments with only get-effects."}
+          \region arguments with only get-effects."}
 
     val print_physical_size_inference_expression = Flags.add_bool_entry
          {long="print_physical_size_inference_expression", short=SOME "Ppse",

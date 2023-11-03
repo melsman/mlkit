@@ -22,12 +22,17 @@ structure TyName :> TYNAME =
     type name = Name.name
     type rank = int
 
+    datatype unboxity = UNBOXED | BOXED | UNBOXED_SINGLE
+
     type TyName = {tycon: tycon,
 		   name: name,
 		   arity: int,
 		   rank: rank ref,
 		   equality: bool,
-		   unboxed: bool ref}
+		   unboxity: unboxity ref}
+
+    fun unboxity (tn:TyName) : unboxity =
+        !(#unboxity tn)
 
     structure Rank =
       struct
@@ -58,10 +63,12 @@ structure TyName :> TYNAME =
 
 
     fun fresh unboxed {tycon: tycon, arity: int, equality: bool} =
-      let val name = Name.new()
+        let val name = Name.new()
+            val unboxity = if unboxed then UNBOXED else BOXED
       in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^
 	                                           Int.toString(Name.key name) ^ ")\n") else (); *)
-	{tycon=tycon, name=name, rank=Rank.new(), arity=arity, equality=equality, unboxed=ref unboxed}
+	{tycon=tycon, name=name, rank=Rank.new(), arity=arity,
+         equality=equality, unboxity=ref unboxity}
       end
 
     fun freshTyName r = fresh false r
@@ -79,12 +86,12 @@ structure TyName :> TYNAME =
     (* We should only allow matching of type names when their attributes
      * are equal; otherwise changes in attributes are not caught by
      * the system.. *)
-    fun match(tn1,tn2) =
-      if (equality tn1 = equality tn2
-	  andalso arity tn1 = arity tn2
-	  andalso !(#unboxed tn1) = !(#unboxed tn2)) then
-	Name.match(name tn1, name tn2)
-      else ()
+    fun match (tn1,tn2) =
+        if (equality tn1 = equality tn2
+	    andalso arity tn1 = arity tn2
+	    andalso !(#unboxity tn1) = !(#unboxity tn2)) then
+	  Name.match(name tn1, name tn2)
+        else ()
 
     val op eq = fn (tn1,tn2) => Name.eq(name tn1, name tn2)
 
@@ -146,7 +153,14 @@ structure TyName :> TYNAME =
           not(tag_values()) andalso (eq(tn,tyName_INT64)
 				     orelse eq(tn,tyName_WORD64))
     in
-      fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse !(#unboxed tn)
+      fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse
+                       case !(#unboxity tn) of
+                           UNBOXED => true
+                         | UNBOXED_SINGLE => true
+                         | BOXED => false
+      fun unboxity tn =
+          if unboxed_num32 tn orelse unboxed_num64 tn then UNBOXED
+          else !(#unboxity tn)
     end
 
     fun pr_TyName (tn: TyName) : string =
@@ -156,8 +170,11 @@ structure TyName :> TYNAME =
 	  let val eq = if equality tn then "E " else ""
 	      val (i,b) = Name.key (name tn)
 	      val id = Int.toString i
-              val unb = if unboxed tn then "unboxed"
-                        else "boxed"
+              val unb =
+                  case unboxity tn of
+                      UNBOXED => "unboxed"
+                    | UNBOXED_SINGLE => "unboxed_single"
+                    | BOXED => "boxed"
 	  in str ^ "(" ^ eq ^ id ^ b ^ ":" ^ unb ^ ")"
 	  end
 	else
@@ -171,23 +188,25 @@ structure TyName :> TYNAME =
 		   else str))
       end
 
-    fun setUnboxed (tn: TyName) : unit =
+    fun setUnboxity (tn: TyName, unboxity) : unit =
 	if unboxed tn then
-	    die ("setUnboxed.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
-	else #unboxed tn := true
+	  die ("setUnboxity.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
+	else #unboxity tn := unboxity
+
+    val pu_unboxity = Pickle.enumGen ("unboxity",[UNBOXED,UNBOXED_SINGLE,BOXED])
 
     val pu =
 	Pickle.hashConsEq eq
 	(Pickle.register "TyName" tynamesPredefined
 	 let fun to ((t,n,a),r,e,u) : TyName =
 		 {tycon=t, name=n, arity=a, rank=r,
-		  equality=e, unboxed=u}
+		  equality=e, unboxity=u}
 	     fun from ({tycon=t, name=n, arity=a, rank=r,
-			equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)
+			equality=e, unboxity=u} : TyName) = ((t,n,a),r,e,u)
 	 in Pickle.newHash (#1 o Name.key o name)
 	     (Pickle.convert (to,from)
 	      (Pickle.tup4Gen0(Pickle.tup3Gen0(TyCon.pu,Name.pu,Pickle.int),
-			       Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen Pickle.bool)))
+			       Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen pu_unboxity)))
 	 end)
 
     structure QD : QUASI_DOM =
