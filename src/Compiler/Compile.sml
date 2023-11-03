@@ -12,6 +12,8 @@ structure Compile: COMPILE =
     type strexp = CompileToLamb.strexp
     type funid = CompileToLamb.funid
     type strid = CompileToLamb.strid
+    type longid = CompileToLamb.longid
+    type lvar = CompileToLamb.lvar
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -25,7 +27,7 @@ structure Compile: COMPILE =
 
     val rse_0 = Flags.add_bool_entry
         {long="print_region_static_env0", short=SOME "Prse0",
-         menu=["Printing of RSE0",
+         menu=["Printing of environments",
                "print imported region static environment"],
          item=ref false, neg=false, desc=
          "Print imported region static environment prior to\n\
@@ -84,7 +86,7 @@ structure Compile: COMPILE =
 
     val debug_parallelism_p = Flags.add_bool_entry
          {long="debug_parallelism", short=SOME "Dpar",
-          menu=["Debugging","debug parallelism"],
+          menu=["Debug","debug parallelism"],
           item=ref false, neg=false, desc=
           "Debug parallelism, including protection inference."}
 
@@ -107,7 +109,7 @@ structure Compile: COMPILE =
     fun fast_pr stringtree =
         (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)),
                         stringtree, !Flags.colwidth);
-         TextIO.output(!Flags.log, "\n\n"))
+         TextIO.output(!Flags.log, "\n"))
 
     fun display (title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
@@ -188,9 +190,9 @@ structure Compile: COMPILE =
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
            if !Flags.DEBUG_COMPILER orelse print_region_spreaded_program()
-             then (display("\nReport: Spread; program",
+             then (display("Spreaded Program",
                            layoutRegionPgm spread_lamb) ;
-                   display("\nReport: Spread; entire cone after Spreading",
+                   display("Entire Cone After Spreading",
                            Effect.layoutCone cone) )
            else ();
            (cone,rse_con, spread_lamb)
@@ -215,7 +217,7 @@ structure Compile: COMPILE =
 *)
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
 
-        val _ = if rse_0() then display ("Region static environment 0",SpreadExp.RegionStatEnv.layout(rse_with_con))
+        val _ = if rse_0() then display ("Region Static Environment 0",SpreadExp.RegionStatEnv.layout(rse_with_con))
                 else ()
 (*
         val effects_rse0 = SpreadExp.RegionStatEnv.FoldLvar (fn ((lv,(_,_,s,r,_,_)),acc) => if Lvars.pr_lvar lv = "revAcc" then r :: RType.frv_sigma s @ acc else acc) nil rse_with_con
@@ -228,11 +230,12 @@ structure Compile: COMPILE =
         val cone = RegInf.inferEffects
                    (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
-
+(*
         val () =
             if !Flags.DEBUG_COMPILER then
-              display ("\nReport: Program after inferEffects", layoutRegionPgm spread_lamb)
+              display ("Program After InferEffects", layoutRegionPgm spread_lamb)
             else ()
+*)
 
 (*      val _ = print "RegInf.Creating new layer ...\n" *)
         val new_layer = Effect.topLayer cone (* to get back to level of "cone" *)
@@ -312,7 +315,7 @@ structure Compile: COMPILE =
           sayenv(rse'))
        else ()
      ; if !Flags.DEBUG_COMPILER orelse print_region_inferred_program() then
-         display("\nReport: After Region Inference", layoutRegionPgm pgm')
+         display("Program After Region Inference", layoutRegionPgm pgm')
        else ()
      ; (cone,rse',pgm')       (* rse' contains rse_con *)
     end
@@ -339,9 +342,9 @@ structure Compile: COMPILE =
 *)
     in
         if !Flags.DEBUG_COMPILER
-            then (display("\nReport: After Multiplicity Inference, the program is:\n",
-                            MulInf.layoutLambdaPgm pgm'))
-            else ();
+        then (display("Program After Multiplicity Inference",
+                      MulInf.layoutLambdaPgm pgm'))
+        else ();
 
         (pgm', mulenv', Psi')
     end
@@ -367,7 +370,7 @@ structure Compile: COMPILE =
               if parallelism_p() then
                 let val protenv' = MulExp.ProtInf.protInf protenv mul_pgm
                     val () = if debug_parallelism_p() orelse !Flags.DEBUG_COMPILER
-                             then display("\nReport: ResultEnvironment for ProtInf:\n",
+                             then display("Result Environment for Protection Inference",
                                           MulExp.ProtInf.layoutPE protenv')
                              else ()
                 in protenv'
@@ -386,7 +389,7 @@ structure Compile: COMPILE =
         : (place,place*mul,qmularefset ref)LambdaPgm_psi =
         (chat "[K-normalisation...";
          Timing.timing_begin();
-         let (* val _ = display("\nReport: just before K-normalisation:", layoutLambdaPgm pgm) *)
+         let (* val _ = display("Program Before K-Normalisation", layoutLambdaPgm pgm) *)
              val pgm' = MulInf.k_normPgm pgm
          in Timing.timing_end("Knorm");
              chat "]\n";
@@ -406,7 +409,7 @@ structure Compile: COMPILE =
          in
             if print_storage_mode_expression()
                orelse !Flags.DEBUG_COMPILER then
-                  display("\nReport: Storage Mode Expression:", layout_pgm pgm')
+                  display("Program After Storage Mode Analysis", layout_pgm pgm')
             else ();
             pgm'
          end
@@ -427,10 +430,10 @@ structure Compile: COMPILE =
          in Timing.timing_end("Drop");
            chat "]\n";
             if print_drop_regions_expression() then
-              display("Report: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
+              display("Program After Drop Regions", AtInf.layout_pgm_brief pgm')
             else ();
             if print_drop_regions_expression_with_storage_modes() orelse !Flags.DEBUG_COMPILER then
-              display("Report: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
+              display("Program After Drop Regions (with storage modes)", AtInf.layout_pgm pgm')
             else ();
             (pgm',env')
          end)
@@ -451,7 +454,7 @@ structure Compile: COMPILE =
          in Timing.timing_end("PSI");
            chat "]\n";
             if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then
-              display("Report: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
+              display("Program After Physical Size Inference", layout_pgm pgm')
             else ();
             (pgm',env')
          end)
@@ -490,7 +493,7 @@ structure Compile: COMPILE =
          in Timing.timing_end("AppConv");
            chat "]\n";
             if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then
-              display("Report: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
+              display("Program After Application Conversion", layout_pgm pgm')
             else ();
             pgm'
          end)
@@ -540,7 +543,7 @@ structure Compile: COMPILE =
 
     (* Hook to be run before any compilation.
      * Overwrite hook for CompileToLamb, which is a noop. *)
-    fun preHook():unit =
+    fun preHook ():unit =
         let (* val _ = print ("In preHook\n") *)
         in
             Effect.resetCount() (* if "-regionvar n" is provided,
@@ -571,4 +574,13 @@ structure Compile: COMPILE =
             val file = unitname ^ ".rev" (* region/effect variable *)
         in pairToFile pair file
         end
-  end;
+
+    datatype cval = datatype CompileToLamb.cval
+    fun retrieve_longid (CE:CEnv) B (longid:longid) : lvar cval =
+        let val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env,protenv} =
+                CompBasis.de_CompBasis B
+            val B' = CompBasisToLamb.mk_CompBasis{NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}
+        in CompileToLamb.retrieve_longid CE B' longid
+        end
+
+  end

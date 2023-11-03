@@ -23,16 +23,16 @@ structure CompileBasisJS : COMPILE_BASIS =
 
     val initial = ((CompBasis.initial, ExpToJs.Env.initial),())
 
-    fun plus(((cb1,jse1),()),((cb2,jse2),())) =
+    fun plus (((cb1,jse1),()),((cb2,jse2),())) =
         ((CompBasis.plus(cb1,cb2), ExpToJs.Env.plus(jse1,jse2)),())
 
     type StringTree = PP.StringTree
     fun layout_CompileBasis ((cb,_),()) = CompBasis.layout_CompBasis cb
 
-    fun debug(s, b) = if !debug_man_enrich then
+    fun debug (s, b) = if !debug_man_enrich then
                          (if b then log("\n" ^ s ^ ": enrich succeeded.")
 			  else log("\n" ^ s ^ ": enrich failed."); b)
-		      else b
+		       else b
 
     local
       fun CompBasis_enrich a = CompBasis.enrich a
@@ -41,19 +41,19 @@ structure CompileBasisJS : COMPILE_BASIS =
 	CompBasis_enrich (cb,cb') andalso ExpToJs.Env.enrich(jse,jse')
     end
 
-    fun match (((cb,jse),()),((cb0,_),())) = 
-      let val cb = CompBasis.match(cb,cb0) 
+    fun match (((cb,jse),()),((cb0,_),())) =
+      let val cb = CompBasis.match(cb,cb0)
       in ((cb,jse),())
       end
 
-    fun restrict (((cb,jse),()),vars) = 
+    fun restrict (((cb,jse),()),vars) =
       let
 	val (cb1, lvars, tns, cons, excons) = CompBasis.restrict(cb,vars)
         val jse1 = ExpToJs.Env.restrict(jse,cons)
       in ((cb1, jse1),())
       end
 
-    fun restrict0 (((cb,jse),()),vars) = 
+    fun restrict0 (((cb,jse),()),vars) =
       let
 	val (cb1, lvars, tns, cons, excons) = CompBasis.restrict0(cb,vars)
         val jse1 = ExpToJs.Env.restrict(jse,cons)

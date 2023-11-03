@@ -2259,6 +2259,12 @@ struct
                (case trs of
                   [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
                 | _ => die "CCALL: ``pointer'' with more than one tr")
+           | MulExp.CCALL({name = "unsafe_cast", mu_result, rhos_for_result}, trs) =>
+             (* unsafe cast; unsafe_cast : 'a -> 'b, in particular with 'a
+              * instantiated to a function *)
+               (case trs of
+                  [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
+                | _ => die "CCALL: ``pointer'' with more than one tr")
            | MulExp.CCALL({name = "ord", mu_result, rhos_for_result}, trs) =>
                (case trs of
                   [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
@@ -2557,4 +2563,21 @@ struct
     end
 
   val pu = ClosConvEnv.pu
+
+  fun retrieve_lvar (env:env) (lvar:lvar) : label option =
+      case ClosConvEnv.lookupVarOpt env lvar of
+          SOME (ClosConvEnv.LABEL l) => SOME l
+        | _ => NONE
+
+  local structure CCE = ClosConvEnv
+  in
+  fun conkind (env:env) (con:con) : con_kind =
+      case CCE.lookupCon env con of
+          CCE.ENUM i => ENUM i
+        | CCE.UB_NULLARY i => UNBOXED i
+        | CCE.UB_UNARY i => UNBOXED i
+        | CCE.B_NULLARY i => BOXED i
+        | CCE.B_UNARY i => BOXED i
+  end
+
 end

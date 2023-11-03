@@ -134,14 +134,19 @@ signature FLAGS =
 
     (* help key  provides help information for the key *)
     val help : string -> string
+    val help_nodash : string -> string
 
     (* help_all()  provides help on all options in the directory *)
     val help_all : unit -> string
 
+    val help_all_nodash_noneg : unit -> string
+
     type options = {desc : string, long : string list, short : string list,
-                    kind : string option, default : string option}
+                    kind : string option, default : string option, menu: string list}
 
     val getOptions : unit -> options list
+    val getOptions_noneg : unit -> options list
+    val menu_width : int
 
     (* Blocked entries are flag entries that do not show up in help
        information and that cannot be altered by commandline. Blocking an

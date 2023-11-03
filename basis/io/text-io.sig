@@ -100,11 +100,15 @@ necessary until one of these conditions holds.  (This is the behaviour
 of the `input' function prescribed in the 1990 Definition of Standard
 ML).
 
-[inputLine istr] returns one line of text, including the terminating
-newline character.  If end of stream is reached before a newline
-character, then the remaining part of the stream is returned, with a
-newline character added.  If istr is at end of stream or is closed,
-then the empty string "" is returned.
+[inputLine istr] returns SOME(ln), where ln is the next line of input
+in the stream strm. Specifically, ln returns all characters from the
+current position up to and including the next newline (#"\n")
+character. If it detects an end-of-stream before the next newline, it
+returns the characters read appended with a newline. Thus, ln is
+guaranteed to always be new-line terminated (and thus nonempty). If
+the current stream position is the end-of-stream, then it returns
+NONE. It raises Size if the length of the line exceeds the length of
+the longest string.
 
 [endOfStream istr] returns false if any elements are available in
 istr; returns true if istr is at end of stream or closed; blocks if

@@ -324,7 +324,7 @@ struct
                  let val (tau_1, B, updates: (effect * Effect.delta_phi)list,
                           spuriousPairs: (effect * RType.Type)list) =
                          instClever (SOME lvar,sigma,il) B
-                         handle Crash.CRASH =>
+                         handle _ =>
                                 die ("inst failed; type scheme:\n" ^
                                      PP.flatten1(RType.mk_lay_sigma false sigma) ^ "\n")
                      val B =

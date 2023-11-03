@@ -58,7 +58,9 @@ structure ExecutionJS : EXECUTION =
 	    in CodeRes(ce,CB,target,linkinfo)
 	    end
       end
+
     val generate_link_code = NONE
+    val generate_repl_init_code = NONE
 
     fun emit a = Compile.emit a
 
@@ -146,7 +148,9 @@ structure ExecutionJS : EXECUTION =
 	    handle X => (TextIO.closeOut os; raise X)
 	end
 
-    fun mlbdir() = "MLB" ## "Js"
+    fun create_repl_runtime _ _ = die "create_repl_runtime: not implemented"
+
+    fun mlbdir () = "MLB" ## "Js"
 
     val pu_linkinfo =
         let val pu_sList = Pickle.listGen Pickle.string
@@ -155,4 +159,19 @@ structure ExecutionJS : EXECUTION =
 			  fn {imports=is,exports=es,unsafe=b} => (is,es,b))
 	                 (Pickle.tup3Gen(pu_sList,pu_sList,Pickle.bool))
         end
+
+    fun mk_sharedlib _ =
+        die "mk_sharedlib.unimplemented"
+
+    datatype cval = datatype Compile.cval
+    fun retrieve_longid (CE: CEnv) CBE (longid:CompilerEnv.longid) : string cval =
+        die "retrieve_longid.unimplemented"
+
+    datatype conkind = UNB | ENU | BOX
+    type tyvar = CompilerEnv.tyvar
+    type Type = CompilerEnv.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (CB: CompileBasis) (tn: TyName.TyName) : coninfo list option =
+        die "tyname_reps.unimplemented"
+
   end

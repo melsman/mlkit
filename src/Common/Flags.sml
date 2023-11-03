@@ -31,8 +31,8 @@ structure Flags : FLAGS =
     val install_dir = ref "You_did_not_set_path_to_install_dir"
 
     (* Pretty Printing *)
-
     val raggedRight = PrettyPrint.raggedRight
+    val colwidth = PrettyPrint.colwidth
 
     (* Debugging Flags *)
     val DEBUG_COMPILER          = ref false
@@ -60,12 +60,7 @@ structure Flags : FLAGS =
     val region_paths = (ref[]): (int*int) list ref
 
     (* Flags for Lambda Backend *)
-
     val log_to_file = ref false
-    val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
-
-    val colwidth = PrettyPrint.colwidth
-
     val log = ref TextIO.stdOut
 
     (* Program manager *)
@@ -81,7 +76,6 @@ structure Flags : FLAGS =
           (*                   warnings                    *)
           (*                                               *)
           (*************************************************)
-
 
     type Report = Report.Report
 
@@ -178,16 +172,22 @@ structure Directory : sig
 
                         (* help key  provides help information for the key *)
                         val help : string -> string
+                        val help_nodash : string -> string
 
                         (* help_all()  provides help on all options in the directory *)
                         val help_all : unit -> string
-                        val getOptions  : unit ->
+                        val help_all_nodash_noneg : unit -> string
+                        val getOptions : unit ->
                           {desc : string, long : string list, short : string list,
-                           kind : string option, default : string option} list
+                           kind : string option, default : string option, menu:string list} list
+                        val getOptions_noneg : unit ->
+                          {desc : string, long : string list, short : string list,
+                           kind : string option, default : string option, menu:string list} list
 
                         val block_entry : string -> unit
                         val is_blocked : string -> bool
-                      end =
+                        val menu_width : int
+          end =
 struct
 
     val blocked_entries = ref nil
@@ -427,7 +427,7 @@ struct
   datatype kindOfHelp = HELP | OPTIONS | DEFAULTS
 
   (* help key  provides help information for the key *)
-  fun help' (key: string) =
+  fun help' {neg:bool} (key: string) =
       let fun optToList NONE = []
             | optToList (SOME a) = [a]
 
@@ -437,42 +437,45 @@ struct
             | opt NONE = ""
 
           fun negationNew (e:bentry, kind) =
-              if not(#neg e) then []
+              if not(#neg e) orelse not neg then []
               else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
+                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ ".",
+                     menu= #menu e}]
 
           fun negationNew' (e:baentry, kind) =
-              [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-                kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
-
+              if not neg then nil
+              else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
+                     kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ ".",
+                     menu= #menu e}]
       in
         case lookup_notnull_menu (!dir) key of
             SOME (BOOL_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), kind = NONE,
-             default = SOME (bitem (!(#item e))), desc = #desc e} ::
+             default = SOME (bitem (!(#item e))), desc = #desc e, menu= #menu e} ::
             (negationNew (e,NONE))
           | SOME (BOOLA_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = SOME (bitem (!(#item e))),
-             desc = #desc e, kind = NONE} ::
+             desc = #desc e, kind = NONE, menu= #menu e} ::
             negationNew' (e,NONE)
           | SOME (STRING_ENTRY e) =>
             {long = [#long e], short = optToList (#short e),
              default = let val a = (String.toString(!(#item e)))
                        in if a = "" then NONE else SOME a
                        end,
-             desc = #desc e, kind = SOME "S"} :: []
+             desc = #desc e, kind = SOME "S", menu= #menu e} :: []
           | SOME (STRINGLIST_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = NONE,
-             desc = #desc e, kind = SOME "S"} :: []
+             desc = #desc e, kind = SOME "S", menu= #menu e} :: []
           | SOME (INT_ENTRY e) =>
             {long = [#long e], short = optToList (#short e), default = SOME (Int.toString (!(#item e))),
-             desc = #desc e, kind = SOME "N"} :: []
+             desc = #desc e, kind = SOME "N", menu= #menu e} :: []
           | NONE => raise Fail ("no help available for option: " ^ key)
       end
 
-  fun print_help tail x =
+  val menu_width = 60
+
+  fun print_help {dashes:bool} tail x =
     let
-      val width = 60
       fun indent s =
         map (fn s => "     " ^ s ^ "\n") (String.tokens (fn c => c = #"\n") s)
 
@@ -483,34 +486,38 @@ struct
       fun pkind NONE = ""
         | pkind (SOME k) = " " ^ k
 
-      fun p {long,short,kind,default,desc} =
+      val dash1 = if dashes then "-" else ""
+      val dash2 = dash1 ^ dash1
+      fun p {long,short,kind,default,desc,menu} =
         let
           val name = String.concat (
                       (addBetween ", "
-                        (List.map (fn x => "--" ^ x ^ (pkind kind)) long)) @
-                      (List.map (fn x => ", -" ^ x ^ (pkind kind)) short) @ [" "])
+                        (List.map (fn x => dash2 ^ x ^ (pkind kind)) long)) @
+                      (List.map (fn x => ", " ^ dash1 ^ x ^ (pkind kind)) short) @ [" "])
           val firstline = case default
                           of NONE => name ^ "\n"
-                           | SOME default => StringCvt.padRight #" " (width - (String.size default)) name ^ "(" ^ default ^ ")\n"
+                           | SOME default => StringCvt.padRight #" " (menu_width - (String.size default)) name ^ "(" ^ default ^ ")\n"
           val body = indent desc
         in String.concat(firstline :: body @ [tail])
         end
     in String.concat (List.map p x)
     end
 
-  fun help x = print_help "" (help' x)
+  fun help x = print_help {dashes=true} "" (help' {neg=true} x)
+
+  fun help_nodash x = print_help {dashes=false} "" (help' {neg=false} x)
 
   (* help_all()  provides help on all options in the directory *)
-  fun help_all' () =
+  fun help_all' {neg:bool} =
       let val dom = rev(M.dom (!dir))
           fun add (key, acc) =
               let  (* add only if (1) menu is non-empty and
                     * (2) the entry is not a short key and (3) entry is not blocked *)
                 fun check (SOME k) l =
                     if k = key orelse is_blocked l then acc
-                    else (help' key) @ acc
+                    else (help' {neg=neg} key) @ acc
                   | check NONE l =
-                    if is_blocked l then acc else (help' key) @ acc
+                    if is_blocked l then acc else (help' {neg=neg} key) @ acc
               in
                 case lookup_notnull_menu (!dir) key
                  of SOME (INT_ENTRY e) => check(#short e)(#long e)
@@ -532,8 +539,13 @@ struct
              (foldl add [] dom)
       end
 
-  fun help_all () = print_help "\n" (help_all' ())
-  val getOptions = help_all'
+  fun help_all () = print_help {dashes=true} "\n" (help_all' {neg=true})
+
+  fun help_all_nodash_noneg () = print_help {dashes=false} "\n" (help_all' {neg=false})
+
+  fun getOptions () = help_all' {neg=true}
+
+  fun getOptions_noneg () = help_all' {neg=false}
 
 end (* Directory *)
 
@@ -603,7 +615,7 @@ val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width 
 
 val recompile_basislib = ref false
 val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
-                        menu=["Control", "recompile basis library"],
+                        menu=["General Control", "recompile basis library"],
                         item=recompile_basislib,neg=false,
                         desc=
                         "Recompile basis library from scratch. This option\n\
@@ -612,7 +624,7 @@ val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
 
 val preserve_tail_calls = ref false
 val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preserve_tail_calls,
-                        menu=["Control", "preserve tail calls"], neg=true,
+                        menu=["Control Region Analyses", "preserve tail calls"], neg=true,
                         desc=
                         "Avoid the wrapping of letregion constructs around\n\
                          \tail calls. Turning on garbage collection\n\
@@ -620,7 +632,7 @@ val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preser
 
 val dangling_pointers = ref true
 val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangling_pointers,
-                        menu=["Control", "dangling pointers"], neg=true,
+                        menu=["Control Region Analyses", "dangling pointers"], neg=true,
                         desc=
                         "When this option is disabled, dangling pointers\n\
                         \are avoided by forcing values captured in\n\
@@ -631,14 +643,14 @@ val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangl
 
 val tag_values = ref false
 val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
-                        menu=["Control", "tag values"], neg=false,
+                        menu=["General Control", "tag values"], neg=false,
                         desc=
                         "Enable tagging of values as used when garbage\n\
                         \collection is enabled for implementing pointer\n\
                         \traversal."}
 
 val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
-                        menu=["Control", "tag pairs"], neg=false,
+                        menu=["General Control", "tag pairs"], neg=false,
                         desc=
                         "Use a tagged representation of pairs for garbage\n\
                          \collection. Garbage collection works fine with a\n\
@@ -646,7 +658,7 @@ val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
                          \is here for measurement purposes."}
 
 val _ = add_bool_entry {long="values_64bit", short=NONE, item=ref true,
-                        menu=["Control", "values 64bit"], neg=false,
+                        menu=["General Control", "values 64bit"], neg=false,
                         desc=
                         "Support 64-bit values. Should be enabled for \n\
                         \backends supporting 64-bit integers and words."}
@@ -673,7 +685,7 @@ local
                      gengc := true)
 in
   val _ = add_bool_action_entry
-    {long="garbage_collection", menu=["Control", "garbage collection"],
+    {long="garbage_collection", menu=["Control Garbage Collection", "garbage collection"],
      item=gc, on=on, off=off, short=SOME "gc",
      desc="Enable garbage collection. When enabled, regions are\n\
       \garbage collected during execution of the program. When\n\
@@ -687,7 +699,7 @@ in
       \collection implicitly enables the preservation of tail\n\
       \calls (see the option ``preserve_tail_calls''.)"}
   val _ = add_bool_action_entry
-    {long="generational_garbage_collection", menu=["Control", "generational garbage collection"],
+    {long="generational_garbage_collection", menu=["Control Garbage Collection", "generational garbage collection"],
      item=gengc, on=on_gengc, off=off_gengc, short=SOME "gengc",
      desc="Enable generational garbage collection. Same as option\n\
           \garbage collection except that two generations are used\n\
@@ -695,8 +707,10 @@ in
 end
 
 local
-  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control",s],
+  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["General Control",s],
                                                             item=r, neg=neg, desc=desc}; ())
+  fun addRA neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
+                                                              item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
   [
@@ -720,7 +734,7 @@ in
       \in your projects, this option should be turned on, unless\n\
       \you wish to import the Basis Library manually in your\n\
       \projects.")
-  val _ = add true
+  val _ = addRA true
      ("region_inference", SOME "ri", "region_inference", region_inference,
       "With this flag disabled, all values are allocated in\n\
        \global regions.")
@@ -753,7 +767,7 @@ val _ = add_string_entry
   (*5. Profiling menu*)
 
 local
-  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Profiling",s],
+  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
                                                      item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
@@ -820,7 +834,7 @@ end
 
   val _ = add_bool_entry
       {long="compile_only", short=SOME "c",
-       menu=["Control","compile only"],
+       menu=["General Control","compile only"],
        item=ref false, neg=false, desc=
        "Compile only. Suppresses generation of executable"}
 
@@ -836,10 +850,15 @@ val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_options = Directory.read_options
 val help = Directory.help
+val help_nodash = Directory.help_nodash
 val help_all = Directory.help_all
+val help_all_nodash_noneg = Directory.help_all_nodash_noneg
 type options = {desc : string, long : string list, short : string list,
-                kind : string option, default : string option}
+                kind : string option, default : string option, menu:string list}
 val getOptions = Directory.getOptions : unit -> options list
+val getOptions_noneg = Directory.getOptions_noneg : unit -> options list
+
+val menu_width = Directory.menu_width
 
 datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)

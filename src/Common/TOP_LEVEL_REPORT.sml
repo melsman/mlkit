@@ -5,6 +5,7 @@ signature TOP_LEVEL_REPORT =
   sig
     type InfixBasis and ElabBasis
     type Report
+    type renderer = StrId.strid list * Ident.id * StatObject.TypeScheme -> string
 
-    val report: {infB: InfixBasis, elabB: ElabBasis, bindings: bool} -> Report
-  end;
+    val report : {infB: InfixBasis, elabB: ElabBasis, render: renderer option} -> Report
+  end

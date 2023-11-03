@@ -220,6 +220,19 @@ structure TyName :> TYNAME =
 
     structure Set = QuasiSet(QD)
 
+    val predefined = Set.fromList tynamesPredefined
+
+    fun pr_TyName_repl (tn: TyName) : string =
+      let val str = TyCon.pr_TyCon (tycon tn)
+      in if Set.member tn predefined then str
+         else let val (i,b) = Name.key(name tn)
+              in str ^ "_" ^ Int.toString i
+              end
+      end
+
+
+
+
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName
 

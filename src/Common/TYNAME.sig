@@ -30,18 +30,21 @@ signature TYNAME =
     type TyName
     type tycon = TyCon.tycon
 
-    val freshTyName : {tycon : tycon, arity : int, equality : bool} -> TyName
-    val pr_TyName   : TyName -> string
-    val eq          : TyName * TyName -> bool
-    val arity       : TyName -> int
-    val equality    : TyName -> bool
-    val tycon       : TyName -> tycon
-    val id          : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
+    val freshTyName    : {tycon : tycon, arity : int, equality : bool} -> TyName
+    val pr_TyName      : TyName -> string
+    val pr_TyName_repl : TyName -> string        (* for type-index value printing in the REPL,
+                                                  * non-predefined type names are printed with
+                                                  * their internal id... *)
+    val eq             : TyName * TyName -> bool
+    val arity          : TyName -> int
+    val equality       : TyName -> bool
+    val tycon          : TyName -> tycon
+    val id             : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
 
     (* Names *)
     type name = Name.name
-    val match : TyName * TyName -> unit
-    val name  : TyName -> name
+    val match          : TyName * TyName -> unit
+    val name           : TyName -> name
 
     structure Rank :
       sig

@@ -1181,7 +1181,7 @@ struct
 
       val _ = Flags.add_bool_entry
           {long="contract_regions", short=SOME"cr", item=ref false,
-           menu=["Control", "Regions", "contract regions"], neg=false,
+           menu=["Control Region Analyses", "Regions", "contract regions"], neg=false,
            desc=
            "When this option is enabled, identically typed\n\
             \regions bound by the same letregion construct\n\

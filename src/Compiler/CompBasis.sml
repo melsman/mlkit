@@ -281,4 +281,12 @@ structure CompBasis: COMP_BASIS =
                                              Pickle.comment "PhysSizeInf.env" PhysSizeInf.pu_env),
                              MulExp.ProtInf.pu_pe))
         end
+
+    type tyvar = LambdaStatSem.tyvar
+    type Type = LambdaStatSem.Type
+    fun look_tyname (CB: CompBasis) (tn:TyName) : (con * (tyvar list * Type)) list option =
+        let val tcenv = #TCEnv (de_CompBasis CB)
+        in LambdaStatSem.look_tyname tcenv tn
+        end
+
   end

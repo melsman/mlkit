@@ -231,8 +231,8 @@ structure CompileDec: COMPILE_DEC =
                      TyName.setUnboxity(tn,
                                         if single
                                         then ( (*print ("NOTE (CompileDec): UNBOXING single datbind for "
-                                                      ^ TyName.pr_TyName tn ^ "\n") *)
-                                             ; TyName.UNBOXED_SINGLE)
+                                                      ^ TyName.pr_TyName tn ^ "\n")
+                                             ; *) TyName.UNBOXED_SINGLE)
                                         else TyName.UNBOXED)
                  ) (!bucket)
            else ())

@@ -49,6 +49,8 @@ signature INSTS_X64 =
     val pr_ea : ea -> string
     val eq_ea : ea * ea -> bool
 
+    datatype ty = OBJ | FUNC        (* @object or @function *)
+
     datatype inst =                 (* general instructions *)
       movq of ea * ea
     | mov of ea * ea                (* e.g. for zero extension for moving 32-bit values into 64-bit registers *)
@@ -153,7 +155,7 @@ signature INSTS_X64 =
 
     | dot_align of int      (* pseudo instructions *)
     | dot_p2align of string
-    | dot_globl of lab
+    | dot_globl of lab * ty
     | dot_text
     | dot_data
     | dot_section of string

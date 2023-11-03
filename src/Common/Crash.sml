@@ -2,7 +2,7 @@ structure Crash: CRASH =
   struct
     exception CRASH
 
-    fun println s = print (s ^ "\n") 
+    fun println s = print (s ^ "\n")
 
     fun impossible msg =
       let
@@ -12,7 +12,7 @@ structure Crash: CRASH =
 	raise CRASH
       end
 
-    fun assert(msg, condition) =
+    fun assert (msg, condition) =
       if condition then ()
       else
 	let

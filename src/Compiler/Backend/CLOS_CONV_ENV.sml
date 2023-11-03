@@ -37,8 +37,8 @@ signature CLOS_CONV_ENV =
       | LF (* Rho is letregion bound and finite *)
       | LI (* Rho is letregion bound and infinite *)
 
-    val empty : env
-    val plus  : env * env -> env
+    val empty      : env
+    val plus       : env * env -> env
     val initialEnv : env
 
     val declareCon     : con * con_kind * env -> env
@@ -57,8 +57,8 @@ signature CLOS_CONV_ENV =
     val lookupRhoOpt     : env -> place -> access_type option
     val lookupRhoKind    : env -> place -> rho_kind
 
-    val enrich : env * env -> bool
-    val match : env * env -> unit
+    val enrich   : env * env -> bool
+    val match    : env * env -> unit
     val restrict : env * {lvars:lvar list,
 			  cons:con list,
 			  excons:excon list} -> env
@@ -68,7 +68,7 @@ signature CLOS_CONV_ENV =
 			   cons:con list,
 			   excons:excon list} -> env
 
-    val labelsEnv : (label list * label list -> access_type -> label list * label list) 
+    val labelsEnv : (label list * label list -> access_type -> label list * label list)
       -> env -> label list * label list
 
     val pu : env Pickle.pu
@@ -76,4 +76,4 @@ signature CLOS_CONV_ENV =
     type StringTree
     val layoutEnv : env -> StringTree
     val pr_access_type : access_type -> string
-  end;
+  end

@@ -56,8 +56,12 @@ signature MANAGER_OBJECTS =
 	val dirMod : string -> modcode -> modcode
 	    (* [dirMod d mc] replaces paths p in mc with
 	     * paths d/f where f is the file of p *)
+        val mk_sharedlib : modcode * string list * (*name*) string * (*sofile*) string -> unit
       end
 
     val mlbdir : unit -> string (* based on flags, returns a relative path to a directory
 				 * in which to store object code. *)
+
+    val mk_repl_runtime : (unit -> string) option
+
   end

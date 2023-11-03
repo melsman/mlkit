@@ -264,8 +264,10 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
+(*
 		val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()
+*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
 		fun tynames_ife(IFE ife) =
 		  let fun tynames_obj ((_,_,_,_,obj),tns) =
@@ -373,7 +375,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 	fun log s = TextIO.output(TextIO.stdOut,s)
-	fun debug(s, b) =
+	fun debug (s, b) =
 	  if !debug_man_enrich then
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
 	     else log("\n" ^ s ^ ": enrich failed."); b)
@@ -394,7 +396,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	fun agree (longstrids, BASIS(_,elabB1,rea1,tintB1), (BASIS(_,elabB2,rea2,tintB2), dom_rea)) =
 	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree(longstrids,tintB1,tintB2)
 
-	fun restrict(BASIS(infB,eB,oe,iB),ids: longids) =
+	fun restrict (BASIS(infB,eB,oe,iB),ids: longids) =
 	    let val _ = chat "[restricting elaboration basis begin...]"
 		val eB' = ModuleEnvironments.B.restrict(eB,ids)
 		val _ = chat "[restricting elaboration basis end...]"
@@ -492,7 +494,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    let val _ = ModuleEnvironments.B.match(eB,eB0)
 	    in (infB,eB)
 	    end
-	fun eqBasis0((infB1,eB1), (infB2,eB2)) =
+	fun eqBasis0 ((infB1,eB1), (infB2,eB2)) =
 	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1))
 
@@ -516,5 +518,22 @@ functor ManagerObjects0(structure Execution : EXECUTION)
       end
 
     type name = Name.name
+
+
+    datatype cval = datatype Execution.cval
+    fun retrieve_longid (B: Basis) (longid: Ident.longid) : string cval =
+        let val (_,_,_,iB) = Basis.un B
+            val (_,_,CE,CB) = IntBasis.un iB
+        in Execution.retrieve_longid CE CB longid
+        end
+
+    type tyvar = LambdaExp.tyvar
+    type Type = LambdaExp.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (B: Basis) (tn: TyName.TyName) : coninfo list option =
+        let val (_,_,_,iB) = Basis.un B
+            val (_,_,_,CB) = IntBasis.un iB
+        in Execution.tyname_reps CB tn
+        end
 
   end

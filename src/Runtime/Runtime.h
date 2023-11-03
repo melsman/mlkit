@@ -67,5 +67,7 @@ int die2 (const char *, const char *);
 long terminate (long status);    /* status is a C value */
 long terminateML (long status);  /* status is an ML value */
 void uncaught_exception (Context ctx, StringDesc *exnStr, unsigned long, uintptr_t);
+extern int uncaught_exn_raised;  // for REPL
+
 
 #endif /* RUNTIME_H */

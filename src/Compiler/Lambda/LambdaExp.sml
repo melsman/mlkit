@@ -716,54 +716,70 @@ structure LambdaExp : LAMBDA_EXP =
       | pr_rvsopt (SOME [rv]) = "`" ^ RegVar.pr rv
       | pr_rvsopt (SOME rvs) = "`[" ^ String.concatWith "," (map RegVar.pr rvs) ^ "]"
 
-   fun layoutType tau =
-       case tau of
-         TYVARtype tv => PP.LEAF (pr_tyvar tv)
-        | ARROWtype(taus,rvopt0,taus',rvopt) =>
-          let val arrow =
-                  case rvopt0 of
-                      NONE => "->"
-                    | SOME rv => "-" ^ RegVar.pr rv ^ "->"
-          in PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
-                     children=[layoutTypes taus,layoutTypes taus'],
-                     childsep=PP.LEFT arrow}
-          end
-       | CONStype(taus,tyname,rvsopt) =>
-         (case layoutTypeseq taus of
-              NONE => PP.LEAF (TyName.pr_TyName tyname ^ pr_rvsopt rvsopt)
-            | SOME x => PP.NODE{start="",
-                                finish=" " ^ TyName.pr_TyName tyname ^ pr_rvsopt rvsopt,
-                                indent=1,
-                                children=[x],childsep=PP.NOSEP})
-       | RECORDtype (taus,rvopt) =>
-         (case taus of
-              [] (* unit *) => PP.LEAF ("{}" ^ pr_rvopt rvopt)
-            | _ => PP.NODE{start="(",finish=")" ^ pr_rvopt rvopt,indent=1,
-                           children=map layoutType taus,
-                           childsep=PP.RIGHT"*"})
+    type config = {repl:bool}
+    val norepl : config = {repl=false}
 
-    and layoutTypeseq taus =
-      case taus of
-        [] => NONE
-      | [tau] => SOME(layoutType tau)
-      | taus => SOME(PP.NODE{start="(",finish=")",indent=1,
-                             children=map layoutType taus,
-                             childsep=PP.LEFT", "})
+    fun layoutType0 (config:config) tau =
+        case tau of
+            TYVARtype tv => PP.LEAF (pr_tyvar tv)
+          | ARROWtype(taus,rvopt0,taus',rvopt) =>
+            let val arrow =
+                    case rvopt0 of
+                        NONE => "->"
+                      | SOME rv => if #repl config then "->" else "-" ^ RegVar.pr rv ^ "->"
+            in PP.NODE{start="(",
+                       finish=if #repl config then ")" else ")" ^ pr_rvopt rvopt,
+                       indent=1,
+                       children=[layoutTypes0 config taus,layoutTypes0 config taus'],
+                       childsep=PP.LEFT arrow}
+            end
+          | CONStype(taus,tn,rvsopt) =>
+            (case layoutTypeseq0 config taus of
+                 NONE =>
+                 if #repl config then PP.LEAF (TyName.pr_TyName_repl tn)
+                 else PP.LEAF (TyName.pr_TyName tn ^ pr_rvsopt rvsopt)
+               | SOME x => PP.NODE{start="",
+                                   finish=" " ^ (if #repl config then TyName.pr_TyName_repl tn
+                                                 else TyName.pr_TyName tn ^ pr_rvsopt rvsopt),
+                                   indent=1,
+                                   children=[x],childsep=PP.NOSEP})
+          | RECORDtype (taus,rvopt) =>
+            (case taus of
+                 [] (* unit *) => PP.LEAF (if #repl config then "{}" else "{}" ^ pr_rvopt rvopt)
+               | _ => PP.NODE{start="(",
+                              finish=if #repl config then ")" else ")" ^ pr_rvopt rvopt,
+                              indent=1,
+                              children=map (layoutType0 config) taus,
+                              childsep=PP.RIGHT"*"})
 
-    and layoutTypes [tau] = layoutType tau
-      | layoutTypes taus = PP.NODE {start="<", finish=">", childsep=PP.LEFT ", ", indent=0,
-                                    children = map layoutType taus}
+    and layoutTypeseq0 config taus =
+        case taus of
+            [] => NONE
+          | [tau] => SOME(layoutType0 config tau)
+          | taus => SOME(PP.NODE{start="(",finish=")",indent=1,
+                                 children=map (layoutType0 config) taus,
+                                 childsep=PP.LEFT", "})
+
+    and layoutTypes0 config [tau] = layoutType0 config tau
+      | layoutTypes0 config taus = PP.NODE {start="<", finish=">", childsep=PP.LEFT ", ", indent=0,
+                                            children = map (layoutType0 config) taus}
+
+    and layoutType t = layoutType0 {repl=false} t
+
+    and layoutTypes ts = layoutTypes0 {repl=false} ts
+
+    and layoutType_repl t = layoutType0 {repl=true} t
 
     and layoutRegVar r = (PP.LEAF o RegVar.pr) r
 
     and layoutRegVars regvars = PP.NODE {start="", finish="", childsep=PP.LEFT " ", indent=0,
                                          children = map layoutRegVar regvars}
     and layoutTypeList tl =
-      (case tl
-         of Types taus => PP.NODE{start="Types(", finish=")", indent=1,
+        case tl of
+            Types taus => PP.NODE{start="Types(", finish=")", indent=1,
                                   children = [layoutTypes taus], childsep=PP.NOSEP}
           | Frame fr => layoutFrame "Frame" fr
-          | RaisedExnBind => PP.LEAF "RaisedExnBind")
+          | RaisedExnBind => PP.LEAF "RaisedExnBind"
 
     and layoutTypeOpt (SOME tau) = [layoutType tau]
       | layoutTypeOpt NONE = []
