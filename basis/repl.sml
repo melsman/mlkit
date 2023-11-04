@@ -445,6 +445,11 @@ fun pretty_exported (i:int) : int =
                               let val tag : int = prim("unsafe_cast", v)
                               in (lookEnumTag cs tag, z_strong)
                               end
+                            else if unboxed andalso length cs = 1 then (* unary & single => unboxed & untagged *)
+                              (case lookUnaryTag cs 0 ts of
+                                   SOME (cn,t) =>
+                                   (cn ^ par_conarg (pr(d-1,t,v)), z_con1)
+                                 | NONE => ("?", z_strong))
                             else if unboxed then
                               if ubcon1 v then (* unary *)
                                 let val tag = ubcon_tag v

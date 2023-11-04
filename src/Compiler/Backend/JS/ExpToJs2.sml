@@ -84,6 +84,9 @@ structure Env = struct
                if all_nullary cs then
                  onAll ENUM cs
                else
+                 case cs of
+                     [(c,SOME _)] => M.fromList [(c,UNBOXED_UNARY)]
+                  |  _ =>
                  case unboxable cs of
                    SOME (c_unary,c_nullary) =>
                    M.fromList [(c_unary,UNBOXED_UNARY),(c_nullary,UNBOXED_NULL)]

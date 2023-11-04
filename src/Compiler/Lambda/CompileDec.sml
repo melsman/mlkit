@@ -190,31 +190,31 @@ structure CompileDec: COMPILE_DEC =
 
       fun unbox_datbinds (datbinds : datbind_list) : unit =
         let
-          val bucket : TyName list ref = ref nil
-          fun unbox_tyname tn = if List.exists (fn t => TyName.eq(t,tn)) (!bucket) then ()
-                                else bucket := (tn :: (!bucket))
+          val bucket : {tn:TyName,single:bool} list ref = ref nil
+          fun unbox_tyname (a as {tn,single}) =
+              if List.exists (fn {tn=t,...} => TyName.eq(t,tn)) (!bucket) then ()
+              else bucket := (a :: (!bucket))
           fun unbox_tn_enumeration (_,tn,cns) =
             let fun nullary (_, NONE) = true
                   | nullary _ = false
-            in if List.all nullary cns then unbox_tyname tn
+            in if List.all nullary cns then unbox_tyname {tn=tn,single=false}
                else ()
             end
-          fun unbox_tn_single (_,tn,[(_,SOME _)]) = unbox_tyname tn
+          fun unbox_tn_single (_,tn,[(_,SOME _)]) = unbox_tyname {tn=tn,single=true}
             | unbox_tn_single _ = ()
 
           val max_unary_unboxed = 1
           fun unbox_tn_combi (_,tn,cns) =
-            let
-              (* under the assumption that tns are unboxed, which
-               * of the tns can we represent unboxed? *)
-              fun one_datbind tns n tn cns =
-                case cns
-                  of nil => unbox_tyname tn
-                   | (_,NONE)::cns => one_datbind tns n tn cns   (*any number of nullary constructors*)
-                   | (_,SOME ty)::cns =>
-                    if not(unboxed_ty tns ty)
-                      andalso n < max_unary_unboxed then one_datbind tns (n+1) tn cns
-                    else ()
+            let (* under the assumption that tns are unboxed, which
+                 * of the tns can we represent unboxed? *)
+                fun one_datbind tns n tn cns =
+                    case cns of
+                        nil => unbox_tyname {tn=tn,single=false}
+                      | (_,NONE)::cns => one_datbind tns n tn cns   (*any number of nullary constructors*)
+                      | (_,SOME ty)::cns =>
+                        if not(unboxed_ty tns ty)
+                           andalso n < max_unary_unboxed then one_datbind tns (n+1) tn cns
+                        else ()
             in one_datbind (map #2 datbinds) 0 tn cns
             end
         in
@@ -222,11 +222,20 @@ structure CompileDec: COMPILE_DEC =
             * of one unary constructor and all datatypes
             * consisting of only nullary constructors
             * (enumerations) *)
-(*          app unbox_tn_single datbinds ; unsafe because of decon, which nullyfies the first two bits... *)
-            app unbox_tn_enumeration datbinds
-          ; app unbox_tn_combi datbinds
-          ; (if length (!bucket) = length datbinds then app TyName.setUnboxed (!bucket)
-             else ())
+          app unbox_tn_single datbinds (* to make this safe, we must ensure that decon, for single
+                                        * datbinds do not nullify the first two bits... *)
+        ; app unbox_tn_enumeration datbinds
+        ; app unbox_tn_combi datbinds
+        ; (if length (!bucket) = length datbinds then
+             app (fn {tn,single} =>
+                     TyName.setUnboxity(tn,
+                                        if single
+                                        then ( (*print ("NOTE (CompileDec): UNBOXING single datbind for "
+                                                      ^ TyName.pr_TyName tn ^ "\n")
+                                             ; *) TyName.UNBOXED_SINGLE)
+                                        else TyName.UNBOXED)
+                 ) (!bucket)
+           else ())
         end
     end
 

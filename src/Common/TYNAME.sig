@@ -86,18 +86,21 @@ signature TYNAME =
     val tyName_FOREIGNPTR  : TyName
     val tyName_EXN         : TyName
 
-    val unboxed : TyName -> bool   (* Returns true for type names that are
-                                    * implemented unboxed; depends on whether
-                                    * tagging of integers is enabled. *)
-    val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t)
-                                     * returns true. *)
+    datatype unboxity = UNBOXED | BOXED | UNBOXED_SINGLE
 
-    val tynamesPredefined : TyName list
+    val unboxity           : TyName -> unboxity
+    val setUnboxity        : TyName * unboxity -> unit  (* default is BOXED *)
+    val unboxed            : TyName -> bool
+    (* Returns true for type names that are implemented unboxed;
+     * depends on whether tagging of integers is enabled. After calling
+     * setUnboxity(t,UNBOXED) or setUnboxity(t,UNBOXED_SINGLE),
+     * unboxed(t) returns true. *)
+
+    val tynamesPredefined  : TyName list
 
     type StringTree = PrettyPrint.StringTree
-    val layout : TyName -> StringTree
-
-    val pu : TyName Pickle.pu
+    val layout             : TyName -> StringTree
+    val pu                 : TyName Pickle.pu
 
     structure Map : MONO_FINMAP where type dom = TyName
     structure Set : KIT_MONO_SET where type StringTree = StringTree

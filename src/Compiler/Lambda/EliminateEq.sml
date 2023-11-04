@@ -335,9 +335,10 @@ structure EliminateEq : ELIMINATE_EQ =
                    bind=PRIM(SELECTprim n, [lamb_var p]),
                    scope=e}
 
-        fun mk_sw c e = SWITCH_C(SWITCH(lamb_var p1,[(c, e)], SOME lamb_false))
-        fun mk_nullary_sw c = mk_sw (c,NONE) lamb_true
-        fun mk_unary_sw c tau p0' =
+        fun mk_sw c e single = SWITCH_C(SWITCH(lamb_var p1,[(c, e)],
+                                               if single then NONE else SOME lamb_false))
+        fun mk_nullary_sw c single = mk_sw (c,NONE) lamb_true single
+        fun mk_unary_sw c tau p0' single =
           let
             val p1' = Lvars.newLvar()
             fun mk_decon p' p e =
@@ -350,26 +351,35 @@ structure EliminateEq : ELIMINATE_EQ =
               (mk_decon p1' p1
                (APP(lamb_eq_fn_tau, PRIM(RECORDprim NONE, [lamb_var p0', lamb_var p1']),NONE)))
 
-          in mk_sw (c,SOME p1') lamb_true_case
+          in mk_sw (c,SOME p1') lamb_true_case single
           end
 
-        fun mk_cases [] = []
-          | mk_cases ((c, typeopt)::rest) =
+        fun mk_cases [] single = []
+          | mk_cases ((c, typeopt)::rest) single =
           let val p = case typeopt
-                        of NONE => ((c,NONE), mk_nullary_sw c)
+                        of NONE => ((c,NONE), mk_nullary_sw c single)
                          | SOME tau =>
                             let val lv = Lvars.newLvar()
-                            in ((c,SOME lv), mk_unary_sw c tau lv)
+                            in ((c,SOME lv), mk_unary_sw c tau lv single)
                             end
-          in p :: mk_cases rest
+          in p :: mk_cases rest single
           end
-        val big_sw = SWITCH_C(SWITCH(lamb_var p0, mk_cases cbs, NONE))
-        val bind  = mk_abs_eq_fns tyvars lvs
-                     (mk_pn p0 0
-                      (mk_pn p1 1 big_sw))
         val lvar = case lookup_tyname env' tn
                      of SOME(MONOLVAR (lv,_)) => lv
                       | _ => die "gen_db.lvar"
+
+        fun big_sw cbs single =
+            let val bs = mk_cases cbs single
+            in SWITCH_C(SWITCH(lamb_var p0, bs, NONE))
+            end
+
+        val single = case cbs of
+                         [_] => true
+                       | _ => false
+        val bind =
+            mk_abs_eq_fns tyvars lvs
+                          (mk_pn p0 0
+                                 (mk_pn p1 1 (big_sw cbs single)))
       in
         {lvar=lvar, regvars=[], tyvars=tyvars, Type=gen_tau tyvars, constrs=[], bind=bind}
       end

@@ -100,114 +100,114 @@ structure Real : REAL =
 
     fun fmt spec r =
       let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
-	      let val stop = size s
-		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
-		      if i = stop then s ^ ".0"
-		      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
-		      else loop (i+1)
-	      in loop 0 end
+              let val stop = size s
+                  fun loop i =          (* s[0..i-1] contains no "." or "e" *)
+                      if i = stop then s ^ ".0"
+                      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
+                      else loop (i+1)
+              in loop 0 end
 
-	  open StringCvt
-	  (* Below we check that the requested number of decimal digits
-	   * is reasonable; else sml_general_string_of_float may crash. *)
+          open StringCvt
+          (* Below we check that the requested number of decimal digits
+           * is reasonable; else sml_general_string_of_float may crash. *)
       in
-	  case spec of
-	      SCI NONE     => to_string_gen "%e" r
-	    | SCI (SOME n) =>
-		  if n < 0 orelse n > 400 then raise Size
-		  else to_string_gen ("%." ^ Int.toString n ^ "e") r
-	    | FIX NONE     => to_string_gen "%f" r
-	    | FIX (SOME n) =>
-		  if n < 0 orelse n > 400 then raise Size
-		  else to_string_gen ("%." ^ Int.toString n ^ "f") r
-	    | GEN NONE     => toString r
-	    | GEN (SOME n) =>
-		  if n < 1 orelse n > 400 then raise Size
-		  else mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
+          case spec of
+              SCI NONE     => to_string_gen "%e" r
+            | SCI (SOME n) =>
+                  if n < 0 orelse n > 400 then raise Size
+                  else to_string_gen ("%." ^ Int.toString n ^ "e") r
+            | FIX NONE     => to_string_gen "%f" r
+            | FIX (SOME n) =>
+                  if n < 0 orelse n > 400 then raise Size
+                  else to_string_gen ("%." ^ Int.toString n ^ "f") r
+            | GEN NONE     => toString r
+            | GEN (SOME n) =>
+                  if n < 1 orelse n > 400 then raise Size
+                  else mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
             | EXACT => fmt (SCI (SOME 30)) r
       end
 
     fun scan getc source =
       let fun decval c = Char.ord c - 48
-	  fun pow10 0 = 1.0
-	    | pow10 n =
-	      if n mod 2 = 0 then
-		  let val x = pow10 (n div 2) in x * x end
-	      else 10.0 * pow10 (n-1)
-	  fun pointsym src =
-	      case getc src of
-		  NONE           => (false, src)
-		| SOME (c, rest) => if c = #"." then (true, rest)
-				    else (false, src)
-	  fun esym src =
-	      case getc src of
-		  NONE           => (false, src)
-		| SOME (c, rest) =>
-		      if c = #"e" orelse c = #"E"  then
-			  (true, rest)
-		      else (false, src)
-	  fun scandigs first next final source =
-	      let fun digs state src =
-		  case getc src of
-		      NONE          => (SOME (final state), src)
-		    | SOME(c, rest) =>
-			  if Char.isDigit c then
-			      digs (next(state, decval c)) rest
-			  else
-			      (SOME (final state), src)
-	      in
-		  case getc source of
-		      NONE          => (NONE, source)
-		    | SOME(c, rest) =>
-			  if Char.isDigit c then digs (first (decval c)) rest
-			  else (NONE, source)
-	      end
+          fun pow10 0 = 1.0
+            | pow10 n =
+              if n mod 2 = 0 then
+                  let val x = pow10 (n div 2) in x * x end
+              else 10.0 * pow10 (n-1)
+          fun pointsym src =
+              case getc src of
+                  NONE           => (false, src)
+                | SOME (c, rest) => if c = #"." then (true, rest)
+                                    else (false, src)
+          fun esym src =
+              case getc src of
+                  NONE           => (false, src)
+                | SOME (c, rest) =>
+                      if c = #"e" orelse c = #"E"  then
+                          (true, rest)
+                      else (false, src)
+          fun scandigs first next final source =
+              let fun digs state src =
+                  case getc src of
+                      NONE          => (SOME (final state), src)
+                    | SOME(c, rest) =>
+                          if Char.isDigit c then
+                              digs (next(state, decval c)) rest
+                          else
+                              (SOME (final state), src)
+              in
+                  case getc source of
+                      NONE          => (NONE, source)
+                    | SOME(c, rest) =>
+                          if Char.isDigit c then digs (first (decval c)) rest
+                          else (NONE, source)
+              end
 
-	  fun ident x = x
-	  val getint  =
-	      scandigs real (fn (res, cval) => 10.0 * res + real cval) ident
-	  val getfrac =
-	      scandigs (fn cval => (1, real cval))
-		       (fn ((decs, frac), cval) => (decs+1, 10.0*frac+real cval))
-		       (fn (decs, frac) => frac / pow10 decs)
-	  val getexp = scandigs ident (fn (res, cval) => 10 * res + cval) ident
+          fun ident x = x
+          val getint  =
+              scandigs real (fn (res, cval) => 10.0 * res + real cval) ident
+          val getfrac =
+              scandigs (fn cval => (1, real cval))
+                       (fn ((decs, frac), cval) => (decs+1, 10.0*frac+real cval))
+                       (fn (decs, frac) => frac / pow10 decs)
+          val getexp = scandigs ident (fn (res, cval) => 10 * res + cval) ident
 
-	  fun sign src =
-	      case getc src of
-		  SOME(#"+", rest) => (true,  rest)
-		| SOME(#"-", rest) => (false, rest)
-		| SOME(#"~", rest) => (false, rest)
-		| _                => (true,  src )
+          fun sign src =
+              case getc src of
+                  SOME(#"+", rest) => (true,  rest)
+                | SOME(#"-", rest) => (false, rest)
+                | SOME(#"~", rest) => (false, rest)
+                | _                => (true,  src )
 
-	  val src = StringCvt.dropl Char.isSpace getc source
-	  val (manpos, src1) = sign src
-	  val (intg,   src2) = getint src1
-	  val (decpt,  src3) = pointsym src2
-	  val (frac,   src4) = getfrac src3
+          val src = StringCvt.dropl Char.isSpace getc source
+          val (manpos, src1) = sign src
+          val (intg,   src2) = getint src1
+          val (decpt,  src3) = pointsym src2
+          val (frac,   src4) = getfrac src3
 
-	  fun mkres v rest =
-	      SOME(if manpos then v else ~v, rest)
+          fun mkres v rest =
+              SOME(if manpos then v else ~v, rest)
 
-	  fun expopt manval src =
-	      let val (esym,   src1) = esym src
-		  val (exppos, src2) = sign src1
-		  val (expv,   rest) = getexp src2
-	      in
-		  case (esym, expv) of
-		      (_,     NONE)     => mkres manval src
-		    | (true,  SOME exp) =>
-			  if exppos then mkres (manval * pow10 exp) rest
-			  else mkres (manval / pow10 exp) rest
-		    | _                 => NONE
-	      end
+          fun expopt manval src =
+              let val (esym,   src1) = esym src
+                  val (exppos, src2) = sign src1
+                  val (expv,   rest) = getexp src2
+              in
+                  case (esym, expv) of
+                      (_,     NONE)     => mkres manval src
+                    | (true,  SOME exp) =>
+                          if exppos then mkres (manval * pow10 exp) rest
+                          else mkres (manval / pow10 exp) rest
+                    | _                 => NONE
+              end
       in
-	  case (intg,     decpt, frac) of
-	      (NONE,      true,  SOME fval) => expopt fval src4
-	    | (SOME ival, false, SOME _   ) => NONE
-	    | (SOME ival, true,  NONE     ) => mkres ival src2
-	    | (SOME ival, false, NONE     ) => expopt ival src2
-	    | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
-	    | _                             => NONE
+          case (intg,     decpt, frac) of
+              (NONE,      true,  SOME fval) => expopt fval src4
+            | (SOME ival, false, SOME _   ) => NONE
+            | (SOME ival, true,  NONE     ) => mkres ival src2
+            | (SOME ival, false, NONE     ) => expopt ival src2
+            | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
+            | _                             => NONE
       end
 
     fun fromString s = StringCvt.scanString scan s
@@ -251,12 +251,12 @@ structure Real : REAL =
     fun op == (x, y) =
         case compareReal (x,y) of
             IEEEReal.EQUAL => true
-	  | _ => false
+          | _ => false
 
     fun op != (x,y) =
         case compareReal (x,y) of
             IEEEReal.EQUAL => false
-	  | _ => true
+          | _ => true
 
     fun op ?= (a,b) =
         isNan a orelse isNan b orelse op == (a, b)
@@ -292,20 +292,20 @@ structure Real : REAL =
 
     fun round (x : real) : int =
       let (* val _ = print "**R1**\n" *)
-	  val t0 = x+0.5
-	  (* val _ = print "**R2**\n" *)
-	  val floor_t0 = floor t0
-	  (* val _ = print "**R3**\n" *)
-	  fun even x = x mod 2 = 0
-	  (* val _ = print "**R4**\n" *)
+          val t0 = x+0.5
+          (* val _ = print "**R2**\n" *)
+          val floor_t0 = floor t0
+          (* val _ = print "**R3**\n" *)
+          fun even x = x mod 2 = 0
+          (* val _ = print "**R4**\n" *)
       in
-	if real(floor_t0) == t0 (* tie *) then
-	  let (* val _ = print "**R5**\n" *)
-	      val t = floor x
-	      (* val _ = print "**R6**\n" *)
-	  in if even t then t else floor_t0
-	  end
-	else floor_t0
+        if real(floor_t0) == t0 (* tie *) then
+          let (* val _ = print "**R5**\n" *)
+              val t = floor x
+              (* val _ = print "**R6**\n" *)
+          in if even t then t else floor_t0
+          end
+        else floor_t0
       end
 
     fun toInt (rm:IEEEReal.rounding_mode) (r:real) : int =

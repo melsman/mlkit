@@ -1561,6 +1561,8 @@ struct
         in PASS_PTR_TO_RHO sma
         end
 
+    fun unTR (MulExp.TR a) = a
+
     (* ------------------------ *)
     (*    Closure Conversion    *)
     (* ------------------------ *)
@@ -1959,6 +1961,21 @@ struct
 
            | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
                let
+                 val () = if List.null selections
+                          then die "ccTrip assumes empty switches have been eliminated"
+                          else ()
+                 val tn = case #2 (unTR tr) of
+                              RegionExp.Mus [mu] =>
+                              (case RType.unCONSTYPE (#1 (RType.unbox mu)) of
+                                   SOME (tn,_,_,_) => tn
+                                 | NONE => die "SWITCH_C. expecting type name")
+                            | _ => die "SWITCH_C. expecting single mu"
+                 val () = case (selections, TyName.unboxity tn) of
+                              (nil,_) => ()
+                            | (_, TyName.UNBOXED_SINGLE) =>
+                              die ("expecting empty switches on singular unboxed types - "
+                                   ^ (case opt of SOME _ => "SOME" | _ => "NONE"))
+                            | _ => ()
                  fun tag con =
                    (case CE.lookupCon env con of
                       CE.ENUM i =>
