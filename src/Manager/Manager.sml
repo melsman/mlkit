@@ -14,34 +14,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure ErrorCode = ParseElab.ErrorCode
     structure H = Polyhash
 
-    (* This should definitely go somewhere else! Copy of function in ExpToJs.sml *)
-    fun toJSString s =
-        let
-          fun digit n = chr(48 + n);
-          fun toJSescape (c:char) : string =
-	      case c of
-	        #"\\"   => "\\\\"
-	      | #"\""   => "\\\""
-	      | _       =>
-	        if #"\032" <= c andalso c <= #"\126" then str c
-	        else
-		  (case c of
-		     #"\010" => "\\n"			(* LF,  10 *)
-		   | #"\013" => "\\r"			(* CR,  13 *)
-		   | #"\009" => "\\t"			(* HT,   9 *)
-		   | #"\011" => "\\v"			(* VT,  11 *)
-		   | #"\008" => "\\b"			(* BS,   8 *)
-		   | #"\012" => "\\f"			(* FF,  12 *)
-                   | _       => let val n = ord c
-				in implode[#"\\", digit(n div 64), digit(n div 8 mod 8),
-					   digit(n mod 8)]
-				end)
-
-        in "\"" ^ String.translate toJSescape s ^ "\""
-        end
-
-    fun testout(s: string):unit = TextIO.output(TextIO.stdOut, s)
-    fun testouttree(t:PP.StringTree) = PP.outputTree(testout,t,80)
+    fun testout (s: string):unit = TextIO.output(TextIO.stdOut, s)
+    fun testouttree (t:PP.StringTree) = PP.outputTree(testout,t,80)
 
     type absprjid = ModuleEnvironments.absprjid
     type InfixBasis = ManagerObjects.InfixBasis
@@ -54,15 +28,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     val op ## = OS.Path.concat infix ##
 
     val region_profiling = Flags.is_on0 "region_profiling"
-
-    val export_basis_js =
-        Flags.add_bool_entry
-            {long="export_basis_js", short=SOME "ebjs", neg=false,
-             item=ref false,
-             menu=["General Control", "export basis in js file (SmlToJs)"],
-             desc="When this flag is enabled, SmlToJs writes\n\
-                  \pickled bases to file.eb.js files to be read by\n\
-                  \js-client."}
 
     val print_export_bases =
         Flags.add_bool_entry
@@ -184,6 +149,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     type Basis = MO.Basis
     type modcode = MO.modcode
 
+    structure PickleBases =
+    struct
     local (* Pickling *)
 
         fun readFile f : string =
@@ -214,11 +181,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             in showTimerResult (s, Timer.checkCPUTimer cputimer,
                                 Timer.checkRealTimer realtimer)
             end handle _ => print "\ntimerReport.Uncaught exception\n"
-    in
-        fun targetFromOutput ext =
-            let val file = Flags.get_string_entry "output"
-            in file ^ "." ^ ext
-            end
+
+        fun targetFromOutput file ext =
+            file ^ "." ^ ext
 
         fun writeTextFile file s =
             let val os = TextIO.openOut file
@@ -228,30 +193,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 ) handle X => (TextIO.closeOut os; raise X)
             end
 
-        fun writeBasisJs punit B =
-            let val s = Pickle.pickle Basis.pu B
-                val punit = String.translate (fn #"." => "_" | c => String.str c) punit
-                val s = String.concat [punit, "_eb = ",
-                                       toJSString s,
-                                       ";"]
-                val file = targetFromOutput "eb.js"
-            in writeTextFile file s
-            end
-
         fun isFileContentStringBIN f s =
             let val is = BinIO.openIn f
             in ((Byte.bytesToString (BinIO.inputAll is) = s)
                 handle _ => (BinIO.closeIn is; false))
-                before BinIO.closeIn is
+               before BinIO.closeIn is
             end handle _ => false
 
         fun writePickle file pickleString =
             let val os = BinIO.openOut file
-                val _ = chatf (fn() => " [Writing pickle to file " ^ file ^ "...]")
-            in (  BinIO.output(os,Byte.stringToBytes pickleString)
-                ; BinIO.closeOut os
-                ) handle X => (BinIO.closeOut os; raise X)
-            end
+                  val _ = chatf (fn() => " [Writing pickle to file " ^ file ^ "...]")
+              in (  BinIO.output(os,Byte.stringToBytes pickleString)
+                  ; BinIO.closeOut os
+                 ) handle X => (BinIO.closeOut os; raise X)
+              end
 
         fun 'a doPickleGen0 (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) : string =
             let val _ = chatf (fn() => " [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
@@ -262,14 +217,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             in res
             end
 
-        fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
-            let val res = doPickleGen0 punit pu_obj ext obj
-                val file = targetFromOutput ext
+        fun 'a doPickleGen (smlfile:string) (ofile:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
+            let val res = doPickleGen0 smlfile pu_obj ext obj
+                val file = targetFromOutput ofile ext
             in writePickle file res
             end
 
-        fun unpickleGen smlfile pu ext : 'a option =    (* MEMO: perhaps use hashconsing *)
-            let val s = readFile (targetFromOutput ext)
+        fun unpickleGen ofile pu ext : 'a option =    (* MEMO: perhaps use hashconsing *)
+            let val s = readFile (targetFromOutput ofile ext)
                 val res = Pickle.unpickle pu s
             in SOME res
             end handle _ => NONE
@@ -278,14 +233,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
         fun renameN H N i =
             let fun nextAvailableKey(H,i) =
-                  case H.peek H i of
-                      SOME _ => nextAvailableKey(H,i+1)
-                    | NONE => i
+                    case H.peek H i of
+                        SOME _ => nextAvailableKey(H,i+1)
+                      | NONE => i
             in foldl (fn (n,i) =>
-                      let val i = nextAvailableKey(H,i)
-                      in Name.assignKey(n,i)
+                         let val i = nextAvailableKey(H,i)
+                         in Name.assignKey(n,i)
                           ; i + 1
-                      end) i N
+                         end) i N
             end
 
         type name = Name.name
@@ -311,7 +266,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         fun rename (N,N') (N0,N1) =
             let (* How do we make sure that (N of NB0) U (N of NB1) are disjoint from
                  * (N U N') ? We do this by an explicit renaming of
-                 * (N of NB0) to N0' and (N of NB1) to N1 such that (N0 U N1)(B0,B1,m) = (N0' U N1')(B0',B1',m') and
+                 * (N of NB0) to N0' and (N of NB1) to N1 such that (N0 U N1)(B0,B1,m)
+                 * = (N0' U N1')(B0',B1',m') and
                  * N0 \cap N1 = \emptyset and (N0 U N1) \cap (N U N') = \emptyset.
                  *   Idea: insert keys of members of N and N' in a hashSet;
                  * for each member n in (N of NB0 U N of NB1), starting with 1,
@@ -321,11 +277,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                  * = \emptyset. This last assumption holds only because
                  * different basenames are used for eb and eb1 export
                  * bases. *)
-                val H : (int,unit) H.hash_table =
-                    H.mkTable (fn x => x, op =) (31, Hexn)
-                val _ = app2 (fn n => H.insert H (#1(Name.key n),())) N N'
-                val _ = renameN H N1
-                         (renameN H N0 1)
+              val H : (int,unit) H.hash_table =
+                  H.mkTable (fn x => x, op =) (31, Hexn)
+              val _ = app2 (fn n => H.insert H (#1(Name.key n),())) N N'
+              val _ = renameN H N1 (renameN H N0 1)
             in ()
             end
 
@@ -335,148 +290,177 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         datatype when_to_pickle = NOT_STRING_EQUAL | NOT_ALPHA_EQUAL | ALWAYS
 
         val whenToPickle : when_to_pickle = NOT_STRING_EQUAL
-        fun doPickleNB smlfile (NB0,NB1) : unit =
-            let val (ext0,ext1) = ("eb","eb1")
-                fun pickleBoth (NB0,NB1) =
-                    (doPickleGen smlfile pu_NB0 ext0 NB0;
-                     doPickleGen smlfile pu_NB1 ext1 NB1)
-            in case whenToPickle of
-                ALWAYS => pickleBoth(NB0,NB1)
-              | NOT_STRING_EQUAL =>
-                    let val f0 = targetFromOutput ext0
-                        val f1 = targetFromOutput ext1
-                        val p0 = doPickleGen0 smlfile pu_NB0 ext0 NB0
-                        val p1 = doPickleGen0 smlfile pu_NB1 ext1 NB1
-                    in if (isFileContentStringBIN f0 p0
-                           andalso isFileContentStringBIN f1 p1) then
-                        (chat "[No writing: valid pickle strings already in eb-files.]")
-                       else (writePickle f0 p0 ; writePickle f1 p1)
-                    end
-              | NOT_ALPHA_EQUAL =>
-                case (unpickleGen smlfile pu_NB0 ext0,
-                      unpickleGen smlfile pu_NB1 ext1) of
-                (SOME NB0_0, SOME NB1_0) =>
-                    let val (NB0,NB1) =
-                            let val () = rename (#1 NB0_0,#1 NB1_0) (#1 NB0,#1 NB1)
-                                val NB0 = matchGen Basis.matchBasis0 (NB0,NB0_0)
-                                val _ = List.app Name.mk_rigid (#1 NB0)
-                                val NB1 = matchGen Basis.matchBasis1 (NB1,NB1_0)
-                                val _ = List.app Name.mk_rigid (#1 NB1)
-                            in (NB0,NB1)
-                            end
-                    in if eqNB Basis.eqBasis0 (NB0,NB0_0) andalso
-                          eqNB Basis.eqBasis1 (NB1,NB1_0) then ()
-                       else pickleBoth(NB0,NB1)
-                    end
-              | _ => pickleBoth(NB0,NB1)
-            end
 
-        fun doPickleLnkFile punit (modc: modcode) : unit =
-            doPickleGen punit ModCode.pu "lnk" modc
+    in
 
-        fun readLinkFiles lnkFiles =
-            let fun process (nil,hce,modc) = modc
-                  | process (lf::lfs,hce,modc) =
-                    let val s = readFile lf
+    fun pickleNB (smlfile:string) (ofile:string) (NB0,NB1) : unit =
+        let val (ext0,ext1) = ("eb","eb1")
+            fun pickleBoth (NB0,NB1) =
+                (doPickleGen smlfile ofile pu_NB0 ext0 NB0;
+                 doPickleGen smlfile ofile pu_NB1 ext1 NB1)
+        in case whenToPickle of
+               ALWAYS => pickleBoth(NB0,NB1)
+             | NOT_STRING_EQUAL =>
+               let val f0 = targetFromOutput ofile ext0
+                   val f1 = targetFromOutput ofile ext1
+                   val p0 = doPickleGen0 smlfile pu_NB0 ext0 NB0
+                   val p1 = doPickleGen0 smlfile pu_NB1 ext1 NB1
+               in if (isFileContentStringBIN f0 p0
+                      andalso isFileContentStringBIN f1 p1) then
+                    (chat "[No writing: valid pickle strings already in eb-files.]")
+                  else (writePickle f0 p0 ; writePickle f1 p1)
+               end
+             | NOT_ALPHA_EQUAL =>
+               case (unpickleGen ofile pu_NB0 ext0,
+                     unpickleGen ofile pu_NB1 ext1) of
+                   (SOME NB0_0, SOME NB1_0) =>
+                   let val (NB0,NB1) =
+                           let val () = rename (#1 NB0_0,#1 NB1_0) (#1 NB0,#1 NB1)
+                               val NB0 = matchGen Basis.matchBasis0 (NB0,NB0_0)
+                               val _ = List.app Name.mk_rigid (#1 NB0)
+                               val NB1 = matchGen Basis.matchBasis1 (NB1,NB1_0)
+                               val _ = List.app Name.mk_rigid (#1 NB1)
+                           in (NB0,NB1)
+                           end
+                   in if eqNB Basis.eqBasis0 (NB0,NB0_0) andalso
+                         eqNB Basis.eqBasis1 (NB1,NB1_0) then ()
+                      else pickleBoth(NB0,NB1)
+                   end
+                 | _ => pickleBoth(NB0,NB1)
+        end
+
+    type name = Name.name
+    type modcode = MO.modcode
+    type Basis0 = Basis.Basis0
+    type Basis1 = Basis.Basis1
+
+    fun pickleLnkFile smlfile ofile (modc: modcode) : unit =
+        doPickleGen smlfile ofile ModCode.pu "lnk" modc
+
+    fun readLinkFiles lnkFiles =
+        let fun process (nil,hce,modc) = modc
+              | process (lf::lfs,hce,modc) =
+                let val s = readFile lf
                             handle _ => die ("readLinkFiles.error reading file " ^ lf)
-                        val (modc',hce) = Pickle.unpickle' ModCode.pu hce s
-                            handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
-                        val modc' = ModCode.dirMod (OS.Path.dir lf) modc'
-                            handle _ => die ("readLinkFiles.error during dirMod modc'")
-                    in process(lfs,hce,ModCode.seq(modc,modc'))
-                    end
-            in case lnkFiles of
-                nil => ModCode.empty
-              | lf::lfs =>
-                    let val s = readFile lf
-                            handle _ => die ("readLinkFiles.error reading file " ^ lf)
-                        val hce = Pickle.empty_hce()
-                        val (modc,hce) = Pickle.unpickle' ModCode.pu hce s
-                            handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
-                        val modc = ModCode.dirMod (OS.Path.dir lf) modc
-                            handle _ => die ("readLinkFiles.error during dirMod modc")
-                    in process(lfs,hce,modc)
-                    end
-            end
+                    val (modc',hce) = Pickle.unpickle' ModCode.pu hce s
+                                      handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
+                    val modc' = ModCode.dirMod (OS.Path.dir lf) modc'
+                                handle _ => die ("readLinkFiles.error during dirMod modc'")
+                in process(lfs,hce,ModCode.seq(modc,modc'))
+                end
+        in case lnkFiles of
+               nil => ModCode.empty
+             | lf::lfs =>
+               let val s = readFile lf
+                           handle _ => die ("readLinkFiles.error reading file " ^ lf)
+                   val hce = Pickle.empty_hce()
+                   val (modc,hce) = Pickle.unpickle' ModCode.pu hce s
+                                    handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
+                   val modc = ModCode.dirMod (OS.Path.dir lf) modc
+                              handle _ => die ("readLinkFiles.error during dirMod modc")
+               in process(lfs,hce,modc)
+               end
+        end
 
-        fun doUnpickleBases0 ebfiles
-            : Pickle.hce * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
-            let val _ = chat "\n [Begin unpickling elaboration bases...]\n"
-                fun process (nil,hce,acc) = (hce, rev acc)
-                  | process (ebfile::ebfiles,hce,acc) =
-                    let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
-                        val ((_,infixElabBasis),hce) = Pickle.unpickle' pu_NB0 hce s
-                            handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
-                        val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
-                                     used=ref false}
-                    in process(ebfiles,hce,entry::acc)
-                    end
-            in
-                case ebfiles of
-                    nil => (Pickle.empty_hce(),nil)
-                  | ebfile::ebfiles =>
-                        let val s = readFile ebfile handle _ =>
-                              die("doUnpickleBases0.error reading file " ^ ebfile)
-                            val hce = Pickle.empty_hce()
-                            val ((_,infixElabBasis),hce) = Pickle.unpickle' pu_NB0 hce s
-                                handle Fail st =>
-                                         die("doUnpickleBases0.error unpickling infixElabBasis from file "
-                                             ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
-                                     | e =>
-                                         die("doUnpickleBases0.error unpickling infixElabBasis from file "
-                                             ^ ebfile ^ ": " ^ General.exnMessage e)
-                            val (hce, entries) =
-                              process(ebfiles,hce,[{ebfile=ebfile,
-                                                    infixElabBasis=infixElabBasis,
-                                                    used=ref false}])
-                        in (hce, entries)
-                        end handle _ => die ("doUnpickleBases. error \n")
-            end
+    type InfixBasis = InfixBasis
+    type ElabBasis = ElabBasis
+    type hce = Pickle.hce
 
-        fun doUnpickleBases1 (hce: Pickle.hce) ebfiles : opaq_env * IntBasis =
-            let val _ = chat "\n [Begin unpickling compiler bases...]\n"
-                fun process (nil,hce,basisPair) = basisPair
-                  | process (ebfile::ebfiles,hce,basisPair) =
-                    let val s = readFile ebfile
-                        val ((_,basisPair'),hce) = Pickle.unpickle' pu_NB1 hce s
-                    in process(ebfiles,hce,Basis.plusBasis1(basisPair,basisPair'))
-                    end
-                val basisPair0 = Basis.initialBasis1()
-            in
-                case ebfiles of
-                    nil => basisPair0
-                  | ebfile::ebfiles =>
-                        let val s = readFile ebfile
-                            val ((_,basisPair),hce) = Pickle.unpickle' pu_NB1 hce s
-                        in process(ebfiles,hce,Basis.plusBasis1(basisPair0,basisPair))
-                        end handle _ => die ("doUnpickleBases1. error \n")
-            end
+    type ElabBasesInfo = {ebfile : string,
+                          infixElabBasis : InfixBasis*ElabBasis,
+                          used : bool ref} list
 
-        fun lnkFileConsistent {lnkFile} =
-            let val s = readFile lnkFile
-                val mc = Pickle.unpickle ModCode.pu s
-            in true
-            end handle _ => false
+    fun unpickleBases0 ebfiles : Pickle.hce * ElabBasesInfo =
+        let val _ = chat "\n [Begin unpickling elaboration bases...]\n"
+            fun process (nil,hce,acc) = (hce, rev acc)
+              | process (ebfile::ebfiles,hce,acc) =
+                let val s = readFile ebfile handle _ => die("unpickleBases0.error reading file " ^ ebfile)
+                    val ((_,infixElabBasis),hce) =
+                        Pickle.unpickle' pu_NB0 hce s
+                        handle _ => die("unpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
+                    val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
+                                 used=ref false}
+                in process(ebfiles,hce,entry::acc)
+                end
+        in
+          case ebfiles of
+              nil => (Pickle.empty_hce(),nil)
+            | ebfile::ebfiles =>
+              let val s = readFile ebfile
+                          handle _ =>
+                                 die("unpickleBases0.error reading file " ^ ebfile)
+                  val hce = Pickle.empty_hce()
+                  val ((_,infixElabBasis),hce) =
+                      Pickle.unpickle' pu_NB0 hce s
+                      handle Fail st =>
+                             die("unpickleBases0.error unpickling infixElabBasis from file "
+                                 ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
+                           | e =>
+                             die("unpickleBases0.error unpickling infixElabBasis from file "
+                                 ^ ebfile ^ ": " ^ General.exnMessage e)
+                  val (hce, entries) =
+                      process(ebfiles,hce,[{ebfile=ebfile,
+                                            infixElabBasis=infixElabBasis,
+                                            used=ref false}])
+              in (hce, entries)
+              end handle _ => die ("unpickleBases0. error \n")
+        end
 
-    end (* Pickling *)
+    type opaq_env = opaq_env
+    type IntBasis = IntBasis
 
-    fun fid_topdec a = FreeIds.fid_topdec a
-    fun opacity_elimination a = OpacityElim.opacity_elimination a
+    fun unpickleBases1 (hce: Pickle.hce) ebfiles : opaq_env * IntBasis =
+        let val _ = chat "\n [Begin unpickling compiler bases...]\n"
+            fun process (nil,hce,basisPair) = basisPair
+              | process (ebfile::ebfiles,hce,basisPair) =
+                let val s = readFile ebfile
+                    val ((_,basisPair'),hce) = Pickle.unpickle' pu_NB1 hce s
+                in process(ebfiles,hce,Basis.plusBasis1(basisPair,basisPair'))
+                end
+            val basisPair0 = Basis.initialBasis1()
+        in case ebfiles of
+               nil => basisPair0
+             | ebfile::ebfiles =>
+               let val s = readFile ebfile
+                   val ((_,basisPair),hce) = Pickle.unpickle' pu_NB1 hce s
+               in process(ebfiles,hce,Basis.plusBasis1(basisPair0,basisPair))
+               end handle _ => die ("unpickleBases1. error \n")
+        end
 
-    val debug = Flags.is_on0 "debug_compiler"
+    fun lnkFileConsistent {lnkFile} =
+        let val s = readFile lnkFile
+            val mc = Pickle.unpickle ModCode.pu s
+        in true
+        end handle _ => false
 
-    fun maybe_print_topdec s topdec =
-	if print_post_elab_ast() orelse debug() then
-	    let val _ = print (s ^ ":\n")
-		val st = PostElabTopdecGrammar.layoutTopdec topdec
-	    in pr_st st
-	    end
-	else ()
+    fun writeBasisJs toJsString punit ofile B =
+        let val s = Pickle.pickle Basis.pu B
+            val punit = String.translate (fn #"." => "_" | c => String.str c) punit
+            val s = String.concat [punit, "_eb = ",
+                                   toJsString s,
+                                   ";"]
+            val file = targetFromOutput ofile "eb.js"
+        in writeTextFile file s
+        end
+
+    fun unpickleLnkFile (lnkfile: string) : modcode =
+        let val s = readFile lnkfile  (* load modcode from lnk-file *)
+        in Pickle.unpickle ModCode.pu s
+        end
+    end
 
     (* -------------------------------
      * Compute actual dependencies
      * ------------------------------- *)
 
+    type longids = FreeIds.longids
+    type funid = FreeIds.funid
+    type sigid = FreeIds.sigid
+    type longstrid = FreeIds.longstrid
+    type longtycon = FreeIds.longtycon
+    type longid = FreeIds.longid
+
+    local
     fun lookup (look: ElabBasis -> 'a -> bool) elabBasesInfo (eb0:ElabBasis) (id:'a) =
         let fun loop nil =
               if look eb0 id then ()
@@ -511,6 +495,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         in (vids,tycons,strids)
         end
 
+    in
     fun compute_actual_deps
         (eb0:ElabBasis)
         (elabBasesInfo:{ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list)
@@ -535,6 +520,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             ; app (lookup look_funid rev_elabBasesInfo eb0) funids
             ; map #ebfile (List.filter (! o #used) elabBasesInfo)
         end
+    end
 
     fun add_longstrid longstrid {funids, sigids, longstrids, longtycons, longvids} =
         let val longstrids = longstrid::longstrids
@@ -542,7 +528,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             longtycons=longtycons, longvids=longvids}
         end
 
-    val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
+    end (* structure PickleBases *)
+
+    structure PB = PickleBases
+
+    val debug = Flags.is_on0 "debug_compiler"
+
+    fun maybe_print_topdec s topdec =
+	if print_post_elab_ast() orelse debug() then
+	    let val _ = print (s ^ ":\n")
+		val st = PostElabTopdecGrammar.layoutTopdec topdec
+	    in pr_st st
+	    end
+	else ()
 
     (* -------------------------------------------------------------------
      * Build SML source file for mlb-project ; flag compile_only enabled
@@ -551,7 +549,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build_mlb_one (mlbfile, ebfiles, smlfile) : unit =
         let (* load the bases that smlfile depends on *)
             val _ = print("[reading source file:\t" ^ smlfile)
-            val (unpickleStream, elabBasesInfo) = doUnpickleBases0 ebfiles
+            val (unpickleStream, elabBasesInfo) = PB.unpickleBases0 ebfiles
             val initialBasis0 = Basis.initialBasis0()
             val (infB,elabB) =
                 List.foldl (fn ({infixElabBasis,...}, acc) =>
@@ -581,18 +579,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
               let
 	        val _ = maybe_print_topdec "AST after elaboration" topdec
                 val _ = chat "[finding free identifiers begin...]"
-                val freelongids = add_longstrid intinfrep (fid_topdec topdec)
+                val freelongids =
+                    let val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
+                    in PB.add_longstrid intinfrep (FreeIds.fid_topdec topdec)
+                    end
                 val _ = chat "[finding free identifiers end...]"
 
                 val _ = chat "[computing actual dependencies begin...]"
-                val ebfiles_actual = compute_actual_deps
+                val ebfiles_actual = PB.compute_actual_deps
                     (#2 initialBasis0) elabBasesInfo freelongids
                 val ebfiles_actual = map (fn x => x ^ "1") ebfiles_actual
                 val _ = chat "[computing actual dependencies end...]"
 
                 val (B_im,_) =
                     let val (opaq_env,intB) =
-                        doUnpickleBases1 unpickleStream ebfiles_actual
+                        PB.unpickleBases1 unpickleStream ebfiles_actual
                         val B = Basis.mk(infB,elabB,opaq_env,intB)
                     in Basis.restrict(B,freelongids)
                     end
@@ -606,7 +607,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = Name.baseSet (base ^ "1")
 
                 val _ = chat "[opacity elimination begin...]"
-                val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
+                val (topdec', opaq_env') = OpacityElim.opacity_elimination(opaq_env_im, topdec)
                 val _ = chat "[opacity elimination end...]"
 
 	        val _ = maybe_print_topdec "AST after opacity elimination" topdec
@@ -649,14 +650,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
                 (* Write export bases to disk if there are not
                  * already identical export bases on disk *)
-                val _ = doPickleNB smlfile (NB0',NB1')
+                val ofile = Flags.get_string_entry "output"
+                val _ = PB.pickleNB smlfile ofile (NB0',NB1')
 
                 val modc = ModCode.emit (abs_mlbfile,modc)
-                val _ = doPickleLnkFile smlfile modc
+                val _ = PB.pickleLnkFile smlfile ofile modc
 
                 (* Maybe write smlfile.eb.js to disk with export basis binding
                  * for JavaScript loading *)
-                val () = if export_basis_js() then writeBasisJs smlfile B'Closed
+                val () = if MO.export_basis_js()
+                         then case MO.toJSString of
+                                  SOME toJsString =>
+                                  PB.writeBasisJs toJsString smlfile ofile B'Closed
+                                | NONE => die "toJsString error"
                          else ()
 
               in print_result_report (doreport NONE);
@@ -683,18 +689,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun link_lnk_files (mlbfile_opt:string option) : unit =
         let val _ = chat "reading link files"
             val lnkFiles = link_code()
-            val modc = readLinkFiles lnkFiles
+            val modc = PB.readLinkFiles lnkFiles
         in chat "making executable"
          ; ModCode.mk_exe_all_emitted(modc, nil, run_file())
          ; case mlbfile_opt of
                SOME mlbfile =>
                let val {dir,file} = OS.Path.splitDirFile mlbfile
-                   val output = dir ## MO.mlbdir() ## file (* .lnk added by doPickleLnkFile... *)
+                   val output = dir ## MO.mlbdir() ## file (* .lnk added by pickleLnkFile... *)
                    val target = Flags.lookup_string_entry "output"
                    val save = !target
                in target := output
                 ; chat "making mlb-linkfile"
-                ; doPickleLnkFile mlbfile modc
+                ; PB.pickleLnkFile mlbfile output modc
                 ; target := save
                end
              | NONE => ()
@@ -847,7 +853,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             in b
             end
 
-        val lnkFileConsistent = lnkFileConsistent
+        val lnkFileConsistent = PB.lnkFileConsistent
       end (* struct *)
 
 

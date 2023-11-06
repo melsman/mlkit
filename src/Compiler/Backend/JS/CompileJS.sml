@@ -13,6 +13,8 @@ signature COMPILE_JS =
 
     (* emit: returns the filename for the generated .js file *)
     val emit : {target: target, filename: string} -> string
+
+    val mlToJsString : string -> string
   end
 
 
@@ -75,4 +77,5 @@ structure CompileJS: COMPILE_JS =
         in CompileToLamb.retrieve_longid CE B' longid
         end
 
+    val mlToJsString = JsAst.mlToJsString
   end

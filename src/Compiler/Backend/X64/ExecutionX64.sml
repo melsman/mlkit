@@ -470,4 +470,7 @@ structure ExecutionX64: EXECUTION =
              | NONE => NONE
         end
 
+    fun export_basis_js () = false
+    val toJSString : (string -> string) option = NONE
+
   end

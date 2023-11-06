@@ -110,13 +110,13 @@ structure ExecutionJS : EXECUTION =
 	let val html_file = run ^ ".html"
 	    val os = TextIO.openOut html_file
             fun out s = TextIO.output(os,s)
-            fun maybe_out_DOCTYPE() =
+            fun maybe_out_DOCTYPE () =
                 if js_dom_mode() then
                   (out "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n";
                    out "<html id='html_id'>\n";
                    out "<head id='head_id'>\n")
                 else ()
-            fun maybe_out_body() =
+            fun maybe_out_body () =
                 if js_dom_mode() then
                   (out "</head>\n";
                    out "<body id='body_id'></body>\n";
@@ -173,5 +173,16 @@ structure ExecutionJS : EXECUTION =
     type coninfo = string * (tyvar list * Type)
     fun tyname_reps (CB: CompileBasis) (tn: TyName.TyName) : coninfo list option =
         die "tyname_reps.unimplemented"
+
+    val toJSString = SOME (Compile.mlToJsString)
+
+    val export_basis_js =
+        Flags.add_bool_entry
+            {long="export_basis_js", short=SOME "ebjs", neg=false,
+             item=ref false,
+             menu=["General Control", "export basis in js file (SmlToJs)"],
+             desc="When this flag is enabled, SmlToJs writes\n\
+                  \pickled bases to file.eb.js files to be read by\n\
+                  \js-client."}
 
   end

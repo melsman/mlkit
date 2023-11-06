@@ -76,4 +76,13 @@ signature EXECUTION =
     type Type = CompilerEnv.Type
     type coninfo = string * (tyvar list * Type)
     val tyname_reps : CompileBasis -> TyName.TyName -> coninfo list option
+
+    (* With SMLtoJs, it is possible to write pickled bases to a
+       Javascript file, which can be read by a Javascript interpreter
+       (e.g., a web-browser).
+     *)
+
+    val export_basis_js : unit -> bool
+    val toJSString      : (string -> string) option
+
   end

@@ -36,4 +36,6 @@ signature JS_AST = sig
   val pr_cnst : cnst -> string
   val pr_stmt : stmt -> string
   val pr_exp : exp -> string
+
+  val mlToJsString : string -> string
 end
