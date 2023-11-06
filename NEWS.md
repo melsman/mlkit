@@ -1,12 +1,19 @@
 ## MLKit NEWS
 
+* mael 2023-11-04: Unboxed representation of single constructor
+  datatypes, even when the constructor argument is represented
+  unboxed (PR #142).
+
+* mael 2023-11-04: MLKit now has a REPL (Read-Eval-Print-Loop). It is
+  invoked when passing no options to the mlkit executable (PR #138).
+
 ### MLKit version 4.7.5 is released
 
 * mael 2023-10-10: ReML released as part of the distribution.
 
 * mael 2023-10-04: Improved documentation of basis library, which is
   now documented with [sigdoc](http://github.com/diku-dk/sigdoc) at
-  https://elsman.com/mlkit/docs/pkg_idx.html.
+  https://elsman.com/mlkit/docs/pkg_idx.html .
 
 * mael 2023-10-04: Addition of IEEE_REAL signature and IEEEReal
   structure. Improved Real support.

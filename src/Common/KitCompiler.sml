@@ -61,12 +61,18 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	val date = Version.commit_date
 
 	fun print_greetings () =
-	    let val version = Version.version ^ " (" ^ Version.gitversion ^ " - " ^ date ^ ")"
-              val msg =
+	    let val par =
+                    if Version.gitversion = "" then
+                      if date = "" then ""
+                      else "(" ^ date ^ ") "
+                    else if date = "" then "(" ^ Version.gitversion ^ ") "
+                    else "(" ^ Version.gitversion ^ " - " ^ date ^ ") "
+                val version = Version.version ^ " " ^ par
+                val msg =
                   if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
                   else
                     let val m = if cmd_name() = "reml" then "ReML" else "MLKit"
-                    in m ^ " " ^ version ^ " [" ^ backend_name ^ " Backend]\n"
+                    in m ^ " " ^ version ^ "[" ^ backend_name ^ " Backend]\n"
                     end
             in print msg
 	    end

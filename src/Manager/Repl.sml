@@ -698,6 +698,7 @@ local
              ; (stepno+1, libs_acc, deps) )
            | DONE =>
              let val defs = read_df mlbfilepath
+                 val () = Flags.report_warnings()
              in (stepno+1, punit::libs_acc, MLBdep(mlbfilepath,defs)::deps)
              end
       end
@@ -705,8 +706,12 @@ local
              ( pr(String.concat (map (fn ec => Manager.ErrorCode.pr ec ^ "\n") es))
              ; (stepno, libs_acc, deps)
              )
+           | Report.DeepError r =>
+             ( Report.print' r (!Flags.log)
+             ; (stepno, libs_acc, deps)
+             )
            | Fail msg =>
-             ( pr msg
+             ( err msg
              ; (stepno+1, libs_acc, deps)
              )
 in
@@ -869,16 +874,18 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                    in doPickleNB smlfile (NB0',NB1')
                    end
 
+               val () = Flags.report_warnings()
+
                (* send command to load and run the shared library *)
                val () = send_LOADRUN(#command_pipe rp,sofile)
 
            in case receive_EXN_or_DONE(#reply_pipe rp) of
                   EXN =>
-                  ( repl (stepno+1,         (* No reporting! *)
-                          PE.begin_stdin(), (* Clear the state *)
+                  ( repl (stepno+1,          (* No reporting! *)
+                          PE.begin_stdin(),  (* Clear the state *)
                           rp,
-                          libs_acc,         (* Nothing from this unit to link to later, I think *)
-                          deps)             (* No contribution to static basis *)
+                          smlfile::libs_acc, (* Code may be saved in mutable objects before exn is raised *)
+                          deps)              (* No contribution to static basis *)
                   )
                 | DONE =>
                   ( Report.print (doreport (SOME (render rp (B.plus(B_im, B'Closed)))))
@@ -897,7 +904,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                    libs_acc,
                    deps)
            )
-         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so we shouldn't exit unless we have an eof... *)
+         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so don't exit unless eof... *)
            ( Report.print report
            ; if List.exists (fn e => PE.ErrorCode.eq(e,PE.ErrorCode.error_code_eof)) errs then
                do_exit rp OS.Process.failure
@@ -909,6 +916,14 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
            )
          | (NONE, PE.SUCCESS _) => die "repl - impossible"
     end handle Quit => do_exit rp OS.Process.success
+             | Report.DeepError r =>
+               ( Report.print' r (!Flags.log)
+               ; repl (stepno+1,
+                       PE.begin_stdin(),   (* Clear the state *)
+                       rp,
+                       libs_acc,
+                       deps)
+               )
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "safeLinkTimeElimination", "repository", "strip", "tag_pairs",
