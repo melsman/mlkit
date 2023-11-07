@@ -340,10 +340,25 @@ fun mlbfileToSoFile p =
     in (dir, dir' ## file ^ ".so")
     end
 
+(* The trim below implements the optimisation that
+              a + b + a = b + a
+   for environments and bases (products of environments)
+ *)
+
 fun files_deps deps =
     let val deps = map (fn SMLdep f => [f]
                          | MLBdep (_,deps) => deps) (rev deps)
-    in List.concat deps
+        val rdevs = rev (List.concat deps)
+        val cwd = OS.FileSys.getDir()
+        fun isin N y = List.exists (fn x => y = x) N
+        fun trim (N:string list) nil acc = acc
+          | trim N (x::xs) acc =
+            let val y = OS.Path.mkAbsolute {path=x,relativeTo=cwd}
+                val y = OS.Path.mkCanonical y
+            in if isin N y then trim N xs acc
+               else trim (y::N) xs (x::acc)
+            end
+    in trim nil rdevs nil
     end
 
 fun read_df (mlbfile:string) : string list =
