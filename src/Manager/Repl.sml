@@ -366,7 +366,7 @@ fun read_df (mlbfile:string) : string list =
         val is = TextIO.openIn dffile
     in let val all = TextIO.inputAll is
            val smlfiles = String.tokens Char.isSpace all
-           val smlfiles = map (fn f => if Path.isAbsolute f then f
+           val smlfiles = map (fn f => if OS.Path.isAbsolute f then f
                                        else dir ## f) smlfiles
        in TextIO.closeIn is; smlfiles
        end
