@@ -420,4 +420,7 @@ functor ManagerObjects(
                      end)
           | NONE => NONE
 
+    val toJSString = Execution.toJSString
+    val export_basis_js = Execution.export_basis_js
+
   end

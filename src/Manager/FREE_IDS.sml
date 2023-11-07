@@ -15,7 +15,6 @@ signature FREE_IDS =
     val fid_strexp_sigexp : strid -> strexp -> sigexp -> longids   (* in strexp, do not include
 								    * longids with qualifier strid *)
     val fid_dec    : dec    -> longids
-				
 
     type StringTree
     val layout_longids : longids -> StringTree

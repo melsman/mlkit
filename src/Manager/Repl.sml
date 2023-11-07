@@ -6,7 +6,22 @@ functor Repl(structure ManagerObjects : MANAGER_OBJECTS
              structure IntModules : INT_MODULES
              sharing type ManagerObjects.IntBasis = IntModules.IntBasis
              sharing type ManagerObjects.modcode = IntModules.modcode
-             structure Manager : MANAGER)
+             structure Manager : MANAGER
+                 where type PickleBases.modcode = ManagerObjects.modcode
+                 where type PickleBases.Basis0 = ManagerObjects.Basis.Basis0
+                 where type PickleBases.Basis1 = ManagerObjects.Basis.Basis1
+                 where type PickleBases.name = Name.name
+                 where type PickleBases.InfixBasis = ManagerObjects.InfixBasis
+                 where type PickleBases.ElabBasis = ManagerObjects.ElabBasis
+                 where type PickleBases.opaq_env = ManagerObjects.opaq_env
+                 where type PickleBases.IntBasis = ManagerObjects.IntBasis
+                 where type PickleBases.hce = Pickle.hce
+                 where type PickleBases.funid = FreeIds.funid
+                 where type PickleBases.sigid = FreeIds.sigid
+                 where type PickleBases.longstrid = FreeIds.longstrid
+                 where type PickleBases.longtycon = FreeIds.longtycon
+                 where type PickleBases.longid = FreeIds.longid
+            )
         : REPL =
 struct
 
@@ -22,6 +37,7 @@ structure ModCode = MO.ModCode
 structure CEnv = CompilerEnv
 structure Ty = StatObject.Type
 structure L = LambdaExp
+structure PB = Manager.PickleBases
 
 type Basis = MO.Basis
 type modcode = MO.modcode
@@ -86,85 +102,6 @@ val pretty_string_size =
                          desc="This flag controls the pretty-printing size of\n\
                               \string printed in the REPL. The value must be an\n\
                               \integer larger than zero."}
-
-(* -------------------------------
- * Compute actual dependencies
- * ------------------------------- *)
-
-local
-
-  fun lookup (look: ElabBasis -> 'a -> bool) elabBasesInfo (eb0:ElabBasis) (id:'a) =
-      let fun loop nil =
-              if look eb0 id then ()
-              else die "computing actual dependencies.lookup failed"
-            | loop ({ebfile,infixElabBasis=(_,eb),used}::xs) =
-              if look eb id then used:=true
-              else loop xs
-      in loop elabBasesInfo
-      end
-
-  fun collapse (longstrids,longtycons,longvids) =
-      let fun exists e l = List.exists (fn x => x = e) l
-          fun ins e l = if exists e l then l else e::l
-          val strids =
-              foldl (fn (longstrid,acc) =>
-                        case StrId.explode_longstrid longstrid of
-                            (s::_,_) => ins s acc
-                          | (nil,s) => ins s acc)
-                    nil longstrids
-          val (strids,tycons) =
-              foldl (fn (longtycon,(strids,tycons)) =>
-                        case TyCon.explode_LongTyCon longtycon of
-                            (s::_,_) => (ins s strids,tycons)
-                          | (nil,tycon) => (strids,ins tycon tycons))
-                    (strids,nil) longtycons
-          val (strids,vids) =
-              foldl (fn (longvid,(strids,vids)) =>
-                        case Ident.decompose longvid of
-                            (s::_,_) => (ins s strids,vids)
-                          | (nil,vid) => (strids,ins vid vids))
-                    (strids,nil) longvids
-      in (vids,tycons,strids)
-      end
-in
-
-  fun compute_actual_deps
-          (eb0:ElabBasis)
-          (elabBasesInfo:{ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list)
-          {funids,sigids,longstrids,longtycons,longvids} =
-      let val (vids,tycons,strids) = collapse (longstrids,longtycons,longvids)
-          fun look_vid B vid =
-              Option.isSome (Environments.VE.lookup(Environments.E.to_VE(EB.to_E B)) vid)
-          fun look_tycon B tycon =
-              Option.isSome (Environments.TE.lookup(Environments.E.to_TE(EB.to_E B)) tycon)
-          fun look_sigid B sigid =
-              Option.isSome (ME.G.lookup(EB.to_G B) sigid)
-          fun look_funid B funid =
-              Option.isSome (ME.F.lookup(EB.to_F B) funid)
-          fun look_strid B strid =
-              Option.isSome (Environments.SE.lookup(Environments.E.to_SE(EB.to_E B)) strid)
-          (* look into newest basis first *)
-          val rev_elabBasesInfo = rev elabBasesInfo
-      in app (lookup look_vid rev_elabBasesInfo eb0) vids
-       ; app (lookup look_tycon rev_elabBasesInfo eb0) tycons
-       ; app (lookup look_strid rev_elabBasesInfo eb0) strids
-       ; app (lookup look_sigid rev_elabBasesInfo eb0) sigids
-       ; app (lookup look_funid rev_elabBasesInfo eb0) funids
-       ; map #ebfile (List.filter (! o #used) elabBasesInfo)
-      end
-
-end
-
-fun add_longstrid longstrid {funids, sigids, longstrids, longtycons, longvids} =
-    let val longstrids = longstrid::longstrids
-    in {funids=funids, sigids=sigids, longstrids=longstrids,
-        longtycons=longtycons, longvids=longvids}
-    end
-
-val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
-
-fun fid_topdec a = FreeIds.fid_topdec a
-fun opacity_elimination a = OpacityElim.opacity_elimination a
 
 (* -------------------------------------------
  * Child Protocol - commands and replies
@@ -260,148 +197,6 @@ fun receive_STR (fd:Posix.FileSys.file_desc) : string option =
     end handle Fail msg =>
                ( print ("FAIL: " ^ msg ^ "\n")
                ; NONE)
-
-
-(* -------------------------------------------
- * Pickling
- * ------------------------------------------- *)
-
-fun readFile f : string =
-    let val is = BinIO.openIn f
-    in let val v = BinIO.inputAll is
-           val s = Byte.bytesToString v
-       in BinIO.closeIn is; s
-       end handle ? => (BinIO.closeIn is; raise ?)
-    end
-
-local (* Pickling *)
-
-  fun sizeToStr sz =
-      if sz < 10000 then Int.toString sz ^ " bytes"
-      else if sz < 10000000 then Int.toString (sz div 1024) ^ "Kb (" ^ Int.toString sz ^ " bytes)"
-      else Int.toString ((sz div 1024) div 1024) ^ "Mb (" ^ Int.toString sz ^ " bytes)"
-
-in
-
-  fun targetFromSmlFile smlfile ext =
-      smlfile ^ "." ^ ext
-
-  fun writeTextFile file s =
-      let val os = TextIO.openOut file
-          val _ = chatf (fn() => "[writing file " ^ file ^ "...]")
-      in (  TextIO.output(os,s)
-          ; TextIO.closeOut os
-         ) handle X => (TextIO.closeOut os; raise X)
-      end
-
-  fun isFileContentStringBIN f s =
-      let val is = BinIO.openIn f
-      in ((Byte.bytesToString (BinIO.inputAll is) = s)
-          handle _ => (BinIO.closeIn is; false))
-         before BinIO.closeIn is
-      end handle _ => false
-
-  fun writePickle file pickleString =
-      let val os = BinIO.openOut file
-          val _ = chatf (fn() => "[writing pickle to file " ^ file ^ "...]")
-      in (  BinIO.output(os,Byte.stringToBytes pickleString)
-          ; BinIO.closeOut os
-         ) handle X => (BinIO.closeOut os; raise X)
-      end
-
-  fun 'a doPickleGen0 (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) : string =
-      let val _ = chatf (fn() => "[begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
-          val res = Pickle.pickle pu_obj obj
-          val _ = chatf (fn() => "[end pickling " ^ ext ^ " (sz = " ^ sizeToStr (size res) ^ ")]")
-      in res
-      end
-
-  fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
-      let val res = doPickleGen0 punit pu_obj ext obj
-          val file = targetFromSmlFile punit ext
-      in writePickle file res
-      end
-
-  fun unpickleGen smlfile pu ext : 'a option =    (* MEMO: perhaps use hashconsing *)
-      let val s = readFile (targetFromSmlFile smlfile ext)
-          val res = Pickle.unpickle pu s
-      in SOME res
-      end handle _ => NONE
-
-  val pu_names = Pickle.listGen Name.pu
-  val pu_NB0 = Pickle.pairGen(pu_names,B.pu_Basis0)
-  val pu_NB1 = Pickle.pairGen(pu_names,B.pu_Basis1)
-
-  fun doPickleNB smlfile (NB0,NB1) : unit =
-      let val (ext0,ext1) = ("o.eb","o.eb1")
-          val f0 = targetFromSmlFile smlfile ext0
-          val f1 = targetFromSmlFile smlfile ext1
-          val p0 = doPickleGen0 smlfile pu_NB0 ext0 NB0
-          val p1 = doPickleGen0 smlfile pu_NB1 ext1 NB1
-      in if (isFileContentStringBIN f0 p0
-             andalso isFileContentStringBIN f1 p1) then
-           (chat "[no writing: valid pickle strings already in eb-files.]")
-         else (writePickle f0 p0 ; writePickle f1 p1)
-      end
-
-  fun doUnpickleBases0 ebfiles
-      : Pickle.hce * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
-      let val _ = chat "[begin unpickling elaboration bases...]"
-          fun process (nil,hce,acc) = (hce, rev acc)
-            | process (ebfile::ebfiles,hce,acc) =
-              let val s = readFile ebfile
-                          handle _ => die("doUnpickleBases0.error reading file "
-                                          ^ ebfile)
-                  val ((_,infixElabBasis),hce) =
-                      Pickle.unpickle' pu_NB0 hce s
-                      handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file "
-                                      ^ ebfile)
-                  val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
-                               used=ref false}
-              in process(ebfiles,hce,entry::acc)
-              end
-      in
-        case ebfiles of
-            nil => (Pickle.empty_hce(),nil)
-          | ebfile::ebfiles =>
-            let val s = readFile ebfile handle _ =>
-                                               die("doUnpickleBases0.error reading file " ^ ebfile)
-                val hce = Pickle.empty_hce()
-                val ((_,infixElabBasis),hce) =
-                    Pickle.unpickle' pu_NB0 hce s
-                    handle Fail st =>
-                           die("doUnpickleBases0.error unpickling infixElabBasis from file "
-                               ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
-                         | e =>
-                           die("doUnpickleBases0.error unpickling infixElabBasis from file "
-                               ^ ebfile ^ ": " ^ General.exnMessage e)
-                val (hce, entries) =
-                    process(ebfiles,hce,[{ebfile=ebfile,
-                                          infixElabBasis=infixElabBasis,
-                                          used=ref false}])
-            in (hce, entries)
-            end handle _ => die ("doUnpickleBases. error \n")
-      end
-
-  fun doUnpickleBases1 (hce: Pickle.hce) ebfiles : opaq_env * IntBasis =
-      let val _ = chat "[begin unpickling compiler bases...]"
-          fun process (nil,hce,basisPair) = basisPair
-            | process (ebfile::ebfiles,hce,basisPair) =
-              let val s = readFile ebfile
-                  val ((_,basisPair'),hce) = Pickle.unpickle' pu_NB1 hce s
-              in process(ebfiles,hce,B.plusBasis1(basisPair,basisPair'))
-              end
-          val basisPair0 = B.initialBasis1()
-      in
-        case ebfiles of
-            nil => basisPair0
-          | ebfile::ebfiles =>
-            let val s = readFile ebfile
-                val ((_,basisPair),hce) = Pickle.unpickle' pu_NB1 hce s
-            in process(ebfiles,hce,B.plusBasis1(basisPair0,basisPair))
-            end handle _ => die ("doUnpickleBases1. error \n")
-      end
-end
 
 (* -------------------------------------------
  * Value Rendering
@@ -545,21 +340,37 @@ fun mlbfileToSoFile p =
     in (dir, dir' ## file ^ ".so")
     end
 
+(* The trim below implements the optimisation that
+              a + b + a = b + a
+   for environments and bases (products of environments)
+ *)
+
 fun files_deps deps =
     let val deps = map (fn SMLdep f => [f]
                          | MLBdep (_,deps) => deps) (rev deps)
-    in List.concat deps
+        val rdevs = rev (List.concat deps)
+        val cwd = OS.FileSys.getDir()
+        fun isin N y = List.exists (fn x => y = x) N
+        fun trim (N:string list) nil acc = acc
+          | trim N (x::xs) acc =
+            let val y = OS.Path.mkAbsolute {path=x,relativeTo=cwd}
+                val y = OS.Path.mkCanonical y
+            in if isin N y then trim N xs acc
+               else trim (y::N) xs (x::acc)
+            end
+    in trim nil rdevs nil
     end
 
 fun read_df (mlbfile:string) : string list =
     let val (dir,dffile) = mlbfileToDfFile mlbfile
         val is = TextIO.openIn dffile
-    in let val all = TextIO.inputAll is handle _ => ""
+    in let val all = TextIO.inputAll is
            val smlfiles = String.tokens Char.isSpace all
-           val smlfiles = map (fn f => dir ## f) smlfiles
+           val smlfiles = map (fn f => if OS.Path.isAbsolute f then f
+                                       else dir ## f) smlfiles
        in TextIO.closeIn is; smlfiles
-       end handle _ => (TextIO.closeIn is; nil)
-    end handle _ => nil
+       end
+    end
 
 (* --------------------------------------------------
  * Command management. Commands are prefixed with
@@ -678,13 +489,9 @@ local
           val modc =
               let val {dir,file} = OS.Path.splitDirFile mlbfilepath
                   val lnkfile = dir ## MO.mlbdir() ## (file ^ ".lnk")
-                  val modc = (* load modcode from lnk-file *)
-                      let val s = readFile lnkfile
-                                  handle _ => raise Fail ("Failed to load mlb-file")
-                      in Pickle.unpickle ModCode.pu s
-                      end
-              in modc
-              end
+              in PB.unpickleLnkFile lnkfile
+              end handle _ => raise Fail ("Failed to load mlb-file")
+
           val punit = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno
           val sofile = MO.mlbdir() ## ("lib" ^ punit ^ ".so")
           (* create a so-file with initialisation code as we do for sml-files *)
@@ -698,6 +505,8 @@ local
              ; (stepno+1, libs_acc, deps) )
            | DONE =>
              let val defs = read_df mlbfilepath
+                 (* val () = print ("Read defs: " ^ String.concatWith ", " defs ^ "\n") *)
+                 val () = Flags.report_warnings()
              in (stepno+1, punit::libs_acc, MLBdep(mlbfilepath,defs)::deps)
              end
       end
@@ -705,8 +514,12 @@ local
              ( pr(String.concat (map (fn ec => Manager.ErrorCode.pr ec ^ "\n") es))
              ; (stepno, libs_acc, deps)
              )
+           | Report.DeepError r =>
+             ( Report.print' r (!Flags.log)
+             ; (stepno, libs_acc, deps)
+             )
            | Fail msg =>
-             ( pr msg
+             ( err msg
              ; (stepno+1, libs_acc, deps)
              )
 in
@@ -789,7 +602,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
 
         (* load the bases that smlfile depends on *)
         val ebfiles = map depToEb (files_deps deps)
-        val (unpickleStream, elabBasesInfo) = doUnpickleBases0 ebfiles
+        val (unpickleStream, elabBasesInfo) = PB.unpickleBases0 ebfiles
         val initialBasis0 = B.initialBasis0()
         val (infB,elabB) =
             List.foldl (fn ({infixElabBasis,...}, acc) =>
@@ -806,18 +619,21 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
            (SOME state', PE.SUCCESS {doreport,infB=infB',elabB=elabB',topdec}) =>
            let val () = debug "elaboration succeeded"
                val _ = chat "[finding free identifiers begin...]"
-               val freelongids = add_longstrid intinfrep (fid_topdec topdec)
+               val freelongids =
+                   let val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
+                   in PB.add_longstrid intinfrep (FreeIds.fid_topdec topdec)
+                   end
                val _ = chat "[finding free identifiers end...]"
 
                 val _ = chat "[computing actual dependencies begin...]"
-                val ebfiles_actual = compute_actual_deps
+                val ebfiles_actual = PB.compute_actual_deps
                     (#2 initialBasis0) elabBasesInfo freelongids
                 val ebfiles_actual = map (fn x => x ^ "1") ebfiles_actual
                 val _ = chat "[computing actual dependencies end...]"
 
                 val (B_im,_) =
                     let val (opaq_env,intB) =
-                        doUnpickleBases1 unpickleStream ebfiles_actual
+                        PB.unpickleBases1 unpickleStream ebfiles_actual
                         val B = B.mk(infB,elabB,opaq_env,intB)
                     in B.restrict(B,freelongids)
                     end
@@ -830,7 +646,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                val _ = Name.baseSet (base ^ "1")
 
                val _ = chat "[opacity elimination begin...]"
-               val (topdec', oE') = opacity_elimination(oE_im, topdec)
+               val (topdec', oE') = OpacityElim.opacity_elimination(oE_im, topdec)
                val _ = chat "[opacity elimination end...]"
 
 	       val _ = maybe_print_topdec "AST after opacity elimination" topdec
@@ -866,19 +682,22 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                        val NB0' = (names_elab, (b1,b2))
                        val NB1' = (names_int, (b3,b4))
                        val smlfile = MO.mlbdir() ## smlfile
-                   in doPickleNB smlfile (NB0',NB1')
+                       val ofile = smlfile ^ ".o"
+                   in PB.pickleNB smlfile ofile (NB0',NB1')
                    end
+
+               val () = Flags.report_warnings()
 
                (* send command to load and run the shared library *)
                val () = send_LOADRUN(#command_pipe rp,sofile)
 
            in case receive_EXN_or_DONE(#reply_pipe rp) of
                   EXN =>
-                  ( repl (stepno+1,         (* No reporting! *)
-                          PE.begin_stdin(), (* Clear the state *)
+                  ( repl (stepno+1,          (* No reporting! *)
+                          PE.begin_stdin(),  (* Clear the state *)
                           rp,
-                          libs_acc,         (* Nothing from this unit to link to later, I think *)
-                          deps)             (* No contribution to static basis *)
+                          smlfile::libs_acc, (* Code may be saved in mutable objects before exn is raised *)
+                          deps)              (* No contribution to static basis *)
                   )
                 | DONE =>
                   ( Report.print (doreport (SOME (render rp (B.plus(B_im, B'Closed)))))
@@ -897,7 +716,7 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                    libs_acc,
                    deps)
            )
-         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so we shouldn't exit unless we have an eof... *)
+         | (_, PE.FAILURE (report,errs)) =>   (* some syntax errors end here, so don't exit unless eof... *)
            ( Report.print report
            ; if List.exists (fn e => PE.ErrorCode.eq(e,PE.ErrorCode.error_code_eof)) errs then
                do_exit rp OS.Process.failure
@@ -909,6 +728,14 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
            )
          | (NONE, PE.SUCCESS _) => die "repl - impossible"
     end handle Quit => do_exit rp OS.Process.success
+             | Report.DeepError r =>
+               ( Report.print' r (!Flags.log)
+               ; repl (stepno+1,
+                       PE.begin_stdin(),   (* Clear the state *)
+                       rp,
+                       libs_acc,
+                       deps)
+               )
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "safeLinkTimeElimination", "repository", "strip", "tag_pairs",

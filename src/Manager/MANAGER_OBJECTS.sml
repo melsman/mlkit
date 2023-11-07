@@ -64,4 +64,7 @@ signature MANAGER_OBJECTS =
 
     val mk_repl_runtime : (unit -> string) option
 
+    val toJSString : (string -> string) option
+    val export_basis_js : unit -> bool
+
   end

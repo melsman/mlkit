@@ -5,10 +5,10 @@ structure ExecutionBarry : EXECUTION =
     structure TopdecGrammar = PostElabTopdecGrammar
     structure PP = PrettyPrint
     structure Labels = AddressLabels
-
     structure DecGrammar = TopdecGrammar.DecGrammar
-
     structure CompileBasis = CompileBasisBarry
+
+    fun die s = (print ("ExecutionBarry.Die: " ^ s); raise Fail s)
 
     val backend_name = "Barry"
     val backend_longname = "Barry - the Standard ML barifier"
@@ -70,10 +70,32 @@ structure ExecutionBarry : EXECUTION =
 
     val op ## = OS.Path.concat infix ##
 
-    fun mlbdir() = "MLB" ## "Barry"
+    fun mlbdir () = "MLB" ## "Barry"
 
     val pu_linkinfo =
 	Pickle.convert (fn b => {unsafe=b},
 			fn {unsafe=b} => b)
 	Pickle.bool
+
+    fun create_repl_runtime _ _ = die "create_repl_runtime: not implemented"
+    val generate_repl_init_code = NONE
+
+    fun mk_sharedlib _ = die "mk_sharedlib.unimplemented"
+
+    datatype cval = datatype Compile.cval
+    fun retrieve_longid _ _ _ : string cval =
+        die "retrieve_longid.unimplemented"
+
+    datatype conkind = UNB | ENU | BOX
+    type tyvar = CompilerEnv.tyvar
+    type Type = CompilerEnv.Type
+    type coninfo = string * (tyvar list * Type)
+    fun tyname_reps (CB: CompileBasis) (tn: TyName.TyName) : coninfo list option =
+        die "tyname_reps.unimplemented"
+
+    fun export_basis_js () = false
+    val toJSString : (string -> string) option = NONE
+
+    val mk_repl_runtime = NONE
+
   end
