@@ -409,19 +409,21 @@ local
   fun is_flag s = is_flag_kind (fn k => true) s
 
   fun print_help () =
-      pr ("The REPL accepts toplevel declarations and commands on the\n\
-          \form ':cmd;' where cmd is one of the following:\n\n\
-          \  cmd ::= flags           -- describe all flags\n\
-          \        | help            -- general help\n\
-          \        | help flag       -- get help about a flag\n\
-          \        | load mlb-file   -- load an mlb-file\n\
-          \        | menu [N]        -- print flag menu [N]\n\
-          \        | quit            -- quit\n\
-          \        | search s        -- search for help about s\n\
-          \        | set flag [arg]  -- set flag [maybe with arg]\n\
-          \        | unset flag      -- unset the flag\n\n\
-          \Notice that more flags are available from the command-line at\n\
-          \REPL initialisation time.\n\
+      pr ("The REPL accepts toplevel declarations and commands of the\n\
+          \following forms:\n\n\
+          \  cmd ::= :flags;           -- describe all flags\n\
+          \        | :help;            -- general help\n\
+          \        | :help flag;       -- get help about a flag\n\
+          \        | :load mlb-file;   -- load an mlb-file\n\
+          \        | :menu [N];        -- print flag menu [N]\n\
+          \        | :quit;            -- quit\n\
+          \        | :reset;           -- reset\n\
+          \        | :search s;        -- search for help about s\n\
+          \        | :set flag [arg];  -- set flag [maybe with arg]\n\
+          \        | :unset flag;      -- unset the flag\n\n\
+          \Notice that both toplevel declarations and commands must\n\
+          \be terminated with a semi-colon. More flags are available\n\
+          \from the command-line at REPL initialisation time.\n\
           \")
 
   fun menu_headings () =
@@ -538,13 +540,13 @@ fun maybe_set_rtflag (rp:rp) k n =
     else false
 
 exception Quit
-fun process_cmd stepno (rp:rp) (cmd:string) libs_acc deps =
+fun process_cmd rt_exe stepno state (rp:rp) (cmd:string) libs_acc deps =
     let val ts = String.tokens Char.isSpace cmd
     in case ts of
            [":set", s] =>
            ( if is_flag0 s then Flags.turn_on s
              else err ("Invalid flag '" ^ s ^ "'")
-           ; (stepno, libs_acc, deps)
+           ; (stepno, state, rp, libs_acc, deps)
            )
          | [":set", s, a] =>
            ( if is_flagN s then
@@ -556,23 +558,95 @@ fun process_cmd stepno (rp:rp) (cmd:string) libs_acc deps =
              else if is_flagS s then
                Flags.lookup_string_entry s := a
              else err ("Flag '" ^ s ^ "' is not a flag accepting an argument!")
-           ; (stepno, libs_acc, deps)
+           ; (stepno, state, rp, libs_acc, deps)
            )
          | [":unset", s] =>
            ( if is_flag0 s then Flags.turn_off s
              else err ("Invalid flag '" ^ s ^ "'")
-           ; (stepno, libs_acc, deps)
+           ; (stepno, state, rp, libs_acc, deps)
            )
-         | [":help"] => ( print_help(); (stepno, libs_acc, deps) )
-         | [":help", fl] => ( print_flag_help fl; (stepno, libs_acc, deps) )
-         | [":menu"] => ( print_menu(); (stepno, libs_acc, deps) )
-         | [":menu", n] => ( print_menuN n; (stepno, libs_acc, deps) )
-         | [":search", s] => ( print_search s; (stepno, libs_acc, deps) )
-         | [":flags"] => ( print_flags(); (stepno, libs_acc, deps) )
-         | [":load", f] => load stepno rp libs_acc deps f
+         | [":help"] => ( print_help(); (stepno, state, rp, libs_acc, deps) )
+         | [":help", fl] => ( print_flag_help fl; (stepno, state, rp, libs_acc, deps) )
+         | [":menu"] => ( print_menu(); (stepno, state, rp, libs_acc, deps) )
+         | [":menu", n] => ( print_menuN n; (stepno, state, rp, libs_acc, deps) )
+         | [":search", s] => ( print_search s; (stepno, state, rp, libs_acc, deps) )
+         | [":flags"] => ( print_flags(); (stepno, state, rp, libs_acc, deps) )
+         | [":load", f] =>
+           let val (stepno, libs_acc, deps) = load stepno rp libs_acc deps f
+           in (stepno, state, rp, libs_acc, deps)
+           end
          | [":quit"] => raise Quit
-         | _ => ( err ("Invalid command '" ^ cmd ^ "'") ; (stepno, libs_acc, deps) )
+         | [":reset"] =>
+           let val pid = #pid rp
+               val () = ( Posix.Process.kill(Posix.Process.K_PROC pid, Posix.Signal.kill)
+                        ; Posix.Process.wait()
+                        ; ())
+               val (stepno, state, rp, libs_acc, deps) = initialise_repl state rt_exe
+           in (stepno, state, rp, libs_acc, deps)
+           end
+         | _ => ( err ("Invalid command '" ^ cmd ^ "'")
+                ; (stepno, state, rp, libs_acc, deps) )
     end
+
+  and initialise_repl parserstate (rt_exe:string) =
+    let
+      (* Now, start the runtime executable in a child process,
+         but first create two named pipes *)
+      val sessionid =
+          let fun loop i =
+                  let val f = MO.mlbdir() ## "command_pipe-" ^ Int.toString i
+                  in if OS.FileSys.access(f, [OS.FileSys.A_READ]) then loop (i+1)
+                     else Int.toString i
+                  end
+          in loop 0
+          end
+      val command_pipe_name = MO.mlbdir() ## "command_pipe-" ^ sessionid
+      val reply_pipe_name = MO.mlbdir() ## "reply_pipe-" ^ sessionid
+      val repl_logfile = MO.mlbdir() ## "repl-" ^ sessionid ^ ".log"
+      val () = Posix.FileSys.mkfifo (command_pipe_name, Posix.FileSys.S.irwxu)
+      val () = Posix.FileSys.mkfifo (reply_pipe_name, Posix.FileSys.S.irwxu)
+      val childpid =
+          case Posix.Process.fork() of
+              SOME pid => pid
+            | NONE =>
+              ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe,
+                                              "-command_pipe", command_pipe_name,
+                                              "-reply_pipe", reply_pipe_name,
+                                              "-repl_logfile", repl_logfile])
+              ; OS.Process.exit OS.Process.failure (* never gets here *)
+              )
+      val () = debug "created fifos"
+      val command_pipe = Posix.FileSys.openf(command_pipe_name,
+                                             Posix.FileSys.O_WRONLY,
+                                             Posix.FileSys.O.flags[])
+                         handle _ => die "run: failed to open command_pipe"
+      val () = debug "opened command_pipe"
+      val reply_pipe = Posix.FileSys.openf(reply_pipe_name,
+                                           Posix.FileSys.O_RDONLY,
+                                           Posix.FileSys.O.flags[])
+                       handle _ => die "run: failed to open reply_pipe"
+      val () = debug "opened reply_pipe"
+      val rp = {command_pipe=command_pipe,reply_pipe=reply_pipe,pid=childpid,sessionid=sessionid}
+      val init = (0, parserstate, rp, ["runtime"], nil)
+      val init = if basislib_p() then
+                   let val (stepno,state,rp,libs_acc,deps) = init
+                       val cmd = ":load " ^ (!Flags.install_dir ## "basis/repl.mlb")
+                       val (stepno,state,rp,libs_acc,deps) = process_cmd rt_exe stepno state rp cmd libs_acc deps
+                   in (stepno,state,rp,libs_acc,deps)
+                   end
+                 else ( print ("!Basis Library and Pretty Printing not loaded!\n")
+                      ; init )
+
+      val () = if pretty_depth() <= 0 orelse pretty_string_size() <= 0 then
+                 die "Only positive values for 'pretty_depth' and 'pretty_string_size' are supported"
+               else
+                 ( maybe_set_rtflag rp "pretty_depth" (pretty_depth())
+                 ; maybe_set_rtflag rp "pretty_string_size" (pretty_string_size())
+                 ; ()
+                 )
+    in init
+    end
+
 end
 
 (* -------------------------------------------
@@ -586,16 +660,16 @@ fun do_exit (rp:rp) status =
     ; OS.Process.exit status
     )
 
-fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
-    let val (stepno,state,libs_acc,deps) =
-            let fun loop stepno state libs_acc deps =
+fun repl (rt_exe, stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
+    let val (stepno,state,libs_acc,deps,rp) =
+            let fun loop stepno state libs_acc deps rp =
                     case PE.colonLine (PE.stripSemiColons state) of
                         SOME(cmd,state) =>
-                        let val (stepno, libs_acc, deps) = process_cmd stepno rp cmd libs_acc deps
-                        in loop stepno state libs_acc deps
+                        let val (stepno, state, rp, libs_acc, deps) = process_cmd rt_exe stepno state rp cmd libs_acc deps
+                        in loop stepno state libs_acc deps rp
                         end
-                      | NONE => (stepno, state, libs_acc, deps)
-            in loop stepno state libs_acc deps
+                      | NONE => (stepno, state, libs_acc, deps, rp)
+            in loop stepno state libs_acc deps rp
             end
         val absprjid = ME.mk_absprjid "repl"
         val smlfile = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno
@@ -693,7 +767,8 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
 
            in case receive_EXN_or_DONE(#reply_pipe rp) of
                   EXN =>
-                  ( repl (stepno+1,          (* No reporting! *)
+                  ( repl (rt_exe,
+                          stepno+1,          (* No reporting! *)
                           PE.begin_stdin(),  (* Clear the state *)
                           rp,
                           smlfile::libs_acc, (* Code may be saved in mutable objects before exn is raised *)
@@ -701,7 +776,8 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
                   )
                 | DONE =>
                   ( Report.print (doreport (SOME (render rp (B.plus(B_im, B'Closed)))))
-                  ; repl (stepno+1,
+                  ; repl (rt_exe,
+                          stepno+1,
                           state',
                           rp,
                           smlfile::libs_acc,
@@ -710,7 +786,8 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
            end
          | (SOME state', PE.FAILURE (report,errs)) =>
            ( Report.print report
-           ; repl (stepno+1,
+           ; repl (rt_exe,
+                   stepno+1,
                    PE.begin_stdin(),   (* Clear the state *)
                    rp,
                    libs_acc,
@@ -720,7 +797,8 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
            ( Report.print report
            ; if List.exists (fn e => PE.ErrorCode.eq(e,PE.ErrorCode.error_code_eof)) errs then
                do_exit rp OS.Process.failure
-             else repl (stepno+1,
+             else repl (rt_exe,
+                        stepno+1,
                         PE.begin_stdin(),   (* Clear the state *)
                         rp,
                         libs_acc,
@@ -730,7 +808,8 @@ fun repl (stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.status =
     end handle Quit => do_exit rp OS.Process.success
              | Report.DeepError r =>
                ( Report.print' r (!Flags.log)
-               ; repl (stepno+1,
+               ; repl (rt_exe,
+                       stepno+1,
                        PE.begin_stdin(),   (* Clear the state *)
                        rp,
                        libs_acc,
@@ -767,61 +846,9 @@ fun run () : OS.Process.status =
     in case MO.mk_repl_runtime of
            SOME f =>
            let val rt_exe = f()
-               (* Now, start the runtime executable in a child process,
-                  but first create two named pipes *)
-               val sessionid =
-                   let fun loop i =
-                           let val f = MO.mlbdir() ## "command_pipe-" ^ Int.toString i
-                           in if OS.FileSys.access(f, [OS.FileSys.A_READ]) then loop (i+1)
-                              else Int.toString i
-                           end
-                   in loop 0
-                   end
-               val command_pipe_name = MO.mlbdir() ## "command_pipe-" ^ sessionid
-               val reply_pipe_name = MO.mlbdir() ## "reply_pipe-" ^ sessionid
-               val repl_logfile = MO.mlbdir() ## "repl-" ^ sessionid ^ ".log"
-               val () = Posix.FileSys.mkfifo (command_pipe_name, Posix.FileSys.S.irwxu)
-               val () = Posix.FileSys.mkfifo (reply_pipe_name, Posix.FileSys.S.irwxu)
-               val childpid =
-                   case Posix.Process.fork() of
-                       SOME pid => pid
-                     | NONE =>
-                       ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe,
-                                                       "-command_pipe", command_pipe_name,
-                                                       "-reply_pipe", reply_pipe_name,
-                                                       "-repl_logfile", repl_logfile])
-                       ; OS.Process.exit OS.Process.failure (* never gets here *)
-                       )
-               val () = debug "created fifos"
-               val command_pipe = Posix.FileSys.openf(command_pipe_name,
-                                                      Posix.FileSys.O_WRONLY,
-                                                      Posix.FileSys.O.flags[])
-                                  handle _ => die "run: failed to open command_pipe"
-               val () = debug "opened command_pipe"
-               val reply_pipe = Posix.FileSys.openf(reply_pipe_name,
-                                                    Posix.FileSys.O_RDONLY,
-                                                    Posix.FileSys.O.flags[])
-                                handle _ => die "run: failed to open reply_pipe"
-               val () = debug "opened reply_pipe"
-               val rp = {command_pipe=command_pipe,reply_pipe=reply_pipe,pid=childpid,sessionid=sessionid}
-               val init = (0, PE.begin_stdin(), rp, ["runtime"], nil)
-               val init = if basislib_p() then
-                            let val (stepno,state,rp,libs_acc,deps) = init
-                                val cmd = ":load " ^ (!Flags.install_dir ## "basis/repl.mlb")
-                                val (stepno,libs_acc,deps) = process_cmd stepno rp cmd libs_acc deps
-                            in (stepno,state,rp,libs_acc,deps)
-                            end
-                          else ( print ("!Basis Library and Pretty Printing not loaded!\n")
-                               ; init )
-
-               val () = if pretty_depth() <= 0 orelse pretty_string_size() <= 0 then
-                          die "Only positive values for 'pretty_depth' and 'pretty_string_size' are supported"
-                        else
-                          ( maybe_set_rtflag rp "pretty_depth" (pretty_depth())
-                          ; maybe_set_rtflag rp "pretty_string_size" (pretty_string_size())
-                          ; ()
-                          )
-           in repl init
+               val (stepno, state, rp, libs_acc, deps) =
+                   initialise_repl (PE.begin_stdin()) rt_exe
+           in repl (rt_exe, stepno, state, rp, libs_acc, deps)
            end
          | NONE => die "run - not possible to build runtime"
     end
