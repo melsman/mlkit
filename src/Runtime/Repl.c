@@ -42,7 +42,7 @@ read_str(int fd, char** pbuf, size_t* buf_sz) {
   char *buf = *pbuf;
   while ( 1 == (ret = read(fd,buf,1)) && *buf != ' ' && *buf != ';' ) {
     buf++; n++;
-    if ( n >= *buf_sz ) {  // resize
+    if ( n >= *buf_sz ) {  // incremental resize
       size_t new_sz = 2 * (*buf_sz);
       char* new = (char*) malloc(new_sz);
       if ( !new ) {
@@ -78,7 +78,7 @@ read_qstr(int fd, char** pbuf, size_t* buf_sz) {
   }
   while ( 1 == (ret = read(fd,buf,1)) && *buf != '"' ) {
     buf++; n++;
-    if ( n >= *buf_sz ) {  // resize
+    if ( n >= *buf_sz ) {  // incremental resize
       size_t new_sz = 2 * (*buf_sz);
       char* new = (char*) malloc(new_sz);
       if ( !new ) {
@@ -128,18 +128,31 @@ pretty_ML_GetVal (void) {
   return *(void**)pretty_hidden_v;
 }
 
+
+// maybe_resize_buf(name, buf, buf_sz, sz, n) may resize buf to be at
+// least of size sz.
+void
+maybe_resize_buf(char* name, char** buf, size_t* buf_sz, size_t sz) {
+  if ( sz > *buf_sz ) {    // resize buffer
+    size_t new_sz = max(sz, *buf_sz * 2);
+    fprintf(repllog, "{resizing buffer %s: %ld -> %ld}\n", name, *buf_sz, new_sz);
+    fflush(repllog);
+    *buf_sz = new_sz;
+    free(*buf);
+    *buf = (char*)malloc(new_sz);
+    if ( ! (*buf) ) {
+      die ("maybe_resize_buf: failed to increase size of buffer for printing");
+    }
+  }
+  return;
+}
+
+
 void
 REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
   // side-effecting toplevel buffer pretty_topbuf
   size_t sz = get_string_size(s->size);
-  if ( pretty_topbuf_sz < sz + 2) {
-    pretty_topbuf_sz = max (2 * pretty_topbuf_sz, sz + 2);
-    free(pretty_topbuf);
-    pretty_topbuf = (char*) malloc(pretty_topbuf_sz);
-    if ( !pretty_topbuf ) {
-      die ("pretty_ML_Print: failed to increase size of pretty_topbuf");
-    }
-  }
+  maybe_resize_buf("topbuf", &pretty_topbuf, &pretty_topbuf_sz, sz+2);
   convertStringToC(ctx, s, pretty_topbuf, pretty_topbuf_sz, exn);
 }
 
@@ -326,16 +339,9 @@ repl_interp(Context ctx) {
       char* tau = read_qstr(command_fd, &buf2, &buf2_sz);
       char* lab = read_str(command_fd, &buf3, &buf3_sz);
       print_value2(tau,lab);      // prints into pretty_topbuf;
-      int sz = strlen(pretty_topbuf);
-      if ( sz+50 > buf4_sz ) {    // resize buf4
-	buf4_sz = buf4_sz * 2;
-	free(buf4);
-	buf4 = (char*)malloc(buf4_sz);
-	if ( !buf4 ) {
-	  die ("repl_interp: failed to increase size of buffer buf4 for printing");
-	}
-      }
-      snprintf(buf4,buf4_sz,"STR %d %s;",sz,pretty_topbuf);
+      size_t sz = strlen(pretty_topbuf);
+      maybe_resize_buf("buf4", &buf4, &buf4_sz, sz+50);
+      snprintf(buf4,buf4_sz,"STR %ld %s;",sz,pretty_topbuf);
       write_str(reply_fd, buf4);
     } else if ( strcmp(cmd, "SET") == 0 ) {
       char *key = read_str(command_fd, &buf2, &buf2_sz);

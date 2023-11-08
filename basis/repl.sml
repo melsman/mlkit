@@ -482,9 +482,8 @@ fun pretty_exported (i:int) : int =
                       | V s => ("tv: " ^ s, z_con1))
             in nopar (pr(depth,t,v))
             end handle _ => "_"
-        val s' : string = String.extract(str,0,SOME(Int.min(199,size str)))
-    in prim("pretty_ML_Print", (getCtx(),s',Match)) : unit
-     ; size s'
+    in prim("pretty_ML_Print", (getCtx(),str,Match)) : unit
+     ; size str
     end
 in
 val () = _export("pretty_exported", pretty_exported)
