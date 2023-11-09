@@ -1350,6 +1350,7 @@ struct
                               die "Export of ML function with type other than (int->int) not supported"
                           else ()
 
+                      val callee_saves_ccall = callee_save_regs_ccall @ [r14, r14]  (* odd number *)
                       val _ = add_static_data
                           ([I.dot_data,
                             I.dot_align 8,
@@ -1361,9 +1362,10 @@ struct
                                               * ML closure object may move due to GCs. *)
                             I.dot_quad (i2s BI.ml_unit),
                             I.dot_text,
+                            I.dot_align 8,
                             I.dot_globl (lab,I.FUNC), (* The C function entry *)
                             I.lab lab]
-                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
+                         @ (map (fn r => I.push (R r)) callee_saves_ccall) (* 5+2 regs *)
                          @ [I.movq (L ctx_lab, R r14),            (* load ctx into ctx register *)
                             I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
@@ -1372,7 +1374,7 @@ struct
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
-                         @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
+                         @ (map (fn r => I.pop (R r)) (List.rev callee_saves_ccall))
                          @ [I.ret])
 
                      val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
