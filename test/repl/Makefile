@@ -68,8 +68,8 @@ test: prepare $(RESFILES)
 	@echo "Test errors:       `grep "ERR" $(RESFILES) | wc -l` /`grep "Test" $(RESFILES) | wc -l`"
 	@echo "See complog.txt"
 	@echo "---------------------------------------------------"
-	@exit `grep "ERR" $(RESFILES) | wc -l`
 	cat MLB/RI/repl-*.log
+	@exit `grep "ERR" $(RESFILES) | wc -l`
 
 .PHONY: prepare
 prepare:
