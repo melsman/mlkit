@@ -356,13 +356,15 @@ fun pretty_string_size () : int =
 
 (* The pretty printer *)
 
-val z_strong = 0        (* precedense values *)
-val z_con1 = 5
+val z_base = 0        (* precedense values *)
+val z_par = 2
+val z_weak = 5
 
 fun nopar (s,_) = s
 fun par_conarg (s,z) =
-    if z > z_strong then "(" ^ s ^ ")"
-    else " " ^ s
+    if z = z_base then " " ^ s
+    else if z = z_par then s
+    else (* z = z_weak *) "(" ^ s ^ ")"
 
 fun pretty_exported (i:int) : int =
     let val ty : string = prim("pretty_ML_GetTy", ())
@@ -374,51 +376,51 @@ fun pretty_exported (i:int) : int =
             let val (dbs,t) = parse ty
                 val dbs = map analyse_db dbs
                 fun pr (d,t,v) =
-                    if d < 0 then ("..", z_strong) else
+                    if d < 0 then ("_", z_base) else
                     (case t of
-                        T [t] => ("single",z_strong)
+                        T [t] => ("single",z_base)
                       | T ts => ("(" ^ String.concatWith ","
                                                          (mapi (fn (i,t) =>
                                                                    let val v = selectTuple(v,i)
                                                                    in nopar(pr(d,t,v))
                                                                    end) ts
                                                          ) ^ ")",
-                                 z_strong)
+                                 z_par)
                       | R lts => ("{" ^ String.concatWith ","
                                                           (mapi (fn (i,(l,t)) =>
                                                                     let val v = selectTuple(v,i)
                                                                     in l ^ "=" ^ nopar(pr(d,t,v))
                                                                     end) lts
                                                           ) ^ "}",
-                                  z_strong)
-                      | C ([], "int31") => (Int31.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "int32") => (Int32.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "int63") => (Int63.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "int64") => (Int64.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "int") => (Int.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "intinf") => (IntInf.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "word8") => ("0wx" ^ Word8.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "word31") => ("0wx" ^ Word31.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "word32") => ("0wx" ^ Word32.toString (prim("unsafe_cast", v)), z_strong)
-(*                      | C ([], "word63") => ("0wx" ^ Word63.toString (prim("unsafe_cast", v)), z_strong) *)
-                      | C ([], "word64") => ("0wx" ^ Word64.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "word") => ("0wx" ^ Word.toString (prim("unsafe_cast", v)), z_strong)
-                      | C ([], "real") => (Real.toString (prim("unsafe_cast", v)), z_strong)
+                                  z_par)
+                      | C ([], "int31") => (Int31.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "int32") => (Int32.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "int63") => (Int63.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "int64") => (Int64.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "int") => (Int.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "intinf") => (IntInf.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "word8") => ("0wx" ^ Word8.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "word31") => ("0wx" ^ Word31.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "word32") => ("0wx" ^ Word32.toString (prim("unsafe_cast", v)), z_base)
+(*                      | C ([], "word63") => ("0wx" ^ Word63.toString (prim("unsafe_cast", v)), z_base) *)
+                      | C ([], "word64") => ("0wx" ^ Word64.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "word") => ("0wx" ^ Word.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "real") => (Real.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "char") => ("#\"" ^ Char.toString (prim("unsafe_cast", v)) ^ "\"",
-                                           z_strong)
-                      | C ([], "bool") => (Bool.toString (prim("unsafe_cast", v)), z_strong)
+                                           z_base)
+                      | C ([], "bool") => (Bool.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "string") =>
                         let val s : string = prim("unsafe_cast", v)
                             val s = if size s <= max_string_size then s
                                     else (String.extract(s, 0, SOME max_string_size) ^ "..")
                         in ("\"" ^  String.toString s ^ "\"",
-                            z_strong)
+                            z_base)
                         end
                       | C ([t], "option") =>
                         let val v : foreignptr option = prim("unsafe_cast", v)
                         in case v of
-                               SOME v => ("SOME" ^ par_conarg (pr(d-1,t,v)), z_con1)
-                             | NONE => ("NONE", z_strong)
+                               SOME v => ("SOME" ^ par_conarg (pr(d-1,t,v)), z_weak)
+                             | NONE => ("NONE", z_base)
                         end
                       | C ([t], "list") =>
                         let val v : foreignptr list = prim("unsafe_cast", v)
@@ -428,14 +430,14 @@ fun pretty_exported (i:int) : int =
                                          nil => rev acc
                                        | v::vs => loop (n-1) (nopar(pr(d-1,t,v))::acc) vs
                             val ss = loop 10 nil v
-                        in ("[" ^ String.concatWith "," ss ^ "]", z_strong)
+                        in ("[" ^ String.concatWith "," ss ^ "]", z_par)
                         end
                       | C([t], "ref") =>
                         let val v : foreignptr ref = prim("unsafe_cast", v)
                         in case v of
-                               ref v => ("ref" ^ par_conarg (pr(d-1,t,v)), z_con1)
+                               ref v => ("ref" ^ par_conarg (pr(d-1,t,v)), z_weak)
                         end
-                      | U => ("unknown", z_strong)
+                      | U => ("unknown", z_base)
                       | C (ts,tn) =>
                         (let val (unboxed,cs) =
                                  case lookTn dbs tn of
@@ -443,49 +445,51 @@ fun pretty_exported (i:int) : int =
                                    | NONE => raise Fail ("type name " ^ tn ^ " not found")
                          in if unboxed andalso enum cs then
                               let val tag : int = prim("unsafe_cast", v)
-                              in (lookEnumTag cs tag, z_strong)
+                              in (lookEnumTag cs tag, z_base)
                               end
                             else if unboxed andalso length cs = 1 then (* unary & single => unboxed & untagged *)
                               (case lookUnaryTag cs 0 ts of
                                    SOME (cn,t) =>
-                                   (cn ^ par_conarg (pr(d-1,t,v)), z_con1)
-                                 | NONE => ("?", z_strong))
+                                   (cn ^ par_conarg (pr(d-1,t,v)), z_weak)
+                                 | NONE => ("?", z_base))
                             else if unboxed then
                               if ubcon1 v then (* unary *)
                                 let val tag = ubcon_tag v
                                 in case lookUnaryTag cs tag ts of
-                                       NONE => ("?",z_strong)
+                                       NONE => ("?",z_base)
                                      | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(d-1,t,ubcon1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(d-1,t,ubcon1_prj v)), z_weak)
                                 end
                               else (* nullary *)
                                 let val tag = ubcon_tag v
-                                in (lookNullaryTag cs tag, z_strong)
+                                in (lookNullaryTag cs tag, z_base)
                                 end
                             else (* boxed *)
                               if con1 v then (* unary *)
                                 let val tag = con_tag v
                                 in case lookUnaryTag cs tag ts of
-                                       NONE => ("?",z_strong)
+                                       NONE => ("?",z_base)
                                      | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(d-1,t,con1_prj v)), z_con1)
+                                       (cn ^ par_conarg (pr(d-1,t,con1_prj v)), z_weak)
                                 end
                               else (* nullary *)
                                 let val tag = con_tag v
-                                in (lookNullaryTag cs tag, z_strong)
+                                in (lookNullaryTag cs tag, z_base)
                                 end
                          end handle Fail s =>
-                                    if List.null ts then ("<" ^ tn ^ ">", z_strong)
-                                    else ("<" ^ tn ^ "," ^ Int.toString (length ts) ^ ">", z_strong)
+                                    if List.null ts then ("<" ^ tn ^ ">", z_par)
+                                    else ("<" ^ tn ^ "," ^ Int.toString (length ts) ^ ">", z_par)
                         )
-                      | A _ => ("fn", z_strong)
-                      | V s => ("tv: " ^ s, z_con1))
+                      | A _ => ("fn", z_base)
+                      | V s => ("tv: " ^ s, z_weak))
             in nopar (pr(depth,t,v))
             end handle _ => "_"
-        val s' : string = String.extract(str,0,SOME(Int.min(199,size str)))
-    in prim("pretty_ML_Print", (getCtx(),s',Match)) : unit
-     ; size s'
-    end
+    in prim("pretty_ML_Print", (getCtx(),str,Match)) : unit
+     ; size str
+    end handle e =>
+               (print ("pretty_exported uncaught exception: "
+                       ^ General.exnMessage e ^ "\n")
+               ; ~1)
 in
 val () = _export("pretty_exported", pretty_exported)
 end

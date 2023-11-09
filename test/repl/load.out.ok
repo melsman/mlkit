@@ -1,0 +1,6 @@
+. [reading source file:	hello.sml]
+> structure Hello :
+    sig
+      val text : string
+    end
+. > val x = "hello world" : string
