@@ -1,0 +1,4 @@
+. . . . > val a = "~23" : string
+  val b = "~23 - 34.0" : string
+Parse error - no input!
+Exiting

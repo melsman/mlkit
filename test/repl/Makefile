@@ -1,6 +1,6 @@
 TEST_NB_FILES=simple.cmd simple2.cmd
 
-TEST_B_FILES=$(TEST_NB_FILES) load.cmd pretty.cmd basis.cmd
+TEST_B_FILES=$(TEST_NB_FILES) load.cmd pretty.cmd basis.cmd chdir.cmd
 
 RES_NB_FILES=$(TEST_NB_FILES:%.cmd=%-ri-nb.res)
 
@@ -15,7 +15,7 @@ all: test
 
 %-ri-nb.out: %.cmd Makefile
 	@echo "SML_LIB=../.. $(MLKIT) -no_basislib < $< | .. | .. > $@" >> complog.txt
-	SML_LIB=../.. $(MLKIT) -no_basislib < $< \
+	@SML_LIB=../.. $(MLKIT) -no_basislib < $< \
            | grep -v 'MLKit v' \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
@@ -35,11 +35,10 @@ all: test
          ; fi)
 	@cat $@
 	@cat $@ >> complog.txt
-	cat $<
 
 %-ri.out: %.cmd Makefile
 	@echo "SML_LIB=../.. $(MLKIT) < $< | .. | .. > $@" >> complog.txt
-	SML_LIB=../.. $(MLKIT) < $< \
+	@SML_LIB=../.. $(MLKIT) < $< \
            | grep -v 'MLKit v' \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
@@ -59,7 +58,6 @@ all: test
          ; fi)
 	@cat $@
 	@cat $@ >> complog.txt
-	cat $<
 
 .PHONY: test
 test: prepare $(RESFILES)
@@ -68,7 +66,6 @@ test: prepare $(RESFILES)
 	@echo "Test errors:       `grep "ERR" $(RESFILES) | wc -l` /`grep "Test" $(RESFILES) | wc -l`"
 	@echo "See complog.txt"
 	@echo "---------------------------------------------------"
-	cat MLB/RI/repl-*.log
 	@exit `grep "ERR" $(RESFILES) | wc -l`
 
 .PHONY: prepare

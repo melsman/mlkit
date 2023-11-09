@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dlfcn.h>
+#include <limits.h>
 
 #include "Runtime.h"
 #include "Flags.h"
@@ -147,6 +148,24 @@ maybe_resize_buf(char* name, char** buf, size_t* buf_sz, size_t sz) {
   return;
 }
 
+int
+isAbsolute(char* p) {
+  return strlen(p) > 0 && *p == '/';
+}
+
+char *
+safestrcat3(char* s1, char* s2, char* s3, char** pbuf, size_t* pbuf_sz) {
+  size_t sz1 = strlen(s1);
+  size_t sz2 = strlen(s2);
+  size_t sz3 = strlen(s3);
+  size_t sz = sz1 + sz2 + sz3 + 1;
+  maybe_resize_buf("strcat3buf", pbuf, pbuf_sz, sz);
+  char* p = *pbuf;
+  p = stpncpy(p,s1,sz1+1);
+  p = stpncpy(p,s2,sz2+1);
+  p = stpncpy(p,s3,sz3+1);
+  return *pbuf;
+}
 
 void
 REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
@@ -330,6 +349,15 @@ repl_interp(Context ctx) {
     die ("repl_interp: failed to allocate buffers");
   }
 
+  char* wd = (char*) malloc (PATH_MAX + 1);
+
+  if ( ! getcwd(wd, PATH_MAX) ) {
+    perror("getcwd() error");
+    die ("repl_interp: failed to locate working directory");
+  }
+  fprintf(repllog, "{working directory is %s}\n", wd);
+  fflush(repllog);
+
   while (1)  {
     fprintf(repllog, "{reading command}\n");
     fflush(repllog);
@@ -367,7 +395,12 @@ repl_interp(Context ctx) {
       write_str(reply_fd, "DONE;");
     } else if ( strcmp(cmd, "LOADRUN") == 0 ) {
       char* sofile = read_str(command_fd, &buf2, &buf2_sz);
-      load_run(sofile, "main");
+      if ( isAbsolute(sofile) ) {
+	load_run(sofile, "main");
+      } else {
+	char* sofilepath = safestrcat3(wd, "/", sofile, &buf3, &buf3_sz);
+	load_run(sofilepath, "main");
+      }
       if ( uncaught_exn_raised ) {
 	uncaught_exn_raised = 0;
 	write_str(reply_fd, "EXN;");
