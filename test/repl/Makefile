@@ -13,11 +13,6 @@ MLKIT=../../bin/mlkit
 .PHONY: all
 all: test
 
-.PHONY: runtime
-runtime:
-	make -C ../src/Runtime clean
-	make -C ../src/Runtime runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a runtimeSystem.a
-
 %-ri-nb.out: %.cmd Makefile
 	@echo "SML_LIB=../.. $(MLKIT) -no_basislib < $< | .. | .. > $@" >> complog.txt
 	SML_LIB=../.. $(MLKIT) -no_basislib < $< \
@@ -74,6 +69,7 @@ test: prepare $(RESFILES)
 	@echo "See complog.txt"
 	@echo "---------------------------------------------------"
 	@exit `grep "ERR" $(RESFILES) | wc -l`
+	cat MLB/RI/repl-*.log
 
 .PHONY: prepare
 prepare:
