@@ -3,9 +3,9 @@ File posix.sml: Testing structure Posix...
 
 File posix.sml: Testing structure Posix.IO...
 Posix.IO.pipe    	OK
-Posix.Process.fork    	OK
+Posix.Process.fork - start    	OK
+Posix.Process.fork - in child    	OK
 Posix.IO.close    	OK
-Posix.Process.fork    	OK
-Posix.IO.close    	OK
+Posix.Process.fork - in parent - child finished    	OK
 Posix.uname    	OK
 Posix.FileSys.fstat    	OK

@@ -27,18 +27,20 @@ val _ = tst' "Posix.IO.pipe" (fn () => let val {outfd,infd} = Posix.IO.pipe ()
 
 val (infd,outfd) = Option.valOf (!channels)
 
-val child = (Posix.Process.fork () = NONE before tst0 "Posix.Process.fork" "OK")
-            handle _ => (tst0 "Posix.Process.fork" "EXN" before OS.Process.exit(OS.Process.failure);true)
+val () = tst0 "Posix.Process.fork - start" "OK"
 
-val _ = if child then
-	    let	val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close outfd; true))
-		val _ = Posix.Process.exit(0w0)
-	    in ()
-	    end
-	else let val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close infd; true))
-		 val _ = Posix.Process.wait()
-	     in ()
-	     end
+val () =
+    case Posix.Process.fork () of
+        NONE =>
+        ( tst0 "Posix.Process.fork - in child" "OK"
+        ; tst' "Posix.IO.close" (fn () => (Posix.IO.close outfd; true))
+	; Posix.Process.exit(0w0)
+        )
+      | SOME pid =>
+        ( Posix.IO.close infd
+	; Posix.Process.wait()
+        ; tst0 "Posix.Process.fork - in parent - child finished" "OK"
+        )
 
 fun lookup s a =
     case List.find (fn (f,_) => f = s) a of
