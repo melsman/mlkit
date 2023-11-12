@@ -42,6 +42,13 @@ structure CompileJS: COMPILE_JS =
     val preHook = CompileToLamb.preHook
     val postHook = CompileToLamb.postHook
 
+    local
+      val messages_p = Flags.is_on0 "messages"
+    in
+      fun message f = if messages_p() then print (f())
+                      else ()
+    end
+
     (*****************************)
     (* This is the main function *)
     (*****************************)
@@ -67,7 +74,7 @@ structure CompileJS: COMPILE_JS =
                 end
             val filename = repair filename ^ ".js"
         in ExpToJs.toFile (filename, #1 target)
-         ; print ("[wrote JavaScript file:\t" ^ filename ^ "]\n")
+         ; message (fn () => "[wrote JavaScript file:\t" ^ filename ^ "]\n")
          ; filename
 	end
 

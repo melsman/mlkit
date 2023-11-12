@@ -36,6 +36,13 @@ structure CompileBarry: COMPILE_BARRY =
     val preHook = CompileToLamb.preHook
     val postHook = CompileToLamb.postHook
 
+    local
+      val messages_p = Flags.is_on0 "messages"
+    in
+      fun message f = if messages_p() then print (f())
+                      else ()
+    end
+
     (*****************************)
     (* This is the main function *)
     (*****************************)
@@ -59,7 +66,7 @@ structure CompileBarry: COMPILE_BARRY =
 	                    (fn s => TextIO.output(os,s), st, colwidth);
 	     TextIO.output(os, "\n\n");
 	     TextIO.closeOut os;
-	     print ("[wrote ML file:\t" ^ filename ^ "]\n");
+	     message (fn () => "[wrote ML file:\t" ^ filename ^ "]\n");
 	     filename) handle X => (TextIO.closeOut os; raise X)
 	end
 

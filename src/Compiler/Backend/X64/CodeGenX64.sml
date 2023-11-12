@@ -2332,11 +2332,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
   end
 
   local
-    val messages_p =
-        Flags.add_bool_entry
-            {long="messages", short=NONE, neg=true,
-             menu=["Debug","messages"], item=ref true,
-             desc="Print messages about generated target files."}
+    val messages_p = Flags.is_on0 "messages"
   in
     fun message f = if messages_p() then print (f())
                     else ()
