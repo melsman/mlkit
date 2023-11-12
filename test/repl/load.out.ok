@@ -1,5 +1,4 @@
-. [reading source file:	hello.sml]
-> structure Hello :
+. > structure Hello :
     sig
       val text : string
     end
