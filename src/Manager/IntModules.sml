@@ -34,6 +34,13 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
 
+    local
+      val messages_p = Flags.is_on0 "messages"
+    in
+      fun message f = if messages_p() then print (f())
+                      else ()
+    end
+
     fun cleanBucket () =
         ( List.app Name.mk_rigid (!Name.bucket)
         ; Name.bucket := [])
@@ -470,8 +477,8 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                |> Substring.dropl (fn c => c = #"-")
                |> Substring.string
 
-	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^
-			    " (from source " ^ src_name ^ ") begin]\n")
+	      val () = message(fn () => "[compiling body of functor " ^ FunId.pr_FunId funid ^
+			                " (from source " ^ src_name ^ ") begin]\n")
 (* 	      val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 
 	      val _ = chat "[recreating functor body begin...]"
@@ -508,7 +515,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val cb'' = CompileBasis.plus(cb,cb')
 	      val mc'' = ModCode.seq(mc,mc')
 	  in (ce', cb'', ModCode.emit (absprjid, mc''))     (* we also emit code for arg.. see comment above *)
-	      before print("[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
+	     before message(fn () => "[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
 	  end
 
 	| LETstrexp(info, strdec, strexp) =>

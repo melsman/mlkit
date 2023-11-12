@@ -534,6 +534,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val debug = Flags.is_on0 "debug_compiler"
 
+    local
+      val messages_p = Flags.is_on0 "messages"
+    in
+      fun message f = if messages_p() then print(f())
+                      else ()
+    end
+
     fun maybe_print_topdec s topdec =
 	if print_post_elab_ast() orelse debug() then
 	    let val _ = print (s ^ ":\n")
@@ -548,7 +555,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun build_mlb_one (mlbfile, ebfiles, smlfile) : unit =
         let (* load the bases that smlfile depends on *)
-            val _ = print("[reading source file:\t" ^ smlfile)
+            val () = message (fn () => "[reading source file:\t" ^ smlfile)
             val (unpickleStream, elabBasesInfo) = PB.unpickleBases0 ebfiles
             val initialBasis0 = Basis.initialBasis0()
             val (infB,elabB) =
@@ -556,7 +563,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                             Basis.plusBasis0(acc,infixElabBasis))
                 initialBasis0
                 elabBasesInfo
-            val _ = print("]")
+            val () = message (fn () => "]")
             val log_cleanup = log_init smlfile
             val _ = Flags.reset_warnings ()
             val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
@@ -597,7 +604,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                         val B = Basis.mk(infB,elabB,opaq_env,intB)
                     in Basis.restrict(B,freelongids)
                     end
-                val _ = print "\n"
+                val () = message (fn () => "\n")
                 val (_,_,opaq_env_im,intB_im) = Basis.un B_im
 
                 (* Setting up for generation of second export basis (eb1) *)

@@ -833,10 +833,16 @@ end
   val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
 
   val _ = add_bool_entry
-      {long="compile_only", short=SOME "c",
-       menu=["General Control","compile only"],
-       item=ref false, neg=false, desc=
-       "Compile only. Suppresses generation of executable"}
+              {long="compile_only", short=SOME "c",
+               menu=["General Control","compile only"],
+               item=ref false, neg=false,
+               desc="Compile only. Suppresses generation of executable"}
+
+  val _ = add_bool_entry
+              {long="messages", short=NONE, neg=true,
+               menu=["Debug","messages"], item=ref true,
+               desc="Print messages about reading source files and generating\n\
+                    \target files."}
 
 val is_on = Directory.is_on
 val is_on0 = Directory.is_on0
