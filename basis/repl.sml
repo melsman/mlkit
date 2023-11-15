@@ -100,7 +100,6 @@ fun scanId get =
 
 end
 
-
 (* Types and substitutions *)
 
 type tv = string     (* type variable *)
@@ -110,12 +109,13 @@ datatype tau = C of tau list * tn
              | T of tau list
              | R of (string*tau) list
              | A of tau * tau
-             | U
              | V of tv
 
-type sch = tv list * tau       (* type scheme *)
-type cb = cn * sch             (* construtor binding *)
-type db = tn * bool * cb list  (* data binding; bool: unboxed *)
+datatype boxity = UNB | BOX | UNB_HIGH
+
+type sch = tv list * tau         (* type scheme *)
+type cb = cn * sch               (* construtor binding *)
+type db = tn * boxity * cb list  (* data binding *)
 
 type subst = (tv * tau) list
 fun lookSubst (S:subst) tv =
@@ -129,7 +129,6 @@ fun appSubst (S:subst) t =
       | T ts => T (map (appSubst S) ts)
       | R lts => R (map (fn (l,t) => (l,appSubst S t)) lts)
       | A (t1,t2) => A (appSubst S t1, appSubst S t2)
-      | U => t
       | V tv => case lookSubst S tv of
                     SOME t' => t'
                   | NONE => t
@@ -139,7 +138,6 @@ fun pp (t:tau) : string =
         V s => s
       | T ts => "(" ^ String.concatWith "*" (map pp ts) ^ ")"
       | R labtys => "{" ^ String.concatWith "," (map (fn (l,t) => l ^ ":" ^ pp t) labtys) ^ "}"
-      | U => "U"
       | C([],tn) => tn
       | C([t],tn) => pp t ^ " " ^ tn
       | C(ts,tn) => "(" ^ String.concatWith "," (map pp ts) ^ ") " ^ tn
@@ -148,41 +146,35 @@ fun pp (t:tau) : string =
 fun mapi (f:int*'a->'b) (xs:'a list) : 'b list =
     List.rev (#2 (List.foldl (fn (x,(i,acc)) => (i+1,f(i,x)::acc)) (0,nil) xs))
 
-datatype ck = ENUM of int | BOXED of int | UNBOXED of int   (* constructor kinds *)
-fun pp_ck (ck:ck) =
-    case ck of
-        ENUM i => "enum" ^ Int.toString i
-      | BOXED i => "b" ^ Int.toString i
-      | UNBOXED i => "ub" ^ Int.toString i
+type ck = int
+
+fun pp_ck (ck:ck) = "tag" ^ Int.toString ck
 
 fun isArrow (_,A _) = true
   | isArrow _ = false
 
 type cb' = cn * sch * ck
-type db' = tn * bool * cb' list
+type db' = tn * boxity * cb' list
 
-fun analyse_db (tn:tn, unb:bool, cs: cb list) : tn * bool * cb' list =
-    let fun maybebox i = if unb then UNBOXED i else BOXED i
-        val unaries = List.filter (isArrow o #2) cs
-        val nullaries = List.filter (not o isArrow o #2) cs
-    in (tn, unb,
-        if List.null unaries then
-          mapi (fn (i,(cn,sch)) => (cn,sch,ENUM i)) nullaries
-        else
-          (mapi (fn (i,(cn,sch)) => (cn,sch,maybebox i)) nullaries @
-           mapi (fn (i,(cn,sch)) => (cn,sch,maybebox i)) unaries)
-       )
-    end
+fun analyse_db (tn:tn, boxity:boxity, cs: cb list) : tn * boxity * cb' list =
+    case boxity of
+        UNB_HIGH =>
+        (tn, boxity, mapi (fn (i,(cn,sch)) => (cn,sch,i)) cs)
+      | _ => let val unaries = List.filter (isArrow o #2) cs
+                 val nullaries = List.filter (not o isArrow o #2) cs
+             in (tn, boxity,
+                 (mapi (fn (i,(cn,sch)) => (cn,sch,i)) nullaries @
+                  mapi (fn (i,(cn,sch)) => (cn,sch,i)) unaries)
+                )
+             end
 
-fun lookTn (dbs:db' list) (tn:tn) : (bool * cb' list) option =
+fun lookTn (dbs:db' list) (tn:tn) : (boxity * cb' list) option =
     case List.find (fn (tn',_,_) => tn=tn') dbs of
         SOME (_,b,cs) => SOME (b,cs)
       | NONE => NONE
 
 fun lookUnaryTag (cbs:cb' list) (tag:int) ts =
-    case List.find (fn (_,sch,BOXED i) => i = tag andalso isArrow sch
-                     | (_,sch,UNBOXED i) => i = tag andalso isArrow sch
-                     | _ => false) cbs of
+    case List.find (fn (_,sch,i) => i = tag andalso isArrow sch) cbs of
         SOME (cn,(tvs,t),_) =>
         (let val S = ListPair.zipEq (tvs,ts)
          in case t of
@@ -192,19 +184,12 @@ fun lookUnaryTag (cbs:cb' list) (tag:int) ts =
       | NONE => NONE
 
 fun lookNullaryTag (cbs:cb' list) (tag:int) =
-    case List.find (fn (_,sch,BOXED i) => i = tag andalso not(isArrow sch)
-                     | (_,sch,UNBOXED i) => i = tag andalso not(isArrow sch)
-                     | _ => false) cbs of
-        SOME (c,_,_) => c
-      | NONE => "?"
-
-fun lookEnumTag (cbs:cb' list) (tag:int) =
-    case List.find (fn (_,_,ENUM i) => i = tag | _ => false) cbs of
+    case List.find (fn (_,sch,i) => i = tag andalso not(isArrow sch)) cbs of
         SOME (c,_,_) => c
       | NONE => "?"
 
 fun enum (cs:cb' list) =
-    List.exists (fn (_,_,ENUM _) => true | _ => false) cs
+    List.all (fn (_,sch,_) => not(isArrow sch)) cs
 
 (* Parsing of types and type definitions *)
 
@@ -301,14 +286,15 @@ fun parse (s: string) : db list * tau =
             ) g
         and p_db : (db,st) p =
             fn g => (
-              (p_name >>- p_symb #"(" >>> p_unboxed >>- p_symb #")" >>- p_symb #"="
+              (p_name >>- p_symb #"(" >>> p_boxity >>- p_symb #")" >>- p_symb #"="
                       >>- p_symb #"[" >>> (p_list #"," p_cb) >>- p_symb #"]")
                   >>@ (fn ((tn,ub),cbs) => (tn,ub,cbs))
             ) g
-        and p_unboxed : (bool,st) p =
+        and p_boxity : (boxity,st) p =
             fn g => (
-                 (p_symb #"u" >>@ (fn _ => true))
-              || (p_symb #"b" >>@ (fn _ => false))
+                 (p_symb2 #"u" #"a" >>@ (fn _ => UNB_HIGH))
+              || (p_symb #"u" >>@ (fn _ => UNB))
+              || (p_symb #"b" >>@ (fn _ => BOX))
             ) g
         and p_line : (db list*tau,st) p =
             fn g => (
@@ -354,6 +340,12 @@ fun pretty_depth () : int =
 fun pretty_string_size () : int =
     prim("get_pretty_string_size",())
 
+fun ubhcon_tag (v:foreignptr) : int =
+    prim("ptr_hitag_get_fun", v)
+
+fun ubhcon1_prj (v:foreignptr) : foreignptr =
+    prim("ptr_hitag_clear_fun", v)
+
 (* The pretty printer *)
 
 val z_base = 0        (* precedense values *)
@@ -368,7 +360,7 @@ fun par_conarg (s,z) =
 
 fun pretty_exported (i:int) : int =
     let val ty : string = prim("pretty_ML_GetTy", ())
-(*        val () = print ("pretty_exported: " ^ ty ^ "\n") *)
+        (* val () = print ("pretty_exported: " ^ ty ^ "\n") *)
         val v : foreignptr = prim("pretty_ML_GetVal", ())
         val depth = pretty_depth()
         val max_string_size = pretty_string_size()
@@ -437,45 +429,53 @@ fun pretty_exported (i:int) : int =
                         in case v of
                                ref v => ("ref" ^ par_conarg (pr(d-1,t,v)), z_weak)
                         end
-                      | U => ("unknown", z_base)
                       | C (ts,tn) =>
-                        (let val (unboxed,cs) =
+                        (let val (boxity,cs) =
                                  case lookTn dbs tn of
                                      SOME res => res
                                    | NONE => raise Fail ("type name " ^ tn ^ " not found")
-                         in if unboxed andalso enum cs then
-                              let val tag : int = prim("unsafe_cast", v)
-                              in (lookEnumTag cs tag, z_base)
-                              end
-                            else if unboxed andalso length cs = 1 then (* unary & single => unboxed & untagged *)
-                              (case lookUnaryTag cs 0 ts of
-                                   SOME (cn,t) =>
-                                   (cn ^ par_conarg (pr(d-1,t,v)), z_weak)
-                                 | NONE => ("?", z_base))
-                            else if unboxed then
-                              if ubcon1 v then (* unary *)
-                                let val tag = ubcon_tag v
+                         in case boxity of
+                                UNB =>
+                                if enum cs then
+                                  let val tag : int = prim("unsafe_cast", v)
+                                  in (lookNullaryTag cs tag, z_base)
+                                  end
+                                else if length cs = 1 then (* unary & single => unboxed & untagged *)
+                                  (case lookUnaryTag cs 0 ts of
+                                       SOME (cn,t) =>
+                                       (cn ^ par_conarg (pr(d-1,t,v)), z_weak)
+                                     | NONE => ("?", z_base))
+                                else if ubcon1 v then (* unary *)
+                                  let val tag = ubcon_tag v
+                                  in case lookUnaryTag cs tag ts of
+                                         NONE => ("?",z_base)
+                                       | SOME (cn, t) =>
+                                         (cn ^ par_conarg (pr(d-1,t,ubcon1_prj v)), z_weak)
+                                  end
+                                else (* nullary *)
+                                  let val tag = ubcon_tag v
+                                  in (lookNullaryTag cs tag, z_base)
+                                  end
+                              | UNB_HIGH =>
+                                let val tag = ubhcon_tag v
                                 in case lookUnaryTag cs tag ts of
-                                       NONE => ("?",z_base)
-                                     | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(d-1,t,ubcon1_prj v)), z_weak)
+                                       SOME (cn, t) =>
+                                       (cn ^ par_conarg (pr(d-1,t,ubhcon1_prj v)), z_weak)
+                                     | NONE =>
+                                       (lookNullaryTag cs tag, z_base)
                                 end
-                              else (* nullary *)
-                                let val tag = ubcon_tag v
-                                in (lookNullaryTag cs tag, z_base)
-                                end
-                            else (* boxed *)
-                              if con1 v then (* unary *)
-                                let val tag = con_tag v
-                                in case lookUnaryTag cs tag ts of
-                                       NONE => ("?",z_base)
-                                     | SOME (cn, t) =>
-                                       (cn ^ par_conarg (pr(d-1,t,con1_prj v)), z_weak)
-                                end
-                              else (* nullary *)
-                                let val tag = con_tag v
-                                in (lookNullaryTag cs tag, z_base)
-                                end
+                              | BOX =>
+                                if con1 v then (* unary *)
+                                  let val tag = con_tag v
+                                  in case lookUnaryTag cs tag ts of
+                                         NONE => ("?",z_base)
+                                       | SOME (cn, t) =>
+                                         (cn ^ par_conarg (pr(d-1,t,con1_prj v)), z_weak)
+                                  end
+                                else (* nullary *)
+                                  let val tag = con_tag v
+                                  in (lookNullaryTag cs tag, z_base)
+                                  end
                          end handle Fail s =>
                                     if List.null ts then ("<" ^ tn ^ ">", z_par)
                                     else ("<" ^ tn ^ "," ^ Int.toString (length ts) ^ ">", z_par)

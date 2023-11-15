@@ -244,9 +244,8 @@ local
           TyName.ENUM => " (u)"
         | TyName.UNB_LOW => " (u)"
         | TyName.UNB_ALL => " (ua)"
-        | TyName.SINGLE TyName.BOXED => " (u)"
+        | TyName.SINGLE _ => " (u)"
         | TyName.BOXED => " (b)"
-        | _ => die ("pp_boxity: " ^ TyName.pr_boxity b)
 
   fun pp_def (tn, creps) =
       String.concat [
