@@ -11,7 +11,7 @@ functor ClosExp(structure CallConv: CALL_CONV where type lvar = Lvars.lvar
 struct
   structure PP = PrettyPrint
   structure Labels = AddressLabels
-  structure RegionExp = MulExp.RegionExp
+  structure RE = MulExp.RegionExp
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con
@@ -55,6 +55,7 @@ struct
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
+    | UNBOXED_HIGH of int
     | BOXED of int
 
   type binder = place * phsize
@@ -145,9 +146,10 @@ struct
   local
     open PP
 
-    fun pr_con_kind(ENUM i)    = "enum " ^ Int.toString i
-      | pr_con_kind(UNBOXED i) = "unboxed " ^ Int.toString i
-      | pr_con_kind(BOXED i)   = "boxed " ^ Int.toString i
+    fun pr_con_kind (ENUM i)    = "enum " ^ Int.toString i
+      | pr_con_kind (UNBOXED i) = "unboxed " ^ Int.toString i
+      | pr_con_kind (UNBOXED_HIGH i) = "unboxed-high " ^ Int.toString i
+      | pr_con_kind (BOXED i)   = "boxed " ^ Int.toString i
 
     fun pr_phsize(PhysSizeInf.INF)     = "inf"
       | pr_phsize(PhysSizeInf.WORDS i) = Int.toString i
@@ -536,7 +538,7 @@ struct
                           fix_bound=false,rhos_actuals=ref [],other=dummy_'c},mu,[],ref Mul.empty_psi)
                fun mk_pat (lvar,mu) =
                    case mu of
-                       RegionExp.Mus[mu] =>
+                       RE.Mus[mu] =>
                        let val (ty,place) = RType.unbox mu
                        in [(lvar,ref([]:RType.il ref list),[],ref([]:effect list),ty,place,dummy_'c)]
                        end
@@ -1280,6 +1282,8 @@ struct
             CE.ENUM i    => ENUM i
           | CE.UB_NULLARY i => UNBOXED i
           | CE.UB_UNARY i => UNBOXED i
+          | CE.UBH_NULLARY i => UNBOXED_HIGH i
+          | CE.UBH_UNARY i => UNBOXED_HIGH i
           | CE.B_NULLARY i => BOXED i
           | CE.B_UNARY i => BOXED i
 
@@ -1292,29 +1296,34 @@ struct
     (* see ClosConvEnv.sml, and lists are the only unboxed datatypes    *)
     (* that we have.                                                    *)
     (*------------------------------------------------------------------*)
-    fun add_datbinds_to_env (RegionExp.DATBINDS dbs) l2clos_exp_env : CE.env =
+    fun add_datbinds_to_env (RE.DATBINDS dbs) l2clos_exp_env : CE.env =
       let
-        fun enumeration tn binds =
-          TyName.unboxed tn andalso
-          List.all (fn (_,k,_) => k = RegionExp.CONSTANT) binds
+        fun tags_split (N,U) (n0,n1) binds =
+            case binds of
+                nil => nil
+              | ((c,RE.CONSTANT,_)::rest) =>
+                (c,N n0) :: tags_split (N,U) (n0+1,n1) rest
+              | ((c,RE.VALUE_CARRYING,_)::rest) =>
+                (c,U n1) :: tags_split (N,U) (n0,n1+1) rest
 
-        fun tags_enum n nil = nil
-          | tags_enum n ((con,_,_)::binds) = (con,CE.ENUM n) :: tags_enum (n+1) binds
+        fun tags_same (N,U) n binds =
+            case binds of
+                nil => nil
+              | ((c,RE.CONSTANT,_)::rest) =>
+                (c,N n) :: tags_same (N,U) (n+1) rest
+              | ((c,RE.VALUE_CARRYING,_)::rest) =>
+                (c,U n) :: tags_same (N,U) (n+1) rest
 
-        fun unary tn n = if TyName.unboxed tn then CE.UB_UNARY n
-                         else CE.B_UNARY n
-        fun nullary tn n = if TyName.unboxed tn then CE.UB_NULLARY n
-                           else CE.B_NULLARY n
-        fun tags tn n0 n1 [] = []
-          | tags tn n0 n1 ((con,RegionExp.VALUE_CARRYING,_)::binds) = (con,unary tn n1) :: tags tn n0 (n1+1) binds
-          | tags tn n0 n1 ((con,RegionExp.CONSTANT,_)::binds) = (con,nullary tn n0) :: tags tn (n0+1) n1 binds
-
-        fun analyse_datbind (tn,binds: (con * RegionExp.constructorKind * 'a) list) : (con * CE.con_kind) list =
-          if enumeration tn binds then tags_enum 0 binds
-          else tags tn 0 0 binds
+        fun analyse_datbind (tn,binds: (con * RE.constructorKind * 'a) list) : (con * CE.con_kind) list =
+            case TyName.boxity tn of
+                TyName.ENUM => tags_same (CE.ENUM, fn _ => die "analyse_datbind.enum") 0 binds
+              | TyName.UNB_LOW => tags_split (CE.UB_NULLARY, CE.UB_UNARY) (0,0) binds
+              | TyName.UNB_ALL => tags_same (CE.UBH_NULLARY, CE.UBH_UNARY) 0 binds
+              | TyName.BOXED => tags_split (CE.B_NULLARY, CE.B_UNARY) (0,0) binds
+              | TyName.SINGLE _ => tags_same (fn _ => die "analyse_datbind.single", CE.UB_UNARY) 0 binds
     in
       List.foldl (fn (datbind,env) =>
-                  (env plus_decl_with CE.declareCon) (analyse_datbind datbind))
+                     (env plus_decl_with CE.declareCon) (analyse_datbind datbind))
                  l2clos_exp_env (concat_lists dbs)
     end
 
@@ -1528,13 +1537,13 @@ struct
         end
     end
 
-    fun gen_fresh_res_lvars (RegionExp.Mus [mu]) =
+    fun gen_fresh_res_lvars (RE.Mus [mu]) =
         (case RType.unFUN (#1(RType.unbox mu)) of
              SOME(mus1,arroweffect,mus2) => List.map (fn _ => fresh_lvar("res")) mus2
            | NONE => die "gen_fresh_res: not a function type.")
-      | gen_fresh_res_lvars (RegionExp.Mus _) = die "gen_fresh_res: expecting singleton mu."
-      | gen_fresh_res_lvars (RegionExp.Frame _) = []
-      | gen_fresh_res_lvars (RegionExp.RaisedExnBind) = []
+      | gen_fresh_res_lvars (RE.Mus _) = die "gen_fresh_res: expecting singleton mu."
+      | gen_fresh_res_lvars (RE.Frame _) = []
+      | gen_fresh_res_lvars (RE.RaisedExnBind) = []
 
     (* Convert ~n to -n *)
     fun convert_real r =    (* Translate a real constant into C notation: *)
@@ -1965,15 +1974,15 @@ struct
                           then die "ccTrip assumes empty switches have been eliminated"
                           else ()
                  val tn = case #2 (unTR tr) of
-                              RegionExp.Mus [mu] =>
+                              RE.Mus [mu] =>
                               (case RType.unCONSTYPE (#1 (RType.unbox mu)) of
                                    SOME (tn,_,_,_) => tn
                                  | NONE => die "SWITCH_C. expecting type name")
                             | _ => die "SWITCH_C. expecting single mu"
-                 val () = case (selections, TyName.unboxity tn) of
+                 val () = case (selections, TyName.boxity tn) of
                               (nil,_) => ()
-                            | (_, TyName.UNBOXED_SINGLE) =>
-                              die ("expecting empty switches on singular unboxed types - "
+                            | (_, TyName.SINGLE _) =>
+                              die ("expecting empty switches on single-constructor datatypes - "
                                    ^ (case opt of SOME _ => "SOME" | _ => "NONE"))
                             | _ => ()
                  fun tag con =
@@ -1986,6 +1995,8 @@ struct
                           (con,ENUM i)
                     | CE.UB_NULLARY i => (con,UNBOXED(4*i+3))
                     | CE.UB_UNARY i => (con,UNBOXED i)
+                    | CE.UBH_NULLARY i => (con,UNBOXED_HIGH i)
+                    | CE.UBH_UNARY i => (con,UNBOXED_HIGH i)
                     | CE.B_NULLARY i => (con,BOXED(Word32.toInt (BI.tag_con0(false,i))))
                     | CE.B_UNARY i => (con,BOXED(Word32.toInt (BI.tag_con1(false,i)))))
 
@@ -2199,7 +2210,7 @@ struct
            | MulExp.EQUAL({mu_of_arg1,mu_of_arg2},tr1,tr2) =>
                let
                  val tau = case tr1 of
-                               MulExp.TR(_,RegionExp.Mus[mu],_,_) => #1(RType.unbox mu)
+                               MulExp.TR(_,RE.Mus[mu],_,_) => #1(RType.unbox mu)
                              | _ => die "EQUAL.metaType not Mus."
 
                  val (ce1,ce2,ses) =
@@ -2327,7 +2338,7 @@ struct
                       let val name = implode rest
                           fun mu_trs tr =
                               case tr of
-                                  MulExp.TR(_,RegionExp.Mus[mu],_,_) => mu
+                                  MulExp.TR(_,RE.Mus[mu],_,_) => mu
                                 | _ => die "CCALL_AUTO.ty"
                           fun fmu mu : foreign_type =
                               let val (ty,_) = RType.unbox mu
@@ -2576,6 +2587,8 @@ struct
           CCE.ENUM i => ENUM i
         | CCE.UB_NULLARY i => UNBOXED i
         | CCE.UB_UNARY i => UNBOXED i
+        | CCE.UBH_NULLARY i => UNBOXED_HIGH i
+        | CCE.UBH_UNARY i => UNBOXED_HIGH i
         | CCE.B_NULLARY i => BOXED i
         | CCE.B_UNARY i => BOXED i
   end

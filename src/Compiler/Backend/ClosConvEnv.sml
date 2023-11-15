@@ -26,6 +26,8 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
         ENUM of int
       | UB_NULLARY of int
       | UB_UNARY of int
+      | UBH_NULLARY of int   (* high-bits *)
+      | UBH_UNARY of int     (* high-bits *)
       | B_NULLARY of int
       | B_UNARY of int
 
@@ -66,15 +68,20 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 		ENUM _ => 0
 	      | UB_NULLARY _ => 1
 	      | UB_UNARY _ => 2
-	      | B_NULLARY _ => 3
-	      | B_UNARY _ => 4
+	      | UBH_NULLARY _ => 3
+	      | UBH_UNARY _ => 4
+	      | B_NULLARY _ => 5
+	      | B_UNARY _ => 6
 	    fun fun_ENUM _ = Pickle.con1 ENUM (fn ENUM a => a | _ => die "pu_con_kind.ENUM") Pickle.int
 	    fun fun_UB_NULLARY _ = Pickle.con1 UB_NULLARY (fn UB_NULLARY a => a | _ => die "pu_con_kind.UB_NULLARY") Pickle.int
 	    fun fun_UB_UNARY _ = Pickle.con1 UB_UNARY (fn UB_UNARY a => a | _ => die "pu_con_kind.UB_UNARY") Pickle.int
+	    fun fun_UBH_NULLARY _ = Pickle.con1 UBH_NULLARY (fn UBH_NULLARY a => a | _ => die "pu_con_kind.UBH_NULLARY") Pickle.int
+	    fun fun_UBH_UNARY _ = Pickle.con1 UBH_UNARY (fn UBH_UNARY a => a | _ => die "pu_con_kind.UBH_UNARY") Pickle.int
 	    fun fun_B_NULLARY _ = Pickle.con1 B_NULLARY (fn B_NULLARY a => a | _ => die "pu_con_kind.B_NULLARY") Pickle.int
 	    fun fun_B_UNARY _ = Pickle.con1 B_UNARY(fn B_UNARY a => a | _ => die "pu_con_kind.B_UNARY") Pickle.int
 	in Pickle.dataGen("pu_con_kind",toInt,
 			  [fun_ENUM,fun_UB_NULLARY,fun_UB_UNARY,
+                           fun_UBH_NULLARY,fun_UBH_UNARY,
 			   fun_B_NULLARY,fun_B_UNARY])
 	end
 
@@ -389,8 +396,10 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
    and layout_con_kind =
       fn ENUM i => PP.LEAF ("enum con: " ^ Int.toString i)
        | UB_NULLARY i => PP.LEAF ("unboxed nullary con: " ^ Int.toString i)
-       | B_NULLARY i => PP.LEAF ("boxed nullary con: " ^ Int.toString i)
        | UB_UNARY i => PP.LEAF ("unboxed unary con: " ^ Int.toString i)
+       | UBH_NULLARY i => PP.LEAF ("unboxed-high nullary con: " ^ Int.toString i)
+       | UBH_UNARY i => PP.LEAF ("unboxed-high unary con: " ^ Int.toString i)
+       | B_NULLARY i => PP.LEAF ("boxed nullary con: " ^ Int.toString i)
        | B_UNARY i => PP.LEAF ("boxed unary con: " ^ Int.toString i)
 
     and layout_access_type =

@@ -53,18 +53,19 @@ struct
 
   type mu = Type
 
+  (* well-formedness *)
   fun wf_mu mu =
       case mu of
           TYVAR _ => true
-        | CONSTYPE (tyname,mus,rhos,effs) =>
-          TyName.unboxed tyname andalso List.all wf_mu mus
+        | CONSTYPE (tn,mus,rhos,effs) =>
+          TyName.is_unboxed tn andalso List.all wf_mu mus
         | RECORD nil => true
         | RECORD _ => false
         | FUN _ => false
         | BOX(RECORD mus, _) => length mus > 0 andalso List.all wf_mu mus
         | BOX(FUN(mus,_,mus'),_) => List.all wf_mu mus andalso List.all wf_mu mus'
-        | BOX(CONSTYPE (tyname,mus,rhos,effs),_) =>
-          not(TyName.unboxed tyname) andalso List.all wf_mu mus
+        | BOX(CONSTYPE (tn,mus,rhos,effs),_) =>
+          not(TyName.is_unboxed tn) andalso List.all wf_mu mus
         | BOX(TYVAR _, _) => false
         | BOX(BOX _,_) => false
 
@@ -110,7 +111,7 @@ struct
        collection. *)
 
     fun runtype (CONSTYPE(tn, _, _, _)) =
-        if TyName.unboxed tn then NONE
+        if TyName.is_unboxed tn then NONE
         else if eq(tn, tyName_REF) then SOME E.REF_RT
         else if eq(tn, tyName_ARRAY) orelse eq(tn, tyName_VECTOR) then SOME E.ARRAY_RT
         else if eq(tn, tyName_STRING) orelse eq(tn, tyName_CHARARRAY) then SOME E.STRING_RT
@@ -247,7 +248,7 @@ struct
                           case rvsopt of
                               NONE => (NONE, NONE)
                             | SOME rvs =>
-                              if TyName.unboxed tyname then (NONE, rvsopt)
+                              if TyName.is_unboxed tyname then (NONE, rvsopt)
                               else case rvs of
                                        rv::rvs => (SOME rv,SOME rvs)
                                      | _ => raise Fail "boxed type annotated with empty sequence of regions"
@@ -263,7 +264,7 @@ struct
                               (ListPair.zipEq (rhos_runtypes, map SOME rvs)
                                handle _ =>
                                       let val (rvs_n, expected) =
-                                              if TyName.unboxed tyname then
+                                              if TyName.is_unboxed tyname then
                                                 (length rvs, length rhos_runtypes)
                                               else (1+length rvs,1+length rhos_runtypes)
                                           val msg =
@@ -1280,7 +1281,7 @@ struct
 
   (* Whether word32 and int32 (and word64 and int64) types are boxed
    is determined dynamically in SpreadExpression on the basis of the
-   function TyName.unboxed(tn), which depends on the flag
+   function TyName.is_unboxed(tn), which depends on the flag
    tag_values. At the stage of region inference, integer and word
    types are resolved to be either word8, word31, word32, word63,
    word64, int31, int32, int63, or int64. The default integer type is
@@ -1316,7 +1317,7 @@ struct
   fun unboxed t =
     case t
       of RECORD[] => true
-       | CONSTYPE(tn,_,_,_) => TyName.unboxed tn
+       | CONSTYPE(tn,_,_,_) => TyName.is_unboxed tn
        | _ => false
 
   (*the following two functions are used only when spreading ccalls (in
@@ -1333,37 +1334,37 @@ struct
    a ccall; see comment in MUL_EXP.*)
 
   local
-      fun size_of_tyname tyname =
-          if TyName.unboxed tyname then SOME 0
-          else if TyName.eq (tyname, TyName.tyName_REAL) then
+      fun size_of_tyname tn =
+          if TyName.is_unboxed tn then SOME 0
+          else if TyName.eq (tn, TyName.tyName_REAL) then
             SOME (RegConst.size_of_real ())
-          else if (TyName.eq (tyname, TyName.tyName_WORD32)
-                   orelse TyName.eq (tyname, TyName.tyName_INT32)
-                   orelse TyName.eq (tyname, TyName.tyName_INT64)
-                   orelse TyName.eq (tyname, TyName.tyName_WORD64)) then
-            (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
+          else if (TyName.eq (tn, TyName.tyName_WORD32)
+                   orelse TyName.eq (tn, TyName.tyName_INT32)
+                   orelse TyName.eq (tn, TyName.tyName_INT64)
+                   orelse TyName.eq (tn, TyName.tyName_WORD64)) then
+            (* boxed because RegConst.unboxed_tyname(tn) returned false! *)
             SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
-          else if (TyName.eq (tyname, TyName.tyName_STRING)
-                   orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
-                   orelse TyName.eq (tyname, TyName.tyName_ARRAY)
-                   orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
+          else if (TyName.eq (tn, TyName.tyName_STRING)
+                   orelse TyName.eq (tn, TyName.tyName_CHARARRAY)
+                   orelse TyName.eq (tn, TyName.tyName_ARRAY)
+                   orelse TyName.eq (tn, TyName.tyName_VECTOR)) then NONE
           else die ("S (CCALL ...): \nI am sorry, but c functions returning "
-                    ^ TyName.pr_TyName tyname
+                    ^ TyName.pr_TyName tn
                     ^ " are not supported yet.\n")
 
       fun c_function_effects1 {below:bool} (tau_schema,tau) : (place * int option) list =
           (* tau: result type instance; tau_schema: result type schema *)
           case (tau_schema, tau) of
               (TYVAR _, _) => []
-            | (CONSTYPE (_, mus_schema, _, _), CONSTYPE (tyname, mus, rhos, epss)) =>
-              if TyName.eq (tyname, TyName.tyName_LIST) then
+            | (CONSTYPE (_, mus_schema, _, _), CONSTYPE (tn, mus, rhos, epss)) =>
+              if TyName.eq (tn, TyName.tyName_LIST) then
                 (case (mus_schema, mus, rhos) of
                      ([mu1_schema], [mu1], [rho1]) => (* rho1 is for auxiliary pairs *)
                      (rho1, NONE) :: c_function_effects1 {below=true} (mu1_schema,mu1)
                    | _ => die "c_function_effects1: strange list type")
               else []
-            | (BOX(CONSTYPE (_, mus_schema, _, _),_), BOX(CONSTYPE (tyname, mus, rhos, epss),rho)) =>
-              [(rho, if below then NONE else size_of_tyname tyname)]
+            | (BOX(CONSTYPE (_, mus_schema, _, _),_), BOX(CONSTYPE (tn, mus, rhos, epss),rho)) =>
+              [(rho, if below then NONE else size_of_tyname tn)]
             | (RECORD nil, RECORD nil) => [] (*unit is not allocated*)
             | (BOX(RECORD mus_schema,_), BOX(RECORD mus,rho)) =>
               (rho, if below then NONE else SOME (RegConst.size_of_record mus))

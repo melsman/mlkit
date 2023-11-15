@@ -80,7 +80,7 @@ structure Env = struct
          | unboxable [(c1,SOME _),(c0,NONE)] = SOME(c1,c0)
          | unboxable _ = NONE
        fun fromDb (tvs,t,cs) =
-             if TyName.unboxed t then
+             if TyName.is_unboxed t then
                if all_nullary cs then
                  onAll ENUM cs
                else

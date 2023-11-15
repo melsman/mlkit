@@ -1,10 +1,10 @@
 (* main.sml *)
 
-structure Main = 
+structure Main =
   struct
     val name = "Logic"
 
-    exception Done 
+    exception Done
 
     fun testit strm = Data.exists(fn Z => Data.solution2 Z (fn () => raise Done))
 	  handle Done => TextIO.output(strm, "yes\n")

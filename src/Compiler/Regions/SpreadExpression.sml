@@ -379,7 +379,7 @@ struct
                            end)
                 | E.CONStype(ts,tn,rvsopt) =>
                   let val (ty,rvsopt,B) =
-                          if TyName.unboxed tn then
+                          if TyName.is_unboxed tn then
                             (mu,rvsopt,B)
                           else (case R.unBOX mu of
                                     NONE => die "match_ty_regvars: expecting boxed mu for boxed type constructor"

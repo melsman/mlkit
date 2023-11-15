@@ -24,6 +24,9 @@
 #include "Runtime.h"
 #include "GC.h"
 
+//#define DEBUG_GC
+//#define CHECK_GC
+
 size_t time_to_gc = 0;          // set to 1 by alloc if GC should occur at next
                                 //   function invocation
 size_t *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
@@ -150,6 +153,14 @@ print(uintptr_t *value)
     val = (size_t)value;
   }
   else {
+
+#ifdef CHECK_GC
+    if ( ptr_hitag_get((uintptr_t)value) )
+      {
+	die ("print - expecting no hitag!");
+      }
+#endif
+
     switch (val_tag_kind_const(value)) {
     case TAG_RECORD:       strcpy(str,"TAG_RECORD"); break;
     case TAG_RECORD_CONST: strcpy(str,"TAG_RECORD_CONST"); break;
@@ -220,6 +231,12 @@ init_scan_stack()
 inline static void
 push_scan_stack(uintptr_t *ptr)
 {
+#ifdef CHECK_GC
+  if ( ptr_hitag_get((uintptr_t)ptr) )
+    {
+      die ("push_scan_stack - expecting no hitag!");
+    }
+#endif
   scan_stack[scan_sp] = ptr;
   scan_sp++;
   if ( scan_sp >= size_scan_stack )
@@ -279,7 +296,14 @@ push_scan_container(uintptr_t *ptr)
   //  printf("push_scan_container(%p) - size_scan_container=%d; container_alloc=%d; container_scan=%d\n",
   //         ptr, size_scan_container, container_alloc, container_scan);
   //print(ptr);
-  //printf("\n");
+
+#ifdef CHECK_GC
+  if ( ptr_hitag_get((uintptr_t)ptr) )
+    {
+      die ("push_scan_container - expecting no hitag!");
+    }
+#endif
+
   scan_container[container_alloc] = ptr;
   container_alloc++;
   if (container_alloc >= size_scan_container)
@@ -495,6 +519,14 @@ allocated_bytes_in_gen(Gen *gen)
     #endif
     ////printf("in while; s = %p, gen->a = %p\n",s,gen->a);
     ////printf("in while; tag: %lx\n",val_tag_kind_const(s));
+
+#ifdef CHECK_GC
+    if ( ptr_hitag_get((uintptr_t)s) )
+      {
+	die ("allocated_bytes_in_gen: not expecting hitag!");
+      }
+#endif
+
     size_t sz = 0;
     switch (val_tag_kind(s)) {
     case TAG_STRING: {
@@ -729,6 +761,13 @@ chk_no_tospacebits_regions(Context ctx)
 inline static ssize_t
 get_size_obj(uintptr_t *obj_ptr)
 {
+#ifdef CHECK_GC
+  if ( ptr_hitag_get((uintptr_t)obj_ptr) )
+    {
+      die ("get_size_obj: not expecting hitag!");
+    }
+#endif
+
   switch (val_tag_kind_const(obj_ptr)) {
   case TAG_RECORD: return get_record_size(*obj_ptr) + 1;
   case TAG_CON0:   return 1;
@@ -861,7 +900,14 @@ points_into_tospace (uintptr_t x)
 
   Rp *rp;
   if ( is_integer(x) )
-    return 0;
+    {
+      return 0;
+    }
+  if ( ptr_hitag_get(x) )
+    {
+      // it is not a fwd-pointer, but it may be a value in from-space!
+      return 0;
+    }
   p = (uintptr_t *)x;
   if ( points_into_dataspace(p) ) {
     #ifdef CHECK_GC
@@ -948,17 +994,24 @@ target_gen(Gen *gen, Rp *rp, uintptr_t *obj_ptr)
 static uintptr_t
 evacuate(uintptr_t obj)
 {
-  Rp* rp;
-  Gen* gen;
   Gen* copy_to_gen;
+  uintptr_t *new_obj_ptr;
 
-  uintptr_t *obj_ptr, *new_obj_ptr;
   if (is_integer(obj))
     {
       return obj;                         // not subject to GC
     }
 
-  obj_ptr = (uintptr_t *)obj;             // object is a pointer
+  uint16_t hitag = (uint16_t)ptr_hitag_get(obj);
+
+  if ( hitag )
+    {
+      // printf("hitag\n");
+      obj = evacuate(ptr_hitag_clear(obj));
+      return ptr_hitag_set(obj,hitag);
+    }
+
+  uintptr_t *obj_ptr = (uintptr_t *)obj;             // object is a pointer
 
   if ( points_into_dataspace(obj_ptr) )
     {
@@ -985,7 +1038,8 @@ evacuate(uintptr_t obj)
   // descriptor is stored with large object bit set to 1 (large-object
   // bit is second least significant bit)
 
-  rp = get_rp_header(obj_ptr);
+  Rp* rp = get_rp_header(obj_ptr);
+  // printf("in evacuate - rp = x%016lx\n", (uintptr_t)rp);
 
   if ( is_lobj_bit(rp->n) )
     {                                     // object immovable
@@ -1002,7 +1056,7 @@ evacuate(uintptr_t obj)
     }
 
   // Object is in an infinite region
-  gen = rp->gen;
+  Gen* gen = rp->gen;
 #ifdef ENABLE_GEN_GC
   if (is_minor_p && is_gen_1(*gen))  // old generation
     {
@@ -1010,6 +1064,7 @@ evacuate(uintptr_t obj)
       return obj;
     }
 #endif // ENABLE_GEN_GC
+  // printf("in evacuate - gen = x%016lx\n", (uintptr_t)gen);
   switch ( rtype(*gen) ) {
   case RTYPE_PAIR:
     {
@@ -1024,7 +1079,7 @@ evacuate(uintptr_t obj)
     }
   case RTYPE_REF:
     {
-      // printf("RTYPE_REF\n");
+      // printf("RTYPE_REF, p=x%016lx\n", (uintptr_t)(*(obj_ptr+1)));
       // ToDo: GenGC det ser ud til at points_into_tospace checker for
       // mere end nødvendigt er - vi ved at det er i en inf-region
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
@@ -1095,15 +1150,22 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
   // annotated as immovable. We therefore use val_tag_kind and not
   // val_tag_kind_const
 
+  if ( ptr_hitag_get((uintptr_t)s) )
+    {
+      die ("scan_tagged_value: not expecting hitag!");
+    }
+
   long sz;                                 // adjust s to point after the string
   switch ( val_tag_kind(s) ) {
   case TAG_STRING: {                        // Do not GC the content of a string but
+    // printf ("scan - string\n");
     String str = (String)s;
     sz = get_string_size(str->size) + 1 + (sizeof(void *));    // 1 for zero, sizeof(void *) for tag
     sz = sz%(sizeof(void *)) ? 1+sz/(sizeof(void *)) : (sz/(sizeof(void *)));
     return s + sz;
   }
   case TAG_TABLE: {
+    // printf ("scan - table\n");
     Table table = (Table)s;
     sz = get_table_size(table->size);
     s++;
@@ -1116,24 +1178,31 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
     return s;
   }
   case TAG_RECORD: {
+    // printf ("scan - record\n");
     size_t remaining, num_to_skip;
     sz = get_record_size(*s);          // Size excludes descriptor
+    // printf ("sz=%ld\n",sz);
     num_to_skip = get_record_skip(*s);
+    // printf ("num_to_skip=%ld, *s=%016lx\n",num_to_skip,(uintptr_t)*s);
     s = s + 1 + num_to_skip;
     remaining = sz - num_to_skip;
     while ( remaining )
       {
+	// printf ("evacuate(%016lx)\n",(uintptr_t)*s);
 	*s = evacuate(*s);
+	// printf ("result = %016lx\n",(uintptr_t)*s);
 	s++;
 	remaining--;
       }
     return s;
   }
   case TAG_CON0: {     // constant
+    // printf ("scan - con0\n");
     return s+1;
   }
   case TAG_CON1:
   case TAG_REF: {
+    // printf ("scan - con1,ref\n");
     *(s+1) = evacuate(*(s+1));
     return s+2;
   }
@@ -1149,33 +1218,29 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
 static void
 do_scan_stack()
 {
-  Rp *rp;
-  Gen *gen;
-
   // Run through scan stack and container
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
 
     // Run through container - FINITE REGIONS and LARGE OBJECTS
     while (!(is_scan_container_empty()))
       {
-	uintptr_t* tmp;
-	tmp = pop_scan_container();
-	//printf("pop_scan_container: %p\n", tmp);
+	uintptr_t* tmp = pop_scan_container();
+	// printf("pop_scan_container: %p\n", tmp);
         scan_tagged_value(tmp);
       }
 
     while (!(is_scan_stack_empty()))
       {
-	uintptr_t *s;   // scan pointer
-	s = pop_scan_stack();
-	//printf("pop_scan_stack: %p\n", s);
+	uintptr_t *s = pop_scan_stack();   // scan pointer
+	// printf("pop_scan_stack: %p\n", s);
 	// Get Region Page and Generation
-	rp = get_rp_header(s);
-	gen = rp->gen;
+	Rp *rp = get_rp_header(s);
+	Gen *gen = rp->gen;
 	switch ( rtype(*gen) )
 	  {
 	  case RTYPE_PAIR:
 	    {
+	      // printf ("pair\n");
 	      while ( s+1 != gen->a )
 		{
 		  #if PROFILING
@@ -1189,6 +1254,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_REF:
 	    {
+	      // printf ("ref\n");
 	      while ( s+1 != gen->a )
 		{
                   #if PROFILING
@@ -1201,6 +1267,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_TRIPLE:
 	    {
+	      // printf ("triple\n");
 	      while ( s+1 != gen->a )
 		{
                   #if PROFILING
@@ -1219,15 +1286,19 @@ do_scan_stack()
 	    }
 	  default:
 	    {
+	      // printf ("other\n");
 	      while ( s != gen->a )
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
                   #endif
 		  // printf("calling scan_tagged_value %p ;gen->a=%p; gen=%d\n", s,gen->a,is_gen_1(*gen));
+		  // printf ("scan - start\n");
 		  s = scan_tagged_value(s);
+		  // printf ("scan - done\n");
 		  s = next_value(s, gen->a);
 		}
+	      // printf ("other - done\n");
 	      break;
 	    }
 	  } // switch

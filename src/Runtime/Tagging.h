@@ -7,14 +7,14 @@
 #include "Flags.h"
 #include "Region.h"
 
-#define tag_kind(x)                 ((x) & 0x1F)         /* Least 5 significant bits    */
-#define val_tag(x)                  (*(uintptr_t *)x)
-#define val_tag_kind(x)             ((*(uintptr_t *)x) & 0x1F) /* Least 5 significant bits    */
-#define is_const(x)                 (((unsigned long)x) & 0x20)  /* Bit 6 is the constant bit   */
-#define set_tag_const(x)            ((x) | 0x20)         /* Set bit 6, the constant bit */
-#define clear_tag_const(x)          ((x) & (UINTPTR_MAX ^ 0x20))   /* Clear bit 6                 */
-// #define clear_tag_const(x)          ((x) & 0xFFFFFFDF)   /* Clear bit 6                 */
-#define val_tag_kind_const(x)       ((*(uintptr_t *)x) & 0x3F) /* Least 6 significant bits    */
+#define tag_kind(x)             ((x) & 0x1F)                 // Least 5 significant bits
+#define val_tag(x)              (*(uintptr_t *)x)
+#define val_tag_kind(x)         ((*(uintptr_t *)x) & 0x1F)   // Least 5 significant bits
+#define is_const(x)             (((unsigned long)x) & 0x20)  // Bit 6 is the constant bit
+#define set_tag_const(x)        ((x) | 0x20)                 // Set bit 6, the constant bit
+#define clear_tag_const(x)      ((x) & (UINTPTR_MAX ^ 0x20)) // Clear bit 6
+// #define clear_tag_const(x)      ((x) & 0xFFFFFFDF)        // Clear bit 6
+#define val_tag_kind_const(x)   ((*(uintptr_t *)x) & 0x3F)   // Least 6 significant bits
 
 #define gen_record_tag(s,o,i,t) (((((s)<<19) | ((o)<<6)) | ((i)<<5)) | (t))
 #define gen_string_tag(s,i,t)   ((((s)<<6) | ((i)<<5)) | (t))
@@ -271,5 +271,12 @@
 #define REG_POLY_FUN_HDR(name, ...)  name(__VA_ARGS__)
 #define REG_POLY_CALL(name, ...) name(__VA_ARGS__)
 #endif
+
+
+// High-bit tagging of datatype constructors
+
+#define ptr_hitag_set(ptr,tag)     ((ptr) | (((uint64_t)(tag)) << 48))
+#define ptr_hitag_clear(ptr)       ((ptr) & 0xFFFFFFFFFFFF)
+#define ptr_hitag_get(ptr)         ((ptr) >> 48)
 
 #endif /*__TAGGING_H*/

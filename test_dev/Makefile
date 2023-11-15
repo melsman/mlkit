@@ -1,14 +1,17 @@
-TESTFILES=f64_1.sml f64_2.sml f64_3.sml f64_4.sml \
-  scratchmem.sml int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
-  exception1.sml exception3.sml exception5.sml f1.sml f2.sml fib.sml \
-  fib0.sml global_region.sml hanoi.sml hello.sml if.sml immedString.sml l1.sml list_nh.sml \
-  ref-int.sml ref.sml string1.sml test_dattyp.sml foldl.sml real_cmp.sml real0.sml \
-  real_negabs.sml real1.sml real2.sml testdyn1-nobasis.sml ref-real.sml \
-  kitkbjul9_no_basislib.sml fft_no_basislib.sml kitlife35u_no_basislib.sml \
-  kitqsort_no_basislib.sml kitsimple_no_basislib.sml kittmergesort_no_basislib.sml \
-  kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml professor_game.sml \
-  ccall.sml auto.sml Initial.sml string_sub.sml \
-  int_overflow.sml sign.sml word_list.sml build.sml reg.sml jt.sml single.sml
+TESTFILES=f64_1.sml f64_2.sml f64_3.sml f64_4.sml scratchmem.sml	\
+  int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml		\
+  exn3.sml exception1.sml exception3.sml exception5.sml f1.sml f2.sml	\
+  fib.sml fib0.sml global_region.sml hanoi.sml hello.sml if.sml		\
+  immedString.sml l1.sml list_nh.sml ref-int.sml ref.sml string1.sml	\
+  test_dattyp.sml foldl.sml real_cmp.sml real0.sml real_negabs.sml	\
+  real1.sml real2.sml testdyn1-nobasis.sml ref-real.sml			\
+  kitkbjul9_no_basislib.sml fft_no_basislib.sml				\
+  kitlife35u_no_basislib.sml kitqsort_no_basislib.sml			\
+  kitsimple_no_basislib.sml kittmergesort_no_basislib.sml		\
+  kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml		\
+  professor_game.sml ccall.sml auto.sml Initial.sml string_sub.sml	\
+  int_overflow.sml sign.sml word_list.sml build.sml reg.sml jt.sml	\
+  single.sml expr.sml
 
 #shra.sml
 
@@ -43,7 +46,7 @@ RI_FLAGS=$(FLAGS) -no_gc
 PROF_FLAGS=$(RI_FLAGS) -prof
 GC_PROF_FLAGS=$(GC_FLAGS) -prof
 
-MLKIT=../bin/mlkit
+MLKIT=../bin/mlkit --report_boxities
 
 .PHONY: tst
 tst:

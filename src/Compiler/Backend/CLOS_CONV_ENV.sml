@@ -14,6 +14,8 @@ signature CLOS_CONV_ENV =
         ENUM of int
       | UB_NULLARY of int
       | UB_UNARY of int
+      | UBH_NULLARY of int   (* high-bits *)
+      | UBH_UNARY of int     (* high-bits *)
       | B_NULLARY of int
       | B_UNARY of int
 

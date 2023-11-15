@@ -18,7 +18,7 @@ sig
   type mu = Type
   type lvar
 
-  val wf_mu      : Type -> bool
+  val wf_mu      : Type -> bool  (* well-formed *)
 
   val mkTYVAR    : tyvar -> mu
   val mkCONSTYPE : tyname * mu list * place list * arroweffect list -> Type

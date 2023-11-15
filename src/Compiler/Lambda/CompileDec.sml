@@ -25,6 +25,20 @@ structure CompileDec: COMPILE_DEC =
     val tag_values = Flags.is_on0 "tag_values"
     val values_64bit = Flags.is_on0 "values_64bit"
 
+    val report_boxities_p =
+        Flags.add_bool_entry
+            {long="report_boxities", short=NONE, neg=false,
+             menu=["Debug","report boxities"], item=ref false,
+             desc="Report for every datatype declaration the inferred boxity\n\
+                  \(representation) of its value constructors."}
+
+    val high_pointer_tagging_p =
+        Flags.add_bool_entry
+            {long="high_pointer_tagging", short=NONE, neg=true,
+             menu=["Control","high-pointer tagging"], item=ref true,
+             desc="When enabled, the 16 most-significant bits in pointers\n\
+                  \may be used for tagging."}
+
     fun chat s = if !Flags.chat then print (s ^ "\n")
                  else ()
 
@@ -175,67 +189,113 @@ structure CompileDec: COMPILE_DEC =
 
     local
 
-      (* Return true if the type is potentially unboxed *)
-      fun unboxed_ty tns ty =
-        case ty
-          of CONStype(_,tn,_) => TyName.unboxed tn orelse List.exists (fn t => TyName.eq(t,tn)) tns
-           | TYVARtype _ => true
-           | RECORDtype ([],_) => true (*unit*)
-           | RECORDtype _ => false
-           | ARROWtype _ => false
+      fun boxity_ty G ty =
+          case ty of
+              ARROWtype _ => TyName.BOXED
+            | RECORDtype ([], _) => TyName.UNB_LOW
+            | RECORDtype _ => TyName.BOXED
+            | TYVARtype _ => TyName.UNB_ALL  (* assume the worst *)
+            | CONStype(_,tn,_) =>
+              case G tn of
+                  SOME b => b
+                | NONE => TyName.boxity tn
     in
 
-      (* Either all datatypes are unboxed or no datatypes in datbinds are unboxed; restriction caused by
-       * Spreading of Datatype bindings in file Regions/SpreadDataType.sml *)
+      (* Either all datatypes are unboxed or no datatypes in datbinds
+         are unboxed. This restriction is caused by Spreading of Datatype
+         bindings in file Regions/SpreadDataType.sml.
 
-      fun unbox_datbinds (datbinds : datbind_list) : unit =
-        let
-          val bucket : {tn:TyName,single:bool} list ref = ref nil
-          fun unbox_tyname (a as {tn,single}) =
-              if List.exists (fn {tn=t,...} => TyName.eq(t,tn)) (!bucket) then ()
-              else bucket := (a :: (!bucket))
-          fun unbox_tn_enumeration (_,tn,cns) =
-            let fun nullary (_, NONE) = true
-                  | nullary _ = false
-            in if List.all nullary cns then unbox_tyname {tn=tn,single=false}
-               else ()
-            end
-          fun unbox_tn_single (_,tn,[(_,SOME _)]) = unbox_tyname {tn=tn,single=true}
-            | unbox_tn_single _ = ()
+         First compute an optimistic bet that chooses optimally
+         unboxed representations for the introduced type names: type
+         names with only nullary constructors are ENUMs, type names
+         with a single unary constructor and no nullary constructors
+         are SINGLEs, type names with one unary constructor and one or
+         more nullary constructors are UNB_LOW, and other type names
+         are UNB_ALL. (We determine the argument to the SINGLEs by
+         analysing the argument type; argument list types will result
+         in UNB_LOW, a tuple will result in BOXED, a word63 type will
+         result in UNB_ALL, and for the type names that are analysed,
+         we assume UNB_ALL).
 
-          val max_unary_unboxed = 1
-          fun unbox_tn_combi (_,tn,cns) =
-            let (* under the assumption that tns are unboxed, which
-                 * of the tns can we represent unboxed? *)
-                fun one_datbind tns n tn cns =
-                    case cns of
-                        nil => unbox_tyname {tn=tn,single=false}
-                      | (_,NONE)::cns => one_datbind tns n tn cns   (*any number of nullary constructors*)
-                      | (_,SOME ty)::cns =>
-                        if not(unboxed_ty tns ty)
-                           andalso n < max_unary_unboxed then one_datbind tns (n+1) tn cns
-                        else ()
-            in one_datbind (map #2 datbinds) 0 tn cns
+         Then, under those assumptions we check if the boxing rules
+         are satisfied, in which case, we assign the assumed boxity to
+         the type names (using TyName.setBoxity). Otherwise, we assign
+         BOXED to all the type names (again using TyName.setBoxity).
+
+       *)
+
+    fun nullaries_unaries cs =
+        List.foldl (fn ((_,NONE), (n,u)) => (n+1,u)
+                     | ((_,SOME _), (n,u)) => (n,u+1)) (0,0) cs
+
+    fun optimistic tns (_,tn,cs) : TyName * TyName.boxity =
+        case cs of
+            [(_,SOME ty)] =>
+            let fun G tn =
+                    if List.exists (fn tn' => TyName.eq(tn,tn')) tns
+                    then SOME TyName.UNB_ALL
+                    else NONE
+            in (tn, TyName.SINGLE (boxity_ty G ty))
             end
-        in
-           (* Start by unboxing all datatypes consisting
-            * of one unary constructor and all datatypes
-            * consisting of only nullary constructors
-            * (enumerations) *)
-          app unbox_tn_single datbinds (* to make this safe, we must ensure that decon, for single
-                                        * datbinds do not nullify the first two bits... *)
-        ; app unbox_tn_enumeration datbinds
-        ; app unbox_tn_combi datbinds
-        ; (if length (!bucket) = length datbinds then
-             app (fn {tn,single} =>
-                     TyName.setUnboxity(tn,
-                                        if single
-                                        then ( (*print ("NOTE (CompileDec): UNBOXING single datbind for "
-                                                      ^ TyName.pr_TyName tn ^ "\n")
-                                             ; *) TyName.UNBOXED_SINGLE)
-                                        else TyName.UNBOXED)
-                 ) (!bucket)
-           else ())
+          | _ =>
+            let val (n,u) = nullaries_unaries cs
+            in if u = 0 then (tn, TyName.ENUM)
+               else if u = 1 then (tn, TyName.UNB_LOW)
+               else (tn, TyName.UNB_ALL)
+            end
+
+    fun space_for_high_tags G argty : bool =
+        high_pointer_tagging_p() andalso
+        let fun space_for_high (b:TyName.boxity) : bool =
+                case b of
+                    TyName.UNB_LOW => true
+                  | TyName.UNB_ALL => false
+                  | TyName.ENUM => true
+                  | TyName.BOXED => true
+                  | TyName.SINGLE b => space_for_high b
+        in space_for_high (boxity_ty G argty)
+        end
+
+    fun check (G:TyName -> TyName.boxity option) (_,tn,cs) : bool =
+        case cs of
+            [(_,SOME ty)] => G tn = SOME(TyName.SINGLE(boxity_ty G ty))
+          | _ =>
+            let val (n,u) = nullaries_unaries cs
+            in if u = 0 then G tn = SOME TyName.ENUM
+               else
+                 List.all (fn (_, NONE) => true
+                            | (_, SOME ty) =>
+                              case G tn of
+                                  SOME TyName.UNB_LOW =>
+                                  u = 1 andalso boxity_ty G ty = TyName.BOXED
+                                | SOME TyName.UNB_ALL =>
+                                  u <= 128 andalso space_for_high_tags G ty
+                                | _ => false (* tn cannot be represented unboxed in any way... *)
+                          ) cs
+            end
+
+    fun unbox_datbinds (datbinds : datbind_list) : unit =
+        let fun mkG assignment tn =
+                case List.find (fn (tn',_) => TyName.eq(tn,tn')) assignment of
+                    SOME (_,b) => SOME b
+                  | NONE => NONE
+            fun loop assignment datbinds =
+                let val G = mkG assignment
+                in if List.all (check G) datbinds then
+                     SOME assignment
+                   else NONE (* memo: maybe refined by raising some UNB_LOW to UNB_ALL *)
+                end
+            val tns = map #2 datbinds
+            val initial_assignment = map (optimistic tns) datbinds
+            val () = case loop initial_assignment datbinds of
+                         SOME assignment => List.app TyName.setBoxity assignment
+                       | NONE => List.app (fn tn => TyName.setBoxity(tn,TyName.BOXED)) tns
+        in if report_boxities_p () then
+             print ("*** Boxities: [" ^ String.concatWith ","
+                                                          (map (fn tn => TyName.pr_TyName tn ^ ":" ^
+                                                                         TyName.pr_boxity(TyName.boxity tn))
+                                                               tns) ^ "]\n")
+           else ()
         end
     end
 

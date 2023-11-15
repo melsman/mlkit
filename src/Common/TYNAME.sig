@@ -86,15 +86,18 @@ signature TYNAME =
     val tyName_FOREIGNPTR  : TyName
     val tyName_EXN         : TyName
 
-    datatype unboxity = UNBOXED | BOXED | UNBOXED_SINGLE
+    datatype boxity = SINGLE of boxity
+                    | UNB_LOW | UNB_ALL
+                    | ENUM | BOXED
 
-    val unboxity           : TyName -> unboxity
-    val setUnboxity        : TyName * unboxity -> unit  (* default is BOXED *)
-    val unboxed            : TyName -> bool
+    val pr_boxity          : boxity -> string
+    val boxity             : TyName -> boxity
+    val setBoxity          : TyName * boxity -> unit  (* default is BOXED *)
+    val is_unboxed         : TyName -> bool
     (* Returns true for type names that are implemented unboxed;
      * depends on whether tagging of integers is enabled. After calling
-     * setUnboxity(t,UNBOXED) or setUnboxity(t,UNBOXED_SINGLE),
-     * unboxed(t) returns true. *)
+     * setUnboxity(t,b) with b \in {ENUM,UNB_LOW,UNB_ALL,SINGLE *}
+     * is_unboxed(t) returns true. *)
 
     val tynamesPredefined  : TyName list
 
