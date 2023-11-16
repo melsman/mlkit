@@ -763,7 +763,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
-  | L.PRIM(L.SELECTprim i,[e]) =>
+  | L.PRIM(L.SELECTprim {index=i},[e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))
