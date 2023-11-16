@@ -87,7 +87,6 @@ test: $(RES_TESTFILES)
 	@echo "Tests succeeded:   `grep "OK" $(RES_TESTFILES) | wc -l` /`grep "of test" $(RES_TESTFILES) | wc -l`"
 	@echo "Test errors:       `grep "ERR" $(RES_TESTFILES) | wc -l` /`grep "of test" $(RES_TESTFILES) | wc -l`"
 	@echo "-------------------------------------"
-	cat time.html.out
 	@exit `grep "ERR" $(RES_TESTFILES) | wc -l`
 
 clean:
