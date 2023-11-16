@@ -387,6 +387,19 @@ struct
                            end
                          | LS.UNBOXED_HIGH 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
                          | LS.UNBOXED_HIGH _ =>
+                           let val (r, F) = resolve_arg_aty(con_aty,tmp_reg0,size_ff)
+                               val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                           in
+                             if r = reg_for_result then
+                               move_aty_into_reg(con_aty,reg_for_result,size_ff,
+                               I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
+                               I.andq(R tmp_reg0, R reg_for_result) :: C')
+                             else
+                               I.movabsq(I "0xFFFFFFFFFFFF", R reg_for_result) ::
+                               F(I.andq(R r, R reg_for_result) :: C')
+                           end
+(*
+                         | LS.UNBOXED_HIGH _ =>
                            let
                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                            in
@@ -394,6 +407,7 @@ struct
                              I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
                              I.andq(R tmp_reg0, R reg_for_result) :: C')
                            end
+*)
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
                     | LS.DEREF aty =>
