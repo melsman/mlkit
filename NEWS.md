@@ -1,5 +1,15 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.6 is released
+
+* mael 2023-11-16: Unboxed representation of datatypes using high bits
+  for tagging (PR #149). This optimisation allows for unboxing of many
+  types including whole language grammars, patricia trees (finite
+  maps), union-find data-structures, and more. It works well together
+  with unboxed datatypes that use the low bits for tagging, such as
+  lists. The flag --report_boxities may be used to inspect the
+  inferred representations (boxities) of declared datatypes.
+
 * mael 2023-11-04: Unboxed representation of single constructor
   datatypes, even when the constructor argument is represented
   unboxed (PR #142).
