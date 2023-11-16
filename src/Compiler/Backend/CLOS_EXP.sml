@@ -47,6 +47,7 @@ signature CLOS_EXP =
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
+    | UNBOXED_HIGH of int
     | BOXED of int
 
     type binder = place * phsize

@@ -239,11 +239,18 @@ local
   fun pp_crep (name:string, sch) =
       String.concat [name, ":", pp_TypeScheme sch]
 
+  fun pp_boxity b =
+      case b of
+          TyName.ENUM => " (u)"
+        | TyName.UNB_LOW => " (u)"
+        | TyName.UNB_ALL => " (ua)"
+        | TyName.SINGLE _ => " (u)"
+        | TyName.BOXED => " (b)"
+
   fun pp_def (tn, creps) =
       String.concat [
         TyName.pr_TyName_repl tn
-      , (if TyName.unboxed tn then " (u)"
-         else " (b)")
+      , pp_boxity (TyName.boxity tn)
       , " = ["
       , String.concatWith "," (map pp_crep creps)
       , "]; "

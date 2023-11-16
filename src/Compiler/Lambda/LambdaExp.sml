@@ -112,8 +112,8 @@ structure LambdaExp : LAMBDA_EXP =
       | DECONprim of {con : con, instances : 'Type list, lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim of regvar option
-      | SELECTprim of int
+      | RECORDprim of {regvar:regvar option}
+      | SELECTprim of {index:int}
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
@@ -125,7 +125,7 @@ structure LambdaExp : LAMBDA_EXP =
                       tyvars : tyvar list,
                       Type : 'Type}
       | BLOCKF64prim
-      | SCRATCHMEMprim of int                         (* bytes *)
+      | SCRATCHMEMprim of {sz:int}                    (* bytes *)
       | EXPORTprim of {name : string,
                        instance_arg : 'Type,
                        instance_res : 'Type}
@@ -539,9 +539,9 @@ structure LambdaExp : LAMBDA_EXP =
           PP.LEAF(pr_excon excon)
       | DEEXCONprim excon =>
           PP.LEAF("deexcon" ^ pr_excon excon)
-      | RECORDprim NONE => PP.LEAF("record")
-      | RECORDprim (SOME rv) => PP.LEAF("record(" ^ RegVar.pr rv ^ ")")
-      | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
+      | RECORDprim {regvar=NONE} => PP.LEAF("record")
+      | RECORDprim {regvar=SOME rv} => PP.LEAF("record(" ^ RegVar.pr rv ^ ")")
+      | SELECTprim {index=i} => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord")
       | DROPprim => PP.LEAF("DROP")
       | CCALLprim{name="__neg_int31",...} => PP.LEAF("~" )
@@ -660,7 +660,7 @@ structure LambdaExp : LAMBDA_EXP =
               if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
               else PP.LEAF ("ccall " ^ name)
       | BLOCKF64prim => PP.LEAF "blockf64"
-      | SCRATCHMEMprim n => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
+      | SCRATCHMEMprim {sz=n} => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
       | EXPORTprim {name, instance_arg, instance_res} =>
           if !Flags.print_types then
               PP.NODE {start="_export(" ^ name ^ " ", finish=")", indent=2,
@@ -1052,7 +1052,7 @@ structure LambdaExp : LAMBDA_EXP =
                   }
       | PRIM(prim,lambs) =>
          (case (prim,lambs) of
-           (RECORDprim opt,_) =>
+           (RECORDprim {regvar=opt},_) =>
            let val finish = case opt of
                                 NONE => ")"
                               | SOME rv => ")`" ^ RegVar.pr rv
@@ -1066,14 +1066,14 @@ structure LambdaExp : LAMBDA_EXP =
                       children=map (fn e => layoutLambdaExp(e,0)) lambs,
                       childsep=PP.RIGHT ","}
            end
-         | (SCRATCHMEMprim n,_) => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
+         | (SCRATCHMEMprim {sz=n},_) => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
          | (UB_RECORDprim,_) =>
               let val (s,f) = if !barify_p then ("(",")") else ("<",">")
               in PP.NODE{start=s,finish=f,indent=1,
                          children=(map (fn e => layoutLambdaExp(e,0)) lambs),
                          childsep=PP.RIGHT ","}
               end
-         | (SELECTprim i, [lamb]) =>
+         | (SELECTprim {index=i}, [lamb]) =>
               let val i = if !barify_p then i+1 else i
               in
                   PP.NODE{start="#" ^ Int.toString i ^ "(",finish=")",indent=1,
@@ -1571,10 +1571,11 @@ structure LambdaExp : LAMBDA_EXP =
                 Pickle.con1 DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
                 Excon.pu
             fun fun_RECORDprim _ =
-                Pickle.con1 RECORDprim (fn RECORDprim a => a | _ => die "pu_prim.RECORDprim")
+                Pickle.con1 (fn r => RECORDprim {regvar=r}) (fn RECORDprim {regvar=a} => a
+                                                              | _ => die "pu_prim.RECORDprim")
                 (Pickle.optionGen RegVar.pu)
             fun fun_SELECTprim _ =
-                Pickle.con1 SELECTprim (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim")
+                Pickle.con1 (fn i => SELECTprim {index=i}) (fn SELECTprim {index=a} => a | _ => die "pu_prim.SELECTprim")
                 Pickle.int
             val fun_UB_RECORDprim = Pickle.con0 UB_RECORDprim
             val fun_DROPprim = Pickle.con0 DROPprim
@@ -1610,7 +1611,7 @@ structure LambdaExp : LAMBDA_EXP =
                 (Pickle.convert(fn t => {instance=t},#instance) pu_Type)
             val fun_BLOCKF64prim = Pickle.con0 BLOCKF64prim
             fun fun_SCRATCHMEMprim _ =
-                Pickle.con1 SCRATCHMEMprim (fn SCRATCHMEMprim a => a | _ => die "pu_prim.SCRATCHMEMprim")
+                Pickle.con1 (fn n => SCRATCHMEMprim {sz=n}) (fn SCRATCHMEMprim {sz=a} => a | _ => die "pu_prim.SCRATCHMEMprim")
                 Pickle.int
         in Pickle.dataGen("LambdaExp.prim",toInt,[fun_CONprim,
                                                   fun_DECONprim,

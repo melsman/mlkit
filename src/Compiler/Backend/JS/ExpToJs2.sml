@@ -80,7 +80,7 @@ structure Env = struct
          | unboxable [(c1,SOME _),(c0,NONE)] = SOME(c1,c0)
          | unboxable _ = NONE
        fun fromDb (tvs,t,cs) =
-             if TyName.unboxed t then
+             if TyName.is_unboxed t then
                if all_nullary cs then
                  onAll ENUM cs
                else
@@ -763,7 +763,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
-  | L.PRIM(L.SELECTprim i,[e]) =>
+  | L.PRIM(L.SELECTprim {index=i},[e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))

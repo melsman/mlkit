@@ -633,7 +633,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
              in check_ts_no_f64 "RECORDprim" ts
               ; ts
              end
-           | SELECTprim i =>
+           | SELECTprim {index=i} =>
                         (case lexps
                            of [lexp] =>
                              (case type_e lexp

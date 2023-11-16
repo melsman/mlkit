@@ -220,8 +220,8 @@ structure EliminateEq : ELIMINATE_EQ =
       let val p = Lvars.newLvar()
       in FN {pat = [(p, RECORDtype ([tau, tau],NONE))],
              body = PRIM(EQUALprim {instance = RECORDtype([tau, tau],NONE)},
-                         [PRIM(SELECTprim 0, [lamb_var p]),
-                          PRIM(SELECTprim 1, [lamb_var p])])}
+                         [PRIM(SELECTprim {index=0}, [lamb_var p]),
+                          PRIM(SELECTprim {index=1}, [lamb_var p])])}
       end
 
     fun gen_type_eq env tau = (* may raise DONT_SUPPORT_EQ *)
@@ -269,12 +269,12 @@ structure EliminateEq : ELIMINATE_EQ =
         and gen_switch n p =
          (fn [] => lamb_true
            | [tau] => let val v = VAR {lvar=p, instances=[], regvars=[]}
-                          fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-                      in APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
+                          fun sel k = PRIM(SELECTprim {index=n}, [PRIM(SELECTprim {index=k}, [v])])
+                      in APP (gen tau, PRIM(RECORDprim {regvar=NONE}, [sel 0, sel 1]),NONE)
                       end
            | (tau :: taus) => let val v = VAR {lvar=p, instances=[], regvars=[]}
-                                  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-                                  val e = APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
+                                  fun sel k = PRIM(SELECTprim {index=n}, [PRIM(SELECTprim {index=k}, [v])])
+                                  val e = APP (gen tau, PRIM(RECORDprim {regvar=NONE}, [sel 0, sel 1]),NONE)
                               in SWITCH_C (SWITCH (e, [((Con.con_TRUE,NONE), gen_switch (n+1) p taus)],
                                                    SOME lamb_false))
                               end)
@@ -332,7 +332,7 @@ structure EliminateEq : ELIMINATE_EQ =
 
         fun mk_pn pn n e = (* p is free *)
           monolet {lvar=pn, Type=tau_tn,
-                   bind=PRIM(SELECTprim n, [lamb_var p]),
+                   bind=PRIM(SELECTprim {index=n}, [lamb_var p]),
                    scope=e}
 
         fun mk_sw c e single = SWITCH_C(SWITCH(lamb_var p1,[(c, e)],
@@ -349,7 +349,7 @@ structure EliminateEq : ELIMINATE_EQ =
             val lamb_true_case =
               mk_decon p0' p0
               (mk_decon p1' p1
-               (APP(lamb_eq_fn_tau, PRIM(RECORDprim NONE, [lamb_var p0', lamb_var p1']),NONE)))
+               (APP(lamb_eq_fn_tau, PRIM(RECORDprim {regvar=NONE}, [lamb_var p0', lamb_var p1']),NONE)))
 
           in mk_sw (c,SOME p1') lamb_true_case single
           end
@@ -622,7 +622,7 @@ structure EliminateEq : ELIMINATE_EQ =
          SWITCH_C (SWITCH (PRIM (LESS_INTprim(), [var_j, INTEGER' 0]),
            [((Con.con_TRUE,NONE), lamb_true)],
            SOME (SWITCH_C (SWITCH
-                  ((APP (var_eq_alpha, PRIM (RECORDprim NONE, [sub var_table1, sub var_table2]),NONE)),
+                  ((APP (var_eq_alpha, PRIM (RECORDprim {regvar=NONE}, [sub var_table1, sub var_table2]),NONE)),
                    [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1]),NONE))],
                    SOME lamb_false)))))}
 
@@ -636,9 +636,9 @@ structure EliminateEq : ELIMINATE_EQ =
      FN {pat = [(lvar_eq_alpha, tau_for_eq_fun tau_alpha)], body =
          FN {pat = [(lvar_table_pair, RECORDtype ([tau_tyname, tau_tyname],NONE))], body =
              monolet {lvar = lvar_table1, Type = tau_tyname, bind =
-                      PRIM (SELECTprim 0, [var_table_pair]), scope =
+                      PRIM (SELECTprim {index=0}, [var_table_pair]), scope =
                       monolet {lvar = lvar_table2, Type = tau_tyname, bind =
-                               PRIM (SELECTprim 1, [var_table_pair]), scope =
+                               PRIM (SELECTprim {index=1}, [var_table_pair]), scope =
                                let_nX_equal_table_size_in_bytes lvar_n1 var_table1
                                (let_nX_equal_table_size_in_bytes lvar_n2 var_table2
                                 (FIX {functions = [function_loop()], scope =
@@ -786,7 +786,7 @@ structure EliminateEq : ELIMINATE_EQ =
          | PRIM(EQUALprim {instance}, [lexp1, lexp2]) =>
                (case instance
                   of RECORDtype ([tau,_],_) =>
-                    let val e = PRIM(RECORDprim NONE, [t env lexp1,t env lexp2])
+                    let val e = PRIM(RECORDprim {regvar=NONE}, [t env lexp1,t env lexp2])
                     in APP(gen_type_eq env tau, e, NONE)
                     end
                    | _ => die "f.EQUALprim")

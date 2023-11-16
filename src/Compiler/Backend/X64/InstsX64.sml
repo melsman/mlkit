@@ -78,6 +78,7 @@ structure InstsX64: INSTS_X64 =
     | movb of ea * ea
     | movzbq of ea * ea
     | movslq of ea * ea
+    | movabsq of ea * ea
     | push of ea
     | leaq of ea * ea
     | pop of ea
@@ -113,6 +114,7 @@ structure InstsX64: INSTS_X64 =
     | sarq of ea * ea
     | shrq of ea * ea   (* unsigned *)
     | salq of ea * ea
+    | shlq of ea * ea
     | cmpq of ea * ea
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
@@ -468,6 +470,7 @@ structure InstsX64: INSTS_X64 =
                | movb a => emit_bin ("movb", a)
                | movzbq a => emit_bin ("movzbq", a)
                | movslq a => emit_bin ("movslq", a)
+               | movabsq a => emit_bin ("movabsq", a)
                | leaq a => emit_bin ("leaq", a)
                | push ea => emit_unary ("pushq", ea)
                | pop ea => emit_unary ("popq", ea)
@@ -503,6 +506,7 @@ structure InstsX64: INSTS_X64 =
                | sarq a => emit_bin("sarq", a)
                | shrq a => emit_bin("shrq", a)
                | salq a => emit_bin("salq", a)
+               | shlq a => emit_bin("shlq", a)
                | cmpq a => emit_bin("cmpq", a)
                | btq a => emit_bin("btq", a)
                | btrq a => emit_bin("btrq", a)
@@ -795,6 +799,7 @@ structure InstsX64: INSTS_X64 =
              | movb (ea1,ea2) => movb (Em ea1,Em ea2)
              | movzbq (ea1,ea2) => movzbq (Em ea1,Em ea2)
              | movslq (ea1,ea2) => movslq (Em ea1,Em ea2)
+             | movabsq (ea1,ea2) => movabsq (Em ea1,Em ea2)
              | push ea => push (Em ea)
              | leaq (ea1,ea2) => leaq (Em ea1,Em ea2)
              | pop ea => pop (Em ea)
@@ -828,6 +833,7 @@ structure InstsX64: INSTS_X64 =
              | sarq (ea1,ea2) => sarq (Em ea1,Em ea2)
              | shrq (ea1,ea2) => shrq (Em ea1,Em ea2)
              | salq (ea1,ea2) => salq (Em ea1,Em ea2)
+             | shlq (ea1,ea2) => shlq (Em ea1,Em ea2)
              | cmpq (ea1,ea2) => cmpq (Em ea1,Em ea2)
              | btq (ea1,ea2) => btq (Em ea1,Em ea2)
              | btrq (ea1,ea2) => btrq (Em ea1,Em ea2)

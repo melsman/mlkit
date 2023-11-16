@@ -285,45 +285,63 @@ struct
                        move_index_aty_to_aty(aty,pat,WORDS i,tmp_reg1,size_ff,C)
                     | LS.CON0{con,con_kind,aux_regions,alloc} =>
                        (case con_kind of
-                          LS.ENUM i =>
-                            let
-                              val tag =
-                                if BI.tag_values() orelse (*hack to treat booleans tagged*)
-                                  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
-                                  2*i+1
-                                else i
-                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                            in
-                              move_immed(IntInf.fromInt tag, R reg_for_result,C')
+                            LS.ENUM i =>
+                            let val tag =
+                                    if BI.tag_values() orelse (*hack to treat booleans tagged*)
+                                       Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE)
+                                    then 2*i+1
+                                    else i
+                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                            in move_immed(
+                                IntInf.fromInt tag,
+                                R reg_for_result,
+                                C')
                             end
-                        | LS.UNBOXED i =>
-                            let
-                              val tag = 4*i+3
-                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                              fun reset_regions C =
-                                foldr (fn (alloc,C) =>
-                                       maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
-                                C aux_regions
-                            in
-                              reset_regions(move_immed(IntInf.fromInt tag, R reg_for_result,C'))
+                          | LS.UNBOXED i =>
+                            let val tag = 4*i+3
+                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                                fun reset_regions C =
+                                    foldr (fn (alloc,C) =>
+                                              maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                          C aux_regions
+                            in reset_regions(
+                                move_immed(IntInf.fromInt tag,
+                                           R reg_for_result,
+                                           C'))
                             end
-                        | LS.BOXED i =>
-                            let
-                              val tag = i2s(Word32.toInt(BI.tag_con0(false,i)))
-                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                              fun reset_regions C =
-                                List.foldr (fn (alloc,C) =>
-                                            maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
-                                C aux_regions
-                            in
-                              reset_regions(
-                              alloc_ap_kill_tmp01(alloc,reg_for_result,1,size_ff,
-                              I.movq(I tag, D("0",reg_for_result)) :: C'))
+                          | LS.UNBOXED_HIGH i =>
+                            let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                                fun reset_regions C =
+                                    foldr (fn (alloc,C) =>
+                                              maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                          C aux_regions
+                            in reset_regions(
+                                if i = 0 then
+                                  move_immed(IntInf.fromInt(if BI.tag_values() then 1 else 0),
+                                             R reg_for_result, C')
+                                else
+                                  move_immed(IntInf.fromInt i, R reg_for_result,
+                                             I.shlq(I "48", R reg_for_result) ::
+                                             (if BI.tag_values() then
+                                                I.addq(I "1",R reg_for_result) :: C'
+                                              else C'))
+                              )
+                            end
+                          | LS.BOXED i =>
+                            let val tag = i2s(Word32.toInt(BI.tag_con0(false,i)))
+                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                                fun reset_regions C =
+                                    List.foldr (fn (alloc,C) =>
+                                                   maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                               C aux_regions
+                            in reset_regions(
+                                alloc_ap_kill_tmp01(alloc,reg_for_result,1,size_ff,
+                                                    I.movq(I tag, D("0",reg_for_result)) :: C'))
                             end)
                     | LS.CON1{con,con_kind,alloc,arg} =>
-                          (case con_kind
-                             of LS.UNBOXED 0 => move_aty_to_aty(arg,pat,size_ff,C)
-                              | LS.UNBOXED i =>
+                      (case con_kind of
+                           LS.UNBOXED 0 => move_aty_to_aty(arg,pat,size_ff,C)
+                         | LS.UNBOXED i =>
                                let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                                in case i
                                     of 1 => move_aty_into_reg(arg,reg_for_result,size_ff,
@@ -332,7 +350,15 @@ struct
                                             I.orq(I "2", R reg_for_result) :: C')
                                      | _ => die "CG_ls: UNBOXED CON1 with i > 2"
                                end
-                              | LS.BOXED i =>
+                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(arg,pat,size_ff,C)
+                         | LS.UNBOXED_HIGH i =>
+                               let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                               in move_aty_into_reg(arg,reg_for_result,size_ff,
+                                                    I.movq(I (Int.toString i), R tmp_reg0) ::
+                                                    I.shlq(I "48", R tmp_reg0) ::
+                                                    I.orq(R tmp_reg0, R reg_for_result) :: C')
+                               end
+                         | LS.BOXED i =>
                                let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                                    val tag = i2s(Word32.toInt(BI.tag_con1(false,i)))
                                in
@@ -346,17 +372,26 @@ struct
                                    I.movq(I tag, D("0", reg_for_result)) ::
                                    store_aty_in_reg_record(arg,tmp_reg0,reg_for_result,WORDS 1,size_ff,C'))
                                end
-                              | _ => die "CON1.con not unary in env.")
+                         | _ => die "CON1.con not unary in env.")
                     | LS.DECON{con,con_kind,con_aty} =>
-                      (case con_kind
-                         of LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
-                          | LS.UNBOXED _ =>
+                      (case con_kind of
+                           LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
+                         | LS.UNBOXED _ =>
                            let
                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                            in
                              move_aty_into_reg(con_aty,reg_for_result,size_ff,
                              I.movq(I "3", R tmp_reg0) ::
                              I.notq(R tmp_reg0) ::
+                             I.andq(R tmp_reg0, R reg_for_result) :: C')
+                           end
+                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
+                         | LS.UNBOXED_HIGH _ =>
+                           let
+                             val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                           in
+                             move_aty_into_reg(con_aty,reg_for_result,size_ff,
+                             I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
                              I.andq(R tmp_reg0, R reg_for_result) :: C')
                            end
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
@@ -794,6 +829,7 @@ struct
                                      case con_kind
                                        of LS.ENUM i => (IntInf.fromInt i,sel_insts)
                                         | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
+                                        | LS.UNBOXED_HIGH i => (IntInf.fromInt i,sel_insts)
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon (src_aty,C) =
                         if lte1_nullary then
@@ -808,10 +844,16 @@ struct
                            I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
                            C)))                                 (* and all bits are used. *)
 
+                    fun UbhTagCon (src_aty,C) =
+                        move_aty_into_reg(src_aty,tmp_reg1,size_ff,
+                        I.shrq(I "48", R tmp_reg1) ::
+                        C)
+
                     val (F, opr_aty) =
                       case con_kind
                         of LS.ENUM _ => (fn C => C, opr_aty)
                          | LS.UNBOXED _ => (fn C => UbTagCon(opr_aty,C), SS.PHREG_ATY tmp_reg1)
+                         | LS.UNBOXED_HIGH _ => (fn C => UbhTagCon(opr_aty,C), SS.PHREG_ATY tmp_reg1)
                          | LS.BOXED _ =>
                           (fn C => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY tmp_reg1,
                                                          WORDS 0,tmp_reg1,size_ff,C),

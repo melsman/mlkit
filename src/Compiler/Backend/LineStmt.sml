@@ -70,6 +70,7 @@ struct
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
+    | UNBOXED_HIGH of int
     | BOXED of int
 
   type binder = place * phsize
@@ -217,6 +218,7 @@ struct
 
     fun pr_con_kind (ENUM i)    = "enum " ^ Int.toString i
       | pr_con_kind (UNBOXED i) = "unboxed " ^ Int.toString i
+      | pr_con_kind (UNBOXED_HIGH i) = "unboxed-high " ^ Int.toString i
       | pr_con_kind (BOXED i)   = "boxed " ^ Int.toString i
 
     fun pr_pp pp = "pp" ^ Int.toString pp
@@ -622,6 +624,7 @@ struct
 
     fun con_kind_to_con_kind (ClosExp.ENUM i) = ENUM i
       | con_kind_to_con_kind (ClosExp.UNBOXED i) = UNBOXED i
+      | con_kind_to_con_kind (ClosExp.UNBOXED_HIGH i) = UNBOXED_HIGH i
       | con_kind_to_con_kind (ClosExp.BOXED i) = BOXED i
 
     fun mk_sty lv = V lv (* Flow variables are annotated later *)

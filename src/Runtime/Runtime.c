@@ -440,3 +440,16 @@ rpMap = regionPageMapNew();
   return (EXIT_FAILURE);   /* never comes here (i.e., exits through
                             * terminateML or uncaught_exception) */
 }
+
+// Functions for managing high-bit tags (see also Tagging.h)
+uintptr_t ptr_hitag_set_fun(uintptr_t ptr, uint16_t tag) {
+  return ptr_hitag_set(ptr,tag);
+}
+
+uintptr_t ptr_hitag_clear_fun(uintptr_t ptr) {
+  return ptr_hitag_clear(ptr);
+}
+
+uint16_t ptr_hitag_get_fun(uintptr_t ptr) {
+  return ptr_hitag_get(ptr);
+}

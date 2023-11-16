@@ -22,17 +22,19 @@ structure TyName :> TYNAME =
     type name = Name.name
     type rank = int
 
-    datatype unboxity = UNBOXED | BOXED | UNBOXED_SINGLE
+    datatype boxity = SINGLE of boxity
+                    | UNB_LOW | UNB_ALL
+                    | ENUM | BOXED
 
     type TyName = {tycon: tycon,
                    name: name,
                    arity: int,
                    rank: rank ref,
                    equality: bool,
-                   unboxity: unboxity ref}
+                   boxity: boxity ref}
 
-    fun unboxity (tn:TyName) : unboxity =
-        !(#unboxity tn)
+    fun boxity (tn:TyName) : boxity =
+        !(#boxity tn)
 
     structure Rank =
       struct
@@ -46,32 +48,28 @@ structure TyName :> TYNAME =
                         in rank_bucket := rr :: ( !rank_bucket ) ;
                           rr
                         end)
-          fun min(r1,r2) = Int.min (r1, r2)
+          fun min (r1,r2) = Int.min (r1, r2)
           fun reset () =
             (List.app (fn rr => rr := 0) (!rank_bucket);
              rank_bucket := [];
              current_rank := 0)
           val op <= : rank * rank -> bool = op <=
-
-          fun from_TyName({rank=ref rank,...}:TyName) = rank
-
+          fun from_TyName ({rank=ref rank,...}:TyName) = rank
           val pu = Pickle.int
           val pu_rankrefOne = Pickle.refOneGen pu
           val pp = Int.toString
         end
       end
 
-
-    fun fresh unboxed {tycon: tycon, arity: int, equality: bool} =
+    fun fresh boxity {tycon: tycon, arity: int, equality: bool} =
         let val name = Name.new()
-            val unboxity = if unboxed then UNBOXED else BOXED
       in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^
                                                    Int.toString(Name.key name) ^ ")\n") else (); *)
         {tycon=tycon, name=name, rank=Rank.new(), arity=arity,
-         equality=equality, unboxity=ref unboxity}
+         equality=equality, boxity=ref boxity}
       end
 
-    fun freshTyName r = fresh false r
+    fun freshTyName r = fresh BOXED r
 
     fun arity ({arity, ...} : TyName) : int = arity
 
@@ -89,7 +87,7 @@ structure TyName :> TYNAME =
     fun match (tn1,tn2) =
         if (equality tn1 = equality tn2
             andalso arity tn1 = arity tn2
-            andalso !(#unboxity tn1) = !(#unboxity tn2)) then
+            andalso !(#boxity tn1) = !(#boxity tn2)) then
           Name.match(name tn1, name tn2)
         else ()
 
@@ -97,35 +95,35 @@ structure TyName :> TYNAME =
 
     local
         val bucket = ref nil
-        fun predef ub r =
-            let val tn = fresh ub r
+        fun predef b r =
+            let val tn = fresh b r
             in bucket := tn :: !bucket
              ; tn
             end
     in
-        val tyName_BOOL       = predef true {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}
-        val tyName_INT31      = predef true {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
-        val tyName_INT32      = predef false{tycon=TyCon.tycon_INT32,      arity=0, equality=true}
-        val tyName_INT63      = predef true {tycon=TyCon.tycon_INT63,      arity=0, equality=true}
-        val tyName_INT64      = predef false{tycon=TyCon.tycon_INT64,      arity=0, equality=true}
-        val tyName_INTINF     = predef true {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
-        val tyName_WORD8      = predef true {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
-        val tyName_WORD31     = predef true {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
-        val tyName_WORD32     = predef false{tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
-        val tyName_WORD63     = predef true {tycon=TyCon.tycon_WORD63,     arity=0, equality=true}
-        val tyName_WORD64     = predef false{tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
-        val tyName_REAL       = predef false{tycon=TyCon.tycon_REAL,       arity=0, equality=false}
-        val tyName_F64        = predef true {tycon=TyCon.tycon_F64,        arity=0, equality=false}
-        val tyName_STRING     = predef false{tycon=TyCon.tycon_STRING,     arity=0, equality=true}
-        val tyName_CHAR       = predef true {tycon=TyCon.tycon_CHAR,       arity=0, equality=true}
-        val tyName_LIST       = predef true {tycon=TyCon.tycon_LIST,       arity=1, equality=true}
-        val tyName_FRAG       = predef false{tycon=TyCon.tycon_FRAG,       arity=1, equality=true}
-        val tyName_REF        = predef false{tycon=TyCon.tycon_REF,        arity=1, equality=true}
-        val tyName_ARRAY      = predef false{tycon=TyCon.tycon_ARRAY,      arity=1, equality=true}
-        val tyName_VECTOR     = predef false{tycon=TyCon.tycon_VECTOR,     arity=1, equality=true}
-        val tyName_CHARARRAY  = predef false{tycon=TyCon.tycon_CHARARRAY,  arity=0, equality=true}
-        val tyName_FOREIGNPTR = predef true {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=true}
-        val tyName_EXN        = predef false{tycon=TyCon.tycon_EXN,        arity=0, equality=false}
+        val tyName_BOOL       = predef UNB_LOW {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}
+        val tyName_INT31      = predef UNB_LOW {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
+        val tyName_INT32      = predef BOXED   {tycon=TyCon.tycon_INT32,      arity=0, equality=true}
+        val tyName_INT63      = predef UNB_ALL {tycon=TyCon.tycon_INT63,      arity=0, equality=true}
+        val tyName_INT64      = predef BOXED   {tycon=TyCon.tycon_INT64,      arity=0, equality=true}
+        val tyName_INTINF     = predef UNB_LOW {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
+        val tyName_WORD8      = predef UNB_LOW {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
+        val tyName_WORD31     = predef UNB_LOW {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
+        val tyName_WORD32     = predef BOXED   {tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
+        val tyName_WORD63     = predef UNB_ALL {tycon=TyCon.tycon_WORD63,     arity=0, equality=true}
+        val tyName_WORD64     = predef BOXED   {tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
+        val tyName_REAL       = predef BOXED   {tycon=TyCon.tycon_REAL,       arity=0, equality=false}
+        val tyName_F64        = predef UNB_ALL {tycon=TyCon.tycon_F64,        arity=0, equality=false}
+        val tyName_STRING     = predef BOXED   {tycon=TyCon.tycon_STRING,     arity=0, equality=true}
+        val tyName_CHAR       = predef UNB_LOW {tycon=TyCon.tycon_CHAR,       arity=0, equality=true}
+        val tyName_LIST       = predef UNB_LOW {tycon=TyCon.tycon_LIST,       arity=1, equality=true}
+        val tyName_FRAG       = predef BOXED   {tycon=TyCon.tycon_FRAG,       arity=1, equality=true}
+        val tyName_REF        = predef BOXED   {tycon=TyCon.tycon_REF,        arity=1, equality=true}
+        val tyName_ARRAY      = predef BOXED   {tycon=TyCon.tycon_ARRAY,      arity=1, equality=true}
+        val tyName_VECTOR     = predef BOXED   {tycon=TyCon.tycon_VECTOR,     arity=1, equality=true}
+        val tyName_CHARARRAY  = predef BOXED   {tycon=TyCon.tycon_CHARARRAY,  arity=0, equality=true}
+        val tyName_FOREIGNPTR = predef UNB_ALL {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=true}
+        val tyName_EXN        = predef BOXED   {tycon=TyCon.tycon_EXN,        arity=0, equality=false}
         val _ = Rank.reset()
         val tynamesPredefined = !bucket
     end
@@ -145,23 +143,31 @@ structure TyName :> TYNAME =
           | (false, false) => tyName_WORD32
 
     local
-      fun unboxed_num32 tn =
-          not(tag_values()) andalso (eq(tn,tyName_INT32)
-                                     orelse eq(tn,tyName_WORD32))
-
-      fun unboxed_num64 tn =
-          not(tag_values()) andalso (eq(tn,tyName_INT64)
-                                     orelse eq(tn,tyName_WORD64))
+      fun boxity_num32 () =
+          if tag_values() then BOXED else UNB_LOW
+      fun boxity_num64 () =
+          if tag_values() then BOXED else UNB_ALL
     in
-      fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse
-                       case !(#unboxity tn) of
-                           UNBOXED => true
-                         | UNBOXED_SINGLE => true
-                         | BOXED => false
-      fun unboxity tn =
-          if unboxed_num32 tn orelse unboxed_num64 tn then UNBOXED
-          else !(#unboxity tn)
+      fun boxity tn =
+          if eq(tn,tyName_INT32) orelse eq(tn,tyName_WORD32) then
+            boxity_num32 ()
+          else if eq(tn,tyName_INT64) orelse eq(tn,tyName_WORD64) then
+            boxity_num64 ()
+          else !(#boxity tn)
+
+      fun is_unboxed tn =
+          case boxity tn of
+              BOXED => false
+            | _ => true
     end
+
+    fun pr_boxity b =
+        case b of
+            SINGLE b => "single " ^ pr_boxity b
+          | UNB_LOW => "unb-low"
+          | UNB_ALL => "unb-all"
+          | ENUM => "enum"
+          | BOXED => "boxed"
 
     fun pr_TyName (tn: TyName) : string =
       let val str = TyCon.pr_TyCon (tycon tn)
@@ -170,12 +176,8 @@ structure TyName :> TYNAME =
           let val eq = if equality tn then "E " else ""
               val (i,b) = Name.key (name tn)
               val id = Int.toString i
-              val unb =
-                  case unboxity tn of
-                      UNBOXED => "unboxed"
-                    | UNBOXED_SINGLE => "unboxed_single"
-                    | BOXED => "boxed"
-          in str ^ "(" ^ eq ^ id ^ b ^ ":" ^ unb ^ ")"
+              val box = pr_boxity (boxity tn)
+          in str ^ "(" ^ eq ^ id ^ b ^ ":" ^ box ^ ")"
           end
         else
           (if tag_values() then
@@ -188,25 +190,37 @@ structure TyName :> TYNAME =
                    else str))
       end
 
-    fun setUnboxity (tn: TyName, unboxity) : unit =
-        if unboxed tn then
-          die ("setUnboxity.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
-        else #unboxity tn := unboxity
+    fun setBoxity (tn: TyName, b:boxity) : unit =
+        case boxity tn of
+            BOXED => #boxity tn := b
+          | _ => die ("setBoxity.boxity already set for tyname " ^ pr_TyName tn)
 
-    val pu_unboxity = Pickle.enumGen ("unboxity",[UNBOXED,UNBOXED_SINGLE,BOXED])
+    val pu_boxity =
+        let val toInt = fn SINGLE _ => 0
+                         | UNB_LOW => 1
+                         | UNB_ALL => 2
+                         | ENUM => 3
+                         | BOXED => 4
+        in Pickle.dataGen ("boxity", toInt,
+                           [Pickle.con1 SINGLE (fn SINGLE b => b | _ => die "pu_boxity"),
+                            Pickle.con0 UNB_LOW,
+                            Pickle.con0 UNB_ALL,
+                            Pickle.con0 ENUM,
+                            Pickle.con0 BOXED])
+        end
 
     val pu =
         Pickle.hashConsEq eq
         (Pickle.register "TyName" tynamesPredefined
-         let fun to ((t,n,a),r,e,u) : TyName =
+         let fun to ((t,n,a),r,e,b) : TyName =
                  {tycon=t, name=n, arity=a, rank=r,
-                  equality=e, unboxity=u}
+                  equality=e, boxity=b}
              fun from ({tycon=t, name=n, arity=a, rank=r,
-                        equality=e, unboxity=u} : TyName) = ((t,n,a),r,e,u)
+                        equality=e, boxity=b} : TyName) = ((t,n,a),r,e,b)
          in Pickle.newHash (#1 o Name.key o name)
              (Pickle.convert (to,from)
               (Pickle.tup4Gen0(Pickle.tup3Gen0(TyCon.pu,Name.pu,Pickle.int),
-                               Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen pu_unboxity)))
+                               Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen pu_boxity)))
          end)
 
     structure QD : QUASI_DOM =
@@ -229,9 +243,6 @@ structure TyName :> TYNAME =
               in str ^ "_" ^ Int.toString i
               end
       end
-
-
-
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName

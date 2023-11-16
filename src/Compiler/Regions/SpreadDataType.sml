@@ -294,7 +294,7 @@ struct
       val (common_place,cone) =
           let (* see CompileDec.sml for information about the unboxing scheme *)
             val rt = case current_tynames of
-                         tn::_ => if TyName.unboxed tn then NONE
+                         tn::_ => if TyName.is_unboxed tn then NONE
                                   else SOME Effect.TOP_RT
                        | _ => SOME Effect.TOP_RT
           in case rt of
