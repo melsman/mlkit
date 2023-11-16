@@ -91,8 +91,8 @@ signature LAMBDA_EXP =
       | DECONprim of {con : con, instances : 'Type list, lv_opt: lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim of regvar option
-      | SELECTprim of int
+      | RECORDprim of {regvar: regvar option}
+      | SELECTprim of {index:int}
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
@@ -104,7 +104,7 @@ signature LAMBDA_EXP =
                       tyvars : tyvar list,
                       Type : 'Type}
       | BLOCKF64prim
-      | SCRATCHMEMprim of int                         (* bytes *)
+      | SCRATCHMEMprim of {sz:int}                    (* bytes *)
       | EXPORTprim of {name : string,
                        instance_arg : 'Type,
                        instance_res : 'Type}

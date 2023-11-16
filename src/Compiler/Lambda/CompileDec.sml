@@ -130,7 +130,7 @@ structure CompileDec: COMPILE_DEC =
     local
       open TLE
     in
-      val TLEunit = PRIM(RECORDprim NONE,[])
+      val TLEunit = PRIM(RECORDprim {regvar=NONE},[])
 
       fun monoLet ((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
@@ -551,7 +551,7 @@ structure CompileDec: COMPILE_DEC =
        let val a = IntInf.abs x
            val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
              foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type],regvar=NONE},
-                                     [PRIM(RECORDprim NONE,[INTEGER(d,int31Type),
+                                     [PRIM(RECORDprim {regvar=NONE},[INTEGER(d,int31Type),
                                                             C])]))
                    (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type],regvar=NONE},
                          nil))
@@ -565,7 +565,7 @@ structure CompileDec: COMPILE_DEC =
                             instances=nil,regvar=NONE},nil)
        in
          PRIM(CONprim{con=Con.con_INTINF,instances=nil,regvar=NONE},   (* memo: fix this *)
-              [PRIM(RECORDprim NONE,[digitsExp,negativeExp])])
+              [PRIM(RECORDprim {regvar=NONE},[digitsExp,negativeExp])])
        end
 
 
@@ -1259,7 +1259,7 @@ Det finder du nok aldrig ud af.*)
                             else die "Wrong record arity"
                       | _ => die ("compile_path0.RECORDtype expected. Type is "
                                   ^ PrettyPrint.flatten1 (layoutType tau))
-                val select = PRIM (SELECTprim i, [e])
+                val select = PRIM (SELECTprim {index=i}, [e])
             in
                 case obj_e of
                     VAR {instances= _ :: _ , ...} => (f, select, tau, env')
@@ -1342,7 +1342,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-        APP (VAR {lvar=lvar, instances=[], regvars=[]}, PRIM (RECORDprim NONE, []), NONE)
+        APP (VAR {lvar=lvar, instances=[], regvars=[]}, PRIM (RECORDprim {regvar=NONE}, []), NONE)
           (*instances=[] because the var can never be polymorphic
            because it is the name of a non-polymorphic function.*)
 
@@ -2248,7 +2248,7 @@ end; (*match compiler local*)
           let val intInfLongId = Ident.mk_LongId ["IntInfRep",opr]
               val arg = (case args of
                              [a] => a
-                           | args => PRIM(RECORDprim NONE,args))
+                           | args => PRIM(RECORDprim {regvar=NONE},args))
           in case CE.lookup_longid e intInfLongId of
               SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=[],regvars=[]},arg,NONE)
             | _ => die ("intinfOp: " ^ opr)
@@ -2389,9 +2389,9 @@ end; (*match compiler local*)
               else (*takes two arguments*)
                 FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
                     body=unoverload env info result
-                    ([PRIM (SELECTprim 0,
+                    ([PRIM (SELECTprim {index=0},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                      PRIM (SELECTprim 1,
+                      PRIM (SELECTprim {index=1},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}])]
                      @ exn_args)}
             end
@@ -2414,9 +2414,9 @@ end; (*match compiler local*)
             in (*takes two arguments*)
               FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
                   body=unoverload env info result
-                  [PRIM (SELECTprim 0,
+                  [PRIM (SELECTprim {index=0},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                   PRIM (SELECTprim 1,
+                   PRIM (SELECTprim {index=1},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}])]}
             end
     end (*local*)
@@ -2485,7 +2485,7 @@ end; (*match compiler local*)
                fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
                  | is_sorted _ = true
                val rv_opt = Option.map (#2) rv_opt
-             in if is_sorted labs then PRIM(RECORDprim rv_opt, exps)
+             in if is_sorted labs then PRIM(RECORDprim {regvar=rv_opt}, exps)
                 else
                   let val taus = map (compileType o type_of_exp
                                       o (fn EXPROW(_,_,e,_) => e)) rows
@@ -2496,7 +2496,7 @@ end; (*match compiler local*)
                                   (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
                                   (ListPair.zip(lvars, labs))
                         in
-                          PRIM(RECORDprim rv_opt,map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
+                          PRIM(RECORDprim {regvar=rv_opt},map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
                                sortedLvarsXlabs)
                         end
                   in
@@ -2505,7 +2505,7 @@ end; (*match compiler local*)
                   end
              end
 
-           | RECORDatexp(_, NONE, _) => PRIM(RECORDprim NONE,[])
+           | RECORDatexp(_, NONE, _) => PRIM(RECORDprim {regvar=NONE},[])
 
            | LETatexp(_, dec, exp) =>
                let val (env1, f) = compileDec env (false,dec)
@@ -2853,7 +2853,7 @@ the 12 lines above are very similar to the code below
                             (Int.fromLarge bytes
                              handle _ => die "compileExp: too large int in __scratchmem primitive")
                           | _ => die "compileExp: expecting one static integer to __scratchmem primitive"
-                in TLE.PRIM(TLE.SCRATCHMEMprim bytes, [])
+                in TLE.PRIM(TLE.SCRATCHMEMprim {sz=bytes}, [])
                 end
               | _ =>
                   (*unrecognised prim name: this must be a c call; let us

@@ -380,9 +380,9 @@ structure OptLambda : OPT_LAMBDA =
 
         fun eq_prim m (p,p') =
             case (p,p') of
-                (RECORDprim NONE, RECORDprim NONE) => true
-              | (RECORDprim (SOME rv1), RECORDprim (SOME rv2)) => RegVar.eq(rv1,rv2)
-              | (SELECTprim i,SELECTprim i') => i=i'
+                (RECORDprim {regvar=NONE}, RECORDprim {regvar=NONE}) => true
+              | (RECORDprim {regvar=SOME rv1}, RECORDprim {regvar=SOME rv2}) => RegVar.eq(rv1,rv2)
+              | (SELECTprim {index=i},SELECTprim {index=i'}) => i=i'
               | (CONprim {con,instances=il,regvar=NONE}, CONprim {con=con',instances=il',regvar=NONE}) =>
                     Con.eq(con,con') andalso eq_Types(il,il')
               | (CONprim {con,instances=il,regvar=SOME rv}, CONprim {con=con',instances=il',regvar=SOME rv'}) =>
@@ -1715,7 +1715,7 @@ structure OptLambda : OPT_LAMBDA =
                                   ; reduce (env, (e,cv))
                                 end
                       | _ => fail)
-          | PRIM(SELECTprim n,[lamb]) =>
+          | PRIM(SELECTprim {index=n},[lamb]) =>
                let fun do_select () =
                       case cv
                         of CRECORD cvs =>
@@ -2286,7 +2286,7 @@ structure OptLambda : OPT_LAMBDA =
 
      fun transf env lamb =
         case lamb
-          of PRIM(SELECTprim i, [VAR{lvar,instances=[],regvars=[]}]) =>
+          of PRIM(SELECTprim {index=i}, [VAR{lvar,instances=[],regvars=[]}]) =>
             (case LvarMap.lookup env lvar
                of SOME lvars =>
                  let val lvar' = List.nth(lvars, i)
@@ -2691,7 +2691,7 @@ structure OptLambda : OPT_LAMBDA =
        case lamb
          of v as VAR{lvar,instances,...} =>
            (case LvarMap.lookup env lvar
-              of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim NONE, []), NONE)
+              of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim {regvar=NONE}, []), NONE)
                | _ => v)
           | LET{pat,bind,scope} =>
               (case pat
@@ -2761,7 +2761,7 @@ structure OptLambda : OPT_LAMBDA =
        let exception NonSelect
          fun f lv exp =
            case exp
-             of PRIM (SELECTprim i, [VAR _]) => ()
+             of PRIM (SELECTprim {index=i}, [VAR _]) => ()
               | VAR {lvar,...} => if Lvars.eq(lv,lvar) then raise NonSelect
                                   else ()
               | _ => app_lamb (f lv) exp
@@ -2779,14 +2779,14 @@ structure OptLambda : OPT_LAMBDA =
          let exception NonSelect
              fun f lvs lv exp =   (* lvs are let-bound variables bound to (#i lv) *)
                  case exp of
-                     PRIM (CCALLprim{name="__real_to_f64",...}, [PRIM (SELECTprim j, [VAR {lvar,...}])]) => ()
+                     PRIM (CCALLprim{name="__real_to_f64",...}, [PRIM (SELECTprim {index=j}, [VAR {lvar,...}])]) => ()
                    | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar,...}]) => ()
-                   | PRIM (SELECTprim j, [VAR {lvar,...}]) =>
+                   | PRIM (SELECTprim {index=j}, [VAR {lvar,...}]) =>
                      if Lvars.eq(lv,lvar) andalso j = i then raise NonSelect
                      else ()
                    | VAR {lvar,...} => if Lvars.eq(lv,lvar) orelse is_in_lv lvar lvs then raise NonSelect
                                        else ()
-                   | LET{pat=[(lv1,nil,t)],bind=PRIM (SELECTprim j, [VAR {lvar,...}]),scope} =>
+                   | LET{pat=[(lv1,nil,t)],bind=PRIM (SELECTprim {index=j}, [VAR {lvar,...}]),scope} =>
                      if Lvars.eq(lv,lvar) andalso j=i then f (lv1::lvs) lv scope
                      else f lvs lv scope
                    | APP(VAR{lvar,...},PRIM(RECORDprim _,es),_) =>
@@ -2875,7 +2875,7 @@ structure OptLambda : OPT_LAMBDA =
            case body
              of LET{pat,bind,scope} =>
                (case (pat, bind)
-                  of ([(lv1,nil,pt)], PRIM(SELECTprim n, [VAR{lvar,instances=[],regvars=[]}])) =>
+                  of ([(lv1,nil,pt)], PRIM(SELECTprim {index=n}, [VAR{lvar,instances=[],regvars=[]}])) =>
                     if Lvars.eq(lvar,lv) then hoist(scope,(n,lv1)::acc)
                     else (body, acc)
                    | _ => (body, acc))
@@ -2896,7 +2896,7 @@ structure OptLambda : OPT_LAMBDA =
      fun unbox_args_exp lv ts =
          PRIM(UB_RECORDprim,
               mapi (fn (i,t) =>
-                       let val e = PRIM(SELECTprim i, [VAR{lvar=lv,instances=[],regvars=[]}])
+                       let val e = PRIM(SELECTprim {index=i}, [VAR{lvar=lv,instances=[],regvars=[]}])
                        in if eq_Type(t,f64Type) then real_to_f64 e
                           else e
                        end) ts)
@@ -2953,7 +2953,7 @@ structure OptLambda : OPT_LAMBDA =
                               ; print "\n"; raise X)
              )
 
-           | PRIM(SELECTprim i, [VAR{lvar,instances,regvars}]) =>
+           | PRIM(SELECTprim {index=i}, [VAR{lvar,instances,regvars}]) =>
              (case lookup env lvar of
                   SOME (ARG_VARS vector) =>
                   if null instances andalso null regvars then
@@ -3023,7 +3023,7 @@ structure OptLambda : OPT_LAMBDA =
                             scope=trans env' scope}
                      end
              in case (pat,bind) of
-                    ([(lv,nil,t)], PRIM(SELECTprim j,[VAR{lvar,...}])) =>
+                    ([(lv,nil,t)], PRIM(SELECTprim {index=j},[VAR{lvar,...}])) =>
                     if eq_Type(t,realType) then
                       (case lookup env lvar of
                            SOME(ARG_VARS vec) =>
@@ -3225,7 +3225,7 @@ structure OptLambda : OPT_LAMBDA =
 (*
                               let fun sels (n,acc) =
                                     if n < 0 then acc
-                                    else sels(n-1,PRIM(SELECTprim n, [lv_e]) :: acc)
+                                    else sels(n-1,PRIM(SELECTprim {index=n}, [lv_e]) :: acc)
                               in
                                   ([(lv, RECORDtype taus)],
                                    PRIM(UB_RECORDprim, sels(length taus - 1, nil)))

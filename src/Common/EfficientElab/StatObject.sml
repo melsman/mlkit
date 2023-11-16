@@ -91,8 +91,8 @@ structure StatObject: STATOBJECT =
       | ROWrec of Lab.lab * Type * RecType   (* labels are ordered during unification *)
 
     and RecLink =
-        NO_REC_LINK of int               (* row variable; the stamp is here to ease printing *)
-      | REC_LINK of RecType              (* row variable linked to row *)
+        NO_REC_LINK of {rho:int}         (* row variable; the stamp is here to ease printing *)
+      | REC_LINK of {rt:RecType}         (* row variable linked to row *)
 
     withtype Type        = {TypeDesc : TypeDesc, level : level ref}
          and TyVar       = TyLink ref
@@ -136,8 +136,8 @@ structure StatObject: STATOBJECT =
 
     fun findRecType r =
       case r
-        of VARrec {RowVar = rl as ref (REC_LINK r'), ...} =>
-          let val r'' = findRecType r' in rl := REC_LINK r''; r'' end
+        of VARrec {RowVar = rl as ref (REC_LINK {rt=r'}), ...} =>
+          let val r'' = findRecType r' in rl := REC_LINK {rt=r''}; r'' end
          | _ => r
 
     (* For prettyprinting and the like it's most convenient to be able
@@ -382,7 +382,7 @@ structure StatObject: STATOBJECT =
       struct
 
         local val r = ref 0
-        in fun freshRow () = VARrec {RowVar = ref (NO_REC_LINK (r := !r + 1 ; !r)), level = ref (Level.current())}
+        in fun freshRow () = VARrec {RowVar = ref (NO_REC_LINK {rho=(r := !r + 1 ; !r)}), level = ref (Level.current())}
         end
 
         fun pr_rvis (rvis : (ParseInfo.ParseInfo * regvar_info list) option URef.uref) : string =
@@ -431,7 +431,7 @@ structure StatObject: STATOBJECT =
             (PP.layoutAtom Lab.pr_Lab) layout m
           end
 
-        and pr_RowVar (ref (NO_REC_LINK rho)) = "'r" ^ Int.toString rho
+        and pr_RowVar (ref (NO_REC_LINK {rho})) = "'r" ^ Int.toString rho
           | pr_RowVar _ = die "pr_RowVar"
 
         local
@@ -1435,7 +1435,7 @@ structure StatObject: STATOBJECT =
         and unifyRowVar ({RowVar=rv,level}, row) =
           (decr_level_RecType (!level) row;
            if occurs_rv_in_RecType(rv, row) then raise Unify "unifyRowVar"
-           else rv := REC_LINK row)
+           else rv := REC_LINK {rt=row})
 
         and unifyRow' (row1: RecType, row2: RecType) =
           (* Assumes findRecType and RecType.sort has been applied --- done in unifyRow *)

@@ -1293,7 +1293,7 @@ good *)
                   NOTAIL,
                   tvs)
         end
-    | E.PRIM(E.RECORDprim rv_opt,args) =>
+    | E.PRIM(E.RECORDprim {regvar=rv_opt},args) =>
         let val (B, trips, tvs) = List.foldr (fn (arg, (B, trips, tvs)) =>
                     let val (B, trip, _, tvs') = S(B,arg, false, NOTAIL)
                     in (B, trip::trips, spuriousJoin tvs' tvs)
@@ -1310,7 +1310,7 @@ good *)
            NOTAIL,
            tvs)
         end
-    | E.PRIM(E.SELECTprim i, [arg as E.VAR _]) => (* avoid retract for this case *)
+    | E.PRIM(E.SELECTprim {index=i}, [arg as E.VAR _]) => (* avoid retract for this case *)
         let
           val (B, t1 as E'.TR(e1', meta1, phi1), _, tvs) = S(B,arg, false, NOTAIL)
           val (mus,rho) =
@@ -1330,7 +1330,7 @@ good *)
            NOTAIL,
            tvs)
         end
-    | E.PRIM(E.SELECTprim i, [arg]) =>
+    | E.PRIM(E.SELECTprim {index=i}, [arg]) =>
         let
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (B, t1 as E'.TR(e1', meta1, phi1), _, tvs) = S(B,arg, false, NOTAIL)
@@ -1454,7 +1454,7 @@ good *)
            tvs)
         end
 
-    | E.PRIM(E.SCRATCHMEMprim n, []) =>
+    | E.PRIM(E.SCRATCHMEMprim {sz=n}, []) =>
         let val (B, rho, mu) = freshBoxMu "SCRATCHMEMprim" B R.stringType
             val phi = Eff.mkPut rho
         in
