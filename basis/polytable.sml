@@ -1,16 +1,17 @@
-(*tables.sml: implementation of Vector and Array *)
+(* PolyTable functor for implementing polymorphic Vector and Array
+   structures.
 
-(* table is the basic table type with functions
-     sub0: extract element from table
-     update0: update element in table
-     table0: construct new table
+   The type table is the basic table type with functions
+     sub0    : extract element from table
+     update0 : update element in table
+     table0  : construct new table
    The table type is defined in Runtime/Table.h.
 
    Parts of the implementation is from Peter Sestoft's implementation
    in Moscow ML.
-*)
+ *)
 
-functor WordTable (eqtype 'a table) =
+functor PolyTable (eqtype 'a table) =
 struct
   type 'a array  = 'a array
   type 'a vector = 'a vector

@@ -22,7 +22,7 @@ local
     basis ArrayVector =
         let open General List
             basis Poly =
-              let wordtables.sml TableSlice.sml
+              let polytable.sml TableSlice.sml
               in bas
                     VECTOR.sig Vector.sml
                     VECTOR_SLICE.sml VectorSlice.sml

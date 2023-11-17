@@ -1,5 +1,5 @@
-structure Vector : VECTOR = 
-    let structure T = WordTable (type 'a table = 'a vector)
+structure Vector : VECTOR =
+    let structure T = PolyTable (type 'a table = 'a vector)
     in struct
 	   open T
 	   val update = updatev
@@ -7,6 +7,3 @@ structure Vector : VECTOR =
     end
 
 fun vector l = Vector.fromList l
-
-
-
