@@ -122,4 +122,5 @@ clean:
 	cd Compiler/Backend/JS && $(CLEAN)
 	cd Compiler/Regions && $(CLEAN)
 	cd Compiler/Lambda && $(CLEAN)
+	$(MAKE) -C lib/github.com/diku-dk/sml-uref clean
 	rm -f mlkit

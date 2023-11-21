@@ -104,6 +104,13 @@ local
           end
        end
 
+    basis WordArrayVector =
+       let open General List ArrayVector Word
+           wordtable-functors.sml
+       in bas wordtable.sml
+          end
+       end
+
     basis Real =
        let open General String Int
        in bas
@@ -218,4 +225,5 @@ local
 in
   open General List ArrayVector String Bool Word Byte
        Int Real IntInf IntInfRep Io System Text Posix IO Socket PrimIO
+       WordArrayVector
 end

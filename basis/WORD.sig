@@ -17,57 +17,57 @@ signature WORD =
   sig
     eqtype word
 
-    val wordSize : int
+    val wordSize      : int
 
-    val toLarge      : word -> word64
-    val toLargeX     : word -> word64
-    val toLargeWord  : word -> word64
-    val toLargeWordX : word -> word64
+    val toLarge       : word -> word64
+    val toLargeX      : word -> word64
+    val toLargeWord   : word -> word64
+    val toLargeWordX  : word -> word64
     val fromLarge     : word64 -> word
     val fromLargeWord : word64 -> word
-    val toLargeInt  : word -> intinf
-    val toLargeIntX : word -> intinf
-    val fromLargeInt : intinf -> word
-    val toInt  : word -> int
-    val toIntX : word -> int
-    val fromInt : int -> word
+    val toLargeInt    : word -> intinf
+    val toLargeIntX   : word -> intinf
+    val fromLargeInt  : intinf -> word
+    val toInt         : word -> int
+    val toIntX        : word -> int
+    val fromInt       : int -> word
 
-    val andb : word * word -> word
-    val orb  : word * word -> word
-    val xorb : word * word -> word
-    val notb : word -> word
-    val << : word * Initial.word0 -> word
-    val >> : word * Initial.word0 -> word
-    val ~>> : word * Initial.word0 -> word
+    val andb          : word * word -> word
+    val orb           : word * word -> word
+    val xorb          : word * word -> word
+    val notb          : word -> word
+    val <<            : word * Initial.word0 -> word
+    val >>            : word * Initial.word0 -> word
+    val ~>>           : word * Initial.word0 -> word
 
-    val + : word * word -> word
-    val - : word * word -> word
-    val * : word * word -> word
-    val div : word * word -> word
-    val mod : word * word -> word
+    val +             : word * word -> word
+    val -             : word * word -> word
+    val *             : word * word -> word
+    val div           : word * word -> word
+    val mod           : word * word -> word
 
-    val compare : word * word -> order
-    val <  : word * word -> bool
-    val <= : word * word -> bool
-    val >  : word * word -> bool
-    val >= : word * word -> bool
+    val compare       : word * word -> order
+    val <             : word * word -> bool
+    val <=            : word * word -> bool
+    val >             : word * word -> bool
+    val >=            : word * word -> bool
 
-    val ~ : word -> word
-    val min : word * word -> word
-    val max : word * word -> word
+    val ~             : word -> word
+    val min           : word * word -> word
+    val max           : word * word -> word
 
-    val fmt      : StringCvt.radix -> word -> string
-    val toString : word -> string
-    val scan     : StringCvt.radix
-	-> (char, 'a) StringCvt.reader
-	-> (word, 'a) StringCvt.reader
-    val fromString : string -> word option
+    val fmt           : StringCvt.radix -> word -> string
+    val toString      : word -> string
+    val scan          : StringCvt.radix
+                        -> (char, 'a) StringCvt.reader
+                        -> (word, 'a) StringCvt.reader
+    val fromString    : string -> word option
 end
 
 (**
 
-[wordSize] The number of bits in type word. wordSize need not be a power of
-two. Note that word has a fixed, finite precision.
+[wordSize] The number of bits in type word. wordSize need not be a
+power of two. Note that word has a fixed, finite precision.
 
 [toLarge w]
 

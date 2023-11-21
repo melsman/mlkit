@@ -1851,7 +1851,7 @@ end; (*match compiler local*)
          "__less_int32", "__less_word32", "__greater_int32", "__greater_word32",
          "__lesseq_int32", "__lesseq_word32", "__greatereq_int32", "__greatereq_word32",
          "__neg_int32", "__abs_int32",
-         "__equal_int32", "__equal_word32"
+         "__equal_int32", "__equal_word32", "__bytetable_sub_word32", "__bytetable_update_word32"
         ]
         @
         (if values_64bit() then
@@ -1865,13 +1865,14 @@ end; (*match compiler local*)
                 "__less_int64", "__less_word64", "__greater_int64", "__greater_word64",
                 "__lesseq_int64", "__lesseq_word64", "__greatereq_int64", "__greatereq_word64",
                 "__neg_int64", "__abs_int64",
-                "__equal_int64", "__equal_word64"
+                "__equal_int64", "__equal_word64",
+                "__bytetable_sub_word64", "__bytetable_update_word64"
                ]
          else [])
         @ map resolve_default
         ["__quot_int", "__rem_int", "__max_int", "__min_int", "__equal_word",
          "__shift_left_word", "__shift_right_signed_word", "__shift_right_unsigned_word",
-         "__orb_word", "__andb_word", "__xorb_word"]
+         "__orb_word", "__andb_word", "__xorb_word", "__bytetable_sub_word", "__bytetable_update_word"]
         @
         let fun T t =
                 case t of

@@ -1262,6 +1262,12 @@ struct
                             | Int63_to_int32b => int63_to_int32b arg
 
                             | Bytetable_sub => bytetable_sub arg
+                            | Bytetable_sub_word16 => bytetable_sub_word16 arg
+                            | Bytetable_sub_word31 => bytetable_sub_word31 arg
+                            | Bytetable_sub_word32ub => bytetable_sub_word32ub arg
+                            | Bytetable_sub_word63 => bytetable_sub_word63 arg
+                            | Bytetable_sub_word64ub => bytetable_sub_word64ub arg
+
                             | Word_sub0 => word_sub0 arg
                             | Plus_f64 => plus_f64 arg
                             | Minus_f64 => minus_f64 arg
@@ -1305,6 +1311,17 @@ struct
                           | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,size_ff,C)
                           | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,size_ff,C)
                           | Bytetable_update => bytetable_update (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word63 => bytetable_update_word63 (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word64ub => bytetable_update_word64ub (b,x,y,d,size_ff,C)
+                          | Bytetable_update_word64b => bytetable_update_word64b (b,x,y,d,size_ff,C)
+
+                          | Bytetable_sub_word32b => bytetable_sub_word32b (b,x,y,d,size_ff,C)
+                          | Bytetable_sub_word64b => bytetable_sub_word64b (b,x,y,d,size_ff,C)
+
                           | Word_update0 => word_update0 (b,x,y,d,size_ff,C)
                           | Blockf64_update_real => blockf64_update_real (b,x,y,d,size_ff,C)
                           | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,size_ff,C)

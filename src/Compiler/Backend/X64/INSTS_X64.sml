@@ -11,6 +11,7 @@ signature INSTS_X64 =
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
                  | r10b (* for bytetable_update, e.g. *)
+                 | r10w (* for bytetable_update2, e.g. *)
                  | xmm0 | xmm1 | xmm2 | xmm3
                  | xmm4 | xmm5 | xmm6 | xmm7
                  | xmm8 | xmm9 | xmm10 | xmm11
@@ -56,6 +57,7 @@ signature INSTS_X64 =
     | mov of ea * ea                (* e.g. for zero extension for moving 32-bit values into 64-bit registers *)
     | movb of ea * ea
     | movzbq of ea * ea
+    | movzwq of ea * ea
     | movslq of ea * ea
     | movabsq of ea * ea
     | push of ea
