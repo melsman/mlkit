@@ -6,6 +6,36 @@
 *)
 
 (*---------------------------------------------*)
+(*    Boolean Vectors, Arrays, and Slices      *)
+(*---------------------------------------------*)
+
+local
+  structure ArgV = TableArgBool(type table = string)
+  structure ArgA = TableArgBool(type table = chararray)
+in
+  (** SigDoc *)
+  structure BoolVector : MONO_VECTOR =
+    let structure V = WordTable(ArgV)
+    in struct open V
+              val update = updatev
+       end
+    end
+
+  (** SigDoc *)
+  structure BoolVectorSlice : MONO_VECTOR_SLICE =
+    WordSlice(ArgV)
+
+  (** SigDoc *)
+  structure BoolArray : MONO_ARRAY =
+    WordTable(ArgA)
+
+  (** SigDoc *)
+  structure BoolArraySlice : MONO_ARRAY_SLICE =
+    WordSlice(ArgA)
+end
+
+
+(*---------------------------------------------*)
 (*     Word16 Vectors, Arrays, and Slices      *)
 (*---------------------------------------------*)
 

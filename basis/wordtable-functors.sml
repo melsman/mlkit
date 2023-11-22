@@ -540,6 +540,29 @@ struct
         end
 end
 
+functor TableArgBool(type table) : WORD_TABLE_ARG = struct
+  type elem = bool
+  fun w2b (w:Word8.word) : bool = (w = 0w1)
+  fun b2w (b:bool) : Word8.word = if b then 0w1 else 0w0
+  type array = chararray
+  type vector = string
+  val maxLen = 1000000000
+  val wordSizeBytes = 1
+  fun asub (t:array,i:int) : elem =
+      w2b(prim ("__bytetable_sub", (t,i)))
+  fun aupd (t:array,i:int,e:elem) : unit =
+      prim("__bytetable_update", (t,i,b2w e))
+  fun vsub (t:vector,i:int) : elem =
+      w2b(prim ("__bytetable_sub", (t,i)))
+  fun vupd (t:vector,i:int,e:elem) : unit =
+      prim("__bytetable_update", (t,i,b2w e))
+  type table = table
+  fun tsub (t:table,i:int) : elem =
+      w2b(prim ("__bytetable_sub", (t,i)))
+  fun tupd (t:table,i:int,e:elem) : unit =
+      prim("__bytetable_update", (t,i,b2w e))
+end
+
 functor TableArgWord8(type table) : WORD_TABLE_ARG = struct
   type elem = Word8.word
   type array = chararray

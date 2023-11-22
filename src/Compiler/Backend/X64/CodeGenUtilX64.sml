@@ -2735,7 +2735,7 @@ struct
             I.imulq(I "4", R tmp_reg1) ::
             I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
             move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
-            I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
+            I.shrl (I "1", R r10d) ::                           (* untag x: tmp_reg0 >> 1 *)
             I.mov (R r10d, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10d *)
             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
             C'))))
