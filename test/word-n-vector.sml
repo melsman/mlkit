@@ -265,6 +265,13 @@ structure TV8 = Test(structure W = Word8
                      structure VS = Word8VectorSlice
                      val eqv : V.vector * V.vector -> bool = (op =))
 
+val () = print "[Testing Word16Vector]\n"
+
+structure TV16 = Test(structure W = Word16
+                      structure V = Word16Vector
+                      structure VS = Word16VectorSlice
+                      val eqv : V.vector * V.vector -> bool = (op =))
+
 val () = print "[Testing Word31Vector]\n"
 
 structure TV31 = Test(structure W = Word31
@@ -278,14 +285,14 @@ structure TV32 = Test(structure W = Word32
                       structure V = Word32Vector
                       structure VS = Word32VectorSlice
                       val eqv : V.vector * V.vector -> bool = (op =))
-(*
+
 val () = print "[Testing Word63Vector]\n"
 
 structure TV63 = Test(structure W = Word63
                       structure V = Word63Vector
                       structure VS = Word63VectorSlice
                       val eqv : V.vector * V.vector -> bool = (op =))
-*)
+
 val () = print "[Testing Word64Vector]\n"
 
 structure TV64 = Test(structure W = Word64

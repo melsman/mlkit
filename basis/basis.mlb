@@ -68,7 +68,7 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sig Word.sml Word64.sml (*Word63.sml*) Word32.sml Word31.sml Word8.sml
+           basis W = bas WORD.sig Word.sml Word64.sml Word63.sml Word32.sml Word31.sml Word8.sml
                          ann safeLinkTimeElimination
                          in local WordN.sml
                             in Word16.sml

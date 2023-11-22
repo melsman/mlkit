@@ -1899,6 +1899,8 @@ end; (*match compiler local*)
               | prune "__word31_to_word31" = "id"
               | prune "__word32ub_to_word32ub" = "id"
               | prune "__word32ub_to_word32ub_X" = "id"
+              | prune "__word63_to_word63" = "id"
+              | prune "__word63_to_word63_X" = "id"
               | prune s = s
             fun conv0 pr t1 t2 =
                 (pr (t1,t2), let val (a1,b1) = T t1
@@ -1960,7 +1962,8 @@ end; (*match compiler local*)
                 convX "word64" "int64",
                 conv  "word64" "word",
                 conv  "word64" "word31",
-                conv  "word64" "word32"
+                conv  "word64" "word32",
+                conv  "word64" "word63"
                ]
              else [])
         end

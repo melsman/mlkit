@@ -117,6 +117,7 @@ datatype prim =
          Word63_to_word64b |   (* shrq |> box *)
          Word63_to_word64b_X | (* sarq |> box *)
          Word64b_to_word63 |   (* sal >> (+1) *)
+         Word64ub_to_word63 |   (* sal >> (+1) *)
 
          Int31_to_int63 |
          Int63_to_int31 |
@@ -289,6 +290,7 @@ local
          ("__word63_to_word64b", Word63_to_word64b),
          ("__word63_to_word64b_X", Word63_to_word64b_X),
          ("__word64b_to_word63", Word64b_to_word63),
+         ("__word64ub_to_word63", Word64ub_to_word63),
 
          ("__int31_to_int63", Int31_to_int63),
          ("__int63_to_int31", Int63_to_int31),
@@ -678,6 +680,7 @@ fun pp_prim (p:prim) : string =
       | Word63_to_word64b => "Word63_to_word64b"
       | Word63_to_word64b_X => "Word63_to_word64b_X"
       | Word64b_to_word63 => "Word64b_to_word63"
+      | Word64ub_to_word63 => "Word64ub_to_word63"
 
       | Int31_to_int63 => "Int31_to_int63"
       | Int63_to_int31 => "Int63_to_int31"

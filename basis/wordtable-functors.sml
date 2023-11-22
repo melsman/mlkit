@@ -561,6 +561,27 @@ functor TableArgWord8(type table) : WORD_TABLE_ARG = struct
       prim("__bytetable_update", (t,i,e))
 end
 
+functor TableArgWord16(type table) : WORD_TABLE_ARG = struct
+  type elem = Word16.word
+  type array = chararray
+  type vector = string
+  val maxLen = 1000000000
+  val wordSizeBytes = 2
+  fun asub (t:array,i:int) : elem =
+      prim ("__bytetable_sub_word16", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit =
+      prim("__bytetable_update_word16", (t,i,e))
+  fun vsub (t:vector,i:int) : elem =
+      prim ("__bytetable_sub_word16", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit =
+      prim("__bytetable_update_word16", (t,i,e))
+  type table = table
+  fun tsub (t:table,i:int) : elem =
+      prim ("__bytetable_sub_word16", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit =
+      prim("__bytetable_update_word16", (t,i,e))
+end
+
 functor TableArgWord31(type table) : WORD_TABLE_ARG = struct
   type elem = Word31.word
   type array = chararray
@@ -603,7 +624,6 @@ functor TableArgWord32(type table) : WORD_TABLE_ARG = struct
       prim("__bytetable_update_word32", (t,i,e))
 end
 
-(*
 functor TableArgWord63(type table) : WORD_TABLE_ARG = struct
   type elem = Word63.word
   type array = chararray
@@ -624,7 +644,6 @@ functor TableArgWord63(type table) : WORD_TABLE_ARG = struct
   fun tupd (t:table,i:int,e:elem) : unit =
       prim("__bytetable_update_word63", (t,i,e))
 end
-*)
 
 functor TableArgWord64(type table) = struct
   type elem = Word64.word

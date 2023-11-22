@@ -1043,6 +1043,7 @@ struct
 
                             | Int64b_to_int63      => int64_to_int63 {boxedarg=true} arg
                             | Word64b_to_word63    => word64_to_word63 {boxedarg=true} arg
+                            | Word64ub_to_word63   => word64_to_word63 {boxedarg=false} arg
                             | Word32b_to_word63    => word32_to_word63 {boxedarg=true,signext=false} arg
                             | Word63_to_word31     => word63_to_word31 arg
                             | Word31_to_word63_X   => num31_to_num63 {signext=true} arg
