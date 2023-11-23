@@ -32,6 +32,10 @@ in
   (** SigDoc *)
   structure BoolArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure BoolArray2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
 end
 
 
@@ -62,6 +66,10 @@ in
   (** SigDoc *)
   structure Word16ArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure Word16Array2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
 end
 
 (*---------------------------------------------*)
@@ -91,6 +99,10 @@ in
   (** SigDoc *)
   structure Word31ArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure Word31Array2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
 end
 
 (*---------------------------------------------*)
@@ -120,6 +132,11 @@ in
   (** SigDoc *)
   structure Word32ArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure Word32Array2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
+
 end
 
 (*---------------------------------------------*)
@@ -149,6 +166,10 @@ in
   (** SigDoc *)
   structure Word63ArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure Word63Array2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
 end
 
 
@@ -181,6 +202,10 @@ in
     WordSlice(ArgA)
 
   (** SigDoc *)
+  structure Word64Array2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
+
+  (** SigDoc *)
   structure LargeWordVector : MONO_VECTOR =
     Word64Vector
 
@@ -195,6 +220,10 @@ in
   (** SigDoc *)
   structure LargeWordArraySlice : MONO_ARRAY_SLICE =
     Word64ArraySlice
+
+  (** SigDoc *)
+  structure LargeWordArray2 : MONO_ARRAY2 =
+    Word64Array2
 end
 
 (*---------------------------------------------*)
@@ -224,6 +253,10 @@ in
   (** SigDoc *)
   structure WordArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
+
+  (** SigDoc *)
+  structure WordArray2 : MONO_ARRAY2 =
+    WordArray2(ArgA)
 end
 
 (*---------------------------------------------*)
@@ -264,7 +297,7 @@ local
       structure RealArraySlice : MONO_ARRAY_SLICE = WordSlice(ArgA)
 
       (** SigDoc *)
-      structure RealArray2 : MONO_ARRAY2 = RealArray2(ArgA)
+      structure RealArray2 : MONO_ARRAY2 = WordArray2(ArgA)
   end
 
 in

@@ -107,8 +107,8 @@ local
     basis WordArrayVector =
        let open General List ArrayVector Word
            wordtable-functors.sml
-	   RealArray2.sml
-       in bas wordtable.sml
+	   wordarray2-functor.sml
+       in bas wordtables.sml
           end
        end
 

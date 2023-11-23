@@ -1,17 +1,8 @@
-functor RealArray2 (Arg: WORD_TABLE_ARG where type table = chararray)
+functor WordArray2 (Arg: WORD_TABLE_ARG where type table = chararray)
         : MONO_ARRAY2 where type elem = Arg.elem =
 struct
 
 open Arg
-
-fun vector0 (n:int) : vector =
-    prim("allocStringML", n * wordSizeBytes)
-
-fun alloc (n:int) : table =
-    prim("allocStringML", n * wordSizeBytes)
-
-fun length (t:table) : int =
-    prim ("__blockf64_size", t)
 
 val maxLen : int = Initial.wordtable_maxlen
 
@@ -24,12 +15,12 @@ fun check_size r c =
     else raise Size
 
 fun alloc_table r c =
-    alloc (check_size r c)
+    talloc (check_size r c)
 
 fun tabulatev (n, f : int -> elem) : vector =
     let fun init f (t, i) = if i >= n then t
 			    else (vupd (t, i, f i); init f (t, i+1))
-    in init f (vector0 n, 0)
+    in init f (valloc n, 0)
     end
 
 type array = {base: table,
@@ -75,7 +66,7 @@ fun iter n f =
 
 fun array (nrows,ncols,e) : array =
     let val a = alloc_table nrows ncols
-    in iter (length a) (fn i => tupd(a,i,e))
+    in iter (tlen a) (fn i => tupd(a,i,e))
      ; {base = a,
         nrows = nrows,
         ncols = ncols}

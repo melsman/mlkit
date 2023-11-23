@@ -8,13 +8,18 @@ signature WORD_TABLE_ARG = sig
   type table
   type vector = string
   type array = chararray
+  val wordSizeBytes : int
   val tsub          : table * int -> elem
   val tupd          : table * int * elem -> unit
   val vsub          : vector * int -> elem
   val vupd          : vector * int * elem -> unit
   val asub          : array * int -> elem
   val aupd          : array * int * elem -> unit
-  val wordSizeBytes : int
+  val tlen          : table -> int
+  val vlen          : vector -> int
+  val talloc        : int -> table
+  val valloc        : int -> vector
+  val aalloc        : int -> array
 end
 
 (* ---------------------------------------------------------------
@@ -24,10 +29,6 @@ end
    Internally, vectors are represented as strings and arrays as
    chararrays, which allows for the proper equality tests.
 
-   The type table is the basic table type with functions
-     sub0    : extract element from table
-     update0 : update element in table
-     table0  : construct new table
    The table type is defined in Runtime/Table.h.
  ----------------------------------------------------------------- *)
 
@@ -35,20 +36,8 @@ functor WordTable (Arg : WORD_TABLE_ARG) =
 struct
   open Arg
 
-  fun table0 (n:int) : table =
-      prim("allocStringML", n * wordSizeBytes)
-
-  fun vector0 (n:int) : vector =
-      prim("allocStringML", n * wordSizeBytes)
-
-  fun array0 (n:int) : array =
-      prim("allocStringML", n * wordSizeBytes)
-
-  fun length (t:table) : int =
-      prim ("__bytetable_size", t) div wordSizeBytes
-
-  fun length_vector (t:vector) : int =
-      prim ("__bytetable_size", t) div wordSizeBytes
+  val length = tlen
+  val length_vector = vlen
 
   (* quite a few bits are available for the length in the tag field! *)
   val maxLen = Initial.wordtable_maxlen
@@ -70,18 +59,18 @@ struct
   (* table n returns an uninitialised table with n elements.
    * Raise Size if n > maxLen. *)
   fun table (n:int) : table =
-      (chk_sz n; table0 n)
+      (chk_sz n; talloc n)
 
   (* vector n returns an uninitialised vector with n elements.
    * Raise Size if n > maxLen. *)
   fun vectorv n =
-      (chk_sz n; vector0 n)
+      (chk_sz n; valloc n)
 
   (* array n gives an initialised array with n elements. *)
   (* Raise Size if n > maxLen.                           *)
   fun array (n, x) =
       let val () = chk_sz n
-          val a = array0 n
+          val a = aalloc n
           fun init i = if i < 0 then ()
                        else (aupd(a,i,x); init (i-1))
       in init (n-1)
@@ -106,7 +95,7 @@ struct
   fun tabulatev (n, f : int -> elem) : vector =
       let fun init f (t, i) = if i >= n then t
 			      else (vupd (t, i, f i); init f (t, i+1))
-      in init f (vector0 n, 0)
+      in init f (valloc n, 0)
       end
 
   fun vector (t:table) : vector =
@@ -176,7 +165,7 @@ struct
 
   fun mapi (f : int * elem -> elem) (a : table) : table =
       let val stop = length a
-	  val newvec = table0 stop
+	  val newvec = talloc stop
 	  fun lr j =
 	      if j < stop then
 		(tupd(newvec, j, f(j, tsub(a,j)));
@@ -220,7 +209,7 @@ struct
   (* The following are only for the Vector structure: *)
   fun map (f : elem -> elem) (a:table) : table =
       let val n = length a
-          val b : table = table0 n
+          val b : table = talloc n
 	  fun lr j =
 	      if j < n then (tupd (b, j, f (tsub (a, j))); lr (j+1))
 	      else ()
@@ -229,7 +218,7 @@ struct
 
   fun mapi (f : int * elem -> elem) (a:table) : table =
       let val stop = length a
-	  val newtab = table0 stop
+	  val newtab = talloc stop
 	  fun lr j =
 	      if j < stop then
 		(tupd(newtab, j, f(j, tsub(a,j)));
@@ -310,17 +299,7 @@ functor WordSlice (Arg : WORD_TABLE_ARG) =
 struct
     open Arg
 
-    fun table0 (i:int) : table =
-        prim("allocStringML", i * wordSizeBytes)
-
-    fun vector0 (i:int) : vector =
-        prim("allocStringML", i * wordSizeBytes)
-
-    fun length0 (t:table): int =
-        prim ("__bytetable_size", t) div wordSizeBytes
-
-    fun length_vector (v:vector): int =
-        prim ("__bytetable_size", v) div wordSizeBytes
+    val length_vector = vlen
 
     val maxLen = Initial.wordtable_maxlen
 
@@ -338,7 +317,7 @@ struct
         else tupd (a',i'+i,v);
 
     fun slice (a, i, len) =
-        let val alen = length0 a
+        let val alen = tlen a
         in case len of
                NONE   => if 0<=i andalso i<=alen then (a, i, alen - i)
                          else raise Subscript
@@ -346,7 +325,7 @@ struct
                          else raise Subscript
         end
 
-    fun full a = (a, 0, length0 a);
+    fun full a = (a, 0, tlen a);
 
     fun subslice ((a, i, n), i', NONE) =
         if 0<=i' andalso i'<=n then (a, i+i', n-i')
@@ -358,7 +337,7 @@ struct
     fun base sli = sli
 
     fun vector (a : table, i, n) : vector =
-        let val newvec = vector0 n
+        let val newvec = valloc n
             fun copy j =
                 if j<n then (vupd(newvec,j,tsub(a,i+j)); copy (j+1))
                 else ()
@@ -366,7 +345,7 @@ struct
         end
 
     fun copy {src=(a1,i1,n) : slice, dst=a2: table, di=i2} =
-        if i2<0 orelse i2+n > length0 a2 then raise Subscript
+        if i2<0 orelse i2+n > tlen a2 then raise Subscript
         else if i1 < i2 then            (* copy from high to low *)
           let fun hi2lo j =
                   if j >= 0 then (tupd(a2,i2+j,tsub(a1,i1+j));
@@ -384,7 +363,7 @@ struct
 
     fun copyVec {src : vector_slice, dst=a2: table, di=i2} =
       let val (a1, i1, n) = src
-      in if i2<0 orelse i2+n > length0 a2 then raise Subscript
+      in if i2<0 orelse i2+n > tlen a2 then raise Subscript
          else let fun lo2hi j = if j < n then
                                   (tupd(a2,i2+j,vsub(a1,i1+j));
                                    lo2hi (j+1))
@@ -400,7 +379,7 @@ struct
               | acc ((_, _, len1)::vr) len = acc vr (len1 + len)
             val len = acc slis 0
             val newvec = if len > maxLen then raise Size
-                         else vector0 len
+                         else valloc len
             fun copyall to []                   = () (* Now: to = len *)
               | copyall to ((v1, i1, n1)::slir) =
                 let fun copyv1 j =
@@ -445,7 +424,7 @@ struct
         end
 
     fun map (f : elem -> elem) (a : table, i, n) : table =
-        let val newvec = table0 n
+        let val newvec = talloc n
             val stop = i+n
             fun lr j =
                 if j < stop then (tupd(newvec,j-i,f(tsub(a,j)));
@@ -492,7 +471,7 @@ struct
         end
 
     fun mapi (f : int * elem -> elem) (a : table, i, n) : table =
-        let val newvec = table0 n
+        let val newvec = talloc n
             val stop = i+n
             fun lr j =
                 if j < stop then (tupd(newvec,j-i,f(j-i, tsub(a,j)));
@@ -545,19 +524,18 @@ functor TableArgBool(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 1
-  fun asub (t:array,i:int) : elem =
-      w2b(prim ("__bytetable_sub", (t,i)))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,b2w e))
-  fun vsub (t:vector,i:int) : elem =
-      w2b(prim ("__bytetable_sub", (t,i)))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,b2w e))
+  fun asub (t:array,i:int) : elem = w2b(prim ("__bytetable_sub", (t,i)))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,b2w e))
+  fun vsub (t:vector,i:int) : elem = w2b(prim ("__bytetable_sub", (t,i)))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,b2w e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      w2b(prim ("__bytetable_sub", (t,i)))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,b2w e))
+  fun tsub (t:table,i:int) : elem = w2b(prim ("__bytetable_sub", (t,i)))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,b2w e))
+  fun tlen (t:table) : int = prim ("__bytetable_size", t)
+  fun vlen (t:vector) : int = prim ("__bytetable_size", t)
+  fun talloc (n:int) : table = prim("allocStringML", n)
+  fun valloc (n:int) : vector = prim("allocStringML", n)
+  fun aalloc (n:int) : array = prim("allocStringML", n)
 end
 
 functor TableArgWord8(type table) : WORD_TABLE_ARG = struct
@@ -565,19 +543,18 @@ functor TableArgWord8(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 1
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,e))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
+  fun tlen (t:table) : int = prim ("__bytetable_size", t)
+  fun vlen (t:vector) : int = prim ("__bytetable_size", t)
+  fun talloc (n:int) : table = prim("allocStringML", n)
+  fun valloc (n:int) : vector = prim("allocStringML", n)
+  fun aalloc (n:int) : array = prim("allocStringML", n)
 end
 
 functor TableArgWord16(type table) : WORD_TABLE_ARG = struct
@@ -585,19 +562,20 @@ functor TableArgWord16(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 2
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word16", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word16", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word16", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word16", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w1))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w1))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word16", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word16", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgWord31(type table) : WORD_TABLE_ARG = struct
@@ -605,19 +583,20 @@ functor TableArgWord31(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 4
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word31", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word31", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word31", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word31", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w2))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w2))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word31", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word31", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word31", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word31", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word31", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word31", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word31", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word31", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgWord32(type table) : WORD_TABLE_ARG = struct
@@ -625,19 +604,20 @@ functor TableArgWord32(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 4
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word32", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word32", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word32", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word32", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w2))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w2))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word32", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word32", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word32", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word32", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word32", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word32", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word32", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word32", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgWord63(type table) : WORD_TABLE_ARG = struct
@@ -645,19 +625,20 @@ functor TableArgWord63(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 8
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word63", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word63", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word63", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word63", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w3))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w3))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word63", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word63", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word63", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word63", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word63", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word63", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word63", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word63", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgWord64(type table) = struct
@@ -665,19 +646,20 @@ functor TableArgWord64(type table) = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 8
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word64", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word64", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word64", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word64", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w3))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w3))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word64", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word64", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word64", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word64", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word64", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word64", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word64", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word64", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgWord(type table) : WORD_TABLE_ARG = struct
@@ -685,19 +667,20 @@ functor TableArgWord(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 8
-  fun asub (t:array,i:int) : elem =
-      prim ("__bytetable_sub_word", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__bytetable_update_word", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__bytetable_sub_word", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__bytetable_update_word", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w3))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w3))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__bytetable_sub_word", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__bytetable_update_word", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
 functor TableArgReal(type table) : WORD_TABLE_ARG = struct
@@ -705,17 +688,17 @@ functor TableArgReal(type table) : WORD_TABLE_ARG = struct
   type array = chararray
   type vector = string
   val wordSizeBytes = 8
-  fun asub (t:array,i:int) : elem =
-      prim ("__blockf64_sub_real", (t,i))
-  fun aupd (t:array,i:int,e:elem) : unit =
-      prim("__blockf64_update_real", (t,i,e))
-  fun vsub (t:vector,i:int) : elem =
-      prim ("__blockf64_sub_real", (t,i))
-  fun vupd (t:vector,i:int,e:elem) : unit =
-      prim("__blockf64_update_real", (t,i,e))
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w3))
+  fun asub (t:array,i:int) : elem = prim ("__blockf64_sub_real", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__blockf64_update_real", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__blockf64_sub_real", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__blockf64_update_real", (t,i,e))
   type table = table
-  fun tsub (t:table,i:int) : elem =
-      prim ("__blockf64_sub_real", (t,i))
-  fun tupd (t:table,i:int,e:elem) : unit =
-      prim("__blockf64_update_real", (t,i,e))
+  fun tsub (t:table,i:int) : elem = prim ("__blockf64_sub_real", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__blockf64_update_real", (t,i,e))
+  fun tlen (t:table) : int = prim ("__blockf64_size", t)
+  fun vlen (t:vector) : int = prim ("__blockf64_size", t)
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
