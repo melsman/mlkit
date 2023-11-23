@@ -25,9 +25,10 @@ functor Test(structure W : WORD
              sharing type W.word = V.elem = VS.elem = A.elem = AS.elem
              sharing type V.vector = VS.vector = A.vector = AS.vector
              sharing type A.array = AS.array
-             sharing type VS.slice = AS.vector_slice
-             val eqv : V.vector * V.vector -> bool) : sig end =
+             sharing type VS.slice = AS.vector_slice) : sig end =
 struct
+
+  fun eqv (v1,v2) = V.collate W.compare (v1,v2) = EQUAL
 
   fun pr_section s =
       print ("[Test begin: Word"
@@ -1216,43 +1217,37 @@ structure TV8 = Test(structure W = Word8
                      structure V = Word8Vector
                      structure A = Word8Array
                      structure VS = Word8VectorSlice
-                     structure AS = Word8ArraySlice
-                     val eqv : V.vector * V.vector -> bool = (op =))
+                     structure AS = Word8ArraySlice)
 
 structure TV16 = Test(structure W = Word16
                       structure V = Word16Vector
                       structure A = Word16Array
                       structure VS = Word16VectorSlice
-                      structure AS = Word16ArraySlice
-                      val eqv : V.vector * V.vector -> bool = (op =))
+                      structure AS = Word16ArraySlice)
 
 structure TV31 = Test(structure W = Word31
                       structure V = Word31Vector
                       structure A = Word31Array
                       structure VS = Word31VectorSlice
-                      structure AS = Word31ArraySlice
-                      val eqv : V.vector * V.vector -> bool = (op =))
+                      structure AS = Word31ArraySlice)
 
 structure TV32 = Test(structure W = Word32
                       structure V = Word32Vector
                       structure A = Word32Array
                       structure VS = Word32VectorSlice
-                      structure AS = Word32ArraySlice
-                      val eqv : V.vector * V.vector -> bool = (op =))
+                      structure AS = Word32ArraySlice)
 
 structure TV63 = Test(structure W = Word63
                       structure V = Word63Vector
                       structure A = Word63Array
                       structure VS = Word63VectorSlice
-                      structure AS = Word63ArraySlice
-                      val eqv : V.vector * V.vector -> bool = (op =))
+                      structure AS = Word63ArraySlice)
 
 structure TV64 = Test(structure W = Word64
                       structure V = Word64Vector
                       structure A = Word64Array
                       structure VS = Word64VectorSlice
-                      structure AS = Word64ArraySlice
-                      val eqv : V.vector * V.vector -> bool = (op =))
+                      structure AS = Word64ArraySlice)
 
 val () = pr_n := false
 
@@ -1260,5 +1255,4 @@ structure TV = Test(structure W = Word
                     structure V = WordVector
                     structure A = WordArray
                     structure VS = WordVectorSlice
-                    structure AS = WordArraySlice
-                    val eqv : V.vector * V.vector -> bool = (op =))
+                    structure AS = WordArraySlice)
