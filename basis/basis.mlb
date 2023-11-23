@@ -107,6 +107,7 @@ local
     basis WordArrayVector =
        let open General List ArrayVector Word
            wordtable-functors.sml
+	   RealArray2.sml
        in bas wordtable.sml
           end
        end
@@ -118,11 +119,6 @@ local
             local open IEEEReal IntInf in REAL.sig Real.sml end
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
-            end
-            local open List ArrayVector
-                  RealTable.sml
-                  RealArray2.sml
-            in RealArrayVector.sml
             end
             open IEEEReal
           end

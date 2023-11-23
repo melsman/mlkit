@@ -14,7 +14,6 @@ signature WORD_TABLE_ARG = sig
   val vupd          : vector * int * elem -> unit
   val asub          : array * int -> elem
   val aupd          : array * int * elem -> unit
-  val maxLen        : int
   val wordSizeBytes : int
 end
 
@@ -52,7 +51,7 @@ struct
       prim ("__bytetable_size", t) div wordSizeBytes
 
   (* quite a few bits are available for the length in the tag field! *)
-  val maxLen = maxLen
+  val maxLen = Initial.wordtable_maxlen
 
   fun chk_idx (n:int, i:int) : unit =
       if 0 <= i andalso i < n then ()
@@ -323,7 +322,7 @@ struct
     fun length_vector (v:vector): int =
         prim ("__bytetable_size", v) div wordSizeBytes
 
-(*    fun null () : elem = prim("id",0:int) *)
+    val maxLen = Initial.wordtable_maxlen
 
     type slice = table * int * int
     type vector_slice = vector * int * int
@@ -362,7 +361,7 @@ struct
         let val newvec = vector0 n
             fun copy j =
                 if j<n then (vupd(newvec,j,tsub(a,i+j)); copy (j+1))
-                else () (*vupd(newvec,j,null())*)
+                else ()
         in copy 0; newvec
         end
 
@@ -411,7 +410,6 @@ struct
                 in (copyv1 0; copyall (to+n1) slir)
                 end
         in copyall 0 slis;
-           (* vupd(newvec,len,null()); *)
            newvec
         end
 
@@ -452,7 +450,7 @@ struct
             fun lr j =
                 if j < stop then (tupd(newvec,j-i,f(tsub(a,j)));
                                   lr (j+1))
-                else () (*tupd(newvec,j-i,null())*)
+                else ()
         in lr i; newvec
         end
 
@@ -499,7 +497,7 @@ struct
             fun lr j =
                 if j < stop then (tupd(newvec,j-i,f(j-i, tsub(a,j)));
                                   lr (j+1))
-                else () (*tupd(newvec,j-i,null())*)
+                else ()
         in lr i; newvec
         end
 
@@ -546,7 +544,6 @@ functor TableArgBool(type table) : WORD_TABLE_ARG = struct
   fun b2w (b:bool) : Word8.word = if b then 0w1 else 0w0
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 1
   fun asub (t:array,i:int) : elem =
       w2b(prim ("__bytetable_sub", (t,i)))
@@ -567,7 +564,6 @@ functor TableArgWord8(type table) : WORD_TABLE_ARG = struct
   type elem = Word8.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 1
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub", (t,i))
@@ -588,7 +584,6 @@ functor TableArgWord16(type table) : WORD_TABLE_ARG = struct
   type elem = Word16.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 2
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word16", (t,i))
@@ -609,7 +604,6 @@ functor TableArgWord31(type table) : WORD_TABLE_ARG = struct
   type elem = Word31.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 4
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word31", (t,i))
@@ -630,7 +624,6 @@ functor TableArgWord32(type table) : WORD_TABLE_ARG = struct
   type elem = Word32.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 4
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word32", (t,i))
@@ -651,7 +644,6 @@ functor TableArgWord63(type table) : WORD_TABLE_ARG = struct
   type elem = Word63.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 8
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word63", (t,i))
@@ -672,7 +664,6 @@ functor TableArgWord64(type table) = struct
   type elem = Word64.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 8
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word64", (t,i))
@@ -693,7 +684,6 @@ functor TableArgWord(type table) : WORD_TABLE_ARG = struct
   type elem = Word.word
   type array = chararray
   type vector = string
-  val maxLen = 1000000000
   val wordSizeBytes = 8
   fun asub (t:array,i:int) : elem =
       prim ("__bytetable_sub_word", (t,i))
@@ -708,4 +698,24 @@ functor TableArgWord(type table) : WORD_TABLE_ARG = struct
       prim ("__bytetable_sub_word", (t,i))
   fun tupd (t:table,i:int,e:elem) : unit =
       prim("__bytetable_update_word", (t,i,e))
+end
+
+functor TableArgReal(type table) : WORD_TABLE_ARG = struct
+  type elem = real
+  type array = chararray
+  type vector = string
+  val wordSizeBytes = 8
+  fun asub (t:array,i:int) : elem =
+      prim ("__blockf64_sub_real", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit =
+      prim("__blockf64_update_real", (t,i,e))
+  fun vsub (t:vector,i:int) : elem =
+      prim ("__blockf64_sub_real", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit =
+      prim("__blockf64_update_real", (t,i,e))
+  type table = table
+  fun tsub (t:table,i:int) : elem =
+      prim ("__blockf64_sub_real", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit =
+      prim("__blockf64_update_real", (t,i,e))
 end

@@ -1,27 +1,38 @@
-structure RealArray2 : MONO_ARRAY2
-                           where type vector = RealTable.vector
-                           where type elem = real =
+functor RealArray2 (Arg: WORD_TABLE_ARG where type table = chararray)
+        : MONO_ARRAY2 where type elem = Arg.elem =
 struct
 
-structure B = BlockReal
+open Arg
 
-val length = B.length
+fun vector0 (n:int) : vector =
+    prim("allocStringML", n * wordSizeBytes)
+
+fun alloc (n:int) : table =
+    prim("allocStringML", n * wordSizeBytes)
+
+fun length (t:table) : int =
+    prim ("__blockf64_size", t)
+
+val maxLen : int = Initial.wordtable_maxlen
 
 fun check_size r c =
     if 0 <= r andalso 0 <= c then
       let val n = (c*r) handle Overflow => raise Size
-      in if n <= B.maxLen then n
+      in if n <= maxLen then n
          else raise Size
       end
     else raise Size
 
 fun alloc_table r c =
-    B.alloc (check_size r c)
+    alloc (check_size r c)
 
-type elem = real
-type vector = RealTable.vector
+fun tabulatev (n, f : int -> elem) : vector =
+    let fun init f (t, i) = if i >= n then t
+			    else (vupd (t, i, f i); init f (t, i+1))
+    in init f (vector0 n, 0)
+    end
 
-type array = {base: B.t,   (* same as RealArray.array (RealTable.sml) *)
+type array = {base: table,
               ncols: int,
               nrows: int}
 
@@ -64,7 +75,7 @@ fun iter n f =
 
 fun array (nrows,ncols,e) : array =
     let val a = alloc_table nrows ncols
-    in iter (B.length a) (fn i => B.update(a,i,e))
+    in iter (length a) (fn i => tupd(a,i,e))
      ; {base = a,
         nrows = nrows,
         ncols = ncols}
@@ -83,7 +94,7 @@ fun fromList (m: elem list list) : array =
         fun updr (a,i,es,j) =
             case es of
                 nil => ()
-              | e::es => ( B.update(a,i*ncols+j,e)
+              | e::es => ( tupd(a,i*ncols+j,e)
                          ; updr (a,i,es,j+1)
                          )
         fun upd (a,rs,i) =
@@ -120,14 +131,14 @@ fun trav t (f:int*int*'a->'a) ({base,col,row,nrows,ncols}:region) (acc:'a) : 'a 
 fun region (a:array) : region = {base=a,row=0,col=0,nrows=NONE,ncols=NONE}
 
 fun sub_unsafe ({nrows,ncols,base}: array, i, j) : elem =
-    B.sub(base,i*ncols+j)
+    tsub(base,i*ncols+j)
 
 fun sub (a:array, r, c) : elem =
     ( check (a,r,c)
     ; sub_unsafe(a,r,c))
 
 fun update_unsafe ({nrows,ncols,base}: array, i, j, e) : unit =
-    B.update(base,i*ncols+j,e)
+    tupd(base,i*ncols+j,e)
 
 fun update (a,i,j,e) =
     ( check (a,i,j)
@@ -143,11 +154,11 @@ fun tabulate (t: traversal) (nrows,ncols,f:int*int->elem) : array =
 
 fun row (a:array,r) : vector =
     if r < 0 orelse r >= nRows a then raise Subscript
-    else RealTable.tabulate(nCols a,fn c => sub_unsafe(a,r,c))
+    else tabulatev(nCols a,fn c => sub_unsafe(a,r,c))
 
 fun column (a:array,c) : vector =
     if c < 0 orelse c >= nCols a then raise Subscript
-    else RealTable.tabulate(nRows a,fn r => sub_unsafe(a,r,c))
+    else tabulatev(nRows a,fn r => sub_unsafe(a,r,c))
 
 fun appi (t:traversal) (f: int*int*elem->unit) (r:region) : unit =
     ( check_region r

@@ -225,3 +225,79 @@ in
   structure WordArraySlice : MONO_ARRAY_SLICE =
     WordSlice(ArgA)
 end
+
+(*---------------------------------------------*)
+(*      Real Vectors, Arrays, and Slices       *)
+(*---------------------------------------------*)
+
+local
+
+  structure ArgV = TableArgReal(type table = string)
+  structure ArgA = TableArgReal(type table = chararray)
+
+  structure RealTables :> sig
+    structure RealVector      : MONO_VECTOR where type elem = real
+    structure RealVectorSlice : MONO_VECTOR_SLICE where type elem = real
+    structure RealArray       : MONO_ARRAY where type elem = real
+    structure RealArraySlice  : MONO_ARRAY_SLICE where type elem = real
+    structure RealArray2      : MONO_ARRAY2 where type elem = real
+    sharing type RealVector.vector = RealArray.vector
+               = RealArraySlice.vector = RealVectorSlice.vector = RealArray2.vector
+    sharing type RealArray.array = RealArraySlice.array
+    sharing type RealVectorSlice.slice = RealArraySlice.vector_slice
+  end =
+  struct
+      (** SigDoc *)
+      structure RealVector : MONO_VECTOR =
+        let structure V = WordTable(ArgV)
+        in struct open V val update = updatev
+           end
+        end
+
+      (** SigDoc *)
+      structure RealVectorSlice : MONO_VECTOR_SLICE = WordSlice(ArgV)
+
+      (** SigDoc *)
+      structure RealArray : MONO_ARRAY = WordTable(ArgA)
+
+      (** SigDoc *)
+      structure RealArraySlice : MONO_ARRAY_SLICE = WordSlice(ArgA)
+
+      (** SigDoc *)
+      structure RealArray2 : MONO_ARRAY2 = RealArray2(ArgA)
+  end
+
+in
+  open RealTables
+
+  (** SigDoc *)
+  structure Real64Vector : MONO_VECTOR = RealVector
+
+  (** SigDoc *)
+  structure Real64VectorSlice : MONO_VECTOR_SLICE = RealVectorSlice
+
+  (** SigDoc *)
+  structure Real64Array : MONO_ARRAY = RealArray
+
+  (** SigDoc *)
+  structure Real64ArraySlice : MONO_ARRAY_SLICE = RealArraySlice
+
+  (** SigDoc *)
+  structure Real64Array2 : MONO_ARRAY2 = RealArray2
+
+  (** SigDoc *)
+  structure LargeRealVector : MONO_VECTOR = RealVector
+
+  (** SigDoc *)
+  structure LargeRealVectorSlice : MONO_VECTOR_SLICE = RealVectorSlice
+
+  (** SigDoc *)
+  structure LargeRealArray : MONO_ARRAY = RealArray
+
+  (** SigDoc *)
+  structure LargeRealArraySlice : MONO_ARRAY_SLICE = RealArraySlice
+
+  (** SigDoc *)
+  structure LargeRealArray2 : MONO_ARRAY2 = RealArray2
+
+end
