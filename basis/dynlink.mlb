@@ -2,6 +2,6 @@ local
   $(SML_LIB)/basis/basis.mlb
 
   basis Dynlib = (* Dynamic linking support *)
-    bas DYNLIB.sml Dynlib.sml end
+    bas DYNLIB.sig Dynlib.sml end
 in open Dynlib
 end

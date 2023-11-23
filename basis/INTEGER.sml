@@ -13,40 +13,40 @@ signature INTEGER =
 
       val toLarge   : int -> intinf
       val fromLarge : intinf -> int
-      val toInt   : int -> Initial.int0
-      val fromInt : Initial.int0 -> int
+      val toInt     : int -> Initial.int0
+      val fromInt   : Initial.int0 -> int
 
       val precision : Initial.int0 option
-      val minInt : int option
-      val maxInt : int option
+      val minInt    : int option
+      val maxInt    : int option
 
-      val + : int * int -> int
-      val - : int * int -> int
-      val * : int * int -> int
-      val div : int * int -> int
-      val mod : int * int -> int
-      val quot : int * int -> int
-      val rem : int * int -> int
+      val +         : int * int -> int
+      val -         : int * int -> int
+      val *         : int * int -> int
+      val div       : int * int -> int
+      val mod       : int * int -> int
+      val quot      : int * int -> int
+      val rem       : int * int -> int
 
-      val compare : int * int -> order
-      val <  : int * int -> bool
-      val <= : int * int -> bool
-      val >  : int * int -> bool
-      val >= : int * int -> bool
+      val compare   : int * int -> order
+      val <         : int * int -> bool
+      val <=        : int * int -> bool
+      val >         : int * int -> bool
+      val >=        : int * int -> bool
 
-      val ~ : int -> int
-      val abs : int -> int
-      val min : int * int -> int
-      val max : int * int -> int
-      val sign : int -> Initial.int0
-      val sameSign : int * int -> bool
+      val ~         : int -> int
+      val abs       : int -> int
+      val min       : int * int -> int
+      val max       : int * int -> int
+      val sign      : int -> Initial.int0
+      val sameSign  : int * int -> bool
 
-      val fmt      : StringCvt.radix -> int -> string
-      val toString : int -> string
-      val scan     : StringCvt.radix
-	             -> (char, 'a) StringCvt.reader
-	             -> (int, 'a) StringCvt.reader
-    val fromString : string -> int option
+      val fmt       : StringCvt.radix -> int -> string
+      val toString  : int -> string
+      val scan      : StringCvt.radix
+                      -> (char, 'a) StringCvt.reader
+                      -> (int, 'a) StringCvt.reader
+    val fromString  : string -> int option
   end
 
 (**
@@ -164,11 +164,11 @@ but is too large to be represented by type int.
 The format that scan accepts depends on the radix argument. Regular
 expressions defining these formats are as follows:
 
-	  Radix                 Format
-	  StringCvt.BIN         [+~-]?[0-1]+
-	  StringCvt.OCT         [+~-]?[0-7]+
-	  StringCvt.DEC         [+~-]?[0-9]+
-	  StringCvt.HEX         [+~-]?(0x | 0X)?[0-9a-fA-F]+
+          Radix                 Format
+          StringCvt.BIN         [+~-]?[0-1]+
+          StringCvt.OCT         [+~-]?[0-7]+
+          StringCvt.DEC         [+~-]?[0-9]+
+          StringCvt.HEX         [+~-]?(0x | 0X)?[0-9a-fA-F]+
 
 Note that strings such as "0xg" and "0x 123" are scanned as SOME(0),
 even using a hexadecimal radix.

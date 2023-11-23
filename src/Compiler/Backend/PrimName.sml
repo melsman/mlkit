@@ -117,6 +117,7 @@ datatype prim =
          Word63_to_word64b |   (* shrq |> box *)
          Word63_to_word64b_X | (* sarq |> box *)
          Word64b_to_word63 |   (* sal >> (+1) *)
+         Word64ub_to_word63 |   (* sal >> (+1) *)
 
          Int31_to_int63 |
          Int63_to_int31 |
@@ -144,6 +145,14 @@ datatype prim =
 	 Exn_ptr | Fresh_exname | Get_ctx |
 
          Bytetable_sub | Bytetable_size | Bytetable_update |
+         Bytetable_sub_word16 | Bytetable_update_word16 |
+         Bytetable_sub_word31 | Bytetable_update_word31 |
+         Bytetable_sub_word32ub | Bytetable_update_word32ub |
+         Bytetable_sub_word32b | Bytetable_update_word32b |
+         Bytetable_sub_word63 | Bytetable_update_word63 |
+         Bytetable_sub_word64ub | Bytetable_update_word64ub |
+         Bytetable_sub_word64b | Bytetable_update_word64b |
+
 	 Word_sub0 | Word_update0 | Table_size |
 
 	 Is_null |
@@ -281,6 +290,7 @@ local
          ("__word63_to_word64b", Word63_to_word64b),
          ("__word63_to_word64b_X", Word63_to_word64b_X),
          ("__word64b_to_word63", Word64b_to_word63),
+         ("__word64ub_to_word63", Word64ub_to_word63),
 
          ("__int31_to_int63", Int31_to_int63),
          ("__int63_to_int31", Int63_to_int31),
@@ -308,8 +318,28 @@ local
          ("__word32ub_to_word64ub_X", Word32ub_to_word64ub_X),
 
 	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname), ("__get_ctx", Get_ctx),
-         ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
+         ("__bytetable_size", Bytetable_size),
+
+         ("__bytetable_sub", Bytetable_sub),
+         ("__bytetable_sub_word16", Bytetable_sub_word16),
+         ("__bytetable_sub_word31", Bytetable_sub_word31),
+         ("__bytetable_sub_word32ub", Bytetable_sub_word32ub),
+         ("__bytetable_sub_word32b", Bytetable_sub_word32b),
+         ("__bytetable_sub_word63", Bytetable_sub_word63),
+         ("__bytetable_sub_word64ub", Bytetable_sub_word64ub),
+         ("__bytetable_sub_word64b", Bytetable_sub_word64b),
+
+         ("__bytetable_update", Bytetable_update),
+         ("__bytetable_update_word16", Bytetable_update_word16),
+         ("__bytetable_update_word31", Bytetable_update_word31),
+         ("__bytetable_update_word32ub", Bytetable_update_word32ub),
+         ("__bytetable_update_word32b", Bytetable_update_word32b),
+         ("__bytetable_update_word63", Bytetable_update_word63),
+         ("__bytetable_update_word64ub", Bytetable_update_word64ub),
+         ("__bytetable_update_word64b", Bytetable_update_word64b),
+
 	 ("word_sub0", Word_sub0), ("word_update0", Word_update0), ("table_size", Table_size),
+
 	 ("__is_null", Is_null),
 	 ("__serverGetCtx", ServerGetCtx),
          ("__max_f64", Max_f64),
@@ -650,6 +680,7 @@ fun pp_prim (p:prim) : string =
       | Word63_to_word64b => "Word63_to_word64b"
       | Word63_to_word64b_X => "Word63_to_word64b_X"
       | Word64b_to_word63 => "Word64b_to_word63"
+      | Word64ub_to_word63 => "Word64ub_to_word63"
 
       | Int31_to_int63 => "Int31_to_int63"
       | Int63_to_int31 => "Int63_to_int31"
@@ -679,9 +710,26 @@ fun pp_prim (p:prim) : string =
       | Exn_ptr => "Exn_ptr"
       | Fresh_exname => "Fresh_exname"
       | Get_ctx => "Get_ctx"
-      | Bytetable_sub => "Bytetable_sub"
       | Bytetable_size => "Bytetable_size"
+
+      | Bytetable_sub => "Bytetable_sub"
+      | Bytetable_sub_word16 => "Bytetable_sub_word16"
+      | Bytetable_sub_word31 => "Bytetable_sub_word31"
+      | Bytetable_sub_word32ub => "Bytetable_sub_word32ub"
+      | Bytetable_sub_word32b => "Bytetable_sub_word32b"
+      | Bytetable_sub_word63 => "Bytetable_sub_word63"
+      | Bytetable_sub_word64ub => "Bytetable_sub_word64ub"
+      | Bytetable_sub_word64b => "Bytetable_sub_word64b"
+
       | Bytetable_update => "Bytetable_update"
+      | Bytetable_update_word16 => "Bytetable_update_word16"
+      | Bytetable_update_word31 => "Bytetable_update_word31"
+      | Bytetable_update_word32ub => "Bytetable_update_word32ub"
+      | Bytetable_update_word32b => "Bytetable_update_word32b"
+      | Bytetable_update_word63 => "Bytetable_update_word63"
+      | Bytetable_update_word64ub => "Bytetable_update_word64ub"
+      | Bytetable_update_word64b => "Bytetable_update_word64b"
+
       | Word_sub0 => "Word_sub0"
       | Word_update0 => "Word_update0"
       | Table_size => "Table_size"

@@ -29,6 +29,7 @@ structure InstsX64: INSTS_X64 =
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
                  | r10b (* for bytetable_update, e.g. *)
+                 | r10w (* for bytetable_update2, e.g. *)
                  | xmm0 | xmm1 | xmm2 | xmm3
                  | xmm4 | xmm5 | xmm6 | xmm7
                  | xmm8 | xmm9 | xmm10 | xmm11
@@ -77,6 +78,7 @@ structure InstsX64: INSTS_X64 =
     | mov of ea * ea
     | movb of ea * ea
     | movzbq of ea * ea
+    | movzwq of ea * ea
     | movslq of ea * ea
     | movabsq of ea * ea
     | push of ea
@@ -289,6 +291,7 @@ structure InstsX64: INSTS_X64 =
       | pr_reg al = "%al"
       | pr_reg cl = "%cl"
       | pr_reg r10b = "%r10b"
+      | pr_reg r10w = "%r10w"
       | pr_reg xmm0 = "%xmm0"
       | pr_reg xmm1 = "%xmm1"
       | pr_reg xmm2 = "%xmm2"
@@ -469,6 +472,7 @@ structure InstsX64: INSTS_X64 =
                | mov a => emit_bin ("mov", a)
                | movb a => emit_bin ("movb", a)
                | movzbq a => emit_bin ("movzbq", a)
+               | movzwq a => emit_bin ("movzwq", a)
                | movslq a => emit_bin ("movslq", a)
                | movabsq a => emit_bin ("movabsq", a)
                | leaq a => emit_bin ("leaq", a)
@@ -798,6 +802,7 @@ structure InstsX64: INSTS_X64 =
              | mov (ea1,ea2) => mov (Em ea1,Em ea2)
              | movb (ea1,ea2) => movb (Em ea1,Em ea2)
              | movzbq (ea1,ea2) => movzbq (Em ea1,Em ea2)
+             | movzwq (ea1,ea2) => movzwq (Em ea1,Em ea2)
              | movslq (ea1,ea2) => movslq (Em ea1,Em ea2)
              | movabsq (ea1,ea2) => movabsq (Em ea1,Em ea2)
              | push ea => push (Em ea)

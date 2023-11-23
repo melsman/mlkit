@@ -22,7 +22,7 @@ local
     basis ArrayVector =
         let open General List
             basis Poly =
-              let wordtables.sml TableSlice.sml
+              let polytable.sml TableSlice.sml
               in bas
                     VECTOR.sig Vector.sml
                     VECTOR_SLICE.sml VectorSlice.sml
@@ -68,7 +68,7 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sig Word.sml Word64.sml (*Word63.sml*) Word32.sml Word31.sml Word8.sml
+           basis W = bas WORD.sig Word.sml Word64.sml Word63.sml Word32.sml Word31.sml Word8.sml
                          ann safeLinkTimeElimination
                          in local WordN.sml
                             in Word16.sml
@@ -104,6 +104,13 @@ local
           end
        end
 
+    basis WordArrayVector =
+       let open General List ArrayVector Word
+           wordtable-functors.sml
+       in bas wordtables.sml
+          end
+       end
+
     basis Real =
        let open General String Int
        in bas
@@ -111,11 +118,6 @@ local
             local open IEEEReal IntInf in REAL.sig Real.sml end
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
-            end
-            local open List ArrayVector
-                  RealTable.sml
-                  RealArray2.sml
-            in RealArrayVector.sml
             end
             open IEEEReal
           end
@@ -218,4 +220,5 @@ local
 in
   open General List ArrayVector String Bool Word Byte
        Int Real IntInf IntInfRep Io System Text Posix IO Socket PrimIO
+       WordArrayVector
 end

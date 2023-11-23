@@ -1,3 +1,2 @@
-structure Array : ARRAY = 
-  WordTable (type 'a table = 'a array)
-
+structure Array : ARRAY =
+  PolyTable (type 'a table = 'a array)

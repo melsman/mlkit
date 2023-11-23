@@ -2521,15 +2521,127 @@ struct
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(i_C(
-            copy(i_reg, rcx,                 (* tmp_reg0 = %rcx *)
-            I.sarq (I "1", R rcx) ::         (* i >> 1 *)
-            I.movzbq(DD("8",t_reg,rcx,"1"), R d_reg) ::
-            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::                     (* untag i: i >> 1 *)
+            I.movzbq(DD("8",t_reg,tmp_reg0,"1"), R d_reg) ::  (* d=table[i] *)
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::     (* d=2d+1 *)
             C')))
           else
             t_C(i_C(
             I.movzbq(DD("8",t_reg,i_reg,"1"), R d_reg) ::
             C'))
+       end
+
+     fun bytetable_sub_word16 (t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if BI.tag_values() then
+            t_C(i_C(
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
+            I.movzwq(DD("8",t_reg,tmp_reg0,"2"), R d_reg) ::
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
+            C')))
+          else
+            t_C(i_C(
+            I.movzwq(DD("8",t_reg,i_reg,"2"), R d_reg) ::
+            C'))
+       end
+
+     fun bytetable_sub_word31 (t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           val d_reg' = I.doubleOfQuadReg d_reg
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if BI.tag_values() then
+            t_C(i_C(
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::                 (* i >> 1 *)
+            I.mov(DD("8",t_reg,tmp_reg0,"4"), R d_reg') ::
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) :: (* d=2d+1 *)
+            C')))
+          else
+            t_C(i_C(
+            I.mov(DD("8",t_reg,i_reg,"4"), R d_reg') ::   (* memo: maybe clear bit 31 *)
+            C'))
+       end
+
+     fun bytetable_sub_word32ub (t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           val d_reg' = I.doubleOfQuadReg d_reg
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if BI.tag_values() then die "bytetable_sub_word32ub"
+          else
+            t_C(i_C(
+            I.mov(DD("8",t_reg,i_reg,"4"), R d_reg') ::
+            C'))
+       end
+
+     fun bytetable_sub_word32b (r,t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if not(BI.tag_values()) then die "bytetable_sub_word32b"
+          else
+            t_C(i_C(
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
+            I.mov(DD("8",t_reg,tmp_reg0,"4"), R r10d) :: (* tmp=table[i] *)
+            move_aty_into_reg(r,d_reg,size_ff,
+            store_indexed(d_reg,WORDS 1,R r10,
+            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
+       end
+
+     fun bytetable_sub_word63 (t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if BI.tag_values() then
+            t_C(i_C(
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::                 (* i >> 1 *)
+            I.mov(DD("8",t_reg,tmp_reg0,"8"), R d_reg) ::
+            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) :: (* d=2d+1 *)
+            C')))
+          else
+            t_C(i_C(
+            I.mov(DD("8",t_reg,i_reg,"8"), R d_reg) ::   (* memo: maybe clear bit 64 *)
+            C'))
+       end
+
+     fun bytetable_sub_word64ub (t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if BI.tag_values() then die "bytetable_sub_word64ub"
+          else
+            t_C(i_C(
+            I.mov(DD("8",t_reg,i_reg,"8"), R d_reg) ::
+            C'))
+       end
+
+     fun bytetable_sub_word64b (r,t,i,d,size_ff,C) =
+       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           (* i is represented tagged only when BI.tag_values() is true *)
+       in if not(BI.tag_values()) then die "bytetable_sub_word64b"
+          else
+            t_C(i_C(
+            copy(i_reg, tmp_reg0,
+            I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
+            I.mov(DD("8",t_reg,tmp_reg0,"8"), R r10) ::  (* tmp=table[i] *)
+            move_aty_into_reg(r,d_reg,size_ff,
+            store_indexed(d_reg,WORDS 1,R r10,
+            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
        end
 
      fun resolve_args (atys,ts,size_ff) =
@@ -2564,20 +2676,190 @@ struct
             C'))))
          end
        else
-         (case resolve_args([t,i],[tmp_reg1],size_ff)
-            of SOME ([t_reg,i_reg],F) =>
-              F(
-              move_aty_into_reg(x,tmp_reg0,size_ff,
-              I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*tmp_reg0==%r10*)
-              C))
-             | SOME _ => die "bytetable_update"
-             | NONE =>
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update"
+            | NONE =>
               move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
               move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
               I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
               move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
               I.movb(R r10b, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10b *)
               C))))
+
+     fun bytetable_update_word16 (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then
+         let
+           (* i, x are represented tagged only when BI.tag_values() is true *)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+         in
+            move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
+            move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
+            I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+            I.imulq(I "2", R tmp_reg1) ::
+            I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
+            move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
+            I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
+            I.mov (R r10w, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10w *)
+            move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
+            C'))))
+         end
+       else
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.mov (R r10w, DD("8", t_reg, i_reg, "2")) ::  (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_word16"
+            | NONE =>
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "2", R tmp_reg1) ::
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
+              I.mov (R r10w, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10w *)
+              C))))
+
+     fun bytetable_update_word31 (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then
+         let
+           (* i, x are represented tagged only when BI.tag_values() is true *)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+         in
+            move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
+            move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
+            I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+            I.imulq(I "4", R tmp_reg1) ::
+            I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
+            move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
+            I.shrl (I "1", R r10d) ::                           (* untag x: tmp_reg0 >> 1 *)
+            I.mov (R r10d, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10d *)
+            move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
+            C'))))
+         end
+       else
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_word31"
+            | NONE =>
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "4", R tmp_reg1) ::
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
+              I.mov (R r10d, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10d *)
+              C))))
+
+     fun bytetable_update_word32ub (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then die "bytetable_update_word32ub"
+       else
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_word32ub-2"
+            | NONE =>
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "4", R tmp_reg1) ::
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
+              I.mov (R r10d, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10d *)
+              C))))
+
+     fun bytetable_update_word32b (t,i,x,d,size_ff,C) =
+         if not(BI.tag_values()) then die "bytetable_update_word32b"
+         else
+           let (* i, x are represented tagged only when BI.tag_values() is true *)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           in
+             move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
+             move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
+             I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+             I.imulq(I "4", R tmp_reg1) ::
+             I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
+             move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
+             I.movq(D("8", tmp_reg0), R tmp_reg0) ::             (* x = *(x+8) *)
+             I.mov (R r10d, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10d *)
+             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
+             C'))))
+           end
+
+     fun bytetable_update_word63 (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then
+         let
+           (* i, x are represented tagged only when BI.tag_values() is true *)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+         in
+            move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
+            move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
+            I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+            I.imulq(I "8", R tmp_reg1) ::
+            I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
+            move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
+            I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
+            I.mov (R r10, D("8", tmp_reg1)) ::                  (* *(tmp_reg1+8) = %r10 *)
+            move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
+            C'))))
+         end
+       else
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_word63"
+            | NONE =>
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "8", R tmp_reg1) ::
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
+              I.mov (R r10, D("8", tmp_reg1)) ::               (* *(tmp_reg1+8) = %r10 *)
+              C))))
+
+     fun bytetable_update_word64ub (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then die "bytetable_update_word64ub"
+       else
+         (case resolve_args([t,i],[tmp_reg1],size_ff) of
+              SOME ([t_reg,i_reg],F) =>
+              F(move_aty_into_reg(x,tmp_reg0,size_ff,
+                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*tmp_reg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_word64ub-2"
+            | NONE =>
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "8", R tmp_reg1) ::
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
+              I.mov (R r10, D("8", tmp_reg1)) ::               (* *(tmp_reg1+8) = %r10 *)
+              C))))
+
+     fun bytetable_update_word64b (t,i,x,d,size_ff,C) =
+         if not(BI.tag_values()) then die "bytetable_update_word64b"
+         else
+           let (* i, x are represented tagged only when BI.tag_values() is true *)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+           in
+             move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
+             move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
+             I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+             I.imulq(I "8", R tmp_reg1) ::
+             I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
+             move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
+             I.movq(D("8", tmp_reg0), R tmp_reg0) ::             (* x = *(x+8) *)
+             I.movq (R tmp_reg0, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10d *)
+             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
+             C'))))
+           end
 
      fun bytetable_size (t,d,size_ff,C) =
        let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,size_ff)
@@ -2852,6 +3134,13 @@ struct
                   | Word32ub_to_int64ub_X => false | Word32ub_to_word64ub_X => false
                   | Exn_ptr => false | Fresh_exname => false | Get_ctx => false
                   | Bytetable_sub => false | Bytetable_size => false | Bytetable_update => false
+                  | Bytetable_sub_word16 => false | Bytetable_update_word16 => false
+                  | Bytetable_sub_word31 => false | Bytetable_update_word31 => false
+                  | Bytetable_sub_word32ub => false | Bytetable_update_word32ub => false
+                  | Bytetable_sub_word32b => false | Bytetable_update_word32b => false
+                  | Bytetable_sub_word63 => false | Bytetable_update_word63 => false
+                  | Bytetable_sub_word64ub => false | Bytetable_update_word64ub => false
+                  | Bytetable_sub_word64b => false | Bytetable_update_word64b => false
                   | Word_sub0 => false | Word_update0 => false | Table_size => false | Is_null => false
                   | ServerGetCtx => true
                   | Max_f64 => false | Min_f64 => false | Real_to_f64 => false | F64_to_real => false

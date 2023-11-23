@@ -149,6 +149,7 @@ word8.sml
 word16.sml
 word31.sml
 word32.sml
+word63.sml
 word64.sml
 pickletest.mlb
 packreal.sml
@@ -173,3 +174,5 @@ with-escape.sml
 
 sigs-avail.sml                                (* basis library available signatures *)
 structs-avail.sml                             (* basis library available structures *)
+
+word-n-vector.sml
