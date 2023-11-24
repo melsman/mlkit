@@ -83,6 +83,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
              menu=["Printing of intermediate forms", "print ast after elaboation"],
              desc="Print ast after elaboration."}
 
+    val inline_functors =
+        Flags.add_bool_entry
+            {long="inline_functors", short=NONE, neg=false,
+             item=ref false,
+             menu=["General Control", "inline functors"],
+             desc="Inline functors during static interpretation instead of generating\n\
+                  \separate target code blocks for functor bodies and arguments. With\n\
+                  \the flag enabled, performance may increase with the cost of larger\n\
+                  \(re)compilation times. The flag may be controlled in mlb-files using\n\
+                  \annotations."}
+
     exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR
     fun error a = MO.error a
     val quot = MO.quot
@@ -620,9 +631,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	        val _ = maybe_print_topdec "AST after opacity elimination" topdec
 
                 val _ = chat "[interpretation begin...]"
-                val functor_inline = false
                 val (intB', modc) =
-                    IntModules.interp(functor_inline, abs_mlbfile,
+                    IntModules.interp(inline_functors(), abs_mlbfile,
                                       intB_im, topdec', smlfile)
                 val names_int = !Name.bucket
                 val _ = List.app Name.mk_rigid names_int

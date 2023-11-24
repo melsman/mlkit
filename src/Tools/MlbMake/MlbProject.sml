@@ -51,8 +51,9 @@ struct
 
     fun supported_annotation s =
         case s of
-          "safeLinkTimeElimination" => true
-        | _ => false
+            "safeLinkTimeElimination" => true
+          | "inline_functors" => true
+          | _ => false
 
   end
 
