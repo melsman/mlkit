@@ -34,7 +34,7 @@ local
         in bas
               open Poly
               MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml
-	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
+              MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
               MONO_ARRAY2.sml
            end
         end
@@ -107,7 +107,10 @@ local
     basis WordArrayVector =
        let open General List ArrayVector Word
            wordtable-functors.sml
-       in bas wordtables.sml
+       in bas ann inline_functors
+              in wordtables.sml
+                 inttables.sml
+              end
           end
        end
 
@@ -116,7 +119,7 @@ local
        in bas
             MATH.sig Math.sml
             local open IEEEReal IntInf in REAL.sig Real.sml end
-	    local open Byte ArrayVector
+            local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
             open IEEEReal
@@ -208,13 +211,13 @@ local
              end
           end
         basis Unix =
-    	  let open General Word System Posix BinTextIO String
-       	  in bas UNIX.sig Unix.sml end
+          let open General Word System Posix BinTextIO String
+          in bas UNIX.sig Unix.sml end
           end
-	basis IOClose =
-	  let open BinTextIO
-	  in bas io/io-close.sml end
-	  end
+        basis IOClose =
+          let open BinTextIO
+          in bas io/io-close.sml end
+          end
       in bas open Stream IOClose Imperative Unix end
       end
 in

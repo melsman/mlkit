@@ -176,3 +176,4 @@ sigs-avail.sml                                (* basis library available signatu
 structs-avail.sml                             (* basis library available structures *)
 
 word-n-vector.sml
+int-n-vector.sml

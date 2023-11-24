@@ -111,7 +111,6 @@ in
   structure Word63Array2 : MONO_ARRAY2 = T.A2
 end
 
-
 (*---------------------------------------------*)
 (*     Word64 Vectors, Arrays, and Slices      *)
 (*---------------------------------------------*)
