@@ -64,6 +64,20 @@ structure X = IntArraySlice : MONO_ARRAY_SLICE
 structure X = IntVector : MONO_VECTOR
 structure X = IntVectorSlice : MONO_VECTOR_SLICE
 
+structure X = Int8 : INTEGER
+structure X = Int8Array : MONO_ARRAY
+structure X = Int8Array2 : MONO_ARRAY2
+structure X = Int8ArraySlice : MONO_ARRAY_SLICE
+structure X = Int8Vector : MONO_VECTOR
+structure X = Int8VectorSlice : MONO_VECTOR_SLICE
+
+structure X = Int16 : INTEGER
+structure X = Int16Array : MONO_ARRAY
+structure X = Int16Array2 : MONO_ARRAY2
+structure X = Int16ArraySlice : MONO_ARRAY_SLICE
+structure X = Int16Vector : MONO_VECTOR
+structure X = Int16VectorSlice : MONO_VECTOR_SLICE
+
 structure X = Int31 : INTEGER
 structure X = Int31Array : MONO_ARRAY
 structure X = Int31Array2 : MONO_ARRAY2

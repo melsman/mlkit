@@ -88,7 +88,14 @@ local
 
     basis Int =
        let open General String IntInfRep
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml end
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml
+              ann safeLinkTimeElimination
+              in local open Word
+                       IntN.sml
+		 in Ints.sml
+		 end
+              end
+          end
        end
 
     basis IEEEReal =
@@ -105,7 +112,7 @@ local
        end
 
     basis WordArrayVector =
-       let open General List ArrayVector Word
+       let open General List ArrayVector Word Int
            wordtable-functors.sml
        in bas ann inline_functors
               in wordtables.sml

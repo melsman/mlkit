@@ -5,6 +5,48 @@
 *)
 
 (*---------------------------------------------*)
+(*       Int8 Vectors, Arrays, and Slices      *)
+(*---------------------------------------------*)
+
+local
+  structure T =
+    BuildTables(structure ArgV = TableArgInt8(type table = string)
+                structure ArgA = TableArgInt8(type table = chararray))
+in
+  (** SigDoc *)
+  structure Int8Vector : MONO_VECTOR = T.V
+  (** SigDoc *)
+  structure Int8VectorSlice : MONO_VECTOR_SLICE = T.VS
+  (** SigDoc *)
+  structure Int8Array : MONO_ARRAY = T.A
+  (** SigDoc *)
+  structure Int8ArraySlice : MONO_ARRAY_SLICE = T.AS
+  (** SigDoc *)
+  structure Int8Array2 : MONO_ARRAY2 = T.A2
+end
+
+(*---------------------------------------------*)
+(*      Int16 Vectors, Arrays, and Slices      *)
+(*---------------------------------------------*)
+
+local
+  structure T =
+    BuildTables(structure ArgV = TableArgInt16(type table = string)
+                structure ArgA = TableArgInt16(type table = chararray))
+in
+  (** SigDoc *)
+  structure Int16Vector : MONO_VECTOR = T.V
+  (** SigDoc *)
+  structure Int16VectorSlice : MONO_VECTOR_SLICE = T.VS
+  (** SigDoc *)
+  structure Int16Array : MONO_ARRAY = T.A
+  (** SigDoc *)
+  structure Int16ArraySlice : MONO_ARRAY_SLICE = T.AS
+  (** SigDoc *)
+  structure Int16Array2 : MONO_ARRAY2 = T.A2
+end
+
+(*---------------------------------------------*)
 (*      Int31 Vectors, Arrays, and Slices      *)
 (*---------------------------------------------*)
 

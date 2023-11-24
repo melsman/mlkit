@@ -983,6 +983,46 @@ functor TableArgReal(type table) : WORD_TABLE_ARG = struct
   fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
 end
 
+functor TableArgInt8(type table) : WORD_TABLE_ARG = struct
+  type elem = Int8.int
+  type array = chararray
+  type vector = string
+  val wordSizeBytes = 1
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
+  type table = table
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update", (t,i,e))
+  fun tlen (t:table) : int = prim ("__bytetable_size", t)
+  fun vlen (t:vector) : int = prim ("__bytetable_size", t)
+  fun talloc (n:int) : table = prim("allocStringML", n)
+  fun valloc (n:int) : vector = prim("allocStringML", n)
+  fun aalloc (n:int) : array = prim("allocStringML", n)
+end
+
+functor TableArgInt16(type table) : WORD_TABLE_ARG = struct
+  type elem = Int16.int
+  type array = chararray
+  type vector = string
+  val wordSizeBytes = 2
+  fun toBytes (n:int) : int = Word.toIntX(Word.<<(Word.fromInt n, 0w1))
+  fun fromBytes (n:int) : int = Word.toIntX(Word.>>(Word.fromInt n, 0w1))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun aupd (t:array,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun vupd (t:vector,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
+  type table = table
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun tupd (t:table,i:int,e:elem) : unit = prim("__bytetable_update_word16", (t,i,e))
+  fun tlen (t:table) : int = fromBytes(prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes(prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
+end
+
 functor TableArgInt31(type table) : WORD_TABLE_ARG = struct
   type elem = int31
   type array = chararray

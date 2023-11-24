@@ -61,11 +61,12 @@ struct
   val op > = I.>
 
   val a = fromList (List.map i2w [0,1,2,3,4,5,6])
-  val b = fromList (List.map i2w [44,55,66])
+  val b = fromList (List.map i2w [44,55,11])
   val c = fromList (List.map i2w [0,1,2,3,4,5,6])
 
   val hi = case I.precision of
                SOME 8 => 127
+             | SOME 16 => 32767
              | SOME 31 => 1073741823
              | SOME 64 => 1073741823*1073741823
              | SOME 63 => 1073741823*1073741823
@@ -128,7 +129,7 @@ struct
 
   fun chkiter iter f vec eq =
       check'(fn _ =>
-	        let val last = ref (i2w 255)
+	        let val last = ref (i2w ~1)
 	            val res = iter (fn x => (last := x; f x)) vec
 	        in eq(res, !last) end)
 
@@ -140,7 +141,7 @@ struct
 
   fun chkfold fold f start vec reslast =
       check'(fn _ =>
-	        let val last = ref (i2w 255)
+	        let val last = ref (i2w ~1)
 	            val res = fold (fn (x, r) => (last := x; f(x, r))) start vec
 	        in (res, !last) = reslast end)
 
@@ -152,45 +153,45 @@ struct
 
   val test10a1 =
       chkiter map (fn x => I.*(i2w 2,x)) b
-              (fn (x,y) => eqv(x,fromList (List.map i2w [88,110,132])))
+              (fn (x,y) => eqv(x,fromList (List.map i2w [88,110,22])))
   val _ = ptest "test10a1" test10a1
 
   val test10a2 =
       chkiter map (fn x => I.*(i2w 2,x)) b
-              (fn (x,y) => y = i2w 66)
+              (fn (x,y) => y = i2w 11)
   val _ = ptest "test10a2" test10a2
 
   val test10b =
       chkiter app (fn x => ignore(I.*(i2w 2,x))) b
-              (fn ((),y) => y = i2w 66)
+              (fn ((),y) => y = i2w 11)
   val _ = ptest "test10b" test10b
 
   val test10c =
       chkiter find (fn x => false) b
-              (fn (opt,y) => opt = NONE andalso y = i2w 66)
+              (fn (opt,y) => opt = NONE andalso y = i2w 11)
   val _ = ptest "test10c" test10c
 
   val test10d =
       chkiter exists (fn x => false) b
-              (fn (b,y) => b = false andalso y = i2w 66)
+              (fn (b,y) => b = false andalso y = i2w 11)
   val _ = ptest "test10d" test10d
 
   val test10e =
       chkiter all (fn x => true) b
-              (fn (b,y) => b andalso y = i2w 66)
+              (fn (b,y) => b andalso y = i2w 11)
   val _ = ptest "test10e" test10e
 
   val test10f =
-      chkfold foldl (I.+) (i2w 0) b (i2w 165, i2w 66)
+      chkfold foldl (I.+) (i2w 0) b (i2w 110, i2w 11)
   val _ = ptest "test10f" test10f
 
   val test10g =
-      chkfold foldr (I.+) (i2w 0) b (i2w 165, i2w 44)
+      chkfold foldr (I.+) (i2w 0) b (i2w 110, i2w 44)
   val _ = ptest "test10g" test10g
 
   val test11a =
       chkiteri mapi (fn x => I.*(i2w 2,x)) b
-               (fn (x,y) => eqv(x,fromList (List.map i2w [88,110,132]))
+               (fn (x,y) => eqv(x,fromList (List.map i2w [88,110,22]))
                             andalso y = 2)
   val _ = ptest "test11a" test11a
 
@@ -205,11 +206,11 @@ struct
   val _ = ptest "test11c" test11c
 
   val test11d =
-      chkfoldi foldli (I.+) (i2w 0) b (i2w 165, 2)
+      chkfoldi foldli (I.+) (i2w 0) b (i2w 110, 2)
   val _ = ptest "test11d" test11d
 
   val test11e =
-      chkfoldi foldri (I.+) (i2w 0) b (i2w 165, 0)
+      chkfoldi foldri (I.+) (i2w 0) b (i2w 110, 0)
   val _ = ptest "test11e" test11e
 
   val test12a =
@@ -998,7 +999,7 @@ struct
   val test6c =
     check'(fn _ =>
 	   (update(slicea23, 0, i2w 99); A.sub(a, 2) = i2w 99)
-	   andalso (update(slicea23, 2, i2w 199); A.sub(a, 4) = i2w 199)
+	   andalso (update(slicea23, 2, i2w 17); A.sub(a, 4) = i2w 17)
 	   andalso (update(slicea23, 0, i2w 21);  A.sub(a, 2) = i2w 21)
 	   andalso (update(slicea23, 2, i2w 41);  A.sub(a, 4) = i2w 41))
   val _ = ptest "test-as-6c" test6c
@@ -1224,19 +1225,19 @@ val test12c =
 
 end
 
-(*
-structure TV8 = Test(structure W = Word8
-                     structure V = Word8Vector
-                     structure A = Word8Array
-                     structure VS = Word8VectorSlice
-                     structure AS = Word8ArraySlice)
 
-structure TV16 = Test(structure W = Word16
-                      structure V = Word16Vector
-                      structure A = Word16Array
-                      structure VS = Word16VectorSlice
-                      structure AS = Word16ArraySlice)
-*)
+structure TV8 = Test(structure I = Int8
+                     structure V = Int8Vector
+                     structure A = Int8Array
+                     structure VS = Int8VectorSlice
+                     structure AS = Int8ArraySlice)
+
+structure TV16 = Test(structure I = Int16
+                      structure V = Int16Vector
+                      structure A = Int16Array
+                      structure VS = Int16VectorSlice
+                      structure AS = Int16ArraySlice)
+
 structure TV31 = Test(structure I = Int31
                       structure V = Int31Vector
                       structure A = Int31Array

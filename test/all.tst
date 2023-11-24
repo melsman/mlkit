@@ -120,6 +120,7 @@ int63_2.sml
 int64.sml
 intinf.sml
 intinf2.sml
+int-n.sml
 list.sml
 listpair.sml
 string.sml
