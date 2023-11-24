@@ -18,7 +18,6 @@ signature WORD =
     eqtype word
 
     val wordSize      : int
-
     val toLarge       : word -> word64
     val toLargeX      : word -> word64
     val toLargeWord   : word -> word64
@@ -31,7 +30,6 @@ signature WORD =
     val toInt         : word -> int
     val toIntX        : word -> int
     val fromInt       : int -> word
-
     val andb          : word * word -> word
     val orb           : word * word -> word
     val xorb          : word * word -> word
@@ -39,28 +37,22 @@ signature WORD =
     val <<            : word * Initial.word0 -> word
     val >>            : word * Initial.word0 -> word
     val ~>>           : word * Initial.word0 -> word
-
     val +             : word * word -> word
     val -             : word * word -> word
     val *             : word * word -> word
     val div           : word * word -> word
     val mod           : word * word -> word
-
     val compare       : word * word -> order
     val <             : word * word -> bool
     val <=            : word * word -> bool
     val >             : word * word -> bool
     val >=            : word * word -> bool
-
     val ~             : word -> word
     val min           : word * word -> word
     val max           : word * word -> word
-
     val fmt           : StringCvt.radix -> word -> string
     val toString      : word -> string
-    val scan          : StringCvt.radix
-                        -> (char, 'a) StringCvt.reader
-                        -> (word, 'a) StringCvt.reader
+    val scan          : StringCvt.radix -> (char, 'a) StringCvt.reader -> (word, 'a) StringCvt.reader
     val fromString    : string -> word option
 end
 

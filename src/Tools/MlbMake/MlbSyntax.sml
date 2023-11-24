@@ -1,14 +1,14 @@
 structure MlbSyntax =
 struct
-	structure Bid :>
-	  sig eqtype bid and longbid
-	  end =
+  structure Bid :>
+            sig eqtype bid and longbid
+            end =
     struct
       type bid = string
       type longbid = bid list
     end
 
-	type atbdec = string (* path.{sml,sig} *)
+  type atbdec = string (* path.{sml,sig} *)
   datatype bexp = BASbexp of bdec
                 | LETbexp of bdec * bexp
                 | LONGBIDbexp of Bid.longbid
@@ -22,10 +22,11 @@ struct
            | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
            | ANNbdec of string * bdec
 
-	fun supported_annotation s =
-	    case s of
-		"safeLinkTimeElimination" => true
-	      | _ => false
+  fun supported_annotation s =
+      case s of
+          "safeLinkTimeElimination" => true
+        | "inline_functors" => true
+        | _ => false
 
   fun fold (SEQbdec(a,b))         e seq bas loc fopen fatbdec fmlb script ann = seq(b,seq(a,e))
     | fold EMPTYbdec              e seq bas loc fopen fatbdec fmlb script ann = e

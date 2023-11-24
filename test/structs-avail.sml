@@ -57,23 +57,55 @@ structure X = BoolVectorSlice : MONO_VECTOR_SLICE
 structure X = FixedInt : INTEGER
 (*structure X = GenericSock : GENERIC_SOCK*)
 structure X = INetSock : INET_SOCK
-(*
+
 structure X = IntArray : MONO_ARRAY
 structure X = IntArray2 : MONO_ARRAY2
 structure X = IntArraySlice : MONO_ARRAY_SLICE
 structure X = IntVector : MONO_VECTOR
 structure X = IntVectorSlice : MONO_VECTOR_SLICE
-structure X = Int<N>Array : MONO_ARRAY
-structure X = Int<N>Array2 : MONO_ARRAY2
-structure X = Int<N>ArraySlice : MONO_ARRAY_SLICE
-structure X = Int<N> : INTEGER
-structure X = Int<N>Vector : MONO_VECTOR
-structure X = Int<N>VectorSlice : MONO_VECTOR_SLICE
-*)
+
+structure X = Int8 : INTEGER
+structure X = Int8Array : MONO_ARRAY
+structure X = Int8Array2 : MONO_ARRAY2
+structure X = Int8ArraySlice : MONO_ARRAY_SLICE
+structure X = Int8Vector : MONO_VECTOR
+structure X = Int8VectorSlice : MONO_VECTOR_SLICE
+
+structure X = Int16 : INTEGER
+structure X = Int16Array : MONO_ARRAY
+structure X = Int16Array2 : MONO_ARRAY2
+structure X = Int16ArraySlice : MONO_ARRAY_SLICE
+structure X = Int16Vector : MONO_VECTOR
+structure X = Int16VectorSlice : MONO_VECTOR_SLICE
+
 structure X = Int31 : INTEGER
+structure X = Int31Array : MONO_ARRAY
+structure X = Int31Array2 : MONO_ARRAY2
+structure X = Int31ArraySlice : MONO_ARRAY_SLICE
+structure X = Int31Vector : MONO_VECTOR
+structure X = Int31VectorSlice : MONO_VECTOR_SLICE
+
 structure X = Int32 : INTEGER
+structure X = Int32Array : MONO_ARRAY
+structure X = Int32Array2 : MONO_ARRAY2
+structure X = Int32ArraySlice : MONO_ARRAY_SLICE
+structure X = Int32Vector : MONO_VECTOR
+structure X = Int32VectorSlice : MONO_VECTOR_SLICE
+
 structure X = Int63 : INTEGER
+structure X = Int63Array : MONO_ARRAY
+structure X = Int63Array2 : MONO_ARRAY2
+structure X = Int63ArraySlice : MONO_ARRAY_SLICE
+structure X = Int63Vector : MONO_VECTOR
+structure X = Int63VectorSlice : MONO_VECTOR_SLICE
+
 structure X = Int64 : INTEGER
+structure X = Int64Array : MONO_ARRAY
+structure X = Int64Array2 : MONO_ARRAY2
+structure X = Int64ArraySlice : MONO_ARRAY_SLICE
+structure X = Int64Vector : MONO_VECTOR
+structure X = Int64VectorSlice : MONO_VECTOR_SLICE
+
 structure X = IntInf : INT_INF
 
 structure X = LargeReal : REAL
