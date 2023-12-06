@@ -17,20 +17,15 @@ struct
 
   (* auxiliaries *)
   fun say s = print (s^"\n")
-  fun say' s = print s
   fun mes s = TextIO.output(!Flags.log, s)
-  fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
+  fun outtree t = PP.outputTree(print, t, !Flags.colwidth)
 
   infix footnote
-  fun x footnote y = x;
+  fun x footnote y = x
 
   fun die s = (mes("Mul: " ^ s ^ "\n");
                Crash.impossible("Mul: " ^ s ^ "\n"))
-  fun length [] = 0
-    | length (x::xs) = 1+(length xs)
 
-  fun hd (x::rest) = x
-    | hd [] = die "hd"
   type lvar = Lam.lvar
   type place = Eff.place
   type cone = Eff.cone
@@ -597,10 +592,10 @@ struct
           in
               say ("e1 = e2: " ^ Bool.toString(Eff.eq_effect(e1,e2)));
               say ("rhoOf(e1) = rhoOf(e2): " ^ Bool.toString(Eff.eq_effect(r1,r2)));
-              say("e1 = " ^ toStr e1);
-              say("e2 = " ^ toStr e2);
-              say("r1 = " ^ toStr r1);
-              say("r2 = " ^ toStr r2)
+              say ("e1 = " ^ toStr e1);
+              say ("e2 = " ^ toStr e2);
+              say ("r1 = " ^ toStr r1);
+              say ("r2 = " ^ toStr r2)
           end
         | check _ = die "check bad"
   in
