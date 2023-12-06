@@ -42,7 +42,7 @@ signature CLOS_EXP =
     type cc
     type label
 
-    datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Unit
+    datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Int32 | Int64 | Unit
 
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -102,7 +102,8 @@ signature CLOS_EXP =
                           rhos_for_result : ClosExp list}
     | CCALL_AUTO      of {name: string,
                           args: (ClosExp * foreign_type) list,
-                          res: foreign_type}
+                          res: foreign_type,
+                          rhos_for_result : ClosExp list}   (* boxed res implies memory for the result *)
     | EXPORT          of {name: string,
                           clos_lab: label,
                           arg: ClosExp * foreign_type * foreign_type}

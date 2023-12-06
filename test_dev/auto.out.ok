@@ -1,1 +1,11 @@
-Num: 23
+Num: 42
+Num: 42
+ok: i64
+Num: 42
+ok: i32
+ok: i64
+ok: i64(2)
+ok: i32 res
+ok: i32 res2
+hello
+ok: chararray

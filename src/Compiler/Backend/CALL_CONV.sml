@@ -29,8 +29,8 @@ signature CALL_CONV =
                         {args: 'a list, rhos_for_result: 'a list, res: 'a list} * ('a*lvar) list * ('a*lvar) list
 
     val resolve_ccall_auto : lvar list -> lvar list -> (lvar -> 'a) ->
-                        {args: ('a*'b) list, res: ('a*'b)} ->
-                        {args: ('a*'b) list, res: ('a*'b)} * ('a*lvar) list * ('a*lvar) list
+                        {args: ('a*'b) list, rhos_for_result: 'a list, res: ('a*'b)} ->
+                        {args: ('a*'b) list, rhos_for_result: 'a list, res: ('a*'b)} * ('a*lvar) list * ('a*lvar) list
 
     val get_spilled_args              : cc -> lvar list
     val get_spilled_args_with_offsets : cc -> (lvar * offset) list

@@ -931,15 +931,14 @@ sml_bytes_to_real(size_t d, String s)
   return d;
 }
 
-
 /* A test function for testing auto */
 uintptr_t
 runtime_test0 (uintptr_t a1, uintptr_t a2, uintptr_t a3) {
   long int ret =
-    2 * (long int)a1 +
+    1 * (long int)a1 +
     3 * (long int)a2 +
     5 * (long int)a3;
-  return ret;              /* (2*1)+(3*2)+(5*3) ==> 23 */
+  return ret;              /* (1*1)+(3*2)+(5*3) ==> 22 */
 }
 
 /* A test function for testing multi-parameter passing (non-auto) */

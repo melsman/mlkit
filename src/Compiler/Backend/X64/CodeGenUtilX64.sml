@@ -720,7 +720,7 @@ struct
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. Currently supports at most 6 arguments. *)
-    fun compile_c_call_auto (name,args,opt_res,size_ff,tmp,C) =
+    fun compile_c_call_auto (name,args,rhos_for_result,opt_res,size_ff,tmp,C) =
         let val args = if List.length args > List.length RI.args_reg_ccall then
                          die ("compile_c_call_auto: at most " ^
                               Int.toString (List.length RI.args_reg_ccall) ^
@@ -752,11 +752,17 @@ struct
                 else
                   move_aty_into_reg(aty,r,size_ff,C)
 
+            fun fetch_int_32_64 ((aty,r),size_ff,C) =
+                if not(BI.tag_values()) then move_aty_into_reg(aty,r,size_ff,C)
+                else move_aty_into_reg(aty,r,size_ff,
+                                       I.movq(D("8",r), R r) :: C)
 
             fun mov_arg (aty,ft:LS.foreign_type,r,size_ff,C) =
                 let val mov_fun = case ft
                                    of LS.Bool => mov_bool
                                     | LS.Int => mov_int
+                                    | LS.Int32 => fetch_int_32_64
+                                    | LS.Int64 => fetch_int_32_64
                                     | LS.ForeignPtr => mov_foreignptr
                                     | LS.CharArray => mov_chararray
                                     | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
@@ -773,13 +779,34 @@ struct
                 if BI.tag_values() then I.leaq(D("1", r), R r) :: C
                 else C
 
+            fun maybe_push_rho_for_result size_ff F =
+                case rhos_for_result of
+                    [SS.PHREG_ATY r] => I.push(R r) :: I.push(I"0")::F (size_ff+2)   (* push twice for alignment *)
+                  | _ => F size_ff
+
+            fun box_int64_result (r,C) =
+                case rhos_for_result of
+                    [_] =>
+                      I.pop(R tmp_reg0) :: I.pop(R tmp_reg0) ::
+                       store_indexed(tmp_reg0,WORDS 1, R rax,                     (* store content *)
+                        store_immed(BI.tag_word_boxed false, tmp_reg0, WORDS 0,   (* store tag *)
+                         I.movq(R tmp_reg0, R rax) :: C))
+                  | _ => die "CCALL_AUTO.expecting exactly one memory location for int64 result"
+
             fun convert_result ft =
                 case ft of
                     LS.Bool => tag_bool_result
                   | LS.Int => maybe_tag_int_result
                   | LS.ForeignPtr => maybe_tag_foreignptr_result
                   | LS.Unit => die "convert_result.Unit already dealt with"
-                  | LS.CharArray => die "convert_result.CharArray foreign type not supported in auto-conversion result"
+                  | LS.CharArray => die "convert_result.CharArray foreign type not supported in \
+                                        \auto-conversion result"
+                  | LS.Int32 =>
+                    if not (BI.tag_values()) then (fn (r,C) => C)
+                    else box_int64_result
+                  | LS.Int64 =>
+                    if not (BI.tag_values()) then (fn (r,C) => C)
+                    else box_int64_result
 
             fun store_result ((aty,ft:LS.foreign_type), C) =
                 case ft of
@@ -788,9 +815,11 @@ struct
 
             val dynlinklab = "localResolveLibFnAuto"
             val nargs = List.length args (* not used for static calls *)
-        in shuffle_args size_ff mov_arg args
-             (maybe_align 0 (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-               (store_result(opt_res,C)))
+        in maybe_push_rho_for_result size_ff (
+            fn size_ff =>
+               shuffle_args size_ff mov_arg args
+                (maybe_align 0 (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
+                 (store_result(opt_res,C))))
         end
     end
 

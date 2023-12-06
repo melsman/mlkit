@@ -50,7 +50,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Int32 | Int64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -110,7 +110,8 @@ struct
                           rhos_for_result : ClosExp list}
     | CCALL_AUTO      of {name: string,
                           args: (ClosExp * foreign_type) list,
-                          res: foreign_type}
+                          res: foreign_type,
+                          rhos_for_result : ClosExp list}   (* boxed res implies memory for the result *)
     | EXPORT          of {name: string,
                           clos_lab: label,
                           arg: ClosExp * foreign_type * foreign_type}
@@ -161,6 +162,8 @@ struct
 
     fun layout_f CharArray = LEAF "CharArray"
       | layout_f Int = LEAF "Int"
+      | layout_f Int32 = LEAF "Int32"
+      | layout_f Int64 = LEAF "Int64"
       | layout_f Bool = LEAF "Bool"
       | layout_f ForeignPtr = LEAF "ForeignPtr"
       | layout_f Unit = LEAF "Unit"
@@ -371,11 +374,11 @@ struct
                 finish=">)",
                 childsep=RIGHT ",",
                 children=(map layout_ce rhos_for_result) @ (map layout_ce args)}
-      | layout_ce(CCALL_AUTO{name,args,res}) =
+      | layout_ce(CCALL_AUTO{name,args,res,rhos_for_result}) =
           HNODE{start="ccall_auto(\"" ^ name ^ "\", <",
                 finish=">)",
                 childsep=RIGHT ",",
-                children=(map (layout_ce_f layout_ce) args) @ [layout_f res]}
+                children=(map layout_ce rhos_for_result) @ (map (layout_ce_f layout_ce) args) @ [layout_f res]}
       | layout_ce(EXPORT{name,clos_lab,arg=(ce,ft1,ft2)}) =
           HNODE{start="_export(\"" ^ name ^ "\", <",
                 finish=">)",
@@ -1332,15 +1335,14 @@ struct
         | member tn (x::xs) = TyName.eq (tn,x) orelse member tn xs
     in
       fun tn_to_foreign_type (tn : TyName.TyName) : foreign_type =
-        if TyName.eq(tn,TyName.tyName_BOOL) then Bool
-        else
-          if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
-          else
-            if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
-            else
-              if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault()] then Int
-              else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn
-                        ^ " not supported in auto conversion")
+          if TyName.eq(tn,TyName.tyName_BOOL) then Bool
+          else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
+          else if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
+          else if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault()] then Int
+          else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
+          else if member tn [TyName.tyName_INT32, TyName.tyName_WORD32] then Int32
+          else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn
+                    ^ " not supported in auto conversion")
     end
 
     (* -------------------------------- *)
@@ -2329,8 +2331,8 @@ struct
                     | _ => (fn ce => ce))
                    else (fn ce => ce)
                  val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
-                 fun maybe_insert_smas([],[],ce) = ce
-                   | maybe_insert_smas(fresh_lvs,smas,ce) =
+                 fun maybe_insert_smas ([],[],ce) = ce
+                   | maybe_insert_smas (fresh_lvs,smas,ce) =
                    LET{pat=fresh_lvs,bind=UB_RECORD smas,scope=ce}
                in
                  (case explode name of
@@ -2353,7 +2355,11 @@ struct
                           val res = case fmu mu_result
                                       of CharArray => die "CCALL_AUTO.CharArray not supported in result"
                                        | t => t
-                      in (insert_ses(CCALL_AUTO{name=name, args=args, res=res},
+                      in (insert_ses(maybe_insert_smas(fresh_lvs,smas,
+                                                       CCALL_AUTO{name=name,
+                                                                  args=args,
+                                                                  res=res,
+                                                                  rhos_for_result=map VAR fresh_lvs}),
                                      ses),
                           NONE_SE)
                       end

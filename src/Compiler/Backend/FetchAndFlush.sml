@@ -14,7 +14,7 @@ functor FetchAndFlush(structure CallConv: CALL_CONV
                         where type label = AddressLabels.label
 			sharing type RegAlloc.Atom = LineStmt.Atom
 		      structure RI : REGISTER_INFO
-                        where type lvar = Lvars.lvar) 
+                        where type lvar = Lvars.lvar)
     : FETCH_AND_FLUSH =
 struct
   structure PP = PrettyPrint
@@ -53,7 +53,7 @@ struct
   fun msg s = TextIO.output(TextIO.stdOut, s)
   fun chat(s: string) = if !Flags.chat then print (s ^ "\n") else ()
   fun die s  = Crash.impossible ("FetchAndFlush." ^ s)
-  fun fast_pr stringtree = 
+  fun fast_pr stringtree =
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
@@ -85,9 +85,9 @@ struct
     (****************************************************************)
     (* Statistics                                                   *)
     (****************************************************************)
-    
+
     (* We record statistics for the entire program module.                     *)
-    local 
+    local
       val no_of_fetch    = ref 0
       val no_of_flush    = ref 0
     in
@@ -103,7 +103,7 @@ struct
     end
 
     (*****************************************)
-    (* Insert SCOPE on Callee Save Registers *)    
+    (* Insert SCOPE on Callee Save Registers *)
     (*****************************************)
     fun mk_flushed_callee([]) = []
       | mk_flushed_callee(phreg::phregs) = FLUSHED_CALLEE_STY phreg :: mk_flushed_callee phregs
@@ -127,10 +127,10 @@ struct
     (***************************************)
     fun F_sw(F_lss,LS.SWITCH(atom,sels,default),L_set,F_set,C_set) =
       let
-	val (L_set_sels, F_set_sels, C_set_sels) = 
-	  foldr (fn ((sel,lss), (L_set_acc, F_set, C_set)) => 
+	val (L_set_sels, F_set_sels, C_set_sels) =
+	  foldr (fn ((sel,lss), (L_set_acc, F_set, C_set)) =>
 		 let val (L_set', F_set', C_set') = F_lss(lss, L_set, F_set, C_set)
-		 in (Lvarset.union(L_set_acc, L_set'), F_set', C_set') 
+		 in (Lvarset.union(L_set_acc, L_set'), F_set', C_set')
 		 end) (Lvarset.empty, F_set, C_set) sels
 	val (L_set_def, F_set_def, C_set_def) = F_lss(default, L_set, F_set_sels, C_set_sels)
       in
@@ -150,7 +150,7 @@ struct
       end
 
     fun do_non_tail_ccall (ls,L_set,F_set,C_set) =
-      let 
+      let
 	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
@@ -164,19 +164,19 @@ struct
       in (Lvarset.lvarsetof use, F_set, C_set)
       end
 
-    fun F_ls(ls,L_set,F_set,C_set) = 
+    fun F_ls(ls,L_set,F_set,C_set) =
       (case ls of
 	 LS.FNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
-       | LS.FNJMP cc => do_tail_call(ls,L_set,F_set,C_set) 
+       | LS.FNJMP cc => do_tail_call(ls,L_set,F_set,C_set)
        | LS.FUNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
-       | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set) 
-       | LS.LETREGION{rhos,body} => 
-	   if only_null_rhos rhos 
+       | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set)
+       | LS.LETREGION{rhos,body} =>
+	   if only_null_rhos rhos
 	     orelse ( not(region_profiling()) andalso only_finite_rhos rhos ) then
 	     F_lss(body,L_set,F_set,C_set)
 	   else
 	     let
-	       (* A letregion calls a C function at entry (allocateRegion) 
+	       (* A letregion calls a C function at entry (allocateRegion)
 		* and at end (deallocateRegion), therefore the two unions below. *)
 	       val (L_set',F_set',C_set') = F_lss(body,L_set,F_set,Lvarset.union(C_set,L_set))
 	     in (* No variables are defined in a letregion construct. *)
@@ -185,16 +185,16 @@ struct
        | LS.SCOPE{pat,scope} => (* do also remove from C_set using RI.is_callee_save_c_call. 17/02/1999, Niels *)
 	   let
 	     val (L_set',F_set',C_set') = F_lss(scope,L_set,F_set,C_set)
-	     val lvs_to_remove_C = 
+	     val lvs_to_remove_C =
 	       let
 		 fun lv_to_remove_C(RA.STACK_STY lv,acc) = lv::acc
-		   | lv_to_remove_C(RA.PHREG_STY (lv,phreg),acc) = 
+		   | lv_to_remove_C(RA.PHREG_STY (lv,phreg),acc) =
 		   if RI.is_callee_save_ccall phreg then lv::acc
 		   else acc
 		   | lv_to_remove_C(RA.FV_STY lv,acc) = acc
 	       in foldr lv_to_remove_C [] pat
 	       end
-	     val lvs_to_remove_F = 
+	     val lvs_to_remove_F =
 	       let
 		 fun lv_to_remove_F(RA.STACK_STY lv,acc) = lv::acc
 		   | lv_to_remove_F(RA.PHREG_STY (lv,phreg),acc) = acc
@@ -209,13 +209,13 @@ struct
        | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} =>
 	   let
 	     val (L_set1,F_set1,C_set1) = F_lss(default,L_set,F_set,C_set)
-	     val (L_set2,F_set2,C_set2) = F_lss(handl,L_set1,F_set1,C_set1) 
+	     val (L_set2,F_set2,C_set2) = F_lss(handl,L_set1,F_set1,C_set1)
 	     val handl_return_lvar = LS.get_var_atom (handl_return_lv,nil)
 	     val F_set3 = Lvarset.union(F_set2,lvset_difference(L_set,handl_return_lvar)) (* We must flush all caller save registers that are live *)
                                                                                           (* after the handle. We define handl_return_lv in the    *)
                                                                                           (* handle construct. 17/02/1999, Niels                   *)
 	   in
-	     (L_set2,F_set3,C_set2) 
+	     (L_set2,F_set3,C_set2)
 	   end
        | LS.HANDLE{default,handl,handl_return,offset} => die "F_ls: handl_return in HANDLE not empty"
        | LS.SWITCH_I {switch,precision} => F_sw(F_lss,switch,L_set,F_set,C_set)
@@ -223,8 +223,8 @@ struct
        | LS.SWITCH_S sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.SWITCH_C sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.SWITCH_E sw => F_sw(F_lss,sw,L_set,F_set,C_set)
-       | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set) 
-       | LS.CCALL_AUTO{name,args,res} => do_non_tail_ccall(ls,L_set,F_set,C_set) 
+       | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set)
+       | LS.CCALL_AUTO{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set)
        | _ =>
 	   let
 	     val (def,use) = LS.def_use_lvar_ls ls
@@ -233,8 +233,8 @@ struct
 	      F_set,
 	      C_set)
 	   end)
-    and F_lss(lss,L_set,F_set,C_set) = 
-      foldr 
+    and F_lss(lss,L_set,F_set,C_set) =
+      foldr
       (fn (ls,(L_set,F_set,C_set)) => F_ls(ls,L_set,F_set,C_set))
       (L_set,F_set,C_set) lss
 
@@ -242,7 +242,7 @@ struct
     (* Insert Flushes and Scope on Callee Save Registers *)
     (*****************************************************)
     fun assign_sty F (RA.STACK_STY lv) = STACK_STY lv
-      | assign_sty F (RA.PHREG_STY(lv,i)) = 
+      | assign_sty F (RA.PHREG_STY(lv,i)) =
       if Lvarset.member(lv,F) then
 	FLUSHED_CALLER_STY(lv,i)
       else
@@ -254,15 +254,15 @@ struct
 
     fun insert_flush([],C) = C
       | insert_flush((atom::atoms),C) = (inc_flush(); insert_flush (atoms,(LS.FLUSH(atom,())::C)))
-	 
+
     fun IFF_sw IFF_lss (LS.SWITCH(atom_arg,sels,default)) =
       LS.SWITCH(atom_arg,map (fn (s,lss) => (s,IFF_lss lss)) sels, IFF_lss default)
 
-    fun IFF_lss(lss,F,acc) = 
-      let 
+    fun IFF_lss(lss,F,acc) =
+      let
 	fun IFF_lss'([]) = acc
 	  | IFF_lss'(LS.ASSIGN{pat,bind}::lss) =
-	  if atom_in_F(pat,F) then 
+	  if atom_in_F(pat,F) then
 	    (inc_flush();
 	     LS.ASSIGN{pat=pat,bind=bind}::(LS.FLUSH(pat,()))::IFF_lss' lss)
 	  else
@@ -270,7 +270,7 @@ struct
 	  | IFF_lss'(LS.FLUSH _::lss) = die "IFF_ls: FLUSH not inserted yet!"
 	  | IFF_lss'(LS.FETCH _::lss) = die "IFF_ls: FETCH not inserted yet!"
 	  | IFF_lss'(LS.FNJMP cc::lss) = LS.FNJMP cc :: IFF_lss' lss
-	  | IFF_lss'(LS.FNCALL(cc as {res,...})::lss) = 
+	  | IFF_lss'(LS.FNCALL(cc as {res,...})::lss) =
 	    let
 	      val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
 	    in
@@ -284,7 +284,7 @@ struct
 	      LS.FUNCALL cc :: (insert_flush(flushed_lvars,IFF_lss' lss))
 	    end
 	  | IFF_lss'(LS.LETREGION{rhos,body}::lss) = LS.LETREGION{rhos=rhos,body=IFF_lss(body,F,[])} :: IFF_lss' lss
-	  | IFF_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=map (assign_sty F) pat,scope=IFF_lss(scope,F,[])} :: IFF_lss' lss 
+	  | IFF_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=map (assign_sty F) pat,scope=IFF_lss(scope,F,[])} :: IFF_lss' lss
 	  | IFF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset}::lss) =
 	    if atom_in_F(handl_return_lv,F) then (* handl_return_lv is defined and therefore flushed if necessary *)
 	      (inc_flush();
@@ -295,31 +295,31 @@ struct
 			handl_return=([],handl_return_lv,bv),offset=offset} :: IFF_lss' lss
 	  | IFF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss) = die "IFF_lss': handle_return in HANDLE not empty"
 	  | IFF_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=arg,defined_atys=defined_atys} :: IFF_lss' lss
-	  | IFF_lss'(LS.SWITCH_I {switch,precision}::lss) = 
+	  | IFF_lss'(LS.SWITCH_I {switch,precision}::lss) =
 	      LS.SWITCH_I{switch=IFF_sw (fn lss => IFF_lss(lss,F,[])) switch,
 			  precision=precision} :: IFF_lss' lss
-	  | IFF_lss'(LS.SWITCH_W {switch,precision}::lss) = 
+	  | IFF_lss'(LS.SWITCH_W {switch,precision}::lss) =
 	      LS.SWITCH_W{switch=IFF_sw (fn lss => IFF_lss(lss,F,[])) switch,
 			  precision=precision} :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_S sw::lss) = LS.SWITCH_S(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_C sw::lss) = LS.SWITCH_C(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_E sw::lss) = LS.SWITCH_E(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.RESET_REGIONS a::lss) = LS.RESET_REGIONS a :: IFF_lss' lss
-	  | IFF_lss'(LS.PRIM{name,args,res}::lss) = 
+	  | IFF_lss'(LS.PRIM{name,args,res}::lss) =
 	    let val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
-	    in LS.PRIM{name=name,args=args,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss) 
+	    in LS.PRIM{name=name,args=args,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
-	  | IFF_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) = 
+	  | IFF_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) =
 	    let val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
 	    in LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
-	  | IFF_lss'(LS.CCALL_AUTO{name,args,res}::lss) = 
-	    let val flushed_lvars = 
+	  | IFF_lss'(LS.CCALL_AUTO{name,args,rhos_for_result,res}::lss) =
+	    let val flushed_lvars =
 	          case res
 		    of (a,ft) => if atom_in_F(a,F) then [a] else nil
-	    in LS.CCALL_AUTO{name=name,args=args,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
+	    in LS.CCALL_AUTO{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
-	  | IFF_lss'(LS.EXPORT{name,clos_lab,arg}::lss) = 
+	  | IFF_lss'(LS.EXPORT{name,clos_lab,arg}::lss) =
 	    LS.EXPORT{name=name,clos_lab=clos_lab,arg=arg} :: IFF_lss' lss
       in
 	IFF_lss' lss
@@ -328,7 +328,7 @@ struct
     (******************)
     (* Insert Fetches *)
     (******************)
-    fun IF_sw(IF_lss,switch_con,LS.SWITCH(atom,sels,default),U_set,lss) = 
+    fun IF_sw(IF_lss,switch_con,LS.SWITCH(atom,sels,default),U_set,lss) =
       let
 	val (acc,U_set_acc) = IF_lss(lss,U_set)
 	val (sels',U_set_sels) =
@@ -362,16 +362,16 @@ struct
 	fun IF_lss'([],U_set) = ([],U_set)
 	  | IF_lss'((ls as LS.FNCALL cc)::lss,U_set) = do_non_tail_call_if(ls,F_set,IF_lss'(lss,U_set))
 	  | IF_lss'((ls as LS.FUNCALL cc)::lss,U_set) = do_non_tail_call_if(ls,F_set,IF_lss'(lss,U_set))
-	  | IF_lss'(LS.LETREGION{rhos,body}::lss,U_set) =  
+	  | IF_lss'(LS.LETREGION{rhos,body}::lss,U_set) =
 	  (* If we have any infinite regions, then we perform a C-call at entry (allocRegion) and at
 	   * exit (deallocateRegion). We must then fetch caller save registers! When profiling is enabled,
 	   * we perform C calls at entry and exit also for finite regions. *)
 	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
 	    val ccalls_in_and_out : bool =
-	      only_null_rhos rhos orelse ( not(region_profiling()) 
+	      only_null_rhos rhos orelse ( not(region_profiling())
 					  andalso only_finite_rhos rhos )
-	    val lv_fetch2 = 
+	    val lv_fetch2 =
 	      if ccalls_in_and_out then	Lvarset.empty
 	      else Lvarset.intersection(C_set,U_set_acc)
 
@@ -408,18 +408,18 @@ struct
 				       offset=offset}::acc,U_set2)
 	    | _ => die "IF_lss': handl_return contains more than one statement."
 	  end
-	  | IF_lss'(LS.SWITCH_I {switch,precision}::lss,U_set) = 
+	  | IF_lss'(LS.SWITCH_I {switch,precision}::lss,U_set) =
 	  IF_sw(IF_lss',fn sw => LS.SWITCH_I {switch=sw, precision=precision},
 		switch,U_set,lss)
-	  | IF_lss'(LS.SWITCH_W {switch,precision}::lss,U_set) = 
+	  | IF_lss'(LS.SWITCH_W {switch,precision}::lss,U_set) =
 	  IF_sw(IF_lss',fn sw => LS.SWITCH_W {switch=sw, precision=precision},
 		switch,U_set,lss)
 	  | IF_lss'(LS.SWITCH_S sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_S,sw,U_set,lss)
 	  | IF_lss'(LS.SWITCH_C sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_C,sw,U_set,lss)
 	  | IF_lss'(LS.SWITCH_E sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_E,sw,U_set,lss)
-	  | IF_lss'((ls as LS.CCALL{name,args,rhos_for_result,res})::lss,U_set) = 
+	  | IF_lss'((ls as LS.CCALL{name,args,rhos_for_result,res})::lss,U_set) =
 	  do_non_tail_call_if(ls,C_set,IF_lss'(lss,U_set)) (* Note, we use C_set and not F_set *)
-	  | IF_lss'((ls as LS.CCALL_AUTO{name,args,res})::lss,U_set) = 
+	  | IF_lss'((ls as LS.CCALL_AUTO{name,args,rhos_for_result,res})::lss,U_set) =
 	  do_non_tail_call_if(ls,C_set,IF_lss'(lss,U_set)) (* Note, we use C_set and not F_set *)
 	  | IF_lss'(ls::lss,U_set) =
 	  let
@@ -462,9 +462,9 @@ struct
 	val _ = chat "[Insert Fetch and Flush..."
 	val _ = reset_stat()
 	val line_prg_iff = foldr (fn (func,acc) => IFF_top_decl func :: acc) [] ra_prg
-	val _ = 
+	val _ =
 	  if print_fetch_and_flush_program() then
-	    display("\nReport: AFTER INSERT FETCH AND FLUSH:", 
+	    display("\nReport: AFTER INSERT FETCH AND FLUSH:",
 		    LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_iff)
 	  else ()
 (*	val _ = pp_stat() *)

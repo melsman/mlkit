@@ -405,3 +405,8 @@ printLong(ssize_t n)
   printf("Long signed: %ld\n", convertIntToC((long int)n));
   return;
 }
+
+void
+runtime_test_cstring0(char *a, uintptr_t idx, char c) {
+  a[idx] = c;
+}
