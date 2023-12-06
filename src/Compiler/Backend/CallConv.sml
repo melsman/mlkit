@@ -256,10 +256,11 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
           end
 
       fun resolve_ccall_auto args_phreg_ccall res_phreg_ccall (f: lvar  -> 'a)
-          {args: ('a*'b) list, res: 'a*'b} =
-          let val (args', alist_args, _) = resolve_list_auto f (args, nil, args_phreg_ccall)
+          {args: ('a*'b) list, rhos_for_result: 'a list, res: 'a*'b} =
+          let val (rhos_for_result',alist_args,phregs) = resolve_list f (rhos_for_result,[],args_phreg_ccall)
+              val (args', alist_args, _) = resolve_list_auto f (args, alist_args, phregs)
               val (res', alist_res, _) = resolve_auto f (res, nil, res_phreg_ccall)
-          in ({args=args',res=res'},
+          in ({args=args',rhos_for_result=rhos_for_result',res=res'},
               alist_args, alist_res)
           end
 

@@ -29,11 +29,11 @@ signature LINE_STMT =
     type label
     type ClosPrg
 
-    (* for use with the CCALL_AUTO construct: *)
+    (* for use with the CCALL_AUTO construct: (see also CLOS_EXP) *)
     datatype foreign_type =
       CharArray               (* When passed to a c-function, the
 			       * data field of the ML char-array is
-			       * passed. Char-arrays in the Kit are
+			       * passed. Char-arrays in MLKit are
 			       * zero-terminated and prefixed
                                * with a size-tag. CharArray may
 			       * not appear in a function result
@@ -48,6 +48,12 @@ signature LINE_STMT =
     | Int                     (* Integers (and words) are tagged
 			       * when garbage collection is
 			       * enabled. *)
+    | Int32                   (* Int32 (and word32) values are
+                               * boxed when garbage collection is
+                               * enabled. *)
+    | Int64                   (* Int64 (and word64) values are
+                               * boxed when garbage collection is
+                               * enabled. *)
     | Unit                    (* Possible in results *)
 
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
@@ -125,7 +131,8 @@ signature LINE_STMT =
     | CCALL         of {name: string, args: 'aty list,
 			rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
-			res: 'aty * foreign_type}
+			rhos_for_result : 'aty list,
+                        res: 'aty * foreign_type}
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
     and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)

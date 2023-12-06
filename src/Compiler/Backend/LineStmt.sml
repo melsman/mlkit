@@ -143,6 +143,7 @@ struct
     | CCALL         of {name: string, args: 'aty list,
                         rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
+                        rhos_for_result : 'aty list,
                         res: 'aty * foreign_type}
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
@@ -259,6 +260,8 @@ struct
         case ft of
             CharArray => LEAF "CharArray"
           | Int => LEAF "Int"
+          | Int32 => LEAF "Int32"
+          | Int64 => LEAF "Int64"
           | Bool => LEAF "Bool"
           | ForeignPtr => LEAF "ForeignPtr"
           | Unit => LEAF "Unit"
@@ -490,7 +493,7 @@ struct
                          childsep=RIGHT ",",
                          children=(map (layout_aty pr_aty) rhos_for_result) @ (map (layout_aty pr_aty) args)}
                  end
-           | CCALL_AUTO{name,args,res} =>
+           | CCALL_AUTO{name,args,rhos_for_result,res} =>
                  let
                    fun layout_pair (aty, f) = HNODE{start="",finish="",childsep=RIGHT":",
                                                     children=[layout_aty pr_aty aty, layout_foreign_type f]}
@@ -499,7 +502,7 @@ struct
                    HNODE{start=flatten1(t0) ^ " = ccall_auto(\"" ^ name ^ "\", <",
                          finish=">)",
                          childsep=RIGHT ",",
-                         children=map layout_pair args}
+                         children=map (layout_aty pr_aty) rhos_for_result @ map layout_pair args}
                  end
            | EXPORT{name,clos_lab, arg=(aty,ft1,ft2)} =>
                  HNODE{start="_export(" ^ name ^ ",",
@@ -753,7 +756,7 @@ struct
              | NONE => CCALL{name=name,args=ces_to_atoms args,
                              rhos_for_result=ces_to_atoms rhos_for_result,
                              res=map VAR lvars_res}::acc)
-         | ClosExp.CCALL_AUTO{name,args,res} =>
+         | ClosExp.CCALL_AUTO{name,args,rhos_for_result,res} =>
            (case PrimName.lookup_prim name of
                 SOME _ => die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
               | NONE =>
@@ -762,7 +765,8 @@ struct
                              | _ => die ("CCALL_AUTO.result mismatch (SOME) "
                                          ^ Int.toString(length lvars_res))
                 val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
-            in CCALL_AUTO{name=name, args=args, res=res}::acc
+            in CCALL_AUTO{name=name, args=args,
+                          rhos_for_result=ces_to_atoms rhos_for_result, res=res}::acc
             end)
          | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} =>
             EXPORT{name=name,clos_lab=clos_lab,arg=(ce_to_atom ce,ft1,ft2)}::
@@ -892,7 +896,8 @@ struct
     | get_phreg_ls (RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
     | get_phreg_ls (PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls (CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
-    | get_phreg_ls (CCALL_AUTO{name,args,res}) = get_phreg_atoms(map #1 args,[])
+    | get_phreg_ls (CCALL_AUTO{name,args,rhos_for_result,res}) =
+      get_phreg_atoms(map #1 args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls (EXPORT{name,clos_lab,arg}) = get_phreg_atom(#1 arg,[])
     | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
 
@@ -1031,7 +1036,8 @@ struct
               | (RESET_REGIONS{force,regions_for_resetting}) => get_var_smas(regions_for_resetting,[])
               | (PRIM{name,args,res}) => get_var_atoms(args,[])
               | (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
-              | (CCALL_AUTO{name,args,res}) => get_var_atoms(map #1 args,[])
+              | (CCALL_AUTO{name,args,rhos_for_result,res}) =>
+                get_var_atoms(map #1 args,get_var_atoms(rhos_for_result,[]))
               | (EXPORT{name,clos_lab,arg}) => get_var_atom(#1 arg,[])
               |  _ => die "use_var_ls: statement contains statements itself."
       in if ignore_rvars then filter_out_ubf64_lvars uses
@@ -1181,13 +1187,15 @@ struct
           | map_lss' (SWITCH_C sw::lss) = map_sw(map_lss',SWITCH_C,sw) :: map_lss' lss
           | map_lss' (SWITCH_E sw::lss) = map_sw(map_lss',SWITCH_E,sw) :: map_lss' lss
           | map_lss' (RESET_REGIONS{force,regions_for_resetting}::lss) =
-          RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
+            RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
           | map_lss' (PRIM{name,args,res}::lss) =
-          PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
+            PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
           | map_lss' (CCALL{name,args,rhos_for_result,res}::lss) =
-          CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
-          | map_lss' (CCALL_AUTO{name,args,res}::lss) =
-          CCALL_AUTO{name=name,args=map_pair_atys args,res=map_pair_aty res} :: map_lss' lss
+            CCALL{name=name,args=map_atys args,
+                  rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
+          | map_lss' (CCALL_AUTO{name,args,rhos_for_result,res}::lss) =
+            CCALL_AUTO{name=name,args=map_pair_atys args,rhos_for_result=map_atys rhos_for_result,
+                       res=map_pair_aty res} :: map_lss' lss
           | map_lss' (EXPORT{name,clos_lab,arg=(aty,ft1,ft2)}::lss) =
           EXPORT{name=name,clos_lab=clos_lab,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss
       in
@@ -1460,9 +1468,10 @@ struct
           | SWITCH_E sw => Asw As sw
           | RESET_REGIONS _ => false
           | PRIM {name, args, res} => Ap name
-          | CCALL {name, args, rhos_for_result=nil, res} => false
-          | CCALL {name, args, rhos_for_result=_, res} => true
-          | CCALL_AUTO _ => false
+          | CCALL {rhos_for_result=nil, ...} => false
+          | CCALL _ => true
+          | CCALL_AUTO {rhos_for_result=nil,...} => false
+          | CCALL_AUTO _ => true
           | EXPORT _ => false
 
   in

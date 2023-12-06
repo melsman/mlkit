@@ -3,11 +3,9 @@ signature FETCH_AND_FLUSH =
   sig
 
     (* Insert Fetch and Flush instructions in a LINE_STMT program
-       after register allocation.
+       after register allocation. *)
 
-    *)
-
-    type place 
+    type place
     type phsize
     type pp = int
     type lvar
@@ -26,18 +24,12 @@ signature FETCH_AND_FLUSH =
       | FLUSHED_CALLER_STY of lvar * lvar
       | FV_STY             of lvar * label * label
 
-    val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
-              {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+    val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,
+               imports:label list * label list,exports:label list * label list} ->
+              {main_lab:label,code:(StoreType,unit,Atom) LinePrg,
+               imports:label list * label list,exports:label list * label list}
 
     val pr_sty    : StoreType -> string
     val pr_atom   : Atom -> string
 
   end
-
-
-
-
-
-
-
-

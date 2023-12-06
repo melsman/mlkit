@@ -1398,14 +1398,14 @@ struct
                                 end handle X => ( print ("EXN: CCALL: " ^ pr_ls ls ^ "\n")
                                                 ; raise X))
                   end
-               | LS.CCALL_AUTO{name, args, res} =>
+               | LS.CCALL_AUTO{name, args, rhos_for_result, res} =>
 
         (* With dynamicly linked functions the first argument must be the name of   *)
         (* the function. If we where to implement automatic conversion into regions *)
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C)
+                                compile_c_call_auto(name,args,rhos_for_result,res,size_ff,tmp_reg1,C)
                                 handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
                                             ; raise X)
                                )
