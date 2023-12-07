@@ -5,7 +5,7 @@
 > datatype t
     con A : t
     con B : t
-    con C : int list->t
+    con C : int list -> t
   exception A
   exception A71
   exception A72 of int
@@ -15,37 +15,37 @@
   exception I of int
   exception R of string
   exception Z of int
-  val berry : bool * bool * bool->int
-  val check : bool->string
-  val check' : (unit->bool)->string
-  val checkres1 : ('a->''b)->('a * ''b) list->string
-  val checkres2 : ('a->'b->''c)->('a * 'b * ''c) list->string
+  val berry : bool * bool * bool -> int
+  val check : bool -> string
+  val check' : (unit -> bool) -> string
+  val checkres1 : ('a -> ''b) -> ('a * ''b) list -> string
+  val checkres2 : ('a -> 'b -> ''c) -> ('a * 'b * ''c) list -> string
   val dynExcon : exn
-  val enclose42 : unit->string list
-  val enclose43 : unit->string
-  val esc : string->int
-  val f1 : 'a list * 'b list->int
-  val f1c : 'a list->'b list->int
-  val f2 : 'a list * 'b list->int
-  val f2c : 'a list->'b list->int
-  val fbind : 'a list->'a
-  val fc : char->int
-  val fc1 : string t->string
-  val fcon : t * t * t->int
-  val fexc1 : exn->int
-  val fexc2 : exn->int
-  val fi : int->int
-  val fr : string->int
-  val fref1 : unit ref->int
-  val fref2 : int list ref->int
-  val fs : string->int
-  val funit1 : unit->int
-  val funit2 : unit->int
-  val fw : word->int
-  val irr1 : unit * int->int
-  val irr2 : int * int->int
-  val irr3 : 'a * int->int
-  val prln : string->string->unit
+  val enclose42 : unit -> string list
+  val enclose43 : unit -> string
+  val esc : string -> int
+  val f1 : 'a list * 'b list -> int
+  val f1c : 'a list -> 'b list -> int
+  val f2 : 'a list * 'b list -> int
+  val f2c : 'a list -> 'b list -> int
+  val fbind : 'a list -> 'a
+  val fc : char -> int
+  val fc1 : string t -> string
+  val fcon : t * t * t -> int
+  val fexc1 : exn -> int
+  val fexc2 : exn -> int
+  val fi : int -> int
+  val fr : string -> int
+  val fref1 : unit ref -> int
+  val fref2 : int list ref -> int
+  val fs : string -> int
+  val funit1 : unit -> int
+  val funit2 : unit -> int
+  val fw : word -> int
+  val irr1 : unit * int -> int
+  val irr2 : int * int -> int
+  val irr3 : 'a * int -> int
+  val prln : string -> string -> unit
   val test10a : string
   val test10b : string
   val test10c : string

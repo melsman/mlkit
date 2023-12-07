@@ -1,6 +1,6 @@
 [reading source file:	effty1.sml]
-> val f : int->int
-  val printNum : int->unit
+> val f : int -> int
+  val printNum : int -> unit
 effty1.sml, line 6, column 13:
       let with e
                ^

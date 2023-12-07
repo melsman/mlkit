@@ -1,5 +1,5 @@
 [reading source file:	er3.sml]
-> val f : unit->int
+> val f : unit -> int
 er3.sml, line 7, column 25:
     in #1 (4, a, "hi there"`r1)
                            ^^^

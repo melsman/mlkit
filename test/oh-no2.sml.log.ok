@@ -4,6 +4,6 @@
 
 > datatype 'a map
     con E : 'a map
-    con N : 'a map * 'a map->'a map
+    con N : 'a map * 'a map -> 'a map
   exception Impossible of string
-  val plus : 'a map * 'a map->'a map
+  val plus : 'a map * 'a map -> 'a map

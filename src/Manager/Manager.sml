@@ -88,10 +88,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             {long="inline_functors", short=NONE, neg=false,
              item=ref false,
              menu=["General Control", "inline functors"],
-             desc="Inline functors during static interpretation instead of generating\n\
-                  \separate target code blocks for functor bodies and arguments. With\n\
-                  \the flag enabled, performance may increase with the cost of larger\n\
-                  \(re)compilation times. The flag may be controlled in mlb-files using\n\
+             desc="Inline functors during static interpretation instead of\n\
+                  \generating separate target code blocks for functor bodies\n\
+                  \and arguments. With the flag enabled, performance may\n\
+                  \increase with the cost of larger (re)compilation times.\n\
+                  \The flag may be controlled in mlb-files using mlb-\n\
                   \annotations."}
 
     exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR

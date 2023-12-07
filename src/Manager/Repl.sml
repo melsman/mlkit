@@ -100,7 +100,7 @@ val pretty_string_size =
                          menu=["REPL Pretty Printing", "pretty string size"],
                          item=ref 80,
                          desc="This flag controls the pretty-printing size of\n\
-                              \string printed in the REPL. The value must be an\n\
+                              \strings printed in the REPL. The value must be an\n\
                               \integer larger than zero."}
 
 (* -------------------------------------------

@@ -1,5 +1,5 @@
 [reading source file:	err_expty3.sml]
-> val f : unit->int->int
+> val f : unit -> int -> int
 err_expty3.sml, line 5, column 17:
           let with r
                    ^

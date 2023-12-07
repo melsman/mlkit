@@ -8,11 +8,11 @@
       val a : t
     end
   functor F(type t
-            val pr : t->string
+            val pr : t -> string
            ): sig
                 datatype k
-                  con A : t->k
-                val pr : k->string
+                  con A : t -> k
+                val pr : k -> string
               end
   functor G(type t
             val a : t
@@ -23,18 +23,18 @@
   functor H(type s
             type t
             val a : t
-            val pr : t->string
+            val pr : t -> string
            ): sig
                 structure A1 :
                   sig
                     type t
-                    val pr : t->string
+                    val pr : t -> string
                   end
                 structure A2 :
                   sig
                     datatype k
-                      con A : t->k
-                    val pr : k->string
+                      con A : t -> k
+                    val pr : k -> string
                   end
                 structure A3 :
                   sig
@@ -50,7 +50,7 @@
         con J : t
         con K : t
       val a : t
-      val pr : t->string
+      val pr : t -> string
     end
   structure B2 :
     sig
@@ -59,20 +59,20 @@
         con J : t
         con K : t
       val a : t
-      val pr : t->string
+      val pr : t -> string
     end
   structure H1 :
     sig
       structure A1 :
         sig
           type t
-          val pr : t->string
+          val pr : t -> string
         end
       structure A2 :
         sig
           datatype k
-            con A : t->k
-          val pr : k->string
+            con A : t -> k
+          val pr : k -> string
         end
       structure A3 :
         sig
@@ -86,13 +86,13 @@
       structure A1 :
         sig
           type t
-          val pr : t->string
+          val pr : t -> string
         end
       structure A2 :
         sig
           datatype k
-            con A : t->k
-          val pr : k->string
+            con A : t -> k
+          val pr : k -> string
         end
       structure A3 :
         sig

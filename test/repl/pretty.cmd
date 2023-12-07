@@ -13,4 +13,6 @@ datatype e = S | K | D | A | U
 val e = [S,A,U,D,D,S,K];
 datatype single = Single of int
 val s = Single 322;
+datatype ('a,'b)t = A of 'a * 'b;
+val x = A(4,2.3);
 :quit;

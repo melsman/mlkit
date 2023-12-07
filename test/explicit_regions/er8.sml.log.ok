@@ -1,6 +1,6 @@
 [reading source file:	er8.sml]
 > infix 0 +
-  val f : unit->real
+  val f : unit -> real
 er8.sml, line 5, column 6:
   fun f `[r1] () : real =
         ^^^^^

@@ -1,5 +1,5 @@
 [reading source file:	err_funty1.sml]
-> val f : unit->int * int
+> val f : unit -> int * int
 err_funty1.sml, line 5, column 23:
   fun f () : (int * int)`r0top = (4,6)
                          ^^^^^

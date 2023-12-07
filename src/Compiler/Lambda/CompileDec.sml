@@ -35,7 +35,7 @@ structure CompileDec: COMPILE_DEC =
     val high_pointer_tagging_p =
         Flags.add_bool_entry
             {long="high_pointer_tagging", short=NONE, neg=true,
-             menu=["Control","high-pointer tagging"], item=ref true,
+             menu=["General Control","high-pointer tagging"], item=ref true,
              desc="When enabled, the 16 most-significant bits in pointers\n\
                   \may be used for tagging."}
 
