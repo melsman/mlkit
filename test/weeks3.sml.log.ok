@@ -10,21 +10,21 @@
 > functor F(
            ): sig
                 datatype 'a t
-                  con T : 'a u->'a t
+                  con T : 'a u -> 'a t
                 datatype 'a u
                   con U : 'a u
               end
   structure K :
     sig
       datatype 'a t
-        con T : 'a u->'a t
+        con T : 'a u -> 'a t
       datatype 'a u
         con U : 'a u
     end
   structure S :
     sig
       datatype 'a t
-        con T : 'a u->'a t
+        con T : 'a u -> 'a t
       datatype 'a u
         con U : 'a u
     end

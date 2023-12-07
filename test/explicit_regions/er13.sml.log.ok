@@ -1,7 +1,7 @@
 [reading source file:	er13.sml]
 > infix 0 +
-  val f : unit->real * real
-  val g : unit->real
+  val f : unit -> real * real
+  val g : unit -> real
 er13.sml, line 12, column 22:
           val (_,y) = f `[r2] ()
                         ^^^^^

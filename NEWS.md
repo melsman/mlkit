@@ -1,5 +1,13 @@
 ## MLKit NEWS
 
+* mael 2023-12-07: Improved FFI auto-conversion. It is now easier to
+  call c code using MLKit's auto-conversion features (PR #154).
+
+* mael 2023-12-07: MLKit's basis library now supports most of the
+  optional modules implementing the MONO_ARRAY, MONO_VECTOR,
+  MONO_ARRAY_SLICE, MONO_VECTOR_SLICE, and MONO_ARRAY2 signatures for
+  many underlying word and integer representations (PR #150, PR #151).
+
 ### MLKit version 4.7.6 is released
 
 * mael 2023-11-16: Unboxed representation of datatypes using high bits
@@ -15,7 +23,7 @@
   unboxed (PR #142).
 
 * mael 2023-11-04: MLKit now has a REPL (Read-Eval-Print-Loop). It is
-  invoked when passing no options to the mlkit executable (PR #138).
+  invoked when no files are passed to the mlkit executable (PR #138).
 
 ### MLKit version 4.7.5 is released
 

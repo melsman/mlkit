@@ -1,6 +1,6 @@
 [reading source file:	er6.sml]
-> val ! : 'a ref->'a
-  val f : unit->real
+> val ! : 'a ref -> 'a
+  val f : unit -> real
   val x : real ref
 er6.sml, line 8, column 6:
   fun f `[r] () : real =

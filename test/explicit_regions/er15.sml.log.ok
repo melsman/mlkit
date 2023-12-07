@@ -1,8 +1,8 @@
 [reading source file:	er15.sml]
 > datatype t
-    con A : int->t
+    con A : int -> t
     con B : t
-  val f : unit->int
+  val f : unit -> int
 er15.sml, line 7, column 30:
           val x = if true then B`[r1 r2] else A`r1 9
                                 ^^^^^^^^

@@ -1,7 +1,7 @@
 [reading source file:	er12.sml]
 > infix 0 +
-  val f : unit->real
-  val g : unit->real
+  val f : unit -> real
+  val g : unit -> real
 er12.sml, line 7, column 22:
              in 0.0 + f `[r3] ()
                         ^^^^^

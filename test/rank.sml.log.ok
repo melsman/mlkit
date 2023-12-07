@@ -7,6 +7,6 @@ rank.sml, line 15, column 16:
   val a : t * t = g (A,A)
                   ^^^^^^^
 Type rank error,
-   expecting: t * t->t * t
-   found:     'a * 'b->'a * 'b
+   expecting: t * t -> t * t
+   found:     'a * 'b -> 'a * 'b
 The generative type t is newer than the free type variable 'a.

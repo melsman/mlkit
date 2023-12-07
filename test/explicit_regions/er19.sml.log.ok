@@ -1,6 +1,6 @@
 [reading source file:	er19.sml]
-> val ! : 'a ref->'a
-  val f : unit->real
+> val ! : 'a ref -> 'a
+  val f : unit -> real
   val x : real ref
 er19.sml, line 8, column 18:
     if true then 3.4`e

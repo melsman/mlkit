@@ -1,5 +1,5 @@
 [reading source file:	err_expty2.sml]
-> val f : (int->int)`r0pair
+> val f : (int -> int)`r0pair
 err_expty2.sml, line 3, column 21:
   val f : (int -> int)`r0pair = fn x => 4
                        ^^^^^^

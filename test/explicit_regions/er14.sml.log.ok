@@ -1,7 +1,7 @@
 [reading source file:	er14.sml]
 > infix 0 +
-  val ! : 'a ref->'a
-  val f : unit->int
+  val ! : 'a ref -> 'a
+  val f : unit -> int
 er14.sml, line 8, column 19:
           val x = ref`[r r] 8
                      ^^^^^^

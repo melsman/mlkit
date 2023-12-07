@@ -1,6 +1,6 @@
 [reading source file:	er10.sml]
 > infix 0 +
-  val f : unit->real
+  val f : unit -> real
 er10.sml, line 6, column 11:
     let with r
              ^

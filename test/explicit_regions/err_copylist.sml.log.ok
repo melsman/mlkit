@@ -1,6 +1,6 @@
 [reading source file:	err_copylist.sml]
 > infix 0 ::
-  val copy : int list`r1->int list`r2
+  val copy : int list`r1 -> int list`r2
 err_copylist.sml, line 5, column 9:
   fun copy `[r1 r2] (xs : int list`r1) : int list`r2 =
            ^^^^^^^^

@@ -2,4 +2,4 @@
 
 ********** oh-no.sml *************
 
-> val f : int->unit
+> val f : int -> unit

@@ -1,7 +1,7 @@
 [reading source file:	nomut2-err.sml]
-> val f : unit->unit
-  val g2 : (unit-ee0->unit)->unit-eee->unit
-  val g3 : (unit-ee0->unit)->unit-eee->unit
+> val f : unit -> unit
+  val g2 : (unit -ee0-> unit) -> unit -eee-> unit
+  val g3 : (unit -ee0-> unit) -> unit -eee-> unit
 nomut2-err.sml, line 28, column 91:
   val rec g3 `[eee ee0] : ((unit #ee0 -> unit) -> (unit #eee -> unit) while nomut ee0) while nomut eee =
                                                                                              ^^^^^^^^^

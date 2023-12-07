@@ -1,17 +1,17 @@
 . . . . . . . > datatype t
-    con Add : t * t->t
-    con Mul : t * t->t
-    con R : real->t
-    con Var : string->t
+    con Add : t * t -> t
+    con Mul : t * t -> t
+    con R : real -> t
+    con Var : string -> t
     con Zero : t
   val a = Mul(Add(Var "a",Mul(R 1.0,Zero)),Add(Add(Var "a",Mul(R 1.0,Zero)),Mul(Zero,Var "a"))) : t
   val b = Add(Add(Add(Var "a",Mul(R 1.0,Zero)),Mul(Zero,Var "a")),Mul(Var "a",Add(Var "a",Mul(R 1.0,Zero)))) : t
-  val mkt = fn : int->t
+  val mkt = fn : int -> t
 . . . . > datatype s
-    con B : s * s->s
+    con B : s * s -> s
     con L : s
   val c = B(B(B(B(B(B(L,L),L),B(L,L)),B(B(L,L),L)),B(B(B(L,L),L),B(L,L))),B(B(B(B(L,L),L),B(L,L)),B(B(L,L),L))) : s
-  val mks = fn : int->s
+  val mks = fn : int -> s
 . . > datatype e
     con A : e
     con D : e
@@ -20,5 +20,8 @@
     con U : e
   val e = [S,A,U,D,D,S,K] : e list
 . . > datatype single
-    con Single : int->single
+    con Single : int -> single
   val s = Single 322 : single
+. > datatype ('a, 'b) t
+    con A : 'a * 'b -> ('a, 'b) t
+. > val x = A(4,2.3) : (int, real) t

@@ -1,6 +1,6 @@
 [reading source file:	nomut-err.sml]
-> val f : unit->unit
-  val g : unit-e->unit
+> val f : unit -> unit
+  val g : unit -e-> unit
 nomut-err.sml, line 14, column 39:
   val rec g `e : (unit #e -> unit) while nomut e =
                                          ^^^^^^^

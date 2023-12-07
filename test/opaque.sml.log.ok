@@ -11,7 +11,7 @@
            ): sig
                 type a
                 val a : a
-                val pr : a->string
+                val pr : a -> string
               end
   functor g(
            ): sig
@@ -19,22 +19,22 @@
                 type b
                 val A : a
                 val B : b
-                val pr_a : a->string
-                val pr_b : b->string
+                val pr_a : a -> string
+                val pr_b : b -> string
               end
   functor h(type a
             val a : a
-            val pr : a->string
+            val pr : a -> string
            ): sig
                 type b
                 val b : b
-                val pr : b->string
+                val pr : b -> string
               end
   functor i(
            ): sig
                 type c
                 val c : c
-                val pr : c->string
+                val pr : c -> string
               end
   structure S :
     sig
@@ -44,7 +44,7 @@
     sig
       type a
       val a : a
-      val pr : a->string
+      val pr : a -> string
     end
   structure g :
     sig
@@ -52,18 +52,18 @@
       type b
       val A : a
       val B : b
-      val pr_a : a->string
-      val pr_b : b->string
+      val pr_a : a -> string
+      val pr_b : b -> string
     end
   structure h :
     sig
       type b
       val b : b
-      val pr : b->string
+      val pr : b -> string
     end
   structure i :
     sig
       type c
       val c : c
-      val pr : c->string
+      val pr : c -> string
     end

@@ -119,7 +119,7 @@ type db = tn * boxity * cb list  (* data binding *)
 
 type subst = (tv * tau) list
 fun lookSubst (S:subst) tv =
-    case List.find (fn tv' => tv=tv) S of
+    case List.find (fn (tv',_) => tv=tv') S of
         SOME (_,t) => SOME t
       | NONE => NONE
 

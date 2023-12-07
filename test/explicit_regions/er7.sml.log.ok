@@ -1,7 +1,7 @@
 [reading source file:	er7.sml]
 > infix 0 +
-  val ! : 'a ref->'a
-  val f : unit->real
+  val ! : 'a ref -> 'a
+  val f : unit -> real
   val x : real ref
 er7.sml, line 10, column 11:
     let with r2

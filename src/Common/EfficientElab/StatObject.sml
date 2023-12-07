@@ -593,10 +593,10 @@ structure StatObject: STATOBJECT =
                       end
                     | ARROW (t1,rvi0,t2,rvi) =>
                       let val arrow = case URef.!! rvi0 of
-                                          NONE => "->"
+                                          NONE => " -> "
                                         | SOME (_,rv) =>
-                                          if #repl config then "->"
-                                          else "-" ^ RegVar.pr rv ^ "->"
+                                          if #repl config then " -> "
+                                          else " -" ^ RegVar.pr rv ^ "-> "
                           fun default () =
                               pretty_string_as_opt config names 3 (t1, NONE) ^ arrow
                               ^ pretty_string_as_opt config names 2 (t2, NONE)
@@ -606,7 +606,7 @@ structure StatObject: STATOBJECT =
                                   (case URef.!! rvi' of
                                        NONE =>
                                        (case URef.!! rvi0' of
-                                            NONE => pretty_string_as_opt config names 3 (t1, SOME t1') ^ "->"
+                                            NONE => pretty_string_as_opt config names 3 (t1, SOME t1') ^ arrow
                                                     ^ pretty_string_as_opt config names 2 (t2, SOME t2')
                                           | SOME _ => default())
                                      | SOME _ => default())
@@ -630,7 +630,7 @@ structure StatObject: STATOBJECT =
                             concat [pretty_string_as_opt config names 4 (ty,ty'), " ",
                                     TyName_string_as_opt config ((tyname,rvis), tyname'_opt)]
                           | _ =>
-                            concat [ListUtils.stringSep "(" ") " ", "
+                            concat [ListUtils.stringSep "(" ")" ", "
                                                         (pretty_string_as_opt config names 1)
                                                         (ListPair.zip (tys,tys'_opt)),
                                     " ",

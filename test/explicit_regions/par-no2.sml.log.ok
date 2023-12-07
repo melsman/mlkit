@@ -1,7 +1,7 @@
 [reading source file:	par-no2.sml]
-> val get : 'a->'a
-  val par : (unit-e1->'a) * (unit-e2->'b)->'a * 'b
-  val spawn : (unit-e1->'a)->('a-e2->'b)->'b
+> val get : 'a -> 'a
+  val par : (unit -e1-> 'a) * (unit -e2-> 'b) -> 'a * 'b
+  val spawn : (unit -e1-> 'a) -> ('a -e2-> 'b) -> 'b
 par-no2.sml, line 14, column 79:
       fun sp__noinline `[e1 e2] (f: unit #e1 -> 'a) (k: 'a #e2 -> 'b) : 'b while e1 ## e2 =
                                                                                  ^^^^^^^^

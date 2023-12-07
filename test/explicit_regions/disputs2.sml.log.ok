@@ -1,5 +1,5 @@
 [reading source file:	disputs2.sml]
-> val par : (unit-e1->'a)->(unit-e2->'b)->'a * 'b
+> val par : (unit -e1-> 'a) -> (unit -e2-> 'b) -> 'a * 'b
 disputs2.sml, line 5, column 75:
   fun par `[e1 e2] (f: unit #e1 -> 'a) (g: unit #e2 -> 'b) : ('a * 'b) while e1 ## e2 =
                                                                              ^^^^^^^^
