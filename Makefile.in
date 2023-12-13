@@ -56,8 +56,8 @@ all: mlkit mlkit_basislibs smltojs smltojs_basislibs
 
 .PHONY: mlkit_basislibs
 mlkit_basislibs: mlkit
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc repl.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -log_to_file basis.mlb)

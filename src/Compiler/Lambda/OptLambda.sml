@@ -921,6 +921,7 @@ structure OptLambda : OPT_LAMBDA =
                   | CBLKSZ of IntInf.int                                             (* statically sized block (e.g., array or string) *)
                   | CBLK2SZ of IntInf.int option * IntInf.int option                 (* statically sized 2d-block *)
                   | CRNG of {low: IntInf.int option, high: IntInf.int option}
+                  | CCON1 of con * cv
 
       fun eq_cv (cv1,cv2) =
         case (cv1,cv2)
@@ -934,6 +935,8 @@ structure OptLambda : OPT_LAMBDA =
            | (CBLKSZ i1, CBLKSZ i2) => i1 = i2
            | (CBLK2SZ i1, CBLK2SZ i2) => i1 = i2
            | (CRNG i1, CRNG i2) => i1 = i2
+           | (CCON1 (c1,cv1), CCON1 (c2,cv2)) =>
+             Con.eq(c1,c2) andalso eq_cv(cv1,cv2)
            | _ => false
       and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
         | eq_cvs (nil,nil) = true
@@ -963,6 +966,7 @@ structure OptLambda : OPT_LAMBDA =
            | CBLKSZ _ => true
            | CBLK2SZ _ => true
            | CRNG _ => true
+           | CCON1 (_,cv) => closed_small_cv(lvars_free_ok,excons_free_ok,lvar,tyvars,cv)
 
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
@@ -973,6 +977,7 @@ structure OptLambda : OPT_LAMBDA =
         | remove _ (cv as (CBLKSZ _)) = cv
         | remove _ (cv as (CBLK2SZ _)) = cv
         | remove _ (cv as (CRNG _)) = cv
+        | remove lvar (CCON1 (c,cv)) = CCON1(c,remove lvar cv)
         | remove _ _ = CUNKNOWN
 
       fun removes [] cv = cv
@@ -994,6 +999,7 @@ structure OptLambda : OPT_LAMBDA =
         | show_cv (CBLKSZ i) = "(cblksz " ^ IntInf.toString i ^ ")"
         | show_cv (CBLK2SZ (i0opt,i1opt)) = "(cblk2sz " ^ pp_opti i0opt ^ ", " ^ pp_opti i1opt ^ ")"
         | show_cv (CRNG {low,high}) = "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
+        | show_cv (CCON1 (c,cv)) = Con.pr_con c ^ "(" ^ show_cv cv ^ ")"
 
       (* substitution *)
       fun on_cv S cv =
@@ -1005,6 +1011,7 @@ structure OptLambda : OPT_LAMBDA =
               | on (cv as CBLKSZ _) = cv
               | on (cv as CBLK2SZ _) = cv
               | on (cv as CRNG _) = cv
+              | on (CCON1(c,cv)) = CCON1(c,on cv)
               | on _ = CUNKNOWN
         in on cv
         end
@@ -1036,6 +1043,11 @@ structure OptLambda : OPT_LAMBDA =
           if i1 = i2 then cv else CUNKNOWN
         | lub (cv as CBLK2SZ i1, CBLK2SZ i2) =
           if i1 = i2 then cv else CUNKNOWN
+        | lub (cv as CCON1(c1,cv1), CCON1(c2,cv2)) =
+          if Con.eq(c1,c2) then
+            if eq_cv(cv1,cv2) then cv
+            else CCON1(c1,lub(cv1,cv2))
+          else CUNKNOWN
         | lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
@@ -1264,14 +1276,27 @@ structure OptLambda : OPT_LAMBDA =
        * Reduce on switch
        * ----------------------------------------------------------------- *)
 
-      fun selectorCon (e : LambdaExp) : ((con*lvar option)->bool)option =
-          if aggressive_opt() then
-            case e of
-              PRIM(CONprim {con,...}, args) =>
-              if List.all safeLambdaExp args then SOME (fn (c,_) => Con.eq(c,con))
-              else NONE
-            | _ => NONE
-          else NONE
+      fun selectorCon env (e : LambdaExp) : ((con*lvar option)->bool)option =
+          let fun selC con = SOME (fn (c,_) => Con.eq(c,con))
+          in if aggressive_opt() then
+               case e of
+                   PRIM(CONprim {con,...}, args) =>
+                   if List.all safeLambdaExp args then selC con
+                   else NONE
+                 | VAR {lvar,...} =>
+                   (case lookup_lvar(env,lvar) of
+                        SOME (_,CCON1 (con,_)) => selC con
+                      | _ => NONE)
+                 | PRIM(SELECTprim {index}, [VAR{lvar,...}]) =>
+                   (case lookup_lvar(env,lvar) of
+                        SOME (_,CRECORD cvs) =>
+                        (case (SOME(List.nth(cvs,index)) handle _ => NONE) of
+                             SOME (CCON1 (con,_)) => selC con
+                           | _ => NONE)
+                      | _ => NONE)
+                 | _ => NONE
+             else NONE
+          end
 
       fun selectorNONE e = NONE
 
@@ -1290,11 +1315,11 @@ structure OptLambda : OPT_LAMBDA =
           in loop (sels,nil)
           end
 
-      fun reduce_switch (reduce, env, (fail as (_,cv)), (SWITCH(arg, sel, opt)), selector) =  (* If branches are equal and the selector *)
-        let fun allEqual [] = true                                                            (* is safe then eliminate switch. *)
-              | allEqual [x] = true
+      fun reduce_switch (reduce, env, (fail as (_,cv)), (SWITCH(arg, sel, opt)), selector) =
+        let fun allEqual [] = true   (* If branches are equal and the selector *)
+              | allEqual [x] = true  (* is safe then eliminate switch. *)
               | allEqual (x::(ys as y::_)) = eq_lamb(x,y) andalso allEqual ys
-          fun constFold() =
+          fun constFold () =
               case selector arg of
                 SOME sel_eq =>
                 let val (e, others) = searchSel sel_eq sel opt
@@ -1303,19 +1328,18 @@ structure OptLambda : OPT_LAMBDA =
                    reduce (env, (e, cv))
                 end
               | NONE => fail
-
-        in case opt
-             of SOME lamb =>
+        in case opt of
+               SOME lamb =>
                if safeLambdaExp arg andalso allEqual (lamb::(map snd sel)) then
                  (tick "reduce - switch"; decr_uses arg; app (decr_uses o snd) sel; reduce (env, (lamb, cv)))
                else constFold()
-              | NONE =>
-                 if safeLambdaExp arg andalso allEqual (map snd sel) then
-                   case sel
-                     of (_,lamb)::sel' => (tick "reduce - switch"; decr_uses arg;
-                                           app (decr_uses o snd) sel'; reduce (env, (lamb, cv)))
-                      | _ => die "reduce_switch"
-                 else constFold()
+             | NONE =>
+               if safeLambdaExp arg andalso allEqual (map snd sel) then
+                 case sel of
+                     (_,lamb)::sel' => (tick "reduce - switch"; decr_uses arg;
+                                        app (decr_uses o snd) sel'; reduce (env, (lamb, cv)))
+                   | _ => die "reduce_switch"
+               else constFold()
         end
 
 
@@ -1402,8 +1426,19 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__plus_int64ub" => opp_ov (op +)
                                   | "__minus_int63" => opp_ov (op -)
                                   | "__minus_int64ub" => opp_ov (op -)
-                                  | "__mul_int63" => opp_ov (op *)
-                                  | "__mul_int64ub" => opp_ov (op *)
+                                  | "__mul_int63" => opp_ov (op * )
+                                  | "__mul_int64ub" => opp_ov (op * )
+                                  | _ => NONE
+                             end
+                           | [INTEGER(v1,t),INTEGER(v2,_),_] =>
+                             let fun opp_ov opr = let val v = opr (v1,v2)
+                                                  in if ((Int31.fromLarge v; true) handle _ => false)
+                                                     then SOME (INTEGER(v,t))
+                                                     else NONE
+                                                  end handle Div => NONE
+                             in case name of
+                                    "__div_int63" => opp_ov (op div)
+                                  | "__div_int64ub" => opp_ov (op div)
                                   | _ => NONE
                              end
                            | [WORD(v1,t),WORD(v2,_)] =>
@@ -1465,7 +1500,8 @@ structure OptLambda : OPT_LAMBDA =
                                        | _ => NONE
                                  fun opp opr =
                                      case (Real.fromString s1, Real.fromString s2) of
-                                         (SOME r1, SOME r2) => SOME(F64(Real.fmt (StringCvt.FIX(SOME 10)) (opr(r1,r2))))
+                                         (SOME r1, SOME r2) =>
+                                         SOME(F64(Real.fmt (StringCvt.FIX(SOME 10)) (opr(r1,r2))))
                                        | _ => NONE
                              in case name of
                                     "__minus_f64" => opp Real.-
@@ -1743,6 +1779,9 @@ structure OptLambda : OPT_LAMBDA =
                       end
                      | _ => do_select()
                end
+          | PRIM(DECONprim {con,...}, [PRIM(CONprim{con=con',...},[e])]) =>
+            if Con.eq(con,con') then (tick "reduce - decon-con"; reduce (env, (e,cv)))
+            else constantFolding env lamb fail
           | FIX{functions,scope} =>
                let val lvs = map #lvar functions
                in if zero_uses lvs then (tick "reduce - dead-fix";
@@ -1774,7 +1813,8 @@ structure OptLambda : OPT_LAMBDA =
                     SOME (tyvars, CFIX{N=NONE,Type,bind,large}) =>
                     if not(large) orelse Lvars.one_use lvar then
                       let val e = specialize_bind {lvar=lvar,tyvars=tyvars,Type=Type,bind=bind} instances lamb2
-                      in decr_use lvar; decr_uses lamb2; incr_uses e; tick ("reduce - fix-spec." ^ Lvars.pr_lvar lvar);
+                      in decr_use lvar; decr_uses lamb2; incr_uses e;
+                         tick ("reduce - fix-spec." ^ Lvars.pr_lvar lvar);
                          reduce (env, (e, CUNKNOWN))
                       end
                     else fail
@@ -1804,7 +1844,7 @@ structure OptLambda : OPT_LAMBDA =
           | SWITCH_I {switch,precision} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_W {switch,precision} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
-          | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon)
+          | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon env)
           | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
             (tick "real immed to f64 immed";
@@ -1933,7 +1973,7 @@ structure OptLambda : OPT_LAMBDA =
               | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
                let val (bind', cv) = contr (env, bind)
                    val cv' = if noinline_lvar lvar then CUNKNOWN
-                             else if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
+                             else if is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
                              else if is_fn bind' then CFN{lexp=bind',large=true}
                              else if is_unboxed_value bind' then CCONST bind'
                              else (case bind'
@@ -1941,12 +1981,15 @@ structure OptLambda : OPT_LAMBDA =
                                       | _ => cv)
                    val env' = LvarMap.add(lvar,(tyvars,cv'),env)
 
-                   val env' = case exn_anti_env bind of                  (* under which conditions does bind not raise an exception *)
+                   val env' = case exn_anti_env bind of  (* under which conditions does bind not raise an exception *)
                                   NONE => env'
                                 | SOME env'' =>
                                   let (*val () = if LvarMap.isEmpty env'' then ()
                                                else pr_contract_env env''*)
-                                  in LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind is sure to raise an exception, but we will ignore this fact *)
+                                  in LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind
+                                                                 is sure to raise an exception, but we
+                                                                 will ignore this fact
+                                                               *)
                                   end
                    val (scope',cv_scope) = contr (env', scope)
                    val cv_scope' = remove lvar cv_scope
@@ -2030,6 +2073,28 @@ structure OptLambda : OPT_LAMBDA =
                        | _ => fail()
                    else fail()
                 end
+              | PRIM(prim as CONprim {con,...},[e]) =>
+                let val (e',cv') = contr (env,e)
+                in (PRIM(prim,[e']), CCON1(con,cv'))
+                end
+              | PRIM(prim as DECONprim {con,...},[e]) =>
+                let val (e',cv') = contr (env,e)
+                    fun default () = (PRIM(prim,[e']), CUNKNOWN)
+                in case cv' of
+                       CCON1(con',cv'') => if Con.eq(con,con') then
+                                             (PRIM(prim,[e']), cv'')
+                                           else default()
+                     | _ => default()
+                end
+              | PRIM(prim as SELECTprim {index}, [e]) =>
+                let val (e',cv') = contr (env,e)
+                    val cv'' = case cv' of
+                                   CRECORD cvs =>
+                                   (List.nth(cvs,index)
+                                    handle _ => CUNKNOWN)
+                                 | _ => CUNKNOWN
+                in (PRIM(prim,[e']), cv'')
+                end
               | PRIM(prim,lambs) => (PRIM(prim,map (fst o (fn e => contr (env,e))) lambs),CUNKNOWN)
               | FIX{functions,scope} =>
                let val lvs = map #lvar functions
@@ -2044,9 +2109,11 @@ structure OptLambda : OPT_LAMBDA =
                                    let val cv =
                                            if specialize_recursive_functions() then
                                              if specializable function then
-                                               CFIX{N=NONE,Type=Type,bind=bind,large=not(small_lamb (max_specialise_size()) bind)}
+                                               CFIX{N=NONE,Type=Type,bind=bind,
+                                                    large=not(small_lamb (max_specialise_size()) bind)}
                                              else case specializableN function of
-                                                      SOME n => CFIX{N=SOME n,Type=Type,bind=bind,large=not(small_lamb (max_specialise_size()) bind)}
+                                                      SOME n => CFIX{N=SOME n,Type=Type,bind=bind,
+                                                                     large=not(small_lamb (max_specialise_size()) bind)}
                                                     | NONE => CUNKNOWN
                                            else CUNKNOWN
                                    in updateEnv [lvar] [(tyvars,cv)] env
@@ -2154,6 +2221,10 @@ structure OptLambda : OPT_LAMBDA =
             | CBLKSZ _ => acc
             | CBLK2SZ _ => acc
             | CRNG _ => acc
+            | CCON1 (cn,cv) =>
+              let val (lvs,cns,tns) = free_cv (cv,acc)
+              in (lvs,cn::cns,tns)
+              end
 
       fun free_contract_env_res ((_,cv),acc) =
           free_cv(cv,acc)
@@ -2213,6 +2284,7 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CBLKSZ _) = 6
                 | toInt (CRNG _) = 7
                 | toInt (CBLK2SZ _) = 8
+                | toInt (CCON1 _) = 9
 
               fun fun_CVAR _ =
                   Pickle.con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
@@ -2245,10 +2317,14 @@ structure OptLambda : OPT_LAMBDA =
                   (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
               fun fun_CBLK2SZ _ =
                   Pickle.con1 CBLK2SZ (fn CBLK2SZ a => a | _ => die "pu_contract_env.CBLK2SZ")
-                  (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
+                              (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
+              fun fun_CCON1 pu =
+                  Pickle.con1 CCON1 (fn CCON1 a => a | _ => die "pu_contract_env.CCON1")
+                              (Pickle.pairGen(Con.pu,pu))
               val pu_cv =
                   Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-                                                       fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,fun_CRNG,fun_CBLK2SZ])
+                                                       fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,
+                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1])
           in LvarMap.pu Lvars.pu
               (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
           end
@@ -2526,7 +2602,7 @@ structure OptLambda : OPT_LAMBDA =
        | find_lv_functions _ _ = die "find_lv_functions"
 
      (* Compute SCC *)
-     fun compute_scc(functions,G) =
+     fun compute_scc (functions,G) =
        let val node_list_list = DG.scc G
            val lv_list_list = map (map (! o DG.getInfoNode)) node_list_list
            val f_list_list = map (map (find_lv_functions functions)) lv_list_list
