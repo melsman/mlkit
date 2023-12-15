@@ -1,5 +1,10 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.7 is released
+
+* mael 2023-12-15: Cleanup and various optimisation improvements
+  (e.g., constant constructor-switch folding).
+
 * mael 2023-12-07: Improved FFI auto-conversion. It is now easier to
   call c code using MLKit's auto-conversion features (PR #154).
 
