@@ -892,19 +892,19 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
 String
 REG_POLY_FUN_HDR(generalStringOfFloat, Region rAddr, String format, size_t f)
 {
-  char buf[512];
+  size_t size = snprintf(NULL, 0, &(format->data), get_d(f)) + 1;
+  char *buf = malloc(size);
+  snprintf(buf, size, &(format->data), get_d(f));
 
-  /* Unfortunately there seems to be no way to ensure that this does not
-   * crash by overflowing the result_buffer (e.g. when specifying a huge
-   * number of decimal digits in the fixed-point format):
-   */
-  sprintf(buf, &(format->data), get_d(f));
   mkSMLMinus(buf);
+  String s;
   if ( strcmp (buf, "~nan") == 0 ) {
-    return REG_POLY_CALL(convertStringToML,rAddr,"nan");
+    s = REG_POLY_CALL(convertStringToML,rAddr,"nan");
   } else {
-    return REG_POLY_CALL(convertStringToML,rAddr,buf);
+    s = REG_POLY_CALL(convertStringToML,rAddr,buf);
   }
+  free(buf);
+  return s;
 }
 
 /* DEBUG */

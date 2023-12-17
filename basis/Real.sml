@@ -107,15 +107,15 @@ structure Real : REAL =
           case spec of
               SCI NONE     => to_string_gen "%e" r
             | SCI (SOME n) =>
-                  if n < 0 orelse n > 400 then raise Size
+                  if n < 0 then raise Size
                   else to_string_gen ("%." ^ Int.toString n ^ "e") r
             | FIX NONE     => to_string_gen "%f" r
             | FIX (SOME n) =>
-                  if n < 0 orelse n > 400 then raise Size
+                  if n < 0 then raise Size
                   else to_string_gen ("%." ^ Int.toString n ^ "f") r
             | GEN NONE     => toString r
             | GEN (SOME n) =>
-                  if n < 1 orelse n > 400 then raise Size
+                  if n < 1 then raise Size
                   else mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
             | EXACT => fmt (SCI (SOME 30)) r
       end
