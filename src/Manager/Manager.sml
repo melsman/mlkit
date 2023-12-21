@@ -347,7 +347,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     type Basis1 = Basis.Basis1
 
     fun pickleLnkFile smlfile ofile (modc: modcode) : unit =
-        doPickleGen smlfile ofile ModCode.pu "lnk" modc
+        let val ext = "lnk"
+            val p = doPickleGen0 smlfile ModCode.pu ext modc
+            val file = targetFromOutput ofile ext
+        in if isFileContentStringBIN file p then ()
+           else writePickle file p
+        end
 
     fun readLinkFiles lnkFiles =
         let fun process (nil,hce,modc) = modc
