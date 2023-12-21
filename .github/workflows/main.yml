@@ -161,7 +161,7 @@ jobs:
           rm -rf ${{ env.RUNHOME }}/.mlkit ${{ env.RUNHOME }}/tmp
           SML_LIB=/usr/local/lib/mlkit /usr/local/bin/mlkit --version
           SML_LIB=/usr/local/lib/mlkit /usr/local/bin/smltojs --version
-	  echo "val a = 10+32; :quit;" | SML_LIB=/usr/local/lib/mlkit /usr/local/bin/mlkit
+          echo "val a = 10+32; :quit;" | SML_LIB=/usr/local/lib/mlkit /usr/local/bin/mlkit
 
       - name: Test bootstrapping
         run: |
