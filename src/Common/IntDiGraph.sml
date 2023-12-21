@@ -12,8 +12,9 @@ sig
   type edgeInfo
   val lt: nodeId * nodeId -> bool
   val getId: info -> nodeId
-
   val pu : nodeId Pickle.pu
+
+  structure Map : MONO_FINMAP where type dom = nodeId
 end
 
 
@@ -201,12 +202,7 @@ functor DiGraphAll(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_ALL =
   struct
     structure PP = PrettyPrint
 
-    structure IdFinMap  =
-      OrderFinMap(struct
-		      type t = InfoDiGraph.nodeId
-		      val lt = InfoDiGraph.lt
-		  end)
-
+    structure IdFinMap = InfoDiGraph.Map
 
     (*-------------------------------------------------------------------------------------*
      * Graph representation, where each node contain some attributes only used internally  *
@@ -651,6 +647,7 @@ functor DiGraphScc(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_SCC =
 					  fun lt (a:nodeId, b) = (a<b)
 					  fun getId ((i,ns):info) = i
 					  val pu = Pickle.int
+                                          structure Map = IntFinMap
 				      end)
 
     type sccGraph = SccDiGraph.graph

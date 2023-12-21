@@ -70,16 +70,17 @@ structure ExecutionX64: EXECUTION =
 
     val link_exe =
         Flags.add_string_entry
-        let val macgcc = "gcc -Wl,-stack_size,0x10000000,-stack_addr,0xc0000000"
+        let val macgcc = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
+            val linuxgcc = "gcc"
             val gcc = if onmac_p() then macgcc
-                      else "gcc"
+                      else linuxgcc
         in
             {long="link_exe", short=SOME "ldexe", item=ref gcc,
              menu=["General Control", "C compiler (used for linking executable)"],
              desc="This option specifies the command used for linking\n\
                   \an executable. The standard is to use 'gcc' for\n\
                   \linking. When linking with c++ libraries, 'g++' is\n\
-                  \the linker you want. On Linux the default '" ^ gcc ^ "',\n\
+                  \the linker you want. On Linux the default is '" ^ linuxgcc ^ "',\n\
                   \whereas on macOS, the default is\n\
                   \'" ^ macgcc ^ "'."}
         end

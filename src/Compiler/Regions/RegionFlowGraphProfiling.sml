@@ -64,6 +64,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 					  fun lt (a:nodeId, b) = (a<b)
 					  fun getId ((id,s,size):info) = id
 					  val pu = Pickle.int
+                                          structure Map = IntFinMap
 				      end)
     local
       val region_flow_graph : DiGraphScc.graph ref = ref (DiGraphScc.mkGraph())
