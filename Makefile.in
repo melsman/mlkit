@@ -114,10 +114,10 @@ install_mlkit_basislibs:
 	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/MLB/RI_GC
 	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/MLB/RI_GC_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/io/MLB/RI
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/io/MLB/RI_GC
-	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI_GC
+	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 
 .PHONY: barry
 barry:
