@@ -303,15 +303,9 @@ structure ElabTopdec: ELABTOPDEC  =
      * -------------------------------------------- *)
 
     local
-      structure VIdSet = OrderSet(struct type t = Ident.id
-                                         val lt = fn (x,y) => Ident.< (x,y)
-                                  end)
-      structure TyConSet = OrderSet(struct type t = TyCon.tycon
-                                           val lt = fn (x,y) => TyCon.< (x,y)
-                                    end)
-      structure StrIdSet = OrderSet(struct type t = StrId.strid
-                                           val lt = fn (x,y) => StrId.< (x,y)
-                                    end)
+      structure VIdSet = Ident.Set
+      structure TyConSet = TyCon.Set
+      structure StrIdSet = StrId.Set
     in
       type ids = StrIdSet.Set * TyConSet.Set * VIdSet.Set
       val ids_empty = (StrIdSet.empty, TyConSet.empty, VIdSet.empty)
