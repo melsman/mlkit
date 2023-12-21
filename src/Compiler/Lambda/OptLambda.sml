@@ -11,6 +11,7 @@ structure OptLambda : OPT_LAMBDA =
                      val lt = fn (a,b) => Lvars.lt(a,b)
                      fun getId lv = lv
                      val pu = Lvars.pu
+                     structure Map = Lvars.Map
                  end)
 
     structure PP = PrettyPrint
@@ -32,6 +33,20 @@ structure OptLambda : OPT_LAMBDA =
                 let val () = f(i,x) in loop(i+1,xs) end
         in loop (0,xs)
         end
+
+    fun findi f xs =
+        let fun loop (i,nil) = NONE
+              | loop (i,x::xs) = if f x then SOME i
+                                 else loop (i+1,xs)
+        in loop (0,xs)
+        end
+
+    fun mem y xs = List.exists (fn x => x = y) xs
+
+    fun concat2 nil = (nil,nil)
+      | concat2 ((x,y)::ps) = let val (xs,ys) = concat2 ps
+                              in (x @ xs, y @ ys)
+                              end
 
     fun pr_Type t = PP.flatten1 (layoutType t)
 
@@ -326,7 +341,6 @@ structure OptLambda : OPT_LAMBDA =
              end
       val end_round = end_round
     end
-
 
 
    (* -----------------------------------------------------------------
@@ -2649,7 +2663,7 @@ structure OptLambda : OPT_LAMBDA =
         let fun get_tyvars [] tyvars = tyvars
               | get_tyvars (({tyvars,...}:fs)::c) tyvars' =
                 let fun add [] tyvars = tyvars
-                      | add (tv::tvs) tyvars = if ListUtils.member tv tyvars then add tvs tyvars
+                      | add (tv::tvs) tyvars = if mem tv tyvars then add tvs tyvars
                                                else add tvs (tv::tyvars)
                 in add tyvars (get_tyvars c tyvars')
                 end
@@ -2895,35 +2909,240 @@ structure OptLambda : OPT_LAMBDA =
             else NONE
          end
 
+     (* Given a lambda variable lv and a section sequence 'is=i1..in', see if there are any non-select
+      * occurences of '#in(..(#i1 lv)..)' in 'exp'; if so, the function is not unboxable,
+      * wrt. the particular index sequence 'is' in the argument. *)
+
+     local
+       exception NonSelect
+       fun look is (VAR {lvar,...}) = SOME(lvar,rev is)
+         | look is (PRIM(SELECTprim{index}, [e])) = look (index::is) e
+         | look _ _ = NONE
+
+       fun lookin lv lviss =
+           Option.map #2 (List.find (fn (lv',_) => Lvars.eq(lv,lv')) lviss)
+
+       fun prefix nil is = SOME is
+         | prefix (i::is) (u::us) = if i = u then prefix is us else NONE
+         | prefix _ _ = NONE
+     in
+       fun unboxable' lv_fun (lv,is:int list) exp : bool =
+           let fun f lviss e =
+                   case e of
+                       PRIM (SELECTprim _, [e]) =>
+                       (case look nil e of
+                            SOME (lv,is) =>
+                            (case lookin lv lviss of
+                                 SOME is' => if is = is' then () else f lviss e
+                               | NONE => f lviss e)
+                          | NONE => f lviss e)
+                     | LET{pat=[(lv1,nil,t)],bind,scope} =>
+                       (case look nil bind of
+                            SOME(lv,is) =>
+                            (case lookin lv lviss of
+                                 SOME is' =>
+                                 (case prefix is' is of
+                                      SOME is1 => f ((lv1,is1)::lviss) scope
+                                    | NONE => f lviss scope)
+                               | NONE => f lviss scope)
+                          | NONE => app_lamb (f lviss) e)
+                     | _ =>
+                       case look nil e of
+                           SOME (lv,is) =>
+                           (case lookin lv lviss of
+                                SOME is' => (case prefix is is' of
+                                                 SOME _ => raise NonSelect
+                                               | NONE => ())
+                              | NONE => ())
+                         | NONE => app_lamb (f lviss) e
+           in (f [(lv,is)] exp; true) handle NonSelect => false
+           end
+
+       fun real_select_unboxable' (fun_lv:lvar) (lv:lvar, is:int list) exp : bool =
+           let fun f lviss e =   (* lviss are pairs of lvars and indexes *)
+                   case e of
+                       PRIM (CCALLprim{name="__real_to_f64",...}, [e]) =>
+                       (case look nil e of
+                            SOME _ => ()
+                          | NONE => f lviss e)
+                     | LET{pat=[(lv1,nil,t)],bind,scope} =>
+                       (case look nil bind of
+                            SOME(lv,is) =>
+                            (case lookin lv lviss of
+                                 SOME is' =>
+                                 (case prefix is' is of
+                                      SOME is1 => f ((lv1,is1)::lviss) scope
+                                    | NONE => f lviss scope)
+                               | NONE => f lviss scope)
+                          | NONE => app_lamb (f lviss) e)
+                     | _  => case look nil e of
+                                 SOME (lv,is) =>
+                                 (case lookin lv lviss of
+                                      SOME is' => (case prefix is is' of
+                                                       SOME _ => raise NonSelect
+                                                     | NONE => ())
+                                    | NONE => ())
+                               | NONE => app_lamb (f lviss) e
+           in (f [(lv,is)] exp; true) handle NonSelect => false
+         end
+     end
+
+     (* Transformer list examples for functions "fun f(x:t) = e in e'":
+
+        tl=[] : transforms any type into the empty sequence of arguments...
+
+        tl=[[]] : the identity
+
+        tl=[[0]] : transform a triple tau=int*bool*real (for instance) into a sequence of one component element (tau[tl] = <int>).
+
+        tl=[[0],[1]] : transforms pair tau=real*int into unboxed pair <a0:real,a1:int> (tau[tl] = <real,int>)
+
+        tl=[[0],[1]] : transforms pair tau=real*(int*bool) into unboxed pair with a boxed second component <a0:real,a1:int*bool> (tau[tl] = <real,int*bool>)
+
+        tl=[[0,0],[0,1],[1]] : transform pair tau=(real*int)*bool into unboxed triple <a0:real,a1:int,a2:bool>  (tau[tl] = <real,int,bool>)
+
+        tl=[[0,0,0],[0,1],[1]] : transform pair tau=(real*int)*bool into unboxed triple <a0:f64,a1:int,a2:bool>  (tau[tl] = <f64,int,bool>)
+
+      *)
+
+     (* The transformer list type and utility functions *)
+     type tl = int list list
+
+     fun pp_list pp l = "[" ^ String.concatWith "," (map pp l) ^ "]"
+     fun pp_tl tl = pp_list (pp_list Int.toString) tl
+
+     fun dom_tl (iss:tl) : int list =
+         List.rev (List.foldl (fn (nil,acc) => acc
+                                | (x::xs,acc) => if mem x acc then acc
+                                                 else x::acc)
+                              nil iss)
+
+     fun prj_tl i (iss:tl) : tl =
+         List.mapPartial (fn nil => NONE | x::xs => if i=x then SOME xs else NONE) iss
+
+     fun dist_tls nil nil = nil
+       | dist_tls (tl::tls) tys =
+         (let val n = length tl
+          in (tl,List.take (tys,n)) :: dist_tls tls (List.drop (tys,n))
+          end handle _ => die "dist_tls: type list incompatible with transformer list (1)")
+       | dist_tls _ _ = die "dist_tls: type list incompatible with transformer list (2)"
+
+
+     (* [flatten_ty tl ty] returns a type list resulting from
+        applying each transformer in tl to the type ty. *)
+
+     fun flatten_ty (tl:tl) (ty:Type) : Type list =
+         let fun get ty nil = ty
+               | get ty (i::is) =
+                 case ty of
+                     RECORDtype (tys,_) => get (List.nth(tys,i)) is
+                   | _ => if eq_Type (ty, realType) andalso i = 0 andalso List.null is
+                          then f64Type
+                          else die "apply_tl_ty: non-compatible transformer - expecting record or real"
+         in map (get ty) tl
+            handle _ => die "apply_tl_ty: non-compatible transformer - index error"
+         end
+
+     (* [unflatten_ty tl tys] returns a type resulting from boxing the
+        type list tys according to the transformer tl. We have
+        unflatten tl o flatten tl = id (for welfomed tl and compatible
+        types). *)
+
+     fun unflatten_ty (tl:tl) (tys:Type list) : Type =
+         case (tl,tys) of
+             ([[]],[t]) => t
+           | ([[]],_) => die "unflatten_ty: expecting singleton type list"
+           | ([[0]],[t]) =>
+             if eq_Type(t,f64Type) then realType
+             else die "unflatten_ty: expecting f64Type"
+           | _ =>
+             let val is = dom_tl tl
+                 val tls = map (fn i => prj_tl i tl) is
+                 val tls_with_tys = dist_tls tls tys
+             in RECORDtype (map (fn (tl,tys) => unflatten_ty tl tys) tls_with_tys, NONE)
+             end
+
+     (* [from_idx_tl tl sel] returns index in the new flat argument
+        list given a sequence of selection indices (projections) from
+        the old argument. *)
+
+     fun from_idx_tl (tl: int list list) (sel:int list) : int option =
+         findi (fn is => is = sel) tl
+
+     (* [flatten_args f (lv,ty) e] investigates if it is possible to
+        represent the variable 'lv:ty' unboxed in 'e'. The function
+        returns NONE if no unboxing is possible and SOME(tys,tl) if
+        unboxing is possible. Here the tys are the types of the
+        flattened argument list and tl is a transformer list for the
+        unboxing. *)
+
+     fun flatten_args (fun_lv:lvar) (lv:lvar, ty:Type) exp : (Type list * int list list) option =
+         let fun conv is ty =
+                 if eq_Type (ty, realType) then
+                   if real_select_unboxable' fun_lv (lv,is) exp then ([f64Type],[0::is])
+                   else ([ty],[is])
+                 else case ty of
+                          RECORDtype (tys,_) =>
+                          if unboxable' fun_lv (lv,is) exp then
+                            concat2 (mapi (fn (i,ty) => conv (i::is) ty) tys)
+                          else ([ty],[is])
+                        | _ => ([ty],[is])
+             val (tys,tl) = conv nil ty
+         in if tl = [[]] then NONE
+            else SOME (tys,tl)
+         end
+
+     fun flatten_arg_exps (lv,ty:Type) (tl:tl) : LambdaExp list =
+         let val e0 = VAR{lvar=lv,instances=nil,regvars=nil}
+             fun get e ty is =
+                 case (is,ty) of
+                     (nil,_) => e
+                   | (i::is',_) =>
+                     case ty of
+                         RECORDtype(tys,_) =>
+                         let val ty' = List.nth(tys,i)
+                         in get (PRIM(SELECTprim{index=i},[e])) ty' is'
+                         end
+                       | _ => if i=0 andalso eq_Type(ty,realType)
+                              then real_to_f64 e
+                              else die "flatten_arg_exps: incompatible type and transformer list"
+         in map (get e0 ty) tl
+         end
+
+     fun flatten_arg (lv,ty) tl =
+         PRIM(UB_RECORDprim, flatten_arg_exps (lv,ty) tl)
+
+
      (* The environment *)
 
      datatype fix_boxity =
          NORMAL_ARGS
        | F64_LOCAL                                 (* variabel bound locally within a function body *)
-       | UNBOXED_ARGS of tyvar list * Type         (* sigma is the scheme of the function after unboxing *)
+       | UNBOXED_ARGS of tl * tyvar list * Type    (* sigma is the scheme of the function after unboxing *)
        | ARG_VARS of (lvar * Type) Vector.vector
 
      fun layout_fix_boxity NORMAL_ARGS = PP.LEAF "NORMAL_ARGS"
-       | layout_fix_boxity (UNBOXED_ARGS sigma) = layoutTypeScheme sigma
+       | layout_fix_boxity (UNBOXED_ARGS (tl,tvs,ty)) = PP.NODE{start="{",finish="}",indent=0,childsep=PP.RIGHT ",",
+                                                                children=[(PP.LEAF o pp_tl) tl, layoutTypeScheme (tvs,ty)]}
        | layout_fix_boxity (ARG_VARS _) = PP.LEAF "ARG_VARS"
        | layout_fix_boxity F64_LOCAL = PP.LEAF "F64_LOCAL"
 
      fun eq_fix_boxity (NORMAL_ARGS,NORMAL_ARGS) = true
        | eq_fix_boxity (ARG_VARS _, _) = die "eq_fix_boxity; shouldn't get here"
        | eq_fix_boxity (_, ARG_VARS _) = die "eq_fix_boxity; shouldn't get here"
-       | eq_fix_boxity (UNBOXED_ARGS s1, UNBOXED_ARGS s2) = eq_sigma(s1,s2)
+       | eq_fix_boxity (UNBOXED_ARGS (tl1,tvs1,ty1), UNBOXED_ARGS (tl2,tvs2,ty2)) = eq_sigma((tvs1,ty1),(tvs2,ty2)) andalso tl1=tl2
        | eq_fix_boxity (F64_LOCAL, F64_LOCAL) = true
        | eq_fix_boxity _ = false
 
      type unbox_fix_env = fix_boxity LvarMap.map
 
-     fun enrich_unbox_fix_env(unbox_fix_env1, unbox_fix_env2) =
+     fun enrich_unbox_fix_env (unbox_fix_env1, unbox_fix_env2) =
        LvarMap.Fold (fn ((lv2,res2),b) => b andalso
                        case LvarMap.lookup unbox_fix_env1 lv2
                          of SOME res1 => eq_fix_boxity(res1,res2)
                           | NONE => false) true unbox_fix_env2
 
-     fun restrict_unbox_fix_env(unbox_fix_env,lvars) =
+     fun restrict_unbox_fix_env (unbox_fix_env,lvars) =
        List.foldl (fn (lv,acc) =>
                    case LvarMap.lookup unbox_fix_env lv
                      of SOME res => LvarMap.add(lv,res,acc)
@@ -2980,6 +3199,144 @@ structure OptLambda : OPT_LAMBDA =
      fun f64TypeToRealTypeShallow t =
          if eq_Type(t,f64Type) then realType else t
 
+     fun trans2 (env:unbox_fix_env) lamb =
+         case lamb of
+             FIX {functions, scope} =>   (* memo:regvars *)
+             (let fun add_env r ({lvar,regvars,tyvars,Type,constrs,
+                                  bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
+                    let fun normal () = add_lv (lvar, NORMAL_ARGS, env)
+                    in (* interesting only if the function takes a tuple of arguments *)
+                      case Type of
+                          ARROWtype([RECORDtype (nil,_)],_,res,_) => normal()
+                        | ARROWtype([rt as RECORDtype (ts,_)],rv0,res,rv) =>
+                          if optimise_p() andalso unbox_function_arguments() then
+                            case unbox_args lvar lv body ts of
+                                NONE => normal()
+                              | SOME ts => add_lv(lvar,UNBOXED_ARGS (nil,
+                                                                     if r then nil else tyvars,
+                                                                     ARROWtype(ts,rv0,res,rv)),env)
+                          else normal()
+                        | _ => normal()
+                    end
+                    | add_env _ _ = die "unbox_fix_args.f.add_env"
+                  fun trans_function env {lvar,regvars,tyvars,Type,constrs,bind=FN{pat=[(lv,pt)],body}} =
+                      let fun mk_fun Type argpat body =
+                              {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                               constrs=constrs,bind=FN{pat=argpat, body=body}}
+                      in case lookup env lvar of
+                             SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans2 env body)
+                           | SOME (UNBOXED_ARGS (_, _, Type' as ARROWtype(argTypes,_,_,_))) =>
+                             let (* create argument env *)
+                               val (body, argpat) = hoist_lvars(body,lv,argTypes)
+                               val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
+                               val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
+                                                                       then add_lv(lv,F64_LOCAL,e)
+                                                                       else e) env' argpat
+                               val body' = trans2 env' body
+                             in mk_fun Type' argpat body'
+                             end
+                           | _ => die "unbox_fix_args.trans2.trans_function"
+                      end
+                    | trans_function _ _ = die "unbox_fix_args.f.do_fun"
+                  val env_fix = List.foldl (add_env true) env functions
+                  val env_scope = List.foldl (add_env false) env functions
+                  val functions = map (trans_function env_fix) functions
+                  val scope = trans2 env_scope scope
+              in
+                FIX{functions=functions,scope=scope}
+              end handle X => ( print "Problem during processing of "
+                              ; app (fn {lvar,...} => print (Lvars.pr_lvar lvar ^ " ")) functions
+                              ; print "\n"; raise X)
+             )
+
+           | PRIM(SELECTprim {index=i}, [VAR{lvar,instances,regvars}]) =>
+             (case lookup env lvar of
+                  SOME (ARG_VARS vector) =>
+                  if null instances andalso null regvars then
+                    let val (lv,ty) = Vector.sub (vector, i) handle _ => die "trans2.select-f64"
+                    in if eq_Type(ty,f64Type) then f64_to_real(VAR{lvar=lv,instances=[],regvars=[]})
+                       else VAR{lvar=lv,instances=[],regvars=[]}
+                    end
+                  else die "trans2.select-f64.instances"
+                | _ => lamb)
+           | APP(lvexp as VAR{lvar,instances,regvars=[]}, arg, _) =>
+             let fun mk_app lv ts =
+                     APP(lvexp,
+                         unbox_args_exp lv ts,
+                         NONE)
+                 fun maybe_unbox_reals ts es =
+                     case (ts,es) of
+                         (nil, nil) => nil
+                       | (t::ts, e::es) => (if eq_Type(t,f64Type) then real_to_f64 e else e) :: maybe_unbox_reals ts es
+                       | _ => die "trans2.app.maybe_unbox_reals"
+             in case lookup env lvar of
+                    SOME(UNBOXED_ARGS (_, tyvars, ARROWtype(argTypes,_,res,_))) =>
+                    let val sz = length argTypes
+                    in case arg of
+                           PRIM(RECORDprim _, args) =>
+                           if length args <> sz then die "unbox_fix_args.trans2.app(length)"
+                           else APP(lvexp,
+                                    PRIM(UB_RECORDprim,
+                                         maybe_unbox_reals argTypes (map (trans2 env) args)),
+                                    NONE)
+                         | VAR{lvar,instances=[],regvars=[]} => mk_app lvar argTypes
+                         | _ =>
+                           let val lv_tmp = Lvars.newLvar()
+                               fun errFun () = "OptLambda.trans2.app.lvar = " ^ Lvars.pr_lvar lvar
+                               val S = mk_subst errFun (tyvars, instances)
+                               val argTypes' = map f64TypeToRealTypeShallow argTypes
+                               val tau = on_Type S (RECORDtype (argTypes',NONE))
+                           in LET{pat=[(lv_tmp, nil, tau)], bind=trans2 env arg,
+                                  scope=mk_app lv_tmp argTypes}
+                           end
+                    end
+                  | _ => APP(lvexp, trans2 env arg, NONE)
+             end
+           | VAR{lvar,instances,regvars=[]} =>
+             (case lookup env lvar of
+                  SOME(UNBOXED_ARGS (_, tyvars, ARROWtype(argTypes,_,res,_))) =>
+                  let val _ = tick "unbox - inverse-eta"
+                      val lv = Lvars.newLvar()
+                      val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
+                      val argTypes' = map f64TypeToRealTypeShallow argTypes
+                      val tau = on_Type S (RECORDtype (argTypes',NONE))
+                      val args = unbox_args_exp lv argTypes
+                  in FN{pat=[(lv,tau)],body=APP(lamb, args, NONE)}
+                  end
+                | SOME F64_LOCAL => if null instances then
+                                      f64_to_real lamb
+                                    else die "trans2.select-f64.instances"
+                | _ => lamb)
+           | FRAME{declared_lvars,...} =>
+             let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
+             in (frame_unbox_fix_env := env' ; lamb)
+             end
+           | LET {pat,bind,scope} =>
+             let fun default () =
+                     let val env' = List.foldl (fn ((lvar,_,_),e) => LvarMap.add(lvar,NORMAL_ARGS,e)) env pat
+                     in LET{pat=pat,
+                            bind=trans2 env bind,
+                            scope=trans2 env' scope}
+                     end
+             in case (pat,bind) of
+                    ([(lv,nil,t)], PRIM(SELECTprim {index=j},[VAR{lvar,...}])) =>
+                    if eq_Type(t,realType) then
+                      (case lookup env lvar of
+                           SOME(ARG_VARS vec) =>
+                           let val (lv_arg,t) = Vector.sub(vec,j) handle _ => die "unbox_fix.trans2"
+                           in if eq_Type(t,f64Type) then
+                                ( Lvars.set_ubf64 lv
+                                ; LET{pat=[(lv,nil,f64Type)],bind=VAR{lvar=lv_arg,instances=nil,regvars=nil},
+                                      scope=trans2 (LvarMap.add(lv,F64_LOCAL,env)) scope}
+                                )
+                              else default()
+                           end
+                         | _ => default())
+                    else default ()
+                  | _ => default()
+             end
+           | _ => map_lamb (trans2 env) lamb
+
      fun trans (env:unbox_fix_env) lamb =
          case lamb of
              FIX {functions, scope} =>   (* memo:regvars *)
@@ -2993,7 +3350,8 @@ structure OptLambda : OPT_LAMBDA =
                           if optimise_p() andalso unbox_function_arguments() then
                             case unbox_args lvar lv body ts of
                                 NONE => normal()
-                              | SOME ts => add_lv(lvar,UNBOXED_ARGS (if r then nil else tyvars,
+                              | SOME ts => add_lv(lvar,UNBOXED_ARGS (nil,
+                                                                     if r then nil else tyvars,
                                                                      ARROWtype(ts,rv0,res,rv)),env)
                           else normal()
                         | _ => normal()
@@ -3005,7 +3363,7 @@ structure OptLambda : OPT_LAMBDA =
                                constrs=constrs,bind=FN{pat=argpat, body=body}}
                       in case lookup env lvar of
                              SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
-                           | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_,_,_))) =>
+                           | SOME (UNBOXED_ARGS (_, _, Type' as ARROWtype(argTypes,_,_,_))) =>
                              let (* create argument env *)
                                val (body, argpat) = hoist_lvars(body,lv,argTypes)
                                val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
@@ -3050,7 +3408,7 @@ structure OptLambda : OPT_LAMBDA =
                        | (t::ts, e::es) => (if eq_Type(t,f64Type) then real_to_f64 e else e) :: maybe_unbox_reals ts es
                        | _ => die "trans.app.maybe_unbox_reals"
              in case lookup env lvar of
-                    SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,_,res,_))) =>
+                    SOME(UNBOXED_ARGS (_, tyvars, ARROWtype(argTypes,_,res,_))) =>
                     let val sz = length argTypes
                     in case arg of
                            PRIM(RECORDprim _, args) =>
@@ -3074,7 +3432,7 @@ structure OptLambda : OPT_LAMBDA =
              end
            | VAR{lvar,instances,regvars=[]} =>
              (case lookup env lvar of
-                  SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,_,res,_))) =>
+                  SOME(UNBOXED_ARGS (_, tyvars, ARROWtype(argTypes,_,res,_))) =>
                   let val _ = tick "unbox - inverse-eta"
                       val lv = Lvars.newLvar()
                       val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
@@ -3134,7 +3492,7 @@ structure OptLambda : OPT_LAMBDA =
                   else ()
 
          val _ = frame_unbox_fix_env := LvarMap.empty
-         val lamb = trans env lamb
+         val lamb = trans2 env lamb
 
          val () = if debug_unboxing then
                     ( print "\nExport unbox_fix_env:\n"
@@ -3146,14 +3504,15 @@ structure OptLambda : OPT_LAMBDA =
 
      val pu_unbox_fix_env =
          let val pu_lvarTypeVector = Pickle.vectorGen (Pickle.pairGen (Lvars.pu,LambdaExp.pu_Type))
+             val pu_tl = Pickle.listGen (Pickle.listGen Pickle.int)
              fun toInt (NORMAL_ARGS) = 0
                | toInt (UNBOXED_ARGS _) = 1
                | toInt (ARG_VARS _) = 2
                | toInt F64_LOCAL = 3
              val fun_NORMAL_ARGS = Pickle.con0 NORMAL_ARGS
              fun fun_UNBOXED_ARGS _ =
-                 Pickle.con1 UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
-                 LambdaExp.pu_TypeScheme
+                 Pickle.con1 (fn (a,(b,c)) => UNBOXED_ARGS (a,b,c)) (fn UNBOXED_ARGS (a,b,c) => (a,(b,c)) | _ => die "pu.UNBOXED_ARGS")
+                             (Pickle.pairGen (pu_tl, LambdaExp.pu_TypeScheme))
              fun fun_ARG_VARS _ =
                  Pickle.con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
                  pu_lvarTypeVector
