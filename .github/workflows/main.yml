@@ -149,6 +149,19 @@ jobs:
         run: |
           make mlkit_bin_dist
 
+      - name: Install binary distribution and test it
+        run: |
+          mkdir -p ${{ env.RUNHOME }}/tmp
+          cp dist/mlkit-bin-dist-${{ env.OS }}.tgz ${{ env.RUNHOME }}/tmp/
+          cd ${{ env.RUNHOME }}/tmp/
+          tar xzf mlkit-bin-dist-${{ env.OS }}.tgz
+          cd mlkit-bin-dist-${{ env.OS }}
+          sudo make install
+          cd ${{ env.RUNHOME }}
+          rm -rf ${{ env.RUNHOME }}/.mlkit ${{ env.RUNHOME }}/tmp
+          echo "/usr/local/bin" >> $GITHUB_PATH
+          mlkit --version
+
       - name: Test bootstrapping
         run: |
           make bootstrap
