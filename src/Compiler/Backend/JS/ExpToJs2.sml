@@ -301,7 +301,8 @@ fun ppCon C c : J.cnst =
     | SOME(BOOL true) => J.Bool true
     | SOME(BOOL false) => J.Bool false
     | SOME UNBOXED_NULL => J.Null
-    | _ => die "ppCon"
+    | SOME UNBOXED_UNARY => die "ppCon.unary"
+    | NONE => die "ppCon.none"
 
 fun ppConNullary C c : J.exp =
     case Env.M.lookup (Context.envOf C) c of

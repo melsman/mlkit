@@ -30,6 +30,8 @@ structure Lab :> LAB =
 
     val pu = Pickle.string
 
-    structure Map = StringFinMap
-
+    (* Notice: Different ordering than string ordering *)
+    structure Map = OrderFinMap(struct type t = lab
+                                       val lt = op<
+                                end)
   end
