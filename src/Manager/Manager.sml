@@ -766,6 +766,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                   in print_error_report r (*(Report.//(r0, r))*)
                   end
                 | PARSE_ELAB_ERROR _ => ()
+                | IO.Io {name,function,cause} =>
+                  (print ("[[ERR in sub process: Io{name=" ^ name
+                          ^ ", function=" ^ function
+                          ^ ", cause=" ^ General.exnMessage cause ^ "}]]\n"))
                 | _ => (print "[[ERR in sub process:\n  ";
                         print (General.exnMessage e ^ "]]\n"))
         in
