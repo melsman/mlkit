@@ -1,17 +1,17 @@
 (* Identifiers - variables or constructors *)
 
-structure Ident: IDENT =
+structure Ident :> IDENT where type strid = StrId.strid =
   struct
 
     type strid = StrId.strid
 
-    datatype id = ID of string
+    type id = string
 
-    fun pr_id(ID str) = str
+    fun pr_id str = str
 
     datatype longid = LONGID of id list * id
 
-    fun pr_longid(LONGID(ids, id)) =
+    fun pr_longid (LONGID(ids, id)) =
       let
 	val strings = (map (fn s => pr_id s ^ ".") ids)
       in
@@ -23,70 +23,70 @@ structure Ident: IDENT =
 	of LONGID(nil, _) => true
 	 | _ => false
 
-    fun decompose(LONGID(ids, id)) =
-      (map (fn ID x => StrId.mk_StrId x) ids, id)
+    fun decompose (LONGID(ids, id)) =
+      (map StrId.mk_StrId ids, id)
 
     fun decompose0 longid =
       case decompose longid
 	of (nil, id) => id
 	 | _ => Crash.impossible "Ident.decompose0"
 
-    fun implode_LongId(strids,id) =
-      LONGID(map (ID o StrId.pr_StrId) strids,id)
+    fun implode_LongId (strids,id) =
+      LONGID(map StrId.pr_StrId strids,id)
 
-    val op < = fn (ID str1, ID str2) => str1 < str2
+    val op < : id * id -> bool = op <
 
    (* Identifiers needed for derived forms: *)
 
-    val id_NIL = ID "nil"
-    and id_CONS = ID "::"
-    and id_TRUE = ID "true"
-    and id_FALSE = ID "false"
-    and id_REF = ID "ref"
-    and id_PRIM = ID "prim"
-    and id_EXPORT = ID "_export"
-    and id_IT = ID "it"
+    val id_NIL = "nil"
+    and id_CONS = "::"
+    and id_TRUE = "true"
+    and id_FALSE = "false"
+    and id_REF = "ref"
+    and id_PRIM = "prim"
+    and id_EXPORT = "_export"
+    and id_IT = "it"
 
-    and id_QUOTE = ID "QUOTE"
-    and id_ANTIQUOTE = ID "ANTIQUOTE"
+    and id_QUOTE = "QUOTE"
+    and id_ANTIQUOTE = "ANTIQUOTE"
 
-    and id_INTINF = ID "_IntInf"
+    and id_INTINF = "_IntInf"
 
     (* Identifiers for predefined overloaded variables *)
-    val id_ABS = ID "abs"
-    val id_NEG = ID "~"
-    val id_DIV = ID "div"
-    val id_MOD = ID "mod"
-    val id_PLUS = ID "+"
-    val id_MINUS = ID "-"
-    val id_MUL = ID "*"
-    val id_LESS = ID "<"
-    val id_GREATER = ID ">"
-    val id_LESSEQ = ID "<="
-    val id_GREATEREQ = ID ">="
+    val id_ABS = "abs"
+    val id_NEG = "~"
+    val id_DIV = "div"
+    val id_MOD = "mod"
+    val id_PLUS = "+"
+    val id_MINUS = "-"
+    val id_MUL = "*"
+    val id_LESS = "<"
+    val id_GREATER = ">"
+    val id_LESSEQ = "<="
+    val id_GREATEREQ = ">="
 
     (* other identifiers in the initial basis *)
 
-    val id_Div = ID "Div"
-    val id_Match = ID "Match"
-    val id_Bind = ID "Bind"
-    val id_Overflow = ID "Overflow"
-    val id_Interrupt = ID "Interrupt"
-    val id_Subscript = ID "Subscript"
-    val id_Size = ID "Size"
+    val id_Div = "Div"
+    val id_Match = "Match"
+    val id_Bind = "Bind"
+    val id_Overflow = "Overflow"
+    val id_Interrupt = "Interrupt"
+    val id_Subscript = "Subscript"
+    val id_Size = "Size"
 
     (* misc: *)
 
-    val bogus = LONGID (nil, ID "<bogus>")
-    val resetRegions = ID "resetRegions"
-    val forceResetting = ID "forceResetting"
+    val bogus = LONGID (nil, "<bogus>")
+    val resetRegions = "resetRegions"
+    val forceResetting = "forceResetting"
 
-    val mk_Id = ID
+    val mk_Id = fn x => x
 
     fun mk_LongId strs =
       case (rev strs)
 	of nil => Crash.impossible "Ident.mk_LongId"
-	 | x :: xs => LONGID(map ID (rev xs), ID x)
+	 | x :: xs => LONGID(rev xs, x)
 
     local
       val initial = 0
@@ -97,18 +97,17 @@ structure Ident: IDENT =
                      (count := !count + 1;
 		      s (*^ Int.toString (!count)*))
     in
-      fun reset() = count := initial
-      val inventId = ID o unique
-      fun invent_named_id (name:string) = ID(unique_named name)
+      fun reset () = count := initial
+      val inventId = unique
+      fun invent_named_id (name:string) = unique_named name
       fun inventLongId() = LONGID(nil, inventId())
     end
 
     fun idToLongId id = LONGID(nil, id)
 
-    val pu = Pickle.convert (ID, fn ID s => s) Pickle.string
+    val pu = Pickle.string
 
-    structure Map = OrderFinMap(struct type t = id
-				       val lt = op<
-				end)
+    structure Map = StringFinMap
+    structure Set = StringSet
 
   end

@@ -73,4 +73,5 @@ structure TyCon :> TYCON where type strid = StrId.strid =
     val pu = Pickle.string
 
     structure Map = StringFinMap
+    structure Set = StringSet
   end

@@ -1,9 +1,9 @@
 (* Labels - Definition v3 page 4 *)
 
-structure Lab: LAB =
+structure Lab :> LAB =
   struct
 
-    datatype lab = LAB of string
+    type lab = string
 
    (* Ordering of labels requires a rethink, because we have to be careful
       when printing tuple types and values. `Lab.<' should behave correctly
@@ -11,30 +11,25 @@ structure Lab: LAB =
       for others (a2 > a10). We'd also better be convinced that the
       ordering is transitive, or things could start going horribly wrong. *)
 
-    val op < = fn (LAB str1, LAB str2) =>
+    val op < = fn (str1, str2) =>
       (case (Int.fromString str1, Int.fromString str2)
-	of (SOME i1, SOME i2) => i1 < i2
-	 | _ => str1 < str2)
-	 handle _ => str1 < str2 (* fromString may raise Overflow *)
+        of (SOME i1, SOME i2) => i1 < i2
+         | _ => str1 < str2)
+         handle _ => str1 < str2 (* fromString may raise Overflow *)
 
-    fun is_LabN(LAB str, i) =
+    fun is_LabN (str, i) =
       (case Int.fromString str
-	 of SOME i' => (i = i')
-	  | _ => false)
-	 handle _ => false
+         of SOME i' => (i = i')
+          | _ => false)
+         handle _ => false
 
-    fun pr_Lab(LAB str) = str
+    fun pr_Lab str = str
 
-    val mk_IdentLab = LAB
-    val mk_IntegerLab = LAB o Int.toString
+    val mk_IdentLab = fn x => x
+    val mk_IntegerLab = Int.toString
 
-    val pu =
-	Pickle.convert (LAB, fn LAB s => s)
-	Pickle.string
+    val pu = Pickle.string
 
-    structure Map = OrderFinMap(struct type t = lab
-				       val lt = op<
-				end)
-
+    structure Map = StringFinMap
 
   end
