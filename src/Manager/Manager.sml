@@ -114,6 +114,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
+    fun modTime (f:string) : Time.time option =
+        SOME (OS.FileSys.modTime f)
+        handle _ => NONE
+
     (* ----------------------------------------------------
      * log_init  gives you back a function for cleaning up
      * ---------------------------------------------------- *)
@@ -350,8 +354,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val ext = "lnk"
             val p = doPickleGen0 smlfile ModCode.pu ext modc
             val file = targetFromOutput ofile ext
-        in if isFileContentStringBIN file p then ()
-           else writePickle file p
+        in (*if isFileContentStringBIN file p then ()
+           else*) writePickle file p
         end
 
     fun readLinkFiles lnkFiles =
@@ -721,10 +725,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                    val output = dir ## MO.mlbdir() ## file (* .lnk added by pickleLnkFile... *)
                    val target = Flags.lookup_string_entry "output"
                    val save = !target
-               in target := output
-                ; chat "making mlb-linkfile"
-                ; PB.pickleLnkFile mlbfile output modc
-                ; target := save
+                   fun doit () = ( target := output
+                                 ; chat "making mlb-linkfile"
+                                 ; PB.pickleLnkFile mlbfile output modc
+                                 ; target := save )
+               in case modTime (output ^ ".lnk") of
+                      SOME t_mlb_lnk =>
+                      if (case modTime mlbfile of
+                              NONE => false
+                            | SOME t_mlb => Time.>(t_mlb_lnk,t_mlb))
+                         andalso
+                         List.all (fn lf =>
+                                      case modTime lf of
+                                          SOME t => Time.> (t_mlb_lnk, t)
+                                        | NONE => false) lnkFiles
+                      then ()
+                      else doit()
+                    | NONE => doit()
                end
              | NONE => ()
         end
