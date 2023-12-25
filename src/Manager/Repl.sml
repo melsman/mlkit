@@ -498,7 +498,8 @@ local
           val modc =
               let val {dir,file} = OS.Path.splitDirFile mlbfilepath
                   val lnkfile = dir ## MO.mlbdir() ## (file ^ ".lnk")
-              in PB.unpickleLnkFile lnkfile
+                  val modc = PB.unpickleLnkFile lnkfile
+              in ModCode.dirMod' dir modc
               end handle _ => raise Fail ("Failed to load mlb-file")
 
           val punit = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno

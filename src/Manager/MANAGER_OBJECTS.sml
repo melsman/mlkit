@@ -55,7 +55,10 @@ signature MANAGER_OBJECTS =
 	val pu : modcode Pickle.pu
 	val dirMod : string -> modcode -> modcode
 	    (* [dirMod d mc] replaces paths p in mc with
-	     * paths d/f where f is the file of p *)
+	     * paths d/f where f is the file of p (for path-abstraction) *)
+	val dirMod' : string -> modcode -> modcode
+	    (* [dirMod' d mc] replaces paths p in mc with
+	     * paths d/p *)
         val mk_sharedlib : modcode * string list * (*name*) string * (*sofile*) string -> unit
       end
 

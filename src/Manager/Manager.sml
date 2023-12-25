@@ -725,10 +725,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                    val output = dir ## MO.mlbdir() ## file (* .lnk added by pickleLnkFile... *)
                    val target = Flags.lookup_string_entry "output"
                    val save = !target
-                   fun doit () = ( target := output
-                                 ; chat "making mlb-linkfile"
-                                 ; PB.pickleLnkFile mlbfile output modc
-                                 ; target := save )
+                   fun doit () =
+                       let val modc = ModCode.dirMod (MO.mlbdir()) modc
+                       in target := output
+                        ; chat "making mlb-linkfile"
+                        ; PB.pickleLnkFile mlbfile output modc
+                        ; target := save
+                       end
                in case modTime (output ^ ".lnk") of
                       SOME t_mlb_lnk =>
                       if (case modTime mlbfile of

@@ -385,6 +385,9 @@ functor ManagerObjects(
 		     in p
 		     end) m
 
+	fun dirMod' d m =
+	    dirMod0 (fn fp => d ## fp) m
+
 	fun absDirMod absd m =
 	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
 
