@@ -59,6 +59,8 @@ signature MANAGER_OBJECTS =
 	val dirMod' : string -> modcode -> modcode
 	    (* [dirMod' d mc] replaces paths p in mc with
 	     * paths d/p *)
+        val relMod : string -> modcode -> modcode
+        val subMod : string -> modcode -> modcode
         val mk_sharedlib : modcode * string list * (*name*) string * (*sofile*) string -> unit
       end
 

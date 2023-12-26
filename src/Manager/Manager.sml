@@ -115,7 +115,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
     fun modTime (f:string) : Time.time option =
-        SOME (OS.FileSys.modTime f)
+        let val t = OS.FileSys.modTime f
+            (*val () = print ("modTime '" ^ f ^ "': " ^ Time.toString t ^ "\n")*)
+        in SOME t
+        end
         handle _ => NONE
 
     (* ----------------------------------------------------
@@ -354,8 +357,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val ext = "lnk"
             val p = doPickleGen0 smlfile ModCode.pu ext modc
             val file = targetFromOutput ofile ext
-        in (*if isFileContentStringBIN file p then ()
-           else*) writePickle file p
+        in if isFileContentStringBIN file p then (*print ("no write '" ^ file ^ "'\n")*) ()
+           else writePickle file p
         end
 
     fun readLinkFiles lnkFiles =
@@ -717,6 +720,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val _ = chat "reading link files"
             val lnkFiles = link_code()
             val modc = PB.readLinkFiles lnkFiles
+            (*val () = print ("lnkfile targets=[" ^ String.concatWith "," (ModCode.target_files modc) ^"]\n")*)
         in chat "making executable"
          ; ModCode.mk_exe_all_emitted(modc, nil, run_file())
          ; case mlbfile_opt of
@@ -726,21 +730,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                    val target = Flags.lookup_string_entry "output"
                    val save = !target
                    fun doit () =
-                       let val modc = ModCode.dirMod (MO.mlbdir()) modc
+                       let (*val () = print ("DOIT - dir='" ^ dir ^ "' - mlbfile='" ^ mlbfile ^ "'\n")*)
+                           val modc = ModCode.subMod dir modc
+                           (*val () = print ("lnkfile final targets=[" ^ String.concatWith "," (ModCode.target_files modc) ^ "]\n")*)
                        in target := output
                         ; chat "making mlb-linkfile"
                         ; PB.pickleLnkFile mlbfile output modc
                         ; target := save
                        end
+                   (*val () = print ("lnkfiles=[" ^ String.concatWith "," lnkFiles ^ "]\n")*)
                in case modTime (output ^ ".lnk") of
                       SOME t_mlb_lnk =>
                       if (case modTime mlbfile of
                               NONE => false
-                            | SOME t_mlb => Time.>(t_mlb_lnk,t_mlb))
+                            | SOME t_mlb => Time.>=(t_mlb_lnk,t_mlb))
                          andalso
                          List.all (fn lf =>
                                       case modTime lf of
-                                          SOME t => Time.> (t_mlb_lnk, t)
+                                          SOME t => Time.>= (t_mlb_lnk, t)
                                         | NONE => false) lnkFiles
                       then ()
                       else doit()
