@@ -499,11 +499,8 @@ local
               let val {dir,file} = OS.Path.splitDirFile mlbfilepath
                   val lnkfile = dir ## MO.mlbdir() ## (file ^ ".lnk")
                   val modc = PB.unpickleLnkFile lnkfile
-                  (*val () = print ("dir='" ^ dir ^ "'\n")*)
               in ModCode.dirMod' dir modc
               end handle _ => raise Fail ("Failed to load mlb-file")
-
-          (*val () = print ("modcode files after dirMod'=[" ^ String.concatWith "," (ModCode.target_files modc) ^"]\n")*)
 
           val punit = "stdin-" ^ #sessionid rp ^ "-" ^ Int.toString stepno
           val sofile = MO.mlbdir() ## ("lib" ^ punit ^ ".so")
@@ -518,7 +515,6 @@ local
              ; (stepno+1, libs_acc, deps) )
            | DONE =>
              let val defs = read_df mlbfilepath
-                 (* val () = print ("Read defs: " ^ String.concatWith ", " defs ^ "\n") *)
                  val () = Flags.report_warnings()
              in (stepno+1, punit::libs_acc, MLBdep(mlbfilepath,defs)::deps)
              end

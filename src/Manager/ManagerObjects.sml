@@ -391,27 +391,22 @@ functor ManagerObjects(
 	fun absDirMod absd m =
 	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
 
-        fun mkRel p r =
-            OS.Path.mkRelative{path=OS.Path.mkCanonical p,
-                               relativeTo=OS.Path.mkCanonical r}
-
         fun subMod d m =
             let val d = OS.Path.mkCanonical d
                 val d = if d = "." then "" else d
             in dirMod0 (fn fp => let val fp = OS.Path.mkCanonical fp
-                                     val fp = if String.isPrefix d fp then
-                                                String.extract(fp,String.size d,NONE)
-                                              else die ("subMod: '" ^ d ^
-                                                        "' is not a prefix of '" ^
-                                                        fp ^ "'")
-                                 in if String.isPrefix "/" fp then
-                                      String.extract(fp,1,NONE)
-                                    else fp
+                                 in if OS.Path.isAbsolute fp then fp
+                                    else let val fp = if String.isPrefix d fp then
+                                                        String.extract(fp,String.size d,NONE)
+                                                      else die ("subMod: '" ^ d ^
+                                                                "' is not a prefix of '" ^
+                                                                fp ^ "'")
+                                         in if String.isPrefix "/" fp then
+                                              String.extract(fp,1,NONE)
+                                            else fp
+                                         end
                                  end) m
             end
-
-        fun relMod dir m =
-            dirMod0 (fn fp => mkRel ("/" ## fp) ("/" ## dir)) m
 
         fun mk_sharedlib (modc: modcode, libs, name, sofile) : unit =
             (* something like gcc -o sofile -shared (eval.o::files) -init eval_step -llib1 ... -llibn
