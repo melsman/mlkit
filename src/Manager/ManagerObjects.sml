@@ -388,25 +388,35 @@ functor ManagerObjects(
 	fun dirMod' d m =
 	    dirMod0 (fn fp => d ## fp) m
 
-	fun absDirMod absd m =
-	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
-
-        fun subMod d m =
+        fun sub d p =
             let val d = OS.Path.mkCanonical d
                 val d = if d = "." then "" else d
-            in dirMod0 (fn fp => let val fp = OS.Path.mkCanonical fp
-                                 in if OS.Path.isAbsolute fp then fp
-                                    else let val fp = if String.isPrefix d fp then
-                                                        String.extract(fp,String.size d,NONE)
-                                                      else die ("subMod: '" ^ d ^
-                                                                "' is not a prefix of '" ^
-                                                                fp ^ "'")
-                                         in if String.isPrefix "/" fp then
-                                              String.extract(fp,1,NONE)
-                                            else fp
-                                         end
-                                 end) m
+                val p = OS.Path.mkCanonical p
+            in if String.isPrefix d p then
+                 let val p = String.extract(p,String.size d,NONE)
+                 in if String.isPrefix "/" p then
+                      String.extract(p,1,NONE)
+                    else p
+                 end
+               else if OS.Path.isAbsolute p then p
+               else let val ds = #arcs (OS.Path.fromString d)
+                        val ps = #arcs (OS.Path.fromString p)
+                    in case (ds, ps) of
+                           (["."], _) => p
+                         | (nil,_) => p
+                         | (".."::ds, ".."::ps) => sub' ds ps
+                         | (".."::_, _) => die ("sub: '" ^ d ^ "' is not a prefix of '" ^ p ^ "'")
+                         | (d::ds, ".."::ps) => "../.." ## sub' ds ps
+                         | (d::ds, p::ps) => if d = p then sub' ds ps
+                                             else ".." ## sub' ds (p::ps)
+                         | (d::ds,nil) => ".." ## sub' ds nil
+                    end
             end
+        and sub' ds ps =
+            sub (OS.Path.toString{arcs=ds,isAbs=false,vol=""})
+                (OS.Path.toString{arcs=ps,isAbs=false,vol=""})
+
+        fun subMod d m = dirMod0 (sub d) m
 
         fun mk_sharedlib (modc: modcode, libs, name, sofile) : unit =
             (* something like gcc -o sofile -shared (eval.o::files) -init eval_step -llib1 ... -llibn
