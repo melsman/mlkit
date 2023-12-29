@@ -31,9 +31,7 @@ structure OpacityEnv: OPACITY_ENV =
     fun die s = Crash.impossible ("OpacityEnv." ^ s)
     structure Realisation = Environments.Realisation
     type realisation = Environments.realisation
-    structure FE = OrderFinMap(struct type t = FunId.funid
-				      val lt = fn (a,b) => FunId.<(a,b)
-			       end)
+    structure FE = FunId.Map
 
     type funenv = (TyName.Set.Set * realisation) FE.map
 
@@ -47,11 +45,11 @@ structure OpacityEnv: OPACITY_ENV =
     val empty = (FE.empty, Realisation.Id)
     val initial = empty
     fun plus ((fe1, rea1),(fe2,rea2)) = (FE.plus(fe1,fe2),Realisation.oo(rea1,rea2))
-    fun eq_fe_entry((T1,rea1),(T2,rea2)) = TyName.Set.eq T1 T2 andalso Realisation.eq (rea1,rea2)
+    fun eq_fe_entry ((T1,rea1),(T2,rea2)) = TyName.Set.eq T1 T2 andalso Realisation.eq (rea1,rea2)
     fun enrich ((fe1, rea1),((fe2,rea2),T)) =
       FE.enrich eq_fe_entry (fe1,fe2) andalso Realisation.enrich(rea1,(rea2,T))
 
-    fun eq((fe1,re1),(fe2,re2)) =
+    fun eq ((fe1,re1),(fe2,re2)) =
 	FE.enrich eq_fe_entry (fe1,fe2) andalso FE.dom fe1 = FE.dom fe2
 	andalso Realisation.eq(re1,re2)
 

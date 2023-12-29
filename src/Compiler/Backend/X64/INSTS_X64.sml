@@ -194,6 +194,8 @@ signature INSTS_X64 =
 
     val sysname : unit -> string
 
+    val darwin_version : unit -> string option
+
     val rem_dead_code : inst list -> inst list
 
     val optimise : AsmPrg -> AsmPrg

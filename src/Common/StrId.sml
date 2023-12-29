@@ -36,4 +36,5 @@ structure StrId :> STRID =
     val pu_longstrid = Pickle.pairGen0(Pickle.listGen pu, pu)
 
     structure Map = StringFinMap
+    structure Set = StringSet
   end

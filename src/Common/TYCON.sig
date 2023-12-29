@@ -54,5 +54,5 @@ signature TYCON =
     val pu : tycon Pickle.pu
 
     structure Map : MONO_FINMAP where type dom = tycon
-
+    structure Set : KIT_MONO_SET where type elt = tycon
   end

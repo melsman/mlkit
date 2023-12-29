@@ -46,7 +46,7 @@ RI_FLAGS=$(FLAGS) -no_gc
 PROF_FLAGS=$(RI_FLAGS) -prof
 GC_PROF_FLAGS=$(GC_FLAGS) -prof
 
-MLKIT=../bin/mlkit --report_boxities
+MLKIT=../bin/mlkit
 
 .PHONY: tst
 tst:

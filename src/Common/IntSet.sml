@@ -360,7 +360,7 @@ structure IntSet: KIT_MONO_SET =
     val pu_bal =
 	Pickle.enumGen ("IntSet.bal",[L,B,R])
 
-    fun die s = let val s = "Impossible: OrderSet." ^ s
+    fun die s = let val s = "Impossible.IntSet." ^ s
 		in print s ; raise Fail s
 		end
 

@@ -8,13 +8,13 @@ signature OS_PATH =
     val parentArc  : string
     val currentArc : string
     val fromString : string -> {isAbs : bool,
-			        vol : string,
-			        arcs : string list
-			       }
+                                vol : string,
+                                arcs : string list
+                               }
     val toString   : {isAbs : bool,
-		      vol : string,
-		      arcs : string list
-		     } -> string
+                      vol : string,
+                      arcs : string list
+                     } -> string
 
     val validVolume  : {isAbs: bool, vol: string} -> bool
 
@@ -62,16 +62,16 @@ etc.
 
 Here are some examples for Unix paths:
 
-    path 	fromString path
-    ""  	{isAbs=false, vol="", arcs=[]}
-    "/" 	{isAbs=true, vol="", arcs=[""]}
-    "//" 	{isAbs=true, vol="", arcs=["", ""]}
-    "a" 	{isAbs=false, vol="", arcs=["a"]}
-    "/a" 	{isAbs=true, vol="", arcs=["a"]}
-    "//a" 	{isAbs=true, vol="", arcs=["","a"]}
-    "a/" 	{isAbs=false, vol="", arcs=["a", ""]}
-    "a//" 	{isAbs=false, vol="", arcs=["a", "", ""]}
-    "a/b" 	{isAbs=false, vol="", arcs=["a", "b"]}
+    path        fromString path
+    ""          {isAbs=false, vol="", arcs=[]}
+    "/"         {isAbs=true, vol="", arcs=[""]}
+    "//"        {isAbs=true, vol="", arcs=["", ""]}
+    "a"         {isAbs=false, vol="", arcs=["a"]}
+    "/a"        {isAbs=true, vol="", arcs=["a"]}
+    "//a"       {isAbs=true, vol="", arcs=["","a"]}
+    "a/"        {isAbs=false, vol="", arcs=["a", ""]}
+    "a//"       {isAbs=false, vol="", arcs=["a", "", ""]}
+    "a/b"       {isAbs=false, vol="", arcs=["a", "b"]}
 
 
 [toString {isAbs, vol, arcs}] makes a string out of a path represented
@@ -108,16 +108,16 @@ result of getParent will also be canonical.
 
 Here are some examples for Unix paths:
 
-    path 	getParent path
-    "/" 	"/"
-    "a" 	"."
-    "a/" 	"a/.."
-    "a///" 	"a///.."
-    "a/b" 	"a"
-    "a/b/" 	"a/b/.."
-    ".." 	"../.."
-    "." 	".."
-    "" 	".."
+    path        getParent path
+    "/"         "/"
+    "a"         "."
+    "a/"        "a/.."
+    "a///"      "a///.."
+    "a/b"       "a"
+    "a/b/"      "a/b/.."
+    ".."        "../.."
+    "."         ".."
+    ""  ".."
 
 [splitDirFile path] splits the string path path into its directory and
 file parts, where the file part is defined to be the last arc. The
@@ -125,13 +125,13 @@ file will be "", if the last arc is "".
 
 Here are some examples for Unix paths:
 
-    path 	splitDirFile path
-    ""  	{dir = "", file = ""}
-    "." 	{dir = "", file = "."}
-    "b" 	{dir = "", file = "b"}
-    "b/" 	{dir = "b", file = ""}
-    "a/b" 	{dir = "a", file = "b"}
-    "/a" 	{dir = "/", file = "a"}
+    path        splitDirFile path
+    ""          {dir = "", file = ""}
+    "."         {dir = "", file = "."}
+    "b"         {dir = "", file = "b"}
+    "b/"        {dir = "b", file = ""}
+    "a/b"       {dir = "a", file = "b"}
+    "/a"        {dir = "/", file = "a"}
 
 [joinDirFile {dir, file}] creates a whole path out of a directory and
 a file by extending the path dir with the arc file. If the string file
@@ -156,15 +156,15 @@ base part.
 
 Here are some examples for Unix paths:
 
-    path 	splitBaseExt path
-    ""  	{base = "", ext = NONE}
-    ".login" 	{base = ".login", ext = NONE}
-    "/.login" 	{base = "/.login", ext = NONE}
-    "a" 	{base = "a", ext = NONE}
-    "a." 	{base = "a.", ext = NONE}
-    "a.b" 	{base = "a", ext = SOME "b"}
-    "a.b.c" 	{base = "a.b", ext = SOME "c"}
-    ".news/comp" 	{base = ".news/comp", ext = NONE}
+    path        splitBaseExt path
+    ""          {base = "", ext = NONE}
+    ".login"    {base = ".login", ext = NONE}
+    "/.login"   {base = "/.login", ext = NONE}
+    "a"         {base = "a", ext = NONE}
+    "a."        {base = "a.", ext = NONE}
+    "a.b"       {base = "a", ext = SOME "b"}
+    "a.b.c"     {base = "a.b", ext = SOME "c"}
+    ".news/comp"        {base = ".news/comp", ext = NONE}
 
 [joinBaseExt {base, ext}] returns an arc composed of the base name and
 the extension (if different from NONE). It is a left inverse of
@@ -224,20 +224,20 @@ greater than String.maxSize.
 
 Here are some examples for Unix paths:
 
-    path 	relativeTo 	mkRelative{path, relativeTo}
-    "a/b" 	"/c/d" 	"a/b"
-    "/" 	"/a/b/c" 	"../../.."
-    "/a/b/" 	"/a/c" 	"../b/"
-    "/a/b" 	"/a/c" 	"../b"
-    "/a/b/" 	"/a/c/" 	"../b/"
-    "/a/b" 	"/a/c/" 	"../b"
-    "/" 	"/" 	"."
-    "/" 	"/." 	"."
-    "/" 	"/.." 	"."
-    "/a/b/../c" 	"/a/d" 	"../b/../c"
-    "/a/b" 	"/c/d" 	"../../a/b"
-    "/c/a/b" 	"/c/d" 	"../a/b"
-    "/c/d/a/b" 	"/c/d" 	"a/b"
+    path        relativeTo      mkRelative{path, relativeTo}
+    "a/b"       "/c/d"  "a/b"
+    "/"         "/a/b/c"        "../../.."
+    "/a/b/"     "/a/c"  "../b/"
+    "/a/b"      "/a/c"  "../b"
+    "/a/b/"     "/a/c/"         "../b/"
+    "/a/b"      "/a/c/"         "../b"
+    "/"         "/"     "."
+    "/"         "/."    "."
+    "/"         "/.."   "."
+    "/a/b/../c"         "/a/d"  "../b/../c"
+    "/a/b"      "/c/d"  "../../a/b"
+    "/c/a/b"    "/c/d"  "../a/b"
+    "/c/d/a/b"  "/c/d"  "a/b"
 
 [isAbsolute path]
 [isRelative path]

@@ -70,18 +70,28 @@ structure ExecutionX64: EXECUTION =
 
     val link_exe =
         Flags.add_string_entry
-        let val macgcc = "gcc -Wl,-stack_size,0x10000000,-stack_addr,0xc0000000"
-            val gcc = if onmac_p() then macgcc
-                      else "gcc"
+        let val macgcc_new = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
+            val macgcc_old = "gcc -Wl,-stack_size,0x10000000"
+            val linuxgcc = "gcc"
+            val gcc = if onmac_p() then
+                        case InstsX64.darwin_version() of
+                            NONE => macgcc_old
+                          | SOME v => case Real.fromString v of
+                                          SOME r => if r > 23.1 then macgcc_new
+                                                    else macgcc_old
+                                        | NONE => macgcc_old
+                      else linuxgcc
         in
             {long="link_exe", short=SOME "ldexe", item=ref gcc,
              menu=["General Control", "C compiler (used for linking executable)"],
              desc="This option specifies the command used for linking\n\
                   \an executable. The standard is to use 'gcc' for\n\
                   \linking. When linking with c++ libraries, 'g++' is\n\
-                  \the linker you want. On Linux the default '" ^ gcc ^ "',\n\
-                  \whereas on macOS, the default is\n\
-                  \'" ^ macgcc ^ "'."}
+                  \the linker you want. On Linux the default is '" ^ linuxgcc ^ "',\n\
+                  \whereas on newer macOS systems (Darwin > 23.1), the default\n\
+                  \is '" ^ macgcc_new ^ "' and on\n\
+                  \older macOS systems, the default is\n\
+                  \'" ^ macgcc_old ^ "'."}
         end
 
     val link_shared =

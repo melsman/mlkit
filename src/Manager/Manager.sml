@@ -114,6 +114,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
+    fun modTime (f:string) : Time.time option =
+        SOME (OS.FileSys.modTime f)
+        handle _ => NONE
+
     (* ----------------------------------------------------
      * log_init  gives you back a function for cleaning up
      * ---------------------------------------------------- *)
@@ -347,7 +351,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     type Basis1 = Basis.Basis1
 
     fun pickleLnkFile smlfile ofile (modc: modcode) : unit =
-        doPickleGen smlfile ofile ModCode.pu "lnk" modc
+        let val ext = "lnk"
+            val p = doPickleGen0 smlfile ModCode.pu ext modc
+            val file = targetFromOutput ofile ext
+        in if isFileContentStringBIN file p then ()
+           else writePickle file p
+        end
 
     fun readLinkFiles lnkFiles =
         let fun process (nil,hce,modc) = modc
@@ -716,10 +725,26 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                    val output = dir ## MO.mlbdir() ## file (* .lnk added by pickleLnkFile... *)
                    val target = Flags.lookup_string_entry "output"
                    val save = !target
-               in target := output
-                ; chat "making mlb-linkfile"
-                ; PB.pickleLnkFile mlbfile output modc
-                ; target := save
+                   fun doit () =
+                       let val modc = ModCode.subMod dir modc
+                       in target := output
+                        ; chat "making mlb-linkfile"
+                        ; PB.pickleLnkFile mlbfile output modc
+                        ; target := save
+                       end
+               in case modTime (output ^ ".lnk") of
+                      SOME t_mlb_lnk =>
+                      if (case modTime mlbfile of
+                              NONE => false
+                            | SOME t_mlb => Time.>=(t_mlb_lnk,t_mlb))
+                         andalso
+                         List.all (fn lf =>
+                                      case modTime lf of
+                                          SOME t => Time.>= (t_mlb_lnk, t)
+                                        | NONE => false) lnkFiles
+                      then ()
+                      else doit()
+                    | NONE => doit()
                end
              | NONE => ()
         end
@@ -766,6 +791,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                   in print_error_report r (*(Report.//(r0, r))*)
                   end
                 | PARSE_ELAB_ERROR _ => ()
+                | IO.Io {name,function,cause} =>
+                  (print ("[[ERR in sub process: Io{name=" ^ name
+                          ^ ", function=" ^ function
+                          ^ ", cause=" ^ General.exnMessage cause ^ "}]]\n"))
                 | _ => (print "[[ERR in sub process:\n  ";
                         print (General.exnMessage e ^ "]]\n"))
         in

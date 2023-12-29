@@ -37,7 +37,8 @@ in
   Timing.sml
   local open Pickle
   in KIT_MONO_SET.sml
-     local in OrderSet.sml end
+     OrderSet.sml
+     StringSet.sml
   end
 
   local open Pickle

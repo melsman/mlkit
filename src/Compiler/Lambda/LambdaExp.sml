@@ -2,9 +2,6 @@
 structure LambdaExp : LAMBDA_EXP =
   struct
     structure PP = PrettyPrint
-    structure StrSet = OrderSet(struct type t = string
-                                       fun lt (a:string, b) = a < b
-                                end)
 
     fun uncurry f (x,y) = f x y
 
@@ -257,7 +254,7 @@ structure LambdaExp : LAMBDA_EXP =
    local
      exception NotSafe
 
-     val safeCNames = StrSet.fromList
+     val safeCNames = StringSet.fromList
        ["__plus_word31", "__plus_word32ub", "__plus_word32b",
         "__minus_word31", "__minus_word32ub", "__minus_word32b",
         "__mul_word31", "__mul_word32ub", "__mul_word32b",
@@ -314,7 +311,7 @@ structure LambdaExp : LAMBDA_EXP =
         "__blockf64_sub_f64"
        ]
 
-     fun safeCName n = if StrSet.member n safeCNames then ()
+     fun safeCName n = if StringSet.member n safeCNames then ()
                        else raise NotSafe
 
      fun safe_prim prim =

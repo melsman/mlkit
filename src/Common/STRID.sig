@@ -28,5 +28,6 @@ signature STRID =
     val pu_longstrid : longstrid Pickle.pu
 
     structure Map : MONO_FINMAP where type dom = strid
+    structure Set : KIT_MONO_SET where type elt = strid
 
   end
