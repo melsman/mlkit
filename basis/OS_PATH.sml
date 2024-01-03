@@ -5,32 +5,21 @@ signature OS_PATH =
     exception Path
     exception InvalidArc
 
-    val parentArc  : string
-    val currentArc : string
-    val fromString : string -> {isAbs : bool,
-                                vol : string,
-                                arcs : string list
-                               }
-    val toString   : {isAbs : bool,
-                      vol : string,
-                      arcs : string list
-                     } -> string
-
+    val parentArc    : string
+    val currentArc   : string
+    val fromString   : string -> {isAbs: bool, vol: string, arcs: string list}
+    val toString     : {isAbs: bool, vol: string, arcs: string list} -> string
     val validVolume  : {isAbs: bool, vol: string} -> bool
-
     val getVolume    : string -> string
     val getParent    : string -> string
-
     val splitDirFile : string -> {dir: string, file: string}
     val joinDirFile  : {dir : string, file : string} -> string
     val dir          : string -> string
     val file         : string -> string
-
     val splitBaseExt : string -> {base: string, ext: string option}
     val joinBaseExt  : {base: string, ext: string option} -> string
     val base         : string -> string
     val ext          : string -> string option
-
     val mkCanonical  : string -> string
     val isCanonical  : string -> bool
     val mkAbsolute   : {path: string, relativeTo: string} -> string
@@ -38,9 +27,7 @@ signature OS_PATH =
     val isAbsolute   : string -> bool
     val isRelative   : string -> bool
     val isRoot       : string -> bool
-
     val concat       : string * string -> string
-
     val fromUnixPath : string -> string
     val toUnixPath   : string -> string
   end
@@ -117,7 +104,7 @@ Here are some examples for Unix paths:
     "a/b/"      "a/b/.."
     ".."        "../.."
     "."         ".."
-    ""  ".."
+    ""          ".."
 
 [splitDirFile path] splits the string path path into its directory and
 file parts, where the file part is defined to be the last arc. The
@@ -156,15 +143,15 @@ base part.
 
 Here are some examples for Unix paths:
 
-    path        splitBaseExt path
-    ""          {base = "", ext = NONE}
-    ".login"    {base = ".login", ext = NONE}
-    "/.login"   {base = "/.login", ext = NONE}
-    "a"         {base = "a", ext = NONE}
-    "a."        {base = "a.", ext = NONE}
-    "a.b"       {base = "a", ext = SOME "b"}
-    "a.b.c"     {base = "a.b", ext = SOME "c"}
-    ".news/comp"        {base = ".news/comp", ext = NONE}
+    path         splitBaseExt path
+    ""           {base = "", ext = NONE}
+    ".login"     {base = ".login", ext = NONE}
+    "/.login"    {base = "/.login", ext = NONE}
+    "a"          {base = "a", ext = NONE}
+    "a."         {base = "a.", ext = NONE}
+    "a.b"        {base = "a", ext = SOME "b"}
+    "a.b.c"      {base = "a.b", ext = SOME "c"}
+    ".news/comp" {base = ".news/comp", ext = NONE}
 
 [joinBaseExt {base, ext}] returns an arc composed of the base name and
 the extension (if different from NONE). It is a left inverse of
@@ -225,19 +212,19 @@ greater than String.maxSize.
 Here are some examples for Unix paths:
 
     path        relativeTo      mkRelative{path, relativeTo}
-    "a/b"       "/c/d"  "a/b"
+    "a/b"       "/c/d"          "a/b"
     "/"         "/a/b/c"        "../../.."
-    "/a/b/"     "/a/c"  "../b/"
-    "/a/b"      "/a/c"  "../b"
+    "/a/b/"     "/a/c"          "../b/"
+    "/a/b"      "/a/c"          "../b"
     "/a/b/"     "/a/c/"         "../b/"
     "/a/b"      "/a/c/"         "../b"
-    "/"         "/"     "."
-    "/"         "/."    "."
-    "/"         "/.."   "."
-    "/a/b/../c"         "/a/d"  "../b/../c"
-    "/a/b"      "/c/d"  "../../a/b"
-    "/c/a/b"    "/c/d"  "../a/b"
-    "/c/d/a/b"  "/c/d"  "a/b"
+    "/"         "/"             "."
+    "/"         "/."            "."
+    "/"         "/.."           "."
+    "/a/b/../c" "/a/d"          "../b/../c"
+    "/a/b"      "/c/d"          "../../a/b"
+    "/c/a/b"    "/c/d"          "../a/b"
+    "/c/d/a/b"  "/c/d"          "a/b"
 
 [isAbsolute path]
 [isRelative path]

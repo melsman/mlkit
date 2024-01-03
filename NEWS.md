@@ -1,7 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.8 is released
+
 * mael 2023-12-29: Cleanup and ensurance that mlkit does not write
-  into the installation directory when the repl is launched or when
+  into the installation directory when the REPL is launched or when
   linking with compiled versions of the SML Basis Library (PR #158).
 
 * mael 2023-12-29: MacOS Sonoma / Xcode 15 support.
