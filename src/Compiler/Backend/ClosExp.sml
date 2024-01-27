@@ -2252,6 +2252,9 @@ struct
                            else eq_prim "__equal_word64ub")
                         else if TyName.eq(tn,TyName.tyName_STRING) then
                           eq_prim "equalStringML"
+                        else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then
+                          (if BI.tag_values() then eq_prim "__equal_word64b"
+                           else eq_prim "__equal_word64ub")
                         else if TyName.eq(tn,TyName.tyName_VECTOR) then
                                die "`=' on vectors! EliminateEq should have dealt with this"
                         else eq_prim "equalPolyML"
