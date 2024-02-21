@@ -259,8 +259,8 @@ val test11a =
 		    handle Size => "OK" | _ => "WRONG")
 
 val test11b =
-    tst0 "test11b" ((fmt (StringCvt.FIX (SOME 100000)) 12.3456)
-		    handle Size => "OK" | _ => "WRONG")
+    tst0 "test11b" ((fmt (StringCvt.FIX (SOME 10000)) 12.3456; "OK")
+		    handle Size => "WRONG" | _ => "EXN")
 
 fun chkFIX (s,r, s0, s1, s2, s6) =
     tst ("chkFIX."^s)(fmt (StringCvt.FIX (SOME 0)) r = s0
@@ -307,8 +307,8 @@ val test12a =
 		    handle Size => "OK" | _ => "WRONG")
 
 val test12b =
-    tst0 "test12b" ((fmt (StringCvt.SCI (SOME 100000)) 12.3456)
-		    handle Size => "OK" | _ => "WRONG")
+    tst0 "test12b" ((fmt (StringCvt.SCI (SOME 10000)) 12.3456; "OK")
+		    handle Size => "WRONG" | _ => "EXN")
 
 fun chkSCI (r, s0, s1, s2, s6) =
     fmt (StringCvt.SCI (SOME 0)) r = s0
