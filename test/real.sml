@@ -340,8 +340,8 @@ val test13a =
 		    handle Size => "OK" | _ => "WRONG")
 
 val test13b =
-    tst0 "test13b" ((fmt (StringCvt.GEN (SOME 100000)) 12.3456)
-		    handle Size => "OK" | _ => "WRONG")
+    tst0 "test13b" ((fmt (StringCvt.GEN (SOME 10000)) 12.3456; "OK")
+		    handle Size => "ERR" | _ => "EXN")
 
 fun chkGEN (r, s1, s2, s6, s12) =
     fmt (StringCvt.GEN (SOME 1)) r = s1
