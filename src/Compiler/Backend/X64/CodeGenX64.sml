@@ -82,7 +82,7 @@ struct
                | LS.ASSIGN{pat,bind} =>
                 comment_fn (fn () => "ASSIGN: " ^ pr_ls ls,
                 (case bind
-                   of LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
+                   of LS.ATOM {aty=src_aty} => move_aty_to_aty(src_aty,pat,size_ff,C)
                     | LS.LOAD label => load_from_label(DatLab label,pat,tmp_reg1,size_ff,C)
                     | LS.STORE(src_aty,label) =>
                      (gen_data_lab label;
@@ -410,7 +410,7 @@ struct
 *)
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
-                    | LS.DEREF aty =>
+                    | LS.DEREF {aty} =>
                      let val offset = if BI.tag_values() then 1 else 0
                      in move_index_aty_to_aty(aty,pat,WORDS offset,tmp_reg1,size_ff,C)
                      end
@@ -463,7 +463,7 @@ struct
                          else
                              alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
                      end
-                    | LS.PASS_PTR_TO_RHO(alloc) =>
+                    | LS.PASS_PTR_TO_RHO {sma=alloc} =>
                      let
                        val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                      in
@@ -916,6 +916,7 @@ struct
                        | Equal_word63 =>   cmp_quad       I.je
                        | Equal_word64ub => cmp_quad       I.je
                        | Equal_word64b =>  cmp_boxed_quad I.je
+                       | Equal_ptr =>      cmp_quad       I.je
 
                        | Less_int32ub =>    cmp       I.jl
                        | Less_int32b =>     cmp_boxed I.jl
@@ -1106,6 +1107,7 @@ struct
                             | Equal_word63 =>   cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
                             | Equal_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
                             | Equal_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
+                            | Equal_ptr =>      cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
 
                             | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
                             | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg

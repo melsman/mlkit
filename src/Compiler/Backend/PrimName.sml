@@ -6,6 +6,7 @@ datatype prim =
 	 Equal_word31 | Equal_word32ub | Equal_word32b |
          Equal_int63 | Equal_int64ub | Equal_int64b |
 	 Equal_word63 | Equal_word64ub | Equal_word64b |
+         Equal_ptr |
 
 	 Less_int31 | Less_int32ub | Less_int32b |
 	 Less_word31 | Less_word32ub | Less_word32b |
@@ -173,6 +174,7 @@ local
 	 ("__equal_word31", Equal_word31), ("__equal_word32ub", Equal_word32ub), ("__equal_word32b", Equal_word32b),
          ("__equal_int63", Equal_int63), ("__equal_int64ub", Equal_int64ub), ("__equal_int64b", Equal_int64b),
 	 ("__equal_word63", Equal_word63), ("__equal_word64ub", Equal_word64ub), ("__equal_word64b", Equal_word64b),
+         ("__equal_ptr", Equal_ptr),
 
 	 ("__less_int31", Less_int31), ("__less_int32ub", Less_int32ub), ("__less_int32b", Less_int32b),
 	 ("__less_word31", Less_word31), ("__less_word32ub", Less_word32ub), ("__less_word32b", Less_word32b),
@@ -379,6 +381,7 @@ fun is_flow_prim (p:prim) : bool =
       | Equal_word63 => true
       | Equal_word64ub => true
       | Equal_word64b => true
+      | Equal_ptr => true
 
       | Less_int31 => true
       | Less_int32ub => true
@@ -452,6 +455,7 @@ fun pp_prim (p:prim) : string =
       | Equal_word63 => "Equal_word63"
       | Equal_word64ub => "Equal_word64ub"
       | Equal_word64b => "Equal_word64b"
+      | Equal_ptr => "Equal_ptr"
 
       | Less_int31 => "Less_int31"
       | Less_int32ub => "Less_int32ub"

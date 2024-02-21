@@ -228,21 +228,26 @@ structure CompileDec: COMPILE_DEC =
         List.foldl (fn ((_,NONE), (n,u)) => (n+1,u)
                      | ((_,SOME _), (n,u)) => (n,u+1)) (0,0) cs
 
+    fun get_unaries cs =
+        List.foldl (fn ((_,NONE), acc) => acc
+                     | ((_,SOME ty), acc) => ty::acc) nil cs
+
+
     fun optimistic tns (_,tn,cs) : TyName * TyName.boxity =
-        case cs of
-            [(_,SOME ty)] =>
-            let fun G tn =
-                    if List.exists (fn tn' => TyName.eq(tn,tn')) tns
-                    then SOME TyName.UNB_ALL
-                    else NONE
-            in (tn, TyName.SINGLE (boxity_ty G ty))
-            end
-          | _ =>
-            let val (n,u) = nullaries_unaries cs
-            in if u = 0 then (tn, TyName.ENUM)
-               else if u = 1 then (tn, TyName.UNB_LOW)
-               else (tn, TyName.UNB_ALL)
-            end
+        let fun G tn = if List.exists (fn tn' => TyName.eq(tn,tn')) tns
+                       then SOME TyName.UNB_ALL
+                       else NONE
+        in case cs of
+               [(_,SOME ty)] => (tn, TyName.SINGLE (boxity_ty G ty))  (* zero nullaries *)
+             | _ => case get_unaries cs of
+                        nil => (tn, TyName.ENUM)
+                      | [ty] =>
+                        (case boxity_ty G ty of
+                             TyName.UNB_LOW => (tn, TyName.UNB_ALL)
+                           | TyName.ENUM => (tn, TyName.UNB_ALL)
+                           | _ => (tn, TyName.UNB_LOW))
+                      | _ => (tn, TyName.UNB_ALL)
+        end
 
     fun space_for_high_tags G argty : bool =
         high_pointer_tagging_p() andalso
@@ -269,7 +274,7 @@ structure CompileDec: COMPILE_DEC =
                                   SOME TyName.UNB_LOW =>
                                   u = 1 andalso boxity_ty G ty = TyName.BOXED
                                 | SOME TyName.UNB_ALL =>
-                                  u <= 128 andalso space_for_high_tags G ty
+                                  u <= 1024 andalso space_for_high_tags G ty
                                 | _ => false (* tn cannot be represented unboxed in any way... *)
                           ) cs
             end
@@ -421,7 +426,7 @@ structure CompileDec: COMPILE_DEC =
                     NONE =>
                       (case Type.to_TyVar typ of
                          NONE => die "compileType(1)"
-                       | SOME tyvar => TYVARtype(TV.lookup "compileType" tyvar))
+                       | SOME tyvar => TYVARtype {tv=TV.lookup "compileType" tyvar})
                   | SOME funtype =>
                     let val (ty1,rvi0,ty2,rvi) =
                             NoSome "compileType(2)"
@@ -477,7 +482,7 @@ structure CompileDec: COMPILE_DEC =
 
    fun on_Type S tau = LambdaBasics.on_Type S tau
 
-   fun unTyVarType (TYVARtype tv) = tv
+   fun unTyVarType (TYVARtype {tv}) = tv
      | unTyVarType _ = die "unTyVarType"
 
    fun mk_subst a = LambdaBasics.mk_subst a
@@ -705,18 +710,29 @@ Report: Opt:
   end)
  *)
 
-  abstype span = Infinite | Finite of int
-  with
-    val span_from_int = Finite
-    val span_infinite = Infinite
-    val span_256 = Finite 256
-    val span_1 = Finite 1
-    fun span_eq Infinite Infinite = true
-      | span_eq (Finite i1) (Finite i2) = i1 = i2
-      | span_eq _ _ = false
-    fun span_eq_int Infinite i = false
-      | span_eq_int (Finite i1) i2 = i1 = i2
-  end (*abstype*)
+  local
+  structure Span :> sig type span
+                        val span_from_int : int -> span
+                        val span_infinite : span
+                        val span_256 : span
+                        val span_1 : span
+                        val span_eq : span -> span -> bool
+                        val span_eq_int : span -> int -> bool
+                    end =
+  struct
+    type span = int
+    fun span_from_int i =
+        if i < 0 then die "span_from_int"
+        else i
+    val span_infinite = ~1
+    val span_256 = 256
+    val span_1 = 1
+    fun span_eq a b = a = b
+    fun span_eq_int a b = a = b
+  end
+
+  in open Span
+  end
 
   datatype con = Con of {longid : longid,
                          span : span,
@@ -1316,7 +1332,7 @@ Det finder du nok aldrig ud af.*)
                        (VAR{lvar=lv,instances,regvars},tau) =>
                        let
                          fun member tv = List.exists (fn tv' => tv = tv') tyvars
-                         fun f (t as TYVARtype tv) =
+                         fun f (t as TYVARtype {tv}) =
                              if member tv then t
                              else intDefaultType()   (* see compilation of test/pat.sml *)
                            | f t = t
@@ -2893,7 +2909,7 @@ the 12 lines above are very similar to the code below
                    val tyvars_fresh = map (fn tyvar => LambdaExp.fresh_tyvar ()) tyvars
                    val subst = mk_subst
                                  (fn () => "CompileDec.compile_application_of_c_function")
-                                    (tyvars, map TLE.TYVARtype tyvars_fresh)
+                                    (tyvars, map (fn tv => TLE.TYVARtype {tv=tv}) tyvars_fresh)
 
                    (* Names for certain primitives are altered on the basis of
                     * whether tagging of integers is enabled; see the comment
@@ -2903,7 +2919,7 @@ the 12 lines above are very similar to the code below
                  TLE.PRIM (CCALLprim {name = name,
                                       tyvars = tyvars_fresh,
                                       Type = on_Type subst tau,
-                                      instances = map TLE.TYVARtype tyvars},
+                                      instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars},
                            map (compileExp env) args)
                end
            | _ => die "compile_application_of_prim: wrong type info in ccall")
@@ -3301,7 +3317,7 @@ the 12 lines above are very similar to the code below
                let val lvar_switch = new_lvar_from_pat pat
                    val (tyvars', tau') = compileTypeScheme (tyvars, Type)
                      handle ? => (print ("compile_binding.NONE: lvar = " ^ Lvars.pr_lvar lvar_switch ^ "\n"); raise ?)
-                   val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars', regvars=[]}
+                   val obj = VAR {lvar=lvar_switch, instances=map (fn tv => TYVARtype {tv=tv}) tyvars', regvars=[]}
                    fun compile_no (i, env_rhs) = scope
                    val raise_something = fn obj : LambdaExp =>
                      RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
@@ -3578,7 +3594,7 @@ the 12 lines above are very similar to the code below
                        (* env1 \ env *)
       val lvars_decl = minus(lvars_env1_sorted, lvars_env_sorted)
       val alpha = fresh_tyvar()
-    in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
+    in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype {tv=alpha}})    (* forall alpha. alpha *)
       lvars_decl
     end
 

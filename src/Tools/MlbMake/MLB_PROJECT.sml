@@ -14,7 +14,7 @@ sig
 
       type atbdec = string (* path.{sml,sig} *)
 
-      datatype bexp = BASbexp of bdec
+      datatype bexp = BASbexp of {bdec:bdec}
                     | LETbexp of bdec * bexp
                     | LONGBIDbexp of Bid.longbid
 
