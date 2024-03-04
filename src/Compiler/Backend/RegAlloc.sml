@@ -84,11 +84,11 @@ struct
 
     fun resolve_args ([],lss) = lss
       | resolve_args ((atom,phreg)::args,lss) =
-        resolve_args (args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
+        resolve_args (args,LS.ASSIGN{pat=atom,bind=LS.ATOM {aty=LS.PHREG phreg}}::lss)
 
     fun resolve_res ([],lss) = lss
       | resolve_res ((atom,phreg)::res,lss) =
-        resolve_res (res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
+        resolve_res (res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM {aty=atom}}::lss)
 
     fun resolve_app {clos,args,reg_args,fargs,res} =
         CallConv.resolve_app
@@ -211,7 +211,7 @@ struct
              case ls of
                  LS.PRIM{name=p,args=[x,y],res=[d]} =>   (* treat "d := x op y" as "d := x; d := d op y" *)
                  (if isBinF64 p then
-                    (LS.ASSIGN{pat=d,bind=LS.ATOM x} ::
+                    (LS.ASSIGN{pat=d,bind=LS.ATOM {aty=x}} ::
                      LS.PRIM{name=p,args=[d,y],res=[d]} ::
                      coalesce_binops lss)
                   else ls :: coalesce_binops lss)
@@ -1097,10 +1097,10 @@ struct
            | LS.SWITCH_E sw => ig_sw (ig_lss, sw, L)
            | LS.CCALL _ => do_non_tail_call(L,ls)
            | LS.CCALL_AUTO _ => do_non_tail_call(L,ls)
-           | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM(LS.VAR lv2)} => do_move(L,lv1,lv2)
-           | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM(LS.PHREG lv2)} => do_move(L,lv1,lv2)
-           | LS.ASSIGN {pat=LS.PHREG lv1, bind=LS.ATOM(LS.VAR lv2)} => do_move(L,lv1,lv2)
-           | LS.ASSIGN {pat=LS.PHREG lv1, bind=LS.ATOM(LS.PHREG lv2)} => do_move(L,lv1,lv2)
+           | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM {aty=LS.VAR lv2}} => do_move(L,lv1,lv2)
+           | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM {aty=LS.PHREG lv2}} => do_move(L,lv1,lv2)
+           | LS.ASSIGN {pat=LS.PHREG lv1, bind=LS.ATOM {aty=LS.VAR lv2}} => do_move(L,lv1,lv2)
+           | LS.ASSIGN {pat=LS.PHREG lv1, bind=LS.ATOM {aty=LS.PHREG lv2}} => do_move(L,lv1,lv2)
           (* Instead, we should unfold records in LineStmt. 18/02/1999, Niels *)
            | LS.ASSIGN {pat= _, bind=LS.RECORD _} => do_record(L,ls)
            | LS.ASSIGN {pat= _, bind=LS.SCLOS_RECORD _} => do_record(L,ls)

@@ -94,26 +94,26 @@ structure CompilerEnv: COMPILER_ENV =
     val boolType = LambdaExp.boolType
     val exnType = LambdaExp.exnType
     val tyvar_nil = LambdaExp.fresh_eqtyvar()
-    val nilType = LambdaExp.CONStype([LambdaExp.TYVARtype tyvar_nil], TyName.tyName_LIST, NONE)
+    val nilType = LambdaExp.CONStype([LambdaExp.TYVARtype {tv=tyvar_nil}], TyName.tyName_LIST, NONE)
     val tyvar_cons = LambdaExp.fresh_eqtyvar()
     val consType =
       let open LambdaExp
-          val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST, NONE)
-      in ARROWtype([RECORDtype ([TYVARtype tyvar_cons, t],NONE)],NONE,[t],NONE)
+          val t = CONStype([TYVARtype {tv=tyvar_cons}], TyName.tyName_LIST, NONE)
+      in ARROWtype([RECORDtype ([TYVARtype {tv=tyvar_cons}, t],NONE)],NONE,[t],NONE)
       end
 
     val tyvar_quote = LambdaExp.fresh_eqtyvar()
     val quoteType =
       let open LambdaExp
-          val t = CONStype([TYVARtype tyvar_quote], TyName.tyName_FRAG, NONE)
+          val t = CONStype([TYVARtype {tv=tyvar_quote}], TyName.tyName_FRAG, NONE)
       in ARROWtype([CONStype([],TyName.tyName_STRING,NONE)],NONE,[t],NONE)
       end
 
     val tyvar_antiquote = LambdaExp.fresh_eqtyvar()
     val antiquoteType =
       let open LambdaExp
-          val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG, NONE)
-      in ARROWtype([TYVARtype tyvar_antiquote],NONE,[t],NONE)
+          val t = CONStype([TYVARtype {tv=tyvar_antiquote}], TyName.tyName_FRAG, NONE)
+      in ARROWtype([TYVARtype {tv=tyvar_antiquote}],NONE,[t],NONE)
       end
 
     val intinfType =
@@ -132,15 +132,15 @@ structure CompilerEnv: COMPILER_ENV =
 
     val listVE =
         initVE [(Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
-                                   [LambdaExp.TYVARtype tyvar_nil])),
+                                   [LambdaExp.TYVARtype {tv=tyvar_nil}])),
                 (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
-                                    [LambdaExp.TYVARtype tyvar_cons]))]
+                                    [LambdaExp.TYVARtype {tv=tyvar_cons}]))]
 
     val fragVE =
         initVE [(Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
-                                     [LambdaExp.TYVARtype tyvar_quote])),
+                                     [LambdaExp.TYVARtype {tv=tyvar_quote}])),
                 (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
-                                         [LambdaExp.TYVARtype tyvar_antiquote]))]
+                                         [LambdaExp.TYVARtype {tv=tyvar_antiquote}]))]
 
     val initialVarEnv : VarEnv =
         Ident.Map.plus(Ident.Map.plus(Ident.Map.plus(boolVE,listVE),fragVE),
@@ -160,18 +160,6 @@ structure CompilerEnv: COMPILER_ENV =
                  (Ident.resetRegions, RESET_REGIONS),
                  (Ident.forceResetting, FORCE_RESET_REGIONS),
                  (Ident.id_REF, REF),
-(*
-                 (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
-                 (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
-                 (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
-                                    [LambdaExp.TYVARtype tyvar_nil])),
-                 (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
-                                     [LambdaExp.TYVARtype tyvar_cons])),
-                 (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
-                                      [LambdaExp.TYVARtype tyvar_quote])),
-                 (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
-                                          [LambdaExp.TYVARtype tyvar_antiquote])),
-*)
                  (Ident.id_INTINF, CON(Con.con_INTINF,[],intinfType, [])),
                  (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
                  (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
@@ -233,14 +221,14 @@ structure CompilerEnv: COMPILER_ENV =
         CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,PathEnv=emptyPathEnv}
 
     fun declareVar (id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
-      let val il0 = map LambdaExp.TYVARtype tyvars
+      let val il0 = map (fn tv => LambdaExp.TYVARtype {tv=tv}) tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
               VarEnv=Ident.Map.add(id, LVAR (lv,tyvars,tau,il0), m),
               PathEnv=PathEnv}
       end
 
     fun declareCon (id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
-      let val il0 = map LambdaExp.TYVARtype tyvars
+      let val il0 = map (fn tv => LambdaExp.TYVARtype {tv=tv}) tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
               VarEnv=Ident.Map.add(id,CON (con,tyvars,tau,il0), m),
               PathEnv=PathEnv}

@@ -36,7 +36,7 @@ struct
     end
 
     type atbdec = string (* path.{sml,sig} *)
-    datatype bexp = BASbexp of bdec
+    datatype bexp = BASbexp of {bdec:bdec}
                   | LETbexp of bdec * bexp
                   | LONGBIDbexp of Bid.longbid
 
@@ -254,7 +254,7 @@ struct
         let
           fun parse_rest(bdec,ss) =
               case ss of
-                "end" :: ss => (MS.BASbexp bdec, ss)
+                "end" :: ss => (MS.BASbexp {bdec=bdec}, ss)
               | _ => parse_error1 mlbfile ("missing 'end'", ss)
         in
           case parse_bdec_opt mlbfile ss of
@@ -551,7 +551,7 @@ struct
 
         fun dep_bexp (D:D) (A:A) bexp : D * A =
             case bexp of
-                MS.BASbexp bdec => dep_bdec D A bdec
+                MS.BASbexp {bdec} => dep_bdec D A bdec
               | MS.LETbexp (bdec,bexp) =>
                     let val (D1,A) = dep_bdec D A bdec
                         val (D2,A) = dep_bexp (D+D1) A bexp
@@ -839,7 +839,7 @@ struct
 
   and srcs_bexp state mlbfilehash dir mlbs anns deps bexp =
     case bexp
-    of MS.BASbexp bdec => srcs_bdec state mlbfilehash mlbs dir anns deps bdec
+    of MS.BASbexp {bdec} => srcs_bdec state mlbfilehash mlbs dir anns deps bdec
      | MS.LETbexp (bdec,bexp) =>
        let
          val (s1,deps,mlbs) = srcs_bdec state mlbfilehash mlbs dir anns deps bdec

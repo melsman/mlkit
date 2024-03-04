@@ -155,7 +155,7 @@ struct
       | sma_to_sma(LS.SAT_FF(atom,pp),ATYmap,RHOmap) = LS.SAT_FF(atom_to_aty(atom,ATYmap,RHOmap),pp)
       | sma_to_sma(LS.IGNORE,ATYmap,RHOmap) = LS.IGNORE
 
-    fun aty_eq_se(aty1,LS.ATOM aty2) = eq_aty(aty1,aty2)
+    fun aty_eq_se(aty1,LS.ATOM {aty=aty2}) = eq_aty(aty1,aty2)
       | aty_eq_se _ = false
 
     fun SS_sw(SS_lss,switch_con,LS.SWITCH(atom,sels,default),ATYmap,RHOmap) =
@@ -191,7 +191,7 @@ struct
            fargs=atoms_to_atys fargs,
            bv=bv}
 
-        fun SS_se(LS.ATOM atom) = LS.ATOM (atom_to_aty' atom)
+        fun SS_se(LS.ATOM {aty=atom}) = LS.ATOM {aty=atom_to_aty' atom}
           | SS_se(LS.LOAD label) = LS.LOAD label
           | SS_se(LS.STORE(atom,label)) = LS.STORE(atom_to_aty' atom,label)
           | SS_se(LS.STRING str) = LS.STRING str
@@ -215,11 +215,11 @@ struct
           | SS_se(LS.CON0{con,con_kind,aux_regions,alloc}) = LS.CON0{con=con,con_kind=con_kind,aux_regions=smas_to_smas aux_regions,alloc=sma_to_sma' alloc}
           | SS_se(LS.CON1{con,con_kind,alloc,arg}) = LS.CON1{con=con,con_kind=con_kind,alloc=sma_to_sma' alloc,arg=atom_to_aty' arg}
           | SS_se(LS.DECON{con,con_kind,con_aty}) = LS.DECON{con=con,con_kind=con_kind,con_aty=atom_to_aty' con_aty}
-          | SS_se(LS.DEREF atom) = LS.DEREF(atom_to_aty' atom)
+          | SS_se(LS.DEREF {aty=atom}) = LS.DEREF {aty=atom_to_aty' atom}
           | SS_se(LS.REF(sma,atom)) = LS.REF(sma_to_sma' sma,atom_to_aty' atom)
           | SS_se(LS.ASSIGNREF(sma,atom1,atom2)) = LS.ASSIGNREF(sma_to_sma' sma,atom_to_aty' atom1,atom_to_aty' atom2)
           | SS_se(LS.PASS_PTR_TO_MEM(sma,i,b)) = LS.PASS_PTR_TO_MEM(sma_to_sma' sma,i,b)
-          | SS_se(LS.PASS_PTR_TO_RHO(sma)) = LS.PASS_PTR_TO_RHO(sma_to_sma' sma)
+          | SS_se(LS.PASS_PTR_TO_RHO {sma}) = LS.PASS_PTR_TO_RHO {sma=sma_to_sma' sma}
 
         fun SS_lss'([]) = []
           | SS_lss'(LS.ASSIGN{pat,bind}::lss) =
