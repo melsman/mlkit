@@ -347,20 +347,30 @@ by spec.
 format according to the magnitude of r. Equivalent to (fmt (GEN NONE)
 r).
 
-[scan getc charsrc] attempts to scan a floating-point number from the
-character source charsrc, using the accessor getc, and ignoring any
-initial whitespace.  If successful, it returns SOME(r, rest) where r
-is the number scanned, and rest is the unused part of the character
-source. The valid forms of floating-point numerals are described by
+[scan getc strm]
+
+[fromString s]
+
+These functions scan a real value from character source. The first
+version reads from strm using reader getc, ignoring initial
+whitespace. It returns SOME(r,rest) if successful, where r is the
+scanned real value and rest is the unused portion of the character
+stream strm. Values of too large a magnitude are represented as
+infinities; values of too small a magnitude are represented as zeros.
+The second version returns SOME(r) if a real value can be scanned from
+a prefix of s, ignoring any initial whitespace; otherwise, it returns
+NONE. This function is equivalent to StringCvt.scanString scan.
+
+The functions accept real numbers with the following format:
 
 	[+~-]?(([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+~-]?[0-9]+)?
 
-[fromString s] returns SOME(r) if a floating-point numeral can be
-scanned from a prefix of string s, ignoring any initial whitespace;
-returns NONE otherwise.  The valid forms of floating-point numerals
-are described by
+It also accepts the following string representations of non-finite
+values:
 
-	[+~-]?(([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+~-]?[0-9]+)?
+        [+~-]?(inf|infinity|nan)
+
+where the alphabetic characters are case-insensitive.
 
 [toDecimal r]
 

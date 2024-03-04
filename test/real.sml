@@ -38,6 +38,8 @@ val test2 = tst "test2" (sameSign(~255.0, ~256.0) andalso sameSign(255.0, 256.0)
 val test3 = tst "test3" (sign 1E~300 = 1 andalso sign ~1E~300 = ~1
 			 andalso sign 1E300 = 1 andalso sign ~1E300 = ~1)
 
+val test3a = tst' "test3a" (fn () => (sign (posInf - posInf); false) handle Domain => true | Fail _ => false)
+
 local
     val args = [0.0, 99.0, ~5.0, 1.1, ~1.1, 1.9, ~1.9, 2.5, ~2.5,
 		1000001.4999, ~1000001.4999]
@@ -250,6 +252,18 @@ val test10 =
 	      "~e10", "~E10",
 	      "-e10", "-E10"];
 
+val test10a =
+    tst "test10a" (List.all (fn s => case fromString s of SOME r => isNan r | NONE => false)
+                            ["nan","~nan","-nan","+nan"])
+
+val test10b =
+    tst "test10b" (List.all (fn s => case fromString s of SOME r => not(isNan r) andalso not(isFinite r) andalso not(signBit r) | NONE => false)
+                            ["inf","+inf","infinite","+infinite"])
+
+val test10c =
+    tst "test10c" (List.all (fn s => case fromString s of SOME r => not(isNan r) andalso not(isFinite r) andalso signBit r | NONE => false)
+                            ["-inf","~inf","-infinite","~infinite"])
+
 (* Note: There is some unclarity concerning rounding.  Should 1.45,
 rounded to two significant digits, be "1.4" (nearest even digit) or
 "1.5" (new greater digit) in case of a tie?  PS 1996-05-16 *)
@@ -260,7 +274,7 @@ val test11a =
 
 val test11b =
     tst0 "test11b" ((fmt (StringCvt.FIX (SOME 10000)) 12.3456; "OK")
-		    handle Size => "WRONG" | _ => "EXN")
+		    handle Size => "SIZE" | _ => "WRONG")
 
 fun chkFIX (s,r, s0, s1, s2, s6) =
     tst ("chkFIX."^s)(fmt (StringCvt.FIX (SOME 0)) r = s0
@@ -308,7 +322,7 @@ val test12a =
 
 val test12b =
     tst0 "test12b" ((fmt (StringCvt.SCI (SOME 10000)) 12.3456; "OK")
-		    handle Size => "WRONG" | _ => "EXN")
+		    handle Size => "SIZE" | _ => "WRONG")
 
 fun chkSCI (r, s0, s1, s2, s6) =
     fmt (StringCvt.SCI (SOME 0)) r = s0
@@ -340,8 +354,8 @@ val test13a =
 		    handle Size => "OK" | _ => "WRONG")
 
 val test13b =
-    tst0 "test13b" ((fmt (StringCvt.GEN (SOME 10000)) 12.3456; "OK")
-		    handle Size => "ERR" | _ => "EXN")
+    tst0 "test13b" ((fmt (StringCvt.GEN (SOME 100000)) 12.3456; "OK")
+		    handle Size => "SIZE" | _ => "WRONG")
 
 fun chkGEN (r, s1, s2, s6, s12) =
     fmt (StringCvt.GEN (SOME 1)) r = s1

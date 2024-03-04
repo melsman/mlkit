@@ -2909,7 +2909,7 @@ structure OptLambda : OPT_LAMBDA =
             else NONE
          end
 
-     (* Given a lambda variable lv and a section sequence 'is=i1..in', see if there are any non-select
+     (* Given a lambda variable lv and an index sequence 'is=i1..in', see if there are any non-select
       * occurences of '#in(..(#i1 lv)..)' in 'exp'; if so, the function is not unboxable,
       * wrt. the particular index sequence 'is' in the argument. *)
 
@@ -3149,7 +3149,7 @@ structure OptLambda : OPT_LAMBDA =
                       | NONE => die "restrict_unbox_fix_env.lv not in env") LvarMap.empty lvars
 
      val layout_unbox_fix_env = LvarMap.layoutMap {start="UnboxFixEnv={",eq="->", sep=", ", finish="}"}
-      (PP.LEAF o Lvars.pr_lvar) layout_fix_boxity
+                                                  (PP.LEAF o Lvars.pr_lvar) layout_fix_boxity
 
      fun lookup env lv = LvarMap.lookup env lv
      fun add_lv (lv,res,env) = LvarMap.add(lv,res,env)
