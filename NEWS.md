@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2024-03-04: Various cleanup and fixes. Infinite reals and NaNs
+  may now be parsed as specified in the basis library manual.
+
 ### MLKit version 4.7.8 is released
 
 * mael 2023-12-29: Cleanup and ensurance that mlkit does not write

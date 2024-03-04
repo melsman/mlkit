@@ -2,6 +2,7 @@ Testing structure Real...
 test1    	OK
 test2    	OK
 test3    	OK
+test3a    	OK
 test4a    	OK
 test4b    	OK
 test4c    	OK
@@ -144,6 +145,9 @@ chk2    	OK
 chk2    	OK
 chk2    	OK
 chk2    	OK
+test10a    	OK
+test10b    	OK
+test10c    	OK
 test11a    	OK
 test11b    	OK
 chkFIX.a    	OK

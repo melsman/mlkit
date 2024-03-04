@@ -120,6 +120,19 @@ structure Real : REAL =
             | EXACT => fmt (SCI (SOME 30)) r
       end
 
+    fun getstring str getc source =
+        let val len = size str
+            fun toLower c = if #"A" <= c andalso c <= #"Z" then Char.chr (Char.ord c + 32)
+                            else c
+            fun h i src = if i >= len then SOME src
+                          else case getc src of
+                                   NONE => NONE
+                                 | SOME(c, rest) =>
+                                   if toLower c = String.sub(str,i) then h (i+1) rest
+                                   else NONE
+        in h 0 source
+        end
+
     fun scan getc source =
       let fun decval c = Char.ord c - 48
           fun pow10 0 = 1.0
@@ -174,33 +187,44 @@ structure Real : REAL =
 
           val src = StringCvt.dropl Char.isSpace getc source
           val (manpos, src1) = sign src
-          val (intg,   src2) = getint src1
-          val (decpt,  src3) = pointsym src2
-          val (frac,   src4) = getfrac src3
+      in
+        case getstring "infinite" getc src1 of
+            SOME src' => SOME(if manpos then posInf else negInf,src')
+          | NONE =>
+        case getstring "inf" getc src1 of
+            SOME src' => SOME(if manpos then posInf else negInf,src')
+          | NONE =>
+        case getstring "nan" getc src1 of
+            SOME src' => SOME(posInf - posInf,src')
+          | NONE =>
+            let val (intg,   src2) = getint src1
+                val (decpt,  src3) = pointsym src2
+                val (frac,   src4) = getfrac src3
 
-          fun mkres v rest =
-              SOME(if manpos then v else ~v, rest)
+                fun mkres v rest =
+                    SOME(if manpos then v else ~v, rest)
 
-          fun expopt manval src =
-              let val (esym,   src1) = esym src
-                  val (exppos, src2) = sign src1
-                  val (expv,   rest) = getexp src2
-              in
-                  case (esym, expv) of
-                      (_,     NONE)     => mkres manval src
-                    | (true,  SOME exp) =>
+                fun expopt manval src =
+                    let val (esym,   src1) = esym src
+                        val (exppos, src2) = sign src1
+                        val (expv,   rest) = getexp src2
+                    in
+                      case (esym, expv) of
+                          (_,     NONE)     => mkres manval src
+                        | (true,  SOME exp) =>
                           if exppos then mkres (manval * pow10 exp) rest
                           else mkres (manval / pow10 exp) rest
-                    | _                 => NONE
-              end
-      in
-          case (intg,     decpt, frac) of
-              (NONE,      true,  SOME fval) => expopt fval src4
-            | (SOME ival, false, SOME _   ) => NONE
-            | (SOME ival, true,  NONE     ) => mkres ival src2
-            | (SOME ival, false, NONE     ) => expopt ival src2
-            | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
-            | _                             => NONE
+                        | _                 => NONE
+                    end
+            in
+              case (intg,     decpt, frac) of
+                  (NONE,      true,  SOME fval) => expopt fval src4
+                | (SOME ival, false, SOME _   ) => NONE
+                | (SOME ival, true,  NONE     ) => mkres ival src2
+                | (SOME ival, false, NONE     ) => expopt ival src2
+                | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
+                | _                             => NONE
+            end
       end
 
     fun fromString s = StringCvt.scanString scan s
@@ -230,9 +254,9 @@ structure Real : REAL =
         end
 
     fun sign i =
-        if i > 0.0 then 1
+        if isNan i then raise Domain
+        else if i > 0.0 then 1
         else if i < 0.0 then ~1
-        else if isNan i then raise Domain
         else 0
 
     fun compare (x, y: real) =
