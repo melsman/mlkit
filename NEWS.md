@@ -1,7 +1,9 @@
 ## MLKit NEWS
 
-* mael 2024-03-04: Various cleanup and fixes. Infinite reals and NaNs
-  may now be parsed as specified in the basis library manual.
+* mael 2024-03-04: Fix issue with Char.isCntrl (issue #162).
+
+* mael 2024-03-04: Cleanup and fixes. Infinite reals and NaNs may now
+  be parsed as specified in the Basis Bibrary manual (issue #163).
 
 ### MLKit version 4.7.8 is released
 
