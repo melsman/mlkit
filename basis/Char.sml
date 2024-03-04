@@ -47,25 +47,27 @@ struct (* depends on StrBase *)
 
   fun notContains s c = not(contains s c)
 
-  fun isLower c  = #"a" <= c andalso c <= #"z"
-  fun isUpper c  = #"A" <= c andalso c <= #"Z"
-  fun isDigit c  = #"0" <= c andalso c <= #"9"
-  fun isAlpha c  = isLower c orelse isUpper c
-  fun isHexDigit c = #"0" <= c andalso c <= #"9"
-	orelse #"a" <= c andalso c <= #"f"
-	orelse #"A" <= c andalso c <= #"F"
-  fun isAlphaNum c = isAlpha c orelse isDigit c
-  fun isPrint c  = c >= #" " andalso c < #"\127"
-  fun isSpace c  = c = #" " orelse #"\009" <= c andalso c <= #"\013"
-  fun isGraph c  = isPrint c andalso not (isSpace c)
-  fun isPunct c  = isGraph c andalso not (isAlphaNum c)
   fun isAscii c  = c <= #"\127"
-  fun isCntrl c  = c < #" " orelse c >= #"\127"
 
-  fun toLower c = if #"A" <= c andalso c <= #"Z" then unsafe_chr(ord c + 32)
-		    else c
-  fun toUpper c = if #"a" <= c andalso c <= #"z" then unsafe_chr(ord c - 32)
-		    else c
+  fun isUpper c  = #"A" <= c andalso c <= #"Z"
+  fun isLower c  = #"a" <= c andalso c <= #"z"
+  fun isDigit c  = #"0" <= c andalso c <= #"9"
+  fun isAlpha c  = isUpper c orelse isLower c
+  fun isAlphaNum c = isAlpha c orelse isDigit c
+  fun isHexDigit c = isDigit c
+	             orelse #"a" <= c andalso c <= #"f"
+	             orelse #"A" <= c andalso c <= #"F"
+  fun isGraph c  = #"!" <= c andalso c <= #"~"
+  fun isPrint c  = isGraph c orelse c = #" "
+  fun isPunct c  = isGraph c andalso not (isAlphaNum c)
+  fun isCntrl c  = isAscii c andalso not (isPrint c)
+  fun isSpace c  = #"\t" <= c andalso c <= #"\r"
+                   orelse c = #" "
+
+  fun toLower c = if isUpper c then unsafe_chr(ord c + 32)
+		  else c
+  fun toUpper c = if isLower c then unsafe_chr(ord c - 32)
+		  else c
 
   fun toString c = StrBase.toMLescape c
 
