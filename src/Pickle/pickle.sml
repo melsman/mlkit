@@ -29,6 +29,8 @@ structure Pickle :> PICKLE = (* was : *)
 
     datatype 'a cache = NoCache | Cached of 'a | Caching
 
+    datatype 'a vcache = NoCache_v | Cached_v of 'a vector | Caching_v
+
     infix ==
     fun a == b : bool = false
 (*
@@ -653,7 +655,7 @@ structure Pickle :> PICKLE = (* was : *)
                                 | NONE => Tdata(name,length fs)
             val hash_data = newHashCount()
             val res : 'a pu option ref = ref NONE
-            val ps : 'a pu Vector.vector cache ref = ref NoCache
+            val ps : 'a pu vcache ref = ref NoCache_v
             val fs_sz = length fs
             fun p () =
                 if fs_sz = 1 then fn x => pickler (getPUPI 0) x
@@ -705,14 +707,14 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and getPUPI (i:int) =
                 case !ps of
-                    NoCache => let val _ = ps := Caching
-                                   val ps0 = map (fn f => f (getPUP())) fs
-                                   val psv = Vector.fromList ps0
-                               in ps := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen.Caching: " ^ name)
+                    NoCache_v => let val _ = ps := Caching_v
+                                     val ps0 = map (fn f => f (getPUP())) fs
+                                     val psv = Vector.fromList ps0
+                                 in ps := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen.Caching: " ^ name)
             and h v =
                 hashComb (fn p =>
                           let val i = toInt v
@@ -737,8 +739,8 @@ structure Pickle :> PICKLE = (* was : *)
             val bHashData = newHashCount()
             val aRes : 'a pu option ref = ref NONE
             val bRes : 'b pu option ref = ref NONE
-            val aPs : 'a pu Vector.vector cache ref = ref NoCache
-            val bPs : 'b pu Vector.vector cache ref = ref NoCache
+            val aPs : 'a pu vcache ref = ref NoCache_v
+            val bPs : 'b pu vcache ref = ref NoCache_v
             fun aP v s =
               let val i = aToInt v
                   val s = S.outcw (Word.fromInt i, s)
@@ -769,14 +771,14 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and aGetPUPI (i:int) =
                 case !aPs of
-                    NoCache => let val _ = aPs := Caching
-                                   val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) afs
-                                   val psv = Vector.fromList ps0
-                               in aPs := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen2.Caching.a: " ^ aname)
+                    NoCache_v => let val _ = aPs := Caching_v
+                                     val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) afs
+                                     val psv = Vector.fromList ps0
+                                 in aPs := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen2.Caching.a: " ^ aname)
             and bP v s =
               let val i = bToInt v
                   val s = S.outcw (Word.fromInt i, s)
@@ -807,14 +809,14 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and bGetPUPI (i:int) =
                 case !bPs of
-                    NoCache => let val _ = bPs := Caching
-                                   val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) bfs
-                                   val psv = Vector.fromList ps0
-                               in bPs := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen2.Caching.b: " ^ bname)
+                    NoCache_v => let val _ = bPs := Caching_v
+                                     val ps0 = map (fn f => f (aGetPUP(),bGetPUP())) bfs
+                                     val psv = Vector.fromList ps0
+                                 in bPs := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen2.Caching.b: " ^ bname)
             and aH v =
                 hashComb (fn p =>
                           let val i = aToInt v
@@ -847,9 +849,9 @@ structure Pickle :> PICKLE = (* was : *)
             val aRes : 'a pu option ref = ref NONE
             val bRes : 'b pu option ref = ref NONE
             val cRes : 'c pu option ref = ref NONE
-            val aPs : 'a pu Vector.vector cache ref = ref NoCache
-            val bPs : 'b pu Vector.vector cache ref = ref NoCache
-            val cPs : 'c pu Vector.vector cache ref = ref NoCache
+            val aPs : 'a pu vcache ref = ref NoCache_v
+            val bPs : 'b pu vcache ref = ref NoCache_v
+            val cPs : 'c pu vcache ref = ref NoCache_v
             fun aP v s =
               let val i = aToInt v
                   val s = S.outcw (Word.fromInt i, s)
@@ -878,15 +880,15 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and aGetPUPI (i:int) =
                 case !aPs of
-                    NoCache => let val _ = aPs := Caching
-                                   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
-                                                             cGetPUP())) afs
-                                   val psv = Vector.fromList ps0
-                               in aPs := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen3.Caching.a: " ^ aname)
+                    NoCache_v => let val _ = aPs := Caching_v
+                                     val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+                                                               cGetPUP())) afs
+                                     val psv = Vector.fromList ps0
+                                 in aPs := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen3.Caching.a: " ^ aname)
             and bP v s =
               let val i = bToInt v
                   val s = S.outcw (Word.fromInt i, s)
@@ -915,15 +917,15 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and bGetPUPI (i:int) =
                 case !bPs of
-                    NoCache => let val _ = bPs := Caching
-                                   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
-                                                             cGetPUP())) bfs
-                                   val psv = Vector.fromList ps0
-                               in bPs := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen3.Caching.b: " ^ bname)
+                    NoCache_v => let val _ = bPs := Caching_v
+                                     val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+                                                               cGetPUP())) bfs
+                                     val psv = Vector.fromList ps0
+                                 in bPs := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen3.Caching.b: " ^ bname)
             and cP v s =
               let val i = cToInt v
                   val s = S.outcw (Word.fromInt i, s)
@@ -952,15 +954,15 @@ structure Pickle :> PICKLE = (* was : *)
                   | SOME pup => pup
             and cGetPUPI (i:int) =
                 case !cPs of
-                    NoCache => let val _ = cPs := Caching
-                                   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
-                                                             cGetPUP())) cfs
-                                   val psv = Vector.fromList ps0
-                               in cPs := Cached psv
-                                ; Vector.sub(psv,i)
-                               end
-                  | Cached psv => Vector.sub(psv,i)
-                  | Caching => fail ("dataGen3.Caching.c: " ^ cname)
+                    NoCache_v => let val _ = cPs := Caching_v
+                                     val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+                                                               cGetPUP())) cfs
+                                     val psv = Vector.fromList ps0
+                                 in cPs := Cached_v psv
+                                  ; Vector.sub(psv,i)
+                                 end
+                  | Cached_v psv => Vector.sub(psv,i)
+                  | Caching_v => fail ("dataGen3.Caching.c: " ^ cname)
             and aH v =
                 hashComb (fn p =>
                           let val i = aToInt v

@@ -62,8 +62,8 @@ struct
 
   datatype ClosExp =
       VAR             of lvar
-    | RVAR            of place
-    | DROPPED_RVAR    of place
+    | RVAR            of {rho:place}
+    | DROPPED_RVAR    of {rho:place}
     | FETCH           of label
     | STORE           of ClosExp * label
     | INTEGER         of {value: IntInf.int, precision: int}
@@ -72,7 +72,7 @@ struct
     | REAL            of string
     | F64             of string
     | PASS_PTR_TO_MEM of sma * int
-    | PASS_PTR_TO_RHO of sma
+    | PASS_PTR_TO_RHO of {sma:sma}
     | UB_RECORD       of ClosExp list
     | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
@@ -89,7 +89,7 @@ struct
                           clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
-    | RAISE           of ClosExp
+    | RAISE           of {exp: ClosExp}
     | HANDLE          of ClosExp * ClosExp
     | SWITCH_I        of {switch: IntInf.int Switch, precision: int}
     | SWITCH_W        of {switch: IntInf.int Switch, precision: int}
@@ -99,10 +99,10 @@ struct
     | CON0            of {con: con, con_kind: con_kind, aux_regions: sma list, alloc: sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: sma, arg: ClosExp}
     | DECON           of {con: con, con_kind: con_kind, con_exp: ClosExp}
-    | DEREF           of ClosExp
+    | DEREF           of {exp: ClosExp}
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
-    | DROP            of ClosExp
+    | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
     | CCALL           of {name: string,
@@ -190,8 +190,8 @@ struct
           end
 
     fun layout_ce(VAR lv)             = LEAF(Lvars.pr_lvar lv)
-      | layout_ce(RVAR place)         = Effect.layout_effect place
-      | layout_ce(DROPPED_RVAR place) = LEAF("D" ^ flatten1(Effect.layout_effect place))
+      | layout_ce(RVAR {rho})         = Effect.layout_effect rho
+      | layout_ce(DROPPED_RVAR {rho}) = LEAF("D" ^ flatten1(Effect.layout_effect rho))
       | layout_ce(FETCH lab)          = LEAF("fetch(" ^ Labels.pr_label lab ^ ")")
       | layout_ce(STORE(ce,lab))      = LEAF("store(" ^ flatten1(layout_ce ce) ^ "," ^ Labels.pr_label lab ^ ")")
       | layout_ce(INTEGER {value,precision}) = LEAF(IntInf.toString value)
@@ -200,7 +200,7 @@ struct
       | layout_ce(REAL s)             = LEAF(s)
       | layout_ce(F64 s)              = LEAF(s ^ "f64")
       | layout_ce(PASS_PTR_TO_MEM(sma,i)) = LEAF("MEM(" ^ (flatten1(pr_sma sma)) ^ "," ^ Int.toString i ^ ")")
-      | layout_ce(PASS_PTR_TO_RHO(sma))   = LEAF("PTR(" ^ (flatten1(pr_sma sma)) ^ ")")
+      | layout_ce(PASS_PTR_TO_RHO {sma}) = LEAF("PTR(" ^ (flatten1(pr_sma sma)) ^ ")")
       | layout_ce(UB_RECORD ces)      = HNODE{start="<",
                                               finish=">",
                                               childsep=RIGHT ",",
@@ -327,7 +327,7 @@ struct
                     children=[bindings,body],
                     childsep=LEFT (" in ")}
           end
-      | layout_ce(RAISE ce) = PP.LEAF("raise " ^ (flatten1(layout_ce ce)))
+      | layout_ce(RAISE {exp=ce}) = PP.LEAF("raise " ^ (flatten1(layout_ce ce)))
       | layout_ce(HANDLE(ce1,ce2)) = NODE{start="",finish="",childsep=RIGHT " handle ",indent=1,
                                           children=[layout_ce ce1,layout_ce ce2]}
       | layout_ce(SWITCH_I {switch,precision}) = layout_switch layout_ce (IntInf.toString) switch
@@ -349,13 +349,13 @@ struct
                 children=[layout_ce arg]}
       | layout_ce(DECON{con,con_kind,con_exp}) =
           LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ (flatten1(layout_ce con_exp)) ^ ")")
-      | layout_ce(DEREF ce) = LEAF("!" ^ (flatten1(layout_ce ce)))
+      | layout_ce(DEREF {exp=ce}) = LEAF("!" ^ (flatten1(layout_ce ce)))
       | layout_ce(REF(sma,ce)) = LEAF("ref " ^ (flatten1(layout_ce ce)) ^ " " ^ (flatten1(pr_sma sma)))
       | layout_ce(ASSIGN(sma,ce1,ce2)) = HNODE{start="",
                                                finish="",
                                                childsep=RIGHT ":=",
                                                children=[layout_ce ce1,layout_ce ce2]}
-      | layout_ce(DROP ce) = layout_ce ce
+      | layout_ce(DROP {exp=ce}) = layout_ce ce
 (*
           PP.LEAF("drop " ^ (flatten1(layout_ce ce)))
 *)
@@ -1246,8 +1246,8 @@ struct
     fun lookup_rho env place (f : unit -> string) =
         case CE.lookupRhoOpt env place of
             SOME(CE.LVAR lv') => (VAR lv',NONE_SE)
-          | SOME(CE.RVAR place) => (RVAR place, NONE_SE)
-          | SOME(CE.DROPPED_RVAR place) => (DROPPED_RVAR place, NONE_SE)
+          | SOME(CE.RVAR place) => (RVAR {rho=place}, NONE_SE)
+          | SOME(CE.DROPPED_RVAR place) => (DROPPED_RVAR {rho=place}, NONE_SE)
           | SOME(CE.SELECT(lv',i)) =>
             let val lv'' = fresh_lvar("lookup_rho")
             in (VAR lv'',SELECT_SE(lv'',i,lv'))
@@ -1569,7 +1569,7 @@ struct
                   | _ => die (s ^ "("^pr()^
                               "): expecting only non-dropped rvars; sma=" ^ pp_sma sma)
 *)
-        in PASS_PTR_TO_RHO sma
+        in PASS_PTR_TO_RHO {sma=sma}
         end
 
     fun unTR (MulExp.TR a) = a
@@ -1919,7 +1919,7 @@ struct
                let
                  val (ce,se) = ccTrip tr env lab cur_rv
                in
-                 (insert_se(RAISE ce,se),NONE_SE)
+                 (insert_se(RAISE {exp=ce},se),NONE_SE)
                end
            | MulExp.HANDLE(tr1,tr2) => (HANDLE (insert_se(ccTrip tr1 env lab cur_rv),
                                                 insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
@@ -2192,7 +2192,7 @@ struct
                let
                  val (ce,se) = ccTrip tr env lab cur_rv
                in
-                 (insert_se(DEREF ce,se),NONE_SE)
+                 (insert_se(DEREF {exp=ce},se),NONE_SE)
                end
            | MulExp.ASSIGN(tr1,tr2) =>
                let
@@ -2207,7 +2207,7 @@ struct
                let
                  val (ce,se) = ccTrip tr env lab cur_rv
                in
-                 (insert_se(DROP ce,se),NONE_SE)
+                 (insert_se(DROP {exp=ce},se),NONE_SE)
                end
            | MulExp.EQUAL({mu_of_arg1,mu_of_arg2},tr1,tr2) =>
                let

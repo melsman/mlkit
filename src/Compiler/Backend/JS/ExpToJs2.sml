@@ -403,6 +403,7 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__greatereq_word31" => J.Prim(">=", [e1,e2])
     | "__greater_word31" => J.Prim(">", [e1,e2])
     | "__equal_word31" => J.Prim("==", [e1,e2])
+    | "__equal_ptr" => J.Prim("==", [e1,e2])
 
     | "__less_real" => J.Prim("<", [e1,e2])
     | "__lesseq_real" => J.Prim("<=", [e1,e2])

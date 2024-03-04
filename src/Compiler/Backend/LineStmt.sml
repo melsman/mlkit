@@ -89,8 +89,19 @@ struct
       V of lvar
     | FV of lvar * label * label
 
+  datatype 'aty sma =
+      ATTOP_LI of 'aty * pp
+    | ATTOP_LF of 'aty * pp
+    | ATTOP_FI of 'aty * pp
+    | ATTOP_FF of 'aty * pp
+    | ATBOT_LI of 'aty * pp
+    | ATBOT_LF of 'aty * pp
+    | SAT_FI   of 'aty * pp
+    | SAT_FF   of 'aty * pp
+    | IGNORE
+
   datatype 'aty SimpleExp =
-      ATOM            of 'aty
+      ATOM            of {aty:'aty}
     | LOAD            of label
     | STORE           of 'aty * label
     | STRING          of string
@@ -106,12 +117,12 @@ struct
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
     | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
-    | DEREF           of 'aty
+    | DEREF           of {aty:'aty}
     | REF             of 'aty sma * 'aty
     | ASSIGNREF       of 'aty sma * 'aty * 'aty
     | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
                                                (* The boolean is true if the region has an untagged type *)
-    | PASS_PTR_TO_RHO of 'aty sma              (* Used only by CCALL *)
+    | PASS_PTR_TO_RHO of {sma:'aty sma}        (* Used only by CCALL *)
 
   and ('sty,'offset,'aty) LineStmt =
       ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}
@@ -148,17 +159,6 @@ struct
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
-
-  and 'aty sma =
-      ATTOP_LI of 'aty * pp
-    | ATTOP_LF of 'aty * pp
-    | ATTOP_FI of 'aty * pp
-    | ATTOP_FF of 'aty * pp
-    | ATBOT_LI of 'aty * pp
-    | ATBOT_LF of 'aty * pp
-    | SAT_FI   of 'aty * pp
-    | SAT_FF   of 'aty * pp
-    | IGNORE
 
   datatype ('sty,'offset,'aty) TopDecl =
       FUN of label * cc * ('sty,'offset,'aty) LineStmt list
@@ -268,7 +268,7 @@ struct
 
       fun layout_se pr_aty se =
         (case se of
-           ATOM aty => layout_aty pr_aty aty
+           ATOM {aty} => layout_aty pr_aty aty
          | LOAD lab => LEAF("load(" ^ Labels.pr_label lab ^ ")")
          | STORE(aty,lab) => LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
          | STRING s  => LEAF("\"" ^ String.toString s ^ "\"")
@@ -314,7 +314,7 @@ struct
                    children=[layout_aty pr_aty arg]}
          | DECON{con,con_kind,con_aty} =>
              LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ pr_aty con_aty ^ ")")
-         | DEREF(aty) => LEAF("!" ^ pr_aty aty)
+         | DEREF {aty} => LEAF("!" ^ pr_aty aty)
          | REF(sma,aty) => LEAF("ref " ^ pr_aty aty ^ " " ^ pr_sma pr_aty sma)
          | ASSIGNREF(sma,aty1,aty2) => HNODE{start="",
                                              finish="",
@@ -322,7 +322,7 @@ struct
                                              children=[layout_aty pr_aty aty1,layout_aty pr_aty aty2]}
          | PASS_PTR_TO_MEM(sma,i,b) => LEAF("MEM(" ^ pr_sma pr_aty sma ^ "," ^ Int.toString i ^ ","
                                             ^ Bool.toString b ^ ")")
-         | PASS_PTR_TO_RHO(sma) => LEAF("PTR(" ^ pr_sma pr_aty sma ^ ")"))
+         | PASS_PTR_TO_RHO {sma} => LEAF("PTR(" ^ pr_sma pr_aty sma ^ ")"))
 
       and layout_ls pr_sty pr_offset pr_aty simplify ls =
         let
@@ -585,8 +585,8 @@ struct
     fun binder_to_binder (place,phsize) = ((place,phsize),())  (* for now, offset is unit *)
 
     fun ce_to_atom (ClosExp.VAR lv) = VAR lv
-      | ce_to_atom (ClosExp.RVAR place) = RVAR place
-      | ce_to_atom (ClosExp.DROPPED_RVAR place) = DROPPED_RVAR place
+      | ce_to_atom (ClosExp.RVAR {rho=place}) = RVAR place
+      | ce_to_atom (ClosExp.DROPPED_RVAR {rho=place}) = DROPPED_RVAR place
       | ce_to_atom (ClosExp.INTEGER i) = INTEGER i
       | ce_to_atom (ClosExp.WORD i) = WORD i
       | ce_to_atom (ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag,maybeuntag}) = UNIT
@@ -643,25 +643,25 @@ struct
 
     fun L_ce (ce,lvars_res,acc) =
       case ce
-        of ClosExp.VAR lv => maybe_assign (lvars_res, ATOM(VAR lv), acc)
-         | ClosExp.RVAR place => die "RVAR not implemented"
-         | ClosExp.DROPPED_RVAR place => die "DROPPED_RVAR not implemented"
+        of ClosExp.VAR lv => maybe_assign (lvars_res, ATOM {aty=VAR lv}, acc)
+         | ClosExp.RVAR _ => die "RVAR not implemented"
+         | ClosExp.DROPPED_RVAR _ => die "DROPPED_RVAR not implemented"
          | ClosExp.FETCH lab => maybe_assign (lvars_res, LOAD lab, acc)
          | ClosExp.STORE(ce,lab) => ASSIGN{pat=UNIT,bind=STORE(ce_to_atom ce,lab)}::acc
-         | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM(INTEGER i), acc)
-         | ClosExp.WORD i => maybe_assign (lvars_res, ATOM(WORD i), acc)
+         | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM {aty=INTEGER i}, acc)
+         | ClosExp.WORD i => maybe_assign (lvars_res, ATOM {aty=WORD i}, acc)
          | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
          | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
          | ClosExp.F64 s => maybe_assign (lvars_res, F64 s, acc)
          | ClosExp.PASS_PTR_TO_MEM(sma,i) =>
             let fun untagged_region_type sma =
                    case ce_of_sma sma of
-                       SOME (ClosExp.RVAR rho) => is_region_pair rho
+                       SOME (ClosExp.RVAR {rho}) => is_region_pair rho
                      | _ => false
                 val b = untagged_region_type sma
             in maybe_assign (lvars_res, PASS_PTR_TO_MEM(sma_to_sma sma,i,b), acc)
             end
-         | ClosExp.PASS_PTR_TO_RHO sma => maybe_assign (lvars_res, PASS_PTR_TO_RHO(sma_to_sma sma), acc)
+         | ClosExp.PASS_PTR_TO_RHO {sma} => maybe_assign (lvars_res, PASS_PTR_TO_RHO {sma=sma_to_sma sma}, acc)
          | ClosExp.UB_RECORD ces => List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
          | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),f64_vars,alloc} =>
           maybe_assign (lvars_res, CLOS_RECORD{label=label,
@@ -706,7 +706,7 @@ struct
           L_ce(bind,[],L_ce(scope,lvars_res,acc))
          | ClosExp.LET{pat,bind,scope} =>
           SCOPE{pat=map mk_sty pat,scope=L_ce(bind,pat,L_ce(scope,lvars_res,[]))}::acc
-         | ClosExp.RAISE ce => RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
+         | ClosExp.RAISE {exp=ce} => RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
          | ClosExp.HANDLE(ce1,ce2) =>
           let
             val aty = case lvars_res
@@ -738,17 +738,17 @@ struct
          | ClosExp.DECON{con,con_kind,con_exp} =>
           maybe_assign (lvars_res, DECON{con=con,con_kind=con_kind_to_con_kind con_kind,
                                          con_aty=ce_to_atom con_exp}, acc)
-         | ClosExp.DEREF ce =>
-          maybe_assign (lvars_res, DEREF(ce_to_atom ce), acc)
+         | ClosExp.DEREF {exp=ce} =>
+          maybe_assign (lvars_res, DEREF {aty=ce_to_atom ce}, acc)
          | ClosExp.REF(sma,ce) =>
           maybe_assign (lvars_res, REF(sma_to_sma sma,ce_to_atom ce), acc)
          | ClosExp.ASSIGN(sma,ce1,ce2) =>
           maybe_assign (lvars_res, ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
-         | ClosExp.DROP(ce) => L_ce(ce,lvars_res,acc)
+         | ClosExp.DROP {exp=ce} => L_ce(ce,lvars_res,acc)
          | ClosExp.RESET_REGIONS{force,regions_for_resetting} =>
           (* We must have RESET_REGIONS return unit. *)
           RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
-          maybe_assign (lvars_res, ATOM UNIT, acc)
+          maybe_assign (lvars_res, ATOM {aty=UNIT}, acc)
          | ClosExp.CCALL{name,rhos_for_result,args} =>
            (case PrimName.lookup_prim name of
                 SOME pname => PRIM{name=pname,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
@@ -770,7 +770,7 @@ struct
             end)
          | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} =>
             EXPORT{name=name,clos_lab=clos_lab,arg=(ce_to_atom ce,ft1,ft2)}::
-            maybe_assign (lvars_res, ATOM UNIT, acc)
+            maybe_assign (lvars_res, ATOM {aty=UNIT}, acc)
          | ClosExp.FRAME{declared_lvars,declared_excons} => acc
 
     fun L_top_decl (ClosExp.FUN(lab,cc,ce)) =
@@ -857,7 +857,7 @@ struct
 
   fun get_phreg_smas (smas,acc) = foldr (fn (sma,acc) => get_phreg_sma(sma,acc)) acc smas
 
-  fun get_phreg_se (ATOM atom,acc) = get_phreg_atom(atom,acc)
+  fun get_phreg_se (ATOM {aty=atom},acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (LOAD lab,acc) = acc
     | get_phreg_se (STORE(atom,lab),acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (STRING str,acc) = acc
@@ -873,11 +873,11 @@ struct
     | get_phreg_se (CON0{con,con_kind,aux_regions,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(aux_regions,acc))
     | get_phreg_se (CON1{con,con_kind,alloc,arg},acc) = get_phreg_sma(alloc,get_phreg_atom(arg,acc))
     | get_phreg_se (DECON{con,con_kind,con_aty},acc) = get_phreg_atom(con_aty,acc)
-    | get_phreg_se (DEREF atom,acc) = get_phreg_atom(atom,acc)
+    | get_phreg_se (DEREF {aty=atom},acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (REF(sma,atom),acc) = get_phreg_sma(sma,get_phreg_atom(atom,acc))
     | get_phreg_se (ASSIGNREF(sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
     | get_phreg_se (PASS_PTR_TO_MEM(sma,i,_),acc) = get_phreg_sma(sma,acc)
-    | get_phreg_se (PASS_PTR_TO_RHO sma,acc) = get_phreg_sma(sma,acc)
+    | get_phreg_se (PASS_PTR_TO_RHO {sma},acc) = get_phreg_sma(sma,acc)
 
   fun get_phreg_in_fun {opr,args,reg_args,fargs,clos,res,bv} = (* Operand is always a label *)
       get_phreg_atoms(args,get_phreg_atoms(reg_args,get_phreg_atoms(fargs,get_phreg_atom_opt(clos,get_phreg_atoms(res,[])))))
@@ -984,7 +984,7 @@ struct
 
     fun use_var_se' get_var_sma get_var_smas smash_free arg =
       case arg of
-        (ATOM atom,acc) => get_var_atom(atom,acc)
+        (ATOM {aty=atom},acc) => get_var_atom(atom,acc)
       | (LOAD lab,acc) => acc
       | (STORE(atom,lab),acc) => get_var_atom(atom,acc)
       | (STRING str,acc) => acc
@@ -1000,11 +1000,11 @@ struct
       | (CON0{con,con_kind,aux_regions,alloc},acc) => get_var_sma(alloc, get_var_smas(aux_regions,acc))
       | (CON1{con,con_kind,alloc,arg},acc) => get_var_sma(alloc,get_var_atom(arg,acc))
       | (DECON{con,con_kind,con_aty},acc) => get_var_atom(con_aty,acc)
-      | (DEREF atom,acc) => get_var_atom(atom,acc)
+      | (DEREF {aty=atom},acc) => get_var_atom(atom,acc)
       | (REF(sma,atom),acc) => get_var_sma(sma,get_var_atom(atom,acc))
       | (ASSIGNREF(sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
       | (PASS_PTR_TO_MEM(sma,i,_),acc) => get_var_sma(sma,acc)
-      | (PASS_PTR_TO_RHO sma,acc) => get_var_sma(sma,acc)
+      | (PASS_PTR_TO_RHO {sma},acc) => get_var_sma(sma,acc)
 
     fun filter_out_ubf64_lvars lvs =
         List.filter (not o Lvars.get_ubf64) lvs
@@ -1134,7 +1134,7 @@ struct
            res=map_atys res,
            bv=bv}
 
-        fun map_se (ATOM aty) = ATOM (map_aty aty)
+        fun map_se (ATOM {aty}) = ATOM {aty=map_aty aty}
           | map_se (LOAD label) = LOAD label
           | map_se (STORE(aty,label)) = STORE(map_aty aty,label)
           | map_se (STRING str) = STRING str
@@ -1157,11 +1157,11 @@ struct
           | map_se (CON0{con,con_kind,aux_regions,alloc}) = CON0{con=con,con_kind=con_kind,aux_regions=map_smas aux_regions,alloc=map_sma alloc}
           | map_se (CON1{con,con_kind,alloc,arg}) = CON1{con=con,con_kind=con_kind,alloc=map_sma alloc,arg=map_aty arg}
           | map_se (DECON{con,con_kind,con_aty}) = DECON{con=con,con_kind=con_kind,con_aty=map_aty con_aty}
-          | map_se (DEREF aty) = DEREF(map_aty aty)
+          | map_se (DEREF {aty}) = DEREF {aty=map_aty aty}
           | map_se (REF(sma,aty)) = REF(map_sma sma,map_aty aty)
           | map_se (ASSIGNREF(sma,aty1,aty2)) = ASSIGNREF(map_sma sma,map_aty aty1,map_aty aty2)
           | map_se (PASS_PTR_TO_MEM(sma,i,b)) = PASS_PTR_TO_MEM(map_sma sma,i,b)
-          | map_se (PASS_PTR_TO_RHO(sma)) = PASS_PTR_TO_RHO(map_sma sma)
+          | map_se (PASS_PTR_TO_RHO {sma}) = PASS_PTR_TO_RHO {sma=map_sma sma}
 
         fun map_lss' ([]) = []
           | map_lss' (ASSIGN{pat,bind}::lss) = ASSIGN{pat=map_aty pat,bind=map_se bind} :: map_lss' lss

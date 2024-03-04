@@ -485,7 +485,7 @@ structure OptLambda : OPT_LAMBDA =
                  length tvs = length tvs'
                  andalso
                  let
-                     val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs
+                     val tv_taus = map (fn _ => TYVARtype {tv=fresh_tyvar()}) tvs
                      val S = mk_subst (fn () => "eq_lamb01.LET") (tvs,tv_taus)
                      val S' = mk_subst (fn () => "eq_lamb02.LET") (tvs',tv_taus)
                      val t = on_Type S t
@@ -926,10 +926,10 @@ structure OptLambda : OPT_LAMBDA =
        * Compile time values
        * ----------------------------------------------------------------- *)
 
-      datatype cv = CVAR of LambdaExp
+      datatype cv = CVAR of {exp:LambdaExp}
                   | CRECORD of cv list
                   | CUNKNOWN
-                  | CCONST of LambdaExp
+                  | CCONST of {exp:LambdaExp}
                   | CFN of {lexp: LambdaExp, large:bool}                             (* only to appear in env *)
                   | CFIX of {N:int option, Type: Type, bind: LambdaExp, large: bool} (* only to appear in env *)
                   | CBLKSZ of IntInf.int                                             (* statically sized block (e.g., array or string) *)
@@ -939,10 +939,10 @@ structure OptLambda : OPT_LAMBDA =
 
       fun eq_cv (cv1,cv2) =
         case (cv1,cv2)
-          of (CVAR e1,CVAR e2) => eq_lamb(e1,e2)
+          of (CVAR {exp=e1},CVAR {exp=e2}) => eq_lamb(e1,e2)
            | (CRECORD cvs1, CRECORD cvs2) => eq_cvs(cvs1,cvs2)
            | (CUNKNOWN, CUNKNOWN) => true
-           | (CCONST e1, CCONST e2) => eq_lamb(e1,e2)
+           | (CCONST {exp=e1}, CCONST {exp=e2}) => eq_lamb(e1,e2)
            | (CFN{lexp,large}, CFN{lexp=lexp2,large=large2}) => large = large2 andalso eq_lamb(lexp,lexp2)
            | (CFIX{N,bind,large,Type}, CFIX{N=N2,bind=bind2,large=large2,Type=Type2}) =>
              N=N2 andalso large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
@@ -958,13 +958,13 @@ structure OptLambda : OPT_LAMBDA =
 
       fun closed_small_cv (lvars_free_ok,excons_free_ok,lvar,tyvars,cv) : bool =
         case cv
-          of CVAR e1 => closed (lvars_free_ok, excons_free_ok,
-                                FN{pat=[(lvar,unitType)],body=e1})
+          of CVAR {exp=e1} => closed (lvars_free_ok, excons_free_ok,
+                                      FN{pat=[(lvar,unitType)],body=e1})
            | CRECORD cvs => (List.foldl (fn (cv,acc) => acc
                                          andalso closed_small_cv(lvars_free_ok, excons_free_ok,lvar,tyvars,cv))
                              true cvs)
            | CUNKNOWN => true
-           | CCONST e1 => true
+           | CCONST _ => true
            | CFN{lexp,large} => (not large andalso
                                  closed (lvars_free_ok, excons_free_ok,
                                          FN{pat=[(lvar,unitType)],body=lexp}))
@@ -986,7 +986,7 @@ structure OptLambda : OPT_LAMBDA =
        * used when compiletimevalues are exported out of scope.
        *)
       fun remove lvar (CRECORD l) = CRECORD(map (remove lvar) l)
-        | remove lvar (cv as (CVAR (VAR{lvar =lvar',...}))) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cv
+        | remove lvar (cv as (CVAR {exp=VAR{lvar =lvar',...}})) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cv
         | remove _ (cv as (CCONST _)) = cv
         | remove _ (cv as (CBLKSZ _)) = cv
         | remove _ (cv as (CBLK2SZ _)) = cv
@@ -1001,10 +1001,10 @@ structure OptLambda : OPT_LAMBDA =
         | pp_opti (SOME i) = IntInf.toString i
 
       (* pretty printing *)
-      fun show_cv (CVAR (VAR x)) = " cvar " ^ Lvars.pr_lvar (#lvar x)
+      fun show_cv (CVAR {exp=VAR x}) = " cvar " ^ Lvars.pr_lvar (#lvar x)
         | show_cv (CVAR _) = "<not possible>"
         | show_cv (CRECORD l) = concat ("[" :: (map show_cv l @ ["]"]))
-        | show_cv (CCONST l) = "const"
+        | show_cv (CCONST _) = "const"
         | show_cv (CFN {large=true,...}) = "(large fn)"
         | show_cv (CFN {large=false,...}) = "(small fn)"
         | show_cv (CFIX {large=true,...}) = "(large fix)"
@@ -1017,7 +1017,7 @@ structure OptLambda : OPT_LAMBDA =
 
       (* substitution *)
       fun on_cv S cv =
-        let fun on (CVAR lamb) = CVAR (on_LambdaExp S lamb)
+        let fun on (CVAR {exp=lamb}) = CVAR {exp=on_LambdaExp S lamb}
               | on (cv as CCONST _) = cv
               | on (CRECORD cvs) = CRECORD (map on cvs)
               | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
@@ -1032,17 +1032,17 @@ structure OptLambda : OPT_LAMBDA =
 
       fun eq_cv_scheme ((tvs1,cv1),(tvs2,cv2)) =
         length tvs1 = length tvs2 andalso
-        let val S = mk_subst (fn () => die "eq_cv_scheme") (tvs1, map TYVARtype tvs2)
+        let val S = mk_subst (fn () => die "eq_cv_scheme") (tvs1, map (fn tv => TYVARtype {tv=tv}) tvs2)
         in eq_cv(on_cv S cv1,cv2)
         end
 
       (* least upper bound *)
-      fun lub (cv as CVAR e1,CVAR e2) =
+      fun lub (cv as CVAR {exp=e1},CVAR {exp=e2}) =
           if eq_lamb(e1,e2) then cv else CUNKNOWN
         | lub (CRECORD cvals,CRECORD cvals') =
           (CRECORD (map lub (BasisCompat.ListPair.zipEq(cvals,cvals')))
            handle BasisCompat.ListPair.UnequalLengths => die "lub")
-        | lub (cv as CCONST e1,CCONST e2) =
+        | lub (cv as CCONST {exp=e1},CCONST {exp=e2}) =
           if eq_lamb(e1,e2) then cv else CUNKNOWN
         | lub (CRNG{low=l1,high=h1},CRNG{low=l2,high=h2}) =
           let fun minopt (NONE,_) = NONE
@@ -1560,7 +1560,7 @@ structure OptLambda : OPT_LAMBDA =
                            | _ => NONE)
                       | _ => NONE
           in case opt of
-                 SOME e => (tick "constant-folding"; (e,CCONST e))
+                 SOME e => (tick "constant-folding"; (e,CCONST {exp=e}))
                | NONE =>
                  let datatype cmp = LT | LTE | GT | GTE
                      fun Not LT = GTE
@@ -1601,7 +1601,7 @@ structure OptLambda : OPT_LAMBDA =
                            | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try GTE xs
                            | _ => NONE
                  in case opt2 of
-                        SOME e => (tick "range-folding"; (e,CCONST e))
+                        SOME e => (tick "range-folding"; (e,CCONST {exp=e}))
                       | NONE => fail
                  end
           end
@@ -1625,42 +1625,42 @@ structure OptLambda : OPT_LAMBDA =
                of SOME (tyvars,cv) =>
                   (case cv
                     of CFN {lexp=lamb',large} =>
-                      if large andalso not(Lvars.one_use lvar) then (lamb, CVAR lamb)
+                      if large andalso not(Lvars.one_use lvar) then (lamb, CVAR {exp=lamb})
                       else let val S = mk_subst (fn () => "reduce1") (tyvars, instances)
                                val _ = decr_use lvar
                                val lamb'' = new_instance lamb'
                                val _ = incr_uses lamb''
                                val _ = if large then tick "reduce - inline-largefn"
                                        else tick "reduce - inline-smallfn"
-                           in (on_LambdaExp S lamb'', CVAR lamb)    (* reduce(env,...) *)
+                           in (on_LambdaExp S lamb'', CVAR {exp=lamb})    (* reduce(env,...) *)
                            end
-                     | CVAR (lamb' as VAR{lvar=lvar',instances=instances',regvars=[]}) =>
+                     | CVAR {exp=lamb' as VAR{lvar=lvar',instances=instances',regvars=[]}} =>
                            let val S = mk_subst (fn () => "reduce2") (tyvars,instances)
                                val _ = decr_use lvar
                                val _ = incr_use lvar'
                                val lamb'' = on_LambdaExp S lamb'
-                           in if Lvars.eq(lvar,lvar') then (lamb'', CVAR lamb'')
-                              else (tick "reduce - inline-var"; (lamb'', CVAR lamb'')) (*reduce (env, (lamb'', CVAR lamb''))*)
+                           in if Lvars.eq(lvar,lvar') then (lamb'', CVAR {exp=lamb''})
+                              else (tick "reduce - inline-var"; (lamb'', CVAR {exp=lamb''})) (*reduce (env, (lamb'', CVAR lamb''))*)
                            end
-                     | CCONST lamb' =>
+                     | CCONST {exp=lamb'} =>
                            if is_unboxed_value lamb' orelse (aggressive_opt() andalso small_const lamb') then
                              (decr_use lvar; tick "reduce - inline-unboxed-value"; (lamb', cv))
                            else if Lvars.one_use lvar then
                              (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
-                           else (lamb, CVAR lamb)
-                     | CUNKNOWN => (lamb, CVAR lamb)
+                           else (lamb, CVAR {exp=lamb})
+                     | CUNKNOWN => (lamb, CVAR {exp=lamb})
                      | _ => let val S = mk_subst (fn () => "reduce3") (tyvars,instances)
                             in (lamb, on_cv S cv)
                             end)
-                | NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
+                | NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR {exp=lamb})))
            | VAR _ => fail (* explicit region parameters *)
-           | INTEGER _ => (lamb, CCONST lamb)
-           | WORD _ => (lamb, CCONST lamb)
-           | PRIM(CONprim {con,...},[]) => if is_boolean con orelse aggressive_opt() then (lamb, CCONST lamb)
+           | INTEGER _ => (lamb, CCONST {exp=lamb})
+           | WORD _ => (lamb, CCONST {exp=lamb})
+           | PRIM(CONprim {con,...},[]) => if is_boolean con orelse aggressive_opt() then (lamb, CCONST {exp=lamb})
                                            else fail
-           | STRING _ => (lamb, CCONST lamb)
-           | REAL _ => (lamb, CCONST lamb)
-           | F64 _ => (lamb, CCONST lamb)
+           | STRING _ => (lamb, CCONST {exp=lamb})
+           | REAL _ => (lamb, CCONST {exp=lamb})
+           | F64 _ => (lamb, CCONST {exp=lamb})
            | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
                let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
@@ -1772,12 +1772,12 @@ structure OptLambda : OPT_LAMBDA =
                           let val nth_cv = List.nth(cvs,n)
                             handle Subscript => die "reduce4"
                           in case nth_cv
-                               of CVAR var => (tick "reduce - sel-var"; decr_uses lamb;
-                                               incr_uses var; reduce (env, (var,nth_cv)))
-                                | CCONST(e as INTEGER _) => (tick "reduce - sel-int";
-                                                             decr_uses lamb; (e, nth_cv))
-                                | CCONST(e as WORD _) => (tick "reduce - sel-word";
-                                                          decr_uses lamb; (e, nth_cv))
+                               of CVAR {exp=var} => (tick "reduce - sel-var"; decr_uses lamb;
+                                                     incr_uses var; reduce (env, (var,nth_cv)))
+                                | CCONST {exp=e as INTEGER _} => (tick "reduce - sel-int";
+                                                                  decr_uses lamb; (e, nth_cv))
+                                | CCONST {exp=e as WORD _} => (tick "reduce - sel-word";
+                                                               decr_uses lamb; (e, nth_cv))
                                 | _ => (lamb, nth_cv)
                           end
                          | _ => fail
@@ -1980,7 +1980,7 @@ structure OptLambda : OPT_LAMBDA =
              of FN{pat,body} =>
                let val lvars = lvars_fn_pat pat
                    val env' = updateEnv lvars
-                               (map (fn lvar => ([], CVAR (VAR{lvar=lvar,instances=[],regvars=[]}))) lvars) env
+                               (map (fn lvar => ([], CVAR {exp=VAR{lvar=lvar,instances=[],regvars=[]}})) lvars) env
                    val (body',_) = contr (env', body)
                in (FN{pat=pat,body=body'},CUNKNOWN)
                end
@@ -1989,9 +1989,9 @@ structure OptLambda : OPT_LAMBDA =
                    val cv' = if noinline_lvar lvar then CUNKNOWN
                              else if is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
                              else if is_fn bind' then CFN{lexp=bind',large=true}
-                             else if is_unboxed_value bind' then CCONST bind'
+                             else if is_unboxed_value bind' then CCONST {exp=bind'}
                              else (case bind'
-                                     of VAR _ => CVAR bind'
+                                     of VAR _ => CVAR {exp=bind'}
                                       | _ => cv)
                    val env' = LvarMap.add(lvar,(tyvars,cv'),env)
 
@@ -2068,7 +2068,7 @@ structure OptLambda : OPT_LAMBDA =
                                      let val e'' = INTEGER(i,intDefaultType())
                                      in tick "contr - table_size";
                                         decr_uses e';
-                                        (e'', CCONST e'')
+                                        (e'', CCONST {exp=e''})
                                      end
                                    else fail()
                      | _ => fail()
@@ -2078,7 +2078,7 @@ structure OptLambda : OPT_LAMBDA =
                     fun fail () = (PRIM(p,[a',i]),CUNKNOWN)
                     fun mk s i = let val e = INTEGER(i,intDefaultType())
                                  in tick ("contr - table2d_size" ^ s);
-                                    decr_uses a'; (e, CCONST e)
+                                    decr_uses a'; (e, CCONST {exp=e})
                                  end
                 in if safeLambdaExp a' then
                      case (idx,cv) of
@@ -2226,10 +2226,10 @@ structure OptLambda : OPT_LAMBDA =
 
       fun free_cv (cv,acc) =
           case cv of
-              CVAR exp => free_exp (exp,acc)
+              CVAR {exp} => free_exp (exp,acc)
             | CRECORD cvs => List.foldl free_cv acc cvs
             | CUNKNOWN => acc
-            | CCONST exp => free_exp (exp,acc)
+            | CCONST {exp} => free_exp (exp,acc)
             | CFN {lexp: LambdaExp, large:bool} => free_exp(lexp,acc)
             | CFIX {N,Type: Type, bind: LambdaExp, large: bool} => free_exp(bind,acc)
             | CBLKSZ _ => acc
@@ -2301,14 +2301,14 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CCON1 _) = 9
 
               fun fun_CVAR _ =
-                  Pickle.con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
+                  Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
                   LambdaExp.pu_LambdaExp
               fun fun_CRECORD pu =
                   Pickle.con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
                   (Pickle.listGen pu)
               val fun_CUNKNOWN = Pickle.con0 CUNKNOWN
               fun fun_CCONST _ =
-                  Pickle.con1 CCONST (fn CCONST a => a | _ => die "pu_contract_env.CCONST")
+                  Pickle.con1 (fn e => CCONST {exp=e}) (fn CCONST {exp} => exp | _ => die "pu_contract_env.CCONST")
                   LambdaExp.pu_LambdaExp
               fun fun_CFN _ =
                   Pickle.con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
@@ -2644,7 +2644,7 @@ structure OptLambda : OPT_LAMBDA =
              end
            fun extend_IS IS c =
              let fun ext [] lv = IS(lv)
-                   | ext (({lvar,tyvars,...}:fs)::c) lv = if Lvars.eq(lvar,lv) then SOME (map TYVARtype tyvars)
+                   | ext (({lvar,tyvars,...}:fs)::c) lv = if Lvars.eq(lvar,lv) then SOME (map (fn tv => TYVARtype {tv=tv}) tyvars)
                                                           else ext c lv
              in ext c
              end
@@ -2671,8 +2671,8 @@ structure OptLambda : OPT_LAMBDA =
                               else fresh_tyvar ()
 
             fun on_tyvar S tv =
-              case on_Type S (TYVARtype tv)
-                of TYVARtype tv' => tv'
+              case on_Type S (TYVARtype {tv=tv})
+                of TYVARtype {tv=tv'} => tv'
                  | _ => die "on_tyvar"
 
             fun on_c S [] = []   (* memo:regvars *)
@@ -2684,7 +2684,7 @@ structure OptLambda : OPT_LAMBDA =
               end
 
             val tyvars = get_tyvars c []
-            val types = map (TYVARtype o fresh_tv) tyvars
+            val types = map (TYVARtype o (fn tv => {tv=tv}) o fresh_tv) tyvars
             val S = mk_subst (fn () => "rn_btvs_c") (tyvars, types)
         in on_c S c
         end
@@ -3604,7 +3604,7 @@ structure OptLambda : OPT_LAMBDA =
       let fun new_tv tv = if equality_tyvar tv then fresh_eqtyvar()
                           else fresh_tyvar()
           val tyvars' = map new_tv tyvars
-          val S = mk_subst (fn () => "new_sigma") (tyvars,map TYVARtype tyvars')
+          val S = mk_subst (fn () => "new_sigma") (tyvars,map (fn tv => TYVARtype {tv=tv}) tyvars')
       in (tyvars', on_Type S tau)
       end
 
@@ -3613,7 +3613,7 @@ structure OptLambda : OPT_LAMBDA =
       List.length tyvars1 = List.length tyvars2 andalso
       let val (tyvars1,tau1) = new_sigma sigma1
           val (tyvars2,tau2) = new_sigma sigma2
-          val S = mk_subst (fn () => "eq_sigma") (tyvars1,map TYVARtype tyvars2)
+          val S = mk_subst (fn () => "eq_sigma") (tyvars1,map (fn tv => TYVARtype {tv=tv}) tyvars2)
           val tau1' = on_Type S tau1
       in eq_Type(tau1',tau2)
       end

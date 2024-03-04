@@ -361,9 +361,9 @@ REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
   r = read(convertIntToC(fd), p, n);
   if (r > 0)
   {
-#pragma GCC diagnostic ignored "-Wstringop-overflow="
+    // #pragma GCC diagnostic ignored "-Wstringop-overflow="
     *(p+r) = '\0';
-#pragma GCC diagnostic pop
+    // #pragma GCC diagnostic pop
   }
   first(pair) = (uintptr_t) s;
   second(pair) = convertIntToML(r);

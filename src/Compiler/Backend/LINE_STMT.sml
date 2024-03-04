@@ -78,8 +78,19 @@ signature LINE_STMT =
       V of lvar
     | FV of lvar * label * label
 
+    datatype 'aty sma =
+      ATTOP_LI of 'aty * pp
+    | ATTOP_LF of 'aty * pp
+    | ATTOP_FI of 'aty * pp
+    | ATTOP_FF of 'aty * pp
+    | ATBOT_LI of 'aty * pp
+    | ATBOT_LF of 'aty * pp
+    | SAT_FI   of 'aty * pp
+    | SAT_FF   of 'aty * pp
+    | IGNORE
+
     datatype 'aty SimpleExp =
-      ATOM            of 'aty
+      ATOM            of {aty:'aty}
     | LOAD            of label
     | STORE           of 'aty * label (* moved to LineStmt??? 2001-03-15, Niels *)
     | STRING          of string
@@ -95,12 +106,12 @@ signature LINE_STMT =
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
     | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
-    | DEREF           of 'aty
+    | DEREF           of {aty:'aty}
     | REF             of 'aty sma * 'aty
     | ASSIGNREF       of 'aty sma * 'aty * 'aty
     | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
                                                (* The boolean is true if the region has an untagged type *)
-    | PASS_PTR_TO_RHO of 'aty sma              (* Used only by CCALL *)
+    | PASS_PTR_TO_RHO of {sma:'aty sma}        (* Used only by CCALL *)
 
     and ('sty,'offset,'aty) LineStmt =
       ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}
@@ -136,17 +147,6 @@ signature LINE_STMT =
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
     and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
-
-    and 'aty sma =
-      ATTOP_LI of 'aty * pp
-    | ATTOP_LF of 'aty * pp
-    | ATTOP_FI of 'aty * pp
-    | ATTOP_FF of 'aty * pp
-    | ATBOT_LI of 'aty * pp
-    | ATBOT_LF of 'aty * pp
-    | SAT_FI   of 'aty * pp
-    | SAT_FF   of 'aty * pp
-    | IGNORE
 
     datatype ('sty,'offset,'aty) TopDecl =
       FUN of label * cc * ('sty,'offset,'aty) LineStmt list

@@ -51,7 +51,7 @@ structure LambdaExp : LAMBDA_EXP =
 
 
     datatype Type =
-        TYVARtype   of tyvar
+        TYVARtype   of {tv:tyvar}
       | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option
@@ -93,7 +93,7 @@ structure LambdaExp : LAMBDA_EXP =
     val unitType = RECORDtype([],NONE)
 
     val tyvars = foldType (fn tvs =>
-                              (fn TYVARtype tv =>
+                              (fn TYVARtype {tv} =>
                                   if List.exists (fn x => tv=x) tvs
                                   then tvs else tv::tvs
                                 | _ => tvs)) nil
@@ -718,7 +718,7 @@ structure LambdaExp : LAMBDA_EXP =
 
     fun layoutType0 (config:config) tau =
         case tau of
-            TYVARtype tv => PP.LEAF (pr_tyvar tv)
+            TYVARtype {tv} => PP.LEAF (pr_tyvar tv)
           | ARROWtype(taus,rvopt0,taus',rvopt) =>
             let val arrow =
                     case rvopt0 of
@@ -1423,7 +1423,7 @@ structure LambdaExp : LAMBDA_EXP =
 
         fun pp_ty (out:string->unit) (ty:Type) : unit =
             let fun pp (ARROWtype([ty1],[ty2])) = (pp ty1; out " -> "; pp ty2)
-                  | pp (TYVARtype tv) = pp_tv out tv
+                  | pp (TYVARtype {tv}) = pp_tv out tv
                   | pp (CONStype(nil,tn)) = pp_tn out tn
                   | pp (CONStype(tys,tn)) = (out "(" ; pp_tys out "," tys ; out ")" ; pp_tn out tn)
                   | pp (RECORDtype tys) = (out "(" ; pp_tys out "*" tys ; out ")")
@@ -1487,7 +1487,7 @@ structure LambdaExp : LAMBDA_EXP =
                 Pickle.cache "list" Pickle.listGen
 
             fun fun_TYVARtype _ =
-                Pickle.con1 TYVARtype (fn TYVARtype tv => tv | _ => die "pu_Type.TYVARtype")
+                Pickle.con1 (fn tv => TYVARtype {tv=tv}) (fn TYVARtype {tv} => tv | _ => die "pu_Type.TYVARtype")
                 pu_tyvar
             fun fun_ARROWtype pu =
                 Pickle.con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
@@ -1831,8 +1831,8 @@ structure LambdaExp : LAMBDA_EXP =
 
     fun tyvars_Type (s: TVS.Set) (t:Type) (acc: TVS.Set) : TVS.Set =
         case t of
-          TYVARtype tv => if TVS.member tv s then acc
-                          else TVS.insert tv acc
+          TYVARtype {tv} => if TVS.member tv s then acc
+                            else TVS.insert tv acc
         | ARROWtype(ts1,_,ts2,_) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
         | CONStype(ts,_,_) => tyvars_Types s ts acc
         | RECORDtype (ts,_) => tyvars_Types s ts acc

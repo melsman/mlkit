@@ -52,7 +52,7 @@ signature LAMBDA_EXP =
     val reset          : unit -> unit
 
     datatype Type =
-        TYVARtype   of tyvar
+        TYVARtype   of {tv:tyvar}
       | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
       | RECORDtype  of Type list * regvar option

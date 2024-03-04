@@ -54,8 +54,8 @@ signature CLOS_EXP =
 
     datatype ClosExp =
       VAR             of lvar
-    | RVAR            of place
-    | DROPPED_RVAR    of place
+    | RVAR            of {rho:place}
+    | DROPPED_RVAR    of {rho:place}
     | FETCH           of label
     | STORE           of ClosExp * label
     | INTEGER         of {value: IntInf.int, precision: int}
@@ -64,7 +64,7 @@ signature CLOS_EXP =
     | REAL            of string
     | F64             of string
     | PASS_PTR_TO_MEM of sma * int
-    | PASS_PTR_TO_RHO of sma
+    | PASS_PTR_TO_RHO of {sma: sma}
     | UB_RECORD       of ClosExp list
     | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
@@ -81,7 +81,7 @@ signature CLOS_EXP =
                           clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
-    | RAISE           of ClosExp
+    | RAISE           of {exp: ClosExp}
     | HANDLE          of ClosExp * ClosExp
     | SWITCH_I        of {switch: IntInf.int Switch, precision: int}
     | SWITCH_W        of {switch: IntInf.int Switch, precision: int}
@@ -91,10 +91,10 @@ signature CLOS_EXP =
     | CON0            of {con: con, con_kind: con_kind, aux_regions: sma list, alloc: sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: sma, arg: ClosExp}
     | DECON           of {con: con, con_kind: con_kind, con_exp: ClosExp}
-    | DEREF           of ClosExp
+    | DEREF           of {exp: ClosExp}
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
-    | DROP            of ClosExp
+    | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
     | CCALL           of {name: string,

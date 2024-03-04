@@ -45,7 +45,7 @@ struct
   fun pr_place r = PP.flatten1(E.layout_effect r)
 
   datatype Type =
-      TYVAR of tyvar
+      TYVAR of {tv:tyvar}
     | CONSTYPE of tyname * Type list * place list * arroweffect list
     | RECORD of Type list
     | FUN of Type list * arroweffect * Type list
@@ -69,13 +69,13 @@ struct
         | BOX(TYVAR _, _) => false
         | BOX(BOX _,_) => false
 
-  val mkTYVAR = TYVAR
+  val mkTYVAR = fn tv => TYVAR {tv=tv}
   val mkCONSTYPE = CONSTYPE
   val mkRECORD = RECORD
   val mkFUN = FUN
   val mkBOX = BOX
 
-  fun unTYVAR (TYVAR a) = SOME a
+  fun unTYVAR (TYVAR {tv}) = SOME tv
     | unTYVAR _ = NONE
 
   fun unCONSTYPE (CONSTYPE a) = SOME a
@@ -231,7 +231,7 @@ struct
                                           ^ " is not in scope")
           fun mkTy0 (ty,cone) =
               case ty of
-                  L.TYVARtype alpha  => ((TYVAR alpha,NONE), cone)
+                  L.TYVARtype {tv=alpha}  => ((TYVAR {tv=alpha},NONE), cone)
                 | L.ARROWtype(tys1,rvopt0,tys2,rvopt)=>
                   let val (eps,cone') = get_eps cone rvopt0
                       val (cone1,mus1) = List.foldr mkMus (cone',[]) tys1
@@ -450,7 +450,7 @@ struct
 
           fun lay_tau_rec parenthesise ty =
               case ty of
-                  TYVAR v => layout_tyvar v
+                  TYVAR {tv} => layout_tyvar tv
                 | FUN(mus1,areff,mus2) =>
                   let val children = [layout_arg_res mus1, layout_arrow_rec areff, layout_arg_res mus2]
                   in if parenthesise then
@@ -608,7 +608,7 @@ struct
         let
           fun ftv (t,(seen,acc)) =
               case t of
-                  TYVAR tv => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
+                  TYVAR {tv} => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
                 | CONSTYPE(_,mus,_,_) => ftv_mus (mus,(seen,acc))
                 | RECORD mus => ftv_mus (mus,(seen,acc))
                 | FUN(mus1,_,mus2) => ftv_mus (mus2,ftv_mus (mus1,(seen,acc)))
@@ -743,9 +743,9 @@ struct
 
         fun cp_ty ty =
             case ty of
-                TYVAR alpha => (case applySt(St, alpha) of
-                                    NONE => (false,ty)
-                                  | SOME ty' => (true, ty'))
+                TYVAR {tv=alpha} => (case applySt(St, alpha) of
+                                         NONE => (false,ty)
+                                       | SOME ty' => (true, ty'))
               | RECORD mus =>
                 let val l = map cp_mu mus
                 in if List.exists (#1) l
@@ -1416,7 +1416,7 @@ struct
             | toInt (FUN _) = 3
             | toInt (BOX _) = 4
           fun fun_TYVAR _ =
-              Pickle.con1 TYVAR (fn TYVAR a => a | _ => die "pu_Type.TYVAR")
+              Pickle.con1 (fn tv => TYVAR {tv=tv}) (fn TYVAR {tv} => tv | _ => die "pu_Type.TYVAR")
               L.pu_tyvar
           fun fun_CONSTYPE pu_Type =
               Pickle.con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")

@@ -207,7 +207,7 @@ struct
       (* We disregard region variable info in datatype declarations *)
       fun ty_to_mu (tau: E.Type) : R.mu =
           case tau of
-              E.TYVARtype alpha => R.mkTYVAR alpha
+              E.TYVARtype {tv=alpha} => R.mkTYVAR alpha
             | E.ARROWtype(taus1,_,taus2,_) =>
               extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
             | E.CONStype(taus, tyname,_) =>

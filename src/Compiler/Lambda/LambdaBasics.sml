@@ -337,7 +337,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                                       | NONE => ex
 
       fun on_tau ren tau =
-        let fun on_t (TYVARtype tv) = TYVARtype (on_tv ren tv)
+        let fun on_t (TYVARtype {tv}) = TYVARtype {tv=on_tv ren tv}
               | on_t (ARROWtype (tl,rv0,tl',rv)) = ARROWtype(map on_t tl,rv0,map on_t tl',rv)
               | on_t (CONStype (tl,tn,rvs)) = CONStype (map on_t tl,tn,rvs)
               | on_t (RECORDtype (tl,rv)) = RECORDtype (map on_t tl,rv)
@@ -522,9 +522,9 @@ structure LambdaBasics: LAMBDA_BASICS =
         let
           fun tv_Subst tau =
             (case tau
-                 of TYVARtype tyvar => (case List.find (fn (tyvar':tyvar, tau') => tyvar = tyvar') S
-                                          of SOME res => #2 res
-                                           | NONE => tau)
+                 of TYVARtype {tv=tyvar} => (case List.find (fn (tyvar':tyvar, tau') => tyvar = tyvar') S
+                                              of SOME res => #2 res
+                                               | NONE => tau)
                   | ARROWtype(taus1,rv0,taus2,rv) => ARROWtype(map tv_Subst taus1,rv0,map tv_Subst taus2,rv)
                   | CONStype(taus,tyname,rvs) => CONStype(map tv_Subst taus,tyname,rvs)
                   | RECORDtype (taus,rv) => RECORDtype (map tv_Subst taus,rv)
@@ -565,7 +565,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun equal_tyvar x y = x = y
       fun tyvarsType tau : tyvar Set.Set =
         case tau
-          of TYVARtype tyvar => Set.singleton tyvar
+          of TYVARtype {tv=tyvar} => Set.singleton tyvar
            | ARROWtype(taus1,_,taus2,_) => Set.union equal_tyvar (tyvarsTypes taus1) (tyvarsTypes taus2)
            | CONStype(taus,_,_) => tyvarsTypes taus
            | RECORDtype (taus,_) => tyvarsTypes taus
@@ -578,7 +578,7 @@ structure LambdaBasics: LAMBDA_BASICS =
         | on_LambdaExp S lamb =
         let
           fun tyvars_rangeS S : tyvar Set.Set =
-            let val domS = map (TYVARtype o #1) S
+            let val domS = map ((fn tv => TYVARtype {tv=tv}) o #1) S
                 val rangeS = on_Types S (domS)
             in tyvarsTypes rangeS
             end
@@ -687,7 +687,7 @@ structure LambdaBasics: LAMBDA_BASICS =
     (* Equality of types, but disregarding regvar information *)
       fun eq_Type (tau1, tau2) =
         case (tau1,tau2)
-          of (TYVARtype tv1, TYVARtype tv2) => tv1=tv2
+          of (TYVARtype {tv=tv1}, TYVARtype {tv=tv2}) => tv1=tv2
            | (ARROWtype(taus1,rv0,taus1',rv1), ARROWtype(taus2,rv0',taus2',rv2)) =>
             eq_Types(taus1,taus2) andalso eq_Types(taus1',taus2') (*andalso eq_regvar_opt (rv1,rv2)*)
            | (CONStype(taus1,tn1,rvs1), CONStype(taus2,tn2,rvs2)) =>
@@ -701,7 +701,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun eq_sigma_with_il (([],tau1,[]),([],tau2,[])) = eq_Type(tau1,tau2)
         | eq_sigma_with_il ((tvs1,tau1,il1),(tvs2,tau2,il2)) =
         if length tvs1 <> length tvs2 then false
-        else let val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs1
+        else let val tv_taus = map (fn _ => TYVARtype {tv=fresh_tyvar()}) tvs1
                  val S1 = mk_subst (fn () => "eq_sigma_with_il1") (tvs1,tv_taus)
                  val S2 = mk_subst (fn () => "eq_sigma_with_il2") (tvs2,tv_taus)
                  val tau1' = on_Type S1 tau1
@@ -723,7 +723,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
             fun match_tau (S, tau, tau') =
               case (tau, tau')
-                of (TYVARtype tv, _) => add(tv,tau',S)
+                of (TYVARtype {tv}, _) => add(tv,tau',S)
                  | (ARROWtype(taus1,_,taus1',_), ARROWtype(taus2,_,taus2',_)) =>
                   let val S' = match_taus(S,taus1,taus2)
                   in match_taus(S',taus1',taus2')
@@ -744,7 +744,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             val S = match_tau(TvMap.empty,tau,tau')
             val subst = map (fn tv => case TvMap.lookup S tv
                                         of SOME tau => (tv,tau)
-                                         | NONE => (tv,TYVARtype tv)) tvs
+                                         | NONE => (tv,TYVARtype {tv=tv})) tvs
         in subst
         end
 

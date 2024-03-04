@@ -47,7 +47,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     type TypeScheme = tyvar list * Type
 
     fun ftv_Type Type : NatSet.Set =
-      let fun f (TYVARtype tyvar, s) = NatSet.insert tyvar s
+      let fun f (TYVARtype {tv}, s) = NatSet.insert tv s
             | f (ARROWtype (tl1, _, tl2, _), s) = foldl f (foldl f s tl1) tl2
             | f (CONStype (ts, _, _), s) = foldl f s ts
             | f (RECORDtype (ts,_), s) = foldl f s ts
@@ -129,28 +129,28 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
             val typescheme_FALSE = close_Type (CONStype([], tyName_BOOL, NONE))
             val typescheme_NIL =
               let val tyvar = fresh_tyvar()
-              in close_Type (CONStype([TYVARtype tyvar], tyName_LIST, NONE))
+              in close_Type (CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE))
               end
             val typescheme_CONS =
               let val tyvar = fresh_tyvar()
-              in close_Type (ARROWtype([RECORDtype([TYVARtype tyvar,
-                                                    CONStype([TYVARtype tyvar], tyName_LIST, NONE)],NONE)],
+              in close_Type (ARROWtype([RECORDtype([TYVARtype {tv=tyvar},
+                                                    CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],NONE)],
                                        NONE,
-                                       [CONStype([TYVARtype tyvar], tyName_LIST, NONE)],
+                                       [CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],
                                        NONE))
               end
             val typescheme_QUOTE =
               let val tyvar = fresh_tyvar()
               in close_Type (ARROWtype([CONStype([],tyName_STRING, NONE)],
                                        NONE,
-                                       [CONStype([TYVARtype tyvar], tyName_FRAG, NONE)],
+                                       [CONStype([TYVARtype {tv=tyvar}], tyName_FRAG, NONE)],
                                        NONE))
               end
             val typescheme_ANTIQUOTE =
               let val tyvar = fresh_tyvar()
-              in close_Type (ARROWtype([TYVARtype tyvar],
+              in close_Type (ARROWtype([TYVARtype {tv=tyvar}],
                                        NONE,
-                                       [CONStype([TYVARtype tyvar], tyName_FRAG, NONE)],
+                                       [CONStype([TYVARtype {tv=tyvar}], tyName_FRAG, NONE)],
                                        NONE))
               end
             val typescheme_INTINF =
@@ -423,8 +423,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
         case ty of
             CONStype(ts,tn,_) => (lookup_tyname e tn; valid_ts e ts)
           | ARROWtype(ts1,_,ts2,_) => (valid_ts e ts1; valid_ts e ts2)
-          | TYVARtype tv => if isin_tv e tv then ()
-                            else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
+          | TYVARtype {tv} => if isin_tv e tv then ()
+                              else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
           | RECORDtype (ts,_) => valid_ts e ts
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
@@ -658,7 +658,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
            | REFprim {instance,regvar} => (* as CONprim *)
                   let val typescheme_REF =
                          let val tyvar = fresh_tyvar()
-                         in close_Type (ARROWtype([TYVARtype tyvar], NONE, [CONStype([TYVARtype tyvar], tyName_REF, NONE)], NONE))
+                         in close_Type (ARROWtype([TYVARtype {tv=tyvar}], NONE, [CONStype([TYVARtype {tv=tyvar}], tyName_REF, NONE)], NONE))
                          end
                   in valid_t env instance;
                      check_t_no_f64 "REFprim" instance;
@@ -979,7 +979,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
   fun analyse_datbinds (DATBINDS dbs) : env =
     let
       fun analyse_datbind (tyvars : tyvar list,tyname,conbind: (con * Type option) list) : env =
-          let val ty2 = CONStype (map TYVARtype tyvars, tyname,NONE)
+          let val ty2 = CONStype (map (fn tv => TYVARtype {tv=tv}) tyvars, tyname,NONE)
               fun gen_typescheme (SOME tau) = (tyvars, ARROWtype([tau],NONE,[ty2],NONE))
                 | gen_typescheme NONE = (tyvars, ty2)
 
