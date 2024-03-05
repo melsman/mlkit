@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.9 is released
+
 * mael 2024-03-04: Fix issue with Char.isCntrl (issue #162).
 
 * mael 2024-03-04: Cleanup and fixes. Infinite reals and NaNs may now
