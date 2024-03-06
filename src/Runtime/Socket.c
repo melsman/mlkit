@@ -272,7 +272,7 @@ size_t
 sml_sock_sendvec(size_t sock, String s, size_t i, size_t n)
 {
   sml_debug("[sml_sock_sendvec");
-  char *start = (&(s->data)) + convertIntToC(i);
+  char *start = (s->data) + convertIntToC(i);
   int ret = send(convertIntToC(sock), (void*)start, convertIntToC(n), 0);
   sml_debug("]\n");
   return (size_t)convertIntToML(ret);
@@ -328,7 +328,7 @@ sml_sock_bind_unix(size_t sock, String name)
   struct sockaddr_un saddr;
   int size = sizeStringDefine(name) + 1;             // 0-terminated string
   saddr.sun_family = AF_UNIX;
-  bcopy(&(name->data), saddr.sun_path, size);
+  bcopy(name->data, saddr.sun_path, size);
   int ret = bind(convertIntToC(sock),
 		 (struct sockaddr *) &saddr,
 		 size);
@@ -363,7 +363,7 @@ sml_sock_connect_unix(size_t sock, String name)
   struct sockaddr_un saddr;
   int size = sizeStringDefine(name) + 1;             // 0-terminated string
   saddr.sun_family = AF_UNIX;
-  bcopy(&(name->data), saddr.sun_path, size);
+  bcopy(name->data, saddr.sun_path, size);
   int ret = connect(convertIntToC(sock),
 		    (struct sockaddr *) &saddr,
 		    size);
@@ -543,7 +543,7 @@ REG_POLY_FUN_HDR(sml_gethostbyname,
 {
   sml_debug("[sml_gethostbyname");
   sml_gethostby_init(vTup5);
-  struct hostent *host = gethostbyname(&(n->data));
+  struct hostent *host = gethostbyname(n->data);
   if (host == NULL) {
     elemRecordML(vTup5,4) = convertIntToML(-1);
     sml_debug("]*\n");

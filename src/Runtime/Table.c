@@ -20,7 +20,7 @@ REG_POLY_FUN_HDR(word_table0, Region rAddr, size_t n)
   {
     size_t *p;
     size_t i;
-    for ( i = 0, p = &(res->data) ; i < n ; i++, p++ )
+    for ( i = 0, p = res->data ; i < n ; i++, p++ )
       {
 	*p = 1;     // scalar value
       }
@@ -47,7 +47,7 @@ REG_POLY_FUN_HDR(word_table_init, Region rAddr, size_t n, size_t x)
   #endif
   res->size = val_tag_table(n);
 
-  p = &(res->data);
+  p = res->data;
   for ( i = 0 ; i < n ; i ++ )
     {
       *p++ = x;

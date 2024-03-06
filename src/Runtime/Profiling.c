@@ -337,10 +337,10 @@ ObjectList* lookupObjectListTable(long atId) {
    a tick is made, the time is printed on stdout */
 
 void
-queueMarkProf(StringDesc *str, long pPoint)
+queueMarkProf(String str, long pPoint)
 {
     tellTime = 1;
-    fprintf(stderr,"Reached \"%s\"\n", &(str->data));
+    fprintf(stderr,"Reached \"%s\"\n", str->data);
     return;
 }
 

@@ -5,7 +5,7 @@
 
 typedef struct {
   size_t size;     // combined size and tag-field
-  size_t data;     // first element
+  size_t data[];   // first element
 } TableDesc;
 
 typedef TableDesc* Table;

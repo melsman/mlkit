@@ -46,7 +46,7 @@ convertStringToC(Context ctx, String mlStr, char *buf, size_t buflen, uintptr_t 
     {
       raise_exn(ctx,exn);
     }
-  for ( p = &(mlStr->data); *p != '\0'; )
+  for ( p = mlStr->data; *p != '\0'; )
     {
       *buf++ = *p++;
     }
@@ -64,7 +64,7 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, const char *cStr)
 
   res = REG_POLY_CALL(allocString, rAddr, strlen(cStr));   // sets size also
 
-  for ( p = &(res->data); *cStr != '\0'; )
+  for ( p = res->data; *cStr != '\0'; )
     {
       *p++ = *cStr++;
     }
@@ -84,7 +84,7 @@ REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, const char *cStr)
   size_t i;
 
   res = REG_POLY_CALL(allocString, rAddr, l);   // sets size also
-  p = &(res->data);
+  p = res->data;
   for (i=0; i<l; i++)
     {
       *p++ = *cStr++;
@@ -137,19 +137,19 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
   debug(printf("[enter concatStringML (rAddr=%p,str1=%p,str2=%p)]\n", rAddr,str1,str2);)
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
   res = REG_POLY_CALL(allocString, rAddr, sz);
-  p = &(res->data);
-  s = &(str1->data);
+  p = res->data;
+  s = str1->data;
   for ( i = 0; i < sizeStringDefine(str1); i++)
     {
       *p++ = *s++;
     }
-  s = &(str2->data);
+  s = str2->data;
   for ( i = 0; i < sizeStringDefine(str2); i++)
     {
       *p++ = *s++;
     }
   *p = '\0';
-/*  printf("\nconcatStringML\n%s\n%s\n  ->  \n%s\n", &(str1->data), &(str2->data), &(res->data));
+/*  printf("\nconcatStringML\n%s\n%s\n  ->  \n%s\n", str1->data, str2->data, res->data);
   printf("length 1: %d, length 2: %d, length 3: %d\n", sizeStringDefine(str1), sizeStringDefine(str2), sizeStringDefine(res)); */
   return res;
 }
@@ -175,7 +175,7 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
     }
 
   res = REG_POLY_CALL(allocString, rAddr, length);
-  p = &(res->data);
+  p = res->data;
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
       *p++ = (unsigned char) convertIntToC (hd(ys));
@@ -202,14 +202,14 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs)
     }
   res = REG_POLY_CALL(allocString, rAddr, sz);
 
-  p = &(res->data);
+  p = res->data;
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
       String sd;
       size_t i;
       char *s;
       sd = (String)hd(ys);
-      s = &(sd->data);
+      s = sd->data;
       for ( i = 0; i < sizeStringDefine(sd); i++ )
 	{
 	  *p++ = *s++;
@@ -222,7 +222,7 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs)
 void
 printStringML(String str)
 {
-  fputs(&(str->data),stdout);
+  fputs(str->data,stdout);
   fflush(stdout);
   return;
 }
@@ -241,8 +241,8 @@ mystrcmp (String s1, String s2)
   if ( l1 < l2 ) min = l1;
   else           min = l2;
 
-  p1 = (unsigned char *) &(s1->data);
-  p2 = (unsigned char *) &(s2->data);
+  p1 = (unsigned char *) s1->data;
+  p2 = (unsigned char *) s2->data;
 
   for ( i = 0; i < min; i++, p1++, p2++ )
     {
@@ -304,7 +304,7 @@ equalStringML(String s1, String s2)
   sz = sizeStringDefine(s1);
   if ( sz != sizeStringDefine(s2) )
     return mlFALSE;
-  for (p1 = &(s1->data), p2 = &(s2->data) ; sz > 0 ; sz-- )
+  for (p1 = s1->data, p2 = s2->data ; sz > 0 ; sz-- )
     if ( *p1++ != *p2++ ) return mlFALSE;
   return mlTRUE;
 }
@@ -322,7 +322,7 @@ REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e)
   ml_s = (String)(* ( (*(uintptr_t **)e) + 1));
 #endif
 
-  return REG_POLY_CALL(convertStringToML, rAddr, &(ml_s->data));
+  return REG_POLY_CALL(convertStringToML, rAddr, ml_s->data);
 }
 
 /* explodeStringML(rAddr, str): convert a string to a char list.
@@ -343,7 +343,7 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
     }
 
    // save first char such that we can return a pointer to it
-  p = &(str->data);
+  p = str->data;
 
 #ifdef PROFILING
   allocPairMLProf(rAddr, pair, pPoint);

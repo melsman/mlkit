@@ -13,7 +13,7 @@
 uintptr_t
 REG_POLY_FUN_HDR(sml_dlopen,uintptr_t pair, Region s, String file1, size_t flags1)
 {
-  char *file = &(file1->data);
+  char *file = file1->data;
   char *c;
   void *p;
   int flags = convertIntToC(flags1);
@@ -21,7 +21,7 @@ REG_POLY_FUN_HDR(sml_dlopen,uintptr_t pair, Region s, String file1, size_t flags
   int use_global = RTLD_LOCAL;
   char *myfile = file;
   if (flags & 0x1) use_lazy = RTLD_LAZY;
-  if (flags & 0x2) use_global = RTLD_GLOBAL; 
+  if (flags & 0x2) use_global = RTLD_GLOBAL;
   if (flags & 0x4) myfile = NULL;
   dlerror();
   p = dlopen(myfile, use_global | use_lazy);
@@ -30,7 +30,7 @@ REG_POLY_FUN_HDR(sml_dlopen,uintptr_t pair, Region s, String file1, size_t flags
   if (c)
   {
     second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML,s, c);
-  } else 
+  } else
   {
     second(pair) = 0;
   }
@@ -48,32 +48,32 @@ DEFINE_NHASHMAP(dynamic_function_res_map, charhashfunction, mystreq)
 
 static dynamic_function_res_map_hashtable_t *fnmap = NULL;
 
-String 
+String
 REG_POLY_FUN_HDR(resolveFun,Region sAddr, String our_name, String cname, void *libhandle)
 {
   char *c;
   const void *fp = NULL;
   LOCK_LOCK(FUNCTIONTABLEMUTEX);
   if (fnmap == NULL) fnmap = dynamic_function_res_map_new();
-  if (fnmap == NULL) 
+  if (fnmap == NULL)
   {
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
     return (String) REG_POLY_CALL(convertStringToML,sAddr, "Allocation Error in __FILE__:__LINE__");
   }
-  if (dynamic_function_res_map_find(fnmap, &(our_name->data), &fp) == hash_DNE)
+  if (dynamic_function_res_map_find(fnmap, our_name->data, &fp) == hash_DNE)
   {
     dlerror();
-    fp = dlsym(libhandle, &(cname->data));
+    fp = dlsym(libhandle, cname->data);
     c = dlerror();
     if (c)
     {
       return (String) REG_POLY_CALL(convertStringToML,sAddr,c);
     }
-    dynamic_function_res_map_update(fnmap, &(our_name->data), fp);
+    dynamic_function_res_map_update(fnmap, our_name->data, fp);
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
     return NULL;
   }
-  else 
+  else
   { // hash_OK
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
     return (String) REG_POLY_CALL(convertStringToML,sAddr, "Dynamic function already resolved");
@@ -103,13 +103,13 @@ localResolveLibFnAuto(const void **fp, const char *fname)
 {
   const void *myfp = NULL;
   LOCK_LOCK(FUNCTIONTABLEMUTEX);
-  if (fnmap == NULL) return; 
+  if (fnmap == NULL) return;
   if (dynamic_function_res_map_find(fnmap, fname, &myfp) == hash_DNE)
   {
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
     return;
   }
-  else 
+  else
   {
     *fp = myfp;
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
@@ -122,12 +122,11 @@ localResolveLibFnAuto(const void **fp, const char *fname)
 void
 localResolveLibFnManual(const void **fp, String fname)
 {
-  localResolveLibFnAuto(fp, &(fname->data));
+  localResolveLibFnAuto(fp, fname->data);
 }
 
-String 
+String
 REG_POLY_FUN_HDR(fromCtoMLstring,Region sAddr, char *cs)
 {
   return (String) REG_POLY_CALL(convertStringToML,sAddr,cs);
 }
-

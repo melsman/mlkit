@@ -189,13 +189,13 @@ uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
   ctx->uncaught_exnname = convertIntToC(n);
   fprintf(stderr,"uncaught exception ");
   fflush(stderr);
-  fputs(&(exnStr->data), stderr);
+  fputs(exnStr->data, stderr);
   fflush(stderr);
   if (convertIntToC(n) == failNumber)
   {
     a = second (ep);
     fputs(" ", stderr);
-    fputs(&(((String) a)->data),stderr);
+    fputs(((String) a)->data,stderr);
     fflush(stderr);
   }
   if (convertIntToC(n) == syserrNumber)
@@ -203,7 +203,7 @@ uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
     a = second(ep);
     a = first(a);
     fputs(" ", stderr);
-    fputs(&(((String) a)->data),stderr);
+    fputs(((String) a)->data,stderr);
     fflush(stderr);
   }
   fprintf(stderr, "\n");
@@ -232,8 +232,8 @@ equalTable(Table x, Table y)
     {
       return mlFALSE;
     }
-  px = &(x->data);
-  py = &(y->data);
+  px = x->data;
+  py = y->data;
   for ( i = 0 ; i < sz_x ; i ++ )
     {
       if ( equalPolyML(*(px+i), *(py+i)) == mlFALSE )
