@@ -892,9 +892,9 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
 String
 REG_POLY_FUN_HDR(generalStringOfFloat, Region rAddr, String format, size_t f)
 {
-  size_t size = snprintf(NULL, 0, &(format->data), get_d(f)) + 1;
+  size_t size = snprintf(NULL, 0, format->data, get_d(f)) + 1;
   char *buf = malloc(size);
-  snprintf(buf, size, &(format->data), get_d(f));
+  snprintf(buf, size, format->data, get_d(f));
 
   mkSMLMinus(buf);
   String s;
@@ -932,7 +932,7 @@ size_t
 sml_bytes_to_real(size_t d, String s)
 {
   double r;
-  char* a = &(s->data);
+  char* a = s->data;
   r = ((double*)a)[0];
   get_d(d) = r;
   set_dtag(d);

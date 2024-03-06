@@ -255,7 +255,7 @@ sml_exec (String path, uintptr_t sl, uintptr_t envl, int kind)
   for (i = 0; isCONS(list); list = tl(list), i++)
   {
     elemML = (String) hd(list);
-    args[i] = &(elemML->data);
+    args[i] = elemML->data;
   }
   args[i] = NULL;
 
@@ -274,18 +274,18 @@ sml_exec (String path, uintptr_t sl, uintptr_t envl, int kind)
     for (list = envl, i = 0; isCONS(list); list = tl(list), i++)
     {
       elemML = (String) hd(list);
-      env[i] = &(elemML->data);
+      env[i] = elemML->data;
     }
     env[i] = NULL;
     environ = env;
   }
   if (kind)
   {
-    n = execv(&(path->data), args);
+    n = execv(path->data, args);
   }
   else
   {
-    n = execvp(&(path->data), args);
+    n = execvp(path->data, args);
   }
   return convertIntToML(n);
 }
@@ -356,7 +356,7 @@ REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
       resetRegion(sr);
     }
   s = REG_POLY_CALL(allocStringC, sr, n+1);
-  char *p = &(s->data);
+  char *p = s->data;
   p[n] = '\0';
   r = read(convertIntToC(fd), p, n);
   if (r > 0)
@@ -495,7 +495,7 @@ sml_lstat(uintptr_t pair, String file)
   int res;
   struct stat b;
   mkTagPairML(pair);
-  res = lstat(&(file->data), &b);
+  res = lstat(file->data, &b);
   if (res == -1)
   {
     elemRecordML(pair,0) = convertIntToML(-1);
@@ -510,7 +510,7 @@ sml_stat(uintptr_t pair, String file)
   int res;
   struct stat b;
   mkTagPairML(pair);
-  res = stat(&(file->data), &b);
+  res = stat(file->data, &b);
   if (res == -1)
   {
     elemRecordML(pair,0) = convertIntToML(-1);
@@ -808,7 +808,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
   char *b;
   struct group gbuf, *gbuf2;
   char  **members;
-  char *name = &(nameML->data);
+  char *name = nameML->data;
   mkTagTripleML(triple);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);
@@ -888,7 +888,7 @@ REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, Context 
   long res;
   char *b;
   struct passwd pbuf, *pbuf2;
-  char *name = &(nameML->data);
+  char *name = nameML->data;
   mkTagRecordML(tuple,5);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);

@@ -135,7 +135,7 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
   tmr.tm_wday = convertIntToC(elemRecordML(v,6));
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
-  ressize = strftime(buf, BUFSIZE, &(fmt->data), &tmr);
+  ressize = strftime(buf, BUFSIZE, fmt->data, &tmr);
   if ( ressize == 0 || ressize == BUFSIZE )
     {
       raise_exn(ctx,exn);

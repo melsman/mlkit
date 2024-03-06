@@ -26,7 +26,7 @@
 
 typedef struct stringDesc {
   size_t size;             // Size of string (tagged)
-  char data;               // C String (null-terminated)
+  char data[];             // C String (null-terminated)
 } StringDesc;
 
 typedef StringDesc* String;
