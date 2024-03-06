@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2024-03-06: Use C99 flexible C structs for ML strings and
+  tables (internal cleanup).
+
 ### MLKit version 4.7.9 is released
 
 * mael 2024-03-04: Fix issue with Char.isCntrl (issue #162).
