@@ -27,7 +27,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04, macos-12]
         mlcomp: [mlkit, mlton]
 #        mlcomp: [mlton]
 #        mlcomp: [mlkit]
@@ -100,7 +100,7 @@ jobs:
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./autobuild
-          ./configure
+          ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
 
       - name: Configure With MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
@@ -109,6 +109,7 @@ jobs:
           ./configure --with-compiler=mlkit
 
       - name: Build MLKit
+        timeout-minutes: 120
         run: |
           make mlkit
           make mlkit_basislibs

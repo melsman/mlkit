@@ -37,11 +37,11 @@ functor ManagerObjects(
 	Flags.add_bool_entry {long="link_time_dead_code_elimination", short=SOME "ltdce", item=ref true,
 			      menu=["Control", "link time dead code elimination"], neg=true,
 			      desc="Link time dead code elimination."}
-    local
-      val debug_linking = Flags.lookup_flag_entry "debug_linking"
-    in
-      fun pr_debug_linking s = if !debug_linking then print s else ()
-    end
+
+    val debug_linking = Flags.lookup_flag_entry "debug_linking"
+    fun pr_debug_linking s = if !debug_linking then print s else ()
+
+    fun delete_target_files () = Flags.is_on "delete_target_files"
 
     (*
      * Modification times of files
@@ -71,8 +71,11 @@ functor ManagerObjects(
 	 * Deleting a file
 	 * -------------------- *)
 
-	fun delete_file f = OS.FileSys.remove f handle _ => ()
-
+        fun delete_file f =
+            let val () = if !debug_linking then print ("[Removing file: " ^ f ^ "]\n")
+                         else ()
+            in OS.FileSys.remove f handle _ => ()
+            end
 
 	(* -----------------------------------------------
 	 * Creating directories for target code
@@ -241,7 +244,8 @@ functor ManagerObjects(
 		 let val target_link = generate_link_code (labs, exports)
 		     val linkfile_o = emit(target_link, "base", "link_objects")
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-		    delete_file linkfile_o
+		    (if delete_target_files() then delete_file linkfile_o
+                     else ())
 		 end
 	       | NONE =>
 		 link_files_with_runtime_system target_files run

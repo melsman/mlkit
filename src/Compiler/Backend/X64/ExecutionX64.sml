@@ -119,7 +119,17 @@ structure ExecutionX64: EXECUTION =
         Flags.add_bool_entry
             {long="strip", short=NONE, neg=false, item=ref false,
              menu=["General Control", "strip executable"],
-             desc="If enabled, the Kit strips the generated executable."}
+             desc="If enabled, MLKit strips the generated executable."}
+
+    val objs_p =
+        Flags.add_bool_entry
+            {long="objs", short=NONE, neg=false, item=ref false,
+             menu=["General Control", "export object files"],
+             desc="If enabled, MLKit writes object-file paths to the file\n\
+                  \run or the file specified by -output. The path\n\
+                  \to the runtime system (archive file) is included. The\n\
+                  \option is best used together with the option\n\
+                  \-no_delete_target_files."}
 
     val delete_target_files =
         Flags.add_bool_entry
@@ -261,7 +271,11 @@ structure ExecutionX64: EXECUTION =
 
     val generate_repl_init_code = SOME (fn () => CodeGen.generate_repl_init_code())
 
-    fun delete_file f = OS.FileSys.remove f handle _ => ()
+    fun delete_file f =
+        let val () = if debug_linking() then print ("[Removing file: " ^ f ^ "]\n")
+                     else ()
+        in OS.FileSys.remove f handle _ => ()
+        end
 
     fun execute_command cmd : unit =
         let val () = if debug_linking() then print ("[Executing: " ^ cmd ^ "]\n")
@@ -295,24 +309,44 @@ structure ExecutionX64: EXECUTION =
                         handle _ => ())
       else ()
 
-    fun link_files_with_runtime_system0 path_to_runtime files run =
-      let val files = map (fn s => s ^ " ") files
-          val libdirs =
-              case libdirs() of
-                  "" => ""
-                | libdirs => " " ^ libdirsConvertList libdirs
+    fun writeFile f s =
+        let val os = TextIO.openOut f
+        in ( TextIO.output(os,s)
+           ; TextIO.flushOut os
+           ; TextIO.closeOut os
+           ) handle ? => (TextIO.closeOut os; raise ?)
+        end
 
-          val pthread = if parallelism_p() andalso not(onmac_p())
-                        then " -pthread"
-                        else ""
-          val shell_cmd = link_exe() ^ " -o " ^ run ^ " " ^
-            concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(libs()) ^ pthread
-      in
-        execute_command shell_cmd;
-        strip run;
-        message(fn () => "[wrote executable file:\t" ^ run ^ "]\n");
-        report_dangle_stat()
-      end
+    fun link_files_with_runtime_system0 path_to_runtime files run =
+        if objs_p()
+        then let val files =
+                     path_to_runtime() :: files
+                 val content = String.concatWith " " files ^ "\n"
+             in writeFile run content
+              ; message (fn () => "[wrote object file paths to file:\t" ^ run ^ "]\n")
+              ; report_dangle_stat()
+             end
+             handle ? =>
+                    ( message (fn () => "[** Failed to write object file paths to the file:\t" ^ run ^ "]\n")
+                    ; report_dangle_stat())
+        else
+          let val files = map (fn s => s ^ " ") files
+              val libdirs =
+                  case libdirs() of
+                      "" => ""
+                    | libdirs => " " ^ libdirsConvertList libdirs
+
+              val pthread = if parallelism_p() andalso not(onmac_p())
+                            then " -pthread"
+                            else ""
+              val shell_cmd = link_exe() ^ " -o " ^ run ^ " " ^
+                              concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(libs()) ^ pthread
+          in
+            execute_command shell_cmd;
+            strip run;
+            message(fn () => "[wrote executable file:\t" ^ run ^ "]\n");
+            report_dangle_stat()
+          end
 
     val op ## = OS.Path.concat infix ##
 

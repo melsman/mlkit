@@ -1,5 +1,11 @@
 ## MLKit NEWS
 
+* mael 2024-05-11: Provide support for a new flag `-objs` that together with
+  `-no_delete_target_files` will allow the user to see which object-files are to
+  be linked. The object files, including the file `base_object_file.o` are
+  reported in the file `run` or `f.objs` if `-output f.objs` is given as
+  argument to the `mlkit` command (issue #171).
+
 * mael 2024-03-06: Use C99 flexible C structs for ML strings and
   tables (internal cleanup).
 
