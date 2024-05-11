@@ -38,10 +38,10 @@ functor ManagerObjects(
 			      menu=["Control", "link time dead code elimination"], neg=true,
 			      desc="Link time dead code elimination."}
 
-    val debug_linking = Flags.is_on0 "debug_linking"
-    fun pr_debug_linking s = if debug_linking() then print s else ()
+    val debug_linking = Flags.lookup_flag_entry "debug_linking"
+    fun pr_debug_linking s = if !debug_linking then print s else ()
 
-    val delete_target_files = Flags.is_on0 "delete_target_files"
+    fun delete_target_files () = Flags.is_on "delete_target_files"
 
     (*
      * Modification times of files
@@ -72,7 +72,7 @@ functor ManagerObjects(
 	 * -------------------- *)
 
         fun delete_file f =
-            let val () = if debug_linking() then print ("[Removing file: " ^ f ^ "]\n")
+            let val () = if !debug_linking then print ("[Removing file: " ^ f ^ "]\n")
                          else ()
             in OS.FileSys.remove f handle _ => ()
             end
