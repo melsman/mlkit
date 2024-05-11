@@ -100,7 +100,7 @@ jobs:
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./autobuild
-          ./configure
+          ./configure --with-compiler='mlton -verbose 2'
 
       - name: Configure With MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
