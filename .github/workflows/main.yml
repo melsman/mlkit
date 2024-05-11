@@ -109,6 +109,7 @@ jobs:
           ./configure --with-compiler=mlkit
 
       - name: Build MLKit
+        timeout-minutes: 120
         run: |
           make mlkit
           make mlkit_basislibs
