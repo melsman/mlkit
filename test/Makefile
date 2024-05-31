@@ -1,4 +1,4 @@
-DATE=$(shell /bin/date -u '+%Y-%m-%dT-%H:%M:%S')
+DATE=$(shell date -u '+%Y-%m-%dT-%H:%M:%S')
 
 .PHONY: test
 test: test_mlkit_no_gc test_mlkit
@@ -10,30 +10,30 @@ all: test_mlkit
 test_mlkit: prepare
 	@echo --- Testing MLKit with Regions and Garbage Collection ---
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst)
-	/bin/mv test_report.html test_report-native-$(DATE).html
+	mv test_report.html test_report-native-$(DATE).html
 
 .PHONY: test_mlkit_no_gc
 test_mlkit_no_gc: prepare
 	@echo --- Testing MLKit with Regions ---
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
-	/bin/mv test_report.html test_report-native-nogc-$(DATE).html
+	mv test_report.html test_report-native-nogc-$(DATE).html
 
 .PHONY: test_mlkit_par
 test_mlkit_par: prepare
 	@echo --- Testing MLKit with Regions and Parallelism ---
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc -par)
-	/bin/mv test_report.html test_report-native-par-$(DATE).html
+	mv test_report.html test_report-native-par-$(DATE).html
 
 .PHONY: test_mlkit_gengc
 test_mlkit_gengc: prepare
 	@echo --- Testing MLKit with Regions and Generational Garbage Collection ---
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gengc)
-	/bin/mv test_report.html test_report-native-gengc-$(DATE).html
+	mv test_report.html test_report-native-gengc-$(DATE).html
 
 .PHONY: test_mlkit_gengc_pickle
 test_mlkit_gengc_pickle:
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit pickle.tst -gengc)
-	/bin/mv test_report.html test_report-native-gengc-$(DATE).html
+	mv test_report.html test_report-native-gengc-$(DATE).html
 
 .PHONY: prepare
 prepare: testlink hardlinkA hardlinkB
