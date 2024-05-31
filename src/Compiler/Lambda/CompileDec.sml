@@ -288,7 +288,7 @@ structure CompileDec: COMPILE_DEC =
                 let val G = mkG assignment
                 in if List.all (check G) datbinds then
                      SOME assignment
-                   else NONE (* memo: maybe refined by raising some UNB_LOW to UNB_ALL *)
+                   else NONE (* memo: maybe refine by raising some UNB_LOW to UNB_ALL *)
                 end
             val tns = map #2 datbinds
             val initial_assignment = map (optimistic tns) datbinds

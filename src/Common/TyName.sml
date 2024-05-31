@@ -164,10 +164,10 @@ structure TyName :> TYNAME =
     fun pr_boxity b =
         case b of
             SINGLE b => "single " ^ pr_boxity b
-          | UNB_LOW => "unb-low"
-          | UNB_ALL => "unb-all"
+          | UNB_LOW => "lub"
+          | UNB_ALL => "hub"
           | ENUM => "enum"
-          | BOXED => "boxed"
+          | BOXED => "box"
 
     fun pr_TyName (tn: TyName) : string =
       let val str = TyCon.pr_TyCon (tycon tn)

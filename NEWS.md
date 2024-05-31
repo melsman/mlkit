@@ -1,5 +1,10 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.10 is released
+
+* mael 2024-05-31: Simpler pretty printing of boxity decisions when passing the
+  flag --report_boxities.
+
 * mael 2024-05-11: Provide support for a new flag `-objs` that together with
   `-no_delete_target_files` will allow the user to see which object-files are to
   be linked. The object files, including the file `base_object_file.o` are
