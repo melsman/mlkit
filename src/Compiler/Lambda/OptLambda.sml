@@ -1300,12 +1300,14 @@ structure OptLambda : OPT_LAMBDA =
                  | VAR {lvar,...} =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CCON1 (con,_)) => selC con
+                      | SOME (_,CCONST{exp=PRIM(CONprim{con,...},[])}) => selC con
                       | _ => NONE)
                  | PRIM(SELECTprim {index}, [VAR{lvar,...}]) =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CRECORD cvs) =>
                         (case (SOME(List.nth(cvs,index)) handle _ => NONE) of
                              SOME (CCON1 (con,_)) => selC con
+                           | SOME (CCONST {exp=PRIM(CONprim{con,...},nil)}) => selC con
                            | _ => NONE)
                       | _ => NONE)
                  | _ => NONE
