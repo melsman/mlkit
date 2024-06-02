@@ -151,7 +151,7 @@ structure OptLambda : OPT_LAMBDA =
     val max_inline_size = Flags.add_int_entry
         {long="maximum_inline_size", short=NONE,
          menu=["Optimiser Control", "maximum inline size"],
-         item=ref 70, desc=
+         item=ref 200, desc=
          "Functions smaller than this size (counted in abstract\n\
           \syntax tree nodes) are inlined, even if they are used\n\
           \more than once. Functions that are used only once are\n\
@@ -936,6 +936,7 @@ structure OptLambda : OPT_LAMBDA =
                   | CBLK2SZ of IntInf.int option * IntInf.int option                 (* statically sized 2d-block *)
                   | CRNG of {low: IntInf.int option, high: IntInf.int option}
                   | CCON1 of con * cv
+                  | CCON0 of con
 
       fun eq_cv (cv1,cv2) =
         case (cv1,cv2)
@@ -951,6 +952,7 @@ structure OptLambda : OPT_LAMBDA =
            | (CRNG i1, CRNG i2) => i1 = i2
            | (CCON1 (c1,cv1), CCON1 (c2,cv2)) =>
              Con.eq(c1,c2) andalso eq_cv(cv1,cv2)
+           | (CCON0 c1, CCON0 c2) => Con.eq(c1,c2)
            | _ => false
       and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
         | eq_cvs (nil,nil) = true
@@ -981,6 +983,7 @@ structure OptLambda : OPT_LAMBDA =
            | CBLK2SZ _ => true
            | CRNG _ => true
            | CCON1 (_,cv) => closed_small_cv(lvars_free_ok,excons_free_ok,lvar,tyvars,cv)
+           | CCON0 _ => true
 
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
@@ -992,6 +995,7 @@ structure OptLambda : OPT_LAMBDA =
         | remove _ (cv as (CBLK2SZ _)) = cv
         | remove _ (cv as (CRNG _)) = cv
         | remove lvar (CCON1 (c,cv)) = CCON1(c,remove lvar cv)
+        | remove _ (cv as (CCON0 _)) = cv
         | remove _ _ = CUNKNOWN
 
       fun removes [] cv = cv
@@ -1014,6 +1018,7 @@ structure OptLambda : OPT_LAMBDA =
         | show_cv (CBLK2SZ (i0opt,i1opt)) = "(cblk2sz " ^ pp_opti i0opt ^ ", " ^ pp_opti i1opt ^ ")"
         | show_cv (CRNG {low,high}) = "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
         | show_cv (CCON1 (c,cv)) = Con.pr_con c ^ "(" ^ show_cv cv ^ ")"
+        | show_cv (CCON0 c) = Con.pr_con c
 
       (* substitution *)
       fun on_cv S cv =
@@ -1026,6 +1031,7 @@ structure OptLambda : OPT_LAMBDA =
               | on (cv as CBLK2SZ _) = cv
               | on (cv as CRNG _) = cv
               | on (CCON1(c,cv)) = CCON1(c,on cv)
+              | on (cv as CCON0 c) = cv
               | on _ = CUNKNOWN
         in on cv
         end
@@ -1062,6 +1068,8 @@ structure OptLambda : OPT_LAMBDA =
             if eq_cv(cv1,cv2) then cv
             else CCON1(c1,lub(cv1,cv2))
           else CUNKNOWN
+        | lub (cv as CCON0 c1, CCON0 c2) =
+          if Con.eq(c1,c2) then cv else CUNKNOWN
         | lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
@@ -1300,14 +1308,14 @@ structure OptLambda : OPT_LAMBDA =
                  | VAR {lvar,...} =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CCON1 (con,_)) => selC con
-                      | SOME (_,CCONST{exp=PRIM(CONprim{con,...},[])}) => selC con
+                      | SOME (_,CCON0 con) => selC con
                       | _ => NONE)
                  | PRIM(SELECTprim {index}, [VAR{lvar,...}]) =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CRECORD cvs) =>
                         (case (SOME(List.nth(cvs,index)) handle _ => NONE) of
                              SOME (CCON1 (con,_)) => selC con
-                           | SOME (CCONST {exp=PRIM(CONprim{con,...},nil)}) => selC con
+                           | SOME (CCON0 con) => selC con
                            | _ => NONE)
                       | _ => NONE)
                  | _ => NONE
@@ -1993,8 +2001,9 @@ structure OptLambda : OPT_LAMBDA =
                              else if is_fn bind' then CFN{lexp=bind',large=true}
                              else if is_unboxed_value bind' then CCONST {exp=bind'}
                              else (case bind'
-                                     of VAR _ => CVAR {exp=bind'}
-                                      | _ => cv)
+                                    of VAR _ => CVAR {exp=bind'}
+                                   (*  | PRIM(CONprim {con,...}, nil) => CCONST {exp=bind'} *)
+                                     | _ => cv)
                    val env' = LvarMap.add(lvar,(tyvars,cv'),env)
 
                    val env' = case exn_anti_env bind of  (* under which conditions does bind not raise an exception *)
@@ -2093,6 +2102,8 @@ structure OptLambda : OPT_LAMBDA =
                 let val (e',cv') = contr (env,e)
                 in (PRIM(prim,[e']), CCON1(con,cv'))
                 end
+              | PRIM(prim as CONprim {con,...},[]) =>
+                (PRIM(prim,[]), CCON0 con)
               | PRIM(prim as DECONprim {con,...},[e]) =>
                 let val (e',cv') = contr (env,e)
                     fun default () = (PRIM(prim,[e']), CUNKNOWN)
@@ -2241,6 +2252,10 @@ structure OptLambda : OPT_LAMBDA =
               let val (lvs,cns,tns) = free_cv (cv,acc)
               in (lvs,cn::cns,tns)
               end
+            | CCON0 cn =>
+              let val (lvs,cns,tns) = acc
+              in (lvs,cn::cns,tns)
+              end
 
       fun free_contract_env_res ((_,cv),acc) =
           free_cv(cv,acc)
@@ -2301,6 +2316,7 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CRNG _) = 7
                 | toInt (CBLK2SZ _) = 8
                 | toInt (CCON1 _) = 9
+                | toInt (CCON0 _) = 10
 
               fun fun_CVAR _ =
                   Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
@@ -2337,10 +2353,12 @@ structure OptLambda : OPT_LAMBDA =
               fun fun_CCON1 pu =
                   Pickle.con1 CCON1 (fn CCON1 a => a | _ => die "pu_contract_env.CCON1")
                               (Pickle.pairGen(Con.pu,pu))
+              fun fun_CCON0 pu = Pickle.con1 CCON0 (fn CCON0 c => c | _ => die "pu_contract_env.CCON0")
+                                             Con.pu
               val pu_cv =
                   Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
                                                        fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,
-                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1])
+                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0])
           in LvarMap.pu Lvars.pu
               (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
           end
