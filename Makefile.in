@@ -34,9 +34,9 @@ export INSTDIR_BARRY
 include Makefiledefault
 
 ifeq ($(shell uname),Darwin)
-TIMECMD=/usr/bin/time -v
-else
 TIMECMD=/usr/bin/time -l
+else
+TIMECMD=/usr/bin/time -v
 endif
 
 # Some commands
