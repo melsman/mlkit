@@ -33,6 +33,12 @@ export INSTDIR_BARRY
 
 include Makefiledefault
 
+ifeq ($(shell uname),Darwin)
+TIMECMD=/usr/bin/time -v
+else
+TIMECMD=/usr/bin/time -l
+endif
+
 # Some commands
 
 @SET_MAKE@
@@ -318,7 +324,7 @@ MLKIT_BUILD_LOG ?= native64.log
 
 .PHONY: bootstrap_next_build
 bootstrap_next_build:
-	cd src/Compiler && SML_LIB=$(CWD) /usr/bin/time -l ../../bin/mlkit $(MLKIT_FLAGS) -gc native64.mlb \
+	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc native64.mlb \
              2>&1 | tee $(MLKIT_BUILD_LOG)
 
 .PHONY: bootstrap_next_install
