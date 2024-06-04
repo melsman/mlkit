@@ -36,7 +36,7 @@ include Makefiledefault
 ifeq ($(shell uname),Darwin)
 TIMECMD=/usr/bin/time -l
 else
-TIMECMD=/usr/bin/time -v
+TIMECMD=/usr/bin/time -f 'real time (wall clock in seconds): %e\nresident set size (Kb): %M'
 endif
 
 # Some commands
