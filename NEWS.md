@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.11 is released
+
+* mael 2024-06-04: Tooling bug fixes.
+
 ### MLKit version 4.7.10 is released
 
 * mael 2024-05-31: Simpler pretty printing of boxity decisions when passing the
