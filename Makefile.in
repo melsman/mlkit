@@ -33,6 +33,12 @@ export INSTDIR_BARRY
 
 include Makefiledefault
 
+ifeq ($(shell uname),Darwin)
+TIMECMD=/usr/bin/time -l
+else
+TIMECMD=/usr/bin/time -f 'Command being timed: "%C"\nUser time (seconds): %U\nSystem time (seconds): %S\nElabsed (wall clock) time (seconds): %e\nMaximum resident set size (Kbytes): %M'
+endif
+
 # Some commands
 
 @SET_MAKE@
@@ -313,9 +319,13 @@ bootstrap_first:
 	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
 	$(MAKE) bootstrap0
 
+MLKIT_FLAGS ?=
+MLKIT_BUILD_LOG ?= native64.log
+
 .PHONY: bootstrap_next_build
 bootstrap_next_build:
-	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native64.mlb
+	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc native64.mlb \
+             2>&1 | tee $(MLKIT_BUILD_LOG)
 
 .PHONY: bootstrap_next_install
 bootstrap_next_install:
