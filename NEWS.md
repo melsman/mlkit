@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2024-06-27: Fix recursive-function specialisation bug (issue #177).
+
 ### MLKit version 4.7.11 is released
 
 * mael 2024-06-04: Tooling bug fixes.

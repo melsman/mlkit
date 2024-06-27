@@ -179,3 +179,4 @@ structs-avail.sml                             (* basis library available structu
 word-n-vector.sml
 int-n-vector.sml
 auto2.sml                                     (* ffi auto-conversion *)
+foldbug.sml
