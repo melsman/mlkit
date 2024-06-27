@@ -797,6 +797,7 @@ structure OptLambda : OPT_LAMBDA =
    fun elim_app_arg lv n (e as APP(lv_e as VAR{lvar,...},PRIM(UB_RECORDprim,args),tailpos)) =
        if Lvars.eq(lvar,lv) then
          let val (_,args) = pick n args
+             val args = map (elim_app_arg lv n) args
          in APP(lv_e,ubargs args,tailpos)
          end
        else map_lamb (elim_app_arg lv n) e
