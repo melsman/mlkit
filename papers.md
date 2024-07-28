@@ -6,7 +6,7 @@ group: navigation
 ---
 {% include JB/setup %}
 
-* Martin Elsman. __Double-Ended Bit-Stealing for Algebraic Data Types__. In _Proceedings of the 2024 ACM SIGPLAN International Conference on Functional Programming (ICFP '24)_. Milan, Italy. September 4-6, 2024. [Abstract](https://icfp24.sigplan.org/details/icfp-2024-papers/5/Double-Ended-Bit-Stealing-for-Algebraic-Data-Types).
+* Martin Elsman. __Double-Ended Bit-Stealing for Algebraic Data Types__. In _Proceedings of the 2024 ACM SIGPLAN International Conference on Functional Programming (ICFP '24)_. Milan, Italy. September 4-6, 2024. [Abstract](https://icfp24.sigplan.org/details/icfp-2024-papers/5/Double-Ended-Bit-Stealing-for-Algebraic-Data-Types). [PDF](pdf/icfp24main-p22-final.pdf).
 
 * Martin Elsman. __Explicit Effects and Effect Constraints in ReML__. In _Proceedings of the 51st ACM SIGPLAN Symposium on Principles of Programming Languages (POPL '24)_, London, United Kingdom. January 17-19, 2024. [Abstract](https://popl24.sigplan.org/details/POPL-2024-popl-research-papers/81/Explicit-Effects-and-Effect-Constraints-in-ReML). [PDF](pdf/popl24-final.pdf).
 
