@@ -8,7 +8,7 @@ structure Word64 : WORD =
 
     fun toInt (w : word64) : int = prim("__word64_to_int", w)
     fun toIntX (w : word64) : int = prim("__word64_to_int_X", w)
-    fun fromInt (i : int) : word64 = prim("__word_to_word64", cast_iw i)
+    fun fromInt (x: int) : word64 = prim("__int_to_int64", x)
 
     fun toLargeWord (w : word64) : word64 = w
     val toLarge = toLargeWord
@@ -29,7 +29,7 @@ structure Word64 : WORD =
     fun orb (x : word64, y : word64) : word64 = prim("__orb_word64", (x, y))
     fun andb (x : word64, y : word64) : word64 = prim("__andb_word64", (x, y))
     fun xorb (x : word64, y : word64) : word64 = prim("__xorb_word64", (x, y))
-    fun notb (x : word64) : word64 = prim("__xorb_word64", (x, 0wxFFFFFFFF))    (* MEMO *)
+    fun notb (x : word64) : word64 = prim("__xorb_word64", (x, fromInt ~1))    (* MEMO *)
 
     local
       fun lshift_ (w : word64, k : word) : word64 =
@@ -65,7 +65,7 @@ structure Word64 : WORD =
     val op div = fn (w1:word64,w2) => w1 div w2
     val op mod = fn (w1:word64,w2) => w1 mod w2
 
-    val ~ = fn w => fromInt(~(toInt w))
+    val ~ = fn w => notb w + 0w1
 
     local
       open StringCvt
