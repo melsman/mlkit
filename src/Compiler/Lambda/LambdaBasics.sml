@@ -477,7 +477,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
             | FRAME _ => lamb
 
-            (* MEMO: frames; hopefully, we will name rename expressions containing frames... *)
+            (* MEMO: frames; hopefully, we will NOT rename expressions containing frames... *)
     in
       fun new_instance (lamb : LambdaExp) : LambdaExp = on_e empty_ren lamb
     end (*local*)

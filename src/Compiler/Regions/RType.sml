@@ -400,9 +400,8 @@ struct
              childsep = PP.RIGHT",",
              children = [x, y]}
 
-  fun layout_list f [ ] = leaf ""
-    | layout_list f l =
-           Node{start = "[", finish = "]", indent = 1,
+  fun layout_list f l =
+           Node{start = "<", finish = ">", indent = 1,
                 childsep = PP.RIGHT ", ",
                 children = map f l}
 

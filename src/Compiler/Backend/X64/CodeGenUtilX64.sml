@@ -1976,12 +1976,12 @@ struct
             if y = d then
               if x = d then
                 finst(R d, R d) :: C'
-              else
+              else (* x <> d && x <> y && d <> f1 *)
                 copy_f64(y, tmp_freg1,
                 copy_f64(x, d,
                 finst(R tmp_freg1, R d) ::
                 C'))
-            else
+            else (* y <> d *)
               copy_f64(x, d,
               finst(R y, R d) ::
               C') ))

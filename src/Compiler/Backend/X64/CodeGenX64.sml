@@ -1623,6 +1623,10 @@ struct
       comment ("END OF STATIC DATA AREA",nil)))))
 
     fun init_x64_code () = [I.dot_text]
+
+    fun x64_optimise x =
+        if true then I.optimise x
+        else x
   in
     fun CG {main_lab:label,
             code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
@@ -1640,7 +1644,7 @@ struct
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab}
-        val x64_prg = I.optimise x64_prg
+        val x64_prg = x64_optimise x64_prg
         val _ = chat "]\n"
       in
         x64_prg

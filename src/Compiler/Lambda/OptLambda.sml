@@ -49,6 +49,7 @@ structure OptLambda : OPT_LAMBDA =
                               end
 
     fun pr_Type t = PP.flatten1 (layoutType t)
+    fun pr_Types ts = "[" ^ String.concatWith "," (map (PP.flatten1 o layoutType) ts) ^ "]"
 
     fun on_Types S ts = map (on_Type S) ts
 
@@ -318,7 +319,7 @@ structure OptLambda : OPT_LAMBDA =
         let fun p [] = ""
               | p [n] = Int.toString n
               | p (n::ns) = Int.toString n ^ ", " ^ p ns
-        in log ("ticks pr. round: " ^ p (rev (!tick_count_list)))
+        in log ("ticks pr. round: " ^ p (rev (!tick_count_list)) ^ "\n")
         end
 
     in
@@ -330,14 +331,16 @@ structure OptLambda : OPT_LAMBDA =
                        | NONE => 0
             val new_stat_map = StringFinMap.add(s, i+1, map)
             val _ = incr_tick_counter()
-        in (* log ("  " ^ s ^ "\n"); *) stat_map := new_stat_map
+        in stat_map := new_stat_map
         end
+      val last_tick = ref ""
       fun print_stat lamb lamb' =
         if not (statistics_after_optimisation()) then ()
         else let val st = layout_stat (!stat_map)
-             in PP.outputTree (log, st, !Flags.colwidth);
-                print_size_difference (size_lamb lamb) (size_lamb lamb');
-                print_tick_count_list ()
+             in PP.outputTree (log, st, !Flags.colwidth)
+              ; print_size_difference (size_lamb lamb) (size_lamb lamb')
+              ; print_tick_count_list ()
+              ; log ("Last tick: '" ^ !last_tick ^ "'\n")
              end
       val end_round = end_round
     end
@@ -354,7 +357,7 @@ structure OptLambda : OPT_LAMBDA =
     local
       val flag = ref false
     in
-      fun tick (s : string) = (flag := true;
+      fun tick (s : string) = (flag := true; last_tick := s;
                                if statistics_after_optimisation() then add_statistics s
                                else ())
       fun reset_tick () = flag := false
@@ -833,7 +836,7 @@ structure OptLambda : OPT_LAMBDA =
    fun specializeN_bind {lvar=lv_f, tyvars, Type=ARROWtype(taus,rv0,taus_res,rv),
                          bind=FN{pat,body}}
                         n (tailpos:bool option) instances (PRIM(UB_RECORDprim,args)) =
-     let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
+     let val S = mk_subst (fn () => "specializeN_bind") (tyvars, instances)
          val taus = on_Types S taus
          val taus_res = on_Types S taus_res
          val (taus1',tau', taus2') = pick2 n taus
@@ -871,7 +874,7 @@ structure OptLambda : OPT_LAMBDA =
                    end
      in new_instance e
      end
-     | specializeN_bind _ _ _ _ _ = die "specialize_bind"
+     | specializeN_bind _ _ _ _ _ = die "specializeN_bind"
 
    val tag_values = Flags.is_on0 "tag_values"
 
@@ -1815,7 +1818,7 @@ structure OptLambda : OPT_LAMBDA =
                   else case functions
                          of [function as {lvar,regvars=[],tyvars,Type,constrs,bind}] =>
                            if single_arg_fn bind andalso not(lvar_in_lamb lvar bind) then
-                             (tick "reduce - fix-let";
+                             ((*tick "reduce - fix-let";*)
                               reduce (env, (LET{pat=[(lvar,tyvars,Type)],
                                                 bind=bind,scope=scope},cv)))
                            else fail
@@ -1845,7 +1848,9 @@ structure OptLambda : OPT_LAMBDA =
                     else fail
                   | SOME (tyvars,CFIX{N=SOME n,Type,bind,large}) =>
                     if not(large) orelse Lvars.one_use lvar then
-                      let val e = specializeN_bind {lvar=lvar,tyvars=tyvars,Type=Type,bind=bind} n tailpos instances lamb2
+                      let val () = case lamb2 of PRIM(UB_RECORDprim,_) => ()
+                                               | _ => die ("specializeN_bind.assumption:UB_RECORDprim: " ^ Lvars.pr_lvar lvar)
+                          val e = specializeN_bind {lvar=lvar,tyvars=tyvars,Type=Type,bind=bind} n tailpos instances lamb2
                       in decr_use lvar; decr_uses lamb2; incr_uses e; tick ("reduce - fix-specN." ^ Lvars.pr_lvar lvar);
                          reduce (env, (e, CUNKNOWN))
                       end
@@ -2203,6 +2208,9 @@ structure OptLambda : OPT_LAMBDA =
 
       val layout_contract_env = layout_contract_env
 
+      fun unknown_env (e:env) : env =
+          LvarMap.composemap (fn (tvs,_) => (tvs,CUNKNOWN)) e
+
       fun contract_env_dummy lamb : contract_env =
         let val lvars = #1(exports lamb)
         in List.foldl (fn (lv, acc) => LvarMap.add(lv,(nil,CUNKNOWN),acc))
@@ -2285,7 +2293,7 @@ structure OptLambda : OPT_LAMBDA =
          environments.
        *)
 
-      fun warn_on_failed_inlines ce1 ce2 : unit =
+      fun warn_on_failed_inlines ce : unit =
         let fun warn lv =
                 print ("** WARNING: variable '" ^ Lvars.pr_lvar lv ^ "' is not inlined. Expressions\n\
                        \** that are effectful are not inlined and neither are functions that refer\n\
@@ -2297,11 +2305,8 @@ structure OptLambda : OPT_LAMBDA =
                   | _ => k()
         in LvarMap.Fold (fn ((lv,(_,cv)),()) =>
                             if inline_lvar lv then
-                              check cv (fn () =>
-                                           case LvarMap.lookup ce2 lv of
-                                               NONE => warn lv
-                                            |  SOME (_,cv) => check cv (fn () => warn lv))
-                            else ()) () ce1
+                              check cv (fn () => warn lv)
+                            else ()) () ce
         end
 
       (* Serialisation *)
@@ -2747,7 +2752,7 @@ structure OptLambda : OPT_LAMBDA =
 
    fun fix_conversion lamb =
      let fun f (LET{pat=[(lvar,tyvars,Type)],bind=bind as FN _,scope=scope}) =
-                 (tick "fix conversion";
+                 ((*tick "fix conversion";*)
                   FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,constrs=[],bind=bind}],
                       scope=scope})
            | f (FIX{functions=[],scope}) = (tick "fix conversion - empty"; f scope)
@@ -2855,6 +2860,437 @@ structure OptLambda : OPT_LAMBDA =
          LvarMap.pu Lvars.pu (Pickle.enumGen ("OptLambda.let_env_res",[DELAY_SIMPLE,IGNORE]))
    end
 
+   (* ---
+    * Fix-flattening takes care of both argument unboxing (flattening),
+    * uncurrying, and elimination of unused arguments. The technique
+    * is based on the concept of compositional argument manipulators,
+    * which are atomic manipulations that aim at either eliminating an
+    * argument, adding a new unboxed argument, or uncurrying a
+    * function.
+    * ----- *)
+
+   structure FixFlatten = struct
+
+   (* Some utilities *)
+   infix |>
+   fun a |> f = f a
+
+   fun dropi i nil = nil
+     | dropi i (x::xs) = if i = 0 then xs
+                         else x::dropi (i-1) xs
+
+   (* Argument manipulators *)
+   datatype t = Comp of t * t | Id | Newprj of int * int | Drop of int | Unc
+   infix oo
+   fun Id oo t = t
+     | t oo Id = t
+     | t oo t' = Comp(t,t')
+   fun pp_t (t:t) =
+       case t of
+           Comp(t',t) => pp_t t' ^ " . " ^ pp_t t
+         | Id => "id"
+         | Newprj(i,j) => "newprj(" ^ Int.toString i ^ "," ^ Int.toString j ^ ")"
+         | Drop i => "drop(" ^ Int.toString i ^ ")"
+         | Unc => "unc"
+   type arr = Type list * regvar option * Type list * regvar option
+   fun on_arr (t:t) ((tys,eps,tys',rho):arr) : arr =
+       let fun prj i ty =
+               case ty of
+                   RECORDtype (tys,_) => (List.nth(tys,i) handle _ => die "on_arr.prj.index err")
+                 | _ => if i = ~1 andalso LambdaBasics.eq_Type(realType,ty)
+                        then f64Type
+                        else die "on_arr.prj.not tuple or real"
+       in case t of
+              Newprj(i,j) =>
+              let val ty' = List.nth(tys,i)
+                            handle _ => die "on_arr.newprj.index err"
+              in (tys @ [prj j ty'],eps,tys',rho)
+              end
+            | Drop i =>
+              if i >= length tys then die "on_arr.drop"
+              else (dropi i tys, eps,tys',rho)
+            | Comp(t',t) => on_arr t' (on_arr t (tys,eps,tys',rho))
+            | Id => (tys,eps,tys',rho)
+            | Unc =>
+              case tys' of
+                  [ARROWtype([ty1],_,tys',_)] => (tys @ [ty1],eps,tys',rho)
+                | [ARROWtype _] => die "on_arr.expecting single arrow with one argument type"
+                | [ty] => die ("on_arr.expecting single arrow - got " ^ pr_Type ty)
+                | _ => die "on_arr.expecting single type"
+       end
+
+   fun on_ty t (ARROWtype arr) = ARROWtype(on_arr t arr)
+     | on_ty _ _ = die "on_ty.not arrow"
+
+   fun lams nil e = e
+     | lams ((x,ty)::vtys) e = FN {pat=[(x,ty)],body=lams vtys e}
+
+   fun flatten_args t tys es =
+       case t of
+           Unc =>
+           let val x = Lvars.newLvar()
+           in case tys of
+                  [ARROWtype([ty],_,tys',_)] => (es @ [VAR{lvar=x,instances=nil,regvars=nil}], [(x,ty)], tys')
+                | [ARROWtype _] => die "flatten_args.Unc.no single arg ARROWtype"
+                | [t] => die ("flatten_args.Unc.no ARROWtype: " ^ pr_Type t)
+                | _ => die ("flatten_args.Unc.no single type: " ^ pr_Types tys)
+           end
+         | Drop i =>
+           if i > length es then die "flatten_args.Drop"
+           else (dropi i es, [], tys)
+         | Newprj(i,j) =>
+           let val e = List.nth(es,i)
+                       handle _ => die "flatten_args.Newprj"
+           in (es @ [if j = ~1
+                     then real_to_f64 e
+                     else PRIM(SELECTprim {index=j},[e])],
+               [], tys)
+           end
+         | Comp(t',t) =>
+           let val (es,vtys,tys) = flatten_args t tys es
+               val (es,vtys',tys) = flatten_args t' tys es
+           in (es,vtys@vtys',tys)
+           end
+         | Id => (es, [], tys)
+
+   datatype phi_res = FIXphi of t * tyvar list * Type | NOFIXphi
+   type phi = phi_res Lvars.Map.map
+   infix ++
+   fun phi1 ++ phi2 = Lvars.Map.plus(phi1,phi2)
+
+   type vty = lvar * Type
+   type function = {lvar : lvar, regvars: regvar list, tyvars : tyvar list,
+                    Type : Type, constrs: constr list, vtys:vty list, body : LambdaExp}
+   fun to_function {lvar,regvars,tyvars,Type,constrs,bind=FN{pat,body}} : function =
+       {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,vtys=pat,body=body}
+     | to_function _ = die "to_function"
+   fun from_function ({lvar,regvars,tyvars,Type,constrs,vtys,body} : function) =
+       {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,bind=FN{pat=vtys,body=body}}
+
+   fun flatten (F: phi -> function -> function * t) (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+       let val framephi : phi option ref = ref NONE
+           fun flt phi e =
+               case e of
+                   FIX {functions,scope} =>
+                   let val functions = map to_function functions
+                       val functions' = map (fn f => (F phi f,#Type f)) functions
+                       val phi' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t),oldType) =>
+                                                              (lvar,FIXphi(t,nil,oldType)))
+                                                          functions')
+                       val phi'' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t),oldType) =>
+                                                               (lvar,FIXphi(t,tyvars,oldType)))
+                                                           functions')
+                   in FIX{functions=map (fn (({lvar,regvars,tyvars,Type,constrs,vtys,body},t),_) =>
+                                            let val phi'2 = Lvars.Map.fromList (map (fn (lv,_) => (lv,NOFIXphi)) vtys)
+                                                val () = if t <> Id then tick "flatten - fix" else ()
+                                            in from_function {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                                                              constrs=constrs,vtys=vtys,body=flt (phi++phi'++phi'2) body}
+                                            end)
+                                        functions',
+                          scope=flt (phi++phi'') scope}
+                   end
+                 | APP(e1 as VAR{lvar,instances,regvars},e,bopt) =>
+                   let val es = case e of
+                                    PRIM(UB_RECORDprim,es) => es
+                                  | _ => [e]
+                       val es = map (flt phi) es
+                       fun mkApp es =
+                           APP(e1,case es of [e] => e | _ => PRIM(UB_RECORDprim,es),bopt)
+
+                       fun binds tys es =
+                           case (tys,es) of
+                               (nil,nil) => (fn x => x, nil)
+                             | (ty::tys, e::es) =>
+                               let val x = Lvars.newLvar()
+                                   val () = if LambdaBasics.eq_Type(ty,f64Type) then Lvars.set_ubf64 x
+                                            else ()
+                                   val (G,es') = binds tys es
+                               in (fn X => LET{pat=[(x,nil,ty)],bind=e,scope=G X},
+                                   VAR{lvar=x,instances=nil,regvars=nil}::es')
+                               end
+                             | _ => die "flatten.binds"
+                   in case Lvars.Map.lookup phi lvar of
+                          NONE => die "flt.look"
+                        | SOME NOFIXphi => mkApp es
+                        | SOME (FIXphi(t,tvs,ARROWtype(tys0,_,tys,_))) =>
+                          if t = Id then mkApp es
+                          else let val S = LambdaBasics.mk_subst (fn () => "OptLambda.flatten") (tvs,instances)
+                                   val tys = map (LambdaBasics.on_Type S) tys
+                                   val tys0 = map (LambdaBasics.on_Type S) tys0
+                                   val (G,es') = binds tys0 es
+                                   (*val () = print ("tys=" ^ pr_Types tys ^ "\n")*)
+                                   val (es,vtys,_) = flatten_args t tys es'
+                                   val () = if t <> Id then tick "flatten - app" else ()
+                               in lams vtys (G(mkApp es))
+                               end
+                        | SOME _ => die "flt.look.no Arr"
+                   end
+                 | FN {pat,body} =>
+                   let val phi' = Lvars.Map.fromList (map (fn (x,_) => (x,NOFIXphi)) pat)
+                   in FN{pat=pat,body=flt (phi ++ phi') body}
+                   end
+                 | LET {pat,bind,scope} =>
+                   let val phi' = Lvars.Map.fromList (map (fn (x,_,_) => (x,NOFIXphi)) pat)
+                   in LET{pat=pat,bind=flt phi bind,scope=flt (phi ++ phi') scope}
+                   end
+                 | VAR {lvar,instances,...} =>
+                   (case Lvars.Map.lookup phi lvar of
+                        SOME NOFIXphi => e
+                      | SOME (FIXphi (_,tvs,ARROWtype([ty],_,_,_))) =>
+                        let val S = LambdaBasics.mk_subst (fn () => "OptLambda.flatten") (tvs,instances)
+                            val ty = LambdaBasics.on_Type S ty
+                            val x = Lvars.newLvar()
+                            val body = APP(e,VAR{lvar=x,instances=nil,regvars=nil},NONE)
+                        in flt phi (FN{pat=[(x,ty)],body=body})
+                        end
+                      | SOME (FIXphi _) => die ("flatten.VAR1: " ^ Lvars.pr_lvar lvar)
+                      | NONE => die ("flatten.VAR: " ^ Lvars.pr_lvar lvar))
+                 | FRAME{declared_lvars, declared_excons} =>
+                   let val declared_lvar_ress =
+                           map (fn {lvar,tyvars,Type} =>
+                                   case Lvars.Map.lookup phi lvar of
+                                       SOME (res as FIXphi(t,tvs,Type)) =>
+                                       ({lvar=lvar,tyvars=tvs,Type=Type}, res)
+                                     | SOME NOFIXphi => ({lvar=lvar,tyvars=tyvars,Type=Type}, NOFIXphi)
+                                     | NONE => die "OptLambda.flatten.FRAME")
+                               declared_lvars
+                       val phi' = Lvars.Map.fromList (map (fn ({lvar,...},res) => (lvar,res))
+                                                          declared_lvar_ress)
+                   in ( framephi := SOME phi'
+                      ; FRAME{declared_lvars=map #1 declared_lvar_ress,
+                              declared_excons=declared_excons}
+                      )
+                   end
+                 | _ => LambdaBasics.map_lamb (flt phi) e
+       in (flt phi e,
+           case !framephi of
+               SOME phi => phi
+             | NONE => die "flatten:FRAME not set"
+          )
+       end
+
+   fun dropOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+               let val vs0 = #1 (freevars body)
+                   (* val () = print ("Freevars: " ^ String.concatWith ", " (map Lvars.pr_lvar vs0) ^ "\n")  *)
+                   val (_,t,vtys) =
+                       List.foldl (fn ((x,ty),(i,t,vtys)) =>
+                                      if List.exists (fn y => Lvars.eq(x,y)) vs0
+                                      then (i+1,t,(x,ty)::vtys)
+                                      else (i+1,t oo Drop i,vtys))
+                                  (0,Id,nil) vtys
+                   val Type = on_ty t Type
+(*
+                   val tvs_set = tyvars_Type TyvarSet.empty Type TyvarSet.empty
+                   val tyvars = List.filter (fn tv => TyvarSet.member tv tvs_set) tyvars
+*)
+               in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                    constrs=constrs,vtys=List.rev vtys,body=body},t)
+               end
+       in flatten F phi e
+       end
+
+   fun uncOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+               let fun unc t vtys e : t * (lvar*Type)list * LambdaExp =
+                       case e of
+                           FN{pat=[(x,ty')],body} => unc (Unc oo t) (vtys@[(x,ty')]) body
+                         | _ => (t,vtys,e)
+                   val (t,vtys,e) = unc Id vtys body
+               in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_ty t Type,
+                    constrs=constrs,vtys=vtys,body=e},t)
+               end
+       in flatten F phi e
+       end
+
+   fun unbOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+               let fun ins (x,ty,i,j) a =
+                       if List.exists (fn (y,_,i',j') => Lvars.eq(y,x) andalso i=i' andalso j=j') a
+                       then a else (x,ty,i,j)::a
+                   fun looki (m:(lvar*'a)list) (x:lvar) : (int * 'a) option =
+                       let fun loop i nil = NONE
+                             | loop i ((k,v)::xs) =
+                               if Lvars.eq(x,k) then SOME(i,v)
+                               else loop (i+1) xs
+                       in loop 0 m
+                       end
+
+                   (* First clear all variables *)
+                   fun clear_vars (e:LambdaExp) : unit =
+                       LambdaBasics.app_lamb
+                           (fn VAR{lvar,...} => Lvars.is_inserted lvar := false
+                             | e => clear_vars e) e
+
+                   (* Then collect and mark all non-select variables *)
+                   val non_selects = ref nil
+                   fun collect_non_selects (e:LambdaExp) : unit =
+                       LambdaBasics.app_lamb
+                           (fn PRIM(SELECTprim {index=j}, [VAR _]) => ()
+                             | PRIM(CCALLprim{name="__real_to_f64",...}, [VAR _]) => ()
+                             | VAR{lvar,...} =>
+                               if !(Lvars.is_inserted lvar) then ()
+                               else (Lvars.is_inserted lvar := true;
+                                     non_selects := lvar :: !non_selects)
+                             | e => collect_non_selects e) e
+                   val candidates = ref nil
+                   fun collect_candidates (e:LambdaExp) : unit =
+                       let fun look x j =
+                               case looki vtys x of
+                                   SOME (i,ty) => if !(Lvars.is_inserted x) then ()
+                                                  else candidates := ins (x,ty,i,j) (!candidates)
+                                 | NONE => ()
+                       in LambdaBasics.app_lamb
+                              (fn PRIM(SELECTprim {index=j}, [VAR{lvar=x,...}]) => look x j
+                                | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) => look x ~1
+                                | e => collect_candidates e) e
+                       end
+                   fun appS S e =
+                       let fun find x i =
+                               case List.find (fn (y,j,_) => Lvars.eq(y,x) andalso i=j) S of
+                                   SOME (_,_,y) => VAR{lvar=y,instances=nil,regvars=nil}
+                                 | NONE => e
+                       in case e of
+                              PRIM(SELECTprim {index=i},[VAR{lvar=x,...}]) => find x i
+                            | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) => find x ~1
+                            | _ => LambdaBasics.map_lamb (appS S) e
+                       end
+                   fun tySel ty j =
+                       case ty of
+                           RECORDtype (tys,_) => (List.nth(tys,j)
+                                                  handle _ => die "tySel.no j")
+                         | _ => if j = ~1 andalso LambdaBasics.eq_Type(realType,ty)
+                                then f64Type
+                                else die "tySel.no tuple"
+                   val () = clear_vars body
+                   val () = collect_non_selects body
+                   val () = collect_candidates body
+               in (case !candidates of
+                       nil => ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                                constrs=constrs,vtys=vtys,body=body}, Id)
+                     | xs =>
+                       let val (t,vtys,S:(lvar*int*lvar)list) =
+                               List.foldl (fn ((x,ty,i,j),(t,vtys,S)) =>
+                                              let val ty' = tySel ty j
+                                                  val y = if j = ~1 andalso LambdaBasics.eq_Type(ty',f64Type)
+                                                          then let val y = (*Lvars.new_named_lvar (Lvars.pr_lvar x ^ "_f64")*)
+                                                                       Lvars.newLvar()
+                                                               in Lvars.set_ubf64 y
+                                                                ; y
+                                                               end
+                                                          else Lvars.newLvar()
+                                              in (Newprj(i,j) oo t,
+                                                  vtys@[(y,ty')],
+                                                  (x,j,y)::S)
+                                              end) (Id,vtys,nil) xs
+                       in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_ty t Type,
+                            constrs=constrs,vtys=vtys,body=appS S body}, t)
+                       end) before List.app (fn x => Lvars.is_inserted x := false) (!non_selects)
+               end
+       in flatten F phi e
+       end
+
+   fun phi_mod (phi,phi') =
+       Lvars.Map.ComposeMap
+           (fn (lv,res) =>
+               case Lvars.Map.lookup phi' lv of
+                   SOME res' =>
+                   (case (res, res') of
+                        (FIXphi(t,tvs,ty),FIXphi(t',_,_)) => FIXphi(t' oo t,tvs,ty)
+                      | (NOFIXphi, _) => res'
+                      | (_, NOFIXphi) => res)
+                 | NONE => die "phi_mod1")
+           phi
+
+   fun phi_nofix phi =
+       Lvars.Map.composemap (fn NOFIXphi => NOFIXphi
+                              | FIXphi (t,tvs,ty) => NOFIXphi) phi
+
+   fun flattening (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+       let val () = log "flattening\n"
+           (*val () = prLambdaExp "Before uncOpt" e *)
+           val (e,phi1) = uncOpt phi e
+           val phi0 = phi_nofix phi
+           (*val () = prLambdaExp "Before unbOpt" e*)
+           val (e,phi2) = unbOpt phi0 e
+           (*val () = prLambdaExp "Before dropOpt" e*)
+           val (e,phi3) = dropOpt phi0 e
+           (*val () = prLambdaExp "After dropOpt" e*)
+       in (e, phi_mod(phi_mod(phi1,phi2),phi3))
+       end
+
+   (* Pickling *)
+   val pu_t =
+       let fun toInt t =
+               case t of
+                   Comp _ => 0
+                 | Id => 1
+                 | Newprj _ => 2
+                 | Drop _ => 3
+                 | Unc => 4
+           fun fun_Comp pu =
+               Pickle.con1 Comp (fn Comp p => p | _ => die "pu_t.Comp")
+                           (Pickle.pairGen(pu,pu))
+           val fun_Id = Pickle.con0 Id
+           fun fun_Newprj _ =
+               Pickle.con1 Newprj (fn Newprj p => p | _ => die "pu_t.Newprj")
+                           (Pickle.pairGen(Pickle.int,Pickle.int))
+           fun fun_Drop _ =
+               Pickle.con1 Drop (fn Drop i => i | _ => die "pu_t.Drop")
+                           Pickle.int
+           val fun_Unc = Pickle.con0 Unc
+       in
+         Pickle.dataGen("OptLambda.t",toInt,[fun_Comp,fun_Id,fun_Newprj,
+                                             fun_Drop,fun_Unc])
+       end
+
+   val pu_phi_res =
+       let fun toInt (FIXphi _) = 0
+             | toInt NOFIXphi = 1
+           fun fun_FIXphi _ =
+               Pickle.con1 FIXphi (fn FIXphi x => x | _ => die "pu_phi_res.FIXphi")
+                           (Pickle.tup3Gen0(pu_t,LambdaExp.pu_tyvars,LambdaExp.pu_Type))
+           val fun_NOFIXphi = Pickle.con0 NOFIXphi
+       in Pickle.dataGen("OptLambda.phi_res",toInt,[fun_FIXphi,fun_NOFIXphi])
+       end
+
+   val pu_phi = LvarMap.pu Lvars.pu pu_phi_res
+
+   (* Layout *)
+   fun layout_phi_res (FIXphi(t,tyvars,Type)) = PP.LEAF ("FIXphi(" ^ pp_t t ^ ")")
+     | layout_phi_res NOFIXphi = PP.LEAF "NOFIXphi"
+
+   val layout_phi =
+       LvarMap.layoutMap {start="Phi={", eq="->", sep=", ", finish="}"}
+                         (PP.LEAF o Lvars.pr_lvar) layout_phi_res
+
+   (* Enrichment and Restriction *)
+   fun eq_phi_res (x,y) =
+       case (x,y) of
+           (NOFIXphi, NOFIXphi) => true
+         | (FIXphi (t1,tvs1,ty1), FIXphi (t2,tvs2,ty2)) =>
+           t1 = t2 andalso eq_sigma((tvs1,ty1),(tvs2,ty2))
+         | _ => false
+
+   fun enrich_phi (phi1,phi2) =
+       LvarMap.Fold (fn ((lv2,res2),b) =>
+                        b andalso
+                        case LvarMap.lookup phi1 lv2 of
+                            SOME res1 => eq_phi_res(res1,res2)
+                          | NONE => false) true phi2
+
+   fun restrict_phi (phi,lvars) =
+       List.foldl (fn (lv,acc) =>
+                      case LvarMap.lookup phi lv of
+                          SOME res => LvarMap.add(lv,res,acc)
+                        | NONE => die "restrict_phi.lv not in env") LvarMap.empty lvars
+
+   fun dummy_phi (e:LambdaExp) : phi =
+       exports e |> #1
+                 |> List.map (fn lv => (lv,NOFIXphi))
+                 |> Lvars.Map.fromList
+
+   end (* structure FixFlatten *)
 
    (* ----------------------------------------------------------------
     * unbox_fix_args; Unbox arguments to fix-bound functions, for which
@@ -3239,26 +3675,29 @@ structure OptLambda : OPT_LAMBDA =
                           else normal()
                         | _ => normal()
                     end
-                    | add_env _ _ = die "unbox_fix_args.f.add_env"
-                  fun trans_function env {lvar,regvars,tyvars,Type,constrs,bind=FN{pat=[(lv,pt)],body}} =
+                    | add_env _ ({lvar,...},env) = add_lv (lvar, NORMAL_ARGS, env)
+                  fun trans_function env {lvar,regvars,tyvars,Type,constrs,bind=FN{pat=argpat0,body}} =
                       let fun mk_fun Type argpat body =
                               {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
                                constrs=constrs,bind=FN{pat=argpat, body=body}}
                       in case lookup env lvar of
-                             SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans2 env body)
+                             SOME NORMAL_ARGS => mk_fun Type argpat0 (trans2 env body)
                            | SOME (UNBOXED_ARGS (_, _, Type' as ARROWtype(argTypes,_,_,_))) =>
-                             let (* create argument env *)
-                               val (body, argpat) = hoist_lvars(body,lv,argTypes)
-                               val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
-                               val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
-                                                                       then add_lv(lv,F64_LOCAL,e)
-                                                                       else e) env' argpat
-                               val body' = trans2 env' body
-                             in mk_fun Type' argpat body'
-                             end
+                             (case argpat0 of
+                                  [(lv,pt)] =>
+                                  let (* create argument env *)
+                                    val (body, argpat) = hoist_lvars(body,lv,argTypes)
+                                    val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
+                                    val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
+                                                                            then add_lv(lv,F64_LOCAL,e)
+                                                                            else e) env' argpat
+                                    val body' = trans2 env' body
+                                  in mk_fun Type' argpat body'
+                                  end
+                                | _ => die "unbox_fix_args.f.do_fun1")
                            | _ => die "unbox_fix_args.trans2.trans_function"
                       end
-                    | trans_function _ _ = die "unbox_fix_args.f.do_fun"
+                    | trans_function _ _ = die "unbox_fix_args.f.do_fun2"
                   val env_fix = List.foldl (add_env true) env functions
                   val env_scope = List.foldl (add_env false) env functions
                   val functions = map (trans_function env_fix) functions
@@ -3357,7 +3796,7 @@ structure OptLambda : OPT_LAMBDA =
                   | _ => default()
              end
            | _ => map_lamb (trans2 env) lamb
-
+(*
      fun trans (env:unbox_fix_env) lamb =
          case lamb of
              FIX {functions, scope} =>   (* memo:regvars *)
@@ -3495,6 +3934,7 @@ structure OptLambda : OPT_LAMBDA =
                   | _ => default()
              end
            | _ => map_lamb (trans env) lamb
+*)
    in
      val restrict_unbox_fix_env = restrict_unbox_fix_env
      val layout_unbox_fix_env = layout_unbox_fix_env
@@ -3614,7 +4054,7 @@ structure OptLambda : OPT_LAMBDA =
                         | NOTFIXBOUND
     type inveta_env = inveta_res LvarMap.map
 
-    fun restrict_inv_eta_env(inveta_env,lvars) =
+    fun restrict_inv_eta_env (inveta_env,lvars) =
       List.foldl(fn (lv,acc) =>
                  case LvarMap.lookup inveta_env lv
                    of SOME res => LvarMap.add(lv,res,acc)
@@ -3643,7 +4083,7 @@ structure OptLambda : OPT_LAMBDA =
     fun eq_inveta_res (FIXBOUND sigma1, FIXBOUND sigma2) = eq_sigma(sigma1,sigma2)
       | eq_inveta_res (NOTFIXBOUND, NOTFIXBOUND) = true
       | eq_inveta_res _ = false
-    fun enrich_inv_eta_env(inveta_env1,inveta_env2) =
+    fun enrich_inv_eta_env (inveta_env1,inveta_env2) =
       LvarMap.Fold(fn ((lv2,res2),b) => b andalso
                    case LvarMap.lookup inveta_env1 lv2
                       of SOME res1 => eq_inveta_res(res1,res2)
@@ -3734,19 +4174,35 @@ structure OptLambda : OPT_LAMBDA =
     *  into
     *
     *     fix f : sigma' = \<x1:t1...xn:tn> .
-    *        e[f <e1 ... en>][\x_1':t1...\xn':tn.f<x1'...xn'>]
+    *        e[f <e1 ... en>][\x1':t1...\xn':tn.f<x1'...xn'>]
     *     in e'[f_il <e1'...en'>][\x1'':t1'...\xn'':tn'.f_il<x1''...xn''>]
     *     end
     *
     *  where
     *
     *     sigma  = \/av.t1 -> ... -> tn -> t
-    *     sigma' = \/av. <t1...tn> -> t
+    *     sigma' = \/av.<t1...tn> -> t
     *     av = a1...an
     *     ti' = ti[il/av]    i=1..n
     *     xi', xi'' fresh    i=1..n
     *
     *  E : Var -> N * TypeScheme
+    *
+    *  Also, the scheme should transform
+    *
+    *     fix f : sigma = \<x1:t1...xn:tn>\x1':t1'...\xm':tm' .
+    *        e[f <e1 ... en> e1' ... em'][f]
+    *     in e'[f_il <e1'' ... en''> e1''' ... em'''][f_il]
+    *     end
+    *
+    *  into
+    *
+    *     fix f : sigma' = \<x1:t1...xn:tn x1':t1'...xm':tm'> .
+    *        e[f <e1 ... en e1' ... em'>][\<x1'':t1...\xn'':tn>\x1''':t1'...\xm''':tm'.f<x1'...xn' x1'''...xm'''>]
+    *     in e'[f_il <e1''...en'' e1'''...em'''>][\<x1'':t1...\xn'':tn>\x1''':t1'...\xm''':tm'.f_il<x1'...xn' x1'''...xm'''>]
+    *     end
+
+
     * ----------------------------------------------------------------- *)
 
    val uncurrying = ref true
@@ -3765,7 +4221,7 @@ structure OptLambda : OPT_LAMBDA =
    type TypeScheme = tyvar list * Type
    type uc_env = (int * TypeScheme) option LvarMap.map
 
-   fun restrict_uc_env(uc_env:uc_env,lvars) =
+   fun restrict_uc_env (uc_env:uc_env,lvars) =
         List.foldl (fn (lv, acc) =>
                     case LvarMap.lookup uc_env lv of
                         SOME res => LvarMap.add(lv,res,acc)
@@ -3775,7 +4231,7 @@ structure OptLambda : OPT_LAMBDA =
      | uc_eq (SOME (n1,s1),SOME(n2,s2)) = n1=n2 andalso eq_sigma(s1,s2)
      | uc_eq _ = false
 
-   fun enrich_uc_env(e1,e2) = LvarMap.enrich uc_eq (e1,e2)
+   fun enrich_uc_env (e1,e2) = LvarMap.enrich uc_eq (e1,e2)
 
    fun layoutUcPair NONE = PP.LEAF "NONE"
      | layoutUcPair (SOME(n,s)) = PP.HNODE{start="(" ^ Int.toString n ^ ", ",childsep=PP.NOSEP,
@@ -3934,35 +4390,46 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser Engine
     * ----------------------------------------------------------------- *)
 
-    fun optimise (ce:contract_env) lamb =
+    fun optimise (ce:contract_env) (phi:FixFlatten.phi) e =
       let
-          fun loop_opt ce lamb =
-              let val (lamb, ce) = contract ce lamb
-                  val lamb = eliminate_explicit_records lamb
-                  val lamb = eliminate_explicit_blockf64_bindings lamb
-                  val lamb = cse lamb
-                  val lamb = hoist_blockf64_allocations lamb
-              in (lamb, ce)
-              end
-
-          fun loop n (lamb,ce') =
-            if n > max_optimise then (lamb,ce')
-            else
+          fun loop_opt1 n ce e =
               let val _ = reset_tick()
-                  val _ = log ("Pass number " ^ Int.toString (n+1) ^ "\n")
-                  val (lamb',ce') = loop_opt ce lamb
+                  val (e, ce1) = contract ce e
+                  val e = eliminate_explicit_records e
+                  val e = eliminate_explicit_blockf64_bindings e
+                  val e = cse e
+                  val e = hoist_blockf64_allocations e
                   val _ = end_round() (*stat*)
-              in if test_tick() then loop (n+1) (lamb',ce')
-                 else (lamb',ce')
+              in if test_tick() andalso n < max_optimise
+                 then loop_opt1 (n+1) ce e
+                 else (e, ce1)
               end
 
-          val pre_opt = do_minimize_fixs
+          fun loop_opt2 n ce phi e =
+              let val _ = reset_tick()
+                  val e = fix_conversion e
+                  (*val _ = prLambdaExp "Before flattening" e*)
+                  val (e, phi1) = FixFlatten.flattening phi e
+                  val (e, _) = contract ce e
+                  val e = eliminate_explicit_records e
+                  val e = eliminate_explicit_blockf64_bindings e
+                  val e = cse e
+                  val e = hoist_blockf64_allocations e
+                  val _ = end_round() (*stat*)
+              in if test_tick() andalso n < max_optimise
+                 then let val (e,phi2) = loop_opt2 (n+1) ce (FixFlatten.phi_nofix phi) e
+                          val phi3 = FixFlatten.phi_mod(phi1,phi2)
+                      in (e, phi3)
+                      end
+                 else (e, phi1)
+              end
 
           val _ = reset_statistics()
-          val lamb' = pre_opt lamb
-          val (lamb',ce') = loop 0 (lamb', contract_env_dummy lamb')
-          val _ = print_stat lamb lamb'
-      in (lamb',ce')
+          val e1 = do_minimize_fixs e
+          val (e2, ce') = loop_opt1 0 ce e1
+          val (e3, phi') = loop_opt2 0 (unknown_env ce) phi e2
+          val _ = print_stat e e3
+      in (e3,ce',phi')
       end
 
 
@@ -3970,54 +4437,43 @@ structure OptLambda : OPT_LAMBDA =
     * The lambda optimiser environment
     * ----------------------------------------------------------------- *)
 
-    type env = inveta_env * let_env * unbox_fix_env * uc_env
-        * contract_env * contract_env
+    type env = inveta_env * let_env * FixFlatten.phi * contract_env
 
-    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty,
-                  LvarMap.empty, LvarMap.empty, LvarMap.empty)
+    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty, LvarMap.empty)
     val initial = empty
-    fun plus ((e1, e2, e3, e4, e5, e6), (e1', e2', e3', e4', e5', e6')) =
+    fun plus ((e1, e2, e3, e4), (e1', e2', e3', e4')) =
       (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'),
-       LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'),
-       LvarMap.plus (e5,e5'), LvarMap.plus (e6,e6'))
+       LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'))
 
-    fun restrict ((inv_eta_env,let_env, unbox_fix_env,uc_env,cenv1,cenv2), lvars, cons, tns) =
-        let
-          val (e5,lvs1,cons1,tns1) = restrict_contract_env(cenv1,lvars)
-          val lvars = lvs1 @ lvars
-          val e3 = restrict_unbox_fix_env(unbox_fix_env,lvars)
-          val e4 = restrict_uc_env(uc_env,lvars)
-          val (e6,lvs2,cons2,tns2) = restrict_contract_env(cenv2,lvars)
-          val lvars = lvs2@lvars
-          val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
-          val e2 = restrict_let_env(let_env,lvars)
-      in
-        ((e1, e2, e3, e4, e5, e6), lvs1 @ lvs2, cons1 @ cons2, tns1 @ tns2)
-      end
+    fun restrict ((inv_eta_env,let_env,phi,cenv), lvars, cons, tns) =
+        let val (e4,lvs1,cons1,tns1) = restrict_contract_env(cenv,lvars)
+            val lvars = lvs1 @ lvars
+            val e3 = FixFlatten.restrict_phi(phi,lvars)
+            val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
+            val e2 = restrict_let_env(let_env,lvars)
+        in
+          ((e1, e2, e3, e4), lvs1, cons1, tns1)
+        end
 
     val debug_man_enrich = Flags.is_on0 "debug_man_enrich"
 
-    fun debug(s, b) = if debug_man_enrich() then
+    fun debug (s, b) = if debug_man_enrich() then
                          (if b then print("\n" ^ s ^ ": enrich succeeded.")
                           else print("\n" ^ s ^ ": enrich failed."); b)
-                      else b
+                       else b
 
-    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,uc_env1,cenv11,cenv21): env,
-               (inv_eta_env2,let_env2,unbox_fix_env2,uc_env2,cenv12,cenv22): env) : bool =
+    fun enrich ((inv_eta_env1,let_env1,phi1,cenv1): env,
+                (inv_eta_env2,let_env2,phi2,cenv2): env) : bool =
       debug("inv_eta_env", enrich_inv_eta_env(inv_eta_env1,inv_eta_env2)) andalso
       debug("let_env", enrich_let_env(let_env1,let_env2)) andalso
-      debug("unbox_fix_env", enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2)) andalso
-      debug("contract_env", enrich_contract_env(cenv11,cenv12)) andalso
-      debug("contract_env2", enrich_contract_env(cenv21,cenv22)) andalso
-      debug("uc_env", enrich_uc_env(uc_env1,uc_env2))
+      debug("phi", FixFlatten.enrich_phi(phi1,phi2)) andalso
+      debug("contract_env", enrich_contract_env(cenv1,cenv2))
 
-    fun layout_env (e1,e2,e3,e4,e5,e6) =
+    fun layout_env (e1,e2,e3,e4) =
       PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
               children=[layout_inveta_env e1, layout_let_env e2,
-                        layout_unbox_fix_env e3,
-                        layout_uc_env e4, layout_contract_env e5,
-                        layout_contract_env e6]}
-
+                        FixFlatten.layout_phi e3,
+                        layout_contract_env e4]}
 
    (* -----------------------------------------------------------------
     * Rewriting: This rewriting shall always be performed, no matter
@@ -4038,27 +4494,18 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser
     * ----------------------------------------------------------------- *)
 
-    fun maybeoptimise cenv e =
-        if optimise_p() then optimise cenv e
-        else (e, contract_env_dummy e)
+    fun maybeoptimise cenv phi e =
+        if optimise_p() then optimise cenv phi e
+        else (e, contract_env_dummy e, FixFlatten.dummy_phi e)
 
     fun optimise (env, PGM(DATBINDS db,lamb)) =
-        let
-            val (env1,env2,ubenv,ucenv,cenv,cenv2) = env
-            val (lamb, cenv) = maybeoptimise cenv lamb
-            val lamb = fix_conversion lamb
-(*          val _ = prLambdaExp "Before unbox" lamb *)
-            val (lamb, ubenv) = unbox_fix_args ubenv lamb
-(*          val _ = prLambdaExp "Before uncurry" lamb *)
-            val (lamb, ucenv) = uncurry ucenv lamb
-(*          val _ = prLambdaExp "Before 2nd optimize round" lamb *)
-            val (lamb, cenv2) = maybeoptimise cenv2 lamb
-(*          val _ = prLambdaExp "Before rewriting" lamb *)
+        let val (env1,env2,phi,cenv) = env
+            val (lamb, cenv, phi) = maybeoptimise cenv phi lamb
+            (*val _ = prLambdaExp "Before rewriting" lamb *)
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
-            val env = (env1,env2,ubenv,ucenv,cenv,cenv2)
-            val () = warn_on_failed_inlines cenv cenv2
-        in
-            (PGM(DATBINDS db, lamb), env)
+            val env = (env1,env2,phi,cenv)
+            val () = warn_on_failed_inlines cenv
+        in (PGM(DATBINDS db, lamb), env)
         end
 
     (* Pickler *)
@@ -4074,12 +4521,10 @@ structure OptLambda : OPT_LAMBDA =
             val pu_uce =
                 LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme)))
         in
-            Pickle.convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-            (Pickle.pairGen0(Pickle.tup3Gen0(Pickle.comment "OptLambda.iee.pu" pu_iee,
-                                             Pickle.comment "OptLambda.let_env.pu" pu_let_env,
-                                             Pickle.comment "OptLambda.unbox_fix_env.pu" pu_unbox_fix_env),
-                             Pickle.tup3Gen0(Pickle.comment "OptLambda.uce.pu" pu_uce,
-                                             Pickle.comment "OptLambda.contract_env.pu" pu_contract_env,
-                                             Pickle.comment "OptLambda.contract_env2..pu" pu_contract_env)))
+            Pickle.convert (fn ((a,b),(c,d)) => (a,b,c,d), fn (a,b,c,d) => ((a,b),(c,d)))
+            (Pickle.pairGen0(Pickle.pairGen0(Pickle.comment "OptLambda.iee.pu" pu_iee,
+                                             Pickle.comment "OptLambda.let_env.pu" pu_let_env),
+                             Pickle.pairGen0(Pickle.comment "OptLambda.phi.pu" FixFlatten.pu_phi,
+                                             Pickle.comment "OptLambda.contract_env.pu" pu_contract_env)))
         end
   end
