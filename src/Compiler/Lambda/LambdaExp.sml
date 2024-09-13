@@ -78,6 +78,7 @@ structure LambdaExp : LAMBDA_EXP =
     val int64Type = consType0 TyName.tyName_INT64
     val intinfType = consType0 TyName.tyName_INTINF
     fun intDefaultType () = consType0 (TyName.tyName_IntDefault())
+    val word8Type = consType0 TyName.tyName_WORD8
     val word31Type = consType0 TyName.tyName_WORD31
     val word32Type = consType0 TyName.tyName_WORD32
     val word63Type = consType0 TyName.tyName_WORD63
@@ -88,6 +89,7 @@ structure LambdaExp : LAMBDA_EXP =
     val exnType = consType0 TyName.tyName_EXN
     val realType = consType0 TyName.tyName_REAL
     val f64Type = consType0 TyName.tyName_F64
+    val charType = consType0 TyName.tyName_CHAR
     val stringType = consType0 TyName.tyName_STRING
     val chararrayType = consType0 TyName.tyName_CHARARRAY
     val unitType = RECORDtype([],NONE)
@@ -161,7 +163,7 @@ structure LambdaExp : LAMBDA_EXP =
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of {switch: IntInf.int Switch, precision: int}
-      | SWITCH_W of {switch: IntInf.int Switch, precision: int}
+      | SWITCH_W of {switch: IntInf.int Switch, precision: int, tyname: TyName}
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
@@ -211,7 +213,7 @@ structure LambdaExp : LAMBDA_EXP =
         | RAISE(lamb,taus) => foldTD fcns new_acc lamb
         | HANDLE(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
         | SWITCH_I {switch,precision} => foldSwitch switch
-        | SWITCH_W {switch,precision} => foldSwitch switch
+        | SWITCH_W {switch,precision,tyname} => foldSwitch switch
         | SWITCH_S switch => foldSwitch switch
         | SWITCH_C switch => foldSwitch switch
         | SWITCH_E switch => foldSwitch switch
@@ -361,7 +363,7 @@ structure LambdaExp : LAMBDA_EXP =
            * activated. If `lamb' is unsafe, then the entire expression
            * is unsafe anyway. *)
           | SWITCH_I {switch,precision} => safe_sw safe switch
-          | SWITCH_W {switch,precision} => safe_sw safe switch
+          | SWITCH_W {switch,precision,tyname} => safe_sw safe switch
           | SWITCH_S sw                 => safe_sw safe sw
           | SWITCH_C sw                 => safe_sw safe sw
           | SWITCH_E sw                 => safe_sw safe sw
@@ -451,6 +453,21 @@ structure LambdaExp : LAMBDA_EXP =
 *)
 
    (* prettyprinting. *)
+
+   fun dup xs = map (fn s => (s,s)) xs
+   val structures = [("General", dup["print", "not"] @
+                                 [("implode","(String.implode o List.map (Char.chr o Word.toIntX))"), ("explode", "(List.map (Word.fromInt o Char.ord) o String.explode)"), ("o", "(op o)"), ("v176","String.^")]),
+                     ("List", [("rev","List.rev"), ("v652","List.@")])]
+
+   fun barify_catch_basislib s =
+       if String.isSubstring "basismlb" s andalso String.isSuffix "sml1" s then
+         case List.filter (fn (S,_) => String.isSubstring S s) structures of
+             [(S,vars)] => (case List.filter (fn (V,_) => String.isPrefix V s) vars of
+                                [(_,V)] => V
+                              | _ => s)
+           | _ => s
+       else s
+
    type StringTree = PP.StringTree
 
    val barify_p = ref false
@@ -486,7 +503,7 @@ structure LambdaExp : LAMBDA_EXP =
             else implode(do_unsymb(explode s))
      end
 
-   fun pr_lvar lv = if !barify_p then unsymb(Lvars.pr_lvar' lv)
+   fun pr_lvar lv = if !barify_p then barify_catch_basislib (unsymb(Lvars.pr_lvar' lv))
                     else Lvars.pr_lvar lv
 
    fun pr_excon ex =
@@ -654,8 +671,11 @@ structure LambdaExp : LAMBDA_EXP =
               PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
                        children=map layoutType instances, childsep=PP.LEFT ", "}
           else
-              if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
-              else PP.LEAF ("ccall " ^ name)
+            if !barify_p then
+              (case name of
+                   "__equal_int64ub" => PP.LEAF "(op =)"
+                 | _ => PP.LEAF ("Prim." ^ strip_ name))
+            else PP.LEAF ("ccall " ^ name)
       | BLOCKF64prim => PP.LEAF "blockf64"
       | SCRATCHMEMprim {sz=n} => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
       | EXPORTprim {name, instance_arg, instance_res} =>
@@ -1024,7 +1044,7 @@ structure LambdaExp : LAMBDA_EXP =
                   }
       | SWITCH_I {switch, precision} =>
           layoutSwitch layoutLambdaExp IntInf.toString switch
-      | SWITCH_W {switch, precision} =>
+      | SWITCH_W {switch, precision, tyname} =>
           layoutSwitch layoutLambdaExp (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
       | SWITCH_S sw =>
           layoutSwitch layoutLambdaExp (fn x => x) sw
@@ -1071,16 +1091,17 @@ structure LambdaExp : LAMBDA_EXP =
                          childsep=PP.RIGHT ","}
               end
          | (SELECTprim {index=i}, [lamb]) =>
-              let val i = if !barify_p then i+1 else i
-              in
-                  PP.NODE{start="#" ^ Int.toString i ^ "(",finish=")",indent=1,
-                          children=[layoutLambdaExp(lamb,0)],
-                          childsep=PP.NOSEP}
-              end
+           let val i = if !barify_p then i+1 else i
+           in maybepar context
+                       (PP.NODE{start="#" ^ Int.toString i ^ " ",finish="",indent=1,
+                                children=[layoutLambdaExp(lamb,14)],
+                                childsep=PP.NOSEP})
+           end
          | (DEREFprim{instance},[lamb]) =>
-             PP.NODE{start="!(",finish=")",indent=2,
-                     children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NOSEP}
+           maybepar context
+                    (PP.NODE{start="!(",finish=")",indent=2,
+                             children=[layoutLambdaExp(lamb,0)],
+                             childsep=PP.NOSEP})
          | (DECONprim{con,instances,lv_opt},[lamb]) =>
               if !barify_p then
                   case lv_opt of
@@ -1100,10 +1121,10 @@ structure LambdaExp : LAMBDA_EXP =
                   PP.NODE{start= "decon(" ^ pr_con con ^ ",",finish=")",
                           indent=2,children=[layoutLambdaExp(lamb,0)],childsep=PP.NOSEP}
          | (REFprim{instance,regvar},[lamb]) =>
-           let val s = case regvar of NONE => "ref"
-                                    | SOME rv => "ref`" ^ RegVar.pr rv
-           in PP.NODE{start=s ^ "(",finish=")",indent=2,
-                      children=[layoutLambdaExp(lamb,0)],
+           let val s = case regvar of NONE => "ref "
+                                    | SOME rv => "ref`" ^ RegVar.pr rv ^ " "
+           in PP.NODE{start=s,finish="",indent=2,
+                      children=[layoutLambdaExp(lamb,14)],
                       childsep=PP.NOSEP}
            end
          | (EXCONprim excon, []) => PP.LEAF(pr_excon excon)
@@ -1114,6 +1135,14 @@ structure LambdaExp : LAMBDA_EXP =
                 PP.NODE{start=s, finish="",
                         indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
               else PP.LEAF s
+           end
+         | (CONprim{con,instances,regvar},[lamb]) =>
+           let val s = case regvar of NONE => pr_con con ^ " "
+                                    | SOME rv => pr_con con ^ "`" ^ RegVar.pr rv ^ " "
+           in maybepar context
+                       (PP.NODE{start=s,finish="",indent=2,
+                                children=[layoutLambdaExp(lamb,14)],
+                                childsep=PP.NOSEP})
            end
 (*         | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context) *)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
@@ -1190,18 +1219,25 @@ structure LambdaExp : LAMBDA_EXP =
          | (CCALLprim{name="__greatereq_string", ...}, [_,_]) => layout_infix context 4 " >= "lambs
 
          | _ =>
-             if !barify_p then
-                 let fun layoutArgs [lamb] = layoutLambdaExp(lamb,context)
+           if !barify_p then
+             case (prim,lambs) of
+                 (DROPprim, [lamb]) => layoutLambdaExp(lamb,context)
+               | (CCALLprim{name="__equal_ptr", ...}, _) => PP.LEAF "false"
+               | (CCALLprim{name="__div_int64ub", ...}, [a,b,_]) => layout_infix context 4 " div " [a,b]
+               | _ =>
+                 let fun layoutArgs [lamb] = layoutLambdaExp(lamb,14)
                        | layoutArgs lambs =
-                     PP.HNODE {start="(",finish=")",childsep=PP.RIGHT",",
-                               children=map (fn x => layoutLambdaExp(x,0)) lambs}
-                     val (s,f) = if context > 13 then ("(",")") else ("","")
-                 in
-                     PP.HNODE{start=s,finish=f,childsep=PP.RIGHT " ",
-                              children=[layoutPrim layoutType prim,
-                                        layoutArgs lambs]}
+                         PP.HNODE {start="(",finish=")",childsep=PP.RIGHT",",
+                                   children=map (fn x => layoutLambdaExp(x,0)) lambs}
+                     fun layout primtree lambs =
+                         let val (s,f) = if context > 13 then ("(",")") else ("","")
+                         in PP.HNODE{start=s,finish=f,childsep=PP.RIGHT " ",
+                                     children=[primtree,
+                                               layoutArgs lambs]}
+                         end
+                 in layout (layoutPrim layoutType prim) lambs
                  end
-             else
+           else
                let fun lay p =
                        PP.NODE{start=p ^ "(",finish=")",indent=1,
                                children=map(fn x => layoutLambdaExp(x,0)) lambs,
@@ -1250,6 +1286,12 @@ structure LambdaExp : LAMBDA_EXP =
                               indent=0,children=lvs@exs}
                   end
               else layoutFrame "FRAME" fr
+
+    and maybepar context t =
+        if context > 13 then
+          PP.NODE{start="(",finish=")",indent=0, children=[t],
+                  childsep=PP.NOSEP}
+        else t
 
     and layout_let_fix_and_exception lexp =
           let
@@ -1352,15 +1394,16 @@ structure LambdaExp : LAMBDA_EXP =
                              end
                          else PP.LEAF (pr_lvar lvar ^ s_regvars)
                      val formals_t =
-                         case pat of
-                             [(lvar,_)] => PP.LEAF (pr_lvar lvar ^ " = ")
-                           | _ =>
-                                 if !barify_p then
-                                     PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ",
-                                              children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
-                                 else
-                                     PP.HNODE{start="<", finish = "> = ", childsep = PP.RIGHT ", ",
-                                              children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
+                         if !barify_p then
+                           PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ",
+                                    children = map (fn (lvar,t) => PP.NODE{start="",finish="",childsep=PP.RIGHT ":", indent=0,
+                                                                           children=[PP.LEAF(pr_lvar lvar),
+                                                                                     layoutType t]}) pat}
+                         else
+                           case pat of
+                               [(lvar,_)] => PP.LEAF (pr_lvar lvar ^ " = ")
+                             | _ => PP.HNODE{start="<", finish = "> = ", childsep = PP.RIGHT ", ",
+                                             children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
                      val head_t = PP.HNODE{start="", finish ="", childsep = PP.RIGHT " ",
                                            children = [PP.LEAF keyword,t1,formals_t]}
                      val body_t = PP.NODE{start = "", finish ="", indent = 2, childsep = PP.NOSEP,
@@ -1773,8 +1816,8 @@ structure LambdaExp : LAMBDA_EXP =
                  (Pickle.pairGen0(pu_Switch pu_intinf pu_LambdaExp,Pickle.int)))
             fun fun_SWITCH_W pu_LambdaExp =
                 Pickle.con1 SWITCH_W (fn SWITCH_W a => a | _ => die "pu_LambdaExp.SWITCH_W")
-                (Pickle.convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
-                 (Pickle.pairGen0(pu_Switch pu_intinf pu_LambdaExp,Pickle.int)))
+                (Pickle.convert (fn (sw,p,tn) => {switch=sw,precision=p,tyname=tn}, fn {switch=sw,precision=p,tyname=tn} => (sw,p,tn))
+                 (Pickle.tup3Gen0(pu_Switch pu_intinf pu_LambdaExp,Pickle.int,TyName.pu)))
             fun fun_SWITCH_S pu_LambdaExp =
                 Pickle.con1 SWITCH_S (fn SWITCH_S a => a | _ => die "pu_LambdaExp.SWITCH_S")
                 (pu_Switch Pickle.string pu_LambdaExp)
@@ -1889,7 +1932,7 @@ structure LambdaExp : LAMBDA_EXP =
         | RAISE(e,taus) => tyvars_TypeList s taus (tyvars_Exp s e acc)
         | HANDLE(e1, e2) => tyvars_Exp s e1 (tyvars_Exp s e2 acc)
         | SWITCH_I {switch,precision} => tyvars_Switch s switch acc
-        | SWITCH_W {switch,precision} => tyvars_Switch s switch acc
+        | SWITCH_W {switch,precision,tyname} => tyvars_Switch s switch acc
         | SWITCH_S switch => tyvars_Switch s switch acc
         | SWITCH_C switch => tyvars_Switch s switch acc
         | SWITCH_E switch => tyvars_Switch s switch acc

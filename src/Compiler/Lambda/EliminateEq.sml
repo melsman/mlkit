@@ -200,7 +200,7 @@ structure EliminateEq : ELIMINATE_EQ =
     fun is_eq_prim_tn tn =
       List.exists (fn tn' => TyName.eq(tn',tn))
       [TyName.tyName_INT31, TyName.tyName_INT32,TyName.tyName_INT63, TyName.tyName_INT64,
-       TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32,
+       TyName.tyName_CHAR, TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32,
        TyName.tyName_WORD63, TyName.tyName_WORD64,
        TyName.tyName_BOOL, TyName.tyName_STRING, TyName.tyName_REF, TyName.tyName_ARRAY,
        TyName.tyName_FOREIGNPTR,
@@ -361,7 +361,7 @@ structure EliminateEq : ELIMINATE_EQ =
             val p1' = Lvars.newLvar()
             fun mk_decon p' p e =
               monolet {lvar=p', Type=tau,
-                       bind=PRIM(DECONprim {con=c, instances=map (fn tv => TYVARtype {tv=tv}) tyvars,lv_opt=SOME p'}, [lamb_var p]),
+                       bind=PRIM(DECONprim {con=c, instances=map (fn tv => TYVARtype {tv=tv}) tyvars,lv_opt=NONE}, [lamb_var p]),
                        scope=e}
             val lamb_eq_fn_tau = gen_type_eq env' tau
             val lamb_true_case =
@@ -759,7 +759,7 @@ structure EliminateEq : ELIMINATE_EQ =
                 | RAISE(e,tau) => RAISE(f e, tau)
                 | HANDLE(e1,e2) => HANDLE(f e1, f e2)
                 | SWITCH_I {switch,precision} => SWITCH_I {switch=f_sw switch, precision=precision}
-                | SWITCH_W {switch,precision} => SWITCH_W {switch=f_sw switch, precision=precision}
+                | SWITCH_W {switch,precision,tyname} => SWITCH_W {switch=f_sw switch, precision=precision,tyname=tyname}
                 | SWITCH_S sw => SWITCH_S(f_sw sw)
                 | SWITCH_C sw => SWITCH_C(f_sw sw)
                 | SWITCH_E sw => SWITCH_E(f_sw sw)
@@ -902,7 +902,7 @@ structure EliminateEq : ELIMINATE_EQ =
          | RAISE(lexp,tau) => RAISE(t env lexp,tau)
          | HANDLE(lexp1, lexp2) => HANDLE(t env lexp1, t env lexp2)
          | SWITCH_I {switch,precision} => SWITCH_I {switch=t_switch t env switch, precision=precision}
-         | SWITCH_W {switch,precision} => SWITCH_W {switch=t_switch t env switch, precision=precision}
+         | SWITCH_W {switch,precision,tyname} => SWITCH_W {switch=t_switch t env switch, precision=precision,tyname=tyname}
          | SWITCH_S sw => SWITCH_S (t_switch t env sw)
          | SWITCH_C sw => SWITCH_C (t_switch t env sw)
          | SWITCH_E sw => SWITCH_E (t_switch t env sw)

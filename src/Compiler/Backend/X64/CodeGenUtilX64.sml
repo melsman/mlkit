@@ -234,9 +234,9 @@ struct
                                      precision=if BI.tag_values() then 63 else 64}
 
     fun maybeTagIntOrWord {value: IntInf.int, precision:int} : IntInf.int =
-        if precision = 31 orelse precision = 63
+        if precision = 31 orelse precision = 63 orelse (precision = 8 andalso BI.tag_values())
         then 2 * value + 1                (* use tagged-unboxed representation *)
-        else if precision = 32 orelse precision = 64
+        else if precision = 32 orelse precision = 64 orelse (precision = 8 andalso not(BI.tag_values()))
         then value                        (* use untagged representation - maybe boxed *)
         else die "maybeTagIntOrWord"
 
@@ -409,6 +409,7 @@ struct
                   | 32 => #value w <= 0xFFFF
                   | 63 => #value w <= 0x7FFF
                   | 64 => #value w <= 0xFFFF
+                  | 8 => true
                   | _ => die "store_aty_indexed.direct_word - weird precision"
             fun direct_int (i:{value: IntInf.int, precision:int}) =
                 not(boxedNum(#precision i)) andalso

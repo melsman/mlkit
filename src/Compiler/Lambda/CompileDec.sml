@@ -413,7 +413,7 @@ structure CompileDec: COMPILE_DEC =
     (* compileTyName compiles char and word8 to the default word-type *)
 
     fun compileTyName tyname =
-      if TyName.eq (tyname, TyName.tyName_CHAR) orelse TyName.eq (tyname, TyName.tyName_WORD8) then
+      if (*TyName.eq (tyname, TyName.tyName_CHAR) orelse*) TyName.eq (tyname, TyName.tyName_WORD8) then
         TyName.tyName_WordDefault()
       else tyname
 
@@ -1426,17 +1426,19 @@ in
                    in monoLet((lv,intinfType,e),
                               convertCases(cases,def))
                    end
-               fun precision (t: Type) : int =
+               fun precision (t: Type) : int * TyName.TyName =
                  let val tn = case t
                                 of CONStype(nil, tn, _) => tn
                                  | _ => die "precision.not CONStype"
                      open TyName
-                 in if eq (tn, tyName_INTINF) then ~1
-                    else if eq (tn, tyName_INT31) orelse eq (tn, tyName_WORD31) then 31
-                    else if eq (tn, tyName_INT32) orelse eq (tn, tyName_WORD32) then 32
-                    else if eq (tn, tyName_INT63) orelse eq (tn, tyName_WORD63) then 63
-                    else if eq (tn, tyName_INT64) orelse eq (tn, tyName_WORD64) then 64
-                    else die ("precision. tn = " ^ pr_TyName tn ^ " not expected")
+                     val p = if eq (tn, tyName_INTINF) then ~1
+                             else if eq (tn, tyName_INT31) orelse eq (tn, tyName_WORD31) then 31
+                             else if eq (tn, tyName_INT32) orelse eq (tn, tyName_WORD32) then 32
+                             else if eq (tn, tyName_INT63) orelse eq (tn, tyName_WORD63) then 63
+                             else if eq (tn, tyName_INT64) orelse eq (tn, tyName_WORD64) then 64
+                             else if eq (tn, tyName_CHAR) orelse eq (tn, tyName_WORD8) then 8
+                             else die ("precision. tn = " ^ pr_TyName tn ^ " not expected")
+                 in (p,tn)
                  end
              in
                (case con of
@@ -1452,22 +1454,26 @@ in
                       | _ => die "compile_node: fn Con =>")
                 | Scon (SCon.INTEGER _, tau) =>
                   (case precision tau of
-                       ~1 => (* intinf *)
+                       (~1,_) => (* intinf *)
                        switch (switch_ii,
                                fn (Scon (SCon.INTEGER i,_),env) => (i,env)
                                | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
-                     | p => switch
+                     | (p,_) => switch
                                 (fn sw => SWITCH_I{switch=sw,precision=p},
                                  fn (Scon (SCon.INTEGER i,_),env) => (i,env)
                                   | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>"))
-                | Scon (SCon.CHAR _, tau) => switch
-                    (fn sw => SWITCH_W {switch=sw, precision=precision tau},
-                     fn (Scon (SCon.CHAR i,_),env) => (IntInf.fromInt i,env)
-                      | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
-                | Scon (SCon.WORD _, tau) => switch
-                    (fn sw => SWITCH_W{switch=sw, precision=precision tau},
-                     fn (Scon (SCon.WORD w,_),env) => (w,env)
-                      | _ => die "compile_node: fn Scon (SCon.WORD w) =>")
+                | Scon (SCon.CHAR _, tau) =>
+                  let val (p,tn) = precision tau
+                  in switch (fn sw => SWITCH_W {switch=sw, precision=p, tyname=tn},
+                             fn (Scon (SCon.CHAR i,_),env) => (IntInf.fromInt i,env)
+                             | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
+                  end
+                | Scon (SCon.WORD _, tau) =>
+                  let val (p,tn) = precision tau
+                  in switch (fn sw => SWITCH_W{switch=sw, precision=p, tyname=tn},
+                             fn (Scon (SCon.WORD w,_),env) => (w,env)
+                             | _ => die "compile_node: fn Scon (SCon.WORD w) =>")
+                  end
                 | Scon (SCon.STRING _,_) => switch
                     (SWITCH_S,
                      fn (Scon (SCon.STRING s,_),env) => (s,env)
@@ -2013,7 +2019,7 @@ end; (*match compiler local*)
 
       fun resolve err_str i args {int31, int32, int63, int64, intinf,
                                   word8, word31, word32, word63, word64,
-                                  real, string} =
+                                  real, string, char} =
         let fun no s (SOME e) = e args
               | no s NONE = die (err_str ^ ": " ^ s)
            (* int resolved to int31, int32, int63, or int64 and word resolved to
@@ -2030,7 +2036,7 @@ end; (*match compiler local*)
              | OverloadingInfo.RESOLVED_WORD32 => no "word32" word32
              | OverloadingInfo.RESOLVED_WORD63 => no "word63" word63
              | OverloadingInfo.RESOLVED_WORD64 => no "word64" word64
-             | OverloadingInfo.RESOLVED_CHAR => no "char" word8
+             | OverloadingInfo.RESOLVED_CHAR => no "char" char
              | OverloadingInfo.RESOLVED_STRING => no "string" string
              | _ => die (err_str ^ ": unresolved")
         end
@@ -2039,27 +2045,27 @@ end; (*match compiler local*)
         resolve "int_or_word" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=NONE, word31=NONE, word32=NONE, word63=NONE, word64=NONE,
-                 real=SOME real, string=NONE}
+                 real=SOME real, string=NONE, char=NONE}
 
       fun int_or_word i args {int31, int32, int63, int64, intinf, word8, word31, word32, word63, word64} =
         resolve "int_or_word" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=NONE, string=NONE}
+                 word64=SOME word64, real=NONE, string=NONE, char=NONE}
 
       fun int_or_word_or_real i args {int31, int32, int63, int64, intinf, word8, word31,
                                       word32, word63, word64, real} =
         resolve "int_or_word_or_real" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=SOME real, string=NONE}
+                 word64=SOME word64, real=SOME real, string=NONE, char=NONE}
 
-      fun string_or_int_or_word_or_real i args {string, int31, int32, int63, int64, intinf,
-                                                word8, word31, word32, word63, word64, real} =
-        resolve "string_or_int_or_word_or_real" i args
+      fun string_or_int_or_word_or_real_or_char i args {string, int31, int32, int63, int64, intinf,
+                                                        word8, word31, word32, word63, word64, real, char} =
+        resolve "string_or_int_or_word_or_real_or_char" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=SOME real, string=SOME string}
+                 word64=SOME word64, real=SOME real, string=SOME string, char=SOME char}
 
       fun binary_ccall t n args =
         let val c = ccall n [t,t] t
@@ -2164,6 +2170,7 @@ end; (*match compiler local*)
             | (false, true) => less_word64 args
             | (true,  false) => less_word31 args
             | (false, false) => less_word32 args
+      val less_char = cmp_ccall charType "__less_char"
 
       val greater_word31 = cmp_ccall word31Type "__greater_word31"
       val greater_word32 = cmp_ccall word32Type "__greater_word32"
@@ -2175,6 +2182,7 @@ end; (*match compiler local*)
             | (false, true) => greater_word64 args
             | (true,  false) => greater_word31 args
             | (false, false) => greater_word32 args
+      val greater_char = cmp_ccall charType "__greater_char"
 
       val lesseq_word31 = cmp_ccall word31Type "__lesseq_word31"
       val lesseq_word32 = cmp_ccall word32Type "__lesseq_word32"
@@ -2186,6 +2194,7 @@ end; (*match compiler local*)
             | (false, true) => lesseq_word64 args
             | (true,  false) => lesseq_word31 args
             | (false, false) => lesseq_word32 args
+      val lesseq_char = cmp_ccall charType "__lesseq_char"
 
       val greatereq_word31 = cmp_ccall word31Type "__greatereq_word31"
       val greatereq_word32 = cmp_ccall word32Type "__greatereq_word32"
@@ -2197,6 +2206,7 @@ end; (*match compiler local*)
             | (false, true) => greatereq_word64 args
             | (true,  false) => greatereq_word31 args
             | (false, false) => greatereq_word32 args
+      val greatereq_char = cmp_ccall charType "__greatereq_char"
 
       (* Operations on Integers (int31, int32, int63, int64) *)
       val plus_int31 = binary_ccall int31Type "__plus_int31"
@@ -2328,41 +2338,45 @@ end; (*match compiler local*)
                                   word31=mod_word31, word32=mod_word32,
                                   word63=mod_word63, word64=mod_word64}
             | CE.LESS =>
-              string_or_int_or_word_or_real i args
+              string_or_int_or_word_or_real_or_char i args
                                             {string=less_string,
                                              int31=less_int31, int32=less_int32,
                                              int63=less_int63, int64=less_int64,
                                              intinf=less_intinf env, word8=less_word8,
                                              word31=less_word31, word32=less_word32,
                                              word63=less_word63, word64=less_word64,
-                                             real=less_real}
+                                             real=less_real,
+                                             char=less_char}
             | CE.GREATER =>
-              string_or_int_or_word_or_real i args
+              string_or_int_or_word_or_real_or_char i args
                                             {string=greater_string,
                                              int31=greater_int31, int32=greater_int32,
                                              int63=greater_int63, int64=greater_int64,
                                              intinf=greater_intinf env, word8=greater_word8,
                                              word31=greater_word31, word32=greater_word32,
                                              word63=greater_word63, word64=greater_word64,
-                                             real=greater_real}
+                                             real=greater_real,
+                                             char=greater_char}
             | CE.LESSEQ =>
-              string_or_int_or_word_or_real i args
+              string_or_int_or_word_or_real_or_char i args
                                             {string=lesseq_string,
                                              int31=lesseq_int31, int32=lesseq_int32,
                                              int63=lesseq_int63, int64=lesseq_int64,
                                              intinf=lesseq_intinf env, word8=lesseq_word8,
                                              word31=lesseq_word31, word32=lesseq_word32,
                                              word63=lesseq_word63, word64=lesseq_word64,
-                                             real=lesseq_real}
+                                             real=lesseq_real,
+                                             char=lesseq_char}
             | CE.GREATEREQ =>
-              string_or_int_or_word_or_real i args
+              string_or_int_or_word_or_real_or_char i args
                                             {string=greatereq_string,
                                              int31=greatereq_int31, int32=greatereq_int32,
                                              int63=greatereq_int63, int64=greatereq_int64,
                                              intinf=greatereq_intinf env, word8=greatereq_word8,
                                              word31=greatereq_word31, word32=greatereq_word32,
                                              word63=greatereq_word63, word64=greatereq_word64,
-                                             real=greatereq_real}
+                                             real=greatereq_real,
+                                             char=greatereq_char}
            | _ => die "unoverload"
     in
       fun overloaded_prim env info result (*e.g., CE.ABS*)
@@ -2416,7 +2430,7 @@ end; (*match compiler local*)
                      @ exn_args)}
             end
       fun overloaded_prim_fn' env info result = (*e.g., CE.LESS, ... *)
-          let val tn = string_or_int_or_word_or_real info ()
+          let val tn = string_or_int_or_word_or_real_or_char info ()
                                                      {string=fn()=>TyName.tyName_STRING,
                                                       int31=fn()=>TyName.tyName_INT31,
                                                       int32=fn()=>TyName.tyName_INT32,
@@ -2428,7 +2442,8 @@ end; (*match compiler local*)
                                                       word32=fn()=>TyName.tyName_WORD32,
                                                       word63=fn()=>TyName.tyName_WORD63,
                                                       word64=fn()=>TyName.tyName_WORD64,
-                                                      real=fn()=>TyName.tyName_REAL}
+                                                      real=fn()=>TyName.tyName_REAL,
+                                                      char=fn()=>TyName.tyName_CHAR}
               val ty = CONStype ([], tn, NONE)
               val lvar1 = Lvars.newLvar ()
             in (*takes two arguments*)

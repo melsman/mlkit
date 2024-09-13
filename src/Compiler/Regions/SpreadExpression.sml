@@ -1158,7 +1158,7 @@ good *)
 
     | E.SWITCH_I {switch: IntInf.int E.Switch, precision} =>
         (spreadSwitch B S (fn sw => E'.SWITCH_I{switch=sw,precision=precision}) [] (switch,toplevel,cont))
-    | E.SWITCH_W {switch: IntInf.int E.Switch, precision} =>
+    | E.SWITCH_W {switch: IntInf.int E.Switch, precision, tyname} =>
         (spreadSwitch B S (fn sw => E'.SWITCH_W{switch=sw,precision=precision}) [] (switch,toplevel,cont))
 
     | E.SWITCH_S(stringsw: string E.Switch) => (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel,cont))

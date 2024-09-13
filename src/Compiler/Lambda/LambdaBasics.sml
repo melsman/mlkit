@@ -49,8 +49,8 @@ structure LambdaBasics: LAMBDA_BASICS =
            | HANDLE(lamb1, lamb2) => HANDLE(passTD f lamb1, passTD f lamb2)
            | SWITCH_I {switch, precision} =>
             SWITCH_I {switch=passSwitch (passTD f) switch, precision=precision}
-           | SWITCH_W {switch, precision} =>
-            SWITCH_W {switch=passSwitch (passTD f) switch, precision=precision}
+           | SWITCH_W {switch, precision, tyname} =>
+            SWITCH_W {switch=passSwitch (passTD f) switch, precision=precision, tyname=tyname}
            | SWITCH_S switch => SWITCH_S(passSwitch (passTD f) switch)
            | SWITCH_C switch => SWITCH_C(passSwitch (passTD f) switch)
            | SWITCH_E switch => SWITCH_E(passSwitch (passTD f) switch)
@@ -95,8 +95,8 @@ structure LambdaBasics: LAMBDA_BASICS =
               | HANDLE(lamb1, lamb2) => HANDLE(passBU f lamb1, passBU f lamb2)
               | SWITCH_I {switch, precision} =>
                SWITCH_I {switch=passSwitch (passBU f) switch, precision=precision}
-              | SWITCH_W {switch, precision} =>
-               SWITCH_W {switch=passSwitch (passBU f) switch, precision=precision}
+              | SWITCH_W {switch, precision, tyname} =>
+               SWITCH_W {switch=passSwitch (passBU f) switch, precision=precision, tyname=tyname}
               | SWITCH_S switch => SWITCH_S(passSwitch (passBU f) switch)
               | SWITCH_C switch => SWITCH_C(passSwitch (passBU f) switch)
               | SWITCH_E switch => SWITCH_E(passSwitch (passBU f) switch)
@@ -134,7 +134,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | RAISE(lamb,tl) => foldTD f new_acc lamb
            | HANDLE(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
            | SWITCH_I {switch,precision} => foldSwitch switch
-           | SWITCH_W {switch,precision} => foldSwitch switch
+           | SWITCH_W {switch,precision,tyname} => foldSwitch switch
            | SWITCH_S switch => foldSwitch switch
            | SWITCH_C switch => foldSwitch switch
            | SWITCH_E switch => foldSwitch switch
@@ -180,8 +180,8 @@ structure LambdaBasics: LAMBDA_BASICS =
          | HANDLE(e1,e2) => HANDLE(f e1, f e2)
          | SWITCH_I {switch,precision} =>
                SWITCH_I {switch=map_lamb_sw f switch, precision=precision}
-         | SWITCH_W {switch,precision} =>
-               SWITCH_W {switch=map_lamb_sw f switch, precision=precision}
+         | SWITCH_W {switch,precision,tyname} =>
+               SWITCH_W {switch=map_lamb_sw f switch, precision=precision,tyname=tyname}
          | SWITCH_S sw => SWITCH_S (map_lamb_sw f sw)
          | SWITCH_C sw => SWITCH_C (map_lamb_sw f sw)
          | SWITCH_E sw => SWITCH_E (map_lamb_sw f sw)
@@ -468,8 +468,8 @@ structure LambdaBasics: LAMBDA_BASICS =
             | HANDLE(e1,e2) => HANDLE(on_e ren e1, on_e ren e2)
             | SWITCH_I {switch,precision} =>
               SWITCH_I {switch=on_sw (fn a => a) (on_e ren) switch, precision=precision}
-            | SWITCH_W {switch,precision} =>
-              SWITCH_W {switch=on_sw (fn a => a) (on_e ren) switch, precision=precision}
+            | SWITCH_W {switch,precision,tyname} =>
+              SWITCH_W {switch=on_sw (fn a => a) (on_e ren) switch, precision=precision, tyname=tyname}
             | SWITCH_S sw => SWITCH_S (on_sw (fn a => a) (on_e ren) sw)
             | SWITCH_C sw => SWITCH_C (on_sw (fn (c,lv_opt) => (c,on_lv_opt ren lv_opt)) (on_e ren) sw)
             | SWITCH_E sw => SWITCH_E (on_sw (fn (e,lv_opt) => (on_ex ren e, on_lv_opt ren lv_opt)) (on_e ren) sw)
@@ -651,8 +651,8 @@ structure LambdaBasics: LAMBDA_BASICS =
                  | HANDLE(lamb1,lamb2) => HANDLE(f S lamb1,f S lamb2)
                  | SWITCH_I {switch,precision} =>
                   SWITCH_I {switch=on_switch S switch, precision=precision}
-                 | SWITCH_W {switch,precision} =>
-                  SWITCH_W {switch=on_switch S switch, precision=precision}
+                 | SWITCH_W {switch,precision,tyname} =>
+                  SWITCH_W {switch=on_switch S switch, precision=precision,tyname=tyname}
                  | SWITCH_S switch => SWITCH_S(on_switch S switch)
                  | SWITCH_C switch => SWITCH_C(on_switch S switch)
                  | SWITCH_E switch => SWITCH_E(on_switch S switch)
@@ -857,7 +857,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | RAISE(e,tl) => RAISE(N E e, Ntl E tl)
             | HANDLE(e1, e2) => HANDLE(N E e1, N E e2)
             | SWITCH_I {switch,precision} => SWITCH_I{switch=Ns switch,precision=precision}
-            | SWITCH_W {switch,precision} => SWITCH_W{switch=Ns switch,precision=precision}
+            | SWITCH_W {switch,precision,tyname} => SWITCH_W{switch=Ns switch,precision=precision,tyname=tyname}
             | SWITCH_S switch => SWITCH_S(Ns switch)
             | SWITCH_C switch => SWITCH_C(Ns switch)
             | SWITCH_E switch => SWITCH_E(Ns switch)
@@ -936,7 +936,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | RAISE(e,tl) => RAISE(t false e, tl)
                 | HANDLE(e1, e2) => HANDLE(t false e1, t false e2)
                 | SWITCH_I {switch,precision} => SWITCH_I{switch=t_sw tail switch,precision=precision}
-                | SWITCH_W {switch,precision} => SWITCH_W{switch=t_sw tail switch,precision=precision}
+                | SWITCH_W {switch,precision,tyname} => SWITCH_W{switch=t_sw tail switch,precision=precision,tyname=tyname}
                 | SWITCH_S switch => SWITCH_S(t_sw tail switch)
                 | SWITCH_C switch => SWITCH_C(t_sw tail switch)
                 | SWITCH_E switch => SWITCH_E(t_sw tail switch)

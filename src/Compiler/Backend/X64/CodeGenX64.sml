@@ -906,6 +906,8 @@ struct
                          Equal_int32ub =>  cmp       I.je
                        | Equal_int32b =>   cmp_boxed I.je
                        | Equal_int31 =>    cmp       I.je
+                       | Equal_char =>     cmp       I.je
+                       | Equal_word8 =>    cmp       I.je
                        | Equal_word31 =>   cmp       I.je
                        | Equal_word32ub => cmp       I.je
                        | Equal_word32b =>  cmp_boxed I.je
@@ -921,6 +923,8 @@ struct
                        | Less_int32ub =>    cmp       I.jl
                        | Less_int32b =>     cmp_boxed I.jl
                        | Less_int31 =>      cmp       I.jl
+                       | Less_char =>       cmp       I.jb
+                       | Less_word8 =>      cmp       I.jb
                        | Less_word31 =>     cmp       I.jb
                        | Less_word32ub =>   cmp       I.jb
                        | Less_word32b =>    cmp_boxed I.jb
@@ -935,6 +939,8 @@ struct
                        | Lesseq_int32ub =>  cmp       I.jle
                        | Lesseq_int32b =>   cmp_boxed I.jle
                        | Lesseq_int31 =>    cmp       I.jle
+                       | Lesseq_char =>     cmp       I.jbe
+                       | Lesseq_word8 =>    cmp       I.jbe
                        | Lesseq_word31 =>   cmp       I.jbe
                        | Lesseq_word32ub => cmp       I.jbe
                        | Lesseq_word32b =>  cmp_boxed I.jbe
@@ -949,6 +955,8 @@ struct
                        | Greater_int32ub =>  cmp       I.jg
                        | Greater_int32b =>   cmp_boxed I.jg
                        | Greater_int31 =>    cmp       I.jg
+                       | Greater_char =>     cmp       I.ja
+                       | Greater_word8 =>    cmp       I.ja
                        | Greater_word31 =>   cmp       I.ja
                        | Greater_word32ub => cmp       I.ja
                        | Greater_word32b =>  cmp_boxed I.ja
@@ -963,6 +971,8 @@ struct
                        | Greatereq_int32ub =>  cmp       I.jge
                        | Greatereq_int32b =>   cmp_boxed I.jge
                        | Greatereq_int31 =>    cmp       I.jge
+                       | Greatereq_char =>     cmp       I.jae
+                       | Greatereq_word8 =>    cmp       I.jae
                        | Greatereq_word31 =>   cmp       I.jae
                        | Greatereq_word32ub => cmp       I.jae
                        | Greatereq_word32b =>  cmp_boxed I.jae
@@ -1098,6 +1108,8 @@ struct
                               Equal_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
                             | Equal_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
+                            | Equal_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
@@ -1146,6 +1158,8 @@ struct
                             | Less_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
                             | Less_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovlq arg
                             | Less_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
+                            | Less_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
+                            | Less_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbq arg
@@ -1162,6 +1176,8 @@ struct
                             | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
                             | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovleq arg
                             | Lesseq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
+                            | Lesseq_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
+                            | Lesseq_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbeq arg
@@ -1178,6 +1194,8 @@ struct
                             | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
                             | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgq arg
                             | Greater_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
+                            | Greater_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
+                            | Greater_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaq arg
@@ -1194,6 +1212,8 @@ struct
                             | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
                             | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgeq arg
                             | Greatereq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
+                            | Greatereq_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
+                            | Greatereq_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaeq arg
