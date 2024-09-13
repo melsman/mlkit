@@ -1,5 +1,5 @@
 signature REPL = sig
-  val run : unit -> OS.Process.status
+  val run : unit -> OS.Process.status option
 end
 
 functor Repl(structure ManagerObjects : MANAGER_OBJECTS
@@ -840,24 +840,23 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "dangling_pointers", "statistics_spurious", "type_check_lambda",
     "report_file_sig", "log_to_file"]
 
-fun run () : OS.Process.status =
-    let val () = Flags.turn_on "report_file_sig"
-        val () = List.app Flags.block_entry flags_to_block
-        val () = if Flags.is_on "garbage_collection" then
-                   ( print("|Garbage collection disabled - it is not supported in the REPL!\n")
-                   ; Flags.turn_off "garbage_collection"
-                   )
-                 else ()
-        val () = print "|Type :help; for help...\n";
-        val () = Flags.turn_off "messages"
-    in case MO.mk_repl_runtime of
-           SOME f =>
-           let val rt_exe = f()
-               val (stepno, state, rp, libs_acc, deps) =
-                   initialise_repl (PE.begin_stdin()) rt_exe
-           in repl (rt_exe, stepno, state, rp, libs_acc, deps)
-           end
-         | NONE => die "run - not possible to build runtime"
-    end
+fun run () : OS.Process.status option =
+    case MO.mk_repl_runtime of
+        SOME mk_runtime =>
+        let val () = Flags.turn_on "report_file_sig"
+            val () = List.app Flags.block_entry flags_to_block
+            val () = if Flags.is_on "garbage_collection" then
+                       ( print("|Garbage collection disabled - it is not supported in the REPL!\n")
+                       ; Flags.turn_off "garbage_collection"
+                       )
+                     else ()
+            val () = print "|Type :help; for help...\n";
+            val () = Flags.turn_off "messages"
+            val rt_exe = mk_runtime ()
+            val (stepno, state, rp, libs_acc, deps) =
+                initialise_repl (PE.begin_stdin()) rt_exe
+        in SOME (repl (rt_exe, stepno, state, rp, libs_acc, deps))
+        end
+      | NONE => NONE
 
 end
