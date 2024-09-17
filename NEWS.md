@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2024-09-17: Cleanup and tests of Barry, a Standard ML barrifier.
+
 * mael 2024-06-27: Fix recursive-function specialisation bug (issue #177).
 
 ### MLKit version 4.7.11 is released

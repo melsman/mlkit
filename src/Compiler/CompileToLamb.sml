@@ -20,8 +20,6 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (*  Dynamic Flags.                                                        *)
     (* ---------------------------------------------------------------------- *)
 
-    val eliminate_polymorphic_equality_p = Flags.is_on0 "eliminate_polymorphic_equality"
-
     val type_check_lambda_p = Flags.is_on0 "type_check_lambda"
 
     val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression"
@@ -140,7 +138,6 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
 
     fun elim_eq_lambda (env,lamb) =
-      if eliminate_polymorphic_equality_p() then
 	(chat "[begin eliminating polymorphic equality]";
 	 Timing.timing_begin();
 	 let val (lamb', env') =
@@ -154,8 +151,6 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	   else ();
 	   (lamb', env')
 	 end)
-      else (lamb, EliminateEq.empty)
-
 
     (* ---------------------------------------------------------------------- *)
     (*   Optimise the lambda code                                             *)

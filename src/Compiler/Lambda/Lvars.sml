@@ -41,7 +41,7 @@ structure Lvars :> LVARS where type name = Name.name =
 	 free=ref false, inserted=ref false,
 	 use=ref 0, ubf64=ref (!(#ubf64 lv))}
 
-    fun pr_lvar' ({str,name,ubf64,...} : lvar) : string =
+    fun pr_lvar' ({str,name,ubf64,...} : lvar) : string = (* for Barry and debugging *)
 	let val (i,s) = Name.key name
             val s = if Name.baseGet() = s then "" else s
 	    val str = if str = "" then (if !ubf64 then "f:" else "v:") else str ^ ":"

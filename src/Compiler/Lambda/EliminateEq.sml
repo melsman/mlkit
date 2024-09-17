@@ -8,6 +8,8 @@ structure EliminateEq : ELIMINATE_EQ =
 
     open LambdaExp
 
+    val eliminate_polymorphic_equality_p = Flags.is_on0 "eliminate_polymorphic_equality"
+
     fun die s = Crash.impossible ("EliminateEq." ^ s)
     fun log s = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
 
@@ -159,13 +161,15 @@ structure EliminateEq : ELIMINATE_EQ =
       val enrich : env * env -> bool = enrich
       val match : env * env -> env = match
       fun restrict (e: env, {lvars:lvar list,tynames:TyName list}): lvar list * env =
-          restrict'(e,{lvars=lvars,tynames=tynames})
-          handle x =>
-               (say "ElimiateEq.restrict failed\n";
-                say "The equality environment is:\n";
-                PP.outputTree(say,  layout_env e, 70);
-                say "(end of equality environment)\n";
-                raise x)
+          if eliminate_polymorphic_equality_p () then
+            restrict'(e,{lvars=lvars,tynames=tynames})
+            handle x =>
+                   (say "ElimiateEq.restrict failed\n";
+                    say "The equality environment is:\n";
+                    PP.outputTree(say,  layout_env e, 70);
+                    say "(end of equality environment)\n";
+                    raise x)
+          else (nil,empty)
       type StringTree = PP.StringTree
       val layout_env : env -> StringTree = layout_env
     end
@@ -911,24 +915,25 @@ structure EliminateEq : ELIMINATE_EQ =
          | _ => lexp
 
     fun elim_eq (env0, PGM ((datbinds as DATBINDS dbss), lexp)) : LambdaPgm * env =
-      let
-        val op + = plus
-        val (f', env_builtin_dat) = gen_datatype_builtin_eq ()
-        val env1 = env0 + env_builtin_dat
-        val (f, env_dat) = gen_datatype_eq env1 dbss
-        val env2 = env1 + env_dat
-        val _ = env_frame := empty
-        val lexp1 = t env2 lexp                         (* env_frame is updated as a side-effect. *)
-        val env_export = env_dat + (!env_frame)
-        val lexp2 = extend_frame env_dat lexp1          (* don't put eq. functions for built-in
-                                                         * datatypes in frame. For in-lining, we
-                                                         * better introduce them in each module. *)
-      in (PGM (datbinds, (f' o f) lexp2), env_export)
-      end handle e as DONT_SUPPORT_EQ s =>
-        (log ("\n ** Equality not supported for datatype " ^ s ^ "\n");
-         log (" ** Rewrite the program to use an explicit equality function\n");
-         log (" ** for this particular datatype.\n\n");
-         raise e)
+        if eliminate_polymorphic_equality_p() then
+          let val op + = plus
+              val (f', env_builtin_dat) = gen_datatype_builtin_eq ()
+              val env1 = env0 + env_builtin_dat
+              val (f, env_dat) = gen_datatype_eq env1 dbss
+              val env2 = env1 + env_dat
+              val _ = env_frame := empty
+              val lexp1 = t env2 lexp                         (* env_frame is updated as a side-effect. *)
+              val env_export = env_dat + (!env_frame)
+              val lexp2 = extend_frame env_dat lexp1          (* don't put eq. functions for built-in
+                                                               * datatypes in frame. For in-lining, we
+                                                               * better introduce them in each module. *)
+          in (PGM (datbinds, (f' o f) lexp2), env_export)
+          end handle e as DONT_SUPPORT_EQ s =>
+                     (log ("\n ** Equality not supported for datatype " ^ s ^ "\n");
+                      log (" ** Rewrite the program to use an explicit equality function\n");
+                      log (" ** for this particular datatype.\n\n");
+                      raise e)
+        else (PGM(datbinds,lexp), empty)
 
     val pu =
         let fun resultToInt (MONOLVAR _) = 0
