@@ -1777,8 +1777,8 @@ structure OptLambda : OPT_LAMBDA =
                                 end
                       | _ => fail)
           | PRIM(SELECTprim {index=n},[lamb]) =>
-               let fun do_select () =
-                      case cv
+               let fun do_select () = fail
+                      (* case cv
                         of CRECORD cvs =>
                           let val nth_cv = List.nth(cvs,n)
                             handle Subscript => die "reduce4"
@@ -1791,7 +1791,7 @@ structure OptLambda : OPT_LAMBDA =
                                                                decr_uses lamb; (e, nth_cv))
                                 | _ => (lamb, nth_cv)
                           end
-                         | _ => fail
+                         | _ => fail *)
                in case lamb
                     of PRIM(RECORDprim _,lambs) =>
                       let val (lamb', lambs') = case removeNth n lambs of
