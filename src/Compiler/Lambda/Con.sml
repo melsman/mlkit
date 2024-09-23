@@ -15,7 +15,13 @@ structure Con :> CON where type name = Name.name =
     fun mk_con (s: string) : con = {str=s,name=Name.new()}
 
     fun pr_con ({str,...}: con) : string = str
-    fun pr_con' ({str,name}: con) : string = str ^ "_" ^ Int.toString (#1(Name.key name))
+
+    fun pr_con' ({str,name}: con) : string =  (* for Barry and debugging *)
+	let val (i,s) = Name.key name
+            val s = if Name.baseGet() = s then "" else s
+	    val str = if str = "" then "c:" else str ^ ":"
+	in str ^ Int.toString i ^ ":" ^ s
+	end
 
     fun name ({name,...}: con) : name = name
 

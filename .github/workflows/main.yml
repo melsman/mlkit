@@ -146,6 +146,11 @@ jobs:
         run: |
           make -C js/test test
 
+      - name: Build and run Barry tests
+        run: |
+          make barry
+          make -C test/barry all
+
       - name: Build binary distribution
         run: |
           make mlkit_bin_dist

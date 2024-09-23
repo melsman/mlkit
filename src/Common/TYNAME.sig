@@ -32,6 +32,7 @@ signature TYNAME =
 
     val freshTyName    : {tycon : tycon, arity : int, equality : bool} -> TyName
     val pr_TyName      : TyName -> string
+    val pr_TyName'     : TyName -> string
     val pr_TyName_repl : TyName -> string        (* for type-index value printing in the REPL,
                                                   * non-predefined type names are printed with
                                                   * their internal id... *)

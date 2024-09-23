@@ -190,6 +190,14 @@ structure TyName :> TYNAME =
                    else str))
       end
 
+    fun pr_TyName' ({tycon,name,...}:TyName) : string =
+	let val str = TyCon.pr_TyCon tycon
+            val (i,s) = Name.key name
+            val s = if Name.baseGet() = s then "" else s
+	in str ^ ":" ^ Int.toString i ^ ":" ^ s
+	end
+
+
     fun setBoxity (tn: TyName, b:boxity) : unit =
         case boxity tn of
             BOXED => #boxity tn := b

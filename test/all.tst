@@ -180,3 +180,4 @@ word-n-vector.sml
 int-n-vector.sml
 auto2.sml                                     (* ffi auto-conversion *)
 foldbug.sml
+seltuptup.sml
