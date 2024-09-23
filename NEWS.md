@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.12 is released
+
 * mael 2024-09-23: Optimiser bug fix with static selection of tuples containing
   tuples.
 
