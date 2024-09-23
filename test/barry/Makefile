@@ -1,4 +1,6 @@
-TESTFILES=fib35.sml life.sml testdyn1.sml general.sml string.sml
+TESTFILES=fib35.sml life.sml testdyn1.sml general.sml string.sml qsort.sml fft.sml \
+          tststrcmp.sml msort.sml int.sml precedence.sml simple.sml mandelbrot.sml \
+          professor.sml
 
 RESFILES=$(TESTFILES:%.sml=%.res)
 
@@ -45,7 +47,7 @@ test: $(RESFILES)
 
 .PHONY: prepare
 prepare:
-	$(BARRY) ../../basis/basis.mlb
+	$(BARRY) `pwd`/../../basis/basis.mlb
 
 .PHONY: clean
 clean:

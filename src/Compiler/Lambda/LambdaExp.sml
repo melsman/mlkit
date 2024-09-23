@@ -383,12 +383,13 @@ structure LambdaExp : LAMBDA_EXP =
 
    fun dup xs = map (fn s => (s,s)) xs
    fun dupQ q xs = map (fn s => (s,q ^ "." ^ s)) xs
-   val structures = [("General", dup ["print", "not", "chr", "implode", "explode",
+   val structures = [("General", dup ["option", "print", "not", "chr", "implode", "explode",
                                       "ord", "size", "exnName", "exnMessage", "valOf", "NONE",
                                       "SOME", "EQUAL", "LESS", "GREATER"] @
-                                 [("o","(op o)"), ("v176","(op ^)"), ("v140","(op =)"), ("v155","(op <>)"),
-                                  ("v73","!"), ("v77","(op :=)"),
+                                 [("o","(op o)"), ("v176","(op ^)"), ("v140","(op =)"),
+                                  ("v155","(op <>)"), ("v73","!"), ("v77","(op :=)"),
                                   ("Chr61", "Chr")]),
+                     ("StringCvt", dupQ "StringCvt" ["radix","DEC","scanString","BIN","OCT","HEX"]),
                      ("String", [("v64","String.^"), ("v445","String.<"), ("v447","String.<="),
                                  ("v449","String.>"), ("v451","String.>=")] @
                                 dupQ "String" ["size","substring","concat","str","implode","explode","extract",
@@ -402,10 +403,11 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Real", dup ["floor", "real"]),
                      ("textio", dupQ "TextIO" ["openOut"]),
                      ("Int", [("toString","Int.toString"), ("v472","Int.>"), ("v112","Int.+")] @
-                             dupQ "Int" ["minInt","maxInt"]),
-                     ("Math", [("sqrt", "Math.sqrt"), ("v54","(op /)")]),
-                     ("List", dupQ "List" ["all"] @
-                              dup ["rev","map","hd"] @
+                             dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
+                                         "sameSign","scan","fromString","fmt","precision"]),
+                     ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("v54","(op /)")]),
+                     ("List", dupQ "List" ["all", "take", "drop"] @
+                              dup ["rev","map","hd","length"] @
                               [("v652","(op @)"), ("v266", "List.@")])
                     ]
 
@@ -415,7 +417,7 @@ structure LambdaExp : LAMBDA_EXP =
              Substring.isSuffix "sml" (Substring.dropr Char.isDigit ss) then
             case List.filter (fn (S,_) => Substring.isSubstring S (#2(Substring.position "basismlb" ss)))
                              structures of
-                [(S,vars)] =>
+                (S,vars) :: _ =>
                 (case List.filter (fn (V,_) => String.isPrefix V s) vars of
                      (_,V) :: _ => V
                    | nil => s)
@@ -477,6 +479,11 @@ structure LambdaExp : LAMBDA_EXP =
                     then Con.pr_con c
                 else barify_catch_basislib (unsymb(Con.pr_con' c))
        else Con.pr_con c
+
+   fun pr_tyname (tn:TyName) : string =
+       if !barify_p andalso not(List.exists (fn x => TyName.eq(tn,x)) TyName.tynamesPredefined) then
+         barify_catch_basislib (unsymb(TyName.pr_TyName' tn))
+       else TyName.pr_TyName tn
 
     fun layoutPrim layoutType prim =
      case prim of
@@ -630,6 +637,10 @@ structure LambdaExp : LAMBDA_EXP =
             if !barify_p then
               (case name of
                    "__equal_int64ub" => PP.LEAF "(op =)"
+                 | "lessStringML" => PP.LEAF "(op <)"
+                 | "greaterStringML" => PP.LEAF "(op >)"
+                 | "lesseqStringML" => PP.LEAF "(op <=)"
+                 | "greatereqStringML" => PP.LEAF "(op >=)"
                  | _ => PP.LEAF ("Prim." ^ strip_ name))
             else PP.LEAF ("ccall " ^ name)
       | BLOCKF64prim => PP.LEAF "blockf64"
@@ -670,9 +681,6 @@ structure LambdaExp : LAMBDA_EXP =
                   children=[head,children]}
       end
 
-    fun parenthesise (st: PP.StringTree): PP.StringTree=
-        PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NOSEP}
-
     fun layoutTyvarseq tyvars =
         case tyvars
          of nil => NONE
@@ -688,6 +696,12 @@ structure LambdaExp : LAMBDA_EXP =
     fun pr_rvsopt NONE = ""
       | pr_rvsopt (SOME [rv]) = "`" ^ RegVar.pr rv
       | pr_rvsopt (SOME rvs) = "`[" ^ String.concatWith "," (map RegVar.pr rvs) ^ "]"
+
+    fun parenthesise false t = t
+      | parenthesise true t =
+        PP.NODE{start="(",finish=")",indent=1,
+                children=[t],
+                childsep=PP.NOSEP}
 
     type config = {repl:bool}
     val norepl : config = {repl=false}
@@ -710,10 +724,10 @@ structure LambdaExp : LAMBDA_EXP =
             (case layoutTypeseq0 config taus of
                  NONE =>
                  if #repl config then PP.LEAF (TyName.pr_TyName_repl tn)
-                 else PP.LEAF (TyName.pr_TyName tn ^ pr_rvsopt rvsopt)
+                 else PP.LEAF (pr_tyname tn ^ pr_rvsopt rvsopt)
                | SOME x => PP.NODE{start="",
                                    finish=" " ^ (if #repl config then TyName.pr_TyName_repl tn
-                                                 else TyName.pr_TyName tn ^ pr_rvsopt rvsopt),
+                                                 else pr_tyname tn ^ pr_rvsopt rvsopt),
                                    indent=1,
                                    children=[x],childsep=PP.NOSEP})
           | RECORDtype (taus,rvopt) =>
@@ -867,8 +881,8 @@ structure LambdaExp : LAMBDA_EXP =
             val tyvars_tynameT =
               case layoutTyvarseq tyvars
                 of SOME t => PP.NODE {start="",finish="",childsep=PP.RIGHT " ",indent=0,
-                                      children=[t, PP.LEAF(TyName.pr_TyName tyname)]}
-                 | NONE => PP.LEAF(TyName.pr_TyName tyname)
+                                      children=[t, PP.LEAF(pr_tyname tyname)]}
+                 | NONE => PP.LEAF(pr_tyname tyname)
             val cbT = PP.NODE{start="",finish="",indent=0,
                               children=layoutcb cb,
                               childsep=PP.LEFT" | "}
@@ -890,13 +904,16 @@ structure LambdaExp : LAMBDA_EXP =
                 children=dbTs @ [lambT],childsep=PP.NOSEP}
       end
 
-    and layout_infix (context:int) (precedence: int) (operator: string) expressions =
-        if context > precedence then
-          PP.NODE{start = "(", finish= ")", indent = 1, childsep = PP.RIGHT operator,
-                  children = map (fn e => layoutLambdaExp(e,0)) expressions}
-        else
-          PP.NODE{start = "", finish= "", indent =0, childsep = PP.RIGHT operator,
-                  children = map (fn e => layoutLambdaExp(e,0)) expressions}
+    and layout_infix (context:int) (precedence: int) (operator: string) [e1,e2] =
+        let val children = [layoutLambdaExp(e1,precedence+1), layoutLambdaExp(e2,precedence+1)]
+        in if context > precedence then
+             PP.NODE{start = "(", finish= ")", indent = 1, childsep = PP.RIGHT operator,
+                     children = children}
+           else
+             PP.NODE{start = "", finish= "", indent =0, childsep = PP.RIGHT operator,
+                     children = children}
+        end
+      | layout_infix _ _ _ _ = die "layout_infix"
 
     and layoutLambdaExp (lamb,context:int): StringTree =
       case lamb of
@@ -927,7 +944,7 @@ structure LambdaExp : LAMBDA_EXP =
 
       | STRING (s,NONE) => PP.LEAF(quote s)
       | STRING (s,SOME rv) => PP.LEAF(quote s ^ "`" ^ RegVar.pr rv)
-      | REAL (r,NONE) => PP.LEAF(r)
+      | REAL (r,NONE) => PP.LEAF r
       | REAL (r,SOME rv) => PP.LEAF(r ^ "`" ^ RegVar.pr rv)
       | F64 r => PP.LEAF(r ^ "f64")
       | FN {pat,body} =>
@@ -957,14 +974,15 @@ structure LambdaExp : LAMBDA_EXP =
                   children=[layoutLambdaExp(lamb1,13), layoutLambdaExp(lamb2,14)]
                   }
       | RAISE(lamb,typelist) =>
-          PP.NODE{start="raise ",
-                  finish="",
-                  indent=6,
-                  children=[layoutLambdaExp(lamb,0)] @ (if !Flags.print_types
-                                                            then [layoutTypeList typelist]
-                                                        else []),
-                  childsep=PP.RIGHT ","
-                  }
+        parenthesise (context > 0)
+                     (PP.NODE{start="raise ",
+                              finish="",
+                              indent=6,
+                              children=[layoutLambdaExp(lamb,0)] @ (if !Flags.print_types
+                                                                    then [layoutTypeList typelist]
+                                                                    else []),
+                              childsep=PP.RIGHT ","
+                             })
 
       | HANDLE(lamb1, lamb2) =>
         let val children =
@@ -1075,9 +1093,10 @@ structure LambdaExp : LAMBDA_EXP =
          | (REFprim{instance,regvar},[lamb]) =>
            let val s = case regvar of NONE => "ref "
                                     | SOME rv => "ref`" ^ RegVar.pr rv ^ " "
-           in PP.NODE{start=s,finish="",indent=2,
-                      children=[layoutLambdaExp(lamb,14)],
-                      childsep=PP.NOSEP}
+           in maybepar context
+                       (PP.NODE{start=s,finish="",indent=2,
+                                children=[layoutLambdaExp(lamb,14)],
+                                childsep=PP.NOSEP})
            end
          | (EXCONprim excon, []) => PP.LEAF(pr_excon excon)
          | (CONprim{con,instances,regvar}, []) =>
@@ -1200,8 +1219,8 @@ structure LambdaExp : LAMBDA_EXP =
              case (prim,lambs) of
                  (DROPprim, [lamb]) => layoutLambdaExp(lamb,context)
                | (CCALLprim{name="__equal_ptr", ...}, _) => PP.LEAF "false"
-               | (CCALLprim{name="__div_int64ub", ...}, [a,b,_]) => layout_infix context 4 " div " [a,b]
-               | (CCALLprim{name="__mod_int64ub", ...}, [a,b,_]) => layout_infix context 4 " mod " [a,b]
+               | (CCALLprim{name="__div_int64ub", ...}, [a,b,_]) => layout_infix context 7 " div " [a,b]
+               | (CCALLprim{name="__mod_int64ub", ...}, [a,b,_]) => layout_infix context 7 " mod " [a,b]
                | _ =>
                  let fun layoutArgs [lamb] = layoutLambdaExp(lamb,14)
                        | layoutArgs lambs =
@@ -1265,11 +1284,7 @@ structure LambdaExp : LAMBDA_EXP =
                   end
               else layoutFrame "FRAME" fr
 
-    and maybepar context t =
-        if context > 13 then
-          PP.NODE{start="(",finish=")",indent=0, children=[t],
-                  childsep=PP.NOSEP}
-        else t
+    and maybepar context t = parenthesise (context > 13) t
 
     and layout_let_fix_and_exception lexp =
           let
@@ -1308,11 +1323,9 @@ structure LambdaExp : LAMBDA_EXP =
           end
 
       and mk_valbind (pat, e) =
-        let
-            val child1 = layPatLet pat   (*NB*)
-         in
-            PP.NODE{start = "val ",finish="",childsep=PP.RIGHT " = ",
-                 indent=4,  children=[child1, layoutLambdaExp(e,0)] }
+        let val child1 = layPatLet pat   (*NB*)
+        in PP.NODE{start = "val ",finish="",childsep=PP.RIGHT " = ",
+                   indent=4, children=[child1, layoutLambdaExp(e,0)] }
         end
       and mk_excon_binding (excon, ty_opt) =
             (* exception EXCON    (* exn value or name at RHO *) or
@@ -1400,27 +1413,21 @@ structure LambdaExp : LAMBDA_EXP =
 
     and layoutFnPat atpats =
         if !barify_p then
-            case atpats of
-                [atpat] => layoutFnAtPat atpat
-              | _ => PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
-                              childsep=PP.RIGHT ","}
-        else
-            PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
-                     childsep=PP.RIGHT ","}
+          case atpats of
+              [atpat] => layoutFnAtPat atpat
+            | _ => PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
+                            childsep=PP.RIGHT ","}
+        else PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
+                      childsep=PP.RIGHT ","}
 
     and layoutFnAtPat (lvar, Type) =
         if !barify_p then
-            (* print type if record *)
-            (*(case Type of
-                 RECORDtype _ =>*)
-                     PP.HNODE{start=pr_lvar lvar ^ " : ",finish="",childsep=PP.NOSEP,
-                              children=[layoutType Type]}
-(*               | _ => PP.LEAF (pr_lvar lvar))*)
-        else
-            if !Flags.print_types then
-                PP.NODE {start=pr_lvar lvar ^ ":", finish="", indent=0,
-                         children=[layoutType Type], childsep=PP.NOSEP}
-            else PP.LEAF(pr_lvar lvar)
+          PP.HNODE{start=pr_lvar lvar ^ " : ",finish="",childsep=PP.NOSEP,
+                   children=[layoutType Type]}
+        else if !Flags.print_types then
+          PP.NODE {start=pr_lvar lvar ^ ":", finish="", indent=0,
+                   children=[layoutType Type], childsep=PP.NOSEP}
+        else PP.LEAF(pr_lvar lvar)
 
     val layoutLambdaPgm = layoutPgm
     val layoutLambdaExp = fn e => layoutLambdaExp(e,0)

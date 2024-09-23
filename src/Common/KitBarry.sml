@@ -10,7 +10,7 @@ structure K =
                          "values_64bit", "unbox_reals", "tag_values", "tag_pairs",
                          "repository", "reml", "region_profiling", "region_inference",
                          "print_region_flow_graph", "print_all_program_points",
-                         "preserve_tail_calls", "dangling_pointers"
+                         "preserve_tail_calls", "dangling_pointers", "report_boxities", "high_pointer_tagging"
                       ]
 
   in KitMain(KC)
