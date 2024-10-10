@@ -196,6 +196,17 @@ structure OptLambda : OPT_LAMBDA =
          \safe. Turning off garbage collection automatically\n\
          \turns off this option."}
 
+   val uncurrying_p = Flags.add_bool_entry
+       {long="uncurrying",short=SOME "uncurry",
+        menu=["Optimiser Control", "uncurrying"],
+        item=ref true,neg=true,
+        desc=
+        "Enable uncurrying of curried functions. The uncurried\n\
+         \function takes its arguments unboxed in registers or\n\
+         \on the stack. For partial applications and non-\n\
+         \application uses of the function, appropriate eta-\n\
+         \expansions are applied."}
+
    (* -----------------------------------------------------------------
     * Some helpful functions
     * ----------------------------------------------------------------- *)
@@ -3094,7 +3105,9 @@ structure OptLambda : OPT_LAMBDA =
        let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
                let fun unc t vtys e : t * (lvar*Type)list * LambdaExp =
                        case e of
-                           FN{pat=[(x,ty')],body} => unc (Unc oo t) (vtys@[(x,ty')]) body
+                           FN{pat=[(x,ty')],body} =>
+                           if uncurrying_p() then unc (Unc oo t) (vtys@[(x,ty')]) body
+                           else (t,vtys,e)
                          | _ => (t,vtys,e)
                    val (t,vtys,e) = unc Id vtys body
                in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_ty t Type,
@@ -3105,6 +3118,10 @@ structure OptLambda : OPT_LAMBDA =
 
    fun unbOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
        let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+               if not(unbox_function_arguments())
+               then ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
+                      constrs=constrs,vtys=vtys,body=body}, Id)
+               else
                let fun ins (x,ty,i,j) a =
                        if List.exists (fn (y,_,i',j') => Lvars.eq(y,x) andalso i=i' andalso j=j') a
                        then a else (x,ty,i,j)::a
@@ -4205,19 +4222,6 @@ structure OptLambda : OPT_LAMBDA =
 
     * ----------------------------------------------------------------- *)
 
-   val uncurrying = ref true
-
-   val _ = Flags.add_bool_entry
-       {long="uncurrying",short=SOME "uncurry",
-        menu=["Optimiser Control", "uncurrying"],
-        item=uncurrying,neg=true,
-        desc=
-        "Enable uncurrying of curried functions. The uncurried\n\
-         \function takes its arguments unboxed in registers or\n\
-         \on the stack. For partial applications and non-\n\
-         \application uses of the function, appropriate eta-\n\
-         \expansions are applied."}
-
    type TypeScheme = tyvar list * Type
    type uc_env = (int * TypeScheme) option LvarMap.map
 
@@ -4288,7 +4292,7 @@ structure OptLambda : OPT_LAMBDA =
                       scope=uc (LvarMap.plus(env,env')) scope}
                end
          | LET{pat=[(lv,tyvars,tau)],bind=b as VAR{lvar,instances,regvars=[]},scope} =>
-               if !uncurrying then
+               if uncurrying_p() then
                (case LvarMap.lookup env lvar of
                     SOME (SOME (n,(tvs,ARROWtype(ts,rv0,_,rv)))) =>
                         if n <> length ts then die "uncurry.LET-VAR.length"
@@ -4334,7 +4338,7 @@ structure OptLambda : OPT_LAMBDA =
              | mk_envs ({lvar:lvar,regvars,tyvars,Type:Type,constrs,bind:LambdaExp}::rest,env_b,env_s) =
               let val n = uc_lambdas bind
                   val (env_b,env_s) =
-                      if !uncurrying andalso n >= 2 then
+                      if uncurrying_p() andalso n >= 2 then
                           let val (ts,t) = uc_tau n Type
                               val tau = ARROWtype(ts,NONE,[t],NONE)
                           in (LvarMap.add(lvar,SOME(n,(nil,tau)),env_b),

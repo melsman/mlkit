@@ -2,6 +2,7 @@ structure K =
   let structure KC = KitCompiler(ExecutionBarry)
       val () = Flags.turn_off "cross_module_opt"
       val () = Flags.turn_off "unbox_reals"
+      val () = Flags.turn_off "unbox_function_arguments"
       val () = Flags.turn_off "eliminate_polymorphic_equality"
       val () = Flags.turn_off "uncurrying"
       val () = List.app Flags.block_entry
