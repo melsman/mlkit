@@ -162,15 +162,16 @@ structure CompileToLamb: COMPILE_TO_LAMB =
           ((if optimise_p() then chat "[begin optimising lambda term]"
 	    else chat "[begin rewriting lambda term]");
 	   Timing.timing_begin();
-	   let
-	     val (lamb_opt, env') =
-	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
-	   in
-	     if optimise_p() then chat "[end optimising lambda term]"
-	     else chat "[end rewriting lambda term]";
-	     if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
-	     then display("Optimised Lambda Program", layoutLambdaPgm lamb_opt) else () ;
-	     (lamb_opt, env')
+	   let val (lamb_opt, env') = Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
+	   in if optimise_p() then chat "[end optimising lambda term]"
+	      else chat "[end rewriting lambda term]"
+	    ; if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
+	      then display("Optimised Lambda Program", layoutLambdaPgm lamb_opt)
+              else ()
+            ; if !Flags.DEBUG_COMPILER
+              then display("Optimiser Environment", OptLambda.layout_env env')
+              else ()
+            ; (lamb_opt, env')
 	   end)
 
 

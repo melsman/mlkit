@@ -771,10 +771,10 @@ structure InstsX64: INSTS_X64 =
     fun doubleOfQuadReg r =
         case r of
             rax => eax | rbx => ebx | rcx => ecx | rdx => edx
-            | rsi => esi | rdi => edi | rbp => ebp | rsp => esp
-            | r8 => r8d | r9 => r9d | r10 => r10d | r11 => r11d
-            | r12 => r12d | r13 => r13d | r14 => r14d | r15 => r15d
-            | _ => die ("doubleOfQuadReg: " ^ pr_reg r ^ " is not a quad register")
+          | rsi => esi | rdi => edi | rbp => ebp | rsp => esp
+          | r8 => r8d | r9 => r9d | r10 => r10d | r11 => r11d
+          | r12 => r12d | r13 => r13d | r14 => r14d | r15 => r15d
+          | _ => die ("doubleOfQuadReg: " ^ pr_reg r ^ " is not a quad register")
 
     (* Helper functions *)
 

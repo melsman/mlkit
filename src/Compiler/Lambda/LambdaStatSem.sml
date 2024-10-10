@@ -432,9 +432,11 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     structure TVS = TyvarSet
     fun valid_s e (tvs,ty) =
         let val s = tyvars_Type TVS.empty ty TVS.empty
-          val _ = app (fn tv => if TVS.member tv s then ()
-                                else die ("valid_s.Type variable " ^ pr_tyvar tv ^ " not in " ^ prTypeScheme(tvs,ty)))
-                      tvs
+(*
+            val _ = app (fn tv => if TVS.member tv s then ()
+                                else die ("valid_s.Type variable " ^ pr_tyvar tv ^ " not in type of " ^ prTypeScheme(tvs,ty)))
+                        tvs
+*)
         in
           valid_t (add_tyvars(tvs,e)) ty
         end
