@@ -3,28 +3,28 @@ structure PrimName = struct
 datatype prim =
          (* flow primitives *)
          Equal_int31 | Equal_int32ub | Equal_int32b |
-	 Equal_word31 | Equal_word32ub | Equal_word32b |
+	 Equal_char | Equal_word8 | Equal_word31 | Equal_word32ub | Equal_word32b |
          Equal_int63 | Equal_int64ub | Equal_int64b |
 	 Equal_word63 | Equal_word64ub | Equal_word64b |
          Equal_ptr |
 
 	 Less_int31 | Less_int32ub | Less_int32b |
-	 Less_word31 | Less_word32ub | Less_word32b |
+	 Less_char | Less_word8 | Less_word31 | Less_word32ub | Less_word32b |
 	 Less_int63 | Less_int64ub | Less_int64b |
 	 Less_word63 | Less_word64ub | Less_word64b |
 
 	 Lesseq_int31 | Lesseq_int32ub | Lesseq_int32b |
-	 Lesseq_word31 | Lesseq_word32ub | Lesseq_word32b |
+	 Lesseq_char | Lesseq_word8 | Lesseq_word31 | Lesseq_word32ub | Lesseq_word32b |
 	 Lesseq_int63 | Lesseq_int64ub | Lesseq_int64b |
 	 Lesseq_word63 | Lesseq_word64ub | Lesseq_word64b |
 
 	 Greater_int31 | Greater_int32ub | Greater_int32b |
-	 Greater_word31 | Greater_word32ub | Greater_word32b |
+	 Greater_char | Greater_word8 | Greater_word31 | Greater_word32ub | Greater_word32b |
 	 Greater_int63 | Greater_int64ub | Greater_int64b |
 	 Greater_word63 | Greater_word64ub | Greater_word64b |
 
 	 Greatereq_int31 | Greatereq_int32ub | Greatereq_int32b |
-	 Greatereq_word31 | Greatereq_word32ub | Greatereq_word32b |
+	 Greatereq_char | Greatereq_word8 | Greatereq_word31 | Greatereq_word32ub | Greatereq_word32b |
 	 Greatereq_int63 | Greatereq_int64ub | Greatereq_int64b |
 	 Greatereq_word63 | Greatereq_word64ub | Greatereq_word64b |
 
@@ -171,28 +171,29 @@ local
 
   val flow_pairs =
 	[("__equal_int31", Equal_int31), ("__equal_int32ub", Equal_int32ub), ("__equal_int32b", Equal_int32b),
-	 ("__equal_word31", Equal_word31), ("__equal_word32ub", Equal_word32ub), ("__equal_word32b", Equal_word32b),
+	 ("__equal_char", Equal_char), ("__equal_word8", Equal_word8), ("__equal_word31", Equal_word31),
+         ("__equal_word32ub", Equal_word32ub), ("__equal_word32b", Equal_word32b),
          ("__equal_int63", Equal_int63), ("__equal_int64ub", Equal_int64ub), ("__equal_int64b", Equal_int64b),
 	 ("__equal_word63", Equal_word63), ("__equal_word64ub", Equal_word64ub), ("__equal_word64b", Equal_word64b),
          ("__equal_ptr", Equal_ptr),
 
 	 ("__less_int31", Less_int31), ("__less_int32ub", Less_int32ub), ("__less_int32b", Less_int32b),
-	 ("__less_word31", Less_word31), ("__less_word32ub", Less_word32ub), ("__less_word32b", Less_word32b),
+	 ("__less_char", Less_char), ("__less_word8", Less_word8), ("__less_word31", Less_word31), ("__less_word32ub", Less_word32ub), ("__less_word32b", Less_word32b),
 	 ("__less_int63", Less_int63), ("__less_int64ub", Less_int64ub), ("__less_int64b", Less_int64b),
 	 ("__less_word63", Less_word63), ("__less_word64ub", Less_word64ub), ("__less_word64b", Less_word64b),
 
 	 ("__lesseq_int31", Lesseq_int31), ("__lesseq_int32ub", Lesseq_int32ub), ("__lesseq_int32b", Lesseq_int32b),
-	 ("__lesseq_word31", Lesseq_word31), ("__lesseq_word32ub", Lesseq_word32ub), ("__lesseq_word32b", Lesseq_word32b),
+	 ("__lesseq_char", Lesseq_char), ("__lesseq_word8", Lesseq_word8), ("__lesseq_word31", Lesseq_word31), ("__lesseq_word32ub", Lesseq_word32ub), ("__lesseq_word32b", Lesseq_word32b),
 	 ("__lesseq_int63", Lesseq_int63), ("__lesseq_int64ub", Lesseq_int64ub), ("__lesseq_int64b", Lesseq_int64b),
 	 ("__lesseq_word63", Lesseq_word63), ("__lesseq_word64ub", Lesseq_word64ub), ("__lesseq_word64b", Lesseq_word64b),
 
 	 ("__greater_int31", Greater_int31), ("__greater_int32ub", Greater_int32ub), ("__greater_int32b", Greater_int32b),
-	 ("__greater_word31", Greater_word31), ("__greater_word32ub", Greater_word32ub), ("__greater_word32b", Greater_word32b),
+	 ("__greater_char", Greater_char), ("__greater_word8", Greater_word8), ("__greater_word31", Greater_word31), ("__greater_word32ub", Greater_word32ub), ("__greater_word32b", Greater_word32b),
 	 ("__greater_int63", Greater_int63), ("__greater_int64ub", Greater_int64ub), ("__greater_int64b", Greater_int64b),
 	 ("__greater_word63", Greater_word63), ("__greater_word64ub", Greater_word64ub), ("__greater_word64b", Greater_word64b),
 
 	 ("__greatereq_int31", Greatereq_int31), ("__greatereq_int32ub", Greatereq_int32ub), ("__greatereq_int32b", Greatereq_int32b),
-	 ("__greatereq_word31", Greatereq_word31), ("__greatereq_word32ub", Greatereq_word32ub), ("__greatereq_word32b", Greatereq_word32b),
+	 ("__greatereq_char", Greatereq_char), ("__greatereq_word8", Greatereq_word8), ("__greatereq_word31", Greatereq_word31), ("__greatereq_word32ub", Greatereq_word32ub), ("__greatereq_word32b", Greatereq_word32b),
 	 ("__greatereq_int63", Greatereq_int63), ("__greatereq_int64ub", Greatereq_int64ub), ("__greatereq_int64b", Greatereq_int64b),
 	 ("__greatereq_word63", Greatereq_word63), ("__greatereq_word64ub", Greatereq_word64ub), ("__greatereq_word64b", Greatereq_word64b)
 	 ]
@@ -372,6 +373,8 @@ fun is_flow_prim (p:prim) : bool =
         Equal_int31 => true
       | Equal_int32ub => true
       | Equal_int32b => true
+      | Equal_char => true
+      | Equal_word8 => true
       | Equal_word31 => true
       | Equal_word32ub => true
       | Equal_word32b => true
@@ -386,6 +389,8 @@ fun is_flow_prim (p:prim) : bool =
       | Less_int31 => true
       | Less_int32ub => true
       | Less_int32b => true
+      | Less_char => true
+      | Less_word8 => true
       | Less_word31 => true
       | Less_word32ub => true
       | Less_word32b => true
@@ -399,6 +404,8 @@ fun is_flow_prim (p:prim) : bool =
       | Lesseq_int31 => true
       | Lesseq_int32ub => true
       | Lesseq_int32b => true
+      | Lesseq_char => true
+      | Lesseq_word8 => true
       | Lesseq_word31 => true
       | Lesseq_word32ub => true
       | Lesseq_word32b => true
@@ -412,6 +419,8 @@ fun is_flow_prim (p:prim) : bool =
       | Greater_int31 => true
       | Greater_int32ub => true
       | Greater_int32b => true
+      | Greater_char => true
+      | Greater_word8 => true
       | Greater_word31 => true
       | Greater_word32ub => true
       | Greater_word32b => true
@@ -425,6 +434,8 @@ fun is_flow_prim (p:prim) : bool =
       | Greatereq_int31 => true
       | Greatereq_int32ub => true
       | Greatereq_int32b => true
+      | Greatereq_char => true
+      | Greatereq_word8 => true
       | Greatereq_word31 => true
       | Greatereq_word32ub => true
       | Greatereq_word32b => true
@@ -446,6 +457,8 @@ fun pp_prim (p:prim) : string =
         Equal_int31 => "Equal_int31"
       | Equal_int32ub => "Equal_int32ub"
       | Equal_int32b => "Equal_int32b"
+      | Equal_char => "Equal_char"
+      | Equal_word8 => "Equal_word8"
       | Equal_word31 => "Equal_word31"
       | Equal_word32ub => "Equal_word32ub"
       | Equal_word32b => "Equal_word32b"
@@ -460,6 +473,8 @@ fun pp_prim (p:prim) : string =
       | Less_int31 => "Less_int31"
       | Less_int32ub => "Less_int32ub"
       | Less_int32b => "Less_int32b"
+      | Less_char => "Less_char"
+      | Less_word8 => "Less_word8"
       | Less_word31 => "Less_word31"
       | Less_word32ub => "Less_word32ub"
       | Less_word32b => "Less_word32b"
@@ -473,6 +488,8 @@ fun pp_prim (p:prim) : string =
       | Lesseq_int31 => "Lesseq_int31"
       | Lesseq_int32ub => "Lesseq_int32ub"
       | Lesseq_int32b => "Lesseq_int32b"
+      | Lesseq_char => "Lesseq_char"
+      | Lesseq_word8 => "Lesseq_word8"
       | Lesseq_word31 => "Lesseq_word31"
       | Lesseq_word32ub => "Lesseq_word32ub"
       | Lesseq_word32b => "Lesseq_word32b"
@@ -486,6 +503,8 @@ fun pp_prim (p:prim) : string =
       | Greater_int31 => "Greater_int31"
       | Greater_int32ub => "Greater_int32ub"
       | Greater_int32b => "Greater_int32b"
+      | Greater_char => "Greater_char"
+      | Greater_word8 => "Greater_word8"
       | Greater_word31 => "Greater_word31"
       | Greater_word32ub => "Greater_word32ub"
       | Greater_word32b => "Greater_word32b"
@@ -499,6 +518,8 @@ fun pp_prim (p:prim) : string =
       | Greatereq_int31 => "Greatereq_int31"
       | Greatereq_int32ub => "Greatereq_int32ub"
       | Greatereq_int32b => "Greatereq_int32b"
+      | Greatereq_char => "Greatereq_char"
+      | Greatereq_word8 => "Greatereq_word8"
       | Greatereq_word31 => "Greatereq_word31"
       | Greatereq_word32ub => "Greatereq_word32ub"
       | Greatereq_word32b => "Greatereq_word32b"

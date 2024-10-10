@@ -723,7 +723,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                 die "c function call")
                         val unboxed_types =
                             let open LambdaExp
-                            in [boolType, unitType, int31Type, word31Type,
+                            in [boolType, charType, word8Type, unitType, int31Type, word31Type,
                                 int63Type, word63Type,
                                 intDefaultType(), wordDefaultType(), foreignptrType]
                                @ (if tag_values() then []
@@ -918,14 +918,19 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                            | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
            in type_switch (type_lexp env) (fn _ => tn) switch
            end
-         | SWITCH_W {switch, precision} =>
-           let val tn = case precision
-                          of 31 => tyName_WORD31  (* word8 type translated into default word type in CompileDec *)
-                           | 32 => tyName_WORD32
-                           | 63 => tyName_WORD63
-                           | 64 => tyName_WORD64
-                           | _ => die "SWITCH_I"
-           in type_switch (type_lexp env) (fn _ => tn) switch
+         | SWITCH_W {switch, precision, tyname} =>
+           let val ok = (* check consistency of precision and tyname *)
+                   case precision of
+                       31 => TyName.eq (tyName_WORD31,tyname)
+                     | 32 => TyName.eq (tyName_WORD32,tyname)
+                     | 63 => TyName.eq (tyName_WORD63,tyname)
+                     | 64 => TyName.eq (tyName_WORD64,tyname)
+                     | 8 => TyName.eq (tyName_CHAR,tyname) orelse TyName.eq (tyName_WORD8,tyname)
+                     | _ => die ("SWITCH_W.precision = " ^ Int.toString precision)
+               val () = if ok then ()
+                        else die ("SWITCH_W.inconsistency: precision " ^ Int.toString precision ^
+                                  " used with tyname " ^ TyName.pr_TyName tyname)
+           in type_switch (type_lexp env) (fn _ => tyname) switch
            end
          | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw
          | SWITCH_C sw => type_switch (type_lexp env)

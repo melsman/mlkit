@@ -1338,7 +1338,7 @@ struct
           if TyName.eq(tn,TyName.tyName_BOOL) then Bool
           else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
           else if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
-          else if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault()] then Int
+          else if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
           else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
           else if member tn [TyName.tyName_INT32, TyName.tyName_WORD32] then Int32
           else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn
@@ -1368,7 +1368,6 @@ struct
       fun get_exports() = !exports
     end
 
-
     fun precisionNumType t =
       case RType.unCONSTYPE t of
         SOME(tn,_,_,_) =>
@@ -1376,10 +1375,12 @@ struct
           else if TyName.eq(tn, TyName.tyName_INT32) then 32
           else if TyName.eq(tn, TyName.tyName_INT63) then 63
           else if TyName.eq(tn, TyName.tyName_INT64) then 64
+          else if TyName.eq(tn, TyName.tyName_WORD8) then 8
           else if TyName.eq(tn, TyName.tyName_WORD31) then 31
           else if TyName.eq(tn, TyName.tyName_WORD32) then 32
           else if TyName.eq(tn, TyName.tyName_WORD63) then 63
           else if TyName.eq(tn, TyName.tyName_WORD64) then 64
+          else if TyName.eq(tn, TyName.tyName_CHAR) then 8
           else die "precisionNumType.wrong tyname"
       | NONE => die "precisionNumType.wrong type"
 
@@ -2250,6 +2251,10 @@ struct
                         else if TyName.eq(tn,TyName.tyName_WORD64) then
                           (if BI.tag_values() then eq_prim "__equal_word64b"
                            else eq_prim "__equal_word64ub")
+                        else if TyName.eq(tn,TyName.tyName_CHAR) then
+                          eq_prim "__equal_char"
+                        else if TyName.eq(tn,TyName.tyName_WORD8) then
+                          eq_prim "__equal_word8"
                         else if TyName.eq(tn,TyName.tyName_STRING) then
                           eq_prim "equalStringML"
                         else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then

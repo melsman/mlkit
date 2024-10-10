@@ -403,6 +403,19 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__greatereq_word31" => J.Prim(">=", [e1,e2])
     | "__greater_word31" => J.Prim(">", [e1,e2])
     | "__equal_word31" => J.Prim("==", [e1,e2])
+
+    | "__less_char" => J.Prim("<", [e1,e2])
+    | "__lesseq_char" => J.Prim("<=", [e1,e2])
+    | "__greatereq_char" => J.Prim(">=", [e1,e2])
+    | "__greater_char" => J.Prim(">", [e1,e2])
+    | "__equal_char" => J.Prim("==", [e1,e2])
+
+    | "__less_word8" => J.Prim("<", [e1,e2])
+    | "__lesseq_word8" => J.Prim("<=", [e1,e2])
+    | "__greatereq_word8" => J.Prim(">=", [e1,e2])
+    | "__greater_word8" => J.Prim(">", [e1,e2])
+    | "__equal_word8" => J.Prim("==", [e1,e2])
+
     | "__equal_ptr" => J.Prim("==", [e1,e2])
 
     | "__less_real" => J.Prim("<", [e1,e2])
@@ -895,7 +908,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.APP(e1,e2,i) => toj C P (L.APP(e1,L.PRIM(L.UB_RECORDprim,[e2]),i))
 
   | L.SWITCH_I {switch,precision} => toJsSw (toj C P) (toj1 C P) J.Int switch
-  | L.SWITCH_W {switch,precision} => toJsSw (toj C P) (toj1 C P) J.Word switch
+  | L.SWITCH_W {switch,precision,tyname} => toJsSw (toj C P) (toj1 C P) J.Word switch
   | L.SWITCH_S switch => toJsSw (toj C P) (toj1 C P) J.Str switch
   | L.SWITCH_C switch => toJsSw_C C (toj C P) (toj1 C P) switch
   | L.SWITCH_E switch => toJsSw_E (toj C P) switch

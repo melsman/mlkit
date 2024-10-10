@@ -471,8 +471,8 @@ structure OptLambda : OPT_LAMBDA =
           | eq_lamb0 m (RAISE(e,tl),RAISE(e',tl')) = eq_lamb0 m (e,e') andalso eq_TypeList(tl,tl')
           | eq_lamb0 m (SWITCH_I {switch=sw,precision=p}, SWITCH_I {switch=sw',precision=p'}) =
             p = p' andalso eq_sw (eq_lamb0 m) (op =) (sw,sw')
-          | eq_lamb0 m (SWITCH_W {switch=sw,precision=p}, SWITCH_W {switch=sw',precision=p'}) =
-            p = p' andalso eq_sw (eq_lamb0 m) (op =) (sw,sw')
+          | eq_lamb0 m (SWITCH_W {switch=sw,precision=p,tyname=tn}, SWITCH_W {switch=sw',precision=p',tyname=tn'}) =
+            p = p' andalso eq_sw (eq_lamb0 m) (op =) (sw,sw') andalso TyName.eq(tn,tn')
           | eq_lamb0 m (SWITCH_S sw, SWITCH_S sw') = eq_sw (eq_lamb0 m) (op =) (sw,sw')
           | eq_lamb0 m (SWITCH_C sw, SWITCH_C sw') =
             (* optional lvars are only used with Barry, where they are used to make pretty-printing prettier *)
@@ -1567,7 +1567,7 @@ structure OptLambda : OPT_LAMBDA =
                              in case name of
                                     "__bytetable_sub" =>
                                     (let val c = String.sub(s,Int.fromLarge v)
-                                     in SOME(WORD(Int.toLarge (Char.ord c), wordDefaultType()))
+                                     in SOME(WORD(Int.toLarge (Char.ord c), charType))
                                      end handle _ => NONE)
                                   | _ => NONE
                              end
@@ -1749,8 +1749,8 @@ structure OptLambda : OPT_LAMBDA =
                              else fail
                           | SWITCH_I {switch,precision} =>
                                do_sw (fn sw => SWITCH_I {switch=sw,precision=precision}) switch
-                          | SWITCH_W {switch,precision} =>
-                               do_sw (fn sw => SWITCH_W {switch=sw,precision=precision}) switch
+                          | SWITCH_W {switch,precision,tyname} =>
+                               do_sw (fn sw => SWITCH_W {switch=sw,precision=precision,tyname=tyname}) switch
                           | SWITCH_S sw => do_sw SWITCH_S sw
                           | SWITCH_C sw => do_sw SWITCH_C sw
                           | SWITCH_E sw => do_sw SWITCH_E sw
@@ -1780,8 +1780,8 @@ structure OptLambda : OPT_LAMBDA =
                                 end
                       | _ => fail)
           | PRIM(SELECTprim {index=n},[lamb]) =>
-               let fun do_select () =
-                      case cv
+               let fun do_select () = fail
+                      (* case cv
                         of CRECORD cvs =>
                           let val nth_cv = List.nth(cvs,n)
                             handle Subscript => die "reduce4"
@@ -1794,7 +1794,7 @@ structure OptLambda : OPT_LAMBDA =
                                                                decr_uses lamb; (e, nth_cv))
                                 | _ => (lamb, nth_cv)
                           end
-                         | _ => fail
+                         | _ => fail *)
                in case lamb
                     of PRIM(RECORDprim _,lambs) =>
                       let val (lamb', lambs') = case removeNth n lambs of
@@ -1872,7 +1872,7 @@ structure OptLambda : OPT_LAMBDA =
                    end handle NoBetaReduction => fail
                 end
           | SWITCH_I {switch,precision} => reduce_switch (reduce, env, fail, switch, selectorNONE)
-          | SWITCH_W {switch,precision} => reduce_switch (reduce, env, fail, switch, selectorNONE)
+          | SWITCH_W {switch,precision,tyname} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon env)
           | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
@@ -2171,8 +2171,8 @@ structure OptLambda : OPT_LAMBDA =
               | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
               | SWITCH_I {switch,precision} =>
                contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch)
-              | SWITCH_W {switch,precision} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision}, switch)
+              | SWITCH_W {switch,precision,tyname} =>
+               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch)
               | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch)
               | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch)
               | SWITCH_E switch =>

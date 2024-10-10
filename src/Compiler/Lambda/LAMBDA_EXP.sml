@@ -70,6 +70,7 @@ signature LAMBDA_EXP =
     val int64Type       : Type
     val intinfType      : Type
     val intDefaultType  : unit -> Type   (* int63 if tag_values, otherwise int64 *)
+    val word8Type       : Type
     val word31Type      : Type
     val word32Type      : Type
     val word63Type      : Type
@@ -77,6 +78,7 @@ signature LAMBDA_EXP =
     val wordDefaultType : unit -> Type  (* word63 if tag_values, otherwise word64 *)
     val realType        : Type
     val f64Type         : Type
+    val charType        : Type
     val stringType      : Type
     val chararrayType   : Type
 
@@ -143,7 +145,7 @@ signature LAMBDA_EXP =
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of {switch: IntInf.int Switch, precision: int}
-      | SWITCH_W of {switch: IntInf.int Switch, precision: int}
+      | SWITCH_W of {switch: IntInf.int Switch, precision: int, tyname: TyName}
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
