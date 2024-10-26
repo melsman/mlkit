@@ -141,19 +141,6 @@ structure InstsX64: INSTS_X64 =
     | xorps of ea * ea
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
-
-    | fstpq of ea       (* store float and pop float stack *)
-    | fldq of ea        (* push float onto the float stack *)
-    | fldz              (* push 0.0 onto the float stack *)
-    | faddp             (* add st(0) to st(1) and pop *)
-    | fsubp             (* subtract st(0) from st(1) and pop *)
-    | fmulp             (* multiply st(0) to st(1) and pop *)
-    | fdivp             (* divide st(1) with st(0) and pop *)
-    | fcompp            (* compare st(0) and st(1) and pop twice *)
-    | fabs              (* st(0) = abs(st(0)) *)
-    | fchs              (* st(0) = neg(st(0)) *)
-    | fnstsw            (* store float status word *)
-
     | jmp of ea         (* jump instructions *)
     | jl of lab
     | jg of lab
@@ -535,19 +522,6 @@ structure InstsX64: INSTS_X64 =
                | xorps a => emit_bin("xorps", a)
                | sqrtsd a => emit_bin("sqrtsd", a)
                | cvtsi2sdq a => emit_bin("cvtsi2sdq", a)
-
-               | fstpq ea => emit_unary("fstpq", ea)
-               | fldq ea => emit_unary("fldq", ea)
-               | fldz => emit_nullary "fldz"
-               | faddp => emit_nullary "faddp"
-               | fsubp => emit_nullary "fsubp"
-               | fmulp => emit_nullary "fmulp"
-               | fdivp => emit_nullary "fdivp"
-               | fcompp=> emit_nullary "fcompp"
-               | fabs => emit_nullary "fabs"
-               | fchs => emit_nullary "fchs"
-               | fnstsw => emit_nullary "fnstsw"
-
                | jmp (L l) => emit_jump("jmp", l)
                | jmp ea => (emit "\tjmp *"; emit(pr_ea K ea); emit_nl())
                | jl l => emit_jump("jl", l)
@@ -676,7 +650,6 @@ structure InstsX64: INSTS_X64 =
                  v8,v9,v10,v11,v12,v13,v14,v15] => (v0,v1,v2,v3,v4,v5,v6,v7,
                                                     v8,v9,v10,v11,v12,v13,v14,v15)
               | _ => die "RI.all_fregs mismatch"
-
 
         val f64_phregset = Lvarset.lvarsetof f64_phregs
 
@@ -862,8 +835,10 @@ structure InstsX64: INSTS_X64 =
              | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)
              | sqrtsd (ea1,ea2) => sqrtsd (Em ea1,Em ea2)
              | cvtsi2sdq (ea1,ea2) => cvtsi2sdq (Em ea1,Em ea2)
+(*
              | fstpq ea => fstpq (Em ea)
              | fldq ea => fldq (Em ea)
+*)
              | jmp ea => jmp (Em ea)
              | jl l => jl (Lm l)
              | jg l => jg (Lm l)
@@ -893,15 +868,6 @@ structure InstsX64: INSTS_X64 =
              | dot_globl (l,ty) => dot_globl (Lm l,ty)
              | dot_size (l, i) => dot_size (Lm l, i)
              | lab l => lab (Lm l)
-             | fldz => i
-             | faddp => i
-             | fsubp => i
-             | fmulp => i
-             | fdivp => i
-             | fcompp => i
-             | fabs => i
-             | fchs => i
-             | fnstsw => i
              | ret => i
              | leave => i
              | dot_align n => i

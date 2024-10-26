@@ -442,7 +442,11 @@ struct
                adjList:=nil; alias:=NONE; color:=SOME key; lrs:=no_call; uses:=0))
           precolored
 
-  val Kfpr = List.length RI.f64_phregs
+  val () = if List.length RI.f64_phregs <> 14 then
+             die "RegAlloc: f64_phregs error"
+           else ()
+  val f64_phregs = List.take (RI.f64_phregs, 12)
+  val Kfpr = List.length f64_phregs
   val Kgpr = List.length RI.caller_save_phregs
 
   fun K (k:kind) : int =
@@ -834,7 +838,7 @@ struct
       S.empty
 
   val f64_phregset =
-      S.fromList (map key RI.f64_phregs)
+      S.fromList (map key f64_phregs)
 
   val callee_save_ccall_phregset =
       S.fromList (map key RI.callee_save_ccall_phregs)
@@ -1154,7 +1158,7 @@ struct
     structure H = Polyhash
   in
   val phregKeyToLv : key -> lvar =
-      let val regs = RI.f64_phregs @ RI.all_regs
+      let val regs = f64_phregs @ RI.all_regs
           val m = H.mkTable (Word.toIntX, op =) (50,Fail "RegAlloc.phregTable")
           val () = app (fn lv => H.insert m (key lv, lv)) regs
       in fn k => case H.peek m k of

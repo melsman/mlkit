@@ -227,6 +227,45 @@ structure LambdaBasics: LAMBDA_BASICS =
          | PRIM(prim, lambs) => app f lambs
          | FRAME _ => ()
 
+   (* -----------------------------------------------------------------
+    * app_lamb_tail f t lamb - apply f to sub-expressions and propagate
+    * tail-ness information.
+    * ----------------------------------------------------------------- *)
+
+    datatype tail = TAIL | NOTAIL
+    fun app_lamb_sw_tail f t (SWITCH(e,sel,opt_e)) =
+       let fun app_sel [] = ()
+             | app_sel ((a,e)::rest) = (f t e; app_sel rest)
+           fun app_opt (SOME e) = f t e
+             | app_opt NONE = ()
+       in f NOTAIL e; app_sel sel; app_opt opt_e
+       end
+
+    fun app_lamb_tail f t lamb =
+      case lamb
+        of VAR _ => ()
+         | INTEGER _ => ()
+         | WORD _ => ()
+         | REAL _ => ()
+         | F64 _ => ()
+         | STRING _ => ()
+         | FN{pat,body} => f NOTAIL body
+         | LET{pat,bind,scope} => (f NOTAIL bind; f t scope)
+         | LETREGION{regvars,scope} => f NOTAIL scope
+         | FIX{functions,scope} => (app (f NOTAIL o #bind) functions; f t scope)
+         | APP(e1,e2,_) => (f NOTAIL e1; f NOTAIL e2)
+         | EXCEPTION(excon,ty_opt,scope) => f t scope
+         | RAISE(e,tl) => f NOTAIL e
+         | HANDLE(e1,e2) => (f NOTAIL e1; f t e2)
+         | SWITCH_I {switch,...} => app_lamb_sw_tail f t switch
+         | SWITCH_W {switch,...} => app_lamb_sw_tail f t switch
+         | SWITCH_S sw => app_lamb_sw_tail f t sw
+         | SWITCH_C sw => app_lamb_sw_tail f t sw
+         | SWITCH_E sw => app_lamb_sw_tail f t sw
+         | TYPED(e,ty,_) => f t e
+         | PRIM(prim, lambs) => app (f NOTAIL) lambs
+         | FRAME _ => ()
+
 
     (* -----------------------------------------------------------------
      * Computation of free lambda variables and free exception

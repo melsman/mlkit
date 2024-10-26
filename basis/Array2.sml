@@ -4,8 +4,8 @@ structure Array2 :> ARRAY2 = struct
 
 type 'a array = 'a array
 
-(* 26 bits are reserved for the length in the tag field; maxLen = 2^26 *)
-val maxLen = 16777216 (* =4096*4096=128 MB *)
+(* quite a few bits are available for the length in the tag field! *)
+val maxLen = Initial.wordtable_maxlen
 
 type 'a region = {base  : 'a array,
                   row   : int,
@@ -30,7 +30,7 @@ fun update2 (a : 'a array, cols:int, r:int, c:int, v:'a) : unit =
 (* The primitive word_table2d0 is in OptLambda compiled into calls to
    word_table0 and consecutive updates to store the sizes of each
    dimension in slot 0 and 1. Similarly for word_table2d0_init, which
-   is in OptLambda compiled into calls to word_table_init and
+   is in OptLambda compiles into calls to word_table_init and
    consecutive updates to store the sizes of each dimension in slot 0
    and 1.
 
@@ -45,8 +45,8 @@ fun table2d0_init (n:int,v:'a,r:int,c:int) : 'a array = prim ("word_table2d0_ini
 fun update0 (a : 'a array, i : int, x : 'a) : unit = prim ("word_update0", (a, i, x))
 
 fun check (nr,nc) : int =
-    if nr < 0 orelse nc < 0 orelse nc > maxLen orelse nr > maxLen then raise Size
-    else let val n = nr*nc
+    if nr < 0 orelse nc < 0 then raise Size
+    else let val n = nr*nc handle Overflow => raise Size
          in if n > maxLen then raise Size
             else n
          end

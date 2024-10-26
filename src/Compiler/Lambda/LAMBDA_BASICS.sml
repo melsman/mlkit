@@ -11,6 +11,9 @@ signature LAMBDA_BASICS =
     val map_lamb : (LambdaExp -> LambdaExp) -> LambdaExp -> LambdaExp  (* map on subexpressions *)
     val app_lamb : (LambdaExp -> unit) -> LambdaExp -> unit            (* app to subexpressions *)
 
+    datatype tail = TAIL | NOTAIL
+    val app_lamb_tail : (tail -> LambdaExp -> unit) -> tail -> LambdaExp -> unit (* app to subexpressions *)
+
     (* generate a new instance of a lambda expression; rename bound variables *)
     val new_instance : LambdaExp -> LambdaExp
 
