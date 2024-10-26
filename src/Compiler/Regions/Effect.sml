@@ -586,7 +586,7 @@ struct
                      val info : cone -> string
                    end =
   struct
-       val max_cone_level = 1000
+       val max_cone_level = 5000 (* was 1000 *)
        type map = coneLayer Array.array
        type cone = int * (*coneLayer*) map
      (* The integer is the number of levels in the cone;
