@@ -2245,10 +2245,7 @@ structure OptLambda : OPT_LAMBDA =
           (lamb, contract_env_dummy lamb)
 
       fun enrich_contract_env (ce1,ce2) =
-        LvarMap.Fold (fn ((lv2,res2),b) => b andalso
-                      case LvarMap.lookup ce1 lv2
-                        of SOME res1 => eq_cv_scheme(res1,res2)
-                         | NONE => false) true ce2
+          LvarMap.enrich eq_cv_scheme (ce1,ce2)
 
       (* Restrict *)
 
@@ -2773,6 +2770,19 @@ structure OptLambda : OPT_LAMBDA =
        else lamb
      end
 
+   (* ----------------------------------------------------------------------------
+    * unfix_conversion - convert   fix f x = e in e'  to let f = fn x => e in e'
+    *   when f does not occur in e, in order for the inliner to work properly.
+    * ---------------------------------------------------------------------------- *)
+
+   fun unfix_conversion lamb =
+       let fun f (e as FIX{functions=[{lvar,regvars=[],tyvars,Type,constrs=[],bind}],
+                           scope}) =
+               if lvar_in_lamb lvar bind then e
+               else LET{pat=[(lvar,tyvars,Type)],bind=bind,scope=scope}
+             | f e = e
+       in passTD f lamb
+       end
 
    (* -----------------------------------------------------------------
     * functionalise_let let_env lamb
@@ -2790,17 +2800,11 @@ structure OptLambda : OPT_LAMBDA =
 
      type let_env = let_env_res LvarMap.map
 
-     fun enrich_let_env (let_env1,let_env2) =
-       LvarMap.Fold (fn ((lv2,res2),b) => b andalso
-                       case LvarMap.lookup let_env1 lv2
-                         of SOME res1 => res1=res2
-                          | NONE => false) true let_env2
+     fun enrich_let_env (e1,e2) =
+         LvarMap.enrich (op =) (e1,e2)
 
-     fun restrict_let_env (let_env,lvars) =
-       List.foldl (fn (lv,acc) =>
-                   case LvarMap.lookup let_env lv
-                     of SOME res => LvarMap.add(lv,res,acc)
-                      | NONE => die "restrict_let_env.lv not in env") LvarMap.empty lvars
+     fun restrict_let_env (e,lvs) =
+         LvarMap.restrict (Lvars.pr_lvar,e,lvs)
 
      val layout_let_env = LvarMap.layoutMap {start="LetEnv={",eq="->", sep=", ", finish="}"}
       (PP.LEAF o Lvars.pr_lvar) layout_let_env_res
@@ -2978,24 +2982,29 @@ structure OptLambda : OPT_LAMBDA =
    fun from_function ({lvar,regvars,tyvars,Type,constrs,vtys,body} : function) =
        {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,bind=FN{pat=vtys,body=body}}
 
-   fun flatten (F: phi -> function -> function * t) (phi:phi) (e:LambdaExp) : LambdaExp * phi =
+   type accessSubst = LambdaExp -> LambdaExp
+
+   fun flatten (F: {phi:phi, function:function, mutrec:bool} -> function * t * accessSubst)
+               (phi:phi) (e:LambdaExp) : LambdaExp * phi =
        let val framephi : phi option ref = ref NONE
            fun flt phi e =
                case e of
                    FIX {functions,scope} =>
                    let val functions = map to_function functions
-                       val functions' = map (fn f => (F phi f,#Type f)) functions
-                       val phi' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t),oldType) =>
+                       val mutrec = length functions > 1
+                       val functions' = map (fn f => (F {phi=phi,function=f,mutrec=mutrec},#Type f)) functions
+                       val phi' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t,_),oldType) =>
                                                               (lvar,FIXphi(t,nil,oldType)))
                                                           functions')
-                       val phi'' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t),oldType) =>
+                       val phi'' = Lvars.Map.fromList (map (fn (({lvar,tyvars,...},t,_),oldType) =>
                                                                (lvar,FIXphi(t,tyvars,oldType)))
                                                            functions')
-                   in FIX{functions=map (fn (({lvar,regvars,tyvars,Type,constrs,vtys,body},t),_) =>
+                   in FIX{functions=map (fn (({lvar,regvars,tyvars,Type,constrs,vtys,body},t,aS),_) =>
                                             let val phi'2 = Lvars.Map.fromList (map (fn (lv,_) => (lv,NOFIXphi)) vtys)
                                                 val () = if t <> Id then tick "flatten - fix" else ()
+                                                val body = flt (phi++phi'++phi'2) body
                                             in from_function {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                                                              constrs=constrs,vtys=vtys,body=flt (phi++phi'++phi'2) body}
+                                                              constrs=constrs,vtys=vtys,body=aS body}
                                             end)
                                         functions',
                           scope=flt (phi++phi'') scope}
@@ -3012,12 +3021,16 @@ structure OptLambda : OPT_LAMBDA =
                            case (tys,es) of
                                (nil,nil) => (fn x => x, nil)
                              | (ty::tys, e::es) =>
-                               let val x = Lvars.newLvar()
-                                   val () = if LambdaBasics.eq_Type(ty,f64Type) then Lvars.set_ubf64 x
-                                            else ()
-                                   val (G,es') = binds tys es
-                               in (fn X => LET{pat=[(x,nil,ty)],bind=e,scope=G X},
-                                   VAR{lvar=x,instances=nil,regvars=nil}::es')
+                               let val (G,es') = binds tys es
+                               in case e of
+                                      VAR _ => (G, e::es')
+                                    | _ =>
+                                      let val x = Lvars.newLvar()
+                                          val () = if LambdaBasics.eq_Type(ty,f64Type) then Lvars.set_ubf64 x
+                                                   else ()
+                                      in (fn X => LET{pat=[(x,nil,ty)],bind=e,scope=G X},
+                                          VAR{lvar=x,instances=nil,regvars=nil}::es')
+                                      end
                                end
                              | _ => die "flatten.binds"
                    in case Lvars.Map.lookup phi lvar of
@@ -3055,7 +3068,7 @@ structure OptLambda : OPT_LAMBDA =
                         in flt phi (FN{pat=[(x,ty)],body=body})
                         end
                       | SOME (FIXphi _) => die ("flatten.VAR1: " ^ Lvars.pr_lvar lvar)
-                      | NONE => die ("flatten.VAR: " ^ Lvars.pr_lvar lvar))
+                      | NONE => e (*die ("flatten.VAR: " ^ Lvars.pr_lvar lvar)*) )
                  | FRAME{declared_lvars, declared_excons} =>
                    let val declared_lvar_ress =
                            map (fn {lvar,tyvars,Type} =>
@@ -3081,14 +3094,19 @@ structure OptLambda : OPT_LAMBDA =
        end
 
    fun dropOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
-       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
-               let val vs0 = #1 (freevars body)
-                   (* val () = print ("Freevars: " ^ String.concatWith ", " (map Lvars.pr_lvar vs0) ^ "\n")  *)
+       let fun F {phi:phi,function={lvar,regvars,tyvars,Type,constrs,vtys,body},mutrec} =
+               let val vs0 = if mutrec
+                             then #1 (freevars body)
+                             else #1 (freevars_not_call_invariant (lvar,map #1 vtys) body)
+(*
+                   val () = print ("Freevars '" ^ Lvars.pr_lvar lvar ^ "': " ^ String.concatWith ", " (map Lvars.pr_lvar vs0) ^ "\n")
+*)
                    val (_,t,vtys) =
                        List.foldl (fn ((x,ty),(i,t,vtys)) =>
                                       if List.exists (fn y => Lvars.eq(x,y)) vs0
                                       then (i+1,t,(x,ty)::vtys)
-                                      else (i+1,t oo Drop i,vtys))
+                                      else (tick "flatten-dropOpt";
+                                            (i+1,t oo Drop i,vtys)))
                                   (0,Id,nil) vtys
                    val Type = on_ty t Type
 (*
@@ -3096,31 +3114,32 @@ structure OptLambda : OPT_LAMBDA =
                    val tyvars = List.filter (fn tv => TyvarSet.member tv tvs_set) tyvars
 *)
                in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                    constrs=constrs,vtys=List.rev vtys,body=body},t)
+                    constrs=constrs,vtys=List.rev vtys,body=body},t,fn e => e)
                end
        in flatten F phi e
        end
 
    fun uncOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
-       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+       let fun F {phi,function={lvar,regvars,tyvars,Type,constrs,vtys,body},mutrec} =
                let fun unc t vtys e : t * (lvar*Type)list * LambdaExp =
                        case e of
                            FN{pat=[(x,ty')],body} =>
-                           if uncurrying_p() then unc (Unc oo t) (vtys@[(x,ty')]) body
+                           if uncurrying_p() then (tick "flatten-uncOpt";
+                                                   unc (Unc oo t) (vtys@[(x,ty')]) body)
                            else (t,vtys,e)
                          | _ => (t,vtys,e)
                    val (t,vtys,e) = unc Id vtys body
                in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_ty t Type,
-                    constrs=constrs,vtys=vtys,body=e},t)
+                    constrs=constrs,vtys=vtys,body=e},t,fn e => e)
                end
        in flatten F phi e
        end
 
    fun unbOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
-       let fun F phi {lvar,regvars,tyvars,Type,constrs,vtys,body} =
+       let fun F {phi,function={lvar,regvars,tyvars,Type,constrs,vtys,body},mutrec} =
                if not(unbox_function_arguments())
                then ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                      constrs=constrs,vtys=vtys,body=body}, Id)
+                      constrs=constrs,vtys=vtys,body=body}, Id, fn e => e)
                else
                let fun ins (x,ty,i,j) a =
                        if List.exists (fn (y,_,i',j') => Lvars.eq(y,x) andalso i=i' andalso j=j') a
@@ -3165,7 +3184,7 @@ structure OptLambda : OPT_LAMBDA =
                                then
                                  let fun test e lv =
                                          case looki vtys lv of
-                                             SOME (_,ty) => if eq_Type(realType,ty) then ()
+                                             SOME (_,ty) => if true (*eq_Type(realType,ty)*) then ()
                                                             else collect_non_selects e
                                            | NONE => ()
                                  in case arg of
@@ -3215,7 +3234,7 @@ structure OptLambda : OPT_LAMBDA =
                    val () = collect_candidates body
                in (case !candidates of
                        nil => ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
-                                constrs=constrs,vtys=vtys,body=body}, Id)
+                                constrs=constrs,vtys=vtys,body=body}, Id, fn e => e)
                      | xs =>
                        let val (t,vtys,S:(lvar*int*lvar)list) =
                                List.foldl (fn ((x,ty,i,j),(t,vtys,S)) =>
@@ -3227,12 +3246,13 @@ structure OptLambda : OPT_LAMBDA =
                                                                 ; y
                                                                end
                                                           else Lvars.newLvar()
+                                                  val () = tick "flatten-unbOpt"
                                               in (Newprj(i,j) oo t,
                                                   vtys@[(y,ty')],
                                                   (x,j,y)::S)
                                               end) (Id,vtys,nil) xs
                        in ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_ty t Type,
-                            constrs=constrs,vtys=vtys,body=appS S body}, t)
+                            constrs=constrs,vtys=vtys,body=body}, t, appS S)
                        end) before List.app (fn x => Lvars.is_inserted x := false) (!non_selects)
                end
        in flatten F phi e
@@ -3256,14 +3276,14 @@ structure OptLambda : OPT_LAMBDA =
 
    fun flattening (phi:phi) (e:LambdaExp) : LambdaExp * phi =
        let val () = log "flattening\n"
-           (*val () = prLambdaExp "Before uncOpt" e *)
+           (* val () = prLambdaExp "Before uncOpt" e *)
            val (e,phi1) = uncOpt phi e
            val phi0 = phi_nofix phi
-           (*val () = prLambdaExp "Before unbOpt" e*)
+           (* val () = prLambdaExp "Before unbOpt" e *)
            val (e,phi2) = unbOpt phi0 e
-           (*val () = prLambdaExp "Before dropOpt" e*)
+           (* val () = prLambdaExp "Before dropOpt" e *)
            val (e,phi3) = dropOpt phi0 e
-           (*val () = prLambdaExp "After dropOpt" e*)
+           (* val () = prLambdaExp "After dropOpt" e *)
        in (e, phi_mod(phi_mod(phi1,phi2),phi3))
        end
 
@@ -3321,17 +3341,10 @@ structure OptLambda : OPT_LAMBDA =
          | _ => false
 
    fun enrich_phi (phi1,phi2) =
-       LvarMap.Fold (fn ((lv2,res2),b) =>
-                        b andalso
-                        case LvarMap.lookup phi1 lv2 of
-                            SOME res1 => eq_phi_res(res1,res2)
-                          | NONE => false) true phi2
+       LvarMap.enrich eq_phi_res (phi1,phi2)
 
    fun restrict_phi (phi,lvars) =
-       List.foldl (fn (lv,acc) =>
-                      case LvarMap.lookup phi lv of
-                          SOME res => LvarMap.add(lv,res,acc)
-                        | NONE => die "restrict_phi.lv not in env") LvarMap.empty lvars
+       LvarMap.restrict (Lvars.pr_lvar,phi,lvars)
 
    fun dummy_phi (e:LambdaExp) : phi =
        exports e |> #1
@@ -3415,11 +3428,8 @@ structure OptLambda : OPT_LAMBDA =
                         | NOTFIXBOUND
     type inveta_env = inveta_res LvarMap.map
 
-    fun restrict_inv_eta_env (inveta_env,lvars) =
-      List.foldl(fn (lv,acc) =>
-                 case LvarMap.lookup inveta_env lv
-                   of SOME res => LvarMap.add(lv,res,acc)
-                    | NONE => die "restrict_inv_eta_env.lv not in env") LvarMap.empty lvars
+    fun restrict_inv_eta_env (e:inveta_env,lvs) =
+        LvarMap.restrict (Lvars.pr_lvar,e,lvs)
 
     fun new_sigma ([],tau) = ([],tau)
       | new_sigma (tyvars,tau) =
@@ -3444,11 +3454,8 @@ structure OptLambda : OPT_LAMBDA =
       | eq_inveta_res (NOTFIXBOUND, NOTFIXBOUND) = true
       | eq_inveta_res _ = false
 
-    fun enrich_inv_eta_env (inveta_env1,inveta_env2) =
-      LvarMap.Fold(fn ((lv2,res2),b) => b andalso
-                   case LvarMap.lookup inveta_env1 lv2
-                      of SOME res1 => eq_inveta_res(res1,res2)
-                       | NONE => false) true inveta_env2
+    fun enrich_inv_eta_env (e1,e2) =
+        LvarMap.enrich eq_inveta_res (e1,e2)
 
     type StringTree = PP.StringTree
 
@@ -3539,6 +3546,7 @@ structure OptLambda : OPT_LAMBDA =
                   val e = fix_conversion e
                   (*val _ = prLambdaExp "Before flattening" e*)
                   val (e, phi1) = FixFlatten.flattening phi e
+                  val e = unfix_conversion e
                   val (e, _) = contract ce e
                   val e = eliminate_explicit_records e
                   val e = eliminate_explicit_blockf64_bindings e
