@@ -2372,259 +2372,113 @@ struct
   end
 
   (**************************************************)
-  (* Call conversion:                               *)
+  (* Call conversion - NEW VERSION:                 *)
   (* Convert APP to JMP, FUNCALL, FNJMP and FNCALL  *)
-  (* Insert JOIN_WITH and RETURN_WITH annotations   *)
   (**************************************************)
 
-  datatype continuation = RETURN (* tail call *)
-                        | NEXT   (* physically next instruction *)
-                        | JOIN   (* continue at joint point for
-                                    closest surrounding SWITCH *)
-
-  exception NOTJMP
-  exception NOT_PRIM
+  datatype cont = TAIL | NOTAIL
 
   fun appConvert (allocates_space: 'b -> bool)
-                 (actuals_regions_match_formal_regions: ('b list * 'a list )->bool)
-                 (remove_from_bound: 'b list * 'a -> 'b list)
-                 (prog as PGM{expression = tr: ('a,'b,'c)trip,
-                                 export_datbinds,
-                                 import_vars,
-                                 export_vars,
-                                 export_basis,
-                                 export_Psi}): ('a,'b,'c)LambdaPgm =
-    let
-(*
-      fun perhapsTerminate _ (e as (FNJMP _), c)  = (e,c)
-        | perhapsTerminate _ (e as (JMP _), c)    = (e,c)
-        | perhapsTerminate RETURN (e, c) = (RETURN_WITH e, c)
-        | perhapsTerminate JOIN (e, c) = (JOIN_WITH e, c)
-        | perhapsTerminate NEXT (e, c) = (e, c)
-*)
-      fun perhapsTerminate _ (e,c) = (e,c)
-
-      fun cleanup(LETREGION{B, rhos = ref [], body as TR(e,_,_,_)}) = e
-        | cleanup(e) = e
-
-      fun tailTrip params_opt =
+                 (PGM{expression,
+                      export_datbinds,
+                      import_vars,
+                      export_vars,
+                      export_basis,
+                      export_Psi}) : ('a,'b,'c)LambdaPgm =
       let
-        fun tailExp(e: ('a,'b,'c)LambdaExp,cont) =
-          let
-            fun tailsw(SWITCH(tr0,choices, else_tr_opt), cont) =
-             let val (tr0', cont0) = tail(tr0, NEXT)
-                 val choices' = map (fn (con, tr) =>
-                                     (con, #1(tail(tr,if cont = NEXT then JOIN else cont)))) choices
-                 val else_tr_opt' = case else_tr_opt of NONE => NONE
-                                    | SOME tr => SOME(#1(tail(tr,if cont = NEXT then JOIN else cont)))
-             in
-                SWITCH(tr0',choices',else_tr_opt')
-             end
 
-            fun find_call_kind(cont, fix_bound) =
-              case (cont, fix_bound) of
-                (NEXT, false) =>   SOME FNCALL
-              | (NEXT, true) =>    SOME FUNCALL
-              | (JOIN, false) =>   SOME FNCALL
-              | (JOIN, true) =>    SOME FUNCALL
-              | (RETURN, false) => SOME FNJMP
-              | (RETURN, true) =>  SOME JMP
+        fun find_call_kind (cont, fix_bound) =
+            case (cont, fix_bound) of
+                (NOTAIL, false) => SOME FNCALL
+              | (NOTAIL, true)  => SOME FUNCALL
+              | (TAIL, false)   => SOME FNJMP
+              | (TAIL, true)    => SOME JMP
 
-            fun application(tr1, tr2,fix_bound)= (* fix_bound is true iff tr1 is a fix-bound lvar *)
-             let val (tr2', cont') = tail(tr2,NEXT)
-                 val (tr1', cont') = tail(tr1,cont')
-             in
-                (APP(find_call_kind(cont, fix_bound), NOT_YET_DETERMINED, tr1', tr2'), cont')
-             end
+        fun tailsw tail (SWITCH(e,bs,d), cont) =
+            let val e' = tail (e, NOTAIL)
+                val bs' = map (fn (con,e) => (con,tail(e,cont))) bs
+                val d' = case d of NONE => NONE
+                                 | SOME e => SOME(tail(e,cont))
+            in SWITCH(e',bs',d')
+            end
 
-          in
-             (case e of
-                VAR{lvar,other,...} => (e, NEXT)
-              | INTEGER i => (INTEGER i, NEXT)
-              | WORD i => (WORD i, NEXT)
-              | STRING s => (STRING s, NEXT)
-              | REAL r => (REAL r, NEXT)
-              | F64 r => (F64 r, NEXT)
-              | UB_RECORD l => let val (trs', cont) = tailList(l, cont)
-                               in (UB_RECORD trs', cont)
-                               end
-
-              | APP(_,_,t1 as TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals,
-                            plain_arreffs,other},_,_,_), t2) =>
-                   (
-                    application(t1, t2,fix_bound)
-                   )
-
-              | APP(_,_, tr1,tr2) => application(tr1, tr2,false)
-
+        fun tail (TR(e,mu,phi,mularef_ref), cont) =
+            TR(tailE(e, cont), mu, phi, mularef_ref)
+        and tails (es,cont) = map (fn e => tail (e,cont)) es
+        and tailApp (tr1, tr2, fix_bound, cont) = (* fix_bound is true iff tr1 is a fix-bound lvar *)
+            APP(find_call_kind(cont, fix_bound),
+                NOT_YET_DETERMINED,
+                tail(tr1,NOTAIL), tail(tr2,NOTAIL))
+        and tailE (e,cont) =
+            case e of
+                VAR _ => e
+              | INTEGER _ => e
+              | WORD _ => e
+              | STRING _ => e
+              | REAL _ => e
+              | F64 _ => e
+              | UB_RECORD trs => UB_RECORD(tails(trs,cont))
+              | APP(_, _, tr1 as TR(VAR{fix_bound,...},_,_,_), tr2) => tailApp (tr1, tr2, fix_bound, cont)
+              | APP (_, _, tr1, tr2) => tailApp (tr1, tr2, false, cont)
               | FIX{free, shared_clos, functions, scope} =>
-                   let val (scope', cont) = tail(scope, cont)
-                       val functions' = do_functions(functions)
-                   in
-                     (FIX{free=free, shared_clos=shared_clos,
-                          functions=functions',scope=scope'}, NEXT)
-                   end
-
+                FIX{free=free, shared_clos=shared_clos,
+                    functions=map tailFun functions,scope=tail(scope, cont)}
               | LETREGION{B, rhos, body} =>
                   (* we do not remove regions that do not allocate space,
                      for the code generator needs the bindings
                      to generate code *)
                   let val not_all_dummy_regions = List.exists allocates_space (!rhos)
-                      val (body', cont') =
-                          tail(body, if not_all_dummy_regions then NEXT else cont)
-                  in (LETREGION{B=B, rhos = rhos, body = body'}, cont')
+                      val body' = tail(body, if not_all_dummy_regions then NOTAIL else cont)
+                  in LETREGION{B=B, rhos = rhos, body = body'}
                   end
-
-              | LET{k_let,pat, bind, scope} =>
-                   let val (scope', cont) = tail(scope, cont)
-                       val (bind', cont ) = tail(bind, cont)
-                   in
-                       (LET{k_let=k_let,pat=pat,bind=bind', scope = scope'}, cont)
-                   end
-
+              | LET{k_let, pat, bind, scope} =>
+                LET{k_let=k_let, pat=pat, bind=tail(bind,NOTAIL), scope=tail(scope,cont)}
               | FN{pat,body,free,alloc} =>
-                   (* when we go under a lambda which is the lambda of a fix-bound
-                      function, we have knowledge of the formal region variables;
-                      if we go under any other lambda, knowledge of formal region parameters
-                      of closest enclosing region-polymorphic function are lost, so we
-                      must call    tailTrip NONE   instead of just tail: *)
-                   let val (body', _) =
-                        case params_opt of
-                          SOME(formals, true) (* ie., FN is fix-associated *) =>
-                            tailTrip (SOME(formals, false)) (body, RETURN)
-                        | SOME(formals, false) (* i.e., FN is not fix-associated *) =>
-                            tailTrip NONE (body, RETURN)
-                        | _ => tail (body, RETURN) (* i.e., continue using NONE *)
-                   in perhapsTerminate cont(FN{pat=pat,body=body',free=free,alloc=alloc}, NEXT)
-                   end
+                FN{pat=pat,body=tail(body,TAIL),free=free,alloc=alloc}
               | EXCEPTION(excon,b,mu,alloc,tr) =>
-                   let val (tr',cont') = tail(tr, cont)
-                   in (EXCEPTION(excon,b,mu,alloc,tr'), NEXT)
-                   end
-              | RAISE(tr) =>
-                   let val (tr',cont') = tail(tr, NEXT)
-                   in  (RAISE tr', NEXT)
-                   end
+                EXCEPTION(excon,b,mu,alloc,tail(tr,cont))
+              | RAISE tr => RAISE (tail(tr,NOTAIL))
               | HANDLE(tr1,tr2) =>
-                   let val (tr2',_) = tail(tr2, NEXT)
-                                (* first tr2 is evaluated to a closure, then *)
-                       val (tr1',_) = tail(tr1, NEXT)
-                                (* tr1 is evaluated; if tr1 succeeds,
-                                   the closure must be de-allocated *)
-                   in  (HANDLE(tr1',tr2'), NEXT)
-                   end
-              | SWITCH_I {switch,precision} =>
-                   (SWITCH_I{switch=tailsw(switch, cont), precision=precision}, NEXT)
-              | SWITCH_W {switch,precision} =>
-                   (SWITCH_W{switch=tailsw(switch, cont), precision=precision}, NEXT)
-              | SWITCH_S sw => (SWITCH_S(tailsw(sw, cont)), NEXT)
-              | SWITCH_C sw => (SWITCH_C(tailsw(sw, cont)), NEXT)
-              | SWITCH_E sw => (SWITCH_E(tailsw(sw, cont)), NEXT)
-              | CON0 a => (CON0 a, NEXT)
-              | CON1(opr,tr) =>
-                  let val (tr', cont') = tail(tr, NEXT)
-                  in (CON1(opr,tr'), NEXT)
-                  end
-              | DECON(opr,tr) =>
-                  let val (tr', cont') = tail(tr, NEXT)
-                  in (DECON(opr,tr'), NEXT)
-                  end
-              | EXCON(excon, NONE) => (EXCON(excon, NONE), NEXT)
-              | EXCON(excon, SOME(l, tr)) =>
-                  let val (tr', cont') = tail(tr, NEXT)
-                  in (EXCON(excon, SOME(l, tr')), NEXT)
-                  end
-              | DEEXCON(excon,tr) =>
-                  let val (tr', cont') = tail(tr, NEXT)
-                  in (DEEXCON(excon, tr'), NEXT)
-                  end
-              | RECORD(a, l) =>
-                  let val (l', cont') = tailList(l, NEXT)
-                  in (RECORD(a, l'), cont')
-                  end
-              | SELECT(i, tr) =>
-                  let val (tr', _) = tail(tr, NEXT)
-                  in (SELECT(i, tr'), NEXT)
-                  end
-              | DEREF(tr) =>
-                  let val (tr', _) = tail(tr, NEXT)
-                  in (DEREF(tr'), NEXT)
-                  end
-              | REF(a,tr) =>
-                  let val (tr', _) = tail(tr, NEXT)
-                  in (REF(a,tr'), NEXT)
-                  end
-              | ASSIGN(tr1,tr2) =>
-                  let val (tr1', _) = tail(tr1, NEXT)
-                      val (tr2', _) = tail(tr2, NEXT)
-                  in (ASSIGN(tr1',tr2'), NEXT)
-                  end
-              | DROP(tr) =>
-                  let val (tr', _) = tail(tr, NEXT)
-                  in (DROP(tr'), NEXT)
-                  end
-              | EQUAL(tyinfo,tr1,tr2) =>
-                  let val (tr1', _) = tail(tr1, NEXT)
-                      val (tr2', _) = tail(tr2, NEXT)
-                  in (EQUAL(tyinfo, tr1',tr2'), NEXT)
-                  end
-              | CCALL(tyinfo,trs) =>
-                  let val (trs', _) = tailList(trs,NEXT)
-                  in (CCALL(tyinfo, trs'), NEXT)
-                  end
-              | BLOCKF64(a, l) =>
-                  let val (l', cont') = tailList(l, NEXT)
-                  in (BLOCKF64(a, l'), cont')
-                  end
-              | SCRATCHMEM(n,a) => (SCRATCHMEM(n,a),NEXT)
-              | EXPORT(tyinfo,tr) =>
-                  let val (tr', _) = tail(tr,NEXT)
-                  in (EXPORT(tyinfo, tr'), NEXT)
-                  end
-              | RESET_REGIONS({force,regions_for_resetting,liveset},t) =>
-                  let val (t',_) = tail(t,NEXT)
-                  in (RESET_REGIONS({force=force,
-                                     regions_for_resetting=regions_for_resetting,
-                                     liveset=liveset},
-                                    t'), NEXT)
-                  end
-              | FRAME l => (FRAME l, NEXT)
-             )
-          end
+                HANDLE(tail(tr1,NOTAIL),tail(tr2,NOTAIL))
+              | SWITCH_I {switch,precision} => SWITCH_I {switch=tailsw tail (switch,cont), precision=precision}
+              | SWITCH_W {switch,precision} => SWITCH_W {switch=tailsw tail (switch,cont), precision=precision}
+              | SWITCH_S sw => SWITCH_S(tailsw tail (sw, cont))
+              | SWITCH_C sw => SWITCH_C(tailsw tail (sw, cont))
+              | SWITCH_E sw => SWITCH_E(tailsw tail (sw, cont))
+              | CON0 a => e
+              | CON1(opr,tr) => CON1(opr,tail(tr,NOTAIL))
+              | DECON(opr,tr) => DECON(opr,tail(tr,NOTAIL))
+              | EXCON(excon, NONE) => e
+              | EXCON(excon, SOME(l, tr)) => EXCON(excon, SOME(l, tail(tr,NOTAIL)))
+              | DEEXCON(excon,tr) => DEEXCON(excon, tail(tr,NOTAIL))
+              | RECORD(a, l) => RECORD(a, tails(l,NOTAIL))
+              | SELECT(i, tr) => SELECT(i, tail(tr,NOTAIL))
+              | DEREF tr => DEREF (tail(tr,NOTAIL))
+              | REF(a,tr) => REF(a, tail(tr,NOTAIL))
+              | ASSIGN(tr1,tr2) => ASSIGN(tail(tr1,NOTAIL),tail(tr2,NOTAIL))
+              | DROP tr => DROP (tail(tr,NOTAIL))
+              | EQUAL(tyinfo,tr1,tr2) => EQUAL(tyinfo,tail(tr1,NOTAIL),tail(tr2,NOTAIL))
+              | CCALL(tyinfo,trs) => CCALL(tyinfo,tails(trs,NOTAIL))
+              | BLOCKF64(a, l) => BLOCKF64(a,tails(l,NOTAIL))
+              | SCRATCHMEM(n,a) => e
+              | EXPORT(tyinfo,tr) => EXPORT(tyinfo,tail(tr,NOTAIL))
+              | RESET_REGIONS(r,tr) => RESET_REGIONS(r,tail(tr,NOTAIL))
+              | FRAME l => e
 
-        and do_functions [] = []
-          | do_functions ({lvar,occ,tyvars,rhos,epss,Type,
-                           rhos_formals,bound_but_never_written_into,other,bind}::rest_functions) =
-              let val (bind',_) = tailTrip(SOME(!rhos_formals,true))(bind, NEXT) (* proceed to next closure *)
-              in
-                 {lvar=lvar, occ=occ,tyvars=tyvars, rhos=rhos, epss=epss,
-                  Type=Type,rhos_formals=rhos_formals,
-                  bound_but_never_written_into=bound_but_never_written_into,
-                  other=other,
-                  bind=bind'} :: do_functions rest_functions
-              end
-
-        and tailList([], cont)= ([], cont)
-          | tailList(e::es, cont) =
-               let val (es', cont) = tailList(es,cont)
-                   val (e',  cont) = tail(e, cont)
-               in  (e'::es', cont)
-               end
-
-        and tail(tr as TR(e,mu,phi,mularef_ref), cont) =
-            let val (e', cont)  = tailExp(e,cont)
-            in (TR(e', mu, phi, mularef_ref), cont)
-            end
+        and tailFun {lvar,occ,tyvars,rhos,epss,Type,
+                     rhos_formals,bound_but_never_written_into,other,bind} =
+            {lvar=lvar, occ=occ,tyvars=tyvars, rhos=rhos, epss=epss,
+             Type=Type,rhos_formals=rhos_formals,
+             bound_but_never_written_into=bound_but_never_written_into,
+             other=other,
+             bind=tail(bind, NOTAIL)}
       in
-         tail
+        PGM{expression = tail (expression, TAIL),
+            export_datbinds = export_datbinds,
+            import_vars = import_vars,
+            export_vars = export_vars,
+            export_basis = export_basis,
+            export_Psi = export_Psi}
       end
-    in
-      PGM{expression = #1(tailTrip NONE (tr, RETURN)),
-          export_datbinds = export_datbinds,
-          import_vars = import_vars,
-          export_vars = export_vars,
-          export_basis = export_basis,
-          export_Psi = export_Psi}
-    end
 
 end

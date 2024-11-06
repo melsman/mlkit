@@ -800,36 +800,10 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     (* application conversion *)
     (**************************)
 
-  fun allocates_space(place,INF) = true
-    | allocates_space(place,WORDS i) = (i > 0)
+    fun allocates_space (place,INF) = true
+      | allocates_space (place,WORDS i) = i > 0
 
-  exception GetRho
-
-  fun get_rho(AtInf.ATTOP(rho,_)) = rho
-    | get_rho(AtInf.ATBOT(rho,_)) = rho
-    | get_rho(AtInf.SAT(rho,_)) = rho
-
-  fun actual_regions_match_formal_regions([],[])  = true
-    | actual_regions_match_formal_regions(l as ((formal_rho,mul)::forms), rho_act::acts): bool =
-          (Effect.eq_effect(formal_rho, get_rho rho_act)
-           handle GetRho => false)
-           andalso actual_regions_match_formal_regions (forms,acts)
-    | actual_regions_match_formal_regions(_,[]) = true
-    | actual_regions_match_formal_regions([], _ ) = false
-
-  fun remove_from_bound([],act) = []
-    | remove_from_bound((b as (rho,mul))::bs, a) =
-        if (Effect.eq_effect(rho, get_rho a) handle _ => false) then
-           bs
-        else b :: remove_from_bound(bs, a)
-
-  val appConvert = fn (prog)=>
-      appConvert
-        allocates_space
-        actual_regions_match_formal_regions
-        remove_from_bound
-        prog
-
+    fun appConvert prog = MulExp.appConvert allocates_space prog
 
     (* --------------------------------
      * Pretty Printing

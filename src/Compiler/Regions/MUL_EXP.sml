@@ -210,10 +210,7 @@ signature MUL_EXP =
                     (('_a,'b,'_c)LambdaExp * ('_a,'b,'_c)LambdaExp -> unit) ->
                     '_c -> ('_a,'b,'_c)LambdaPgm -> bool
 
-    val appConvert: ('b -> bool) ->
-                    ('b list * 'a list -> bool) ->
-                    ('b list * 'a -> 'b list) ->
-                    ('a,'b,'c)LambdaPgm -> ('a,'b,'c)LambdaPgm
+    val appConvert: ('b -> bool) -> ('a,'b,'c)LambdaPgm -> ('a,'b,'c)LambdaPgm
 
     val layoutLambdaPgm: ('a -> StringTree option) -> ('a -> StringTree option) ->
                          ('b -> StringTree option) ->
