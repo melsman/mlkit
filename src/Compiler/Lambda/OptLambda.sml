@@ -118,6 +118,14 @@ structure OptLambda : OPT_LAMBDA =
              \      let x1=e1 in ... let xn=en in ... xi .. xj ...\n\
              \(Lambda Expression Optimiser)."}
 
+    val fix_floating_p = Flags.add_bool_entry
+           {long="fix_floating", short=NONE,
+            menu=["Optimiser Control", "fix-floating"],
+            item=ref true, neg=true, desc=
+            "Float fix-bindings into immediate let-bindings when\n\
+            \possible to help tail-calls not be captured in let-\n\
+            \region bindings."}
+
     val unbox_function_arguments = Flags.add_bool_entry
             {long="unbox_function_arguments", short=NONE,
              menu=["Optimiser Control", "unbox function arguments"],
@@ -1832,7 +1840,17 @@ structure OptLambda : OPT_LAMBDA =
                              ((*tick "reduce - fix-let";*)
                               reduce (env, (LET{pat=[(lvar,tyvars,Type)],
                                                 bind=bind,scope=scope},cv)))
-                           else fail
+                           else
+                             (case scope of
+                                  LET{pat,bind,scope=scope2} =>
+                                  if fix_floating_p() andalso not(lvar_in_lamb lvar scope2) then
+                                    (tick "reduce - fix-floating";
+                                     reduce (env,
+                                             (LET{pat=pat,
+                                                  bind=FIX{functions=functions,scope=bind},
+                                                  scope=scope2},cv)))
+                                  else fail
+                                | _ => fail)
                           | _ => fail
                end
 (*mael
