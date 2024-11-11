@@ -114,18 +114,6 @@ signature INSTS_X64 =
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
 
-    | fstpq of ea       (* store float and pop float stack *)
-    | fldq of ea        (* push float onto the float stack *)
-    | fldz              (* push 0.0 onto the float stack *)
-    | faddp             (* add st(0) to st(1) and pop *)
-    | fsubp             (* subtract st(0) from st(1) and pop *)
-    | fmulp             (* multiply st(0) to st(1) and pop *)
-    | fdivp             (* divide st(1) with st(0) and pop *)
-    | fcompp            (* compare st(0) and st(1) and pop twice *)
-    | fabs              (* st(0) = abs(st(0)) *)
-    | fchs              (* st(0) = neg(st(0)) *)
-    | fnstsw            (* store float status word *)
-
     | jmp of ea         (* jump instructions *)
     | jl of lab
     | jg of lab

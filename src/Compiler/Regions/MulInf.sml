@@ -156,7 +156,8 @@ struct
           | STRING(_,p) => psi_r:= Mul.put p
           | REAL(_,p) => psi_r:= Mul.put p
           | F64 _ => ()
-          | UB_RECORD(trips) =>
+          | UB_RECORD nil => ()
+          | UB_RECORD trips =>
              let val _ = app(fn tr => infer_trip(tr))trips
                  val psi = sum_psis(map get_psi trips)
              in psi_r:= psi

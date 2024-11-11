@@ -15,6 +15,13 @@ structure LambdaBasics: LAMBDA_BASICS =
     fun member a [] = false
       | member a (x::xs) = a=x orelse member a xs
 
+    fun appi f xs =
+        let fun loop (i,nil) = ()
+              | loop (i,x::xs) =
+                let val () = f(i,x) in loop(i+1,xs) end
+        in loop (0,xs)
+        end
+
     (* passTD: (LambdaExp -> LambdaExp) -> LambdaExp ->
      * LambdaExp. Applies a transformation over an entire lambda
      * expression in a "top down" manner (i.e. visiting sub
@@ -227,20 +234,74 @@ structure LambdaBasics: LAMBDA_BASICS =
          | PRIM(prim, lambs) => app f lambs
          | FRAME _ => ()
 
+   (* -----------------------------------------------------------------
+    * app_lamb_tail f t lamb - apply f to sub-expressions and propagate
+    * tail-ness information.
+    * ----------------------------------------------------------------- *)
+
+    datatype tail = TAIL | NOTAIL
+    fun app_lamb_sw_tail f t (SWITCH(e,sel,opt_e)) =
+       let fun app_sel [] = ()
+             | app_sel ((a,e)::rest) = (f t e; app_sel rest)
+           fun app_opt (SOME e) = f t e
+             | app_opt NONE = ()
+       in f NOTAIL e; app_sel sel; app_opt opt_e
+       end
+
+    fun app_lamb_tail f t lamb =
+      case lamb
+        of VAR _ => ()
+         | INTEGER _ => ()
+         | WORD _ => ()
+         | REAL _ => ()
+         | F64 _ => ()
+         | STRING _ => ()
+         | FN{pat,body} => f NOTAIL body
+         | LET{pat,bind,scope} => (f NOTAIL bind; f t scope)
+         | LETREGION{regvars,scope} => f NOTAIL scope
+         | FIX{functions,scope} => (app (f NOTAIL o #bind) functions; f t scope)
+         | APP(e1,e2,_) => (f NOTAIL e1; f NOTAIL e2)
+         | EXCEPTION(excon,ty_opt,scope) => f t scope
+         | RAISE(e,tl) => f NOTAIL e
+         | HANDLE(e1,e2) => (f NOTAIL e1; f t e2)
+         | SWITCH_I {switch,...} => app_lamb_sw_tail f t switch
+         | SWITCH_W {switch,...} => app_lamb_sw_tail f t switch
+         | SWITCH_S sw => app_lamb_sw_tail f t sw
+         | SWITCH_C sw => app_lamb_sw_tail f t sw
+         | SWITCH_E sw => app_lamb_sw_tail f t sw
+         | TYPED(e,ty,_) => f t e
+         | PRIM(prim, lambs) => app (f NOTAIL) lambs
+         | FRAME _ => ()
+
 
     (* -----------------------------------------------------------------
      * Computation of free lambda variables and free exception
      * constructors; we set a mark on a lambda variable when it is
      * collected, so that it is collected only once.
+     *
+     * The optional argument specifies an optional function and its
+     * parameters. If present, calls to this function f are treated
+     * specially. In calls to f where an argument x is precisely the
+     * parameter x, then x is not added to the set of free variables
+     * (unless it occurs elsewhere).
      * ----------------------------------------------------------------- *)
 
-    fun freevars e : lvar list * excon list =
+    fun freevars0 (opt:(lvar*lvar list)option) e : lvar list * excon list =
       let val excons_seen : excon list ref = ref nil
           val excon_bucket : excon list ref = ref nil
           val lvar_bucket : lvar list ref = ref nil
           fun insert_lv lv = if !(Lvars.is_inserted lv) then ()
                              else (Lvars.is_inserted lv := true;
                                    lvar_bucket := lv :: !lvar_bucket)
+
+          fun insert_lv_call_arg (f:lvar) (argno:int) (lv:lvar) =
+              (case opt of
+                   NONE => insert_lv lv
+                 | SOME (g,xs) => if Lvars.eq(f,g) andalso
+                                     Lvars.eq(List.nth(xs,argno),lv) then ()
+                                  else insert_lv lv)
+              handle _ => die "insert_lv_call_arg.wrong function arity"
+
           fun insert_excon ex = if List.exists (fn ex1 => Excon.eq(ex,ex1)) (!excons_seen) then ()
                                 else (excon_bucket := ex :: !excon_bucket;
                                       excons_seen := ex :: !excons_seen)
@@ -250,25 +311,29 @@ structure LambdaBasics: LAMBDA_BASICS =
                | _ => app_lamb clean e
 
           fun fv e : unit =
-            case e
-              of VAR {lvar,...} => insert_lv lvar
-               | FN{pat,body} => (app (fn (lv,_) => Lvars.is_inserted lv := true) pat;
-                                  fv body;
-                                  app (fn (lv,_) => Lvars.is_inserted lv := false) pat)
-               | LET{pat,bind,scope} => (fv bind;
-                                         app (fn (lv,_,_) => Lvars.is_inserted lv := true) pat;
-                                         fv scope;
-                                         app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)
-               | FIX{functions,scope} => (app (fn {lvar,...} => Lvars.is_inserted lvar := true) functions;
-                                          app (fv o #bind) functions; fv scope;
-                                          app (fn {lvar,...} => Lvars.is_inserted lvar := false) functions)
-               | EXCEPTION(excon,ty_opt,scope) =>
-                (excons_seen := excon :: !excons_seen;
-                 fv scope;
-                 excons_seen := List.filter (fn ex => not(Excon.eq(ex,excon))) (!excons_seen))
-               | PRIM(EXCONprim excon, lambs) => (insert_excon excon; app fv lambs)
-(*             | PRIM(DEEXCONprim excon, lambs) => (insert_excon excon; app fv lambs) *)
-               | _ => app_lamb fv e
+              case e of
+                  VAR {lvar,...} => insert_lv lvar
+                | APP(VAR{lvar,...},PRIM(UB_RECORDprim, es),_) =>
+                  (insert_lv lvar;
+                   appi (fn (i, VAR {lvar=y,...}) => insert_lv_call_arg lvar i y
+                          | (_, e) => fv e) es)
+                | FN{pat,body} => (app (fn (lv,_) => Lvars.is_inserted lv := true) pat;
+                                   fv body;
+                                   app (fn (lv,_) => Lvars.is_inserted lv := false) pat)
+                | LET{pat,bind,scope} => (fv bind;
+                                          app (fn (lv,_,_) => Lvars.is_inserted lv := true) pat;
+                                          fv scope;
+                                          app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)
+                | FIX{functions,scope} => (app (fn {lvar,...} => Lvars.is_inserted lvar := true) functions;
+                                           app (fv o #bind) functions; fv scope;
+                                           app (fn {lvar,...} => Lvars.is_inserted lvar := false) functions)
+                | EXCEPTION(excon,ty_opt,scope) =>
+                  (excons_seen := excon :: !excons_seen;
+                   fv scope;
+                   excons_seen := List.filter (fn ex => not(Excon.eq(ex,excon))) (!excons_seen))
+                | PRIM(EXCONprim excon, lambs) => (insert_excon excon; app fv lambs)
+(*              | PRIM(DEEXCONprim excon, lambs) => (insert_excon excon; app fv lambs) *)
+                | _ => app_lamb fv e
           val _ = clean e
           val _ = fv e
           val lvs = !lvar_bucket before (app (fn lv => Lvars.is_inserted lv := false) (!lvar_bucket);
@@ -284,6 +349,8 @@ structure LambdaBasics: LAMBDA_BASICS =
         (lvs, exs)
       end
 
+    fun freevars e = freevars0 NONE e
+    fun freevars_not_call_invariant (f,xs) e = freevars0 (SOME(f,xs)) e
 
     (* --------- *)
     (* Renamings *)
@@ -477,7 +544,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
             | FRAME _ => lamb
 
-            (* MEMO: frames; hopefully, we will name rename expressions containing frames... *)
+            (* MEMO: frames; hopefully, we will NOT rename expressions containing frames... *)
     in
       fun new_instance (lamb : LambdaExp) : LambdaExp = on_e empty_ren lamb
     end (*local*)

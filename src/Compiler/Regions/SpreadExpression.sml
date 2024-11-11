@@ -18,8 +18,6 @@ struct
 
   fun uncurry f (a,b) = f a b
 
-  structure E = E
-  structure E' = E'
   structure RegionStatEnv = RSE
 
   val preserve_tail_calls = Flags.is_on0 "preserve_tail_calls"
@@ -71,7 +69,6 @@ struct
         ; if b then incr insts_spurious else ()
         )
   end
-
 
   type rse = RSE.regionStatEnv
 
@@ -139,43 +136,6 @@ struct
    * Report. *)
 
   val dangling_pointers = Flags.is_on0 "dangling_pointers"
-
-(*
-  fun gc_no_dangling_pointers(rse,blvs,e,B,mus1,mus2,eps,rho) =
-    if not(tag_values()) then B
-    else
-      let
-        fun rhos_sigma lv : place list =
-          case lookupLvar rse lv
-            of SOME(_,_,sigma,p,_,_) => [p] @ R.frv_sigma sigma
-             | NONE => die "gc_no_dangling_pointers.rhos_sigma"
-        fun rhos_sigma' ex : place list =
-          case lookupExcon rse ex
-            of SOME mu => R.frv_mu mu
-             | NONE => die "gc_no_dangling_pointers.rhos_sigma"
-        val (lvs,exs) = LB.freevars (blvs,e)
-        val rhos = List.foldl (fn (lv, acc) => rhos_sigma lv @ acc) nil lvs
-        val rhos = List.foldl (fn (ex, acc) => rhos_sigma' ex @ acc) rhos exs
-        val rhos_not = R.frv_mu (R.mkFUN(mus1,eps,mus2),rho)
-        val rhos = Eff.setminus(Eff.remove_duplicates rhos, rhos_not)
-        fun drop_rho_p (r:place) =
-          Eff.eq_effect(r, Eff.toplevel_region_withtype_top)
-          orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_bot)
-          orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_string)
-          orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_real)
-
-        val rhos = (List.filter (not o Eff.is_wordsize o valOf o Eff.get_place_ty) rhos)
-          handle _ => die "gc_no_dangling_pointers.rhos"
-        val rhos = List.filter (not o drop_rho_p) rhos
-(*
-        val B = List.foldl (fn (r,B) => Eff.lower (Eff.level B) r B) B rhos
-*)
-        val phi = mkUnion (map Eff.mkGet rhos)
-        val (eps2,B) = freshEps B
-        val _ = edge (eps2,phi)
-      in Eff.unifyEps (eps,eps2) B
-      end
-*)
 
   fun crash_resetting force =
       let val fcn = if force then "forceResetting" else "resetRegions"
@@ -254,29 +214,13 @@ struct
   datatype cont = TAIL | NOTAIL
 
   fun retract (B, t as E'.TR(e, E'.Mus mus, phi), cont, tvs) =
-    if false (*preserve_tail_calls()*) andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
+    if false andalso preserve_tail_calls() andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
       let val free_rhos_and_epss = R.ann_mus mus []
           val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
                              B free_rhos_and_epss
-(*        val _ = app (fn effect =>
-                       let val effect = if Eff.is_get effect orelse Eff.is_put effect then Eff.rho_of effect
-                                        else effect
-                       in Eff.unify_with_toplevel_effect effect
-                       end) (Eff.topLayer B) *)
-          val B = List.foldl (fn (eff,B) => Eff.lower 1 eff B) B (Eff.topLayer B)
-(*
-          val phi' = mkUnion([])
-          val (discharged_phi,_) = observeDelta(Eff.level B - 1, Eff.Lf[phi],phi')
-(*
-          val _ = app (fn effect =>
-                       let val effect = if Eff.is_get effect orelse Eff.is_put effect then Eff.rho_of effect
-                                        else effect
-                       in Eff.unify_with_toplevel_effect effect
-                       end) discharged_phi
-*)
-          val B = List.foldl (fn (eff,B) => lower 1 eff B) B discharged_phi
-*)
-(*        val B = Eff.restrain B *)
+          val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
+                             B (Eff.topLayer B)
+(*          val B = List.foldl (fn (eff,B) => Eff.lower 1 eff B) B (Eff.topLayer B) *)
       in (#2 (Eff.pop B), t, TAIL, tvs)
       end
     else
@@ -424,7 +368,9 @@ struct
       in match B tau mu
       end
 
-  (* Spreading expressions *)
+  (* Spreading expressions; the returned cont indicates whether the expression
+   * contains a tail-call...
+   *)
   fun spreadExp (B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont)
       : cone * (place,unit)E'.trip * cont * tyvar list =
   let
@@ -1575,35 +1521,7 @@ good *)
            [])
         end
     | _ => die "S: unknown expression"
-    ) (*handle
-        Crash.CRASH => die_from_S e
-      | Bind => die_from_S e
-      | Match => die_from_S e *)
-
-  (*
-   and S_built_in(B,lvar, es) =
-       S(B, E.APP(E.VAR{lvar = lvar, instances = []},
-                  E.PRIM(E.UB_RECORDprim, es)),false)
-*)
-(*
-   and S_binop_inline(B,bop,e1,e2,tau_res) : cone * (place,unit)E'.trip =
-     let
-       val B = Eff.push B (* for retract *)
-       val (B, t1 as (E'.TR(e1, E'.Mus mus1,phi1))) = S(B, e1, false)
-       val (B, t2 as (E'.TR(e2, E'.Mus mus2,phi2))) = S(B, e2, false)
-     in
-       case (mus1,mus2) of
-         ([(tau1,rho1)], [(tau2,rho2)]) =>
-          let
-            val (rho3, B) = Eff.freshRhoWithTy(R.runtype tau_res,B)
-            val phi = Eff.mkUnion([Eff.mkGet rho1, Eff.mkGet rho2, Eff.mkPut rho3,phi1,phi2])
-          in
-            retract(B, E'.TR(bop(t1,t2,rho3), E'.Mus [(tau_res,rho3)], phi))
-          end
-       | _ => die "S_binop_inline: ill-typed binary operator"
-     end
-*)
-
+    )
   in
     S(B,e,toplevel,cont)
   end (* spreadExp *)

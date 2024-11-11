@@ -1966,7 +1966,7 @@ struct
          else if I.is_xmm x andalso I.is_xmm y then I.movsd(R x,R y)::C
          else die "copy_f64: expecting xmm registers"
 
-     fun bin_f64_op s finst (x,y0,d,size_ff:int,C) =
+     fun bin_f64_op s finst (x,y0,d,size_ff:int,C) =   (* d := x op y *) (* e.g.: d := x; sub y d *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (y, y_C) = resolve_arg_aty(y0,tmp_freg1,size_ff)
              val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
@@ -1977,12 +1977,12 @@ struct
             if y = d then
               if x = d then
                 finst(R d, R d) :: C'
-              else
+              else (* x <> d && x <> y && d <> f1 *)
                 copy_f64(y, tmp_freg1,
                 copy_f64(x, d,
                 finst(R tmp_freg1, R d) ::
                 C'))
-            else
+            else (* y <> d *)
               copy_f64(x, d,
               finst(R y, R d) ::
               C') ))

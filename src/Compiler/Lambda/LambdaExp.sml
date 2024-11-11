@@ -1247,7 +1247,8 @@ structure LambdaExp : LAMBDA_EXP =
                                                 childsep=PP.RIGHT ","}],
                               childsep=PP.RIGHT ", "}
                in case prim of
-                      CCALLprim{name,...} =>
+                      DROPprim => lay "DROP"
+                    | CCALLprim{name,...} =>
                       (case name of
                            "__mul_f64" => lay "mul_f64"
                          | "__plus_f64" => lay "plus_f64"

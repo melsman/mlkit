@@ -75,12 +75,8 @@ ssize_t major_p = 0;                      // flag to specify whether gc should b
 // This implementation assumes a down growing stack (e.g., X64)
 
 // Only the potential floating point argument registers needs to be saved - freg_args in InstsX64
-#if defined(__LP64__) || (__WORDSIZE == 64)
 #define NUM_REGS 16
 #define NUM_FREGS 8
-#else
-#define NUM_REGS 8
-#endif
 
 /* Layout of stack:
 
