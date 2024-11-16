@@ -1,7 +1,33 @@
 structure Initial2 =
   struct
-    exception SysErr of string * int Option.option
+    type syserror = int
+
+    exception SysErr of string * syserror Option.option
     val _ = prim ("sml_setFailNumber", (SysErr ("as",NONE) : exn, 2 : int)) : unit
+
+    fun mkerrno_ (i : int) : syserror = prim("id", i)
+
+    fun errno_ () : syserror = prim("sml_errno", ())
+
+    fun formatErr mlOp (SOME operand) reason =
+	mlOp ^ " failed on `" ^ operand ^ "': " ^ reason
+      | formatErr mlOp NONE reason =
+	mlOp ^ " failed: " ^ reason
+
+    (* Raise SysErr from ML function *)
+    fun raiseSysML mlOp operand reason =
+	raise SysErr (formatErr mlOp operand reason, NONE)
+
+    fun errorMsg (err : syserror) : string = prim("sml_errormsg", err)
+
+    (* Raise SysErr with OS specific explanation if errno <> 0 *)
+    fun raiseSys mlOp operand reason =
+	let val errno = errno_ ()
+	in if errno = 0 then raiseSysML mlOp operand reason
+	   else raise SysErr
+		      (formatErr mlOp operand (errorMsg errno),
+		       SOME (mkerrno_ errno))
+	end
 
     local
       fun app f [] = ()

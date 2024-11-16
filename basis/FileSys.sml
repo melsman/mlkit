@@ -5,33 +5,30 @@
 
 structure OS =
   struct
-    type syserror = int
+    type syserror = Initial2.syserror
     exception SysErr = Initial2.SysErr
     fun isNull (s : string) = prim("__is_null", s) : bool
 
-    fun errorMsg (err : int) : string = prim("sml_errormsg", err)
+    fun errorMsg (err : syserror) : string = Initial2.errorMsg err
 
     exception OS_FileSys_errorName
+
     fun errorName (err : int) : string =
-         let
-           val s = prim("sml_errorName", err : int) : string
-         in
-           if isNull s
+        let val s = prim("sml_errorName", err : int) : string
+        in if isNull s
            then raise OS_FileSys_errorName
                       (*Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")*)
            else
-             let
-               val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))
+             let val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))
              in if a = "2big" then "toobig" else a
              end
-         end
+        end
+
     fun syserror (err : string) : syserror option =
-         let
-           val err = if err = "toobig" then "E2BIG" else "E" ^ (String.map Char.toUpper err)
-           val s = prim("@sml_syserror", err : string) : int
-         in
-           if s = ~1 then NONE else SOME s
-         end
+        let val err = if err = "toobig" then "E2BIG" else "E" ^ (String.map Char.toUpper err)
+            val s = prim("@sml_syserror", err : string) : int
+        in if s = ~1 then NONE else SOME s
+        end
   end
 
 structure FileSys : OS_FILE_SYS =

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include <poll.h>
 
 #include "IO.h"
 #include "String.h"
@@ -589,10 +590,72 @@ sml_microsleep(uintptr_t pair, size_t s, size_t u)
   return pair;
 }
 
-size_t
-sml_poll(size_t time)
+//size_t
+//sml_poll(size_t time)
+//{
+//  size_t r;
+//  r = poll(0,0,time);
+//  return r;
+//}
+
+uintptr_t
+REG_POLY_FUN_HDR(sml_poll, Region listR, Region tupR, Context ctx, uintptr_t pdesc, uintptr_t timeout, uintptr_t exn)
 {
-  size_t r;
-  r = poll(0,0,time);
-  return r;
+  uintptr_t *list, *tup, *listpair;
+
+  size_t tm = convertIntToC((size_t)timeout);
+
+  // calculate length of pdesc list
+  size_t n = 0;
+  for ( size_t ys = pdesc; isCONS(ys); ys = tl(ys) ) {
+    n++;
+  }
+
+  struct pollfd* pollfds;
+  pollfds = (struct pollfd*)malloc(sizeof(struct pollfd)*n);
+
+  // build poll-desc array
+  int i = 0;
+  for ( size_t ys = pdesc ; isCONS(ys) ; ys = tl(ys), i++ ) {
+    uintptr_t tup = hd(ys);
+    pollfds[i].fd = convertIntToC(first(tup));
+    pollfds[i].events =
+      ((mlTRUE == elemRecordML(tup,1)) ? POLLPRI : 0) |
+      ((mlTRUE == elemRecordML(tup,2)) ? POLLIN : 0) |
+      ((mlTRUE == elemRecordML(tup,3)) ? POLLOUT : 0);
+    pollfds[i].revents = 0;
+  }
+
+  if ( is_inf_and_atbot(listR) ) {
+    resetRegion(listR);
+  }
+
+  if ( is_inf_and_atbot(tupR) ) {
+    resetRegion(tupR);
+  }
+
+  int res = poll(pollfds, n, tm);
+
+  if (res < 0) {
+    free(pollfds);
+    raise_exn(ctx,exn);
+  }
+
+  // build poll-info list
+  makeNIL(list);
+  for ( i = 0 ; i < n ; i++ ) {
+    allocPairML(listR,listpair);
+    allocRecordML(tupR,4,tup);
+    // put stuff in tuple
+    storeElemRecordML(tup,0,convertIntToML(pollfds[i].fd));
+    storeElemRecordML(tup,1,convertBoolToML(((pollfds[i].revents) & POLLPRI) == POLLPRI));
+    storeElemRecordML(tup,2,convertBoolToML(((pollfds[i].revents) & POLLIN) == POLLIN));
+    storeElemRecordML(tup,3,convertBoolToML(((pollfds[i].revents) & POLLOUT) == POLLOUT));
+    first(listpair) = (uintptr_t)tup;
+    second(listpair) = (uintptr_t)list;
+    makeCONS(listpair,list);
+  }
+
+  free(pollfds);
+  return (uintptr_t)list;
 }
