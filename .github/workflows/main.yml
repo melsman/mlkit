@@ -67,6 +67,7 @@ jobs:
           echo 'GCC-13 version:'
           gcc-13 --version
           sudo ln -s `which gcc-13` /usr/local/bin/gcc
+          echo "/usr/local/bin" >> $GITHUB_PATH
           echo 'GCC now:'
           gcc --version
 
