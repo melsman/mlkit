@@ -67,6 +67,8 @@ jobs:
           echo 'GCC-13 version:'
           gcc-13 --version
           sudo ln -s `which gcc-13` /usr/local/bin/gcc
+          echo 'GCC now:'
+          gcc --version
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
