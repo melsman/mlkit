@@ -1362,7 +1362,7 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
 #else /*PROFILING is not defined */
 
 void
-queueMark(StringDesc *str)
+profDummy()
 {
   return;
 }
