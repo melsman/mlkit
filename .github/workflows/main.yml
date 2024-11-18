@@ -61,7 +61,10 @@ jobs:
           brew install gcc autoconf make
           brew tap homebrew/cask
           brew install --cask phantomjs
+          echo 'GCC version:'
           gcc --version
+          which gcc
+          ls -l /usr/local/bin/gcc*
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
