@@ -122,6 +122,7 @@ jobs:
       - name: Build MLKit
         timeout-minutes: 120
         run: |
+          gcc --version
           make mlkit
           make mlkit_basislibs
 
