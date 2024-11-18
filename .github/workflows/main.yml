@@ -74,6 +74,8 @@ jobs:
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
+          echo 'GCC now:'
+          gcc --version
           # The brew version of MLton has a bug
           brew install mlton --HEAD
 
