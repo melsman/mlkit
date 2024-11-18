@@ -355,8 +355,9 @@ struct
     fun exece (s : string, sl : string list, env : string list) = exec'(s,sl,env,true)
     fun execp (s : string, sl : string list) = exec'(s,sl,[],false)
 
-    fun fromStatus 0 = W_EXITED
-      | fromStatus _ = W_EXITSTATUS 0wxFF
+    fun fromStatus st =
+        if OS.Process.isSuccess st then W_EXITED
+        else W_EXITSTATUS 0wxFF
 
     fun alarm t =
         let
@@ -643,10 +644,10 @@ struct
     datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
     datatype access_mode = A_READ | A_WRITE | A_EXEC
 
-    fun iodToFD x = SOME x
-    fun wordToFD x = SysWord.toInt x
-    fun fdToIOD x = x
-    fun fdToWord x = SysWord.fromInt x
+    fun iodToFD (x:OS.IO.iodesc) : file_desc option = OS.iodToFD x
+    fun wordToFD (x:SysWord.word) : file_desc = SysWord.toInt x
+    fun fdToIOD (x:file_desc) : OS.IO.iodesc = OS.fdToIOD x
+    fun fdToWord (x:file_desc) = SysWord.fromInt x
 
     fun chdir x = OS.FileSys.chDir x
     fun closedir x = OS.FileSys.closeDir x

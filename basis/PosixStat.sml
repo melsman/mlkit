@@ -27,6 +27,7 @@ signature POSIX_STAT = sig
   val fstat : file_desc -> ST.stat
 
   val iodToFD : iodesc -> file_desc option
+  val fdToIOD : file_desc -> iodesc
 end
 
 structure PosixStat : POSIX_STAT = struct
@@ -70,6 +71,6 @@ structure PosixStat : POSIX_STAT = struct
       end
 
   fun iodToFD (x:iodesc) : file_desc option = SOME x
-
+  fun fdToIOD (x:file_desc) : iodesc = x
 
 end

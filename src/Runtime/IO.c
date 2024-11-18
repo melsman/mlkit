@@ -644,18 +644,20 @@ REG_POLY_FUN_HDR(sml_poll, Region listR, Region tupR, Context ctx, uintptr_t pde
   // build poll-info list
   makeNIL(list);
   for ( i = 0 ; i < n ; i++ ) {
-    allocPairML(listR,listpair);
-    allocRecordML(tupR,4,tup);
-    // put stuff in tuple
-    storeElemRecordML(tup,0,convertIntToML(pollfds[i].fd));
-    storeElemRecordML(tup,1,convertBoolToML(((pollfds[i].revents) & POLLPRI) == POLLPRI));
-    storeElemRecordML(tup,2,convertBoolToML(((pollfds[i].revents) & POLLIN) == POLLIN));
-    storeElemRecordML(tup,3,convertBoolToML(((pollfds[i].revents) & POLLOUT) == POLLOUT));
-    first(listpair) = (uintptr_t)tup;
-    second(listpair) = (uintptr_t)list;
-    makeCONS(listpair,list);
+    if ( (pollfds[i].revents) != 0 ) {
+      allocPairML(listR,listpair);
+      allocRecordML(tupR,4,tup);
+      // put stuff in tuple
+      storeElemRecordML(tup,0,convertIntToML(pollfds[i].fd));
+      storeElemRecordML(tup,1,convertBoolToML(((pollfds[i].revents) & POLLPRI) == POLLPRI));
+      storeElemRecordML(tup,2,convertBoolToML(((pollfds[i].revents) & POLLIN) == POLLIN));
+      storeElemRecordML(tup,3,convertBoolToML(((pollfds[i].revents) & POLLOUT) == POLLOUT));
+      first(listpair) = (uintptr_t)tup;
+      second(listpair) = (uintptr_t)list;
+      makeCONS(listpair,list);
+    }
   }
 
   free(pollfds);
-  return (uintptr_t)list;
+  return (uintptr_t)list; // list is reversed in OS.IO.poll
 }

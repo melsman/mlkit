@@ -10,10 +10,10 @@ test for various polling conditions.
 signature OS_IO =
   sig
     eqtype iodesc
-    val hash : iodesc -> word
-    val compare : iodesc * iodesc -> order
     eqtype iodesc_kind
-    val kind : iodesc -> iodesc_kind
+    val hash    : iodesc -> word
+    val compare : iodesc * iodesc -> order
+    val kind    : iodesc -> iodesc_kind
 
     structure Kind : sig
       val file    : iodesc_kind

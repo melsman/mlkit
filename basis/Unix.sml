@@ -125,5 +125,5 @@ structure Unix : UNIX =
 
     fun kill (PROC{pid, ...}, signal) = PP.kill (PP.K_PROC pid, signal)
 
-    fun exit st = OSP.exit (Word8.toInt st)
+    fun exit st = PP.exit st
   end (* structure Unix *)

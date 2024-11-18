@@ -2,7 +2,7 @@
 
 signature OS =
   sig
-    type syserror
+    type syserror = Initial2.syserror
 
     exception SysErr of string * syserror option
 
@@ -38,13 +38,20 @@ system dependent.
 *)
 
 (** SigDoc *)
-structure OS : OS =
+structure OS :>
+          sig include OS
+              val iodToFD : IO.iodesc -> PosixStat.file_desc option
+              val fdToIOD : PosixStat.file_desc -> IO.iodesc
+          end =
   struct
     type syserror = OS.syserror
     exception SysErr = OS.SysErr
     fun errorMsg (err : int) : string = OS.errorMsg err
     fun errorName (err : int) : string = OS.errorName err
     fun syserror (err : string) : syserror option = OS.syserror err
+
+    val iodToFD = PosixStat.iodToFD
+    val fdToIOD = PosixStat.fdToIOD
 
     structure FileSys = FileSys
     structure Path = Path
@@ -68,12 +75,10 @@ structure OS : OS =
           end
         exception Poll
 
-        val iodToFD = PosixStat.iodToFD
-
         structure ST = PosixStat.ST
 
         fun kind iod : iodesc_kind =
-            case iodToFD iod of
+            case PosixStat.iodToFD iod of
                 SOME fd =>
                 let val s = PosixStat.fstat fd
                 in if ST.isReg s then Kind.file
@@ -118,7 +123,7 @@ structure OS : OS =
             let val tm_out = case timeout of
                                  NONE => ~1
                                | SOME t => Int.fromLarge(Time.toMilliseconds t)
-            in prim("sml_poll", (getCtx(),pds,tm_out,Poll))
+            in List.rev (prim("sml_poll", (getCtx(),pds,tm_out,Poll)))
                handle Poll => raise SysErr ("poll error",NONE)
             end
 

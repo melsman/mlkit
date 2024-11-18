@@ -145,7 +145,7 @@ local
 
     basis System =
        let open General String Int
-       in let basis Time = let open Int Real IntInf in bas TIME.sig Time.sml end end
+       in let basis Time = let open Int Real IntInf in bas TIME.sig Time.sml TIMER.sig Timer.sml end end
               basis Random = let open Real in bas RANDOM.sig Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis FileSys = let open List Time Random Path Byte ArrayVector Initial2
@@ -154,14 +154,13 @@ local
               basis Process = let open Time Int
                               in bas OS_PROCESS.sml local open List in Process.sml end end
                               end
-              basis Os = let open FileSys Path Process Word PosixStat Time
+              basis Os = let open FileSys Path Process Word List PosixStat Time Initial2
                          in bas OS_IO.sml OS.sml end
                          end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
               basis Date = let open Int Real Time IntInf in bas DATE.sig Date.sml end end
-              basis Timer = let open Int Time IntInf in bas TIMER.sig Timer.sml end end
           in bas open Time Path FileSys
-                 Process Os CommandLine Date Timer
+                 Process Os CommandLine Date
              end
           end
        end
