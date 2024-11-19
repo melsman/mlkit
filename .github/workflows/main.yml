@@ -64,6 +64,7 @@ jobs:
           brew install --cask phantomjs
           echo 'GCC version:'
           echo "THECC=gcc-13" >> $GITHUB_ENV
+          echo `which gcc-13`
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
