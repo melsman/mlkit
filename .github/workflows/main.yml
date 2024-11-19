@@ -59,10 +59,10 @@ jobs:
       - name: Install dependencies (macos)
         if: ${{ env.OS == 'darwin' }}
         run: |
+          arch -x86_64 /usr/local/bin/brew install gcc
           brew install autoconf make
           brew tap homebrew/cask
           brew install --cask phantomjs
-          arch -x86_64 /usr/local/bin/brew install gcc
           echo 'GCC version:'
           echo "THECC=gcc-13" >> $GITHUB_ENV
           echo `which gcc-13`
