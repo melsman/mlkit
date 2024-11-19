@@ -65,7 +65,7 @@ jobs:
           echo "THECC=gcc-14" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
           ls /usr/local/bin/gcc*
-          /usr/local/bin/gcc --version
+          /usr/local/bin/gcc-14 --version
           brew install autoconf make
           brew tap homebrew/cask
           brew install --cask phantomjs
