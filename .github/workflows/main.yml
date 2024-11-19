@@ -48,6 +48,7 @@ jobs:
         run: |
           # sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make
+          echo "THECC=gcc" >> $GITHUB_ENV
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
@@ -62,27 +63,19 @@ jobs:
           brew tap homebrew/cask
           brew install --cask phantomjs
           echo 'GCC version:'
-          gcc --version
-          which gcc
-          echo 'GCC-13 version:'
-          gcc-13 --version
-          sudo ln -s `which gcc-13` /usr/local/bin/gcc
-          echo "/usr/local/bin" >> $GITHUB_PATH
-          echo 'GCC now:'
-          gcc --version
+          echo "THECC=gcc-13" >> $GITHUB_ENV
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
-          echo 'GCC now:'
-          gcc --version
+          echo "THECC: ${{env.THECC}}"
           # The brew version of MLton has a bug
           brew install mlton --HEAD
 
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
         run: |
-          echo "[OS: $OS, HOME: $RUNHOME]"
+          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
           wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
@@ -111,13 +104,13 @@ jobs:
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./autobuild
-          ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
+          CC=${{env.THECC}} ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
 
       - name: Configure With MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
         run: |
           ./autobuild
-          ./configure --with-compiler=mlkit
+          CC=${{env.THECC}} ./configure --with-compiler=mlkit
 
       - name: Build MLKit
         timeout-minutes: 120
