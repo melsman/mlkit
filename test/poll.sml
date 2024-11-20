@@ -60,7 +60,7 @@ fun viewProc (inf_fd, inf) (outf_fd, outf) =
     val in_poll = pollIn inf_fd
     val out_poll = pollOut outf_fd
     val pending = ref ["foo", "bar"]
-    val stdin_poll = pollIn Posix.FileSys.stdin
+(*    val stdin_poll = pollIn Posix.FileSys.stdin *)
     val counter = ref 0
     fun onPoll ready =
       if !counter = 3 then
@@ -70,10 +70,11 @@ fun viewProc (inf_fd, inf) (outf_fd, outf) =
         ; pr (valOf (TextIO.inputLine inf))
         ; counter := !counter + 1
         )
-      else if OS.IO.infoToPollDesc ready = stdin_poll then
+(*      else if OS.IO.infoToPollDesc ready = stdin_poll then
         case TextIO.inputLine TextIO.stdIn of
           NONE => raise Fail "stdin closed"
         | SOME l => pending := (l :: !pending)
+*)
       else if OS.IO.infoToPollDesc ready = out_poll then
         ( List.app (fn l => TextIO.output (outf, l ^ "\n")) (!pending)
         ; pending := []
@@ -82,7 +83,7 @@ fun viewProc (inf_fd, inf) (outf_fd, outf) =
       else
         ()
     fun react () =
-      List.app onPoll (OS.IO.poll ([in_poll, out_poll, stdin_poll], NONE))
+      List.app onPoll (OS.IO.poll ([in_poll, out_poll (*, stdin_poll*)], NONE))
   in
     forever react
     handle Stop => ()
