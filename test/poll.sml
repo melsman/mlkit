@@ -1,5 +1,7 @@
 (* Test provided by Troels Henriksen *)
 
+fun pr s = () (*print s*)
+
 (* These produce nonblocking streams. *)
 fun fdToInstream fd =
   TextIO.mkInstream (TextIO.StreamIO.mkInstream
@@ -35,7 +37,7 @@ fun modelProc (inf_fd, inf) (outf_fd, outf) =
               case TextIO.canInput (inf, 1) of
                 NONE => ()
               | SOME x =>
-                  ( print ("model: received: " ^ valOf (TextIO.inputLine inf))
+                  ( pr ("model: received: " ^ valOf (TextIO.inputLine inf))
                   ; loop ()
                   )
           in
@@ -46,7 +48,7 @@ fun modelProc (inf_fd, inf) (outf_fd, outf) =
         val () = TextIO.output (outf, "status update\n")
         val () = read ()
       in
-        OS.Process.sleep (Time.fromSeconds 1)
+        OS.Process.sleep (Time.fromMilliseconds 50)
       end
   in
     forever react
@@ -64,8 +66,8 @@ fun viewProc (inf_fd, inf) (outf_fd, outf) =
       if !counter = 3 then
         raise Stop
       else if OS.IO.infoToPollDesc ready = in_poll then
-        ( print "view: received: "
-        ; print (valOf (TextIO.inputLine inf))
+        ( pr "view: received: "
+        ; pr (valOf (TextIO.inputLine inf))
         ; counter := !counter + 1
         )
       else if OS.IO.infoToPollDesc ready = stdin_poll then
