@@ -1,6 +1,7 @@
 (* Time -- new basis 1995-02-25, 1995-05-12 *)
 
-structure Time : TIME =
+(** SigDoc *)
+structure Time :> TIME =
   struct
     fun getrealtime () : {sec : int, usec : int} =
       prim("sml_getrealtime", ())

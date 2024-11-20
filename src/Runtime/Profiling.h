@@ -133,7 +133,7 @@ extern long raised_exn_overflow_prof;
 
 #else /*PROFILING not defined */
 
-void queueMark();  /* does nothing */
+void profDummy();  /* does nothing */
 
 #endif /*PROFILING*/
 

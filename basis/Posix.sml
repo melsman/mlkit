@@ -70,6 +70,7 @@ functor CreateWriterReader (S : sig
     fun getCtx () : foreignptr = prim("__get_ctx",())
     open S
     val failexn = Initial.FileSys.filesys_fail
+    val raiseSys = Initial2.raiseSys
     fun isreg_ (s : file_desc) : bool = prim("sml_isreg", (getCtx(), s, failexn))
     fun isReg fd = (isreg_ fd) handle Fail s => raiseSys ("isReg " ^ (Int.toString fd)) NONE ""
 
@@ -222,6 +223,8 @@ functor CreateWriterReader (S : sig
 structure Posix :> POSIX =
 struct
   fun getCtx () : foreignptr = prim("__get_ctx",())
+  val raiseSys = Initial2.raiseSys
+
   structure Signal : POSIX_SIGNAL =
   struct
     type signal = int
@@ -352,8 +355,9 @@ struct
     fun exece (s : string, sl : string list, env : string list) = exec'(s,sl,env,true)
     fun execp (s : string, sl : string list) = exec'(s,sl,[],false)
 
-    fun fromStatus 0 = W_EXITED
-      | fromStatus _ = W_EXITSTATUS 0wxFF
+    fun fromStatus st =
+        if OS.Process.isSuccess st then W_EXITED
+        else W_EXITSTATUS 0wxFF
 
     fun alarm t =
         let
@@ -640,10 +644,10 @@ struct
     datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
     datatype access_mode = A_READ | A_WRITE | A_EXEC
 
-    fun iodToFD x = SOME x
-    fun wordToFD x = SysWord.toInt x
-    fun fdToIOD x = x
-    fun fdToWord x = SysWord.fromInt x
+    fun iodToFD (x:OS.IO.iodesc) : file_desc option = OS.iodToFD x
+    fun wordToFD (x:SysWord.word) : file_desc = SysWord.toInt x
+    fun fdToIOD (x:file_desc) : OS.IO.iodesc = OS.fdToIOD x
+    fun fdToWord (x:file_desc) = SysWord.fromInt x
 
     fun chdir x = OS.FileSys.chDir x
     fun closedir x = OS.FileSys.closeDir x
@@ -667,7 +671,7 @@ struct
             | "ASYNC_IO" => 9
             | "SYNC_IO" => 10
             | "PRIO_IO" => 11
-            | _ => raiseSysML "Posix.FileSys.pathconf" (SOME name) ("is not a valid property")
+            | _ => Initial2.raiseSysML "Posix.FileSys.pathconf" (SOME name) ("is not a valid property")
     in
 
     fun fpathconf (fd:file_desc,name:string) =

@@ -32,7 +32,7 @@ signature TIME =
     val toString         : time -> string
     val scan             : (char, 'a) StringCvt.reader -> (time, 'a) StringCvt.reader
     val fromString       : string -> time option
-    val toPair           : time -> {sec:int, usec : int}
+    val toPair           : time -> {sec:int, usec:int}
   end
 
 (**

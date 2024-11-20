@@ -27,9 +27,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-12]
-        mlcomp: [mlkit, mlton]
-#        mlcomp: [mlton]
+        os: [ubuntu-20.04, macos-14]
+#        mlcomp: [mlkit, mlton]
+        mlcomp: [mlton]
 #        mlcomp: [mlkit]
 
     runs-on: ${{ matrix.os }}
@@ -48,6 +48,7 @@ jobs:
         run: |
           # sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make
+          echo "THECC=gcc" >> $GITHUB_ENV
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
@@ -58,24 +59,35 @@ jobs:
       - name: Install dependencies (macos)
         if: ${{ env.OS == 'darwin' }}
         run: |
-          brew install gcc autoconf make
+          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          arch -x86_64 /usr/local/bin/brew install gcc
+          echo 'GCC version:'
+          echo "THECC=gcc-14" >> $GITHUB_ENV
+          echo "/usr/local/bin" >> $GITHUB_PATH
+          which ld
+          ld -v
+          ls /usr/local/bin/gcc*
+          /usr/local/bin/gcc-14 --version
+          brew install autoconf make
           brew tap homebrew/cask
           brew install --cask phantomjs
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
+          echo "THECC: ${{env.THECC}}"
+          which gcc-14
           # The brew version of MLton has a bug
           brew install mlton --HEAD
 
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
         run: |
-          echo "[OS: $OS, HOME: $RUNHOME]"
+          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
           wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget https://github.com/melsman/mlkit/releases/download/v4.7.4/mlkit-bin-dist-${{env.OS}}.tgz
+          wget https://github.com/melsman/mlkit/releases/download/v4.7.12/mlkit-bin-dist-${{env.OS}}.tgz
           tar xzf mlkit-bin-dist-${{env.OS}}.tgz
           echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
           mkdir -p .mlkit
@@ -100,17 +112,18 @@ jobs:
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
           ./autobuild
-          ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
+          CC=${{env.THECC}} ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
 
       - name: Configure With MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
         run: |
           ./autobuild
-          ./configure --with-compiler=mlkit
+          CC=${{env.THECC}} ./configure --with-compiler=mlkit
 
       - name: Build MLKit
         timeout-minutes: 120
         run: |
+          gcc --version
           make mlkit
           make mlkit_basislibs
 

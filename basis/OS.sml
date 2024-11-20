@@ -2,7 +2,7 @@
 
 signature OS =
   sig
-    type syserror
+    type syserror = Initial2.syserror
 
     exception SysErr of string * syserror option
 
@@ -38,13 +38,20 @@ system dependent.
 *)
 
 (** SigDoc *)
-structure OS : OS =
+structure OS :>
+          sig include OS
+              val iodToFD : IO.iodesc -> PosixStat.file_desc option
+              val fdToIOD : PosixStat.file_desc -> IO.iodesc
+          end =
   struct
     type syserror = OS.syserror
     exception SysErr = OS.SysErr
     fun errorMsg (err : int) : string = OS.errorMsg err
     fun errorName (err : int) : string = OS.errorName err
     fun syserror (err : string) : syserror option = OS.syserror err
+
+    val iodToFD = PosixStat.iodToFD
+    val fdToIOD = PosixStat.fdToIOD
 
     structure FileSys = FileSys
     structure Path = Path
@@ -67,5 +74,63 @@ structure OS : OS =
             val device = 0w40
           end
         exception Poll
+
+        structure ST = PosixStat.ST
+
+        fun kind iod : iodesc_kind =
+            case PosixStat.iodToFD iod of
+                SOME fd =>
+                let val s = PosixStat.fstat fd
+                in if ST.isReg s then Kind.file
+                   else if ST.isDir s then Kind.dir
+                   else if ST.isChr s then Kind.tty
+                   else if ST.isBlk s then Kind.device
+                   else if ST.isLink s then Kind.symlink
+                   else if ST.isFIFO s then Kind.pipe
+                   else if ST.isSock s then Kind.socket
+                   else raise SysErr ("kind of IO descriptor unknown",NONE)
+                end
+              | NONE => raise SysErr ("unknown IO descriptor",NONE)
+
+        type poll_info = {iod:iodesc,pri:bool,rd:bool,wr:bool}  (* alphabetical order for C-ffi *)
+        type poll_desc = poll_info
+
+        (* create a polling operation on the given descriptor; note that
+         * not all I/O devices support polling, but for the time being, we
+         * don't test for this.
+         *)
+        fun pollDesc iod = SOME {iod=iod, pri=false, rd=false, wr=false}
+
+        (* return the I/O descriptor that is being polled *)
+        fun pollToIODesc (pd: poll_desc) = #iod pd
+
+        exception Poll
+
+        (* set polling events; if the polling operation is not appropriate
+         * for the underlying I/O device, then the Poll exception is raised.
+         *)
+        fun pollIn ({iod, pri, wr, ...}: poll_desc) : poll_desc =
+            {iod=iod, pri=pri, rd=true, wr=wr}
+        fun pollOut ({iod, pri, rd, ...}: poll_desc) : poll_desc =
+            {iod=iod, pri=pri, rd=rd, wr=true}
+        fun pollPri ({iod, rd, wr, ...}: poll_desc) : poll_desc =
+            {iod=iod, pri=true, rd=rd, wr=wr}
+
+        fun getCtx () : foreignptr = prim("__get_ctx",())
+
+        exception Poll
+        fun poll (pds: poll_desc list, timeout:Time.time option) : poll_info list =
+            let val tm_out = case timeout of
+                                 NONE => ~1
+                               | SOME t => Int.fromLarge(Time.toMilliseconds t)
+            in List.rev (prim("sml_poll", (getCtx(),pds,tm_out,Poll)))
+               handle Poll => raise SysErr ("poll error",NONE)
+            end
+
+        (* check for conditions *)
+        fun isPri (pi:poll_info) = #pri pi
+        fun isIn (pi:poll_info) = #rd pi
+        fun isOut (pi:poll_info) = #wr pi
+        fun infoToPollDesc x = x
       end
   end

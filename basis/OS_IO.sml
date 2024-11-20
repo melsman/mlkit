@@ -10,12 +10,11 @@ test for various polling conditions.
 signature OS_IO =
   sig
     eqtype iodesc
-    val hash : iodesc -> word
-    val compare : iodesc * iodesc -> order
     eqtype iodesc_kind
-(*
-    val kind : iodesc -> iodesc_kind
-*)
+    val hash    : iodesc -> word
+    val compare : iodesc * iodesc -> order
+    val kind    : iodesc -> iodesc_kind
+
     structure Kind : sig
       val file    : iodesc_kind
       val dir     : iodesc_kind
@@ -25,21 +24,21 @@ signature OS_IO =
       val socket  : iodesc_kind
       val device  : iodesc_kind
     end
-(*
+
     eqtype poll_desc
     type poll_info
-    val pollDesc : iodesc -> poll_desc option
-    val pollToIODesc : poll_desc -> iodesc
     exception Poll
-    val pollIn  : poll_desc -> poll_desc
-    val pollOut : poll_desc -> poll_desc
-    val pollPri : poll_desc -> poll_desc
-    val poll : poll_desc list * Time.time option -> poll_info list
-    val isIn  : poll_info -> bool
-    val isOut : poll_info -> bool
-    val isPri : poll_info -> bool
+
+    val pollDesc       : iodesc -> poll_desc option
+    val pollToIODesc   : poll_desc -> iodesc
+    val pollIn         : poll_desc -> poll_desc
+    val pollOut        : poll_desc -> poll_desc
+    val pollPri        : poll_desc -> poll_desc
+    val poll           : poll_desc list * Time.time option -> poll_info list
+    val isIn           : poll_info -> bool
+    val isOut          : poll_info -> bool
+    val isPri          : poll_info -> bool
     val infoToPollDesc : poll_info -> poll_desc
-*)
   end
 
 (**
@@ -105,5 +104,56 @@ definitions.
     [socket] A network socket.
 
     [device] A logical or physical hardware device.
+
+[eqtype poll_desc] An abstract representation of a polling operation on an I/O
+descriptor.
+
+[type poll_info] An abstract representation of the per-descriptor information
+returned by the poll operation.
+
+[pollDesc iod] creates a polling operation on the given descriptor; NONE is
+returned when no polling is supported by the I/O device.
+
+[pollToIODesc pd] returns the I/O descriptor that is being polled using pd.
+
+[pollIn pd]
+
+[pollOut pd]
+
+[pollPri pd]
+
+These return a poll descriptor that has input (respectively, output,
+high-priority) polling added to the poll descriptor pd. They raise Poll if input
+(respectively, output, high-priority events) is not appropriate for the
+underlying I/O device.
+
+[poll (l, timeout)] polls a collection of I/O devices for the conditions
+specified by the list of poll descriptors l. The argument timeout specifies the
+timeout where:
+
+    NONE means wait indefinitely.
+
+    SOME(Time.zeroTime) means do not block.
+
+    SOME(t) means timeout after time t.
+
+The operation returns a list of poll_info values corresponding to those
+descriptors in l whose conditions are enabled. The returned list respects the
+order of the argument list, and a value in the returned list will reflect a
+(nonempty) subset of the conditions specified in the corresponding argument
+descriptor. The poll function will raise OS.SysErr if, for example, one of the
+file descriptors refers to a closed file.
+
+[isIn info]
+
+[isOut info]
+
+[isPri info]
+
+These return true if input (respectively, output, priority information) is
+present in info.
+
+[infoToPollDesc pi] returns the underlying poll descriptor from poll information
+pi.
 
 *)
