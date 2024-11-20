@@ -28,8 +28,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-14]
-#        mlcomp: [mlkit, mlton]
-        mlcomp: [mlton]
+        mlcomp: [mlkit, mlton]
+#        mlcomp: [mlton]
 #        mlcomp: [mlkit]
 
     runs-on: ${{ matrix.os }}
@@ -87,7 +87,7 @@ jobs:
           wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget https://github.com/melsman/mlkit/releases/download/v4.7.12/mlkit-bin-dist-${{env.OS}}.tgz
+          wget https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
           tar xzf mlkit-bin-dist-${{env.OS}}.tgz
           echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
           mkdir -p .mlkit
