@@ -1,5 +1,14 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.13 is released
+
+* mael 2024-11-20: Implementation of OS.IO.poll (PR #188).
+
+* mael 2024-11-20: Opaque definitions of structures Time, Timer, Posix, OS.
+
+* mael 2024-11-20: Implementation of deep argument flattening optimisation (PR
+  #182).
+
 ### MLKit version 4.7.12 is released
 
 * mael 2024-09-23: Optimiser bug fix with static selection of tuples containing
