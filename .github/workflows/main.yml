@@ -27,7 +27,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-15]
+        os: [ubuntu-20.04, macos-14]
 #        mlcomp: [mlkit, mlton]
         mlcomp: [mlton]
 #        mlcomp: [mlkit]
@@ -64,6 +64,8 @@ jobs:
           echo 'GCC version:'
           echo "THECC=gcc-14" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
+          which ld
+          ld -v
           ls /usr/local/bin/gcc*
           /usr/local/bin/gcc-14 --version
           brew install autoconf make
