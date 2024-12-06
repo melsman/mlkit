@@ -1,5 +1,12 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.14 is released
+
+* mael 2024-12-06: Improved binary installation. The install target in binary
+  packages will now, when used with PREFIX=/usr/local (the default) install an
+  mlb-path-map file in a proper location. For installs with other definitions of
+  PREFIX, an mlb-path-map install guide is printed.
+
 ### MLKit version 4.7.13 is released
 
 * mael 2024-11-20: Implementation of OS.IO.poll (PR #188).

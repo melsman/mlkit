@@ -65,7 +65,7 @@ struct
             MlbUtil.error ("I cannot create directory " ^ MlbUtil.quot d ^ " --- the current directory is " ^
                            OS.FileSys.getDir()))
 
-    fun maybe_create_mlbdir() =
+    fun maybe_create_mlbdir () =
       let val dirs = String.tokens (fn c => c = #"/") (P.mlbdir())
         fun append_path "" d = d
           | append_path p d = p ^ "/" ^ d

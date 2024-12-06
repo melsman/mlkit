@@ -1,8 +1,7 @@
-local 
-  ../../Common/tools.mlb
+local
   $(SML_LIB)/basis/basis.mlb
-  ../../Kitlib/kitlib.mlb
+  ../../Common/tools.mlb
 in
-  CONFIGURATION.sig Configuration.sml
+  configuration.mlb
   ENVIRONMENT.sig Environment.sml
 end

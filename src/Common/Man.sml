@@ -93,8 +93,10 @@ struct
     fun mkStr s = "\"" ^ s ^ "\""
 
     fun files exe =
-	[("/etc/" ^ exe ^ "/mlb-path-map", "System-wide configuration of library and runtime system locations"),
-	 ("~/." ^ exe ^ "/mlb-path-map", "User specific configuration of library and runtime system locations")]
+	[(Configuration.etcdir ^ "/" ^ exe ^ "/mlb-path-map",
+          "System-wide configuration of library and runtime system locations"),
+	 ("~/." ^ exe ^ "/mlb-path-map",
+          "User specific configuration of library and runtime system locations")]
 
     fun header exe date version =
 	let val title =
@@ -171,9 +173,9 @@ struct
     fun environment exe =
 	String.concat [".SH ENVIRONMENT\n",
 		       "A library install directory must be provided ",
-		       "in an environment variable SML_LIB or as a path-definition ",
-		       "in either the system wide path-map /etc/" ^ exe ^ "/mlb-path-map ",
-		       "or in the user's personal path-map ~/." ^ exe ^ "/mlb-path-map.\n"]
+		       "in an environment variable SML_LIB, as a path-definition ",
+		       "in the user's personal path-map ~/." ^ exe ^ "/mlb-path-map, ",
+                       "or in a system wide path-map " ^ Configuration.etcdir ^ "/" ^ exe ^ "/mlb-path-map.\n"]
 
     val files = fn exe =>
         String.concat [".SH FILES\n",

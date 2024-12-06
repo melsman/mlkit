@@ -422,37 +422,6 @@ install_smltojs: install_smltojs0
         fi
 
 # -----------------------------------------------------
-# Target for building MLKit binary package. The target
-# assumes that the mlkit has been build using
-#  $ ./autobuild
-#  $ ./configure
-#  $ make all
-# -----------------------------------------------------
-MLKIT_DIST_BIN=mlkit-$(KITVERSION)-x64
-.PHONY: mlkit_x64_tgz
-mlkit_x64_tgz:
-	$(MKDIR) dist
-	rm -rf dist/$(MLKIT_DIST_BIN)
-	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(MLKIT_DIST_BIN) prefix=
-	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
-
-# -----------------------------------------------------
-# Target for building SMLtoJs binary package. The target
-# assumes that smltojs has been build using
-#  $ ./autobuild
-#  $ ./configure
-#  $ make smltojs
-#  $ make smltojs_basislibs
-# -----------------------------------------------------
-SMLTOJS_DIST_BIN=smltojs-$(KITVERSION)-x64
-.PHONY: smltojs_x64_tgz
-smltojs_x64_tgz:
-	$(MKDIR) dist
-	rm -rf dist/$(SMLTOJS_DIST_BIN)
-	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(SMLTOJS_DIST_BIN) prefix=
-	(cd dist && tar czvf $(SMLTOJS_DIST_BIN).tgz $(SMLTOJS_DIST_BIN))
-
-# -----------------------------------------------------
 # Target for building binary distribution for both
 # mlkit and smltojs. Assumes the following
 #  $ ./autobuild
@@ -474,10 +443,43 @@ mlkit_bin_dist:
 	echo 'PREFIX?=/usr/local' > $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo '.PHONY: install' >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo 'install:' >> $(CWD)/dist/$(BIN_DIST)/Makefile
-	printf "\t"'for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done\n' \
+	printf "\t"'@echo "Installing MLKit under $$(PREFIX)... (please wait...)"\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
-	printf "\t"'for f in $$$$(find * -type f | grep -v ^Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
+	printf "\t"'@for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf "\t"'@for f in $$$$(find * -type f | grep -v ^Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
+                >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf "\t"'@if [ "$$(PREFIX)" = "/usr/local" ]; then \\\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '          (echo "Installing $$(PREFIX)/etc/mlkit/mlb-path-map"; \\\n' \
+                >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           install -d $$(PREFIX)/etc/mlkit; \\\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "SML_LIB $$(PREFIX)/lib/mlkit" > $$(PREFIX)/etc/mlkit/mlb-path-map; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "Installing $$(PREFIX)/etc/smltojs/mlb-path-map"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           install -d $$(PREFIX)/etc/smltojs; \\\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "SML_LIB $$(PREFIX)/lib/smltojs" > $$(PREFIX)/etc/smltojs/mlb-path-map); \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '         else \\\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '          (echo "NOTICE: You are installing MLKit in a non-standard location, which"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "means that you need to install mlb-path-map files for mlkit and"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "smltojs manually, specifying installation directories. If you are"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "installing MLKit somewhere in your home directory, you most likely"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "want to execute the following commands:"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "  mkdir -p $$(HOME)/.mlkit $$(HOME)/.smltojs"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "  echo \\"SML_LIB $$(PREFIX)/lib/mlkit\\" > $$(HOME)/.mlkit/mlb-path-map"; \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '           echo "  echo \\"SML_LIB $$(PREFIX)/lib/smltojs\\" > $$(HOME)/.smltojs/mlb-path-map"); \\\n' \
+               >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf '         fi\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	printf "\t"'@echo "Installation Done."\n' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
 
 .PHONY: test

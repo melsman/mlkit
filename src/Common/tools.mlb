@@ -2,6 +2,7 @@ local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
   basis Kitlib = bas ../Kitlib/kitlib.mlb end
+  basis Configuration = bas ../Tools/MlbMake/configuration.mlb end
   open BasLib
 in
   CRASH.sig
@@ -25,7 +26,7 @@ in
   FLAGS.sig
   BasisCompat.sml
   StringFinMap.sml
-  local open Kitlib
+  local open Kitlib Configuration
   in
     Flags.sml
     Man.sml

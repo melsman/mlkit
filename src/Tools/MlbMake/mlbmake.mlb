@@ -5,6 +5,7 @@ local
   basis FileSys = bas MLB_FILESYS.sml MlbFileSys.sml end
   basis Util = bas MlbUtil.sml end
   basis Md5 = bas ../../Common/md5.mlb end
+  basis Tools = bas ../../Common/tools.mlb end
 in
   local
     open Environment FileSys
