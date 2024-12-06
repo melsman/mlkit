@@ -1,0 +1,4 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+in CONFIGURATION.sig Configuration.sml
+end
