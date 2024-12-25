@@ -71,6 +71,7 @@ jobs:
           brew install autoconf make
           brew tap homebrew/cask
           brew install --cask phantomjs
+          echo "/opt/homebrew/opt/make/libexec/gnubin" >> $GITHUB_PATH
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
