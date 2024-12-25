@@ -16,9 +16,8 @@
 
 signature NATIVE_COMPILE =
   sig
-    structure CallConv : CALL_CONV
-    structure LineStmt : LINE_STMT
-    structure ClosExp : CLOS_EXP
+    structure LineStmt : LINE_STMT where type cc = CallConv.cc
+                                   where type lvar = Lvars.lvar
     structure SubstAndSimplify : SUBST_AND_SIMPLIFY
 
     type BackendEnv
@@ -35,7 +34,6 @@ signature NATIVE_COMPILE =
     type StoreTypeCO
     type Aty
 
-
     val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) ->
       BackendEnv * {main_lab:label,
 		    code:(StoreTypeCO,offset,Aty) LinePrg,
@@ -47,44 +45,26 @@ signature NATIVE_COMPILE =
   end
 
 
-functor NativeCompile (structure BackendInfo : BACKEND_INFO
-			 where type label = AddressLabels.label
-		       structure RegisterInfo : REGISTER_INFO
+functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 			 where type lvar = Lvars.lvar
 		       ) : NATIVE_COMPILE =
   struct
     structure RegionExp = MulExp.RegionExp
     structure PP = PrettyPrint
 
-    structure ClosConvEnv = ClosConvEnv(BackendInfo)
+    structure LineStmt = LineStmt(structure RI = RegisterInfo)
 
-    structure CallConv = CallConv(BackendInfo)
-
-    structure ClosExp = ClosExp(structure ClosConvEnv = ClosConvEnv
-				structure BI = BackendInfo
-				structure CallConv = CallConv)
-
-    structure LineStmt = LineStmt(structure CallConv = CallConv
-				  structure ClosExp = ClosExp
-				  structure RI = RegisterInfo
-				  structure BI = BackendInfo)
-
-    structure RegAlloc = RegAlloc(structure CallConv = CallConv
-				  structure LineStmt = LineStmt
+    structure RegAlloc = RegAlloc(structure LineStmt = LineStmt
 				  structure RI = RegisterInfo)
 
-    structure FetchAndFlush = FetchAndFlush(structure CallConv = CallConv
-					    structure LineStmt = LineStmt
+    structure FetchAndFlush = FetchAndFlush(structure LineStmt = LineStmt
 					    structure RegAlloc = RegAlloc
 					    structure RI = RegisterInfo)
 
-    structure CalcOffset = CalcOffset(structure CallConv = CallConv
-				      structure LineStmt = LineStmt
-				      structure FetchAndFlush = FetchAndFlush
-				      structure BI = BackendInfo)
+    structure CalcOffset = CalcOffset(structure LineStmt = LineStmt
+				      structure FetchAndFlush = FetchAndFlush)
 
-    structure SubstAndSimplify = SubstAndSimplify(structure CallConv = CallConv
-						  structure LineStmt = LineStmt
+    structure SubstAndSimplify = SubstAndSimplify(structure LineStmt = LineStmt
 						  structure CalcOffset = CalcOffset
 						  structure RI = RegisterInfo)
 

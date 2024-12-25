@@ -1,4 +1,4 @@
-functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
+structure BackendInfo : BACKEND_INFO =
   struct
     structure PP = PrettyPrint
     structure Labels = AddressLabels
@@ -134,5 +134,4 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val maxDiff = 10
     val minJumpTabSize = 5
 
-    val down_growing_stack = down_growing_stack
   end

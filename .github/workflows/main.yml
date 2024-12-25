@@ -72,7 +72,7 @@ jobs:
           brew tap homebrew/cask
           mkdir phantomjs
           cd phantomjs
-          wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
+          wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
           unzip phantomjs-2.1.1-macosx.zip
           cp -p phantomjs-2.1.1-macosx/bin/phantomjs /usr/local/bin/
           cd ..
@@ -89,10 +89,10 @@ jobs:
         working-directory: ${{ env.RUNHOME }}
         run: |
           echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
-          wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
+          wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
+          wget -q https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
           tar xzf mlkit-bin-dist-${{env.OS}}.tgz
           echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
           mkdir -p .mlkit

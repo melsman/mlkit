@@ -1,16 +1,10 @@
-functor CodeGenUtilX64(structure BackendInfo : BACKEND_INFO
-                         where type label = AddressLabels.label
-                       structure JumpTables : JUMP_TABLES
-                       structure CallConv: CALL_CONV
-                         where type lvar = Lvars.lvar
-                       structure LineStmt: LINE_STMT
+functor CodeGenUtilX64(structure LineStmt: LINE_STMT
                          where type con = Con.con
                          where type excon = Excon.excon
                          where type lvar = Lvars.lvar
                          where type label = AddressLabels.label
                          where type place = Effect.effect
                          where type StringTree = PrettyPrint.StringTree
-                       sharing type CallConv.cc = LineStmt.cc
                        structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                          where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
                          where type lvar = Lvars.lvar
@@ -20,8 +14,6 @@ functor CodeGenUtilX64(structure BackendInfo : BACKEND_INFO
 struct
   local
     structure X = CodeGenUtil(structure Insts = InstsX64
-                              structure BackendInfo = BackendInfo
-                              structure CallConv = CallConv
                               structure LineStmt = LineStmt
                               structure SubstAndSimplify = SubstAndSimplify)
   in open X
@@ -51,31 +43,6 @@ struct
           | r8 => 8 | r9 => 9 | r10 => 10 | r11 => 11
           | r12 => 12 | r13 => 13 | r14 => 14 | r15 => 15
           | r => die ("lv_to_reg.no: " ^ I.pr_reg r)
-
-    (* Generate a string label *)
-    fun gen_string_lab str =
-      let val string_lab = new_string_lab()
-
-          (* generate a .byte pseudo instuction for each character in
-           * the string and generate a .byte 0 instruction at the end. *)
-          val bytes =
-            foldr(fn (ch, acc) => I.dot_byte (Int.toString(ord ch)) :: acc)
-            [I.dot_byte "0"] (explode str)
-
-          val () = add_static_data (I.dot_data ::
-                                    I.dot_align 8 ::
-                                    I.lab string_lab ::
-                                    I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
-                                    bytes)
-      in string_lab
-      end
-
-    (* Generate a Data label *)
-    fun gen_data_lab lab = add_static_data [I.dot_data,
-                                            I.dot_align 8,
-                                            I.lab (DatLab lab),
-                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead
-                                                                           * for GC *)
 
     (* push_aty, i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
     (* size_ff is for rsp before rsp is moved. *)
@@ -109,6 +76,31 @@ struct
       case arg
         of SS.PHREG_ATY r => I.addq(R r, R t) :: C
          | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
+
+    (* Generate a string label *)
+    fun gen_string_lab str =
+      let val string_lab = new_string_lab()
+
+          (* generate a .byte pseudo instuction for each character in
+           * the string and generate a .byte 0 instruction at the end. *)
+          val bytes =
+            foldr(fn (ch, acc) => I.dot_byte (Int.toString(ord ch)) :: acc)
+            [I.dot_byte "0"] (explode str)
+
+          val () = add_static_data (I.dot_data ::
+                                    I.dot_align 8 ::
+                                    I.lab string_lab ::
+                                    I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
+                                    bytes)
+      in string_lab
+      end
+
+    (* Generate a Data label *)
+    fun gen_data_lab lab = add_static_data [I.dot_data,
+                                            I.dot_align 8,
+                                            I.lab (DatLab lab),
+                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead
+                                                                           * for GC *)
 
     (***********************)
     (* Calling C Functions *)

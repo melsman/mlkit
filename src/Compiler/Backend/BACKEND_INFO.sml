@@ -78,6 +78,4 @@ signature BACKEND_INFO =
     val minCodeInBinSearch : int
     val maxDiff            : int
     val minJumpTabSize     : int
-
-    val down_growing_stack : bool         (* true for x86/x64 code generation *)
   end

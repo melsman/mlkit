@@ -7,8 +7,10 @@
 (* (e.g., resolve_cc, resolve_ccall, handl_arg_phreg,                   *)
 (*        handl_return_phreg, resolve_act_cc)                           *)
 
-functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
+structure CallConv : CALL_CONV =
   struct
+
+    structure BI = BackendInfo
     type lvar = Lvars.lvar
     type offset = int
 
@@ -167,46 +169,11 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
               val ((astys,stys), (ps,regs)) = resolv (stys,(ps,regs))
               val ((arstys,rstys), (ps,_)) = resolv (rstys,(ps,regs))
               val ((afstys,fstys), (ps,_)) = resolv (fstys,(ps,fregs))
-              val (astys',arstys',afstys') =
-                  if BI.down_growing_stack then
-                    let val afstys' = map assign_stack (rev fstys)
-                        val arstys' = map assign_stack (rev rstys)
-                        val astys' = map assign_stack (rev stys)
-                    in (astys',arstys',afstys')
-                    end
-                  else
-                    let val astys' = map assign_stack stys
-                        val arstys' = map assign_stack rstys
-                        val afstys' = map assign_stack fstys
-                    in (astys', arstys',afstys')
-                    end
+              val afstys' = map assign_stack (rev fstys)
+              val arstys' = map assign_stack (rev rstys)
+              val astys' = map assign_stack (rev stys)
           in (astys@astys', arstys@arstys', afstys@afstys', ps)
           end
-
-(*
-      fun resolve_stys_args ([], [], (acc,ph_regs)) = ([], [], (acc,ph_regs))
-        | resolve_stys_args (args_stys, reg_args_stys, (acc,[])) =      (* no more phregs *)
-        if BI.down_growing_stack then
-          let val reg_args = map assign_stack (rev reg_args_stys)
-              val args = map assign_stack (rev args_stys)
-          in (args, reg_args, (acc, []))
-          end
-        else
-          let val args = map assign_stack args_stys
-              val reg_args = map assign_stack reg_args_stys
-          in (args, reg_args, (acc, []))
-          end
-        | resolve_stys_args (asty::astys, rastys, (acc,ph_reg::ph_regs)) =
-        let val (astys', rastys', (lv_phreg_list,ph_regs')) = resolve_stys_args (astys, rastys, (acc,ph_regs))
-            val (asty', lv_phreg') = assign_phreg (asty, ph_reg)
-        in (asty'::astys', rastys', (lv_phreg'::lv_phreg_list,ph_regs'))
-        end
-        | resolve_stys_args ([], rasty::rastys, (acc,ph_reg::ph_regs)) =
-        let val (_,rastys', (lv_phreg_list,ph_regs')) = resolve_stys_args ([], rastys, (acc,ph_regs))
-            val (rasty', lv_phreg') = assign_phreg (rasty, ph_reg)
-        in ([], rasty'::rastys', (lv_phreg'::lv_phreg_list,ph_regs'))
-        end
-*)
 
       fun resolve_sty_opt (SOME sty,(ps,[])) = (SOME(assign_stack sty),(ps,[]))
         | resolve_sty_opt (SOME sty,(ps,r::rs)) =

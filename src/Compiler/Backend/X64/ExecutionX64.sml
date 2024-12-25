@@ -1,26 +1,14 @@
 
-structure ExecutionX64: EXECUTION =
+structure ExecutionX64 : EXECUTION =
   struct
     structure TopdecGrammar = PostElabTopdecGrammar
     structure Labels = AddressLabels
     structure PP = PrettyPrint
+    structure CompileBasis = CompileBasis
 
-    structure BackendInfo =
-      BackendInfo(val down_growing_stack : bool = true)          (* true for x64 code generation *)
+    structure NativeCompile = NativeCompile(structure RegisterInfo = InstsX64.RI)
 
-    structure NativeCompile = NativeCompile(structure BackendInfo = BackendInfo
-                                            structure RegisterInfo = InstsX64.RI)
-
-    structure ClosExp = NativeCompile.ClosExp
-
-    structure CompileBasis = CompileBasis(structure ClosExp = ClosExp)
-
-    structure JumpTables = JumpTables(BackendInfo)
-
-    structure CodeGen = CodeGenX64(structure BackendInfo = BackendInfo
-                                   structure JumpTables = JumpTables
-                                   structure CallConv = NativeCompile.CallConv
-                                   structure LineStmt = NativeCompile.LineStmt
+    structure CodeGen = CodeGenX64(structure LineStmt = NativeCompile.LineStmt
                                    structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
     val message = CodeGen.message

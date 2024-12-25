@@ -49,10 +49,6 @@ signature INSTS_COMMON = sig
 end
 
 functor CodeGenUtil(structure Insts : INSTS_COMMON
-                    structure BackendInfo : BACKEND_INFO
-                        where type label = AddressLabels.label
-                    structure CallConv: CALL_CONV
-                        where type lvar = Lvars.lvar
                     structure LineStmt: LINE_STMT
                         where type con = Con.con
                         where type excon = Excon.excon
@@ -60,7 +56,6 @@ functor CodeGenUtil(structure Insts : INSTS_COMMON
                         where type label = AddressLabels.label
                         where type place = Effect.effect
                         where type StringTree = PrettyPrint.StringTree
-                      sharing type CallConv.cc = LineStmt.cc
                     structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                         where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
                         where type lvar = Lvars.lvar

@@ -1,14 +1,6 @@
-functor ClosExp(structure CallConv: CALL_CONV where type lvar = Lvars.lvar
-                structure ClosConvEnv: CLOS_CONV_ENV
-                  where type con = Con.con
-                  where type place = AtInf.place
-                  where type excon = Excon.excon
-                  where type lvar = Lvars.lvar
-                  where type label = AddressLabels.label
-                  where type phsize = PhysSizeInf.phsize
-                  where type StringTree = PrettyPrint.StringTree
-                structure BI : BACKEND_INFO) : CLOS_EXP =
+structure ClosExp : CLOS_EXP =
 struct
+  structure BI = BackendInfo
   structure PP = PrettyPrint
   structure Labels = AddressLabels
   structure RE = MulExp.RegionExp

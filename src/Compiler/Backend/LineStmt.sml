@@ -1,19 +1,9 @@
-functor LineStmt(structure CallConv: CALL_CONV
-                   where type lvar = Lvars.lvar
-                 structure ClosExp: CLOS_EXP
-                   where type con = Con.con
-                   where type excon = Excon.excon
-                   where type lvar = Lvars.lvar
-                   where type place = Effect.effect
-                   where type label = AddressLabels.label
-                   where type phsize = PhysSizeInf.phsize
-                   where type StringTree = PrettyPrint.StringTree
-                 sharing type CallConv.cc = ClosExp.cc
-                 structure BI : BACKEND_INFO
-                 structure RI : REGISTER_INFO
+functor LineStmt(structure RI : REGISTER_INFO
                    where type lvar = Lvars.lvar)
     : LINE_STMT =
 struct
+
+  structure BI = BackendInfo
   structure Labels = AddressLabels
   structure PP = PrettyPrint
   val _ = Flags.add_bool_entry

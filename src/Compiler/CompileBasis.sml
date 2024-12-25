@@ -1,10 +1,5 @@
 
-functor CompileBasis(structure ClosExp : CLOS_EXP
-		       where type con = CompBasis.con
-		       where type excon = CompBasis.excon
-		       where type lvar = CompBasis.lvar
-		       where type StringTree = PrettyPrint.StringTree) 
-    : COMPILE_BASIS =
+structure CompileBasis : COMPILE_BASIS =
   struct
     structure PP = PrettyPrint
 
@@ -52,20 +47,20 @@ functor CompileBasis(structure ClosExp : CLOS_EXP
 	debug("clos_env", ClosExp_enrich(ce,ce'))
     end
 
-    fun match ((cb,ce),(cb0,ce0)) = 
-      let val cb = CompBasis.match(cb,cb0) 
+    fun match ((cb,ce),(cb0,ce0)) =
+      let val cb = CompBasis.match(cb,cb0)
 	  val _ = ClosExp.match(ce,ce0)
       in (cb,ce)
       end
 
-    fun restrict ((cb,ce),vars) = 
+    fun restrict ((cb,ce),vars) =
       let
 	val (cb1, lvars, cons, excons) = CompBasis.restrict(cb,vars)
 	val ce1 = ClosExp.restrict(ce,{lvars=lvars,excons=excons,cons=cons})
       in (cb1, ce1)
       end
 
-    fun restrict0 ((cb,ce),vars) = 
+    fun restrict0 ((cb,ce),vars) =
       let (* Don't include identifiers that are declared by the initial basis *)
 	val (cb1, lvars, cons, excons) = CompBasis.restrict0(cb,vars)
 	val ce1 = ClosExp.restrict0(ce,{lvars=lvars,excons=excons,cons=cons})
@@ -75,7 +70,7 @@ functor CompileBasis(structure ClosExp : CLOS_EXP
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-	Pickle.pairGen(CompBasis.pu, 
+	Pickle.pairGen(CompBasis.pu,
 		       Pickle.comment "ClosExp.pu" ClosExp.pu)
 
   end
