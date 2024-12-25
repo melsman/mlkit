@@ -73,7 +73,7 @@ jobs:
           mkdir phantomjs
           cd phantomjs
           wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
-          unnzip phantomjs-2.1.1-macosx.zip
+          unzip phantomjs-2.1.1-macosx.zip
           cp -p phantomjs-2.1.1-macosx/bin/phantomjs /usr/local/bin/
           cd ..
 
