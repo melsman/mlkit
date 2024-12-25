@@ -70,8 +70,12 @@ jobs:
           /usr/local/bin/gcc-14 --version
           brew install autoconf make
           brew tap homebrew/cask
-          brew install --cask phantomjs
-          echo "/opt/homebrew/opt/make/libexec/gnubin" >> $GITHUB_PATH
+          mkdir phantomjs
+          cd phantomjs
+          wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
+          unnzip phantomjs-2.1.1-macosx.zip
+          cp -p phantomjs-2.1.1-macosx/bin/phantomjs /usr/local/bin/
+          cd ..
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
