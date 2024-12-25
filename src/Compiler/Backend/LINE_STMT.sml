@@ -97,11 +97,10 @@ signature LINE_STMT =
     | REAL            of string
     | F64             of string
     | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
-    | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, f64_vars: int, alloc: 'aty sma}
-    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
-    | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
-    | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}
+    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: word, maybeuntag: bool}
+    | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: word}
+    | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: word}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
@@ -167,12 +166,6 @@ signature LINE_STMT =
                   {main_lab:label,code:('sty2,'offset2,'aty2) LinePrg,imports:label list * label list,exports:label list * label list}
 
     val allocating : ('sty,'offset,'aty) LineStmt list -> bool
-(*
-    (*****************************************************************)
-    (* In CalcOffsets we must know if a region has runtime type REAL *)
-    (*****************************************************************)
-    val is_region_real : place -> bool
-*)
 
     (***************************************************)
     (* Def and Use sets for LineStmt RETURN lvars ONLY *)

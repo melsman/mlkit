@@ -1108,7 +1108,6 @@ struct
           (* Instead, we should unfold records in LineStmt. 18/02/1999, Niels *)
            | LS.ASSIGN {pat= _, bind=LS.RECORD _} => do_record(L,ls)
            | LS.ASSIGN {pat= _, bind=LS.SCLOS_RECORD _} => do_record(L,ls)
-           | LS.ASSIGN {pat= _, bind=LS.REGVEC_RECORD _} => do_record(L,ls)
            | LS.ASSIGN {pat= _, bind=LS.CLOS_RECORD _} => do_record(L,ls)
            | _ => (* general *)
             let val (def, use) = def_use_var_ls ls

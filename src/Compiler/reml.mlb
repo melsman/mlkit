@@ -24,6 +24,10 @@ in
 
   (* X86 Backend *)
   Backend/CODE_GEN.sml
+  local open CompilerObjects
+  in Backend/INSTS_BASE.sig
+     local open Pickle in Backend/InstsBase.sml end
+  end
   Backend/X64/INSTS_X64.sml
   ../Kitlib/kitlib.mlb
   local open Tools

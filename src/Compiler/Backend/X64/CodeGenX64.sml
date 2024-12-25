@@ -22,13 +22,13 @@ functor CodeGenX64(structure BackendInfo : BACKEND_INFO
     : CODE_GEN =
 struct
 
-  structure CodeGenUtil = CodeGenUtilX64(structure BackendInfo = BackendInfo
-                                         structure JumpTables = JumpTables
-                                         structure CallConv = CallConv
-                                         structure LineStmt = LineStmt
-                                         structure SubstAndSimplify = SubstAndSimplify)
-
-  open CodeGenUtil
+  local structure X = CodeGenUtilX64(structure BackendInfo = BackendInfo
+                                     structure JumpTables = JumpTables
+                                     structure CallConv = CallConv
+                                     structure LineStmt = LineStmt
+                                     structure SubstAndSimplify = SubstAndSimplify)
+  in open X
+  end
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
@@ -151,24 +151,6 @@ struct
                                    (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
                                                                      WORDS offset,size_ff, C)))
                             (num_elems,C') (LS.smash_free elems)))))
-                     end
-                    | LS.REGVEC_RECORD{elems,alloc} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                         val num_elems = List.length elems
-                     in
-                       if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-                         store_immed(BI.tag_regvec(false,num_elems), reg_for_result, WORDS 0,
-                         #2(foldr (fn (sma,(offset,C)) =>
-                                   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
-                                                                WORDS offset,size_ff, C)))
-                            (num_elems,C') elems)))
-                       else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
-                         #2(foldr (fn (sma,(offset,C)) =>
-                                   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
-                                                                WORDS offset,size_ff, C)))
-                            (num_elems-1,C') elems))
                      end
                     | LS.SCLOS_RECORD{elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
@@ -328,7 +310,7 @@ struct
                               )
                             end
                           | LS.BOXED i =>
-                            let val tag = i2s(Word32.toInt(BI.tag_con0(false,i)))
+                            let val tag = i2s(Word.toInt(BI.tag_con0(false,i)))
                                 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                                 fun reset_regions C =
                                     List.foldr (fn (alloc,C) =>
@@ -360,7 +342,7 @@ struct
                                end
                          | LS.BOXED i =>
                                let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                                   val tag = i2s(Word32.toInt(BI.tag_con1(false,i)))
+                                   val tag = i2s(Word.toInt(BI.tag_con1(false,i)))
                                in
                                  if SS.eq_aty(pat,arg) then (* We must preserve arg. *)
                                    alloc_ap_kill_tmp01(alloc,tmp_reg1,2,size_ff,
@@ -398,16 +380,6 @@ struct
                                I.movabsq(I "0xFFFFFFFFFFFF", R reg_for_result) ::
                                F(I.andq(R r, R reg_for_result) :: C')
                            end
-(*
-                         | LS.UNBOXED_HIGH _ =>
-                           let
-                             val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                           in
-                             move_aty_into_reg(con_aty,reg_for_result,size_ff,
-                             I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
-                             I.andq(R tmp_reg0, R reg_for_result) :: C')
-                           end
-*)
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
                     | LS.DEREF {aty} =>
@@ -420,7 +392,7 @@ struct
                          fun maybe_tag_value C =
                            (* tag_pairs_p is false if pairs, tripples, tables and refs are untagged *)
                            if BI.tag_values() andalso tag_pairs_p() then
-                             I.movq(I (i2s(Word32.toInt(BI.tag_ref(false)))),
+                             I.movq(I (i2s(Word.toInt(BI.tag_ref(false)))),
                                     D("0", reg_for_result)) :: C
                            else C
                          fun allocate (reg_for_result,C) =

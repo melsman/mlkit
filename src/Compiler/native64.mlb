@@ -23,21 +23,21 @@ in
 
   (* X86 Backend *)
   Backend/CODE_GEN.sml
+  local open CompilerObjects
+  in Backend/INSTS_BASE.sig
+     local open Pickle in Backend/InstsBase.sml end
+     local open Tools in Backend/CodeGenUtil.sml end
+  end
   Backend/X64/INSTS_X64.sml
   ../Kitlib/kitlib.mlb
-  local open Tools
-  in
-     local open CompilerObjects
-     in local open Pickle in Backend/X64/InstsX64.sml end
-        Backend/X64/CodeGenUtilX64.sml
-        Backend/X64/CodeGenX64.sml
-        local open Pickle Basics Manager
-        in Backend/X64/ExecutionX64.sml
-        end
+  open Tools
+  local open CompilerObjects
+  in local open Pickle in Backend/X64/InstsX64.sml end
+     Backend/X64/CodeGenUtilX64.sml
+     Backend/X64/CodeGenX64.sml
+     local open Pickle Basics Manager
+     in Backend/X64/ExecutionX64.sml
      end
-     local open Compiler
-     in ../Common/KitX64.sml
-     end
-
   end
+  open Compiler
 end

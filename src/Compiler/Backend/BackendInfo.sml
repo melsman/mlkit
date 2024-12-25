@@ -15,22 +15,22 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     (* Tagging *)
     (***********)
 
-    fun pr_tag_w tag = "0X" ^ (Word32.fmt StringCvt.HEX tag)
+    fun pr_tag_w tag = "0X" ^ (Word.fmt StringCvt.HEX tag)
     (* For now, some tags are in integers but it should be eliminated; max size is
        then 2047 only 09/01/1999, Niels *)
     fun pr_tag_i tag = "0X" ^ (Int.fmt StringCvt.HEX tag)
 
-    fun pw (s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
-    fun or_bits (w1,w2) = Word32.orb(w1,w2)
-    fun shift_left (num_bits,w) = Word32.<<(w,Word.fromInt num_bits)
+    fun pw (s,w) = print (s ^ " is " ^ (Word.fmt StringCvt.BIN w) ^ "\n")
+    fun or_bits (w1,w2) = Word.orb(w1,w2)
+    fun shift_left (num_bits,w) = Word.<<(w,Word.fromInt num_bits)
 
     (* off is the offset at which values are traversed *)
     fun gen_record_tag (s:int,off:int,i:bool,t:int) =
       let
-	val size = Word32.fromInt s
-	val offset = Word32.fromInt off
-	val immovable = if i then Word32.fromInt 1 else Word32.fromInt 0
-	val tag = Word32.fromInt t
+	val size = Word.fromInt s
+	val offset = Word.fromInt off
+	val immovable = if i then Word.fromInt 1 else Word.fromInt 0
+	val tag = Word.fromInt t
 	val w_size = shift_left(19,size)
 	val w_offset = or_bits(w_size,shift_left(6,offset))
 	val w_immovable = or_bits(w_offset,shift_left(5,immovable))
@@ -41,9 +41,9 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
 
     fun gen_string_tag (s:int,i:bool,t:int) =
       let
-	val size = Word32.fromInt s
-	val immovable = if i then Word32.fromInt 1 else Word32.fromInt 0
-	val tag = Word32.fromInt t
+	val size = Word.fromInt s
+	val immovable = if i then Word.fromInt 1 else Word.fromInt 0
+	val tag = Word.fromInt t
 	val w_size = shift_left(6,size)
 	val w_immovable = or_bits(w_size,shift_left(5,immovable))
 	val w_tag = or_bits(w_immovable,tag)
@@ -70,7 +70,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     fun tag_exname (i:bool)            = gen_record_tag(2,2,i,6)
     fun tag_excon0 (i:bool)            = gen_record_tag(1,0,i,6)
     fun tag_excon1 (i:bool)            = gen_record_tag(2,0,i,6)
-    val tag_ignore                     = Word32.fromInt 0
+    val tag_ignore                     = Word.fromInt 0
 
     val inf_bit           = 1   (* We add 1 to an address to set the infinite bit. *)
     val atbot_bit         = 2   (* We add 2 to an address to set the atbot bit. *)

@@ -1,6 +1,8 @@
 signature INSTS_X64 =
   sig
 
+    include INSTS_BASE
+
     type lvar
 
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
@@ -25,21 +27,11 @@ signature INSTS_X64 =
 
     val tmp_freg0 : reg (*=xmm0*)
     val tmp_freg1 : reg (*=xmm1*)
+    val sp_reg : reg
 
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
 
     type freg
-
-    type label
-    datatype lab =
-        DatLab of label      (* For data to propagate across program units *)
-      | LocalLab of label    (* Local label inside a block *)
-      | NameLab of string    (* For ml strings, jumps to runtime system,
-			        jumps to millicode, code label, finish
-			        label, etc. *)
-      | MLFunLab of label    (* Labels on ML Functions *)
-
-    val eq_lab : lab * lab -> bool
 
     datatype ea = R of reg   (* register *)
                 | L of lab   (* label *)
@@ -162,27 +154,22 @@ signature INSTS_X64 =
     | lab of lab
     | comment of string
 
+    type code = inst list
+
     datatype top_decl =
-        FUN of label * inst list
-      | FN of label * inst list
+        FUN of label * code
+      | FN of label * code
 
     type AsmPrg = {top_decls: top_decl list,
-		   init_code: inst list,
-		   static_data: inst list}
+		   init_code: code,
+		   static_data: code}
 
-    (* General purpose registers *)
 
     val emit : AsmPrg * string -> unit   (* may raise IO *)
-
-    val pr_lab : lab -> string
 
     structure RI : REGISTER_INFO
       where type reg = reg
       where type lvar = lvar
-
-    val sysname : unit -> string
-
-    val darwin_version : unit -> string option
 
     val rem_dead_code : inst list -> inst list
 
@@ -190,5 +177,18 @@ signature INSTS_X64 =
 
     type StringTree
     val layout : AsmPrg -> StringTree
+
+    (* Abbreviations *)
+    val copy             : reg * reg * code -> code
+    val load_indexed     : ea * reg * Offset * code -> code
+    val store_indexed    : reg * Offset * ea * code -> code
+    val base_plus_offset : reg * Offset * reg * code -> code
+    val store_immed      : word * reg * Offset * code -> code
+    val move_immed       : IntInf.int * ea * code -> code
+    val move_num         : string * ea * code -> code
+    val move_num_boxed   : (unit -> lab) -> (code -> unit) -> (unit -> string) -> string * ea * code -> code
+    val move_ea_to_reg   : ea * reg * code -> code
+    val move_reg_to_ea   : reg * ea * code -> code
+    val comment_str      : string * code -> code
 
   end

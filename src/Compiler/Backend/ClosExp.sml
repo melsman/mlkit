@@ -75,11 +75,10 @@ struct
     | PASS_PTR_TO_RHO of {sma:sma}
     | UB_RECORD       of ClosExp list
     | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
-    | REGVEC_RECORD   of {elems: sma list, alloc: sma}
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, f64_vars: int, alloc: sma}
-    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
-    | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
-    | SCRATCHMEM      of {bytes:int, alloc: sma, tag: Word32.word}
+    | RECORD          of {elems: ClosExp list, alloc: sma, tag: word, maybeuntag: bool}
+    | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: word}
+    | SCRATCHMEM      of {bytes:int, alloc: sma, tag: word}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
@@ -211,10 +210,6 @@ struct
               childsep=RIGHT ",",
               children=LEAF(Labels.pr_label label)::
                        map layout_ce (rhos@excons@lvs)}
-      | layout_ce(REGVEC_RECORD{elems,alloc}) = HNODE{start="[",
-                                                      finish="]regvec " ^ (flatten1(pr_sma alloc)),
-                                                      childsep=RIGHT ",",
-                                                      children=map (fn sma => pr_sma sma) elems}
       | layout_ce(SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
         HNODE{start="[",
               finish="]sclos(" ^ Int.toString f64_vars ^ ") " ^ (flatten1(pr_sma alloc)),
@@ -2000,8 +1995,8 @@ struct
                     | CE.UB_UNARY i => (con,UNBOXED i)
                     | CE.UBH_NULLARY i => (con,UNBOXED_HIGH i)
                     | CE.UBH_UNARY i => (con,UNBOXED_HIGH i)
-                    | CE.B_NULLARY i => (con,BOXED(Word32.toInt (BI.tag_con0(false,i))))
-                    | CE.B_UNARY i => (con,BOXED(Word32.toInt (BI.tag_con1(false,i)))))
+                    | CE.B_NULLARY i => (con,BOXED(Word.toInt (BI.tag_con0(false,i))))
+                    | CE.B_UNARY i => (con,BOXED(Word.toInt (BI.tag_con1(false,i)))))
 
                  val (selections,opt) =
                    compile_sels_and_default selections opt tag

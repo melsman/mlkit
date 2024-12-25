@@ -74,7 +74,7 @@ structure ExecutionX64: EXECUTION =
             val macgcc_old = "gcc -Wl,-stack_size,0x10000000"
             val linuxgcc = "gcc"
             val gcc = if onmac_p() then
-                        case InstsX64.darwin_version() of
+                        case InstsX64.release() of
                             NONE => macgcc_old
                           | SOME v => case Real.fromString v of
                                           SOME r => if r > 23.1 then macgcc_new

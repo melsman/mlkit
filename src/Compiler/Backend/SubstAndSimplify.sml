@@ -202,7 +202,6 @@ struct
                            elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
                            f64_vars=f64_vars,
                            alloc= sma_to_sma' alloc}
-          | SS_se(LS.REGVEC_RECORD{elems,alloc}) = LS.REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma' alloc}
           | SS_se(LS.SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
             LS.SCLOS_RECORD{elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
                             f64_vars=f64_vars,
