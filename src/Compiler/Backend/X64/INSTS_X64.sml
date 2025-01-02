@@ -1,9 +1,7 @@
 signature INSTS_X64 =
   sig
 
-    include INSTS_BASE
-
-    type lvar
+    include INSTS_COMMON
 
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
                  | r8 | r9 | r10 | r11 | r12 | r13 | r14 | r15
@@ -19,28 +17,11 @@ signature INSTS_X64 =
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
 
-    val pr_reg : reg -> string
-    val is_xmm : reg -> bool
-
-    val tmp_reg0 : reg (*=r10*)
-    val tmp_reg1 : reg (*=r11*)
-
-    val tmp_freg0 : reg (*=xmm0*)
-    val tmp_freg1 : reg (*=xmm1*)
-    val sp_reg : reg
-
+    val pr_reg          : reg -> string
+    val is_xmm          : reg -> bool
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
 
     type freg
-
-    datatype ea = R of reg   (* register *)
-                | L of lab   (* label *)
-                | LA of lab  (* label address *)
-                | I of string   (* immediate *)
-                | D of string * reg   (* displaced *)
-                | DD of string * reg * reg * string (* double displaced *)
-    val pr_ea : ea -> string
-    val eq_ea : ea * ea -> bool
 
     datatype ty = OBJ | FUNC        (* @object or @function *)
 
@@ -154,41 +135,6 @@ signature INSTS_X64 =
     | lab of lab
     | comment of string
 
-    type code = inst list
-
-    datatype top_decl =
-        FUN of label * code
-      | FN of label * code
-
-    type AsmPrg = {top_decls: top_decl list,
-		   init_code: code,
-		   static_data: code}
-
-
-    val emit : AsmPrg * string -> unit   (* may raise IO *)
-
-    structure RI : REGISTER_INFO
-      where type reg = reg
-      where type lvar = lvar
-
-    val rem_dead_code : inst list -> inst list
-
-    val optimise : AsmPrg -> AsmPrg
-
-    type StringTree
-    val layout : AsmPrg -> StringTree
-
-    (* Abbreviations *)
-    val copy             : reg * reg * code -> code
-    val load_indexed     : ea * reg * Offset * code -> code
-    val store_indexed    : reg * Offset * ea * code -> code
-    val base_plus_offset : reg * Offset * reg * code -> code
-    val store_immed      : word * reg * Offset * code -> code
-    val move_immed       : IntInf.int * ea * code -> code
-    val move_num         : string * ea * code -> code
-    val move_num_boxed   : (unit -> lab) -> (code -> unit) -> (unit -> string) -> string * ea * code -> code
-    val move_ea_to_reg   : ea * reg * code -> code
-    val move_reg_to_ea   : reg * ea * code -> code
-    val comment_str      : string * code -> code
+    sharing type inst = G.inst
 
   end

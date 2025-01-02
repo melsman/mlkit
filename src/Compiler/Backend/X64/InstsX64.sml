@@ -944,82 +944,101 @@ structure InstsX64 : INSTS_X64 =
 
     val pr_ea = pr_ea (LabSet.empty())
 
-    (* Abbreviations *)
-    fun copy (r1, r2, C) = if r1 = r2 then C
-                           else case (is_xmm r1, is_xmm r2) of
-                                    (true, true) => movsd (R r1, R r2) :: C
-                                  | (false, false) => movq(R r1, R r2) :: C
-                                  | _ => die "copy: incompatible registers"
+    structure G : INSTS_GENERIC = struct
+      type reg = reg and ea = ea and lab = lab
+      type inst = inst and code = code
+      type Offset = Offset
+      fun copy (r1, r2, C) = if r1 = r2 then C
+                             else case (is_xmm r1, is_xmm r2) of
+                                      (true, true) => movsd (R r1, R r2) :: C
+                                    | (false, false) => movq(R r1, R r2) :: C
+                                    | _ => die "copy: incompatible registers"
 
-    fun is_xmm_ea (R r) = is_xmm r
-      | is_xmm_ea _ = false
+      fun is_xmm_ea (R r) = is_xmm r
+        | is_xmm_ea _ = false
 
-    (* Can be used to load from the stack or from a record *)
-    (* d = b[n]                                            *)
-    fun load_indexed (d:ea,b:reg,n:Offset,C) =
-        if is_xmm b then die ("load_indexed: wrong kind of register")
-        else if is_xmm_ea d then movsd(D(offset_bytes n,b), d) :: C
-        else movq(D(offset_bytes n,b), d) :: C
+      (* Can be used to load from the stack or from a record *)
+      (* d = b[n]                                            *)
+      fun load_indexed (d:ea,b:reg,n:Offset,C) =
+          if is_xmm b then die ("load_indexed: wrong kind of register")
+          else if is_xmm_ea d then movsd(D(offset_bytes n,b), d) :: C
+          else movq(D(offset_bytes n,b), d) :: C
 
-    (* Can be used to update the stack or store in a record *)
-    (* b[n] = s                                             *)
-    fun store_indexed (b:reg,n:Offset,s:ea,C) =
-        if is_xmm_ea s then movsd(s,D(offset_bytes n,b)) :: C
-        else movq(s,D(offset_bytes n,b)) :: C
+      (* Can be used to update the stack or store in a record *)
+      (* b[n] = s                                             *)
+      fun store_indexed (b:reg,n:Offset,s:ea,C) =
+          if is_xmm_ea s then movsd(s,D(offset_bytes n,b)) :: C
+          else movq(s,D(offset_bytes n,b)) :: C
 
-    (* Calculate an address given a base and an offset *)
-    (* dst = base + x                                  *)
-    fun base_plus_offset (b:reg,n:Offset,d:reg,C) =
-        if d = b andalso isZeroOffset n then C
-        else leaq(D(offset_bytes n, b), R d) :: C
+      (* Calculate an address given a base and an offset *)
+      (* dst = base + x                                  *)
+      fun base_plus_offset (b:reg,n:Offset,d:reg,C) =
+          if d = b andalso isZeroOffset n then C
+          else leaq(D(offset_bytes n, b), R d) :: C
 
-    (* Store a constant in an address specified by a register and an offset *)
-    fun store_immed (w:word,r:reg,offset:Offset,C) =
-      movq(I (wordToStr (Word.toLargeInt w)), D(offset_bytes offset,r)) :: C
+      (* Store a constant in an address specified by a register and an offset *)
+      fun store_immed (w:word,r:reg,offset:Offset,C) =
+        movq(I (wordToStr (Word.toLargeInt w)), D(offset_bytes offset,r)) :: C
 
-    (* Move a constant into an EA *)
-    fun move_immed (0,R d,C) = xorq(R d, R d) :: C
-      | move_immed (x,d:ea,C) = movq(I (intToStr x), d) :: C
+      (* Move a constant into an EA *)
+      fun move_immed (0,R d,C) = xorq(R d, R d) :: C
+        | move_immed (x,d:ea,C) = movq(I (intToStr x), d) :: C
 
-    (* Move a constant, formatted as a string, into an EA *)
-    fun move_num (x,ea:ea,C) =
-      if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false)
-      then xorq(ea, ea) :: C
-      else movq(I x, ea) :: C
+      (* Move a constant, formatted as a string, into an EA *)
+      fun move_num (x,ea:ea,C) =
+        if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false)
+        then xorq(ea, ea) :: C
+        else movq(I x, ea) :: C
 
-    fun move_num_boxed new_num_lab add_static_data tag (x,ea:ea,C) =
-        let val num_lab = new_num_lab()
-            val () = add_static_data [dot_data,
-                                      dot_align 8,
-                                      lab num_lab,
-                                      dot_quad(tag()),
-                                      dot_quad x]
-        in movq(LA num_lab, ea) :: C
-        end
+      fun move_num_boxed new_num_lab add_static_data tag (x,ea:ea,C) =
+          let val num_lab = new_num_lab()
+              val () = add_static_data [dot_data,
+                                        dot_align 8,
+                                        lab num_lab,
+                                        dot_quad(tag()),
+                                        dot_quad x]
+          in movq(LA num_lab, ea) :: C
+          end
 
-    fun move_ea_to_reg (ea,r:reg,C) =
-        let val mv = if is_xmm r then movsd else movq
-        in case ea of
-               LA l => mv(LA l, R r) :: C
-             | L l => if is_xmm r then die "move_ea_to_reg"
-                      else movq(LA l, R r) :: movq(D("0",r),R r) :: C
-             | D _ => mv(ea,R r) :: C
-             | R r' => if r = r' then C else mv(ea,R r) :: C
-             | DD _ => mv(ea,R r) :: C
-             | I _ => mv(ea,R r) :: C
-        end
+      fun move_ea_to_reg (ea,r:reg,C) =
+          let val mv = if is_xmm r then movsd else movq
+          in case ea of
+                 LA l => mv(LA l, R r) :: C
+               | L l => if is_xmm r then die "move_ea_to_reg"
+                        else movq(LA l, R r) :: movq(D("0",r),R r) :: C
+               | D _ => mv(ea,R r) :: C
+               | R r' => if r = r' then C else mv(ea,R r) :: C
+               | DD _ => mv(ea,R r) :: C
+               | I _ => mv(ea,R r) :: C
+          end
 
-    fun move_reg_to_ea (r:reg,ea,C) =
-        let val mv = if is_xmm r then movsd else movq
-        in case ea of
-               R r' => if r = r' then C else mv(R r,ea) :: C
-             | L _ => mv(R r,ea) :: C
-             | D _ => mv(R r,ea) :: C
-             | DD _ => mv(R r,ea) :: C
-             | _ => die "move_reg_to_ea.not supported ea"
-        end
+      fun move_reg_to_ea (r:reg,ea) C =
+          let val mv = if is_xmm r then movsd else movq
+          in case ea of
+                 R r' => if r = r' then C else mv(R r,ea) :: C
+               | L _ => mv(R r,ea) :: C
+               | D _ => mv(R r,ea) :: C
+               | DD _ => mv(R r,ea) :: C
+               | _ => die "move_reg_to_ea.not supported ea"
+          end
 
-    fun comment_str (s,C) = comment s :: C
+      fun comment_str (s,C) = comment s :: C
 
+      fun push_ea ea C =
+          case ea of
+              R r =>
+              if is_xmm r then
+                subq(I "8", R rsp) :: movsd(R r, D("",rsp)) :: C
+              else push(R r) :: C
+            | I _ => push ea :: C
+            | _ => die "push_ea: may be applied only to I or R"
+
+      fun pop_ea ea C = pop ea :: C
+
+      fun add (r1,r2) C = addq(R r1, R r2) :: C
+
+      fun add_num (n,r) C = addq(I n,R r) :: C
+
+    end
 
   end

@@ -1,37 +1,10 @@
 
-signature INSTS_COMMON = sig
-
-  include INSTS_BASE
-
-  type lvar = Lvars.lvar
-  eqtype reg
-  val tmp_reg0         : reg
-  val tmp_reg1         : reg
-  val tmp_freg0        : reg
-  val tmp_freg1        : reg
-  val sp_reg           : reg
-
-  datatype ea = R of reg                          (* register *)
-              | L of lab                          (* label *)
-              | LA of lab                         (* label address *)
-              | I of string                       (* immediate *)
-              | D of string * reg                 (* displaced *)
-              | DD of string * reg * reg * string (* double displaced *)
-  val pr_ea : ea -> string
-  val eq_ea : ea * ea -> bool
+signature INSTS_GENERIC = sig
 
   type inst
   type code = inst list
-  datatype top_decl = FUN of label * code
-                    | FN of label * code
-
-  type AsmPrg = {top_decls: top_decl list,
-                 init_code: code,
-                 static_data: code}
-
-  structure RI : REGISTER_INFO
-      where type reg = reg
-      where type lvar = lvar
+  eqtype reg
+  type ea and lab and Offset
 
   val copy             : reg * reg * code -> code
   val load_indexed     : ea * reg * Offset * code -> code
@@ -42,10 +15,57 @@ signature INSTS_COMMON = sig
   val move_num         : string * ea * code -> code
   val move_num_boxed   : (unit -> lab) -> (code -> unit) -> (unit -> string) -> string * ea * code -> code
   val move_ea_to_reg   : ea * reg * code -> code
-  val move_reg_to_ea   : reg * ea * code -> code
+  val move_reg_to_ea   : reg * ea -> code -> code
   val comment_str      : string * code -> code
+  val push_ea          : ea -> code -> code
+  val pop_ea           : ea -> code -> code
 
+  val add              : reg * reg -> code -> code
+  val add_num          : string * reg -> code -> code
+end
+
+signature INSTS_COMMON = sig
+
+  include INSTS_BASE
+
+  structure RI : REGISTER_INFO
+
+  datatype ea = R of RI.reg                             (* register *)
+              | L of lab                                (* label *)
+              | LA of lab                               (* label address *)
+              | I of string                             (* immediate *)
+              | D of string * RI.reg                    (* displaced *)
+              | DD of string * RI.reg * RI.reg * string (* double displaced *)
+
+  structure G : INSTS_GENERIC where type reg = RI.reg
+                              where type Offset = Offset
+                              where type ea = ea
+                              where type lab = lab
+
+  val tmp_reg0         : RI.reg
+  val tmp_reg1         : RI.reg
+  val tmp_freg0        : RI.reg
+  val tmp_freg1        : RI.reg
+  val sp_reg           : RI.reg
+  val pr_ea            : ea -> string
+  val eq_ea            : ea * ea -> bool
+
+  type code = G.inst list
   val rem_dead_code    : code -> code
+
+  datatype top_decl = FUN of label * code
+                    | FN of label * code
+
+  type AsmPrg = {top_decls: top_decl list,
+                 init_code: code,
+                 static_data: code}
+
+  val emit             : AsmPrg * string -> unit   (* may raise IO *)
+  val optimise         : AsmPrg -> AsmPrg
+
+  type StringTree
+  val layout           : AsmPrg -> StringTree
+
 end
 
 functor CodeGenUtil(structure Insts : INSTS_COMMON
@@ -60,12 +80,13 @@ functor CodeGenUtil(structure Insts : INSTS_COMMON
                         where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
                         where type lvar = Lvars.lvar
                         where type place = Effect.effect
-                        where type reg = Insts.reg
+                        where type reg = Insts.RI.reg
                         where type label = AddressLabels.label
                    ) =
 struct
 
   structure I = Insts
+  structure G = I.G
   structure PP = PrettyPrint
   structure Labels = AddressLabels
   structure RI = I.RI
@@ -78,15 +99,19 @@ struct
   type AtySS = SubstAndSimplify.Aty
   type AsmPrg = I.AsmPrg
 
-  type reg = I.reg
+  type reg = I.RI.reg
   datatype ea = datatype I.ea
   datatype lab = datatype I.lab
   datatype Offset = datatype I.Offset
   type offset = int
+  type code = G.code
 
   (* ------------------------
    * Some utilities
    * ------------------------ *)
+
+  infixr $
+  fun f $ a = f a
 
   fun member r nil = false
     | member r (x::xs) = r = x orelse member r xs
@@ -133,9 +158,9 @@ struct
    * Some code generation utilities
    * ---------------------------------- *)
 
-  fun comment (str,C) = if !comments_in_asmcode then I.comment_str (str, C)
+  fun comment (str,C) = if !comments_in_asmcode then G.comment_str (str, C)
                         else C
-  fun comment_fn (f, C) = if !comments_in_asmcode then I.comment_str (f(), C)
+  fun comment_fn (f, C) = if !comments_in_asmcode then G.comment_str (f(), C)
                           else C
 
   (* ----------------------------------
@@ -168,14 +193,14 @@ struct
   end
 
   (* Static Data inserted at the beginning of the code. *)
-  local val static_data : I.inst list ref = ref []
+  local val static_data : G.inst list ref = ref []
   in fun add_static_data insts = (static_data := insts @ !static_data)
      fun reset_static_data () = static_data := []
      fun get_static_data C = !static_data @ C
   end
 
   (* Additional code blocks added at the end of functions (for avoiding jumping over blocks) *)
-  local val code_blocks : I.inst list ref = ref []
+  local val code_blocks : G.inst list ref = ref []
   in fun add_code_block insts = (code_blocks := insts @ !code_blocks)
      fun reset_code_blocks () = code_blocks := []
      fun get_code_blocks () = !code_blocks
@@ -186,15 +211,15 @@ struct
   val tmp_freg0 = I.tmp_freg0
   val tmp_freg1 = I.tmp_freg1
 
-  val copy = I.copy
-  val store_indexed = I.store_indexed
-  val load_indexed = I.load_indexed
-  val base_plus_offset = I.base_plus_offset
-  val store_immed = I.store_immed
-  val move_immed = I.move_immed
-  val move_num = I.move_num
-  val move_ea_to_reg = I.move_ea_to_reg
-  val move_reg_to_ea = I.move_reg_to_ea
+  val copy = G.copy
+  val store_indexed = G.store_indexed
+  val load_indexed = G.load_indexed
+  val base_plus_offset = G.base_plus_offset
+  val store_immed = G.store_immed
+  val move_immed = G.move_immed
+  val move_num = G.move_num
+  val move_ea_to_reg = G.move_ea_to_reg
+  val move_reg_to_ea = G.move_reg_to_ea
 
   fun mkIntAty i = SS.INTEGER_ATY {value=IntInf.fromInt i,
                                    precision=if BI.tag_values() then 63 else 64}
@@ -231,7 +256,7 @@ struct
       if not(BI.tag_values()) then
         die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
       else
-        I.move_num_boxed new_num_lab add_static_data
+        G.move_num_boxed new_num_lab add_static_data
                          (fn () => BI.pr_tag_w(BI.tag_word_boxed true))
                          (x,ea,C)
 
@@ -289,18 +314,18 @@ struct
   (* dst_aty = &lab *)
   fun load_label_addr (lab,dst_aty,t:reg,size_ff,C) =
       case dst_aty of
-          SS.PHREG_ATY d => I.move_ea_to_reg(LA lab, d, C)
+          SS.PHREG_ATY d => move_ea_to_reg(LA lab, d, C)
         | SS.STACK_ATY offset =>
-          I.move_ea_to_reg(LA lab, t,
+          move_ea_to_reg(LA lab, t,
            store_indexed(I.sp_reg, WORDS(size_ff-offset-1), R t, C))
         | _ => die "load_label_addr.wrong ATY"
 
   (* dst_aty = lab[0] *)
   fun load_from_label (lab,dst_aty,t:reg,size_ff,C) =
       case dst_aty of
-          SS.PHREG_ATY d => I.move_ea_to_reg(L lab, d, C)
+          SS.PHREG_ATY d => move_ea_to_reg(L lab, d, C)
         | SS.STACK_ATY offset =>
-          I.move_ea_to_reg(L lab, t,
+          move_ea_to_reg(L lab, t,
            store_indexed(I.sp_reg, WORDS(size_ff-offset-1), R t, C))
         | SS.UNIT_ATY => C
         | _ => die "load_from_label.wrong ATY"
@@ -310,7 +335,7 @@ struct
       case src_aty of
           SS.PHREG_ATY s =>
           move_ea_to_reg (LA lab, tmp1,
-           move_reg_to_ea (s, D("0",tmp1), C))
+           move_reg_to_ea (s, D("0",tmp1)) C)
         | SS.INTEGER_ATY i =>
           move_ea_to_reg(LA lab, tmp1,
            move_num_generic (#precision i, fmtInt i, D("0",tmp1), C))
@@ -321,7 +346,7 @@ struct
           move_ea_to_reg(LA lab,tmp1,
            move_unit(D("0",tmp1), C))
         | _ => move_aty_into_reg(src_aty,tmp1,size_ff,
-                move_reg_to_ea(tmp1, L lab,C))
+                move_reg_to_ea(tmp1, L lab) C)
 
   fun store_aty_indexed (b:reg,n:Offset,aty,t:reg,size_ff,C) =
       let fun ea () = D(I.offset_bytes n,b)
@@ -347,7 +372,7 @@ struct
                 | _ => die "store_aty_indexed.direct_int - weird precision"
       in
         case aty of
-            SS.PHREG_ATY s => move_reg_to_ea(s,ea(),C)
+            SS.PHREG_ATY s => move_reg_to_ea(s,ea()) C
           | SS.INTEGER_ATY i => if direct_int i then
                                   move_num_generic (#precision i, fmtInt i, ea(), C)
                                 else default()
@@ -386,7 +411,7 @@ struct
             store_indexed(t2,offset,R t1,C)))
 
   (* Returns a register with arg and a continuation function. *)
-  fun resolve_arg_aty (arg:SS.Aty,t:reg,size_ff:int) : reg * (I.inst list -> I.inst list) =
+  fun resolve_arg_aty (arg:SS.Aty,t:reg,size_ff:int) : reg * (code -> code) =
       case arg of
           SS.PHREG_ATY r => (r, fn C => C)
         | _ => (t, fn C => move_aty_into_reg(arg,t,size_ff,C))
@@ -395,7 +420,7 @@ struct
   fun rep8bit (i: IntInf.int) = ~0x80 <= i andalso i <= 0x7F
   fun rep16bit (i: IntInf.int) = ~0x8000 <= i andalso i <= 0x7FFF
 
-  fun protect_arg_aty (arg:SS.Aty,t:reg,size_ff:int,{avoid:SS.Aty}) : ea * (I.inst list -> I.inst list) =
+  fun protect_arg_aty (arg:SS.Aty,t:reg,size_ff:int,{avoid:SS.Aty}) : ea * (code -> code) =
       let fun default () = (R t, fn C => move_aty_into_reg(arg,t,size_ff,C))
       in case arg of
              SS.PHREG_ATY r =>
@@ -415,7 +440,7 @@ struct
            | _ => default()
       end
 
-  fun resolve_arg_aty_ea (arg:SS.Aty,t:reg,size_ff:int) : ea * (I.inst list -> I.inst list) =
+  fun resolve_arg_aty_ea (arg:SS.Aty,t:reg,size_ff:int) : ea * (code -> code) =
       let fun default () = (R t, fn C => move_aty_into_reg(arg,t,size_ff,C))
       in case arg of
              SS.PHREG_ATY r => (R r, Id)
@@ -444,8 +469,8 @@ struct
   fun store_real (base_reg,t:reg,freg,C) =
       if BI.tag_values() then
         store_immed(BI.tag_real false, base_reg, WORDS 0,
-         move_reg_to_ea (freg,D("8",base_reg),C))
-      else move_reg_to_ea (freg,D("0",base_reg),C)
+         move_reg_to_ea (freg,D("8",base_reg)) C)
+      else move_reg_to_ea (freg,D("0",base_reg)) C
 
   (* When tag free collection of pairs is enabled, a bit is stored
      in the region descriptor if the region is an infinite region
@@ -493,9 +518,9 @@ struct
 
   (* move a number of arguments into the appropriate registers *)
   fun shuffle_args (size_ff:int)
-                   (mv_aty_to_reg: SS.Aty * 'a * reg * int * I.inst list -> I.inst list)
+                   (mv_aty_to_reg: SS.Aty * 'a * reg * int * code -> code)
                    (args:(SS.Aty * 'a * reg)list)
-                   (C:I.inst list) : I.inst list =
+                   (C:code) : code =
       let (*val args = List.filter (fn (aty,_,r) => not(SS.eq_aty (aty,SS.PHREG_ATY r))) args*)
         val regs = regs_atys (List.map #1 args) nil
         fun loop nil acc = acc
@@ -510,6 +535,29 @@ struct
              nil => C
            | (_,_,r)::_ => die "shuffle_args: not quite done"
       end
+
+  (* push_aty, i.e., rsp-=8; rsp[0] = aty *)
+  (* size_ff is for rsp before rsp is moved. *)
+  fun push_aty (aty,t:reg,size_ff,C) =
+      let fun default () = move_aty_into_reg(aty,t,size_ff,
+                            G.push_ea (R t) C)
+      in case aty of
+             SS.PHREG_ATY aty_reg => G.push_ea (R aty_reg) C
+           | SS.INTEGER_ATY i =>
+             if boxedNum (#precision i)
+                orelse #value i > 0x3FFFFFFF
+                orelse #value i <= ~0x40000000 then default()
+             else G.push_ea (I(fmtInt i)) C
+           | SS.WORD_ATY w =>
+             if boxedNum (#precision w) orelse #value w > 0x7FFFFFFF then default()
+             else G.push_ea (I(fmtWord w)) C
+           | _ => default()
+      end
+
+  (* pop(aty), i.e., aty=rsp[0]; rsp+=8 *)
+  (* size_ff is for sp after pop *)
+  fun pop_aty (SS.PHREG_ATY aty_reg,t:reg,size_ff,C) = G.pop_ea (R aty_reg) C
+    | pop_aty (aty,t:reg,size_ff,C) = G.pop_ea (R t) $ move_reg_into_aty(t,aty,size_ff,C)
 
   local
 
@@ -675,5 +723,14 @@ struct
     val basic_lss = basic_lss
   end
 
+  fun add_aty_to_reg (arg:SS.Aty,tmp:reg,t:reg,size_ff:int,C:code) : code =
+      case arg of
+          SS.PHREG_ATY r => G.add(r,t) C
+        | _ => move_aty_into_reg(arg,tmp,size_ff, G.add(tmp,t) C)
+
+  (* better alignment technique that allows for arguments on the stack *)
+  fun maybe_align nargs F C =
+      if nargs = 0 then F C
+      else F (G.add_num(I.i2s(8*nargs),I.sp_reg) C)
 
 end

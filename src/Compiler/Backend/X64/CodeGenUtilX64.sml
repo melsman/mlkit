@@ -19,6 +19,7 @@ struct
   in open X
   end
 
+  infixr $
   structure I = InstsX64
   datatype reg = datatype I.reg
   datatype Offset = datatype I.Offset
@@ -43,39 +44,6 @@ struct
           | r8 => 8 | r9 => 9 | r10 => 10 | r11 => 11
           | r12 => 12 | r13 => 13 | r14 => 14 | r15 => 15
           | r => die ("lv_to_reg.no: " ^ I.pr_reg r)
-
-    (* push_aty, i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
-    (* size_ff is for rsp before rsp is moved. *)
-    fun push_aty (aty,t:reg,size_ff,C) =
-      let
-        fun default () = move_aty_into_reg(aty,t,size_ff,
-                         I.push(R t) :: C)
-      in case aty of
-             SS.PHREG_ATY aty_reg =>
-             if I.is_xmm aty_reg then
-               I.subq(I "8", R rsp) :: I.movsd(R aty_reg, D("",rsp)) :: C
-             else I.push(R aty_reg) :: C
-           | SS.INTEGER_ATY i =>
-             if boxedNum (#precision i)
-                orelse #value i > 0x3FFFFFFF
-                orelse #value i <= ~0x40000000 then default()
-             else I.push(I (fmtInt i)) :: C
-           | SS.WORD_ATY w =>
-             if boxedNum (#precision w) orelse #value w > 0x7FFFFFFF then default()
-             else I.push(I (fmtWord w)) :: C
-           | _ => default()
-      end
-
-    (* pop(aty), i.e., aty=rsp[0]; rsp+=8 *)
-    (* size_ff is for sp after pop *)
-    fun pop_aty (SS.PHREG_ATY aty_reg,t:reg,size_ff,C) = I.pop(R aty_reg) :: C
-      | pop_aty (aty,t:reg,size_ff,C) = (I.pop(R t) ::
-                                         move_reg_into_aty(t,aty,size_ff,C))
-
-    fun add_aty_to_reg (arg:SS.Aty,tmp:reg,t:reg,size_ff:int,C:I.inst list) : I.inst list =
-      case arg
-        of SS.PHREG_ATY r => I.addq(R r, R t) :: C
-         | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
 
     (* Generate a string label *)
     fun gen_string_lab str =
@@ -149,11 +117,6 @@ struct
               end
        | _ => I.call(NameLab name) :: C
     in
-
-    (* better alignment technique that allows for arguments on the stack *)
-    fun maybe_align nargs F C =
-        if nargs = 0 then F C
-        else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
 
     (* 1. push stack arguments
        2. shuffle register arguments (adjust size_ff)
@@ -328,12 +291,12 @@ struct
                    I.je l_gc_do ::
                    I.lab l_gc_done :: C,
            I.lab l_gc_do ::
-           I.movq(I reg_map_immed, R tmp_reg1) ::                              (* tmp_reg1 = reg_map  *)
+           G.move_num(reg_map_immed, R tmp_reg1,                               (* tmp_reg1 = reg_map  *)
            load_label_addr(l_gc_done,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,   (* tmp_reg0 = return address *)
-           I.push(I (i2s size_ccf)) ::
-           I.push(I (i2s size_rcf)) ::
-           I.push(I (i2s size_spilled_region_and_float_args)) ::
-           I.jmp(L gc_stub_lab) :: nil))
+           G.push_ea(I (i2s size_ccf)) $
+           G.push_ea(I (i2s size_rcf)) $
+           G.push_ea(I (i2s size_spilled_region_and_float_args)) $
+           I.jmp(L gc_stub_lab) :: nil)))
         end
       else (fn C => C, nil)
 
@@ -357,10 +320,10 @@ struct
           let val n = n0 + BI.objectDescSizeP
               fun post_prof C =
                   (* tmp_reg1 now points at the object descriptor; initialize it *)
-                  I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
-                  I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
+                  G.move_num(i2s pp, D("0",tmp_reg1),                  (* first word is pp *)
+                  G.move_num(i2s n0, D("8",tmp_reg1),                  (* second word is object size *)
                   I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) ::
-                  C                                                    (* make tmp_reg1 point at object *)
+                  C))                                                  (* make tmp_reg1 point at object *)
           in copy(t,tmp_reg1,
              move_immed(IntInf.fromInt n, R tmp_reg0,
              I.call (NameLab "__allocate") :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
@@ -456,7 +419,7 @@ struct
     fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
       if region_profiling() then
         if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else I.movq(I(i2s pp), D("-16", obj_ptr)) :: C  (* two words offset *)
+        else G.move_num(i2s pp, D("-16", obj_ptr), C)  (* two words offset *)
       else C
 
     fun alloc_ap_kill_tmp01 (sma, dst_reg:reg, n, size_ff, C) =
@@ -575,7 +538,7 @@ struct
     *)
 
     fun prefix_sm (sma,dst_reg:reg,size_ff,C) =
-        let fun zero () = I.movq(I "0", R dst_reg) :: C
+        let fun zero () = G.move_num("0", R dst_reg, C)
         in case sma of
                LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => zero()
              | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => zero()
@@ -674,7 +637,7 @@ struct
             val sels = map (fn (i,e) => (toInt i, e)) sels
             fun cmp (i,opr,C) =
                 if rep16bit i then I.cmpq(I (I.intToStr i),opr) :: C
-                else I.movq(I (I.intToStr i), R tmp_reg0) :: I.cmpq(R tmp_reg0,opr) :: C
+                else G.move_immed(i, R tmp_reg0, I.cmpq(R tmp_reg0,opr) :: C)
             fun if_not_equal_go_lab (lab,i,C) = cmp(i, opr, I.jne lab :: C)
             fun if_less_than_go_lab (lab,i,C) = cmp(i, opr, I.jl lab :: C)
             fun if_greater_than_go_lab (lab,i,C) = cmp(i, opr, I.jg lab :: C)
@@ -758,10 +721,10 @@ struct
            x_C(
            y_C(
            compare (
-           I.movq(I (i2s BI.ml_false), R d_reg) ::
-           I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+           G.move_num(i2s BI.ml_false, R d_reg,
+           G.move_num(i2s BI.ml_true, R tmp_reg1,
            cmov(R tmp_reg1, R d_reg) ::
-           C')))
+           C')))))
         end
 
       fun doubleOfQuadEa ea =
@@ -1398,10 +1361,10 @@ struct
              val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
          in x_C(y_C(I.ucomisd (R y, R x) ::
-            I.movq(I (i2s BI.ml_false), R d_reg) ::
-            I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+            G.move_num(i2s BI.ml_false, R d_reg,
+            G.move_num(i2s BI.ml_true, R tmp_reg1,
             cmov(R tmp_reg1, R d_reg) ::
-            C'))
+            C'))))
          end
 
      local
@@ -1478,10 +1441,10 @@ struct
            val load_args = x_C o y_C
        in
          load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
-         I.movq(I (i2s BI.ml_false), R d_reg) ::
-         I.movq(I (i2s BI.ml_true), R tmp_reg1) ::
+         G.move_num(i2s BI.ml_false, R d_reg,
+         G.move_num(i2s BI.ml_true, R tmp_reg1,
          cmov(R tmp_reg1, R d_reg) ::
-         C')
+         C')))
        end
 
      fun bin_op_kill_tmp01 {quad} inst (x,y,d,size_ff,C) =
