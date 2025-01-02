@@ -19,7 +19,7 @@ struct
   in open X
   end
 
-  infixr $
+  infixr 5 $
   structure I = InstsX64
   datatype reg = datatype I.reg
   datatype Offset = datatype I.Offset
@@ -57,18 +57,18 @@ struct
 
           val () = add_static_data (I.dot_data ::
                                     I.dot_align 8 ::
-                                    I.lab string_lab ::
-                                    I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
+                                    G.label string_lab $
+                                    I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size str))) ::
                                     bytes)
       in string_lab
       end
 
     (* Generate a Data label *)
-    fun gen_data_lab lab = add_static_data [I.dot_data,
-                                            I.dot_align 8,
-                                            I.lab (DatLab lab),
-                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead
-                                                                           * for GC *)
+    fun gen_data_lab lab = add_static_data (I.dot_data ::
+                                            I.dot_align 8 ::
+                                            G.label (DatLab lab) $
+                                            I.dot_quad (i2s BI.ml_unit) :: nil)  (* was "0" but use ml_unit instead
+                                                                                  * for GC *)
 
     (***********************)
     (* Calling C Functions *)
@@ -91,11 +91,11 @@ struct
                   I.movq (L fp, R rax) ::
                   I.cmpq (I "0",R rax) ::
                   I.je nfcall ::
-                I.lab fcall ::
+                G.label fcall $
                   I.addq (I "8",R rsp) ::
                   I.call' (R rax) ::
-                  I.jmp (L finish) ::
-                I.lab nfcall ::
+                  G.jump finish $
+                G.label nfcall $
                   I.subq (I "8", R rsp) ::
                   I.movq (LA fp, R rdx) ::
                   I.movq (R rdx, D("0",rsp)) ::
@@ -106,14 +106,14 @@ struct
                   I.jne fcall::
                   I.addq (I "8", R rsp)::
                   I.call (NameLab "__raise_match")::
-                  I.jmp (L finish)::
+                  G.jump finish $
                   I.dot_data::
                   I.dot_align 8::
                   I.dot_size (fp, 8)::
-                I.lab fp ::
+                G.label fp $
                   I.dot_quad "0" ::
                   I.dot_text ::
-                I.lab finish :: C
+                G.label finish C
               end
        | _ => I.call(NameLab name) :: C
     in
@@ -219,16 +219,17 @@ struct
 
             fun maybe_push_rho_for_result size_ff F =
                 case rhos_for_result of
-                    [SS.PHREG_ATY r] => I.push(R r) :: I.push(I"0")::F (size_ff+2)   (* push twice for alignment *)
+                    [SS.PHREG_ATY r] => G.push_ea(R r) $ G.push_ea (I"0") $ F (size_ff+2)   (* push twice for alignment *)
                   | _ => F size_ff
 
             fun box_int64_result (r,C) =
                 case rhos_for_result of
                     [_] =>
-                      I.pop(R tmp_reg0) :: I.pop(R tmp_reg0) ::
-                       store_indexed(tmp_reg0,WORDS 1, R rax,                     (* store content *)
+                     G.pop_ea (R tmp_reg0) $
+                      G.pop_ea (R tmp_reg0) $
+                       store(rax,tmp_reg0,WORDS 1,                        (* store content *)
                         store_immed(BI.tag_word_boxed false, tmp_reg0, WORDS 0,   (* store tag *)
-                         I.movq(R tmp_reg0, R rax) :: C))
+                         G.copy(tmp_reg0, rax, C)))
                   | _ => die "CCALL_AUTO.expecting exactly one memory location for int64 result"
 
             fun convert_result ft =
@@ -289,14 +290,14 @@ struct
         in
           (fn C => I.cmpq(I "1", L time_to_gc_lab) ::
                    I.je l_gc_do ::
-                   I.lab l_gc_done :: C,
-           I.lab l_gc_do ::
+                   G.label l_gc_done C,
+           G.label l_gc_do $
            G.move_num(reg_map_immed, R tmp_reg1,                               (* tmp_reg1 = reg_map  *)
            load_label_addr(l_gc_done,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,   (* tmp_reg0 = return address *)
            G.push_ea(I (i2s size_ccf)) $
            G.push_ea(I (i2s size_rcf)) $
            G.push_ea(I (i2s size_spilled_region_and_float_args)) $
-           I.jmp(L gc_stub_lab) :: nil)))
+           G.jump gc_stub_lab nil)))
         end
       else (fn C => C, nil)
 
@@ -349,12 +350,12 @@ struct
                   else NameLab "__allocate"
               val () =
                   add_code_block
-                      (I.lab l_expand ::                            (* expand:                            *)
-                       I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
+                      (G.label l_expand $                           (* expand:                            *)
+                       G.pop_ea(R tmp_reg1) $                       (*   pop region ptr                   *)
                        I.leaq(LA l, R tmp_reg0) ::
-                       I.push(R tmp_reg0) ::                        (*   push continuation label          *)
+                       G.push_ea (R tmp_reg0) $                     (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-                       I.jmp(L allocate_lab) :: nil))               (*   jmp to __allocate with args in   *)
+                       G.jump allocate_lab nil))                    (*   jmp to __allocate with args in   *)
                                                                     (*     tmp_reg1 and tmp_reg0; result  *)
                                                                     (*     in tmp_reg1.                   *)
 
@@ -368,8 +369,8 @@ struct
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
-            I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
-            load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
+            G.push_ea(R tmp_reg1) $                                 (*   push tmp_reg1                    *)
+            load(tmp_reg1,WORDS 0,tmp_reg1,                         (*   tmp_reg1 = tmp_reg1[0]           *)
             I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
             copy(tmp_reg1, tmp_reg0,
             I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
@@ -377,11 +378,11 @@ struct
             I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
             I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
             I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
-            I.pop (R tmp_reg1) ::
-            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+            G.pop_ea (R tmp_reg1) $
+            store (tmp_reg0,tmp_reg1,WORDS 0,                       (*   tmp_reg1[0] = tmp_reg0           *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period n (
-            I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
+            G.label l $                                             (*     tmp_reg1 and tmp_reg0; result  *)
             (copy(tmp_reg1,t,C)))))))                               (*     in tmp_reg1.                   *)
           end
 
@@ -412,7 +413,7 @@ struct
         of SS.REG_I_ATY offset => base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8(*+BI.inf_bit*)),dst_reg,
                                                    set_inf_bit(dst_reg,C))
          | SS.REG_F_ATY offset => base_plus_offset(rsp,WORDS(size_ff-offset-1),dst_reg,C)
-         | SS.STACK_ATY offset => load_indexed(R dst_reg,rsp,WORDS(size_ff-offset-1),C)
+         | SS.STACK_ATY offset => load(rsp,WORDS(size_ff-offset-1),dst_reg,C)
          | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
          | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
 
@@ -447,7 +448,7 @@ struct
              I.btq(I "0", R dst_reg) :: (* inf bit set? *)
              I.jnc cont_lab ::
              alloc_kill_tmp01(dst_reg,n,size_ff,pp,
-             I.lab cont_lab :: C))
+             G.label cont_lab C))
           end
          | LS.ATBOT_LI(aty,pp) =>
           move_aty_into_reg_ap(aty,dst_reg,size_ff,
@@ -459,7 +460,7 @@ struct
              I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
              I.jnc default_lab ::
              reset_region(dst_reg,tmp_reg0,size_ff,
-             I.lab default_lab ::         (* dst_reg is preverved over the call *)
+             G.label default_lab $          (* dst_reg is preverved over the call *)
              alloc_kill_tmp01(dst_reg,n,size_ff,pp,C)))
           end
          | LS.SAT_FF(aty,pp) =>
@@ -471,9 +472,9 @@ struct
              I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
              I.jnc attop_lab ::
              reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
-             I.lab attop_lab ::
+             G.label attop_lab $
              alloc_kill_tmp01(dst_reg,n,size_ff,pp,
-             I.lab finite_lab :: C)))
+             G.label finite_lab C)))
           end
 
     fun alloc_untagged_value_ap_kill_tmp01 (sma, dst_reg:reg, size_alloc, size_ff, C) =
@@ -501,7 +502,7 @@ struct
              I.btq(I "0", R dst_reg) :: (* inf bit set? *)
              I.jnc cont_lab ::
              alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
-             I.lab cont_lab :: C))
+             G.label cont_lab C))
           end
          | LS.ATBOT_LI(aty,pp) =>
           move_aty_into_reg_ap(aty,dst_reg,size_ff,
@@ -513,7 +514,7 @@ struct
              I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
              I.jnc default_lab ::
              reset_region(dst_reg,tmp_reg0,size_ff,
-             I.lab default_lab ::         (* dst_reg is preverved over the call *)
+             G.label default_lab $          (* dst_reg is preverved over the call *)
              alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C)))
           end
          | LS.SAT_FF(aty,pp) =>
@@ -526,9 +527,9 @@ struct
              I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
              I.jnc attop_lab ::
              reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
-             I.lab attop_lab ::
+             G.label attop_lab $
              alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
-             I.lab cont_lab :: C)))
+             G.label cont_lab C)))
           end
 
     (* Set Atbot bits on region variables. When a region parameter is
@@ -577,7 +578,7 @@ struct
                I.btq(I "0", R t) ::                (* Is region infinite? kill tmp_reg0. *)
                I.jnc default_lab ::
                reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
+               G.label default_lab C))
             end
       in case sma of
              LS.ATTOP_LI(aty,pp) => do_reset(aty,pp)
@@ -601,7 +602,7 @@ struct
                I.btq(I "1", R t) :: (* Is storage mode atbot? kill tmp_reg0. *)
                I.jnc default_lab ::
                reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
+               G.label default_lab C))
             end
            | LS.SAT_FF(aty,pp) =>
             let val default_lab = new_local_lab "no_reset"
@@ -611,15 +612,15 @@ struct
                I.btq (I "1", R t) ::  (* Is atbot bit set? *)
                I.jnc default_lab ::
                reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
+               G.label default_lab C))
             end
            | _ => C
 
       (* Compile Switch Statements *)
       local
         fun new_label str = new_local_lab str
-        fun label (lab,C) = I.lab lab :: C
-        fun jmp (lab,C) = I.jmp(L lab) :: rem_dead_code C
+        fun label (lab,C) = G.label lab C
+        fun jmp (lab,C) = G.jump lab (rem_dead_code C)
         fun inline_cont C =
             case C of
                 (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
@@ -657,12 +658,12 @@ struct
                fn (sel1,sel2) => IntInf.abs(sel1-sel2), (* sel_dist *)
                fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
                                     I.salq(I "3", R tmp_reg0) ::
-                                    I.push(R tmp_reg1) ::
+                                    G.push_ea (R tmp_reg1) $
                                     I.leaq(LA lab,R tmp_reg1) ::
                                     I.addq(R tmp_reg1, R tmp_reg0) ::
                                     I.movq(D(I.intToStr(~8*sel), tmp_reg0), R tmp_reg0) ::
                                     I.addq(R tmp_reg1, R tmp_reg0) ::
-                                    I.pop(R tmp_reg1) ::
+                                    G.pop_ea (R tmp_reg1) $
                                     I.jmp(R tmp_reg0) ::
                                     rem_dead_code C),
                fn (lab,lab_table,C) => I.dot_quad_sub (lab,lab_table) :: C, (*add_label_to_jump_tab*)
@@ -747,7 +748,8 @@ struct
           inst_cmp(R (maybeDoubleOfQuadReg y_reg),
                    R (maybeDoubleOfQuadReg x_reg)) ::
           jump lab_t ::
-          I.jmp (L lab_f) :: rem_dead_code C))
+          G.jump lab_f $
+          rem_dead_code C))
         end
 
       (* version with boxed arguments; assume tagging is enabled *)
@@ -766,7 +768,7 @@ struct
             inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
                      R (maybeDoubleOfQuadReg tmp_reg0)) ::
             jump lab_t ::
-            I.jmp (L lab_f) :: rem_dead_code C))
+            G.jump lab_f $ rem_dead_code C))
           end
         else die "cmpbi_and_jmp_kill_tmp01: tagging disabled!"
 
@@ -784,7 +786,7 @@ struct
               val (y,y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
           in x_C(y_C(I.ucomisd (R y, R x) ::
                      jump lab_t ::
-                     I.jmp (L lab_f) ::
+                     G.jump lab_f $
                      rem_dead_code C))
           end
 
@@ -924,11 +926,11 @@ struct
                   then (I.negq, fn r => r)
                   else (I.negl, I.doubleOfQuadReg)
           in x_C(
-             load_indexed (R tmp_reg0,x_reg,WORDS 1,
+             load (x_reg,WORDS 1,tmp_reg0,
              inst_neg(R (maybeDoubleOfQuadReg tmp_reg0)) ::
              jump_overflow (
              move_aty_into_reg(b,d_reg,size_ff,
-             store_indexed(d_reg,WORDS 1, R tmp_reg0,                        (* store negated value *)
+             store(tmp_reg0,d_reg,WORDS 1,                                   (* store negated value *)
              store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
           end
 
@@ -950,7 +952,7 @@ struct
          inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
          jump_overflow (
          do_tag (
-         I.lab cont_lab :: C'))))
+         G.label cont_lab C'))))
        end
 
 
@@ -966,14 +968,14 @@ struct
                else (I.cmpl, I.negl, I.doubleOfQuadReg)
        in
          x_C(
-         load_indexed (R tmp_reg0,x_reg,WORDS 1,
+         load (x_reg,WORDS 1,tmp_reg0,
          inst_cmp (I "0", R (maybeDoubleOfQuadReg tmp_reg0)) ::
          I.jge cont_lab ::
          inst_neg (R (maybeDoubleOfQuadReg tmp_reg0)) ::
          jump_overflow (
-         I.lab cont_lab ::
+         G.label cont_lab $
          move_aty_into_reg(b,d_reg,size_ff,
-         store_indexed(d_reg, WORDS 1, R tmp_reg0,                       (* store negated value *)
+         store(tmp_reg0,d_reg, WORDS 1,                                  (* store negated value *)
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
        end
 
@@ -1003,7 +1005,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1019,7 +1021,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(   (* MEMO: we should raise Overflow more often *)
@@ -1035,7 +1037,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
              if ovf then
@@ -1058,7 +1060,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
              if ovf then
@@ -1081,7 +1083,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1142,7 +1144,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1158,7 +1160,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
              if ovf then
@@ -1181,7 +1183,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1193,7 +1195,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun maybe_signext C =
                if signext then
@@ -1242,7 +1244,7 @@ struct
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+           fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1503,14 +1505,14 @@ struct
                                         else I.doubleOfQuadReg
          in
            x_C(
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            y_C(
-           load_indexed (R tmp_reg1,y_reg,WORDS 1,
+           load (y_reg,WORDS 1,tmp_reg1,
            inst(R (maybeDoubleOfQuadReg tmp_reg0),
                 R (maybeDoubleOfQuadReg tmp_reg1)) ::
            check_ovf (
            move_aty_into_reg(r,d_reg,size_ff,
-           store_indexed(d_reg,WORDS 1,R tmp_reg1,
+           store(tmp_reg1,d_reg,WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
          end
 
@@ -1579,7 +1581,7 @@ struct
            move_aty_into_reg(x,tmp_reg0,size_ff,
            inst_sar (I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg,WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg,WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
          end
        else die "num31_to_num_boxed.tagging_disabled"
@@ -1596,10 +1598,10 @@ struct
                else C
          in
            x_C (
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            check_ovf (
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
@@ -1615,10 +1617,10 @@ struct
                else C
          in
            x_C (
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            check_ovf (
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
@@ -1633,10 +1635,10 @@ struct
                  else C
          in
            x_C (
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            maybe_signext(
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
@@ -1647,10 +1649,10 @@ struct
              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
          in
            x_C (
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) ::       (* sign-extend *)
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
@@ -1661,10 +1663,10 @@ struct
              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
          in
            x_C (
-           load_indexed (R tmp_reg0,x_reg,WORDS 1,
+           load (x_reg,WORDS 1,tmp_reg0,
            I.mov(R (I.doubleOfQuadReg tmp_reg0),R (I.doubleOfQuadReg tmp_reg0)) ::  (* clears the upper bits *)
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
@@ -1678,7 +1680,7 @@ struct
            x_C (copy(x_reg, tmp_reg0,
                 shr_inst (I "1", R tmp_reg0) ::
                 move_aty_into_reg(b,d_reg,size_ff,
-                store_indexed(d_reg, WORDS 1, R tmp_reg0,
+                store(tmp_reg0,d_reg, WORDS 1,
                 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
@@ -1692,7 +1694,7 @@ struct
                 I.shrq (I "1", R tmp_reg0) ::
                 I.mov(R (I.doubleOfQuadReg tmp_reg0), R (I.doubleOfQuadReg tmp_reg0)) ::
                 move_aty_into_reg(b,d_reg,size_ff,
-                store_indexed(d_reg, WORDS 1, R tmp_reg0,
+                store(tmp_reg0,d_reg, WORDS 1,
                 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
@@ -1710,7 +1712,7 @@ struct
               I.jne (NameLab "__raise_overflow") ::
               copy(tmp_reg1, tmp_reg0,
               move_aty_into_reg(b,d_reg,size_ff,
-              store_indexed(d_reg, WORDS 1, R tmp_reg0,
+              store(tmp_reg0,d_reg, WORDS 1,
               store_immed(BI.tag_word_boxed false, d_reg, WORDS 0,
               C'))))))
        end
@@ -1730,7 +1732,7 @@ struct
            copy(x_reg, tmp_reg0,
            maybe_signext(
            move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store(tmp_reg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
@@ -1745,7 +1747,7 @@ struct
                                       else I.doubleOfQuadReg
        in
          x_C(
-         load_indexed (R tmp_reg1,x_reg,WORDS 1,
+         load (x_reg,WORDS 1,tmp_reg1,
          copy(rcx, tmp_reg0,                         (* save rcx *)
          y_C(
          copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)
@@ -1753,7 +1755,7 @@ struct
          inst(R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
          copy(tmp_reg0, rcx,                         (* restore rcx *)
          move_aty_into_reg(r,d_reg,size_ff,
-         store_indexed(d_reg,WORDS 1, R tmp_reg1,
+         store(tmp_reg1,d_reg,WORDS 1,
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))))   (* store tag *)
        end
 
@@ -1789,16 +1791,16 @@ struct
        in
          if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
            x_C(
-           I.movq(R rcx, R tmp_reg0) ::                       (* save rcx *)
+           copy(rcx, tmp_reg0,                        (* save rcx *)
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
            I.decq (R tmp_reg1) ::                                  (* x - 1  *)
            untag_y (                                               (* y >> 1 *)
            inst_sal (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::   (*   <<   *)
-           I.movq (R tmp_reg0, R rcx) ::                           (* restore rcx *)
+           copy (tmp_reg0, rcx,                                    (* restore rcx *)
            I.incq (R tmp_reg1) ::           (* 1 +    *)
-           copy(tmp_reg1, d_reg, C'))))))
+           copy(tmp_reg1, d_reg, C'))))))))
          else
            x_C(
            copy(rcx, tmp_reg0,                                (* save rcx *)
@@ -1824,7 +1826,7 @@ struct
        in
          if tag then                         (* 1 | ((x) >> (y >> 1)) *)
            x_C(
-           I.movq(R rcx, R tmp_reg0) ::                        (* save rcx *)
+           copy(rcx, tmp_reg0,                        (* save rcx *)
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
@@ -1833,7 +1835,7 @@ struct
            inst_sar (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::  (* x >>   *)
            copy(tmp_reg0, rcx,                                    (* restore rcx *)
            I.orq (I "1", R tmp_reg1) ::                           (* 1 |    *)
-           copy(tmp_reg1, d_reg, C')))))))
+           copy(tmp_reg1, d_reg, C'))))))))
          else
            x_C(
            copy(rcx, tmp_reg0,                                 (* save rcx *)
@@ -1959,7 +1961,7 @@ struct
             I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
             I.mov(DD("8",t_reg,tmp_reg0,"4"), R r10d) :: (* tmp=table[i] *)
             move_aty_into_reg(r,d_reg,size_ff,
-            store_indexed(d_reg,WORDS 1,R r10,
+            store(r10,d_reg,WORDS 1,
             store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
        end
 
@@ -2005,7 +2007,7 @@ struct
             I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
             I.mov(DD("8",t_reg,tmp_reg0,"8"), R r10) ::  (* tmp=table[i] *)
             move_aty_into_reg(r,d_reg,size_ff,
-            store_indexed(d_reg,WORDS 1,R r10,
+            store(r10,d_reg,WORDS 1,
             store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
        end
 

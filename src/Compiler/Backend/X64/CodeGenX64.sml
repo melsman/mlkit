@@ -123,22 +123,16 @@ struct
                        if BI.tag_values() then
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
                          store_immed(BI.tag_clos(false,num_elems+1,n_skip), reg_for_result, WORDS 0,
-
                          load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-                         store_indexed(reg_for_result,WORDS 1,R tmp_reg0,
-
-                         (*store_indexed(reg_for_result,WORDS 1, LA (MLFunLab label),*)
+                         store(tmp_reg0,reg_for_result,WORDS 1,
                          #2(foldr (fn (aty,(offset,C)) =>
                                    (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
                                                                      WORDS offset,size_ff, C)))
                             (num_elems+1,C') (LS.smash_free elems))))))
                        else
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-
                          load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-                         store_indexed(reg_for_result,WORDS 0,R tmp_reg0,
-
-                         (*store_indexed(reg_for_result,WORDS 0, LA (MLFunLab label),*)
+                         store(tmp_reg0,reg_for_result,WORDS 0,
                          #2(foldr (fn (aty,(offset,C)) =>
                                    (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
                                                                      WORDS offset,size_ff, C)))
@@ -541,8 +535,8 @@ struct
                   (* After the arguments are pushed onto the stack, we copy them down to
                    * the current ``| ccf | ff |'', which is now dead. *)
                     fun copy_down 0 C = C
-                      | copy_down n C = load_indexed(R tmp_reg1, rsp, WORDS (n-1),
-                                         store_indexed(rsp, WORDS (size_ff+size_ccf+n-1), R tmp_reg1,
+                      | copy_down n C = load(rsp, WORDS (n-1),tmp_reg1,
+                                         store(tmp_reg1,rsp, WORDS (size_ff+size_ccf+n-1),
                                           copy_down (n-1) C))
                     fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
                   in
@@ -696,23 +690,23 @@ struct
                     fun store_handl_return_lab C =
                       comment ("STORE HANDL RETURN LAB: sp[offset] = handl_return_lab",
                       I.movq(LA handl_return_lab, R tmp_reg1) ::
-                      store_indexed(rsp,WORDS(size_ff-offset-1), R tmp_reg1,C))
+                      store(tmp_reg1,rsp,WORDS(size_ff-offset-1),C))
                     fun store_exn_ptr C =
                       comment ("STORE EXN PTR: sp[offset+2] = exnPtr",
                       I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-                      store_indexed(rsp,WORDS(size_ff-offset-1+2), R tmp_reg1,
+                      store(tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
                       comment ("CALC NEW exnPtr: exnPtr = sp-size_ff+offset+size_of_handle",
                       base_plus_offset(rsp,WORDS(size_ff-offset-1(*-BI.size_of_handle()*)),tmp_reg1,        (*hmmm *)
                       I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
                       C))))
                     fun store_sp C =
                       comment ("STORE SP: sp[offset+3] = sp",
-                      store_indexed(rsp,WORDS(size_ff-offset-1+3), R rsp,C))
+                      store(rsp,rsp,WORDS(size_ff-offset-1+3),C))
                     fun default_code C = comment ("HANDLER DEFAULT CODE",
                       CG_lss(default,size_ff,size_ccf,C))
                     fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
-                      load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
+                      load(rsp,WORDS(size_ff-offset-1+2),tmp_reg1,
                       I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
                       I.jmp(L handl_join_lab) ::C))
                     fun handl_return_code C =
@@ -1664,9 +1658,9 @@ struct
               I.dot_globl (nlab,I.FUNC) ::
               I.lab nlab ::
               I.movq (R arg_reg, R tmp_reg0)::
-              load_indexed(R arg_reg,arg_reg,WORDS offset,
-              load_indexed(R tmp_reg1,arg_reg, WORDS offset,
-              load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
+              load(arg_reg,WORDS offset,arg_reg,
+              load(arg_reg, WORDS offset,tmp_reg1,
+              load(arg_reg,WORDS (offset+1),arg_reg, (* Fetch pointer to exception string *)
               compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY r14,   (* evaluation context *)
                                                         SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
                                                         SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,
@@ -1732,7 +1726,7 @@ struct
               (* simple non-protected allocation *)
               I.push(R tmp_reg0) ::                                   (*   push tmp_reg0 (n)                *)
               I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
-              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
+              load(tmp_reg1,WORDS 0,tmp_reg1,                         (*   tmp_reg1 = tmp_reg1[0]           *)
               I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
               copy(tmp_reg1, tmp_reg0,
               I.movq(D("8",rsp), R tmp_reg1) ::
@@ -1742,7 +1736,7 @@ struct
               I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
               I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
               I.pop (R tmp_reg1) ::
-              store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+              store (tmp_reg0,tmp_reg1,WORDS 0,                       (*   tmp_reg1[0] = tmp_reg0           *)
               I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = n                     *)
               I.imulq(I"8",R tmp_reg1) ::                             (*   tmp_reg1 = 8n                   *)
               maybe_update_alloc_period tmp_reg1 (
@@ -1754,7 +1748,7 @@ struct
               I.lab allocinreg_protect ::
               I.push(R tmp_reg0) ::                                  (*   push tmp_reg0 (n)                *)
               I.push(R tmp_reg1) ::                                  (*   push tmp_reg1                    *)
-              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,              (*   tmp_reg1 = tmp_reg1[0]           *)
+              load(tmp_reg1,WORDS 0,tmp_reg1,                        (*   tmp_reg1 = tmp_reg1[0]           *)
               I.push(R I.rax) ::                                     (*   save rax on the stack            *)
               I.movq(R tmp_reg1, R I.rax) ::                         (*   rax = tmp_reg1                   *)
               I.addq(I "-1", R tmp_reg1) ::                          (*   tmp_reg1 = tmp_reg1 - 1          *)

@@ -7,8 +7,8 @@ signature INSTS_GENERIC = sig
   type ea and lab and Offset
 
   val copy             : reg * reg * code -> code
-  val load_indexed     : ea * reg * Offset * code -> code
-  val store_indexed    : reg * Offset * ea * code -> code
+  val load             : reg * Offset * reg * code -> code
+  val store            : reg * reg * Offset * code -> code
   val base_plus_offset : reg * Offset * reg * code -> code
   val store_immed      : word * reg * Offset * code -> code
   val move_immed       : IntInf.int * ea * code -> code
@@ -22,6 +22,9 @@ signature INSTS_GENERIC = sig
 
   val add              : reg * reg -> code -> code
   val add_num          : string * reg -> code -> code
+
+  val label            : lab -> code -> code
+  val jump             : lab -> code -> code
 end
 
 signature INSTS_COMMON = sig
@@ -212,8 +215,8 @@ struct
   val tmp_freg1 = I.tmp_freg1
 
   val copy = G.copy
-  val store_indexed = G.store_indexed
-  val load_indexed = G.load_indexed
+  val store = G.store
+  val load = G.load
   val base_plus_offset = G.base_plus_offset
   val store_immed = G.store_immed
   val move_immed = G.move_immed
@@ -242,7 +245,7 @@ struct
 
   (* Find a register for aty and generate code to store into the aty *)
   fun resolve_aty_def (SS.STACK_ATY offset,t:reg,size_ff,C) =
-      (t,store_indexed(I.sp_reg,WORDS(size_ff-offset-1),R t,C))
+      (t,store(t,I.sp_reg,WORDS(size_ff-offset-1),C))
     | resolve_aty_def (SS.PHREG_ATY phreg,t:reg,size_ff,C) = (phreg,C)
     | resolve_aty_def (SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
     | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
@@ -272,7 +275,7 @@ struct
         | SS.REG_F_ATY offset =>
           base_plus_offset(I.sp_reg,WORDS(size_ff-offset-1),dst_reg,C)
         | SS.STACK_ATY offset =>
-          load_indexed(R dst_reg,I.sp_reg,WORDS(size_ff-offset-1),C)
+          load(I.sp_reg,WORDS(size_ff-offset-1),dst_reg,C)
         | SS.DROPPED_RVAR_ATY => C
         | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
         | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
@@ -284,7 +287,7 @@ struct
   fun move_reg_into_aty (src_reg:reg,dst_aty,size_ff,C) =
       case dst_aty of
           SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
-        | SS.STACK_ATY offset => store_indexed(I.sp_reg,WORDS(size_ff-offset-1),R src_reg,C)
+        | SS.STACK_ATY offset => store(src_reg,I.sp_reg,WORDS(size_ff-offset-1),C)
         | SS.UNIT_ATY => C (* wild card definition - do nothing *)
         | _ => die "move_reg_into_aty: ATY not recognized"
 
@@ -299,16 +302,16 @@ struct
 
   (* dst_aty = src_aty[offset] *)
   fun move_index_aty_to_aty (SS.PHREG_ATY src_reg,SS.PHREG_ATY dst_reg,offset:Offset,t:reg,size_ff,C) =
-      load_indexed (R dst_reg,src_reg,offset,C)
+      load (src_reg,offset,dst_reg,C)
     | move_index_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) =
-      load_indexed (R t,src_reg,offset,
+      load (src_reg,offset,t,
        move_reg_into_aty(t,dst_aty,size_ff,C))
     | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,t:reg,size_ff,C) =
       move_aty_into_reg(src_aty,t(*dst_reg*),size_ff,
-       load_indexed (R dst_reg,t(*dst_reg*),offset,C))
+       load (t(*dst_reg*),offset,dst_reg,C))
     | move_index_aty_to_aty (src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
       move_aty_into_reg(src_aty,t,size_ff,
-       load_indexed (R t,t,offset,
+       load (t,offset,t,
         move_reg_into_aty(t,dst_aty,size_ff,C)))
 
   (* dst_aty = &lab *)
@@ -317,7 +320,7 @@ struct
           SS.PHREG_ATY d => move_ea_to_reg(LA lab, d, C)
         | SS.STACK_ATY offset =>
           move_ea_to_reg(LA lab, t,
-           store_indexed(I.sp_reg, WORDS(size_ff-offset-1), R t, C))
+           store(t, I.sp_reg, WORDS(size_ff-offset-1),C))
         | _ => die "load_label_addr.wrong ATY"
 
   (* dst_aty = lab[0] *)
@@ -326,7 +329,7 @@ struct
           SS.PHREG_ATY d => move_ea_to_reg(L lab, d, C)
         | SS.STACK_ATY offset =>
           move_ea_to_reg(L lab, t,
-           store_indexed(I.sp_reg, WORDS(size_ff-offset-1), R t, C))
+           store(t, I.sp_reg, WORDS(size_ff-offset-1),C))
         | SS.UNIT_ATY => C
         | _ => die "load_from_label.wrong ATY"
 
@@ -352,7 +355,7 @@ struct
       let fun ea () = D(I.offset_bytes n,b)
           fun default () =
               move_aty_into_reg(aty,t,size_ff,
-                                store_indexed(b,n,R t,C))
+                                store(t,b,n,C))
           fun direct_word (w:{value: IntInf.int, precision:int}) : bool =
               not(boxedNum(#precision w)) andalso
               case #precision w of
@@ -390,25 +393,25 @@ struct
   (* Can be used to load from the stack or a record when destination is an ATY *)
   (* dst_aty = base_reg[offset] *)
   fun load_aty_from_reg_record (SS.PHREG_ATY dst_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-      load_indexed (R dst_reg,base_reg,offset,C)
+      load (base_reg,offset,dst_reg,C)
     | load_aty_from_reg_record (dst_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-      load_indexed (R t,base_reg,offset,
+      load (base_reg,offset,t,
        move_reg_into_aty(t,dst_aty,size_ff,C))
 
   (* base_aty[offset] = src_aty *)
   fun store_aty_in_aty_record (src_aty,base_aty,offset:Offset,t1:reg,t2:reg,size_ff,C) =
       case (src_aty,base_aty) of
-          (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,R src_reg,C)
+          (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store(src_reg,base_reg,offset,C)
         | (SS.PHREG_ATY src_reg,base_aty) =>
           move_aty_into_reg(base_aty,t2,size_ff,  (* can be optimised *)
-           store_indexed(t2,offset,R src_reg,C))
+           store(src_reg,t2,offset,C))
         | (src_aty,SS.PHREG_ATY base_reg) =>
           move_aty_into_reg(src_aty,t1,size_ff,
-           store_indexed(base_reg,offset,R t1,C))
+           store(t1,base_reg,offset,C))
         | (src_aty,base_aty) =>
           move_aty_into_reg(src_aty,t1,size_ff, (* can be optimised *)
            move_aty_into_reg(base_aty,t2,size_ff,
-            store_indexed(t2,offset,R t1,C)))
+            store(t1,t2,offset,C)))
 
   (* Returns a register with arg and a continuation function. *)
   fun resolve_arg_aty (arg:SS.Aty,t:reg,size_ff:int) : reg * (code -> code) =

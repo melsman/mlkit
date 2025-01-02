@@ -954,21 +954,18 @@ structure InstsX64 : INSTS_X64 =
                                     | (false, false) => movq(R r1, R r2) :: C
                                     | _ => die "copy: incompatible registers"
 
-      fun is_xmm_ea (R r) = is_xmm r
-        | is_xmm_ea _ = false
-
       (* Can be used to load from the stack or from a record *)
       (* d = b[n]                                            *)
-      fun load_indexed (d:ea,b:reg,n:Offset,C) =
-          if is_xmm b then die ("load_indexed: wrong kind of register")
-          else if is_xmm_ea d then movsd(D(offset_bytes n,b), d) :: C
-          else movq(D(offset_bytes n,b), d) :: C
+      fun load (b:reg,n:Offset,d:reg,C) =
+          if is_xmm b then die ("load: wrong kind of register")
+          else if is_xmm d then movsd(D(offset_bytes n,b), R d) :: C
+          else movq(D(offset_bytes n,b), R d) :: C
 
       (* Can be used to update the stack or store in a record *)
       (* b[n] = s                                             *)
-      fun store_indexed (b:reg,n:Offset,s:ea,C) =
-          if is_xmm_ea s then movsd(s,D(offset_bytes n,b)) :: C
-          else movq(s,D(offset_bytes n,b)) :: C
+      fun store (s:reg,b:reg,n:Offset,C) =
+          if is_xmm s then movsd(R s,D(offset_bytes n,b)) :: C
+          else movq(R s,D(offset_bytes n,b)) :: C
 
       (* Calculate an address given a base and an offset *)
       (* dst = base + x                                  *)
@@ -1038,6 +1035,10 @@ structure InstsX64 : INSTS_X64 =
       fun add (r1,r2) C = addq(R r1, R r2) :: C
 
       fun add_num (n,r) C = addq(I n,R r) :: C
+
+      fun label l C = lab l :: C
+
+      fun jump l C = jmp(L l) :: C
 
     end
 
