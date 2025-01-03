@@ -110,8 +110,8 @@ struct
                                                                I.dot_align 8,
                                                                I.lab float_lab,
                                                                I.dot_double str]
-                                  in I.movq(LA float_lab, R tmp_reg0) ::
-                                     I.movsd(D("0", tmp_reg0),R d) :: C'
+                                  in G.load_ea(LA float_lab, tmp_reg0) $
+                                     G.load_ea(D("0", tmp_reg0),d) C'
                                   end
                       end
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
@@ -306,7 +306,7 @@ struct
                                                C aux_regions
                             in reset_regions(
                                 alloc_ap_kill_tmp01(alloc,reg_for_result,1,fsz,
-                                                    I.movq(I tag, D("0",reg_for_result)) :: C'))
+                                                    G.move_num(tag, D("0",reg_for_result)) C'))
                             end)
                     | LS.CON1{con,con_kind,alloc,arg} =>
                       (case con_kind of
@@ -314,17 +314,17 @@ struct
                          | LS.UNBOXED i =>
                                let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,fsz,C)
                                in case i
-                                    of 1 => move_aty_into_reg(arg,reg_for_result,fsz,
+                                    of 1 => load_aty(arg,reg_for_result,fsz,
                                             I.orq(I "1", R reg_for_result) :: C')
-                                     | 2 => move_aty_into_reg(arg,reg_for_result,fsz,
+                                     | 2 => load_aty(arg,reg_for_result,fsz,
                                             I.orq(I "2", R reg_for_result) :: C')
                                      | _ => die "CG_ls: UNBOXED CON1 with i > 2"
                                end
                          | LS.UNBOXED_HIGH 0 => move_aty_to_aty(arg,pat,fsz,C)
                          | LS.UNBOXED_HIGH i =>
                                let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,fsz,C)
-                               in move_aty_into_reg(arg,reg_for_result,fsz,
-                                                    I.movq(I (Int.toString i), R tmp_reg0) ::
+                               in load_aty(arg,reg_for_result,fsz,
+                                                    G.load_ea(I (Int.toString i), tmp_reg0) $
                                                     I.shlq(I "48", R tmp_reg0) ::
                                                     I.orq(R tmp_reg0, R reg_for_result) :: C')
                                end
@@ -350,8 +350,8 @@ struct
                            let
                              val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,fsz,C)
                            in
-                             move_aty_into_reg(con_aty,reg_for_result,fsz,
-                             I.movq(I "3", R tmp_reg0) ::
+                             load_aty(con_aty,reg_for_result,fsz,
+                             G.load_ea(I "3", tmp_reg0) $
                              I.notq(R tmp_reg0) ::
                              I.andq(R tmp_reg0, R reg_for_result) :: C')
                            end
@@ -361,7 +361,7 @@ struct
                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,fsz,C)
                            in
                              if r = reg_for_result then
-                               move_aty_into_reg(con_aty,reg_for_result,fsz,
+                               load_aty(con_aty,reg_for_result,fsz,
                                I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
                                I.andq(R tmp_reg0, R reg_for_result) :: C')
                              else
@@ -453,7 +453,7 @@ struct
                         base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,   (* return label is now at top of stack *)
                         I.jmp(R tmp_reg1) :: rem_dead_code C)
                        | _ =>
-                        move_aty_into_reg(opr,tmp_reg1,fsz,
+                        load_aty(opr,tmp_reg1,fsz,
                         I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) ::   (* Fetch code label from closure *)
                         base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,   (* return label is now at top of stack *)
                         I.jmp(R tmp_reg1) :: rem_dead_code C))
@@ -484,7 +484,7 @@ struct
                           I.movq(D(offset_codeptr,opr_reg), R tmp_reg1) ::  (* Fetch code pointer *)
                           doit(R tmp_reg1) :: C
                          | _ =>
-                          move_aty_into_reg(opr,tmp_reg1,fsz+size_cc-off,   (* rsp is now pointing after the call *)
+                          load_aty(opr,tmp_reg1,fsz+size_cc-off,   (* rsp is now pointing after the call *)
                           I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) :: (* convention, i.e., fsz+size_cc *)
                           doit(R tmp_reg1) :: C)
                     val C' = fetch_res C
@@ -732,7 +732,7 @@ struct
                     handl_return_code(comment ("END OF EXCEPTION HANDLER", C))))))))))
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
-                  move_aty_into_reg(arg_aty,rsi,fsz,      (* arg1: context, arg2: exception value *)        (* function never returns *)
+                  load_aty(arg_aty,rsi,fsz,      (* arg1: context, arg2: exception value *)        (* function never returns *)
                   maybe_align 0 (fn C => I.movq(R r14, R rdi) :: I.call (NameLab "raise_exn") :: rem_dead_code C) C)
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
@@ -807,11 +807,11 @@ struct
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon (src_aty,C) =
                         if lte1_nullary then
-                          (move_aty_into_reg(src_aty,tmp_reg1,fsz,
+                          (load_aty(src_aty,tmp_reg1,fsz,
                            I.andq(I "3", R tmp_reg1) ::
                            C))
                         else
-                          (move_aty_into_reg(src_aty,tmp_reg0,fsz,
+                          (load_aty(src_aty,tmp_reg0,fsz,
                            copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
                            I.andq(I "3", R tmp_reg1) ::
                            I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
@@ -819,7 +819,7 @@ struct
                            C)))                                 (* and all bits are used. *)
 
                     fun UbhTagCon (src_aty,C) =
-                        move_aty_into_reg(src_aty,tmp_reg1,fsz,
+                        load_aty(src_aty,tmp_reg1,fsz,
                         I.shrq(I "48", R tmp_reg1) ::
                         C)
 
@@ -1339,8 +1339,8 @@ struct
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                                             @ [I.ret])))
 
-                 in I.movq(LA call_closure_lab, R tmp_reg0) ::
-                    move_aty_into_reg(arg, tmp_reg1, fsz,
+                 in G.load_ea(LA call_closure_lab, tmp_reg0) $
+                    load_aty(arg, tmp_reg1, fsz,
                     (* call thread_create function, which will create a thread from the
                      * argument function by applying it to the second argument *)
                     compile_c_call_prim("thread_create", [SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1], SOME res, fsz, tmp_reg1, C))

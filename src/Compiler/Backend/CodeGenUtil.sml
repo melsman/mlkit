@@ -12,8 +12,9 @@ signature INSTS_GENERIC = sig
   val base_plus_offset : reg * Offset * reg * code -> code
   val store_immed      : word * reg * Offset * code -> code
   val move_immed       : IntInf.int * ea * code -> code
-  val move_num         : string * ea * code -> code
   val move_num_boxed   : (unit -> lab) -> (code -> unit) -> (unit -> string) -> string * ea * code -> code
+
+  val move_num         : string * ea -> code -> code
   val load_ea          : ea * reg -> code -> code
   val store_ea         : reg * ea -> code -> code
   val comment_str      : string * code -> code
@@ -23,6 +24,9 @@ signature INSTS_GENERIC = sig
   val add              : ea * reg -> code -> code
   val sub              : ea * reg -> code -> code
   val mul              : ea * reg -> code -> code
+  val andd             : ea * reg -> code -> code
+  val or               : ea * reg -> code -> code
+  val xor              : ea * reg -> code -> code
   val lea              : ea * reg -> code -> code
 
   val label            : lab -> code -> code
@@ -267,10 +271,10 @@ struct
 
   fun move_num_generic (precision, num, ea, C) =
       if boxedNum precision then move_num_boxed(num, ea, C)
-      else move_num(num, ea, C)
+      else move_num(num, ea) C
 
   (* Make sure that the aty ends up in register dst_reg *)
-  fun move_aty_into_reg (aty,dst_reg,fsz,C) =
+  fun load_aty (aty,dst_reg,fsz,C) =
       case aty of
           SS.REG_I_ATY offset =>
           base_plus_offset(I.sp_reg,BYTES(fsz*8-offset*8-8+BI.inf_bit),dst_reg,C)
@@ -283,7 +287,7 @@ struct
         | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
         | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
         | SS.UNIT_ATY => move_unit (R dst_reg, C)
-        | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
+        | SS.FLOW_VAR_ATY _ => die "load_aty: FLOW_VAR_ATY cannot be moved"
 
   (* dst_aty = src_reg *)
   fun move_reg_into_aty (src_reg:reg,dst_aty,fsz,C) =
@@ -295,11 +299,11 @@ struct
 
   (* dst_aty = src_aty; may kill tmp_reg1 *)
   fun move_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,fsz,C) = move_reg_into_aty(src_reg,dst_aty,fsz,C)
-    | move_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,fsz,C) = move_aty_into_reg(src_aty,dst_reg,fsz,C)
+    | move_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,fsz,C) = load_aty(src_aty,dst_reg,fsz,C)
     | move_aty_to_aty (src_aty,SS.UNIT_ATY,fsz,C) = C
     | move_aty_to_aty (src_aty,dst_aty,fsz,C) =
       let val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,fsz,C)
-      in move_aty_into_reg(src_aty,reg_for_result,fsz,C')
+      in load_aty(src_aty,reg_for_result,fsz,C')
       end
 
   (* dst_aty = src_aty[offset] *)
@@ -309,10 +313,10 @@ struct
       load (src_reg,offset,t,
        move_reg_into_aty(t,dst_aty,fsz,C))
     | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,t:reg,fsz,C) =
-      move_aty_into_reg(src_aty,t(*dst_reg*),fsz,
+      load_aty(src_aty,t(*dst_reg*),fsz,
        load (t(*dst_reg*),offset,dst_reg,C))
     | move_index_aty_to_aty (src_aty,dst_aty,offset,t:reg,fsz,C) = (* can be optimised!! *)
-      move_aty_into_reg(src_aty,t,fsz,
+      load_aty(src_aty,t,fsz,
        load (t,offset,t,
         move_reg_into_aty(t,dst_aty,fsz,C)))
 
@@ -350,14 +354,14 @@ struct
         | SS.UNIT_ATY =>
           load_ea(LA lab,tmp1) $
           move_unit(D("0",tmp1), C)
-        | _ => move_aty_into_reg(src_aty,tmp1,fsz,
+        | _ => load_aty(src_aty,tmp1,fsz,
                 store_ea(tmp1, L lab) C)
 
   fun store_aty_indexed (b:reg,n:Offset,aty,t:reg,fsz,C) =
       let fun ea () = D(I.offset_bytes n,b)
           fun default () =
-              move_aty_into_reg(aty,t,fsz,
-                                store(t,b,n,C))
+              load_aty(aty,t,fsz,
+               store(t,b,n,C))
           fun direct_word (w:{value: IntInf.int, precision:int}) : bool =
               not(boxedNum(#precision w)) andalso
               case #precision w of
@@ -405,28 +409,28 @@ struct
       case (src_aty,base_aty) of
           (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store(src_reg,base_reg,offset,C)
         | (SS.PHREG_ATY src_reg,base_aty) =>
-          move_aty_into_reg(base_aty,t2,fsz,  (* can be optimised *)
+          load_aty(base_aty,t2,fsz,  (* can be optimised *)
            store(src_reg,t2,offset,C))
         | (src_aty,SS.PHREG_ATY base_reg) =>
-          move_aty_into_reg(src_aty,t1,fsz,
+          load_aty(src_aty,t1,fsz,
            store(t1,base_reg,offset,C))
         | (src_aty,base_aty) =>
-          move_aty_into_reg(src_aty,t1,fsz, (* can be optimised *)
-           move_aty_into_reg(base_aty,t2,fsz,
+          load_aty(src_aty,t1,fsz, (* can be optimised *)
+           load_aty(base_aty,t2,fsz,
             store(t1,t2,offset,C)))
 
   (* Returns a register with arg and a continuation function. *)
   fun resolve_arg_aty (arg:SS.Aty,t:reg,fsz:int) : reg * (code -> code) =
       case arg of
           SS.PHREG_ATY r => (r, fn C => C)
-        | _ => (t, fn C => move_aty_into_reg(arg,t,fsz,C))
+        | _ => (t, fn C => load_aty(arg,t,fsz,C))
 
   fun Id x = x
   fun rep8bit (i: IntInf.int) = ~0x80 <= i andalso i <= 0x7F
   fun rep16bit (i: IntInf.int) = ~0x8000 <= i andalso i <= 0x7FFF
 
   fun protect_arg_aty (arg:SS.Aty,t:reg,fsz:int,{avoid:SS.Aty}) : ea * (code -> code) =
-      let fun default () = (R t, fn C => move_aty_into_reg(arg,t,fsz,C))
+      let fun default () = (R t, fn C => load_aty(arg,t,fsz,C))
       in case arg of
              SS.PHREG_ATY r =>
              (case avoid of
@@ -446,7 +450,7 @@ struct
       end
 
   fun resolve_arg_aty_ea (arg:SS.Aty,t:reg,fsz:int) : ea * (code -> code) =
-      let fun default () = (R t, fn C => move_aty_into_reg(arg,t,fsz,C))
+      let fun default () = (R t, fn C => load_aty(arg,t,fsz,C))
       in case arg of
              SS.PHREG_ATY r => (R r, Id)
            | SS.INTEGER_ATY i =>
@@ -466,7 +470,7 @@ struct
                      else WORDS 0
       in fn C => case float_aty of
                      SS.PHREG_ATY x => load(x,disp,freg,C)
-                   | _ => move_aty_into_reg(float_aty,t,fsz,
+                   | _ => load_aty(float_aty,t,fsz,
                            load(t,disp,freg,C))
       end
 
@@ -544,7 +548,7 @@ struct
   (* push_aty, i.e., rsp-=8; rsp[0] = aty *)
   (* fsz is for rsp before rsp is moved. *)
   fun push_aty (aty,t:reg,fsz,C) =
-      let fun default () = move_aty_into_reg(aty,t,fsz,
+      let fun default () = load_aty(aty,t,fsz,
                             G.push_ea (R t) C)
       in case aty of
              SS.PHREG_ATY aty_reg => G.push_ea (R aty_reg) C
@@ -731,7 +735,7 @@ struct
   fun add_aty_to_reg (arg:SS.Aty,tmp:reg,t:reg,fsz:int,C:code) : code =
       case arg of
           SS.PHREG_ATY r => G.add(R r,t) C
-        | _ => move_aty_into_reg(arg,tmp,fsz, G.add(R tmp,t) C)
+        | _ => load_aty(arg,tmp,fsz, G.add(R tmp,t) C)
 
   (* better alignment technique that allows for arguments on the stack *)
   fun maybe_align nargs F C =

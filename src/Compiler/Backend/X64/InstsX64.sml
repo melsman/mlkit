@@ -1021,7 +1021,7 @@ structure InstsX64 : INSTS_X64 =
         | move_immed (x,d:ea,C) = movq(I (intToStr x), d) :: C
 
       (* Move a constant, formatted as a string, into an EA *)
-      fun move_num (x,ea:ea,C) =
+      fun move_num (x,ea:ea) C =
         if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false)
         then xorq(ea, ea) :: C
         else movq(I x, ea) :: C
@@ -1086,6 +1086,18 @@ structure InstsX64 : INSTS_X64 =
       fun mul (ea,r) C =
           if is_dreg r then imull(ea, R r) :: C
           else imulq(ea, R r) :: C
+
+      fun andd (ea,r) C =
+          if is_dreg r then andl(ea, R r) :: C
+          else andq(ea, R r) :: C
+
+      fun or (ea,r) C =
+          if is_dreg r then orl(ea, R r) :: C
+          else orq(ea, R r) :: C
+
+      fun xor (ea,r) C =
+          if is_dreg r then xorl(ea, R r) :: C
+          else xorq(ea, R r) :: C
 
       fun lea (ea,r) C = leaq(ea,R r) :: C
 
