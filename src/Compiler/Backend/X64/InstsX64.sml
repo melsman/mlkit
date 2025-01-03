@@ -22,8 +22,6 @@ structure InstsX64 : INSTS_X64 =
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
 
-    type freg = int
-
     datatype ea =
         R of reg          (* register *)
       | L of lab          (* label *)
@@ -236,7 +234,7 @@ structure InstsX64 : INSTS_X64 =
       | pr_reg xmm14 = "%xmm14"
       | pr_reg xmm15 = "%xmm15"
 
-    fun is_xmm (r:reg) =
+    fun is_freg (r:reg) =
         case r of
             xmm0 => true
           | xmm1 => true
@@ -254,6 +252,47 @@ structure InstsX64 : INSTS_X64 =
           | xmm13 => true
           | xmm14 => true
           | xmm15 => true
+          | _ => false
+
+    (* is_dreg r returns true if r is a double-precision register *)
+    fun is_dreg r =
+        case r of
+            eax => true
+          | ebx => true
+          | ecx => true
+          | edx => true
+          | esi => true
+          | edi => true
+          | ebp => true
+          | esp => true
+          | r8d => true
+          | r9d => true
+          | r10d => true
+          | r11d => true
+          | r12d => true
+          | r13d => true
+          | r14d => true
+          | r15d => true
+          | _ => false
+
+    fun is_qreg r =
+        case r of
+            rax => true
+          | rbx => true
+          | rcx => true
+          | rdx => true
+          | rsi => true
+          | rdi => true
+          | rbp => true
+          | rsp => true
+          | r8 => true
+          | r9 => true
+          | r10 => true
+          | r11 => true
+          | r12 => true
+          | r13 => true
+          | r14 => true
+          | r15 => true
           | _ => false
 
     (* Patching patches moves (etc) to and from memory addresses
@@ -949,7 +988,7 @@ structure InstsX64 : INSTS_X64 =
       type inst = inst and code = code
       type Offset = Offset
       fun copy (r1, r2, C) = if r1 = r2 then C
-                             else case (is_xmm r1, is_xmm r2) of
+                             else case (is_freg r1, is_freg r2) of
                                       (true, true) => movsd (R r1, R r2) :: C
                                     | (false, false) => movq(R r1, R r2) :: C
                                     | _ => die "copy: incompatible registers"
@@ -957,14 +996,14 @@ structure InstsX64 : INSTS_X64 =
       (* Can be used to load from the stack or from a record *)
       (* d = b[n]                                            *)
       fun load (b:reg,n:Offset,d:reg,C) =
-          if is_xmm b then die ("load: wrong kind of register")
-          else if is_xmm d then movsd(D(offset_bytes n,b), R d) :: C
+          if is_freg b then die ("load: wrong kind of register")
+          else if is_freg d then movsd(D(offset_bytes n,b), R d) :: C
           else movq(D(offset_bytes n,b), R d) :: C
 
       (* Can be used to update the stack or store in a record *)
       (* b[n] = s                                             *)
       fun store (s:reg,b:reg,n:Offset,C) =
-          if is_xmm s then movsd(R s,D(offset_bytes n,b)) :: C
+          if is_freg s then movsd(R s,D(offset_bytes n,b)) :: C
           else movq(R s,D(offset_bytes n,b)) :: C
 
       (* Calculate an address given a base and an offset *)
@@ -997,11 +1036,12 @@ structure InstsX64 : INSTS_X64 =
           in movq(LA num_lab, ea) :: C
           end
 
-      fun move_ea_to_reg (ea,r:reg,C) =
-          let val mv = if is_xmm r then movsd else movq
+      (* load ea into a register *)
+      fun load_ea (ea,r:reg) C =
+          let val mv = if is_freg r then movsd else movq
           in case ea of
                  LA l => mv(LA l, R r) :: C
-               | L l => if is_xmm r then die "move_ea_to_reg"
+               | L l => if is_freg r then die "load_ea"
                         else movq(LA l, R r) :: movq(D("0",r),R r) :: C
                | D _ => mv(ea,R r) :: C
                | R r' => if r = r' then C else mv(ea,R r) :: C
@@ -1009,32 +1049,45 @@ structure InstsX64 : INSTS_X64 =
                | I _ => mv(ea,R r) :: C
           end
 
-      fun move_reg_to_ea (r:reg,ea) C =
-          let val mv = if is_xmm r then movsd else movq
+      (* store register into an ea *)
+      fun store_ea (r:reg,ea) C =
+          let val mv = if is_freg r then movsd else movq
           in case ea of
                  R r' => if r = r' then C else mv(R r,ea) :: C
                | L _ => mv(R r,ea) :: C
                | D _ => mv(R r,ea) :: C
                | DD _ => mv(R r,ea) :: C
-               | _ => die "move_reg_to_ea.not supported ea"
+               | _ => die "store_ea.not supported ea"
           end
 
       fun comment_str (s,C) = comment s :: C
 
+      (* push an ea onto the stack *)
       fun push_ea ea C =
           case ea of
               R r =>
-              if is_xmm r then
+              if is_freg r then
                 subq(I "8", R rsp) :: movsd(R r, D("",rsp)) :: C
               else push(R r) :: C
             | I _ => push ea :: C
             | _ => die "push_ea: may be applied only to I or R"
 
+      (* pop from the stack into an ea *)
       fun pop_ea ea C = pop ea :: C
 
-      fun add (r1,r2) C = addq(R r1, R r2) :: C
+      fun add (ea,r) C =
+          if is_dreg r then addl(ea,R r) :: C
+          else addq(ea, R r) :: C
 
-      fun add_num (n,r) C = addq(I n,R r) :: C
+      fun sub (ea,r) C =
+          if is_dreg r then subl(ea, R r) :: C
+          else subq(ea, R r) :: C
+
+      fun mul (ea,r) C =
+          if is_dreg r then imull(ea, R r) :: C
+          else imulq(ea, R r) :: C
+
+      fun lea (ea,r) C = leaq(ea,R r) :: C
 
       fun label l C = lab l :: C
 

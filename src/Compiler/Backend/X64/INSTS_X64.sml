@@ -18,10 +18,10 @@ signature INSTS_X64 =
                  | xmm12 | xmm13 | xmm14 | xmm15
 
     val pr_reg          : reg -> string
-    val is_xmm          : reg -> bool
+    val is_freg         : reg -> bool
+    val is_dreg         : reg -> bool
+    val is_qreg         : reg -> bool
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
-
-    type freg
 
     datatype ty = OBJ | FUNC        (* @object or @function *)
 
