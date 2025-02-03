@@ -679,19 +679,26 @@ structure InstsX64 : INSTS_X64 =
         val args_ccall_phregset = Lvarset.lvarsetof args_phreg_ccall
         val res_reg_ccall = [rax]
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
+
+        val treg0 = r10   (* CALLER saves scratch register *)
+        val treg1 = r11   (* CALLER saves scratch register *)
+
+        (* Notice also that r9 is used for generating position-independent
+         * code when emitting; see emit functions above. When we generate
+         * external calls, we may need to store an argument in r9, which is
+         * safe as the generated transfer code need no patching. *)
+
+        val tfreg0 = xmm14
+        val tfreg1 = xmm15
+        val spreg  = rsp
+
       end
 
-    val tmp_reg0 = r10 (* CALLER saves scratch register *)
-    val tmp_reg1 = r11 (* CALLER saves scratch register *)
-
-    (* Notice also that r9 is used for generating position-independent
-     * code when emitting; see emit functions above. When we generate
-     * external calls, we may need to store an argument in r9, which is
-     * safe as the generated transfer code need no patching. *)
-
-    val tmp_freg0 = xmm14
-    val tmp_freg1 = xmm15
-    val sp_reg    = rsp
+    val tmp_reg0  = RI.treg0
+    val tmp_reg1  = RI.treg1
+    val tmp_freg0 = RI.tfreg0
+    val tmp_freg1 = RI.tfreg1
+    val sp_reg    = RI.spreg
 
     fun doubleOfQuadReg r =
         case r of

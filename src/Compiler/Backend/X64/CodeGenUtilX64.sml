@@ -92,19 +92,19 @@ struct
                   I.cmpq (I "0",R rax) ::
                   I.je nfcall ::
                 G.label fcall $
-                  G.add (I "8",rsp) $
+                  G.add (I "8",RI.spreg) $
                   I.call' (R rax) ::
                   G.jump finish $
                 G.label nfcall $
-                  G.sub (I "8", rsp) $
+                  G.sub (I "8", RI.spreg) $
                   G.load_ea (LA fp, rdx) $
-                  G.store_ea (rdx, D("0",rsp)) $
+                  G.store_ea (rdx, D("0",RI.spreg)) $
                   I.call fnlab ::
-                  G.add (I "8", rsp) $
+                  G.add (I "8", RI.spreg) $
                   G.load_ea (L fp, rax) $
                   I.cmpq (I "0", R rax) ::
                   I.jne fcall::
-                  G.add (I "8", rsp) $
+                  G.add (I "8", RI.spreg) $
                   I.call (NameLab "__raise_match")::
                   G.jump finish $
                   I.dot_data::
@@ -227,11 +227,11 @@ struct
             fun box_int64_result (r,C) =
                 case rhos_for_result of
                     [_] =>
-                     G.pop_ea (R tmp_reg0) $
-                      G.pop_ea (R tmp_reg0) $
-                       store(rax,tmp_reg0,WORDS 1,                        (* store content *)
-                        store_immed(BI.tag_word_boxed false, tmp_reg0, WORDS 0,   (* store tag *)
-                         G.copy(tmp_reg0, rax, C)))
+                     G.pop_ea (R treg0) $
+                      G.pop_ea (R treg0) $
+                       store(rax,treg0,WORDS 1,                        (* store content *)
+                        store_immed(BI.tag_word_boxed false, treg0, WORDS 0,   (* store tag *)
+                         G.copy(treg0, rax, C)))
                   | _ => die "CCALL_AUTO.expecting exactly one memory location for int64 result"
 
             fun convert_result ft =
@@ -279,7 +279,7 @@ struct
     (* Stub code that makes an immediate forward jump if gc is triggered; otherwise
      * it falls through.
      * reg_map is a register map describing live registers at entry to the function
-     * The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0
+     * The stub requires reg_map to reside in treg1 and the return address in treg0
      *)
     fun do_gc (reg_map:Word32.word,size_ccf,size_rcf,
                size_spilled_region_and_float_args) =
@@ -292,8 +292,8 @@ struct
                    I.je l_gc_do ::
                    G.label l_gc_done C,
            G.label l_gc_do $
-           G.load_ea(I reg_map_immed, tmp_reg1) $                         (* tmp_reg1 = reg_map  *)
-           G.load_ea(LA l_gc_done, tmp_reg0) $                            (* tmp_reg0 = return address *)
+           G.load_ea(I reg_map_immed, treg1) $                         (* treg1 = reg_map  *)
+           G.load_ea(LA l_gc_done, treg0) $                            (* treg0 = return address *)
            G.push_ea(I (i2s size_ccf)) $
            G.push_ea(I (i2s size_rcf)) $
            G.push_ea(I (i2s size_spilled_region_and_float_args)) $
@@ -310,9 +310,9 @@ struct
      * t may be used in a call to alloc. *)
 
     fun reset_region (t:reg,tmp:reg,fsz,C) =
-        copy(t,tmp_reg1,
+        copy(t,treg1,
         I.call (NameLab "__reset_region") ::
-        copy(tmp_reg1, t, C))
+        copy(treg1, t, C))
 
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
@@ -320,25 +320,25 @@ struct
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
               fun post_prof C =
-                  (* tmp_reg1 now points at the object descriptor; initialize it *)
-                  G.move_num(i2s pp, D("0",tmp_reg1)) $                (* first word is pp *)
-                  G.move_num(i2s n0, D("8",tmp_reg1)) $                (* second word is object size *)
-                  G.lea(D (i2s (8*BI.objectDescSizeP), tmp_reg1), tmp_reg1) $
-                  C                                                    (* make tmp_reg1 point at object *)
-          in copy(t,tmp_reg1,
-             move_immed(IntInf.fromInt n, R tmp_reg0,
-             I.call (NameLab "__allocate") :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
+                  (* treg1 now points at the object descriptor; initialize it *)
+                  G.move_num(i2s pp, D("0",treg1)) $                (* first word is pp *)
+                  G.move_num(i2s n0, D("8",treg1)) $                (* second word is object size *)
+                  G.lea(D (i2s (8*BI.objectDescSizeP), treg1), treg1) $
+                  C                                                    (* make treg1 point at object *)
+          in copy(t,treg1,
+             move_immed(IntInf.fromInt n, R treg0,
+             I.call (NameLab "__allocate") :: (* assumes args in treg1 and treg0; result in treg1 *)
              post_prof
-             (copy(tmp_reg1,t,C))))
+             (copy(treg1,t,C))))
           end
         else if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
           let val n = n0 (* size in words *)
           in
-            copy(t,tmp_reg1,
-            move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-            I.call (NameLab "allocinreg") ::             (*   call allocinreg with args in     *)
-            copy(tmp_reg1,t,C)))                         (*     tmp_reg1 and tmp_reg0; result  *)
-                                                         (*     in tmp_reg1.                   *)
+            copy(t,treg1,
+            move_immed(IntInf.fromInt n, R treg0,     (*   treg0 = n                     *)
+            I.call (NameLab "allocinreg") ::          (*   call allocinreg with args in     *)
+            copy(treg1,t,C)))                         (*     treg1 and treg0; result  *)
+                                                      (*     in treg1.                   *)
           end
         else
           let val n = n0
@@ -350,14 +350,14 @@ struct
                   else NameLab "__allocate"
               val () =
                   add_code_block
-                      (G.label l_expand $                           (* expand:                            *)
-                       G.pop_ea(R tmp_reg1) $                       (*   pop region ptr                   *)
-                       G.lea(LA l, tmp_reg0) $
-                       G.push_ea (R tmp_reg0) $                     (*   push continuation label          *)
-                       move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-                       G.jump allocate_lab nil))                    (*   jmp to __allocate with args in   *)
-                                                                    (*     tmp_reg1 and tmp_reg0; result  *)
-                                                                    (*     in tmp_reg1.                   *)
+                      (G.label l_expand $                        (* expand:                            *)
+                       G.pop_ea(R treg1) $                       (*   pop region ptr                   *)
+                       G.lea(LA l, treg0) $
+                       G.push_ea (R treg0) $                     (*   push continuation label          *)
+                       move_immed(IntInf.fromInt n, R treg0,     (*   treg0 = n                        *)
+                       G.jump allocate_lab nil))                 (*   jmp to __allocate with args in   *)
+                                                                 (*     treg1 and treg0; result        *)
+                                                                 (*     in treg1.                      *)
 
               (* remember to update alloc_period only when "alloc" or
                * "alloc_protected" are not called, as these runtime
@@ -367,23 +367,23 @@ struct
                     I.addq(I (i2s (8*nw)),L(NameLab "alloc_period")) :: C
                   else C
           in
-            copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
-            I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
-            G.push_ea(R tmp_reg1) $                                 (*   push tmp_reg1                    *)
-            load(tmp_reg1,WORDS 0,tmp_reg1,                         (*   tmp_reg1 = tmp_reg1[0]           *)
-            G.add (I "-1", tmp_reg1) $                              (*   tmp_reg1 = tmp_reg1 - 1          *)
-            copy(tmp_reg1, tmp_reg0,
-            G.or(I (allocBoundaryMask()), tmp_reg0) $
-            G.add (I (i2s (8*n)), tmp_reg1) $                       (*   tmp_reg1 = tmp_reg1 + 8n         *)
-            I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
-            I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
-            G.lea(D("1",tmp_reg1),tmp_reg0) $                       (*   tmp_reg0 = tmp_reg1 + 1          *)
-            G.pop_ea (R tmp_reg1) $
-            store (tmp_reg0,tmp_reg1,WORDS 0,                       (*   tmp_reg1[0] = tmp_reg0           *)
-            G.lea(D(i2s(~8*n),tmp_reg0),tmp_reg1) $                 (*   tmp_reg1 = tmp_reg0 - 8n         *)
+            copy(t,treg1,                                        (*   treg1 = t                     *)
+            G.andd(I (i2s (~4)), treg1) $                        (*   treg1 = clearBits(treg1)      *)
+            G.push_ea(R treg1) $                                 (*   push treg1                    *)
+            load(treg1,WORDS 0,treg1,                            (*   treg1 = treg1[0]              *)
+            G.add (I "-1", treg1) $                              (*   treg1 = treg1 - 1             *)
+            copy(treg1, treg0,
+            G.or(I (allocBoundaryMask()), treg0) $
+            G.add (I (i2s (8*n)), treg1) $                       (*   treg1 = treg1 + 8n            *)
+            I.cmpq(R treg0, R treg1) ::                          (*   jmp expand if (treg0 > treg1) *)
+            I.jg l_expand ::                                     (*        (a-1+8n > boundary-1)    *)
+            G.lea(D("1",treg1),treg0) $                          (*   treg0 = treg1 + 1             *)
+            G.pop_ea (R treg1) $
+            store (treg0,treg1,WORDS 0,                          (*   treg1[0] = treg0              *)
+            G.lea(D(i2s(~8*n),treg0),treg1) $                    (*   treg1 = treg0 - 8n            *)
             maybe_update_alloc_period n (
-            G.label l $                                             (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C)))))))                               (*     in tmp_reg1.                   *)
+            G.label l $                                          (*     treg1 and treg0; result     *)
+            (copy(treg1,t,C)))))))                               (*     in treg1.                   *)
           end
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
@@ -410,10 +410,10 @@ struct
     (* We must always make a copy of phreg because we may overwrite status bits in phreg.    *)
     fun load_aty_ap (aty,dst_reg,fsz,C) =
       case aty
-        of SS.REG_I_ATY offset => base_plus_offset(rsp,BYTES(fsz*8-offset*8-8(*+BI.inf_bit*)),dst_reg,
+        of SS.REG_I_ATY offset => base_plus_offset(RI.spreg,BYTES(fsz*8-offset*8-8(*+BI.inf_bit*)),dst_reg,
                                                    set_inf_bit(dst_reg,C))
-         | SS.REG_F_ATY offset => base_plus_offset(rsp,WORDS(fsz-offset-1),dst_reg,C)
-         | SS.STACK_ATY offset => load(rsp,WORDS(fsz-offset-1),dst_reg,C)
+         | SS.REG_F_ATY offset => base_plus_offset(RI.spreg,WORDS(fsz-offset-1),dst_reg,C)
+         | SS.STACK_ATY offset => load(RI.spreg,WORDS(fsz-offset-1),dst_reg,C)
          | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
          | _ => die "load_aty_ap: ATY cannot be used to allocate memory"
 
@@ -452,14 +452,14 @@ struct
           end
          | LS.ATBOT_LI(aty,pp) =>
           load_aty_ap(aty,dst_reg,fsz,
-          reset_region(dst_reg,tmp_reg0,fsz,     (* dst_reg is preserved for alloc *)
+          reset_region(dst_reg,treg0,fsz,     (* dst_reg is preserved for alloc *)
           alloc_kill_tmp01(dst_reg,n,fsz,pp,C)))
          | LS.SAT_FI(aty,pp) =>
           let val default_lab = new_local_lab "no_reset"
           in load_aty_ap(aty,dst_reg,fsz,
              I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
              I.jnc default_lab ::
-             reset_region(dst_reg,tmp_reg0,fsz,
+             reset_region(dst_reg,treg0,fsz,
              G.label default_lab $          (* dst_reg is preverved over the call *)
              alloc_kill_tmp01(dst_reg,n,fsz,pp,C)))
           end
@@ -471,7 +471,7 @@ struct
              I.jnc finite_lab ::
              I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
              I.jnc attop_lab ::
-             reset_region(dst_reg,tmp_reg0,fsz,  (* dst_reg is preserved over the call *)
+             reset_region(dst_reg,treg0,fsz,  (* dst_reg is preserved over the call *)
              G.label attop_lab $
              alloc_kill_tmp01(dst_reg,n,fsz,pp,
              G.label finite_lab C)))
@@ -506,14 +506,14 @@ struct
           end
          | LS.ATBOT_LI(aty,pp) =>
           load_aty_ap(aty,dst_reg,fsz,
-          reset_region(dst_reg,tmp_reg0,fsz,     (* dst_reg is preserved for alloc *)
+          reset_region(dst_reg,treg0,fsz,     (* dst_reg is preserved for alloc *)
           alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C)))
          | LS.SAT_FI(aty,pp) =>
           let val default_lab = new_local_lab "no_reset"
           in load_aty_ap(aty,dst_reg,fsz,
              I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
              I.jnc default_lab ::
-             reset_region(dst_reg,tmp_reg0,fsz,
+             reset_region(dst_reg,treg0,fsz,
              G.label default_lab $          (* dst_reg is preverved over the call *)
              alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C)))
           end
@@ -526,7 +526,7 @@ struct
              I.jnc cont_lab ::
              I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
              I.jnc attop_lab ::
-             reset_region(dst_reg,tmp_reg0,fsz,  (* dst_reg is preserved over the call *)
+             reset_region(dst_reg,treg0,fsz,  (* dst_reg is preserved over the call *)
              G.label attop_lab $
              alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,
              G.label cont_lab C)))
@@ -554,16 +554,16 @@ struct
              | LS.ATTOP_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,C)
              | LS.ATTOP_FI(aty,pp) =>
                load_aty_ap(aty,dst_reg,fsz,
-                                    clear_atbot_bit(dst_reg,C))
+                clear_atbot_bit(dst_reg,C))
              | LS.ATTOP_FF(aty,pp) =>
-               load_aty_ap(aty,dst_reg,fsz, (* It is necessary to clear atbot bit *)
-                                    clear_atbot_bit(dst_reg,C))               (* because the region may be infinite *)
+               load_aty_ap(aty,dst_reg,fsz,     (* It is necessary to clear atbot bit *)
+                clear_atbot_bit(dst_reg,C))     (* because the region may be infinite *)
              | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) =>
-               base_plus_offset(rsp,BYTES(fsz*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
-                                set_inf_bit_and_atbot_bit(dst_reg, C))
+               base_plus_offset(RI.spreg,BYTES(fsz*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
+                set_inf_bit_and_atbot_bit(dst_reg, C))
              | LS.ATBOT_LI(aty,pp) =>
                load_aty_ap(aty,dst_reg,fsz,
-                                    set_atbot_bit(dst_reg,C))
+                set_atbot_bit(dst_reg,C))
              | LS.ATBOT_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,C)
              | LS.SAT_FI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,C)
              | LS.SAT_FF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,C)
@@ -571,13 +571,13 @@ struct
 
     fun force_reset_aux_region_kill_tmp0 (sma,t:reg,fsz,C) =
       let fun do_reset (aty,pp) = load_aty_ap(aty,t,fsz,
-                                   reset_region(t,tmp_reg0,fsz,C))
+                                   reset_region(t,treg0,fsz,C))
           fun maybe_reset (aty,pp) =
             let val default_lab = new_local_lab "no_reset"
             in load_aty_ap(aty,t,fsz, (* We check the inf bit but not the storage mode *)
-               I.btq(I "0", R t) ::                (* Is region infinite? kill tmp_reg0. *)
+               I.btq(I "0", R t) ::                (* Is region infinite? kill treg0. *)
                I.jnc default_lab ::
-               reset_region(t,tmp_reg0,fsz,
+               reset_region(t,treg0,fsz,
                G.label default_lab C))
             end
       in case sma of
@@ -595,13 +595,13 @@ struct
       fun maybe_reset_aux_region_kill_tmp0 (sma,t:reg,fsz,C) =
         case sma
           of LS.ATBOT_LI(aty,pp) => load_aty_ap(aty,t,fsz,
-                                    reset_region(t,tmp_reg0,fsz,C))
+                                    reset_region(t,treg0,fsz,C))
            | LS.SAT_FI(aty,pp) =>
             let val default_lab = new_local_lab "no_reset"
             in load_aty_ap(aty,t,fsz,
-               I.btq(I "1", R t) :: (* Is storage mode atbot? kill tmp_reg0. *)
+               I.btq(I "1", R t) :: (* Is storage mode atbot? kill treg0. *)
                I.jnc default_lab ::
-               reset_region(t,tmp_reg0,fsz,
+               reset_region(t,treg0,fsz,
                G.label default_lab C))
             end
            | LS.SAT_FF(aty,pp) =>
@@ -611,7 +611,7 @@ struct
                I.jnc default_lab ::
                I.btq (I "1", R t) ::  (* Is atbot bit set? *)
                I.jnc default_lab ::
-               reset_region(t,tmp_reg0,fsz,
+               reset_region(t,treg0,fsz,
                G.label default_lab C))
             end
            | _ => C
@@ -638,7 +638,7 @@ struct
             val sels = map (fn (i,e) => (toInt i, e)) sels
             fun cmp (i,opr,C) =
                 if rep16bit i then I.cmpq(I (I.intToStr i),opr) :: C
-                else G.move_immed(i, R tmp_reg0, I.cmpq(R tmp_reg0,opr) :: C)
+                else G.move_immed(i, R treg0, I.cmpq(R treg0,opr) :: C)
             fun if_not_equal_go_lab (lab,i,C) = cmp(i, opr, I.jne lab :: C)
             fun if_less_than_go_lab (lab,i,C) = cmp(i, opr, I.jl lab :: C)
             fun if_greater_than_go_lab (lab,i,C) = cmp(i, opr, I.jg lab :: C)
@@ -656,15 +656,15 @@ struct
                label,
                jmp,
                fn (sel1,sel2) => IntInf.abs(sel1-sel2), (* sel_dist *)
-               fn (lab,sel,_,C) => (G.load_ea(opr, tmp_reg0) $
-                                    I.salq(I "3", R tmp_reg0) ::
-                                    G.push_ea (R tmp_reg1) $
-                                    G.lea(LA lab,tmp_reg1) $
-                                    G.add(R tmp_reg1, tmp_reg0) $
-                                    G.load_ea(D(I.intToStr(~8*sel), tmp_reg0), tmp_reg0) $
-                                    G.add(R tmp_reg1, tmp_reg0) $
-                                    G.pop_ea (R tmp_reg1) $
-                                    I.jmp(R tmp_reg0) ::
+               fn (lab,sel,_,C) => (G.load_ea(opr, treg0) $
+                                    I.salq(I "3", R treg0) ::
+                                    G.push_ea (R treg1) $
+                                    G.lea(LA lab,treg1) $
+                                    G.add(R treg1, treg0) $
+                                    G.load_ea(D(I.intToStr(~8*sel), treg0), treg0) $
+                                    G.add(R treg1, treg0) $
+                                    G.pop_ea (R treg1) $
+                                    I.jmp(R treg0) ::
                                     rem_dead_code C),
                fn (lab,lab_table,C) => I.dot_quad_sub (lab,lab_table) :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
@@ -690,7 +690,7 @@ struct
           val (opr_reg, F) =
             case opr_aty
               of SS.PHREG_ATY r => (r, fn C => C)
-               | _ => (tmp_reg1, fn C => load_aty(opr_aty,tmp_reg1,fsz, C))
+               | _ => (treg1, fn C => load_aty(opr_aty,treg1,fsz, C))
           val opr = if oprBoxed then D("8", opr_reg)   (* boxed representation of nums *)
                     else R opr_reg                     (* unboxed representation of nums *)
         in
@@ -703,19 +703,19 @@ struct
         end
 
       fun cmpi_kill_tmp01_cmov {box,quad} cmov (x,y,d,fsz,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+        let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+            val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
+            val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
             val (inst_cmp, maybeDoubleOfQuadReg) =
                 if quad
                 then (I.cmpq, fn r => r)
                 else (I.cmpl, I.doubleOfQuadReg)
             fun compare C =
               if box then
-                G.load_ea(D("8",y_reg), tmp_reg1) $
-                G.load_ea(D("8",x_reg), tmp_reg0) $
-                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
-                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
+                G.load_ea(D("8",y_reg), treg1) $
+                G.load_ea(D("8",x_reg), treg0) $
+                inst_cmp(R (maybeDoubleOfQuadReg treg1),
+                         R (maybeDoubleOfQuadReg treg0)) :: C
               else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
                             R (maybeDoubleOfQuadReg x_reg)) :: C
         in
@@ -723,8 +723,8 @@ struct
            y_C(
            compare (
            G.move_num(i2s BI.ml_false, R d_reg) $
-           G.move_num(i2s BI.ml_true, R tmp_reg1) $
-           cmov(R tmp_reg1, R d_reg) ::
+           G.move_num(i2s BI.ml_true, R treg1) $
+           cmov(R treg1, R d_reg) ::
            C')))
         end
 
@@ -737,8 +737,8 @@ struct
 
       fun cmpi_and_jmp_kill_tmp01 {quad} (jump,x,y,lab_t,lab_f,fsz,C) =
         let
-          val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-          val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
+          val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+          val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
           val (inst_cmp, maybeDoubleOfQuadReg) =
               if quad
               then (I.cmpq, fn r => r)
@@ -755,18 +755,18 @@ struct
       (* version with boxed arguments; assume tagging is enabled *)
       fun cmpbi_and_jmp_kill_tmp01 {quad} (jump,x,y,lab_t,lab_f,fsz,C) =
         if BI.tag_values() then
-          let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-              val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
+          let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+              val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
               val (inst_cmp, maybeDoubleOfQuadReg) =
                   if quad
                   then (I.cmpq, fn r => r)
                   else (I.cmpl, I.doubleOfQuadReg)
           in
             x_C(y_C(
-            G.load_ea(D("8", y_reg), tmp_reg1) $
-            G.load_ea(D("8", x_reg), tmp_reg0) $
-            inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
-                     R (maybeDoubleOfQuadReg tmp_reg0)) ::
+            G.load_ea(D("8", y_reg), treg1) $
+            G.load_ea(D("8", x_reg), treg0) $
+            inst_cmp(R (maybeDoubleOfQuadReg treg1),
+                     R (maybeDoubleOfQuadReg treg0)) ::
             jump lab_t ::
             G.jump lab_f $ rem_dead_code C))
           end
@@ -782,8 +782,8 @@ struct
   *)
 
       fun cmpf64_and_jmp (jump,x,y,lab_t,lab_f,fsz,C) =
-          let val (x,x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-              val (y,y_C) = resolve_arg_aty(y,tmp_freg1,fsz)
+          let val (x,x_C) = resolve_arg_aty(x,tfreg0,fsz)
+              val (y,y_C) = resolve_arg_aty(y,tfreg1,fsz)
           in x_C(y_C(I.ucomisd (R y, R x) ::
                      jump lab_t ::
                      G.jump lab_f $
@@ -793,9 +793,9 @@ struct
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
       fun sub_num_kill_tmp01 {ovf,tag,quad} (x,y,d,fsz,C) =
-          let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+          let val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
               val (x_reg,x_C) = resolve_arg_aty(x,d_reg,fsz)
-              val (y_ea,y_C) = protect_arg_aty(y,tmp_reg1,fsz,{avoid=d})
+              val (y_ea,y_C) = protect_arg_aty(y,treg1,fsz,{avoid=d})
 
               fun check_ovf C = if ovf then jump_overflow C else C
               fun do_tag C = if tag then G.add(I "1",d_reg) $ check_ovf C   (* check twice *)
@@ -821,24 +821,24 @@ struct
                   then (I.addq, I.sarq, I.cmpq, fn r => r)
                   else (I.addl, I.sarl, I.cmpl, I.doubleOfQuadReg)
               fun default () =
-                 let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+                 let val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
                      fun check_ovf C = if ovf then jump_overflow C else C
                      fun do_tag C = if tag then inst_add(I "-1", R (maybeDoubleOfQuadReg d_reg)) :: check_ovf C
                                     else C
                  in if tag andalso ovf then
-                      let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-                          val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
+                      let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+                          val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
                       in
                       (x_C(y_C(
-                       copy(y_reg, tmp_reg1, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg1)) ::    (* t1 = untag y *)
-                       copy(x_reg, tmp_reg0, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::    (* t0 = untag x *)
-                       inst_add(R (maybeDoubleOfQuadReg tmp_reg0),
-                                R (maybeDoubleOfQuadReg tmp_reg1)) ::             (* t1 = t1 + t0 *)
-                       copy(tmp_reg1, d_reg,
+                       copy(y_reg, treg1, inst_sar(I "1", R (maybeDoubleOfQuadReg treg1)) ::    (* t1 = untag y *)
+                       copy(x_reg, treg0, inst_sar(I "1", R (maybeDoubleOfQuadReg treg0)) ::    (* t0 = untag x *)
+                       inst_add(R (maybeDoubleOfQuadReg treg0),
+                                R (maybeDoubleOfQuadReg treg1)) ::             (* t1 = t1 + t0 *)
+                       copy(treg1, d_reg,
                        G.lea(DD("1", d_reg, d_reg, ""), d_reg) $                  (* d = tag d *)
                        inst_sar(I "1", R (maybeDoubleOfQuadReg d_reg)) ::         (* d = untag d *)
                        inst_cmp(R (maybeDoubleOfQuadReg d_reg),
-                                R (maybeDoubleOfQuadReg tmp_reg1)) ::
+                                R (maybeDoubleOfQuadReg treg1)) ::
                        I.jne (NameLab "__raise_overflow") ::
                        G.lea(DD("1", d_reg, d_reg, ""), d_reg) $                  (* d = tag d *)
                        C'))))))
@@ -847,7 +847,7 @@ struct
                       let (* rearrange x and y if y=d *)
                           val (x,y) = if SS.eq_aty(y,d) then (y,x) else (x,y)
                           val (x_reg,x_C) = resolve_arg_aty(x,d_reg,fsz)
-                          val (y_ea,y_C) = protect_arg_aty(y,tmp_reg1,fsz,{avoid=d})
+                          val (y_ea,y_C) = protect_arg_aty(y,treg1,fsz,{avoid=d})
                           val maybeDoubleOfQuadEa = if quad then Id else doubleOfQuadEa
                       in
                       (y_C(x_C(
@@ -860,7 +860,7 @@ struct
           in case y of
                  SS.INTEGER_ATY {value,...} =>
                  if tag andalso ovf andalso rep16bit value then
-                   let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+                   let val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
                        val (x_reg,x_C) = resolve_arg_aty(x,d_reg,fsz)
                    in x_C(
                        copy(x_reg,d_reg,
@@ -873,9 +873,9 @@ struct
 
 
       fun mul_num_kill_tmp01 {ovf,tag,quad} (x,y,d,fsz,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+        let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+            val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
+            val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
             fun check_ovf C = if ovf then jump_overflow C else C
             val (inst_imul, inst_add, inst_sub, inst_sar, maybeDoubleOfQuadReg) =
                 if quad
@@ -883,24 +883,24 @@ struct
                 else (I.imull, I.addl, I.subl, I.sarl, I.doubleOfQuadReg)
 
         in x_C(y_C(
-           copy(y_reg, tmp_reg1,
+           copy(y_reg, treg1,
            copy(x_reg, d_reg,
            if tag then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
                 inst_sar(I "1", R (maybeDoubleOfQuadReg d_reg)) ::
-                inst_sub(I "1", R (maybeDoubleOfQuadReg tmp_reg1)) ::
-                inst_imul(R (maybeDoubleOfQuadReg tmp_reg1),
+                inst_sub(I "1", R (maybeDoubleOfQuadReg treg1)) ::
+                inst_imul(R (maybeDoubleOfQuadReg treg1),
                           R (maybeDoubleOfQuadReg d_reg)) ::
                 check_ovf (
                 inst_add(I "1", R (maybeDoubleOfQuadReg d_reg)) ::
                 check_ovf C')
            else
-             inst_imul(R (maybeDoubleOfQuadReg tmp_reg1),
+             inst_imul(R (maybeDoubleOfQuadReg treg1),
                        R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
 
       fun neg_int_kill_tmp0 {tag,quad} (x,d,fsz,C) =
-        let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+        let val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
             val (x_reg,x_C) = resolve_arg_aty(x,d_reg,fsz)
             val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
                 if quad
@@ -919,25 +919,25 @@ struct
       fun neg_int_boxed_kill_tmp0 {quad:bool} (b,x,d,fsz,C) =
         if not(BI.tag_values()) then die "neg_int_boxed_kill_tmp0.tagging required"
         else
-          let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+          let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+              val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
               val (inst_neg, maybeDoubleOfQuadReg) =
                   if quad
                   then (I.negq, fn r => r)
                   else (I.negl, I.doubleOfQuadReg)
           in x_C(
-             load (x_reg,WORDS 1,tmp_reg0,
-             inst_neg(R (maybeDoubleOfQuadReg tmp_reg0)) ::
+             load (x_reg,WORDS 1,treg0,
+             inst_neg(R (maybeDoubleOfQuadReg treg0)) ::
              jump_overflow (
              load_aty(b,d_reg,fsz,
-             store(tmp_reg0,d_reg,WORDS 1,                                   (* store negated value *)
+             store(treg0,d_reg,WORDS 1,                                   (* store negated value *)
              store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
           end
 
      fun abs_int_kill_tmp0 {tag,quad} (x,d,fsz,C) =
        let val cont_lab = new_local_lab "cont"
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            val (inst_add, inst_cmp, inst_neg, maybeDoubleOfQuadReg) =
                if quad
                then (I.addq, I.cmpq, I.negq, fn r => r)
@@ -960,42 +960,42 @@ struct
        if not(BI.tag_values()) then die "abs_int_boxed_kill_tmp0.tagging required"
        else
        let val cont_lab = new_local_lab "cont"
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
            val (inst_cmp, inst_neg, maybeDoubleOfQuadReg) =
                if quad
                then (I.cmpq, I.negq, fn r => r)
                else (I.cmpl, I.negl, I.doubleOfQuadReg)
        in
          x_C(
-         load (x_reg,WORDS 1,tmp_reg0,
-         inst_cmp (I "0", R (maybeDoubleOfQuadReg tmp_reg0)) ::
+         load (x_reg,WORDS 1,treg0,
+         inst_cmp (I "0", R (maybeDoubleOfQuadReg treg0)) ::
          I.jge cont_lab ::
-         inst_neg (R (maybeDoubleOfQuadReg tmp_reg0)) ::
+         inst_neg (R (maybeDoubleOfQuadReg treg0)) ::
          jump_overflow (
          G.label cont_lab $
          load_aty(b,d_reg,fsz,
-         store(tmp_reg0,d_reg, WORDS 1,                                  (* store negated value *)
+         store(treg0,d_reg, WORDS 1,                                  (* store negated value *)
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
        end
 
      fun word32ub_to_int32ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(copy(x_reg, d_reg,
                    I.btq(I "31", R d_reg) ::     (* sign bit set? *)
                    I.jc (NameLab "__raise_overflow") :: C'))
        end
 
      fun num31_to_num32ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(copy(x_reg, d_reg, I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) :: C'))
        end
 
      fun int31_to_int64ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(copy(x_reg, d_reg, I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) ::
                                  I.movslq (R (I.doubleOfQuadReg d_reg),
                                            R d_reg) :: C'))
@@ -1003,8 +1003,8 @@ struct
 
      fun int32_to_int31 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1019,8 +1019,8 @@ struct
 
      fun int64_to_int31 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1035,8 +1035,8 @@ struct
 
      fun word32_to_int31 {boxedarg,ovf} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
@@ -1058,8 +1058,8 @@ struct
 
      fun word64_to_int31 {boxedarg,ovf} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
@@ -1081,8 +1081,8 @@ struct
 
      fun word32_to_word31 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1093,45 +1093,45 @@ struct
      (* Conversions involving 64bit ints and words *)
 
      fun word64ub_to_word32ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(copy(x_reg, d_reg, C')) (* just do a copy *)
        end
 
      fun word64ub_to_int32ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
            (* to test whether the argument can be represented in 32 bits, we copy with
             * zero-extension and compare *)
-       in x_C(copy(x_reg,tmp_reg0,
-              I.mov(R (I.doubleOfQuadReg tmp_reg0), R (I.doubleOfQuadReg d_reg)) ::
+       in x_C(copy(x_reg,treg0,
+              I.mov(R (I.doubleOfQuadReg treg0), R (I.doubleOfQuadReg d_reg)) ::
               I.btq(I "31", R d_reg) ::        (* sign bit set? *)
               I.jc (NameLab "__raise_overflow") ::
-              I.cmpq(R tmp_reg0, R d_reg) ::
+              I.cmpq(R treg0, R d_reg) ::
               I.jne (NameLab "__raise_overflow") :: C'))
        end
 
      fun int64ub_to_int32ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            (* to test whether the argument can be represented in 32 bits, we copy with
             * sign-extension and compare *)
-       in x_C(copy(x_reg,tmp_reg0,
-              I.movslq(R (I.doubleOfQuadReg tmp_reg0), R d_reg) ::
-              I.cmpq(R tmp_reg0, R d_reg) ::
+       in x_C(copy(x_reg,treg0,
+              I.movslq(R (I.doubleOfQuadReg treg0), R d_reg) ::
+              I.cmpq(R treg0, R d_reg) ::
               I.jne (NameLab "__raise_overflow") :: C'))
        end
 
      fun int32ub_to_int64ub (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(I.movslq(R (I.doubleOfQuadReg x_reg),
                        R d_reg) :: C')  (* sign-extend *)
        end
 
      fun num64ub_to_num64ub {ovf} (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            val C'' = if ovf then
                        I.btq(I "63", R d_reg) ::     (* sign bit set? *)
                        I.jc (NameLab "__raise_overflow") :: C'
@@ -1141,8 +1141,8 @@ struct
 
      fun int64_to_int63 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1157,8 +1157,8 @@ struct
 
      fun word64_to_int63 {boxedarg,ovf} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun check_ovf C =
@@ -1180,8 +1180,8 @@ struct
 
      fun word64_to_word63 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1192,8 +1192,8 @@ struct
 
      fun word32_to_word63 {boxedarg,signext} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
            fun maybe_signext C =
@@ -1208,8 +1208,8 @@ struct
 
      fun word63_to_word31 (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(
           I.mov(R (I.doubleOfQuadReg x_reg), R (I.doubleOfQuadReg d_reg)) ::
           C')
@@ -1217,8 +1217,8 @@ struct
 
      fun num31_to_num63 {signext} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
        in x_C(if signext then
                 I.movslq(R (I.doubleOfQuadReg x_reg), R d_reg) :: C'
               else
@@ -1228,20 +1228,20 @@ struct
        end
 
      fun int63_to_int31 (x,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
            (* to test whether the argument can be represented in 32 (31) bits, we copy with
             * sign-extension and compare *)
-       in x_C(copy(x_reg,tmp_reg0,
-              I.movslq(R (I.doubleOfQuadReg tmp_reg0), R d_reg) ::
-              I.cmpq(R tmp_reg0, R d_reg) ::
+       in x_C(copy(x_reg,treg0,
+              I.movslq(R (I.doubleOfQuadReg treg0), R d_reg) ::
+              I.cmpq(R treg0, R d_reg) ::
               I.jne (NameLab "__raise_overflow") :: C'))
        end
 
      fun word64_to_word31 {boxedarg} (x,d,fsz,C) =
        let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz, C)
+           val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
@@ -1254,8 +1254,8 @@ struct
        if BI.tag_values() then die "num63_to_num64ub.tagging_enabled"
        else
          (* shr_inst is either I.sarq (sign extend) or I.shrq *)
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
            x_C (copy(x_reg, d_reg,
                 shr_inst (I "1", R d_reg) ::
@@ -1265,8 +1265,8 @@ struct
      fun word31_to_word64ub {signext} (x,d,fsz,C) =
        if BI.tag_values() then die "word31_to_word64ub.tagging_enabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
              fun maybe_signext C =
                  if signext then
                    I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) ::
@@ -1281,8 +1281,8 @@ struct
      fun word32ub_to_word64ub {signext} (x,d,fsz,C) =
        if BI.tag_values() then die "word32ub_to_word64ub.tagging_enabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
            x_C (if signext then
                   I.movslq(R (I.doubleOfQuadReg x_reg),
@@ -1301,9 +1301,9 @@ struct
          else die "copy_f64: expecting xmm registers"
 
      fun bin_f64_op s finst (x,y0,d,fsz:int,C) =   (* d := x op y *) (* e.g.: d := x; sub y d *)
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-             val (y, y_C) = resolve_arg_aty(y0,tmp_freg1,fsz)
-             val (d, C') = resolve_aty_def(d,tmp_freg0,fsz, C)
+         let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+             val (y, y_C) = resolve_arg_aty(y0,tfreg1,fsz)
+             val (d, C') = resolve_aty_def(d,tfreg0,fsz, C)
              val () = if I.is_freg y then () else die ("bin_f64_op: " ^ s ^ " - wrong y register - " ^ SS.pr_aty y0)
              val () = if I.is_freg x then () else die ("bin_f64_op: " ^ s ^ " - wrong x register")
              val () = if I.is_freg d then () else die ("bin_f64_op: " ^ s ^ " - wrong d register")
@@ -1312,9 +1312,9 @@ struct
               if x = d then
                 finst(R d, R d) :: C'
               else (* x <> d && x <> y && d <> f1 *)
-                copy_f64(y, tmp_freg1,
+                copy_f64(y, tfreg1,
                 copy_f64(x, d,
-                finst(R tmp_freg1, R d) ::
+                finst(R tfreg1, R d) ::
                 C'))
             else (* y <> d *)
               copy_f64(x, d,
@@ -1323,8 +1323,8 @@ struct
          end
 
      fun uno_f64_op s finst (x,d,fsz:int,C) =
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-             val (d, C') = resolve_aty_def(d,tmp_freg0,fsz,C)
+         let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+             val (d, C') = resolve_aty_def(d,tfreg0,fsz,C)
          in x_C(finst(R x, R d) :: C')
          end
 
@@ -1337,32 +1337,32 @@ struct
      val sqrt_f64 = uno_f64_op "sqrtsd" I.sqrtsd
 
      fun neg_f64 (x,d,fsz:int,C) =
-       let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-           val (d, C') = resolve_aty_def(d,tmp_freg1,fsz, C)
-       in x_C(copy_f64 (x, tmp_freg0,
+       let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+           val (d, C') = resolve_aty_def(d,tfreg1,fsz, C)
+       in x_C(copy_f64 (x, tfreg0,
               I.xorps (R d, R d) ::
-              I.subsd (R tmp_freg0, R d) :: C'))
+              I.subsd (R tfreg0, R d) :: C'))
        end
 
      fun abs_f64 (x,d,fsz,C) =
-       let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-           val (d, C') = resolve_aty_def(d,tmp_freg1,fsz, C)
-       in x_C(I.movsd (R x, R tmp_freg0) ::
+       let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+           val (d, C') = resolve_aty_def(d,tfreg1,fsz, C)
+       in x_C(I.movsd (R x, R tfreg0) ::
               I.xorps (R d, R d) ::
-              I.subsd (R tmp_freg0, R d) ::
-              I.maxsd (R tmp_freg0, R d) :: C')
+              I.subsd (R tfreg0, R d) ::
+              I.maxsd (R tfreg0, R d) :: C')
        end
 
      fun cmpf64_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,fsz)
+         let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+             val (y, y_C) = resolve_arg_aty(y,tfreg1,fsz)
              val () = if I.is_freg x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
              val () = if I.is_freg y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
-             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
+             val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
          in x_C(y_C(I.ucomisd (R y, R x) ::
             G.move_num(i2s BI.ml_false, R d_reg) $
-            G.move_num(i2s BI.ml_true, R tmp_reg1) $
-            cmov(R tmp_reg1, R d_reg) ::
+            G.move_num(i2s BI.ml_true, R treg1) $
+            cmov(R treg1, R d_reg) ::
             C'))
          end
 
@@ -1375,22 +1375,22 @@ struct
              load_aty(aty,r,fsz,C)
      in
        fun int_to_f64 (x,d,fsz,C) =
-           let val (d, C') = resolve_aty_def(d,tmp_freg0,fsz,C)
-           in mov_int ((x,tmp_reg0),fsz,
-              I.cvtsi2sdq(R tmp_reg0, R d) :: C')
+           let val (d, C') = resolve_aty_def(d,tfreg0,fsz,C)
+           in mov_int ((x,treg0),fsz,
+              I.cvtsi2sdq(R treg0, R d) :: C')
            end
      end
 
      fun real_to_f64 (x,d,fsz,C) =
-         let val (d, C') = resolve_aty_def(d,tmp_freg0,fsz,C)
-         in load_real (x, tmp_reg0, fsz, d) C'
+         let val (d, C') = resolve_aty_def(d,tfreg0,fsz,C)
+         in load_real (x, treg0, fsz, d) C'
          end
 
      fun f64_to_real_kill_tmp01 (b,x,d,fsz,C) =
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
-             val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, fsz)
-             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
-         in x_C(b_C(store_real(b_reg,tmp_reg1,x,
+         let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+             val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
+             val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
+         in x_C(b_C(store_real(b_reg,treg1,x,
             copy(b_reg,d_reg, C'))))
          end
 
@@ -1398,13 +1398,13 @@ struct
      (* boxed operations on reals (floats) *)
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,fsz,C) =
-       let val x_C = load_real(x, tmp_reg0, fsz, tmp_freg1)
-           val y_C = load_real(y, tmp_reg0, fsz, tmp_freg0)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, fsz)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
+       let val x_C = load_real(x, treg0, fsz, tfreg1)
+           val y_C = load_real(y, treg0, fsz, tfreg0)
+           val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
+           val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
        in
-         y_C(x_C(finst(R tmp_freg0,R tmp_freg1) ::
-         b_C(store_real(b_reg,tmp_reg1,tmp_freg1,
+         y_C(x_C(finst(R tfreg0,R tfreg1) ::
+         b_C(store_real(b_reg,treg1,tfreg1,
          copy(b_reg,d_reg, C')))))
        end
 
@@ -1414,49 +1414,49 @@ struct
      fun divf_kill_tmp01 a = bin_float_op_kill_tmp01 I.divsd a
 
      fun negf_kill_tmp01 (b,x,d,fsz,C) =
-       let val x_C = load_real(x, tmp_reg0, fsz,tmp_freg1)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, fsz)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
+       let val x_C = load_real(x, treg0, fsz,tfreg1)
+           val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
+           val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
        in
-         x_C(I.xorps (R tmp_freg0,R tmp_freg0) :: I.subsd (R tmp_freg1,R tmp_freg0) ::
-         b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
+         x_C(I.xorps (R tfreg0,R tfreg0) :: I.subsd (R tfreg1,R tfreg0) ::
+         b_C(store_real(b_reg,treg1,tfreg0,
          copy(b_reg,d_reg, C'))))
        end
 
      fun absf_kill_tmp01 (b,x,d,fsz,C) =
-       let val x_C = load_real(x, tmp_reg0, fsz,tmp_freg1)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, fsz)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
+       let val x_C = load_real(x, treg0, fsz,tfreg1)
+           val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
+           val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
        in
-         x_C(I.xorps (R tmp_freg0,R tmp_freg0) :: I.subsd (R tmp_freg1,R tmp_freg0) :: I.maxsd (R tmp_freg1,R tmp_freg0) ::
-         b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
+         x_C(I.xorps (R tfreg0,R tfreg0) :: I.subsd (R tfreg1,R tfreg0) :: I.maxsd (R tfreg1,R tfreg0) ::
+         b_C(store_real(b_reg,treg1,tfreg0,
          copy(b_reg,d_reg, C'))))
        end
 
      fun cmpf_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
-       let val x_C = load_real(x, tmp_reg0, fsz, tmp_freg0)
-           val y_C = load_real(y, tmp_reg0, fsz, tmp_freg1)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, fsz, C)
+       let val x_C = load_real(x, treg0, fsz, tfreg0)
+           val y_C = load_real(y, treg0, fsz, tfreg1)
+           val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
            val load_args = x_C o y_C
        in
-         load_args(I.ucomisd (R tmp_freg1, R tmp_freg0) ::
+         load_args(I.ucomisd (R tfreg1, R tfreg0) ::
          G.move_num(i2s BI.ml_false, R d_reg) $
-         G.move_num(i2s BI.ml_true, R tmp_reg1) $
-         cmov(R tmp_reg1, R d_reg) ::
+         G.move_num(i2s BI.ml_true, R treg1) $
+         cmov(R treg1, R d_reg) ::
          C')
        end
 
      fun bin_op_kill_tmp01 {quad} inst (x,y,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
            val maybeDoubleOfQuadReg = if quad then fn r => r
                                       else I.doubleOfQuadReg
        in
          x_C(y_C(
-         copy(y_reg, tmp_reg1,
+         copy(y_reg, treg1,
          copy(x_reg, d_reg,
-         inst(R (maybeDoubleOfQuadReg tmp_reg1),
+         inst(R (maybeDoubleOfQuadReg treg1),
               maybeDoubleOfQuadReg d_reg) C'))))
        end
 
@@ -1470,18 +1470,18 @@ struct
 
      (* xorb needs to set the lowest bit for the 31 bit (tagged) version and for the 63 bit (tagged) version *)
      fun xorb_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
            fun do_tag C = if tag then G.or(I "1", d_reg) C else C
            val maybeDoubleOfQuadReg =
                if quad then fn r => r
                else I.doubleOfQuadReg
        in
          x_C(y_C(
-         copy(y_reg, tmp_reg1,
+         copy(y_reg, treg1,
          copy(x_reg, d_reg,
-         G.xor(R (maybeDoubleOfQuadReg tmp_reg1),
+         G.xor(R (maybeDoubleOfQuadReg treg1),
                maybeDoubleOfQuadReg d_reg) $
          do_tag C'))))
        end
@@ -1489,22 +1489,22 @@ struct
      fun binop_word_boxed__ {ovf,quad} inst (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
        if not(BI.tag_values()) then die "binop_word_boxed__.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (y_reg,y_C) = resolve_arg_aty(y,treg1,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
              fun check_ovf C = if ovf then jump_overflow C else C
              val maybeDoubleOfQuadReg = if quad then fn r => r
                                         else I.doubleOfQuadReg
          in
            x_C(
-           load (x_reg,WORDS 1,tmp_reg0,
+           load (x_reg,WORDS 1,treg0,
            y_C(
-           load (y_reg,WORDS 1,tmp_reg1,
-           inst(R (maybeDoubleOfQuadReg tmp_reg0),
-                maybeDoubleOfQuadReg tmp_reg1) $
+           load (y_reg,WORDS 1,treg1,
+           inst(R (maybeDoubleOfQuadReg treg0),
+                maybeDoubleOfQuadReg treg1) $
            check_ovf (
            load_aty(r,d_reg,fsz,
-           store(tmp_reg1,d_reg,WORDS 1,
+           store(treg1,d_reg,WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
          end
 
@@ -1564,16 +1564,16 @@ struct
 
      fun num31_to_num_boxed {quad} (b,x,d,fsz,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
-         let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+         let val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
              val (inst_sar, maybeDoubleOfQuadReg) =
                  if quad
                  then (I.sarq, fn r => r)
                  else (I.sarl, I.doubleOfQuadReg)
          in
-           load_aty(x,tmp_reg0,fsz,
-           inst_sar (I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::
+           load_aty(x,treg0,fsz,
+           inst_sar (I "1", R (maybeDoubleOfQuadReg treg0)) ::
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg,WORDS 1,
+           store(treg0,d_reg,WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
          end
        else die "num31_to_num_boxed.tagging_disabled"
@@ -1581,84 +1581,84 @@ struct
      fun num32b_to_num32b {ovf:bool} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "num32b_to_num32b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
              fun check_ovf C =
                if ovf then
-                 I.btq(I "31", R tmp_reg0) ::     (* sign bit set? *)
+                 I.btq(I "31", R treg0) ::     (* sign bit set? *)
                  I.jc (NameLab "__raise_overflow") :: C
                else C
          in
            x_C (
-           load (x_reg,WORDS 1,tmp_reg0,
+           load (x_reg,WORDS 1,treg0,
            check_ovf (
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
      fun num64b_to_num64b {ovf:bool} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "num64b_to_num64b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
              fun check_ovf C =
                if ovf then
-                 I.btq(I "63", R tmp_reg0) ::     (* sign bit set? *)
+                 I.btq(I "63", R treg0) ::     (* sign bit set? *)
                  I.jc (NameLab "__raise_overflow") :: C
                else C
          in
            x_C (
-           load (x_reg,WORDS 1,tmp_reg0,
+           load (x_reg,WORDS 1,treg0,
            check_ovf (
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
      fun word32b_to_word64b {signext} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "num32b_to_num64b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
              fun maybe_signext C =
                  if signext then
-                   I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) :: C
+                   I.movslq(R (I.doubleOfQuadReg treg0), R treg0) :: C
                  else C
          in
            x_C (
-           load (x_reg,WORDS 1,tmp_reg0,
+           load (x_reg,WORDS 1,treg0,
            maybe_signext(
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
      fun int32b_to_int64b (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "int32b_to_int64b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
            x_C (
-           load (x_reg,WORDS 1,tmp_reg0,
-           I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) ::       (* sign-extend *)
+           load (x_reg,WORDS 1,treg0,
+           I.movslq(R (I.doubleOfQuadReg treg0), R treg0) ::       (* sign-extend *)
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
      fun num64b_to_num32b (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "num64b_to_num32b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
            x_C (
-           load (x_reg,WORDS 1,tmp_reg0,
-           I.mov(R (I.doubleOfQuadReg tmp_reg0),R (I.doubleOfQuadReg tmp_reg0)) ::  (* clears the upper bits *)
+           load (x_reg,WORDS 1,treg0,
+           I.mov(R (I.doubleOfQuadReg treg0),R (I.doubleOfQuadReg treg0)) ::  (* clears the upper bits *)
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
@@ -1666,45 +1666,45 @@ struct
        if not(BI.tag_values()) then die "int63_to_int64b.tagging_disabled"
        else
          (* shr_inst is either I.sarq (sign extend) or I.shrq *)
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
-           x_C (copy(x_reg, tmp_reg0,
-                shr_inst (I "1", R tmp_reg0) ::
+           x_C (copy(x_reg, treg0,
+                shr_inst (I "1", R treg0) ::
                 load_aty(b,d_reg,fsz,
-                store(tmp_reg0,d_reg, WORDS 1,
+                store(treg0,d_reg, WORDS 1,
                 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
      fun word63_to_word32b (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "word63_to_word32b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
          in
-           x_C (copy(x_reg, tmp_reg0,
-                I.shrq (I "1", R tmp_reg0) ::
-                I.mov(R (I.doubleOfQuadReg tmp_reg0), R (I.doubleOfQuadReg tmp_reg0)) ::
+           x_C (copy(x_reg, treg0,
+                I.shrq (I "1", R treg0) ::
+                I.mov(R (I.doubleOfQuadReg treg0), R (I.doubleOfQuadReg treg0)) ::
                 load_aty(b,d_reg,fsz,
-                store(tmp_reg0,d_reg, WORDS 1,
+                store(treg0,d_reg, WORDS 1,
                 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
 
      fun int63_to_int32b (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "int63_to_int32b.tagging_disabled"
        else
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
            (* to test whether the argument can be represented in 32 (31) bits, we copy with
             * sign-extension and compare *)
-       in x_C(copy(x_reg, tmp_reg0,
-              I.sarq (I "1", R tmp_reg0) ::
-              I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg1) ::
-              I.cmpq(R tmp_reg0, R tmp_reg1) ::
+       in x_C(copy(x_reg, treg0,
+              I.sarq (I "1", R treg0) ::
+              I.movslq(R (I.doubleOfQuadReg treg0), R treg1) ::
+              I.cmpq(R treg0, R treg1) ::
               I.jne (NameLab "__raise_overflow") ::
-              copy(tmp_reg1, tmp_reg0,
+              copy(treg1, treg0,
               load_aty(b,d_reg,fsz,
-              store(tmp_reg0,d_reg, WORDS 1,
+              store(treg0,d_reg, WORDS 1,
               store_immed(BI.tag_word_boxed false, d_reg, WORDS 0,
               C'))))))
        end
@@ -1712,19 +1712,19 @@ struct
      fun word31_to_word64b {signext} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "word31_to_word64b.tagging_disabled"
        else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz, C)
+         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
              fun maybe_signext C =
                  if signext then
-                   I.sarl (I "1", R (I.doubleOfQuadReg tmp_reg0)) ::
-                   I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) :: C
-                 else I.shrq (I "1", R tmp_reg0) :: C
+                   I.sarl (I "1", R (I.doubleOfQuadReg treg0)) ::
+                   I.movslq(R (I.doubleOfQuadReg treg0), R treg0) :: C
+                 else I.shrq (I "1", R treg0) :: C
          in
            x_C (
-           copy(x_reg, tmp_reg0,
+           copy(x_reg, treg0,
            maybe_signext(
            load_aty(b,d_reg,fsz,
-           store(tmp_reg0,d_reg, WORDS 1,
+           store(treg0,d_reg, WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
@@ -1732,22 +1732,22 @@ struct
        if not(BI.tag_values()) then die "shift_word_boxed__.tagging is not enabled as required"
        else
        (* y is unboxed and tagged *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,fsz)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg1,fsz)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg0,fsz,C)
            val maybeDoubleOfQuadReg = if quad then fn r => r
                                       else I.doubleOfQuadReg
        in
          x_C(
-         load (x_reg,WORDS 1,tmp_reg1,
-         copy(rcx, tmp_reg0,                         (* save rcx *)
+         load (x_reg,WORDS 1,treg1,
+         copy(rcx, treg0,                         (* save rcx *)
          y_C(
-         copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)
+         copy(y_reg,rcx,                             (* treg0 = %r10, see InstsX64.sml *)
          I.sarq (I "1", R rcx) ::                    (* untag y: y >> 1 *)
-         inst(R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
-         copy(tmp_reg0, rcx,                         (* restore rcx *)
+         inst(R cl, R (maybeDoubleOfQuadReg treg1)) ::
+         copy(treg0, rcx,                         (* restore rcx *)
          load_aty(r,d_reg,fsz,
-         store(tmp_reg1,d_reg,WORDS 1,
+         store(treg1,d_reg,WORDS 1,
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))))   (* store tag *)
        end
 
@@ -1769,10 +1769,10 @@ struct
      fun shift_right_unsignedw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
        shift_word_boxed__ {quad=true} I.shrq (r,x,y,d,fsz,C)
 
-     fun shift_left_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*tmp_reg0 = %r10*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,fsz)
+     fun shift_left_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*treg0 = %r10*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg1,fsz)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
@@ -1783,31 +1783,31 @@ struct
        in
          if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
            x_C(
-           copy(rcx, tmp_reg0,                        (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                        (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                                  (* x - 1  *)
+           I.decq (R treg1) ::                                  (* x - 1  *)
            untag_y (                                               (* y >> 1 *)
-           inst_sal (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::   (*   <<   *)
-           copy (tmp_reg0, rcx,                                    (* restore rcx *)
-           I.incq (R tmp_reg1) ::           (* 1 +    *)
-           copy(tmp_reg1, d_reg, C'))))))))
+           inst_sal (R cl, R (maybeDoubleOfQuadReg treg1)) ::   (*   <<   *)
+           copy (treg0, rcx,                                    (* restore rcx *)
+           I.incq (R treg1) ::           (* 1 +    *)
+           copy(treg1, d_reg, C'))))))))
          else
            x_C(
-           copy(rcx, tmp_reg0,                                (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                                (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
-           inst_sal(R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
+           inst_sal(R cl, R (maybeDoubleOfQuadReg treg1)) ::
+           copy(treg0, rcx,                                (* restore rcx *)
+           copy(treg1, d_reg, C')))))))
        end
 
-     fun shift_right_signed_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*tmp_reg0 = %r10*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,fsz)
+     fun shift_right_signed_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*treg0 = %r10*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg1,fsz)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
@@ -1818,31 +1818,31 @@ struct
        in
          if tag then                         (* 1 | ((x) >> (y >> 1)) *)
            x_C(
-           copy(rcx, tmp_reg0,                        (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                        (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                                 (* x - 1  *)
+           I.decq (R treg1) ::                                 (* x - 1  *)
            untag_y (                                              (* y >> 1 *)
-           inst_sar (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::  (* x >>   *)
-           copy(tmp_reg0, rcx,                                    (* restore rcx *)
-           I.orq (I "1", R tmp_reg1) ::                           (* 1 |    *)
-           copy(tmp_reg1, d_reg, C'))))))))
+           inst_sar (R cl, R (maybeDoubleOfQuadReg treg1)) ::  (* x >>   *)
+           copy(treg0, rcx,                                    (* restore rcx *)
+           I.orq (I "1", R treg1) ::                           (* 1 |    *)
+           copy(treg1, d_reg, C'))))))))
          else
            x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                                 (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
-           inst_sar (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
+           inst_sar (R cl, R (maybeDoubleOfQuadReg treg1)) ::
+           copy(treg0, rcx,                                 (* restore rcx *)
+           copy(treg1, d_reg, C')))))))
        end
 
-     fun shift_right_unsigned_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*tmp_reg0 = %r10 *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,fsz)
+     fun shift_right_unsigned_word_kill_tmp01 {tag,quad} (x,y,d,fsz,C) =  (*treg0 = %r10 *)
+       let val (x_reg,x_C) = resolve_arg_aty(x,treg1,fsz)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
@@ -1853,36 +1853,36 @@ struct
        in
          if tag then                                           (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
            x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                                 (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
            untag_y (                                                (* y >> 1                *)
-           inst_shr (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::    (* (unsigned long)x >>   *)
-           I.orq (I "1", R tmp_reg1) ::                             (* 1 |                   *)
-           copy(tmp_reg0, rcx,
-           copy(tmp_reg1, d_reg, C'))))))))
+           inst_shr (R cl, R (maybeDoubleOfQuadReg treg1)) ::    (* (unsigned long)x >>   *)
+           I.orq (I "1", R treg1) ::                             (* 1 |                   *)
+           copy(treg0, rcx,
+           copy(treg1, d_reg, C'))))))))
          else
            x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
+           copy(rcx, treg0,                                 (* save rcx *)
+           copy(x_reg, treg1,
            y_C(
            copy(y_reg, rcx,
-           inst_shr (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
+           inst_shr (R cl, R (maybeDoubleOfQuadReg treg1)) ::
+           copy(treg0, rcx,                                 (* restore rcx *)
+           copy(treg1, d_reg, C')))))))
        end
 
      fun bytetable_sub (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::                     (* untag i: i >> 1 *)
-            I.movzbq(DD("8",t_reg,tmp_reg0,"1"), R d_reg) ::  (* d=table[i] *)
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::                     (* untag i: i >> 1 *)
+            I.movzbq(DD("8",t_reg,treg0,"1"), R d_reg) ::  (* d=table[i] *)
             G.lea(DD("1", d_reg, d_reg, ""), d_reg) $         (* d=2d+1 *)
             C')))
           else
@@ -1892,15 +1892,15 @@ struct
        end
 
      fun bytetable_sub_word16 (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
-            I.movzwq(DD("8",t_reg,tmp_reg0,"2"), R d_reg) ::
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::         (* i >> 1 *)
+            I.movzwq(DD("8",t_reg,treg0,"2"), R d_reg) ::
             G.lea(DD("1", d_reg, d_reg, ""), d_reg) C')))
           else
             t_C(i_C(
@@ -1909,16 +1909,16 @@ struct
        end
 
      fun bytetable_sub_word31 (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            val d_reg' = I.doubleOfQuadReg d_reg
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::                 (* i >> 1 *)
-            I.mov(DD("8",t_reg,tmp_reg0,"4"), R d_reg') ::
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::                 (* i >> 1 *)
+            I.mov(DD("8",t_reg,treg0,"4"), R d_reg') ::
             G.lea(DD("1", d_reg, d_reg, ""), d_reg) $     (* d=2d+1 *)
             C')))
           else
@@ -1928,9 +1928,9 @@ struct
        end
 
      fun bytetable_sub_word32ub (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            val d_reg' = I.doubleOfQuadReg d_reg
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then die "bytetable_sub_word32ub"
@@ -1941,31 +1941,31 @@ struct
        end
 
      fun bytetable_sub_word32b (r,t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if not(BI.tag_values()) then die "bytetable_sub_word32b"
           else
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
-            I.mov(DD("8",t_reg,tmp_reg0,"4"), R r10d) :: (* tmp=table[i] *)
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::                (* untag i: i >> 1 *)
+            I.mov(DD("8",t_reg,treg0,"4"), R r10d) :: (* tmp=table[i] *)
             load_aty(r,d_reg,fsz,
             store(r10,d_reg,WORDS 1,
             store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
        end
 
      fun bytetable_sub_word63 (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::                 (* i >> 1 *)
-            I.mov(DD("8",t_reg,tmp_reg0,"8"), R d_reg) ::
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::                 (* i >> 1 *)
+            I.mov(DD("8",t_reg,treg0,"8"), R d_reg) ::
             G.lea(DD("1", d_reg, d_reg, ""), d_reg) $     (* d=2d+1 *)
             C')))
           else
@@ -1975,9 +1975,9 @@ struct
        end
 
      fun bytetable_sub_word64ub (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then die "bytetable_sub_word64ub"
           else
@@ -1987,16 +1987,16 @@ struct
        end
 
      fun bytetable_sub_word64b (r,t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if not(BI.tag_values()) then die "bytetable_sub_word64b"
           else
             t_C(i_C(
-            copy(i_reg, tmp_reg0,
-            I.sarq (I "1", R tmp_reg0) ::                (* untag i: i >> 1 *)
-            I.mov(DD("8",t_reg,tmp_reg0,"8"), R r10) ::  (* tmp=table[i] *)
+            copy(i_reg, treg0,
+            I.sarq (I "1", R treg0) ::                (* untag i: i >> 1 *)
+            I.mov(DD("8",t_reg,treg0,"8"), R r10) ::  (* tmp=table[i] *)
             load_aty(r,d_reg,fsz,
             store(r10,d_reg,WORDS 1,
             store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
@@ -2019,131 +2019,131 @@ struct
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            load_aty(t,tmp_reg0,fsz,               (* tmp_reg0 = t *)
-            load_aty(i,tmp_reg1,fsz,               (* tmp_reg1 = i *)
-            I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
-            G.add(R tmp_reg0, tmp_reg1) $                       (* tmp_reg1 += tmp_reg0 *)
-            load_aty(x,tmp_reg0,fsz,               (* tmp_reg0 (%r10) = x *)
-            I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
-            I.movb(R r10b, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10b *)
+            load_aty(t,treg0,fsz,               (* treg0 = t *)
+            load_aty(i,treg1,fsz,               (* treg1 = i *)
+            I.sarq (I "1", R treg1) ::                       (* untag i: treg1 >> 1 *)
+            G.add(R treg0, treg1) $                       (* treg1 += treg0 *)
+            load_aty(x,treg0,fsz,               (* treg0 (%r10) = x *)
+            I.sarq (I "1", R treg0) ::                       (* untag x: treg0 >> 1 *)
+            I.movb(R r10b, D("8", treg1)) ::                 (* *(treg1+8) = %r10b *)
             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
             C'))))
          end
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,            (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,            (* tmp_reg1 = i *)
-              G.add(R tmp_reg0, tmp_reg1) $                (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,            (* tmp_reg0 (%rcx) = x *)
-              I.movb(R r10b, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = %r10b *)
+              load_aty(t,treg0,fsz,            (* treg0 = t *)
+              load_aty(i,treg1,fsz,            (* treg1 = i *)
+              G.add(R treg0, treg1) $                (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,            (* treg0 (%rcx) = x *)
+              I.movb(R r10b, D("8", treg1)) ::          (* *(treg1+8) = %r10b *)
               C))))
 
      fun bytetable_update_word16 (t,i,x,d,fsz,C) =
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            load_aty(t,tmp_reg0,fsz,                        (* tmp_reg0 = t *)
-            load_aty(i,tmp_reg1,fsz,                        (* tmp_reg1 = i *)
-            I.sarq (I "1", R tmp_reg1) ::                   (* untag i: tmp_reg1 >> 1 *)
-            G.mul(I "2", tmp_reg1) $
-            G.add(R tmp_reg0, tmp_reg1) $                   (* tmp_reg1 += tmp_reg0 *)
-            load_aty(x,tmp_reg0,fsz,                        (* tmp_reg0 (%r10) = x *)
-            I.sarq (I "1", R tmp_reg0) ::                   (* untag x: tmp_reg0 >> 1 *)
-            I.mov (R r10w, D("8", tmp_reg1)) ::             (* *(tmp_reg1+8) = %r10w *)
+            load_aty(t,treg0,fsz,                        (* treg0 = t *)
+            load_aty(i,treg1,fsz,                        (* treg1 = i *)
+            I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+            G.mul(I "2", treg1) $
+            G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+            load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
+            I.sarq (I "1", R treg0) ::                   (* untag x: treg0 >> 1 *)
+            I.mov (R r10w, D("8", treg1)) ::             (* *(treg1+8) = %r10w *)
             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
             C'))))
          end
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.mov (R r10w, DD("8", t_reg, i_reg, "2")) ::  (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10w, DD("8", t_reg, i_reg, "2")) ::  (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word16"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,            (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,            (* tmp_reg1 = i *)
-              G.mul(I "2", tmp_reg1) $
-              G.add(R tmp_reg0, tmp_reg1) $       (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,            (* tmp_reg0 (%rcx) = x *)
-              I.mov (R r10w, D("8", tmp_reg1)) :: (* *(tmp_reg1+8) = %r10w *)
+              load_aty(t,treg0,fsz,            (* treg0 = t *)
+              load_aty(i,treg1,fsz,            (* treg1 = i *)
+              G.mul(I "2", treg1) $
+              G.add(R treg0, treg1) $       (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,            (* treg0 (%rcx) = x *)
+              I.mov (R r10w, D("8", treg1)) :: (* *(treg1+8) = %r10w *)
               C))))
 
      fun bytetable_update_word31 (t,i,x,d,fsz,C) =
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            load_aty(t,tmp_reg0,fsz,                        (* tmp_reg0 = t *)
-            load_aty(i,tmp_reg1,fsz,                        (* tmp_reg1 = i *)
-            I.sarq (I "1", R tmp_reg1) ::                   (* untag i: tmp_reg1 >> 1 *)
-            G.mul(I "4", tmp_reg1) $
-            G.add(R tmp_reg0, tmp_reg1) $                   (* tmp_reg1 += tmp_reg0 *)
-            load_aty(x,tmp_reg0,fsz,                        (* tmp_reg0 (%r10) = x *)
-            I.shrl (I "1", R r10d) ::                       (* untag x: tmp_reg0 >> 1 *)
-            I.mov (R r10d, D("8", tmp_reg1)) ::             (* *(tmp_reg1+8) = %r10d *)
+            load_aty(t,treg0,fsz,                        (* treg0 = t *)
+            load_aty(i,treg1,fsz,                        (* treg1 = i *)
+            I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+            G.mul(I "4", treg1) $
+            G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+            load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
+            I.shrl (I "1", R r10d) ::                       (* untag x: treg0 >> 1 *)
+            I.mov (R r10d, D("8", treg1)) ::             (* *(treg1+8) = %r10d *)
             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
             C'))))
          end
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word31"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,                     (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,                     (* tmp_reg1 = i *)
-              G.mul(I "4", tmp_reg1) $
-              G.add(R tmp_reg0, tmp_reg1) $                (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,                     (* tmp_reg0 (%rcx) = x *)
-              I.mov (R r10d, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = %r10d *)
+              load_aty(t,treg0,fsz,                     (* treg0 = t *)
+              load_aty(i,treg1,fsz,                     (* treg1 = i *)
+              G.mul(I "4", treg1) $
+              G.add(R treg0, treg1) $                (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,                     (* treg0 (%rcx) = x *)
+              I.mov (R r10d, D("8", treg1)) ::          (* *(treg1+8) = %r10d *)
               C))))
 
      fun bytetable_update_word32ub (t,i,x,d,fsz,C) =
        if BI.tag_values() then die "bytetable_update_word32ub"
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word32ub-2"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,                     (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,                     (* tmp_reg1 = i *)
-              G.mul(I "4", tmp_reg1) $
-              G.add(R tmp_reg0, tmp_reg1) $                (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,                     (* tmp_reg0 (%rcx) = x *)
-              I.mov (R r10d, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = %r10d *)
+              load_aty(t,treg0,fsz,                     (* treg0 = t *)
+              load_aty(i,treg1,fsz,                     (* treg1 = i *)
+              G.mul(I "4", treg1) $
+              G.add(R treg0, treg1) $                (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,                     (* treg0 (%rcx) = x *)
+              I.mov (R r10d, D("8", treg1)) ::          (* *(treg1+8) = %r10d *)
               C))))
 
      fun bytetable_update_word32b (t,i,x,d,fsz,C) =
          if not(BI.tag_values()) then die "bytetable_update_word32b"
          else
            let (* i, x are represented tagged only when BI.tag_values() is true *)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            in
-             load_aty(t,tmp_reg0,fsz,                        (* tmp_reg0 = t *)
-             load_aty(i,tmp_reg1,fsz,                        (* tmp_reg1 = i *)
-             I.sarq (I "1", R tmp_reg1) ::                   (* untag i: tmp_reg1 >> 1 *)
-             G.mul(I "4", tmp_reg1) $
-             G.add(R tmp_reg0, tmp_reg1) $                   (* tmp_reg1 += tmp_reg0 *)
-             load_aty(x,tmp_reg0,fsz,                        (* tmp_reg0 (%r10) = x *)
-             G.load_ea(D("8", tmp_reg0), tmp_reg0) $         (* x = *(x+8) *)
-             I.mov (R r10d, D("8", tmp_reg1)) ::             (* *(tmp_reg1+8) = %r10d *)
+             load_aty(t,treg0,fsz,                        (* treg0 = t *)
+             load_aty(i,treg1,fsz,                        (* treg1 = i *)
+             I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+             G.mul(I "4", treg1) $
+             G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+             load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
+             G.load_ea(D("8", treg0), treg0) $         (* x = *(x+8) *)
+             I.mov (R r10d, D("8", treg1)) ::             (* *(treg1+8) = %r10d *)
              move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
              C'))))
            end
@@ -2152,74 +2152,74 @@ struct
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            load_aty(t,tmp_reg0,fsz,               (* tmp_reg0 = t *)
-            load_aty(i,tmp_reg1,fsz,               (* tmp_reg1 = i *)
-            I.sarq (I "1", R tmp_reg1) ::                   (* untag i: tmp_reg1 >> 1 *)
-            G.mul(I "8", tmp_reg1) $
-            G.add(R tmp_reg0, tmp_reg1) $                   (* tmp_reg1 += tmp_reg0 *)
-            load_aty(x,tmp_reg0,fsz,               (* tmp_reg0 (%r10) = x *)
-            I.sarq (I "1", R tmp_reg0) ::                   (* untag x: tmp_reg0 >> 1 *)
-            I.mov (R r10, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10 *)
+            load_aty(t,treg0,fsz,               (* treg0 = t *)
+            load_aty(i,treg1,fsz,               (* treg1 = i *)
+            I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+            G.mul(I "8", treg1) $
+            G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+            load_aty(x,treg0,fsz,               (* treg0 (%r10) = x *)
+            I.sarq (I "1", R treg0) ::                   (* untag x: treg0 >> 1 *)
+            I.mov (R r10, D("8", treg1)) ::              (* *(treg1+8) = %r10 *)
             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
             C'))))
          end
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word63"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,            (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,            (* tmp_reg1 = i *)
-              G.mul(I "8", tmp_reg1) $
-              G.add(R tmp_reg0, tmp_reg1) $       (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,            (* tmp_reg0 (%rcx) = x *)
-              I.mov (R r10, D("8", tmp_reg1)) ::  (* *(tmp_reg1+8) = %r10 *)
+              load_aty(t,treg0,fsz,            (* treg0 = t *)
+              load_aty(i,treg1,fsz,            (* treg1 = i *)
+              G.mul(I "8", treg1) $
+              G.add(R treg0, treg1) $       (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,            (* treg0 (%rcx) = x *)
+              I.mov (R r10, D("8", treg1)) ::  (* *(treg1+8) = %r10 *)
               C))))
 
      fun bytetable_update_word64ub (t,i,x,d,fsz,C) =
        if BI.tag_values() then die "bytetable_update_word64ub"
        else
-         (case resolve_args([t,i],[tmp_reg1],fsz) of
+         (case resolve_args([t,i],[treg1],fsz) of
               SOME ([t_reg,i_reg],F) =>
-              F(load_aty(x,tmp_reg0,fsz,
-                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*tmp_reg0==%r10*)
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10, DD("8", t_reg, i_reg, "8")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word64ub-2"
             | NONE =>
-              load_aty(t,tmp_reg0,fsz,            (* tmp_reg0 = t *)
-              load_aty(i,tmp_reg1,fsz,            (* tmp_reg1 = i *)
-              G.mul(I "8", tmp_reg1) $
-              G.add(R tmp_reg0, tmp_reg1) $       (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,            (* tmp_reg0 (%rcx) = x *)
-              I.mov (R r10, D("8", tmp_reg1)) ::  (* *(tmp_reg1+8) = %r10 *)
+              load_aty(t,treg0,fsz,            (* treg0 = t *)
+              load_aty(i,treg1,fsz,            (* treg1 = i *)
+              G.mul(I "8", treg1) $
+              G.add(R treg0, treg1) $       (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,            (* treg0 (%rcx) = x *)
+              I.mov (R r10, D("8", treg1)) ::  (* *(treg1+8) = %r10 *)
               C))))
 
      fun bytetable_update_word64b (t,i,x,d,fsz,C) =
          if not(BI.tag_values()) then die "bytetable_update_word64b"
          else
            let (* i, x are represented tagged only when BI.tag_values() is true *)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            in
-             load_aty(t,tmp_reg0,fsz,                        (* tmp_reg0 = t *)
-             load_aty(i,tmp_reg1,fsz,                        (* tmp_reg1 = i *)
-             I.sarq (I "1", R tmp_reg1) ::                   (* untag i: tmp_reg1 >> 1 *)
-             G.mul(I "8", tmp_reg1) $
-             G.add(R tmp_reg0, tmp_reg1) $                   (* tmp_reg1 += tmp_reg0 *)
-             load_aty(x,tmp_reg0,fsz,                        (* tmp_reg0 (%r10) = x *)
-             G.load_ea(D("8", tmp_reg0), tmp_reg0) $         (* x = *(x+8) *)
-             G.store_ea (tmp_reg0, D("8", tmp_reg1)) $       (* *(tmp_reg1+8) = %r10d *)
+             load_aty(t,treg0,fsz,                        (* treg0 = t *)
+             load_aty(i,treg1,fsz,                        (* treg1 = i *)
+             I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+             G.mul(I "8", treg1) $
+             G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+             load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
+             G.load_ea(D("8", treg0), treg0) $         (* x = *(x+8) *)
+             G.store_ea (treg0, D("8", treg1)) $       (* *(treg1+8) = %r10d *)
              move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
              C'))))
            end
 
      fun bytetable_size (t,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg0,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
        in if BI.tag_values() then
             t_C(
             G.load_ea(D("0",t_reg), d_reg) $
@@ -2233,16 +2233,16 @@ struct
        end
 
      fun word_sub0 (t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
            (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then
             t_C(
-            load_aty(i,tmp_reg0,fsz,
-            I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
-            G.load_ea(DD("8",t_reg,tmp_reg0,"8"), d_reg) C'))
+            load_aty(i,treg0,fsz,
+            I.sarq (I "1", R treg0) ::         (* i >> 1 *)
+            G.load_ea(DD("8",t_reg,treg0,"8"), d_reg) C'))
           else
-            let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
+            let val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
             in
               t_C(i_C(
               G.load_ea(DD("8",t_reg,i_reg,"8"), d_reg) C'))
@@ -2253,47 +2253,47 @@ struct
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            case resolve_args([t,x],[tmp_reg1], fsz)
+            case resolve_args([t,x],[treg1], fsz)
               of SOME ([t_reg,x_reg], F) =>
-                F(load_aty(i,tmp_reg0,fsz,
-                  I.sarq (I "1", R tmp_reg0) ::
-                  G.store_ea(x_reg, DD("8", t_reg, tmp_reg0, "8")) $
+                F(load_aty(i,treg0,fsz,
+                  I.sarq (I "1", R treg0) ::
+                  G.store_ea(x_reg, DD("8", t_reg, treg0, "8")) $
                   move_immed(IntInf.fromInt BI.ml_unit, R d_reg,
                   C')))
                | SOME _ => die "word_update0_1"
                | NONE =>
-                (load_aty(i,tmp_reg1,fsz,                         (* tmp_reg1 = i *)
-                 I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
-                 I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
-                 load_aty(t,tmp_reg0,fsz,                         (* tmp_reg0 = t *)
-                 G.add(R tmp_reg0, tmp_reg1) $                    (* tmp_reg1 += tmp_reg0 *)
-                 load_aty(x,tmp_reg0,fsz,                         (* tmp_reg0 = x *)
-                 G.store_ea(tmp_reg0, D("8", tmp_reg1)) $         (* *(tmp_reg1+8) = tmp_reg0 *)
+                (load_aty(i,treg1,fsz,                         (* treg1 = i *)
+                 I.sarq(I "1", R treg1) ::                     (* untag i: treg1 >> 1 *)
+                 I.salq(I "3", R treg1) ::                     (* i << 3 *)
+                 load_aty(t,treg0,fsz,                         (* treg0 = t *)
+                 G.add(R treg0, treg1) $                    (* treg1 += treg0 *)
+                 load_aty(x,treg0,fsz,                         (* treg0 = x *)
+                 G.store_ea(treg0, D("8", treg1)) $         (* *(treg1+8) = treg0 *)
                  move_immed(IntInf.fromInt BI.ml_unit, R d_reg,   (* d = () *)
                  C')))))
          end
        else
-         (case resolve_args([t,i,x],[tmp_reg0,tmp_reg1], fsz)
+         (case resolve_args([t,i,x],[treg0,treg1], fsz)
             of SOME ([t_reg,i_reg,x_reg], F) =>
               F(G.store_ea(x_reg, DD("8", t_reg, i_reg, "8")) C)
              | SOME _ => die "word_update0_2"
              | NONE =>
-              load_aty(i,tmp_reg1,fsz,                          (* tmp_reg1 = i *)
-              I.salq(I "3", R tmp_reg1) ::                      (* i << 3 *)
-              load_aty(t,tmp_reg0,fsz,                          (* tmp_reg0 = t *)
-              G.add(R tmp_reg0, tmp_reg1) $                     (* tmp_reg1 += tmp_reg0 *)
-              load_aty(x,tmp_reg0,fsz,                          (* tmp_reg0 = x *)
-              G.store_ea(tmp_reg0, D("8", tmp_reg1)) $          (* *(tmp_reg1+8) = tmp_reg0 *)
+              load_aty(i,treg1,fsz,                          (* treg1 = i *)
+              I.salq(I "3", R treg1) ::                      (* i << 3 *)
+              load_aty(t,treg0,fsz,                          (* treg0 = t *)
+              G.add(R treg0, treg1) $                     (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,                          (* treg0 = x *)
+              G.store_ea(treg0, D("8", treg1)) $          (* *(treg1+8) = treg0 *)
               C))))
 
      fun table_size a = bytetable_size a
 
      (* operations on blockf64 values *)
      fun blockf64_size (t,d,fsz,C) =
-         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+         let val (t_reg,t_C) = resolve_arg_aty(t,treg0,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in if BI.tag_values() then
               t_C(
               G.load_ea(D("0",t_reg), d_reg) $
@@ -2312,92 +2312,92 @@ struct
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
          in
-            case resolve_args([t,x],[tmp_reg1], fsz)
+            case resolve_args([t,x],[treg1], fsz)
               of SOME ([t_reg,x_reg], F) =>
-                F(load_aty(i,tmp_reg0,fsz,
-                  I.sarq (I "1", R tmp_reg0) ::
-                  G.load_ea(D("8", x_reg), tmp_freg0) $                    (* x points to a real *)
-                  G.store_ea(tmp_freg0, DD("8", t_reg, tmp_reg0, "8")) $
+                F(load_aty(i,treg0,fsz,
+                  I.sarq (I "1", R treg0) ::
+                  G.load_ea(D("8", x_reg), tfreg0) $                    (* x points to a real *)
+                  G.store_ea(tfreg0, DD("8", t_reg, treg0, "8")) $
                   move_immed(IntInf.fromInt BI.ml_unit, R d_reg,
                   C')))
                | SOME _ => die "blockf64_update_real_1"
                | NONE =>
-                (load_aty(i,tmp_reg1,fsz,                         (* tmp_reg1 = i *)
-                 I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
-                 I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
-                 load_aty(t,tmp_reg0,fsz,                         (* tmp_reg0 = t *)
-                 G.add(R tmp_reg0, tmp_reg1) $                    (* tmp_reg1 += tmp_reg0 *)
-                 load_real(x,tmp_reg0,fsz,tmp_freg0) $            (* tmp_freg0 = !x *)
-                 G.store_ea(tmp_freg0, D("8", tmp_reg1)) $        (* *(tmp_reg1+8) = tmp_freg0 *)
+                (load_aty(i,treg1,fsz,                         (* treg1 = i *)
+                 I.sarq(I "1", R treg1) ::                     (* untag i: treg1 >> 1 *)
+                 I.salq(I "3", R treg1) ::                     (* i << 3 *)
+                 load_aty(t,treg0,fsz,                         (* treg0 = t *)
+                 G.add(R treg0, treg1) $                    (* treg1 += treg0 *)
+                 load_real(x,treg0,fsz,tfreg0) $            (* tfreg0 = !x *)
+                 G.store_ea(tfreg0, D("8", treg1)) $        (* *(treg1+8) = tfreg0 *)
                  move_immed(IntInf.fromInt BI.ml_unit, R d_reg,   (* d = () *)
                  C'))))
          end
        else
-         (case resolve_args([t,i,x],[tmp_reg0,tmp_reg1], fsz)
+         (case resolve_args([t,i,x],[treg0,treg1], fsz)
             of SOME ([t_reg,i_reg,x_reg], F) =>
-              F(I.movsd(D("0", x_reg), R tmp_freg0) ::                    (* x points to a real *)
-                I.movsd(R tmp_freg0, DD("8", t_reg, i_reg, "8")) :: C)
+              F(I.movsd(D("0", x_reg), R tfreg0) ::                    (* x points to a real *)
+                I.movsd(R tfreg0, DD("8", t_reg, i_reg, "8")) :: C)
              | SOME _ => die "blockf64_update_real_2"
              | NONE =>
-              load_aty(i,tmp_reg1,fsz,                     (* tmp_reg1 = i *)
-              I.salq(I "3", R tmp_reg1) ::                 (* i << 3 *)
-              load_aty(t,tmp_reg0,fsz,                     (* tmp_reg0 = t *)
-              G.add(R tmp_reg0, tmp_reg1) $                (* tmp_reg1 += tmp_reg0 *)
-              load_real(x,tmp_reg0,fsz,tmp_freg0)          (* tmp_freg0 = !x *)
-              (G.store_ea(tmp_freg0, D("8", tmp_reg1)) $   (* *(tmp_reg1+8) = tmp_freg0 *)
+              load_aty(i,treg1,fsz,                     (* treg1 = i *)
+              I.salq(I "3", R treg1) ::                 (* i << 3 *)
+              load_aty(t,treg0,fsz,                     (* treg0 = t *)
+              G.add(R treg0, treg1) $                (* treg1 += treg0 *)
+              load_real(x,treg0,fsz,tfreg0)          (* tfreg0 = !x *)
+              (G.store_ea(tfreg0, D("8", treg1)) $   (* *(treg1+8) = tfreg0 *)
                C))))
 
      fun blockf64_sub_real (b,t,i,d,fsz,C) =
-         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
-             val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, fsz)
+         let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+             val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
+             val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
          in if BI.tag_values() then                          (* i is represented tagged only *)
               t_C(                                           (* when BI.tag_values() is true *)
-              load_aty(i,tmp_reg0,fsz,
-              I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
-              G.load_ea(DD("8",t_reg,tmp_reg0,"8"), tmp_freg0) $
-              b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
+              load_aty(i,treg0,fsz,
+              I.sarq (I "1", R treg0) ::         (* i >> 1 *)
+              G.load_ea(DD("8",t_reg,treg0,"8"), tfreg0) $
+              b_C(store_real(b_reg,treg1,tfreg0,
               copy(b_reg,d_reg, C')))))
             else
-              let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
+              let val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
               in t_C(i_C(
-                 G.load_ea(DD("8",t_reg,i_reg,"8"), tmp_freg0) $
-                 b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
+                 G.load_ea(DD("8",t_reg,i_reg,"8"), tfreg0) $
+                 b_C(store_real(b_reg,treg1,tfreg0,
                  copy(b_reg,d_reg, C')))))
               end
          end
 
      fun blockf64_update_f64 (t,i,x,d,fsz,C) =
-         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,fsz)
+         let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
          in x_C(if BI.tag_values() then
                   let (* i is represented tagged only when BI.tag_values() is true *)
-                    val (d_reg,C') = resolve_aty_def(d,tmp_reg1,fsz,C)
-                  in load_aty(i,tmp_reg1,fsz,              (* tmp_reg1 = i *)
-                     I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
-                     load_aty(t,tmp_reg0,fsz,              (* tmp_reg0 = t *)
-                     (G.store_ea(x, DD("8",tmp_reg0,tmp_reg1,"8")) $    (* *(8+tmp_reg0+8*tmp_reg1) = freg *)
+                    val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
+                  in load_aty(i,treg1,fsz,              (* treg1 = i *)
+                     I.sarq(I "1", R treg1) ::                       (* untag i: treg1 >> 1 *)
+                     load_aty(t,treg0,fsz,              (* treg0 = t *)
+                     (G.store_ea(x, DD("8",treg0,treg1,"8")) $    (* *(8+treg0+8*treg1) = freg *)
                       move_immed(IntInf.fromInt BI.ml_unit, R d_reg,    (* d = () *)
                       C'))))
                   end
                 else
-                  load_aty(i,tmp_reg1,fsz,                 (* tmp_reg1 = i *)
-                  load_aty(t,tmp_reg0,fsz,                 (* tmp_reg0 = t *)
-                  (G.store_ea(x, DD("8",tmp_reg0,tmp_reg1,"8")) $       (* *(8+tmp_reg0+8*tmp_reg1) = freg *)
+                  load_aty(i,treg1,fsz,                 (* treg1 = i *)
+                  load_aty(t,treg0,fsz,                 (* treg0 = t *)
+                  (G.store_ea(x, DD("8",treg0,treg1,"8")) $       (* *(8+treg0+8*treg1) = freg *)
                    C))))
          end
 
      fun blockf64_sub_f64 (t,i,d,fsz,C) =
-         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,fsz)
-             val (d,C') = resolve_aty_def(d,tmp_freg0,fsz,C)
+         let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
+             val (d,C') = resolve_aty_def(d,tfreg0,fsz,C)
          in if BI.tag_values() then                          (* i is represented tagged only *)
               t_C(                                           (* when BI.tag_values() is true *)
-              load_aty(i,tmp_reg0,fsz,
-              I.sarq (I "1", R tmp_reg0) ::                  (* i >> 1 *)
-              G.load_ea(DD("8",t_reg,tmp_reg0,"8"), d) C'))
+              load_aty(i,treg0,fsz,
+              I.sarq (I "1", R treg0) ::                  (* i >> 1 *)
+              G.load_ea(DD("8",t_reg,treg0,"8"), d) C'))
             else
-              let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,fsz)
+              let val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
               in t_C(i_C(
                  G.load_ea(DD("8",t_reg,i_reg,"8"), d) C'))
               end

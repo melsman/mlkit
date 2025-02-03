@@ -28,4 +28,10 @@ signature REGISTER_INFO =
 
     val pr_reg : reg -> string
     val reg_eq : reg * reg -> bool
+
+    val treg0  : reg  (* tmp register *)
+    val treg1  : reg  (* tmp register *)
+    val tfreg0 : reg  (* f64 tmp register *)
+    val tfreg1 : reg  (* f64 tmp register *)
+    val spreg  : reg  (* stack pointer *)
   end

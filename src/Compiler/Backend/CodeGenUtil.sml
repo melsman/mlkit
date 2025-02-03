@@ -51,11 +51,6 @@ signature INSTS_COMMON = sig
                               where type ea = ea
                               where type lab = lab
 
-  val tmp_reg0         : RI.reg
-  val tmp_reg1         : RI.reg
-  val tmp_freg0        : RI.reg
-  val tmp_freg1        : RI.reg
-  val sp_reg           : RI.reg
   val pr_ea            : ea -> string
   val eq_ea            : ea * ea -> bool
 
@@ -202,23 +197,23 @@ struct
   end
 
   (* Static Data inserted at the beginning of the code. *)
-  local val static_data : G.inst list ref = ref []
+  local val static_data : code ref = ref []
   in fun add_static_data insts = (static_data := insts @ !static_data)
      fun reset_static_data () = static_data := []
      fun get_static_data C = !static_data @ C
   end
 
   (* Additional code blocks added at the end of functions (for avoiding jumping over blocks) *)
-  local val code_blocks : G.inst list ref = ref []
+  local val code_blocks : code ref = ref []
   in fun add_code_block insts = (code_blocks := insts @ !code_blocks)
      fun reset_code_blocks () = code_blocks := []
      fun get_code_blocks () = !code_blocks
   end
 
-  val tmp_reg0 = I.tmp_reg0
-  val tmp_reg1 = I.tmp_reg1
-  val tmp_freg0 = I.tmp_freg0
-  val tmp_freg1 = I.tmp_freg1
+  val treg0 = RI.treg0
+  val treg1 = RI.treg1
+  val tfreg0 = RI.tfreg0
+  val tfreg1 = RI.tfreg1
 
   val copy = G.copy
   val store = G.store
@@ -251,7 +246,7 @@ struct
 
   (* Find a register for aty and generate code to store into the aty *)
   fun resolve_aty_def (SS.STACK_ATY offset,t:reg,fsz,C) =
-      (t,store(t,I.sp_reg,WORDS(fsz-offset-1),C))
+      (t,store(t,RI.spreg,WORDS(fsz-offset-1),C))
     | resolve_aty_def (SS.PHREG_ATY phreg,t:reg,fsz,C) = (phreg,C)
     | resolve_aty_def (SS.UNIT_ATY,t:reg,fsz,C)  = (t,C)
     | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
@@ -277,11 +272,11 @@ struct
   fun load_aty (aty,dst_reg,fsz,C) =
       case aty of
           SS.REG_I_ATY offset =>
-          base_plus_offset(I.sp_reg,BYTES(fsz*8-offset*8-8+BI.inf_bit),dst_reg,C)
+          base_plus_offset(RI.spreg,BYTES(fsz*8-offset*8-8+BI.inf_bit),dst_reg,C)
         | SS.REG_F_ATY offset =>
-          base_plus_offset(I.sp_reg,WORDS(fsz-offset-1),dst_reg,C)
+          base_plus_offset(RI.spreg,WORDS(fsz-offset-1),dst_reg,C)
         | SS.STACK_ATY offset =>
-          load(I.sp_reg,WORDS(fsz-offset-1),dst_reg,C)
+          load(RI.spreg,WORDS(fsz-offset-1),dst_reg,C)
         | SS.DROPPED_RVAR_ATY => C
         | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
         | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
@@ -293,16 +288,16 @@ struct
   fun move_reg_into_aty (src_reg:reg,dst_aty,fsz,C) =
       case dst_aty of
           SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
-        | SS.STACK_ATY offset => store(src_reg,I.sp_reg,WORDS(fsz-offset-1),C)
+        | SS.STACK_ATY offset => store(src_reg,RI.spreg,WORDS(fsz-offset-1),C)
         | SS.UNIT_ATY => C (* wild card definition - do nothing *)
         | _ => die "move_reg_into_aty: ATY not recognized"
 
-  (* dst_aty = src_aty; may kill tmp_reg1 *)
+  (* dst_aty = src_aty; may kill RI.treg1 *)
   fun move_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,fsz,C) = move_reg_into_aty(src_reg,dst_aty,fsz,C)
     | move_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,fsz,C) = load_aty(src_aty,dst_reg,fsz,C)
     | move_aty_to_aty (src_aty,SS.UNIT_ATY,fsz,C) = C
     | move_aty_to_aty (src_aty,dst_aty,fsz,C) =
-      let val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,fsz,C)
+      let val (reg_for_result,C') = resolve_aty_def(dst_aty,RI.treg1,fsz,C)
       in load_aty(src_aty,reg_for_result,fsz,C')
       end
 
@@ -326,7 +321,7 @@ struct
           SS.PHREG_ATY d => load_ea (LA lab, d) C
         | SS.STACK_ATY offset =>
           load_ea(LA lab, t) $
-          store(t, I.sp_reg, WORDS(fsz-offset-1),C)
+          store(t, RI.spreg, WORDS(fsz-offset-1),C)
         | _ => die "load_label_addr.wrong ATY"
 
   (* dst_aty = lab[0] *)
@@ -335,7 +330,7 @@ struct
           SS.PHREG_ATY d => load_ea (L lab, d) C
         | SS.STACK_ATY offset =>
           load_ea(L lab, t) $
-          store(t, I.sp_reg, WORDS(fsz-offset-1),C)
+          store(t, RI.spreg, WORDS(fsz-offset-1),C)
         | SS.UNIT_ATY => C
         | _ => die "load_from_label.wrong ATY"
 
@@ -740,6 +735,6 @@ struct
   (* better alignment technique that allows for arguments on the stack *)
   fun maybe_align nargs F C =
       if nargs = 0 then F C
-      else F (G.add(I(I.i2s(8*nargs)),I.sp_reg) C)
+      else F (G.add(I(I.i2s(8*nargs)),RI.spreg) C)
 
 end
