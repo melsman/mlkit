@@ -664,16 +664,16 @@ structure OptLambda : OPT_LAMBDA =
        (safeLook lamb; true) handle Bad => false
      end
 
-   fun subst_real_lvar_f64_in_lamb (lv:lvar) (lamb:LambdaExp) : LambdaExp =
+   fun subst_real_lvar_f64_in_lamb (lv:lvar) (lv':lvar) (lamb:LambdaExp) : LambdaExp =
        let fun subst e =
              case e of
                  REAL _ => e
                | F64 _ => e
                | WORD _ => e
                | INTEGER _ => e
-               | VAR _ => e
-               | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,...}]) =>
-                 if Lvars.eq(lvar,lv) then e' else e
+               | VAR {lvar,...} => if Lvars.eq(lvar,lv) then die "subst_real_lvar_f64_in_lamb" else e
+               | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,instances,regvars}]) =>
+                 if Lvars.eq(lvar,lv) then VAR{lvar=lv',instances=instances,regvars=regvars} else e
                | PRIM(p,es) => PRIM(p,map subst es)
                | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
                | FIX{functions,scope} =>
@@ -1719,17 +1719,6 @@ structure OptLambda : OPT_LAMBDA =
                                                    then hoist()
                                                    else default()
                        | _ => default()
-                 (* maybe unbox real binding *)
-                 val (tau,bind,scope,fail) =
-                     if unbox_reals() andalso eq_Type(realType,tau) andalso real_lvar_f64_in_lamb lvar scope then
-                       (tick "reduce - unbox_real";
-                        let val (tau,bind,scope) = (f64Type,real_to_f64 bind,
-                                                    subst_real_lvar_f64_in_lamb lvar scope)
-                            val () = Lvars.set_ubf64 lvar
-                        in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
-                                            CUNKNOWN))
-                        end)
-                     else (tau,bind,scope,fail)
                  fun do_sw SW (SWITCH(VAR{lvar=lvar',instances,regvars=[]},sel,opt_e)) =
                      if Lvars.eq(lvar,lvar') andalso Lvars.one_use lvar then
                        let val S = mk_subst (fn () => "let-switch") (tyvars, instances)
@@ -1741,17 +1730,9 @@ structure OptLambda : OPT_LAMBDA =
                in if Lvars.zero_use lvar then
                     if safeLambdaExp bind then
                       (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
-                    else (*case scope
-                           of PRIM(RECORDprim,[]) => fail
-                            | _ => if eq_Type(tau,unit_Type) then fail
-                                   else let val pat'=[(Lvars.new_named_lvar "_not_used",[],unit_Type)]
-                                            val bind' = LET{pat=pat,bind=bind,scope=PRIM(RECORDprim, [])}
-                                            val e = LET{pat=pat',bind=bind',scope=scope}
-                                        in tick "reduce - dead-type"; (e,cv)
-                                        end*)
-                      let val e = LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
-                      in tick "reduce - wild"; (e,cv)
-                      end
+                    else let val e = LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
+                         in tick "reduce - wild"; (e,cv)
+                         end
                   else case scope
                          of VAR{lvar=lvar',instances,regvars=[]} =>
                            if Lvars.eq(lvar,lvar') then   (* no need for decr_uses *)
@@ -1799,33 +1780,17 @@ structure OptLambda : OPT_LAMBDA =
                                 end
                       | _ => fail)
           | PRIM(SELECTprim {index=n},[lamb]) =>
-               let fun do_select () = fail
-                      (* case cv
-                        of CRECORD cvs =>
-                          let val nth_cv = List.nth(cvs,n)
-                            handle Subscript => die "reduce4"
-                          in case nth_cv
-                               of CVAR {exp=var} => (tick "reduce - sel-var"; decr_uses lamb;
-                                                     incr_uses var; reduce (env, (var,nth_cv)))
-                                | CCONST {exp=e as INTEGER _} => (tick "reduce - sel-int";
-                                                                  decr_uses lamb; (e, nth_cv))
-                                | CCONST {exp=e as WORD _} => (tick "reduce - sel-word";
-                                                               decr_uses lamb; (e, nth_cv))
-                                | _ => (lamb, nth_cv)
-                          end
-                         | _ => fail *)
-               in case lamb
-                    of PRIM(RECORDprim _,lambs) =>
-                      let val (lamb', lambs') = case removeNth n lambs of
-                                                    SOME p => p
-                                                  | NONE => die "reduce.impossible"
-                      in if safeLambdaExps lambs' then
-                           (tick "reduce - sel-record"; app decr_uses lambs';
-                            reduce(env, (lamb', CUNKNOWN)))
-                         else do_select()
-                      end
-                     | _ => do_select()
-               end
+            (case lamb of
+                 PRIM(RECORDprim _,lambs) =>
+                 let val (lamb', lambs') = case removeNth n lambs of
+                                               SOME p => p
+                                             | NONE => die "reduce.impossible"
+                 in if safeLambdaExps lambs' then
+                      (tick "reduce - sel-record"; app decr_uses lambs';
+                       reduce(env, (lamb', CUNKNOWN)))
+                    else fail
+                 end
+               | _ => fail)
           | PRIM(DECONprim {con,...}, [PRIM(CONprim{con=con',...},[e])]) =>
             if Con.eq(con,con') then (tick "reduce - decon-con"; reduce (env, (e,cv)))
             else constantFolding env lamb fail
@@ -1853,14 +1818,6 @@ structure OptLambda : OPT_LAMBDA =
                                 | _ => fail)
                           | _ => fail
                end
-(*mael
-          | APP(LET{pat,bind,scope=FN{pat=pat',body}},arg) =>
-               let val pat' = fn_to_let_pat pat'
-               in tick "appletfn-fn";
-                 reduce (env, (LET{pat=pat,bind=bind,
-                                   scope=LET{pat=pat',bind=arg,scope=body}}, CUNKNOWN))
-               end
-*)
           | APP(FN{pat,body=scope},bind,_) =>
                let val pat' = fn_to_let_pat pat
                in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
@@ -2468,6 +2425,38 @@ structure OptLambda : OPT_LAMBDA =
           end)
        else lamb
    end
+
+
+   (* -----------------------------------------------------------------
+    * unbox_real_bindings lamb: replace
+    *
+    *            "let x:real = e in e'"
+    *
+    *                     with
+    *
+    *      "let x':f64 = real_to_f64(e) in e''"
+    *
+    * where e'' = e'[x'/real_to_f64(x)]"
+    *   and x <> fv(e'')
+    * ----------------------------------------------------------------- *)
+
+   fun unbox_real_bindings lamb =
+       let fun transf e =
+               case map_lamb transf e of
+                   e as LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
+                   if eq_Type(realType,tau) andalso real_lvar_f64_in_lamb lvar scope then
+                     (tick "unbox_real_bindings - unbox_real";
+                      let val lvar' = Lvars.renew lvar
+                          val () = Lvars.set_ubf64 lvar'
+                      in LET{pat=[(lvar',tyvars,f64Type)],
+                             bind=real_to_f64 bind,
+                             scope=subst_real_lvar_f64_in_lamb lvar lvar' scope}
+                      end)
+                   else e
+                 | e => e
+       in if unbox_reals() then transf lamb else lamb
+       end
+
 
    (* -----------------------------------------------------------------
     * eliminate_explicit_blockf64_bindings lamb - eliminate bindings of
@@ -3550,6 +3539,7 @@ structure OptLambda : OPT_LAMBDA =
               let val _ = reset_tick()
                   val (e, ce1) = contract ce e
                   val e = eliminate_explicit_records e
+                  val e = unbox_real_bindings e
                   val e = eliminate_explicit_blockf64_bindings e
                   val e = cse e
                   val e = hoist_blockf64_allocations e
@@ -3567,6 +3557,7 @@ structure OptLambda : OPT_LAMBDA =
                   val e = unfix_conversion e
                   val (e, _) = contract ce e
                   val e = eliminate_explicit_records e
+                  val e = unbox_real_bindings e
                   val e = eliminate_explicit_blockf64_bindings e
                   val e = cse e
                   val e = hoist_blockf64_allocations e

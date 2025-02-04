@@ -751,6 +751,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                              \ object pointed to is no longer accessed.!!"
                                    | _ => die "c function `pointer' does not have a valid type"
                                 )
+                            else if name = "__real_to_f64"
+                            then case lexps of
+                                     [VAR {lvar,...}] =>
+                                     if Lvars.get_ubf64 lvar
+                                     then die ("real_to_f64: expected ordinary lvar: " ^ Lvars.pr_lvar' lvar)
+                                     else ()
+                                   | [_] => ()
+                                   | _ => die "real_to_f64.unexpected number of arguments"
                             else ()
                     in ts_res
                     end
