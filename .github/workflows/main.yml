@@ -166,8 +166,15 @@ jobs:
         run: |
           sudo make install_smltojs
 
-      - name: Run SmlToJs tests
+      - name: Run SmlToJs tests (darwin)
+        if: ${{ env.OS == 'darwin' }}
         run: |
+          make -C js/test test
+
+      - name: Run SmlToJs tests (linux)
+        if: ${{ env.OS == 'linux' }}
+        run: |
+          export OPENSSL_CONF=/dev/null
           make -C js/test test
 
       - name: Build and run Barry tests
