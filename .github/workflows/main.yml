@@ -62,12 +62,12 @@ jobs:
           arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           arch -x86_64 /usr/local/bin/brew install gcc
           echo 'GCC version:'
-          echo "THECC=gcc-14" >> $GITHUB_ENV
+          echo "THECC=gcc-15" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
           which ld
           ld -v
           ls /usr/local/bin/gcc*
-          /usr/local/bin/gcc-14 --version
+          /usr/local/bin/gcc-15 --version
           brew install autoconf make
           brew tap homebrew/cask
           mkdir phantomjs
@@ -81,7 +81,7 @@ jobs:
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
           echo "THECC: ${{env.THECC}}"
-          which gcc-14
+          which gcc-15
           # The brew version of MLton has a bug
           brew install mlton --HEAD
 
