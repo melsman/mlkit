@@ -82,8 +82,7 @@ jobs:
         run: |
           echo "THECC: ${{env.THECC}}"
           which gcc-15
-          # The brew version of MLton has a bug
-          brew install mlton --HEAD
+          brew install mlton
 
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
