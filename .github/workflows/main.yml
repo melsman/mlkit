@@ -27,10 +27,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-14]
+        os: [ubuntu-24.04, macos-14]
         mlcomp: [mlkit, mlton]
-#        mlcomp: [mlton]
-#        mlcomp: [mlkit]
 
     runs-on: ${{ matrix.os }}
 
@@ -52,9 +50,12 @@ jobs:
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
+        working-directory: ${{ env.RUNHOME }}
         run: |
-          # sudo apt-get -qq update
-          sudo apt-get install -y mlton
+          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
+          wget -q https://github.com/MLton/mlton/releases/download/on-20241230-release/mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          tar xzf mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          echo "$HOME/mlton-20241230-1.amd64-linux.ubuntu-24.04_static/bin" >> $GITHUB_PATH
 
       - name: Install dependencies (macos)
         if: ${{ env.OS == 'darwin' }}
