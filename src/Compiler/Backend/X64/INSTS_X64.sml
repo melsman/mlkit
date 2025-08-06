@@ -1,7 +1,7 @@
 signature INSTS_X64 =
   sig
 
-    type lvar
+    include INSTS_COMMON
 
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
                  | r8 | r9 | r10 | r11 | r12 | r13 | r14 | r15
@@ -17,38 +17,11 @@ signature INSTS_X64 =
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
 
-    val pr_reg : reg -> string
-    val is_xmm : reg -> bool
-
-    val tmp_reg0 : reg (*=r10*)
-    val tmp_reg1 : reg (*=r11*)
-
-    val tmp_freg0 : reg (*=xmm0*)
-    val tmp_freg1 : reg (*=xmm1*)
-
+    val pr_reg          : reg -> string
+    val is_freg         : reg -> bool
+    val is_dreg         : reg -> bool
+    val is_qreg         : reg -> bool
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
-
-    type freg
-
-    type label
-    datatype lab =
-        DatLab of label      (* For data to propagate across program units *)
-      | LocalLab of label    (* Local label inside a block *)
-      | NameLab of string    (* For ml strings, jumps to runtime system,
-			        jumps to millicode, code label, finish
-			        label, etc. *)
-      | MLFunLab of label    (* Labels on ML Functions *)
-
-    val eq_lab : lab * lab -> bool
-
-    datatype ea = R of reg   (* register *)
-                | L of lab   (* label *)
-                | LA of lab  (* label address *)
-                | I of string   (* immediate *)
-                | D of string * reg   (* displaced *)
-                | DD of string * reg * reg * string (* double displaced *)
-    val pr_ea : ea -> string
-    val eq_ea : ea * ea -> bool
 
     datatype ty = OBJ | FUNC        (* @object or @function *)
 
@@ -162,33 +135,6 @@ signature INSTS_X64 =
     | lab of lab
     | comment of string
 
-    datatype top_decl =
-        FUN of label * inst list
-      | FN of label * inst list
-
-    type AsmPrg = {top_decls: top_decl list,
-		   init_code: inst list,
-		   static_data: inst list}
-
-    (* General purpose registers *)
-
-    val emit : AsmPrg * string -> unit   (* may raise IO *)
-
-    val pr_lab : lab -> string
-
-    structure RI : REGISTER_INFO
-      where type reg = reg
-      where type lvar = lvar
-
-    val sysname : unit -> string
-
-    val darwin_version : unit -> string option
-
-    val rem_dead_code : inst list -> inst list
-
-    val optimise : AsmPrg -> AsmPrg
-
-    type StringTree
-    val layout : AsmPrg -> StringTree
+    sharing type inst = G.inst
 
   end

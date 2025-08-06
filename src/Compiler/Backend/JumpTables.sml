@@ -1,6 +1,7 @@
-functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
+structure JumpTables :> JUMP_TABLES =
   struct
 
+    structure BI = BackendInfo
     (***********)
     (* Logging *)
     (***********)

@@ -246,7 +246,7 @@ void
 print_value2(char* tau, char* lab) {
   fprintf(repllog, "{attempt printing with pretty_exported function %s : %s}\n", lab, tau);
   fflush(repllog);
-  size_t(*pretty_exported)() = (size_t(*)())dlsym(RTLD_DEFAULT,"pretty_exported");
+  size_t(*pretty_exported)(int) = (size_t(*)(int))dlsym(RTLD_DEFAULT,"pretty_exported");
   if ( !pretty_exported ) {
     print_value(tau,lab);
     return;

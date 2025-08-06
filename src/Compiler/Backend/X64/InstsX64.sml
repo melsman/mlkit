@@ -1,31 +1,11 @@
-structure InstsX64: INSTS_X64 =
+structure InstsX64 : INSTS_X64 =
   struct
     structure PP = PrettyPrint
     structure Labels = AddressLabels
 
     fun die s = Crash.impossible("InstX64." ^ s)
 
-    fun memoize f =
-        let val r = ref NONE
-        in fn () => case !r of SOME v => v
-                             | NONE => let val v = f()
-                                       in r:=SOME v; v
-                                       end
-        end
-
-    val sysname =
-        memoize (fn () =>
-                    case List.find (fn (f,_) => f = "sysname") (Posix.ProcEnv.uname()) of
-                        SOME (_, name) => name
-                      | NONE => "unknown"
-                )
-
-    val darwin_version =
-        memoize (fn () =>
-                    case List.find (fn (f,_) => f = "release") (Posix.ProcEnv.uname()) of
-                        SOME (_, v) => SOME v
-                      | NONE => NONE
-                )
+    open InstsBase
 
     type lvar = Lvars.lvar
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
@@ -41,23 +21,6 @@ structure InstsX64: INSTS_X64 =
                  | xmm4 | xmm5 | xmm6 | xmm7
                  | xmm8 | xmm9 | xmm10 | xmm11
                  | xmm12 | xmm13 | xmm14 | xmm15
-
-    type freg = int
-
-    type label = Labels.label
-    datatype lab =
-        DatLab of label      (* For data to propagate across program units *)
-      | LocalLab of label    (* Local label inside a block *)
-      | NameLab of string    (* For ml strings, jumps to runtime system,
-                                jumps to millicode, code label, finish
-                                label, etc. *)
-      | MLFunLab of label    (* Labels on ML Functions *)
-
-    fun eq_lab (DatLab label1, DatLab label2) = Labels.eq(label1,label2)
-      | eq_lab (LocalLab label1, LocalLab label2) = Labels.eq(label1,label2)
-      | eq_lab (NameLab s1, NameLab s2) = s1 = s2
-      | eq_lab (MLFunLab label1, MLFunLab label2) = Labels.eq(label1,label2)
-      | eq_lab _ = false
 
     datatype ea =
         R of reg          (* register *)
@@ -189,47 +152,15 @@ structure InstsX64: INSTS_X64 =
     | lab of lab
     | comment of string
 
+    type code = inst list
+
     datatype top_decl =
-        FUN of label * inst list
-      | FN of label * inst list
+        FUN of label * code
+      | FN of label * code
 
     type AsmPrg = {top_decls: top_decl list,
-                   init_code: inst list,
-                   static_data: inst list}
-
-    structure LabSet : sig type t
-                           val insert : t -> lab -> unit
-                           val empty  : unit -> t
-                           val mem    : t -> lab -> bool
-                       end =
-    struct
-      structure H = Polyhash
-
-      fun hash_s (s:string) : int =
-          let val w = Pickle.Hash.hash(Pickle.Hash.string s Pickle.Hash.init)
-          in Word.toIntX w
-          end
-
-      type t = (lab,unit) H.hash_table
-
-      exception NotThere
-      fun key (l:label) = #1(Labels.key l)
-      fun hash_lab (l:lab) : int =
-          case l of
-              LocalLab l => key l
-            | DatLab l => key l
-            | MLFunLab l => key l
-            | NameLab n => hash_s n
-
-      fun empty () : t = H.mkTable (hash_lab,eq_lab) (23,NotThere)
-      fun mem (t:t) (l:lab) : bool =
-          case H.peek t l of
-              SOME _ => true
-            | NONE => false
-
-      fun insert (t:t) (l:lab) : unit =
-          H.insert t (l,())
-    end
+                   init_code: code,
+                   static_data: code}
 
     fun labs_def_insts (is:inst list,acc:lab list) : lab list =
         let fun loop (nil,acc) = acc
@@ -303,7 +234,7 @@ structure InstsX64: INSTS_X64 =
       | pr_reg xmm14 = "%xmm14"
       | pr_reg xmm15 = "%xmm15"
 
-    fun is_xmm (r:reg) =
+    fun is_freg (r:reg) =
         case r of
             xmm0 => true
           | xmm1 => true
@@ -323,26 +254,46 @@ structure InstsX64: INSTS_X64 =
           | xmm15 => true
           | _ => false
 
-    fun remove_ctrl s =
-        CharVector.map (fn c =>
-                           if Char.isAlphaNum c orelse c = #"_" orelse c = #"."
-                           then c
-                           else #"_") s
+    (* is_dreg r returns true if r is a double-precision register *)
+    fun is_dreg r =
+        case r of
+            eax => true
+          | ebx => true
+          | ecx => true
+          | edx => true
+          | esi => true
+          | edi => true
+          | ebp => true
+          | esp => true
+          | r8d => true
+          | r9d => true
+          | r10d => true
+          | r11d => true
+          | r12d => true
+          | r13d => true
+          | r14d => true
+          | r15d => true
+          | _ => false
 
-    fun isDarwin () = sysname() = "Darwin"
-
-    fun pr_namelab s =
-        if isDarwin() then "_" ^ s
-        else s
-
-    fun pr_lab (DatLab l) = pr_namelab("D." ^ remove_ctrl(Labels.pr_label l))
-      | pr_lab (LocalLab l) = "L_" ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (NameLab s) = pr_namelab(remove_ctrl s)
-      | pr_lab (MLFunLab l) = pr_namelab("F." ^ remove_ctrl(Labels.pr_label l))
-
-    (* Convert ~n to -n *)
-    fun int_to_string i = if i >= 0 then Int.toString i
-                          else "-" ^ Int.toString (~i)
+    fun is_qreg r =
+        case r of
+            rax => true
+          | rbx => true
+          | rcx => true
+          | rdx => true
+          | rsi => true
+          | rdi => true
+          | rbp => true
+          | rsp => true
+          | r8 => true
+          | r9 => true
+          | r10 => true
+          | r11 => true
+          | r12 => true
+          | r13 => true
+          | r14 => true
+          | r15 => true
+          | _ => false
 
     (* Patching patches moves (etc) to and from memory addresses
        identified by labels are patched so that the involved memory
@@ -728,18 +679,26 @@ structure InstsX64: INSTS_X64 =
         val args_ccall_phregset = Lvarset.lvarsetof args_phreg_ccall
         val res_reg_ccall = [rax]
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
+
+        val treg0 = r10   (* CALLER saves scratch register *)
+        val treg1 = r11   (* CALLER saves scratch register *)
+
+        (* Notice also that r9 is used for generating position-independent
+         * code when emitting; see emit functions above. When we generate
+         * external calls, we may need to store an argument in r9, which is
+         * safe as the generated transfer code need no patching. *)
+
+        val tfreg0 = xmm14
+        val tfreg1 = xmm15
+        val spreg  = rsp
+
       end
 
-    val tmp_reg0 = r10 (* CALLER saves scratch register *)
-    val tmp_reg1 = r11 (* CALLER saves scratch register *)
-
-    (* Notice also that r9 is used for generating position-independent
-     * code when emitting; see emit functions above. When we generate
-     * external calls, we may need to store an argument in r9, which is
-     * safe as the generated transfer code need no patching. *)
-
-    val tmp_freg0 = xmm14
-    val tmp_freg1 = xmm15
+    val tmp_reg0  = RI.treg0
+    val tmp_reg1  = RI.treg1
+    val tmp_freg0 = RI.tfreg0
+    val tmp_freg1 = RI.tfreg1
+    val sp_reg    = RI.spreg
 
     fun doubleOfQuadReg r =
         case r of
@@ -1030,4 +989,129 @@ structure InstsX64: INSTS_X64 =
     fun layout _ = PP.LEAF "not implemented"
 
     val pr_ea = pr_ea (LabSet.empty())
+
+    structure G : INSTS_GENERIC = struct
+      type reg = reg and ea = ea and lab = lab
+      type inst = inst and code = code
+      type Offset = Offset
+      fun copy (r1, r2, C) = if r1 = r2 then C
+                             else case (is_freg r1, is_freg r2) of
+                                      (true, true) => movsd (R r1, R r2) :: C
+                                    | (false, false) => movq(R r1, R r2) :: C
+                                    | _ => die "copy: incompatible registers"
+
+      (* Can be used to load from the stack or from a record *)
+      (* d = b[n]                                            *)
+      fun load (b:reg,n:Offset,d:reg,C) =
+          if is_freg b then die ("load: wrong kind of register")
+          else if is_freg d then movsd(D(offset_bytes n,b), R d) :: C
+          else movq(D(offset_bytes n,b), R d) :: C
+
+      (* Can be used to update the stack or store in a record *)
+      (* b[n] = s                                             *)
+      fun store (s:reg,b:reg,n:Offset,C) =
+          if is_freg s then movsd(R s,D(offset_bytes n,b)) :: C
+          else movq(R s,D(offset_bytes n,b)) :: C
+
+      (* Calculate an address given a base and an offset *)
+      (* dst = base + x                                  *)
+      fun base_plus_offset (b:reg,n:Offset,d:reg,C) =
+          if d = b andalso isZeroOffset n then C
+          else leaq(D(offset_bytes n, b), R d) :: C
+
+      (* Store a constant in an address specified by a register and an offset *)
+      fun store_immed (w:word,r:reg,offset:Offset,C) =
+        movq(I (wordToStr (Word.toLargeInt w)), D(offset_bytes offset,r)) :: C
+
+      (* Move a constant into an EA *)
+      fun move_immed (0,R d,C) = xorq(R d, R d) :: C
+        | move_immed (x,d:ea,C) = movq(I (intToStr x), d) :: C
+
+      (* Move a constant, formatted as a string, into an EA *)
+      fun move_num (x,ea:ea) C =
+        if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false)
+        then xorq(ea, ea) :: C
+        else movq(I x, ea) :: C
+
+      fun move_num_boxed new_num_lab add_static_data tag (x,ea:ea,C) =
+          let val num_lab = new_num_lab()
+              val () = add_static_data [dot_data,
+                                        dot_align 8,
+                                        lab num_lab,
+                                        dot_quad(tag()),
+                                        dot_quad x]
+          in movq(LA num_lab, ea) :: C
+          end
+
+      (* load ea into a register *)
+      fun load_ea (ea,r:reg) C =
+          let val mv = if is_freg r then movsd else movq
+          in case ea of
+                 LA l => mv(LA l, R r) :: C
+               | L l => if is_freg r then die "load_ea"
+                        else movq(LA l, R r) :: movq(D("0",r),R r) :: C
+               | D _ => mv(ea,R r) :: C
+               | R r' => if r = r' then C else mv(ea,R r) :: C
+               | DD _ => mv(ea,R r) :: C
+               | I _ => mv(ea,R r) :: C
+          end
+
+      (* store register into an ea *)
+      fun store_ea (r:reg,ea) C =
+          let val mv = if is_freg r then movsd else movq
+          in case ea of
+                 R r' => if r = r' then C else mv(R r,ea) :: C
+               | L _ => mv(R r,ea) :: C
+               | D _ => mv(R r,ea) :: C
+               | DD _ => mv(R r,ea) :: C
+               | _ => die "store_ea.not supported ea"
+          end
+
+      fun comment_str (s,C) = comment s :: C
+
+      (* push an ea onto the stack *)
+      fun push_ea ea C =
+          case ea of
+              R r =>
+              if is_freg r then
+                subq(I "8", R rsp) :: movsd(R r, D("",rsp)) :: C
+              else push(R r) :: C
+            | I _ => push ea :: C
+            | _ => die "push_ea: may be applied only to I or R"
+
+      (* pop from the stack into an ea *)
+      fun pop_ea ea C = pop ea :: C
+
+      fun add (ea,r) C =
+          if is_dreg r then addl(ea,R r) :: C
+          else addq(ea, R r) :: C
+
+      fun sub (ea,r) C =
+          if is_dreg r then subl(ea, R r) :: C
+          else subq(ea, R r) :: C
+
+      fun mul (ea,r) C =
+          if is_dreg r then imull(ea, R r) :: C
+          else imulq(ea, R r) :: C
+
+      fun andd (ea,r) C =
+          if is_dreg r then andl(ea, R r) :: C
+          else andq(ea, R r) :: C
+
+      fun or (ea,r) C =
+          if is_dreg r then orl(ea, R r) :: C
+          else orq(ea, R r) :: C
+
+      fun xor (ea,r) C =
+          if is_dreg r then xorl(ea, R r) :: C
+          else xorq(ea, R r) :: C
+
+      fun lea (ea,r) C = leaq(ea,R r) :: C
+
+      fun label l C = lab l :: C
+
+      fun jump l C = jmp(L l) :: C
+
+    end
+
   end

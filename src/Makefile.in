@@ -40,7 +40,7 @@ mlkit_runtime: basics
 
 .PHONY: mlkit_kit
 mlkit_kit:
-	$(MLCOMP) -output mlkit Compiler/native64.mlb
+	$(MLCOMP) -output mlkit Compiler/mlkit64.mlb
 	$(INSTALL) -p mlkit $(BINDIR)
 
 .PHONY: smltojs
@@ -50,7 +50,7 @@ smltojs: basics mlbmake mllex-yacc
 
 .PHONY: reml
 reml: mlkit_tools mlkit_runtime
-	$(MLCOMP) -output reml Compiler/reml.mlb
+	$(MLCOMP) -output reml Compiler/reml64.mlb
 	$(INSTALL) -p reml $(BINDIR)
 
 .PHONY: mllex-yacc

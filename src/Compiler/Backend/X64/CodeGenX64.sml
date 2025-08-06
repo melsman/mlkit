@@ -1,18 +1,13 @@
 (* Generate Target Code *)
 
-functor CodeGenX64(structure BackendInfo : BACKEND_INFO
-                     where type label = AddressLabels.label
-                   structure JumpTables : JUMP_TABLES
-                   structure CallConv: CALL_CONV
-                     where type lvar = Lvars.lvar
-                   structure LineStmt: LINE_STMT
+functor CodeGenX64(structure LineStmt: LINE_STMT
                      where type con = Con.con
                      where type excon = Excon.excon
                      where type lvar = Lvars.lvar
                      where type label = AddressLabels.label
                      where type place = Effect.effect
                      where type StringTree = PrettyPrint.StringTree
-                   sharing type CallConv.cc = LineStmt.cc
+                     where type cc = CallConv.cc
                    structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                     where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
                      where type lvar = Lvars.lvar
@@ -22,13 +17,12 @@ functor CodeGenX64(structure BackendInfo : BACKEND_INFO
     : CODE_GEN =
 struct
 
-  structure CodeGenUtil = CodeGenUtilX64(structure BackendInfo = BackendInfo
-                                         structure JumpTables = JumpTables
-                                         structure CallConv = CallConv
-                                         structure LineStmt = LineStmt
-                                         structure SubstAndSimplify = SubstAndSimplify)
+  local structure X = CodeGenUtilX64(structure LineStmt = LineStmt
+                                     structure SubstAndSimplify = SubstAndSimplify)
+  in open X
+  end
 
-  open CodeGenUtil
+  infixr 5 $
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
@@ -68,7 +62,7 @@ struct
      (* Code Generation *)
      (*******************)
 
-     fun CG_lss (lss,size_ff,size_ccf,C) =
+     fun CG_lss (lss,fsz,size_ccf,C) =
        let
          fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
          fun CG_ls (ls,C) =
@@ -82,14 +76,14 @@ struct
                | LS.ASSIGN{pat,bind} =>
                 comment_fn (fn () => "ASSIGN: " ^ pr_ls ls,
                 (case bind
-                   of LS.ATOM {aty=src_aty} => move_aty_to_aty(src_aty,pat,size_ff,C)
-                    | LS.LOAD label => load_from_label(DatLab label,pat,tmp_reg1,size_ff,C)
+                   of LS.ATOM {aty=src_aty} => move_aty_to_aty(src_aty,pat,fsz,C)
+                    | LS.LOAD label => load_from_label(DatLab label,pat,treg1,fsz,C)
                     | LS.STORE(src_aty,label) =>
                      (gen_data_lab label;
-                      store_in_label(src_aty,DatLab label,tmp_reg1,size_ff,C))
+                      store_in_label(src_aty,DatLab label,treg1,fsz,C))
                     | LS.STRING str =>
                      let val string_lab = gen_string_lab str
-                     in load_label_addr(string_lab,pat,tmp_reg1,size_ff,C)
+                     in load_label_addr(string_lab,pat,treg1,fsz,C)
                      end
                     | LS.REAL str =>
                      let val float_lab = new_float_lab()
@@ -105,10 +99,10 @@ struct
                                               I.dot_align 8,
                                               I.lab float_lab,
                                               I.dot_double str]
-                     in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
+                     in load_label_addr(float_lab,pat,treg1,fsz,C)
                      end
                     | LS.F64 str =>
-                      let val (d, C') = resolve_aty_def(pat, tmp_freg0, size_ff, C)
+                      let val (d, C') = resolve_aty_def(pat, tfreg0, fsz, C)
                       in case str of
                              "0.0" => I.xorps (R d, R d) :: C'
                            | _ => let val float_lab = new_float_lab()
@@ -116,12 +110,12 @@ struct
                                                                I.dot_align 8,
                                                                I.lab float_lab,
                                                                I.dot_double str]
-                                  in I.movq(LA float_lab, R tmp_reg0) ::
-                                     I.movsd(D("0", tmp_reg0),R d) :: C'
+                                  in G.load_ea(LA float_lab, treg0) $
+                                     G.load_ea(D("0", treg0),d) C'
                                   end
                       end
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                     let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          val num_elems = List.length (LS.smash_free elems)
                          val n_skip = length rhos + 1 (* We don't traverse region pointers
                                                        * or lvars of type f64, which appears first in lvs.
@@ -129,49 +123,25 @@ struct
                                       + f64_vars
                      in
                        if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,fsz,
                          store_immed(BI.tag_clos(false,num_elems+1,n_skip), reg_for_result, WORDS 0,
-
-                         load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-                         store_indexed(reg_for_result,WORDS 1,R tmp_reg0,
-
-                         (*store_indexed(reg_for_result,WORDS 1, LA (MLFunLab label),*)
+                         load_label_addr(MLFunLab label,SS.PHREG_ATY treg0,treg0,fsz,
+                         store(treg0,reg_for_result,WORDS 1,
                          #2(foldr (fn (aty,(offset,C)) =>
-                                   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-                                                                     WORDS offset,size_ff, C)))
+                                   (offset-1,store_aty_in_reg_record(aty,treg0,reg_for_result,
+                                                                     WORDS offset,fsz, C)))
                             (num_elems+1,C') (LS.smash_free elems))))))
                        else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-
-                         load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-                         store_indexed(reg_for_result,WORDS 0,R tmp_reg0,
-
-                         (*store_indexed(reg_for_result,WORDS 0, LA (MLFunLab label),*)
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,fsz,
+                         load_label_addr(MLFunLab label,SS.PHREG_ATY treg0,treg0,fsz,
+                         store(treg0,reg_for_result,WORDS 0,
                          #2(foldr (fn (aty,(offset,C)) =>
-                                   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-                                                                     WORDS offset,size_ff, C)))
+                                   (offset-1,store_aty_in_reg_record(aty,treg0,reg_for_result,
+                                                                     WORDS offset,fsz, C)))
                             (num_elems,C') (LS.smash_free elems)))))
                      end
-                    | LS.REGVEC_RECORD{elems,alloc} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                         val num_elems = List.length elems
-                     in
-                       if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-                         store_immed(BI.tag_regvec(false,num_elems), reg_for_result, WORDS 0,
-                         #2(foldr (fn (sma,(offset,C)) =>
-                                   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
-                                                                WORDS offset,size_ff, C)))
-                            (num_elems,C') elems)))
-                       else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
-                         #2(foldr (fn (sma,(offset,C)) =>
-                                   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
-                                                                WORDS offset,size_ff, C)))
-                            (num_elems-1,C') elems))
-                     end
                     | LS.SCLOS_RECORD{elems=elems as (lvs,excons,rhos),f64_vars,alloc} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                     let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          val num_elems = List.length (LS.smash_free elems)
                          val n_skip =
                              length rhos (* We don't traverse region pointers or lvars of type f64,
@@ -179,21 +149,21 @@ struct
                              + f64_vars
                      in
                        if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,fsz,
                          store_immed(BI.tag_sclos(false,num_elems,n_skip), reg_for_result, WORDS 0,
                          #2(foldr (fn (aty,(offset,C)) =>
-                                  (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-                                                                    WORDS offset,size_ff, C)))
+                                  (offset-1,store_aty_in_reg_record(aty,treg0,reg_for_result,
+                                                                    WORDS offset,fsz, C)))
                             (num_elems,C') (LS.smash_free elems))))
                        else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,fsz,
                          #2(foldr (fn (aty,(offset,C)) =>
-                                   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-                                                                     WORDS offset,size_ff, C)))
+                                   (offset-1,store_aty_in_reg_record(aty,treg0,reg_for_result,
+                                                                     WORDS offset,fsz, C)))
                             (num_elems-1,C') (LS.smash_free elems)))
                      end
                     | LS.RECORD{elems=[],alloc,tag,maybeuntag} =>
-                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                     move_aty_to_aty(SS.UNIT_ATY,pat,fsz,C) (* Unit is unboxed *)
                     | LS.RECORD{elems,alloc,tag,maybeuntag} =>
 
                              (* Explanation of how we deal with untagged pairs and triples in the presence
@@ -215,41 +185,41 @@ struct
                               * object, or a pointer to the word before the object in case the
                               * object represents an untagged pair in an infinite region. *)
                      let
-                         val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          val num_elems = List.length elems
                          fun store_elems last_offset =
                              #2(foldr (fn (aty,(offset,C)) =>
-                                       (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-                                                                         WORDS offset,size_ff, C)))
+                                       (offset-1,store_aty_in_reg_record(aty,treg0,reg_for_result,
+                                                                         WORDS offset,fsz, C)))
                                 (last_offset,C') elems)
                          val _ = if maybeuntag andalso num_elems <> 2 andalso num_elems <> 3 then
                                      die "cannot untag other tuples than pairs and triples"
                                  else ()
                      in
                        if BI.tag_values() andalso maybeuntag andalso not(tag_pairs_p()) then
-                         alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,num_elems,size_ff,
+                         alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,num_elems,fsz,
                          store_elems num_elems)
                        else if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,fsz,
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))
                        else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,fsz,
                          store_elems (num_elems-1))
                      end
                     | LS.BLOCKF64{elems=[],alloc,tag} =>
-                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                     move_aty_to_aty(SS.UNIT_ATY,pat,fsz,C) (* Unit is unboxed *)
                     | LS.BLOCKF64{elems,alloc,tag} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                     let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          val num_elems = List.length elems
                          fun store_elems last_offset =
                              #2(foldr (fn (aty,(offset,C)) =>
-                                       (offset-1,store_aty_in_reg_record(aty,tmp_freg0,reg_for_result,
-                                                                         WORDS offset,size_ff, C)))
+                                       (offset-1,store_aty_in_reg_record(aty,tfreg0,reg_for_result,
+                                                                         WORDS offset,fsz, C)))
                                 (last_offset,C') elems)
                      in
                        if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,fsz,
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))
                        else
@@ -257,17 +227,17 @@ struct
                           * other operations work; currently, dynamically sized f64blocks are
                           * allocated with allocStringML and subscripting and updating values in such
                           * blocks are shared with subscripting and allocating in statically sized blocks.*)
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,fsz,
                          store_elems num_elems)
                      end
                     | LS.SCRATCHMEM{bytes=0,alloc,tag} =>
-                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                     move_aty_to_aty(SS.UNIT_ATY,pat,fsz,C) (* Unit is unboxed *)
                     | LS.SCRATCHMEM{bytes,alloc,tag} =>
-                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                     let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          val words = (8-1+bytes)div 8
                      in
                        if BI.tag_values() then
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,fsz,
                          store_immed(tag, reg_for_result, WORDS 0,
                          C'))
                        else
@@ -275,14 +245,14 @@ struct
                           * other operations work; currently, dynamically sized f64blocks are
                           * allocated with allocStringML and subscripting and updating values in such
                           * blocks are shared with subscripting and allocating in statically sized blocks.*)
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,size_ff,
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,fsz,
                          C')
                      end
                     | LS.SELECT(i,aty) =>
                      if BI.tag_values() then
-                       move_index_aty_to_aty(aty,pat,WORDS(i+1),tmp_reg1,size_ff,C)
+                       move_index_aty_to_aty(aty,pat,WORDS(i+1),treg1,fsz,C)
                      else
-                       move_index_aty_to_aty(aty,pat,WORDS i,tmp_reg1,size_ff,C)
+                       move_index_aty_to_aty(aty,pat,WORDS i,treg1,fsz,C)
                     | LS.CON0{con,con_kind,aux_regions,alloc} =>
                        (case con_kind of
                             LS.ENUM i =>
@@ -291,7 +261,7 @@ struct
                                        Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE)
                                     then 2*i+1
                                     else i
-                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                                val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                             in move_immed(
                                 IntInf.fromInt tag,
                                 R reg_for_result,
@@ -299,10 +269,10 @@ struct
                             end
                           | LS.UNBOXED i =>
                             let val tag = 4*i+3
-                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                                val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                                 fun reset_regions C =
                                     foldr (fn (alloc,C) =>
-                                              maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                              maybe_reset_aux_region_kill_tmp0(alloc,treg1,fsz,C))
                                           C aux_regions
                             in reset_regions(
                                 move_immed(IntInf.fromInt tag,
@@ -310,10 +280,10 @@ struct
                                            C'))
                             end
                           | LS.UNBOXED_HIGH i =>
-                            let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                            let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                                 fun reset_regions C =
                                     foldr (fn (alloc,C) =>
-                                              maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                              maybe_reset_aux_region_kill_tmp0(alloc,treg1,fsz,C))
                                           C aux_regions
                             in reset_regions(
                                 if i = 0 then
@@ -323,158 +293,148 @@ struct
                                   move_immed(IntInf.fromInt i, R reg_for_result,
                                              I.shlq(I "48", R reg_for_result) ::
                                              (if BI.tag_values() then
-                                                I.addq(I "1",R reg_for_result) :: C'
+                                                G.add(I "1",reg_for_result) C'
                                               else C'))
                               )
                             end
                           | LS.BOXED i =>
-                            let val tag = i2s(Word32.toInt(BI.tag_con0(false,i)))
-                                val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                            let val tag = i2s(Word.toInt(BI.tag_con0(false,i)))
+                                val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                                 fun reset_regions C =
                                     List.foldr (fn (alloc,C) =>
-                                                   maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
+                                                   maybe_reset_aux_region_kill_tmp0(alloc,treg1,fsz,C))
                                                C aux_regions
                             in reset_regions(
-                                alloc_ap_kill_tmp01(alloc,reg_for_result,1,size_ff,
-                                                    I.movq(I tag, D("0",reg_for_result)) :: C'))
+                                alloc_ap_kill_tmp01(alloc,reg_for_result,1,fsz,
+                                                    G.move_num(tag, D("0",reg_for_result)) C'))
                             end)
                     | LS.CON1{con,con_kind,alloc,arg} =>
                       (case con_kind of
-                           LS.UNBOXED 0 => move_aty_to_aty(arg,pat,size_ff,C)
+                           LS.UNBOXED 0 => move_aty_to_aty(arg,pat,fsz,C)
                          | LS.UNBOXED i =>
-                               let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                               let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                                in case i
-                                    of 1 => move_aty_into_reg(arg,reg_for_result,size_ff,
+                                    of 1 => load_aty(arg,reg_for_result,fsz,
                                             I.orq(I "1", R reg_for_result) :: C')
-                                     | 2 => move_aty_into_reg(arg,reg_for_result,size_ff,
+                                     | 2 => load_aty(arg,reg_for_result,fsz,
                                             I.orq(I "2", R reg_for_result) :: C')
                                      | _ => die "CG_ls: UNBOXED CON1 with i > 2"
                                end
-                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(arg,pat,size_ff,C)
+                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(arg,pat,fsz,C)
                          | LS.UNBOXED_HIGH i =>
-                               let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                               in move_aty_into_reg(arg,reg_for_result,size_ff,
-                                                    I.movq(I (Int.toString i), R tmp_reg0) ::
-                                                    I.shlq(I "48", R tmp_reg0) ::
-                                                    I.orq(R tmp_reg0, R reg_for_result) :: C')
+                               let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
+                               in load_aty(arg,reg_for_result,fsz,
+                                                    G.load_ea(I (Int.toString i), treg0) $
+                                                    I.shlq(I "48", R treg0) ::
+                                                    I.orq(R treg0, R reg_for_result) :: C')
                                end
                          | LS.BOXED i =>
-                               let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                                   val tag = i2s(Word32.toInt(BI.tag_con1(false,i)))
+                               let val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
+                                   val tag = i2s(Word.toInt(BI.tag_con1(false,i)))
                                in
                                  if SS.eq_aty(pat,arg) then (* We must preserve arg. *)
-                                   alloc_ap_kill_tmp01(alloc,tmp_reg1,2,size_ff,
-                                   I.movq(I tag, D("0", tmp_reg1)) ::
-                                   store_aty_in_reg_record(arg,tmp_reg0,tmp_reg1,WORDS 1,size_ff,
-                                   copy(tmp_reg1,reg_for_result,C')))
+                                   alloc_ap_kill_tmp01(alloc,treg1,2,fsz,
+                                   I.movq(I tag, D("0", treg1)) ::
+                                   store_aty_in_reg_record(arg,treg0,treg1,WORDS 1,fsz,
+                                   copy(treg1,reg_for_result,C')))
                                  else
-                                   alloc_ap_kill_tmp01(alloc,reg_for_result,2,size_ff,
+                                   alloc_ap_kill_tmp01(alloc,reg_for_result,2,fsz,
                                    I.movq(I tag, D("0", reg_for_result)) ::
-                                   store_aty_in_reg_record(arg,tmp_reg0,reg_for_result,WORDS 1,size_ff,C'))
+                                   store_aty_in_reg_record(arg,treg0,reg_for_result,WORDS 1,fsz,C'))
                                end
                          | _ => die "CON1.con not unary in env.")
                     | LS.DECON{con,con_kind,con_aty} =>
                       (case con_kind of
-                           LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
+                           LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,fsz,C)
                          | LS.UNBOXED _ =>
                            let
-                             val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                             val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                            in
-                             move_aty_into_reg(con_aty,reg_for_result,size_ff,
-                             I.movq(I "3", R tmp_reg0) ::
-                             I.notq(R tmp_reg0) ::
-                             I.andq(R tmp_reg0, R reg_for_result) :: C')
+                             load_aty(con_aty,reg_for_result,fsz,
+                             G.load_ea(I "3", treg0) $
+                             I.notq(R treg0) ::
+                             I.andq(R treg0, R reg_for_result) :: C')
                            end
-                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
+                         | LS.UNBOXED_HIGH 0 => move_aty_to_aty(con_aty,pat,fsz,C)
                          | LS.UNBOXED_HIGH _ =>
-                           let val (r, F) = resolve_arg_aty(con_aty,tmp_reg0,size_ff)
-                               val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                           let val (r, F) = resolve_arg_aty(con_aty,treg0,fsz)
+                               val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                            in
                              if r = reg_for_result then
-                               move_aty_into_reg(con_aty,reg_for_result,size_ff,
-                               I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
-                               I.andq(R tmp_reg0, R reg_for_result) :: C')
+                               load_aty(con_aty,reg_for_result,fsz,
+                               I.movabsq(I "0xFFFFFFFFFFFF", R treg0) ::
+                               I.andq(R treg0, R reg_for_result) :: C')
                              else
                                I.movabsq(I "0xFFFFFFFFFFFF", R reg_for_result) ::
                                F(I.andq(R r, R reg_for_result) :: C')
                            end
-(*
-                         | LS.UNBOXED_HIGH _ =>
-                           let
-                             val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-                           in
-                             move_aty_into_reg(con_aty,reg_for_result,size_ff,
-                             I.movabsq(I "0xFFFFFFFFFFFF", R tmp_reg0) ::
-                             I.andq(R tmp_reg0, R reg_for_result) :: C')
-                           end
-*)
-                          | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
+                          | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,treg1,fsz,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
                     | LS.DEREF {aty} =>
                      let val offset = if BI.tag_values() then 1 else 0
-                     in move_index_aty_to_aty(aty,pat,WORDS offset,tmp_reg1,size_ff,C)
+                     in move_index_aty_to_aty(aty,pat,WORDS offset,treg1,fsz,C)
                      end
                     | LS.REF(alloc,aty) =>
                      let val offset = if BI.tag_values() then 1 else 0
-                         val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                          fun maybe_tag_value C =
                            (* tag_pairs_p is false if pairs, tripples, tables and refs are untagged *)
                            if BI.tag_values() andalso tag_pairs_p() then
-                             I.movq(I (i2s(Word32.toInt(BI.tag_ref(false)))),
+                             I.movq(I (i2s(Word.toInt(BI.tag_ref(false)))),
                                     D("0", reg_for_result)) :: C
                            else C
                          fun allocate (reg_for_result,C) =
                            if BI.tag_values() andalso not (tag_pairs_p()) then
-                             alloc_untagged_value_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref()-1,size_ff,C)
+                             alloc_untagged_value_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref()-1,fsz,C)
                            else
-                             alloc_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref(),size_ff,C)
+                             alloc_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref(),fsz,C)
                      in
                        if SS.eq_aty(pat,aty) then (* We must preserve aty *)
-                         (*alloc_ap_kill_tmp01(alloc,tmp_reg1,size_of_ref,size_ff, to be removed 2003-08-26, nh*)
-                         allocate (tmp_reg1,
-                                   store_aty_in_reg_record(aty,tmp_reg0,tmp_reg1,WORDS offset,size_ff,
-                                                           copy(tmp_reg1,reg_for_result,maybe_tag_value C')))
+                         (*alloc_ap_kill_tmp01(alloc,treg1,size_of_ref,fsz, to be removed 2003-08-26, nh*)
+                         allocate (treg1,
+                                   store_aty_in_reg_record(aty,treg0,treg1,WORDS offset,fsz,
+                                                           copy(treg1,reg_for_result,maybe_tag_value C')))
                        else
-                         (*alloc_ap_kill_tmp01(alloc,reg_for_result,size_of_ref,size_ff,to be removed 2003-08-26, nh*)
+                         (*alloc_ap_kill_tmp01(alloc,reg_for_result,size_of_ref,fsz,to be removed 2003-08-26, nh*)
                          allocate (reg_for_result,
-                                   store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,WORDS offset,size_ff,
+                                   store_aty_in_reg_record(aty,treg0,reg_for_result,WORDS offset,fsz,
                                                            maybe_tag_value C'))
                      end
                     | LS.ASSIGNREF(alloc,aty1,aty2) =>
                      let
-                       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                       val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                        val offset = if BI.tag_values() then 1 else 0
                      in
-                       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
+                       store_aty_in_aty_record(aty2,aty1,WORDS offset,treg1,treg0,fsz,
                        if BI.tag_values() then
                          move_immed(IntInf.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
                      end
                     | LS.PASS_PTR_TO_MEM(alloc,i,untagged_value) =>
                      let
-                       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                       val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                      in
                          (* HACK: When tagging is enabled, only pairs take up 3 words
                           * (of those type of objects that can be returned from a C function) *)
                          (* Hack eliminated: We now pass a boolean which is true for allocations
                           * of tag-free values. mael 2003-05-13 *)
                          if BI.tag_values() andalso not(tag_pairs_p()) andalso untagged_value then
-                             alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,i-1,size_ff,C')
+                             alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,i-1,fsz,C')
                          else
-                             alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
+                             alloc_ap_kill_tmp01(alloc,reg_for_result,i,fsz,C')
                      end
                     | LS.PASS_PTR_TO_RHO {sma=alloc} =>
                      let
-                       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                       val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
                      in
-                       prefix_sm(alloc,reg_for_result,size_ff,C')
+                       prefix_sm(alloc,reg_for_result,fsz,C')
                      end)
                   ) (* END ASSIGN *)
 
                | LS.FLUSH(aty,offset) => comment_fn (fn () => "FLUSH: " ^ pr_ls ls,
-                                         store_aty_in_reg_record(aty,tmp_reg1,rsp,WORDS(size_ff-offset-1),size_ff,C))
+                                         store_aty_in_reg_record(aty,treg1,rsp,WORDS(fsz-offset-1),fsz,C))
                | LS.FETCH(aty,offset) => comment_fn (fn () => "FETCH: " ^ pr_ls ls,
-                                         load_aty_from_reg_record(aty,tmp_reg1,rsp,WORDS(size_ff-offset-1),size_ff,C))
+                                         load_aty_from_reg_record(aty,treg1,rsp,WORDS(fsz-offset-1),fsz,C))
                | LS.FNJMP(cc as {opr,args,clos,res,bv}) =>
                 comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
                 let
@@ -489,14 +449,14 @@ struct
                   else
                     case opr (* We fetch the addr from the closure and opr points at the closure *)
                       of SS.PHREG_ATY opr_reg =>
-                        I.movq(D(offset_codeptr,opr_reg), R tmp_reg1) ::    (* Fetch code label from closure *)
-                        base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,   (* return label is now at top of stack *)
-                        I.jmp(R tmp_reg1) :: rem_dead_code C)
+                        I.movq(D(offset_codeptr,opr_reg), R treg1) ::    (* Fetch code label from closure *)
+                        base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,   (* return label is now at top of stack *)
+                        I.jmp(R treg1) :: rem_dead_code C)
                        | _ =>
-                        move_aty_into_reg(opr,tmp_reg1,size_ff,
-                        I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) ::   (* Fetch code label from closure *)
-                        base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,   (* return label is now at top of stack *)
-                        I.jmp(R tmp_reg1) :: rem_dead_code C))
+                        load_aty(opr,treg1,fsz,
+                        I.movq(D(offset_codeptr,treg1), R treg1) ::   (* Fetch code label from closure *)
+                        base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,   (* return label is now at top of stack *)
+                        I.jmp(R treg1) :: rem_dead_code C))
                 end)
                | LS.FNCALL{opr,args,clos,res,bv} =>
                   comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
@@ -513,20 +473,20 @@ struct
                                  (Int.toString size_rcf) ^ ".") else () (* debug 2001-01-08, Niels *)*)
 
                     fun flush_args C =
-                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
-                    (* We pop in reverse order such that size_ff+offset works *)
+                      foldr (fn ((aty,offset),C) => push_aty(aty,treg1,fsz+offset,C)) C spilled_args
+                    (* We pop in reverse order such that fsz+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) =>
-                             pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
+                             pop_aty(aty,treg1,fsz+offset,C)) C (rev spilled_res)
                     fun jmp doit off C =
                       case opr (* We fetch the add from the closure and opr points at the closure *)
                         of SS.PHREG_ATY opr_reg =>
-                          I.movq(D(offset_codeptr,opr_reg), R tmp_reg1) ::  (* Fetch code pointer *)
-                          doit(R tmp_reg1) :: C
+                          I.movq(D(offset_codeptr,opr_reg), R treg1) ::  (* Fetch code pointer *)
+                          doit(R treg1) :: C
                          | _ =>
-                          move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc-off,   (* rsp is now pointing after the call *)
-                          I.movq(D(offset_codeptr,tmp_reg1), R tmp_reg1) :: (* convention, i.e., size_ff+size_cc *)
-                          doit(R tmp_reg1) :: C)
+                          load_aty(opr,treg1,fsz+size_cc-off,   (* rsp is now pointing after the call *)
+                          I.movq(D(offset_codeptr,treg1), R treg1) :: (* convention, i.e., fsz+size_cc *)
+                          doit(R treg1) :: C)
                     val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                         (* Move rsp after rcf *)
@@ -564,27 +524,27 @@ struct
                               print ("** JMP to " ^ Labels.pr_label opr ^ " with\n" ^
                                      "**    size_ccf_new = " ^ Int.toString size_ccf_new ^ "\n" ^
                                      "**    size_ccf = " ^ Int.toString size_ccf ^ "\n" ^
-                                     "**    size_ff = " ^ Int.toString size_ff ^ "\n")
+                                     "**    fsz = " ^ Int.toString fsz ^ "\n")
                             else ()
 *)
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) =>
-                             push_aty(aty,tmp_reg1, size_ff + offset - 1 - size_rcf, C)) C spilled_args
-                    (* We pop in reverse order such that size_ff+offset works, but we must adjust for the
+                             push_aty(aty,treg1, fsz + offset - 1 - size_rcf, C)) C spilled_args
+                    (* We pop in reverse order such that fsz+offset works, but we must adjust for the
                      * return label and the return convention frame that we didn't push onto the stack
                      * because we're dealing with a tail call. *)
 
                   (* After the arguments are pushed onto the stack, we copy them down to
                    * the current ``| ccf | ff |'', which is now dead. *)
                     fun copy_down 0 C = C
-                      | copy_down n C = load_indexed(R tmp_reg1, rsp, WORDS (n-1),
-                                         store_indexed(rsp, WORDS (size_ff+size_ccf+n-1), R tmp_reg1,
+                      | copy_down n C = load(rsp, WORDS (n-1),treg1,
+                                         store(treg1,rsp, WORDS (fsz+size_ccf+n-1),
                                           copy_down (n-1) C))
                     fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
                   in
                     flush_args
                     (copy_down size_ccf_new
-                     (base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+                     (base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,
                                        jmp C)))
                   end)
                | LS.FUNCALL{opr,args,reg_args,clos,fargs,res,bv} =>
@@ -597,10 +557,10 @@ struct
                                                  fargs=fargs, res=res}
                     val size_rcf = List.length spilled_res
                     fun flush_args C =
-                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
-                    (* We pop in reverse order such that size_ff+offset works *)
+                      foldr (fn ((aty,offset),C) => push_aty(aty,treg1,fsz+offset,C)) C spilled_args
+                    (* We pop in reverse order such that fsz+offset works *)
                     fun fetch_res C =
-                      foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
+                      foldr (fn ((aty,offset),C) => pop_aty(aty,treg1,fsz+offset,C)) C (rev spilled_res)
                     fun jmp C = I.jmp(L(MLFunLab opr)) :: C
                     val C' = fetch_res C
                   in
@@ -626,7 +586,7 @@ struct
                                  | SOME Effect.REF_RT => BI.tag_ref(false)
                                  | SOME Effect.TRIPLE_RT => BI.tag_record (false,3)
                                  | _ => die "maybe_store_tag"
-                           in store_immed(tag, rsp, WORDS(size_ff-offset-1), C)
+                           in store_immed(tag, rsp, WORDS(fsz-offset-1), C)
                            end
                       else C
 
@@ -642,12 +602,12 @@ struct
                                  * of the object descriptor and the region descriptor. *)
                               val reg_offset = offset + BI.objectDescSizeP + BI.finiteRegionDescSizeP
                             in
-                              base_plus_offset(rsp,WORDS(size_ff-reg_offset-1),tmp_reg1,
+                              base_plus_offset(rsp,WORDS(fsz-reg_offset-1),treg1,
                                compile_c_call_prim("allocRegionFiniteProfilingMaybeUnTag",
-                                                   [SS.PHREG_ATY tmp_reg1,
+                                                   [SS.PHREG_ATY treg1,
                                                     key place,
                                                     mkIntAty i], NONE,
-                                                   size_ff,tmp_reg0(*not used*),
+                                                   fsz,treg0(*not used*),
                                 maybe_store_tag (place,offset,C)))
                             end
                            | LineStmt.INF =>
@@ -661,12 +621,12 @@ struct
                                       | _ => die "alloc_region_prim.name"
                                 else "allocRegionInfiniteProfilingMaybeUnTag"
                             in
-                            base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
+                            base_plus_offset(rsp,WORDS(fsz-offset-1),treg1,
                               compile_c_call_prim(name,
                                                   [SS.PHREG_ATY I.r14,           (* evaluation context *)
-                                                   SS.PHREG_ATY tmp_reg1,
+                                                   SS.PHREG_ATY treg1,
                                                    key place], NONE,
-                                                  size_ff,tmp_reg0(*not used*),C))
+                                                  fsz,treg0(*not used*),C))
                             end
                       else
                         case phsize
@@ -690,9 +650,9 @@ struct
                                                                    | _ => 0)]
                                                else []
                               in
-                                  base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
-                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1] @ protect,NONE,
-                                                        size_ff,tmp_reg0(*not used*),C))
+                                  base_plus_offset(rsp,WORDS(fsz-offset-1),treg1,
+                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY treg1] @ protect,NONE,
+                                                        fsz,treg0(*not used*),C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
                       if region_profiling() then
@@ -700,20 +660,20 @@ struct
                           of LineStmt.WORDS 0 => C
                            | LineStmt.WORDS i =>
                             compile_c_call_prim("deallocRegionFiniteProfiling",[],NONE,
-                                                size_ff,tmp_reg0(*not used*),C)
+                                                fsz,treg0(*not used*),C)
                            | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,size_ff,tmp_reg0(*not used*),C)
+                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
                       else
                         case phsize
                           of LineStmt.WORDS i => C
                            | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,size_ff,tmp_reg0(*not used*),C)
+                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
                   in
                     foldr alloc_region_prim
-                    (CG_lss(body,size_ff,size_ccf,
+                    (CG_lss(body,fsz,size_ccf,
                             foldl dealloc_region_prim C rhos)) rhos
                   end )
-               | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_ccf,C)
+               | LS.SCOPE{pat,scope} => CG_lss(scope,fsz,size_ccf,C)
                | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty,bv),offset} =>
     (* An exception handler in an activation record starting at address offset contains the following fields: *)
     (* sp[offset] = label for handl_return code.                                                              *)
@@ -725,39 +685,39 @@ struct
                  let
                     val handl_return_lab = new_local_lab "handl_return"
                     val handl_join_lab = new_local_lab "handl_join"
-                    fun handl_code C = comment ("HANDL_CODE", CG_lss(handl,size_ff,size_ccf,C))
+                    fun handl_code C = comment ("HANDL_CODE", CG_lss(handl,fsz,size_ccf,C))
                     fun store_handl_lv C =
                       comment ("STORE HANDLE_LV: sp[offset+1] = handl_lv",
-                      store_aty_in_reg_record(handl_lv,tmp_reg1,rsp,WORDS(size_ff-offset-1+1),size_ff,C))
+                      store_aty_in_reg_record(handl_lv,treg1,rsp,WORDS(fsz-offset-1+1),fsz,C))
                     fun store_handl_return_lab C =
                       comment ("STORE HANDL RETURN LAB: sp[offset] = handl_return_lab",
-                      I.movq(LA handl_return_lab, R tmp_reg1) ::
-                      store_indexed(rsp,WORDS(size_ff-offset-1), R tmp_reg1,C))
+                      I.movq(LA handl_return_lab, R treg1) ::
+                      store(treg1,rsp,WORDS(fsz-offset-1),C))
                     fun store_exn_ptr C =
                       comment ("STORE EXN PTR: sp[offset+2] = exnPtr",
-                      I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-                      store_indexed(rsp,WORDS(size_ff-offset-1+2), R tmp_reg1,
-                      comment ("CALC NEW exnPtr: exnPtr = sp-size_ff+offset+size_of_handle",
-                      base_plus_offset(rsp,WORDS(size_ff-offset-1(*-BI.size_of_handle()*)),tmp_reg1,        (*hmmm *)
-                      I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
+                      I.movq(D(ctx_exnptr_offs,r14), R treg1) ::
+                      store(treg1,rsp,WORDS(fsz-offset-1+2),
+                      comment ("CALC NEW exnPtr: exnPtr = sp-fsz+offset+size_of_handle",
+                      base_plus_offset(rsp,WORDS(fsz-offset-1(*-BI.size_of_handle()*)),treg1,        (*hmmm *)
+                      I.movq(R treg1, D(ctx_exnptr_offs,r14)) ::
                       C))))
                     fun store_sp C =
                       comment ("STORE SP: sp[offset+3] = sp",
-                      store_indexed(rsp,WORDS(size_ff-offset-1+3), R rsp,C))
+                      store(rsp,rsp,WORDS(fsz-offset-1+3),C))
                     fun default_code C = comment ("HANDLER DEFAULT CODE",
-                      CG_lss(default,size_ff,size_ccf,C))
+                      CG_lss(default,fsz,size_ccf,C))
                     fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
-                      load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
-                      I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
+                      load(rsp,WORDS(fsz-offset-1+2),treg1,
+                      I.movq(R treg1, D(ctx_exnptr_offs,r14)) ::
                       I.jmp(L handl_join_lab) ::C))
                     fun handl_return_code C =
                       let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg RI.res_phreg)
                       in comment ("HANDL RETURN CODE: handl_return_aty = res_phreg",
                          gen_bv(bv,
                          I.lab handl_return_lab ::
-                         move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,size_ff,
-                         CG_lss(handl_return,size_ff,size_ccf,
+                         move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,fsz,
+                         CG_lss(handl_return,fsz,size_ccf,
                          I.lab handl_join_lab :: C))))
                       end
                   in
@@ -772,7 +732,7 @@ struct
                     handl_return_code(comment ("END OF EXCEPTION HANDLER", C))))))))))
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
-                  move_aty_into_reg(arg_aty,rsi,size_ff,      (* arg1: context, arg2: exception value *)        (* function never returns *)
+                  load_aty(arg_aty,rsi,fsz,      (* arg1: context, arg2: exception value *)        (* function never returns *)
                   maybe_align 0 (fn C => I.movq(R r14, R rdi) :: I.call (NameLab "raise_exn") :: rem_dead_code C) C)
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
@@ -782,14 +742,14 @@ struct
                     val lab_exit = new_local_lab "done"
                   in
                     I.lab(LocalLab t_lab) ::
-                    CG_lss(lss,size_ff,size_ccf,
+                    CG_lss(lss,fsz,size_ccf,
                     I.jmp(L lab_exit) ::
                     I.lab(LocalLab f_lab) ::
-                    CG_lss(default,size_ff,size_ccf,
+                    CG_lss(default,fsz,size_ccf,
                     I.lab(lab_exit) :: C))
                   end
                | LS.SWITCH_I {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
-                  compileNumSwitch {size_ff=size_ff,
+                  compileNumSwitch {fsz=fsz,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
                                     toInt=fn i => maybeTagIntOrWord{value=i, precision=precision},
@@ -799,7 +759,7 @@ struct
                                     default=default,
                                     C=C}
                | LS.SWITCH_W {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
-                  compileNumSwitch {size_ff=size_ff,
+                  compileNumSwitch {fsz=fsz,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
                                     toInt=fn w => maybeTagIntOrWord{value=w, precision=precision},
@@ -816,20 +776,20 @@ struct
                     case inlineable C of
                         SOME (C,C') =>
                         I.lab(LocalLab t_lab) ::
-                        CG_lss(lss,size_ff,size_ccf,
+                        CG_lss(lss,fsz,size_ccf,
                                C @ I.lab(LocalLab f_lab) ::
-                               CG_lss(default,size_ff,size_ccf, C'))
+                               CG_lss(default,fsz,size_ccf, C'))
                       | NONE =>
                         let val lab_exit = new_local_lab "done"
                         in I.lab(LocalLab t_lab) ::
-                           CG_lss(lss,size_ff,size_ccf,
+                           CG_lss(lss,fsz,size_ccf,
                                   I.jmp(L lab_exit) ::
                                   I.lab(LocalLab f_lab) ::
-                                  CG_lss(default,size_ff,size_ccf,
+                                  CG_lss(default,fsz,size_ccf,
                                          I.lab lab_exit :: C))
                         end
                   end
-               | LS.SWITCH_C(LS.SWITCH(opr_aty,[],default)) => CG_lss(default,size_ff,size_ccf,C)
+               | LS.SWITCH_C(LS.SWITCH(opr_aty,[],default)) => CG_lss(default,fsz,size_ccf,C)
                | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) =>
                   let (* NOTE: selectors in sels are tagged in ClosExp; values are
                        * tagged here in CodeGenX64! *)
@@ -847,33 +807,33 @@ struct
                                         | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon (src_aty,C) =
                         if lte1_nullary then
-                          (move_aty_into_reg(src_aty,tmp_reg1,size_ff,
-                           I.andq(I "3", R tmp_reg1) ::
+                          (load_aty(src_aty,treg1,fsz,
+                           I.andq(I "3", R treg1) ::
                            C))
                         else
-                          (move_aty_into_reg(src_aty,tmp_reg0,size_ff,
-                           copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
-                           I.andq(I "3", R tmp_reg1) ::
-                           I.cmpq(I "3", R tmp_reg1) ::         (* do copy if tr = 3; in that case we      *)
-                           I.cmoveq(R tmp_reg0,R tmp_reg1) ::   (* are dealing with a nullary constructor, *)
+                          (load_aty(src_aty,treg0,fsz,
+                           copy(treg0, treg1, (* operand is in treg1, see SWITCH_I *)
+                           I.andq(I "3", R treg1) ::
+                           I.cmpq(I "3", R treg1) ::         (* do copy if tr = 3; in that case we      *)
+                           I.cmoveq(R treg0,R treg1) ::   (* are dealing with a nullary constructor, *)
                            C)))                                 (* and all bits are used. *)
 
                     fun UbhTagCon (src_aty,C) =
-                        move_aty_into_reg(src_aty,tmp_reg1,size_ff,
-                        I.shrq(I "48", R tmp_reg1) ::
+                        load_aty(src_aty,treg1,fsz,
+                        I.shrq(I "48", R treg1) ::
                         C)
 
                     val (F, opr_aty) =
                       case con_kind
                         of LS.ENUM _ => (fn C => C, opr_aty)
-                         | LS.UNBOXED _ => (fn C => UbTagCon(opr_aty,C), SS.PHREG_ATY tmp_reg1)
-                         | LS.UNBOXED_HIGH _ => (fn C => UbhTagCon(opr_aty,C), SS.PHREG_ATY tmp_reg1)
+                         | LS.UNBOXED _ => (fn C => UbTagCon(opr_aty,C), SS.PHREG_ATY treg1)
+                         | LS.UNBOXED_HIGH _ => (fn C => UbhTagCon(opr_aty,C), SS.PHREG_ATY treg1)
                          | LS.BOXED _ =>
-                          (fn C => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY tmp_reg1,
-                                                         WORDS 0,tmp_reg1,size_ff,C),
-                           SS.PHREG_ATY tmp_reg1)
+                          (fn C => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY treg1,
+                                                         WORDS 0,treg1,fsz,C),
+                           SS.PHREG_ATY treg1)
                   in
-                    F (compileNumSwitch {size_ff=size_ff,
+                    F (compileNumSwitch {fsz=fsz,
                                          size_ccf=size_ccf,
                                          CG_lss=CG_lss,
                                          toInt=fn x => x,   (* tagging already done in ClosExp *)
@@ -886,21 +846,21 @@ struct
                | LS.SWITCH_E sw => die "SWITCH_E is unfolded in ClosExp"
                | LS.RESET_REGIONS{force=false,regions_for_resetting} =>
                   comment ("RESET_REGIONS(no force)",
-                  foldr (fn (alloc,C) => maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting)
+                  foldr (fn (alloc,C) => maybe_reset_aux_region_kill_tmp0(alloc,treg1,fsz,C)) C regions_for_resetting)
                | LS.RESET_REGIONS{force=true,regions_for_resetting} =>
                   comment ("RESET_REGIONS(force)",
-                  foldr (fn (alloc,C) => force_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting)
+                  foldr (fn (alloc,C) => force_reset_aux_region_kill_tmp0(alloc,treg1,fsz,C)) C regions_for_resetting)
                | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} =>
                   comment_fn (fn () => "PRIM FLOW: " ^ pr_ls ls,
                   let val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
                       val (x,y) = case args of
                                       [x,y] => (x,y)
                                     | _ => die "CG_ls: Expecting two arguments for flow primitive"
-                      fun cmp i = cmpi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp i = cmpi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,fsz,C)
                       open PrimName
                   in case name of
                          Equal_int32ub =>  cmp       I.je
@@ -1001,16 +961,16 @@ struct
                   (case args of
                        [] =>
                        (case name of
-                            Fresh_exname =>  (* result in tmp_reg0 *)
-                            I.movq(LA exn_counter_lab, R tmp_reg1) ::
-                            I.movq(I "1", R tmp_reg0) ::
-                            I.xaddq(R tmp_reg0, D("0",tmp_reg1)) ::
-                            move_reg_into_aty(tmp_reg0,d,size_ff,C)
+                            Fresh_exname =>  (* result in treg0 *)
+                            I.movq(LA exn_counter_lab, R treg1) ::
+                            I.movq(I "1", R treg0) ::
+                            I.xaddq(R treg0, D("0",treg1)) ::
+                            move_reg_into_aty(treg0,d,fsz,C)
                          | Get_ctx =>
-                           move_reg_into_aty(r14,d,size_ff,C)
+                           move_reg_into_aty(r14,d,fsz,C)
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
                      | [x] =>
-                       let val arg = (x,d,size_ff,C)
+                       let val arg = (x,d,fsz,C)
                        in case name of
                               Neg_int32ub => neg_int_kill_tmp0 {tag=false, quad=false} arg
                             | Neg_int31 =>   neg_int_kill_tmp0 {tag=true,  quad=false} arg
@@ -1099,11 +1059,11 @@ struct
 
                             | Is_null => cmpi_kill_tmp01_cmov {box=false,quad=false} I.cmoveq
                                                               (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
-                                                                                 precision=32},d,size_ff,C)
+                                                                                 precision=32},d,fsz,C)
                             | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
                        end
                      | [x,y] =>
-                       let val arg = (x,y,d,size_ff,C)
+                       let val arg = (x,y,d,fsz,C)
                        in case name of
                               Equal_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
@@ -1305,50 +1265,50 @@ struct
                        end
                      | [b,x,y] =>
                        (case name of
-                            Plus_int32b => add_int32b (b,x,y,d,size_ff,C)
-                          | Plus_int64b => add_int64b (b,x,y,d,size_ff,C)
-                          | Plus_word32b => addw32boxed (b,x,y,d,size_ff,C)
-                          | Plus_word64b => addw64boxed (b,x,y,d,size_ff,C)
-                          | Plus_real => addf_kill_tmp01 (x,y,b,d,size_ff,C)
-                          | Minus_int32b => sub_int32b (b,x,y,d,size_ff,C)
-                          | Minus_int64b => sub_int64b (b,x,y,d,size_ff,C)
-                          | Minus_word32b => subw32boxed (b,x,y,d,size_ff,C)
-                          | Minus_word64b => subw64boxed (b,x,y,d,size_ff,C)
-                          | Minus_real => subf_kill_tmp01 (x,y,b,d,size_ff,C)
-                          | Mul_int32b => mul_int32b (b,x,y,d,size_ff,C)
-                          | Mul_int64b => mul_int64b (b,x,y,d,size_ff,C)
-                          | Mul_word32b => mulw32boxed (b,x,y,d,size_ff,C)
-                          | Mul_word64b => mulw64boxed (b,x,y,d,size_ff,C)
-                          | Mul_real => mulf_kill_tmp01 (x,y,b,d,size_ff,C)
-                          | Div_real => divf_kill_tmp01 (x,y,b,d,size_ff,C)
-                          | Andb_word32b => andw32boxed__ (b,x,y,d,size_ff,C)
-                          | Andb_word64b => andw64boxed__ (b,x,y,d,size_ff,C)
-                          | Orb_word32b => orw32boxed__ (b,x,y,d,size_ff,C)
-                          | Orb_word64b => orw64boxed__ (b,x,y,d,size_ff,C)
-                          | Xorb_word32b => xorw32boxed__ (b,x,y,d,size_ff,C)
-                          | Xorb_word64b => xorw64boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_left_word32b => shift_leftw32boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_left_word64b => shift_leftw64boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_right_signed_word32b => shift_right_signedw32boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_right_signed_word64b => shift_right_signedw64boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,size_ff,C)
-                          | Bytetable_update => bytetable_update (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word63 => bytetable_update_word63 (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word64ub => bytetable_update_word64ub (b,x,y,d,size_ff,C)
-                          | Bytetable_update_word64b => bytetable_update_word64b (b,x,y,d,size_ff,C)
+                            Plus_int32b => add_int32b (b,x,y,d,fsz,C)
+                          | Plus_int64b => add_int64b (b,x,y,d,fsz,C)
+                          | Plus_word32b => addw32boxed (b,x,y,d,fsz,C)
+                          | Plus_word64b => addw64boxed (b,x,y,d,fsz,C)
+                          | Plus_real => addf_kill_tmp01 (x,y,b,d,fsz,C)
+                          | Minus_int32b => sub_int32b (b,x,y,d,fsz,C)
+                          | Minus_int64b => sub_int64b (b,x,y,d,fsz,C)
+                          | Minus_word32b => subw32boxed (b,x,y,d,fsz,C)
+                          | Minus_word64b => subw64boxed (b,x,y,d,fsz,C)
+                          | Minus_real => subf_kill_tmp01 (x,y,b,d,fsz,C)
+                          | Mul_int32b => mul_int32b (b,x,y,d,fsz,C)
+                          | Mul_int64b => mul_int64b (b,x,y,d,fsz,C)
+                          | Mul_word32b => mulw32boxed (b,x,y,d,fsz,C)
+                          | Mul_word64b => mulw64boxed (b,x,y,d,fsz,C)
+                          | Mul_real => mulf_kill_tmp01 (x,y,b,d,fsz,C)
+                          | Div_real => divf_kill_tmp01 (x,y,b,d,fsz,C)
+                          | Andb_word32b => andw32boxed__ (b,x,y,d,fsz,C)
+                          | Andb_word64b => andw64boxed__ (b,x,y,d,fsz,C)
+                          | Orb_word32b => orw32boxed__ (b,x,y,d,fsz,C)
+                          | Orb_word64b => orw64boxed__ (b,x,y,d,fsz,C)
+                          | Xorb_word32b => xorw32boxed__ (b,x,y,d,fsz,C)
+                          | Xorb_word64b => xorw64boxed__ (b,x,y,d,fsz,C)
+                          | Shift_left_word32b => shift_leftw32boxed__ (b,x,y,d,fsz,C)
+                          | Shift_left_word64b => shift_leftw64boxed__ (b,x,y,d,fsz,C)
+                          | Shift_right_signed_word32b => shift_right_signedw32boxed__ (b,x,y,d,fsz,C)
+                          | Shift_right_signed_word64b => shift_right_signedw64boxed__ (b,x,y,d,fsz,C)
+                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,fsz,C)
+                          | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,fsz,C)
+                          | Bytetable_update => bytetable_update (b,x,y,d,fsz,C)
+                          | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,fsz,C)
+                          | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,fsz,C)
+                          | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,fsz,C)
+                          | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,fsz,C)
+                          | Bytetable_update_word63 => bytetable_update_word63 (b,x,y,d,fsz,C)
+                          | Bytetable_update_word64ub => bytetable_update_word64ub (b,x,y,d,fsz,C)
+                          | Bytetable_update_word64b => bytetable_update_word64b (b,x,y,d,fsz,C)
 
-                          | Bytetable_sub_word32b => bytetable_sub_word32b (b,x,y,d,size_ff,C)
-                          | Bytetable_sub_word64b => bytetable_sub_word64b (b,x,y,d,size_ff,C)
+                          | Bytetable_sub_word32b => bytetable_sub_word32b (b,x,y,d,fsz,C)
+                          | Bytetable_sub_word64b => bytetable_sub_word64b (b,x,y,d,fsz,C)
 
-                          | Word_update0 => word_update0 (b,x,y,d,size_ff,C)
-                          | Blockf64_update_real => blockf64_update_real (b,x,y,d,size_ff,C)
-                          | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,size_ff,C)
-                          | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,size_ff,C)
+                          | Word_update0 => word_update0 (b,x,y,d,fsz,C)
+                          | Blockf64_update_real => blockf64_update_real (b,x,y,d,fsz,C)
+                          | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,fsz,C)
+                          | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,fsz,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
@@ -1365,31 +1325,30 @@ struct
                                              (*I.dot_globl call_closure_lab, (* The C function entry *) *)
                                              I.lab call_closure_lab]
                                             @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
-                                            @ [I.movq(R rdi,R tmp_reg0)]
+                                            @ [I.movq(R rdi,R treg0)]
                                             (* now initialize thread local data to point to the threadinfo struct *)
-                                            @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
-                                              [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
-                                               I.movq(D("0",rdi),R rax),             (* extract closure from threadinfo arg into closure register *)
-                                               I.leaq(D("8",rdi),R r14),             (* extract ctx from threadinfo and store it in ctx-register r14 *)
-                                               I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 from C arg *)
-                                               I.call' (R r10),                      (* call ML function *)
-                                               I.movq(R rdi, R tmp_reg0)
-                                              ]
-                                            @ compile_c_call_prim("thread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
+                                            @ compile_c_call_prim("thread_init", [SS.PHREG_ATY treg0], SOME (SS.PHREG_ATY treg0), fsz (* not used *), treg1,
+                                              (I.movq(R treg0, R rdi) ::          (* restore argument, which is passed through thread_init *)
+                                               I.movq(D("0",rdi),R rax) ::           (* extract closure from threadinfo arg into closure register *)
+                                               G.lea(D("8",rdi),r14) $               (* extract ctx from threadinfo and store it in ctx-register r14 *)
+                                               I.movq(D(offset_codeptr,rax), R r10) :: (* extract code pointer into %r10 from C arg *)
+                                               I.call' (R r10) ::                    (* call ML function *)
+                                               I.movq(R rdi, R treg0) :: nil)
+                                            @ compile_c_call_prim("thread_exit", [SS.PHREG_ATY treg0], NONE, fsz (* not used *), treg1,
                                               [I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                                             @ [I.ret])))
 
-                 in I.movq(LA call_closure_lab, R tmp_reg0) ::
-                    move_aty_into_reg(arg, tmp_reg1, size_ff,
+                 in G.load_ea(LA call_closure_lab, treg0) $
+                    load_aty(arg, treg1, fsz,
                     (* call thread_create function, which will create a thread from the
                      * argument function by applying it to the second argument *)
-                    compile_c_call_prim("thread_create", [SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1], SOME res, size_ff, tmp_reg1, C))
+                    compile_c_call_prim("thread_create", [SS.PHREG_ATY treg0,SS.PHREG_ATY treg1], SOME res, fsz, treg1, C))
                  end
                | LS.CCALL{name,args,rhos_for_result,res} =>
                   let
                     fun comp_c_call (all_args,res,C) =
-                      compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
+                      compile_c_call_prim(name, all_args, res, fsz, treg1, C)
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()
@@ -1427,7 +1386,7 @@ struct
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                compile_c_call_auto(name,args,rhos_for_result,res,size_ff,tmp_reg1,C)
+                                compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)
                                 handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
                                             ; raise X)
                                )
@@ -1476,21 +1435,21 @@ struct
                      val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
                                     caller_save_regs_ccall (* 0 regs *)
                      fun push_callersave_regs C =
-                         foldl (fn (r, C) => I.push(R r) :: C) C saveregs
+                         foldl (fn (r, C) => G.push_ea (R r) C) C saveregs
                      fun pop_callersave_regs C =
-                         foldr (fn (r, C) => I.pop(R r) :: C) C saveregs
+                         foldr (fn (r, C) => G.pop_ea (R r) C) C saveregs
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-                     store_in_label(aty,clos_lab,tmp_reg1,size_ff,
+                     store_in_label(aty,clos_lab,treg1,fsz,
                      I.movq (R r14, L ctx_lab) ::
-                     I.movq (LA lab, R tmp_reg0) ::
-                     I.movq (LA stringlab, R tmp_reg1) ::
-                     I.push (I "1") ::
+                     I.movq (LA lab, R treg0) ::
+                     I.movq (LA stringlab, R treg1) ::
+                     G.push_ea (I "1") $
                      push_callersave_regs
-                     (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
-                                                          SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
+                     (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY treg1,
+                                                          SS.PHREG_ATY treg0],NONE,0, treg1,
                       pop_callersave_regs
-                      (I.addq (I "8", R rsp) :: C)))))
+                      (G.add (I "8", rsp) C)))))
                   end
                 )
        in
@@ -1524,38 +1483,38 @@ struct
                  | _ => case ea2 of
                             L (NameLab n) => I.movq(LA (NameLab n), R tmp) :: inst(ea1, D("",tmp)) :: C
                           | _ => inst(ea1,ea2) :: C
-           fun imov a = bin tmp_reg1 I.movq a
-           fun iadd a = bin tmp_reg1 I.addq a
-           fun isub a = bin tmp_reg1 I.subq a
+           fun imov a = bin treg1 I.movq a
+           fun iadd a = bin treg1 I.addq a
+           fun isub a = bin treg1 I.subq a
          in
-           imov(L maxStackLab, R tmp_reg0,     (* The stack grows downwards!! *)
-           I.cmpq(R rsp, R tmp_reg0) ::
+           imov(L maxStackLab, R treg0,     (* The stack grows downwards!! *)
+           I.cmpq(R rsp, R treg0) ::
            I.jl labCont ::                                                    (* if ( rsp < *maxStack ) {     *)
            imov(R rsp, L maxStackLab,                                         (*    *maxStack = rsp ;         *)
-           imov(L (NameLab "regionDescUseProfInf"), R tmp_reg0,               (*    maxProfStack =            *)
-           iadd(L (NameLab "regionDescUseProfFin"), R tmp_reg0,               (*       regionDescUseProfInf   *)
-           iadd(L (NameLab "allocProfNowFin"), R tmp_reg0,                    (*     + regionDescUseProfFin   *)
-           iadd(R tmp_reg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
+           imov(L (NameLab "regionDescUseProfInf"), R treg0,               (*    maxProfStack =            *)
+           iadd(L (NameLab "regionDescUseProfFin"), R treg0,               (*       regionDescUseProfInf   *)
+           iadd(L (NameLab "allocProfNowFin"), R treg0,                    (*     + regionDescUseProfFin   *)
+           iadd(R treg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
            I.lab labCont ::                                                   (* }                            *)
                                                                               (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
                                                                               (* if ( reg0 > maxMem ) maxMem = reg0; *)
-           imov(L (NameLab "allocNowInf"), R tmp_reg0,
-           isub(L (NameLab "regionDescUseProfInf"), R tmp_reg0,
-           isub(L (NameLab "regionDescUseProfFin"), R tmp_reg0,
-           isub(L (NameLab "allocProfNowFin"), R tmp_reg0,
-           I.imulq(I "8", R tmp_reg0) ::
-           iadd(L (NameLab "stackBot"), R tmp_reg0,
-           I.subq(R rsp, R tmp_reg0) ::
-           imov(L (NameLab "maxMem"), R tmp_reg1,                             (* we can store in tmp_reg1 even with imov *)
-           I.cmpq(R tmp_reg1, R tmp_reg0) ::
+           imov(L (NameLab "allocNowInf"), R treg0,
+           isub(L (NameLab "regionDescUseProfInf"), R treg0,
+           isub(L (NameLab "regionDescUseProfFin"), R treg0,
+           isub(L (NameLab "allocProfNowFin"), R treg0,
+           G.mul(I "8", treg0) $
+           iadd(L (NameLab "stackBot"), R treg0,
+           G.sub(R rsp, treg0) $
+           imov(L (NameLab "maxMem"), R treg1,                             (* we can store in treg1 even with imov *)
+           I.cmpq(R treg1, R treg0) ::
            I.jl labCont1 ::
-           imov(R tmp_reg0, L (NameLab "maxMem"),
+           imov(R treg0, L (NameLab "maxMem"),
 
            I.lab labCont1 ::
-           imov(L timeToProfLab, R tmp_reg0,                                  (* if ( timeToProfile )         *)
-           I.cmpq(I "0", R tmp_reg0) ::                                       (*    call __proftick(rsp);     *)
+           imov(L timeToProfLab, R treg0,                                  (* if ( timeToProfile )         *)
+           I.cmpq(I "0", R treg0) ::                                       (*    call __proftick(rsp);     *)
            I.je labCont2 ::
-           I.movq (R rsp, R tmp_reg1) ::              (* proftick assumes argument in tmp_reg1 *)
+           I.movq (R rsp, R treg1) ::              (* proftick assumes argument in treg1 *)
            I.push (LA labCont2) ::                    (* push return address *)
            I.jmp (L(NameLab "__proftick")) ::
 
@@ -1571,9 +1530,9 @@ struct
         fun pws ws = app pw ws
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
-        val size_ff = CallConv.get_frame_size cc
-        val size_ff = if not(gc_p()) andalso size_ff = 1 andalso basic_lss lss then 0
-                      else size_ff
+        val fsz = CallConv.get_frame_size cc
+        val fsz = if not(gc_p()) andalso fsz = 1 andalso basic_lss lss then 0
+                      else fsz
 (*
         val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
 *)
@@ -1598,14 +1557,14 @@ struct
         val () = reset_code_blocks()
 
         val return_code =
-            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+            base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,
                              I.ret :: nil)
         val C =
             checkGC(
-            base_plus_offset(rsp,WORDS(~size_ff),rsp,
+            base_plus_offset(rsp,WORDS(~fsz),rsp,
             do_simple_memprof(
             do_prof(
-            CG_lss(lss,size_ff,size_ccf, return_code
+            CG_lss(lss,fsz,size_ccf, return_code
             )))))
       in
         gen_fn(lab, C @ GCsnippet @ get_code_blocks())
@@ -1699,13 +1658,13 @@ struct
           in
               I.dot_globl (nlab,I.FUNC) ::
               I.lab nlab ::
-              I.movq (R arg_reg, R tmp_reg0)::
-              load_indexed(R arg_reg,arg_reg,WORDS offset,
-              load_indexed(R tmp_reg1,arg_reg, WORDS offset,
-              load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
+              I.movq (R arg_reg, R treg0)::
+              load(arg_reg,WORDS offset,arg_reg,
+              load(arg_reg, WORDS offset,treg1,
+              load(arg_reg,WORDS (offset+1),arg_reg, (* Fetch pointer to exception string *)
               compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY r14,   (* evaluation context *)
-                                                        SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
-                                                        SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,
+                                                        SS.PHREG_ATY arg_reg,SS.PHREG_ATY treg1,
+                                                        SS.PHREG_ATY treg0],NONE,0,treg1,
               I.ret :: C))))
           end
 
@@ -1722,9 +1681,9 @@ struct
           else C
 
         (* allocinreg expects the following arguments:
-         *   tmp_reg0: size in words
-         *   tmp_reg1: region ptr
-         *   result in tmp_reg1
+         *   treg0: size in words
+         *   treg1: region ptr
+         *   result in treg1
          *)
 
         fun allocinreg C =
@@ -1735,21 +1694,21 @@ struct
                 val l_expand = new_local_lab "expand"
                 val l_expand_protect = new_local_lab "protect"
                 fun mk_expand_protect C =
-                    I.lab l_expand_protect ::                 (* expand_protect:                    *)
-                    I.pop(R I.rax) ::                         (*   restore rax                      *)
-                    I.pop(R tmp_reg1) ::
-                    I.pop(R tmp_reg0) ::
-                    I.jmp(L(NameLab "__allocate")) :: C       (*   jmp to __allocate with args in   *)
-                                                              (*     tmp_reg1 and tmp_reg0; result  *)
-                                                              (*     in tmp_reg1; return address is *)
+                    G.label l_expand_protect $                (* expand_protect:                    *)
+                    G.pop_ea(R I.rax) $                       (*   restore rax                      *)
+                    G.pop_ea(R treg1) $
+                    G.pop_ea(R treg0) $
+                    G.jump(NameLab "__allocate") C            (*   jmp to __allocate with args in   *)
+                                                              (*     treg1 and treg0; result  *)
+                                                              (*     in treg1; return address is *)
                                                               (*     already on the stack...        *)
                 fun mk_expand C =
-                    I.lab l_expand ::                             (* expand:                            *)
-                    I.pop(R tmp_reg1) ::                          (*   pop region ptr                   *)
-                    I.pop(R tmp_reg0) ::
-                    I.jmp(L(NameLab "__allocate_unprotected")) :: (*   jmp to __allocate with args in   *)
-                    C                                             (*     tmp_reg1 and tmp_reg0; result  *)
-                                                                  (*     in tmp_reg1; return address is *)
+                    G.label l_expand $                            (* expand:                            *)
+                    G.pop_ea(R treg1) $                        (*   pop region ptr                   *)
+                    G.pop_ea(R treg0) $
+                    G.jump(NameLab "__allocate_unprotected") C    (*   jmp to __allocate with args in   *)
+                                                                  (*     treg1 and treg0; result  *)
+                                                                  (*     in treg1; return address is *)
                                                                   (*     already on the stack...        *)
 
               (* remember to update alloc_period only when "alloc" or
@@ -1762,59 +1721,59 @@ struct
 
             in I.dot_globl(NameLab "allocinreg",I.FUNC) ::
               I.lab (NameLab "allocinreg") ::
-              I.andq(I (i2s (~4)), R tmp_reg1) ::                    (*   tmp_reg1 = clearBits(tmp_reg1)   *)
-              I.cmpq(I "0",D(mutex_offset_bytes,tmp_reg1)) ::
+              I.andq(I (i2s (~4)), R treg1) ::                    (*   treg1 = clearBits(treg1)   *)
+              I.cmpq(I "0",D(mutex_offset_bytes,treg1)) ::
               I.jne allocinreg_protect ::
               (* simple non-protected allocation *)
-              I.push(R tmp_reg0) ::                                   (*   push tmp_reg0 (n)                *)
-              I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
-              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
-              I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
-              copy(tmp_reg1, tmp_reg0,
-              I.movq(D("8",rsp), R tmp_reg1) ::
-              I.leaq(DD("0",tmp_reg0,tmp_reg1,"8"),R tmp_reg1) ::     (*   tmp_reg1 = tmp_reg0 + 8n         *)
-              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
-              I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              I.push(R treg0) ::                                   (*   push treg0 (n)                *)
+              I.push(R treg1) ::                                   (*   push treg1                    *)
+              load(treg1,WORDS 0,treg1,                         (*   treg1 = treg1[0]           *)
+              G.add(I "-1", treg1) $                               (*   treg1 = treg1 - 1          *)
+              copy(treg1, treg0,
+              I.movq(D("8",rsp), R treg1) ::
+              G.lea(DD("0",treg0,treg1,"8"),treg1) $         (*   treg1 = treg0 + 8n         *)
+              I.orq(I (allocBoundaryMask()), R treg0) ::
+              I.cmpq(R treg0, R treg1) ::                       (*   jmp expand if (treg0 > treg1) *)
               I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
-              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
-              I.pop (R tmp_reg1) ::
-              store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
-              I.pop (R tmp_reg1) ::                                   (*   tmp_reg1 = n                     *)
-              I.imulq(I"8",R tmp_reg1) ::                             (*   tmp_reg1 = 8n                   *)
-              maybe_update_alloc_period tmp_reg1 (
-              I.subq (R tmp_reg1,R tmp_reg0) ::                       (*   tmp_reg0 = tmp_reg0-8n          *)
-              I.movq (R tmp_reg0,R tmp_reg1) ::
+              G.lea(D("1",treg1),treg0) $                       (*   treg0 = treg1 + 1          *)
+              I.pop (R treg1) ::
+              store (treg0,treg1,WORDS 0,                       (*   treg1[0] = treg0           *)
+              I.pop (R treg1) ::                                   (*   treg1 = n                     *)
+              G.mul(I"8",treg1) $                                  (*   treg1 = 8n                   *)
+              maybe_update_alloc_period treg1 (
+              G.sub (R treg1,treg0) $                           (*   treg0 = treg0-8n          *)
+              copy (treg0,treg1,
               I.ret ::
 
               (* complex atomic *)
               I.lab allocinreg_protect ::
-              I.push(R tmp_reg0) ::                                  (*   push tmp_reg0 (n)                *)
-              I.push(R tmp_reg1) ::                                  (*   push tmp_reg1                    *)
-              load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,              (*   tmp_reg1 = tmp_reg1[0]           *)
+              I.push(R treg0) ::                                  (*   push treg0 (n)                *)
+              I.push(R treg1) ::                                  (*   push treg1                    *)
+              load(treg1,WORDS 0,treg1,                        (*   treg1 = treg1[0]           *)
               I.push(R I.rax) ::                                     (*   save rax on the stack            *)
-              I.movq(R tmp_reg1, R I.rax) ::                         (*   rax = tmp_reg1                   *)
-              I.addq(I "-1", R tmp_reg1) ::                          (*   tmp_reg1 = tmp_reg1 - 1          *)
-              copy(tmp_reg1, tmp_reg0,
-              I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
-              I.movq(D("16",rsp), R tmp_reg1) ::                     (*   tmp_reg1 = n                     *)
-              I.leaq(DD("-1",rax,tmp_reg1,"8"),R tmp_reg1) ::        (*   tmp_reg1 = a-1+8n                *)
-              I.cmpq(R tmp_reg0, R tmp_reg1) ::                      (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+              copy(treg1, I.rax,                                  (*   rax = treg1                   *)
+              G.add(I "-1", treg1) $                              (*   treg1 = treg1 - 1          *)
+              copy(treg1, treg0,
+              I.orq(I (allocBoundaryMask()), R treg0) ::
+              I.movq(D("16",rsp), R treg1) ::                     (*   treg1 = n                     *)
+              G.lea(DD("-1",rax,treg1,"8"),treg1) $            (*   treg1 = a-1+8n                *)
+              I.cmpq(R treg0, R treg1) ::                      (*   jmp expand if (treg0 > treg1) *)
               I.jg l_expand_protect ::                               (*        (a-1+8n > boundary-1)       *)
-              I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                  (*   tmp_reg0 = tmp_reg1 + 1          *)
-              I.movq(D("8",rsp),R tmp_reg1) ::                       (*   restore tmp_reg1                 *)
-              I.cmpxchgq(R tmp_reg0,D("0",tmp_reg1)) ::              (*   tmp_reg1[0] = tmp_reg0           *)
-              I.jne l_expand_protect ::                              (*      (if rax = tmp_reg1[0])        *)
-              I.pop (R rax) ::
-              I.pop (R tmp_reg1) ::
-              I.pop (R tmp_reg1) ::
-              I.imulq(I"8",R tmp_reg1) ::                            (*   tmp_reg1 = 8n                   *)
-              maybe_update_alloc_period tmp_reg1 (
-              I.subq (R tmp_reg1,R tmp_reg0) ::                      (*   tmp_reg0 = tmp_reg0-8n          *)
-              I.movq (R tmp_reg0,R tmp_reg1) ::
+              G.lea(D("1",treg1),treg0) $                      (*   treg0 = treg1 + 1          *)
+              I.movq(D("8",rsp),R treg1) ::                       (*   restore treg1                 *)
+              I.cmpxchgq(R treg0,D("0",treg1)) ::              (*   treg1[0] = treg0           *)
+              I.jne l_expand_protect ::                              (*      (if rax = treg1[0])        *)
+              G.pop_ea (R rax) $
+              G.pop_ea (R treg1) $
+              G.pop_ea (R treg1) $
+              G.mul(I"8",treg1) $                                 (*   treg1 = 8n                   *)
+              maybe_update_alloc_period treg1 (
+              G.sub (R treg1,treg0) $                          (*   treg0 = treg0-8n          *)
+              I.movq (R treg0,R treg1) ::
               I.ret ::
 
               mk_expand (
-              mk_expand_protect C))))))))
+              mk_expand_protect C))))))))))
             end
 
         fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)
@@ -1825,29 +1784,29 @@ struct
           in
             I.dot_globl(NameLab "raise_exn",I.FUNC) ::
             I.lab (NameLab "raise_exn") ::
-            I.subq (I "8", R rsp) :: (* adjust stack pointer for alignment *)
+            G.sub (I "8", rsp) $     (* adjust stack pointer for alignment *)
             I.movq (R rdi, R r14) :: (* reinstall context pointer *)
             I.movq (R rsi, R r15) :: (* move argument to callee-save register *)
             comment ("DEALLOCATE REGIONS UNTIL",
-            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-            compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY I.r14,SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
+            I.movq(D(ctx_exnptr_offs,r14), R treg1) ::
+            compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY I.r14,SS.PHREG_ATY treg1],NONE,0,treg1,
 
             comment ("RESTORE EXN PTR",
-            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-            I.movq(D("16",tmp_reg1), R tmp_reg0) ::   (* two word offset *)
-            I.movq(R tmp_reg0, D(ctx_exnptr_offs,r14)) ::
+            I.movq(D(ctx_exnptr_offs,r14), R treg1) ::
+            I.movq(D("16",treg1), R treg0) ::   (* two word offset *)
+            I.movq(R treg0, D(ctx_exnptr_offs,r14)) ::
 
             comment ("INSTALL HANDLER EXN-ARGUMENT",
             I.movq(R r15, R arg_reg) ::
 
             comment ("RESTORE RSP AND PUSH RETURN LAB",
-            I.movq(D("24", tmp_reg1), R rsp) ::             (* Restore sp *)
-            I.push(D("0", tmp_reg1)) ::                     (* Push Return Lab *)
+            I.movq(D("24", treg1), R rsp) ::             (* Restore sp *)
+            I.push(D("0", treg1)) ::                     (* Push Return Lab *)
 
             comment ("JUMP TO HANDLE FUNCTION",
-            I.movq(D("8", tmp_reg1), R clos_reg) ::         (* Fetch Closure into Closure Argument Register *)
-            I.movq(D(offset_codeptr,clos_reg), R tmp_reg0) ::
-            I.jmp (R tmp_reg0) :: C))))))
+            I.movq(D("8", treg1), R clos_reg) ::         (* Fetch Closure into Closure Argument Register *)
+            I.movq(D(offset_codeptr,clos_reg), R treg0) ::
+            I.jmp (R treg0) :: C))))))
           end
 
         (* primitive exceptions *)
@@ -1886,39 +1845,39 @@ struct
           in
             if BI.tag_values() then
               comment ("SETUP PRIM EXN: " ^ exn_string,
-              load_label_addr(exn_lab,SS.PHREG_ATY tmp_reg0,tmp_reg0,0,
-              I.movq(R tmp_reg0, R tmp_reg1) ::
-              I.addq(I "16", R tmp_reg1) ::
-              I.movq(R tmp_reg1, D("8",tmp_reg0)) ::
-              load_label_addr(string_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
-              I.movq(R tmp_reg1,D("32",tmp_reg0)) ::
-              load_label_addr(exn_flush_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0, (* Now flush the exception *)
-              I.movq(R tmp_reg0, D("0",tmp_reg1)) :: C))))
+              load_label_addr(exn_lab,SS.PHREG_ATY treg0,treg0,0,
+              I.movq(R treg0, R treg1) ::
+              G.add(I "16", treg1) $
+              I.movq(R treg1, D("8",treg0)) ::
+              load_label_addr(string_lab,SS.PHREG_ATY treg1,treg1,0,
+              I.movq(R treg1,D("32",treg0)) ::
+              load_label_addr(exn_flush_lab,SS.PHREG_ATY treg1,treg1,0, (* Now flush the exception *)
+              I.movq(R treg0, D("0",treg1)) :: C))))
             else
               comment ("SETUP PRIM EXN: " ^ exn_string,
-              load_label_addr(exn_lab,SS.PHREG_ATY tmp_reg0,tmp_reg0,0,
-              I.movq(R tmp_reg0, R tmp_reg1) ::
-              I.addq(I "8", R tmp_reg1) ::
-              I.movq(R tmp_reg1,D("0",tmp_reg0)) ::
-              load_label_addr(string_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
-              I.movq(R tmp_reg1,D("16",tmp_reg0)) ::
-              load_label_addr(exn_flush_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0, (* Now flush the exception *)
-              I.movq(R tmp_reg0,D("0",tmp_reg1)) :: C))))
+              load_label_addr(exn_lab,SS.PHREG_ATY treg0,treg0,0,
+              I.movq(R treg0, R treg1) ::
+              G.add(I "8", treg1) $
+              I.movq(R treg1,D("0",treg0)) ::
+              load_label_addr(string_lab,SS.PHREG_ATY treg1,treg1,0,
+              I.movq(R treg1,D("16",treg0)) ::
+              load_label_addr(exn_flush_lab,SS.PHREG_ATY treg1,treg1,0, (* Now flush the exception *)
+              I.movq(R treg0,D("0",treg1)) :: C))))
           end
 
         fun push_reg (r,C) =
-            if I.is_xmm r then
-              I.subq(I "8", R rsp) :: I.movsd(R r, D("",rsp)) :: C
-            else I.push (R r) :: C
+            if I.is_freg r then
+              G.sub(I "8", rsp) $ I.movsd(R r, D("",rsp)) :: C
+            else G.push_ea (R r) C
 
         fun pop_reg (r,C) =
-            if I.is_xmm r then
-              I.movsd(D("",rsp), R r) :: I.addq(I "8", R rsp) :: C
-            else I.pop (R r) :: C
+            if I.is_freg r then
+              I.movsd(D("",rsp), R r) :: G.add(I "8", rsp) C
+            else G.pop_ea (R r) C
 
-        (* args can only be tmp_reg0 (r10) and tmp_reg1 (r11); no arguments
-         * on the stack; only the return address! Destroys tmp_reg0! *)
-        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
+        (* args can only be treg0 (r10) and treg1 (r11); no arguments
+         * on the stack; only the return address! Destroys treg0! *)
+        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in treg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax :: map RI.lv_to_reg RI.f64_phregs
                         (*caller_save_regs_ccall*)  (* maybe also save the other
@@ -1943,37 +1902,37 @@ struct
 
             fun push_callersave_regs C = foldl push_reg C save_regs
             fun pop_callersave_regs C = foldr pop_reg C save_regs
-            val size_ff = 0 (* dummy *)
+            val fsz = 0 (* dummy *)
             val stublab = NameLab stubname
-            val res = if ret then SOME (SS.PHREG_ATY tmp_reg1) else NONE
+            val res = if ret then SOME (SS.PHREG_ATY treg1) else NONE
           in
             I.dot_text ::
             I.dot_globl (stublab,I.FUNC) ::
             I.lab stublab ::
             push_callersave_regs
-            (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, tmp_reg0,
+            (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, fsz, treg0,
               pop_callersave_regs
                   ( I.ret ::
                     (*
-                    I.pop(R tmp_reg0) ::
-                    I.jmp(R tmp_reg0) :: *)
+                    I.pop(R treg0) ::
+                    I.jmp(R treg0) :: *)
                    C)))
           end
 
-        fun allocate C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
-          ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg0], true, C)
+        fun allocate C = (* args in treg1 and treg0; result in treg1. *)
+          ccall_stub("__allocate", "alloc", [treg1, treg0], true, C)
 
-        fun allocate_unprotected C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
+        fun allocate_unprotected C = (* args in treg1 and treg0; result in treg1. *)
             if parallelism_p() (*andalso par_alloc_unprotected_p()*) then
-              ccall_stub("__allocate_unprotected", "alloc_unprotected", [tmp_reg1, tmp_reg0], true, C)
+              ccall_stub("__allocate_unprotected", "alloc_unprotected", [treg1, treg0], true, C)
             else C
 
         fun resetregion C =
-          ccall_stub("__reset_region", "resetRegion", [tmp_reg1], true, C)
+          ccall_stub("__reset_region", "resetRegion", [treg1], true, C)
 
         fun proftick C =
           if region_profiling() then
-            ccall_stub("__proftick", "profileTick", [r14,tmp_reg1], false, C)   (* first argument is the evaluation context *)
+            ccall_stub("__proftick", "profileTick", [r14,treg1], false, C)   (* first argument is the evaluation context *)
           else C
 
         fun overflow_stub C =
@@ -1992,7 +1951,7 @@ struct
                                           I.call(NameLab "raise_exn")::C') C stublab)
           end
 
-        fun gc_stub C = (* tmp_reg1 must contain the register map and tmp_reg0 the return address. *)
+        fun gc_stub C = (* treg1 must contain the register map and treg0 the return address. *)
           if gc_p() then
             let
               (* first push the fpr registers; the runtime systems knows
@@ -2002,21 +1961,21 @@ struct
               fun pop_all_regs C = foldl pop_reg C regs_to_store
               fun pop_size_ccf_rcf_reg_args C =
                   base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
-              val size_ff = 0 (*dummy*)
+              val fsz = 0 (*dummy*)
             in
               I.dot_text ::
               I.dot_globl (gc_stub_lab,I.FUNC) ::
               I.lab gc_stub_lab ::
               push_all_regs                             (* The return lab and rcx are also preserved (16 regs) *)
-              (copy(rsp,tmp_reg0,
+              (copy(rsp,treg0,
               (copy(rsp,r15,                            (* Save rsp in r15 (callee-save ccall register *)
               I.push(I "1") ::                          (* at this point we don't know whether the stack *)
               I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::  (* is aligned, so we force align it here... *)
-              compile_c_call_prim("gc",[SS.PHREG_ATY r14,SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
+              compile_c_call_prim("gc",[SS.PHREG_ATY r14,SS.PHREG_ATY treg0,SS.PHREG_ATY treg1],NONE,fsz,rax,
               copy(r15,rsp,                             (* Reposition stack; r14 is the context (first arg to gc) *)
-              pop_all_regs(                             (* The return lab and tmp_reg0 are also popped again *)
+              pop_all_regs(                             (* The return lab and treg0 are also popped again *)
               pop_size_ccf_rcf_reg_args(
-              (I.jmp(R tmp_reg0) :: C)))))))))
+              (I.jmp(R treg0) :: C)))))))))
             end
           else C
 
@@ -2033,21 +1992,21 @@ struct
                             val lbelow = new_local_lab "lbelow"
                             val labove = new_local_lab "labove"
                         in
-                            I.cmpq(LA begin_punit_lab, R tmp_reg0) ::
+                            I.cmpq(LA begin_punit_lab, R treg0) ::
                             I.jb lbelow ::
-                            I.movq(LA begin_punit_lab, R tmp_reg0) ::
+                            I.movq(LA begin_punit_lab, R treg0) ::
                             I.lab lbelow ::
-                            I.cmpq(LA end_punit_lab, R tmp_reg1) ::
+                            I.cmpq(LA end_punit_lab, R treg1) ::
                             I.ja labove ::
-                            I.movq(LA end_punit_lab, R tmp_reg1) ::
+                            I.movq(LA end_punit_lab, R treg1) ::
                             I.lab labove ::
                             C
                         end
                 in
-                    I.movq (LA data_begin_init_lab, R tmp_reg0) ::
-                    I.movq (LA data_end_init_lab, R tmp_reg1) ::
-                    foldl comp (I.movq (R tmp_reg0, L data_begin_addr) ::
-                                I.movq (R tmp_reg1, L data_end_addr) :: C)
+                    I.movq (LA data_begin_init_lab, R treg0) ::
+                    I.movq (LA data_end_init_lab, R treg1) ::
+                    foldl comp (I.movq (R treg0, L data_begin_addr) ::
+                                I.movq (R treg1, L data_end_addr) :: C)
                     progunit_labs
                 end
             else C
@@ -2112,7 +2071,7 @@ struct
                         * return address is pushed on the stack by the call instruction.
                         *)
                    in
-                       I.subq(I(i2s sz_regdesc_bytes), R rsp) ::
+                       G.sub(I(i2s sz_regdesc_bytes), rsp) $
                        I.movq(R r14, R rdi) ::
                        I.movq(R rsp, R rsi) ::
                        maybe_pass_region_id (rho,
@@ -2125,23 +2084,23 @@ struct
           let
             fun gen_clos C =
               if BI.tag_values() then
-                copy(rsp, tmp_reg1,
-                I.addq(I "-8", R tmp_reg1) ::
-                I.movq(R tmp_reg1, D("8", rsp)) :: C)
+                copy(rsp, treg1,
+                G.add(I "-8", treg1) $
+                I.movq(R treg1, D("8", rsp)) :: C)
               else
                 I.movq(R rsp, D("8", rsp)) :: C
           in
             comment ("PUSH TOP-LEVEL HANDLER ON STACK",
-            I.subq(I "8", R rsp) ::                       (* anti-align *)
-            I.subq(I "32", R rsp) ::
-            I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
-            I.movq(R tmp_reg1, D("0", rsp)) ::
+            G.sub(I "8", rsp) $                       (* anti-align *)
+            G.sub(I "32", rsp) $
+            I.movq(LA (NameLab "TopLevelHandlerLab"), R treg1) ::
+            I.movq(R treg1, D("0", rsp)) ::
             gen_clos (
-            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-            I.movq(R tmp_reg1, D("16", rsp)) ::
+            I.movq(D(ctx_exnptr_offs,r14), R treg1) ::
+            I.movq(R treg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
             I.movq(R rsp, D(ctx_exnptr_offs,r14)) ::
-            I.subq(I "8", R rsp) ::                       (* align *)
+            G.sub(I "8", rsp) $                       (* align *)
             C))
           end
 
@@ -2165,27 +2124,27 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
           let
             fun gen_clos C =               (* store closure under handler *)
               if BI.tag_values() then
-                I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
-                I.movq(R tmp_reg1, D("32", rsp)) ::
-                I.leaq(D("24", rsp), R tmp_reg1) ::
-                I.movq(R tmp_reg1, D("8", rsp)) ::
+                I.movq(LA (NameLab "TopLevelHandlerLab"), R treg1) ::
+                I.movq(R treg1, D("32", rsp)) ::
+                G.lea(D("24", rsp), treg1) $
+                I.movq(R treg1, D("8", rsp)) ::
                 C
               else
-                I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
-                I.movq(R tmp_reg1, D("32", rsp)) ::
-                I.leaq(D("32", rsp), R tmp_reg1) ::   (* compute closure address *)
-                I.movq(R tmp_reg1, D("8", rsp)) ::   (* store closure address in second word of exn handler *)
+                I.movq(LA (NameLab "TopLevelHandlerLab"), R treg1) ::
+                I.movq(R treg1, D("32", rsp)) ::
+                G.lea(D("32", rsp), treg1) $      (* compute closure address *)
+                I.movq(R treg1, D("8", rsp)) ::   (* store closure address in second word of exn handler *)
                 C
           in
             comment ("PUSH CLOSURE AND TOP-LEVEL HANDLER ON STACK",
-            I.subq(I "8", R rsp) ::                                   (* anti-align, closure *)
-            I.subq(I "32", R rsp) ::                                  (* space for exception handler *)
+            G.sub(I "8", rsp) $                                       (* anti-align, closure *)
+            G.sub(I "32", rsp) $                                      (* space for exception handler *)
             gen_clos (                                                (* create closure and store closure address in handler *)
-            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
-            I.movq(R tmp_reg1, D("16", rsp)) ::                       (* store previous exnPtr in handler *)
+            I.movq(D(ctx_exnptr_offs,r14), R treg1) ::
+            I.movq(R treg1, D("16", rsp)) ::                       (* store previous exnPtr in handler *)
             I.movq(R rsp, D("24", rsp)) ::                            (* store current stack address in handler *)
-            I.movq(LA (NameLab retlab), R tmp_reg1) ::
-            I.movq(R tmp_reg1, D("0", rsp)) ::                        (* store retlab in handler *)
+            I.movq(LA (NameLab retlab), R treg1) ::
+            I.movq(R treg1, D("0", rsp)) ::                        (* store retlab in handler *)
             I.movq(R rsp, D(ctx_exnptr_offs,r14)) ::                  (* store handler address in context's exnPtr *)
             I.push(I "1") ::                                          (* align *)
             C))
@@ -2380,10 +2339,10 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           val callee_save_regs_ccall = r14::callee_save_regs_ccall
         in
           fun push_callee C =
-              List.foldl (fn (r,C) => I.push (R r) :: C) C
+              List.foldl (fn (r,C) => G.push_ea (R r) C) C
                          callee_save_regs_ccall
           fun pop_callee C =
-              List.foldr (fn (r,C) => I.pop (R r) :: C) C
+              List.foldr (fn (r,C) => G.pop_ea (R r) C) C
                          callee_save_regs_ccall
         end
 
@@ -2407,13 +2366,13 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             comment ("JUMP CODE TO PROGRAM UNITS",
             generate_jump_code_progunits(progunit_labs,
 
-            I.addq(I "8", R rsp) ::    (* align *)
+            G.add(I "8", rsp) $        (* align *)
 
             I.lab(NameLab topretlab) ::
-            I.addq(I "40", R rsp) ::   (* 40: top-level handler *)
+            G.add(I "40", rsp) $       (* 40: top-level handler *)
 
             pop_callee(
-            I.addq(I "8", R rsp) ::    (* align *)
+            G.add(I "8", rsp) $        (* align *)
             I.ret :: C))))))
 
       in

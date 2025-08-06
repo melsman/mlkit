@@ -1,6 +1,4 @@
-functor CalcOffset(structure CallConv: CALL_CONV
-		       where type lvar = Lvars.lvar
-		   structure LineStmt: LINE_STMT
+functor CalcOffset(structure LineStmt: LINE_STMT
 		       where type con = Con.con
 		       where type excon = Excon.excon
 		       where type lvar = Lvars.lvar
@@ -8,14 +6,15 @@ functor CalcOffset(structure CallConv: CALL_CONV
 		       where type label = AddressLabels.label
 		       where type phsize = PhysSizeInf.phsize
 		       where type StringTree = PrettyPrint.StringTree
-		   sharing type CallConv.cc = LineStmt.cc
+		       where type cc = CallConv.cc
 		   structure FetchAndFlush: FETCH_AND_FLUSH
 		       where type lvar = Lvars.lvar
  		       where type label = AddressLabels.label
-                   sharing type FetchAndFlush.Atom = LineStmt.Atom
-		   structure BI : BACKEND_INFO)
+                   sharing type FetchAndFlush.Atom = LineStmt.Atom)
     : CALC_OFFSET =
 struct
+
+  structure BI = BackendInfo
   structure PP = PrettyPrint
   structure Labels = AddressLabels
   val _ = Flags.add_bool_entry

@@ -821,9 +821,16 @@ allocGen (
 
   //  register long *stackTop asm ("rsp");
   long stackTop;
-  __asm__ volatile ("movq %%rsp, %0"
+
+#ifdef __clang__
+  __asm__ volatile ("mov %0, SP;"
 		    : "=r" (stackTop)
 		    );
+#else
+  __asm__ volatile ("movq %%rsp, %0;"
+		    : "=r" (stackTop)
+		    );
+#endif
 
   maxMem = max(maxMem, ((long)stackBot) - ((long)stackTop) + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin));
 #endif /* PROFILING */
@@ -946,7 +953,11 @@ allocGen (
 #endif
 	t1 = alloc_new_page(gen);
 	t2 = t1+n;
-	asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
+#ifdef __clang__
+	__asm__ volatile("":::"memory"); // Prevent CPU & compiler reordering
+#else
+	__asm__ volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
+#endif
 	gen->a = t2;
 	REGION_MUTEX_UNLOCK((r->mutex)->mutex);
       }

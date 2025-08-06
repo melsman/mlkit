@@ -1,26 +1,14 @@
 
-structure ExecutionX64: EXECUTION =
+structure ExecutionX64 : EXECUTION =
   struct
     structure TopdecGrammar = PostElabTopdecGrammar
     structure Labels = AddressLabels
     structure PP = PrettyPrint
+    structure CompileBasis = CompileBasis
 
-    structure BackendInfo =
-      BackendInfo(val down_growing_stack : bool = true)          (* true for x64 code generation *)
+    structure NativeCompile = NativeCompile(structure RegisterInfo = InstsX64.RI)
 
-    structure NativeCompile = NativeCompile(structure BackendInfo = BackendInfo
-                                            structure RegisterInfo = InstsX64.RI)
-
-    structure ClosExp = NativeCompile.ClosExp
-
-    structure CompileBasis = CompileBasis(structure ClosExp = ClosExp)
-
-    structure JumpTables = JumpTables(BackendInfo)
-
-    structure CodeGen = CodeGenX64(structure BackendInfo = BackendInfo
-                                   structure JumpTables = JumpTables
-                                   structure CallConv = NativeCompile.CallConv
-                                   structure LineStmt = NativeCompile.LineStmt
+    structure CodeGen = CodeGenX64(structure LineStmt = NativeCompile.LineStmt
                                    structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
     val message = CodeGen.message
@@ -74,7 +62,7 @@ structure ExecutionX64: EXECUTION =
             val macgcc_old = "gcc -Wl,-stack_size,0x10000000"
             val linuxgcc = "gcc"
             val gcc = if onmac_p() then
-                        case InstsX64.darwin_version() of
+                        case InstsX64.release() of
                             NONE => macgcc_old
                           | SOME v => case Real.fromString v of
                                           SOME r => if r > 23.1 then macgcc_new

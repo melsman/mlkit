@@ -1,13 +1,11 @@
-functor RegAlloc(structure CallConv: CALL_CONV
-                    where type lvar = Lvars.lvar
-                 structure LineStmt: LINE_STMT
+functor RegAlloc(structure LineStmt: LINE_STMT
                    where type con = Con.con
                    where type excon = Excon.excon
                    where type lvar = Lvars.lvar
                    where type place = Effect.effect
                    where type label = AddressLabels.label
                    where type StringTree = PrettyPrint.StringTree
-                   sharing type CallConv.cc = LineStmt.cc
+                   where type cc = CallConv.cc
                  structure RI : REGISTER_INFO
                    where type lvar = Lvars.lvar)
     : REG_ALLOC =
@@ -1108,7 +1106,6 @@ struct
           (* Instead, we should unfold records in LineStmt. 18/02/1999, Niels *)
            | LS.ASSIGN {pat= _, bind=LS.RECORD _} => do_record(L,ls)
            | LS.ASSIGN {pat= _, bind=LS.SCLOS_RECORD _} => do_record(L,ls)
-           | LS.ASSIGN {pat= _, bind=LS.REGVEC_RECORD _} => do_record(L,ls)
            | LS.ASSIGN {pat= _, bind=LS.CLOS_RECORD _} => do_record(L,ls)
            | _ => (* general *)
             let val (def, use) = def_use_var_ls ls

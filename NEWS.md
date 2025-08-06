@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2025-08-05: Refactor backend.
+
 ### MLKit version 4.7.14 is released
 
 * mael 2024-12-06: Improved binary installation. The install target in binary

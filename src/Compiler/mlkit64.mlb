@@ -1,0 +1,4 @@
+local $(SML_LIB)/basis/basis.mlb
+      native64.mlb
+in ../Common/KitX64.sml
+end

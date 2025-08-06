@@ -1,6 +1,4 @@
-functor SubstAndSimplify(structure CallConv: CALL_CONV
-                           where type lvar = Lvars.lvar
-                         structure LineStmt: LINE_STMT
+functor SubstAndSimplify(structure LineStmt: LINE_STMT
                            where type con = Con.con
                            where type excon = Excon.excon
                            where type lvar = Lvars.lvar
@@ -8,7 +6,7 @@ functor SubstAndSimplify(structure CallConv: CALL_CONV
                            where type label = AddressLabels.label
                            where type phsize = PhysSizeInf.phsize
                            where type StringTree = PrettyPrint.StringTree
-                         sharing type CallConv.cc = LineStmt.cc
+                           where type cc = CallConv.cc
                          structure CalcOffset: CALC_OFFSET
                            where type lvar = Lvars.lvar
                            where type place = Effect.place
@@ -202,7 +200,6 @@ struct
                            elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
                            f64_vars=f64_vars,
                            alloc= sma_to_sma' alloc}
-          | SS_se(LS.REGVEC_RECORD{elems,alloc}) = LS.REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma' alloc}
           | SS_se(LS.SCLOS_RECORD{elems=(lvs,excons,rhos),f64_vars,alloc}) =
             LS.SCLOS_RECORD{elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
                             f64_vars=f64_vars,

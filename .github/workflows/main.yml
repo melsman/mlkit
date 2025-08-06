@@ -27,10 +27,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-14]
+        os: [ubuntu-24.04, macos-14]
         mlcomp: [mlkit, mlton]
-#        mlcomp: [mlton]
-#        mlcomp: [mlkit]
 
     runs-on: ${{ matrix.os }}
 
@@ -49,12 +47,21 @@ jobs:
           # sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make
           echo "THECC=gcc" >> $GITHUB_ENV
+          mkdir phantomjs
+          cd phantomjs
+          wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
+          tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
+          cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
+          cd ..
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
+        working-directory: ${{ env.RUNHOME }}
         run: |
-          # sudo apt-get -qq update
-          sudo apt-get install -y mlton
+          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
+          wget -q https://github.com/MLton/mlton/releases/download/on-20241230-release/mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          tar xzf mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          echo "$HOME/mlton-20241230-1.amd64-linux.ubuntu-24.04_static/bin" >> $GITHUB_PATH
 
       - name: Install dependencies (macos)
         if: ${{ env.OS == 'darwin' }}
@@ -62,32 +69,36 @@ jobs:
           arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           arch -x86_64 /usr/local/bin/brew install gcc
           echo 'GCC version:'
-          echo "THECC=gcc-14" >> $GITHUB_ENV
+          echo "THECC=gcc-15" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
           which ld
           ld -v
           ls /usr/local/bin/gcc*
-          /usr/local/bin/gcc-14 --version
+          /usr/local/bin/gcc-15 --version
           brew install autoconf make
           brew tap homebrew/cask
-          brew install --cask phantomjs
+          mkdir phantomjs
+          cd phantomjs
+          wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
+          unzip phantomjs-2.1.1-macosx.zip
+          cp -p phantomjs-2.1.1-macosx/bin/phantomjs /usr/local/bin/
+          cd ..
 
       - name: Install dependencies (macos, mlton)
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
           echo "THECC: ${{env.THECC}}"
-          which gcc-14
-          # The brew version of MLton has a bug
-          brew install mlton --HEAD
+          which gcc-15
+          brew install mlton
 
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
         run: |
           echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
-          wget https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
+          wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
+          wget -q https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
           tar xzf mlkit-bin-dist-${{env.OS}}.tgz
           echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
           mkdir -p .mlkit
@@ -155,8 +166,15 @@ jobs:
         run: |
           sudo make install_smltojs
 
-      - name: Run SmlToJs tests
+      - name: Run SmlToJs tests (darwin)
+        if: ${{ env.OS == 'darwin' }}
         run: |
+          make -C js/test test
+
+      - name: Run SmlToJs tests (linux)
+        if: ${{ env.OS == 'linux' }}
+        run: |
+          export OPENSSL_CONF=/dev/null
           make -C js/test test
 
       - name: Build and run Barry tests

@@ -1,7 +1,8 @@
 
-functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) :  CLOS_CONV_ENV =
+structure ClosConvEnv :  CLOS_CONV_ENV =
   struct
 
+    structure BI = BackendInfo
     structure RegvarFinMap = EffVarEnv
     structure Labels = AddressLabels
     structure PP = PrettyPrint

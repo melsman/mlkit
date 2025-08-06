@@ -291,7 +291,7 @@ install_src:
 	$(INSTALLDATA) src/Compiler/*.{mlb,sig,sml} $(INSTDIR)/src/Compiler
 	$(INSTALLDATA) src/Compiler/Lambda/*.{sig,sml} $(INSTDIR)/src/Compiler/Lambda
 	$(INSTALLDATA) src/Compiler/Regions/*.{sig,sml} $(INSTDIR)/src/Compiler/Regions
-	$(INSTALLDATA) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
+	$(INSTALLDATA) src/Compiler/Backend/*.{sig,sml} $(INSTDIR)/src/Compiler/Backend
 	$(INSTALLDATA) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
 	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(INSTALLDATA) src/Compiler/Backend/X64/*.sml $(INSTDIR)/src/Compiler/Backend/X64
@@ -320,11 +320,11 @@ bootstrap_first:
 	$(MAKE) bootstrap0
 
 MLKIT_FLAGS ?=
-MLKIT_BUILD_LOG ?= native64.log
+MLKIT_BUILD_LOG ?= mlkit64.log
 
 .PHONY: bootstrap_next_build
 bootstrap_next_build:
-	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc native64.mlb \
+	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc mlkit64.mlb \
              2>&1 | tee $(MLKIT_BUILD_LOG)
 
 .PHONY: bootstrap_next_install

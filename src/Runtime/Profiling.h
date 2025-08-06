@@ -8,6 +8,7 @@
 #ifdef PROFILING
 #include "Flags.h"
 #include "Region.h"
+#include "String.h"
 
 #define BYTES_ALLOC_TO_PROFILING 1024
 
@@ -99,7 +100,7 @@ void profiling_off(void);
 void AlarmHandler();
 
 void resetProfiler();
-void queueMarkProf();  /* tell the time next time there is a profile tick */
+void queueMarkProf(String str,long pPoint);  /* tell the time next time there is a profile tick */
 char *allocMemProfiling_xx(long i);
 ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, long regionId);
 void outputProfilePre(void);
