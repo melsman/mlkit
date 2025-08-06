@@ -26,7 +26,7 @@ top-directory of the unpacked distribution. You may install MLKit in a
 directory different from `/usr/local/mlkit` by instead typing
 `PREFIX=myinstallpath make install`.
 
-## General Features
+## Features
 
 - **Compiles all of Standard ML**. The MLKit compiles all of Standard ML, [including Modules](http://elsman.com/mlkit/staticinterp.html), as specified by
   the Definition of Standard ML. The MLKit also supports most of the
