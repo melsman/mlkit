@@ -75,7 +75,7 @@ structure OptLambda : OPT_LAMBDA =
           \elimination of unnecessary record constructions."}
 
     val statistics_after_optimisation = Flags.add_bool_entry
-        {long="statistics_after_optimisation", short=NONE,
+        {long="statistics_after_optimisation", short=SOME "stats_opt",
          menu=["Optimiser Control", "statistics after optimisation"],
          item=ref false, neg=false, desc=
          "Report optimisation statistics after optimisation of\n\
@@ -126,14 +126,24 @@ structure OptLambda : OPT_LAMBDA =
             \possible to help tail-calls not be captured in let-\n\
             \region bindings."}
 
-    val unbox_function_arguments = Flags.add_bool_entry
-            {long="unbox_function_arguments", short=NONE,
+    val unbox_funargs = Flags.add_bool_entry
+            {long="unbox_funargs", short=NONE,
              menu=["Optimiser Control", "unbox function arguments"],
              item=ref true, neg=true, desc=
              "Unbox arguments to fix-bound functions, for which the\n\
-              \argument `a' is used only in contexts `#i a'. All call \n\
+              \argument 'a' is used only in contexts '#i a'. All call \n\
               \sites are transformed to match the new function (Lambda\n\
               \Expression Optimiser)."}
+
+    val unbox_real_funargs = Flags.add_bool_entry
+            {long="unbox_real_funargs", short=NONE,
+             menu=["Optimiser Control", "unbox function arguments of type real"],
+             item=ref true, neg=true, desc=
+             "Unbox arguments of type real to fix-bound functions, for which \n\
+              \the argument 'a' is used only in contexts that unboxes 'a'. All \n\
+              \call sites are transformed to match the new function. This \n\
+              \optimisation has effect only when the flags '--unbox_funargs' and \n\
+              \'--unbox_reals' are enabled (Lambda Expression Optimiser)."}
 
     val unbox_reals = Flags.add_bool_entry
             {long="unbox_reals", short=NONE,
@@ -1362,6 +1372,25 @@ structure OptLambda : OPT_LAMBDA =
           in loop (sels,nil)
           end
 
+      (* reduce switch0
+           "case (case e of c => c1 | _ => c2) of c1 => e1 | _ => e2"  (c1 != c2)
+           ==>
+           "case e of c => e1 | _ => e2"
+      *)
+
+      fun red_switch0 (sw as SWITCH(SWITCH_C(SWITCH(e,[((c,lvopt),ec1)],SOME ec2)),
+                                    [((c1,lvopt1),e1)],
+                                    SOME e2)) : (con*lvar option) Switch =
+          (case (ec1,ec2) of
+               (PRIM(CONprim{con=con1,...},[]), PRIM(CONprim{con=con2,...},[])) =>
+               if Con.eq (con1,c1) andalso not(Con.eq(c1,con2)) then
+                 ( tick "reduce - switch constant fold 0"
+                 ; SWITCH(e,[((c,lvopt),e1)],SOME e2)
+                 )
+               else sw
+             | _ => sw)
+        | red_switch0 sw = sw
+
       fun reduce_switch (reduce, env, (fail as (_,cv)), (SWITCH(arg, sel, opt)), selector) =
         let fun allEqual [] = true   (* If branches are equal and the selector *)
               | allEqual [x] = true  (* is safe then eliminate switch. *)
@@ -1860,7 +1889,11 @@ structure OptLambda : OPT_LAMBDA =
           | SWITCH_I {switch,precision} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_W {switch,precision,tyname} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
-          | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon env)
+          | SWITCH_C switch =>
+            let val sw = red_switch0 switch
+                val fail = (SWITCH_C sw, cv)
+            in reduce_switch (reduce, env, fail, sw, selectorCon env)
+            end
           | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
             (tick "real immed to f64 immed";
@@ -3144,7 +3177,7 @@ structure OptLambda : OPT_LAMBDA =
 
    fun unbOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
        let fun F {phi,function={lvar,regvars,tyvars,Type,constrs,vtys,body},mutrec} =
-               if not(unbox_function_arguments())
+               if not(unbox_funargs())
                then ({lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
                       constrs=constrs,vtys=vtys,body=body}, Id, fn e => e)
                else
@@ -3216,8 +3249,11 @@ structure OptLambda : OPT_LAMBDA =
                                  | NONE => ()
                        in LambdaBasics.app_lamb
                               (fn PRIM(SELECTprim {index=j}, [VAR{lvar=x,...}]) => look x j
-                                | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) => look x ~1
-                                | e => collect_candidates e) e
+                                | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) =>
+                                  if unbox_real_funargs() then look x ~1
+                                  else ()
+                                | e => collect_candidates e
+                              ) e
                        end
                    fun appS S e =
                        let fun find x i =

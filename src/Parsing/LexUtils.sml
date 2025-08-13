@@ -161,9 +161,9 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	        desc="ReML is Standard ML with support for programming with \n\
                      \explicit regions, explicit effects, and effect \n\
                      \constraints. With ReML, atomic effects also include \n\
-                     \mutation effects. Whereas ReML include parallel \n\
-                     \thread support, ReML does not support integration \n\
-                     \with reference-tracing garbage collection."}
+                     \mutation effects. Whereas ReML includes parallel \n\
+                     \thread support, currently, ReML does not support \n\
+                     \integration with reference-tracing garbage collection."}
         end
 
    (* Keyword detection (better done here than by the lexer). *)
