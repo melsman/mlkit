@@ -122,6 +122,9 @@ MLKit (revised for Version 4.7.2)__. Department of Computer Science, University 
 Højfeld Olesen, and Peter Sestoft. __Programming with Regions in the
 MLKit (revised for Version 4.6.0)__. Department of Computer Science, University of Copenhagen. December 2021. [pdf](/pdf/mlkit-4.6.0.pdf), [bibtex](/pdf/mlkit-4.6.0-bibtex.txt).
 
+* Christian Kjær Larsen. Extending MLKit with vector instructions. MSc Student
+  project. January, 2021. [pdf](/pdf/vector-mlkit-pocs.pdf)
+
 * Martin Elsman and Niels Hallenberg. __Combining Region Inference and Generational Garbage Collection__. Department of Computer Science, University of Copenhagen (DIKU), Denmark. DIKU Technical report 2019/01. ISSN 0107-8283. November 2019. [pdf](/pdf/gengc-techreport.pdf).
 
 * Martin Elsman. __A Framework for Cut-Off Incremental Recompilation and
