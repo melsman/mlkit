@@ -207,13 +207,20 @@ type rp = {command_pipe : Posix.IO.file_desc,
            pid : Posix.Process.pid,
            sessionid: string}
 
+fun remove_ctrl s = (* as in InstsBase.sml *)
+    CharVector.map (fn c =>
+                       if Char.isAlphaNum c orelse c = #"_" orelse c = #"."
+                       then c
+                       else #"_") s
+
 fun retrieve (rp:rp) B t longid =
     case MO.retrieve_longid B longid of
         MO.VAR lab =>
-        ( send_PRINT (#command_pipe rp, t, "D." ^ lab);
-          case receive_STR(#reply_pipe rp) of
+        ( send_PRINT (#command_pipe rp, t, remove_ctrl ("D." ^ lab))
+        ; case receive_STR(#reply_pipe rp) of
               SOME s => s
-            | NONE => "none" )
+            | NONE => "none"
+        )
       | MO.STR s => s
       | MO.UNKN => "unknown"
 
