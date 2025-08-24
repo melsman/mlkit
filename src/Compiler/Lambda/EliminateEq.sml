@@ -15,6 +15,13 @@ structure EliminateEq : ELIMINATE_EQ =
 
     val quotation = Flags.is_on0 "quotation"
 
+    val equalelim_opt_unboxed =
+        Flags.add_bool_entry
+            {long="equalelim_opt_unboxed", short=NONE, neg=true, item=ref true,
+             menu=["Debug", "delete target files"],
+             desc="Efficient equality function derivations using ptr \n\
+                  \equality for unboxed values."}
+
     (* ------------------------------------------------------------
      * The Environment
      * ------------------------------------------------------------ *)
@@ -359,7 +366,9 @@ structure EliminateEq : ELIMINATE_EQ =
 
         fun mk_sw c e single = SWITCH_C(SWITCH(lamb_var p1,[(c, e)],
                                                if single then NONE else SOME lamb_false))
+
         fun mk_nullary_sw c single = mk_sw (c,NONE) lamb_true single
+
         fun mk_unary_sw c tau p0' single =
           let
             val p1' = Lvars.newLvar()
@@ -386,25 +395,43 @@ structure EliminateEq : ELIMINATE_EQ =
                             end
           in p :: mk_cases rest single
           end
+
         val lvar = case lookup_tyname env' tn
                      of SOME(MONOLVAR (lv,_)) => lv
                       | _ => die "gen_db.lvar"
-
-        fun big_sw cbs single =
-            let val bs = mk_cases cbs single
-            in SWITCH_C(SWITCH(lamb_var p0, bs, NONE))
-            end
 
         val single = case cbs of
                          [_] => true
                        | _ => false
 
+        val (cbs0,cbs1) =
+            List.partition (fn (_,NONE) => true | _ => false) cbs
+
+        fun big_sw single =
+            let val (bs, opt) =
+                    if equalelim_opt_unboxed() andalso TyName.is_unboxed tn then
+                      let val bs = mk_cases cbs1 single
+                          val opt = if List.null cbs0 then NONE
+                                    else SOME lamb_false
+                      in (bs,opt)
+                      end
+                    else
+                      let val bs = mk_cases (cbs1@cbs0) single
+                          val opt = NONE
+                      in (bs,opt)
+                      end
+            in SWITCH_C(SWITCH(lamb_var p0, bs, opt))
+            end
+
         val eq_body =
             let fun varExp lv = VAR{lvar=lv,instances=nil,regvars=nil}
-                val body = big_sw cbs single
-            in if single orelse nonrecursive then body
-               else ORELSE (ptr_eq tau_tn (varExp p0) (varExp p1))
-                           body
+                val ptr_eq_exp = ptr_eq tau_tn (varExp p0) (varExp p1)
+            in if List.null cbs1 then (*enumeration*)
+                 ptr_eq_exp
+               else let val body = big_sw single
+                    in if single (* orelse nonrecursive*) then body
+                       else ORELSE ptr_eq_exp body
+                    end
             end
 
         val bind =
@@ -414,8 +441,6 @@ structure EliminateEq : ELIMINATE_EQ =
       in
         {lvar=lvar, regvars=[], tyvars=tyvars, Type=gen_tau tyvars, constrs=[], bind=bind}
       end
-
-
 
     (* Generate a FIX and a ``polymorphic'' environment for a list
      * of mutually recursive datatype bindings. *)
