@@ -1895,6 +1895,22 @@ structure OptLambda : OPT_LAMBDA =
             in reduce_switch (reduce, env, fail, sw, selectorCon env)
             end
           | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
+          | PRIM(EQUALprim {instance}, [PRIM(CONprim{con,...},[]),e]) =>
+            if Con.eq(con,Con.con_TRUE)
+            then ( tick "equal true 1"
+                 ; reduce (env,(e,CUNKNOWN)))
+            else (case e of
+                      PRIM(CONprim{con=con1,...},[]) =>
+                      if Con.eq(con,Con.con_FALSE) andalso Con.eq(con1,Con.con_FALSE)
+                      then ( tick "equal false"
+                           ; (lexp_true,CUNKNOWN))
+                      else fail
+                    | _ => fail)
+          | PRIM(EQUALprim {instance}, [e,PRIM(CONprim{con,...},[])]) =>
+            if Con.eq(con,Con.con_TRUE)
+            then ( tick "equal true 2"
+                 ; reduce (env,(e,CUNKNOWN)))
+            else fail
           | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))

@@ -182,3 +182,4 @@ auto2.sml                                     (* ffi auto-conversion *)
 foldbug.sml
 seltuptup.sml
 poll.sml
+enum-eq.sml
