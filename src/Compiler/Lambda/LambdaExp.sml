@@ -415,7 +415,7 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Array", dupQ "Array" ["array","maxLen"]),
                      ("Real", dup ["floor", "real"]),
                      ("textio", dupQ "TextIO" ["openOut"]),
-                     ("Int", [("toString","Int.toString"), ("v472","Int.>"), ("v112","Int.+")] @
+                     ("Int", [("toString","Int.toString"), ("v475","Int.>"), ("v115","Int.+")] @
                              dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
                                          "sameSign","scan","fromString","fmt","precision"]),
                      ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("v54","(op /)")]),
