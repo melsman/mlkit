@@ -58,4 +58,7 @@ in
   end
 
   Heap.sml
+
+  WordN.sml
+  IntN.sml
 end

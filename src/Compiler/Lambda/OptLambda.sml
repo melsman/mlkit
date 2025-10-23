@@ -3,6 +3,9 @@
 structure OptLambda : OPT_LAMBDA =
   struct
 
+    structure W63 = WordN(Word64)
+    structure I63 = IntN(Int64)
+
     structure LvarDiGraphScc =
       DiGraphScc(struct
                      type nodeId = Lvars.lvar
@@ -1464,11 +1467,11 @@ structure OptLambda : OPT_LAMBDA =
           if eq_Type(t2,word8Type) then SOME(WORD(Word8.toLargeInt(Word8.fromLargeInt i),t2))
           else if eq_Type(t2,word31Type) then if i < 0 then NONE else SOME(WORD(Word31.toLargeInt(Word31.fromLargeInt i),t2))
           else if eq_Type(t2,word32Type) then if i < 0 then NONE else SOME(WORD(Word32.toLargeInt(Word32.fromLargeInt i),t2))
-          else if eq_Type(t2,word63Type) then if i < 0 then NONE else SOME(WORD(Word63.toLargeInt(Word63.fromLargeInt i),t2))
+          else if eq_Type(t2,word63Type) then if i < 0 then NONE else SOME(WORD(W63.toLargeInt(W63.fromLargeInt i),t2))
           else if eq_Type(t2,word64Type) then if i < 0 then NONE else SOME(WORD(Word64.toLargeInt(Word64.fromLargeInt i),t2))
           else if eq_Type(t2,int31Type) then (SOME(INTEGER(Int31.toLarge(Int31.fromLarge i),t2)) handle _ => NONE)
           else if eq_Type(t2,int32Type) then (SOME(INTEGER(Int32.toLarge(Int32.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int63Type) then (SOME(INTEGER(Int63.toLarge(Int63.fromLarge i),t2)) handle _ => NONE)
+          else if eq_Type(t2,int63Type) then (SOME(INTEGER(I63.toLarge(I63.fromLarge i),t2)) handle _ => NONE)
           else if eq_Type(t2,int64Type) then (SOME(INTEGER(Int64.toLarge(Int64.fromLarge i),t2)) handle _ => NONE)
           else NONE
 
@@ -1630,9 +1633,9 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__orb_word63" => Some(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64b" => Some(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64ub" => Some(WORD(IntInf.orb(v1,v2),t))
-                                  | "__shift_right_signed_word63" => Some(WORD(Word63.toLargeInt(Word63.~>> (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word63" => Some(WORD(Word63.toLargeInt(Word63.>> (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word63" => Some(WORD(Word63.toLargeInt(Word63.<< (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_signed_word63" => Some(WORD(W63.toLargeInt(W63.~>> (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word63" => Some(WORD(W63.toLargeInt(W63.>> (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word63" => Some(WORD(W63.toLargeInt(W63.<< (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
                                   | "__shift_right_signed_word64" => Some(WORD(Word64.toLargeInt(Word64.~>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
                                   | "__shift_right_word64" => Some(WORD(Word64.toLargeInt(Word64.>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
                                   | "__shift_left_word64" => Some(WORD(Word64.toLargeInt(Word64.<< (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
