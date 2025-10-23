@@ -166,10 +166,11 @@ signature LAMBDA_EXP =
      * side effects; they are used to determine if a program unit can
      * be discharged at link time in case it is not used. They are also
      * used by the optimiser to remove bindings of variables that are
-     * not used. *)
+     * not used and by the optimiser to rearrange expression bindings. *)
     val safeLambdaExp    : LambdaExp -> bool
     val safeLambdaExps   : LambdaExp list -> bool
     val safeLambdaPgm    : LambdaPgm -> bool
+    val safeOrRaiseExp   : LambdaExp -> bool
 
     type StringTree
     val layoutLambdaPgm  : LambdaPgm -> StringTree

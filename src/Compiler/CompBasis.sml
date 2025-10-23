@@ -157,15 +157,17 @@ structure CompBasis: COMP_BASIS =
          * equality elimination. This is why we patch the derived
          * identifiers below.  Martin-18/03/1998
          *
-         * The exception constructors Subscript and Size are also
-         * included here, which allows us to let the optimiser
-         * inline array and string subscription and array allocation
-         * across module boundaries.
+         * The exception constructors Subscript and Size are also included here,
+         * which allows us to let the optimiser inline array and string
+         * subscription and array allocation across module boundaries. We also
+         * include the Overflow exception constructor here to allow for inlining
+         * various integer operations across module boundaries, which may
+         * lead to extra constant folding opportunities.
          *)
 
           val excons =
               Excon.ex_DIV :: Excon.ex_MATCH :: Excon.ex_BIND ::
-              Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: excons
+              Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: Excon.ex_OVERFLOW :: excons
           val cons = Con.con_NIL :: Con.con_CONS ::
               Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cons   (* for elim eq *)
           val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons

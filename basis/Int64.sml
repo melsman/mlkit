@@ -17,10 +17,12 @@ structure Int64 : INTEGER =
     fun toInt (x: int64) : int = prim("__int64_to_int", x)
     fun fromInt (x: int) : int64 = prim("__int_to_int64", x)
 
-    val precision = SOME 64
+    val maxInt64 : int64 = prim("__maxInt64",())
+    val minInt64 : int64 = prim("__minInt64",())
 
-    val maxInt = SOME Initial.maxInt64
-    val minInt = SOME Initial.minInt64
+    val precision = SOME 64
+    val maxInt = SOME maxInt64
+    val minInt = SOME minInt64
 
     val ~ : int64 -> int64 = ~
     val op * : (int64 * int64) -> int64 = op *

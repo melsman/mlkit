@@ -135,6 +135,10 @@ structure Real : REAL =
 
     fun scan getc source =
       let fun decval c = Char.ord c - 48
+          fun pospow10 0 acc = acc
+            | pospow10 n acc = pospow10 (n-1) (acc * 10.0)
+          fun negpow10 0 acc = acc
+            | negpow10 n acc = negpow10 (n-1) (acc / 10.0)
           fun pow10 0 = 1.0
             | pow10 n =
               if n mod 2 = 0 then
@@ -212,8 +216,8 @@ structure Real : REAL =
                       case (esym, expv) of
                           (_,     NONE)     => mkres manval src
                         | (true,  SOME exp) =>
-                          if exppos then mkres (manval * pow10 exp) rest
-                          else mkres (manval / pow10 exp) rest
+                          if exppos then mkres (pospow10 exp manval) rest
+                          else mkres (negpow10 exp manval) rest
                         | _                 => NONE
                     end
             in

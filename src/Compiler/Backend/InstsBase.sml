@@ -26,7 +26,8 @@ structure InstsBase :> INSTS_BASE = struct
       end
 
   fun wordToStr (w : IntInf.int) : string =
-      "0x" ^ IntInf.fmt StringCvt.HEX w
+      if w >= 0 then "0x" ^ IntInf.fmt StringCvt.HEX w
+      else intToStr w
 
   (* Convert ~n to -n *)
   fun i2s i = if i >= 0 then Int.toString i

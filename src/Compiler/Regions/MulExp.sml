@@ -2031,6 +2031,12 @@ struct
     fun fresh _ = (r:= !r + 1; Lvars.new_named_lvar ("k" ^ Int.toString(!r)))
   end
 
+  fun map2 (f:'a*'b->'c) (xs:'a list, ys:'b list) : 'c list =
+      case (xs,ys) of
+          (nil,nil) => nil
+        | (x::xs,y::ys) => f (x,y) :: map2 f (xs,ys)
+        | _ => die "map2"
+
   exception Abort
 
   fun k_norm printnormal dummy_'c (tr: ('_a, 'b, 'c)trip as TR(e,mu,arefss,psir))
@@ -2047,34 +2053,29 @@ struct
     let
 
       fun e_to_t (e) = TR(e, mu,arefss,psir)
-(*
-      fun ty_of (RegionExp.Mus[(tau,_)]) = tau
-        | ty_of _ = die "ty_of"
-*)
+
       local val il0 = R.mk_il([],[],[])
       in
-        fun lvar_as_term (x,mu) =
-            TR(VAR{lvar=x,il =il0 ,plain_arreffs=[],
-                   fix_bound=false,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
+        fun lv_as_term lv =
+            VAR{lvar=lv,il =il0 ,plain_arreffs=[],
+                fix_bound=false,rhos_actuals= ref [], other = dummy_'c}
 
-        fun ub_record0_as_term mu =
-            TR(UB_RECORD[], mu, [], ref Mul.empty_psi)
-(*
-        fun lvar_as_term' (x,mu as (tau,rho)) =
-            lvar_as_term(x,RegionExp.Mus[mu])
-*)
-        fun mk_pat (lvar, mu) =
-            case mu of
-                RegionExp.Mus[mu] =>
-                let val (ty,place) = case R.unBOX mu of
-                                         SOME (ty,rho) => (ty,SOME rho)
-                                       | NONE => (mu,NONE)
-                    val () = if R.isF64Type ty then Lvars.set_ubf64 lvar else ()
-                in [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
-                end
-              | RegionExp.RaisedExnBind => []
-              | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvars.pr_lvar lvar ^ ". Metatype is " ^
-                          PP.flatten1 (RegionExp.layMeta mu))
+        fun lv_mu_as_trip (lv,mu) = TR(lv_as_term lv,RegionExp.Mus[mu],[],ref Mul.empty_psi)
+
+        fun lvars_as_term ([lv],[mu]) = lv_mu_as_trip (lv,mu)
+          | lvars_as_term (lvs,mus) = TR(UB_RECORD (map2 lv_mu_as_trip (lvs,mus)),
+                                         RegionExp.Mus mus, [], ref Mul.empty_psi)
+
+        fun ub_record0_as_term () = lvars_as_term ([],[])
+
+        fun mk_pat_entry mu =
+            let val (ty,place) = case R.unBOX mu of
+                                     SOME (ty,rho) => (ty,SOME rho)
+                                   | NONE => (mu,NONE)
+                val lvar = fresh()
+                val () = if R.isF64Type ty then Lvars.set_ubf64 lvar else ()
+            in (lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)
+            end
       end
 
       fun atomic (TR(VAR _, _, _, _)) = true
@@ -2083,7 +2084,7 @@ struct
         | atomic (TR(RECORD(_,[]), _, _, _)) = true
         | atomic _ = false
 
-      (* assumes mu1 is not an unboxed tuple *)
+      (* was: assumes mu1 is not an unboxed tuple; now mu1 may represent an unboxed tuple... *)
       fun one_sub' k (tr1 as (TR(_,mu1,phi1,psi1))) f =
            kne tr1 (fn tr1' =>
             if atomic tr1' then k(f tr1')
@@ -2093,14 +2094,18 @@ struct
                 k(e_to_t(LET{k_let = true,
                              pat = [],
                              bind = tr1',
-                             scope= f (ub_record0_as_term mu1)}))
-              | _ =>
-                let val x = fresh()
+                             scope= f (ub_record0_as_term ())}))
+               | RegionExp.Mus mus =>
+                let val pat = map mk_pat_entry mus
+                    val lvs = map #1 pat
                 in k(e_to_t(LET{k_let = true,
-                                pat = mk_pat(x,mu1),
+                                pat = pat,
                                 bind = tr1',
-                                scope= f (lvar_as_term(x,mu1))}))
-                end)
+                                scope= f (lvars_as_term(lvs,mus))}))
+                end
+               | _ => die ("mk_pat: wrong metatype. Metatype is " ^
+                          PP.flatten1 (RegionExp.layMeta mu1))
+           )
 
       fun two_sub (tr1, tr2) f =
         k(
@@ -2118,17 +2123,6 @@ struct
           in
             loop (trs,[])
           end)
-
-(*
-      fun kns (sw as (SWITCH(tr0, match, tr_opt))) constr  =
-        one_sub tr0 (fn x_tr_0 =>
-                     let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
-                       val tr_opt' = case tr_opt of
-                         SOME tr_alt => SOME(kne tr_alt (fn x => x))
-                       | NONE => NONE
-                     in constr(SWITCH(x_tr_0,match',tr_opt'))
-                     end)
-*)
     in
       case e of
         VAR _ => k tr

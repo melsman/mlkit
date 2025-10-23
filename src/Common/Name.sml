@@ -18,9 +18,9 @@ structure Name :> NAME =
     type matchcount = int
 
     local val current = ref 0
-    in fun current_matchcount() = !current
+    in fun current_matchcount () = !current
        val matchcount_lt = op <
-       fun incr_matchcount() = (current := !current + 1)
+       fun incr_matchcount () = (current := !current + 1)
        val matchcount_invalid = ~1
     end
 
@@ -38,6 +38,19 @@ structure Name :> NAME =
 	    val (i2,s2) = key n2
 	in i1 < i2 orelse (i1=i2 andalso s1 < s2)
 	end
+
+    local
+      fun compare (n1:name,n2:name) : order = Int.compare (#1(key n1),#1(key n2))
+    in (* an alternative is to use gen_mark! *)
+      fun duplicates (n:'a -> name) (xs:'a list) : 'a option =
+          let fun check (x::(ys as y::_)) =
+                  if eq(n x, n y) then SOME x
+                  else check ys
+                | check _ = NONE
+              val ys = Listsort.sort (fn (x,y) => compare(n x,n y)) xs
+          in check ys
+          end
+    end
 
     (* used by Manager to alpha-rename export bases *)
     fun assignKey (r as ref {key=(_,s),rigid,gen_mark=g},i) =

@@ -791,22 +791,26 @@ structure OptLambda : OPT_LAMBDA =
    fun subst_e_for_lvar lv e (e' as VAR{lvar,...}) = if Lvars.eq(lvar,lv) then e else e'
      | subst_e_for_lvar lv e e' = map_lamb (subst_e_for_lvar lv e) e'
 
-   fun specialize_bind {lvar=lv_f, tyvars, Type=ARROWtype([tau_1],_,[ARROWtype([tau_2],rv0,[tau_3],rv)],_),
-                        bind=FN{pat=[(lv_x,_)],body=FN{pat=[(lv_y,_)],body}}}
+   fun specialize_bind {lvar=lv_f, tyvars, Type=ARROWtype([tau_1],_,[ARROWtype([tau_2],rv0,[tau_3],rv)],_),bind}
                        instances lamb' =
-     let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
-         val tau_2' = on_Type S tau_2
-         val tau_1' = on_Type S tau_1
-         val tau = ARROWtype([tau_2'],rv0,[on_Type S tau_3],rv)
-         val body' = subst_lvar_for_app lv_f body
-         val body'' = on_LambdaExp S body'
-         val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,constrs=[],
-                                     bind=FN{pat=[(lv_y,tau_2')],body=body''}}],
-                         scope=VAR{lvar=lv_f,instances=[],regvars=[]}}
-         val e_0 = LET{pat=[(lv_x,[],tau_1')],bind=lamb',scope=scope}
-     in new_instance e_0
-     end
-     | specialize_bind _ _ _ = die "specialize_bind"
+       let
+       in case bind of
+              FN{pat=[(lv_x,_)],body=FN{pat=[(lv_y,_)],body}} =>
+              let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
+                  val tau_2' = on_Type S tau_2
+                  val tau_1' = on_Type S tau_1
+                  val tau = ARROWtype([tau_2'],rv0,[on_Type S tau_3],rv)
+                  val body' = subst_lvar_for_app lv_f body
+                  val body'' = on_LambdaExp S body'
+                  val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,constrs=[],
+                                              bind=FN{pat=[(lv_y,tau_2')],body=body''}}],
+                                  scope=VAR{lvar=lv_f,instances=[],regvars=[]}}
+                  val e_0 = LET{pat=[(lv_x,[],tau_1')],bind=lamb',scope=scope}
+              in new_instance e_0
+              end
+            | _ => die "specialize_bind1"
+       end
+     | specialize_bind _ _ _ = die "specialize_bind2"
 
    fun pick 0 (t::ts) = (t,ts)
      | pick n (t::ts) =
@@ -862,48 +866,52 @@ structure OptLambda : OPT_LAMBDA =
        end
 
 
-   fun specializeN_bind {lvar=lv_f, tyvars, Type=ARROWtype(taus,rv0,taus_res,rv),
-                         bind=FN{pat,body}}
+   fun specializeN_bind {lvar=lv_f, tyvars, Type=ARROWtype(taus,rv0,taus_res,rv),bind}
                         n (tailpos:bool option) instances (PRIM(UB_RECORDprim,args)) =
-     let val S = mk_subst (fn () => "specializeN_bind") (tyvars, instances)
-         val taus = on_Types S taus
-         val taus_res = on_Types S taus_res
-         val (taus1',tau', taus2') = pick2 n taus
-         val taus' = taus1' @ taus2'
-         val tau = ARROWtype(taus',rv0,taus_res,rv)
-         val pat = map (fn (lv,t) => (lv,on_Type S t)) pat
-         val ((p_lv,p_t),pat') = pick n pat
-         val body' = elim_app_arg lv_f n body
-         val lv_f' = Lvars.renew lv_f
-         val body'' = on_LambdaExp S body'
-         val body''' = replaceLv lv_f lv_f' body''
-         fun fixF x = FIX{functions=[{lvar=lv_f',regvars=[],tyvars=[],Type=tau,constrs=[],
-                                      bind=FN{pat=pat',body=body'''}}],
-                          scope=x}
-         val (args1,arg,args2) = pick2 n args
-         val e = if safeLambdaExp arg orelse safeLambdaExps args1 then
-                   LET{pat=[(p_lv,nil,p_t)],bind=arg,
-                       scope=fixF (APP(VAR{lvar=lv_f',instances=[],regvars=[]},
-                                       ubargs (args1 @ args2),
-                                       tailpos))
-                      }
-                 else
-                   let val lvts = map (fn t => (Lvars.newLvar(),t)) taus1'
-                       fun lets nil nil s = s
-                         | lets ((lv,t)::tvts) (e::es) s =
-                           LET{pat=[(lv,[],t)],bind=e,scope=lets tvts es s}
-                         | lets _ _ _ = die "specializeN_bind.lets"
-                       val args1' = map (fn (lv,_) => VAR{lvar=lv,instances=[],regvars=[]}) lvts
-                   in lets lvts args1
-                           (LET{pat=[(p_lv,nil,p_t)],bind=arg,
+       let
+       in case bind of
+              FN{pat,body} =>
+              let val S = mk_subst (fn () => "specializeN_bind") (tyvars, instances)
+                  val taus = on_Types S taus
+                  val taus_res = on_Types S taus_res
+                  val (taus1',tau', taus2') = pick2 n taus
+                  val taus' = taus1' @ taus2'
+                  val tau = ARROWtype(taus',rv0,taus_res,rv)
+                  val pat = map (fn (lv,t) => (lv,on_Type S t)) pat
+                  val ((p_lv,p_t),pat') = pick n pat
+                  val body' = elim_app_arg lv_f n body
+                  val lv_f' = Lvars.renew lv_f
+                  val body'' = on_LambdaExp S body'
+                  val body''' = replaceLv lv_f lv_f' body''
+                  fun fixF x = FIX{functions=[{lvar=lv_f',regvars=[],tyvars=[],Type=tau,constrs=[],
+                                               bind=FN{pat=pat',body=body'''}}],
+                                   scope=x}
+                  val (args1,arg,args2) = pick2 n args
+                  val e = if safeLambdaExp arg orelse safeLambdaExps args1 then
+                            LET{pat=[(p_lv,nil,p_t)],bind=arg,
                                 scope=fixF (APP(VAR{lvar=lv_f',instances=[],regvars=[]},
-                                                ubargs (args1' @ args2),
+                                                ubargs (args1 @ args2),
                                                 tailpos))
-                           })
-                   end
-     in new_instance e
-     end
-     | specializeN_bind _ _ _ _ _ = die "specializeN_bind"
+                               }
+                          else
+                            let val lvts = map (fn t => (Lvars.newLvar(),t)) taus1'
+                                fun lets nil nil s = s
+                                  | lets ((lv,t)::tvts) (e::es) s =
+                                    LET{pat=[(lv,[],t)],bind=e,scope=lets tvts es s}
+                                  | lets _ _ _ = die "specializeN_bind.lets"
+                                val args1' = map (fn (lv,_) => VAR{lvar=lv,instances=[],regvars=[]}) lvts
+                            in lets lvts args1
+                                    (LET{pat=[(p_lv,nil,p_t)],bind=arg,
+                                         scope=fixF (APP(VAR{lvar=lv_f',instances=[],regvars=[]},
+                                                         ubargs (args1' @ args2),
+                                                         tailpos))
+                                    })
+                            end
+              in new_instance e
+              end
+            | _ => die "specializeN_bind1"
+       end
+     | specializeN_bind _ _ _ _ _ = die "specializeN_bind2"
 
    val tag_values = Flags.is_on0 "tag_values"
 
@@ -970,6 +978,7 @@ structure OptLambda : OPT_LAMBDA =
                   | CRNG of {low: IntInf.int option, high: IntInf.int option}
                   | CCON1 of con * cv
                   | CCON0 of con
+                  | CCSE of {prim:string, lvar:lvar}
 
       fun eq_cv (cv1,cv2) =
         case (cv1,cv2)
@@ -986,7 +995,9 @@ structure OptLambda : OPT_LAMBDA =
            | (CCON1 (c1,cv1), CCON1 (c2,cv2)) =>
              Con.eq(c1,c2) andalso eq_cv(cv1,cv2)
            | (CCON0 c1, CCON0 c2) => Con.eq(c1,c2)
+           | (CCSE {prim=p1,lvar=lv1}, CCSE {prim=p2,lvar=lv2}) => p1 = p2 andalso Lvars.eq(lv1,lv2)
            | _ => false
+
       and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
         | eq_cvs (nil,nil) = true
         | eq_cvs _ = false
@@ -1017,18 +1028,20 @@ structure OptLambda : OPT_LAMBDA =
            | CRNG _ => true
            | CCON1 (_,cv) => closed_small_cv(lvars_free_ok,excons_free_ok,lvar,tyvars,cv)
            | CCON0 _ => true
+           | CCSE _ => false
 
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
        *)
-      fun remove lvar (CRECORD l) = CRECORD(map (remove lvar) l)
-        | remove lvar (cv as (CVAR {exp=VAR{lvar =lvar',...}})) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cv
+      fun remove lv (CRECORD l) = CRECORD(map (remove lv) l)
+        | remove lv (cv as (CVAR {exp=VAR{lvar,...}})) = if Lvars.eq(lv,lvar) then CUNKNOWN else cv
         | remove _ (cv as (CCONST _)) = cv
         | remove _ (cv as (CBLKSZ _)) = cv
         | remove _ (cv as (CBLK2SZ _)) = cv
         | remove _ (cv as (CRNG _)) = cv
-        | remove lvar (CCON1 (c,cv)) = CCON1(c,remove lvar cv)
+        | remove lv (CCON1 (c,cv)) = CCON1(c,remove lv cv)
         | remove _ (cv as (CCON0 _)) = cv
+        | remove lv (cv as CCSE{lvar,...}) = if Lvars.eq(lv,lvar) then CUNKNOWN else cv
         | remove _ _ = CUNKNOWN
 
       fun removes [] cv = cv
@@ -1052,6 +1065,7 @@ structure OptLambda : OPT_LAMBDA =
         | show_cv (CRNG {low,high}) = "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
         | show_cv (CCON1 (c,cv)) = Con.pr_con c ^ "(" ^ show_cv cv ^ ")"
         | show_cv (CCON0 c) = Con.pr_con c
+        | show_cv (CCSE {prim,lvar}) = prim ^ "(" ^ Lvars.pr_lvar lvar ^ ")"
 
       (* substitution *)
       fun on_cv S cv =
@@ -1065,6 +1079,7 @@ structure OptLambda : OPT_LAMBDA =
               | on (cv as CRNG _) = cv
               | on (CCON1(c,cv)) = CCON1(c,on cv)
               | on (cv as CCON0 c) = cv
+              | on (cv as CCSE _) = cv
               | on _ = CUNKNOWN
         in on cv
         end
@@ -1103,7 +1118,9 @@ structure OptLambda : OPT_LAMBDA =
           else CUNKNOWN
         | lub (cv as CCON0 c1, CCON0 c2) =
           if Con.eq(c1,c2) then cv else CUNKNOWN
+        | lub (cv1 as CCSE _, cv2 as CCSE _) = if eq_cv(cv1,cv2) then cv1 else CUNKNOWN
         | lub _ = CUNKNOWN
+
 
       fun lubList [] = CUNKNOWN
         | lubList (l::ls) =
@@ -1441,30 +1458,78 @@ structure OptLambda : OPT_LAMBDA =
             | PRIM(CONprim {con,...},nil) => is_boolean con
             | _ => false
 
-      fun constfold_f64 () = false
+      fun constfold_f64 () = true
 
-      fun constantFolding (env:env) lamb fail =
+      fun conv t2 i =
+          if eq_Type(t2,word8Type) then SOME(WORD(Word8.toLargeInt(Word8.fromLargeInt i),t2))
+          else if eq_Type(t2,word31Type) then if i < 0 then NONE else SOME(WORD(Word31.toLargeInt(Word31.fromLargeInt i),t2))
+          else if eq_Type(t2,word32Type) then if i < 0 then NONE else SOME(WORD(Word32.toLargeInt(Word32.fromLargeInt i),t2))
+          else if eq_Type(t2,word63Type) then if i < 0 then NONE else SOME(WORD(Word63.toLargeInt(Word63.fromLargeInt i),t2))
+          else if eq_Type(t2,word64Type) then if i < 0 then NONE else SOME(WORD(Word64.toLargeInt(Word64.fromLargeInt i),t2))
+          else if eq_Type(t2,int31Type) then (SOME(INTEGER(Int31.toLarge(Int31.fromLarge i),t2)) handle _ => NONE)
+          else if eq_Type(t2,int32Type) then (SOME(INTEGER(Int32.toLarge(Int32.fromLarge i),t2)) handle _ => NONE)
+          else if eq_Type(t2,int63Type) then (SOME(INTEGER(Int63.toLarge(Int63.fromLarge i),t2)) handle _ => NONE)
+          else if eq_Type(t2,int64Type) then (SOME(INTEGER(Int64.toLarge(Int64.fromLarge i),t2)) handle _ => NONE)
+          else NONE
+
+      fun isZero (i:IntInf.int) : bool =
+          IntInf.compare(IntInf.fromInt 0,i) = EQUAL
+
+      fun isOne (i:IntInf.int) : bool =
+          IntInf.compare(IntInf.fromInt 1,i) = EQUAL
+
+      (* functions to ensure that the results of folded real-operations are
+       * representable, which excludes non-finite reals and nan. *)
+
+      fun finiteRealFromString s =
+          case Real.fromString s of
+              SOME r =>
+              if Real.isFinite r then SOME r
+              else NONE
+            | NONE => NONE
+
+      fun realToStringOpt r =
+          let val s = Real.fmt StringCvt.EXACT r
+          in case finiteRealFromString s of
+                 SOME r' => if Real.==(r,r') then SOME s
+                            else NONE
+               | NONE => NONE
+          end
+
+      fun castConstFold t (tyvars,instances,Type) v : (string * LambdaExp) option =
+          let val S = mk_subst (fn () => "OptLambda.constantFolding.id.int.mk_subst") (tyvars, instances)
+              fun Some x = SOME("cast", x)
+          in case LambdaBasics.on_Type S Type of
+                 ARROWtype([t1],_,[t2],_) =>
+                 (case conv t2 v of
+                      SOME e => Some e
+                    | NONE => NONE)
+               | _ => die "constantFolding.id.expecting arrow type"
+          end
+
+      fun constantFolding (env:env) lamb =
           let val opt =
                   if not(aggressive_opt()) then NONE
                   else
                     case lamb of
-                        PRIM(CCALLprim{name,...},exps) =>
-                        (case exps of
-                             [STRING (s1,NONE),STRING (s2,NONE)] =>
-                             let fun opp opr = SOME(if opr(s1,s2) then lexp_true else lexp_false)
-                             in case name of
-                                    "concatStringML" => SOME(STRING (s1 ^ s2, NONE))
-                                  | "lessStringML" => opp (op <)
-                                  | "greaterStringML" => opp (op >)
-                                  | "lesseqStringML" => opp (op <=)
-                                  | "greatereqStringML" => opp (op >=)
-                                  | _ => NONE
+                        PRIM(CCALLprim{name,instances,tyvars,Type},exps) =>
+                        let fun Some e = SOME(name,e)
+                        in case exps of
+                               [STRING (s1,NONE),STRING (s2,NONE)] =>
+                               let fun opp opr = Some(if opr(s1,s2) then lexp_true else lexp_false)
+                               in case name of
+                                      "concatStringML" => Some(STRING (s1 ^ s2, NONE))
+                                    | "lessStringML" => opp (op <)
+                                    | "greaterStringML" => opp (op >)
+                                    | "lesseqStringML" => opp (op <=)
+                                    | "greatereqStringML" => opp (op >=)
+                                    | _ => NONE
                              end
                            | [INTEGER(v1,t),INTEGER(v2,_)] =>
-                             let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                             let fun opp opr = Some(if opr(v1,v2) then lexp_true else lexp_false)
                                  fun opp_ov opr = let val v = opr (v1,v2)
                                                   in if ((Int31.fromLarge v; true) handle _ => false)
-                                                     then SOME (INTEGER(v,t))
+                                                     then Some (INTEGER(v,t))
                                                      else NONE
                                                   end
                              in case name of
@@ -1509,7 +1574,7 @@ structure OptLambda : OPT_LAMBDA =
                            | [INTEGER(v1,t),INTEGER(v2,_),_] =>
                              let fun opp_ov opr = let val v = opr (v1,v2)
                                                   in if ((Int31.fromLarge v; true) handle _ => false)
-                                                     then SOME (INTEGER(v,t))
+                                                     then Some (INTEGER(v,t))
                                                      else NONE
                                                   end handle Div => NONE
                              in case name of
@@ -1518,7 +1583,7 @@ structure OptLambda : OPT_LAMBDA =
                                   | _ => NONE
                              end
                            | [WORD(v1,t),WORD(v2,_)] =>
-                             let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                             let fun opp opr = Some(if opr(v1,v2) then lexp_true else lexp_false)
                              in case name of
                                     "__less_word31" => opp (op <)
                                   | "__less_word32b" => opp (op <)
@@ -1551,33 +1616,50 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__equal_word63" => opp (op =)
                                   | "__equal_word64b" => opp (op =)
                                   | "__equal_word64ub" => opp (op =)
-                                  | "__andb_word" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word31" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word32b" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word32ub" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word63" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word64b" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__andb_word64ub" => SOME(WORD(IntInf.andb(v1,v2),t))
-                                  | "__orb_word" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word31" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word32b" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word32ub" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word63" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word64b" => SOME(WORD(IntInf.orb(v1,v2),t))
-                                  | "__orb_word64ub" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__andb_word" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word31" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word32b" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word32ub" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word63" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word64b" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word64ub" => Some(WORD(IntInf.andb(v1,v2),t))
+                                  | "__orb_word" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word31" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word32b" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word32ub" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word63" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word64b" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word64ub" => Some(WORD(IntInf.orb(v1,v2),t))
+                                  | "__shift_right_signed_word63" => Some(WORD(Word63.toLargeInt(Word63.~>> (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word63" => Some(WORD(Word63.toLargeInt(Word63.>> (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word63" => Some(WORD(Word63.toLargeInt(Word63.<< (Word63.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_signed_word64" => Some(WORD(Word64.toLargeInt(Word64.~>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word64" => Some(WORD(Word64.toLargeInt(Word64.>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word64" => Some(WORD(Word64.toLargeInt(Word64.<< (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_signed_word31" => Some(WORD(Word31.toLargeInt(Word31.~>> (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word31" => Some(WORD(Word31.toLargeInt(Word31.>> (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word31" => Some(WORD(Word31.toLargeInt(Word31.<< (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_signed_word32" => Some(WORD(Word32.toLargeInt(Word32.~>> (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word32" => Some(WORD(Word32.toLargeInt(Word32.>> (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word32" => Some(WORD(Word32.toLargeInt(Word32.<< (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_signed_word8" => Some(WORD(Word8.toLargeInt(Word8.~>> (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_right_word8" => Some(WORD(Word8.toLargeInt(Word8.>> (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
+                                  | "__shift_left_word8" => Some(WORD(Word8.toLargeInt(Word8.<< (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
                                   | _ => NONE
                              end
                            | [F64 s1,F64 s2] =>
                              if not(constfold_f64()) then NONE
                              else
                              let fun oppc opr =
-                                     case (Real.fromString s1, Real.fromString s2) of
-                                         (SOME r1, SOME r2) => SOME(if opr(r1,r2) then lexp_true else lexp_false)
+                                     case (finiteRealFromString s1, finiteRealFromString s2) of
+                                         (SOME r1, SOME r2) => Some(if opr(r1,r2) then lexp_true else lexp_false)
                                        | _ => NONE
                                  fun opp opr =
-                                     case (Real.fromString s1, Real.fromString s2) of
+                                     case (finiteRealFromString s1, finiteRealFromString s2) of
                                          (SOME r1, SOME r2) =>
-                                         SOME(F64(Real.fmt (StringCvt.FIX(SOME 10)) (opr(r1,r2))))
+                                         (case realToStringOpt (opr(r1,r2)) of
+                                              SOME s => Some(F64 s)
+                                            | NONE => NONE)
                                        | _ => NONE
                              in case name of
                                     "__minus_f64" => opp Real.-
@@ -1594,9 +1676,12 @@ structure OptLambda : OPT_LAMBDA =
                              if not(constfold_f64()) then NONE
                              else
                              let fun opp opr =
-                                     case Real.fromString s of
-                                         SOME r => SOME(F64(Real.fmt (StringCvt.EXACT) (opr r)))
-                                       | _ => NONE
+                                     case finiteRealFromString s of
+                                         SOME r =>
+                                         (case realToStringOpt (opr r) of
+                                              SOME s => Some(F64 s)
+                                            | NONE => NONE)
+                                       | NONE => NONE
                              in case name of
                                     "__neg_f64" => opp Real.~
                                   | "__abs_f64" => opp Real.abs
@@ -1607,7 +1692,7 @@ structure OptLambda : OPT_LAMBDA =
                              let
                              in case name of
                                     "__bytetable_size" =>
-                                    SOME(INTEGER(Int.toLarge (String.size s), intDefaultType()))
+                                    Some(INTEGER(Int.toLarge (String.size s), intDefaultType()))
                                   | _ => NONE
                              end
                            | [STRING(s,NONE),INTEGER(v,t)] =>
@@ -1615,14 +1700,78 @@ structure OptLambda : OPT_LAMBDA =
                              in case name of
                                     "__bytetable_sub" =>
                                     (let val c = String.sub(s,Int.fromLarge v)
-                                     in SOME(WORD(Int.toLarge (Char.ord c), charType))
+                                     in Some(WORD(Int.toLarge (Char.ord c), charType))
                                      end handle _ => NONE)
                                   | _ => NONE
                              end
-                           | _ => NONE)
+                           | [INTEGER(v,t)] =>
+                             (case name of
+                                  "id" => castConstFold t (tyvars,instances,Type) v
+                                | _ => NONE)
+                           | [WORD(v,t)] =>
+                             (case name of
+                                  "id" => castConstFold t (tyvars,instances,Type) v
+                                | _ => NONE)
+                           | [w as WORD(v,t),e2] =>
+                             (case name of
+                                  "__andb_word63" => (if isZero v andalso safeLambdaExp e2
+                                                      then (decr_uses e2; Some w) else NONE)
+                                | "__orb_word63" => (if isZero v then Some e2 else NONE)
+                                | "__plus_word63" => (if isZero v then Some e2 else NONE)
+                                | "__plus_word64ub" => (if isZero v then Some e2 else NONE)
+                                | "__mul_word63" => (if isZero v andalso safeLambdaExp e2
+                                                     then (decr_uses e2; Some w)
+                                                     else if isOne v then Some e2 else NONE)
+                                | "__mul_word64ub" => (if isZero v andalso safeLambdaExp e2
+                                                       then (decr_uses e2; Some w)
+                                                       else if isOne v then Some e2 else NONE)
+                                | _ => NONE)
+                           | [e1,w as WORD(v,t)] =>
+                             (case name of
+                                  "__andb_word63" => (if isZero v andalso safeLambdaExp e1
+                                                      then (decr_uses e1; Some w) else NONE)
+                                | "__orb_word63" => (if isZero v then Some e1 else NONE)
+                                | "__plus_word63" => (if isZero v then Some e1 else NONE)
+                                | "__plus_word64ub" => (if isZero v then Some e1 else NONE)
+                                | "__mul_word63" => (if isZero v andalso safeLambdaExp e1
+                                                     then (decr_uses e1; Some w)
+                                                     else if isOne v then Some e1 else NONE)
+                                | "__mul_word64ub" => (if isZero v andalso safeLambdaExp e1
+                                                       then (decr_uses e1; Some w)
+                                                       else if isOne v then Some e1 else NONE)
+                                | "__minus_word63" => (if isZero v then Some e1 else NONE)
+                                | "__minus_word64ub" => (if isZero v then Some e1 else NONE)
+                                | _ => NONE)
+                           | [i as INTEGER(v,t),e2] =>
+                             (case name of
+                                  "__plus_int63" => (if isZero v then Some e2 else NONE)
+                                | "__plus_int64ub" => (if isZero v then Some e2 else NONE)
+                                | "__mul_int63" => (if isZero v andalso safeLambdaExp e2
+                                                    then (decr_uses e2; Some i)
+                                                    else if isOne v then Some e2 else NONE)
+                                | "__mul_int64ub" => (if isZero v andalso safeLambdaExp e2
+                                                      then (decr_uses e2; Some i)
+                                                      else if isOne v then Some e2 else NONE)
+                                | _ => NONE)
+                           | [e1, i as INTEGER(v,t)] =>
+                             (case name of
+                                  "__plus_int63" => (if isZero v then Some e1 else NONE)
+                                | "__plus_int64ub" => (if isZero v then Some e1 else NONE)
+                                | "__mul_int63" => (if isZero v andalso safeLambdaExp e1
+                                                    then (decr_uses e1; Some i)
+                                                    else if isOne v then Some e1 else NONE)
+                                | "__mul_int64ub" => (if isZero v andalso safeLambdaExp e1
+                                                      then (decr_uses e1; Some i)
+                                                      else if isOne v then Some e1 else NONE)
+                                | "__minus_int63" => (if isZero v then Some e1 else NONE)
+                                | "__minus_int64ub" => (if isZero v
+                                                        then Some e1 else NONE)
+                                | _ => NONE)
+                           | _ => NONE
+                        end
                       | _ => NONE
           in case opt of
-                 SOME e => (tick "constant-folding"; (e,CCONST {exp=e}))
+                 SOME (n,e) => (tick ("const-folding - " ^ n); SOME e)
                | NONE =>
                  let datatype cmp = LT | LTE | GT | GTE
                      fun Not LT = GTE
@@ -1663,8 +1812,8 @@ structure OptLambda : OPT_LAMBDA =
                            | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try GTE xs
                            | _ => NONE
                  in case opt2 of
-                        SOME e => (tick "range-folding"; (e,CCONST {exp=e}))
-                      | NONE => fail
+                        SOME e => (tick "range-folding"; SOME e)
+                      | NONE => NONE
                  end
           end
 
@@ -1680,7 +1829,28 @@ structure OptLambda : OPT_LAMBDA =
           (tick "real_to_f64";
            (f64_to_real (f64unop (real_to_f64 x)), CUNKNOWN))
 
+      fun cvOfExp e =
+          case e of
+              VAR _ => CVAR {exp=e}
+            | INTEGER _ => CCONST {exp=e}
+            | WORD _ => CCONST {exp=e}
+            | PRIM(CONprim {con,...},nil) => CCON0 con
+            | PRIM(CONprim {con,...},[e]) => CCON1 (con,cvOfExp e)
+            | _ => CUNKNOWN
+
       fun reduce (env, (fail as (lamb,cv))) =
+          let fun constantFold () =
+                  case constantFolding env lamb of
+                      SOME lamb' => (lamb',CUNKNOWN)
+(*
+                      let val cv' = case cvOfExp lamb' of
+                                        CUNKNOWN => cv
+                                      | cv' => cv'
+                      in reduce (env,(lamb',cv'))
+                      end
+*)
+                    | NONE => fail
+          in
           case lamb of VAR{lvar,instances,regvars=[]} =>
             ( (*output(!Flags.log, Lvars.pr_lvar lvar ^ ":" );*)
              case lookup_lvar(env,lvar)
@@ -1723,19 +1893,19 @@ structure OptLambda : OPT_LAMBDA =
            | STRING _ => (lamb, CCONST {exp=lamb})
            | REAL _ => (lamb, CCONST {exp=lamb})
            | F64 _ => (lamb, CCONST {exp=lamb})
-           | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
+           | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>   (* lvar bound in scope *)
                let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
                  fun default () = (lvar,tyvars,tau,bind,scope,fail)
                  fun hoist () =
                      case bind of
-                         LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
+                         LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>        (* lv bound in scope' *)
                          if unbox_reals() (*andalso eq_Type(tau',f64Type)*) andalso simple_nonexpanding bind' then
                            (tick "reduce - let-floating";
-                            let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
+                            let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',  (* ok: lvar bound in scope *)
                                                   scope=scope}
                             in (lv,[],tau',bind',scope'',
-                                (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},
+                                (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},  (* ok: lv bound in scope' *)
                                  CUNKNOWN))
                             end)
                          else default()
@@ -1792,9 +1962,34 @@ structure OptLambda : OPT_LAMBDA =
                                   | NONE => fail)
                end
            | LET{pat=nil,bind,scope} =>
-               if safeLambdaExp bind then
-                 (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
-               else fail
+             let fun default () =
+                     if safeLambdaExp bind then
+                       (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
+                     else fail
+                 fun strongerPred (PRIM(CCALLprim{name=n1,...}, [INTEGER(i1,_), VAR{lvar=lv1,...}]))
+                                  (PRIM(CCALLprim{name=n2,...}, [INTEGER(i2,_), VAR{lvar=lv2,...}])) =
+                     if n1=n2 andalso (n1 = "__less_int64ub" orelse n1 = "__less_int63")
+                        andalso Lvars.eq (lv1, lv2)
+                     then SOME (i1 > i2)
+                     else NONE
+                   | strongerPred _ _ = NONE
+                 fun isRaise (RAISE _) = true
+                   | isRaise _ = false
+             in case (bind, scope) of
+                    (PRIM(DROPprim,[SWITCH_C(SWITCH(e1,[((c1,_),b1)],SOME opt1))]),
+                     LET{pat=nil,bind=bind' as PRIM(DROPprim,[SWITCH_C(SWITCH(e2,[((c2,_),b2)],SOME opt2))]),
+                         scope}) =>
+                    if eq_lamb(opt1,opt2) andalso eq_lamb(b1,b2) andalso Con.eq(c1,c2)
+                       andalso Con.eq(Con.con_TRUE,c1) andalso isRaise opt1
+                    then case strongerPred e1 e2 of
+                             SOME true => (decr_uses bind'; tick "check_simpl";
+                                           reduce (env, (LET{pat=nil,bind=bind,scope=scope},cv)))
+                           | SOME false => (decr_uses bind; tick "check_simpl";
+                                            reduce (env, (LET{pat=nil,bind=bind',scope=scope},cv)))
+                           | NONE => default()
+                    else default()
+                  | _ => default()
+             end
            | LET{pat,bind,scope} =>
                    (case bind of
                         PRIM(UB_RECORDprim, es) =>
@@ -1822,7 +2017,7 @@ structure OptLambda : OPT_LAMBDA =
                | _ => fail)
           | PRIM(DECONprim {con,...}, [PRIM(CONprim{con=con',...},[e])]) =>
             if Con.eq(con,con') then (tick "reduce - decon-con"; reduce (env, (e,cv)))
-            else constantFolding env lamb fail
+            else constantFold ()
           | FIX{functions,scope} =>
                let val lvs = map #lvar functions
                in if zero_uses lvs then (tick "reduce - dead-fix";
@@ -1908,7 +2103,7 @@ structure OptLambda : OPT_LAMBDA =
                       | _ => NONE
                 fun default () =
                     case loop e (fn x => x) of
-                        NONE => constantFolding env lamb fail
+                        NONE => constantFold ()
                       | SOME e' => reduce(env,(e',CUNKNOWN))
             in case e of
                    SWITCH_C(SWITCH(e,es,eopt)) =>
@@ -1978,9 +2173,10 @@ structure OptLambda : OPT_LAMBDA =
                            [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
                       CUNKNOWN)
                   end
-                | _ => constantFolding env lamb fail
-            else constantFolding env lamb fail
-          | _ => constantFolding env lamb fail
+                | _ => constantFold ()
+            else constantFold ()
+          | _ => constantFold ()
+          end
 
 
       (* -----------------------------------------------------------------
@@ -2004,7 +2200,6 @@ structure OptLambda : OPT_LAMBDA =
                end
         end
 
-
       (* -----------------------------------------------------------------
        * Contract on expression
        * ----------------------------------------------------------------- *)
@@ -2020,36 +2215,77 @@ structure OptLambda : OPT_LAMBDA =
                in (FN{pat=pat,body=body'},CUNKNOWN)
                end
               | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
-               let val (bind', cv) = contr (env, bind)
-                   val cv' = if noinline_lvar lvar then CUNKNOWN
-                             else if is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
-                             else if is_fn bind' then CFN{lexp=bind',large=true}
-                             else if is_unboxed_value bind' then CCONST {exp=bind'}
-                             else (case bind'
-                                    of VAR _ => CVAR {exp=bind'}
-                                   (*  | PRIM(CONprim {con,...}, nil) => CCONST {exp=bind'} *)
-                                     | _ => cv)
-                   val env' = LvarMap.add(lvar,(tyvars,cv'),env)
+                (case bind of
+                     PRIM(p as CCALLprim{name="f64_to_real",...},                                          (* let lv = toReal (let _ = drop(e) in scb) in scope ===> *)
+                          [LET{pat=nil,bind=b as PRIM(DROPprim, [e]),scope=scb}]) =>                       (* let _ = drop(e) in let lv = toReal (scb) in scope *)
+                     contr (env, LET{pat=nil,bind=b,scope=LET{pat=pat,bind=PRIM(p,[scb]),scope=scope}})
+                   | _ =>
+                     let val (bind', cv) = contr (env, bind)
+                         val cv' = if noinline_lvar lvar then CUNKNOWN
+                                   else if is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
+                                   else if is_fn bind' then CFN{lexp=bind',large=true}
+                                   else if is_unboxed_value bind' then CCONST {exp=bind'}
+                                   else (case bind' of VAR _ => CVAR {exp=bind'}
+                                                     (*  | PRIM(CONprim {con,...}, nil) => CCONST {exp=bind'} *)
+                                                     | _ => cv)
+                         val env' = LvarMap.add(lvar,(tyvars,cv'),env)
+                         val env' =
+                             case bind' of
+                                 PRIM(CCALLprim{name="__blockf64_size",...},[VAR{lvar=lv,...}]) =>
+                                 LvarMap.add(lv,(nil,CCSE {prim="__blockf64_size", lvar=lvar}),env')
+                               | _ => env'
 
-                   val env' = case exn_anti_env bind of  (* under which conditions does bind not raise an exception *)
-                                  NONE => env'
-                                | SOME env'' =>
-                                  let (*val () = if LvarMap.isEmpty env'' then ()
-                                               else pr_contract_env env''*)
-                                  in LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind
-                                                                 is sure to raise an exception, but we
-                                                                 will ignore this fact
-                                                               *)
-                                  end
-                   val (scope',cv_scope) = contr (env', scope)
-                   val cv_scope' = remove lvar cv_scope
-               in reduce (env, (LET{pat=pat,bind=bind',scope=scope'}, cv_scope'))
-               end
+                         val env' = case exn_anti_env bind of  (* under which conditions does bind *)
+                                        NONE => env'           (* not raise an exception *)
+                                      | SOME env'' =>
+                                        let (*val () = if LvarMap.isEmpty env'' then ()
+                                                  else pr_ contra                ct_env env''*)
+                                        in LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind
+                                                                       is sure to raise an exception, but we
+                                                                       will ignore this fact
+                                                                     *)
+                                        end
+                         val (scope',cv_scope) = contr (env', scope)
+                         val cv_scope' = remove lvar cv_scope
+                         val e' = LET{pat=pat,bind=bind',scope=scope'}
+                         val e' = if safeLambdaExp bind' then
+                                    case scope' of
+                                        LET{pat=nil,bind=b as PRIM(DROPprim,[e]),scope} =>
+                                        if List.exists (fn (lv,_,_) => lvar_in_lamb lv e) pat then e'
+                                        else if safeOrRaiseExp e then
+                                          LET{pat=nil,bind=b,scope=LET{pat=pat,bind=bind',scope=scope}}
+                                        else e'
+                                      | _ => e'
+                                  else e'
+                     in reduce (env, (e', cv_scope'))
+                     end
+                )
+              | LET{pat=nil,bind=PRIM(DROPprim,[LET{pat=nil,bind=PRIM(DROPprim,[e]),scope=sc1}]),scope=sc2} =>
+                contr (env, LET{pat=nil,bind=PRIM(DROPprim,[e]),
+                                scope=LET{pat=nil,bind=PRIM(DROPprim,[sc1]),scope=sc2}})
               | LET{pat=nil,bind,scope} =>  (* wild card *)
-               let val (bind', cv) = contr (env, bind)
-                   val (scope',cv_scope) = contr (env, scope)
-               in reduce (env, (LET{pat=nil,bind=bind',scope=scope'}, cv_scope))
-               end
+                let val (bind', cv) = contr (env, bind)
+                    fun extractPred e =
+                        case e of
+                            PRIM(CCALLprim{name=n1,...}, [INTEGER(i1,_), VAR{lvar,...}]) =>
+                            if n1 = "__less_int64ub" orelse n1 = "__less_int63" then
+                              SOME(lvar, CRNG {low=SOME(IntInf.+(i1,IntInf.fromInt 1)),high=NONE})
+                            else NONE
+                          | _ => NONE
+                    val env' =
+                        case bind of
+                            PRIM(DROPprim,[SWITCH_C(SWITCH(e,[((c,_),br)],SOME (RAISE _)))]) =>
+                            if Con.eq(Con.con_TRUE,c) then
+                              case extractPred e of
+                                  SOME (lv,cv) => LvarMap.add(lv,(nil,cv),env)
+                                | NONE => env
+                            else env
+                          | _ => env
+                    val (scope',cv_scope) = contr (env', scope)
+                in reduce (env', (LET{pat=nil,bind=bind',scope=scope'}, cv_scope))
+                end
+              | PRIM(p,LET{pat=nil,bind=b as PRIM(DROPprim,_),scope}::lambs) =>
+                contr (env, LET{pat=nil,bind=b,scope=PRIM(p,scope::lambs)})
               | PRIM(RECORDprim opt, lambs) =>
                let val lamb_cv = map (fn e => contr (env,e)) lambs
                in (PRIM(RECORDprim opt, map fst lamb_cv),CRECORD (map snd lamb_cv))
@@ -2063,6 +2299,17 @@ structure OptLambda : OPT_LAMBDA =
                in (mk_live_excon excon; (PRIM(prim, lambs'), CUNKNOWN))
                end
               | PRIM(RESET_REGIONSprim _, [VAR _]) => (lamb, CUNKNOWN) (* Sweden: avoid inlining of variable *)
+              | PRIM(p as CCALLprim{name="__blockf64_size",...}, [e]) =>
+                let val e' = fst (contr (env,e))
+                in case e' of
+                       VAR{lvar,...} =>
+                       (case LvarMap.lookup env lvar of
+                            SOME (_, CCSE{prim="__blockf64_size",lvar=lv}) =>
+                            (tick "cse - blockf64_size"; decr_use lvar; incr_use lv;
+                             (VAR{lvar=lv,instances=[],regvars=[]}, CUNKNOWN))
+                          | _ => (PRIM(p,[e']),CUNKNOWN))
+                     | _ => (PRIM(p,[e']),CUNKNOWN)
+                end
               | PRIM(p as CCALLprim{name="word_table_init",...},lambs) =>
                 let val lambs' = map (fst o (fn e => contr (env, e))) lambs
                 in case lambs' of
@@ -2209,7 +2456,7 @@ structure OptLambda : OPT_LAMBDA =
                      List.foldl (fn (lv,acc) =>
                                     case LvarMap.lookup env lv of
                                         SOME res =>
-                                        let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
+                                        let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE,Excon.ex_OVERFLOW]) lv res
                                         in if xinl
                                            then LvarMap.add(lv,res,acc)
                                            else LvarMap.add(lv,(nil,CUNKNOWN),acc)
@@ -2281,6 +2528,10 @@ structure OptLambda : OPT_LAMBDA =
               let val (lvs,cns,tns) = acc
               in (lvs,cn::cns,tns)
               end
+            | CCSE {lvar,...} =>
+              let val (lvs,cns,tns) = free_cv (cv,acc)
+              in (lvar::lvs,cns,tns)
+              end
 
       fun free_contract_env_res ((_,cv),acc) =
           free_cv(cv,acc)
@@ -2339,7 +2590,7 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CBLK2SZ _) = 8
                 | toInt (CCON1 _) = 9
                 | toInt (CCON0 _) = 10
-
+                | toInt (CCSE _) = 11
               fun fun_CVAR _ =
                   Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
                   LambdaExp.pu_LambdaExp
@@ -2377,10 +2628,14 @@ structure OptLambda : OPT_LAMBDA =
                               (Pickle.pairGen(Con.pu,pu))
               fun fun_CCON0 pu = Pickle.con1 CCON0 (fn CCON0 c => c | _ => die "pu_contract_env.CCON0")
                                              Con.pu
+              fun fun_CCSE _ =
+                  Pickle.con1 (fn (prim,lv) => CCSE {prim=prim,lvar=lv}) (fn CCSE {prim,lvar} => (prim,lvar)
+                                                                           | _ => die "pu_contract_env.CCSE")
+                  (Pickle.pairGen0(Pickle.string,Lvars.pu))
               val pu_cv =
                   Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
                                                        fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,
-                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0])
+                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0,fun_CCSE])
           in LvarMap.pu Lvars.pu
               (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
           end
@@ -2603,36 +2858,68 @@ structure OptLambda : OPT_LAMBDA =
          | _ => map_lamb cse e
 
    (* -----------------------------------------------------------------
-    * Hoist blockf64 allocations
+    * Hoist operations for various reasons
     *
-    * Hoist blockf64 allocations to allow for unboxing of reals:
+    *   1. Hoist blockf64 allocations to allow for unboxing of reals
     *
-    *   1. Convert `let x = f64_to_real(a) in let y = alloc(b) in e`
+    *      Convert `let x = f64_to_real(a) in let y = alloc(b) in e`
     *      into `let y = alloc(b) in let x = f64_to_real(a) in e`
     *      given x \not \in fv(b).
     *
-    * This transformation will put the x binding closer to uses; in
-    * particular, x can be allocated in an xmm register if the binding
-    * and its uses do not cross a C function call...
+    *      This transformation will put the x binding closer to uses; in
+    *      particular, x can be allocated in an xmm register if the binding
+    *      and its uses do not cross a C function call...
+    *
+    *   2. Hoist bindings to size-extractions to allow for sharing and
+    *      to avoid redundant checks.
     * --------------------------------------------------------------- *)
 
-   fun hoist_blockf64_allocations e =
-       let fun hoist e =
+   fun hoist_bindings e =
+       let fun hoistPrim p =
+               case p of
+                   "allocStringML" => true
+                 | "__blockf64_size" => true
+                 | _ => false
+           fun hoist e =
                case e of
-                   LET{pat=pat as [(lv,_,_)],bind,scope} =>
+                   LET{pat,bind=LET{pat=[],bind=b as PRIM(DROPprim,[e]),scope=sc1},scope=sc2} =>   (* pat bound in sc2 *)
+                   hoist (LET{pat=[],bind=b,scope=LET{pat=pat,bind=sc1,scope=sc2}})                (* ok: pat bound in sc2 *)
+                 | LET{pat=pat as [(lv,_,_)],bind,scope} =>                                  (* lv bound in scope *)
                    let val bind = hoist bind
                        val scope = hoist scope
                    in case scope of
-                          LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name="allocStringML",...},[e]),
-                              scope=scope2} => (* yes *)
-                          if not(lvar_in_lamb lv e) andalso (safeLambdaExp e orelse safeLambdaExp bind) then
-                            LET{pat=pat2,bind=bind2,
-                                scope=LET{pat=pat,bind=bind,scope=scope2}}
+                          LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name,...},[e]),
+                              scope=scope2} => (* yes *)                                     (* lv bound in (e,scope2), pat2 bound in scope2 *)
+                          if hoistPrim name andalso not(lvar_in_lamb lv e) andalso (safeLambdaExp e orelse safeLambdaExp bind) then
+                            ( tick "hoist-bindings-1"
+                            ; LET{pat=pat2,bind=bind2,                                       (* ok: pat2 bound in scope2 *)
+                                  scope=LET{pat=pat,bind=bind,scope=scope2}}
+                            )
                           else
                             LET{pat=pat,bind=bind,
                                 scope=LET{pat=pat2,bind=bind2,scope=scope2}}
                         | _ =>
-                          LET{pat=pat,bind=bind,scope=scope}
+                          case bind of
+                              LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name,...},[e]),      (* lv bound in scope, pat2 bound in scope2 *)
+                                  scope=scope2} => (* yes *)
+                              if hoistPrim name andalso safeLambdaExp e then
+                                ( tick "hoist-bindings-3"
+                                ; LET{pat=pat2,bind=bind2,scope=LET{pat=pat,bind=scope2,scope=scope}}  (* ok: pat2 bound in scope2, lv bound in scope *)
+                                )
+                              else LET{pat=pat,bind=bind,scope=scope}
+                            | _ => LET{pat=pat,bind=bind,scope=scope}
+                   end
+                 | LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope} =>
+                   let val bind = hoist bind
+                       val scope = hoist scope
+                   in case bind of
+                          LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name,...},[e]),scope=scope2} =>
+                          if hoistPrim name andalso safeLambdaExp e then
+                            ( tick "hoist-bindings-2"
+                            ; LET{pat=pat2,bind=bind2,scope=LET{pat=nil,bind=PRIM(DROPprim,[scope2]),scope=scope}}
+                            )
+                          else LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
+                        | _ => LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
                    end
                  | _ => map_lamb hoist e
        in hoist e
@@ -3578,11 +3865,11 @@ structure OptLambda : OPT_LAMBDA =
                   val e = unbox_real_bindings e
                   val e = eliminate_explicit_blockf64_bindings e
                   val e = cse e
-                  val e = hoist_blockf64_allocations e
+                  val e = hoist_bindings e
                   val _ = end_round() (*stat*)
               in if test_tick() andalso n < max_optimise
                  then loop_opt1 (n+1) ce e
-                 else (e, ce1)
+                 else (e, ce1)                 (* last ce1 is the most precise *)
               end
 
           fun loop_opt2 n ce phi e =
@@ -3596,7 +3883,7 @@ structure OptLambda : OPT_LAMBDA =
                   val e = unbox_real_bindings e
                   val e = eliminate_explicit_blockf64_bindings e
                   val e = cse e
-                  val e = hoist_blockf64_allocations e
+                  val e = hoist_bindings e
                   val _ = end_round() (*stat*)
               in if test_tick() andalso n < max_optimise
                  then let val (e,phi2) = loop_opt2 (n+1) ce (FixFlatten.phi_nofix phi) e
