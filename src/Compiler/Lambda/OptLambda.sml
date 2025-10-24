@@ -645,61 +645,75 @@ structure OptLambda : OPT_LAMBDA =
 
    fun real_lvar_f64_in_lamb (lv:lvar) (lamb:LambdaExp) : bool =
      let exception Bad
-         fun check e = if lvar_in_lamb lv e then raise Bad else false
+
+         (* safeLook returns true if lv is used only in contexts "real_to_f64 lv" *)
          fun safeLook_sw safeLook (SWITCH(e,es,eopt)) =
-             if safeLook e then
-               let val ss = map (safeLook o #2) es
-                   val sopt = Option.map safeLook eopt
-               in Option.getOpt (sopt,true) andalso List.all (fn x => x) ss
-               end
-             else (app (ignore o check o #2) es; Option.app (ignore o check) eopt; false)
+             (safeLook e; app (safeLook o #2) es; Option.app safeLook eopt)
+
          fun safeLook e =
              case e of
-                 REAL _ => true
-               | F64 _ => true
-               | WORD _ => true
-               | INTEGER _ => true
-               | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else true
-               | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => true
-               | PRIM(_, es) => safeLooks es
-               | LET{pat,bind,scope} => if safeLook bind then safeLook scope
-                                        else check scope
-               | SWITCH_C sw => safeLook_sw safeLook sw
-               | FIX {functions,scope} =>
-                 if safeLooks (map #bind functions) then safeLook scope
-                 else check scope
+                 VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else ()
+               | INTEGER _ => ()
+               | WORD _ => ()
+               | STRING _ => ()
+               | REAL _ => ()
+               | F64 _ => ()
                | FN {pat,body} => safeLook body
-               | APP (e1,e2,_) => if safeLook e1 then safeLook e2 else check e2
-               | _ => check e
-         and safeLooks es =
-             List.foldl (fn (e,s) => if s then safeLook e else check e) true es
+               | LET{pat,bind,scope} => (safeLook bind; safeLook scope)
+               | LETREGION {scope,...} => safeLook scope
+               | FIX {functions,scope} => (safeLooks (map #bind functions); safeLook scope)
+               | APP (e1,e2,_) => (safeLook e1; safeLook e2)
+               | EXCEPTION (_,_,e) => safeLook e
+               | RAISE (e,_) => safeLook e
+               | HANDLE (e1,e2) => (safeLook e1; safeLook e2)
+               | SWITCH_I {switch,...} => safeLook_sw safeLook switch
+               | SWITCH_W {switch,...} => safeLook_sw safeLook switch
+               | SWITCH_S sw => safeLook_sw safeLook sw
+               | SWITCH_C sw => safeLook_sw safeLook sw
+               | SWITCH_E sw => safeLook_sw safeLook sw
+               | TYPED (e,_,_) => safeLook e
+               | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
+               | PRIM(_, es) => safeLooks es
+               | FRAME {declared_lvars,...} => List.app (fn {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()) declared_lvars
+         and safeLooks es = List.app safeLook es
      in
        (safeLook lamb; true) handle Bad => false
      end
 
    fun subst_real_lvar_f64_in_lamb (lv:lvar) (lv':lvar) (lamb:LambdaExp) : LambdaExp =
-       let fun subst e =
+       let fun subst_sw subst (SWITCH(e,es,eopt)) =
+               SWITCH(subst e, map (fn (x,e) => (x,subst e)) es, Option.map subst eopt)
+           fun subst e =
              case e of
-                 REAL _ => e
-               | F64 _ => e
-               | WORD _ => e
+                 VAR {lvar,...} => if Lvars.eq(lvar,lv) then die "subst_real_lvar_f64_in_lamb" else e
                | INTEGER _ => e
-               | VAR {lvar,...} => if Lvars.eq(lvar,lv) then die "subst_real_lvar_f64_in_lamb" else e
-               | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,instances,regvars}]) =>
-                 if Lvars.eq(lvar,lv) then VAR{lvar=lv',instances=instances,regvars=regvars} else e
-               | PRIM(p,es) => PRIM(p,map subst es)
+               | WORD _ => e
+               | STRING _ => e
+               | REAL _ => e
+               | F64 _ => e
+               | FN{pat,body} => FN{pat=pat,body=subst body}
                | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
+               | LETREGION {regvars,scope} => LETREGION {regvars=regvars,scope=subst scope}
                | FIX{functions,scope} =>
                  FIX{functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
                                        {lvar=lvar,regvars=regvars,
                                         tyvars=tyvars,Type=Type,constrs=constrs,bind=subst bind}) functions,
                      scope=subst scope}
-               | FN{pat,body} => FN{pat=pat,body=subst body}
                | APP(e1,e2,b) => APP(subst e1,subst e2,b)
-               | SWITCH_C(SWITCH(e,es,eopt)) =>
-                 SWITCH_C(SWITCH(subst e, map (fn (x,e) => (x,subst e)) es, Option.map subst eopt))
-               | _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
-                      else e
+               | EXCEPTION(ex,topt,e) => EXCEPTION(ex,topt,subst e)
+               | RAISE(e,tl) => RAISE(subst e,tl)
+               | HANDLE(e1,e2) => HANDLE(subst e1, subst e2)
+               | SWITCH_I {switch,precision} => SWITCH_I {switch=subst_sw subst switch,precision=precision}
+               | SWITCH_W {switch,precision,tyname} => SWITCH_W {switch=subst_sw subst switch,precision=precision,tyname=tyname}
+               | SWITCH_S sw => SWITCH_S (subst_sw subst sw)
+               | SWITCH_C sw => SWITCH_C (subst_sw subst sw)
+               | SWITCH_E sw => SWITCH_E (subst_sw subst sw)
+               | TYPED(e,t,cl) => TYPED(subst e,t,cl)
+               | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,instances,regvars}]) =>
+                 if Lvars.eq(lvar,lv) then VAR{lvar=lv',instances=instances,regvars=regvars} else e
+               | PRIM(p,es) => PRIM(p,map subst es)
+               | FRAME _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
+                            else e
        in subst lamb
        end
 
@@ -1491,8 +1505,35 @@ structure OptLambda : OPT_LAMBDA =
               else NONE
             | NONE => NONE
 
-      fun realToStringOpt r =
+      fun isZeroR s =
+          case finiteRealFromString s of
+              SOME r => Real.==(0.0,r)
+            | _ => false
+      fun isOneR s =
+          case finiteRealFromString s of
+              SOME r => Real.==(1.0,r)
+            | _ => false
+
+      fun remTrailingZeros s =
+          if String.size s > 1 andalso String.sub(s,String.size s - 1) = #"0" then
+            remTrailingZeros (String.extract(s,0,SOME(String.size s - 1)))
+          else s
+
+      fun realToStringOpt (r:real) : string option =
           let val s = Real.fmt StringCvt.EXACT r
+              fun toStr [i,f] "00" = i ^ "." ^ remTrailingZeros f
+                | toStr [i,f] e = i ^ "." ^ remTrailingZeros f ^ "E" ^ e
+                | toStr [i] e = i ^ "E" ^ e
+                | toStr _ _ = s
+              val s =
+                  case String.tokens (fn c => c = #"E") s of
+                      [r,e] =>
+                      (case String.tokens (fn c => c = #".") r of
+                           [i,f] => toStr [i,f] e
+                         | [i] => toStr [i] e
+                         | _ => s)
+                    | _ => s
+              (* maybe truncate end *)
           in case finiteRealFromString s of
                  SOME r' => if Real.==(r,r') then SOME s
                             else NONE
@@ -1770,6 +1811,22 @@ structure OptLambda : OPT_LAMBDA =
                                 | "__minus_int64ub" => (if isZero v
                                                         then Some e1 else NONE)
                                 | _ => NONE)
+                           | [e1, f as F64 s] =>
+                             if not(constfold_f64()) then NONE
+                             else (case name of
+                                       "__minus_f64" => (if isZeroR s then Some e1 else NONE)   (* Notice: it is not safe in general to  *)
+                                     | "__plus_f64" => (if isZeroR s then Some e1 else NONE)    (* simplify "0.0*e" to "0.0" as e may    *)
+                                     | "__mul_f64" => (if isOneR s then Some e1 else NONE)      (* evaluate to nan!                      *)
+                                     | "__div_f64" => (if isOneR s then Some e1 else NONE)
+                                     | _ => NONE
+                                  )
+                           | [f as F64 s,e2] =>
+                             if not(constfold_f64()) then NONE
+                             else (case name of
+                                       "__plus_f64" => (if isZeroR s then Some e2 else NONE)
+                                     | "__mul_f64" => (if isOneR s then Some e2 else NONE)
+                                     | _ => NONE
+                                  )
                            | _ => NONE
                         end
                       | _ => NONE
@@ -2150,6 +2207,11 @@ structure OptLambda : OPT_LAMBDA =
                    (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],tyvars=[],
                                                  Type=ARROWtype([intDefaultType()],NONE,[f64Type],NONE)},
                                       [x])), CUNKNOWN))
+                | ("__real_to_int",[x]) =>
+                  (tick "real_to_f64";
+                   (PRIM(CCALLprim{name="__f64_to_int",instances=[],tyvars=[],
+                                   Type=ARROWtype([f64Type],NONE,[intDefaultType()],NONE)},
+                         [real_to_f64 x]), CUNKNOWN))
                 | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
                 | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
                 | ("__greater_real",[x,y]) => reduce_f64cmp f64_greater (x,y)

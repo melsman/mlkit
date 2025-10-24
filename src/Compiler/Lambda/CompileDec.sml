@@ -2945,6 +2945,20 @@ the 12 lines above are very similar to the code below
                      true  => TLE.INTEGER(maxInt64, int64Type)
                    | false => die "__maxInt64 not supported for 32-bit frontend"
                 )
+              | "__minIntReal" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.REAL(IntInf.toString minInt63, NONE)
+                   | (true,  false) => TLE.REAL(IntInf.toString minInt31, NONE)
+                   | (false, true)  => TLE.REAL(IntInf.toString minInt64, NONE)
+                   | (false, false) => TLE.REAL(IntInf.toString minInt32, NONE)
+                )
+              | "__maxIntReal" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.REAL(IntInf.toString maxInt63, NONE)
+                   | (true,  false) => TLE.REAL(IntInf.toString maxInt31, NONE)
+                   | (false, true)  => TLE.REAL(IntInf.toString maxInt64, NONE)
+                   | (false, false) => TLE.REAL(IntInf.toString maxInt32, NONE)
+                )
               | _ =>
                   (*unrecognised prim name: this must be a c call; let us
                    hope the run-time system defines a function called s:*)

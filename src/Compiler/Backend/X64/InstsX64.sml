@@ -104,6 +104,9 @@ structure InstsX64 : INSTS_X64 =
     | xorps of ea * ea
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
+    | pxor of ea
+    | cvttsd2siq of ea * ea
+
     | jmp of ea         (* jump instructions *)
     | jl of lab
     | jg of lab
@@ -473,6 +476,9 @@ structure InstsX64 : INSTS_X64 =
                | xorps a => emit_bin("xorps", a)
                | sqrtsd a => emit_bin("sqrtsd", a)
                | cvtsi2sdq a => emit_bin("cvtsi2sdq", a)
+               | pxor a => emit_unary("pxor", a)
+               | cvttsd2siq a => emit_bin("cvttsd2siq", a)
+
                | jmp (L l) => emit_jump("jmp", l)
                | jmp ea => (emit "\tjmp *"; emit(pr_ea K ea); emit_nl())
                | jl l => emit_jump("jl", l)
@@ -794,6 +800,8 @@ structure InstsX64 : INSTS_X64 =
              | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)
              | sqrtsd (ea1,ea2) => sqrtsd (Em ea1,Em ea2)
              | cvtsi2sdq (ea1,ea2) => cvtsi2sdq (Em ea1,Em ea2)
+             | pxor ea => pxor (Em ea)
+             | cvttsd2siq (ea1,ea2) => cvttsd2siq (Em ea1,Em ea2)
 (*
              | fstpq ea => fstpq (Em ea)
              | fldq ea => fldq (Em ea)
