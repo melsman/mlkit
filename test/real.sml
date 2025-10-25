@@ -523,4 +523,7 @@ val test46a =
 val test46b =
     tst "test46b" (toInt IEEEReal.TO_ZERO 2.8 = 2)
 
+val test47 =
+    tst "test47" (Option.map (fn r => Real.==(r,Real.minPos)) (Real.fromString (Real.fmt StringCvt.EXACT Real.minPos)) = SOME true);
+
 end

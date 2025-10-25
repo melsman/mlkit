@@ -1476,6 +1476,7 @@ structure OptLambda : OPT_LAMBDA =
             | _ => false
 
       fun constfold_f64 () = true
+      fun constfold_f64_ext () = false
 
       fun conv t2 i =
           if eq_Type(t2,word8Type) then SOME(WORD(Word8.toLargeInt(Word8.fromLargeInt i),t2))
@@ -1706,10 +1707,20 @@ structure OptLambda : OPT_LAMBDA =
                                             | NONE => NONE)
                                        | _ => NONE
                              in case name of
-                                    "__minus_f64" => opp Real.-
-                                  | "__plus_f64" => opp Real.+
-                                  | "__mul_f64" => opp Real.*
-                                  | "__div_f64" => opp Real./
+                                    "__minus_f64" => if constfold_f64_ext() then opp Real.-
+                                                     else if isZeroR s2 then Some (F64 s1)
+                                                     else NONE
+                                  | "__plus_f64" => if constfold_f64_ext() then opp Real.+
+                                                    else if isZeroR s1 then Some (F64 s2)
+                                                    else if isZeroR s2 then Some (F64 s1)
+                                                    else NONE
+                                  | "__mul_f64" => if constfold_f64_ext() then opp Real.*
+                                                   else if isOneR s1 then Some (F64 s2)
+                                                   else if isOneR s2 then Some (F64 s1)
+                                                   else NONE
+                                  | "__div_f64" =>
+                                    (if constfold_f64_ext() then opp Real./
+                                     else if isOneR s2 then Some (F64 s1) else NONE)
                                   | "__less_f64" => oppc Real.<
                                   | "__greater_f64" => oppc Real.>
                                   | "__lesseq_f64" => oppc Real.<=
@@ -1717,7 +1728,7 @@ structure OptLambda : OPT_LAMBDA =
                                   | _ => NONE
                              end
                            | [F64 s] =>
-                             if not(constfold_f64()) then NONE
+                             if not(constfold_f64_ext()) then NONE
                              else
                              let fun opp opr =
                                      case finiteRealFromString s of
