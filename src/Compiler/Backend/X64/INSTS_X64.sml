@@ -86,6 +86,8 @@ signature INSTS_X64 =
     | xorps of ea * ea
     | sqrtsd of ea * ea
     | cvtsi2sdq of ea * ea
+    | pxor of ea
+    | cvttsd2siq of ea * ea
 
     | jmp of ea         (* jump instructions *)
     | jl of lab

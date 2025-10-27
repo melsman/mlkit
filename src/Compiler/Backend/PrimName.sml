@@ -161,7 +161,7 @@ datatype prim =
 	 ServerGetCtx |
 
          Max_f64 | Min_f64 | Real_to_f64 | F64_to_real | Sqrt_f64 |
-         Int_to_f64 |
+         Int_to_f64 | F64_to_int | Real_to_int |
 
          Blockf64_update_real | Blockf64_sub_real | Blockf64_size | Blockf64_alloc |
          Blockf64_update_f64 | Blockf64_sub_f64
@@ -351,6 +351,8 @@ local
          ("__f64_to_real", F64_to_real),
          ("__sqrt_f64", Sqrt_f64),
          ("__int_to_f64", Int_to_f64),
+         ("__f64_to_int", F64_to_int),
+         ("__real_to_int", Real_to_int),
          ("__blockf64_update_real", Blockf64_update_real),
          ("__blockf64_sub_real", Blockf64_sub_real),
          ("__blockf64_size", Blockf64_size),
@@ -766,6 +768,8 @@ fun pp_prim (p:prim) : string =
       | F64_to_real => "F64_to_real"
       | Sqrt_f64 => "Sqrt_f64"
       | Int_to_f64 => "Int_to_f64"
+      | F64_to_int => "F64_to_int"
+      | Real_to_int => "Real_to_int"
       | Blockf64_update_real => "Blockf64_update_real"
       | Blockf64_sub_real => "Blockf64_sub_real"
       | Blockf64_size => "Blockf64_size"

@@ -11,7 +11,7 @@ TESTFILES=f64_1.sml f64_2.sml f64_3.sml f64_4.sml scratchmem.sml	\
   kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml		\
   professor_game.sml ccall.sml auto.sml Initial.sml string_sub.sml	\
   int_overflow.sml sign.sml word_list.sml build.sml reg.sml jt.sml	\
-  single.sml expr.sml
+  single.sml expr.sml floor2.sml
 
 #shra.sml
 

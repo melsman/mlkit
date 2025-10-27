@@ -19,7 +19,8 @@ structure K =
                          "generational_garbage_collection",
                          "extra_gc_checks",
                          "export_basis_js",
-                         "disable_spurious_type_variables"
+                         "disable_spurious_type_variables",
+                         "equalelim_opt_unboxed"
                         ]
   in KitMain(KC)
   end

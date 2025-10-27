@@ -2472,6 +2472,20 @@ end; (*match compiler local*)
       fun equal_word64() = equal word64Type "__equal_word64"
     end
 
+    val minInt31 : IntInf.int = Int.toLarge (~1073741824)
+    val maxInt31 : IntInf.int = Int.toLarge (1073741823)
+    val minInt32 : IntInf.int = IntInf.* (minInt31, Int.toLarge 2)   (* = ~2147483648 *)
+    val maxInt32 : IntInf.int = IntInf.+ (IntInf.* (maxInt31, Int.toLarge 2), Int.toLarge 1)  (* = 2147483647 *)
+
+    local fun pow2 (n:int) : IntInf.int =
+              if n < 1 then IntInf.fromInt 1
+              else IntInf.*(IntInf.fromInt 2, pow2(n-1))
+    in val maxInt63 : IntInf.int = IntInf.-(IntInf.+(pow2 61, pow2 61), IntInf.fromInt 1)
+       val minInt63 : IntInf.int = IntInf.-(IntInf.~ maxInt63, IntInf.fromInt 1)
+       val maxInt64 : IntInf.int = IntInf.-(IntInf.+(pow2 62, pow2 62), IntInf.fromInt 1)
+       val minInt64 : IntInf.int = IntInf.-(IntInf.~ maxInt64, IntInf.fromInt 1)
+    end
+
     (* ----------------------------------------------------------------------- *)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
@@ -2890,6 +2904,61 @@ the 12 lines above are very similar to the code below
                           | _ => die "compileExp: expecting one static integer to __scratchmem primitive"
                 in TLE.PRIM(TLE.SCRATCHMEMprim {sz=bytes}, [])
                 end
+              | "__precision" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.INTEGER(63, int63Type)
+                   | (true,  false) => TLE.INTEGER(31, int31Type)
+                   | (false, true)  => TLE.INTEGER(64, int64Type)
+                   | (false, false) => TLE.INTEGER(32, int32Type)
+                )
+              | "__minInt" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.INTEGER(minInt63, int63Type)
+                   | (true,  false) => TLE.INTEGER(minInt31, int31Type)
+                   | (false, true)  => TLE.INTEGER(minInt64, int64Type)
+                   | (false, false) => TLE.INTEGER(minInt32, int32Type)
+                )
+              | "__maxInt" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.INTEGER(maxInt63, int63Type)
+                   | (true,  false) => TLE.INTEGER(maxInt31, int31Type)
+                   | (false, true)  => TLE.INTEGER(maxInt64, int64Type)
+                   | (false, false) => TLE.INTEGER(maxInt32, int32Type)
+                )
+              | "__minInt63" => (* disregard argument *)
+                (case values_64bit() of
+                     true  => TLE.INTEGER(minInt63, int63Type)
+                   | false => die "__minInt63 not supported for 32-bit frontend"
+                )
+              | "__maxInt63" => (* disregard argument *)
+                (case values_64bit() of
+                     true  => TLE.INTEGER(maxInt63, int63Type)
+                   | false => die "__maxInt63 not supported for 32-bit frontend"
+                )
+              | "__minInt64" => (* disregard argument *)
+                (case values_64bit() of
+                     true  => TLE.INTEGER(minInt64, int64Type)
+                   | false => die "__minInt64 not supported for 32-bit frontend"
+                )
+              | "__maxInt64" => (* disregard argument *)
+                (case values_64bit() of
+                     true  => TLE.INTEGER(maxInt64, int64Type)
+                   | false => die "__maxInt64 not supported for 32-bit frontend"
+                )
+              | "__minIntReal" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.REAL(IntInf.toString minInt63, NONE)
+                   | (true,  false) => TLE.REAL(IntInf.toString minInt31, NONE)
+                   | (false, true)  => TLE.REAL(IntInf.toString minInt64, NONE)
+                   | (false, false) => TLE.REAL(IntInf.toString minInt32, NONE)
+                )
+              | "__maxIntReal" => (* disregard argument *)
+                (case (tag_values(), values_64bit()) of
+                     (true,  true)  => TLE.REAL(IntInf.toString maxInt63, NONE)
+                   | (true,  false) => TLE.REAL(IntInf.toString maxInt31, NONE)
+                   | (false, true)  => TLE.REAL(IntInf.toString maxInt64, NONE)
+                   | (false, false) => TLE.REAL(IntInf.toString maxInt32, NONE)
+                )
               | _ =>
                   (*unrecognised prim name: this must be a c call; let us
                    hope the run-time system defines a function called s:*)

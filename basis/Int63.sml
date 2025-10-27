@@ -17,10 +17,12 @@ structure Int63 : INTEGER =
     fun toInt (x: int63) : int = prim("__int63_to_int", x)
     fun fromInt (x: int) : int63 = prim("__int_to_int63", x)
 
-    val precision = SOME 63
+    val maxInt63 : int63 = prim("__maxInt63",())
+    val minInt63 : int63 = prim("__minInt63",())
 
-    val maxInt : int63 option = SOME Initial.maxInt63
-    val minInt : int63 option = SOME Initial.minInt63
+    val precision = SOME 63
+    val maxInt : int63 option = SOME maxInt63
+    val minInt : int63 option = SOME minInt63
 
     val ~ : int63 -> int63 = ~
     val op * : (int63 * int63) -> int63 = op *

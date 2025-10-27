@@ -3,9 +3,11 @@ structure Word : WORD =
   struct
     type word = word
 
-    val wordSize = Initial.precisionInt0
+    val precisionInt0 : int = prim("__precision", ())
+    val wordSize = precisionInt0
 
     fun toIntX (w : word) : int = prim("id", w)
+
     fun toInt (w : word) : int =
       let val i = toIntX w
       in if i < 0 then raise Overflow

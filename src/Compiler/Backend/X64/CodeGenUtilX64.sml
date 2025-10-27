@@ -1370,7 +1370,7 @@ struct
        fun mov_int ((aty,r),fsz,C) =
            if BI.tag_values() then
              load_aty(aty,r,fsz,
-                               I.sarq(I "1", R r) :: C)
+              I.sarq(I "1", R r) :: C)
            else
              load_aty(aty,r,fsz,C)
      in
@@ -1378,6 +1378,26 @@ struct
            let val (d, C') = resolve_aty_def(d,tfreg0,fsz,C)
            in mov_int ((x,treg0),fsz,
               I.cvtsi2sdq(R treg0, R d) :: C')
+           end
+     end
+
+     local
+       fun maybe_tag_int (r,C) =
+           if BI.tag_values() then
+             G.lea(DD("1", r, r, ""), r) C
+           else C
+     in
+       fun f64_to_int (x,d,fsz,C) =
+           let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
+               val (d, C') = resolve_aty_def(d,treg0,fsz,C)
+           in x_C(I.cvttsd2siq(R x,R d) ::
+                  maybe_tag_int (d, C'))
+           end
+       fun real_to_int (x,d,fsz,C) =
+           let val (d, C') = resolve_aty_def(d,treg0,fsz,C)
+           in load_real (x, treg0, fsz, tfreg0)
+                (I.cvttsd2siq(R tfreg0,R d) ::
+                   maybe_tag_int (d, C'))
            end
      end
 

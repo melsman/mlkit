@@ -1060,6 +1060,8 @@ struct
                             | Is_null => cmpi_kill_tmp01_cmov {box=false,quad=false} I.cmoveq
                                                               (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
                                                                                  precision=32},d,fsz,C)
+                            | F64_to_int => f64_to_int arg
+                            | Real_to_int => real_to_int arg
                             | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
                        end
                      | [x,y] =>
