@@ -9,9 +9,19 @@ structure Real : REAL =
 
     fun real (x:int) : real = prim ("realInt", x)
 
+    fun real_to_int (x:real) : int = prim("__real_to_int", x)
+    fun minIntReal () : real = prim("__minIntReal", ())
+    fun maxIntReal () : real = prim("__maxIntReal", ())
+
     fun getCtx () : foreignptr = prim("__get_ctx",())
 
-    fun floor (x:real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun floor (r:real) : int =
+        if r >= maxIntReal() + 1.0 orelse r < minIntReal() then raise Overflow
+        else let val i = real_to_int r
+             in if r < real i then i-1 else i
+             end
+
+(*    fun floor (x:real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *) *)
     fun ceil (x:real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
     fun trunc (x:real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
 
@@ -135,6 +145,10 @@ structure Real : REAL =
 
     fun scan getc source =
       let fun decval c = Char.ord c - 48
+          fun pospow10 0 acc = acc
+            | pospow10 n acc = pospow10 (n-1) (acc * 10.0)
+          fun negpow10 0 acc = acc
+            | negpow10 n acc = negpow10 (n-1) (acc / 10.0)
           fun pow10 0 = 1.0
             | pow10 n =
               if n mod 2 = 0 then
@@ -212,8 +226,8 @@ structure Real : REAL =
                       case (esym, expv) of
                           (_,     NONE)     => mkres manval src
                         | (true,  SOME exp) =>
-                          if exppos then mkres (manval * pow10 exp) rest
-                          else mkres (manval / pow10 exp) rest
+                          if exppos then mkres (pospow10 exp manval) rest
+                          else mkres (negpow10 exp manval) rest
                         | _                 => NONE
                     end
             in
@@ -265,15 +279,11 @@ structure Real : REAL =
         else if y < x then GREATER
         else EQUAL
 
-    fun op == (x, y) =
-        case compareReal (x,y) of
-            IEEEReal.EQUAL => true
-          | _ => false
+    fun op == (x:real, y) =
+        x >= y andalso y >= x
 
     fun op != (x,y) =
-        case compareReal (x,y) of
-            IEEEReal.EQUAL => false
-          | _ => true
+        not (op == (x,y))
 
     fun op ?= (a,b) =
         isNan a orelse isNan b orelse op == (a, b)

@@ -346,7 +346,7 @@ structure LambdaExp : LAMBDA_EXP =
        in (safe e; safe_sel sel; safe_opt opt_e)
        end
 
-     fun safe lamb =
+     fun safe raiseOk lamb : unit =
        case lamb
          of VAR _                       => ()
           | INTEGER _                   => ()
@@ -355,28 +355,41 @@ structure LambdaExp : LAMBDA_EXP =
           | REAL _                      => ()
           | F64 _                       => ()
           | FN _                        => ()
-          | LET {bind,scope,...}        => (safe bind; safe scope)
+          | LET {bind,scope,...}        => (safe raiseOk bind; safe raiseOk scope)
           | LETREGION _                 => raise NotSafe            (* memo: maybe safe? *)
-          | FIX {scope,...}             => safe scope
+          | FIX {scope,...}             => safe raiseOk scope
           | APP _                       => raise NotSafe
-          | EXCEPTION (_,_,scope)       => safe scope
-          | RAISE _                     => raise NotSafe
-          | HANDLE(lamb, _)             => safe lamb
+          | EXCEPTION (_,_,scope)       => safe raiseOk scope
+          | RAISE (lamb, _)             => if raiseOk then safe raiseOk lamb else raise NotSafe
+          | HANDLE(lamb1, lamb2)        => if raiseOk then
+                                             let val safe2 = (safe raiseOk lamb2; true)
+                                                             handle _ => false
+                                             in if safe2 then safe raiseOk lamb1
+                                                else safe false lamb1
+                                             end
+                                           else safe raiseOk lamb1
           (* if `lamb' is safe, then the actual handler can never be
            * activated. If `lamb' is unsafe, then the entire expression
            * is unsafe anyway. *)
-          | SWITCH_I {switch,precision} => safe_sw safe switch
-          | SWITCH_W {switch,precision,tyname} => safe_sw safe switch
-          | SWITCH_S sw                 => safe_sw safe sw
-          | SWITCH_C sw                 => safe_sw safe sw
-          | SWITCH_E sw                 => safe_sw safe sw
-          | TYPED (lamb,_,_)            => safe lamb
-          | PRIM(prim,lambs)            => (safe_prim prim; app safe lambs)
+          | SWITCH_I {switch,precision} => safe_sw (safe raiseOk) switch
+          | SWITCH_W {switch,precision,tyname} => safe_sw (safe raiseOk) switch
+          | SWITCH_S sw                 => safe_sw (safe raiseOk) sw
+          | SWITCH_C sw                 => safe_sw (safe raiseOk) sw
+          | SWITCH_E sw                 => safe_sw (safe raiseOk) sw
+          | TYPED (lamb,_,_)            => safe raiseOk lamb
+          | PRIM(prim,lambs)            => (safe_prim prim; app (safe raiseOk) lambs)
           | FRAME _                     => ()
+
+     fun safeLambdaExps0 raiseOk lambs =
+         (app (safe raiseOk) lambs; true)
+         handle NotSafe => false
+
    in
-     fun safeLambdaExps lambs = (app safe lambs; true) handle NotSafe => false
+     fun safeLambdaExps lambs = safeLambdaExps0 false lambs
      fun safeLambdaExp lamb = safeLambdaExps [lamb]
      fun safeLambdaPgm (PGM(_,exp)) = safeLambdaExp exp
+
+     fun safeOrRaiseExp lamb = safeLambdaExps0 true [lamb]
    end
 
    (* pretty printing. *)
@@ -402,7 +415,7 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Array", dupQ "Array" ["array","maxLen"]),
                      ("Real", dup ["floor", "real"]),
                      ("textio", dupQ "TextIO" ["openOut"]),
-                     ("Int", [("toString","Int.toString"), ("v472","Int.>"), ("v112","Int.+")] @
+                     ("Int", [("toString","Int.toString"), ("v475","Int.>"), ("v115","Int.+")] @
                              dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
                                          "sameSign","scan","fromString","fmt","precision"]),
                      ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("v54","(op /)")]),

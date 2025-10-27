@@ -1512,16 +1512,20 @@ struct
       (*   -- labels to data, (i.e., data labels)      *)
       fun find_globals_in_env (lvars, excons, regvars) env =
         let
-          fun lookup lv f_lookup (fun_lab,dat_lab) =
-            case f_lookup env lv
+          fun lookup_lv (lv, (fun_lab,dat_lab)) =
+            case CE.lookupVarOpt env lv
               of SOME r => labs (fun_lab,dat_lab) r
-               | NONE => die ("find_globals_in_env: lvar not bound in env.")
-          val pair_labs = foldr (fn (lv,a) => lookup lv CE.lookupVarOpt a) ([],[]) lvars
-          val pair_labs = foldr (fn (ex,a) => lookup ex CE.lookupExconOpt a) pair_labs excons
+               | NONE => die ("find_globals_in_env: lvar '" ^ Lvars.pr_lvar lv ^ "' not in env.")
+          fun lookup_ex (ex, (fun_lab,dat_lab)) =
+            case CE.lookupExconOpt env ex
+              of SOME r => labs (fun_lab,dat_lab) r
+               | NONE => die ("find_globals_in_env: excon '" ^ Excon.pr_excon ex ^ "' not in env.")
+          val pair_labs = foldr lookup_lv ([],[]) lvars
+          val pair_labs = foldr lookup_ex pair_labs excons
 (*      val pair_labs = foldr (fn (rho,a) => lookup rho CE.lookupRhoOpt a) pair_labs regvars
 
- this one does not seem necessary because no new regions survive program units and because the
- the global regions 0-3 are allocated statically with address labels 0-3. ME 2000-10-31
+ not seem necessary because no new regions survive program units and because the
+ global regions are allocated statically with dedicated address labels. ME 2000-10-31
 *)
         in pair_labs
         end
@@ -2513,8 +2517,9 @@ struct
         val _ = reset_top_decls()
         val _ = reset_exports()
         val import_labs =
-          find_globals_in_env (valOf(!import_vars)) l2clos_exp_env
-          handle _ => die "clos_conv: import_vars not specified."
+            case !import_vars of
+                SOME vars => find_globals_in_env vars l2clos_exp_env
+              | NONE => die "clos_conv: import_vars not specified."
         val env_datbind = add_datbinds_to_env export_datbinds CE.empty
         val global_env = CE.plus (l2clos_exp_env, env_datbind)
         val _ = set_global_env global_env

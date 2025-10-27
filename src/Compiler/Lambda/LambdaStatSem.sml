@@ -2,11 +2,14 @@
 structure LambdaStatSem: LAMBDA_STAT_SEM =
   struct
     structure PP = PrettyPrint
+    structure LB = LambdaBasics
 
     (* ---------------------------------------------------------
      * We assume lambda variables and constructors and exception
      * constructors are distinct and tyvars implemented as
-     * naturals.
+     * naturals. We use the Name.duplicates functionality to check
+     * that type names, constructors, exception constructors, and
+     * lambda variables are bound only once.
      * --------------------------------------------------------- *)
 
     val letrec_polymorphism_only = ref false   (* see the main function below. *)
@@ -23,15 +26,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     val pr_TypeList = StringTree_to_string o layoutTypeList
 
     local
-        fun f0 separator pp_x [] = ""
-          | f0 separator pp_x [x] = pp_x x
-          | f0 separator pp_x (x::xs) = pp_x x ^ separator ^ f0 separator pp_x xs
-    in
-        fun pp_list0 start finish separator pp_x xs = start ^ f0 separator pp_x xs ^ finish
-        fun pp_list a = pp_list0 "[" "]" ", " a
-        fun pp_set a = pp_list0 "{" "}" ", " a
-        fun pp_tuple a = pp_list0 "(" ")" "," a
-        fun pp_enumeration a = pp_list0 "" "" ", " a
+      fun ppl start finish sep pp xs =
+          start ^ String.concatWith sep (map pp xs) ^ finish
+    in fun pp_list a = ppl "[" "]" ", " a
+       fun pp_set a = ppl "{" "}" ", " a
+       fun pp_tuple a = ppl "(" ")" "," a
+       fun pp_enumeration a = ppl "" "" ", " a
     end
 
     fun log s = TextIO.output(!Flags.log, s)
@@ -988,9 +988,31 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                 log_st (layout_env env);
                                 raise AbortExp)
 
-  (* Analyse the datatype bindings and yield an environment which
+    fun check_bindings (e:LambdaExp) : unit =
+        let val bound_lvs = LB.foldTD (fn acc => fn e =>
+                                          case e of
+                                              LET{pat,...} => map #1 pat @ acc
+                                            | FN {pat,...} => map #1 pat @ acc
+                                            | FIX{functions,...} => map #lvar functions @ acc
+                                            | _ => acc) nil e
+            val () = case Name.duplicates Lvars.name bound_lvs of
+                         NONE => ()
+                       | SOME lv => die ("ERROR: Lvar " ^ Lvars.pr_lvar lv ^ " bound twice")
+            val bound_excons = LB.foldTD (fn acc => fn e =>
+                                             case e of
+                                                 EXCEPTION b => #1 b :: acc
+                                               | _ => acc) nil e
+            val () = case Name.duplicates Excon.name bound_excons of
+                         NONE => ()
+                       | SOME ex => die ("ERROR: Excon " ^ Excon.pr_excon ex ^ " bound twice")
+
+        in ()
+        end
+
+  (* Analyse the datatype bindings and create an environment that
    * maps all constructors to type schemes and all tynames to
-   * constructor identifier lists.  *)
+   * constructor identifier lists. Check that declared type names
+   * and constructors are unique. *)
   fun analyse_datbinds (DATBINDS dbs) : env =
     let
       fun analyse_datbind (tyvars : tyvar list,tyname,conbind: (con * Type option) list) : env =
@@ -1004,12 +1026,21 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
           in add_tyname(tyname, cts, env)
           end
-      val concat = foldl (op @) []
+      val alldbs = List.concat dbs
+
+      val bound_tynames = map #2 alldbs
+      val () = case Name.duplicates TyName.name bound_tynames of
+                   NONE => ()
+                 | SOME tn => die ("ERROR: TyName " ^ TyName.pr_TyName tn ^ " bound twice")
+
+      val bound_cons = List.concat (map (map #1 o #3) alldbs)
+      val () = case Name.duplicates Con.name bound_cons of
+                   NONE => ()
+                 | SOME c => die ("ERROR: Con " ^ Con.pr_con c ^ " bound twice")
     in
       foldl (fn (datbind,env) => (env plus (analyse_datbind datbind)))
-      empty (concat dbs)
+      empty alldbs
     end
-
 
   (* Convert a frame into an environment. *)
   fun env_from_frame (Frame {declared_lvars, declared_excons}) =
@@ -1020,12 +1051,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     end
     | env_from_frame _ = die "env_from_frame. No frame"
 
-
   (* Type checking of lambda programs *)
   fun type_check {env, pgm=PGM (datbinds,lexp), letrec_polymorphism_only=flag} : env =
     let
       val _ = letrec_polymorphism_only := flag
       val env' = analyse_datbinds datbinds
+      val () = check_bindings lexp
       val fr = type_lexp (env plus env') lexp
         handle ? => (log_st (layoutLambdaExp lexp) ; raise ?)
       val env'' = env_from_frame fr

@@ -58,8 +58,8 @@ structure Initial =
     end
 
     (* ByteTable and WordTable functors *)
-    val bytetable_maxlen : int = 4 * 1024 * 1024 * 1024  (* 4Gb *)
-    val wordtable_maxlen : int = 123456789*100 (* arbitrary chosen. *)
+    val bytetable_maxlen : int = 274877906944 (* = 2^38. Was 4Gb: 4 * 1024 * 1024 * 1024 *)
+    val wordtable_maxlen : int = 274877906944 (* = 2^38. Was arbitrary chosen: 123456789*100 *)
 
     (* Int structure. Integers are untagged (or tagged if GC is enabled),
      * and there is a limit to the size of immediate integers that the Kit
@@ -70,24 +70,10 @@ structure Initial =
 
     type int0 = int
 
-    local fun pow2 n : int63 = if n < 1 then 1 else 2 * pow2(n-1)
-    in val maxInt63 : int63 = pow2 61 + (pow2 61 - 1)
-       val minInt63 : int63 = ~maxInt63 - 1
-    end
-
-    local fun pow2 n : int64 = if n < 1 then 1 else 2 * pow2(n-1)
-    in val maxInt64 : int64 = pow2 62 + (pow2 62 - 1)
-       val minInt64 : int64 = ~maxInt64 - 1
-    end
-
     fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
-    fun fromI63 (i:int63) : int = prim("__int63_to_int", i)
-    fun fromI64 (i:int64) : int = prim("__int64_to_int", i)
-
-    val precisionInt0 : int = prim("precision", 0)
-    val (minInt0:int,maxInt0:int) =
-        if precisionInt0 = 63 then (fromI63 minInt63, fromI63 maxInt63)
-        else (fromI64 minInt64, fromI64 maxInt64)
+    val precisionInt0 : int = prim("__precision", ())
+    val minInt0 : int = prim("__minInt", ())
+    val maxInt0 : int = prim("__maxInt", ())
 
     (* TextIO *)
     val stdIn_stream : int = prim ("stdInStream", 0)
@@ -299,7 +285,6 @@ structure Initial =
         structure FD =
           struct
             val cloexec = 0wx1
-
             val all = 0wx1
           end
 
@@ -316,7 +301,6 @@ structure Initial =
             val rdonly   = 0wx100
             val wronly   = 0wx200
             val rdwr     = 0wx400
-
             val all      = 0wx3F (* [append,excl,noctty,nonblock,sync,trunc] *)
           end
 
@@ -336,7 +320,6 @@ structure Initial =
             val ixoth =  0wx800
             val isuid = 0wx1000
             val isgid = 0wx2000
-
             val all   = 0wx3FFF
           end
         end

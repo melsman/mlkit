@@ -18,10 +18,13 @@ structure Int : INTEGER =
     fun toInt (x: int) : int = x
     fun fromInt (x: int) : int = x
 
-    val precision = SOME Initial.precisionInt0
+    val precisionInt0 : int = prim("__precision", ())
+    val minInt0 : int = prim("__minInt", ())
+    val maxInt0 : int = prim("__maxInt", ())
 
-    val maxInt = SOME Initial.maxInt0
-    val minInt = SOME Initial.minInt0
+    val precision = SOME precisionInt0
+    val maxInt = SOME maxInt0
+    val minInt = SOME minInt0
 
     val ~ : int -> int = ~
     val op * : (int * int) -> int = op *
