@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.15 is released
+
+* mael 2025-10-27: Improved optimisations (PR #195).
+
 * mael 2025-08-05: Refactor backend.
 
 ### MLKit version 4.7.14 is released
