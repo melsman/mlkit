@@ -3,7 +3,7 @@ REML=../../bin/reml $(FLAGS)
 
 SMLSOURCES=er*.sml param.sml rec.sml tup.sml call.sml call2.sml ty1.sml err_expty1.sml err_expty2.sml \
   err_expty3.sml err_patty1.sml err_funty1.sml err_funty2.sml err_funty3.sml expty1.sml expty2.sml \
-  disputs.sml disputs2.sml
+  disputs.sml disputs2.sml server.sml
 
 .PHONY: all
 all:

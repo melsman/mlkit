@@ -927,17 +927,23 @@ struct
   (* partition_rhos rhos partitions rhos into region variables that have the
      same runtime type *)
 
-  fun skey rho = case E.get_place_ty rho of SOME rt => E.ord_runType rt | _ => die "skey"
+  fun rt_num rho = case E.get_place_ty rho of SOME rt => E.ord_runType rt | _ => die "rt_num"
 
   fun partition_rhos (rhos:place list) : place list list =
-      let val sorted_rhos = ListSort.sort (fn rho1 => fn rho2 => skey rho1 <= skey rho2) rhos
+      let
+          val (rhos_regvar,rhos) = List.partition (Option.isSome o E.getRegVar) rhos
+          val rhos_regvar = ListSort.sort (fn r1 => fn r2 => (case (E.getRegVar r1,E.getRegVar r2) of
+                                                                  (SOME rv1, SOME rv2) => RegVar.pr rv1 < RegVar.pr rv2
+                                                                | _ => die "partition_rhos.impossible"))
+                                          rhos_regvar
+          val sorted_rhos = ListSort.sort (fn r1 => fn r2 => rt_num r1 <= rt_num r2) rhos
           fun runs ([],acc) = acc
             | runs (x::xs,(y::ys)::acc) =
-              if skey x = skey y then runs(xs,(x::y::ys)::acc)
+              if rt_num x = rt_num y then runs(xs,(x::y::ys)::acc)
               else runs(xs,[x]::(y::ys)::acc)
             | runs (x::xs,nil::acc) = runs(xs,[x]::acc)
             | runs (x::xs,[]) = runs(xs,[x]::nil)
-      in runs (sorted_rhos,nil)
+      in map (fn x => [x]) rhos_regvar @ runs (sorted_rhos,nil)
       end
 
   local
@@ -992,7 +998,7 @@ struct
              \to be one secondary generalisable effect variable left"
 
   fun set_pix_of_secondary_rhos rhos : unit =
-      List.app (fn rho => (E.pix rho := skey rho * ~10)) rhos
+      List.app (fn rho => (E.pix rho := rt_num rho * ~10)) rhos
 
   fun pr_mu s mu =
       print ("\n" ^ s ^ ": " ^ PP.flatten1(#2 (mk_layout false) mu) ^ "\n")
@@ -1000,7 +1006,8 @@ struct
   fun pr_effects s effs =
       print ("\n" ^ s ^ ": " ^ PP.flatten1(PP.layout_list E.layout_effect effs) ^ "\n")
 
-  fun regEffClos0 (pr_lv, B: E.cone, B_0: int, phi: E.effect, tau: Type, ann: E.effect list) : E.cone * sigma =
+  fun regEffClos0 (pr_lv, B: E.cone, B_0: int, phi: E.effect,
+                   tau: Type, ann: E.effect list) : E.cone * sigma =
       let
         val n = B_0
         val B_1 = E.lower B_0 phi B
@@ -1050,7 +1057,7 @@ struct
   fun regEffClos (B: E.cone, B_0: int, phi: E.effect, tau: Type) : E.cone * sigma =
       regEffClos0 (fn () => "uggh", B, B_0, phi, tau, nil)
 
-  fun generalize_all (cone, level: int, alphas, tau): cone * sigma =
+  fun generalize_all (cone,level:int,alphas, tau): cone * sigma =
       let val ann = List.foldl (fn ((_,SOME e),a) => e::a | (_,a) => a) nil alphas
           val (cone,sigma) = regEffClos0(fn () => "generalize_all", cone,level,E.empty,tau,ann)
       in (cone, insert_alphas(alphas,sigma))
