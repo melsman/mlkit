@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2025-11-01: ReML: Avoid unifying quantified secondary explicit region
+  variables.
+
 ### MLKit version 4.7.15 is released
 
 * mael 2025-10-27: Improved optimisations (PR #195).
