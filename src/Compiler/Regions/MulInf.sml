@@ -60,50 +60,38 @@ struct
   type StringTree = PP.StringTree
   fun layoutp (t1,t2) = PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT":", children = [t1,t2]}
 
-  fun layoutExp e = MulExp.layoutLambdaExp
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => NONE))
-                       (fn _ => NONE)  (* do not print qmularefset's *)
-                       e
+  local
 
-  fun layouttrip tr = MulExp.layoutLambdaTrip
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => NONE))
-                       (fn _ => NONE)  (* do not print qmularefset's *)
-                       tr
+    fun layout_alloc () =
+        if print_regions()
+        then fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho)))
+        else fn _ => NONE
+    fun layout_bind () =
+        if print_regions()
+        then fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul))
+        else fn _ => NONE
+    fun layout_rbind () =
+        (fn f => fn l => fn _ => f l) (layout_bind())
+  in
 
-  fun layoutLambdaPgm p = MulExp.layoutLambdaPgm
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => NONE)
-                       (if print_regions()
-                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => NONE))
-                       (fn _ => NONE)  (* do not print qmularefset's *)
-                       p
+    fun layoutExp e =
+        MulExp.layoutLambdaExp (layout_alloc()) (layout_alloc())
+                               (layout_bind()) (layout_rbind())
+                               (fn _ => NONE)  (* do not print qmularefset's *)
+                               e
 
-(*
-  fun bin(tr1,tr2,a) = sum_psis[Mul.put(a),
-                                get_psi tr1,
-                                get_psi tr2]
-*)
+    fun layouttrip tr =
+        MulExp.layoutLambdaTrip (layout_alloc()) (layout_alloc())
+                                (layout_bind()) (layout_rbind())
+                                (fn _ => NONE)  (* do not print qmularefset's *)
+                                tr
+    fun layoutLambdaPgm p =
+        MulExp.layoutLambdaPgm (layout_alloc()) (layout_alloc())
+                               (layout_bind()) (layout_rbind())
+                               (fn _ => NONE)  (* do not print qmularefset's *)
+                               p
+  end
+
   exception Abort of exn
 
   fun mulinf (Psi: Mul.imp_mularefmap, dep: Mul.dependency_map, cone: Eff.cone,

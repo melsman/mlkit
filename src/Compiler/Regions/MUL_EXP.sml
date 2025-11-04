@@ -214,13 +214,16 @@ signature MUL_EXP =
 
     val layoutLambdaPgm: ('a -> StringTree option) -> ('a -> StringTree option) ->
                          ('b -> StringTree option) ->
+                         ('b -> ('a,'b,'c)trip -> StringTree option) ->
                          ('c -> StringTree option) -> ('a, 'b, 'c)LambdaPgm -> StringTree
     val layoutLambdaExp: ('a -> StringTree option)-> ('a -> StringTree option) ->
                          ('b -> StringTree option) ->
+                         ('b -> ('a,'b,'c)trip -> StringTree option) ->
                          ('c -> StringTree option) -> ('a,'b,'c)LambdaExp -> StringTree
 
     val layoutLambdaTrip: ('a -> StringTree option) -> ('a -> StringTree option) ->
                           ('b -> StringTree option) ->
+                          ('b -> ('a,'b,'c)trip -> StringTree option) ->
                           ('c -> StringTree option) -> ('a,'b,'c)trip -> StringTree
 
     (* Protection inference *)
