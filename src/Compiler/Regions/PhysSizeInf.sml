@@ -33,7 +33,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     fun apply_opt f (SOME x) = f x
       | apply_opt f NONE = ()
 
-    fun place_atplace (atp: place at) : place option =
+    fun place_atplace (atp: 'a at) : 'a option =
       let open AtInf
       in case atp of
              ATTOP p => SOME p
@@ -216,7 +216,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
        * ---------------------------------------------------------- *)
 
       fun getOpt (SOME l) = l
-        | getOpt NONE =[]
+        | getOpt NONE = []
 
       fun ifv (TR(e,_,_,_): (place at,place*mul,unit)trip) : unit =
         let fun ifv_sw (SWITCH(tr,choices,opt)) = (ifv tr; List.app (ifv o #2) choices;
@@ -370,12 +370,12 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       | equal_res (_, FORMAL_REGVARS _) = die "equal_res"
       | equal_res _ = false
 
-    fun enrich(env1,env2) =
+    fun enrich (env1,env2) =
       LvarMap.Fold(fn ((lv2,res2),b) => b andalso
                    case LvarMap.lookup env1 lv2
                      of SOME res1 => equal_res(res1,res2)
                       | NONE => false) true env2
-    fun restrict(env,lvars) =
+    fun restrict (env,lvars) =
       foldl(fn (lv, acc) =>
             case LvarMap.lookup env lv
               of SOME res => add_env(lv,res,acc)
@@ -751,14 +751,12 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     in TR(e',mt,ateffs,mulef)
     end
 
-
     (* --------------------------------------------------------
      * Reset buckets for inserting free variables, graph and
      * the internal environment.
      * -------------------------------------------------------- *)
 
-    fun reset() = (reset_fvs(); reset_graph(); reset_psi_env())
-
+    fun reset () = (reset_fvs(); reset_graph(); reset_psi_env())
 
     (* --------------------------------------------------------------
      * Main function; the env maps fix-bound lvars to minimal physical
@@ -795,7 +793,6 @@ structure PhysSizeInf: PHYS_SIZE_INF =
               export_Psi=export_Psi}, env1)
       end
 
-
     (**************************)
     (* application conversion *)
     (**************************)
@@ -804,6 +801,72 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       | allocates_space (place,WORDS i) = i > 0
 
     fun appConvert prog = MulExp.appConvert allocates_space prog
+
+
+    (* ----------------------------------------------------------------------
+     * Function for checking if a region variable occurs in an expression
+     * except from with immediate constants - used for prettier printing of
+     * expressions.
+     * ---------------------------------------------------------------------- *)
+
+    fun free_except_for_constants (rho:place) tr : bool =
+        let exception Found
+            fun chk_atp (atp:(place*int) at) : unit =
+                case place_atplace atp of
+                    SOME (p,_) => if Effect.eq_effect(rho,p) then raise Found
+                                  else ()
+                  | NONE => ()
+            fun chk_atp_opt atpopt = Option.app chk_atp atpopt
+            fun chk (TR(e,_,_,_): ((place*int) at,place*phsize,unit)trip) : unit =
+                let fun chk_sw (SWITCH(tr,choices,opt)) =
+                        (chk tr; List.app (chk o #2) choices; Option.app chk opt)
+                in case e of
+                       VAR{lvar,rhos_actuals=ref actuals,...} => List.app chk_atp actuals
+                     | INTEGER(n,t,alloc) => ()
+                     | WORD(n,t,alloc) => ()
+                     | STRING(s,alloc) => ()
+                     | REAL(s,alloc) => ()
+                     | F64 s => ()
+                     | UB_RECORD trips => List.app chk trips
+                     | FN{pat,body,free,alloc} => (chk_atp alloc; chk body)
+                     | LETREGION{B,rhos=ref rhos,body} => chk body
+                     | LET{k_let,pat,bind,scope} => (chk bind; chk scope)
+                     | FIX{free,shared_clos,functions,scope} =>
+                       (chk_atp shared_clos; List.app (chk o #bind) functions; chk scope)
+                     | APP(_,_,tr1,tr2) => (chk tr1; chk tr2)
+                     | EXCEPTION(excon,b,tp,alloc,scope) => (chk_atp alloc; chk scope)
+                     | RAISE tr => chk tr
+                     | HANDLE(tr1,tr2) => (chk tr1; chk tr2)
+                     | SWITCH_I {switch, precision} => chk_sw switch
+                     | SWITCH_W {switch, precision} => chk_sw switch
+                     | SWITCH_S sw => chk_sw sw
+                     | SWITCH_C sw => chk_sw sw
+                     | SWITCH_E sw => chk_sw sw
+                     | CON0 {aux_regions, alloc, ...} => (List.app chk_atp aux_regions; chk_atp_opt alloc)
+                     | CON1 ({con, il, alloc}, tr) => (chk_atp_opt alloc; chk tr)
+                     | DECON ({con, il}, tr) => chk tr
+                     | EXCON (excon, opt) => Option.app (fn (a,tr) => (chk_atp a; chk tr)) opt
+                     | DEEXCON (excon,tr) => chk tr
+                     | RECORD (alloc, trs) => (chk_atp_opt alloc; List.app chk trs)
+                     | SELECT (i, tr) => chk tr
+                     | DEREF tr => chk tr
+                     | REF (alloc,tr) => (chk_atp alloc; chk tr)
+                     | ASSIGN (tr1,tr2) => (chk tr1; chk tr2)
+                     | DROP tr => chk tr
+                     | EQUAL ({mu_of_arg1, mu_of_arg2}, tr1,tr2) => (chk tr1; chk tr2)
+                     | CCALL ({rhos_for_result, ...}, trs) => (List.app (chk_atp o #1) rhos_for_result;
+                                                               List.app chk trs)
+                     | BLOCKF64 (alloc, trs) => (chk_atp alloc; List.app chk trs)
+                     | SCRATCHMEM (n,alloc) => chk_atp alloc
+                     | EXPORT (_,tr) => chk tr
+                     | RESET_REGIONS ({force, regions_for_resetting,...}, tr) =>
+                       (List.app chk_atp regions_for_resetting;
+                        chk tr)
+                     | FRAME{declared_lvars, declared_excons} => ()
+                end
+        in (chk tr; false) handle Found => true
+        end
+
 
     (* --------------------------------
      * Pretty Printing
@@ -819,11 +882,21 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     fun layout_placeXphsize (place,phsize) =
         PP.HNODE{start="",finish="",childsep=PP.RIGHT ":",
                  children=[E.layout_effect place,layout_phsize phsize]}
-    fun layout_unit () = NONE
-    val layout_trip = layoutLambdaTrip (AtInf.layout_at layout_effectpp) (AtInf.layout_at layout_effectpp)
-      (SOME o layout_placeXphsize) layout_unit
 
-    fun layout_pgm(PGM{expression,...}) = layout_trip expression
+    fun layout_placeXphsize_smart b tr : StringTree option =
+        if allocates_space b then SOME(layout_placeXphsize b)
+        else (* zero-region *)
+          if free_except_for_constants (#1 b) tr then SOME(layout_placeXphsize b)
+          else NONE
+
+    fun layout_unit () = NONE
+
+    val layout_trip = layoutLambdaTrip (AtInf.layout_at layout_effectpp) (AtInf.layout_at layout_effectpp)
+                                       (SOME o layout_placeXphsize)
+                                       layout_placeXphsize_smart
+                                       layout_unit
+
+    fun layout_pgm (PGM{expression,...}) = layout_trip expression
 
     val pu_phsize =
         let fun toInt INF = 0

@@ -1,7 +1,6 @@
-
 (* Storage Mode Analysis *)
 
-structure AtInf: AT_INF =
+structure AtInf : AT_INF =
   struct
     structure PP = PrettyPrint
     structure Eff = Effect
@@ -32,7 +31,8 @@ structure AtInf: AT_INF =
        "Debug storage mode analysis."}
 
   val disable_atbot_analysis = Flags.add_bool_entry
-      {long="disable_atbot_analysis", short=NONE, menu=["Control Region Analyses","all storage modes attop (for POPL 96)"],
+      {long="disable_atbot_analysis", short=NONE,
+       menu=["Control Region Analyses","all storage modes attop (for POPL 96)"],
        item=ref false, neg=false, desc=
        "Disable storage mode analysis. That is, turn all\n\
         \allocation directives into attop."}
@@ -73,7 +73,7 @@ structure AtInf: AT_INF =
       else ()
 
   fun show_live_vars liveset : string =
-    PP.flatten1(LLV.layout_liveset liveset)
+      PP.flatten1(LLV.layout_liveset liveset)
 
   fun debug1 (rho_related, liveset) =
       if debug_which_at() then
@@ -97,42 +97,33 @@ structure AtInf: AT_INF =
         PP.NODE{start="(",finish = ")", indent= 1,
                 childsep = PP.RIGHT",",
                 children = [t1,PP.LEAF (show_place p)]}
+    fun withTrue (br: bool ref) (f: unit -> 'a) : 'a =
+        let val b = !br
+        in (br := true; f() before br := b)
+           handle X => (br := b; raise X)
+        end
   in
     fun lay_sigma_p (sigma,p:place option) =
-      let val a = !Flags.print_types
-(*
-          val b = print_regions()
-          val c = print_effects()
-*)
-      in
-        Flags.print_types:= true;
-(*
-        Flags.print_regions:=true;
-        Flags.print_effects := true;
-*)
-        case p of
-             SOME p =>
-             lay_pair(RType.mk_lay_sigma false sigma, p)
-                     footnote(Flags.print_types:= a (* ;
-                   Flags.print_regions:= b;
-                   Flags.print_effects := c *))
-           | NONE => RType.mk_lay_sigma false sigma
-      end
+        let val t = withTrue Flags.print_types (fn () => RType.mk_lay_sigma false sigma)
+        in case p of
+               SOME p => lay_pair(t,p)
+             | NONE => t
+        end
   end
 
   fun lay_header (force,lvar,(tau,p:place option)) =
-  if force
-  then PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
-               children = [PP.LEAF "You have requested resetting the regions that appear free ",
-                           PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
-                           lay_sigma_p(RType.type_to_scheme tau,p),
-                           PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
-                           PP.LEAF "Here are my objections (one for each region variable concerned):"]}
+      if force
+      then PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
+                   children = [PP.LEAF "You have requested resetting the regions that appear free ",
+                               PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                               lay_sigma_p(RType.type_to_scheme tau,p),
+                               PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
+                               PP.LEAF "Here are my objections (one for each region variable concerned):"]}
 
-  else PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
-               children = [PP.LEAF "You have suggested resetting the regions that appear free ",
-                           PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
-                           lay_sigma_p(RType.type_to_scheme tau,p)]}
+      else PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
+                   children = [PP.LEAF "You have suggested resetting the regions that appear free ",
+                               PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                               lay_sigma_p(RType.type_to_scheme tau,p)]}
 
   fun lay_set (rhos: place list) =
       PP.HNODE{start ="{", finish = "}", childsep = PP.RIGHT",",
@@ -591,8 +582,9 @@ structure AtInf: AT_INF =
                       end
                    ) handle _ =>
                            (log "\nStorage Mode Analysis failed at expression:";
-                            dump(MulExp.layoutLambdaExp(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)
-                             e);
+                            dump(MulExp.layoutLambdaExp (fn _ => NONE) (fn _ => NONE) (fn _ => NONE)
+                                                        (fn _ => fn _ => NONE) (fn _ => NONE)
+                                                        e);
                             raise AbortExpression)
 
             in TR(e', metaType, ateffects, mulef_r)
@@ -670,9 +662,14 @@ structure AtInf: AT_INF =
     fun layout_placeXmul (place,mul) =
         PP.HNODE{start="",finish="",childsep=PP.RIGHT ":",
                  children=[Eff.layout_effect place, Mul.layout_mul mul]}
+
     fun layout_unit () = NONE
+
     val layout_trip : (place at, place*mul, unit)trip -> StringTree =
-      MulExp.layoutLambdaTrip (layout_at Eff.layout_effect)(layout_at Eff.layout_effect) (SOME o layout_placeXmul) layout_unit
+        MulExp.layoutLambdaTrip (layout_at Eff.layout_effect) (layout_at Eff.layout_effect)
+                                (SOME o layout_placeXmul)
+                                (fn b => fn _ => SOME(layout_placeXmul b))
+                                layout_unit
 
     (* brief printing of expressions: *)
     fun layout_at' (p: 'a -> StringTree) (at : 'a at) =
@@ -690,20 +687,28 @@ structure AtInf: AT_INF =
     fun ignore _ = NONE
 
     fun layout_trip_brief (tr : (place at, place*mul, unit)trip): StringTree =
-      if print_regions() then
-         MulExp.layoutLambdaTrip
-             (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit tr
-      else
-         MulExp.layoutLambdaTrip ignore ignore ignore layout_unit tr
+        if print_regions() then
+          MulExp.layoutLambdaTrip
+              (layout_at' Eff.layout_effect) (layout_at'' Eff.layout_effect)
+              (SOME o layout_placeXmul)
+              (fn b => fn _ => SOME(layout_placeXmul b))
+              layout_unit tr
+        else
+          MulExp.layoutLambdaTrip ignore ignore ignore (fn _ => ignore) layout_unit tr
 
-    fun layout_exp_brief(e : (place at, place*mul, unit)LambdaExp): StringTree =
-      if print_regions() then
-          MulExp.layoutLambdaExp (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit e
-      else
-          MulExp.layoutLambdaExp ignore ignore ignore layout_unit e
+    fun layout_exp_brief (e : (place at, place*mul, unit)LambdaExp): StringTree =
+        if print_regions() then
+          MulExp.layoutLambdaExp (layout_at' Eff.layout_effect)
+                                 (layout_at'' Eff.layout_effect)
+                                 (SOME o layout_placeXmul)
+                                 (fn b => fn _ => SOME(layout_placeXmul b))
+                                 layout_unit e
+        else
+          MulExp.layoutLambdaExp ignore ignore ignore (fn _ => ignore) layout_unit e
 
 
     fun layout_pgm (PGM{expression,...}) = layout_trip expression
+
     fun layout_pgm_brief (PGM{expression,...}) = layout_trip_brief expression
 
 end
