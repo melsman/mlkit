@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2025-11-05: Prettier printing of MulExp expressions (e.g., call-explicit
+  expressions) (PR #196).
+
 * mael 2025-11-01: ReML: Avoid unifying quantified secondary explicit region
   variables.
 
