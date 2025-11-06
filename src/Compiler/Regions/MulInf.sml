@@ -72,22 +72,26 @@ struct
         else fn _ => NONE
     fun layout_rbind () =
         (fn f => fn l => fn _ => f l) (layout_bind())
+    fun explicit_bind (e,_) = Option.isSome (Eff.getRegVar e)
   in
 
     fun layoutExp e =
         MulExp.layoutLambdaExp (layout_alloc()) (layout_alloc())
                                (layout_bind()) (layout_rbind())
+                               explicit_bind
                                (fn _ => NONE)  (* do not print qmularefset's *)
                                e
 
     fun layouttrip tr =
         MulExp.layoutLambdaTrip (layout_alloc()) (layout_alloc())
                                 (layout_bind()) (layout_rbind())
+                                explicit_bind
                                 (fn _ => NONE)  (* do not print qmularefset's *)
                                 tr
     fun layoutLambdaPgm p =
         MulExp.layoutLambdaPgm (layout_alloc()) (layout_alloc())
                                (layout_bind()) (layout_rbind())
+                               explicit_bind
                                (fn _ => NONE)  (* do not print qmularefset's *)
                                p
   end

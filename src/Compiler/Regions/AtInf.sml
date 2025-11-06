@@ -583,7 +583,7 @@ structure AtInf : AT_INF =
                    ) handle _ =>
                            (log "\nStorage Mode Analysis failed at expression:";
                             dump(MulExp.layoutLambdaExp (fn _ => NONE) (fn _ => NONE) (fn _ => NONE)
-                                                        (fn _ => fn _ => NONE) (fn _ => NONE)
+                                                        (fn _ => fn _ => NONE) (fn _ => false) (fn _ => NONE)
                                                         e);
                             raise AbortExpression)
 
@@ -669,6 +669,7 @@ structure AtInf : AT_INF =
         MulExp.layoutLambdaTrip (layout_at Eff.layout_effect) (layout_at Eff.layout_effect)
                                 (SOME o layout_placeXmul)
                                 (fn b => fn _ => SOME(layout_placeXmul b))
+                                (fn (e,_) => Option.isSome (Eff.getRegVar e))
                                 layout_unit
 
     (* brief printing of expressions: *)
@@ -692,9 +693,10 @@ structure AtInf : AT_INF =
               (layout_at' Eff.layout_effect) (layout_at'' Eff.layout_effect)
               (SOME o layout_placeXmul)
               (fn b => fn _ => SOME(layout_placeXmul b))
+              (fn (e,_) => Option.isSome (Eff.getRegVar e))
               layout_unit tr
         else
-          MulExp.layoutLambdaTrip ignore ignore ignore (fn _ => ignore) layout_unit tr
+          MulExp.layoutLambdaTrip ignore ignore ignore (fn _ => ignore) (fn _ => false) layout_unit tr
 
     fun layout_exp_brief (e : (place at, place*mul, unit)LambdaExp): StringTree =
         if print_regions() then
@@ -702,10 +704,10 @@ structure AtInf : AT_INF =
                                  (layout_at'' Eff.layout_effect)
                                  (SOME o layout_placeXmul)
                                  (fn b => fn _ => SOME(layout_placeXmul b))
+                                 (fn (e,_) => Option.isSome (Eff.getRegVar e))
                                  layout_unit e
         else
-          MulExp.layoutLambdaExp ignore ignore ignore (fn _ => ignore) layout_unit e
-
+          MulExp.layoutLambdaExp ignore ignore ignore (fn _ => ignore) (fn _ => false) layout_unit e
 
     fun layout_pgm (PGM{expression,...}) = layout_trip expression
 

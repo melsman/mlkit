@@ -894,6 +894,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     val layout_trip = layoutLambdaTrip (AtInf.layout_at layout_effectpp) (AtInf.layout_at layout_effectpp)
                                        (SOME o layout_placeXphsize)
                                        layout_placeXphsize_smart
+                                       (fn (e,_) => Option.isSome (E.getRegVar e))
                                        layout_unit
 
     fun layout_pgm (PGM{expression,...}) = layout_trip expression

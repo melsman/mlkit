@@ -1,7 +1,5 @@
 
-signature EFFECT =
-sig
-
+signature EFFECT = sig
   type lvar
   type excon
   type prop
@@ -11,10 +9,8 @@ sig
 
   val ord_runType  : runType -> int
   val show_runType : runType -> string
-(*
-  val lub_runType: runType * runType -> runType
-*)
   val lub_runType0 : runType * runType -> runType option
+
   type effect and place sharing type place = effect
 
   type Report = PrettyPrint.Report
@@ -99,7 +95,6 @@ sig
   val toplevel_arreff                 : effect
 
   val push              : cone -> cone
-
   val pop               : cone -> coneLayer * cone
       (* (layer, B') = B:  B must contain at least one level. layer is
          the topmost level of B and B' is the rest of B. NOTE: not all
@@ -230,7 +225,7 @@ sig
   val instNodes         : (effect*effect)list -> cone -> cone
   val instNodesClever   : (effect*effect)list -> cone -> cone * (effect * delta_phi)list
 
-  (* contract_effects(effects):
+  (* contract_effects effects:
      contract cycles in "effects"; the "effects" are assumed to be
      a list of nodes from a well-formed cone. Thus all nodes on the
      same strongly connected component are assumed to have the same
@@ -244,7 +239,7 @@ sig
      it is moved to the lower level in the cone.
   *)
 
-  val lower             : int -> effect    -> cone -> cone
+  val lower             : int -> effect -> cone -> cone
   val lower_delta       : int -> delta_phi -> cone -> cone
 
   val topsort           : effect list -> effect list
