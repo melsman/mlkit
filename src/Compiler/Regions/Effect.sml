@@ -184,6 +184,20 @@ struct
       in loop cs nil
       end
 
+    val print_control_abbrev_layout = Flags.add_bool_entry
+        {long="print_control_abbrev_layout", short=NONE, menu=["Layout","abbrev layout"],
+         item=ref true, neg=true, desc=
+         "Abbreviate layout of multiplicity expressions and call-\n\
+         \explicit expressions. For instance, do not show at-\n\
+         \annotations for top-level functions, do not show at-\n\
+         \annotations for immediate constants, do not show region-\n\
+         \bindings for zero-size regions that are associated only\n\
+         \with immediate constants, do not show empty formal and\n\
+         \actual region parameter lists, do not show 'funcall' and\n\
+         \'fncall' annotations, do not show 'id' casts on base values,\n\
+         \do not show unique id for explicit region variables or \n\
+         \explicit effect variables."}
+
   fun pp_rho_simple (r:place) : string =
       let fun layout_einfo_rho_simple einfo =
               case einfo of
@@ -196,7 +210,11 @@ struct
   and layout_rho00 (cmplx:bool) (key,level,ty,explicit,protected,constraints) =
       let val n = case explicit of
                       NONE => "r" ^ show_key key
-                    | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
+                    | SOME rv =>
+                      let val r = "`" ^ RegVar.pr rv
+                      in if print_control_abbrev_layout() then r
+                         else r ^ "_" ^ show_key key
+                      end
       in PP.LEAF (n ^
                   (if print_rho_types() then show_runType ty
                    else "") ^

@@ -38,17 +38,7 @@ struct
          "Prefix infix operations with module identifier to further\n\
           \indicate the type of the operation."}
 
-    val print_control_abbrev_layout = Flags.add_bool_entry
-        {long="print_control_abbrev_layout", short=NONE, menu=["Layout","abbrev layout"],
-         item=ref true, neg=true, desc=
-         "Abbreviate layout of multiplicity expressions and call-\n\
-         \explicit expressions. For instance, do not show at-\n\
-         \annotations for top-level functions, do not show at-\n\
-         \annotations for immediate constants, do not show region-\n\
-         \bindings for zero-size regions that are associated only\n\
-         \with immediate constants, do not show empty formal and\n\
-         \actual region parameter lists, do not show 'funcall' and\n\
-         \'fncall' annotations, do not show 'id' casts on base values."}
+    val print_control_abbrev_layout = Flags.is_on0 "print_control_abbrev_layout" (* defined in Effect *)
 
     fun debug_parallelism_p () = Flags.is_on "debug_parallelism"
 
@@ -196,9 +186,10 @@ struct
                      mu_arg : mu, (*mu of argument for c function*)
                      mu_res : mu}
                     * ('a,'b,'c)trip
-      | RESET_REGIONS of {force: bool,liveset:liveset option,regions_for_resetting: 'a list} * ('a,'b,'c)trip     (* for programmer-directed resetting of regions;
-                                                                         * resetting is forced iff "force" is true.
-                                                                         * Forced resetting is not guaranteed to be sound *)
+      | RESET_REGIONS of {force: bool,liveset:liveset option,
+                          regions_for_resetting: 'a list} * ('a,'b,'c)trip (* for programmer-directed resetting of regions;
+                                                                            * resetting is forced iff "force" is true.
+                                                                            * Forced resetting is not guaranteed to be sound *)
       | FRAME    of {declared_lvars: {lvar: lvar,
                                       sigma: sigma,
                                       other: 'c,
@@ -286,7 +277,7 @@ struct
             val _ = already_reported:= []  (* reset *)
             fun warn_puts TE e =
                 case e of
-                    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} =>
+                    FIX{shared_clos, functions, scope, ...} =>
                     let val TE' =
                             foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
                                       RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), SOME shared_clos,
@@ -437,7 +428,6 @@ struct
                )
            and warn_puts_opt TE NONE = ()
              | warn_puts_opt TE (SOME e) = warn_puts_trip TE e
-
       in
           warn_puts TE e
       end
@@ -1084,7 +1074,6 @@ struct
         | layPatLet pat = HNODE{start = "val (", finish = ")", childsep = RIGHT",",
                                 children = map (fn (lvar,_,tyvars,ref epss,tau,rho) =>
                                                    layVarSigma "" (lvar,[],epss,tyvars,tau,rho)) pat}
-
       (* precedence *)
       val n_inf = 1000
       val n_fun = 8
@@ -1116,6 +1105,60 @@ struct
           in par (n-n_case) (PP.NODE{start="", finish="", indent=0, childsep=PP.NOSEP,
                                      children=[t1,t2]})
           end
+
+      (* If lamb is a variable lv then we can attempt to print branches on the form
+            c => let lv' = decon(c,lv) in e
+         as
+            c lv' => e
+         Notice that this strategy is also safe for wildcard branches on the form
+            _ => let lv' = decon(c,lv) in e
+         which should also be printed as
+            c lv' => e
+      *)
+
+      fun skipLETR (tr as TR(LETREGION{B,rhos=ref l,body},_,_,_)) =
+          let val effects = if print_effects()
+                            then List.filter Eff.is_arrow_effect (!B)
+                            else nil
+          in if not(print_regions()) orelse (List.null l andalso List.null effects)
+             then skipLETR body
+             else tr
+          end
+        | skipLETR tr = tr
+
+      fun layoutSwitchDecon n laytrip show_const (sw as SWITCH(lamb,rules,wildcardOpt)) =
+          case skipLETR lamb of
+              TR(VAR{lvar,...},_,_,_) =>
+              let val rules = map (fn (x,tr) => (show_const x,tr)) rules @
+                              (case wildcardOpt of
+                                   SOME tr => [("_", tr)]
+                                 | NONE => [])
+                  fun child0 (x,tr) =
+                      PP.NODE{start="", finish="", indent=0,
+                              children=[PP.LEAF x, laytrip(tr,n_case)],
+                              childsep=PP.RIGHT " => "}
+                  fun child (x:string,tr) =
+                      case skipLETR tr of
+                          TR(LET{pat=[(lv',_,_,_,_,_,_)], bind, scope,...},_,_,_) =>
+                          (case skipLETR bind of
+                               TR(DECON({con,...}, trv),_,_,_) =>
+                               (case skipLETR trv of
+                                    TR(VAR{lvar=lv,...},_,_,_) =>
+                                    if Lvars.eq(lvar, lv)
+                                    then child0 (Con.pr_con con ^ " " ^ Lvars.pr_lvar lv', scope)
+                                    else child0 (x, tr)
+                                  | _ => child0 (x, tr))
+                             | _ => child0 (x, tr))
+                        | _ => child0 (x, tr)
+                  val t1 = PP.NODE{start="case ", finish=" of ", indent=5, childsep=PP.NOSEP,
+                                   children=[laytrip(lamb,0)]}
+                  val t2 = PP.NODE{start="" , finish="", indent=2,
+                                   childsep=PP.LEFT " | ",
+                                   children=map child rules}
+              in par (n-n_case) (PP.NODE{start="", finish="", indent=0, childsep=PP.NOSEP,
+                                         children=[t1,t2]})
+              end
+            | _ => layoutSwitch n laytrip show_const sw
 
       fun lay_il (lvar_string:string, il, rhos_actuals) : StringTree =
           let val (rhos,epss,taus)= R.un_il(il)
@@ -1488,9 +1531,9 @@ struct
             | LETREGION{B, rhos = ref l, body} => layout_let_fix_region_and_exception n lamb
             | SWITCH_I {switch,precision} => layoutSwitch n layTrip IntInf.toString switch
             | SWITCH_W {switch,precision} => layoutSwitch n layTrip (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
-            | SWITCH_S(sw) => layoutSwitch n layTrip (fn s => quote s) sw
-            | SWITCH_C(sw) => layoutSwitch n layTrip Con.pr_con sw
-            | SWITCH_E(sw) => layoutSwitch n layTrip Excon.pr_excon sw
+            | SWITCH_S sw => layoutSwitch n layTrip (fn s => quote s) sw
+            | SWITCH_C sw => layoutSwitchDecon n layTrip Con.pr_con sw
+            | SWITCH_E sw => layoutSwitch n layTrip Excon.pr_excon sw
             | FRAME{declared_lvars, declared_excons} =>
               let val l1 = map layout_declared_lvar
                                declared_lvars
