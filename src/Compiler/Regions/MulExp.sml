@@ -1459,23 +1459,69 @@ struct
                         | "__bytetable_size" => SOME ("String","size")
                         | "__bytetable_update" => SOME ("String","update")
                         | "__bytetable_sub" => SOME ("String","sub")
-                        | "__xorb_word32ub" => SOME ("W32", "xorb")
-                        | "__word64ub_to_word32ub" => SOME("W32", "fromW64")
-                        | "__word32ub_to_int64ub" => SOME("I64", "fromW32")
-                        | "__shift_right_unsigned_word32ub" => SOME ("W32", ">>")
-                        | "__shift_left_word32ub" => SOME ("W32", "<<")
-                        | "__shift_right_signed_word63" => SOME ("W63", "~>>")
-                        | "__andb_word32ub" => SOME ("W32", "andb")
-                        | "__andb_word63" => SOME ("W63", "andb")
+
                         | "table_size" => SOME ("W", "table_size")
                         | "word_table_init" => SOME ("W", "table_init")
                         | "word_sub0" => SOME ("W", "sub0")
                         | "word_update0" => SOME("W", "update0")
                         | "word_table0" => SOME("W", "table0")
+
                         | "allocStringML" => SOME("String", "alloc")
                         | "implodeStringML" => SOME("String","implode")
+                        | "lessStringML" => SOME("String","<")
+                        | "lesseqStringML" => SOME("String","<=")
+                        | "greaterStringML" => SOME("String",">")
+                        | "greatereqStringML" => SOME("String",">=")
+                        | "implodeCharsML" => SOME("String","implode")
+                        | "ord" => SOME("Char","ord")
+
+                        | "__mod_int31" => SOME("I31","mod")
+                        | "__div_int31" => SOME("I31","div")
+                        | "__neg_int31" => SOME("I31","~")
+                        | "__quot_int31" => SOME("I31","quot")
+                        | "__rem_int31" => SOME("I31","rem")
+                        | "__int32ub_to_int31" => SOME("I31","fromI32")
+
+                        | "__mod_int32ub" => SOME("I32","mod")
+                        | "__div_int32ub" => SOME("I32","div")
+                        | "__neg_int32ub" => SOME("I32","~")
+                        | "__quot_int32ub" => SOME("I32","quot")
+                        | "__rem_int32ub" => SOME("I32","rem")
+                        | "__word32ub_to_int32ub" => SOME("I32","fromW32")
+                        | "__int31_to_int32ub" => SOME("I32", "fromI31")
+
                         | "__mod_int64ub" => SOME("I64","mod")
                         | "__div_int64ub" => SOME("I64","div")
+                        | "__neg_int64ub" => SOME("I64","~")
+                        | "__quot_int64ub" => SOME("I64","quot")
+                        | "__rem_int64ub" => SOME("I64","rem")
+                        | "__word32ub_to_int64ub" => SOME("I64", "fromW32")
+                        | "__word64ub_to_int64ub_X" => SOME("I64", "fromW64X")
+
+                        | "__shift_left_word31" => SOME("W31","<<")
+                        | "__word32ub_to_word31" => SOME("W31","fromW32")
+                        | "__andb_word31" => SOME("W31","andb")
+
+                        | "__andb_word32ub" => SOME ("W32", "andb")
+                        | "__xorb_word32ub" => SOME ("W32", "xorb")
+                        | "__shift_right_unsigned_word32ub" => SOME ("W32", ">>")
+                        | "__shift_left_word32ub" => SOME ("W32", "<<")
+                        | "__mod_word32ub" => SOME("W32","mod")
+                        | "__div_word32ub" => SOME("W32","div")
+                        | "__word64ub_to_word32ub" => SOME("W32", "fromW64")
+                        | "__bytetable_update_word32ub" => SOME("W32.Table","update")
+                        | "__bytetable_sub_word32ub" => SOME("W32.Table","sub")
+
+                        | "__shift_right_signed_word63" => SOME ("W63", "~>>")
+                        | "__andb_word63" => SOME ("W63", "andb")
+                        | "__bytetable_sub_word63" => SOME("W63.Table","sub")
+                        | "__bytetable_update_word63" => SOME("W63.Table","update")
+
+                        | "__andb_word64ub" => SOME("W64","andb")
+                        | "__orb_word64ub" => SOME("W64","orb")
+                        | "__shift_right_unsigned_word64ub" => SOME ("W64", ">>")
+                        | "__int64ub_to_word64ub" => SOME("W64","fromI64")
+                        | "__word31_to_word64ub_X" => SOME("W64","fromW31X")
                         | _ => NONE
               in case (rhos_for_result, try_infix name, args) of
                      ([], SOME opr, [t1,t2]) => layBin(opr, n, t1, t2, NONE)
@@ -1683,27 +1729,40 @@ struct
                                                        children = [R.mk_lay_sigma'' (SOME o Eff.layout_effect)
                                                                    omit_region_info (rhos,epss,tyvars,Type)]})
                                        else NONE
-                     fun pp_binds l =
+
+                     fun pp_binds lay l =
                          if List.null l then NONE
                          else SOME(PP.HNODE{start = "", finish = "", childsep = PP.RIGHT", ",
-                                            children = layHseq layout_bind l})
+                                            children = layHseq lay l})
 
                      val rho_formals_opt =
                          if print_rhos_formals then
                            if print_control_abbrev_layout() andalso List.null rhos_formals
                            then NONE
-                           else pp_binds rhos_formals
+                           else pp_binds layout_bind rhos_formals
                          else NONE
 
                      val dropped_rho_formals_opt =
                          case bound_but_never_written_into of
                              SOME l => if print_rhos_formals then
-                                         if !Flags.print_types then pp_binds l
-                                         else pp_binds (List.filter explicit_bind l)
+                                         if !Flags.print_types then pp_binds layout_bind l
+                                         else pp_binds layout_bind (List.filter explicit_bind l)
                                        else NONE
                            | _ => NONE
+
+                     val epss_formals_opt =
+                         if not print_rhos_formals then NONE
+                         else pp_binds (SOME o Eff.layout_effect) (List.filter (Option.isSome o Eff.getRegVar) epss)
+
+                     val epss_dropped_rhos_opt =
+                         case (epss_formals_opt, dropped_rho_formals_opt) of
+                             (SOME t1, SOME t2) => SOME (NODE{start="",finish="",indent=0,childsep=PP.RIGHT", ",
+                                                              children=[t1,t2]})
+                           | (NONE,opt) => opt
+                           | (opt, NONE) => opt
+
                      val rho_formals_both_opt =
-                         case (dropped_rho_formals_opt, rho_formals_opt) of
+                         case (epss_dropped_rhos_opt, rho_formals_opt) of
                              (SOME t1, SOME t2) =>
                              SOME(PP.HNODE{start="[",finish="]",childsep=PP.RIGHT"|",
                                            children=[t1,t2]})
