@@ -168,10 +168,53 @@ struct
                            explicit : regvar option,
                            protected : int ref}
 
-  fun layout_rho0 (key,level,ty,explicit,protected,constraints) =
+  type effect = einfo G.node
+  type place = effect
+
+  fun eq_effect (node1, node2) = G.eq_nodes(node1,node2)
+
+  fun rho_constraints_elimdups (cs:(Report*lvar option*effect)list) : (Report*lvar option*effect)list =
+      let fun loop cs acc =
+              case cs of
+                  nil => acc
+                | c::cs =>
+                  case List.find (fn c' => eq_effect(#3 c,#3 c')) acc of
+                      SOME _ => loop cs acc
+                    | NONE => loop cs (c::acc)
+      in loop cs nil
+      end
+
+    val print_control_abbrev_layout = Flags.add_bool_entry
+        {long="print_control_abbrev_layout", short=NONE, menu=["Layout","abbrev layout"],
+         item=ref true, neg=true, desc=
+         "Abbreviate layout of multiplicity expressions and call-\n\
+         \explicit expressions. For instance, do not show at-\n\
+         \annotations for top-level functions, do not show at-\n\
+         \annotations for immediate constants, do not show region-\n\
+         \bindings for zero-size regions that are associated only\n\
+         \with immediate constants, do not show empty formal and\n\
+         \actual region parameter lists, do not show 'funcall' and\n\
+         \'fncall' annotations, do not show 'id' casts on base values,\n\
+         \do not show unique id for explicit region variables or \n\
+         \explicit effect variables."}
+
+  fun pp_rho_simple (r:place) : string =
+      let fun layout_einfo_rho_simple einfo =
+              case einfo of
+                  RHO{key,level,ty,explicit,protected,constraints,...} =>
+                  layout_rho00 false (key,level,ty,explicit,protected,constraints)
+                | _ => die "layout_einfo_rho_simple: expecting rho"
+      in PP.flatten1(G.layout_node layout_einfo_rho_simple r)
+      end
+
+  and layout_rho00 (cmplx:bool) (key,level,ty,explicit,protected,constraints) =
       let val n = case explicit of
                       NONE => "r" ^ show_key key
-                    | SOME rv => "`" ^ RegVar.pr rv ^ "_" ^ show_key key
+                    | SOME rv =>
+                      let val r = "`" ^ RegVar.pr rv
+                      in if print_control_abbrev_layout() then r
+                         else r ^ "_" ^ show_key key
+                      end
       in PP.LEAF (n ^
                   (if print_rho_types() then show_runType ty
                    else "") ^
@@ -179,25 +222,18 @@ struct
                        else "") ^
                   (if print_rho_levels() then "(" ^ show_level level ^ ")"
                    else "") ^
-                  (if print_constraints() then
-                         case !constraints of
+                  (if cmplx andalso print_constraints() then
+                         case rho_constraints_elimdups(!constraints) of
                              nil => ""
-                           | rhos => "[memo]"
+                           | cs => " # {" ^ String.concatWith "," (map (pp_rho_simple o #3) cs) ^ "}"
                    else "")
                  )
       end
 
-  type effect = einfo G.node
+  fun layout_rho0 x : StringTree = layout_rho00 true x
 
   fun pp_atomic_effect (ae:effect) =
-      let fun layout_einfo_rho_simple einfo =
-              case einfo of
-                  RHO{key,level,ty,explicit,protected,constraints,...} =>
-                  layout_rho0 (key,level,ty,explicit,protected,constraints)
-                | _ => die "layout_einfo_rho_simple: expecting rho"
-          fun pp_rho_simple r =
-              PP.flatten1(G.layout_node layout_einfo_rho_simple r)
-          fun pp base n =
+      let fun pp base n =
               case G.out_of_node n of
                   [n] => PP.LEAF (base ^ "(" ^ pp_rho_simple n ^ ")")
                 | _ => die "layout_einfo_ae_simple.pp.expecting exactly one out node"
@@ -260,11 +296,9 @@ struct
       layout_einfo0 {binding=true} ei
 
   type instlist = (effect * effect) list   (* for constraints *)
-  type place = effect
 
   val empty = G.mk_node (UNION{represents = NONE})
 
-  fun eq_effect (node1, node2) = G.eq_nodes(node1,node2)
   fun mem_effect e es = List.exists (fn e' => eq_effect(e,e')) es
 
   fun layout_effect e = G.layout_node layout_einfo e
@@ -1498,7 +1532,7 @@ struct
                 in RHO{level = l1, put = aux_combine(p1,p2),
                        get = aux_combine(g1,g2), mut = aux_combine(m1,m2), key = min_key(k1,k2),
                        instance = instance1, pix = pix1, ty = ty,
-                       explicit=explicit,protected=protected,constraints=ref(cs1 @ cs2)}
+                       explicit=explicit,protected=protected,constraints=ref(rho_constraints_elimdups (cs1@cs2))}
                 end
              | _ => die "einfo_combine_rho"
   end
