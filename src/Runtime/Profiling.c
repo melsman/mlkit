@@ -567,20 +567,20 @@ Statistics()
 	    ((long)stackBot)-((long)maxStackP), (((long)stackBot)-((long)maxStackP))/Mb);
     fprintf(stderr,"Number of profile ticks: %d\n", noOfTickInFile);
     /*
-    fprintf(stderr,  "      Space used on prof. info. at that time: %d bytes (%.1fMb)\n",
+    fprintf(stderr,  "      Space used on prof. info. at that time: %ld bytes (%.1fMb)\n",
 	    maxRegionDescUseProfInf*sizeof(long*), (maxRegionDescUseProfInf*sizeof(long*))/Mb);
     fprintf(stderr,"  ---------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Max space used on infinite region descs on stack: %d bytes (%4.1fMb)\n",
+    fprintf(stderr,"  Max space used on infinite region descs on stack: %ld bytes (%4.1fMb)\n",
 	    (maxRegionDescUseInf+maxRegionDescUseProfInf)*sizeof(long*),((maxRegionDescUseInf+maxRegionDescUseProfInf)*sizeof(long*))/Mb);
-    fprintf(stderr,"      Space used on profiling information at that time: %d bytes (%4.1fMb)\n",
+    fprintf(stderr,"      Space used on profiling information at that time: %ld bytes (%4.1fMb)\n",
 	    (maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*), ((maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Max space used on finite regions on stack: %d bytes (%4.1fMb)\n",
+    fprintf(stderr,"  Max space used on finite regions on stack: %ld bytes (%4.1fMb)\n",
 	    (maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*),((maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*))/Mb);
-    fprintf(stderr,"    Space used on profiling information at that time: %d bytes (%4.1fMb)\n",
+    fprintf(stderr,"    Space used on profiling information at that time: %ld bytes (%4.1fMb)\n",
 	    maxProfStack*sizeof(long*), (maxProfStack*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
-	    */
+    */
     fprintf(stderr,"\n*********End of region statistics*********\n");
   }
   return;

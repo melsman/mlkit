@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2025-11-18: Fix stack reporting in region profile graphs.
+
 * mael 2025-11-05: Prettier printing of MulExp expressions (e.g., call-explicit
   expressions) (PR #196).
 

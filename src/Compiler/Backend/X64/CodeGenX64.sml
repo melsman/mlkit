@@ -1496,7 +1496,7 @@ struct
            imov(L (NameLab "regionDescUseProfInf"), R treg0,               (*    maxProfStack =            *)
            iadd(L (NameLab "regionDescUseProfFin"), R treg0,               (*       regionDescUseProfInf   *)
            iadd(L (NameLab "allocProfNowFin"), R treg0,                    (*     + regionDescUseProfFin   *)
-           iadd(R treg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
+           imov(R treg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
            I.lab labCont ::                                                   (* }                            *)
                                                                               (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
                                                                               (* if ( reg0 > maxMem ) maxMem = reg0; *)
