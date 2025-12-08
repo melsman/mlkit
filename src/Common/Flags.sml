@@ -669,7 +669,7 @@ local
   fun off () = (gc := false;
                 preserve_tail_calls := false;
                 dangling_pointers := true;
-                Directory.turn_on "aggresive_opt";
+                Directory.turn_off "aggressive_opt";
                 tag_values := false)
   fun on () =
       if Directory.is_on "reml" then
@@ -677,7 +677,7 @@ local
       else (gc := true;
             preserve_tail_calls := true;
             dangling_pointers := false;
-            Directory.turn_on "aggresive_opt";
+            Directory.turn_on "aggressive_opt";
             tag_values := true)
   fun off_gengc () = (off(); (* We also turn gc off *)
                       gengc := false)
