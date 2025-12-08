@@ -1555,3 +1555,115 @@ series = {PLASTIC '11}
   day =          {29},
   note =	 {DIKU Technical Report}
 }
+
+@article{10.1145/3674628,
+author = {Elsman, Martin},
+title = {Double-Ended Bit-Stealing for Algebraic Data Types},
+year = {2024},
+issue_date = {August 2024},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {8},
+number = {ICFP},
+url = {https://doi.org/10.1145/3674628},
+doi = {10.1145/3674628},
+abstract = {Algebraic data types are central to the development and evaluation of most functional programs. It is therefore important for compilers to choose compact and efficient representations of such types, in particular to achieve good memory footprints for applications. Algebraic data types are most often represented using blocks of memory where the first word is used as a so-called tag, carrying information about the constructor, and the following words are used for carrying the constructor's arguments. As an optimisation, lists are usually represented more compactly, using a technique called bit-stealing, which, in its simplest form, uses the word-alignment property of pointers to byte-addressed allocated memory to discriminate between the nil constructor (often represented as 0x1) and the cons constructor (aligned pointer to allocated pair). Because the representation supports that all values can be held uniformly in one machine word, possibly pointing to blocks of memory, type erasure is upheld. However, on today's 64-bit architectures, memory addresses (pointers) are represented using only a subset of the 64 bits available in a machine word, which leave many bits unused. In this paper, we explore the use, not only of the least-significant bits of pointers, but also of the most-significant bits, for representing algebraic data types in a full ML compiler. It turns out that, with such a particular utilisation of otherwise unused bits, which we call double-ended bit-stealing, it is possible to choose unboxed representations for a large set of data types, while still not violating the principle of uniform data-representations. Examples include Patricia trees, union-find data structures, stream data types, internal language representations for types and expressions, and mutually recursive ASTs for full language definitions. The double-ended bit-stealing technique is implemented in the MLKit compiler and speedup ranges from 0 to 26 percent on benchmarks that are influenced by the technique. For MLKit, which uses abstract data types extensively, compilation speedups of around 9 percent are achieved for compiling MLton (another Standard ML compiler) and for compiling MLKit itself.},
+journal = {Proc. ACM Program. Lang.},
+month = aug,
+articleno = {239},
+numpages = {33},
+keywords = {Compilation, Data-type representations, Functional languages, Unboxing}
+}
+
+@article{10.1145/3591256,
+author = {Elsman, Martin and Henriksen, Troels},
+title = {Parallelism in a Region Inference Context},
+year = {2023},
+issue_date = {June 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {7},
+number = {PLDI},
+url = {https://doi.org/10.1145/3591256},
+doi = {10.1145/3591256},
+abstract = {Region inference is a type-based program analysis that takes a non-annotated program as input and constructs a program that explicitly manages memory allocation and deallocation by dividing the heap into a stack of regions, each of which can grow and shrink independently from other regions, using constant-time operations. Whereas region-based memory management has shown useful in the contexts of explicit region-based memory management, and in particular, in combination with parallel execution of code, combining region inference with techniques for higher-order parallel programming has not been investigated. In this paper, we present an implementation of a fork-join parallel construct suitable for a compiler based on region inference. We present a minimal higher-order language incorporating the parallel construct, including typing rules and a dynamic semantics for the language, and demonstrate type soundness. We present a novel effect-based region-protection inference algorithm and discuss benefits and shortcomings of the approach. We also describe an efficient implementation embedded in the MLKit Standard ML compiler. Finally, we evaluate the approach and the implementation based on a number of parallel benchmarks, and thereby demonstrate that the technique effectively utilises multi-core architectures in a higher-order functional setting.},
+journal = {Proc. ACM Program. Lang.},
+month = jun,
+articleno = {142},
+numpages = {23},
+keywords = {Region Inference, Parallelism, Memory Management}
+}
+
+@article{10.1145/3591229,
+author = {Elsman, Martin},
+title = {Garbage-Collection Safety for Region-Based Type-Polymorphic Programs},
+year = {2023},
+issue_date = {June 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {7},
+number = {PLDI},
+url = {https://doi.org/10.1145/3591229},
+doi = {10.1145/3591229},
+abstract = {Region inference offers a mechanism to reduce (and sometimes entirely remove) the need for reference-tracing garbage collection by inferring where to insert allocation and deallocation instructions in a program at compile time. When the mechanism is combined with techniques for reference-tracing garbage collection, which is helpful in general to support programs with very dynamic memory behaviours, it turns out that region-inference is complementary to adding generations to a reference-tracing collector. However, region-inference and the associated region-representation analyses that make such a memory management strategy perform well in practice are complex, both from a theoretical point-of-view and from an implementation point-of-view. In this paper, we demonstrate a soundness problem with existing theoretical developments, which have to do with ensuring that, even for higher-order polymorphic programs, no dangling-pointers appear during a reference-tracing collection. This problem has materialised as a practical soundness problem in a real implementation based on region inference. As a solution, we present a modified, yet simple, region type-system that captures garbage-collection effects, even for polymorphic higher-order code, and outline how region inference and region-representation analyses are adapted to the new type system. The new type system allows for associating simpler region type-schemes with functions, compared to original work, makes it possible to combine region-based memory management with partly tag-free reference-tracing (and generational) garbage-collection, and repairs previously derived work that is based on the erroneous published results.},
+journal = {Proc. ACM Program. Lang.},
+month = jun,
+articleno = {115},
+numpages = {23},
+keywords = {region-inference, garbage-collection, Standard ML}
+}
+
+@inproceedings{10.1007/978-3-030-39197-3_7,
+author = {Elsman, Martin and Hallenberg, Niels},
+title = {On the Effects of Integrating Region-Based Memory Management and Generational Garbage Collection in {ML}},
+year = {2020},
+isbn = {978-3-030-39196-6},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-030-39197-3_7},
+doi = {10.1007/978-3-030-39197-3_7},
+abstract = {We present a region-based memory management scheme with support for generational garbage collection. The scheme is implemented in the MLKit Standard ML compiler, which features a compile-time region inference algorithm. The compiler generates native x64 machine code and deploys region types at runtime to avoid write barrier problems and to support partly tag-free garbage collection. We measure the characteristics of the scheme, for a number of benchmarks, and compare it to the Mlton state-of-the-art Standard ML compiler and configurations of the MLKit with and without region inference and generational garbage collection enabled. Although region inference often serves the purpose of generations, we demonstrate that, in some cases, generational garbage collection combined with region inference is beneficial.},
+booktitle = {Practical Aspects of Declarative Languages: 22nd International Symposium, PADL 2020, New Orleans, LA, USA, January 20–21, 2020, Proceedings},
+pages = {95–112},
+numpages = {18},
+keywords = {Region inference, Generational garbage collection},
+location = {New Orleans, LA, USA}
+}
+
+@article{ELSMAN_HALLENBERG_2021,
+  title={Integrating region memory management and tag-free generational garbage collection},
+  volume={31},
+  DOI={10.1017/S0956796821000010},
+  journal={Journal of Functional Programming},
+  author={Elsman, Martin and Hallenberg, Niels},
+  year={2021}
+}
+
+
+@Misc{deep-elsman25,
+  author = {Martin Elsman},
+  title = {Compositional Deep Argument Flattening},
+  howpublished = {In Informal Proceeding of the 2025 ML Family Workshop (ML ‘25), Singapore},
+  year = {2025},
+  month = {October},
+  url = {https://elsman.com/pdf/ml25-deep-flattening.pdf}
+}
+
+@article{10.1145/3632921,
+author = {Elsman, Martin},
+title = {Explicit Effects and Effect Constraints in {ReML}},
+year = {2024},
+issue_date = {January 2024},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {8},
+number = {POPL},
+url = {https://doi.org/10.1145/3632921},
+doi = {10.1145/3632921},
+abstract = {An important aspect of building robust systems that execute on dedicated hardware and perhaps in constrained environments is to control and manage the effects performed by program code.We present ReML, a higher-order statically-typed functional language, which allows programmers to be explicit about the effects performed by program code and in particular effects related to memory management Allowing programmers to be explicit about effects, the regions in which values reside, and the constraints under which code execute, makes programs robust to changes in the program source code and to compiler updates, including compiler optimisations.ReML is integrated with a polymorphic inference system that builds on top of region-inference, as it is implemented in the MLKit, a Standard ML compiler that uses region-based memory management as its primary memory management scheme.},
+journal = {Proc. ACM Program. Lang.},
+month = jan,
+articleno = {79},
+numpages = {25},
+keywords = {Region-inference, Effect Systems, Parallelism, Memory Management}
+}

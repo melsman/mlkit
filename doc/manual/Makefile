@@ -1,6 +1,6 @@
 all: mlkit.pdf
 
-mlkit.pdf: mlkit.tex Makefile
+mlkit.pdf: mlkit.tex Makefile sml.tex
 	pdflatex mlkit
 	bibtex mlkit
 	pdflatex mlkit

@@ -9,13 +9,13 @@ exception Tl
 fun tl [] = raise Tl
   | tl (_ ::xs) = xs
 
-exception Error of string 
+exception Error of string
 
-local 
+local
   val error_f = Error "f"
 in
-  fun f(l) = 
+  fun f l =
       hd(tl(tl l)) handle _ => raise error_f
 end
-     
-val r = f[1,2,3,4];
+
+val r = f [1,2,3,4];

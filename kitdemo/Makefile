@@ -42,13 +42,13 @@ clean:
 	(cd utils; rm -rf *~ MLB)
 
 .PHONY: pdfs
-pdfs: life80.pdf life200.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf
+pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf
 
 life.exe: life.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
 
 life.rp: life.exe
-	./$< -file $@ -microsec 400 > life.out
+	./$< -file $@ -microsec 280 > life.out
 
 life%.ps: life.rp
 	../bin/rp2ps -name "Game of life - $* snapshots" -source $< -region $@ -sampleMax $*
@@ -57,13 +57,13 @@ msort.exe: msort.mlb Makefile msortrun.sml msort.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
 
 msort.rp: msort.exe
-	./$< -file $@ -microsec 400 > msort.out
+	./$< -file $@ -notimer 8000 > msort.out
 
 msortregion.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -region $@ -sampleMax 200
+	../bin/rp2ps -name "Mergesort" -source $< -region $@ -sampleMax 500
 
 msortstack.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 200
+	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 500
 
 length.exe: length.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
