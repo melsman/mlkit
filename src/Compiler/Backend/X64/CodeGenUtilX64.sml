@@ -24,6 +24,8 @@ struct
   datatype reg = datatype I.reg
   datatype Offset = datatype I.Offset
 
+  fun die s  = Crash.impossible ("CodeGenUtilX64." ^ s)
+
   val rem_dead_code = I.rem_dead_code
   val i2s = I.i2s
 
@@ -116,7 +118,6 @@ struct
                 G.label finish C
               end
        | _ => I.call(NameLab name) :: C
-    in
 
     (* 1. push stack arguments
        2. shuffle register arguments (adjust fsz)
@@ -125,20 +126,15 @@ struct
        5. on return, reestablish (esp)
      *)
 
+    fun drop n nil = nil
+      | drop 0 xs = xs
+      | drop n (x::xs) = drop (n-1) xs
+
+    in
+
     fun compile_c_call_prim (name:string, args:SS.Aty list, opt_ret:SS.Aty option, fsz:int, tmp:reg, C) =
-        let fun drop n nil = nil
-              | drop 0 xs = xs
-              | drop n (x::xs) = drop (n-1) xs
-            fun push_arg (aty,fsz,C) = push_aty(aty,tmp,fsz,C)
+        let fun push_arg (aty,fsz,C) = push_aty(aty,tmp,fsz,C)
             val nargs = List.length args
-(*
-            val () = if nargs > List.length RI.args_reg_ccall then
-                       warn ("compile_c_call_prim: at most " ^
-                             Int.toString (List.length RI.args_reg_ccall) ^
-                             " arguments are passed in registers - " ^ name ^ " takes " ^
-                             Int.toString nargs ^ " arguments")
-                     else ()
-*)
             val args_stack = drop (List.length RI.args_reg_ccall) args
             val nargs_stack = List.length args_stack
             val args = ListPair.zip (args, RI.args_reg_ccall)
@@ -158,6 +154,7 @@ struct
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. Currently supports at most 6 arguments. *)
+
     fun compile_c_call_auto (name,args,rhos_for_result,opt_res,fsz,tmp,C) =
         let val args = if List.length args > List.length RI.args_reg_ccall then
                          die ("compile_c_call_auto: at most " ^
