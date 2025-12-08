@@ -1491,15 +1491,15 @@ struct
          in
            imov(L maxStackLab, R treg0,     (* The stack grows downwards!! *)
            I.cmpq(R rsp, R treg0) ::
-           I.jl labCont ::                                                    (* if ( rsp < *maxStack ) {     *)
-           imov(R rsp, L maxStackLab,                                         (*    *maxStack = rsp ;         *)
-           imov(L (NameLab "regionDescUseProfInf"), R treg0,               (*    maxProfStack =            *)
+           I.jl labCont ::                                                 (* if ( rsp < *maxStack ) {     *)
+           imov(R rsp, L maxStackLab,                                      (*    *maxStack = rsp ;         *)   (* bytes *)
+           imov(L (NameLab "regionDescUseProfInf"), R treg0,               (*    maxProfStack =            *)   (* words *)
            iadd(L (NameLab "regionDescUseProfFin"), R treg0,               (*       regionDescUseProfInf   *)
            iadd(L (NameLab "allocProfNowFin"), R treg0,                    (*     + regionDescUseProfFin   *)
            imov(R treg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
-           I.lab labCont ::                                                   (* }                            *)
-                                                                              (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
-                                                                              (* if ( reg0 > maxMem ) maxMem = reg0; *)
+           I.lab labCont ::                                                (* }                            *)
+                                                                           (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
+                                                                           (* if ( reg0 > maxMem ) maxMem = reg0; *)
            imov(L (NameLab "allocNowInf"), R treg0,
            isub(L (NameLab "regionDescUseProfInf"), R treg0,
            isub(L (NameLab "regionDescUseProfFin"), R treg0,
@@ -1507,7 +1507,7 @@ struct
            G.mul(I "8", treg0) $
            iadd(L (NameLab "stackBot"), R treg0,
            G.sub(R rsp, treg0) $
-           imov(L (NameLab "maxMem"), R treg1,                             (* we can store in treg1 even with imov *)
+           imov(L (NameLab "maxMem"), R treg1,                             (* we can store in treg1 even with imov *)  (* bytes *)
            I.cmpq(R treg1, R treg0) ::
            I.jl labCont1 ::
            imov(R treg0, L (NameLab "maxMem"),
