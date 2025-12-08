@@ -496,7 +496,7 @@ printProfTab()
  */
 long
 maxSizeStack() {
-  return ((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*)));
+  return (((long)stackBot)-((long)maxStack))-(long)(maxProfStack*(sizeof(long*)));
 }
 
 
@@ -561,8 +561,10 @@ Statistics()
 	    maxRegionDescUseInf*sizeof(long*), (maxRegionDescUseInf*(sizeof(long*)))/Mb);
     fprintf(stderr,"  Max size of stack: %ld bytes (%.1fMb)\n",
 	    maxSizeStack(), maxSizeStack()/Mb);
-    fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n",
-	    ((long)stackBot)-((long)maxStack), ((((long)stackBot)-((long)maxStack))*1.0)/Mb);
+    fprintf(stderr,"    incl. prof. info (stackBot - maxStack): %ld bytes (%.1fMb)\n",
+	    ((long)stackBot)-((long)maxStack), (((long)stackBot)-((long)maxStack))/Mb);
+    fprintf(stderr,"    prof. info: %ld bytes (%.1fMb)\n",
+	    maxProfStack*sizeof(long*), maxProfStack*sizeof(long*)/Mb);
     fprintf(stderr,"    in profile tick: %ld bytes (%.1fMb)\n",
 	    ((long)stackBot)-((long)maxStackP), (((long)stackBot)-((long)maxStackP))/Mb);
     fprintf(stderr,"Number of profile ticks: %d\n", noOfTickInFile);
@@ -580,6 +582,8 @@ Statistics()
     fprintf(stderr,"    Space used on profiling information at that time: %ld bytes (%4.1fMb)\n",
 	    maxProfStack*sizeof(long*), (maxProfStack*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
+    fprintf(stderr, "sizeFiniteRegionDesc (words): %ld\n", sizeFiniteRegionDesc);
+    fprintf(stderr, "sizeObjectDesc (words): %ld\n", sizeObjectDesc);
     */
     fprintf(stderr,"\n*********End of region statistics*********\n");
   }

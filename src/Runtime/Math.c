@@ -949,6 +949,24 @@ runtime_test0 (uintptr_t a1, uintptr_t a2, uintptr_t a3) {
   return ret;              /* (1*1)+(3*2)+(5*3) ==> 22 */
 }
 
+/* A test function for testing multi-parameter passing (auto) */
+uintptr_t
+runtime_test1auto (uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5,
+		   uintptr_t a6, uintptr_t a7, uintptr_t a8, uintptr_t a9, uintptr_t a10) {
+  long int ret =
+    2 * (long int)a1 +
+    3 * (long int)a2 +
+    5 * (long int)a3 +
+    7 * (long int)a4 +
+    11 * (long int)a5 +
+    17 * (long int)a6 +
+    19 * (long int)a7 +
+    23 * (long int)a8 +
+    29 * (long int)a9 +
+    31 * (long int)a10;
+  return ret;
+}
+
 /* A test function for testing multi-parameter passing (non-auto) */
 uintptr_t
 runtime_test1 (uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5,
