@@ -104,60 +104,58 @@ The MLKit is a compiler infrastructure for
 %
 \index{Standard ML}%
 %
-the Standard ML programming language \cite{mthm97}. The MLKit supports
-all of Standard ML, including Modules and most parts of the SML Basis
-Library \cite{basislib2004}.  The MLKit features a region-based native
-backend that generates efficient x64 machine code. This version of the
-compiler is also named MLKit with Regions. The MLKit also features a
+the Standard ML programming language \cite{mthm97}. The MLKit supports all of
+Standard ML, including Modules and most parts of the SML Basis Library
+\cite{basislib2004}.  The MLKit features a region-based native backend that
+generates efficient x64 machine code. This version of the compiler is also named
+MLKit with Regions. The MLKit also features a
 %
 \index{JavaScript backend}%
 %
-JavaScript backend, which generates code for execution in web
-browsers. The MLKit with Regions, which this report is about, is
-intended for the development of stand-alone applications that must be
-reliable, fast, and space efficient.
+JavaScript backend, which generates code for execution in web browsers. The
+MLKit with Regions, which this report is about, is intended for the development
+of stand-alone applications that must be reliable, fast, and space efficient.
 
-There has always been a tension between high-level features in
-programming languages and the programmer's legitimate need to
-understand programs at the operational level. Very likely, if a
-resource conscious programmer is forced to make a choice between the
-two, he will choose the latter.
+There has always been a tension between high-level features in programming
+languages and the programmer's legitimate need to understand programs at the
+operational level. Very likely, if a resource conscious programmer is forced to
+make a choice between the two, he will choose the latter.
 
-The MLKit with Regions is the result of a research and development
-effort, which was initiated at the University of Copenhagen in 1992.
-The goal of the project has been to develop implementation technology
-that combines the advantages of using a high-level programming
-language, in this case Standard ML, with a model of computation that
-allows programmers to reason about how much space and time their
-programs use.
+The MLKit with Regions is the result of a research and development effort, which
+was initiated at the University of Copenhagen in 1992.  The goal of the project
+has been to develop implementation technology that combines the advantages of
+using a high-level programming language, in this case Standard ML, with a model
+of computation that allows programmers to reason about how much space and time
+their programs use.
 
-In most call-by-value languages, it is not terribly hard to give a
-model of time usage that is good enough for elementary reasoning.
+In most call-by-value languages, it is not terribly hard to give a model of time
+usage that is good enough for elementary reasoning.
 
-For space, however, the situation is much less satisfactory. Part of
-the reason is that many programs must recycle memory while running.
-For all such programs, the mechanisms that reclaim memory inevitably
-become part of the reasoning.  This is true irrespective of whether
-memory recycling is done by a
+For space, however, the situation is much less satisfactory. Part of the reason
+is that many programs must recycle memory while running.  For all such programs,
+the mechanisms that reclaim memory inevitably become part of the reasoning.
+This is true irrespective of whether memory recycling is done by a
+%
 \index{stack}%
+%
 stack mechanism or by pointer tracing garbage collection.
 
-In the stack discipline, every point of allocation is matched by a
-point of deallocation and these points are obvious from the
-program. By contrast, garbage collection techniques usually separate
-allocation, which is done by the programmer, from deallocation, which
-is done by a garbage collector.  The advantage of using reference
-tracing
+In the stack discipline, every point of allocation is matched by a point of
+deallocation and these points are obvious from the program. By contrast, garbage
+collection techniques usually separate allocation, which is done by the
+programmer, from deallocation, which is done by a garbage collector.  The
+advantage of using reference tracing
+%
 \index{garbage collection}%
-garbage collection techniques is that they apply to a wide range of
-high-level concepts now found in programming languages, for example
-recursive data types, higher-order functions, exceptions, references,
-and objects. The disadvantage is that it is becoming increasingly
-difficult for the programmer to reason about lifetimes. Lifetimes may
-depend on subtle details in the compiler and in the garbage collector.
-Thus, it is hard to model memory in a way that is useful to
-programmers. Also, compilers offer little assistance for reasoning
-about lifetimes.
+%
+garbage collection techniques is that they apply to a wide range of high-level
+concepts now found in programming languages, for example recursive data types,
+higher-order functions, exceptions, references, and objects. The disadvantage is
+that it is becoming increasingly difficult for the programmer to reason about
+lifetimes. Lifetimes may depend on subtle details in the compiler and in the
+garbage collector.  Thus, it is hard to model memory in a way that is useful to
+programmers. Also, compilers offer little assistance for reasoning about
+lifetimes.
 
 In this report, we describe how Standard ML can be equipped with a different
 memory management discipline, namely a {\em region-based} memory model.  Like
@@ -167,25 +165,23 @@ region discipline also applies to recursive data types, references, and
 higher-order functions, for which one has hitherto mostly used reference tracing
 garbage collection techniques.
 
-The reader we have in mind is a person with a Computer Science
-background who is interested in developing reliable and efficient
-applications written in Standard ML. Also, the report may be of
-interest to researchers of programming languages, since the MLKit
-with Regions is a fairly bold exercise in program analysis. We should
-emphasize, however, that this report is very much intended as a user's
+The reader we have in mind is a person with a Computer Science background who is
+interested in developing reliable and efficient applications written in Standard
+ML. Also, the report may be of interest to researchers of programming languages,
+since the MLKit with Regions is a fairly bold exercise in program analysis. We
+should emphasize, however, that this report is very much intended as a user's
 guide, not a scientific publication.
 
 This report consists of three parts:
 \begin{description}
-\item[Part I, Overview:] This part gives an overview of the ideas
-  that underlie programming with regions in the MLKit.
+\item[Part I, Overview:] This part gives an overview of the ideas that underlie
+  programming with regions in the MLKit.
 \item[Part II, Understanding Regions:] The second part of the report
-  systematically presents the language constructs of the Standard ML
-  Language, showing for each construct how it can be used when
-  programming with regions.
-\item[Part III, System Reference:] In this part, we explain how to
-  interact with the system, how to use the region profiler and how to
-  call C functions from the MLKit.
+  systematically presents the language constructs of the Standard ML Language,
+  showing for each construct how it can be used when programming with regions.
+\item[Part III, System Reference:] In this part, we explain how to interact with
+  the system, how to use the region profiler and how to call C functions from
+  the MLKit.
 \end{description}
 
 The present report describes the
@@ -238,7 +234,8 @@ following features:
 
 \item Support for generational garbage collection as a generalisation of the
   ordinary pointer-tracing garbage collector that can be used as an add-on to
-  region-based memory management \cite{10.1007/978-3-030-39197-3_7,ELSMAN_HALLENBERG_2021}.
+  region-based memory management
+  \cite{10.1007/978-3-030-39197-3_7,ELSMAN_HALLENBERG_2021}.
 
 \item A large number of bug-fixes, performance improvements, and general new
   features, such as colorful region profile graphs...
@@ -267,41 +264,51 @@ separate compilation, based on ML Basis Files.
 
 MLKit Version~4 extends MLKit Version~3 with the following features:
 \begin{enumerate}
-\item Support for pointer tracing garbage collection. Pointer tracing
-  garbage collection works well together with the region memory model.
-  While most de-allocations can be efficiently performed by region
-  de-allocation, there are some uses of memory for which life time
-  prediction is difficult. In these cases pointer tracing garbage
-  collection does a good job in collaboration with region memory
-  management \cite{hallenberg99,het02}.
+\item Support for pointer tracing garbage collection. Pointer tracing garbage
+  collection works well together with the region memory model.  While most
+  de-allocations can be efficiently performed by region de-allocation, there are
+  some uses of memory for which life time prediction is difficult. In these
+  cases pointer tracing garbage collection does a good job in collaboration with
+  region memory management \cite{hallenberg99,het02}.
 \item An x86 native backend. The
+  %
   \index{backend!native}%
-  backend support has switched from HP PA-RISC to Linux on x86
-  architectures.
+  %
+  backend support has switched from HP PA-RISC to Linux on x86 architectures.
 
-\item A \index{backend!bytecode}% \index{bytecode}% bytecode
-  backend. To improve portability of programs, MLKit Version 4
-  featured a bytecode backend, which generated code for execution
-  on a stack machine with region primitives. The stack
-  machine closely resembles the stack machine used in the OCaml and
-  Moscow ML compilers.
+\item A
+  %
+  \index{backend!bytecode}%
+  \index{bytecode}%
+  %
+  bytecode backend. To improve portability of programs, MLKit Version 4 featured
+  a bytecode backend, which generated code for execution on a stack machine with
+  region primitives. The stack machine closely resembles the stack machine used
+  in the OCaml and Moscow ML compilers.
 \end{enumerate}
 
 The
+%
 \index{MLKit!Version 3}%
-MLKit Version~3 extends the MLKit Version~2 with support for the
-Standard ML Modules language. The
+%
+MLKit Version~3 extends the MLKit Version~2 with support for the Standard ML
+Modules language. The
+%
 \index{MLKit!Version 2}%
+%
 MLKit Version~2 is a further development of the
+%
 \index{MLKit!Version 1}%
-MLKit Version~1, which was developed at Edinburgh University and
-University of Copenhagen \cite{brtt93}.  We hope you will enjoy using
-the MLKit as much as we have enjoyed developing it. If
-your experience with the MLKit gives rise to comments and suggestions,
-specifically with relation to the goals and visions expressed here,
-please feel free to write.  Further information is available at the
-MLKit
+%
+MLKit Version~1, which was developed at Edinburgh University and University of
+Copenhagen \cite{brtt93}.  We hope you will enjoy using the MLKit as much as we
+have enjoyed developing it. If your experience with the MLKit gives rise to
+comments and suggestions, specifically with relation to the goals and visions
+expressed here, please feel free to write.  Further information is available at
+the MLKit
+%
 \index{web site}%
+%
 Github web site:
 \begin{tabbing}
 \hskip2cm\url{https://github.com/melsman/mlkit}
@@ -317,19 +324,18 @@ Revised 2002, 2004, 2005, 2021 by Martin Elsman
 \newpage
 
 \section*{Contributions}
-Many people have contributed to the development of the MLKit,
-including Peter Bertelsen, Lars Birkedal, Martin Elsman, Niels
-Hallenberg, Tommy H\o jfeld Olesen, Nick Rothwell, Mads Tofte, David
-N.\@ Turner, Peter Sestoft, and Carsten Varming.
+Many people have contributed to the development of the MLKit, including Peter
+Bertelsen, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy H\o jfeld
+Olesen, Nick Rothwell, Mads Tofte, David N.\@ Turner, Peter Sestoft, and Carsten
+Varming.
 
-People who have contributed with bug reports and patches include, but
-are not limited to (in alphabetical order) Johnny Andersen, Troels
-Henriksen, Koshy A Joseph, Ken Friis Larsen, Philip Munksgaard,
-Henning Niss, Daniel Wang, and Stephen Weeks.
+People who have contributed with bug reports and patches include, but are not
+limited to (in alphabetical order) Johnny Andersen, Troels Henriksen, Koshy A
+Joseph, Ken Friis Larsen, Philip Munksgaard, Henning Niss, Daniel Wang, and
+Stephen Weeks.
 
 \section*{License}
-The MLKit compiler and tools are released under the GNU General Public
-License:
+The MLKit compiler and tools are released under the GNU General Public License:
 
 {\sc
 \begin{quote}
@@ -349,9 +355,8 @@ License:
 \end{quote}
 }
 
-Parts of the MLKit (the runtime system and the Basis Library) is
-distributed under the MIT licence:
-{\sc
+Parts of the MLKit (the runtime system and the Basis Library) is distributed
+under the MIT licence: {\sc
 \begin{quote}
 The MIT License
 
@@ -376,8 +381,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 \end{quote}
 }
 
-For details, see the file \inline{doc/license/MLKit-LICENSE} in the
-source distribution.
+For details, see the file \inline{doc/license/MLKit-LICENSE} in the source
+distribution.
 
 %==============================
 
@@ -1793,9 +1798,11 @@ in the structures
 \lstinline{Word64}.
 
 Similarly as for integers, when garbage collection is enabled, the structure
-\lstinline{Word} is identical to the structure \lstinline{Word63} and values of type \lstinline{Word64.word} are represented boxed. Contrary, when garbage collection is
-disabled, the structure \lstinline{Word} is identical to the structure \lstinline{Word64}
-and values of type \lstinline{Word64.word} are represented unboxed.
+\lstinline{Word} is identical to the structure \lstinline{Word63} and values of
+type \lstinline{Word64.word} are represented boxed. Contrary, when garbage
+collection is disabled, the structure \lstinline{Word} is identical to the
+structure \lstinline{Word64} and values of type \lstinline{Word64.word} are
+represented unboxed.
 
 \section{Reals}
 
@@ -1904,28 +1911,33 @@ is enabled.
 
 A string is represented by a 64-bit pointer into an infinite region. A string is
 stored in a region page if it fits in the page; otherwise, it is allocated using
-\inline{malloc} and linked with the region so that it can be \inline{free}ed when the
-region is deallocated. The internal string representation is completely
+\inline{malloc} and linked with the region so that it can be \inline{free}ed
+when the region is deallocated. The internal string representation is completely
 transparent to the programmer, who does not have to worry about the actual size
 of region pages. Characters of a string take up only 8 bits of memory each. The
 size of a string is kept along with the characters that make up the string. For
 compatibility with many C routines, the character sequence is null-terminated.
 
-Calls to \lstinline{ord}, \lstinline{chr}, \lstinline{str}, and \lstinline{size} take constant time and
-space.  Calls of \lstinline{explode}, \lstinline{implode}, \lstinline{concat}, \lstinline{substring},
-and \verb+^+ take time and space proportional to the sum of the size of their
+Calls to \lstinline{ord}, \lstinline{chr}, \lstinline{str}, and \lstinline{size}
+take constant time and space.  Calls of \lstinline{explode},
+\lstinline{implode}, \lstinline{concat}, \lstinline{substring}, and
+\lstinline!^! take time and space proportional to the sum of the size of their
 input and their output.
 
 The string and character operations can raise exceptions, as detailed in the
 Standard ML Basis Library documentation.
 
-The structures \lstinline{Char}, \lstinline{String}, \lstinline{CharVector}, \lstinline{Byte}, and \lstinline{StringCvt} provide other useful operations on characters and
-strings.\footnote{Consult the files \boxml{basis/CHAR.sig}, \boxml{basis/STRING.sig}, \boxml{basis/MONO\_VECTOR.sml}, \boxml{basis/BYTE.sig}, and \boxml{basis/STRING\_CVT.sml}.}
+The structures \lstinline{Char}, \lstinline{String}, \lstinline{CharVector},
+\lstinline{Byte}, and \lstinline{StringCvt} provide other useful operations on
+characters and strings.\footnote{Consult the files \boxml{basis/CHAR.sig},
+\boxml{basis/STRING.sig}, \boxml{basis/MONO\_VECTOR.sml},
+\boxml{basis/BYTE.sig}, and \boxml{basis/STRING\_CVT.sml}.}
 
 \section{Booleans}
 
-The boolean values \lstinline{true} and \lstinline{false} are represented as 64-bit words,
-although only one bit is used to denote the value.  Booleans are unboxed. The
+The boolean values \lstinline{true} and \lstinline{false} are represented as
+64-bit words, although only one bit is used to denote the value.  Booleans are
+unboxed. The
 %
 \index{initial basis}
 %
@@ -4884,65 +4896,63 @@ page~\pageref{msortregion.fig}.
 \end{figure}
 
 \section{Example: Scanning Text Files}
-\label{scan.sec}
+
+\label{scan.sec}%
+%
 In this section we present a program that can
+%
 \index{scan@\texttt{scan}}%
-scan a sequence of Standard ML source files and compute what
-percentage of the source files is made up by comments. Recall that an
-ML comment begins with the two characters {\tt (*}, ends with {\tt
-  *)}, and that comments may be nested but must be balanced (within
-each file, we require).
+%
+scan a sequence of Standard ML source files and compute what percentage of the
+source files is made up by comments. Recall that an ML comment begins with the
+two characters \kw{(*}, ends with \kw{*)}, and that comments may be nested but
+must be balanced (within each file, we require).
 
-The obvious solution to this problem is to implement an automaton with
-counters to keep track of the level of nesting of parentheses, number
-of characters read, and number of characters within comments. This solution
-provides an interesting test for region inference: although designed
-with the lambda calculus in mind, does the scheme cope with good
-old-fashioned state computations?
+The obvious solution to this problem is to implement an automaton with counters
+to keep track of the level of nesting of parentheses, number of characters read,
+and number of characters within comments. This solution provides an interesting
+test for region inference: although designed with the lambda calculus in mind,
+does the scheme cope with good old-fashioned state computations?
 
-Let us be ambitious and write a program that only ever holds on to one
-character at a time when it scans a file. In other words, the aim is
-to use constant space (i.e., space consumption should be independent
-of the length of the input file).
+Let us be ambitious and write a program that only ever holds on to one character
+at a time when it scans a file. In other words, the aim is to use constant space
+(i.e., space consumption should be independent of the length of the input file).
 
-To this end, let us arrange to use a region with infinite multiplicity to
-hold the current input character and then reset that region before we proceed
-to the next character. The iteration is done by tail recursion, using region
+To this end, let us arrange to use a region with infinite multiplicity to hold
+the current input character and then reset that region before we proceed to the
+next character. The iteration is done by tail recursion, using region
 endomorphisms to ensure constant space usage.
 
 The bulk of the program appears below.\footnote{MLB-file:
-  \boxml{kitdemo/scan.mlb}, file: \boxml{kitdemo/scan.sml}.} The
-scanning of a single file is done by {\tt scan}, which contains three
-mutually recursive region endomorphisms ({\tt count}, {\tt
-  after\_lpar}, and {\tt after\_star}) written in accordance with
-the guidelines in Section~\ref{length.sec}.
+\boxml{kitdemo/scan.mlb}, file: \boxml{kitdemo/scan.sml}.} The scanning of a
+single file is done by \kw{scan}, which contains three mutually recursive region
+endomorphisms (\kw{count}, \kw{after\_lpar}, and \kw{after\_star}) written in
+accordance with the guidelines in Section~\ref{length.sec}.
 
-It turns out that the constraints we have put on ourselves with running
-in constant space does work well with the combination of how
-\lstinline{TextIO} input streams buffers input data. Instead, we shall
-make use of the lower-level \lstinline{Posix} operations for opening and
-reading files.
+It turns out that the constraints we have put on ourselves with running in
+constant space does work well with the combination of how \kw{TextIO} input
+streams buffers input data. Instead, we shall make use of the lower-level
+\kw{Posix} operations for opening and reading files.
 
-The built-in function {\tt Posix.IO.readVec}, which reads a vector of
-bytes from an open file descriptor, understands storage modes; if
-called with storage mode {\tt atbot}, it will reset the region where
-the byte vector should be put before reading the bytes from the file
-descriptor.  Consequently, at every call of {\tt next}, the ``input
-buffer region'' will be reset.
+The built-in function \kw{Posix.IO.readVec}, which reads a vector of bytes from
+an open file descriptor, understands storage modes; if called with storage mode
+\fw{atbot}, it will reset the region where the byte vector should be put before
+reading the bytes from the file descriptor.  Consequently, at every call of
+\kw{next}, the ``input buffer region'' will be reset.
 
-The other important loop in the program is {\tt driver}, a function
-that repeatedly reads a file name from a given file descriptor, opens the
-file with that name, and calls {\tt scan} to process the file. Once
-again, we want to keep at most one file name in memory at a time, so
-we would like the region containing the file name to be reset upon
-each iteration.  As it turns out, {\tt readWord} will always try to
-store the string it creates at the bottom of the region in question.
+The other important loop in the program is \kw{driver}, a function that
+repeatedly reads a file name from a given file descriptor, opens the file with
+that name, and calls \kw{scan} to process the file. Once again, we want to keep
+at most one file name in memory at a time, so we would like the region
+containing the file name to be reset upon each iteration.  As it turns out,
+\kw{readWord} will always try to store the string it creates at the bottom of
+the region in question.
 
-In general however, when splitting a program unit into two, one may
-have to insert explicit $\resetr$ into the second unit, when
-operations from the first unit are called. This extra resetting may be
-necessary because formal region parameters of exported functions are
-connected to global regions in the region flow graph (cf., rule B3).
+In general however, when splitting a program unit into two, one may have to
+insert explicit $\resetr$ into the second unit, when operations from the first
+unit are called. This extra resetting may be necessary because formal region
+parameters of exported functions are connected to global regions in the region
+flow graph (cf., rule B3).
 
 \bigskip
 \hrule
@@ -5046,40 +5056,40 @@ end
 \hrule
 \bigskip
 
-The program was compiled both with and without profiling turned on.
-The output from running the program on 14 of the source files for the
-MLKit is shown here:
+The program was compiled both with and without profiling turned on.  The output
+from running the program on 14 of the source files for the MLKit is shown here:
 \begin{scriptcode}
-Parsing/Infixing.sml: size = 32156 comments: 5294 (16%)
-Parsing/Parse.sml: size = 4537 comments: 726 (16%)
-Parsing/Topdec.grm.sml: size = 195869 comments: 4698 (2%)
-Parsing/GRAMMAR_UTILS.sml: size = 4818 comments: 701 (14%)
-Parsing/INFIX_STACK.sml: size = 487 comments: 321 (65%)
-Parsing/Topdec.lex.sml: size = 49968 comments: 1023 (2%)
-Parsing/LEX_BASICS.sml: size = 2046 comments: 1289 (63%)
-Parsing/LEX_UTILS.sml: size = 1575 comments: 383 (24%)
-Parsing/GrammarUtils.sml: size = 17002 comments: 1820 (10%)
-Parsing/LexBasics.sml: size = 12649 comments: 3987 (31%)
-Parsing/MyBase.sml: size = 33803 comments: 11124 (32%)
-Parsing/HOOKS.sml: size = 312 comments: 170 (54%)
-Parsing/InfixStack.sml: size = 7404 comments: 2972 (40%)
-Parsing/LexUtils.sml: size = 8305 comments: 487 (5%)
+../src/Parsing/Infixing.sml: size = 32153 comments: 5294 (16%)
+../src/Parsing/Parse.sml: size = 5498 comments: 673 (12%)
+../src/Parsing/Topdec.grm.sml: size = 212870 comments: 4698 (2%)
+../src/Parsing/GRAMMAR_UTILS.sml: size = 5534 comments: 787 (14%)
+../src/Parsing/INFIX_STACK.sml: size = 487 comments: 321 (65%)
+../src/Parsing/Topdec.lex.sml: size = 49968 comments: 1023 (2%)
+../src/Parsing/LEX_BASICS.sml: size = 2048 comments: 1242 (60%)
+../src/Parsing/LEX_UTILS.sml: size = 1444 comments: 291 (20%)
+../src/Parsing/GrammarUtils.sml: size = 17262 comments: 1820 (10%)
+../src/Parsing/LexBasics.sml: size = 12636 comments: 3079 (24%)
+../src/Parsing/MyBase.sml: size = 33725 comments: 11104 (32%)
+../src/Parsing/HOOKS.sml: size = 312 comments: 170 (54%)
+../src/Parsing/InfixStack.sml: size = 7404 comments: 2972 (40%)
+../src/Parsing/LexUtils.sml: size = 8708 comments: 487 (5%)
 
-Total sizes: 370931 comments: 34995 (9%)
+Total sizes: 390049 comments: 33961 (8%)
 \end{scriptcode}
 A region profile for that run is shown in Figure~\ref{scan.fig}.  The
-almost-constant space usage is evident. The occasional disturbances
-are due to the non-iterative functions that read a file name from
-input by first reading one line and then extracting the name.
+almost-constant space usage is evident. The occasional disturbances are due to
+the non-iterative functions that read a file name from input by first reading
+one line and then extracting the name.
+
 \begin{figure}
 \includerp{scan.pdf}
-\caption{Region profile of the comment scanner. The occasional
-  increases in memory use is due to the functions that read a file
-  name from a file descriptor.  The program was compiled with
-  profiling enabled, then run with the command \inline{run -notimer 1000 < ../kitdemo/scanfiles}.
-  A PostScript file \inline{region.ps}
-  can be generated with the command \inline{rp2ps -region -sampleMax 200}
-  and converted to \inline{region.pdf} using \inline{ps2pdf region.ps region.pdf}. }
+\caption{Region profile of the comment scanner. The occasional increases in
+  memory use is due to the functions that read a file name from a file
+  descriptor.  The program was compiled with profiling enabled, then run with
+  the command \inline{run -notimer 1000 < ../kitdemo/scanfiles}.  A PostScript
+  file \inline{region.ps} can be generated with the command \inline{rp2ps
+    -region -sampleMax 200} and converted to \inline{region.pdf} using
+  \inline{ps2pdf region.ps region.pdf}. }
 \label{scan.fig}
 \end{figure}
 
@@ -5089,7 +5099,7 @@ input by first reading one line and then extracting the name.
 \label{hof.sec}
 %---------------------------------------------------------
 
-\section{Lambda Abstractions (\fw{fn})}
+\section{Lambda Abstractions}
 
 A \emph{lambda abstraction}
 %
@@ -5126,7 +5136,7 @@ Every occurrence of \lstinline{fn}
 in the program is considered an allocation point; the region-annotated version
 of the lambda abstraction is
 \begin{center}
-  \lstinline!{fn at $\rho$ $\id{pat}$ => $\id{exp}$!
+  \lstinline!fn at $\rho$ $\id{pat}$ => $\id{exp}$!
 \end{center}
 Standard ML allows functions to be declared using \lstinline{val} rather than
 \lstinline{fun}, for example,
@@ -5160,45 +5170,60 @@ lambda abstraction, the MLKit automatically converts the declaration into a
 after all.
 
 ML allows declarations of the form
+%
 \index{fun@\texttt{fun}}%
-$$\boxml{fun $f$ $\atpat_1\,\atpat_2 \cdots \atpat_n$ = $\exp$}$$
+%
+\begin{center}
+  \lstinline!fun $f$ $\mathit{atpat}_1$ $\mathit{atpat}_2$ $\cdots$ $\mathit{atpat}_n$ = $\mathit{exp}$!
+\end{center}
 as a shorthand for
-$$\boxml{fun $f$ $\atpat_1$ = fn $\atpat_2$ => $\cdots$ fn $\atpat_n$
-  => $\exp$}$$
-where $\atpat$ ranges over atomic patterns.  Functions
-declared using this abbreviation are said to be
+\begin{center}
+  \lstinline!fun $f$ $\atpat_1$ = fn $\atpat_2$ => $\cdots$ fn $\atpat_n$ => $\exp$!
+\end{center}
+where $\atpat$ ranges over atomic patterns.  Functions declared using this
+abbreviation are said to be
+%
 \index{function!Curried}%
+%
 {\em Curried}.
 
 \section{Region-Annotated Function Types}
-\label{functiontypes.sec}
+%
+\label{functiontypes.sec}%
+%
 The general form of a region-annotated
+%
 \index{function type!region-annotated}%
 \index{type!region-annotated}%
+%
 function type is
-$$([\mu_1,\cdots,\mu_n] \ar{\epsilon.\rea} \mu', \rho)$$
-where
-$\mu_1,\cdots\mu_n$ are the type with places of the arguments, $\mu'$
-is the type with place of the result, and $\rho$ is the region
-containing the closure for the function. When a function type has only
-one argument type, we shall often write it on the form $(\mu
-\ar{\epsilon.\rea} \mu', \rho)$, and so shall the MLKit.
+$$([\mu_1,\cdots,\mu_n] \ar{\epsilon.\rea} \mu', \rho)$$ where
+$\mu_1,\cdots\mu_n$ are the type with places of the arguments, $\mu'$ is the
+type with place of the result, and $\rho$ is the region containing the closure
+for the function. When a function type has only one argument type, we shall
+often write it on the form $(\mu \ar{\epsilon.\rea} \mu', \rho)$, and so shall
+the MLKit.
 
-As mentioned in Section~\ref{listtypes.sec}, the unusual looking
-object $\epsilon.\rea$ is called an
+As mentioned in Section~\ref{listtypes.sec}, the unusual looking object
+$\epsilon.\rea$ is called an
+%
 \index{arrow effect}%
+%
 {\em arrow effect}. Its first component
 is an
+%
 \index{effect variable}%
-effect variable, whose purpose will be explained shortly.  The second
-component is called the
+%
+effect variable, whose purpose will be explained shortly.  The second component
+is called the
+%
 \index{effect!latent}%
-{\em latent effect}, and describes the effect of evaluating the body
-of the function.
+%
+{\em latent effect}, and describes the effect of evaluating the body of the
+function.
 
-The following example illustrates why latent effects are crucial for
-knowing the lifetimes of closures.\footnote{Program
-  \boxml{kitdemo/lambda.sml}.} Consider
+The following example illustrates why latent effects are crucial for knowing the
+lifetimes of closures.\footnote{Program \boxml{kitdemo/lambda.sml}.} Consider
 \begin{smlcode}
   val n = let val f = let val xs = [1,2]
                       in fn ys => length xs + length ys
@@ -5206,338 +5231,334 @@ knowing the lifetimes of closures.\footnote{Program
           in f [7]
           end
 \end{smlcode}
-Notice that {\tt xs} has to be kept alive for as long as the function
-\boxml{(fn ys => $\cdots$)} may be called, for this function will
-access {\tt xs}, when called.  The region-annotated version of the
-example appears in Figure~\ref{lambda1.fig}.\footnote{To see the
-  output programs discussed in this section, enable the flag
-  \texttt{-print\_drop\_regions\_expression}.}
+Notice that \kw{xs} has to be kept alive for as long as the function
+%
+\lstinline!(fn ys => $\cdots$)!%
+%may be called, for this function will
+access \kw{xs}, when called.  The region-annotated version of the example
+appears in Figure~\ref{lambda1.fig}.\footnote{To see the output programs
+discussed in this section, enable the flag
+\boxml{-print\_drop\_regions\_expression}.}
+
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
    let val n =
-         let region r134:INF, r141:INF, r150:1;
+         let region r9:INF, r19:INF, r25:1;
              val f =
-               let val xs = [1,2] attop r134
-               in  fn atbot r150 ys =>
-                     length[] xs + length[] ys
+               let val xs = [1,2] at r9
+               in  fn at r25 ys => length xs + length ys
                end
-         in  f [7] attop r141
+         in  f [7] at r19
          end
    in  {|n: _|}
    end
 \end{smlcode}
-\caption{Region-annotated program illustrating that the lifetime of
-  a closure is at least as long as the lifetime of the values that
-  evaluation of the function body will require.}  \medskip \hrule
+\caption{Region-annotated program illustrating that the lifetime of a closure is
+  at least as long as the lifetime of the values that evaluation of the function
+  body will require.}  \medskip \hrule
 \label{lambda1.fig}
 \end{figure}
-We see that {\tt xs} is put in {\tt r134}, that the function closure
-for \boxml{(fn ys => $\cdots$)} is put in {\tt r150} and indeed, {\tt
-  r134} and {\tt r150} have the same lifetime. To understand how the
-region inference system figured that out, let us consider the effect
-and the region-annotated types of particular sub-expressions. Looking
-at the lambda abstraction, it must have a functional type of the form
-$(\tau\ar{\epsilon.\rea}\tau', {\tt r150})$ where $\rea$ is the effect
-$$\{\Get(\boxml{r1}), \Get(\boxml{r134}), \Get(\boxml{r141})\}$$
-Notice
-that \boxml{r134} occurs free in the type of the lambda abstraction.
-But, as pointed out in Section~\ref{effects.sec}, the criterion
+
+We see that \kw{xs} is put in \kw{r9}, that the function closure for
+\lstinline!(fn ys => $\cdots$)! is put in \kw{r25} and indeed, \kw{r9} and
+\kw{r25} have the same lifetime. To understand how the region inference system
+figured that out, let us consider the effect and the region-annotated types of
+particular sub-expressions. Looking at the lambda abstraction, it must have a
+functional type of the form $(\tau\ar{\epsilon.\rea}\tau', \kw{r25})$ where
+$\rea$ is the effect
+$$\{\Get(\kw{r1}), \Get(\kw{r9}), \Get(\kw{r19})\}$$ Notice that \kw{r9}
+occurs free in the type of the lambda abstraction.  But, as pointed out in
+Section~\ref{effects.sec}, the criterion
+%
 \index{region!de-allocation}%
-for putting a {\tt region} binding of $\rho$ around an expression
-$e$ is that $\rho$ occurs free neither in the type with place of $e$
-nor in the type scheme with place of any variable in the domain of the
-type environment. The smallest sub-expression of the program for which
-{\tt r134} does not occur free in the type with place of the expression
-is the right-hand side of the {\tt val} binding of {\tt n}, for that
-expression simply has type with place $\boxml{int}$.  And at that
-point, the only region variables that occur free in the type
-environment are global region variables.  Hence the placement of the
-{\tt region} binding of {\tt r134}.
+%
+for putting a \fw{region} binding of $\rho$ around an expression $e$ is that
+$\rho$ occurs free neither in the type with place of $e$ nor in the type scheme
+with place of any variable in the domain of the type environment. The smallest
+sub-expression of the program for which \kw{r9} does not occur free in the
+type with place of the expression is the right-hand side of the \fw{val} binding
+of \kw{n}, for that expression simply has type with place \kw{int}.  And at that
+point, the only region variables that occur free in the type environment are
+global region variables.  Hence the placement of the \fw{region} binding of
+\kw{r9}.
 
 \section{Arrow Effects}
-In a first-order language, effect variables might not be particularly
-important.  But in a higher-order language like ML, effect variables
-are useful for tracking dependencies between functions. The following
-example illustrates the point:\footnote{Program
-  \boxml{kitdemo/apply.sml}.}
+
+In a first-order language, effect variables might not be particularly important.
+But in a higher-order language like ML, effect variables are useful for tracking
+dependencies between functions. The following example illustrates the
+point:\footnote{Program \boxml{kitdemo/apply.sml}.}
 \begin{smlcode}
   fun apply f x = f x
   val y = apply (fn n => n + 1.0) 5.0
   val z = apply (fn m => m) 6
 \end{smlcode}
-Here is the region-annotated type scheme of {\tt apply}:
+Here is the region-annotated type scheme of \kw{apply}:
 \begin{tabbing}
-\qquad$\forall\alpha_0\alpha_2\rho_7\rho_8\epsilon_{11}\epsilon_{12}\epsilon_{13}.$\=$(\alpha_0
-        \ar{\epsilon_{11}.\emptyset}\alpha_2,\rho_8)\ar{\epsilon_{12}.\{\Put(\rho_7)\}}$\\
-            \>$(\alpha_0\ar{\epsilon_{13}.\{\Get(\rho_8), \epsilon_{11}\}}\alpha_2,\rho_7)$
+\qquad$\forall\alpha_0\alpha_2\rho_{17}\rho_{15}\epsilon_{16}\epsilon_{20}\epsilon_{18}.$\=$(\alpha_0
+        \ar{\epsilon_{16}.\emptyset}\alpha_2,\rho_{15})\ar{\epsilon_{20}.\{\Put(\rho_{17})\}}$\\
+            \>$(\alpha_0\ar{\epsilon_{18}.\{\Get(\rho_{15}), \epsilon_{16}\}}\alpha_2,\rho_{17})$
 \end{tabbing}
-The latent effect associated with $\epsilon_{12}$ shows that when {\tt
-  apply} is applied to a function, it may create (in fact: will
-create) a function closure in $\rho_7$.  The latent effect associated
-with $\epsilon_{11}$ is empty, because the declaration of {\tt apply}
-does not tell us anything about what effect its formal parameter {\tt
-  f} must have. Crucially, however, $\epsilon_{11}$ is included as an
-atomic effect in the latent effect associated with $\epsilon_{13}$;
-whenever the body of {\tt apply f} is evaluated, the body of {\tt f}
-may be (in fact: will be) evaluated.
+The latent effect associated with $\epsilon_{20}$ shows that when \kw{apply} is
+applied to a function, it may create (in fact: will create) a function closure
+in $\rho_{17}$.  The latent effect associated with $\epsilon_{16}$ is empty,
+because the declaration of \kw{apply} does not tell us anything about what
+effect its formal parameter \kw{f} must have. Crucially, however,
+$\epsilon_{16}$ is included as an atomic effect in the latent effect associated
+with $\epsilon_{18}$; whenever the body of \kw{apply f} is evaluated, the body
+of \kw{f} may be (in fact: will be) evaluated.
 
-The polymorphism in effects makes it possible to distinguish between
-the latent effects of different actual arguments to {\tt apply}. For
-example, the functions {\tt (fn n => n + 1.0)} and {\tt (fn m => m)}
-have different latent effects. Let us take the function {\tt (fn n =>
-  n + 1.0)} as an example. It has region-annotated type with place
+The polymorphism in effects makes it possible to distinguish between the latent
+effects of different actual arguments to \kw{apply}. For example, the functions
+\lstinline!(fn n => n + 1.0)! and \lstinline!(fn m => m)!  have different latent
+effects. Let us take the function \lstinline!(fn n => n + 1.0)! as an
+example. It has region-annotated type with place
 \begin{equation}
 \label{suc.lab}
-((\boxml{real},\rho_{18})\ar{\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\}}(\boxml{real}, \rho_5), \rho_{17})
+((\kw{real},\rho_{21})\ar{\epsilon_{26}.\{\Get(\rho_{21}),\Put(\rho_1)\}}(\kw{real}, \rho_1), \rho_{25})
 \end{equation}
-Here, the effect variable $\epsilon_{14}$ and the region variables
-$\rho_{18}$ and $\rho_5$ were chosen arbitrarily. (Actually, the
-region variable $\rho_5$ denotes the global region for reals.) The
-region inference algorithm discovers that (\ref{suc.lab}) can be
-derived from the argument type
-$$(\alpha_0\ar{\epsilon_{11}.\emptyset}\alpha_2,\rho_8)$$
-of the type scheme for {\tt apply} by the instantiating substitution
-$$S =(\!\!\begin{array}[t]{l}\{\alpha_0\mapsto(\boxml{real},\rho_{18}),\alpha_2\mapsto(\boxml{real}, \rho_5)\},\{
-       \rho_8\mapsto\rho_{17}\},\\
-     \{\epsilon_{11}\mapsto\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\})
+Here, the effect variable $\epsilon_{26}$ and the region variables $\rho_{25}$
+and $\rho_1$ were chosen arbitrarily. (Actually, the region variable $\rho_1$
+denotes the global region for reals.) The region inference algorithm discovers
+that (\ref{suc.lab}) can be derived from the argument type
+$$(\alpha_0\ar{\epsilon_{16}.\emptyset}\alpha_2,\rho_{15})$$
+of the type scheme for \kw{apply} by the instantiating substitution
+$$S =(\!\!\begin{array}[t]{l}\{\alpha_0\mapsto(\kw{real},\rho_{21}),\alpha_2\mapsto(\kw{real}, \rho_1)\}, \\\{
+       \rho_{17}\mapsto\rho_{27},\rho_{15}\mapsto\rho_{25}\},\\
+       \{\!\!\begin{array}[t]{l}\epsilon_{16}\mapsto\epsilon_{26}.\{\Get(\rho_{21}),\Put(\rho_1)\},\\
+        \epsilon_{20}\mapsto\epsilon_{24}.\{\Put(\rho_{27})\}, \\
+        \epsilon_{18}\mapsto\epsilon_{22}.\{\epsilon_{26},\Put(\rho_1),\Get(\rho_{25})\}
+       \end{array}\\
+       \}
+       )
    \end{array}$$
 Formally, a
+%
 \index{substitution}%
-{\em substitution\/} is a triple $(\St,\Sr,\Se)$, where $\St$ is a
-finite map from type variables to region-annotated types, $\Sr$ is a
-finite map from region variables to region variables, and $\Se$ is a
-finite map from effect variables to arrow effects.  Let us explain why
-substitutions map effect variables to arrow effects.  One alternative,
-one might consider, is to let substitutions map effect variables to
-effect variables. But then substitutions would not be able to account
-for the idea that effects can grow, when instantiated. In the {\tt
-  apply} example, for instance, the empty effect associated with
-$\epsilon_{11}$ has to grow to $\{\Get(\rho_{18}),\Put(\rho_5)\}$ at
-the concrete application of {\tt apply}. Otherwise, as it is easy to
-demonstrate, the region inference system would become unsound.
+%
+{\em substitution\/} is a triple $(\St,\Sr,\Se)$, where $\St$ is a finite map
+from type variables to region-annotated types, $\Sr$ is a finite map from region
+variables to region variables, and $\Se$ is a finite map from effect variables
+to arrow effects.  Let us explain why substitutions map effect variables to
+arrow effects.  One alternative, one might consider, is to let substitutions map
+effect variables to effect variables. But then substitutions would not be able
+to account for the idea that effects can grow, when instantiated. In the
+\kw{apply} example, for instance, the empty effect associated with
+$\epsilon_{16}$ has to grow to $\{\Get(\rho_{21}),\Put(\rho_1)\}$ at the
+concrete application of \kw{apply}. Otherwise, as it is easy to demonstrate, the
+region inference system would become unsound.
 
-Another alternative would be to let substitutions map effect variables
-to effects. But nor that would work well together with the idea of
-using substitutions to express growth of effects. For example,
-when applying the map $\{\epsilon\mapsto\{\Get(\rho_0),\Put(\rho_2)\}\}$ to
-the effect $\{\Get(\rho_9),\epsilon\}$, say, we would presumably yield
-the effect $\{\Get(\rho_9),\Get(\rho_0),\Put(\rho_2)\}$ in which the
-fact that the original effect had to be at least as large as whatever
-$\epsilon$ stands for, is lost.  Instead, we define substitution so
-that applying the effect substitution
+Another alternative would be to let substitutions map effect variables to
+effects. But nor that would work well together with the idea of using
+substitutions to express growth of effects. For example, when applying the map
+$\{\epsilon\mapsto\{\Get(\rho_0),\Put(\rho_2)\}\}$ to the effect
+$\{\Get(\rho_9),\epsilon\}$, say, we would presumably yield the effect
+$\{\Get(\rho_9),\Get(\rho_0),\Put(\rho_2)\}$ in which the fact that the original
+effect had to be at least as large as whatever $\epsilon$ stands for, is lost.
+Instead, we define substitution so that applying the effect substitution
 $\{\epsilon\mapsto\epsilon.\{\Get(\rho_2),\Put(\rho)\}\}$ to
 $\{\Get(\rho_9),\epsilon\}$ yields
 $\{\Get(\rho_9),\epsilon,\Get(\rho_2),\Put(\rho)\}$.
 
 We can now give a complete definition of atomic effects.  An
+%
 \index{effect!atomic, definition}%
-{\em atomic effect\/} is either an effect variable or a term of the
-form $\Get(\rho)$ or $\Put(\rho)$, where $\rho$ as usual ranges over
-region variables. An
+%
+{\em atomic effect\/} is either an effect variable or a term of the form
+$\Get(\rho)$ or $\Put(\rho)$, where $\rho$ as usual ranges over region
+variables. An
+%
 \index{effect!definition}%
+%
 {\em effect\/} is a finite set of atomic effects.
 
 One can get the MLKit to print region-annotated
+%
 \index{type!region-annotated}%
 \index{region-annotated type scheme!printing of}%
-type schemes with places of all binding occurrences of value
-variables.  Also, one can choose to have arrow effects included in the
-printout by passing the options \texttt{print\_types} and
-\texttt{print\_effects} to the MLKit compiler. Although passing these
-options gives very verbose output, it is instructive to look at such a
-term at least once, to see how arrow effects are instantiated. We show
-the full output for the {\tt apply} example in Figure~\ref{apply.fig}.
+%
+type schemes with places of all binding occurrences of value variables.  Also,
+one can choose to have arrow effects included in the printout by passing the
+options \kw{print\_types} and \kw{print\_effects} to the MLKit
+compiler. Although passing these options gives very verbose output, it is
+instructive to look at such a term at least once, to see how arrow effects are
+instantiated. We show the full output for the \kw{apply} example in
+Figure~\ref{apply.fig}.
 
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-  fun apply
-      :all
-          r18,r16,e15,e19,e17,'a0,'a2.
-          ('a0-e15->'a2,r16)
-          -e19(put(r18))->
-          ('a0-e17(U(U,get(r16),e15))->'a2,r18)
-      attop r1
-      [r18:1]
-      [r16:0]
-      (f) =
-      fn attop r18 x:'a0 => f x;
+  fun apply :all r17,r15,e16,e20,e18,'a0,'a2.
+             ('a0-e16->'a2,r15) -e20(put(r17))->
+             ('a0-e18(U(U,get(r15),e16))->'a2,r17)
+      at r1 [r15:0|r17:1] f = fn at r17 x:'a0 => f x;
   val y:(real,r1) =
-    let region r21:1, r23:1, r24:1
-    in   apply
-          [atbot r24]
-          [(real,r21),(real,r1)]
-          [r24,r23]
-          [e27(get(r21),put(r1)),
-           e26(put(r24)),
-           e25(e27(get(r21),put(r1)),get(r23))]
-         (fn atbot r23 n:(real,r21) =>
-           f64_to_real(attop r1, real_to_f64(n) + 1.0f64))
-         5.0attop r21
+    let region r21:1, r25:1, r27:1, e26, e22
+    in   let region e24
+         in  apply [r27]
+                   [(real,r21),(real,r1)]
+                   [r27,r25]
+                   [e26(get(r21),put(r1)),
+                    e24(put(r27)),
+                    e22(e26(get(r21),put(r1)),get(r25))
+                   ]
+             (fn at r25 n:(real,r21) =>
+                R64.fromF64 [at r1] (F64.fromR64 n:f64 + 1.0f64)
+                :(real,r1)
+             )
+         end
+         5.0
     end;
   val z:int =
-    let region r42:1, r43:1
-    in   apply
-          [atbot r43]
-          [int,int]
-          [r43,r42]
-          [e46,e45(put(r43)),e44(e46,get(r42))]
-         (fn atbot r42 m:int => m)
+    let region r43:1, r45:1, e46, e42
+    in   let region e44
+         in  apply [r45]
+                   [int,int]
+                   [r45,r43]
+                   [e46,e44(put(r45)),e42(e46,get(r43))]
+             (fn at r43 m:int => m)
+         end
          6
     end
 \end{smlcode}
-\caption{The instantiation of arrow effects keeps different applications of
-  the same function (here {\tt apply}) apart. The output was obtained
-  by compiling the program \boxml{kitdemo/apply.sml} with options
-  \texttt{-print\_types}, \texttt{-print\_effects}, \texttt{-no\_uncurry} and
-  \texttt{-maximum\_inline\_size 0}.}  \medskip \hrule
+\caption{The instantiation of arrow effects keeps different applications of the
+  same function (here \kw{apply}) apart. The output was obtained by compiling
+  the program \kw{kitdemo/apply.sml} with options \kw{-print\_types},
+  \kw{-print\_effects}, \kw{-no\_uncurry} and \kw{-max\_inl\_sz 0}.}  \medskip
+\hrule
 \label{apply.fig}
 \end{figure}
 
-In reading the output, it is useful to know that the MLKit represents
-effects and arrow effects as graphs, the nodes of which are region
-variables, effect variables, $\Put$, $\Get$, or \boxml{U} (for
-``union''; \boxml{U} by itself means the empty set).  Region variables
-are leaf nodes. A $\Put$ or $\Get$ node has emanating from it
-precisely one edge; it leads to the region variable in question.  An
-effect variable node (written {\tt e} followed by a sequence number)
-is always the handle of an arrow effect; there are edges from the
-effect variable to the atomic effects of that arrow effect, either
-directly, or via union nodes or other effect variable nodes.  For
-instance, \boxml{e13(U(U,get(r8),e11))} in the figure denotes an
-effect variable with an edge to a union node that has edges to an
-empty union node, a $\Get$ node, and an effect variable node.
+In reading the output, it is useful to know that the MLKit represents effects
+and arrow effects as graphs, the nodes of which are region variables, effect
+variables, $\Put$, $\Get$, or \kw{U} (for ``union''; \kw{U} by itself means the
+empty set).  Region variables are leaf nodes. A $\Put$ or $\Get$ node has
+emanating from it precisely one edge; it leads to the region variable in
+question.  An effect variable node (written \kw{e} followed by a sequence
+number) is always the handle of an arrow effect; there are edges from the effect
+variable to the atomic effects of that arrow effect, either directly, or via
+union nodes or other effect variable nodes.  For instance,
+\kw{e18(U(U,get(r15),e16))} in Figure~\ref{apply.fig} denotes an effect variable with an edge
+to a union node that has edges to an empty union node, a $\Get$ node, and an
+effect variable node.
 
-When a term containing arrow effects is printed, shared nodes that
-have already been printed are marked with a \boxml{@}; their children
-are not printed again.
+When a term containing arrow effects is printed, shared nodes that have already
+been printed are marked with a \kw{@}; their children are not printed again.
 %For instance, in the figure, the second
 %occurence of \texttt{r2} is printed as \boxml{@r2}.
-In the figure, the binding occurrence of {\tt apply} has been printed
-with its region-annotated type scheme. Each non-binding occurrence of {\tt
-  apply} has been printed with four square-bracketed lists. The first
-list is the actual region arguments; the following three are
-instantiation lists that show the range of the substitution by
-which the bound variables of the type scheme was instantiated, in the
-same order as the bound variables occurred.  For example, in the
-second use of {\tt apply}, \boxml{r8} was instantiated to {\tt r25}.
+In the figure, the binding occurrence of \kw{apply} has been printed with its
+region-annotated type scheme. Each non-binding occurrence of \kw{apply} has been
+printed with four square-bracketed lists. The first list is the actual region
+arguments; the following three are instantiation lists that show the range of
+the substitution by which the bound variables of the type scheme was
+instantiated, in the same order as the bound variables occurred.  For example,
+in the second use of \kw{apply}, \kw{r17} was instantiated to \kw{r45}.
 
 \section{On the Lack of Region Polymorphism}
-Unlike identifiers bound by {\tt fun}, lambda-bound function
-identifiers are never region-polymorphic. So in an expression of the
-form
-$$\boxml{fn f => $\cdots$ f $\cdots$ f $\cdots$}$$
-all the uses of
-$\boxml{f}$ use the same regions. Indeed, because \boxml{f} occurs
-free in the type environment while region inference analyses the body
-of the lambda abstraction, none of the regions that appear in the type
-of \boxml{f} will be de-allocated inside the body of the lambda
-abstraction. Also, such a region must be bound outside the lambda
-abstraction, so any attempt to reset such a region inside the body of
-the abstraction will cause the storage mode analysis to complain (by
-Rule (B1) of Section~\ref{sma.sec}).
 
-Therefore, when a function $f$ is passed as argument to another
-function $g$, as in the expression \boxml{$g$($f$)}, first regions are
-allocated for the use of $f$, then $g$ is called, and finally, the
-regions are de-allocated (provided they are not global regions).
-Whether the {\tt let region} construct thus introduced encloses the
-call site immediately, as in
-$$\boxml{let region $\rho_1,\ldots,\rho_n$ in $g$($f$) end}$$
+Unlike identifiers bound by \fw{fun}, lambda-bound function identifiers are
+never region-polymorphic. So in an expression of the form
+\begin{center}
+  \lstinline!fn f => $\cdots$ f $\cdots$ f $\cdots$!
+\end{center}
+all the uses of $\kw{f}$ use the same regions. Indeed, because \kw{f} occurs
+free in the type environment while region inference analyses the body of the
+lambda abstraction, none of the regions that appear in the type of \kw{f} will
+be de-allocated inside the body of the lambda abstraction. Also, such a region
+must be bound outside the lambda abstraction, so any attempt to reset such a
+region inside the body of the abstraction will cause the storage mode analysis
+to complain (by Rule (B1) of Section~\ref{sma.sec}).
+
+Therefore, when a function $f$ is passed as argument to another function $g$, as
+in the expression \kw{$g$($f$)}, first regions are allocated for the use of $f$,
+then $g$ is called, and finally, the regions are de-allocated (provided they are
+not global regions).  Whether the \fw{let region} construct thus introduced
+encloses the call site immediately, as in
+\begin{center}
+  \lstinline!let region $\rho_1,\ldots,\rho_n$ in $g$($f$) end!
+\end{center}
 or further out, as in
-$$\boxml{let region $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$)
-  $\ldots$ end}$$
-depends on the type and effect of the expression
-\boxml{$g$($f$)} in the usual way: regions can be de-allocated when
-they occur free neither in the type with place of the expression
-nor in the type environment.
+\begin{center}
+  \lstinline!let region $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$) $\ldots$ end!
+\end{center}
+depends on the type and effect of the expression \kw{$g$($f$)} in the usual way:
+regions can be de-allocated when they occur free neither in the type with place
+of the expression nor in the type environment.
 
 \section{Examples: \texttt{map} and \texttt{foldl}}
 Consider the program\footnote{Program \boxml{kitdemo/map.sml}.}
 \begin{smlcode}
   fun map f [] = []
-    | map f (x::xs) = f(x) :: map f xs
+    | map f (x::xs) = f x :: map f xs
 
   val x = map (fn x => x+1) [7,11]
 \end{smlcode}
-This formulation of {\tt map} is not the most efficient one in the
-MLKit, because it will create one closure for each element in the
-list, due to currying.\footnote{When {\tt map} and the application of
-  {\tt map} appear in the same compilation unit, the MLKit will
-  automatically specialise {\tt map} to a recursive function that does
-  not have this defect. This specialisation is the result of a general
-  optimisation of curried functions that are invariant in their first
-  argument. The output we present in this section was obtained by
-  passing to the MLKit compiler the options
-  \texttt{-maximum\_specialise\_size 0} and \texttt{-no\_uncurry}.} However it serves to
-illustrate the point made in the previous section about allocating
-regions in connection with higher-order functions. The
-region-annotated version is listed in Figure~\ref{map.fig}.
+This formulation of \kw{map} is not the most efficient one in the MLKit if it
+was not because the MLKit optimiser would uncurry the function and furthermore
+specialise the function for each application point.\footnote{The output we
+present in this section was obtained by passing to the MLKit compiler the
+options \boxml{-maximum\_specialise\_size 0} and \boxml{-no\_uncurry}.} However
+it serves to illustrate the point made in the previous section about allocating
+regions in connection with higher-order functions. The region-annotated version
+is listed in Figure~\ref{map.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-   let fun map attop r1 [r34:1, r20:0] (var1) =
-            fn attop r34 var2 =>
-            (case var2 of
-               nil => nil
-             | _ =>
-               let val v102 = decon_:: var2;
-                   val v103 = #0 v102;
-                   val v104 = #1 v102
-               in  :: (var1 v103, let region r28:1
-                                  in map[atbot r28,attop r20]
-                                       var1 v104
-                                  end)attop r20
-               end
-            );
+   let fun map at r1 [r39:1, r23:0] var1 =
+           fn at r39 var2 =>
+           case var2 of
+             nil => nil
+           | :: v102 =>
+             let val v103 = #0 v102; val v104 = #1 v102
+             in  ::
+                 (var1 v103,
+                  let region r35:1 in map[r35,r23] var1 v104 end
+                 )at r23
+             end;
        val x =
-         let region r37:1, r38:INF, r40:1
-         in  map[atbot r40,attop r4]
-              (fn atbot r37 x => x + 1) [7,11] attop r38
+         let region r43:1, r45:INF, r49:1
+         in  map[r49,r4] (fn at r43 x => x + 1) [7,11] at r45
          end
    in  {|map: (_,r1), x: _|}
    end
 \end{smlcode}
-\caption{Although this version of {\tt map} creates a closure for
-  each list element, the region-polymorphic recursion (of {\tt map})
-  ensures that that closure is put in a region local to {\tt map}.
-  Thus, these closures do not pile up in {\tt r37}, the region of the
-  initial argument.}
+\caption{Although this version of \kw{map} creates a closure for each list
+  element, the region-polymorphic recursion (of \kw{map}) ensures that that
+  closure is put in a region local to \kw{map}.  Thus, these closures do not
+  pile up in \kw{r39}, the region of the initial argument.}
 \medskip \hrule
 \label{map.fig}
 \end{figure}
-We see that the region that appears free in the type with place of the
-successor function (i.e., \boxml{r37}) is allocated prior to the call
-of {\tt map} and that it stays alive throughout the evaluation of the
-body of {\tt map}. Notice, however, that the closures that are created
-when {\tt map} is applied do not pile up in {\tt r37}, the region of
-the successor function. Instead, they are put in local regions bound
-to {\tt r28}, one closure in each region.  Also, if we had given some
-more complicated argument to {\tt map}, the body of that function
-could include local {\tt region} declarations. For each list element,
-regions would then be allocated, used, and then de-allocated before
-proceeding to the next list element.
+We see that the region that appears free in the type with place of the successor
+function (i.e., \kw{r43}) is allocated prior to the call of \kw{map} and that
+it stays alive throughout the evaluation of the body of \kw{map}. Notice,
+however, that the closures that are created when \kw{map} is applied do not pile
+up in \kw{r43}, the region of the successor function. Instead, they are put in
+local regions bound to \kw{r35}, one closure in each region.  Also, if we had
+given some more complicated argument to \kw{map}, the body of that function
+could include local \fw{region} declarations. For each list element, regions
+would then be allocated, used, and then de-allocated before proceeding to the
+next list element.
 
-So it might appear that higher-order functions are nothing to worry
-about when programming with regions. That is not so, however. The
-limitation that lambda-bound functions are never region-polymorphic
-can lead to space leaks. Here is an example:
+So it might appear that higher-order functions are nothing to worry about when
+programming with regions. That is not so, however. The limitation that
+lambda-bound functions are never region-polymorphic can lead to space
+leaks. Here is an example:
 \begin{smlcode}
   fun foldl f acc [] = acc
     | foldl f acc (x::xs)  = foldl f (f(x,acc)) xs
 
   val x = foldl (fn (x,acc) => 10*acc+x) 0 [7,2]
 \end{smlcode}
-Because {\tt f} is lambda-bound, all the pairs created by the
-expression \boxml{(x,acc)} will pile up in the same region. The
-storage mode analysis will infer storage mode {\tt attop} for the
-allocation of the pair, by rule (B1) of Section~\ref{sma.sec}; because
-{\tt foldl} is curried, there are several lambdas between the formal
-region parameter of {\tt foldl} that indicates where the pair should
-be put and the allocation point of the pair.
+Because \kw{f} is lambda-bound, all the pairs created by the expression
+\kw{(x,acc)} will pile up in the same region. The storage mode analysis will
+infer storage mode \fw{attop} for the allocation of the pair, by rule (B1) of
+Section~\ref{sma.sec}; because \kw{foldl} is curried, there are several lambdas
+between the formal region parameter of \kw{foldl} that indicates where the pair
+should be put and the allocation point of the pair.
 
-It does not help to uncurry {\tt foldl} and turn {\tt foldl} into a
+It does not help to uncurry \kw{foldl} and turn \kw{foldl} into a
 region endomorphism:
 \begin{smlcode}
   fun foldl(p as (f,[],_)) = p
@@ -5545,14 +5566,12 @@ region endomorphism:
 
   val x = #3(foldl(fn(x,acc) => 10*acc+x,[7,2],0))
 \end{smlcode}
-The storage mode analysis will still give {\tt attop} for the
-allocation of the pair \boxml{(x,acc)}, because the region of the pair
-is free in the region-annotated type of \boxml{f}, which is locally
-live at that point.
+The storage mode analysis will still give \fw{attop} for the allocation of the
+pair \kw{(x,acc)}, because the region of the pair is free in the
+region-annotated type of \kw{f}, which is locally live at that point.
 
-What if we require that {\tt f} be curried, so as to avoid the
-creation of the pair altogether?\footnote{Program
-  \boxml{kitdemo/fold2.sml}.}
+What if we require that \kw{f} be curried, so as to avoid the creation of the
+pair altogether?\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{smlcode}
   fun foldl f b xs =
     let fun loop(p as ([], b)) = p
@@ -5560,122 +5579,132 @@ creation of the pair altogether?\footnote{Program
     in #2(loop(xs,b))
     end
 \end{smlcode}
-The region-annotated version of this program appears in
-Figure~\ref{fold2.fig} on page~\pageref{fold2.fig}. This saves the
-allocation of a pair inside loop, although the saving is lost if the
-evaluation of {\tt f x} creates a closure.
+The region-annotated version of this program appears in Figure~\ref{fold2.fig}
+on page~\pageref{fold2.fig}. This saves the allocation of a pair inside loop,
+although the saving is lost if the evaluation of \kw{f x} creates a closure.
 
-In short, folding a function over a list may leak two words of memory
-for each list element.
+In short, folding a function over a list may leak two words of memory for each
+list element.
 
 %---------------------------------------------------------
 \chapter{The Function Call}
 %---------------------------------------------------------
+
 Standard ML allows function applications of the form
-$$\exp_1 \exp_2$$
-where $\exp_1$ is the operator and $\exp_2$ is the
-operand.  The syntax for function application is overloaded, in that
-it is used for three different purposes in ML:
+$$\exp_1 \exp_2$$ where $\exp_1$ is the operator and $\exp_2$ is the operand.
+The syntax for function application is overloaded, in that it is used for three
+different purposes in ML:
 \begin{enumerate}
-\item applications of built-in operations such as \boxml{+},
-  \boxml{=}, and \boxml{:=}
-\item applications of unary value constructors (including {\tt ref})
-  and unary exception constructors
-\item applications of user-defined functions, that is, functions
-  introduced by {\tt fn} or {\tt fun}
+\item Applications of built-in operations such as \kw{+},
+  \kw{=}, and \kw{:=}.
+\item Applications of unary value constructors (including \kw{ref}) and unary
+  exception constructors.
+\item Applications of user-defined functions, that is, functions introduced by
+  \fw{fn} or \fw{fun}.
 \end{enumerate}
-This chapter is about the last kind of function applications; in the
-following, we use the term function application to stand for
-applications of user-defined functions only.
+This chapter is about the last kind of function applications; in the following,
+we use the term function application to stand for applications of user-defined
+functions only.
 
-Function applications are ubiquitous in Standard ML programs; in
-particular, iteration is often achieved by function calls. Not
-surprisingly, careful compilation of function calls is essential for
-obtaining good performance.
+Function applications are ubiquitous in Standard ML programs; in particular,
+iteration is often achieved by function calls. Not surprisingly, careful
+compilation of function calls is essential for obtaining good performance.
 
-The MLKit partitions function calls into four kinds, which are
-implemented in different ways.  At best, a function call is simply
-realised by a jump in the target code.  The resource conscious
-programmer will want to know the special cases; for example, when
-doing an iterative computation, it is important to know whether the
-space usage is going to be independent of the number of iterations.
+The MLKit partitions function calls into four kinds, which are implemented in
+different ways.  At best, a function call is simply realised by a jump in the
+target code.  The resource conscious programmer will want to know the special
+cases; for example, when doing an iterative computation, it is important to know
+whether the space usage is going to be independent of the number of iterations.
 
 The MLKit performs a backwards flow analysis, called
+%
 \index{call conversion}%
-{\em call conversion}, to determine what function calls are tail calls
-and, more generally, what function calls fall into the four special
-cases. We say that expressions produced by this analysis are
+%
+{\em call conversion}, to determine what function calls are tail calls and, more
+generally, what function calls fall into the four special cases. We say that
+expressions produced by this analysis are
+%
 \index{function call!call-explicit}%
 \label{call-explicit}%
+%
 {\em call-explicit}. One can inspect call-explicit programs by
 passing the option
+%
 \index{print call-explicit expression@\texttt{-print\_call\_explicit\_expression}}%
-$$\boxml{-print\_call\_explicit\_expression}$$
-to the MLKit compiler,
-and thus check whether specific function calls in the code turn out as
-intended.  Call-explicit expressions are produced after regions have
-been dropped (page~\pageref{bother-to-distinguish-get-n-put}) but
-before native code generation.
+%
+$$\kw{-print\_call\_explicit\_expression}$$ to the MLKit compiler, and thus
+check whether specific function calls in the code turn out as intended.
+Call-explicit expressions are produced after regions have been dropped
+(page~\pageref{bother-to-distinguish-get-n-put}) but before native code
+generation.
 
-We shall first give a brief description of the parameter passing
-mechanism in general and then discuss the different kinds of function
-calls provided, working our way from the most specialised (and most
-efficient) cases towards the default cases.
+We shall first give a brief description of the parameter passing mechanism in
+general and then discuss the different kinds of function calls provided, working
+our way from the most specialised (and most efficient) cases towards the default
+cases.
 
 \section{Parameter Passing}
+
 Parameters to functions are passed either on the runtime
+%
 \index{stack}%
+%
 stack or, if possible, in
+%
 \index{register}%
-registers. Also region parameters to region-polymorphic functions are
-passed on the runtime stack or in registers.
+%
+registers. Also region parameters to region-polymorphic functions are passed on
+the runtime stack or in registers.
 
 \section{Tail Calls and Non-Tail Calls}
 \label{tailcall.sec}
-A call that is the last action of a function is referred to as a {\em
-  tail call}. After region inference, the MLKit performs a tail call
-analysis (in one backwards scan through the program). It is
-significant that the tail call analysis happens after region
-inference; as we saw in Section~\ref{length.sec}, a function call that
-looks like a tail call in the source program may end up as a non-tail
-call in the region-annotated program, because the function has to
-return to free memory. The tail call analysis divides function calls
-into four different kinds of calls:
+
+A call that is the last action of a function is referred to as a {\em tail
+  call}. After region inference, the MLKit performs a tail call analysis (in one
+backwards scan through the program). It is significant that the tail call
+analysis happens after region inference; as we saw in Section~\ref{length.sec},
+a function call that looks like a tail call in the source program may end up as
+a non-tail call in the region-annotated program, because the function has to
+return to free memory. The tail call analysis divides function calls into four
+different kinds of calls:
 \begin{quote}
 \begin{description}
-\item[{\tt jmp}:] tail calls to known functions
-\item[{\tt funcall}:] non-tail calls to known functions
-\item[{\tt fnjmp}:] tail calls to unknown functions
-\item[{\tt fncall}:] non-tail calls to unknown functions
+\item[\kw{jmp}:] Tail calls to known functions.
+\item[\kw{funcall}:] Non-tail calls to known functions.
+\item[\kw{fnjmp}:] Tail calls to unknown functions.
+\item[\kw{fncall}:] Non-tail calls to unknown functions.
 \end{description}
 \end{quote}
-In the sections to follow, we describe each of these kinds of calls in
-detail.
+In the sections to follow, we describe each of these kinds of calls in detail.
 
 \section{Tail Call to Known Function (\texttt{jmp})}
 \label{simplejump.sec}
-A call to a
-\index{region polymorphism}%
-region-polymorphic function (i.e., a known function) takes the form
-$$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
-where $\rho_1$, $\ldots$, $\rho_n$ are actual region parameters to the
-function, $f$ is the name of a region-polymorphic function, and
-$e_1 \cdots e_m$, $m \geq 1$ are value arguments to the function (we
-often omit the brackets $\verb+<+ \cdots \verb+>+$ when $m = 1$.) The MLKit
-turns such a function call into the form
-$$\boxml{jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
-if the call
-appears in a tail-call position, that is, if the call is the last
-thing the current function needs to do.  Because the start address of
-$f$ is known during compilation (because $f$ is region-polymorphic),
-such a call is as efficient as an assembly language jump to a constant
-label (not taking into account the shuffling of arguments needed to
-match the calling convention for $f$.
 
-The way to avoid that a {\tt region} binding is wrapped around
-the function call (and thus causes the call not to be recognized as a
-tail call) is to turn the calling function into a region endomorphism,
-when possible.
+A call to a
+%
+\index{region polymorphism}%
+%
+region-polymorphic function (i.e., a known function) takes the form
+\begin{center}
+  \lstinline!$f$ [$\rho_1$, $\ldots$, $\rho_n$] ($e_1,\ldots,e_m$)!
+\end{center}
+where $\rho_1$, $\ldots$, $\rho_n$ are actual region parameters to the function,
+$f$ is the name of a region-polymorphic function, and $e_1 \cdots e_m$, $m \geq
+1$ are value arguments to the function (we often omit the brackets $\kw{(}
+\cdots \kw{)}$ when $m = 1$.) The MLKit turns such a function call into the form
+\begin{center}
+  \lstinline!jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] ($e_1,\ldots,e_m$)!
+\end{center}
+if the call appears in a tail-call position, that is, if the call is the last
+thing the current function needs to do.  Because the start address of $f$ is
+known during compilation (because $f$ is region-polymorphic), such a call is as
+efficient as an assembly language jump to a constant label (not taking into
+account the shuffling of arguments needed to match the calling convention for
+$f$.
+
+The way to avoid that a \fw{region} binding is wrapped around the function call
+(and thus causes the call not to be recognized as a tail call) is to turn the
+calling function into a region endomorphism, when possible.
 
 The following is an example of how one obtains a tail call to a known
 function:\footnote{Program \boxml{kitdemo/tail.sml}.}
@@ -5687,161 +5716,182 @@ function:\footnote{Program \boxml{kitdemo/tail.sml}.}
     fun f(a,b) = #2(f'(a,b))
   end
 \end{smlcode}
-The call-explicit version of {\tt f'} appears in
-Figure~\ref{tail.fig}.
+The call-explicit version of \kw{f'} appears in Figure~\ref{tail.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-  fun f' attop r1 [r13:inf] (var2) =
-    let val v96 = #0 var2
-    in  case v96 of
-           0 => var2
-         | _ => let val v98 = #1 var2
-                in jmp f'[sat r13] (v96 - 1, v96 * v98)sat r13
-                end
-    end
+  fun f' [r15:inf] var2 =
+      let val v96 = #0 var2
+      in  case v96 of
+            0 => var2
+          | _ => let val v98 = #1 var2
+                 in  jmp f'[sat r15] (v96 - 1, v96 * v98)sat r15
+                 end
+      end
 \end{smlcode}
-\caption{An example where a function call turns into a tail call to a known function.}
+\caption{An example where a function call turns into a tail call to a known
+  function.}
 \medskip \hrule
 \label{tail.fig}
 \end{figure}
 
-There is a more efficient version of the function {\tt f} that
-exploits the MLKit's unboxing of function arguments, but in general, one
-can rely on unboxing to ensure tail-calls only when the elements of
-the argument tuple themselves are unboxed; otherwise there is a risk
-that, for each invocation, fresh regions are introduced to hold the
-arguments to the call, and the call would need to return to
-de-allocate these regions.
+There is a more efficient version of the function \kw{f} that exploits the
+MLKit's unboxing of function arguments, but in general, one can rely on unboxing
+to ensure tail-calls only when the elements of the argument tuple themselves are
+unboxed; otherwise there is a risk that, for each invocation, fresh regions are
+introduced to hold the arguments to the call, and the call would need to return
+to de-allocate these regions.
 
-The MLKit can transform a call into a \boxml{jmp} tail call even in the
-case that the call appears in the body of a \boxml{fn} expression.
-Consider the following two mutually recursive functions {\tt g} and
-{\tt h}:\footnote{Program {\tt kitdemo/tail2.sml}.}
+The MLKit can transform a call into a \kw{jmp} tail call even in the case that
+the call appears in the body of a \fw{fn} expression.  Consider the following
+two mutually recursive functions \kw{g} and \kw{h}:\footnote{Program
+\boxml{kitdemo/tail2.sml} compiled with the flags \boxml{-no\_uncurry} and
+\boxml{-no\_abbrev}.}
 \begin{smlcode}
   fun g (n,b) = h (n-1) b
   and h 0 b = b
     | h n b = g(n,n*b)
 \end{smlcode}
-Here {\tt h} calls {\tt g} in a tail position. The call explicit
-version of the program is listed in Figure~\ref{tail2.fig}, and
-indeed, the call to {\tt g} is recognized as a tail call.
+Here \kw{h} calls \kw{g} in a tail position. The call explicit version of the
+program is listed in Figure~\ref{tail2.fig}, and indeed, the call to \kw{g} is
+recognized as a tail call.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-   let fun h attop r1 [r18:3] (var1) =
-         fn attop r18 var2 =>
-           (case var1 of
-               0 => var2
-             | _ => jmp g[] <var1, var1 * var2>)
-       and g attop r1 [] (v90, v91) =
-         let region r21:3
-         in fncall funcall h[atbot r21] (v90 - 1) v91
-         end
+   let fun g attop r1 (v134, v135) =
+           let region r13:3
+           in  fncall funcall h[atbot r13] (v134 - 1) v135
+           end
+       and h attop r1 [r17:3] var1 =
+           fn attop r17 var2 =>
+           case var1 of 0 => var2 | _ => jmp g[] (var1, var1 * var2)
    in  {|h: (_,r1), g: (_,r1)|}
    end
 \end{smlcode}
 \caption{A function call can turn into a tail call even
-  in the case that the call appears in the body of a {\tt fn} expression.}
+  in the case that the call appears in the body of a \fw{fn} expression.}
 \medskip \hrule
 \label{tail2.fig}
 \end{figure}
-Also notice that the MLKit does not try to in-line {\tt g} in {\tt h}
-(or vice-versa), although such an optimisation would certainly improve
-on the efficiency of the generated code. Another example of a {\tt
-  jmp} tail call is shown in Section~\ref{foldl.sec}.
+Also notice that the MLKit does not try to in-line \kw{g} in \kw{h} (or
+vice-versa), although such an optimisation would certainly improve on the
+efficiency of the generated code. Another example of a \kw{jmp} tail call is
+shown in Section~\ref{foldl.sec}.
+
+The call-explicit program shown in Figure~\ref{tail2.fig} was compiled with the
+flag \kw{-no\_abbrev}. Without this flag, the output is abbreviated in several
+ways. First, \kw{fncall} and \kw{funcall} annotations are not shown and neither
+are the \fw{attop} \kw{r1} annotations on top-level functions.
 
 \section{Non-Tail Call to Known Function \index{funcall@\texttt{funcall}}(\texttt{funcall})}
+
 In the case that a call to a known function cannot be turned into a
 tail call, because the call needs to return to do more work, the call
 is transformed into
-$$\boxml{funcall $f$ [$\rho_1, \ldots, \rho_n$] $\exp$}$$
-where {\tt
-  funcall} is the mnemonic used for non-tail calls to
-region-polymorphic functions. One example is the call to {\tt h} in
-Figure~\ref{tail2.fig}. Here the call to {\tt h} takes a region
-argument {\tt r21} and an ordinary argument {\tt (v90-1)}; the call to
-{\tt h} returns a closure, which needs to be applied to {\tt v91}
-before the function {\tt g} can de-allocate the region {\tt r21} and
+\begin{center}
+  \lstinline!funcall $f$ [$\rho_1, \ldots, \rho_n$] $\exp$!
+\end{center}
+where \kw{funcall} is the mnemonic used for non-tail calls to region-polymorphic
+functions. One example is the call to \kw{h} in Figure~\ref{tail2.fig}. Here the
+call to \kw{h} takes a region argument \kw{r13} and an ordinary argument
+\kw{(v134 - 1)}; the call to \kw{h} returns a closure, which needs to be applied
+to \kw{v135} before the function \kw{g} can de-allocate the region \kw{r13} and
 return.
 
-This case completes all possible cases of applications of
-region-polymorphic functions. We now turn to function applications
-where the operator is not the name of a region-polymorphic function.
+This case completes all possible cases of applications of region-polymorphic
+functions. We now turn to function applications where the operator is not the
+name of a region-polymorphic function.
 
 \section{Tail Call to Unknown Function (\texttt{fnjmp})}
-Consider the case\index{fnjmp@\texttt{fnjmp}}
-$$\exp_1\,\exp_2$$
-where (a) the call is a tail call and (b) $\exp_1$
-is not the name of a region-polymorphic function.
+
+Consider the case
+%
+\index{fnjmp@\texttt{fnjmp}}%
+%
+$$\exp_1\,\exp_2$$ where (a) the call is a tail call and (b) $\exp_1$ is not the
+name of a region-polymorphic function.
 
 Here $\exp_1$ is evaluated to a closure in memory, pointed to by a
+%
 \index{standard closure register}%
 \index{register!standard closure}%
-{\em standard closure register}. Then $\exp_2$ is evaluated and the result
-put in a
+%
+{\em standard closure register}. Then $\exp_2$ is evaluated and the result put
+in a
+%
 \index{standard argument register}%
 \index{register!standard argument}%
-{\em standard argument register}. The first word in the closure
-contains the address of the code of the function. This address is
-fetched into a third register and a jump to the address is made.
-Because the call is a tail call, it induces no allocation, neither on
-the stack nor in regions.  It is thus as efficient as an indirect jump
-in assembly language.
+%
+{\em standard argument register}. The first word in the closure contains the
+address of the code of the function. This address is fetched into a third
+register and a jump to the address is made.  Because the call is a tail call, it
+induces no allocation, neither on the stack nor in regions.  It is thus as
+efficient as an indirect jump in assembly language.
 
 %To avoid that $\exp_2$ puts values
 %in fresh regions (which would make the call a non-tail call) one
 %can ``disable'' region polymorphism of $f$ as explained in Section~\ref{tailcall.sec}.
 
 The mnemonic used in call-explicit expressions for this special case is
-$$\boxml{fnjmp $\exp_1$ $\exp_2$}$$
+\begin{center}
+  \lstinline!fnjmp $\exp_1$ $\exp_2$!
+\end{center}
 
 \section{Non-Tail Call to Unknown Function (\texttt{fncall})}
-Consider the case
-$$\exp_1\,\exp_2$$
-where (a) the call is not a tail call and (b)
-$\exp_1$ is not the name of a region-polymorphic function.
 
-Applications of this form are implemented as follows. First $\exp_1$
-is evaluated and the result, a pointer to a closure, is stored in the
+Consider the case
+$$\exp_1\,\exp_2$$ where (a) the call is not a tail call and (b) $\exp_1$ is not
+the name of a region-polymorphic function.
+
+Applications of this form are implemented as follows. First $\exp_1$ is
+evaluated and the result, a pointer to a closure, is stored in the
+%
 \index{standard closure register}%
 \index{register!standard closure}%
-standard closure register. Then $\exp_2$ is evaluated and stored in
-the
+%
+standard closure register. Then $\exp_2$ is evaluated and stored in the
+%
 \index{standard argument register}%
 \index{register!standard argument}%
-standard argument register.  Then live registers and a return
-address are pushed onto the stack and a jump is made to the code
-address that is stored in the first word of the closure pointed to by
-the standard closure register. Upon return, registers are restored
-from the stack.
+%
+standard argument register.  Then live registers and a return address are pushed
+onto the stack and a jump is made to the code address that is stored in the
+first word of the closure pointed to by the standard closure register. Upon
+return, registers are restored from the stack.
 
 The mnemonic used in call-explicit expressions for this special case is
-$$\boxml{fncall $\exp_1$ $\exp_2$}$$
+\begin{center}
+  \lstinline!fncall $\exp_1$ $\exp_2$!
+\end{center}
 
 \section{Example: Function Composition}
+
 The Standard ML Basis Library declares function composition as
 follows\footnote{Program \boxml{kitdemo/compose.sml}.}
 \begin{smlcode}
   fun (f o g) x = f(g x)
 \end{smlcode}
-The resulting call-explicit expression produced by the MLKit is
+The resulting call-explicit expression produced by the MLKit when compiled with
+the flags \kw{-no\_uncurry} and \kw{-no\_abbrev} is
 \begin{smlcode}
-  fun o attop r1 [r22:3] (v92, v93) =
-      fn attop r22 x => fnjmp v92 (fncall v93 x)
+  fun o attop r1 [r21:3] (v120, v121) =
+      fn attop r21 x => fnjmp v120 (fncall v121 x)
 \end{smlcode}
 Notice that
+%
 \index{o@\texttt{o}}%
-\boxml{f o g} first creates a closure in \boxml{r22} and then returns.
-The closure is of size three words and contains a pointer to the code
-for the function and pointers to the closures for \boxml{f} and
-\boxml{g}. When called, the created function first performs a non-tail
-call of \boxml{g} and then a tail call to \boxml{f}.
+%
+\boxml{f o g} first creates a closure in \boxml{r21} and then returns.  The
+closure is of size three words and contains a pointer to the code for the
+function and pointers to the closures for \kw{f} and \kw{g}. When called, the
+created function first performs a non-tail call of \kw{g} and then a tail call
+to \kw{f}.
 
 \section{Example: \texttt{foldl} Revisited}
 \label{foldl.sec}
-Consider the following declaration of folding over
-lists:\footnote{Program \boxml{kitdemo/fold1.sml}.}
+
+Consider the following declaration of folding over lists:\footnote{Program
+\boxml{kitdemo/fold1.sml}.}
 \begin{smlcode}
   fun foldl f b xs =
     case xs of
@@ -5849,46 +5899,43 @@ lists:\footnote{Program \boxml{kitdemo/fold1.sml}.}
     | x::xs' => foldl f (f x b) xs'
 \end{smlcode}
 The recursive call of
+%
 \index{foldl@\texttt{foldl}}%
-{\tt foldl} is a call of a known function, but not a tail call; {\tt
-  foldl} returns a closure, which is subsequently applied to the value
-of {\tt (f x b)}. This too returns a closure, which in turn is applied
-to {\tt xs'}.  The resulting call-explicit expression is shown in
-Figure~\ref{fold1.fig}.
+%
+\kw{foldl} is a call of a known function, but not a tail call; \kw{foldl}
+returns a closure, which is subsequently applied to the value of \kw{(f x
+  b)}. This too returns a closure, which in turn is applied to \kw{xs'}.  The
+resulting call-explicit expression is shown in Figure~\ref{fold1.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-  fun foldl attop r1 [r40:4, r38:4] (f) =
-    fn attop r40 b =>
-      fn attop r38 xs =>
-        (case xs of
-            nil => b
-          | _ =>
-              let val v100 = decon_:: xs;
-                  val v101 = #0 v100;
-                  val v102 = #1 v100;
-                  region r30:4
-              in  fncall
-                   let region r31:4
-                   in fncall
-                        funcall foldl[atbot r31,atbot r30] f
-                        (fncall fncall f v101 b)
-                   end
-                   v102
-              end)
+  fun foldl attop r1 [r41:4, r39:4] f =
+      fn attop r41 b =>
+      fn attop r39 xs =>
+      case xs of
+        nil => b
+      | :: v100 =>
+        let val v101 = #0 v100; val v102 = #1 v100; region r35:4
+        in  fncall
+             let region r37:4
+             in  fncall
+                  funcall foldl[atbot r37,atbot r35] f
+                  (fncall fncall f v101 b)
+             end
+             v102
+        end
 \end{smlcode}
-\caption{The straightforward implementation of {\tt foldl} uses space
-  linear in the length of the list. (Program {\tt
-    kitdemo/fold1.sml}.)}
+\caption{The straightforward implementation of \kw{foldl} uses space linear in
+  the length of the list. (Program \kw{kitdemo/fold1.sml} compiled with the
+  flags \kw{-no\_uncurry} and \kw{-no\_abbrev}.)}
 \medskip \hrule \label{fold1.fig}
 \end{figure}
-Notice that upon each iteration, fresh regions for holding two
-closures are being allocated for the duration of the recursive call.
-Thus, space usage is linear in the length of the list (4 words for
-each list cell, to be precise).
+Notice that upon each iteration, fresh regions for holding two closures are
+being allocated for the duration of the recursive call.  Thus, space usage is
+linear in the length of the list (4 words for each list cell, to be precise).
 
-An alternative version of {\tt foldl} assumes that \boxml{f}
-is curried:\footnote{Program \boxml{kitdemo/fold2.sml}.}
+An alternative version of \kw{foldl} assumes that \kw{f} is
+curried:\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{smlcode}
   fun foldl f b xs =
     let fun loop(p as ([], b)) = p
@@ -5902,44 +5949,42 @@ Figure~\ref{fold2.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
-  fun foldl attop r1 [r50:3, r48:3] (f) =
-    fn attop r50 b =>
-      fn attop r48 xs =>
-        let region r25:1;
-            fun loop atbot r25 [r32:inf] (var2) =
+  fun foldl attop r1 [r63:3, r61:3] f =
+      fn attop r63 b =>
+      fn attop r61 xs =>
+      let region r27:1;
+          fun loop atbot r27 [r39:inf] var2 =
               let val v107 = #0 var2
               in  case v107 of
-                      nil => var2
-                    | _ =>
-                        let val v109 = decon_:: v107;
-                            val v110 = #0 v109;
-                            val v111 = #1 v109;
-                            val v112 = #1 var2
-                        in  jmp loop[sat r32]
-                              (v111,
-                               fncall fncall f v110 v112
-                              )sat r32
-                        end
+                    nil => var2
+                  | :: v109 =>
+                    let val v110 = #0 v109;
+                        val v111 = #1 v109;
+                        val v112 = #1 var2
+                    in  jmp loop[sat r39]
+                                (v111,
+                                 fncall fncall f v110 v112
+                                )sat r39
+                    end
               end;
-            region r44:inf
-        in  #1 funcall loop[atbot r44] (xs, b)atbot r44
-        end
+          region r57:inf
+      in  #1 (funcall loop[atbot r57] (xs, b)atbot r57)
+      end
 \end{smlcode}
-\caption{The result of compiling the efficient version of {\tt foldl}
-  ({\tt kitdemo/fold2.sml}) is an iterative function that avoids
-  argument pairs piling up in one region.}  \medskip \hrule
+\caption{The result of compiling the efficient version of \kw{foldl}
+  (\kw{kitdemo/fold2.sml}) is an iterative function that avoids argument pairs
+  piling up in one region.}  \medskip \hrule
 \label{fold2.fig}
 \end{figure}
-Here the loop is implemented as a jump and there is no new allocation
-in each iteration, except, of course, for the allocation that {\tt f}
-might make.\footnote{All the allocations made by the calls to {\tt f}
-  (one call for each element of the list) are put in the same regions.
-  If the list is very long or the values produced large, it may be a
-  good idea to copy the final result to separate regions.}
+Here the loop is implemented as a jump and there is no new allocation in each
+iteration, except, of course, for the allocation that \kw{f} might
+make.\footnote{All the allocations made by the calls to \boxml{f} (one call for
+each element of the list) are put in the same regions.  If the list is very long
+or the values produced large, it may be a good idea to copy the final result to
+separate regions.}
 
-As an exercise, consider the following variant of {\tt foldl}, which
-assumes that {\tt f} takes a pair as an argument:\footnote{Program
-  \boxml{kitdemo/fold3.sml}.}
+As an exercise, consider the following variant of \kw{foldl}, which assumes that
+\kw{f} takes a pair as an argument:\footnote{Program \boxml{kitdemo/fold3.sml}.}
 \begin{smlcode}
   fun foldl' f b xs =
     let fun loop(p as ([], b)) = p
@@ -5948,10 +5993,48 @@ assumes that {\tt f} takes a pair as an argument:\footnote{Program
         #2(loop(xs,b))
     end
 \end{smlcode}
-Interestingly, this program contains a potential space leak. Can you
-detect it? If not, the MLKit will tell you when you compile the
-program if you pass the compiler the option
-\texttt{-warn\_on\_escaping\_puts}.
+Interestingly, this program contains a potential space leak. Can you detect it?
+If not, the MLKit will tell you when you compile the program if you pass the
+compiler the option \kw{-warn\_on\_escaping\_puts}.
+
+Finally, we consider the following version of \kw{foldl}, which resembles the
+implementation of the \kw{List.foldl} function:\footnote{Program \boxml{kitdemo/fold4.sml}.}
+\begin{smlcode}
+  local
+    fun foldl f e [] = e
+      | foldl f e (x::xs) = foldl f (f(x,e)) xs
+  in
+    val a = foldl (op +) 0 [0,1,2]
+  end
+\end{smlcode}
+Figure~\ref{fold4.fig} shows the call-explicit version of the program. We see
+that the function \kw{foldl} is specialised to the supplied function. Notice
+that MLKit will specialise small functions, such as \kw{List.foldl}, accross
+compilation unit boundaries, which means that MLKit in general generates very
+efficient code for calls to such functions.
+
+\begin{figure}
+\hrule \medskip
+\begin{smlcode}
+   let val a =
+         let region r9:0;
+             fun foldl atbot r9 (var2, var3) =
+                 case var3 of
+                   nil => var2
+                 | :: v109 =>
+                   let val v110 = #0 v109; val v111 = #1 v109
+                   in  jmp foldl (v110 + var2, v111)
+                   end;
+             region r21:inf
+         in  foldl (0, [0,1,2] attop r21)
+         end
+   in  {|a: _|}
+   end
+\end{smlcode}
+\caption{The result of applying and specialising the Basis Library version of \kw{List.foldl}.}  \medskip \hrule
+\label{fold4.fig}
+\end{figure}
+
 
 %---------------------------------------------
 \chapter{ML Basis Files and Modules}
@@ -6337,23 +6420,20 @@ Figure~\ref{set_inst_mulexp.fig}.
 \begin{figure}[ht]
 \hrule \medskip
 \begin{smlcode}
-  fun mem attop r1 [] (x, l) =
-    let region r53:1;
-        fun mem' atbot r53 [] (var2) =
-          case var2 of
-             nil => false
-           | _ =>
-              let val v193 = decon_:: var2;
-                  val v194 = #0 v193;
-                  val v195 = #1 v193
-              in  case v194 < x of
-                     true => jmp mem'[] v195
-                   | _ => (case x < v194 of
-                              true => false
-                            | _ => true)
-              end
-    in  funcall mem'[] l
-    end
+  fun mem (x, l) =
+      let region r55:1;
+          fun mem' atbot r55 var2 =
+              case var2 of
+                nil => false
+              | :: v191 =>
+                let val v192 = #0 v191; val v193 = #1 v191
+                in  case v192 < x of
+                      true => jmp mem' v193
+                    | _ =>
+                      case x < v192 of true => false | _ => true
+                end
+      in  mem' l
+      end
 \end{smlcode}
 \caption{The $\MulExp$ call-explicit code for the \kw{mem} function resulting
   from instantiating the \kw{Set} functor.}
@@ -6437,18 +6517,18 @@ collection is enabled.\footnote{Compiled with \boxml{mlkit -gc
   \kw{f} are kept alive as long as the closure itself.}  \medskip \hrule
 \label{dangling_gc.fig}
 \end{figure}
-When garbage collection is enabled, the MLKit makes sure that whenever a closure
-is live all values stored in the closure are kept live as long as the closure is
-live.  Assume that the type with place $\mu$ of the function associated with the
-closure is on the form $(\mu_1 \ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The MLKit
-enforces the restriction by requiring that for each region variable $\rho$ that
-occur free in the type of free variables of the function (those variables for
-which values are stored in the closure at runtime), $\rho$ occur free in
-$\mu$. In the implementation, the requirement may lead to extra $\Get$ effects
-being added to $\epsilon.\varphi$ when garbage collection is enabled. In the
-example, an imposed $\Get$ effect on the arrow effect in the type for \kw{f}
-makes it impossible to wrap a {\tt region} binding around the binding for
-\kw{f}. (See \cite[page 50]{total93}, \cite{elsman:tldi03}, and
+When garbage collection is enabled, the MLKit makes sure that all values stored
+in a closure are kept live as long as the closure is live.  Assume that the type
+with place $\mu$ of the function associated with the closure is on the form
+$(\mu_1 \ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The MLKit enforces the
+restriction by requiring that for each region variable $\rho$ that occur free in
+the type of free variables of the function (those variables for which values are
+stored in the closure at runtime), $\rho$ occur free in $\mu$. In the
+implementation, the requirement may lead to extra $\Get$ effects being added to
+$\epsilon.\varphi$ when garbage collection is enabled. In the example, an
+imposed $\Get$ effect on the arrow effect in the type for \kw{f} makes it
+impossible to wrap a {\tt region} binding around the binding for \kw{f}. (See
+\cite[page 50]{total93}, \cite{elsman:tldi03}, and
 \cite{gcsafety-revisited-tr-2022,10.1145/3591229} for more information about
 this requirement.)
 
@@ -9297,7 +9377,7 @@ Options:
 
 \hrule
 \halign{\parbox[t]{15mm}{#}\hfil\ &\ \parbox[t]{13cm}{\strut#\strut}\cr
-\boxml{r1}&Holds values of type {\tt top}, that is, records, exceptions, and closures.\cr
+\boxml{r1}&Holds values of type {\tt top}, including records, exceptions, reals, and closures.\cr
 \boxml{r2}&Holds values of type {\tt bot}. Because no values has type
 {\tt bot}, this region contains no values. Region variables with region type {\tt bot} are used with
 so-called explicit regions, which are not covered in this report.\cr

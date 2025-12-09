@@ -42,7 +42,7 @@ clean:
 	(cd utils; rm -rf *~ MLB)
 
 .PHONY: pdfs
-pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf
+pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf scan_stream.pdf scan_stream_nogc.pdf
 
 life.exe: life.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<

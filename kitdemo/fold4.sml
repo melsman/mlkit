@@ -1,6 +1,6 @@
-   fun foldl f b xs = 
-     let fun loop([], b) = b
-           | loop(x::xs, b) = loop(xs,f x b)
-     in
-         loop(xs,b)
-     end
+  local
+    fun foldl f e [] = e
+      | foldl f e (x::xs) = foldl f (f(x,e)) xs
+  in
+    val a = foldl (op +) 0 [0,1,2]
+  end
