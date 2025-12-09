@@ -221,11 +221,13 @@ structure EliminateEq : ELIMINATE_EQ =
         SWITCH_C (SWITCH (e1, [((Con.con_TRUE,NONE),lamb_true)], SOME e2))
 
     fun ptr_eq instance_ty e1 e2 =
-        let val tv = fresh_tyvar()
-            val argty = TYVARtype {tv=tv}
-            val ty = ARROWtype([argty,argty],NONE,[boolType],NONE)
-        in PRIM(CCALLprim {name="__equal_ptr",instances=[instance_ty],
-                           tyvars=[tv], Type=ty},
+        let val tv1 = fresh_tyvar()
+            val argty1 = TYVARtype {tv=tv1}
+            val tv2 = fresh_tyvar()
+            val argty2 = TYVARtype {tv=tv2}
+            val ty = ARROWtype([argty1,argty2],NONE,[boolType],NONE)
+        in PRIM(CCALLprim {name="__equal_ptr",instances=[instance_ty,instance_ty],
+                           tyvars=[tv1,tv2], Type=ty},
                 [e1,e2])
         end
 
