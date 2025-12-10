@@ -1347,7 +1347,7 @@ structure OptLambda : OPT_LAMBDA =
 
       (* inlining of unsafe bindings in safe contexts *)
       fun simpleContext lv e =
-          if (*aggressive_opt() andalso*) Lvars.one_use lv then
+          if aggressive_opt() andalso Lvars.one_use lv then
             let fun build e =
                     case e of
                       VAR{lvar,instances,regvars} =>
