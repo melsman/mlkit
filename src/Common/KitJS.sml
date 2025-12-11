@@ -1,6 +1,10 @@
 structure K =
 let structure KC = KitCompiler(ExecutionJS)
     val () = Flags.turn_off "equalelim_opt_unboxed"
+    val () = Flags.turn_off "unbox_reals"
+    val () = Flags.turn_off "unbox_real_funargs"
+    val () = Flags.turn_off "unbox_funargs"   (* error if turned on *)
+    val () = Flags.turn_off "uncurry"         (* error if turned on *)
     val () = List.app Flags.block_entry
                       ["garbage_collection",
                        "generational_garbage_collection",

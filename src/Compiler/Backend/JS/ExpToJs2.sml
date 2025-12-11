@@ -1047,6 +1047,12 @@ fun toJs (env0, L.PGM(dbss,e)) =
       val env' = Env.fromDatbinds dbss
       val env = Env.plus(env0,env')
       val js = wrapRet (RetCont NONE) (toj (Context.mk env) {clos_p=false} e)
+               handle ? =>
+                      let val st = L.layoutLambdaExp e
+                      in PrettyPrint.printTree st
+                       ; raise ?
+                      end
+
       val js = JExp(J.App(J.Fun([],js),[]))
       val js =
           case getLocalBase() of
