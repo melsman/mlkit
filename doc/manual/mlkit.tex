@@ -47,11 +47,11 @@ Peter Sestoft}
 %$\alpha$ tree & A tree and its subtrees reside in one region.
 %                Elements in one region (if not unboxed).\cr
 \lstinline{exn}&Exception values are boxed and are always stored in a global region.\cr
-\lstinline!fn $\mathit{pat}$ => $\mathit{exp}$! & An anonymous function is represented by a
+\lstinline!fn $\,\mathit{pat}$ => $\mathit{exp}$! & An anonymous function is represented by a
                 boxed, untagged closure. Its size is one 64-bit word plus one word for each free
                 variable of the function. Free region variables also count as variables.
                 One extra word is used when GC is enabled.\cr
-\lstinline!fun $~f$ $\ldots$! & Mutually recursive region-polymorphic functions
+\lstinline!fun $\,f$ $\ldots$! & Mutually recursive region-polymorphic functions
                share the same closure, which is region-allocated, untagged,
                and whose size (in words) is the number of variables
                that occur free in the recursive declaration. One extra word is used when GC is enabled.\cr}
@@ -169,7 +169,7 @@ The reader we have in mind is a person with a Computer Science background who is
 interested in developing reliable and efficient applications written in Standard
 ML. Also, the report may be of interest to researchers of programming languages,
 since the MLKit with Regions is a fairly bold exercise in program analysis. We
-should emphasize, however, that this report is very much intended as a user's
+should emphasise, however, that this report is very much intended as a user's
 guide, not a scientific publication.
 
 This report consists of three parts:
@@ -192,12 +192,21 @@ MLKit Version~{\docversion}. Besides from featuring bug-fixes, this version of
 the MLKit extends, and differs from, the MLKit Version~4.7.2 by the following
 features:
 \begin{enumerate}
-\item High-bit unboxing. Datatypes use an advanced unboxing scheme that allows
-  many datatypes to be implemented unboxed using, otherwise non-used, high bits
-  of a word (e.g., the most significant bits of a pointer or the high unused
-  bits of a stored 8-bit char value) \cite{10.1145/3674628}.
+\item
+  %
+  \index{bit stealing}%
+  \index{unboxing}%
+  %
+  Double-ended bit-stealing. The implementation of algebraic data types now
+  uses an advanced unboxing scheme that allows many data types to be implemented
+  unboxed using the, otherwise non-used, 16 most-significant bits of a pointer
+  or the high unused bits of 8-bit word values) \cite{10.1145/3674628}.
 
-\item Deep-argument flattening. The MLKit optimiser attempts to flatten
+\item
+  %
+  \index{deep argument flattening}%
+  %
+  Deep-argument flattening. The MLKit optimiser attempts to flatten
   arguments to functions using a scheme that allows for deep flattening and
   uncurrying of arguments to functions (also across compilation unit boundaries)
   \cite{deep-elsman25}. With this scheme, if a function takes a tuple of reals
@@ -206,12 +215,31 @@ features:
 
 \item Improved abbreviated pretty printing of some intermediate representations.
 
-\item Support for threads and parallelism through a fork-join thread interface
-  \cite{10.1145/3591256}.
+\item
+  %
+  \index{parallelism}%
+  %
+  Support for threads and parallelism through a fork-join thread interface
+  \cite{10.1145/3591256}. The support for threads and parallelism is not
+  documented in this report.
 
-\item Suppport for explicit programming with regions and effect constraints
+\item
+  %
+  \index{ReML}%
+  \index{explicit regions}%
+  \index{explicit effects}%
+  %
+  Support for explicit programming with regions and effect constraints
   through an extended syntax (ReML) that allows for annotating expressions and
-  types with region and effect information \cite{10.1145/3632921}.
+  types with region and effect information \cite{10.1145/3632921}. The support
+  for programming with explicit regions and effects is not documented in this
+  report.
+
+\item
+  %
+  \index{auto conversion}%
+  %
+  Improved support for auto conversion when interacting with C functions.
 \end{enumerate}
 
 Version~4.7.2 of the MLKit extends, and differs from, MLKit Version~4.3.0 by the
@@ -356,7 +384,7 @@ The MLKit compiler and tools are released under the GNU General Public License:
 }
 
 Parts of the MLKit (the runtime system and the Basis Library) is distributed
-under the MIT licence: {\sc
+under the MIT license: {\sc
 \begin{quote}
 The MIT License
 
@@ -919,7 +947,7 @@ the configuration shown earlier appear in Figures~\ref{lifeprof50.fig} and
 computation is 45KiB. Figure~\ref{lifeprof100.fig}, which has data collected
 from 100 snapshots of the computation, clearly shows that most of the 45KiB are
 reclaimed between every two generations of the game. It turns out that the game
-essentially stabilizes with a small number of live positions on the board after
+essentially stabilises with a small number of live positions on the board after
 roughly 150 generations.  This stabilisation is clearly reflected in the region
 profile.
 
@@ -964,14 +992,15 @@ choose a larger number; it will speed up execution. If you just type
 \end{scriptcode}
 there will be one snapshot per second.
 
-Finally, you create a PostScript file and convert it into a pdf-file as
+Finally, you create a Postscript file and convert it into a pdf-file as
 follows:\footnote{The program \boxml{rp2ps} can be found in the
 \boxml{kit/bin} directory.}
 %
 \index{rp2ps@\texttt{rp2ps}}%
 %
 \begin{scriptcode}
-  $ rp2ps -region -name 'Game of life - 100 snapshots' -sampleMax 100
+  $ rp2ps -region -name 'Game of life - 100 snapshots' \
+          -sampleMax 100
   $ ps2pdf region.ps region.pdf
 \end{scriptcode}
 The option \lstinline!-sampleMax $N$! instructs \lstinline{rp2ps} to show at
@@ -1109,7 +1138,7 @@ storing values. Upon reaching \lstinline{end}, the program pops the region.
 Region inference also decides, for each value-producing expression, into which
 region (identified by a region variable) the value will be put.
 
-We emphasize that region variables and \lstinline{region} bindings are not present in
+We emphasise that region variables and \lstinline{region} bindings are not present in
 source programs. The source language is unadulterated Standard ML, so programs
 that run on the MLKit should be easy to port to any other Standard ML
 implementation.
@@ -2330,7 +2359,8 @@ notice that the function {\tt fromto} represents its argument \lstinline{(a,b)}
 \index{arguments!multiple}%
 \index{multiple function arguments}%
 \index{function arguments!multiple}%
-\index{arguments!flattening}
+\index{arguments!flattening}%
+\index{deep argument flattening}%
 %
 unboxed; the MLKit figures out that the function does not use the boxed
 representation of the argument and transforms all calls to the function to pass
@@ -2460,7 +2490,7 @@ Thus, \lstinline{ys} and \lstinline{xs @ ys} must be in the same
 regions. However, the auxiliary pairs of \lstinline{xs} and \lstinline{ys} need
 not be in the same regions, although the elements of \lstinline{xs} and
 \lstinline{ys} clearly must be in the same regions, because they end up in the
-same list. These properties of the append function \lstinline{@} are summarized
+same list. These properties of the append function \lstinline{@} are summarised
 in its inferred region-annotated type scheme:
 $$\begin{array}{c}\forall\alpha\rho_{19}\rho_{17}\epsilon.
    [ (\alpha,[\rho_{17}])\kw{list},
@@ -2630,7 +2660,7 @@ Chapter~\ref{mlb_and_modules.chap}.}
   fun cp [] = []
     | cp (x::xs) = x :: cp xs
 
-  (* exormorphic merge *)
+  (* exomorphic merge *)
   fun merge (xs, []) : int list = cp xs
     | merge ([], ys) = cp ys
     | merge (l1 as x::xs, l2 as y::ys) =
@@ -3580,14 +3610,18 @@ illustrate the point.
 The MLKit attempts to use an unboxed representation for value constructors when
 possible. We have already seen how cons (i.e., \lstinline{::}) and
 \lstinline{nil} use an unboxed representation (Chapter~\ref{lists.sec}). The
-MLKit uses an advanced scheme for unboxing that uses both the unused least
-significant bits and the unused most significant bits of pointer-values for
-tagging constructors \cite{10.1145/3674628}. Section~\ref{unboxing.sec}
-documents this scheme and describes how the programmer can learn about MLKit's
-unboxing decisions. Before presenting unboxing scheme in details, we first give
-an example of a tree \lstinline{datatype} declaration for which MLKit will use
-an unboxed representation that utilises the unused least-significant bits of
-pointer values for storing constructor tags.
+MLKit uses an advanced scheme for
+%
+\index{unboxing}%
+%
+unboxing that uses both the unused least significant bits and the unused most
+significant bits of pointer-values for tagging constructors
+\cite{10.1145/3674628}. Section~\ref{unboxing.sec} documents this scheme and
+describes how the programmer can learn about MLKit's unboxing decisions. Before
+presenting unboxing scheme in details, we first give an example of a tree
+\lstinline{datatype} declaration for which MLKit will use an unboxed
+representation that utilises the unused least-significant bits of pointer values
+for storing constructor tags.
 
 \section{Example: Balanced Trees}
 Consider the program in Figure~\ref{balpre.fig}.\footnote{MLB-file:
@@ -3656,6 +3690,9 @@ large) syntax trees are not kept in memory longer than needed.
 \section{Unboxing Schemes}
 \label{unboxing.sec}
 
+\index{unboxing}%
+\index{value!unboxed}%
+
 The MLKit uses a uniform representation of values, which is important for
 compiling generic code (e.g., functions) separately from the code that uses
 it. Still, under these constraints there are many possibilities for securing a
@@ -3665,27 +3702,45 @@ and binary trees, datatypes with a single unary constructor that takes boxed
 arguments are implemented using the lower-bit tags in pointers to discriminate
 between the constructors.
 
-MLKit does not stop here. It tries hard to represent data type constructors
-unboxed by utilising (otherwise) non-used bits in pointer-values. On most modern
-architectures, pointers are aligned to point only at word-addresses, which
-leaves the three least-significant bits unused and which allows MLKit to
-represent lists and trees unboxed, as we have seen earlier. Moreover, only the
-least 48 bits are used for representing pointers; the remaining 16
-most-significant bits are unused on modern 64-bit architectures.
+MLKit does not stop here.
+%
+\index{bit stealing}%
+%
+It tries hard to represent data type constructors unboxed by utilising
+(otherwise) non-used bits in pointer-values. On most modern architectures,
+pointers are aligned to point only at word-addresses, which leaves the three
+least-significant bits unused and which allows MLKit to represent lists and
+trees unboxed, as we have seen earlier. Moreover, only the least 48 bits are
+used for representing pointers; the remaining 16 most-significant bits are
+unused on modern 64-bit architectures.
 
 When we have a datatype $t$ with $u$ unary constructors and $n$ nullary
 constructors, if $0 \leq u < 2^{16}$ and if all arguments to the unary
 constructors are known to be boxed (or not using the most-significant bits), we
 can represent the type $t$ unboxed, using the high bits for tagging. If $u = 0$,
-we call the type $t$ an \emph{enum-unboxed} type. We call the type $t$ a
+we call the type $t$ an
+%
+\index{enum-unboxed}%
+\index{unboxing!enum}%
+%
+\emph{enum-unboxed} type. We call the type $t$ a
+%
+\index{low-unboxed}%
+\index{unboxing!low}%
+%
 \emph{low-unboxed} type if $u = 1$ and the argument to the unary constructor is
-boxed, and a \emph{high-unboxed} type if $u > 1$ and if all arguments to the
-unary constructors are known to be boxed. In the worst case, when none of the
-above conditions are satisfied, MLKit uses a boxed representation of the
-datatype $t$. When $t$ is a high-unboxed type, we use the 16 most significant
-bits to discriminate between the unary and nullary constructors (for GC safety,
-MLKit also sets the least significant bit for the nullary constructors). MLKit
-uses an iterative algorithm to determine the boxity for mutually recursive
+boxed, and a
+%
+\index{high-unboxed}%
+\index{unboxing!high}%
+%
+\emph{high-unboxed} type if $u > 1$ and if all arguments to the unary
+constructors are known to be boxed. In the worst case, when none of the above
+conditions are satisfied, MLKit uses a boxed representation of the datatype
+$t$. When $t$ is a high-unboxed type, we use the 16 most significant bits to
+discriminate between the unary and nullary constructors (for GC safety, MLKit
+also sets the least significant bit for the nullary constructors). MLKit uses an
+iterative algorithm to determine the boxity for mutually recursive
 \lstinline{datatype} declarations, which also include data types with a single
 unary constructor. For simplicity of region inference, region inference assumes
 that, for mutually recursive \lstinline{datatype} declarations, either all the
@@ -3714,6 +3769,9 @@ Indeed, MLKit reports that it has decided for \kw{t} to be high-unboxed.
 
 More formally, MLKit distinguishes between the following \emph{boxities}
 ($\kappa$):
+%
+\index{unboxing!boxity}%
+\index{boxity}%
 
 \[
 \begin{array}{lclp{8cm}}
@@ -4023,13 +4081,13 @@ resetting a region can involve a test at runtime.
 The MLKit contains an analysis, called the {\em storage mode analysis}, which
 has two purposes:
 \begin{enumerate}
-\item inserting automatic resetting of infinite regions, when possible
-\item checking applications of $\resetr$ (and
+\item Inserting automatic resetting of infinite regions, when possible.
+\item Checking applications of $\resetr$ (and
   %
   \index{forceResetting@$\resetf$}%
   %
   $\resetf$) so as to report on the safety of the resetting requested by the
-  programmer
+  programmer.
 \end{enumerate}
 
 As a matter of design, one might wonder whether it would not be sufficient to
@@ -4174,10 +4232,10 @@ so the runtime check on whether $r$ has its infinity bit set is omitted.}
 The relevant parts of the result of compiling the last example are shown in
 Figure~\ref{sma1.fig}.  To see the storage modes, pass the option
 %
-\index{print drop regions expression with storage modes@\texttt{-print\_drop\_regions\_expression\_with\_storage\_modes}}%
+\index{print drop regions expression with storage modes@\texttt{-Pdresm}}%
 %
 $$\kw{-print\_drop\_regions\_expression\_with\_storage\_modes}$$ to the MLKit
-compiler.
+  compiler (or \kw{-Pdresm}).
 
 \begin{figure}
 \hrule
@@ -4774,7 +4832,7 @@ Figure~\ref{msortreset1.fig}.\footnote{MLB-file:
     fun cp [] = []
       | cp (x::xs) = x :: cp xs
 
-    (* exormorphic merge *)
+    (* exomorphic merge *)
     fun merge (xs, []) : int list = cp xs
       | merge ([], ys) = cp ys
       | merge (l1 as x::xs, l2 as y::ys) =
@@ -4841,7 +4899,7 @@ Figure~\ref{force.fig}.\footnote{MLB-file: \boxml{kitdemo/msortreset2.mlb}, file
     fun cp [] = []
       | cp (x::xs) = x :: cp xs
 
-    (* exormorphic merge *)
+    (* exomorphic merge *)
     fun merge (xs, []) : int list = cp xs
       | merge ([], ys) = cp ys
       | merge (l1 as x::xs, l2 as y::ys) =
@@ -4886,7 +4944,7 @@ page~\pageref{msortregion.fig}.
 \caption{Region profiling of the improved mergesort.  The upper triangle
   contains unsorted elements, while the lower triangle contains sorted elements.
   The program was compiled with profiling enabled and then run with the command
-  \inline{run -microsec 1000}.  The PostScript picture \inline{region.ps} was
+  \inline{run -microsec 1000}.  The Postscript picture \inline{region.ps} was
   generated with the command \inline{rp2ps -region -sampleMax 200} and then
   converted into \inline{region.pdf} with \inline{ps2pdf}.}
 \label{msortreset.fig}
@@ -4956,7 +5014,6 @@ flow graph (cf., rule B3).
 \begin{smlcode}
 local
   structure F = Posix.FileSys
-
   exception NotBalanced
   fun scan fd : int * int =
     let
@@ -4992,7 +5049,6 @@ local
         | _  => count(n+1,up(lev,ins),lev,next())
 
       val (n,ins,lev,_) = count(0,0,0,next())
-
     in if lev=0 then (n,ins) else raise NotBalanced
     end
 
@@ -5083,7 +5139,7 @@ one line and then extracting the name.
 \caption{Region profile of the comment scanner. The occasional increases in
   memory use is due to the functions that read a file name from a file
   descriptor.  The program was compiled with profiling enabled, then run with
-  the command \inline{run -notimer 1000 < ../kitdemo/scanfiles}.  A PostScript
+  the command \inline{run -notimer 1000 < ../kitdemo/scanfiles}.  A Postscript
   file \inline{region.ps} can be generated with the command \inline{rp2ps
     -region -sampleMax 200} and converted to \inline{region.pdf} using
   \inline{ps2pdf region.ps region.pdf}. }
@@ -5700,7 +5756,7 @@ account the shuffling of arguments needed to match the calling convention for
 $f$.
 
 The way to avoid that a \fw{region} binding is wrapped around the function call
-(and thus causes the call not to be recognized as a tail call) is to turn the
+(and thus causes the call not to be recognised as a tail call) is to turn the
 calling function into a region endomorphism, when possible.
 
 The following is an example of how one obtains a tail call to a known
@@ -5751,7 +5807,7 @@ two mutually recursive functions \kw{g} and \kw{h}:\footnote{Program
 \end{smlcode}
 Here \kw{h} calls \kw{g} in a tail position. The call explicit version of the
 program is listed in Figure~\ref{tail2.fig}, and indeed, the call to \kw{g} is
-recognized as a tail call.
+recognised as a tail call.
 \begin{figure}
 \hrule \medskip
 \begin{smlcode}
@@ -6006,7 +6062,7 @@ implementation of the \kw{List.foldl} function:\footnote{Program \boxml{kitdemo/
 \end{smlcode}
 Figure~\ref{fold4.fig} shows the call-explicit version of the program. We see
 that the function \kw{foldl} is specialised to the supplied function. Notice
-that MLKit will specialise small functions, such as \kw{List.foldl}, accross
+that MLKit will specialise small functions, such as \kw{List.foldl}, across
 compilation unit boundaries, which means that MLKit in general generates very
 efficient code for calls to such functions.
 
@@ -6028,7 +6084,8 @@ efficient code for calls to such functions.
    in  {|a: _|}
    end
 \end{smlcode}
-\caption{The result of applying and specialising the Basis Library version of \kw{List.foldl}.}  \medskip \hrule
+\caption{The result of applying and specialising the Basis Library version of
+  \kw{List.foldl}.}  \medskip \hrule
 \label{fold4.fig}
 \end{figure}
 
@@ -6037,41 +6094,50 @@ efficient code for calls to such functions.
 \chapter{ML Basis Files and Modules}
 \label{mlb_and_modules.chap}
 %---------------------------------------------
-In Section \ref{tryit.sec} we described how to compile and run
-single-file programs. In this chapter, we describe how to program in
-the large with the MLKit, using
+In Section \ref{tryit.sec} we described how to compile and run single-file
+programs. In this chapter, we describe how to program in the large with the
+MLKit, using
+%
 \index{Standard ML!Modules}%
-Standard ML Modules and the possibility of organising source files
-in ML Basis Files. The MLKit fully supports Standard ML Modules and it
-has a sophisticated system for avoiding unnecessary recompilation. In
-the following section, we describe the notion of ML Basis Files. We then
-turn to show how to program with structures, signatures, and functors.
-To enable the programmer to write efficient programs using the Modules
-language, we shall also explain how the MLKit compiles Modules language
-constructs.
+%
+Standard ML Modules and the possibility of organising source files in ML Basis
+Files. The MLKit fully supports Standard ML Modules and it has a sophisticated
+system for avoiding unnecessary recompilation. In the following section, we
+describe the notion of ML Basis Files. We then turn to show how to program with
+structures, signatures, and functors.  To enable the programmer to write
+efficient programs using the Modules language, we shall also explain how the
+MLKit compiles Modules language constructs.
 
 \section{ML Basis Files}
 An ML Basis File, in short MLB-file,
+%
 \index{ML Basis File}%
 \index{{MLB}-file}%
-is a file that lists the SML source files
-that make up a project or a library. An MLB-file can also
+%
+is a file that lists the SML source files that make up a project or a
+library. An MLB-file can also
+%
 \index{referencing an MLB-file}%
-\emph{reference} other MLB-files, so one can organise projects in a
-hierarchical manner. MLB-files are enforced not to be cyclic.
+%
+\emph{reference} other MLB-files, so one can organise projects in a hierarchical
+manner. MLB-files are enforced not to be cyclic.
 
-MLB-files have file extension \index{.mlb@\texttt{.mlb}}{\tt .mlb}.
-The content of an MLB-file is a \emph{basis declaration}, for which
+MLB-files have file extension
+%
+\index{.mlb@\texttt{.mlb}}%
+%
+\kw{.mlb}.  The content of an MLB-file is a \emph{basis declaration}, for which
 the
+%
 \index{MLB-file!grammar}%
-grammar is given in Figure~\ref{mlb_grammar.fig}. We assume a
-denumerable infinite set of \emph{basis identifiers} Bid, ranged over
-by \emph{bid}. We use \emph{longbid} to range over \emph{long basis
-  identifiers}, that is, non-empty lists of basis identifiers
-separated by a punctuation letter (\texttt{.}). Basis identifiers can
-be used for giving a name to a group of compilation units and allow
-for expressing source dependencies, exactly, as a directed acyclic
-graph, within one MLB-file.
+%
+grammar is given in Figure~\ref{mlb_grammar.fig}. We assume a denumerable
+infinite set of \emph{basis identifiers} Bid, ranged over by \emph{bid}. We use
+\emph{longbid} to range over \emph{long basis identifiers}, that is, non-empty
+lists of basis identifiers separated by a punctuation letter (\kw{.}). Basis
+identifiers can be used for giving a name to a group of compilation units and
+allow for expressing source dependencies, exactly, as a directed acyclic graph,
+within one MLB-file.
 
 \begin{figure}
 \hrule\medskip
@@ -6091,59 +6157,65 @@ graph, within one MLB-file.
             & |   & \emph{longbid}
 \end{array}
 \]
-\caption{Grammar for MLB-files, i.e., files with extension {\tt .mlb}.
-  For some file extension {\tt .}\emph{ext}, {\it path}{\tt
-    .}\emph{ext} denotes either an absolute path or a relative path
-  (relative to the directory in which the MLB-file is located) to a
-  file on the underlying file system.}
+\caption{Grammar for MLB-files, i.e., files with extension \kw{.mlb}.  For some
+  file extension \kw{.}\emph{ext}, {\it path}\kw{.}\emph{ext} denotes either an
+  absolute path or a relative path (relative to the directory in which the
+  MLB-file is located) to a file on the underlying file system.}
 \label{mlb_grammar.fig}
 \medskip \hrule
 \end{figure}
-In an MLB-file, one can reference source files and other MLB-files
-using absolute or relative
+In an MLB-file, one can reference source files and other MLB-files using
+absolute or relative
+%
 \index{path!absolute}%
 \index{path!relative}%
-paths.  Relative paths are relative to the location of the MLB-file.
-Paths can reference environment variables using the
-\texttt{\$(ENVVAR)} notation, where \texttt{ENVVAR} is an environment
-variable.
+%
+paths.  Relative paths are relative to the location of the MLB-file.  Paths can
+reference environment variables using the \kw{\$(ENVVAR)} notation, where
+\kw{ENVVAR} is an environment variable.
 
-Until now, we have seen a few examples of MLB-files that reference the
-Basis Library, using the \texttt{\$(SML\_LIB)} environment variable
-(see Section~\ref{polyrec.sec} for such an example). In
-Section~\ref{functors.sec}, we present an example of an MLB-file that
-reference other MLB-files. In Section~\ref{comp_and_link_with_C.sec},
-we shall see an example of how an MLB-file can be compiled and linked
-with external object files, produced with a C compiler, for instance.
-MLB-files may contain Standard ML style
+Until now, we have seen a few examples of MLB-files that reference the Basis
+Library, using the \kw{\$(SML\_LIB)} environment variable (see
+Section~\ref{polyrec.sec} for such an example). In Section~\ref{functors.sec},
+we present an example of an MLB-file that reference other MLB-files. In
+Section~\ref{comp_and_link_with_C.sec}, we shall see an example of how an
+MLB-file can be compiled and linked with external object files, produced with a
+C compiler, for instance.  MLB-files may contain Standard ML style
+%
 \index{MLB-file!comments in}%
 \index{comments!in MLB-file}%
+%
 comments. The declared identifiers of an MLB-file is the union of the
-identifiers being declared by source files in the MLB-file, excluding
-source files that are included using {\tt local}. As an example of the
-use of basis identifiers and {\tt local} to limit what identifiers are
-declared by an MLB-file, consult the MLB-file {\tt basis/basis.mlb}.
+identifiers being declared by source files in the MLB-file, excluding source
+files that are included using \kw{local}. As an example of the use of basis
+identifiers and \kw{local} to limit what identifiers are declared by an
+MLB-file, consult the MLB-file \kw{basis/basis.mlb}.
 
-Every source file must contain a Standard ML top-level declaration;
-the scope of the declaration is all the subsequent source files
-mentioned in the MLB-file and all other MLB-files that reference this
-MLB-file. Thus, a source file may depend on source files mentioned
-earlier in the MLB-file and on other referenced MLB-files.  The
-meaning of an entire MLB-file is the meaning of the top-level
-declaration that would arise by expanding all referenced MLB-files and
-then concatenating all the source files listed in the MLB-file (with
-appropriate renaming of declared identifiers of source files that are
-included using {\tt local}), in the order they are listed, except that
-each MLB-file is executed only the first time it is imported.
+Every source file must contain a Standard ML top-level declaration; the scope of
+the declaration is all the subsequent source files mentioned in the MLB-file and
+all other MLB-files that reference this MLB-file. Thus, a source file may depend
+on source files mentioned earlier in the MLB-file and on other referenced
+MLB-files.  The meaning of an entire MLB-file is the meaning of the top-level
+declaration that would arise by expanding all referenced MLB-files and then
+concatenating all the source files listed in the MLB-file (with appropriate
+renaming of declared identifiers of source files that are included using
+\kw{local}), in the order they are listed, except that each MLB-file is executed
+only the first time it is imported.
 
 The MLKit has a system for managing compilation and recompilation of
+%
 \index{MLB-files}%
-MLB-files.  The system guarantees that the result of first modifying
-one or more source files and then using the separate
-compilation system to rebuild the executable is the same as if all
+%
+MLB-files.  The system guarantees that the result of first modifying one or more
+source files and then using the separate compilation system to rebuild the
+executable is the same as if all
+%
 \index{source file}%
+%
 source files were
+%
 \index{recompilation}%
+%
 recompiled.
 
 Thus, the separate compilation system is a way of avoiding recompiling parts of
@@ -6607,7 +6679,7 @@ be created:
   \begin{center}
     \lstinline{region} $\rho$
   \end{center}
-  construct are collected into one colored band, labelled $\rho$. The region
+  construct are collected into one colored band, labeled $\rho$. The region
   variables that label bands are always global or \lstinline{region}-bound, never
   formal region parameters.
 \item An
@@ -6615,7 +6687,7 @@ be created:
   \index{profile!object}%
   %
   {\em object profile\/} is a graph that, for a particular region, shows the
-  objects allocated in the region, with one coloured band for each allocation
+  objects allocated in the region, with one colored band for each allocation
   point in the region-annotated program\footnote{Every occurrence of an
   \lstinline{at} in the region-annotated program is an allocation point.}. Each
   allocation point is annotated with a
@@ -6706,7 +6778,7 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
   programmer to refine the runtime profiling strategy, or even the compile-time
   profiling strategy. Dotted boxes represent output from the compiler, from
   executing the program, and from using the tool \kw{rp2ps}, which generates
-  PostScript graphs from the exported data file.}
+  Postscript graphs from the exported data file.}
 \label{profStrategy.fig}
 \end{center}
 \medskip
@@ -6955,7 +7027,7 @@ with program points, you should pass the option
 \kw{-print\_all\_program\_points} (or \kw{-Ppp}) to the MLKit compiler together
 with one or more of the options
 %
-\index{print physical size inference expression@\texttt{-print\_physical\_size\_inference\_expression}}%
+\index{print physical size inference expression@\texttt{-Ppse}}%
 %
 \kw{-print\_physical\_size\_inference\_expression} (or \kw{-Ppse}) and
 %
@@ -7086,7 +7158,7 @@ profiling strategy by passing command line arguments directly to the executable.
 The second line says that a virtual timer is used. There are three possible
 timers, each of which can be enabled using one of the following
 options:\footnote{A complete description can be found in the manual page for
-\texttt{getitimer}.}
+\boxml{getitimer}.}
 
 \vspace{2mm}
 {\def\arraystretch{1.4}
@@ -7244,7 +7316,7 @@ the maximum allocated space in region pages is 121936 bytes.
 
 In the \kw{STACK} part, we see that the program allocates and de-allocates the
 same number of finite regions. We also see that the space used for finite
-regions is 144 bytes and that the total use of stack space is 20232 bytes
+regions is 144 bytes and that the total use of stack space is 19792 bytes
 (excluding space used to hold profiling information). The stack size values
 \begin{scriptcode}
     prof. info: 440 bytes (0.0Mb)
@@ -7261,7 +7333,7 @@ The profile data-file \kw{profile.rp} can be processed by the
 %
 \index{rp2ps@\texttt{rp2ps} options|(}%
 %
-graph generator \kw{rp2ps} (read: RegionProfile2PostScript) found in the
+graph generator \kw{rp2ps} (read: RegionProfile2Postscript) found in the
 \kw{bin} directory.\footnote{The \boxml{rp2ps} program is based on a Haskell
 profiler written by Colin Runciman, David Wakeling and Niklas R\"{o}jemo.} The
 graph generator is controlled by command line options.
@@ -7275,7 +7347,7 @@ region profile is produced by typing
 \begin{scriptcode}
   $ rp2ps -region
 \end{scriptcode}
-at the command prompt. The program produces a PostScript file \kw{region.ps} by
+at the command prompt. The program produces a Postscript file \kw{region.ps} by
 reading profile information from the
 %
 \index{profile data file}%
@@ -7395,8 +7467,8 @@ printed as \kw{Number of ticks:}.
 
 Figure~\ref{prof_eks4.fig} shows the profile for the following command line:
 \begin{scriptcode}
-  $ rp2ps -region -sampleMax 50 -name life \
-          -comment 0.06 "A comment at time 0.06" -sortBySize
+  $ rp2ps -region -sampleMax 100 -name life \
+          -comment 0.03 "A comment at time 0.03" -sortBySize
 \end{scriptcode}
 
 \begin{figure}
@@ -7486,7 +7558,7 @@ is provided.
 Storage mode analysis (see Chapter~\ref{storagemodes.sec}) results in
 a $\MulExp$\index{MulExp@$\MulExp$} expression, which is printed if the option
 %
-\index{print storage mode expression@\texttt{-print\_storage\_mode\_expression}}%
+\index{print storage mode expression@\texttt{-Psme}}%
 %
 \kw{-print\_storage\_mode\_expression} is provided.  After that, region parameters
 for which there are only $\Get$ effects on in the type scheme for a
@@ -7494,7 +7566,7 @@ region polymorphic function are removed from the $\MulExp$ expression
 (see page~\pageref{bother-to-distinguish-get-n-put}).  To see the
 resulting expression, turn on
 %
-\index{print drop regions expression@\texttt{-print\_drop\_regions\_expression}}%
+\index{print drop regions expression@\texttt{-Pdre}}%
 %
 \kw{-print\_drop\_regions\_expression} or
 $$\kw{-print\_drop\_regions\_expression\_with\_storage\_modes}$$
@@ -7508,7 +7580,7 @@ variables.  For instance, a finite region that will contain a pair will have
 physical size two words.  To see the expression after physical size inference,
 provide the option
 %
-\index{print physical size inference expression@\texttt{-print\_physical\_size\_inference\_expression}}%
+\index{print physical size inference expression@\texttt{-Ppse}}%
 %
 \kw{-print\_physical\_size\_inference\_expression}.  After that,
 %
@@ -7816,7 +7888,7 @@ To convert an ML integer \kw{i\_ml} to a C integer (type \kw{long int})
 \begin{scriptcode}
   i_c = convertIntToC(i_ml);
 \end{scriptcode}
-To convert a C integer (type \texttt{long int}) \kw{i\_c} to an ML integer
+To convert a C integer (type \kw{long int}) \kw{i\_c} to an ML integer
 \kw{i\_ml}, write
 \begin{scriptcode}
   i_ml = convertIntToML(i_c);
@@ -7933,7 +8005,7 @@ ML record \kw{rec\_ml} by writing
 \begin{scriptcode}
   elemRecordML(rec_ml, offset) = e_ml;
 \end{scriptcode}
-Two specialized versions of the \kw{elemRecordML} macro are provided for
+Two specialised versions of the \kw{elemRecordML} macro are provided for
 %
 \index{first@\texttt{first}}%
 \index{second@\texttt{second}}%
@@ -8193,10 +8265,10 @@ call to the C function is passed.  The program point is used by the C function
 when allocating space in regions, as explained in Section~\ref{prof.sec}. The
 program point is passed as the last argument:
 \begin{tabbing}
-\indent\=  $\texttt{uintptr\_t} \ \emph{c\_funcProf} \ ($\=$\texttt{Region}\ \emph{addr}_1,
-    \ldots, \texttt{Region}\ \emph{addr}_m,$\\
-  \>\>$ \texttt{uintptr\_t}\ x_1, \ldots,
-    \texttt{uintptr\_t}\ x_n, \texttt{long}\ \emph{pPoint}) $
+\indent\=  $\kw{uintptr\_t} \ \emph{c\_funcProf} \ ($\=$\kw{Region}\ \emph{addr}_1,
+    \ldots, \kw{Region}\ \emph{addr}_m,$\\
+  \>\>$ \kw{uintptr\_t}\ x_1, \ldots,
+    \kw{uintptr\_t}\ x_n, \kw{long}\ \emph{pPoint}) $
 \end{tabbing}
 \noindent
 No special version of the C function is needed if it does not allocate into
@@ -8439,10 +8511,10 @@ If '\kw{:}' is called with a name that has no association, the exception
 
 %=============================================
 \section{Auto Conversion}
+\label{auto_conversion.sec}
 %=============================================
 
 \index{auto conversion}%
-\label{auto_conversion.sec}%
 %
 For C functions that are simple, in a sense that we shall soon define, the MLKit
 can generate code that automatically converts representations of arguments from
@@ -8466,13 +8538,26 @@ The power function may then be implemented in C as follows:
 \end{scriptcode}
 
 \noindent
-No explicit conversion is needed in the C code. Auto conversion is only
-supported when the arguments of the ML function are of type \kw{int} or
-\kw{bool} and when the result has type \kw{unit}, \kw{int}, or \kw{bool}. It
-works also when profiling is enabled.
+No explicit conversion is needed in the C code. The example shown here is
+example~\ref{power_auto.ex} of Section~\ref{Cexamples.sec}; it is part of the
+\kw{mylib.mlb} project.
 
-The example shown here is example~\ref{power_auto.ex} of
-Section~\ref{Cexamples.sec}; it is part of the \kw{mylib.mlb} project.
+We define the notion of \emph{base type} as one of \kw{int}, \kw{Int8.int},
+\kw{Int16.int}, \kw{Int31.int}, \kw{Int32.int}, \kw{Int63.int}, \kw{Int64.int},
+\kw{word}, \kw{Word8.word}, \kw{Word16.word}, \kw{Word31.word},
+\kw{Word32.word}, \kw{Word63.word}, \kw{Word64.word}, \kw{char}, or \kw{bool}.
+
+Auto conversion works when each of the argument types of the ML function is a
+base type or one of \kw{string}, \kw{CharArray.array}, \kw{Word8Vector.vector},
+or \kw{Word8Array.array}. The return type of the ML function must be a base type
+or the type \kw{unit}.
+
+For the vector and array types, the data pointer is passed as arguments to the C
+function. The C function may then access and mutate the content of the data but
+should not hold on to the data or store the pointer for later use.
+
+Auto conversion works also when profiling is enabled.
+
 
 %--------------------------------------
 \section{Examples\label{Cexamples.sec}}
@@ -8514,9 +8599,12 @@ contains the following ML declarations:
 
   fun change_elem (p : int*string) : string*int =
     prim ("change_elem", p)
+
+  fun strrev (s:string) : unit =
+    prim("@strrev_auto", (size s,s))
 \end{smlcode}
 
-The C function implementations are summarized below (see the files
+The C function implementations are summarised below (see the files
 \kw{libmylib.c} and \kw{mylib.sml} in the \kw{kitdemo} directory for detailed
 comments.)
 
@@ -8598,10 +8686,82 @@ comments.)
   swap function can be implemented.
 \end{example}
 
+\begin{example}\label{strrev.ex}
+  This example demonstrates the use of auto conversion with strings.  Here is
+  the C code for the function \kw{strrev\_auto}, which is referred to by the ML
+  function
+  %
+  \index{strrev@\texttt{strrev}}%
+  %
+  \kw{strrev}:
+\begin{scriptcode}
+  void
+  strrev_auto(long len, char* data) {
+    long n = len / 2;
+    for (long i = 0; i < n; i++) {
+      char c = data[i];
+      data[i] = data[len-i-1];
+      data[len-i-1] = c;
+    }
+    return;
+  }
+\end{scriptcode}
+The function reverses the string characters in-place, which is safe even when
+garbage-collection is enabled. Notice that the size of the string is passed
+explicitly to the C function as a separate argument. Auto conversion works both
+with and without profiling and with and without reference-tracing garbage
+collection.
+\end{example}
 
 %---------------------------------------------------------
 \chapter{Summary of Changes}
 %---------------------------------------------------------
+
+\section{Changes Since Version 4.7.2}
+\index{changes!since version 4.7.2}%
+
+Here is an overview of the main changes to the MLKit since version 4.7.2.
+
+\subsubsection{Double-Ended Bit-Stealing for Uboxing}
+
+MLKit now uses an advanced unboxing scheme that allows many algebraic data types
+to be implemented unboxed using the, otherwise non-used, 16 most-significant
+bits of a pointer or the high unused bits of 8-bit word values)
+\cite{10.1145/3674628}. The scheme is described in details in
+Section~\ref{unboxing.sec}.
+
+\subsubsection{Deep-Argument Flattening}
+
+The MLKit optimiser now attempts to flatten arguments to functions using a
+scheme that allows for deep flattening and uncurrying of arguments to functions
+(also across compilation unit boundaries) \cite{deep-elsman25}. With this
+scheme, if a function takes a tuple of reals and a curried argument of type real
+as arguments, those arguments that are not used in their boxed form will be
+passed unboxed.
+
+\subsubsection{Support for Threads and Parallelism}
+
+MLKit now supports threads and parallelism through a fork-join thread interface
+\cite{10.1145/3591256}. The parallelism features are not described in details in
+this report, however.
+
+\subsubsection{Improved Abbreviated Pretty Printing}
+
+Intermediate forms in the MLKit (e.g., $\MulExp$ programs) now benefit from
+prettier printing. For example, primitives are now printed using qualified
+syntax (e.g., \kw{String.concat}).
+
+\subsubsection{Explicit Programming with Regions and Effects}
+
+The MLKit now supports explicit programming with regions and effects. The
+resulting language and compiler is called ReML and it features techniques for
+expressing and verifying constraints on regions and effects
+\cite{10.1145/3632921}. ReML is not described in this report.
+
+\subsubsection{Improved C FFI Auto Conversion}
+
+The MLKit now has improved support for interaction with C through an enriched
+set of supported types, as documented in Section~\ref{auto_conversion.sec}.
 
 \section{Changes Since Version 4.6.1}
 \index{changes!since version 4.6.1}%
@@ -8621,8 +8781,8 @@ substitutions now map type variables to region type and places.
 A problem with garbage-collection safety was fixed and it is now properly
 ensured that no dangling pointers appear during evaluation, which is a necessary
 requirement for combining region inference and reference-tracing garbage
-collection. Details are described in a technical report
-\cite{gcsafety-revisited-tr-2022}.
+collection. Details are described in a conference paper \cite{10.1145/3591229}
+and a technical report \cite{gcsafety-revisited-tr-2022}.
 
 \section{Changes Since Version 4.3.0}
 \index{changes!since version 4.3.0}%
@@ -8665,8 +8825,8 @@ using Github actions.
 \subsubsection*{JavaScript Backend (SMLtoJs)}
 \index{JavaScript!SMLtoJs}%
 
-SMLtoJs is a standalone version of the MLKit that compiles to JavaScript and
-makes use of MLKit's frontend and compilation infrastructure (e.g.,
+SMLtoJs is a stand-alone version of the MLKit that compiles to JavaScript and
+makes use of MLKit's front-end and compilation infrastructure (e.g.,
 recompilation management). It supports large parts of the Standard ML Basis
 Library. SMLtoJs does not make use of region-based memory management. SMLtoJs
 has been used for hosting a Standard ML compiler in a web browser
@@ -8713,9 +8873,9 @@ the very large''.
 \index{separate compilation}%
 %
 The MLKit now supports file-based separate compilation, based on dependencies
-established from ML Basis Files. The compiler serializes symbol table
+established from ML Basis Files. The compiler serialises symbol table
 information to disk for each compilation unit, so that this information can be
-deserialized and used when compiling other compilation units.
+deserialised and used when compiling other compilation units.
 
 \subsubsection*{Updated Standard ML Basis Library}
 \index{Standard ML!{Basis Library}}%
@@ -8831,7 +8991,7 @@ The MLKit contains a module,
 %
 \kw{StatObject}, which implements the semantic objects of the static semantics
 of the Core.  Originally, this was a very clean and very inefficient
-implementation of the Defininion. In version 2 of the MLKit, \kw{StatObject} was
+implementation of the Definition. In version 2 of the MLKit, \kw{StatObject} was
 replaced by an imperative and efficient, but complicated module.  In version 3,
 \kw{StatObject} uses a clean, efficient and imperative implementation of
 \kw{StatObject}. This is particularly useful for those who want to reuse the
@@ -9475,8 +9635,8 @@ Options:
 so-called explicit regions, which are not covered in this report.\cr
 \boxml{r3}&Holds values of type {\tt string}.\cr
 \boxml{r4}&Holds values of type $\tau_1 \times \tau_2$, for any types $\tau_1$ and $\tau_2$.\cr
-\boxml{r5}&Holds values of type $\tau~\texttt{array}$ and $\tau~\texttt{vector}$, for any type $\tau$.\cr
-\boxml{r6}&Holds values of type $\tau~\texttt{ref}$, for any type $\tau$.\cr
+\boxml{r5}&Holds values of type $\tau~\kw{array}$ and $\tau~\kw{vector}$, for any type $\tau$.\cr
+\boxml{r6}&Holds values of type $\tau~\kw{ref}$, for any type $\tau$.\cr
 \boxml{r7}&Holds values of $\tau_1 \times \tau_2 \times \tau_3$, for any types $\tau_1$, $\tau_2$, and $\tau_3$.\cr
 }
 \hrule
