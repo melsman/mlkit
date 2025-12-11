@@ -74,6 +74,20 @@ power_exn(ssize_t res, Context ctx, ssize_t base, long n, uintptr_t exn) {
   return res;
 }
 
+/* This function may be called using auto-conversion. The function
+ * updates data in-place. */
+void
+strrev_auto(long len, char* data) {
+  long n = len / 2;
+  for (long i = 0; i < n; i++) {
+    char c = data[i];
+    data[i] = data[len-i-1];
+    data[len-i-1] = c;
+  }
+  return;
+}
+
+
 /* This example shows how to traverse a list.  We run through the list
  * while the next element in the list is a CONS. Example of the string
  * list representation: ["ABC","DEF","GHI","JKL"] =

@@ -967,6 +967,14 @@ runtime_test1auto (uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintp
   return ret;
 }
 
+/* Another test function for testing multi-parameter passing (auto) */
+uintptr_t
+runtime_test2auto (uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5,
+		   uintptr_t a6, uintptr_t a7, uintptr_t a8, uintptr_t a9, uintptr_t a10, uintptr_t a11) {
+  long int ret = runtime_test1auto(a1,a2,a3,a4,a5,a6,a7,a8,a9,a10);
+  return ret + 37*(long int)a11;
+}
+
 /* A test function for testing multi-parameter passing (non-auto) */
 uintptr_t
 runtime_test1 (uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5,

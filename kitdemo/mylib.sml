@@ -66,6 +66,13 @@ fun real_list () : real list =
 
 (* The function change_elem exchanges the elements in a pair (no
  * sharing). *)
+
 val fail = Fail "change_elem"
 fun change_elem (p : int*string) : string*int =
   prim ("change_elem", (getCtx(), p, fail))
+
+(* The function strrev reverses the characters in the argument string
+ * in-place. *)
+
+fun strrev (s:string) : unit =
+  prim("@strrev_auto", (size s,s))

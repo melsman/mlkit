@@ -156,12 +156,20 @@ struct
      * convert the C result to an ML result. Currently supports at most 6 arguments. *)
 
     fun compile_c_call_auto (name,args,rhos_for_result,opt_res,fsz,tmp,C) =
-        let val args = if List.length args > List.length RI.args_reg_ccall then
-                         die ("compile_c_call_auto: at most " ^
-                              Int.toString (List.length RI.args_reg_ccall) ^
-                              " arguments are supported")
-                       else ListPair.zip (args, RI.args_reg_ccall)
+        let
+            val nargs = List.length args (* not used for static calls *)
+            val args_stack = drop (List.length RI.args_reg_ccall) args
+            val nargs_stack = List.length args_stack
+(*
+            val () = if List.length args_stack > 0 then
+                       die ("compile_c_call_auto: at most " ^
+                            Int.toString (List.length RI.args_reg_ccall) ^
+                            " arguments are supported")
+                     else ()
+*)
+            val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = List.map (fn ((x:SS.Aty,y:LS.foreign_type),z:reg) => (x,y,z)) args
+
             fun mov_bool ((aty,r),fsz,C) =
                 load_aty(aty,r,fsz,
                                   I.shrq(I "1", R r) :: C)
@@ -204,6 +212,9 @@ struct
                 in mov_fun((aty,r),fsz,C)
                 end
 
+            fun push_arg ((aty:SS.Aty,ft:LS.foreign_type),fsz,C) =
+                mov_arg (aty,ft,tmp,fsz,G.push_ea(R tmp) $ C)
+
             fun tag_bool_result (r,C) = G.lea (DD("1", r, r, ""), r) C
 
             fun maybe_tag_int_result (r,C) =
@@ -217,7 +228,7 @@ struct
             fun maybe_push_rho_for_result fsz F =
                 case rhos_for_result of
                     [SS.PHREG_ATY r] => G.push_ea(R r) $
-                                        G.push_ea (I"0") $
+                                        G.push_ea(I"0") $
                                         F (fsz+2)   (* push twice for alignment *)
                   | _ => F fsz
 
@@ -252,12 +263,12 @@ struct
                   | _ => convert_result ft (rax, move_reg_into_aty(rax,aty,fsz,C))
 
             val dynlinklab = "localResolveLibFnAuto"
-            val nargs = List.length args (* not used for static calls *)
-        in maybe_push_rho_for_result fsz (
-            fn fsz =>
-               shuffle_args fsz mov_arg args
-                (maybe_align 0 (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-                 (store_result(opt_res,C))))
+        in maybe_push_rho_for_result fsz (fn fsz =>
+            shuffle_args fsz mov_arg args
+              (push_args push_arg fsz args_stack
+                (maybe_align nargs_stack
+                  (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
+                    (store_result(opt_res,C)))))
         end
     end
 

@@ -8,7 +8,7 @@ fun power_test () =
     val n = 4
   in
     print ("Test of the power function...\n");
-    print ("Result of power(" ^ Int.toString base ^ "," ^ Int.toString n ^ 
+    print ("Result of power(" ^ Int.toString base ^ "," ^ Int.toString n ^
 	   ")=" ^ Int.toString(power(base,n)) ^ ".\n\n")
   end
 
@@ -18,7 +18,7 @@ fun power_auto_test () =
     val n = 4
   in
     print ("Test of the power_auto function...\n");
-    print ("Result of power_auto(" ^ Int.toString(base) ^ "," ^ Int.toString(n) ^ 
+    print ("Result of power_auto(" ^ Int.toString(base) ^ "," ^ Int.toString(n) ^
 	   ")=" ^ Int.toString(power_auto(base,n)) ^ ".\n\n")
   end
 
@@ -28,7 +28,7 @@ fun power_real_test () =
     val n = 4
   in
     print ("Test of the power_real function...\n");
-    print ("Result of power_real(10.5" ^ "," ^ Int.toString(n) ^ ")=" ^ 
+    print ("Result of power_real(10.5" ^ "," ^ Int.toString(n) ^ ")=" ^
 	   Real.toString(power_real(base,n)) ^ ".\n\n")
   end
 
@@ -38,11 +38,11 @@ fun power_exn_test () =
     val n = 4
   in
     print ("Test of the power_exn function...\n");
-    print ("Result of power_exn(10.5" ^ "," ^ Int.toString(n) ^ ")=" ^ 
+    print ("Result of power_exn(10.5" ^ "," ^ Int.toString(n) ^ ")=" ^
 	   Real.toString(power_exn(base,n)) ^ ".\n\n");
     print ("Exception Power should be raised, because the power_exn function");
     print ("\nis called with base = ~10.5.\n");
-    print ("Result of power_exn(~10.5" ^ "," ^ Int.toString(n) ^ ")=" ^ 
+    print ("Result of power_exn(~10.5" ^ "," ^ Int.toString(n) ^ ")=" ^
 	   Real.toString(power_exn(~base,n)) ^ ".\n\n")
     handle Power => print ("Ok, now handling exception Power\n\n")
   end
@@ -93,7 +93,16 @@ fun change_elem_test () =
     print("The pair (42,The MLKit) is changed into ");
     print("("^s^","^Int.toString(i)^").\n")
   end
-    
+
+fun strrev_test () =
+    let val () = print "Testing strrev...\n"
+        val s = CharVector.tabulate (5, fn i => String.sub("hello",i))
+        val () = print (s ^ "\n")
+        val () = strrev s
+        val () = print (s ^ "\n")
+    in if s = "olleh" then print "OK\n" else print "ERR\n"
+    end
+
 val _ = power_test()
 val _ = power_auto_test ()
 val _ = power_real_test()
@@ -102,5 +111,4 @@ val _ = print_string_list_test()
 val _ = dir_test()
 val _ = real_list_test()
 val _ = change_elem_test()
-
-
+val _ = strrev_test()

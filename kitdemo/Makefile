@@ -26,16 +26,16 @@ libmylibs: $(TARGETS)
 	gcc $(OPT) -DTAG_VALUES -DENABLE_GC -c -o $*-t.a $<
 
 mylibtest: libmylib.a
-	SML_LIB=.. $(MLKIT) -o mylibtest -libdirs "." -libs "m,c,dl,mylib" mylib.mlb
+	SML_LIB=.. $(MLKIT) -no_gc -o mylibtest -libdirs "." -libs "m,c,dl,mylib" mylib.mlb
 
 mylibtest-p: libmylib-p.a
-	SML_LIB=.. $(MLKIT) -prof -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
+	SML_LIB=.. $(MLKIT) -no_gc -prof -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
 
 mylibtest-pt: libmylib-pt.a
-	SML_LIB=.. $(MLKIT) -prof -gc -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
+	SML_LIB=.. $(MLKIT) -prof -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
 
 mylibtest-t: libmylib-t.a
-	SML_LIB=.. $(MLKIT) -gc -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
+	SML_LIB=.. $(MLKIT) -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
 
 clean:
 	rm -rf *~ *.o $(TARGETS) *.rp *.ps MLB run mylibtest mylibtest-p mylibtest-pt mylibtest-t *.pdf *.exe *.log *.out *.vcg
