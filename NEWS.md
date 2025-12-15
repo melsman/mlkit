@@ -3,7 +3,7 @@
 ### MLKit version 4.7.16 is released
 
 * mael 2025-12-15: Updated documentation. There is a new version of "Programming
-  with Regions in the MLKit"; see doc/manual/mlkit.pdf.
+  with Regions in the MLKit"; see doc/mlkit.pdf.
 
 * mael 2025-12-08: Better inlining control. The flags `-max_inl_sz` and
   `-max_spec_sz` now control inlining and specialisation both at declaration
