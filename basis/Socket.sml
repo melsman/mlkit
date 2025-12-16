@@ -227,8 +227,11 @@ local
 
     fun recvVec ({fd,...} : ('af, active stream) sock,
                  i : int) : Word8Vector.vector =
-        prim("sml_sock_recvvec",(getCtx(),fd,i))
-        handle Overflow => failure "recvVec"
+        let val i = if i > 2147483647 then 2147483647
+                    else i (* recv (inside 'sml_sock_recvvec') fails if i is too large... *)
+        in prim("sml_sock_recvvec",(getCtx(),fd,i))
+           handle Overflow => failure "recvVec"
+        end
 
     fun close ({fd,...} : ('af, 'st) sock) : unit =
         prim("@close", fd)

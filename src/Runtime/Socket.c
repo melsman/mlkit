@@ -283,12 +283,14 @@ String
 REG_POLY_FUN_HDR(sml_sock_recvvec, Region rString, Context ctx, size_t sock, size_t i)
 {
   sml_debug("[sml_sock_recvvec");
+  i = convertIntToC(i);
   char *buf = (char *)malloc(i+1);    // temporary storage
   if (buf == NULL) {
     raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
     return NULL;
   }
-  int ret = recv(convertIntToC(sock), buf, convertIntToC(i), 0);
+  int ret = recv(convertIntToC(sock), buf, i, 0);
+  sml_debug("..");
   if (ret < 0) {
     free(buf);
     sml_debug("]*\n");
