@@ -110,6 +110,10 @@ Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
 
+* Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
+Højfeld Olesen, and Peter Sestoft. ___Programming with Regions in the
+MLKit (revised for Version 4.7.16)___. Department of Computer Science, University of Copenhagen. December 2025. [pdf](/pdf/mlkit-4.7.16.pdf), [bibtex](/pdf/mlkit-4.7.16-bibtex.txt).
+
 * Axel Prütz Kanne and Svante Geisshirt. __Unikernels with Region
   Inference__. BSc project. Department of Computer Science, University of
   Copenhagen. June 2024. [pdf](/pdf/unikernels-mlkit-bsc.pdf)

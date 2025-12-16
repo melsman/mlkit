@@ -57,7 +57,7 @@ The MLKit is software partly delivered by the DART research project,
 which is sponsored by the Danish Research Council for Natural
 Sciences.  People whom we wish to thank for contributing with bug
 reports include, but are not limited to (in alphabetical order) Johnny
-Andersen, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
+Andersen, Troels Henriksen, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
 
 ### Other Standard ML Implementations
 
