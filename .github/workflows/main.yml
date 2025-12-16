@@ -132,7 +132,7 @@ jobs:
           CC=${{env.THECC}} ./configure --with-compiler=mlkit
 
       - name: Build MLKit
-        timeout-minutes: 120
+        timeout-minutes: 240
         run: |
           gcc --version
           make mlkit
