@@ -515,8 +515,8 @@ struct
 
   fun push_args push_arg fsz args C =
       let fun loop ([], _) = C
-            | loop (arg :: rest, fsz) = (push_arg(arg,fsz,
-                                                      loop (rest, fsz + 1)))
+            | loop (arg :: rest, fsz) =
+              push_arg (arg, fsz, loop(rest, fsz + 1))
       in loop(rev args, fsz)
       end
 

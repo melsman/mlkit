@@ -10,7 +10,40 @@ type Exp = L.LambdaExp
 type lvar = Lvars.lvar
 type excon = Excon.excon
 
-datatype conRep = (* representation of value constructors for datatypes *)
+(* First, we define an application conversion phase to turn all applications of
+ * the form `f (F[ubr_1|...|ubr_n])`, where `ubr_i` is an  unboxed record and
+ * `F` is a multi-hole expression context, into the form `F[f ubr1|...|f ubrn]`
+ *
+ * To identify candidate applications, we first define a function `ub_record`,
+ * that, given an expression `e`, returns `SOME F`, where `F` is an application
+ * context, if `e` is an unboxed record expression.
+ *)
+
+fun ub_record (e:Exp) : ((Exp -> Exp) -> Exp) option =
+    case e of
+        L.PRIM(L.UB_RECORDprim, _) => SOME (fn f => f e)
+      | L.LET{pat,bind,scope} =>
+        (case ub_record scope of
+             SOME g => SOME (fn f : Exp->Exp => L.LET{pat=pat,bind=bind,scope=g f})
+           | NONE => NONE)
+      | L.FIX{functions,scope} =>
+              (case ub_record scope of
+                   SOME g => SOME (fn f : Exp->Exp => L.FIX{functions=functions,scope=g f})
+                 | NONE => NONE)
+      (* perhaps more cases needs to be considered, such as cases and exception expressions *)
+      | _ => NONE
+
+fun appl_convert (e:Exp) : Exp =
+    case LambdaBasics.map_lamb appl_convert e of
+        e0 as L.APP(_,L.PRIM(L.UB_RECORDprim, _),_) => e0
+      | e0 as L.APP(e,e',t) =>
+        (case ub_record e' of
+             SOME F => F (fn e' => L.APP(e,e',t))
+           | NONE => e0)
+      | e0 => e0
+
+(* Representation of value constructors for datatypes *)
+datatype conRep =
          BOOL of bool
        | ENUM of int
        | STD of int
@@ -1039,6 +1072,7 @@ and toj_fix C P functions scope =
 
 fun toJs (env0, L.PGM(dbss,e)) =
     let
+      val e = appl_convert e
       val e = LambdaBasics.annotate_tail_calls e
       val (lvars,excons) = LambdaBasics.exports e
       val _ = setFrameLvars lvars
@@ -1047,6 +1081,12 @@ fun toJs (env0, L.PGM(dbss,e)) =
       val env' = Env.fromDatbinds dbss
       val env = Env.plus(env0,env')
       val js = wrapRet (RetCont NONE) (toj (Context.mk env) {clos_p=false} e)
+               handle ? =>
+                      let val st = L.layoutLambdaExp e
+                      in PrettyPrint.printTree st
+                       ; raise ?
+                      end
+
       val js = JExp(J.App(J.Fun([],js),[]))
       val js =
           case getLocalBase() of

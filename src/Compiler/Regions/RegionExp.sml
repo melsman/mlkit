@@ -456,8 +456,10 @@ fun mkLay (omit_region_info: bool)
               end
             | RECORD(NONE, []) => PP.LEAF "()"
             | SELECT(i, trip) =>
-              PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
-                      children = [layTrip(trip,3)]}
+              let val s = "#" ^ Int.toString i ^ " "
+              in PP.NODE{start = s, finish = "", indent = size s, childsep = PP.NOSEP,
+                         children = [layTrip(trip,3)]}
+              end
             | FN{pat, body, alloc, free} => layLam((pat,body,alloc), n, "")
             | APP(TR(VAR{lvar, il_r, fix_bound=true},_,_), t2) =>
               let (*        f il (exp)

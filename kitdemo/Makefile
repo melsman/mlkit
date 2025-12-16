@@ -1,7 +1,7 @@
 TARGETS=libmylib.a libmylib-p.a libmylib-pt.a libmylib-t.a
 
 MLKIT ?= ../bin/mlkit
-OPT ?= -m32 -Wall -std=gnu99
+OPT ?= -Wall -std=gnu99
 
 .PHONY: libmylibs
 .PHONY: mylibtest
@@ -26,29 +26,29 @@ libmylibs: $(TARGETS)
 	gcc $(OPT) -DTAG_VALUES -DENABLE_GC -c -o $*-t.a $<
 
 mylibtest: libmylib.a
-	$(MLKIT) -o mylibtest -libdirs "." -libs "m,c,dl,mylib" mylib.mlb
+	SML_LIB=.. $(MLKIT) -no_gc -o mylibtest -libdirs "." -libs "m,c,dl,mylib" mylib.mlb
 
 mylibtest-p: libmylib-p.a
-	$(MLKIT) -prof -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
+	SML_LIB=.. $(MLKIT) -no_gc -prof -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
 
 mylibtest-pt: libmylib-pt.a
-	$(MLKIT) -prof -gc -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
+	SML_LIB=.. $(MLKIT) -prof -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
 
 mylibtest-t: libmylib-t.a
-	$(MLKIT) -gc -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
+	SML_LIB=.. $(MLKIT) -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
 
 clean:
 	rm -rf *~ *.o $(TARGETS) *.rp *.ps MLB run mylibtest mylibtest-p mylibtest-pt mylibtest-t *.pdf *.exe *.log *.out *.vcg
 	(cd utils; rm -rf *~ MLB)
 
 .PHONY: pdfs
-pdfs: life80.pdf life200.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf
+pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf scan_stream.pdf scan_stream_nogc.pdf scan_rev1_1.pdf scan_rev1_2.pdf scan_rev2_1.pdf
 
 life.exe: life.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
 
 life.rp: life.exe
-	./$< -file $@ -microsec 400 > life.out
+	./$< -file $@ -microsec 280 > life.out
 
 life%.ps: life.rp
 	../bin/rp2ps -name "Game of life - $* snapshots" -source $< -region $@ -sampleMax $*
@@ -57,13 +57,13 @@ msort.exe: msort.mlb Makefile msortrun.sml msort.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
 
 msort.rp: msort.exe
-	./$< -file $@ -microsec 400 > msort.out
+	./$< -file $@ -notimer 8000 > msort.out
 
 msortregion.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -region $@ -sampleMax 200
+	../bin/rp2ps -name "Mergesort" -source $< -region $@ -sampleMax 500
 
 msortstack.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 200
+	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 500
 
 length.exe: length.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
@@ -117,7 +117,7 @@ scan_rev1_1.ps: scan_rev1.rp
 	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -region $@ -sampleMax 200
 
 scan_rev1_2.ps: scan_rev1.rp
-	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 154248 $@ -sampleMax 200
+	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 333643 $@ -sampleMax 200
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
@@ -129,13 +129,13 @@ scan_rev2_1.ps: scan_rev2.rp
 	../bin/rp2ps -name "Scanning life.sml 50 times with no space leak" -source $< -region $@ -sampleMax 200
 
 life_ex4.ps: life.rp
-	../bin/rp2ps -source $< -region $@ -sampleMax 50 -name life -comment 0.06 "A comment at time 0.06" -sortBySize
+	../bin/rp2ps -source $< -region $@ -sampleMax 100 -name life -comment 0.03 "A comment at time 0.03" -sortBySize
 
 life_ex2.ps: life.rp
-	../bin/rp2ps -source $< -name life -object 155180 $@
+	../bin/rp2ps -source $< -name life -object 332640 $@
 
 life_ex3.ps: life.rp
-	../bin/rp2ps -source $< -name life -stack $@
+	../bin/rp2ps -source $< -name life -sampleMax 200 -stack $@
 
 %.pdf: %.ps
 	ps2pdf $< $@

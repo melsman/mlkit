@@ -280,7 +280,8 @@ struct
                     FIX{shared_clos, functions, scope, ...} =>
                     let val TE' =
                             foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') =>
-                                      RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type), SOME shared_clos,
+                                      RSE.declareLvar(lvar, (true,true,[],R.FORALL(rhos,epss,tyvars,Type),
+                                                             SOME shared_clos,
                                                              NONE, NONE), TE'))
                                   TE functions
 
@@ -302,7 +303,8 @@ struct
                                                     case R.unBOX mu of
                                                         SOME (ty,rho) => (ty,SOME rho)
                                                       | NONE => (mu,NONE)
-                                            in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme ty,rho,NONE,NONE),
+                                            in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme ty,
+                                                                      rho,NONE,NONE),
                                                                TE')
                                             end)
                                         TE pat
@@ -311,8 +313,8 @@ struct
                   | LET{k_let,pat,bind,scope} =>
                     (warn_puts_trip TE bind;
                      let val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
-                                             RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho,
-                                                                    NONE, NONE),
+                                             RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau),
+                                                                    rho,NONE,NONE),
                                                              TE'))
                                          TE
                                          pat
@@ -778,14 +780,17 @@ struct
   type bad_lvars = (Lvars.lvar * (sigma*place option)*place list)list
 
   fun bad_lvars (fn_level, TE, lvars) : bad_lvars =
-      foldl (fn (lvar, acc) => case RSE.lookupLvar TE lvar of
-                                   SOME (_,_,_,sigma,p,_,_) =>
-                                   (case bad_rhos(fn_level, case p of SOME p => p:: R.frv_sigma sigma | NONE => R.frv_sigma sigma) of
-                                        [] => acc
-                                      | l  => (print ("** Lvar " ^ Lvars.pr_lvar lvar ^ " has a type scheme with a region \n\
-                                                      \   variable with higher level than the epsilon of the function.\n");
-                                               (lvar,(sigma,p), l) :: acc))
-                                 | NONE => die "bad_lvars: lvar not in scope")
+      foldl (fn (lvar, acc) =>
+                case RSE.lookupLvar TE lvar of
+                    SOME (_,_,_,sigma,p,_,_) =>
+                    (case bad_rhos(fn_level, case p of SOME p => p:: R.frv_sigma sigma
+                                                     | NONE => R.frv_sigma sigma) of
+                         [] => acc
+                       | l  => (print ("** Lvar " ^ Lvars.pr_lvar lvar ^
+                                       " has a type scheme with a region \n\
+                                       \   variable with higher level than the epsilon of the function.\n");
+                                (lvar,(sigma,p), l) :: acc))
+                  | NONE => die "bad_lvars: lvar not in scope")
             [] lvars
 
   type bad_excons = (Excon.excon * mu * place list)list
@@ -853,17 +858,18 @@ struct
                   free = ref(SOME(lvars, excons, _)),
                   ...} =>
                let val TE' = foldr (fn ((lvar,mu), TE') =>
-                                       let val (tau,rho) = case R.unBOX mu of SOME (tau,rho) => (tau,SOME rho) | NONE => (mu,NONE)
-                                       in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme tau, rho , NONE, NONE), TE')
+                                       let val (tau,rho) = case R.unBOX mu of SOME (tau,rho) => (tau,SOME rho)
+                                                                            | NONE => (mu,NONE)
+                                       in RSE.declareLvar(lvar, (true,true,[],R.type_to_scheme tau,
+                                                                 rho , NONE, NONE), TE')
                                        end)
                                    TE pat
-                    val level_fn = case eps_opt of
-                                     SOME eps => (case Eff.level_of eps of
-                                                    SOME int => int
-                                                  | NONE => die "warn_dangle: latent effect has no level"
-                                                 )
-                                   | NONE => die "warn_dangle: no rho of expression"
-
+                   val level_fn = case eps_opt of
+                                      SOME eps => (case Eff.level_of eps of
+                                                       SOME int => int
+                                                     | NONE => die "warn_dangle: latent effect has no level"
+                                                  )
+                                    | NONE => die "warn_dangle: no rho of expression"
                 in
                    warn_dangle_trip TE' body;
                    report_dangling(e, bad_lvars(level_fn,TE,lvars), bad_excons(level_fn,TE,excons))
@@ -875,9 +881,10 @@ struct
                    (warn_dangle_trip TE bind;
                     let
                         val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') =>
-                                         RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau), rho , NONE, NONE), TE'))
-                           TE
-                           pat
+                                            RSE.declareLvar(lvar, (true,true,[],R.FORALL([],epss,tyvars,tau),
+                                                                   rho, NONE, NONE), TE'))
+                                        TE
+                                        pat
                    in warn_dangle_trip TE' scope
                    end
                   )
@@ -972,7 +979,6 @@ struct
                                     children = children}
   fun get_opt l = foldr (fn (opt, acc) =>
                          case opt of SOME t => t::acc | NONE => acc) [] l
-
 
   fun mkLay (omit_region_info: bool) (layout_alloc: 'a -> StringTree option)
                                      (layout_alloc_short: 'a -> StringTree option)
@@ -1304,8 +1310,10 @@ struct
                          children = map (fn trip => layTrip(trip,0)) args}
               end
             | SELECT(i, trip) =>
-              par (n-n_fun) (PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
-                                     children = [layTrip(trip,n_inf)]})
+              let val s = "#" ^ Int.toString i ^ " "
+              in par (n-n_fun) (PP.NODE{start = s, finish = "", indent = size s, childsep = PP.NOSEP,
+                                        children = [layTrip(trip,n_inf)]})
+              end
             | FN{pat,body,free,alloc}=> layLam((pat,body,alloc), n, "")
             | APP(NONE,_,TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
               let

@@ -141,39 +141,36 @@ extern long* stackBot;
 FiniteRegionDesc * topFiniteRegion = NULL;
 
 unsigned long callsOfDeallocateRegionInf=0,
-             callsOfDeallocateRegionFin=0,
-             callsOfAlloc=0,
-             callsOfResetRegion=0,
-             callsOfDeallocateRegionsUntil=0,
-             callsOfAllocateRegionInf=0,
-             callsOfAllocateRegionFin=0,
-             callsOfSbrk=0,
-             maxNoOfPages=0,
-             noOfPages=0,
-             allocNowInf=0,             /* Allocated in inf. regions now. */
-             maxAllocInf=0,             /* Max. allocatated data in inf. regions. */
-             allocNowFin=0,             /* Allocated in fin. regions now. */
-             maxAllocFin=0,             /* Max. allocated in fin. regions. */
-             allocProfNowInf=0,         /* Words used on object descriptors in inf. regions. */
-             maxAllocProfInf=0,         /* At time maxAllocInf how much were
-                                           used on object descriptors. */
-             allocProfNowFin=0,         /* Words used on object descriptors in fin. regions. */
-             maxAllocProfFin=0,         /* At time maxAllocFin how much were used on object descriptors. */
-             maxAlloc=0,                /* Max. allocated data in both inf. and fin. regions. */
-                                        /* Are not nessesarily equal to maxAllocInf+maxAllocFin!!! */
-             maxMem=0,                  /* Max. allocated data on stack and in regions (finite and infinite) */
-             regionDescUseInf=0,        /* Words used on non profiling information in inf. region descriptors. */
-	     maxRegionDescUseInf=0,     /* Max. words used on non profiling information in inf. region descriptors. */
-             regionDescUseProfInf=0,    /* Words used on profiling information in inf. region descriptors. */
-	     maxRegionDescUseProfInf=0, /* Max. words used on profiling information in inf. region descriptors. */
-
-             regionDescUseProfFin=0,    /* Words used on profiling information in fin. region descriptors. */
-	     maxRegionDescUseProfFin=0, /* At time maxAllocFin, how much were used on finite region descriptors. */
-
-             maxProfStack=0,            /* At time of max. stack size, how much is due to profiling.        */
-                                        /* It is updated in function Profiling.updateMaxProfStack, which is */
-                                        /* called from the assembler file.                                  */
-             allocatedLobjs=0;          /* Total number of allocated large objects allocated with malloc */
+  callsOfDeallocateRegionFin=0,
+  callsOfAlloc=0,
+  callsOfResetRegion=0,
+  callsOfDeallocateRegionsUntil=0,
+  callsOfAllocateRegionInf=0,
+  callsOfAllocateRegionFin=0,
+  callsOfSbrk=0,
+  maxNoOfPages=0,
+  noOfPages=0,
+  allocNowInf=0,             // Allocated in inf. regions now.
+  maxAllocInf=0,             // Max. allocatated data in inf. regions.
+  allocNowFin=0,             // Allocated in fin. regions now.
+  maxAllocFin=0,             // Max. allocated in fin. regions.
+  allocProfNowInf=0,         // Words used on object descriptors in inf. regions.
+  maxAllocProfInf=0,         // At time maxAllocInf how much were
+                             //   used on object descriptors.
+  allocProfNowFin=0,         // Words used on object descriptors in fin. regions.
+  maxAllocProfFin=0,         // At time maxAllocFin how much were used on object descriptors.
+  maxAlloc=0,                // Max. allocated data in both inf. and fin. regions.
+                             //  - not nessesarily equal to maxAllocInf+maxAllocFin!!!
+  maxMem=0,                  // Max. allocated data on stack and in regions (finite and infinite)
+  regionDescUseInf=0,        // Words used on non profiling information in inf. region descriptors.
+  maxRegionDescUseInf=0,     // Max. words used on non profiling information in inf. region descriptors.
+  regionDescUseProfInf=0,    // Words used on profiling information in inf. region descriptors.
+  maxRegionDescUseProfInf=0, // Max. words used on profiling information in inf. region descriptors.
+  regionDescUseProfFin=0,    // Words used on profiling information in fin. region descriptors.
+  maxRegionDescUseProfFin=0, // At time maxAllocFin, how much were used on finite region descriptors.
+  maxProfStack=0,            // At time of max. stack size, how much is due to profiling.
+                             // - updated by inline assembler code (see CodeGenX86.sml)
+  allocatedLobjs=0;          // Total number of allocated large objects allocated with malloc
 
 inline static unsigned int
 max(unsigned int a, unsigned int b)
@@ -1310,8 +1307,9 @@ void
 allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
 {
   ObjectDesc *objPtr;
+
 /*
-  printf("[Entering allocRegionFiniteProfiling, rdAddr=%x, regionId=%d, size=%d ...\n", rdAddr, regionId, size);
+  printf("[Entering allocRegionFiniteProfiling, rdAddr=%p, regionId=%ld, size=%ld ...\n", rdAddr, regionId, size);
 */
   allocNowFin += size;                                  /* necessary for graph drawing */
   maxAlloc = max(maxAlloc, allocNowFin+allocNowInf);    /* necessary for graph drawing */
@@ -1320,6 +1318,11 @@ allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t siz
   maxAllocFin = max(allocNowFin, maxAllocFin);
   allocProfNowFin += sizeObjectDesc;
   regionDescUseProfFin += sizeFiniteRegionDesc;
+
+  // if (allocProfNowFin != regionDescUseProfFin) {
+  //   printf("allocFin: %ld differs from %ld\n", allocProfNowFin, regionDescUseProfFin);
+  // }
+
   if (allocNowFin == maxAllocFin) {
     maxAllocProfFin = allocProfNowFin;
     maxRegionDescUseProfFin = regionDescUseProfFin;
@@ -1361,7 +1364,7 @@ deallocRegionFiniteProfiling(void)
   long size;
 
   /*
-  printf("[Entering deallocRegionFiniteProfiling regionId=%d (topFiniteRegion = %x)...\n",
+  printf("[Entering deallocRegionFiniteProfiling regionId=%ld (topFiniteRegion = %p)...\n",
 	 topFiniteRegion->regionId, topFiniteRegion);
   */
   size = ((ObjectDesc *) (topFiniteRegion + 1))->size;
@@ -1371,6 +1374,10 @@ deallocRegionFiniteProfiling(void)
   profTabDecrAllocNow(topFiniteRegion->regionId, size, "deallocRegionFiniteProfiling");
   allocProfNowFin -= sizeObjectDesc;
   regionDescUseProfFin -= sizeFiniteRegionDesc;
+
+  // if (allocProfNowFin != regionDescUseProfFin) {
+  //   printf("deallocFin: %ld differs from %ld\n", allocProfNowFin, regionDescUseProfFin);
+  // }
 
   topFiniteRegion = topFiniteRegion->p;                   /* pop ptr. to prev. region desc. */
 

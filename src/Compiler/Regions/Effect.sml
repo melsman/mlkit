@@ -185,7 +185,7 @@ struct
       end
 
     val print_control_abbrev_layout = Flags.add_bool_entry
-        {long="print_control_abbrev_layout", short=NONE, menu=["Layout","abbrev layout"],
+        {long="print_control_abbrev_layout", short=SOME "abbrev", menu=["Layout","abbrev layout"],
          item=ref true, neg=true, desc=
          "Abbreviate layout of multiplicity expressions and call-\n\
          \explicit expressions. For instance, do not show at-\n\

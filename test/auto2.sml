@@ -79,5 +79,5 @@ structure T1 = TestAutoW8Array(type t = chararray type e = char
 structure T2 = TestAutoW8Array(type t = Word8Array.array type e = Word8.word
                                val fromInt = Word8.fromInt)
 
-structure T2 = TestAutoW8Array(type t = Int8Array.array type e = Int8.int
+structure T3 = TestAutoW8Array(type t = Int8Array.array type e = Int8.int
                                val fromInt = Int8.fromInt)

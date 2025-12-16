@@ -1,5 +1,19 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.16 is released
+
+* mael 2025-12-15: Updated documentation. There is a new version of "Programming
+  with Regions in the MLKit"; see doc/mlkit.pdf.
+
+* mael 2025-12-15: Fix bug in Socket.recvVec. It now works correctly when passed
+  Word8Vector.maxLen.
+
+* mael 2025-12-08: Better inlining control. The flags `-max_inl_sz` and
+  `-max_spec_sz` now control inlining and specialisation both at declaration
+  points and at call sites.
+
+* mael 2025-12-08: Improved argument-ordering with deep argument-flattening.
+
 * mael 2025-11-18: Fix stack reporting in region profile graphs.
 
 * mael 2025-11-05: Prettier printing of MulExp expressions (e.g., call-explicit

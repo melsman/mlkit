@@ -1,0 +1,146 @@
+\usepackage{listings}
+
+% Define Language
+\lstdefinelanguage{sml}
+{
+  % list of keywords
+  morekeywords={
+    and,
+    andalso,
+    as,
+    case,
+    datatype,
+    do,
+    else,
+    end,
+    eqtype,
+    exception,
+    fn,
+    fun,
+    functor,
+    handle,
+    if,
+    in,
+    infix,
+    infixr,
+    include,
+    let,
+    local,
+    match,
+    open,
+    of,
+    op,
+    orelse,
+    raise,
+    rec,
+    sharing,
+    sig,
+    signature,
+    struct,
+    structure,
+    then,
+    type,
+    val,
+    where,
+    with,
+    while,
+    at,           % non-standard
+    atbot,        % non-standard
+    attop,        % non-standard
+    letregion,    % non-standard
+    region,       % non-standard
+    sat           % non-standard
+  },
+  mathescape,
+  sensitive=true, % keywords are not case-sensitive
+  morecomment=[l]{//}, % l is for line comment
+%  otherkeywords={>,<,=,<=,>=,!,*,/,-,+,|,&,||,&&,==,=>},
+  morestring=[b]" % defines that strings are enclosed in double quotes
+}
+
+% Define Colors
+\usepackage{color}
+\definecolor{eclipseBlue}{RGB}{42,0.0,255}
+\definecolor{eclipseGreen}{RGB}{63,127,95}
+\definecolor{eclipsePurple}{RGB}{127,0,85}
+
+\newcommand{\fop}[1]{\mbox{\small\ttfamily\color{eclipseBlue}#1}}
+\newcommand{\kw}[1]{\mbox{\small\ttfamily#1}}
+\newcommand{\fw}[1]{\mbox{\small\ttfamily\bfseries\color{eclipsePurple}#1}}
+
+\lstdefinestyle{smlstyle}{
+  inputencoding={utf8},
+  language={sml},
+  captionpos=b, % Position of the Caption (t for top, b for bottom)
+  extendedchars=true, % Allows 256 instead of 128 ASCII characters
+  tabsize=2, % number of spaces indented when discovering a tab
+  columns=fullflexible, % make all characters equal width
+  keepspaces=true, % does not ignore spaces to fit width, convert tabs to spaces
+  showstringspaces=false, % lets spaces in strings appear as real spaces
+  breaklines=true, % wrap lines if they don't fit
+  %frame=trbl, % draw a frame at the top, right, left and bottom of the listing
+  frameround=tttt, % make the frame round at all four corners
+  framesep=4pt, % quarter circle size of the round corners
+  %numbers=right, % show line numbers at the left
+  numberstyle=\small\ttfamily\color{eclipseGreen}, % style of the line numbers
+  commentstyle=\slshape\bfseries\color{eclipseGreen}, % style of comments
+  morecomment=[s]{(*}{*)},
+  keywordstyle=\bfseries\color{eclipsePurple}, % style of keywords
+  stringstyle=\color{eclipseBlue}, % style of strings
+  literate={{⍺}{$\alpha$}1 {'a}{$\alpha$}1 {β}{$\beta$}1 {'b}{$\beta$}1 {'c}{$\gamma$}1 {⍴}{$\rho$}1 {τ}{$\tau$}1 {~T}{$T$}2 {~Z}{$Z$}2 {λ}{$\lambda$}1 {_1}{${}_1$}1 {_2}{${}_2$}1 {_3}{${}_3$}1 {ε}{$\epsilon$}1 {->}{$\rightarrow$}2 {=>}{$\Rightarrow$}2 },
+  emphstyle=[1]{\color{eclipseBlue}},
+  moredelim=**[is][\color{red}]{@@}{@@}
+}
+
+\lstdefinelanguage{script}{
+  % list of keywords
+  morekeywords={},
+  mathescape=false,
+  sensitive=true, % keywords are not case-sensitive
+}
+
+\lstdefinestyle{scriptstyle}{
+  inputencoding={utf8},
+  language={script},
+  captionpos=b, % Position of the Caption (t for top, b for bottom)
+  extendedchars=true, % Allows 256 instead of 128 ASCII characters
+  tabsize=2, % number of spaces indented when discovering a tab
+  columns=fullflexible, % make all characters equal width
+  keepspaces=true, % does not ignore spaces to fit width, convert tabs to spaces
+  showstringspaces=false, % lets spaces in strings appear as real spaces
+  breaklines=true, % wrap lines if they don't fit
+  %frame=trbl, % draw a frame at the top, right, left and bottom of the listing
+  frameround=tttt, % make the frame round at all four corners
+  framesep=4pt, % quarter circle size of the round corners
+  %numbers=right, % show line numbers at the left
+  numberstyle=\small\ttfamily\color{eclipseGreen}, % style of the line numbers
+  commentstyle=\slshape\bfseries\color{eclipseGreen}, % style of comments
+  moredelim=**[is][\color{red}]{@@}{@@},
+  basicstyle=\ttfamily\small
+}
+
+\lstdefinestyle{smlblockstyle}{basicstyle=\ttfamily\small,style=smlstyle}
+\lstdefinestyle{smlinlinestyle}{basicstyle=\ttfamily\small,style=smlstyle}
+
+\lstset{style=smlinlinestyle}
+
+\lstnewenvironment{smlcode}[1][]{
+  \lstset{style=smlblockstyle,#1}
+}{
+  \lstset{style=smlinlinestyle}
+}
+
+\lstnewenvironment{smlcodemath}{
+  \lstset{style=smlblockstyle,mathescape}
+}{
+  \lstset{style=smlinlinestyle,mathescape}
+}
+
+
+\lstnewenvironment{scriptcode}[1][]{
+  \lstset{style=scriptstyle,#1}
+}{
+  \lstset{style=scriptstyle}
+}
+
+\def\inline{\lstinline[style=scriptstyle]}
