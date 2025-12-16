@@ -58,16 +58,16 @@ structure ExecutionX64 : EXECUTION =
 
     val link_exe =
         Flags.add_string_entry
-        let val macgcc_new = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
-            val macgcc_old = "gcc -Wl,-stack_size,0x10000000"
+        let val macgcc_seminew = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
+            val macgcc_old_or_newer = "gcc -Wl,-stack_size,0x10000000"
             val linuxgcc = "gcc"
             val gcc = if onmac_p() then
                         case InstsX64.release() of
-                            NONE => macgcc_old
+                            NONE => macgcc_old_or_newer
                           | SOME v => case Real.fromString v of
-                                          SOME r => if r > 23.1 then macgcc_new
-                                                    else macgcc_old
-                                        | NONE => macgcc_old
+                                          SOME r => if 23.1 < r andalso r < 25.2 then macgcc_seminew
+                                                    else macgcc_old_or_newer
+                                        | NONE => macgcc_old_or_newer
                       else linuxgcc
         in
             {long="link_exe", short=SOME "ldexe", item=ref gcc,
@@ -76,10 +76,10 @@ structure ExecutionX64 : EXECUTION =
                   \an executable. The standard is to use 'gcc' for\n\
                   \linking. When linking with c++ libraries, 'g++' is\n\
                   \the linker you want. On Linux the default is '" ^ linuxgcc ^ "',\n\
-                  \whereas on newer macOS systems (Darwin > 23.1), the default\n\
-                  \is '" ^ macgcc_new ^ "' and on\n\
-                  \older macOS systems, the default is\n\
-                  \'" ^ macgcc_old ^ "'."}
+                  \whereas on semi-new macOS systems (23.2-26.1), the default\n\
+                  \is '" ^ macgcc_seminew ^ "' and on\n\
+                  \older or newer macOS systems, the default is\n\
+                  \'" ^ macgcc_old_or_newer ^ "'."}
         end
 
     val link_shared =

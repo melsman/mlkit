@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2025-12-16: Remove the use of the macos linker flag `-ld_static` when
+  compiling on newer versions of macos.
+
 ### MLKit version 4.7.16 is released
 
 * mael 2025-12-15: Updated documentation. There is a new version of "Programming
