@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.18 is released
+
+* mael 2026-01-09: Distribute binaries built with MLKit to avoid gmp-dependency.
+
 ### MLKit version 4.7.17 is released
 
 * mael 2025-12-16: Remove the use of the macos linker flag `-ld_static` when
