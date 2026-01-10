@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.19 is released
+
 * mael 2026-01-10: Fix bug related to chararray not being present as a type name
   in the intermediate language type environment during type checking (issue with
   test of package sml-sha256).
