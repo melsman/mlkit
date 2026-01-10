@@ -175,7 +175,9 @@ structure CompBasis: COMP_BASIS =
           val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
               TyName.tyName_FOREIGNPTR ::
-              TyName.tyName_VECTOR :: tynames     (* for elim eq *)
+              TyName.tyName_VECTOR ::     (* for elim eq *)
+              TyName.tyName_CHARARRAY ::  (* for elim eq *)
+              tynames
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
                         else tynames
           val NEnv1 = Normalize.restrict(NEnv,lvars)
