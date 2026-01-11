@@ -22,10 +22,11 @@ structure Flags : FLAGS =
 
      *)
 
-    fun has_sml_source_ext (s: string) :bool =
+    fun is_source_ext (s: string) :bool =
         case s of
             "sml" => true
           | "sig" => true
+          | "mlb" => true
           | _ => false
 
     val install_dir = ref "You_did_not_set_path_to_install_dir"
@@ -388,7 +389,7 @@ struct
                                fun readToOpt (all as [s],acc) =
                                    if is_opt s then (rev acc, all)
                                    else (case OS.Path.ext s of
-                                             SOME ext => if has_sml_source_ext ext then (rev acc, all)
+                                             SOME ext => if is_source_ext ext then (rev acc, all)
                                                          else (rev (s::acc),nil)
                                            | _ => (rev (s::acc),nil))
                                  | readToOpt (all as s::ss,acc) =
