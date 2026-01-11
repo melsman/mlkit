@@ -162,5 +162,8 @@ signature FLAGS =
 	val reset : unit -> unit
       end
 
-    val has_sml_source_ext : string -> bool
+    val is_source_ext : string -> bool
+    (* [is_source_ext ext] returns true when ext is a file name extension
+       `sml`, `sig`, or `mlb`. *)
+
   end

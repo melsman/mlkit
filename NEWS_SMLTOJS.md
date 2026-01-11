@@ -1,5 +1,12 @@
 ## SMLtoJs NEWS
 
+* mael 2026-01-11: Fix problem with -jslibs not working with mlb-files (issue
+  #172).
+
+### SMLtoJs version 4.7.19 is released
+
+* See NEWS.md.
+
 ### SMLtoJs version 4.3.12 is released
 
 * mael 2017-12-10: Support for binary asynchronous XmlHTTPRequests.

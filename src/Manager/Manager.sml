@@ -916,7 +916,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                                           "*** The file name you gave me has " ^ s)
         in case OS.Path.ext s of
             SOME "mlb" => MLB s
-          | SOME ext => if Flags.has_sml_source_ext ext then SML s
+          | SOME ext => if Flags.is_source_ext ext then SML s
                         else wrong ("extension " ^ quot ext ^ ".")
           | NONE => wrong ("no extension.")
         end
