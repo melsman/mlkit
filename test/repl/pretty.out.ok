@@ -25,3 +25,4 @@
 . > datatype ('a, 'b) t
     con A : 'a * 'b -> ('a, 'b) t
 . > val x = A(4,2.3) : (int, real) t
+. > val r = [{a=true,b=(3,4.3)},{a=false,b=(8,2.1)}] : {a: bool, b: int * real} list

@@ -15,4 +15,5 @@ datatype single = Single of int
 val s = Single 322;
 datatype ('a,'b)t = A of 'a * 'b;
 val x = A(4,2.3);
+val r = [{a=true,b=(3,4.3)},{b=(8,2.1),a=false}];
 :quit;
