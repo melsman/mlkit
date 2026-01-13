@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.20 is released
+
 * mael 2026-01-13: Fix issue with unnecessary recompilation due to lnk-file not
   being written when content is unchanged.
 
