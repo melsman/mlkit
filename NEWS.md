@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2026-01-13: Fix issue with unnecessary recompilation due to lnk-file not
+  being written when content is unchanged.
+
 ### MLKit version 4.7.19 is released
 
 * mael 2026-01-10: Fix bug related to chararray not being present as a type name

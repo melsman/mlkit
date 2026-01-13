@@ -354,9 +354,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val ext = "lnk"
             val p = doPickleGen0 smlfile ModCode.pu ext modc
             val file = targetFromOutput ofile ext
-        in if isFileContentStringBIN file p then ()
-           else writePickle file p
-        end
+        in writePickle file p  (* always write the lnk-file - also if it already contains the data to be written *)
+        end                    (* - it serves as a witness that the underlying target files may have changed due *)
+                               (* to recompilation!                                                              *)
 
     fun readLinkFiles lnkFiles =
         let fun process (nil,hce,modc) = modc
