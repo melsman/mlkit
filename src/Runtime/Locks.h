@@ -23,8 +23,6 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 
 #else // PARALLEL
 
-#include "../config.h"
-
 #define LOCK_LOCK(name) ;
 #define LOCK_UNLOCK(name) ;
 
