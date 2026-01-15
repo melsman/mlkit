@@ -1,5 +1,13 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.21 is released
+
+* mael 2026-01-15: Removal of various unneeded source files and removal of
+  support for `basis/basis-1997.mlb`. Closes issue #108.
+
+* mael 2026-01-15: Fix of issue with `config.h` being required when including
+  `Region.h` in projects that link with C code.
+
 ### MLKit version 4.7.20 is released
 
 * mael 2026-01-13: Fix issue with unnecessary recompilation due to lnk-file not
