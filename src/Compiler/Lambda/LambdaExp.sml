@@ -1153,7 +1153,6 @@ structure LambdaExp : LAMBDA_EXP =
                   | NONE => default ()
               else default ()
            end
-(*         | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context) *)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
