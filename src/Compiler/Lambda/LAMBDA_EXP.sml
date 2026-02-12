@@ -82,6 +82,9 @@ signature LAMBDA_EXP =
     val stringType      : Type
     val chararrayType   : Type
 
+    val contains_regvars : Type -> bool
+    val regvarsType     : Type -> regvar list
+
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
@@ -121,25 +124,25 @@ signature LAMBDA_EXP =
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
-        VAR      of {lvar: lvar, instances : Type list, regvars: regvar list}
+        VAR      of {lvar: lvar, instances: Type list, regvars: regvar list}
       | INTEGER  of IntInf.int * Type
       | WORD     of IntInf.int * Type
       | STRING   of string * regvar option
       | REAL     of string * regvar option
       | F64      of string
-      | FN       of {pat : (lvar * Type) list, body : LambdaExp}
-      | LET      of {pat : (lvar * tyvar list * Type) list,
-                     bind : LambdaExp,
+      | FN       of {pat: (lvar * Type) list, body: LambdaExp}
+      | LET      of {pat: (lvar * tyvar list * Type) list,
+                     bind: LambdaExp,
                      scope: LambdaExp}
       | LETREGION of {regvars: regvar list,
                       scope: LambdaExp}
-      | FIX      of {functions : {lvar : lvar,
-                                  regvars: regvar list,
-                                  tyvars : tyvar list,
-                                  Type : Type,
-                                  constrs: constr list,
-                                  bind : LambdaExp} list,
-                     scope : LambdaExp}
+      | FIX      of {functions: {lvar: lvar,
+                                 regvars: regvar list,
+                                 tyvars : tyvar list,
+                                 Type: Type,
+                                 constrs: constr list,
+                                 bind: LambdaExp} list,
+                     scope: LambdaExp}
       | APP      of LambdaExp * LambdaExp * bool option  (* tail call? *)
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
@@ -151,11 +154,13 @@ signature LAMBDA_EXP =
       | SWITCH_E of (excon*lvar option) Switch
       | TYPED    of LambdaExp * Type * constr list
       | PRIM     of Type prim * LambdaExp list
-      | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
+      | FRAME    of {declared_lvars: {lvar: lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
                        (* a frame is the result of a structure-level
                         * declaration.
                         *)
+      | CHECK_REML of {lvar: lvar, tyvars: tyvar list, Type: Type, rep: Report}
+                       (* REML: Check that lvar has the type scheme specified... *)
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
 

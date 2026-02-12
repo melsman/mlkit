@@ -33,7 +33,7 @@ signature MODULE_STATOBJECT =
     | MISSINGEXC of strid list * id
     | S_RIGIDTYCLASH of longtycon
     | S_CONFLICTING_DOMCE of longtycon
-    | NOTYENRICHMENT of {qualid: strid list * id, 
+    | NOTYENRICHMENT of {qualid: strid list * id,
 			 str_sigma : TypeScheme, str_vce: string,
 			 sig_sigma : TypeScheme, sig_vce: string}
     | EXCNOTEQUAL of strid list * id * (Type * Type)
@@ -80,7 +80,7 @@ signature MODULE_STATOBJECT =
 
                          (*functor signature*)
 
-    structure Phi : 
+    structure Phi :
       sig
 	val from_T_and_E_and_Sigma : TyName.Set.Set * Env * Sig -> FunSig
 	val to_T_and_E_and_Sigma   : FunSig -> TyName.Set.Set * Env * Sig
@@ -90,7 +90,7 @@ signature MODULE_STATOBJECT =
 	val layout                 : FunSig -> StringTree
 
 	(*If Sigma'= match (Phi, E) succeeds, then E matches the
-	 argument signature of the functor signature Phi and Sigma' is 
+	 argument signature of the functor signature Phi and Sigma' is
 	 the signature of the actual result of the functor application.
 	 match will raise No_match if there is no match:*)
 
@@ -103,4 +103,4 @@ signature MODULE_STATOBJECT =
 
 	val pu : FunSig Pickle.pu
       end
-  end;
+  end

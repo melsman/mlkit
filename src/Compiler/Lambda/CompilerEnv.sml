@@ -533,7 +533,14 @@ structure CompilerEnv: COMPILER_ENV =
                                        pr_st (layout_scheme(tvs',tau'));
                                        raise X)
                         val il' = map (LambdaBasics.on_Type S) il
-                    in LVAR(lv,tvs',tau',il')
+                        (*
+                        val () = print ("TypeScheme(" ^ Lvars.pr_lvar lv ^ "):\n")
+                        val () = pr_st(layout_scheme(tvs',tau'))
+                        *)
+                        val checks = if LambdaExp.contains_regvars tau'
+                                     then [(lv,tvs',tau')]
+                                     else nil
+                    in (LVAR(lv,tvs',tau',il'), checks)
                     end
                    | _ => die "constr_ran.LVAR.longvar expected")
               | CON(con,tvs,tau,il) =>
@@ -545,7 +552,7 @@ structure CompilerEnv: COMPILER_ENV =
                           handle X => (print ("\nMatch failed for var matching con " ^ Con.pr_con con ^ "\n");
                                        raise X)
                         val il' = map (LambdaBasics.on_Type S) il
-                    in CON(con,tvs',tau',il')
+                    in (CON(con,tvs',tau',il'),nil)
                     end
                    | VE.LONGCON sigma =>
                     let val (tvs',tau') = compileTypeScheme sigma
@@ -554,7 +561,7 @@ structure CompilerEnv: COMPILER_ENV =
                           handle X => (print ("\nMatch failed for con matching con " ^ Con.pr_con con ^ "\n");
                                        raise X)
                         val il' = map (LambdaBasics.on_Type S) il
-                    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then CON(con,tvs',tau',il')
+                    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then (CON(con,tvs',tau',il'), nil)
                        else (print "\nconstr_ran.CON.type schemes should be equal.\n";
                              print "Elaboration environment:\n\n";
                              pr_st (Environments.E.layout elabE);
@@ -572,48 +579,54 @@ structure CompilerEnv: COMPILER_ENV =
                   of VE.LONGVAR sigma =>
                     let val (tvs',tau') = compileTypeScheme sigma
                           handle ? => (print ("constr_ran.EXCON: excon = " ^ Excon.pr_excon excon ^ "\n"); raise ?)
-                    in if tvs' = [] andalso LambdaBasics.eq_Type(tau,tau') then EXCON(excon,tau)
+                    in if tvs' = [] andalso LambdaBasics.eq_Type(tau,tau') then (EXCON(excon,tau),nil)
                        else die "constr_ran.EXCON.LONGVAR"
                     end
-                   | VE.LONGEXCON _ => EXCON(excon,tau)  (* we could check equality of types *)
+                   | VE.LONGEXCON _ => (EXCON(excon,tau),nil)  (* we could check equality of types *)
                    | _ => die "constr_ran.EXCON.longvar or longexcon expected")
               | _ => die "constr_ran.expecting LVAR, CON or EXCON"
 
-         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv, PathEnv}, elabE) =
-           let val (elabSE, elabTE, elabVE, elabR) = E.un elabE
-           in CENV{StrEnv=constr_se(StrEnv,elabSE), VarEnv=constr_ve(VarEnv,elabVE),
-                   TyEnv=constr_te(TyEnv,elabTE),
-                   PathEnv=emptyPathEnv}
-           end
+         fun constr_ce (CENV{StrEnv, VarEnv, TyEnv, PathEnv}, elabE) =
+             let val (elabSE, elabTE, elabVE, elabR) = E.un elabE
+                 val (se,c1) = constr_se(StrEnv,elabSE)
+                 val (ve,c2) = constr_ve(VarEnv,elabVE)
+             in (CENV{StrEnv=se,
+                      VarEnv=ve,
+                      TyEnv=constr_te(TyEnv,elabTE),
+                      PathEnv=emptyPathEnv},
+                 c2@c1)
+             end
 
-         and constr_se(STRENV se, elabSE) =
-             STRENV(SE.Fold (fn (strid, elabE) => fn se' =>
-                             case StrId.Map.lookup se strid
-                                 of SOME ce => let val ce' = constr_ce(ce,elabE)
-                                               in StrId.Map.add(strid,ce',se')
-                                               end
-                               | NONE => die "constr_se") StrId.Map.empty elabSE)
+         and constr_se (STRENV se, elabSE) =
+             let val (se,c) =
+                     SE.Fold (fn (strid, elabE) => fn (se',c0) =>
+                                 case StrId.Map.lookup se strid of
+                                     SOME ce => let val (ce',c) = constr_ce(ce,elabE)
+                                                in (StrId.Map.add(strid,ce',se'), c@c0)
+                                                end
+                                   | NONE => die "constr_se") (StrId.Map.empty,nil) elabSE
+             in (STRENV se,c)
+             end
 
-         and constr_ve(ve, elabVE) =
-           VE.Fold (fn (id, elabRan) => fn ve' =>
+         and constr_ve (ve, elabVE) =
+           VE.Fold (fn (id, elabRan) => fn (ve',c0) =>
                     case Ident.Map.lookup ve id
-                      of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
-                                          in Ident.Map.add(id,transRan', ve')
+                      of SOME transRan => let val (transRan',c) = constr_ran(transRan, elabRan)
+                                          in (Ident.Map.add(id,transRan', ve'),c@c0)
                                           end
-                       | NONE => die ("constr_ve: no " ^ Ident.pr_id id)) Ident.Map.empty elabVE
+                       | NONE => die ("constr_ve: no " ^ Ident.pr_id id)) (Ident.Map.empty,nil) elabVE
 
-         and constr_te(TYENV te, elabTE) =
+         and constr_te (TYENV te, elabTE) =
              TYENV(TE.Fold(fn (tycon, _) => fn te' =>
                            case TyCon.Map.lookup te tycon
                                of SOME tynames => TyCon.Map.add(tycon,tynames,te')
                              | NONE => die "constr_te") TyCon.Map.empty elabTE)
 
 (*       val _ = print "\n[Constraining ...\n" *)
-         val res = constr_ce(ce, elabE)
+         val (res,c) = constr_ce(ce, elabE)
 (*       val _ = print " Done]\n" *)
-     in res
+     in (res,c)
      end
-
 
    fun pp_tynames l =
      let fun pp [] = ""

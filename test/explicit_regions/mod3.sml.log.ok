@@ -1,0 +1,26 @@
+[reading source file:	mod3.sml]
+> signature X =
+    sig
+      val f : string`r1 -> string`r2
+    end
+  structure K1 :
+    sig
+      val f : string -> string
+    end
+  structure K2 :
+    sig
+      val f : string`r1 -> string`r2
+    end
+mod3.sml, line 12, column 15:
+  structure K2 = K1 : X
+                 ^^^^^^
+The implementation type 
+  val f : all r15.(string,r15)->(string,r15)
+is not as general as the specified type
+  val f : all `r2,`r1.(string,`r1)->(string,`r2)
+Please modify either the implementation or the specification.
+mod3.sml, line 5, column 30:
+    val f : string`r1 -> string`r2
+                                ^^
+Cannot unify the explicit region variables `r2 and `r1
+Stopping compilation of MLB-file due to error (code 1).

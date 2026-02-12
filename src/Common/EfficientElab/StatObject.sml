@@ -1368,7 +1368,7 @@ structure StatObject: STATOBJECT =
                            | (rvopt,NONE) => rvopt
                            | (SOME rv, SOME rv') =>
                              if RegVar.eq(#2 rv,#2 rv') then SOME rv
-                             else raise Unify "diffent explicit region variables") (rvi,rvi')
+                             else raise Unify "different explicit region variables") (rvi,rvi')
             else ()
 
         fun unifyRegVars (rvis,rvis') =
@@ -1378,7 +1378,7 @@ structure StatObject: STATOBJECT =
                            | (SOME (i,rvs), SOME (_,rvs')) =>
                              if ListPair.allEq (fn (rv,rv') => RegVar.eq(#2 rv,#2 rv')) (rvs,rvs')
                              then SOME (i,rvs)
-                             else raise Unify "diffent lists of explicit region variables")
+                             else raise Unify "different lists of explicit region variables")
                          (rvis,rvis')
             else ()
 

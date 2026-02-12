@@ -93,22 +93,24 @@ struct
   fun logtree (t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
   fun fst (a,b) = a
 
+  fun layout_sigma sigma = R.mk_lay_sigma false sigma
+
   fun log_sigma (sigma1, lvar) =
     case R.bv sigma1 of
       (_, _, []) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is:");
          logsay (Lvars.pr_lvar lvar ^ " is:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n")
     | ([],_,alpha::alphas) =>
         (say ("******" ^ Lvars.pr_lvar lvar ^ " is  polymorphic with escaping regions");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic with escaping regions:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n")
     | (_,_,alpha::alphas) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is  polymorphic");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n");
 
   fun print_tree t = PP.outputTree(print, t, !Flags.colwidth)
@@ -121,7 +123,7 @@ struct
                children=map Eff.layout_effect effects})
 
   fun print_tau tau = print_tree (R.mk_lay_sigma' false ([],[],[],tau))
-  fun print_sigma sigma = print_tree (R.mk_lay_sigma false sigma)
+  fun print_sigma sigma = print_tree (layout_sigma sigma)
 
   fun noSome x msg =
     case x of
@@ -400,6 +402,12 @@ struct
 
     fun enforceConstraint rse = R.enforceConstraint (RSE.lookupRegVar rse) deepError
 
+    fun fresh_regvars_with_rhos (B,rvs) =
+        List.foldr (fn (rv,(acc,B)) =>
+                       let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
+                       in ((rv,rho)::acc,B)
+                       end) (nil,B) rvs
+
     fun mk_sigma_hats (B,retract_level) [] = (B,[])
       | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,constrs,bind}::rest) =
           let
@@ -409,11 +417,7 @@ struct
                 case Type of
                     E.ARROWtype p => p
                   | _ => die "mk_sigma_hats"
-            val (regvars_with_rhos,B) =
-                List.foldr (fn (rv,(acc,B)) =>
-                               let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
-                               in ((rv,rho)::acc,B)
-                               end) (nil,B) regvars
+            val (regvars_with_rhos,B) = fresh_regvars_with_rhos (B,regvars)
             val (tau_0, B) = freshType' regvars_with_rhos (Type,B)
             val (B,sigma) = R.generalize_all(B,retract_level,map (fn tv => (tv,NONE)) tyvars,tau_0)
             val sigma_hat = R.drop_alphas sigma
@@ -1520,6 +1524,90 @@ good *)
            NOTAIL,
            [])
         end
+    | E.CHECK_REML {lvar,tyvars,Type,rep} =>
+      let val (compound,create_region_record,regvars,sigma,p,_,_) =
+              noSome (RSE.lookupLvar rse lvar) "declared lvar of CHECK_REML not in scope"
+
+          val (B,sigma') =
+              let val level = Eff.level B
+                  val B = Eff.push B
+                  val (regvars_rhos,B) = fresh_regvars_with_rhos (B,E.regvarsType Type)
+                  val (tau_0, B) = freshType' regvars_rhos (Type,B)
+                  val (B,sigma') = R.generalize_all(B,level,map (fn tv => (tv,NONE)) tyvars,tau_0)
+                  val (_,B) = Eff.pop B
+              in (B,sigma')
+              end handle X => (print "SIGMA'\n"; raise X)
+
+          (* Two checks:
+             (1) unify (instance sigma, tauOf sigma')
+             (2) unify (tauOf sigma, instance sigma')
+           *)
+          fun instFresh (sigma,tvs) B =
+              let val tvs = map #1 tvs
+                  val (rhos,epss,_,_) = R.un_scheme sigma
+                  val (rhos',B) = Eff.freshRhosPreserveRT (rhos,B)
+                  val (epss',B) = Eff.freshEpss (epss,B)
+                  val il = R.mk_il (rhos',epss',map R.mkTYVAR tvs)
+              in R.inst (NONE,sigma,il) B
+              end (*handle X => (print "instFresh\n"; raise X)*)
+
+          fun check str s s' B =
+              let (*
+                  val () = ( print ("IN " ^ str ^ "\n")
+                           ; print_sigma s
+                           ; print "\n"
+                           ; print_sigma s'
+                           ; print "\n"
+                           )
+                   *)
+                  val (_,_,tvs',t') = R.un_scheme s'
+                  val B = Eff.push B
+                  val (t,B) = instFresh (s,tvs') B
+                  val B = R.unify_ty (t',t) B
+                  val (_,B) = Eff.pop B
+              in B
+              end (*handle X => (print (str ^ "\n"); raise X)*)
+
+          fun rep_sigma s =
+              let val r = !Flags.print_types
+              in Flags.print_types := true
+               ; PP.reportStringTree (PP.NODE{start="  val " ^ Lvars.pr_lvar lvar ^ " : ", finish="",
+                                              indent=4,childsep=PP.NOSEP,
+                                              children=[layout_sigma s]})
+                 before Flags.print_types := r
+              end
+
+          infix // fun r // r' = Report.// (r,r')
+          val B = check "CHECK1" sigma sigma' B
+                  handle Report.DeepError rep0 =>
+                         raise Report.DeepError
+                               (  rep
+                               // Report.line "The implementation type "
+                               // rep_sigma sigma
+                               // Report.line "is not as general as the specified type"
+                               // rep_sigma sigma'
+                               // Report.line "Please modify either the implementation or the specification."
+                               // rep0
+                               )
+
+          val B = check "CHECK2" sigma' sigma B
+                  handle Report.DeepError rep0 =>
+                         raise Report.DeepError
+                               (  rep
+                               // Report.line "The specified type "
+                               // rep_sigma sigma'
+                               // Report.line "is not as general as the implementation type"
+                               // rep_sigma sigma
+                               // Report.line "Please modify either the specification or the implementation."
+                               // rep0
+                               )
+
+      in (B, E'.TR(E'.UB_RECORD nil,
+                   E'.Mus nil,
+                   Eff.empty),
+          NOTAIL,
+          [])
+      end
     | _ => die "S: unknown expression"
     )
   in

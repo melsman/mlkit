@@ -424,7 +424,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val E = case to_TypeInfo i
 			of SOME (ElabInfo.TypeInfo.TRANS_CONSTRAINT_INFO E) => E
 			 | _ => die "int_strexp.TRANSPARENT_CONSTRAINTstrexp.no env info"
-	      val ce' = CE.constrain(ce,E)
+	      val (ce',_) = CE.constrain(ce,E)
 	  in (ce', cb, mc)
 	  end
 	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
@@ -460,7 +460,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val (absprjid,strid,E,BBC,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
 	      val _ = chat "[constraining argument begin...]"
-	      val ce = CE.constrain(ce,E')
+	      val (ce,_) = CE.constrain(ce,E')
 	      val _ = chat "[constraining argument end...]"
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,CE.declare_strid(strid,ce,CE.emptyCEnv),
 				      CompileBasis.plus(#4 (IntBasis.un intB), cb))  (* The argument may use things *)

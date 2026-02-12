@@ -505,7 +505,8 @@ struct
           val effs2 = ann_ty ty2 []
       in
         List.foldl u cone (ListPair.zipEq(effs1,effs2))
-        handle X =>  let val (lay_ty,_) = mk_layout false;
+        handle (X as Report.DeepError _) => raise X
+             | X =>  let val (lay_ty,_) = mk_layout false;
                          fun dump ty = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
                      in
                        TextIO.output(!Flags.log, "ty1 = "); dump ty1;
