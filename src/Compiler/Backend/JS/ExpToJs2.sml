@@ -1006,6 +1006,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     end
   | L.RAISE (e,_) => resolveS (toj1 C P e) (fn e' => fn k => J.Throw e')
   | L.TYPED (e,_,_) => toj C P e
+  | L.CHECK_REML _ => die "REML check not supported by JS backend"
 
 and toj_let C P (lvs, binds, scope) =
     let
