@@ -1,4 +1,4 @@
-(* Transparent signature matching: It is checked that the type of an implementation is
+(* Transparent signature matching: It is checked that the type of an implementation
  * is at least as general as the specified type. *)
 
 signature X = sig
