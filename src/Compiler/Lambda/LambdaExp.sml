@@ -1017,7 +1017,7 @@ structure LambdaExp : LAMBDA_EXP =
       | SWITCH_W {switch, precision, tyname} =>
           layoutSwitch layoutLambdaExp (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
       | SWITCH_S sw =>
-          layoutSwitch layoutLambdaExp (fn x => x) sw
+          layoutSwitch layoutLambdaExp (fn x => "\"" ^ String.toString x ^ "\"") sw
       | SWITCH_C sw =>
           let fun unwildify (sw as SWITCH(lamb as VAR{lvar,...},rules,SOME e)) =
                   (case e of

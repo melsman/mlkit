@@ -371,4 +371,11 @@ val test25 =
 		   andalso not (isPrefix "Abcde"  "abcde")
 		   andalso not (isPrefix "abcdE"  "abcde"))
 
+val test26 =
+    tst' "test26" (fn _ =>
+          case "foo" of
+              "bar" => false
+            | "baz" => false
+            | "foo" => true
+            | _ => false)
 end
