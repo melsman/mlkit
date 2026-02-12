@@ -43,6 +43,7 @@ jobs:
 
       - name: Install dependencies (linux)
         if: ${{ env.OS == 'linux' }}
+        working-directory: ${{ env.RUNHOME }}
         run: |
           set -e
           sudo apt-get -qq update
