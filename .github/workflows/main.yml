@@ -43,24 +43,21 @@ jobs:
 
       - name: Install dependencies (linux)
         if: ${{ env.OS == 'linux' }}
-        working-directory: ${{ env.RUNHOME }}
         run: |
-          set -e
           sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make
           echo "THECC=gcc" >> $GITHUB_ENV
           mkdir phantomjs
           cd phantomjs
           wget -q https://github.com/melsman/phantomjs-bin/raw/refs/heads/main/phantomjs-2.1.1-linux-x86_64.tar.bz2
-          #tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
-          #cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
-          #cd ..
+          tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
+          cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
+          cd ..
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
         working-directory: ${{ env.RUNHOME }}
         run: |
-          set -e
           echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
           wget -q https://github.com/MLton/mlton/releases/download/on-20241230-release/mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
           tar xzf mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
@@ -97,7 +94,6 @@ jobs:
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
         run: |
-          set -e
           echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
           wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
@@ -111,7 +107,6 @@ jobs:
       - name: Check MLton
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
-          set -e
           mlton
           echo 'github.event_name: ' ${{ github.event_name }}
           echo 'github.ref: ' ${{ github.ref }}
@@ -119,7 +114,6 @@ jobs:
       - name: Check MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
         run: |
-          set -e
           mlkit --version
           smlpkg --version
           echo 'github.event_name: ' ${{ github.event_name }}
@@ -128,33 +122,28 @@ jobs:
       - name: Configure With MLton
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
-          set -e
           ./autobuild
           CC=${{env.THECC}} ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
 
       - name: Configure With MLKit
         if: ${{ matrix.mlcomp == 'mlkit' }}
         run: |
-          set -e
           ./autobuild
           CC=${{env.THECC}} ./configure --with-compiler=mlkit
 
       - name: Build MLKit
         timeout-minutes: 240
         run: |
-          set -e
           gcc --version
           make mlkit VERBOSE=1
           make mlkit_basislibs VERBOSE=1
 
       - name: Install MLKit
         run: |
-          set -e
           sudo make install
 
       - name: Run MLKit tests
         run: |
-          set -e
           make -C test_dev test
           make -C test_dev test_prof
           make -C test test_mlkit
@@ -166,18 +155,15 @@ jobs:
       - name: Configure SmlToJs
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
-          set -e
           ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
 
       - name: Build SmlToJs
         run: |
-          set -e
           make smltojs
           make smltojs_basislibs
 
       - name: Install SmlToJs
         run: |
-          set -e
           sudo make install_smltojs
 
       - name: Run SmlToJs tests (darwin)
@@ -188,24 +174,20 @@ jobs:
       - name: Run SmlToJs tests (linux)
         if: ${{ env.OS == 'linux' }}
         run: |
-          set -e
           export OPENSSL_CONF=/dev/null
           make -C js/test test
 
       - name: Build and run Barry tests
         run: |
-          set -e
           make barry
           make -C test/barry all
 
       - name: Build binary distribution
         run: |
-          set -e
           make mlkit_bin_dist
 
       - name: Install binary distribution and test it
         run: |
-          set -e
           mkdir -p ${{ env.RUNHOME }}/tmp
           cp dist/mlkit-bin-dist-${{ env.OS }}.tgz ${{ env.RUNHOME }}/tmp/
           cd ${{ env.RUNHOME }}/tmp/
@@ -220,7 +202,6 @@ jobs:
 
       - name: Test bootstrapping
         run: |
-          set -e
           make bootstrap
 
       - name: Upload release
