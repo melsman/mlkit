@@ -46,8 +46,6 @@ jobs:
         run: |
           sudo apt-get -qq update
           echo $?
-          sudo apt-get upgrade -y
-          echo $?
           sudo apt-get install -y gcc autoconf make
           echo $?
           echo "THECC=gcc" >> $GITHUB_ENV
