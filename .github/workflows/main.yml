@@ -45,6 +45,7 @@ jobs:
         if: ${{ env.OS == 'linux' }}
         run: |
           sudo apt-get -qq update
+          sudo apt-get upgrade -y
           sudo apt-get install -y gcc autoconf make
           echo "THECC=gcc" >> $GITHUB_ENV
           mkdir phantomjs
