@@ -61,8 +61,7 @@ jobs:
           echo $?
           cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
           echo $?
-          cd ..
-          echo $?
+          #cd ..
 
       - name: Install dependencies (linux, mlton)
         if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
