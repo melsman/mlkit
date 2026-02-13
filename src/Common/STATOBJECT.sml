@@ -300,4 +300,4 @@ signature STATOBJECT =
 	val tynamesRng              : realisation -> TyName.Set.Set
       end (*Realisation*)
 
-  end;
+  end

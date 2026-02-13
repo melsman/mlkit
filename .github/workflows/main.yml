@@ -44,12 +44,12 @@ jobs:
       - name: Install dependencies (linux)
         if: ${{ env.OS == 'linux' }}
         run: |
-          # sudo apt-get -qq update
+          sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make
           echo "THECC=gcc" >> $GITHUB_ENV
           mkdir phantomjs
           cd phantomjs
-          wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
+          wget -q https://github.com/melsman/phantomjs-bin/raw/refs/heads/main/phantomjs-2.1.1-linux-x86_64.tar.bz2
           tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
           cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
           cd ..
@@ -135,8 +135,8 @@ jobs:
         timeout-minutes: 240
         run: |
           gcc --version
-          make mlkit
-          make mlkit_basislibs
+          make mlkit VERBOSE=1
+          make mlkit_basislibs VERBOSE=1
 
       - name: Install MLKit
         run: |

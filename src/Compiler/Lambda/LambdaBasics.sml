@@ -64,6 +64,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | TYPED(lamb,t,cs) => TYPED(passTD f lamb,t,cs)
            | PRIM(prim,lambs) => PRIM(prim,map (passTD f) lambs)
            | FRAME _ => lamb
+           | CHECK_REML _ => lamb
       end
 
 
@@ -109,7 +110,8 @@ structure LambdaBasics: LAMBDA_BASICS =
               | SWITCH_E switch => SWITCH_E(passSwitch (passBU f) switch)
               | TYPED(lamb,t,cs) => TYPED(passBU f lamb,t,cs)
               | PRIM(prim,lambs) => PRIM(prim,map (passBU f) lambs)
-              | FRAME _ => lamb)
+              | FRAME _ => lamb
+              | CHECK_REML _ => lamb)
       end
 
 
@@ -148,6 +150,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | TYPED(lamb,t,_) => foldTD f new_acc lamb
            | PRIM(prim,lambs) => foldl' (foldTD f) new_acc lambs
            | FRAME _ => new_acc
+           | CHECK_REML _ => new_acc
       end
 
 
@@ -195,6 +198,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | TYPED(e,t,cs) => TYPED(f e,t,cs)
          | PRIM(prim, lambs) => PRIM(prim, map f lambs)
          | FRAME _ => lamb
+         | CHECK_REML _ => lamb
 
 
    (* -----------------------------------------------------------------
@@ -233,6 +237,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | TYPED(e,t,_) => f e
          | PRIM(prim, lambs) => app f lambs
          | FRAME _ => ()
+         | CHECK_REML _ => ()
 
    (* -----------------------------------------------------------------
     * app_lamb_tail f t lamb - apply f to sub-expressions and propagate
@@ -272,6 +277,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | TYPED(e,ty,_) => f t e
          | PRIM(prim, lambs) => app (f NOTAIL) lambs
          | FRAME _ => ()
+         | CHECK_REML _ => ()
 
 
     (* -----------------------------------------------------------------
@@ -313,6 +319,7 @@ structure LambdaBasics: LAMBDA_BASICS =
           fun fv e : unit =
               case e of
                   VAR {lvar,...} => insert_lv lvar
+                | CHECK_REML {lvar,...} => insert_lv lvar
                 | APP(VAR{lvar,...},PRIM(UB_RECORDprim, es),_) =>
                   (insert_lv lvar;
                    appi (fn (i, VAR {lvar=y,...}) => insert_lv_call_arg lvar i y
@@ -496,8 +503,8 @@ structure LambdaBasics: LAMBDA_BASICS =
               in CCALLprim {name=name, instances=map (on_tau ren) instances,
                             tyvars=map (on_tv ren_local) tyvars, Type=on_tau ren_local Type}
               (*the type scheme (tyvars, Type) is for a special purpose in the
-               region infere    nce and back end; it must not be changed; we must rename bound
-               tyvars, however.     *)
+               region inference and back end; it must not be changed; we must rename bound
+               tyvars, however.  *)
               end
             | RESET_REGIONSprim {instance} => RESET_REGIONSprim {instance=on_tau ren instance}
             | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim {instance=on_tau ren instance}
@@ -543,6 +550,15 @@ structure LambdaBasics: LAMBDA_BASICS =
             | TYPED(e,t,cs) => TYPED(on_e ren e, on_tau ren t,cs)
             | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
             | FRAME _ => lamb
+            | CHECK_REML {lvar,tyvars,Type,il,rep} =>
+              let val tvs_pairs = map (fn tv => (tv, new_tv tv)) tyvars
+                  val ren_local = add_tvs tvs_pairs empty_ren
+              in CHECK_REML {lvar=on_lv ren lvar,
+                             tyvars=map (on_tv ren_local) tyvars,
+                             Type=on_tau ren_local Type,
+                             il=map (on_tau ren) il,
+                             rep=rep}
+              end
 
             (* MEMO: frames; hopefully, we will NOT rename expressions containing frames... *)
     in
@@ -726,6 +742,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                  | TYPED(lamb,t,cs) => TYPED(f S lamb,on_Type S t,cs)
                  | PRIM (prim,lambs) => PRIM(on_prim S prim,map (f S) lambs)
                  | FRAME _ => lamb (*MEMO*)
+                 | CHECK_REML _ => lamb (* type scheme closed! *)
             end
         in
           f S lamb
@@ -859,7 +876,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                                        (fn NONE => PP.LEAF "none"
                                          | SOME bl => PP.LEAF (pp_bl bl))
       val pu = let open Pickle
-               in Lvars.Map.pu Lvars.pu (optionGen(listGen(bool)))
+               in Lvars.Map.pu Lvars.pu (optionGen(listGen bool))
                end
 
       fun t (nil,nil) = nil
@@ -931,6 +948,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | TYPED(e,t,cs) => TYPED(N E e, t,cs)
             | PRIM(p,es) => PRIM(p, map (N E) es)
             | FRAME fr => FRAME(Nf E fr)
+            | CHECK_REML _ => e
           end
 
       and Ntl E tl =
@@ -1010,6 +1028,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | TYPED(e,tau,cs) => TYPED(t false e, tau,cs)
                 | PRIM(p,es) => PRIM(p, map (t false) es)
                 | FRAME fr => e
+                | CHECK_REML _ => e
               end
         in t false e
         end

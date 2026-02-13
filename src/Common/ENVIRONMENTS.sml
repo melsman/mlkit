@@ -339,4 +339,4 @@ signature ENVIRONMENTS =
 
     val create_restrictor : {longstrids: longstrid list, longtycons: longtycon list,
 			     longvids: longid list} -> restrictor
-  end;
+  end

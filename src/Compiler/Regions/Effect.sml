@@ -876,6 +876,12 @@ struct
     fun freshRhoRegVar (B,rv) = freshRho0 (SOME rv) B
   end
 
+  fun getRegVar (place:place) : RegVar.regvar option =
+      case G.find_info place of
+          RHO{explicit,...} => explicit
+        | EPS{explicit,...} => explicit
+        | _ => die "getRegVar: node is not a region variable or an effect variable"
+
   fun insertRho rho (cone as (n,c)) = add(rho,n, key_of_rho rho, cone)
   fun insertEps eps (cone as (n,c)) = add(eps,n, get_key_of_eps eps, cone)
 
@@ -929,42 +935,49 @@ struct
                            log_tree(layout_effect_deep eps);
                            die "renameEpss: not an effect variable")
                   ) ([],c) epss
-  fun renameEpss (epss, c: cone as (n,_)) : effect list * cone =
-      rename_epss_aux(epss,c,fn(ref int) => int, fn(ref int) => int)
 
-  fun cloneEpss (epss, c: cone as (n,_)) : effect list * cone =
-      rename_epss_aux(epss,c,fn(ref int) => ~1, fn _ => n)
+  fun renameEpss (epss, B:cone) : effect list * cone =
+      rename_epss_aux(epss,B,fn (ref i) => i, fn (ref i) => i)
 
-  fun freshRhoWithTy (rt: runType, cone:cone as (n, c)): effect * cone =
+  fun cloneEpss (epss, B:cone as (n,_)) : effect list * cone =
+      rename_epss_aux(epss,B,fn _ => ~1, fn _ => n)
+
+  fun freshRhoExplicitWithTy (rt:runType, explicit:regvar option, B:cone as (n,_)): effect * cone =
       let val key = freshRhoInt()
           val node = G.mk_node(RHO{key = ref key, level = ref n,
                                    put = NONE, get = NONE, mut = NONE, instance = ref NONE, pix = ref ~1, ty = rt,
-                                   explicit=NONE,protected=ref 0,constraints=ref nil})
-        in (node, add(node, n, key, cone))
+                                   explicit=explicit,protected=ref 0,constraints=ref nil})
+      in (node, add(node, n, key, B))
       end
 
-  fun freshRhosPreserveRT (rhos,c: cone): effect list * cone  =
-      foldr (fn (rho,(rhos',c)) =>
+  fun freshRhoWithTy (rt:runType,B:cone) : effect * cone =
+      freshRhoExplicitWithTy (rt, NONE, B)
+
+  fun freshRhosPreserveRT (rhos,B:cone) : effect list * cone  =
+      foldr (fn (rho,(rhos',B)) =>
                 (case get_place_ty rho of
                      NONE => die "freshRhosPreserveRT"
                    | SOME rt =>
-                     let val (rho',c) = freshRhoWithTy(rt, c)
-                     in (rho'::rhos',c)
-                     end)) ([],c) rhos
+                     let val (rho',B) = freshRhoWithTy(rt, B)
+                     in (rho'::rhos',B)
+                     end)) ([],B) rhos
 
-  fun setRunType (place:place) (rt: runType) : unit =
+  fun freshRhosPreserveRTandExplicit (rhos,B:cone) : effect list * cone  =
+      foldr (fn (rho,(rhos',B)) =>
+                (case get_place_ty rho of
+                     NONE => die "freshRhosPreserveRT"
+                   | SOME rt =>
+                     let val (rho',B) = freshRhoExplicitWithTy(rt, getRegVar rho, B)
+                     in (rho'::rhos',B)
+                     end)) ([],B) rhos
+
+  fun setRunType (place:place) (rt:runType) : unit =
       case G.find_info place of
           RHO{put,get,mut,key,level,instance,pix,ty,explicit,protected,constraints} =>
           G.set_info place (RHO{put=put,get=get,mut=mut,key=key,level=level,instance=instance,
                                 pix=pix,ty=rt,explicit=explicit,protected=protected,
                                 constraints=constraints})
         | _ => die "setRunType: node is not a region variable"
-
-  fun getRegVar (place:place) : RegVar.regvar option =
-      case G.find_info place of
-          RHO{explicit,...} => explicit
-        | EPS{explicit,...} => explicit
-        | _ => die "getRegVar: node is not a region variable or an effect variable"
 
   (* freshEps(cone): Generate a fresh effect variable
      at the topmost layer of   cone   and insert it in

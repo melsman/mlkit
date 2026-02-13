@@ -3543,8 +3543,23 @@ the 12 lines above are very similar to the code below
               val E = case to_TypeInfo info
                         of SOME (ElabInfo.TypeInfo.TRANS_CONSTRAINT_INFO E) => E
                          | _ => die "comp_strexp.TRANSPARENT_CONSTRAINTstrexp.no env info"
-              val ce2 = CE.constrain(ce1,E)
-          in (ce2, f)
+              (*
+              val () = pr "** Transparent constraint; E =\n"
+              val () = pr_st(Environments.E.layout E)
+              *)
+              val (ce2,checks) = CE.constrain(ce1,E)
+              val rep = loc_report_of_ElabInfo info
+              fun g cs e =
+                  case cs of
+                      nil => e
+                    | (lv,tvs,t,il)::cs => g cs (LET{pat=nil,
+                                                     bind=CHECK_REML {lvar=lv,
+                                                                      tyvars=tvs,
+                                                                      Type=t,
+                                                                      il=il,
+                                                                      rep=rep},
+                                                     scope=e})
+          in (ce2, f o (g checks))
           end
          | OPAQUE_CONSTRAINTstrexp(info, strexp, _) => die "OPAQUE_CONSTRAINTstrexp.not impl"
          | APPstrexp(i,funid,strexp) =>
@@ -3562,14 +3577,14 @@ the 12 lines above are very similar to the code below
               val (strid,E,strexp0,ce0,ife0) = lookupInlineFunApp fe' funid
                   handle X => (print "**looking up funid failed**\n"; raise X)
               val E' = Environments.Realisation.on_Env phi E
-              val ce2 = CE.constrain(ce1,E')
+              val (ce2,_) = CE.constrain(ce1,E')
 
               val strexp0' = TopdecGrammar.map_strexp_info (on_ElabInfo phi) strexp0
 
               val (ce3, f2) = comp_strexp((ife0,lookupInlineFunApp),
                                           CE.plus(ce0, CE.declare_strid(strid,ce2,CE.emptyCEnv)),
                                           strexp0')
-              val ce4 = CE.constrain(ce3,Eres)
+              val (ce4,_) = CE.constrain(ce3,Eres)
               val _ = chat ("[compiling functor application end.]")
           in (ce4, f1 o f2)
           end

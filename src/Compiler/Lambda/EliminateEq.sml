@@ -804,6 +804,7 @@ structure EliminateEq : ELIMINATE_EQ =
                  in FRAME {declared_lvars = declared_lvars @ new_declared_lvars,
                            declared_excons = declared_excons}
                  end
+                | CHECK_REML _ => e
           end
       in
         f lexp

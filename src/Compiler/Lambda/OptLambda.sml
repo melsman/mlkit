@@ -689,6 +689,7 @@ structure OptLambda : OPT_LAMBDA =
                | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
                | PRIM(_, es) => safeLooks es
                | FRAME {declared_lvars,...} => List.app (fn {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()) declared_lvars
+               | CHECK_REML {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()
          and safeLooks es = List.app safeLook es
      in
        (safeLook lamb; true) handle Bad => false
@@ -728,6 +729,7 @@ structure OptLambda : OPT_LAMBDA =
                | PRIM(p,es) => PRIM(p,map subst es)
                | FRAME _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
                             else e
+               | CHECK_REML {lvar,...} => if Lvars.eq(lvar,lv) then die "subst_real_lvar_f64_in_lamb.CHECK_REML" else e
        in subst lamb
        end
 
@@ -1289,6 +1291,7 @@ structure OptLambda : OPT_LAMBDA =
                     | STRING _ => NONE
                     | FN _ => NONE
                     | HANDLE _ => NONE
+                    | CHECK_REML _ => NONE
           in exn e
           end
 
@@ -1313,9 +1316,11 @@ structure OptLambda : OPT_LAMBDA =
         | zero_uses (lv::lvs) = Lvars.zero_use lv andalso zero_uses lvs
 
       fun incr_uses (VAR{lvar,...}) = incr_use lvar                        (* Increase uses in an expression. *)
+        | incr_uses (CHECK_REML{lvar,...}) = incr_use lvar
         | incr_uses lamb = app_lamb incr_uses lamb
 
       fun decr_uses (VAR{lvar,...}) = decr_use lvar                        (* Decrease uses in an expression. *)
+        | decr_uses (CHECK_REML {lvar,...}) = decr_use lvar
         | decr_uses lamb = app_lamb decr_uses lamb
 
       (* -----------------------------------------------------------------
@@ -1323,17 +1328,18 @@ structure OptLambda : OPT_LAMBDA =
        * ----------------------------------------------------------------- *)
 
       fun init e =
-        case e
-          of VAR{lvar,instances,regvars} => incr_use lvar
-           | LET{pat,bind,scope} => (app (Lvars.reset_use o #1) pat; init bind; init scope)
-           | FN{pat,body} => (app (Lvars.reset_use o #1) pat; init body)
-           | FIX{functions,scope} => (app (Lvars.reset_use o #lvar) functions;
-                                      app (mark_lvar o #lvar) functions;
-                                      app (init o #bind) functions;
-                                      app (unmark_lvar o # lvar) functions;
-                                      init scope)
-           | FRAME {declared_lvars,...} => app (fn {lvar,...} => (incr_use lvar; incr_use lvar)) declared_lvars
-           | _ => app_lamb init e
+          case e of
+              VAR{lvar,instances,regvars} => incr_use lvar
+            | CHECK_REML {lvar,...} => incr_use lvar
+            | LET{pat,bind,scope} => (app (Lvars.reset_use o #1) pat; init bind; init scope)
+            | FN{pat,body} => (app (Lvars.reset_use o #1) pat; init body)
+            | FIX{functions,scope} => (app (Lvars.reset_use o #lvar) functions;
+                                       app (mark_lvar o #lvar) functions;
+                                       app (init o #bind) functions;
+                                       app (unmark_lvar o # lvar) functions;
+                                       init scope)
+            | FRAME {declared_lvars,...} => app (fn {lvar,...} => (incr_use lvar; incr_use lvar)) declared_lvars
+            | _ => app_lamb init e
 
       fun is_inlinable_fn lvar lamb =
           case lamb of
@@ -1976,6 +1982,7 @@ structure OptLambda : OPT_LAMBDA =
                             in (lamb, on_cv S cv)
                             end)
                 | NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR {exp=lamb})))
+           | CHECK_REML _ => fail
            | VAR _ => fail (* explicit region parameters *)
            | INTEGER _ => (lamb, CCONST {exp=lamb})
            | WORD _ => (lamb, CCONST {exp=lamb})

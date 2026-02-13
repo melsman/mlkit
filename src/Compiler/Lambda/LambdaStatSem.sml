@@ -451,6 +451,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     val eq_Type = LambdaBasics.eq_Type
     val eq_Types = LambdaBasics.eq_Types
+    val eq_sigma = LambdaBasics.eq_sigma
 
     fun check_t_no_f64_but_top s t =
         if eq_Type(t, f64Type) then ()
@@ -499,6 +500,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     fun eqTypes s ([],[]) = ()
       | eqTypes s (ty1::tys1, ty2::tys2) = (eqType s (ty1,ty2); eqTypes s (tys1, tys2))
       | eqTypes s _ = die "eqTypes"
+
+    fun eqSigma s (sigma,sigma') = if eq_sigma(sigma,sigma') then ()
+                                   else (log "--------------------------------\n";
+                                         log ("Error in lambda type checking (" ^ s ^ "):\n");
+                                         log "The type scheme\n";
+                                         log_st (layoutTypeScheme sigma);
+                                         log "is not compatible with type scheme\n";
+                                         log_st (layoutTypeScheme sigma');
+                                         log "--------------------------------\n";
+                                         die ("eqSigma"))
 
 
     val unit_Type = RECORDtype ([],NONE)
@@ -983,10 +994,18 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      Frame {declared_lvars = map on_lvar declared_lvars,
                             declared_excons = map on_excon declared_excons}
                    end
-                 ) handle AbortExp => raise AbortExp
-                        | ? => (log_st (layoutLambdaExp lexp) ;
-                                log_st (layout_env env);
-                                raise AbortExp)
+         | CHECK_REML {lvar,tyvars,Type,il,rep= _} =>
+           let val sigma = lookup_lvar env lvar
+               val tau = mk_instance(sigma,il)
+               val sigma = (tyvars,tau)
+           in eqSigma "CHECK_REML" (sigma,(tyvars,Type))
+            ; Types nil
+           end
+
+      ) handle AbortExp => raise AbortExp
+             | ? => (log_st (layoutLambdaExp lexp) ;
+                     log_st (layout_env env);
+                     raise AbortExp)
 
     fun check_bindings (e:LambdaExp) : unit =
         let val bound_lvs = LB.foldTD (fn acc => fn e =>

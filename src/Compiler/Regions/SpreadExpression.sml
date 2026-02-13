@@ -93,22 +93,24 @@ struct
   fun logtree (t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
   fun fst (a,b) = a
 
+  fun layout_sigma sigma = R.mk_lay_sigma false sigma
+
   fun log_sigma (sigma1, lvar) =
     case R.bv sigma1 of
       (_, _, []) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is:");
          logsay (Lvars.pr_lvar lvar ^ " is:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n")
     | ([],_,alpha::alphas) =>
         (say ("******" ^ Lvars.pr_lvar lvar ^ " is  polymorphic with escaping regions");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic with escaping regions:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n")
     | (_,_,alpha::alphas) =>
         (say ("***" ^ Lvars.pr_lvar lvar ^ " is  polymorphic");
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic:\n");
-         logtree(R.mk_lay_sigma false sigma1);
+         logtree(layout_sigma sigma1);
          logsay "\n");
 
   fun print_tree t = PP.outputTree(print, t, !Flags.colwidth)
@@ -121,7 +123,7 @@ struct
                children=map Eff.layout_effect effects})
 
   fun print_tau tau = print_tree (R.mk_lay_sigma' false ([],[],[],tau))
-  fun print_sigma sigma = print_tree (R.mk_lay_sigma false sigma)
+  fun print_sigma sigma = print_tree (layout_sigma sigma)
 
   fun noSome x msg =
     case x of
@@ -383,22 +385,43 @@ struct
 
     val (freshType, freshMu) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
 
-    fun freshType' regvars_with_rhos =
+    fun freshType' regvars_rhos =
         let val rse = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse))
-                                 rse regvars_with_rhos
+                                 rse regvars_rhos
             val (freshTy, _) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
         in freshTy
         end
 
-    fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
+    fun freshMu' regvars_rhos =
+        let val rse = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse))
+                                 rse regvars_rhos
+            val (_, freshMu) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
+        in freshMu
+        end
+
+    fun freshMus' regvars_rhos (B:cone,types:E.Type list) =
         case types of
-            [] => ([],cone)
-          | (tau_ml::rest) => let val (mu, cone) = freshMu(tau_ml,cone)
-                                  val (mus, cone) = freshTypesWithPlaces(cone, rest)
-                              in (mu::mus, cone)
-                              end
+            [] => ([],B)
+          | tau::rest => let val (mu, B) = freshMu' regvars_rhos (tau,B)
+                             val (mus, B) = freshMus' regvars_rhos (B, rest)
+                         in (mu::mus, B)
+                         end
+
+    fun freshTypesWithPlaces (B:cone, types: E.Type list) =
+        case types of
+            [] => ([],B)
+          | tau::rest => let val (mu, B) = freshMu(tau,B)
+                             val (mus, B) = freshTypesWithPlaces(B, rest)
+                         in (mu::mus, B)
+                         end
 
     fun enforceConstraint rse = R.enforceConstraint (RSE.lookupRegVar rse) deepError
+
+    fun fresh_regvars_with_rhos (B,rvs) =
+        List.foldr (fn (rv,(acc,B)) =>
+                       let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
+                       in ((rv,rho)::acc,B)
+                       end) (nil,B) rvs
 
     fun mk_sigma_hats (B,retract_level) [] = (B,[])
       | mk_sigma_hats (B,retract_level) ({lvar,regvars,tyvars,Type,constrs,bind}::rest) =
@@ -409,11 +432,7 @@ struct
                 case Type of
                     E.ARROWtype p => p
                   | _ => die "mk_sigma_hats"
-            val (regvars_with_rhos,B) =
-                List.foldr (fn (rv,(acc,B)) =>
-                               let val (rho,B) = Eff.freshRhoEpsRegVar (B,rv)
-                               in ((rv,rho)::acc,B)
-                               end) (nil,B) regvars
+            val (regvars_with_rhos,B) = fresh_regvars_with_rhos (B,regvars)
             val (tau_0, B) = freshType' regvars_with_rhos (Type,B)
             val (B,sigma) = R.generalize_all(B,retract_level,map (fn tv => (tv,NONE)) tyvars,tau_0)
             val sigma_hat = R.drop_alphas sigma
@@ -1520,6 +1539,112 @@ good *)
            NOTAIL,
            [])
         end
+    | E.CHECK_REML {lvar,tyvars,Type,il,rep} =>
+      let val (compound,create_region_record,regvars,sigma0,p,_,_) =
+              noSome (RSE.lookupLvar rse lvar) "declared lvar of CHECK_REML not in scope"
+
+          fun instFresh {preserve_explicit:bool} (sigma,mus) B =
+              let val (rhos,epss,_,_) = R.un_scheme sigma
+                  val (rhos',B) =
+                      if preserve_explicit then Eff.freshRhosPreserveRTandExplicit (rhos,B)
+                      else Eff.freshRhosPreserveRT (rhos,B)
+                  val (epss',B) = Eff.freshEpss (epss,B)
+                  val il = R.mk_il (rhos',epss',mus)
+              in R.inst (NONE,sigma,il) B
+              end (*handle X => (print "instFresh\n"; raise X)*)
+
+          (* The sigma in the environment is the sigma for the declared variable
+          lvar. However, the view application code has on this lvar may have
+          been (partially) refined by enrichment (sigmature matching), which is
+          witnessed through the instantiation list il. Thus, to create the sigma
+          to check against, we first instantiate sigma with a freshly spreaded
+          version of il and then create the modified sigma by generalizing over
+          all free variables (type variables are taken from sigma')... *)
+
+          val (B,sigma) =
+              let val level = Eff.level B
+                  val B = Eff.push B
+                  val (regvars_rhos,B) = fresh_regvars_with_rhos (B,E.regvarsTypes il)
+                  val (mus,B) = freshMus' regvars_rhos (B,il)
+                  val (t,B) = instFresh {preserve_explicit=true} (sigma0,mus) B
+                  val (B,sigma) = R.generalize_all(B,level,map (fn tv => (tv,NONE)) tyvars,t)
+              in (#2(Eff.pop B),sigma)
+              end
+
+          val (B,sigma') =
+              let val level = Eff.level B
+                  val B = Eff.push B
+                  val (regvars_rhos,B) = fresh_regvars_with_rhos (B,E.regvarsType Type)
+                  val (tau_0, B) = freshType' regvars_rhos (Type,B)
+                  val (B,sigma') = R.generalize_all(B,level,map (fn tv => (tv,NONE)) tyvars,tau_0)
+                  val (_,B) = Eff.pop B
+              in (B,sigma')
+              end handle X => (print "SIGMA'\n"; raise X)
+
+          (* Two checks:
+             (1) unify (instance sigma, tauOf sigma')
+             (2) unify (instance sigma', tauOf sigma0)
+           *)
+
+          fun check str s s' B =
+              let (*
+                  val () = ( print ("IN " ^ str ^ "\ns=")
+                           ; print_sigma s
+                           ; print "\ns'="
+                           ; print_sigma s'
+                           ; print "\ns0="
+                           ; print_sigma sigma0
+                           ; print "\n"
+                           )
+                  *)
+                  val (_,_,tvs',t') = R.un_scheme s'
+                  val B = Eff.push B
+                  val (t,B) = instFresh {preserve_explicit=false} (s,map R.mkTYVAR (map #1 tvs')) B
+                  val B = R.unify_ty (t',t) B
+                  val (_,B) = Eff.pop B
+              in B
+              end (*handle X => (print (str ^ "\n"); raise X)*)
+
+          fun rep_sigma s =
+              let val r = !Flags.print_types
+              in Flags.print_types := true
+               ; PP.reportStringTree (PP.NODE{start="  val " ^ Lvars.pr_lvar lvar ^ " : ", finish="",
+                                              indent=4,childsep=PP.NOSEP,
+                                              children=[layout_sigma s]})
+                 before Flags.print_types := r
+              end
+
+          infix // fun r // r' = Report.// (r,r')
+          val B = check "CHECK1" sigma sigma' B
+                  handle Report.DeepError rep0 =>
+                         raise Report.DeepError
+                               (  rep
+                               // Report.line "The implementation type "
+                               // rep_sigma sigma
+                               // Report.line "is not as general as the specified type"
+                               // rep_sigma sigma'
+                               // Report.line "Please modify either the implementation or the specification."
+                               // rep0
+                               )
+
+          val B = check "CHECK2" sigma' sigma B
+                  handle Report.DeepError rep0 =>
+                         raise Report.DeepError
+                               (  rep
+                               // Report.line "The specified type "
+                               // rep_sigma sigma'
+                               // Report.line "is not as general as the implementation type"
+                               // rep_sigma sigma
+                               // Report.line "Please modify either the specification or the implementation."
+                               // rep0
+                               )
+
+      in (B, E'.TR(E'.UB_RECORD nil,
+                   E'.Mus nil,
+                   Eff.empty),
+          NOTAIL,
+          [])
+      end
     | _ => die "S: unknown expression"
     )
   in

@@ -144,7 +144,9 @@ signature EFFECT = sig
   val freshRho          : cone -> effect * cone
   val freshRhos         : place list * cone -> place list * cone
 
-  val freshRhosPreserveRT: place list * cone -> place list * cone
+  val freshRhosPreserveRT : place list * cone -> place list * cone
+  val freshRhosPreserveRTandExplicit : place list * cone -> place list * cone
+
   val renameRhos        : place list * cone -> place list * cone (* fresh variables,
                                                                     preserve runtime types and pix *)
   val cloneRhos         : place list * cone -> place list * cone  (* fresh variables,

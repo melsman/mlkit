@@ -132,7 +132,7 @@ sig
   val c_function_effects   : sigma * mu -> (place * int option) list
 
   type StringTree
-  (* the boolean in the following functions should be true iff on want to
+  (* the boolean in the following functions should be true iff one wants to
      omit region information *)
   val mk_layout      : bool -> (Type -> StringTree) * (mu -> StringTree)
   val mk_lay_sigma   : bool -> sigma -> StringTree

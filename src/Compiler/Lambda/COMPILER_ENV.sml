@@ -95,7 +95,7 @@ signature COMPILER_ENV =
                                                                       * list contains the tynames of the
                                                                       * associated tystr. *)
     type ElabEnv and TypeScheme
-    val constrain : CEnv * ElabEnv -> CEnv
+    val constrain : CEnv * ElabEnv -> CEnv * (lvar * tyvar list * Type * Type list) list
 
     (* compileTypeScheme is used by constrain *)
     val set_compileTypeScheme : (TypeScheme -> tyvar list * Type) -> unit   (* MEGA HACK *)
