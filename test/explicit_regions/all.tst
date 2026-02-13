@@ -86,6 +86,8 @@ par.sml                        nobasislib noopt  (* A sound implementation of pa
 par-no.sml            ccl ecte nobasislib noopt  (* But it needs to be satisfied *)
 par-no2.sml           ccl ecte nobasislib noopt  (* The trivial definition of par is not ok *)
 
-mod.sml               ccl ecte                 (* Transparent signature matching: spec type at least as general as impl type *)
-mod2.sml              ccl ecte                 (* Transparent signature matching: impl type at least as general as spec type *)
-mod3.sml              ccl ecte                 (* Transparent signature matching: impl type at least as general as spec type *)
+mod.sml               ccl ecte                   (* Transparent signature matching: spec type at least as general as impl type *)
+mod2.sml              ccl ecte                   (* Transparent signature matching: impl type at least as general as spec type *)
+mod3.sml              ccl ecte                   (* Transparent signature matching: impl type at least as general as spec type *)
+mod4.sml              ccl ecte
+mod5.sml                                         (* ok matching *)

@@ -538,7 +538,7 @@ structure CompilerEnv: COMPILER_ENV =
                         val () = pr_st(layout_scheme(tvs',tau'))
                         *)
                         val checks = if LambdaExp.contains_regvars tau'
-                                     then [(lv,tvs',tau')]
+                                     then [(lv,tvs',tau',il')]
                                      else nil
                     in (LVAR(lv,tvs',tau',il'), checks)
                     end

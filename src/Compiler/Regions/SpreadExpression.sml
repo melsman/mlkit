@@ -385,20 +385,35 @@ struct
 
     val (freshType, freshMu) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
 
-    fun freshType' regvars_with_rhos =
+    fun freshType' regvars_rhos =
         let val rse = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse))
-                                 rse regvars_with_rhos
+                                 rse regvars_rhos
             val (freshTy, _) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
         in freshTy
         end
 
-    fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
+    fun freshMu' regvars_rhos =
+        let val rse = List.foldl (fn ((rv,rho),rse) => RSE.declareRegVar(rv,rho,rse))
+                                 rse regvars_rhos
+            val (_, freshMu) = R.freshType lookup_tn (RSE.lookupRegVar rse) deepError
+        in freshMu
+        end
+
+    fun freshMus' regvars_rhos (B:cone,types:E.Type list) =
         case types of
-            [] => ([],cone)
-          | (tau_ml::rest) => let val (mu, cone) = freshMu(tau_ml,cone)
-                                  val (mus, cone) = freshTypesWithPlaces(cone, rest)
-                              in (mu::mus, cone)
-                              end
+            [] => ([],B)
+          | tau::rest => let val (mu, B) = freshMu' regvars_rhos (tau,B)
+                             val (mus, B) = freshMus' regvars_rhos (B, rest)
+                         in (mu::mus, B)
+                         end
+
+    fun freshTypesWithPlaces (B:cone, types: E.Type list) =
+        case types of
+            [] => ([],B)
+          | tau::rest => let val (mu, B) = freshMu(tau,B)
+                             val (mus, B) = freshTypesWithPlaces(B, rest)
+                         in (mu::mus, B)
+                         end
 
     fun enforceConstraint rse = R.enforceConstraint (RSE.lookupRegVar rse) deepError
 
@@ -1524,9 +1539,37 @@ good *)
            NOTAIL,
            [])
         end
-    | E.CHECK_REML {lvar,tyvars,Type,rep} =>
-      let val (compound,create_region_record,regvars,sigma,p,_,_) =
+    | E.CHECK_REML {lvar,tyvars,Type,il,rep} =>
+      let val (compound,create_region_record,regvars,sigma0,p,_,_) =
               noSome (RSE.lookupLvar rse lvar) "declared lvar of CHECK_REML not in scope"
+
+          fun instFresh {preserve_explicit:bool} (sigma,mus) B =
+              let val (rhos,epss,_,_) = R.un_scheme sigma
+                  val (rhos',B) =
+                      if preserve_explicit then Eff.freshRhosPreserveRTandExplicit (rhos,B)
+                      else Eff.freshRhosPreserveRT (rhos,B)
+                  val (epss',B) = Eff.freshEpss (epss,B)
+                  val il = R.mk_il (rhos',epss',mus)
+              in R.inst (NONE,sigma,il) B
+              end (*handle X => (print "instFresh\n"; raise X)*)
+
+          (* The sigma in the environment is the sigma for the declared variable
+          lvar. However, the view application code has on this lvar may have
+          been (partially) refined by enrichment (sigmature matching), which is
+          witnessed through the instantiation list il. Thus, to create the sigma
+          to check against, we first instantiate sigma with a freshly spreaded
+          version of il and then create the modified sigma by generalizing over
+          all free variables (type variables are taken from sigma')... *)
+
+          val (B,sigma) =
+              let val level = Eff.level B
+                  val B = Eff.push B
+                  val (regvars_rhos,B) = fresh_regvars_with_rhos (B,E.regvarsTypes il)
+                  val (mus,B) = freshMus' regvars_rhos (B,il)
+                  val (t,B) = instFresh {preserve_explicit=true} (sigma0,mus) B
+                  val (B,sigma) = R.generalize_all(B,level,map (fn tv => (tv,NONE)) tyvars,t)
+              in (#2(Eff.pop B),sigma)
+              end
 
           val (B,sigma') =
               let val level = Eff.level B
@@ -1540,29 +1583,23 @@ good *)
 
           (* Two checks:
              (1) unify (instance sigma, tauOf sigma')
-             (2) unify (tauOf sigma, instance sigma')
+             (2) unify (instance sigma', tauOf sigma0)
            *)
-          fun instFresh (sigma,tvs) B =
-              let val tvs = map #1 tvs
-                  val (rhos,epss,_,_) = R.un_scheme sigma
-                  val (rhos',B) = Eff.freshRhosPreserveRT (rhos,B)
-                  val (epss',B) = Eff.freshEpss (epss,B)
-                  val il = R.mk_il (rhos',epss',map R.mkTYVAR tvs)
-              in R.inst (NONE,sigma,il) B
-              end (*handle X => (print "instFresh\n"; raise X)*)
 
           fun check str s s' B =
               let (*
-                  val () = ( print ("IN " ^ str ^ "\n")
+                  val () = ( print ("IN " ^ str ^ "\ns=")
                            ; print_sigma s
-                           ; print "\n"
+                           ; print "\ns'="
                            ; print_sigma s'
+                           ; print "\ns0="
+                           ; print_sigma sigma0
                            ; print "\n"
                            )
-                   *)
+                  *)
                   val (_,_,tvs',t') = R.un_scheme s'
                   val B = Eff.push B
-                  val (t,B) = instFresh (s,tvs') B
+                  val (t,B) = instFresh {preserve_explicit=false} (s,map R.mkTYVAR (map #1 tvs')) B
                   val B = R.unify_ty (t',t) B
                   val (_,B) = Eff.pop B
               in B

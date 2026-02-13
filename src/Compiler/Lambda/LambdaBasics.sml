@@ -550,12 +550,13 @@ structure LambdaBasics: LAMBDA_BASICS =
             | TYPED(e,t,cs) => TYPED(on_e ren e, on_tau ren t,cs)
             | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
             | FRAME _ => lamb
-            | CHECK_REML {lvar,tyvars,Type,rep} =>
+            | CHECK_REML {lvar,tyvars,Type,il,rep} =>
               let val tvs_pairs = map (fn tv => (tv, new_tv tv)) tyvars
                   val ren_local = add_tvs tvs_pairs empty_ren
               in CHECK_REML {lvar=on_lv ren lvar,
                              tyvars=map (on_tv ren_local) tyvars,
                              Type=on_tau ren_local Type,
+                             il=map (on_tau ren) il,
                              rep=rep}
               end
 

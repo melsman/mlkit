@@ -3552,11 +3552,13 @@ the 12 lines above are very similar to the code below
               fun g cs e =
                   case cs of
                       nil => e
-                    | (lv,tvs,t)::cs => g cs (LET{pat=nil,
-                                                  bind=CHECK_REML {lvar=lv,
-                                                                   tyvars=tvs,
-                                                                   Type=t,rep=rep},
-                                                  scope=e})
+                    | (lv,tvs,t,il)::cs => g cs (LET{pat=nil,
+                                                     bind=CHECK_REML {lvar=lv,
+                                                                      tyvars=tvs,
+                                                                      Type=t,
+                                                                      il=il,
+                                                                      rep=rep},
+                                                     scope=e})
           in (ce2, f o (g checks))
           end
          | OPAQUE_CONSTRAINTstrexp(info, strexp, _) => die "OPAQUE_CONSTRAINTstrexp.not impl"

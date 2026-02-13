@@ -84,6 +84,7 @@ signature LAMBDA_EXP =
 
     val contains_regvars : Type -> bool
     val regvarsType     : Type -> regvar list
+    val regvarsTypes    : Type list -> regvar list
 
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
@@ -159,7 +160,7 @@ signature LAMBDA_EXP =
                        (* a frame is the result of a structure-level
                         * declaration.
                         *)
-      | CHECK_REML of {lvar: lvar, tyvars: tyvar list, Type: Type, rep: Report}
+      | CHECK_REML of {lvar: lvar, tyvars: tyvar list, Type: Type, il: Type list, rep: Report}
                        (* REML: Check that lvar has the type scheme specified... *)
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option

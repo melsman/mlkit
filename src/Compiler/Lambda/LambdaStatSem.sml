@@ -994,8 +994,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      Frame {declared_lvars = map on_lvar declared_lvars,
                             declared_excons = map on_excon declared_excons}
                    end
-         | CHECK_REML {lvar,tyvars,Type,rep= _} =>
+         | CHECK_REML {lvar,tyvars,Type,il,rep= _} =>
            let val sigma = lookup_lvar env lvar
+               val tau = mk_instance(sigma,il)
+               val sigma = (tyvars,tau)
            in eqSigma "CHECK_REML" (sigma,(tyvars,Type))
             ; Types nil
            end
