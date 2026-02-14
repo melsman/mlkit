@@ -3535,6 +3535,14 @@ structure OptLambda : OPT_LAMBDA =
                               declared_excons=declared_excons}
                       )
                    end
+                 | CHECK_REML{lvar,tyvars,Type,il,rep} =>
+                   (case Lvars.Map.lookup phi lvar of
+                        NONE => die "flt.look.CHECK_REML"
+                      | SOME NOFIXphi => e
+                      | SOME (FIXphi(t,_,_)) =>
+                        let val Type = on_ty t Type
+                        in CHECK_REML{lvar=lvar,tyvars=tyvars,Type=Type,il=il,rep=rep}
+                        end)
                  | _ => LambdaBasics.map_lamb (flt phi) e
        in (flt phi e,
            case !framephi of
@@ -3542,6 +3550,10 @@ structure OptLambda : OPT_LAMBDA =
              | NONE => die "flatten:FRAME not set"
           )
        end
+
+   (* noOpt is used when the optimiser is disabled *)
+   fun noOpt phi e =
+       flatten (fn {phi,function,mutrec} => (function,Id,fn x => x)) phi e
 
    fun dropOpt (phi:phi) (e:LambdaExp) : LambdaExp * phi =
        let fun F {phi:phi,function={lvar,regvars,tyvars,Type,constrs,vtys,body},mutrec} =
@@ -3738,6 +3750,12 @@ structure OptLambda : OPT_LAMBDA =
            val (e,phi3) = dropOpt phi0 e
            (* val () = prLambdaExp "After dropOpt" e *)
        in (e, phi_mod(phi_mod(phi1,phi2),phi3))
+       end
+
+   fun flattening_noopt phi e =
+       let val () = log "flattening - noopt\n"
+           val (e',phi') = noOpt phi e
+       in (e',phi')
        end
 
    (* Pickling *)
@@ -4081,14 +4099,15 @@ structure OptLambda : OPT_LAMBDA =
         in (lamb, (inveta_env, let_env))
         end
 
-
    (* -----------------------------------------------------------------
     * The Optimiser
     * ----------------------------------------------------------------- *)
 
     fun maybeoptimise cenv phi e =
         if optimise_p() then optimise cenv phi e
-        else (e, contract_env_dummy e, FixFlatten.dummy_phi e)
+        else let val (e',phi') = FixFlatten.flattening_noopt phi e
+             in (e', contract_env_dummy e', phi')
+             end
 
     fun optimise (env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
