@@ -1,5 +1,5 @@
-(* Transparent signature matching: It is checked that the type of an implementation
- * is at least as general as the specified type. *)
+(* Transparent signature matching: It is an error if the implementation type
+   is less general than the specified type. *)
 
 signature X = sig
   val f : string`r1 -> string`r2

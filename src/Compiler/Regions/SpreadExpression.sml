@@ -1581,29 +1581,7 @@ good *)
               in (B,sigma')
               end handle X => (print "SIGMA'\n"; raise X)
 
-          (* Two checks:
-             (1) unify (instance sigma, tauOf sigma')
-             (2) unify (instance sigma', tauOf sigma0)
-           *)
-
-          fun check str s s' B =
-              let (*
-                  val () = ( print ("IN " ^ str ^ "\ns=")
-                           ; print_sigma s
-                           ; print "\ns'="
-                           ; print_sigma s'
-                           ; print "\ns0="
-                           ; print_sigma sigma0
-                           ; print "\n"
-                           )
-                  *)
-                  val (_,_,tvs',t') = R.un_scheme s'
-                  val B = Eff.push B
-                  val (t,B) = instFresh {preserve_explicit=false} (s,map R.mkTYVAR (map #1 tvs')) B
-                  val B = R.unify_ty (t',t) B
-                  val (_,B) = Eff.pop B
-              in B
-              end (*handle X => (print (str ^ "\n"); raise X)*)
+          infix // fun r // r' = Report.// (r,r')
 
           fun rep_sigma s =
               let val r = !Flags.print_types
@@ -1614,30 +1592,62 @@ good *)
                  before Flags.print_types := r
               end
 
-          infix // fun r // r' = Report.// (r,r')
-          val B = check "CHECK1" sigma sigma' B
-                  handle Report.DeepError rep0 =>
+          (*
+          val () = ( print ("CHECK_REML\ns=")
+                   ; print_sigma sigma
+                   ; print "\ns'="
+                   ; print_sigma sigma'
+                   ; print "\ns0="
+                   ; print_sigma sigma0
+                   ; print "\n"
+                   )
+          *)
+
+          (* Two checks:
+             (1) unify (instance sigma, tauOf sigma'):
+                  Implementation does not unify regions and effects that
+                  are specified to be disjoint.
+             (2) sigma = unifySigma (fresh sigma, fresh sigma'):
+                  Signature type should have no influence on the
+                  implementation type.
+           *)
+
+          fun check1 B =
+              let val (_,_,tvs',t') = R.un_scheme sigma'
+                  val B = Eff.push B
+                  val (t,B) = instFresh {preserve_explicit=false} (sigma,map R.mkTYVAR (map #1 tvs')) B
+                  val B = R.unify_ty (t',t) B
+                  val (_,B) = Eff.pop B
+              in B
+              end handle Report.DeepError rep0 =>
                          raise Report.DeepError
                                (  rep
-                               // Report.line "The implementation type "
+                               // Report.line "The implementation type"
                                // rep_sigma sigma
-                               // Report.line "is not as general as the specified type"
+                               // Report.line "is less general than the specified type"
                                // rep_sigma sigma'
                                // Report.line "Please modify either the implementation or the specification."
                                // rep0
                                )
+          fun check2 B =
+              let val s = R.alpha_rename (sigma,B)
+                  val (_,_,_,t) = R.un_scheme s
+                  val s' = R.alpha_rename (sigma',B)
+                  val (_,_,_,t') = R.un_scheme s'
+                  val B = R.unify_ty(t,t')B
+              in if R.alpha_equal (sigma,s) B then B
+                 else raise Report.DeepError
+                            (  rep
+                            // Report.line "The specification type"
+                            // rep_sigma sigma'
+                            // Report.line "is less general than the implementation type"
+                            // rep_sigma sigma
+                            // Report.line "Please modify either the implementation or the specification."
+                            )
+              end
 
-          val B = check "CHECK2" sigma' sigma B
-                  handle Report.DeepError rep0 =>
-                         raise Report.DeepError
-                               (  rep
-                               // Report.line "The specified type "
-                               // rep_sigma sigma'
-                               // Report.line "is not as general as the implementation type"
-                               // rep_sigma sigma
-                               // Report.line "Please modify either the specification or the implementation."
-                               // rep0
-                               )
+          val B = check1 B
+          val B = check2 B
 
       in (B, E'.TR(E'.UB_RECORD nil,
                    E'.Mus nil,

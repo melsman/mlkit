@@ -86,8 +86,16 @@ par.sml                        nobasislib noopt  (* A sound implementation of pa
 par-no.sml            ccl ecte nobasislib noopt  (* But it needs to be satisfied *)
 par-no2.sml           ccl ecte nobasislib noopt  (* The trivial definition of par is not ok *)
 
-mod.sml               ccl ecte                   (* Transparent signature matching: spec type at least as general as impl type *)
-mod2.sml              ccl ecte                   (* Transparent signature matching: impl type at least as general as spec type *)
-mod3.sml              ccl ecte                   (* Transparent signature matching: impl type at least as general as spec type *)
-mod4.sml              ccl ecte
-mod5.sml                                         (* ok matching *)
+mod.sml               ccl ecte                   (* Signature matching: It is an error if the implementation
+                                                    type is less general than the specified type. *)
+mod2.sml              ccl ecte                   (* Signature matching: It is an error if the specified
+                                                    type is less general than the implementation type. *)
+mod3.sml              ccl ecte                   (* Signature matching: It is an error if the implementation type
+                                                    is less general than the specified type. *)
+mod4.sml              ccl ecte                   (* Signature matching: It is an error if the implementation type
+                                                    is less general than the specified type (enrichment). *)
+mod5.sml                                         (* Signature matching: ok. *)
+mod6.sml              ccl ecte                   (* Signature matching: It is an error if the specification type
+                                                    is less general than the implementation type. *)
+mod7.sml              ccl ecte                   (* Signature matching: It is an error if the specification type
+                                                    is less general than the implementation type. *)

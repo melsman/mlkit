@@ -14,9 +14,9 @@
 mod3.sml, line 12, column 15:
   structure K2 = K1 : X
                  ^^^^^^
-The implementation type 
+The implementation type
   val f : all r19.(string,r19)->(string,r19)
-is not as general as the specified type
+is less general than the specified type
   val f : all `r2,`r1.(string,`r1)->(string,`r2)
 Please modify either the implementation or the specification.
 mod3.sml, line 5, column 30:

@@ -1,0 +1,22 @@
+[reading source file:	mod6.sml]
+> signature X =
+    sig
+      val concat : string`r1 * string`r1 -> string`r1
+    end
+  structure K1 :
+    sig
+      val concat : string * string -> string
+    end
+  structure K2 :
+    sig
+      val concat : string`r1 * string`r1 -> string`r1
+    end
+mod6.sml, line 12, column 15:
+  structure K2 = K1 : X
+                 ^^^^^^
+The specification type
+  val concat : all `r1.<(string,`r1), (string,`r1)>->(string,`r1)
+is less general than the implementation type
+  val concat : all r33,r31,r29.<(string,r29), (string,r31)>->(string,r33)
+Please modify either the implementation or the specification.
+Stopping compilation of MLB-file due to error (code 1).

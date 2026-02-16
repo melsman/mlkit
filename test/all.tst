@@ -7,7 +7,7 @@ consists of a file name path (with extension sml, sig, or mlb) followed
 by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
- nooptimiser    ; disable lambda optimiser
+ noopt          ; disable lambda optimiser
  ccl            ; compare compiler logs
  tx             ; time executable
  tc             ; time compiler
@@ -67,10 +67,10 @@ elabDecBug.sml      ccl ecte
 oh-no.sml           ccl       nobasislib
 oh-no2.sml          ccl       nobasislib
 real_match.sml                nobasislib
-gc0.sml                       nobasislib nooptimiser
-gc01.sml                      nobasislib nooptimiser
-exn.sml                       nobasislib nooptimiser
-exn-alpha.sml                 nobasislib nooptimiser
+gc0.sml                       nobasislib noopt
+gc01.sml                      nobasislib noopt
+exn.sml                       nobasislib noopt
+exn-alpha.sml                 nobasislib noopt
 
 (* Tests of some benchmark programs *)
 
@@ -183,3 +183,4 @@ foldbug.sml
 seltuptup.sml
 poll.sml
 enum-eq.sml
+stringconcat.sml               noopt         (* check transformation of calls to argument-transformed functions *)
