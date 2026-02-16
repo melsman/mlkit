@@ -1,22 +1,22 @@
-[reading source file:	mod2.sml]
+[reading source file:	mod7.sml]
 > signature X =
     sig
       val f : string`r1 -> string`r1
     end
   structure K1 :
     sig
-      val f : string`r1 -> string`r2
+      val f : string -> string
     end
   structure K2 :
     sig
       val f : string`r1 -> string`r1
     end
-mod2.sml, line 12, column 15:
+mod7.sml, line 13, column 15:
   structure K2 = K1 : X
                  ^^^^^^
 The specification type
   val f : all `r1.(string,`r1)->(string,`r1)
 is less general than the implementation type
-  val f : all `r2,`r1.(string,`r1)->(string,`r2)
+  val f : all r29,r27.(string,r27)->(string,r29)
 Please modify either the implementation or the specification.
 Stopping compilation of MLB-file due to error (code 1).

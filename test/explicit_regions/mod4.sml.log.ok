@@ -11,15 +11,15 @@
     sig
       val f : string`r1 -> string`r2
     end
-mod4.sml, line 13, column 15:
+mod4.sml, line 16, column 15:
   structure K2 = K1 : X
                  ^^^^^^
-The implementation type 
+The implementation type
   val f : all `r1.(string,`r1)->(string,`r1)
-is not as general as the specified type
+is less general than the specified type
   val f : all `r2,`r1.(string,`r1)->(string,`r2)
 Please modify either the implementation or the specification.
-mod4.sml, line 6, column 30:
+mod4.sml, line 9, column 30:
     val f : string`r1 -> string`r2
                                 ^^
 Cannot unify the explicit region variables `r2 and `r1
