@@ -1184,17 +1184,18 @@ struct
            end
 
          | CONty(_, tys, regvars, longtycon) =>
-             let
-               fun idTail ts =
-                   NODE{start="", finish=" " ^ TyCon.pr_LongTyCon longtycon,
-                        indent=0, children=ts, childsep=RIGHT " "
-                       }
-               fun layRegvars () = NODE{start="`[", finish="]", indent=2,
-                                        children=map (fn (_,r) => LEAF(RegVar.pr r)) regvars,
-                                        childsep=RIGHT " "}
-               fun layTys () = NODE{start="(", finish=")", indent=1,
-                                    children=map layoutTy tys,
-                                    childsep=RIGHT ", "}
+             let fun idTail ts =
+                     NODE{start="", finish=" " ^ TyCon.pr_LongTyCon longtycon,
+                          indent=0, children=ts, childsep=RIGHT " "}
+                 fun layRegvars () =
+                     case regvars of
+                         [(_,r)] => LEAF("`" ^ RegVar.pr r)
+                       | _ => NODE{start="`[", finish="]", indent=2,
+                                   children=map (fn (_,r) => LEAF(RegVar.pr r)) regvars,
+                                   childsep=RIGHT " "}
+                 fun layTys () = NODE{start="(", finish=")", indent=1,
+                                      children=map layoutTy tys,
+                                      childsep=RIGHT ", "}
              in case tys of
                     nil => (case regvars of
                                 nil => LEAF(TyCon.pr_LongTyCon longtycon)

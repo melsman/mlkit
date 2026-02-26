@@ -1752,8 +1752,6 @@ structure StatObject: STATOBJECT =
          * instantiated variable. The equality function here is also
          * used to implement equality of type functions. *)
 
-        (* MEMO: explicit region variables are ignored in comparisons (currently!) *)
-
         fun eq (([],_,ty1), ([],_,ty2)) = Type.eq(ty1,ty2)
           | eq (sigma1 as (tvs1,rvs1,_), sigma2 as (tvs2,rvs2,_)) =
           length tvs1 = length tvs2 andalso length rvs1 = length rvs2 andalso
