@@ -1175,13 +1175,15 @@ structure ElabDec: ELABDEC =
             fun regVarsOrderInvalid effvar nil = false
               | regVarsOrderInvalid effvar (rv::rvs) =
                 (effvar andalso not (RegVar.is_effvar rv))
-                orelse regVarsOrderInvalid (RegVar.is_effvar rv) rvs
+                orelse regVarsOrderInvalid (effvar orelse RegVar.is_effvar rv) rvs
 
           in case elab_ty(C', ty)
                of (SOME tau, out_ty) =>
                  let val _ = Level.pop()
-                     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, regvars, tau)
-                     val tystr = TyStr.from_theta_and_VE(typeFcn, VE.empty)
+                     fun tystr () =
+                         let val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, regvars, tau)
+                         in TyStr.from_theta_and_VE(typeFcn, VE.empty)
+                         end
                      val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
                  in
                    if not(isEmptyTyVarList freeTyvars) then
@@ -1192,7 +1194,7 @@ structure ElabDec: ELABDEC =
                      (TE, OG.TYPBIND(errorConv(i, ErrorInfo.REGVARS_NOT_IN_REGVARSEQ freeRegvars),
                                      ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
                    else if (EqSet.member tycon (TE.dom TE)) then
-                     (TE.plus (TE.singleton(tycon, tystr), TE),
+                     (TE.plus (TE.singleton(tycon, tystr()), TE),
                       OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
                                  ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
                    else if not(List.null tyvarsRepeated) then
@@ -1207,7 +1209,7 @@ structure ElabDec: ELABDEC =
                      (TE, OG.TYPBIND(errorConv(i, ErrorInfo.REGVARS_INVALID_ORDER regvars),
                                      ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
                    else (*ok*)
-                     (TE.plus (TE.singleton(tycon, tystr), TE),
+                     (TE.plus (TE.singleton(tycon, tystr()), TE),
                       OG.TYPBIND(okConv i, ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
                  end
                 | (NONE, out_ty) =>

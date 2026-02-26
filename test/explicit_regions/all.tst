@@ -88,7 +88,7 @@ par-no2.sml           ccl ecte nobasislib noopt  (* The trivial definition of pa
 
 err_ty2.sml           ccl ecte                   (* type abbreviations, repeated abstract regvar *)
 err_ty3.sml           ccl ecte                   (* type abbreviations, free regvar *)
-err_ty3.sml           ccl ecte                   (* type abbreviations, invalid order of regvars *)
+err_ty4.sml           ccl ecte                   (* type abbreviations, invalid order of regvars *)
 
 mod.sml               ccl ecte                   (* Signature matching: It is an error if the implementation
                                                     type is less general than the specified type. *)
