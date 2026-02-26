@@ -1,0 +1,7 @@
+[reading source file:	err_ty2.sml]
+
+err_ty2.sml, line 3, column 5:
+  type `[r1 r2 r3 r4 r5 r6 r2 r7] u = (int*int)`r1
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+Repeated identifiers r2 and r2.
+Stopping compilation of MLB-file due to error (code 1).

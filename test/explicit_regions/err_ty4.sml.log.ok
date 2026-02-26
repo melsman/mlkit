@@ -1,0 +1,7 @@
+[reading source file:	err_ty4.sml]
+
+err_ty4.sml, line 3, column 5:
+  type `[r1 e1 r2] t = int #e1 -> string`r1 * string`r2
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Region variables must occur before effect variables in type parameters: r1, e1 and r2.
+Stopping compilation of MLB-file due to error (code 1).

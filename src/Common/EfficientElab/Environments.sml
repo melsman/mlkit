@@ -92,7 +92,7 @@ structure Environments: ENVIRONMENTS =
             EqSet.empty
         | RECORDty(_, SOME tyrow, _) =>
             ExplicitTyVarsTyRow tyrow
-        | CONty(_, tylist, _) =>
+        | CONty(_, tylist, _, _) =>
             foldl (uncurry EqSet.union) EqSet.empty (map ExplicitTyVarsTy tylist)
         | FNty(_,ty1,_,ty2) =>
             EqSet.union (ExplicitTyVarsTy ty1)
@@ -199,7 +199,7 @@ structure Environments: ENVIRONMENTS =
           [tyvar]
         | unguarded_ty(DecGrammar.RECORDty(_,tyrow_opt,_)) =
           unguarded_opt unguarded_tyrow tyrow_opt
-        | unguarded_ty(DecGrammar.CONty(_,ty_list,_)) =
+        | unguarded_ty(DecGrammar.CONty(_,ty_list,_,_)) =
           foldl (fn (ty, tyvarset) => unguarded_ty ty ++ tyvarset)
           [] ty_list
         | unguarded_ty(DecGrammar.FNty(_,ty1,_,ty2)) =
@@ -755,14 +755,16 @@ structure Environments: ENVIRONMENTS =
                  (tyname, TypeFcn.from_TyName
                            (TyName.freshTyName
                              {tycon = TyName.tycon tyname,
-                              arity = TyName.arity tyname, equality = true})))
+                              arity = TyName.arity tyname,
+                              arity_reml = TyName.arity_reml tyname,
+                              equality = true})))
       in
         fun equality_maximising_realisation (TE : TyEnv) : realisation =
               generate (iterate (tynames_of_nonequality_datatypes TE) TE)
       end (*local*)
 
       fun init' explicittyvars tycon =
-        let val tyname = TyName.freshTyName {tycon=tycon, arity=List.length explicittyvars, equality=false}
+        let val tyname = TyName.freshTyName {tycon=tycon, arity=List.length explicittyvars, arity_reml=(0,0), equality=false}
             val TE = singleton (tycon, TyStr.from_theta_and_VE (TypeFcn.from_TyName tyname, VE.empty))
         in (tyname, TE)
         end
@@ -1271,7 +1273,7 @@ structure Environments: ENVIRONMENTS =
                                   mk_tystr (TyName.tyName_REF, VE.close refVE_to_TE))
 
         local   (* initial TE for unit *)
-          val theta_unit = TypeFcn.from_TyVars_and_Type ([], Type.Unit)
+          val theta_unit = TypeFcn.from_TyVars_and_Type ([], nil, Type.Unit)
           val VE_unit = VE.empty
         in
           val TE_unit = TE.singleton (TyCon.tycon_UNIT,
@@ -1679,6 +1681,7 @@ structure Environments: ENVIRONMENTS =
         let val tyname = noSome (TypeFcn.to_TyName theta) "modifyTyStr"
             val tyname_abs = TyName.freshTyName {tycon=TyName.tycon tyname,
                                                  arity=TyName.arity tyname,
+                                                 arity_reml=TyName.arity_reml tyname,
                                                  equality=false}
             val phi = singleton(tyname_abs, TypeFcn.from_TyName tyname)
             val phi_inv = singleton(tyname, TypeFcn.from_TyName tyname_abs)

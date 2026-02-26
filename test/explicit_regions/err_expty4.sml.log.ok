@@ -1,0 +1,8 @@
+[reading source file:	err_expty4.sml]
+> type `r1 t
+  val f : string`r2 -> string`r * string`r
+err_expty4.sml, line 5, column 6:
+  fun f `[r r2] (x:string`r2) : `r t = (x ^ "", x)
+        ^^^^^^^
+Cannot unify the explicit region variables `r2 and `r
+Stopping compilation of MLB-file due to error (code 1).
