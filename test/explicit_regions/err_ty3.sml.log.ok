@@ -1,0 +1,7 @@
+[reading source file:	err_ty3.sml]
+
+err_ty3.sml, line 3, column 5:
+  type `[r1 r2 r3 r4 r5 r6 r2 r7] s = (int*int)`r23
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Unbound explicit region or effect variable r23.
+Stopping compilation of MLB-file due to error (code 1).

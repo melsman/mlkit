@@ -86,6 +86,10 @@ par.sml                        nobasislib noopt  (* A sound implementation of pa
 par-no.sml            ccl ecte nobasislib noopt  (* But it needs to be satisfied *)
 par-no2.sml           ccl ecte nobasislib noopt  (* The trivial definition of par is not ok *)
 
+err_ty2.sml           ccl ecte                   (* type abbreviations, repeated abstract regvar *)
+err_ty3.sml           ccl ecte                   (* type abbreviations, free regvar *)
+err_ty3.sml           ccl ecte                   (* type abbreviations, invalid order of regvars *)
+
 mod.sml               ccl ecte                   (* Signature matching: It is an error if the implementation
                                                     type is less general than the specified type. *)
 mod2.sml              ccl ecte                   (* Signature matching: It is an error if the specified
@@ -99,3 +103,7 @@ mod6.sml              ccl ecte                   (* Signature matching: It is an
                                                     is less general than the implementation type. *)
 mod7.sml              ccl ecte                   (* Signature matching: It is an error if the specification type
                                                     is less general than the implementation type. *)
+
+expty3.sml                                       (* Applying region abstract type bindings *)
+
+err_expty4.sml        ccl ecte                   (* Applied region-abstract type functions are tracked *)

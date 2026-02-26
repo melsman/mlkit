@@ -83,7 +83,7 @@ struct
   and FClause = FCLAUSE of info * atpat list * ty option * exp * FClause option
 
   and typbind =
-        TYPBIND of info * tyvar list * tycon * ty * typbind option
+        TYPBIND of info * tyvar list * (info * regvar list) * tycon * ty * typbind option
 
   and datbind =
         DATBIND of info * tyvar list * tycon * conbind * datbind option
@@ -116,7 +116,7 @@ struct
   and ty =
         TYVARty of info * tyvar |
         RECORDty of info * tyrow option * (info*regvar) option |
-        CONty of info * ty list * longtycon |
+        CONty of info * ty list * (info*regvar) list * longtycon |
         FNty of info * ty * (info*regvar) option * ty |
         PARty of info * ty * (info*(info*regvar)list) option |
         WITHty of info * ty * constraint
@@ -251,7 +251,7 @@ struct
         | PUTateff x => #1 x
         | GETateff x => #1 x
 
-  fun get_info_typbind (TYPBIND (info, tyvars, tycon, ty, typbind_opt)) = info
+  fun get_info_typbind (TYPBIND (info, tyvars, regvars, tycon, ty, typbind_opt)) = info
 
   fun get_info_tyrow (TYROW (info, lab, ty, tyrow_opt)) = info
 
@@ -362,8 +362,8 @@ struct
       | RECvalbind(i, valbind) =>
           RECvalbind(f i, map_valbind_info f valbind)
 
-    and map_typbind_info f (TYPBIND(i,tyvars,tycon,ty,typbind_opt)): typbind =
-      TYPBIND(f i,tyvars,tycon,map_ty_info f ty,
+    and map_typbind_info f (TYPBIND(i,tyvars,(ir,regvars),tycon,ty,typbind_opt)): typbind =
+      TYPBIND(f i,tyvars,(f ir,regvars),tycon,map_ty_info f ty,
               do_opt typbind_opt (map_typbind_info f))
 
     and map_datbind_info f (DATBIND(i,tyvars,tycon,conbind,datbind_opt)): datbind =
@@ -418,7 +418,7 @@ struct
       case ty of
         TYVARty(i,tyvar) => TYVARty(f i, tyvar)
       | RECORDty(i,tyrow_opt,opt) => RECORDty(f i, do_opt tyrow_opt (map_tyrow_info f),Option.map (fn (i,rv) => (f i,rv)) opt)
-      | CONty(i,tys,longtycon) => CONty(f i, map (map_ty_info f) tys,longtycon)
+      | CONty(i,tys,regvars,longtycon) => CONty(f i, map (map_ty_info f) tys, map (fn (i,r) => (f i,r)) regvars, longtycon)
       | FNty(i,ty,opt,ty') => FNty(f i, map_ty_info f ty, Option.map (fn (i,rv) => (f i,rv)) opt, map_ty_info f ty')
       | PARty(i,ty,opt) => PARty(f i, map_ty_info f ty, Option.map (fn (i,rvis) => (f i,List.map (fn (i,rv) => (f i,rv)) rvis)) opt)
       | WITHty (i,t,c) => WITHty (f i, map_ty_info f t, map_constraint_info f c)
@@ -487,7 +487,7 @@ struct
         TYVARty(_, tv) => tv::res
       | RECORDty(_, NONE, _) => res
       | RECORDty(_, SOME tyrow, _) => fTyrow tyrow res
-      | CONty(_, tys, _) => foldl (fn (ty,res) => fTy ty res) res tys
+      | CONty(_, tys, _, _) => foldl (fn (ty,res) => fTy ty res) res tys
       | FNty(_, ty1, _, ty2) => fTy ty1 (fTy ty2 res)
       | PARty(_, ty, _) => fTy ty res
       | WITHty(_, ty, _) => fTy ty res
@@ -505,10 +505,51 @@ struct
           NONE => res'
         | SOME conbind => fConbind conbind res'
       end
-
   in
-    fun getExplicitTyVarsTy ty =  fTy ty []
+    fun getExplicitTyVarsTy ty = fTy ty []
     fun getExplicitTyVarsConbind ty = fConbind ty []
+  end
+
+  local
+    fun ins r xs = if List.exists (fn x => RegVar.eq(x,r)) xs then xs
+                   else r::xs
+    fun inss nil xs = xs
+      | inss (r::rs) xs = ins r (inss rs xs)
+    fun fInfoRegVar x acc =
+        case x of
+            NONE => acc
+          | SOME (_,r) => ins r acc
+    fun fTy ty acc =
+      case ty of
+        TYVARty _ => acc
+      | RECORDty(_, NONE, iro) => fInfoRegVar iro acc
+      | RECORDty(_, SOME tyrow, iro) => fTyrow tyrow (fInfoRegVar iro acc)
+      | CONty(_, tys, irs, _) => foldl (fn (ty,acc) => fTy ty acc) (inss (map #2 irs) acc) tys
+      | FNty(_, ty1, iro, ty2) => fTy ty1 (fInfoRegVar iro (fTy ty2 acc))
+      | PARty(_, ty, NONE) => fTy ty acc
+      | PARty(_, ty, SOME (_,irs)) => fTy ty (inss (map #2 irs) acc)
+      | WITHty(_, ty, c) => fTy ty (fConstraint c acc)
+    and fConstraint c acc =
+        case c of
+            DISJOINTconstraint (_,e1,e2,_) => fEff e1 (fEff e2 acc)
+          | INCLconstraint (_,(_,r),e) => fEff e (ins r acc)
+          | PROPconstraint (_,_,e) => fEff e acc
+    and fEff e acc =
+        case e of
+            SETeff (_, aes) => fAtEffs aes acc
+          | VAReff (_,r) => ins r acc
+    and fAtEffs nil acc = acc
+      | fAtEffs (ae::aes) acc =
+        case ae of
+            VARateff (_,r) => ins r (fAtEffs aes acc)
+          | PUTateff (_,(_,r)) => ins r (fAtEffs aes acc)
+          | GETateff (_,(_,r)) => ins r (fAtEffs aes acc)
+    and fTyrow (TYROW(_, _, ty, tyrowopt)) acc =
+        case tyrowopt of
+            NONE => fTy ty acc
+          | SOME tyrow => fTyrow tyrow (fTy ty acc)
+  in
+    fun getRegVarsTy ty = fTy ty []
   end
 
   (* finding the string name of a topmost value identifier in a pattern, if any exists: *)
@@ -850,22 +891,36 @@ struct
                               }
                       )
 
+    and layoutRegvarseq regvars =
+      case regvars
+        of nil => NONE
+         | [rv] => SOME(LEAF("`" ^ RegVar.pr rv))
+         | rvs => SOME(NODE{start="`[", finish="]", indent=1,
+                            children=map (LEAF o RegVar.pr) rvs,
+                            childsep=RIGHT " "
+                           }
+                      )
+
     and layoutTypbind typbind : StringTree =
       let
-        fun treesOfTypbind(TYPBIND(_, tyvars, tycon, ty, typbind_opt))
-          : StringTree list =
+        fun treesOfTypbind (TYPBIND(_, tyvars, (_,regvars), tycon, ty, typbind_opt))
+            : StringTree list =
           let
             val tyvars_opt = layoutTyvarseq tyvars
+            val regvars_opt = layoutRegvarseq regvars
             val tyconT = LEAF(TyCon.pr_TyCon tycon)
-            val eqT = LEAF " = "
+            val eqT = LEAF "="
             val tyT = layoutTy ty
 
             val this =
               NODE{start="", finish="", indent=0,
                       children=(case tyvars_opt of SOME x => [x]
                                                  | NONE => nil
-                               ) @  [tyconT, eqT, tyT],
-                      childsep=NOSEP
+                               ) @
+                               (case regvars_opt of SOME x => [x]
+                                                  | NONE => nil
+                               ) @ [tyconT, eqT, tyT],
+                      childsep=RIGHT " "
                      }
           in
             this :: (case typbind_opt
@@ -1128,23 +1183,28 @@ struct
                  | NONE => LEAF "{}" (* "unit" ? *)
            end
 
-         | CONty(_, tys, longtycon) =>
+         | CONty(_, tys, regvars, longtycon) =>
              let
-               fun idTail t =
-                 NODE{start="", finish=" " ^ TyCon.pr_LongTyCon longtycon,
-                         indent=0, children=[t], childsep=NOSEP
-                         }
-             in
-               case tys
-                 of nil => LEAF(TyCon.pr_LongTyCon longtycon)
-
-                  | [ty] => idTail(layoutTy ty)
-
-                  | tys => idTail(NODE{start="(", finish=")", indent=1,
-                                          children=map layoutTy tys,
-                                          childsep=RIGHT ", "
-                                         }
-                                 )
+               fun idTail ts =
+                   NODE{start="", finish=" " ^ TyCon.pr_LongTyCon longtycon,
+                        indent=0, children=ts, childsep=RIGHT " "
+                       }
+               fun layRegvars () = NODE{start="`[", finish="]", indent=2,
+                                        children=map (fn (_,r) => LEAF(RegVar.pr r)) regvars,
+                                        childsep=RIGHT " "}
+               fun layTys () = NODE{start="(", finish=")", indent=1,
+                                    children=map layoutTy tys,
+                                    childsep=RIGHT ", "}
+             in case tys of
+                    nil => (case regvars of
+                                nil => LEAF(TyCon.pr_LongTyCon longtycon)
+                              | _ => idTail [layRegvars()])
+                  | [ty] => (case regvars of
+                                 nil => idTail [layoutTy ty]
+                               | _ => idTail [layoutTy ty, layRegvars()])
+                  | tys => (case regvars of
+                                nil => idTail [layTys()]
+                              | _ => idTail [layTys(), layRegvars()])
              end
 
          | FNty(_, ty1, opt, ty2) =>

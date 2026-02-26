@@ -29,6 +29,7 @@ structure TyName :> TYNAME =
     type TyName = {tycon: tycon,
                    name: name,
                    arity: int,
+                   arity_reml: int*int,
                    rank: rank ref,
                    equality: bool,
                    boxity: boxity ref}
@@ -61,17 +62,19 @@ structure TyName :> TYNAME =
         end
       end
 
-    fun fresh boxity {tycon: tycon, arity: int, equality: bool} =
+    fun fresh boxity {tycon: tycon, arity: int, arity_reml: int*int, equality: bool} =
         let val name = Name.new()
-      in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^
-                                                   Int.toString(Name.key name) ^ ")\n") else (); *)
-        {tycon=tycon, name=name, rank=Rank.new(), arity=arity,
-         equality=equality, boxity=ref boxity}
-      end
+        in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^
+              Int.toString(Name.key name) ^ ")\n") else (); *)
+          {tycon=tycon, name=name, rank=Rank.new(), arity=arity, arity_reml=arity_reml,
+           equality=equality, boxity=ref boxity}
+        end
 
     fun freshTyName r = fresh BOXED r
 
     fun arity ({arity, ...} : TyName) : int = arity
+
+    fun arity_reml ({arity_reml, ...} : TyName) : int*int = arity_reml
 
     fun equality ({equality, ...} : TyName) : bool = equality
 
@@ -95,8 +98,8 @@ structure TyName :> TYNAME =
 
     local
         val bucket = ref nil
-        fun predef b r =
-            let val tn = fresh b r
+        fun predef b {tycon,arity,equality} =
+            let val tn = fresh b {tycon=tycon,arity=arity,arity_reml=(0,0),equality=equality}
             in bucket := tn :: !bucket
              ; tn
             end
@@ -220,14 +223,14 @@ structure TyName :> TYNAME =
     val pu =
         Pickle.hashConsEq eq
         (Pickle.register "TyName" tynamesPredefined
-         let fun to ((t,n,a),r,e,b) : TyName =
-                 {tycon=t, name=n, arity=a, rank=r,
+         let fun to ((t,n,a,ar),r,e,b) : TyName =
+                 {tycon=t, name=n, arity=a, arity_reml=ar, rank=r,
                   equality=e, boxity=b}
-             fun from ({tycon=t, name=n, arity=a, rank=r,
-                        equality=e, boxity=b} : TyName) = ((t,n,a),r,e,b)
+             fun from ({tycon=t, name=n, arity=a, arity_reml=ar, rank=r,
+                        equality=e, boxity=b} : TyName) = ((t,n,a,ar),r,e,b)
          in Pickle.newHash (#1 o Name.key o name)
              (Pickle.convert (to,from)
-              (Pickle.tup4Gen0(Pickle.tup3Gen0(TyCon.pu,Name.pu,Pickle.int),
+              (Pickle.tup4Gen0(Pickle.tup4Gen0(TyCon.pu,Name.pu,Pickle.int,Pickle.pairGen(Pickle.int,Pickle.int)),
                                Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen pu_boxity)))
          end)
 

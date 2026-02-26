@@ -1156,48 +1156,65 @@ structure ElabDec: ELABDEC =
       case typbind of
 
         (* Type binding *)                                      (*rule 27*)
-        IG.TYPBIND(i, ExplicitTyVars, tycon, ty, typbind_opt) =>
+        IG.TYPBIND(i, ExplicitTyVars, (ir,regvars), tycon, ty, typbind_opt) =>
           let
             val _ = Level.push()
 
             val (TyVars,C') = C.plus_U'(C, ExplicitTyVars)
 
             val tyvarsRepeated = getRepeatedElements (op =) ExplicitTyVars
-            val tyvarsNotInTyVarList =
-              List.filter (fn tv => not (ListHacks.member tv ExplicitTyVars))
-              (IG.getExplicitTyVarsTy ty)
+            val regvarsRepeated = getRepeatedElements RegVar.eq regvars
+            val freeTyvars =
+                List.filter (fn tv => not (ListHacks.member tv ExplicitTyVars))
+                            (IG.getExplicitTyVarsTy ty)
+            val freeRegvars =
+                List.filter (fn rv => not (List.exists (fn x => RegVar.eq(x,rv)) regvars))
+                            (IG.getRegVarsTy ty)
+
+            (* region variables must come before effect variables in type bindings *)
+            fun regVarsOrderInvalid effvar nil = false
+              | regVarsOrderInvalid effvar (rv::rvs) =
+                (effvar andalso not (RegVar.is_effvar rv))
+                orelse regVarsOrderInvalid (RegVar.is_effvar rv) rvs
 
           in case elab_ty(C', ty)
                of (SOME tau, out_ty) =>
                  let val _ = Level.pop()
-                     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, tau)
+                     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, regvars, tau)
                      val tystr = TyStr.from_theta_and_VE(typeFcn, VE.empty)
                      val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
                  in
-                   if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
+                   if not(isEmptyTyVarList freeTyvars) then
                      (TE, OG.TYPBIND(errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ
-                                               (map SyntaxTyVar.pr_tyvar tyvarsNotInTyVarList)),
-                                     ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-                   else
-                     if (EqSet.member tycon (TE.dom TE)) then
-                       (TE.plus (TE.singleton(tycon, tystr), TE),
-                        OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
-                                   ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-                     else
-                       case tyvarsRepeated
-                         of [] =>
-                           (TE.plus (TE.singleton(tycon, tystr), TE),
-                            OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-                          | _ =>
-                           (TE, OG.TYPBIND(repeatedIdsError(i, map ErrorInfo.TYVAR_RID
-                                                            (map TyVar.from_ExplicitTyVar tyvarsRepeated)),
-                                           ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+                                               (map SyntaxTyVar.pr_tyvar freeTyvars)),
+                                     ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                   else if not(List.null freeRegvars) then
+                     (TE, OG.TYPBIND(errorConv(i, ErrorInfo.REGVARS_NOT_IN_REGVARSEQ freeRegvars),
+                                     ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                   else if (EqSet.member tycon (TE.dom TE)) then
+                     (TE.plus (TE.singleton(tycon, tystr), TE),
+                      OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
+                                 ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                   else if not(List.null tyvarsRepeated) then
+                     (TE, OG.TYPBIND(repeatedIdsError(i, map ErrorInfo.TYVAR_RID
+                                                             (map TyVar.from_ExplicitTyVar tyvarsRepeated)),
+                                     ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                   else if not(List.null regvarsRepeated) then
+                     (TE, OG.TYPBIND(okConv i, ExplicitTyVars,
+                                     (repeatedIdsError(ir, map ErrorInfo.REGVAR_RID regvarsRepeated),regvars),
+                                     tycon, out_ty, out_typbind_opt))
+                   else if regVarsOrderInvalid false regvars then
+                     (TE, OG.TYPBIND(errorConv(i, ErrorInfo.REGVARS_INVALID_ORDER regvars),
+                                     ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                   else (*ok*)
+                     (TE.plus (TE.singleton(tycon, tystr), TE),
+                      OG.TYPBIND(okConv i, ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
                  end
                 | (NONE, out_ty) =>
-                 let val _ = Level.pop()
-                     val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
-                 in (TE, OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-                 end
+                  let val _ = Level.pop()
+                      val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
+                  in (TE, OG.TYPBIND(okConv i, ExplicitTyVars, (okConv ir,regvars), tycon, out_ty, out_typbind_opt))
+                  end
           end
 
     and elab_typbind_opt (C : Context, typbind_opt : IG.typbind option)
@@ -1820,36 +1837,44 @@ structure ElabDec: ELABDEC =
 
 
         (* Constructed type *)                                  (*rule 46*)
-        | IG.CONty(i, ty_list, longtycon) =>
-            let
-              val res_list = map (fn ty => elab_ty (C, ty)) ty_list
+        | IG.CONty(i, ty_list, regvars, longtycon) =>
+          let val res_list = map (fn ty => elab_ty (C, ty)) ty_list
               val tau_opt_list = map #1 res_list
               val out_ty_list = map #2 res_list
               fun unopt_list ([],a) = SOME (rev a)
                 | unopt_list (NONE::rest,a) = NONE
                 | unopt_list (SOME tau::rest, a) = unopt_list (rest, tau::a)
+              val regvars' = map (fn (i,r) => (okConv i,r)) regvars
             in
-              case unopt_list (tau_opt_list, [])
-                of SOME tau_list =>
+              case unopt_list (tau_opt_list, []) of
+                  SOME tau_list =>
                   (case C.lookup_longtycon C longtycon of
-                     SOME tystr =>
-                       let
-                         val (typeFcn, _) = TyStr.to_theta_and_VE tystr
-                         val expectedArity = TypeFcn.arity typeFcn
-                         val actualArity = length tau_list
-                       in
-                         if expectedArity = actualArity then
-                           (SOME(TypeFcn.apply (typeFcn, tau_list)),
-                            OG.CONty (okConv i, out_ty_list, longtycon))
-                         else
-                           (NONE,
-                            OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
-                                                 {expected=expectedArity,
-                                                  actual=actualArity}),
-                                      out_ty_list, longtycon))
+                       SOME tystr =>
+                       let val (typeFcn, _) = TyStr.to_theta_and_VE tystr
+                           val expectedArity = TypeFcn.arity typeFcn
+                           val actualArity = length tau_list
+                           val expectedArityReml = TypeFcn.arity_reml typeFcn
+                           val actualArityReml =
+                               (length (List.filter (not o RegVar.is_effvar o #2) regvars),
+                                length (List.filter (RegVar.is_effvar o #2) regvars))
+                           fun err ei = (NONE, OG.CONty (errorConv (i, ei), out_ty_list, regvars', longtycon))
+                       in if expectedArity <> actualArity then
+                            err (ErrorInfo.WRONG_ARITY {expected=expectedArity,
+                                                        actual=actualArity})
+                          else if #1 expectedArityReml <> #1 actualArityReml then      (* ReML: later allow for *)
+                            err (ErrorInfo.REGVARS_WRONG_ARITY_R                       (* actuals to have 0 arity *)
+                                     {expected= #1 expectedArityReml,
+                                      actual= #1 actualArityReml})
+                          else if #2 expectedArityReml <> #2 actualArityReml then
+                            err (ErrorInfo.REGVARS_WRONG_ARITY_E
+                                     {expected= #2 expectedArityReml,
+                                      actual= #2 actualArityReml})
+                          else
+                            (SOME(TypeFcn.apply (typeFcn, tau_list, map #2 regvars')),
+                             OG.CONty (okConv i, out_ty_list, regvars', longtycon))
                        end
-                   | NONE => (NONE, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, longtycon)))
-                 | NONE => (NONE, OG.CONty(okConv i, out_ty_list, longtycon))
+                     | NONE => (NONE, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, regvars', longtycon)))
+                | NONE => (NONE, OG.CONty(okConv i, out_ty_list, regvars', longtycon))
             end
 
           (* Function type *)                                   (*rule 47*)

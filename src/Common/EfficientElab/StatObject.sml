@@ -37,6 +37,9 @@ structure StatObject: STATOBJECT =
     type regvar = RegVar.regvar
     type regvar_info = ParseInfo.ParseInfo * regvar
 
+    val parseInfoDummy : ParseInfo.ParseInfo =
+        ParseInfo.from_SourceInfo(SourceInfo.from_positions LexBasics.DUMMY LexBasics.DUMMY)
+
     (*
      * New, more efficient representation of types and substitutions on types
      *
@@ -123,35 +126,36 @@ structure StatObject: STATOBJECT =
     fun TyVarDesc_lt ({id,...}:TyVarDesc, {id=id2,...}:TyVarDesc) =
         id < id2
 
-    fun TyVarDesc_id ({id,...}:TyVarDesc) =
-        id
+    fun TyVarDesc_id ({id,...}:TyVarDesc) = id
 
     fun findType ty =
-      case #TypeDesc ty
-        of TYVAR (tl as ref (TY_LINK ty')) =>
-          (case #TypeDesc ty'
-             of TYVAR (tl' as ref (TY_LINK ty'')) => (tl := TY_LINK ty''; findType ty'')
+        case #TypeDesc ty of
+            TYVAR (tl as ref (TY_LINK ty')) =>
+            (case #TypeDesc ty' of
+                 TYVAR (tl' as ref (TY_LINK ty'')) => (tl := TY_LINK ty''; findType ty'')
               | _ => ty')
-         | _ => ty
+          | _ => ty
 
     fun findRecType r =
-      case r
-        of VARrec {RowVar = rl as ref (REC_LINK {rt=r'}), ...} =>
-          let val r'' = findRecType r' in rl := REC_LINK {rt=r''}; r'' end
-         | _ => r
+        case r of
+            VARrec {RowVar = rl as ref (REC_LINK {rt=r'}), ...} =>
+            let val r'' = findRecType r'
+            in rl := REC_LINK {rt=r''}; r''
+            end
+          | _ => r
 
     (* For prettyprinting and the like it's most convenient to be able
      * to change a RecType into a (lab, Type) SortedMap with optional
      * RowVar. *)
 
     fun sanitiseRecType r : (Type Lab.Map.map) * ({RowVar : RowVar, level : level ref} option) =
-      case findRecType r
-        of NILrec => (Lab.Map.empty, NONE)
-         | VARrec rv => (Lab.Map.empty, SOME rv)
-         | ROWrec(lab, tau, r') =>
-          let val (map, rvOpt) = sanitiseRecType r'
-          in (Lab.Map.add (lab, tau, map), rvOpt)
-          end
+        case findRecType r of
+            NILrec => (Lab.Map.empty, NONE)
+          | VARrec rv => (Lab.Map.empty, SOME rv)
+          | ROWrec(lab, tau, r') =>
+            let val (map, rvOpt) = sanitiseRecType r'
+            in (Lab.Map.add (lab, tau, map), rvOpt)
+            end
 
     datatype eq_significant = EQ_SIGNIFICANT | EQ_NOT_SIGNIFICANT
 
@@ -1644,35 +1648,83 @@ structure StatObject: STATOBJECT =
         fun instance_with_types (([],[],tau),[]) = tau
           | instance_with_types ((tvs,regvars,tau),taus) =
             let val tau = Type.remove_regvars regvars tau
-            fun instanceType ty =
-              let val ty = findType ty
-                  val {TypeDesc, level} = ty
-              in if !level <> Level.GENERIC then ty
-                 else case TypeDesc
-                        of TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
-                         | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
-                          die "instanceType.generic tyvar not instantiated"
-                         | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
-                         | ARROW (ty1,rvi0,ty2,rvi) => Type.mk_Arrow (instanceType ty1, URef.!! rvi0, instanceType ty2, URef.!! rvi)
-                         | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,URef.!! rvi)
-                         | CONSTYPE (tys,tyname,rvis) => Type.mk_ConsType (map instanceType tys,tyname, URef.!! rvis)
-              end
-            and instanceRecType r =
-              let val r = findRecType r
-              in case r
-                   of NILrec => r
-                    | VARrec rho => r
-                    | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r')
-              end
+                fun instanceType ty =
+                    let val ty = findType ty
+                        val {TypeDesc, level} = ty
+                    in if !level <> Level.GENERIC then ty
+                       else case TypeDesc of
+                                TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
+                              | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
+                                die "instanceType.generic tyvar not instantiated"
+                              | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
+                              | ARROW (ty1,rvi0,ty2,rvi) => Type.mk_Arrow (instanceType ty1, URef.!! rvi0, instanceType ty2, URef.!! rvi)
+                              | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,URef.!! rvi)
+                              | CONSTYPE (tys,tyname,rvis) => Type.mk_ConsType (map instanceType tys,tyname, URef.!! rvis)
+                    end
+                and instanceRecType r =
+                    let val r = findRecType r
+                    in case r of
+                           NILrec => r
+                         | VARrec rho => r
+                         | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r')
+                    end
+                val tvs_with_types = ListPair.zipEq(tvs, taus)
+                                     handle _ => die "instance_with_types.wrong number of types"
+                val _ = app TyVar.set_instance tvs_with_types
+                val tau' = instanceType tau
+                val _ = app TyVar.unset_instance tvs
+            in tau'
+            end
 
-            val tvs_with_types = BasisCompat.ListPair.zipEq(tvs, taus)
-              handle BasisCompat.ListPair.UnequalLengths => die "instance_with_types.wrong number of types"
+        fun instance_with_types_regvars (([],[],tau),[],[]) = tau
+          | instance_with_types_regvars ((tyvars,[],tau),taus,[]) = instance_with_types((tyvars,nil,tau),taus)
+          | instance_with_types_regvars ((tvs,regvars,tau),taus,regvars') =
+            let val regvars_regvars' =
+                    BasisCompat.ListPair.zipEq(regvars, regvars')
+                    handle BasisCompat.ListPair.UnequalLengths => die "instance_with_types.wrong number of regvars'"
+                fun lookRegvar rv =
+                    let fun look nil = rv
+                          | look ((rv',rv'')::ps) = if RegVar.eq(rv,rv') then rv''
+                                                    else look ps
+                    in look regvars_regvars'
+                    end
+                fun lookRi (p,r) : regvar_info = (p,lookRegvar r)
+                fun lookRis ris = List.map lookRi ris
+                fun lookRio NONE = NONE
+                  | lookRio (SOME ri) = SOME (lookRi ri)
+                fun lookPrso NONE = NONE
+                  | lookPrso (SOME(p,ris)) = SOME(p,lookRis ris)
+                fun instanceType ty =
+                    let val ty = findType ty
+                        val {TypeDesc, level} = ty
+                    in (*if !level <> Level.GENERIC then ty
+                       else*) case TypeDesc of
+                                TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
+                              | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
+                                die "instanceType.generic tyvar not instantiated"
+                              | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
+                              | ARROW (ty1,rvi0,ty2,rvi) => Type.mk_Arrow (instanceType ty1, lookRio (URef.!! rvi0),
+                                                                           instanceType ty2, lookRio (URef.!! rvi))
+                              | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,lookRio (URef.!! rvi))
+                              | CONSTYPE (tys,tyname,rvis) => Type.mk_ConsType (map instanceType tys,tyname, lookPrso (URef.!! rvis))
+                    end
+                and instanceRecType r =
+                    let val r = findRecType r
+                    in case r of
+                           NILrec => r
+                         | VARrec rho => r
+                         | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r')
+                    end
 
-            val _ = app TyVar.set_instance tvs_with_types
-            val tau' = instanceType tau
-            val _ = app TyVar.unset_instance tvs
-          in tau'
-          end
+                val tvs_types =
+                    BasisCompat.ListPair.zipEq(tvs, taus)
+                    handle BasisCompat.ListPair.UnequalLengths => die "instance_with_types.wrong number of types"
+                val _ = app TyVar.set_instance tvs_types
+                val tau' = instanceType tau
+                val _ = app TyVar.unset_instance tvs
+            in tau'
+            end
+
 
         (* instance sigma; instantiate sigma with fresh type variables *)
 
@@ -1700,16 +1752,17 @@ structure StatObject: STATOBJECT =
          * instantiated variable. The equality function here is also
          * used to implement equality of type functions. *)
 
-        (* explicit region variables are ignored in comparisons (currently!) *)
+        (* MEMO: explicit region variables are ignored in comparisons (currently!) *)
 
         fun eq (([],_,ty1), ([],_,ty2)) = Type.eq(ty1,ty2)
-          | eq (sigma1 as (tvs1,_,_), sigma2 as (tvs2,_,_)) =
-          length tvs1 = length tvs2 andalso
+          | eq (sigma1 as (tvs1,rvs1,_), sigma2 as (tvs2,rvs2,_)) =
+          length tvs1 = length tvs2 andalso length rvs1 = length rvs2 andalso
           let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
                 | fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
               val types = map fresh tvs1
-              val ty1 = instance_with_types (sigma1, types)
-              val ty2 = instance_with_types (sigma2, types)
+              val regvars = map (fn _ => RegVar.mk_Fresh "f") rvs1
+              val ty1 = instance_with_types_regvars (sigma1, types, regvars)
+              val ty2 = instance_with_types_regvars (sigma2, types, regvars)
           in Type.eq(ty1,ty2)
           end
 
@@ -1828,87 +1881,121 @@ structure StatObject: STATOBJECT =
      * bound type variables are maintained explicitly; the length of
      * this type variable list gives the arity of a type function. *)
 
-    datatype TypeFcn = TYPEFCN of {tyvars : TyVar list, tau : Type}
+    (* For the optional ReML regvars: it is a syntactic restriction that region
+     * variables appear before effect variables. *)
+
+    datatype TypeFcn = TYPEFCN of {tyvars : TyVar list, regvars: regvar list, tau : Type}
 
     structure TypeFcn =
       struct
 
-        fun layout (TYPEFCN {tyvars, tau}) =
-          let val tau = findType tau
-          in PP.NODE {start="/\\" ^ TyVar.pr_tyvars tyvars ^ ".", finish="", indent=0,
+        fun layout (TYPEFCN {tyvars,regvars,tau}) =
+            let val tau = findType tau
+                val start = "/\\" ^ TyVar.pr_tyvars tyvars
+                val start = case regvars of
+                                nil => start
+                              | rvs => start ^ " " ^ String.concatWith "," (map RegVar.pr rvs)
+          in PP.NODE {start=start ^ ".", finish="", indent=0,
                       childsep=PP.NOSEP, children=[Type.layout tau]}
           end
 
-        fun eq (TYPEFCN {tyvars, tau}, TYPEFCN {tyvars=tyvars', tau=tau'}) =
-          TypeScheme.eq((tyvars,nil,tau),(tyvars',nil,tau'))
+        fun eq (TYPEFCN {tyvars, regvars, tau}, TYPEFCN {tyvars=tyvars', regvars=regvars', tau=tau'}) =
+            TypeScheme.eq((tyvars,regvars,tau),(tyvars',regvars',tau'))
 
-        fun from_TyVars_and_Type (tyvars : TyVar list, tau : Type) =
-          (Type.generalise {ov=false, imp=true, tau=tau};
-           TYPEFCN {tyvars=tyvars, tau=tau})
+        fun from_TyVars_and_Type (tyvars : TyVar list, regvars: RegVar.regvar list, tau : Type) =
+            let fun check (effvar:bool) nil = ()
+                  | check effvar (r::rs) =
+                    if effvar
+                    then if RegVar.is_effvar r then check effvar rs
+                         else die "from_TyVars_RegVars_and_Type: region variables do not all appear before effect variables"
+                    else check (RegVar.is_effvar r) rs
+            in check false regvars
+             ; (Type.generalise {ov=false, imp=true, tau=tau};
+                TYPEFCN {tyvars=tyvars, regvars=regvars, tau=tau})
+            end
 
-        fun apply (theta as (TYPEFCN {tyvars, tau}), taus : Type list) : Type =
-          TypeScheme.instance_with_types ((tyvars,nil,tau),taus)
+        fun apply (TYPEFCN {tyvars,regvars,tau}, taus : Type list, regvars') : Type =
+            if length regvars = length regvars' then
+              TypeScheme.instance_with_types_regvars ((tyvars,regvars,tau),taus,regvars')
+            else die "TypeFcn.apply.incompatible regvar lists"
 
-        fun arity (TYPEFCN {tyvars, tau}) = length tyvars
+        fun arity (TYPEFCN {tyvars,regvars,tau}) = length tyvars
 
-        (* admits_equality: We need only check if the type in an type
+        fun arity_reml (TYPEFCN {tyvars,regvars,tau}) =
+            (length(List.filter (not o RegVar.is_effvar) regvars),
+             length(List.filter RegVar.is_effvar regvars))
+
+        (* admits_equality: We need only check if the type in a type
          * function admits equality because the bound type variables
          * have already been renamed to admit equality. *)
 
-        fun admits_equality (theta as TYPEFCN {tyvars, tau}) : bool =
-          case Type.make_equality (TypeScheme.instance (tyvars,nil,tau))
-            of SOME _ => true
-             | NONE => false
+        fun admits_equality (theta as TYPEFCN {tyvars,regvars,tau}) : bool =
+            case Type.make_equality (TypeScheme.instance (tyvars,nil,tau)) of
+                SOME _ => true
+              | NONE => false
 
-        fun tynames (TYPEFCN {tyvars, tau}) = Type.tynames tau
-
-        fun grounded (theta : TypeFcn, tynameset : TyName.Set.Set) : bool =
-          TyName.Set.isEmpty (TyName.Set.difference (tynames theta) tynameset)
+        fun tynames (TYPEFCN {tyvars,regvars,tau}) = Type.tynames tau
 
         fun from_TyName (tyname : TyName) : TypeFcn =
-          let fun make_list (0,acc) = acc
-                | make_list (n,acc) = make_list(n-1, TyVar.fresh_normal ()::acc)
-              val tyvars = make_list (TyName.arity tyname, [])
-              val _ = Level.push ()
-              val tau = Type.mk_ConsType (map Type.from_TyVar tyvars, tyname, NONE)
-              val _ = Level.pop ()
-          in from_TyVars_and_Type (tyvars, tau)
-          end
+            let val tyvars = List.tabulate(TyName.arity tyname, fn _ => TyVar.fresh_normal ())
+                val _ = Level.push ()
+                fun mkFr s = (parseInfoDummy,RegVar.mk_Fresh s)
+                val regvars =
+                    case TyName.arity_reml tyname of
+                        (0,0) => NONE
+                      | (i,j) => SOME(parseInfoDummy,
+                                      List.tabulate(i,fn _ => mkFr "r")@
+                                      List.tabulate(j,fn _ => mkFr "e"))
+                val tau = Type.mk_ConsType (map Type.from_TyVar tyvars, tyname, regvars)
+                val _ = Level.pop ()
+                val rvs = case regvars of
+                              NONE => nil
+                            | SOME (_,irvs) => map #2 irvs
+            in from_TyVars_and_Type (tyvars, rvs, tau)
+            end
 
-        fun to_TyName (TYPEFCN {tyvars, tau}) : TyName option =
-          case Type.un_ConsType tau
-            of SOME (taus,t,_) =>
-              let fun check ([],[]) = true
-                    | check (tv::tvs,tau::taus) =
-                       (case Type.to_TyVar tau
-                          of SOME tv' => TyVar.eq (tv,tv')
+        fun to_TyName (TYPEFCN {tyvars,regvars,tau}) : TyName option =
+            case Type.un_ConsType tau of
+                SOME (taus,t,opt) =>
+                let fun check ([],[]) = true
+                      | check (tv::tvs,tau::taus) =
+                        (case Type.to_TyVar tau of
+                             SOME tv' => TyVar.eq (tv,tv')
                            | NONE => false) andalso check(tvs,taus)
-                    | check _ = false
-              in if check(tyvars,taus) then SOME t
-                 else NONE
-              end
-             | _ => NONE
+                      | check _ = false
+                in if check(tyvars,taus) then
+                     case opt of
+                         SOME (_,ris) =>
+                         if ListPair.allEq RegVar.eq (regvars,map #2 ris)
+                         then SOME t
+                         else NONE
+                       | NONE => if List.null regvars then SOME t
+                                 else NONE
+                   else NONE
+                end
+              | _ => NONE
 
         val is_TyName = is_Some o to_TyName
 
-        fun pretty_string names (TYPEFCN {tyvars, tau}) =
-          case tyvars
-            of [] => {vars="", body=Type.pretty_string names tau}
-             | [tyvar] => {vars=TyVar.pretty_string names tyvar,
-                           body=Type.pretty_string names tau}
-             | tyvars => {vars=ListUtils.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
-                          body=Type.pretty_string names tau}
+        infix ^^
+        fun s ^^ s' = if s = "" then s' else s ^ " " ^ s'
 
+        fun pretty_string names (TYPEFCN {tyvars,regvars,tau}) =
+            let val body = Type.pretty_string names tau
+                val vars =
+                    case tyvars of
+                        [] => ""
+                      | [tyvar] => TyVar.pretty_string names tyvar
+                      | tyvars => "(" ^ String.concatWith ", " (map (TyVar.pretty_string names) tyvars) ^ ")"
+                val vars = case regvars of
+                               nil => vars
+                             | [rv] => vars ^^ "`" ^ RegVar.pr rv
+                             | rvs => vars ^^ "`[" ^ String.concatWith " " (map RegVar.pr rvs) ^ "]"
+            in {vars=vars,body=body}
+            end
         fun pretty_string' names theta = #body (pretty_string names theta)
 
         fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
-(*
-        val pu =
-            let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
-                fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
-            in Pickle.convert (to,from) TypeScheme.pu
-            end
-*)
     end (*TypeFcn*)
 
 
@@ -1937,27 +2024,26 @@ structure StatObject: STATOBJECT =
        * ty. Used by on_Type. *)
 
       fun correct_levels_Type ty =
-        let val ty = findType ty
-        in if !(#level ty) = Level.GENERIC then ()
-           else
-             case ty
-               of {TypeDesc = TYVAR tv, level} => ()
-                | {TypeDesc = ARROW (ty1,_,ty2,_), level} =>
-                 level := Int.min (correct_levels_Type ty1, correct_levels_Type ty2)
-                | {TypeDesc = RECTYPE (r,_), level} =>
-                 level := correct_levels_RecType r
-                | {TypeDesc = CONSTYPE (tys,tyname,_), level} =>
-                 level := foldl Int.min Level.NONGENERIC (map correct_levels_Type tys) ;
-          !(#level ty)
-        end
+          let val ty = findType ty
+          in if !(#level ty) = Level.GENERIC then ()
+             else case ty of
+                      {TypeDesc = TYVAR tv, level} => ()
+                    | {TypeDesc = ARROW (ty1,_,ty2,_), level} =>
+                      level := Int.min (correct_levels_Type ty1, correct_levels_Type ty2)
+                    | {TypeDesc = RECTYPE (r,_), level} =>
+                      level := correct_levels_RecType r
+                    | {TypeDesc = CONSTYPE (tys,tyname,_), level} =>
+                      level := foldl Int.min Level.NONGENERIC (map correct_levels_Type tys) ;
+             !(#level ty)
+          end
 
       and correct_levels_RecType r =
-        let val r = findRecType r
-        in case r
-             of NILrec => Level.NONGENERIC
-              | VARrec _ => Level.NONGENERIC
-              | ROWrec (l,ty,r') => Int.min (correct_levels_Type ty, correct_levels_RecType r')
-        end
+          let val r = findRecType r
+          in case r of
+                 NILrec => Level.NONGENERIC
+               | VARrec _ => Level.NONGENERIC
+               | ROWrec (l,ty,r') => Int.min (correct_levels_Type ty, correct_levels_RecType r')
+          end
 
       val Id = Realisation_Id
 
@@ -1967,83 +2053,83 @@ structure StatObject: STATOBJECT =
       fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,EXPANDED theta))
 
       fun from_T_and_tyname (T, t0) =
-        if TyName.Set.isEmpty T then Realisation_Id
-        else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,TYNAME t0,acc)) TyName.Map.empty T)
+          if TyName.Set.isEmpty T then Realisation_Id
+          else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,TYNAME t0,acc)) TyName.Map.empty T)
 
       fun renaming' (T: TyName.Set.Set) : TyName.Set.Set * realisation =
-        if TyName.Set.isEmpty T then (TyName.Set.empty, Id)
-        else let val (T', m) : TyName.Set.Set * TypeFcn' TyName.Map.map =
-                    TyName.Set.fold (fn t : TyName => fn (T', m) =>
-                                     let val t' = TyName.freshTyName {tycon = TyName.tycon t, arity= TyName.arity t,
-                                                                      equality= TyName.equality t}
-                                     in (TyName.Set.insert t' T', TyName.Map.add (t, TYNAME t', m))
-                                     end) (TyName.Set.empty, TyName.Map.empty) T
-        in (T',  Not_Id m)
-        end
+          if TyName.Set.isEmpty T then (TyName.Set.empty, Id)
+          else let val (T', m) : TyName.Set.Set * TypeFcn' TyName.Map.map =
+                       TyName.Set.fold (fn t : TyName => fn (T', m) =>
+                                           let val t' = TyName.freshTyName {tycon = TyName.tycon t,
+                                                                            arity = TyName.arity t,
+                                                                            arity_reml = TyName.arity_reml t,
+                                                                            equality = TyName.equality t}
+                                           in (TyName.Set.insert t' T', TyName.Map.add (t, TYNAME t', m))
+                                           end) (TyName.Set.empty, TyName.Map.empty) T
+               in (T',  Not_Id m)
+               end
 
       fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
 
       fun restrict T Realisation_Id = Realisation_Id
         | restrict T (Not_Id m) =
-        let val m' = TyName.Set.fold(fn t => fn acc =>
-                                     case TyName.Map.lookup m t
-                                       of SOME theta => TyName.Map.add(t,theta,acc)
-                                        | NONE => acc) TyName.Map.empty T
-        in if TyName.Map.isEmpty m' then Realisation_Id
-           else Not_Id m'
-        end
+          let val m' = TyName.Set.fold(fn t => fn acc =>
+                                          case TyName.Map.lookup m t of
+                                              SOME theta => TyName.Map.add(t,theta,acc)
+                                            | NONE => acc) TyName.Map.empty T
+          in if TyName.Map.isEmpty m' then Realisation_Id
+             else Not_Id m'
+          end
 
       fun restrict_from T Realisation_Id = Realisation_Id
         | restrict_from T (Not_Id m) =
-        let val m' = TyName.Map.Fold(fn ((t, theta), acc) =>
-                                     if TyName.Set.member t T then acc
-                                     else TyName.Map.add(t,theta,acc)) TyName.Map.empty m
-        in if TyName.Map.isEmpty m' then Realisation_Id
-           else Not_Id m'
-        end
+          let val m' = TyName.Map.Fold(fn ((t, theta), acc) =>
+                                          if TyName.Set.member t T then acc
+                                          else TyName.Map.add(t,theta,acc)) TyName.Map.empty m
+          in if TyName.Map.isEmpty m' then Realisation_Id
+             else Not_Id m'
+          end
 
       local exception Inverse
       in fun inverse Realisation_Id = SOME Realisation_Id
            | inverse (Not_Id m) =
-              (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) =>
-                                           case theta
-                                             of TYNAME t' =>
-                                               if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc)) then raise Inverse
-                                               else TyName.Map.add(t', TYNAME t, acc)
-                                              | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
-               handle Inverse => NONE)
+             (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) =>
+                                             case theta of
+                                                 TYNAME t' => if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc))
+                                                              then raise Inverse
+                                                              else TyName.Map.add(t', TYNAME t, acc)
+                                               | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
+              handle Inverse => NONE)
       end
 
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
-        | on_TyName (Not_Id m) t = (case TyName.Map.lookup m t
-                                      of SOME(TYNAME t) => TypeFcn.from_TyName t
-                                       | SOME(EXPANDED theta) => theta
-                                       | NONE => TypeFcn.from_TyName t)
+        | on_TyName (Not_Id m) t = (case TyName.Map.lookup m t of
+                                        SOME(TYNAME t) => TypeFcn.from_TyName t
+                                      | SOME(EXPANDED theta) => theta
+                                      | NONE => TypeFcn.from_TyName t)
 
       fun on_TyName_set (rea : realisation) (T : TyName.Set.Set) =
-            if is_Id rea then T else
-              TyName.Set.fold
-                (fn t => fn T =>
-                 TyName.Set.union (TypeFcn.tynames (on_TyName rea t)) T)
-                  TyName.Set.empty T
+          if is_Id rea then T else
+          TyName.Set.fold (fn t => fn T => TyName.Set.union (TypeFcn.tynames (on_TyName rea t)) T)
+                          TyName.Set.empty T
 
       fun on_TyName' Realisation_Id t : TypeFcn' = TYNAME t
-        | on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t
-                                       of SOME theta => theta
-                                        | NONE => TYNAME t)
+        | on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t of
+                                         SOME theta => theta
+                                       | NONE => TYNAME t)
 
       fun on_Type Realisation_Id ty = ty
         | on_Type phi ty =
           (* NB: keep levels, so that it works for type schemes and type functions as well *)
           (case findType ty of
-             {TypeDesc = TYVAR _, level} => ty
-           | {TypeDesc = RECTYPE (r,rvi), level} =>
+               {TypeDesc = TYVAR _, level} => ty
+             | {TypeDesc = RECTYPE (r,rvi), level} =>
                {TypeDesc = RECTYPE (Type.RecType.map (on_Type phi) r,rvi),
                 level = ref (!level)}
-           | {TypeDesc = ARROW(ty1,rvi0,ty2,rvi), level} =>
+             | {TypeDesc = ARROW(ty1,rvi0,ty2,rvi), level} =>
                {TypeDesc = ARROW(on_Type phi ty1, rvi0, on_Type phi ty2, rvi),
                 level = ref (!level)}
-           | {TypeDesc = CONSTYPE(tylist,t,rvis),level} =>
+             | {TypeDesc = CONSTYPE(tylist,t,rvis),level} =>
                (*definition pg 19. sec. 4.4 Types and Type Functions
                 beta-conversion carried out after substituting in type
                 functions for type names*)
@@ -2053,7 +2139,10 @@ structure StatObject: STATOBJECT =
                          {TypeDesc = CONSTYPE (tau_list,t',rvis),
                           level = ref (!level)}
                      | TypeFcn_apply' (EXPANDED theta, tau_list) =          (* memo: figure out what to do with rvis - push it down into tau... *)
-                         let val tau = (TypeFcn.apply (theta, tau_list))
+                       let val rvs = case URef.!! rvis of
+                                         SOME (_,rvis) => map #2 rvis
+                                       | NONE => nil
+                           val tau = TypeFcn.apply (theta, tau_list, rvs)
                          in correct_levels_Type tau ;
                            tau
                          end
@@ -2065,15 +2154,13 @@ structure StatObject: STATOBJECT =
       fun on_TypeScheme Realisation_Id scheme = scheme
         | on_TypeScheme phi (sigma as (tyvars,regvars,tau)) =
           if List.exists TyVar.is_overloaded tyvars then sigma  (* type schemes for overloaded identifiers are rigid *)
-          else let val tau = on_Type phi tau
-               in (tyvars,regvars,tau)
-               end
+          else (tyvars,regvars,on_Type phi tau)
 
       fun on_TypeFcn Realisation_Id theta = theta
-        | on_TypeFcn phi (theta as TYPEFCN {tyvars, tau}) =
-        TYPEFCN{tyvars=tyvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ
-                                                      * from the case for type schemes ; mael-2007-11-07 *)
-      fun on_TypeFcn' Realisation_Id typefcn' = typefcn'
+        | on_TypeFcn phi (theta as TYPEFCN {tyvars,regvars,tau}) =
+          TYPEFCN{tyvars=tyvars,regvars=regvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ
+                                                                        * from the case for type schemes ; mael-2007-11-07 *)
+      fun on_TypeFcn' Realisation_Id theta = theta
         | on_TypeFcn' phi (TYNAME t) = on_TyName' phi t
         | on_TypeFcn' phi (EXPANDED theta) = EXPANDED (on_TypeFcn phi theta)
 
@@ -2092,13 +2179,13 @@ structure StatObject: STATOBJECT =
       fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
         | phi oo Realisation_Id = phi
         | (phi1 as Not_Id m1) oo phi2 =
-        case on_Realisation phi1 phi2
-          of Realisation_Id => phi1
-           | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2))
+          case on_Realisation phi1 phi2 of
+              Realisation_Id => phi1
+            | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2))
 
       fun enrich (rea0, (rea,T)) =
-        TyName.Set.fold (fn t => fn acc => acc andalso
-                         TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
+          TyName.Set.fold (fn t => fn acc => acc andalso
+                                             TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
 
       fun eq (Realisation_Id, Realisation_Id) = true       (* conservative check, thus eq is a bad word for it;
                                                             * - better now ; mael 2004-04-06 *)
@@ -2448,8 +2535,8 @@ structure StatObject: STATOBJECT =
       end
 
       val pu_TypeFcn =
-          let fun to (tvs,_,t) = TYPEFCN {tyvars=tvs,tau=t}
-              fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,nil,t)
+          let fun to (tvs,rvs,t) = TYPEFCN {tyvars=tvs,regvars=rvs,tau=t}
+              fun from (TYPEFCN {tyvars=tvs,regvars,tau=t}) = (tvs,regvars,t)
           in Pickle.convert0 (to,from) pu_TypeScheme
           end
 

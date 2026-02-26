@@ -236,11 +236,11 @@ signature STATOBJECT =
     structure TypeFcn :
       sig
 	val eq                      : TypeFcn * TypeFcn -> bool
-	val from_TyVars_and_Type    : TyVar list * Type   -> TypeFcn
-	val apply                   : TypeFcn * Type list -> Type
+	val from_TyVars_and_Type    : TyVar list * RegVar.regvar list * Type   -> TypeFcn
+	val apply                   : TypeFcn * Type list * RegVar.regvar list -> Type
 	val arity                   : TypeFcn -> int
+	val arity_reml              : TypeFcn -> int * int
 	val admits_equality         : TypeFcn -> bool
-	val grounded                : TypeFcn * TyName.Set.Set -> bool
 	val from_TyName             : TyName  -> TypeFcn
 	val to_TyName               : TypeFcn -> TyName option
 	val is_TyName               : TypeFcn -> bool

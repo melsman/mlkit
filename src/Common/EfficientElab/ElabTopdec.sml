@@ -582,7 +582,7 @@ structure ElabTopdec: ELABTOPDEC  =
                                 else if TyName.arity t <> List.length alphas then
                                   fail (ErrorInfo.WHERE_TYPE_ARITY (alphas, (longtycon, t)), out_ty)
                                 else
-                                  let val theta' = TypeFcn.from_TyVars_and_Type (alphas, tau)
+                                  let val theta' = TypeFcn.from_TyVars_and_Type (alphas, nil, tau)    (* MEMO ReML *)
                                       val phi = Realisation.singleton (t, theta')
                                       val phi_E = Realisation.on_Env phi E
                                   in
@@ -907,7 +907,7 @@ structure ElabTopdec: ELABTOPDEC  =
              val tyvars = map TyVar.from_ExplicitTyVar explicittyvars
              val tyvars_repeated = repeaters (op =) explicittyvars
              val arity = List.length explicittyvars
-             val t = TyName.freshTyName {tycon=tycon, arity=arity, equality=equality}
+             val t = TyName.freshTyName {tycon=tycon, arity=arity, arity_reml=(0,0), equality=equality}  (* ReML MEMO *)
              val theta = TypeFcn.from_TyName t
              val tystr = TyStr.from_theta_and_VE (theta, VE.empty)
              val (error, ids) = add_ids_tycon(ids,tycon)
