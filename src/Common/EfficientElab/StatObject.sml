@@ -1760,7 +1760,10 @@ structure StatObject: STATOBJECT =
           let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
                 | fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
               val types = map fresh tvs1
-              val regvars = map (fn _ => RegVar.mk_Fresh "f") rvs1
+              val regvars = map (fn rv =>
+                                    if RegVar.is_effvar rv
+                                    then RegVar.mk_Fresh "e"
+                                    else RegVar.mk_Fresh "r") rvs1
               val ty1 = instance_with_types_regvars (sigma1, types, regvars)
               val ty2 = instance_with_types_regvars (sigma2, types, regvars)
           in Type.eq(ty1,ty2)
