@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+* mael 2026-03-09: More ReML features.
+
+* mael 2026-03-09: Simplification of elaboration type functions.
+
 ### MLKit version 4.7.21 is released
 
 * mael 2026-01-15: Removal of various unneeded source files and removal of

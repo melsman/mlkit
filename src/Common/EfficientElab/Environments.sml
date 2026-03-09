@@ -818,13 +818,15 @@ structure Environments: ENVIRONMENTS =
                   (fn (tycon, TYSTR {theta, VE as (VARENV v)}) =>
                    let
                      val names = StatObject.newTVNames()
-                     val {vars, body} =
+                     val {vars, vars2, body} =
                              TypeFcn.pretty_string names theta
                      val vars' = (case vars of "" => "" | _ => vars ^ " ")
+                     val vars2' = (case vars2 of "" => "" | _ => " " ^ vars2)
                    in
                      Report.line
                        (if Ident.Map.isEmpty v then
                           "type " ^ vars' ^ TyCon.pr_TyCon tycon
+                          ^ vars2'
                           ^ (if bindings then " = " ^ body else "")
                         else
                           "datatype " ^ vars' ^ TyCon.pr_TyCon tycon)

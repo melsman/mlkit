@@ -1649,6 +1649,7 @@ struct
                                     NONE => st_alloc
                                   | SOME st => case PP.flatten1 st of
                                                    "attop r1" => NONE
+                                                 | "attop r0top" => NONE
                                                  | _ => st_alloc
                               else st_alloc
                       in (mk_mutual_binding (st_alloc,rev functions):: binds', body)

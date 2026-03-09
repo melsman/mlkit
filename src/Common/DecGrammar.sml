@@ -913,15 +913,15 @@ struct
             val tyT = layoutTy ty
 
             val this =
-              NODE{start="", finish="", indent=0,
-                      children=(case tyvars_opt of SOME x => [x]
+                NODE{start="", finish="", indent=0,
+                     children=(case tyvars_opt of SOME x => [x]
+                                                | NONE => nil
+                              ) @ [tyconT] @
+                              (case regvars_opt of SOME x => [x]
                                                  | NONE => nil
-                               ) @
-                               (case regvars_opt of SOME x => [x]
-                                                  | NONE => nil
-                               ) @ [tyconT, eqT, tyT],
-                      childsep=RIGHT " "
-                     }
+                              ) @ [eqT, tyT],
+                     childsep=RIGHT " "
+                    }
           in
             this :: (case typbind_opt
                        of SOME typbind => treesOfTypbind typbind

@@ -1885,44 +1885,60 @@ structure StatObject: STATOBJECT =
     (* For the optional ReML regvars: it is a syntactic restriction that region
      * variables appear before effect variables. *)
 
-    datatype TypeFcn = TYPEFCN of {tyvars : TyVar list, regvars: regvar list, tau : Type}
+    datatype TypeFcn = TYFCN_FN of {tyvars : TyVar list, regvars: regvar list, tau : Type}
+                     | TYFCN_TN of TyName
 
     structure TypeFcn =
       struct
 
-        fun layout (TYPEFCN {tyvars,regvars,tau}) =
+        fun layout (TYFCN_TN tn) = TyName.layout tn
+          | layout (TYFCN_FN {tyvars,regvars,tau}) =
             let val tau = findType tau
                 val start = "/\\" ^ TyVar.pr_tyvars tyvars
                 val start = case regvars of
                                 nil => start
                               | rvs => start ^ " " ^ String.concatWith "," (map RegVar.pr rvs)
-          in PP.NODE {start=start ^ ".", finish="", indent=0,
-                      childsep=PP.NOSEP, children=[Type.layout tau]}
-          end
-
-        fun eq (TYPEFCN {tyvars, regvars, tau}, TYPEFCN {tyvars=tyvars', regvars=regvars', tau=tau'}) =
-            TypeScheme.eq((tyvars,regvars,tau),(tyvars',regvars',tau'))
+            in PP.NODE {start=start ^ ".", finish="", indent=0,
+                        childsep=PP.NOSEP, children=[Type.layout tau]}
+            end
 
         fun from_TyVars_and_Type (tyvars : TyVar list, regvars: RegVar.regvar list, tau : Type) =
             let fun check (effvar:bool) nil = ()
                   | check effvar (r::rs) =
                     if effvar
                     then if RegVar.is_effvar r then check effvar rs
-                         else die "from_TyVars_RegVars_and_Type: region variables do not all appear before effect variables"
+                         else die "from_TyVars_RegVars_and_Type: region variables do not all appear \
+                                  \before effect variables"
                     else check (RegVar.is_effvar r) rs
             in check false regvars
              ; (Type.generalise {ov=false, imp=true, tau=tau};
-                TYPEFCN {tyvars=tyvars, regvars=regvars, tau=tau})
+                TYFCN_FN {tyvars=tyvars, regvars=regvars, tau=tau})
             end
 
-        fun apply (TYPEFCN {tyvars,regvars,tau}, taus : Type list, regvars') : Type =
-            if length regvars = length regvars' then
+        fun apply (TYFCN_TN tn, taus, rvs) =
+            if length taus <> TyName.arity tn then
+              die ("TypeFcn.tn.wrong arity: " ^ TyName.pr_TyName tn)
+            else
+              let val (rn,en) = TyName.arity_reml tn
+                  val rvso = case rvs of
+                                 nil => NONE
+                               | _ => SOME (parseInfoDummy,map (fn r => (parseInfoDummy,r)) rvs)
+              in if length rvs <> rn+en andalso length rvs <> 0 then
+                   die ("TypeFcn.tn.wrong ReML arity: " ^ TyName.pr_TyName tn)
+                 else Type.from_ConsType(Type.mk_ConsType(taus,tn,rvso))
+              end
+          | apply (TYFCN_FN {tyvars,regvars,tau}, taus : Type list, regvars') : Type =
+            if length regvars = length regvars' orelse length regvars' = 0 then
               TypeScheme.instance_with_types_regvars ((tyvars,regvars,tau),taus,regvars')
-            else die "TypeFcn.apply.incompatible regvar lists"
+            else die ("TypeFcn.apply.incompatible regvar lists. Abstract: "
+                      ^ Int.toString (length regvars) ^ ", Args: "
+                      ^ Int.toString (length regvars'))
 
-        fun arity (TYPEFCN {tyvars,regvars,tau}) = length tyvars
+        fun arity (TYFCN_TN tn) = TyName.arity tn
+          | arity (TYFCN_FN {tyvars,regvars,tau}) = length tyvars
 
-        fun arity_reml (TYPEFCN {tyvars,regvars,tau}) =
+        fun arity_reml (TYFCN_TN tn) = TyName.arity_reml tn
+          | arity_reml (TYFCN_FN {tyvars,regvars,tau}) =
             (length(List.filter (not o RegVar.is_effvar) regvars),
              length(List.filter RegVar.is_effvar regvars))
 
@@ -1930,14 +1946,18 @@ structure StatObject: STATOBJECT =
          * function admits equality because the bound type variables
          * have already been renamed to admit equality. *)
 
-        fun admits_equality (theta as TYPEFCN {tyvars,regvars,tau}) : bool =
+        fun admits_equality (TYFCN_TN tn) = TyName.equality tn
+          | admits_equality (TYFCN_FN {tyvars,regvars,tau}) : bool =
             case Type.make_equality (TypeScheme.instance (tyvars,nil,tau)) of
                 SOME _ => true
               | NONE => false
 
-        fun tynames (TYPEFCN {tyvars,regvars,tau}) = Type.tynames tau
+        fun tynames (TYFCN_TN tn) = TyName.Set.singleton tn
+          | tynames (TYFCN_FN {tyvars,regvars,tau}) = Type.tynames tau
 
-        fun from_TyName (tyname : TyName) : TypeFcn =
+        fun from_TyName tn = TYFCN_TN tn
+
+        fun from_TyName' (tyname : TyName) : TypeFcn =
             let val tyvars = List.tabulate(TyName.arity tyname, fn _ => TyVar.fresh_normal ())
                 val _ = Level.push ()
                 fun mkFr s = (parseInfoDummy,RegVar.mk_Fresh s)
@@ -1955,7 +1975,8 @@ structure StatObject: STATOBJECT =
             in from_TyVars_and_Type (tyvars, rvs, tau)
             end
 
-        fun to_TyName (TYPEFCN {tyvars,regvars,tau}) : TyName option =
+        fun to_TyName (TYFCN_TN tn) = SOME tn
+          | to_TyName (TYFCN_FN {tyvars,regvars,tau}) : TyName option =
             case Type.un_ConsType tau of
                 SOME (taus,t,opt) =>
                 let fun check ([],[]) = true
@@ -1976,47 +1997,58 @@ structure StatObject: STATOBJECT =
                 end
               | _ => NONE
 
+        fun eq (TYFCN_FN {tyvars, regvars, tau}, TYFCN_FN {tyvars=tyvars', regvars=regvars', tau=tau'}) =
+            TypeScheme.eq((tyvars,regvars,tau),(tyvars',regvars',tau'))
+          | eq (TYFCN_TN tn, TYFCN_TN tn') = TyName.eq(tn,tn')
+          | eq (tf, tf') =
+            case (to_TyName tf, to_TyName tf') of
+                (SOME tn, SOME tn') => TyName.eq(tn,tn')
+              | _ => false
+
+
         val is_TyName = is_Some o to_TyName
 
         infix ^^
         fun s ^^ s' = if s = "" then s' else s ^ " " ^ s'
 
-        fun pretty_string names (TYPEFCN {tyvars,regvars,tau}) =
+        fun pretty_string names (TYFCN_FN {tyvars,regvars,tau}) =
             let val body = Type.pretty_string names tau
                 val vars =
                     case tyvars of
                         [] => ""
                       | [tyvar] => TyVar.pretty_string names tyvar
                       | tyvars => "(" ^ String.concatWith ", " (map (TyVar.pretty_string names) tyvars) ^ ")"
-                val vars = case regvars of
-                               nil => vars
-                             | [rv] => vars ^^ "`" ^ RegVar.pr rv
-                             | rvs => vars ^^ "`[" ^ String.concatWith " " (map RegVar.pr rvs) ^ "]"
-            in {vars=vars,body=body}
+                val vars2 = case regvars of
+                                nil => ""
+                              | [rv] => "`" ^ RegVar.pr rv
+                              | rvs => "`[" ^ String.concatWith " " (map RegVar.pr rvs) ^ "]"
+            in {vars=vars,body=body,vars2=vars2}
             end
+          | pretty_string names (TYFCN_TN tn) = pretty_string names (from_TyName' tn)
+
         fun pretty_string' names theta = #body (pretty_string names theta)
 
-        fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
+        fun match (TYFCN_FN{tau,...}, TYFCN_FN{tau=tau0,...}) : unit = Type.match(tau,tau0)
+          | match (TYFCN_TN tn, TYFCN_TN tn') = TyName.match (tn,tn')
+          | match _ = ()
     end (*TypeFcn*)
 
-
-    datatype TypeFcn' = TYNAME of TyName |  EXPANDED of TypeFcn
     datatype realisation =
-        Not_Id of TypeFcn' TyName.Map.map
+        Not_Id of TypeFcn TyName.Map.map
       | Realisation_Id
 
     structure Realisation = struct
 
       fun tynamesRng (Realisation_Id) = TyName.Set.empty
         | tynamesRng (Not_Id m) =
-          TyName.Map.Fold (fn ((tn,TYNAME tn'),acc) =>
+          TyName.Map.Fold (fn ((tn,TYFCN_TN tn'),acc) =>
                               if TyName.eq(tn,tn') then acc
                               else TyName.Set.insert tn' acc
-                            | ((tn,EXPANDED tf),acc) =>
-                                  TyName.Set.union (TyName.Set.remove tn
-                                                   (TypeFcn.tynames tf))
-                                  acc)
-          TyName.Set.empty m
+                            | ((tn,tf),acc) =>
+                              TyName.Set.union (TyName.Set.remove tn
+                                                                  (TypeFcn.tynames tf))
+                                               acc)
+                          TyName.Set.empty m
 
       fun dom Realisation_Id = TyName.Set.empty
         | dom (Not_Id m) = TyName.Set.fromList(TyName.Map.dom m)
@@ -2051,21 +2083,21 @@ structure StatObject: STATOBJECT =
       fun is_Id Realisation_Id = true   (* conservative test *)
         | is_Id _ = false
 
-      fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,EXPANDED theta))
+      fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,theta))
 
-      fun from_T_and_tyname (T, t0) =
+      fun from_T_and_tyname (T, tn) =
           if TyName.Set.isEmpty T then Realisation_Id
-          else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,TYNAME t0,acc)) TyName.Map.empty T)
+          else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,TYFCN_TN tn,acc)) TyName.Map.empty T)
 
       fun renaming' (T: TyName.Set.Set) : TyName.Set.Set * realisation =
           if TyName.Set.isEmpty T then (TyName.Set.empty, Id)
-          else let val (T', m) : TyName.Set.Set * TypeFcn' TyName.Map.map =
+          else let val (T', m) : TyName.Set.Set * TypeFcn TyName.Map.map =
                        TyName.Set.fold (fn t : TyName => fn (T', m) =>
                                            let val t' = TyName.freshTyName {tycon = TyName.tycon t,
                                                                             arity = TyName.arity t,
                                                                             arity_reml = TyName.arity_reml t,
                                                                             equality = TyName.equality t}
-                                           in (TyName.Set.insert t' T', TyName.Map.add (t, TYNAME t', m))
+                                           in (TyName.Set.insert t' T', TyName.Map.add (t, TYFCN_TN t', m))
                                            end) (TyName.Set.empty, TyName.Map.empty) T
                in (T',  Not_Id m)
                end
@@ -2094,19 +2126,18 @@ structure StatObject: STATOBJECT =
       local exception Inverse
       in fun inverse Realisation_Id = SOME Realisation_Id
            | inverse (Not_Id m) =
-             (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) =>
-                                             case theta of
-                                                 TYNAME t' => if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc))
-                                                              then raise Inverse
-                                                              else TyName.Map.add(t', TYNAME t, acc)
-                                               | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
-              handle Inverse => NONE)
+             SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) =>
+                                            case theta of
+                                                TYFCN_TN tn => if TyName.Set.member tn (TyName.Set.fromList(TyName.Map.dom acc))
+                                                               then raise Inverse
+                                                               else TyName.Map.add(tn, TYFCN_TN t, acc)
+                                              | _ => raise Inverse) TyName.Map.empty m))
+             handle Inverse => NONE
       end
 
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
         | on_TyName (Not_Id m) t = (case TyName.Map.lookup m t of
-                                        SOME(TYNAME t) => TypeFcn.from_TyName t
-                                      | SOME(EXPANDED theta) => theta
+                                        SOME theta => theta
                                       | NONE => TypeFcn.from_TyName t)
 
       fun on_TyName_set (rea : realisation) (T : TyName.Set.Set) =
@@ -2114,68 +2145,56 @@ structure StatObject: STATOBJECT =
           TyName.Set.fold (fn t => fn T => TyName.Set.union (TypeFcn.tynames (on_TyName rea t)) T)
                           TyName.Set.empty T
 
-      fun on_TyName' Realisation_Id t : TypeFcn' = TYNAME t
-        | on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t of
-                                         SOME theta => theta
-                                       | NONE => TYNAME t)
-
       fun on_Type Realisation_Id ty = ty
         | on_Type phi ty =
           (* NB: keep levels, so that it works for type schemes and type functions as well *)
-          (case findType ty of
-               {TypeDesc = TYVAR _, level} => ty
-             | {TypeDesc = RECTYPE (r,rvi), level} =>
-               {TypeDesc = RECTYPE (Type.RecType.map (on_Type phi) r,rvi),
-                level = ref (!level)}
-             | {TypeDesc = ARROW(ty1,rvi0,ty2,rvi), level} =>
-               {TypeDesc = ARROW(on_Type phi ty1, rvi0, on_Type phi ty2, rvi),
-                level = ref (!level)}
-             | {TypeDesc = CONSTYPE(tylist,t,rvis),level} =>
-               (*definition pg 19. sec. 4.4 Types and Type Functions
+          case findType ty of
+              {TypeDesc = TYVAR _, level} => ty
+            | {TypeDesc = RECTYPE (r,rvi), level} =>
+              {TypeDesc = RECTYPE (Type.RecType.map (on_Type phi) r,rvi),
+               level = ref (!level)}
+            | {TypeDesc = ARROW(ty1,rvi0,ty2,rvi), level} =>
+              {TypeDesc = ARROW(on_Type phi ty1, rvi0, on_Type phi ty2, rvi),
+               level = ref (!level)}
+            | {TypeDesc = CONSTYPE(tylist,t,rvis),level} =>
+              (*definition pg 19. sec. 4.4 Types and Type Functions
                 beta-conversion carried out after substituting in type
                 functions for type names*)
-               let val theta = on_TyName' phi t
-
-                   fun TypeFcn_apply' (TYNAME t', tau_list) =
-                         {TypeDesc = CONSTYPE (tau_list,t',rvis),
-                          level = ref (!level)}
-                     | TypeFcn_apply' (EXPANDED theta, tau_list) =          (* memo: figure out what to do with rvis - push it down into tau... *)
-                       let val rvs = case URef.!! rvis of
-                                         SOME (_,rvis) => map #2 rvis
-                                       | NONE => nil
-                           val tau = TypeFcn.apply (theta, tau_list, rvs)
-                         in correct_levels_Type tau ;
-                           tau
-                         end
-               in
-                 TypeFcn_apply' (theta, map (on_Type phi) tylist)
-               end)
-
+              let val theta = on_TyName phi t
+                  fun TypeFcn_apply' (TYFCN_TN t', tau_list) =
+                      {TypeDesc = CONSTYPE (tau_list,t',rvis),
+                       level = ref (!level)}
+                    | TypeFcn_apply' (theta, tau_list) =  (* memo: figure out what to do with rvis - push it down into tau... *)
+                      let val rvs = case URef.!! rvis of
+                                        SOME (_,rvis) => map #2 rvis
+                                      | NONE => nil
+                          val tau = TypeFcn.apply (theta, tau_list, rvs)
+                      in correct_levels_Type tau
+                       ; tau
+                      end
+              in TypeFcn_apply' (theta, map (on_Type phi) tylist)
+              end
 
       fun on_TypeScheme Realisation_Id scheme = scheme
         | on_TypeScheme phi (sigma as (tyvars,regvars,tau)) =
-          if List.exists TyVar.is_overloaded tyvars then sigma  (* type schemes for overloaded identifiers are rigid *)
-          else (tyvars,regvars,on_Type phi tau)
+          if List.exists TyVar.is_overloaded tyvars then sigma          (* Type schemes for overloaded *)
+          else (tyvars,regvars,on_Type phi tau)                         (* identifiers are rigid *)
 
       fun on_TypeFcn Realisation_Id theta = theta
-        | on_TypeFcn phi (theta as TYPEFCN {tyvars,regvars,tau}) =
-          TYPEFCN{tyvars=tyvars,regvars=regvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ
-                                                                        * from the case for type schemes ; mael-2007-11-07 *)
-      fun on_TypeFcn' Realisation_Id theta = theta
-        | on_TypeFcn' phi (TYNAME t) = on_TyName' phi t
-        | on_TypeFcn' phi (EXPANDED theta) = EXPANDED (on_TypeFcn phi theta)
-
+        | on_TypeFcn phi (TYFCN_TN tn) = on_TyName phi tn
+        | on_TypeFcn phi (TYFCN_FN {tyvars,regvars,tau}) =
+          TYFCN_FN{tyvars=tyvars,regvars=regvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved,
+                                                                         * which differ from the case for type
+                                                                         * schemes ; mael-2007-11-07 *)
       fun on_Realisation Realisation_Id phi = phi
         | on_Realisation phi Realisation_Id = Realisation_Id
         | on_Realisation phi (Not_Id m) =
-        Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
-                                TyName.Map.add(t,on_TypeFcn' phi theta,acc)) TyName.Map.empty m)
+          Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
+                                     TyName.Map.add(t,on_TypeFcn phi theta,acc)) TyName.Map.empty m)
 
-      fun layout_TypeFcn' (TYNAME t) = TyName.layout t
-        | layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
       fun layout Realisation_Id = PP.LEAF "Id"
         | layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
-        TyName.layout layout_TypeFcn' m
+                                                   TyName.layout TypeFcn.layout m
 
       fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
         | phi oo Realisation_Id = phi
@@ -2188,18 +2207,16 @@ structure StatObject: STATOBJECT =
           TyName.Set.fold (fn t => fn acc => acc andalso
                                              TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
 
-      fun eq (Realisation_Id, Realisation_Id) = true       (* conservative check, thus eq is a bad word for it;
-                                                            * - better now ; mael 2004-04-06 *)
-        | eq (rea1,rea2) =
-        let val T = TyName.Set.union (dom rea1) (dom rea2)
-        in enrich (rea1,(rea2,T))
-        end
+      fun eq (Realisation_Id, Realisation_Id) = true         (* conservative check, thus eq is a bad word for it; *)
+        | eq (rea1,rea2) =                                   (* - better now ; mael 2004-04-06 *)
+          let val T = TyName.Set.union (dom rea1) (dom rea2)
+          in enrich (rea1,(rea2,T))
+          end
+
       fun match (Realisation_Id, rea0) = ()
         | match (Not_Id m, rea0) =
-        let fun convert (EXPANDED theta) = theta
-              | convert (TYNAME t) = TypeFcn.from_TyName t
-        in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
-        end
+          TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(theta,on_TyName rea0 t)) () m
+
     end (*Realisation*)
 
     structure Picklers : sig
@@ -2536,29 +2553,26 @@ structure StatObject: STATOBJECT =
       end
 
       val pu_TypeFcn =
-          let fun to (tvs,rvs,t) = TYPEFCN {tyvars=tvs,regvars=rvs,tau=t}
-              fun from (TYPEFCN {tyvars=tvs,regvars,tau=t}) = (tvs,regvars,t)
-          in Pickle.convert0 (to,from) pu_TypeScheme
+          let fun toInt (TYFCN_TN _) = 0
+                | toInt (TYFCN_FN _) = 1
+              fun fun_TYFCN_TN _ =
+                  Pickle.con1 TYFCN_TN (fn TYFCN_TN a => a | _ => die "pu_TypeFcn.TYFCN_TN")
+                              TyName.pu
+              fun fun_TYFCN_FN _ =
+                  Pickle.con1 (fn (tvs,rvs,t) => TYFCN_FN{tyvars=tvs,regvars=rvs,tau=t})
+                              (fn TYFCN_FN {tyvars,regvars,tau} => (tyvars,regvars,tau)
+                                | _ => die "pu_TypeFcn.TYFCN_FN")
+                              pu_TypeScheme
+          in Pickle.dataGen("StatObject.Picklers.TypeFcn",toInt,[fun_TYFCN_TN,fun_TYFCN_FN])
           end
 
       val pu_realisation =
-          let val pu_TypeFcn' =
-                  let fun toInt (TYNAME _) = 0
-                        | toInt (EXPANDED _) = 1
-                      fun fun_TYNAME _ =
-                          Pickle.con1 TYNAME (fn TYNAME a => a | _ => die "pu_TypeFcn'.TYNAME")
-                                      TyName.pu
-                      fun fun_EXPANDED _ =
-                          Pickle.con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
-                                      pu_TypeFcn
-                  in Pickle.dataGen("StatObject.Picklers.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
-                  end
-              fun to (SOME e) = Not_Id e
+          let fun to (SOME e) = Not_Id e
                 | to NONE = Realisation_Id
               fun from (Not_Id e) = SOME e
                 | from Realisation_Id = NONE
           in Pickle.convert (to,from)
-                            (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
+                            (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn))
           end
 
     (* mael 2022-01-24: Really, we should transform entire

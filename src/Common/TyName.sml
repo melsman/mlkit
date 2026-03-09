@@ -98,35 +98,35 @@ structure TyName :> TYNAME =
 
     local
         val bucket = ref nil
-        fun predef b {tycon,arity,equality} =
-            let val tn = fresh b {tycon=tycon,arity=arity,arity_reml=(0,0),equality=equality}
+        fun predef b {tycon,arity,rarity,equality} =
+            let val tn = fresh b {tycon=tycon,arity=arity,arity_reml=(rarity,0),equality=equality}
             in bucket := tn :: !bucket
              ; tn
             end
     in
-        val tyName_BOOL       = predef UNB_LOW {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}
-        val tyName_INT31      = predef UNB_LOW {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
-        val tyName_INT32      = predef BOXED   {tycon=TyCon.tycon_INT32,      arity=0, equality=true}
-        val tyName_INT63      = predef UNB_ALL {tycon=TyCon.tycon_INT63,      arity=0, equality=true}
-        val tyName_INT64      = predef BOXED   {tycon=TyCon.tycon_INT64,      arity=0, equality=true}
-        val tyName_INTINF     = predef UNB_LOW {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
-        val tyName_WORD8      = predef UNB_LOW {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
-        val tyName_WORD31     = predef UNB_LOW {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
-        val tyName_WORD32     = predef BOXED   {tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
-        val tyName_WORD63     = predef UNB_ALL {tycon=TyCon.tycon_WORD63,     arity=0, equality=true}
-        val tyName_WORD64     = predef BOXED   {tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
-        val tyName_REAL       = predef BOXED   {tycon=TyCon.tycon_REAL,       arity=0, equality=false}
-        val tyName_F64        = predef UNB_ALL {tycon=TyCon.tycon_F64,        arity=0, equality=false}
-        val tyName_STRING     = predef BOXED   {tycon=TyCon.tycon_STRING,     arity=0, equality=true}
-        val tyName_CHAR       = predef UNB_LOW {tycon=TyCon.tycon_CHAR,       arity=0, equality=true}
-        val tyName_LIST       = predef UNB_LOW {tycon=TyCon.tycon_LIST,       arity=1, equality=true}
-        val tyName_FRAG       = predef BOXED   {tycon=TyCon.tycon_FRAG,       arity=1, equality=true}
-        val tyName_REF        = predef BOXED   {tycon=TyCon.tycon_REF,        arity=1, equality=true}
-        val tyName_ARRAY      = predef BOXED   {tycon=TyCon.tycon_ARRAY,      arity=1, equality=true}
-        val tyName_VECTOR     = predef BOXED   {tycon=TyCon.tycon_VECTOR,     arity=1, equality=true}
-        val tyName_CHARARRAY  = predef BOXED   {tycon=TyCon.tycon_CHARARRAY,  arity=0, equality=true}
-        val tyName_FOREIGNPTR = predef UNB_ALL {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=true}
-        val tyName_EXN        = predef BOXED   {tycon=TyCon.tycon_EXN,        arity=0, equality=false}
+        val tyName_BOOL       = predef UNB_LOW {tycon=TyCon.tycon_BOOL,       arity=0, rarity=0, equality=true}
+        val tyName_INT31      = predef UNB_LOW {tycon=TyCon.tycon_INT31,      arity=0, rarity=0, equality=true}
+        val tyName_INT32      = predef BOXED   {tycon=TyCon.tycon_INT32,      arity=0, rarity=0, equality=true}
+        val tyName_INT63      = predef UNB_ALL {tycon=TyCon.tycon_INT63,      arity=0, rarity=0, equality=true}
+        val tyName_INT64      = predef BOXED   {tycon=TyCon.tycon_INT64,      arity=0, rarity=0, equality=true}
+        val tyName_INTINF     = predef UNB_LOW {tycon=TyCon.tycon_INTINF,     arity=0, rarity=1, equality=true}
+        val tyName_WORD8      = predef UNB_LOW {tycon=TyCon.tycon_WORD8,      arity=0, rarity=0, equality=true}
+        val tyName_WORD31     = predef UNB_LOW {tycon=TyCon.tycon_WORD31,     arity=0, rarity=0, equality=true}
+        val tyName_WORD32     = predef BOXED   {tycon=TyCon.tycon_WORD32,     arity=0, rarity=0, equality=true}
+        val tyName_WORD63     = predef UNB_ALL {tycon=TyCon.tycon_WORD63,     arity=0, rarity=0, equality=true}
+        val tyName_WORD64     = predef BOXED   {tycon=TyCon.tycon_WORD64,     arity=0, rarity=0, equality=true}
+        val tyName_REAL       = predef BOXED   {tycon=TyCon.tycon_REAL,       arity=0, rarity=1, equality=false}
+        val tyName_F64        = predef UNB_ALL {tycon=TyCon.tycon_F64,        arity=0, rarity=0, equality=false}
+        val tyName_STRING     = predef BOXED   {tycon=TyCon.tycon_STRING,     arity=0, rarity=1, equality=true}
+        val tyName_CHAR       = predef UNB_LOW {tycon=TyCon.tycon_CHAR,       arity=0, rarity=0, equality=true}
+        val tyName_LIST       = predef UNB_LOW {tycon=TyCon.tycon_LIST,       arity=1, rarity=1, equality=true}
+        val tyName_FRAG       = predef BOXED   {tycon=TyCon.tycon_FRAG,       arity=1, rarity=1, equality=true}
+        val tyName_REF        = predef BOXED   {tycon=TyCon.tycon_REF,        arity=1, rarity=1, equality=true}
+        val tyName_ARRAY      = predef BOXED   {tycon=TyCon.tycon_ARRAY,      arity=1, rarity=1, equality=true}
+        val tyName_VECTOR     = predef BOXED   {tycon=TyCon.tycon_VECTOR,     arity=1, rarity=1, equality=true}
+        val tyName_CHARARRAY  = predef BOXED   {tycon=TyCon.tycon_CHARARRAY,  arity=0, rarity=1, equality=true}
+        val tyName_FOREIGNPTR = predef UNB_ALL {tycon=TyCon.tycon_FOREIGNPTR, arity=0, rarity=0, equality=true}
+        val tyName_EXN        = predef BOXED   {tycon=TyCon.tycon_EXN,        arity=0, rarity=1, equality=false}
         val _ = Rank.reset()
         val tynamesPredefined = !bucket
     end

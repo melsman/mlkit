@@ -1863,14 +1863,16 @@ structure ElabDec: ELABDEC =
                        in if expectedArity <> actualArity then
                             err (ErrorInfo.WRONG_ARITY {expected=expectedArity,
                                                         actual=actualArity})
-                          else if #1 expectedArityReml <> #1 actualArityReml then      (* ReML: later allow for *)
-                            err (ErrorInfo.REGVARS_WRONG_ARITY_R                       (* actuals to have 0 arity *)
-                                     {expected= #1 expectedArityReml,
-                                      actual= #1 actualArityReml})
-                          else if #2 expectedArityReml <> #2 actualArityReml then
-                            err (ErrorInfo.REGVARS_WRONG_ARITY_E
-                                     {expected= #2 expectedArityReml,
-                                      actual= #2 actualArityReml})
+                          else if #1 expectedArityReml <> #1 actualArityReml           (* ReML: allow for *)
+                                  andalso #1 actualArityReml <> 0                      (* actuals to have 0 arity *)
+                          then err (ErrorInfo.REGVARS_WRONG_ARITY_R
+                                        {expected= #1 expectedArityReml,
+                                         actual= #1 actualArityReml})
+                          else if #2 expectedArityReml <> #2 actualArityReml
+                                  andalso #2 actualArityReml <> 0
+                          then err (ErrorInfo.REGVARS_WRONG_ARITY_E
+                                        {expected= #2 expectedArityReml,
+                                         actual= #2 actualArityReml})
                           else
                             (SOME(TypeFcn.apply (typeFcn, tau_list, map #2 regvars')),
                              OG.CONty (okConv i, out_ty_list, regvars', longtycon))

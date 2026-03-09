@@ -1627,7 +1627,7 @@ good *)
                                // Report.line "is less general than the specified type"
                                // rep_sigma sigma'
                                // Report.line "Please modify either the implementation or the specification."
-                               // rep0
+                          (*     // rep0 *)
                                )
           fun check2 B =
               let val s = R.alpha_rename (sigma,B)

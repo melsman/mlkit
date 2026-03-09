@@ -1213,7 +1213,7 @@ AndFnValBind_opt:
         | (* -none- *)  ( NONE )
 
 TypBind:
-          TyVarSeq RegVarSeq TypeIdent EQUALS Ty AndTypBind_opt
+          TyVarSeq TypeIdent RegVarSeq EQUALS Ty AndTypBind_opt
                         ( TYPBIND (PP TyVarSeqleft
 				     (rightmost get_info_ty Ty
 				                get_info_typbind AndTypBind_opt),
@@ -1475,22 +1475,16 @@ TupleTy:  Ty_sans_STAR  ( [Ty_sans_STAR] )
 
 Ty_sans_STAR:
           LPAREN TyComma_seq2 RPAREN LongTypeIdent BACKQUOTE EqIdent
-                        ( let val ty = CONty (PP LPARENleft LongTypeIdentright,
-				              TyComma_seq2, nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft EqIdentright,
-                                    ty,
-                                    SOME (PP BACKQUOTEleft EqIdentright,
-                                          [(PP EqIdentleft EqIdentright,
-                                            RegVar.mk_Named EqIdent)]))
+                        ( let val regvars = [(PP EqIdentleft EqIdentright,
+                                              RegVar.mk_Named EqIdent)]
+                          in CONty (PP LPARENleft LongTypeIdentright,
+				    TyComma_seq2, regvars, mk_LongTyCon LongTypeIdent)
                           end )
         | LPAREN TyComma_seq2 RPAREN LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
-                        ( let val ty = CONty (PP LPARENleft LongTypeIdentright,
-				              TyComma_seq2, nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft RBRACKETright,
-                                    ty,
-                                    SOME (PP LBRACKETleft RBRACKETright,
-                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
-                                                        RegVar.mk_Named r)) EqIdent_seq1))
+                        ( let val regvars = map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                          RegVar.mk_Named r)) EqIdent_seq1
+                          in CONty (PP LPARENleft LongTypeIdentright,
+				    TyComma_seq2, regvars, mk_LongTyCon LongTypeIdent)
                           end )
 
         | LPAREN TyComma_seq2 RPAREN LongTypeIdent
@@ -1500,22 +1494,16 @@ Ty_sans_STAR:
                         ( CONty (PP Ty_sans_STARleft LongTypeIdentright,
 				 [Ty_sans_STAR], nil, mk_LongTyCon LongTypeIdent) )
         | Ty_sans_STAR LongTypeIdent BACKQUOTE EqIdent
-                        ( let val ty = CONty (PP Ty_sans_STARleft LongTypeIdentright,
-				              [Ty_sans_STAR], nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft EqIdentright,
-                                    ty,
-                                    SOME (PP BACKQUOTEleft EqIdentright,
-                                          [(PP EqIdentleft EqIdentright,
-                                            RegVar.mk_Named EqIdent)]))
+                        ( let val regvars = [(PP EqIdentleft EqIdentright,
+                                              RegVar.mk_Named EqIdent)]
+                          in CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				    [Ty_sans_STAR], regvars, mk_LongTyCon LongTypeIdent)
                           end )
         | Ty_sans_STAR LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
-                        ( let val ty = CONty (PP Ty_sans_STARleft LongTypeIdentright,
-				              [Ty_sans_STAR], nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft RBRACKETright,
-                                    ty,
-                                    SOME (PP LBRACKETleft RBRACKETright,
-                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
-                                                        RegVar.mk_Named r)) EqIdent_seq1))
+                        ( let val regvars = map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                          RegVar.mk_Named r)) EqIdent_seq1
+                          in CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				    [Ty_sans_STAR], regvars, mk_LongTyCon LongTypeIdent)
                           end )
         | AtomicTy      ( AtomicTy )
 
@@ -1583,30 +1571,27 @@ TyComma_seq2:
 
 AtomicTy:
           LongTypeIdent BACKQUOTE EqIdent
-                        ( let val ty = CONty (PP LongTypeIdentleft LongTypeIdentright,
-				              [], nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft EqIdentright,
-                                    ty,
-                                    SOME (PP BACKQUOTEleft EqIdentright,
-                                          [(PP EqIdentleft EqIdentright,
-                                            RegVar.mk_Named EqIdent)]))
-                          end)
+                        ( let val regvars = [(PP EqIdentleft EqIdentright,
+                                              RegVar.mk_Named EqIdent)]
+                          in CONty (PP LongTypeIdentleft LongTypeIdentright,
+				    [], regvars,
+                                    mk_LongTyCon LongTypeIdent)
+                          end )
         | BACKQUOTE EqIdent LongTypeIdent
-                        ( CONty (PP BACKQUOTEleft LongTypeIdentright,
-				 [],
-                                 [(PP EqIdentleft EqIdentright,
-                                   RegVar.mk_Named EqIdent)],
-                                 mk_LongTyCon LongTypeIdent) )
+                        ( let val regvars = [(PP EqIdentleft EqIdentright,
+                                              RegVar.mk_Named EqIdent)]
+                          in CONty (PP BACKQUOTEleft LongTypeIdentright,
+				    [],
+                                    regvars,
+                                    mk_LongTyCon LongTypeIdent)
+                          end )
 
         | LongTypeIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
-                        ( let val ty = CONty (PP LongTypeIdentleft LongTypeIdentright,
-				              [], nil, mk_LongTyCon LongTypeIdent)
-                          in PARty (PP LongTypeIdentleft RBRACKETright,
-                                    ty,
-                                    SOME (PP LBRACKETleft RBRACKETright,
-                                          map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
-                                                        RegVar.mk_Named r)) EqIdent_seq1))
-                          end)
+                        ( let val regvars = map (fn r => (PP EqIdent_seq1left EqIdent_seq1right,
+                                                          RegVar.mk_Named r)) EqIdent_seq1
+                          in CONty (PP LongTypeIdentleft LongTypeIdentright,
+				    [], regvars, mk_LongTyCon LongTypeIdent)
+                          end )
         | LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
 				 [], nil, mk_LongTyCon LongTypeIdent) )
 
