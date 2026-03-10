@@ -107,3 +107,5 @@ mod7.sml              ccl ecte                   (* Signature matching: It is an
 expty3.sml                                       (* Applying region abstract type bindings *)
 
 err_expty4.sml        ccl ecte                   (* Applied region-abstract type functions are tracked *)
+
+expty4.sml            ccl                        (* ReML Type weakening *)

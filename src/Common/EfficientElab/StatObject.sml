@@ -1678,6 +1678,10 @@ structure StatObject: STATOBJECT =
 
         fun instance_with_types_regvars (([],[],tau),[],[]) = tau
           | instance_with_types_regvars ((tyvars,[],tau),taus,[]) = instance_with_types((tyvars,nil,tau),taus)
+          | instance_with_types_regvars ((tyvars,regvars,tau),taus,[]) =
+            let val tau' = Type.remove_regvars regvars tau
+            in instance_with_types((tyvars,nil,tau'),taus)
+            end
           | instance_with_types_regvars ((tvs,regvars,tau),taus,regvars') =
             let val regvars_regvars' =
                     BasisCompat.ListPair.zipEq(regvars, regvars')
