@@ -578,7 +578,7 @@ structure StatObject: STATOBJECT =
                       in case (is_tuple_type m, rv) of
                              (true, NONE) => (* A possible (t1 * t2 * ...) type, and
                                               * no rowvar. *)
-                             print_tuple config names precedence (m, ty'_opt)
+                             print_tuple config names precedence (m, rvi, ty'_opt)
                            | _ => (*Have to do the general print.*)
                            let val fields = Lab.Map.range m
                                val fields' = fields_of_other_record (ty'_opt, fields)
@@ -646,7 +646,7 @@ structure StatObject: STATOBJECT =
             else st_ty
           end
 
-        and print_tuple config names precedence (m, ty'_opt: Type option) =
+        and print_tuple config names precedence (m, rvi, ty'_opt: Type option) =
 
           (* Careful: "{1=x}" does not print as "(x)", and "{ }"
            * should be "unit". We don't do this folding at all if
@@ -665,7 +665,7 @@ structure StatObject: STATOBJECT =
                                 (ziptypes (Lab.Map.range m') fields,rvi)
                               | _ => (map (fn field => NONE) fields,rvi))
                         end
-                      | _ => (map (fn field => NONE) fields,URef.uref NONE)
+                      | _ => (map (fn field => NONE) fields, rvi)
               in
                 case (fields, fields') of
                     (nil, _) => "unit"   (* Hard-wired *)

@@ -74,7 +74,7 @@ signature STATOBJECT =
 
         val pretty_string           : TVNames -> Type -> string
         val string_as_ty            : Type * Type -> string      (* The second type is a guide for printing*)
-        val pretty_string_as_ty     : TVNames -> (Type*Type) -> string
+        val pretty_string_as_ty     : TVNames -> Type * Type -> string
         val layout                  : Type -> StringTree
         val from_TyVar              : TyVar -> Type
         val to_TyVar                : Type -> TyVar option

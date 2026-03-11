@@ -161,10 +161,10 @@ structure ErrorInfo: ERROR_INFO =
       | report (UNIFICATION_TEXT(text1, ty1, text2, ty2)) =
           let
             val names = StatObject.newTVNames ()
-            val pr1 = Type.pretty_string  names
-            val pr2 = Type.pretty_string_as_ty  names
+            val pr1 = Type.pretty_string names
+            val pr2 = Type.pretty_string_as_ty names
             fun pad n = if n<=0 then [] else " " :: pad (n-1)
-            fun max(i:int, j:int) = if i>j then i else j
+            fun max (i:int, j:int) = if i>j then i else j
             val n = max(size text1, size text2)
           in
             line "Type clash,"
