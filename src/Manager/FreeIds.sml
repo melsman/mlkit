@@ -253,7 +253,7 @@ structure FreeIds:  FREE_IDS =
     and free_valbind_opt' I NONE = ()
       | free_valbind_opt' I (SOME valbind) = free_valbind' I valbind
 
-    and free_typbind I (TYPBIND(_,_,tycon,ty,typbind_opt)) : ids =
+    and free_typbind I (TYPBIND(_,_,_,tycon,ty,typbind_opt)) : ids =
       (free_ty I ty; add_tycon(tycon,empty_ids) ++ free_typbind_opt I typbind_opt)
     and free_typbind_opt I NONE = empty_ids
       | free_typbind_opt I (SOME typbind) = free_typbind I typbind
@@ -312,7 +312,7 @@ structure FreeIds:  FREE_IDS =
     and free_ty I =
       fn TYVARty _ => ()
        | RECORDty(_,tyrow_opt,_) => free_tyrow_opt I tyrow_opt
-       | CONty(_,tys,longtycon) => (List.app (free_ty I) tys; use_longtycon(I,longtycon))
+       | CONty(_,tys,_,longtycon) => (List.app (free_ty I) tys; use_longtycon(I,longtycon))
        | FNty(_,ty1,_,ty2) => (free_ty I ty1; free_ty I ty2)
        | PARty(_,ty,_) => free_ty I ty
        | WITHty(_,ty,_) => free_ty I ty

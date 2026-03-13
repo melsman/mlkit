@@ -1657,7 +1657,7 @@ in
           TYVARty _ => nil
         | RECORDty (_, SOME tr, _) => constraintsTyRow lvopt tr
         | RECORDty (_, NONE, _) => nil
-        | CONty (_, ts, _) => List.concat (map (constraintsTy lvopt) ts)
+        | CONty (_, ts, _, _) => List.concat (map (constraintsTy lvopt) ts)
         | FNty (_,t1,_,t2) => constraintsTy lvopt t1 @ constraintsTy lvopt t2
         | PARty (_, t, _) => constraintsTy lvopt t
         | WITHty (_, t, c) => compileConstraint lvopt c :: constraintsTy lvopt t

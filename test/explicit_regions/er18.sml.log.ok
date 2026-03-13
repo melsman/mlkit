@@ -1,5 +1,10 @@
 [reading source file:	er18.sml]
 
+er18.sml, line 3, column 5:
+  type t = {}`r0
+       ^^^^^^^^^
+Unbound explicit region or effect variable r0.
+
 er18.sml, line 3, column 11:
   type t = {}`r0
              ^^^

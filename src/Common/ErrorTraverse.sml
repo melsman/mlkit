@@ -252,8 +252,8 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 
     and walk_Typbind typbind =
       case typbind
-        of TYPBIND(i, _, _, ty, typbind_opt) =>
-             check i // walk_Ty ty // walk_opt walk_Typbind typbind_opt
+        of TYPBIND(i, _, (ir,_), _, ty, typbind_opt) =>
+             check i // check ir // walk_Ty ty // walk_opt walk_Typbind typbind_opt
 
     and walk_Datbind datbind =
       case datbind
@@ -379,8 +379,9 @@ structure ErrorTraverse : ERROR_TRAVERSE =
          | RECORDty(i, tyrow_opt, SOME(i2,_)) =>
              check i // walk_opt walk_Tyrow tyrow_opt // check i2
 
-         | CONty(i, tys, _) =>
-             check i // List.foldr (fn (a,b) => walk_Ty a // b) ok tys
+         | CONty(i, tys, regvars, _) =>
+             check i // List.foldr (fn (a,b) => walk_Ty a // b) ok tys //
+             walk_rvs regvars
 
          | FNty(i, ty1, rvopt, ty2) =>
              check i // walk_Ty ty1 // walk_Ty ty2 // walk_rvopt rvopt
@@ -395,13 +396,15 @@ structure ErrorTraverse : ERROR_TRAVERSE =
       | walk_rvopt (SOME(i,_)) = check i
 
     and walk_rvopts NONE = Report.null
-      | walk_rvopts (SOME(i,xs)) = List.foldl (fn ((i,_),acc) => check i // acc) (check i) xs
+      | walk_rvopts (SOME(i,xs)) = check i // walk_rvs xs
+
+    and walk_rvs rvs =
+        List.foldl (fn ((i,_),a) => check i // a) ok rvs
 
     and walk_Tyrow tyrow =
-      case tyrow
-        of TYROW(i, _, ty, tyrow_opt) =>
-             check i // walk_Ty ty // walk_opt walk_Tyrow tyrow_opt
-
+        case tyrow of
+            TYROW(i, _, ty, tyrow_opt) =>
+            check i // walk_Ty ty // walk_opt walk_Tyrow tyrow_opt
 
     type Report = Report.Report
 

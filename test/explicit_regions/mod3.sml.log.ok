@@ -19,8 +19,4 @@ The implementation type
 is less general than the specified type
   val f : all `r2,`r1.(string,`r1)->(string,`r2)
 Please modify either the implementation or the specification.
-mod3.sml, line 5, column 30:
-    val f : string`r1 -> string`r2
-                                ^^
-Cannot unify the explicit region variables `r2 and `r1
 Stopping compilation of MLB-file due to error (code 1).

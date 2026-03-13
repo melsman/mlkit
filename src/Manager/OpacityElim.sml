@@ -213,8 +213,9 @@ structure OpacityElim: OPACITY_ELIM =
 						   val arity = TypeFcn.arity theta
 						   val tyvars = []
 						   val longtycon = TyCon.implode_LongTyCon([],tycon)
-						   val ty = CONty(dummyinfo,[],longtycon)
-						   val typbind = TYPBIND(dummyinfo,tyvars,tycon,ty,typbindopt)
+						   val ty = CONty(dummyinfo,[],[],longtycon)
+						   val typbind = TYPBIND(dummyinfo,tyvars,(dummyinfo,nil),
+                                                                         tycon,ty,typbindopt)
 					       in (TE.plus(TE.singleton(tycon,tystr'), TE), SOME(typbind))
 					       end) (TE.empty,NONE) TE
 	       val typbind = case typbindopt
