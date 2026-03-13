@@ -66,7 +66,7 @@ mlkit_basislibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -log_to_file basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -Paux -log_to_file basis.mlb)
 
 .PHONY: mlkit_kitlibs
 mlkit_kitlibs:

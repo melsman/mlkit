@@ -6,6 +6,7 @@ structure K =
       val _ = Flags.turn_on "parallelism"
       val _ = Flags.turn_off "tag_values"
       val _ = Flags.turn_on "preserve_tail_calls"
+      val _ = Flags.turn_on "print_aux_reset"
       val () = List.app Flags.block_entry
                         ["garbage_collection",
                          "warn_spurious",

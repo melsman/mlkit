@@ -38,6 +38,13 @@ struct
          "Prefix infix operations with module identifier to further\n\
           \indicate the type of the operation."}
 
+    val print_aux_reset = Flags.add_bool_entry
+        {long="print_aux_reset", short=SOME "Paux",item=ref false, neg=true,
+         menu=["Layout","print resetting of auxiliary regions"],
+         desc="Print resetting of auxiliary resetting associated with\n\
+              \construction of nullary constructor values. This flag\n\
+              \affects the MulExp pretty printer."}
+
     val print_control_abbrev_layout = Flags.is_on0 "print_control_abbrev_layout" (* defined in Effect *)
 
     fun debug_parallelism_p () = Flags.is_on "debug_parallelism"
@@ -1192,9 +1199,6 @@ struct
               (false, ([],[],[])) => LEAF (Lvars.pr_lvar lvar)
             | _ => lay_il(Lvars.pr_lvar lvar, il, rhos_actuals)
 
-      fun dont_lay_il (lvar_string:string, terminator: string, il) : StringTree =
-          LEAF(lvar_string ^ terminator)
-
       fun wrap s opr = s ^ opr ^ s
 
       (* precedence levels: lam, case, branches : 1
@@ -1255,9 +1259,13 @@ struct
             | UB_RECORD args =>
               PP.NODE{start = "(", finish = ")" , indent = 1, childsep = PP.RIGHT", ",
                       children = map (fn trip => layTrip(trip,0)) args}
-            | CON0{con, il, aux_regions,alloc} => (* nullary constructor *)
+            | CON0{con, il, aux_regions, alloc} => (* nullary constructor *)
               let val alloc_s = alloc_opt_string alloc
-              in dont_lay_il(Con.pr_con con, maybe_prefix_space alloc_s, il)
+                  val start = Con.pr_con con ^ maybe_prefix_space alloc_s
+              in if print_aux_reset() andalso not (List.null aux_regions) then
+                   NODE{start=start ^ "[", finish="]", indent=2, childsep=PP.RIGHT ", ",
+                        children=map (LEAF o alloc_string) aux_regions}
+                 else LEAF start
               end
             | CON1({con, il, alloc},trip) => (* unary constructor *)
               let fun trylist e =
@@ -1283,13 +1291,13 @@ struct
                      end
                    | NONE => (* not a list *)
                      let val alloc_s = alloc_opt_string alloc
-                         val t1 = dont_lay_il(Con.pr_con con, maybe_prefix_space alloc_s, il)
+                         val t1 = LEAF(Con.pr_con con ^ maybe_prefix_space alloc_s)
                      in par (n-n_fun) (PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
                                                children = [t1, layTrip(trip,n_inf)]})
                      end
               end
             | DECON({con, il},trip) => (* destruction *)
-              let val t1 = dont_lay_il("decon_" ^ Con.pr_con con , "", il)
+              let val t1 = LEAF("decon_" ^ Con.pr_con con)
               in par (n-n_fun) (PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
                                         children = [t1, layTrip(trip,n_inf)]})
               end
