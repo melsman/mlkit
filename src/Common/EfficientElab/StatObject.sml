@@ -1701,16 +1701,16 @@ structure StatObject: STATOBJECT =
                 fun instanceType ty =
                     let val ty = findType ty
                         val {TypeDesc, level} = ty
-                    in (*if !level <> Level.GENERIC then ty
-                       else*) case TypeDesc of
-                                TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
-                              | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
-                                die "instanceType.generic tyvar not instantiated"
-                              | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
-                              | ARROW (ty1,rvi0,ty2,rvi) => Type.mk_Arrow (instanceType ty1, lookRio (URef.!! rvi0),
-                                                                           instanceType ty2, lookRio (URef.!! rvi))
-                              | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,lookRio (URef.!! rvi))
-                              | CONSTYPE (tys,tyname,rvis) => Type.mk_ConsType (map instanceType tys,tyname, lookPrso (URef.!! rvis))
+                    in case TypeDesc of
+                           TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
+                         | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
+                           if !level <> Level.GENERIC then ty
+                           else die "instanceType.generic tyvar not instantiated"
+                         | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
+                         | ARROW (ty1,rvi0,ty2,rvi) => Type.mk_Arrow (instanceType ty1, lookRio (URef.!! rvi0),
+                                                                      instanceType ty2, lookRio (URef.!! rvi))
+                         | RECTYPE (r,rvi) => Type.from_RecType (instanceRecType r,lookRio (URef.!! rvi))
+                         | CONSTYPE (tys,tyname,rvis) => Type.mk_ConsType (map instanceType tys,tyname, lookPrso (URef.!! rvis))
                     end
                 and instanceRecType r =
                     let val r = findRecType r
