@@ -281,8 +281,8 @@ structure GrammarUtils : GRAMMAR_UTILS =
               ty
           | RECORDty(i, SOME tyrow, rvopt) =>
               RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow), rvopt)
-          | CONty(i, tylist, tycon) =>
-              CONty(i, map (replaceTy tyvarseq tyseq) tylist, tycon)
+          | CONty(i, tylist, regvars, tycon) =>
+              CONty(i, map (replaceTy tyvarseq tyseq) tylist, regvars, tycon)
           | FNty(i, ty1, rvopt, ty2) =>
             FNty(i, replaceTy tyvarseq tyseq ty1,
                  rvopt, replaceTy tyvarseq tyseq ty2)
@@ -302,10 +302,10 @@ structure GrammarUtils : GRAMMAR_UTILS =
         exception Lookup_tycon
         fun lookup_tycon tycon typbind =
           case typbind of
-            TYPBIND(_, tyvarseq, tycon', ty, NONE) =>
+            TYPBIND(_, tyvarseq, _, tycon', ty, NONE) =>
               if tycon' = tycon then (tyvarseq, ty)
               else raise Lookup_tycon
-          | TYPBIND(_, tyvarseq, tycon', ty, SOME typbind) =>
+          | TYPBIND(_, tyvarseq, _, tycon', ty, SOME typbind) =>
               if tycon' = tycon then (tyvarseq, ty)
               else lookup_tycon tycon typbind
 
@@ -317,7 +317,7 @@ structure GrammarUtils : GRAMMAR_UTILS =
               ty
           | RECORDty(i, SOME tyrow, regvar) =>
               RECORDty(i, SOME (rewriteTyrow tyrow), regvar)
-          | CONty(i, tyseq', longtycon') =>
+          | CONty(i, tyseq', regvars, longtycon') =>
               let
                 val (strid_list, tycon') = TyCon.explode_LongTyCon longtycon'
               in
@@ -335,13 +335,13 @@ structure GrammarUtils : GRAMMAR_UTILS =
                      handle Lookup_tycon =>
                      (* keep type constructor, but traverse its
                         arguments*)
-                     CONty(i, map rewriteTy tyseq', longtycon')
+                     CONty(i, map rewriteTy tyseq', regvars, longtycon')
                 else
 		  (* Was: ty ; ME 2001-03-05 - bug reported by Stephen
 		   * Weeks, Mon, 7 Aug 2000. *)
 		  (* keep type constructor, but traverse its
 		   arguments*)
-		  CONty(i, map rewriteTy tyseq', longtycon')
+		  CONty(i, map rewriteTy tyseq', regvars, longtycon')
               end
           | FNty(i, ty1, rvopt, ty2) =>
               FNty(i, rewriteTy ty1, rvopt, rewriteTy ty2)

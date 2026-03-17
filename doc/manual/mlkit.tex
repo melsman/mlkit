@@ -4459,9 +4459,10 @@ case (B3), the MLKit builds a
 \index{region flow graph}%
 \label{region flow graph}%
 %
-{\em region flow graph\/} for the entire compilation unit. (This construction
-happens in a phase prior to the storage mode analysis proper.)  The nodes of the
-region flow graph are region variables and arrow effects that appear in the
+\emph{region flow graph} for the entire compilation unit. (This construction
+happens in a phase prior to the storage mode analysis proper.)  The nodes
+(ranged over by $n$) of the region flow graph are region variables and effect
+variables, denoting the region variables and arrow effects that appear in the
 region-annotated compilation unit.  Whenever $\rho_1$ is a formal region
 parameter of some function declared in the unit and $\rho_2$ is a corresponding
 actual region parameter in the same unit, a directed edge from $\rho_1$ to
@@ -4476,9 +4477,9 @@ from the compilation unit, then an edge from $\rho$ to the global region of the
 same runtime type as $\rho$ is inserted into the graph. (This is necessary, so
 as to cater for applications of $f$ in subsequent compilation units.)
 
-Let $G$ be the graph thus constructed.  For every node $\rho$ in the graph, we
-write $\langle\rho\rangle$ to denote the set of region variables that can be
-reached from $\rho$, including $\rho$ itself.  The rule that replaces (B3) is:
+Let $G$ be the graph thus constructed.  For every node $n$ in the graph, we
+write $\langle n\rangle$ to denote the set of region variables that can be
+reached from $n$, including $n$ itself if $n$ is a region variable.  The rule that replaces (B3) is:
 %
 \index{region parameter!formal}%
 %
@@ -4486,10 +4487,10 @@ reached from $\rho$, including $\rho$ itself.  The rule that replaces (B3) is:
 \item[B3]{\it $\rho$ is a formal parameter of a region-polymorphic function
   whose right-hand side is the smallest enclosing lambda abstraction:} Use
   \fw{sat}, if, for every variable $l$ that is locally live at the allocation
-  point and for every region variable $\rho'$ that occurs free in the
-  region-annotated type scheme with place of $l$, it is the case that
-  $\langle\rho\rangle\cap\langle\rho'\rangle =\emptyset$; use \fw{attop}
-  otherwise.
+  point and for every region variable or effect variable $n$ that occurs free in the
+  region-annotated type scheme with place of $l$, it holds that
+  $\langle\rho\rangle\cap\langle n \rangle =\emptyset$;
+  Use \fw{attop} otherwise.
 \end{description}
 \medskip
 

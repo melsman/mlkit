@@ -1,6 +1,6 @@
 
 signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_INFO for an
-				* overview of the different kinds of info.*)
+                                * overview of the different kinds of info.*)
   sig
     type TyName
     type TyVar
@@ -19,19 +19,19 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
     type regvar
 
     datatype RepeatedId = ID_RID of id      (* Repeated identifier, syntax *)
-			| LAB_RID of lab    (* errors *)
-			| TYCON_RID of tycon
-			| EXCON_RID of id
-			| CON_RID of id
-			| TYVAR_RID of TyVar
-			| STRID_RID of strid
-			| SIGID_RID of sigid
-			| FUNID_RID of funid
+                        | LAB_RID of lab    (* errors *)
+                        | TYCON_RID of tycon
+                        | EXCON_RID of id
+                        | CON_RID of id
+                        | TYVAR_RID of TyVar
+                        | STRID_RID of strid
+                        | SIGID_RID of sigid
+                        | FUNID_RID of funid
                         | REGVAR_RID of regvar
 
     datatype ErrorInfo =
      (* Core errors: *)
-	UNIFICATION of Type * Type
+        UNIFICATION of Type * Type
       | UNIFICATION_TEXT of string * Type * string * Type
       | UNIFICATION_RANK of Type * Type * TyVar * TyName
       | LOOKUP_LONGID of longid
@@ -84,10 +84,14 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | REGVARS_SCOPED_TWICE of regvar list
       | REGVAR_TY_UNBOXED
       | REGVAR_TY_ANNOTATE of string
+      | REGVARS_NOT_IN_REGVARSEQ of regvar list
+      | REGVARS_INVALID_ORDER of regvar list
+      | REGVARS_WRONG_ARITY_R of {expected: int, actual: int}
+      | REGVARS_WRONG_ARITY_E of {expected: int, actual: int}
 
     type Report
     val report : ErrorInfo -> Report
 
     structure ErrorCode : ERROR_CODE      (* Support for error testing and handling. *)
       sharing type ErrorCode.ErrorInfo = ErrorInfo
-  end;
+  end

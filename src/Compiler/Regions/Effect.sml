@@ -209,7 +209,18 @@ struct
 
   and layout_rho00 (cmplx:bool) (key,level,ty,explicit,protected,constraints) =
       let val n = case explicit of
-                      NONE => "r" ^ show_key key
+                      NONE =>
+                      if reml_p() then
+                        case !key of
+                            1 => "r0top"
+                          | 2 => "r0bot"
+                          | 3 => "r0string"
+                          | 4 => "r0pair"
+                          | 5 => "r0array"
+                          | 6 => "r0ref"
+                          | 7 => "r0triple"
+                          | _ => "r" ^ show_key key
+                      else "r" ^ show_key key
                     | SOME rv =>
                       let val r = "`" ^ RegVar.pr rv
                       in if print_control_abbrev_layout() then r
@@ -241,7 +252,7 @@ struct
               case einfo of
                   EPS{key,explicit,...} =>
                   let val n = case explicit of
-                                  NONE => "e" ^ show_key key
+                                  NONE => if reml_p() andalso !key = 8 then "e0" else "e" ^ show_key key
                                 | SOME ev => "`" ^ RegVar.pr ev ^ "_" ^ show_key key
                   in PP.LEAF n
                   end

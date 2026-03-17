@@ -1,0 +1,6 @@
+[reading source file:	expty4.sml]
+[wrote X64 code file:	MLB/RI_PAR/expty4.sml.s]
+> type t `r1
+  val f : string`r2 * string`r3 -> string * string
+[wrote X64 code file:	MLB/RI_PAR/base-link_objects.s]
+[wrote executable file:	run]

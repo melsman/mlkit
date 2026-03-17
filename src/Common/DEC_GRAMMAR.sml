@@ -74,7 +74,7 @@ sig
   and FClause = FCLAUSE of info * atpat list * ty option * exp * FClause option
 
   and typbind =
-        TYPBIND of info * tyvar list * tycon * ty * typbind option
+        TYPBIND of info * tyvar list * (info * regvar list) * tycon * ty * typbind option
 
   and datbind =
         DATBIND of info * tyvar list * tycon * conbind * datbind option
@@ -107,7 +107,7 @@ sig
   and ty =
         TYVARty of info * tyvar |
         RECORDty of info * tyrow option * (info*regvar) option |
-        CONty of info * ty list * longtycon |
+        CONty of info * ty list * (info*regvar) list * longtycon |
         FNty of info * ty * (info*regvar) option * ty |
         PARty of info * ty * (info*(info*regvar)list) option |
         WITHty of info * ty * constraint                               (* ReML *)
@@ -175,7 +175,9 @@ sig
 
 
   val getExplicitTyVarsTy      : ty -> tyvar list
-  and getExplicitTyVarsConbind : conbind -> tyvar list
+  val getExplicitTyVarsConbind : conbind -> tyvar list
+
+  val getRegVarsTy             : ty -> regvar list                        (* ReML *)
 
   (*expansive harmless_con exp = true iff exp is expansive.
    harmless_con longid = true iff longid is an excon or a con different

@@ -66,11 +66,12 @@ mlkit_basislibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -log_to_file basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -Paux -log_to_file basis.mlb)
 
 .PHONY: mlkit_kitlibs
 mlkit_kitlibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof kitlib.mlb)
@@ -111,19 +112,23 @@ install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB/RI_GC
 	$(MKDIR) $(LIBDIR)/basis/MLB/RI_GC_PROF
 	$(MKDIR) $(LIBDIR)/basis/MLB/RI_PROF
+	$(MKDIR) $(LIBDIR)/basis/MLB/RI_PAR
 	$(MKDIR) $(LIBDIR)/basis/io/MLB
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_PROF
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_PAR
 	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/MLB/RI
 	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/MLB/RI_GC
 	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev,df} $(LIBDIR)/basis/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/MLB/RI_PAR/*.{d,eb,eb1,lnk,o,df} $(LIBDIR)/basis/MLB/RI_PAR
 	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI
 	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI_GC
 	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI_PAR/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI_PAR
 
 .PHONY: barry
 barry:
