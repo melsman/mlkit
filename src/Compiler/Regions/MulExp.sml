@@ -41,7 +41,7 @@ struct
     val print_aux_reset = Flags.add_bool_entry
         {long="print_aux_reset", short=SOME "Paux",item=ref false, neg=true,
          menu=["Layout","print resetting of auxiliary regions"],
-         desc="Print resetting of auxiliary resetting associated with\n\
+         desc="Print resetting of auxiliary regions associated with\n\
               \construction of nullary constructor values. This flag\n\
               \affects the MulExp pretty printer."}
 
