@@ -17,7 +17,6 @@ struct
   type exp = (place, place*mul, qmularefset ref)MulExp.LambdaExp
   type trip = (place, place*mul, qmularefset ref)MulExp.trip
 
-
   (* ---------------------------------------------------------------------- *)
   (*    General Abbreviations                                               *)
   (* ---------------------------------------------------------------------- *)
@@ -45,12 +44,11 @@ struct
   infix footnote
 
   fun noSome x errmsg =
-    case x of
-      NONE => die errmsg
-    | SOME y => y
+      case x of
+          NONE => die errmsg
+        | SOME y => y
 
   fun equal_places' p q = Eff.eq_effect(p,q)
-
 
   (* ---------------------------------------------------------------------- *)
   (*    Region-flow Graphs                                                  *)
@@ -125,6 +123,7 @@ struct
               ; g
              end
       end
+
     (* add_node_iter p:  add p to graph, if it has not been added already*)
     fun add_node_iter p = (lookup_R_with_insert p; ())
 
@@ -145,26 +144,6 @@ struct
     fun add_edge_iter (p: nodeVal, q: nodeVal) =
         add_edge_graph_iter(p, lookup_R_with_insert q)
 
-    (* connecting a region variable to a global region variable
-       with the same runtime type *)
-(*
-    fun connect_to_global rho : unit =
-        case Eff.get_place_ty rho of
-            SOME Eff.STRING_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_string)
-          | SOME Eff.PAIR_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_pair)
-          | SOME Eff.ARRAY_RT  => add_edge_iter(rho,Eff.toplevel_region_withtype_array)
-          | SOME Eff.REF_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_ref)
-          | SOME Eff.TRIPLE_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_triple)
-          | SOME Eff.TOP_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_top)
-          | SOME Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_string);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_pair);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_array);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_ref);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_triple);
-                                add_edge_iter(rho,Eff.toplevel_region_withtype_top))
-          | NONE => die "connect_to_global"
-*)
     fun init_regmap () = R := REGMAP(Array.array(regmap_size, []))
 
     (* find the places that are reachable from the place p *)
@@ -256,10 +235,6 @@ struct
 
     fun mk_graph0 trip =
       let
-(*
-         val exported = find trip handle FRAME_NOT_FOUND => die "frame not found"
-         fun is_exported lvar = List.exists (fn lvar_frame => Lvars.eq(lvar, lvar_frame)) exported
-*)
          fun mk_graph_exp (e: exp): unit =
          case e of
             FIX {free, shared_clos, functions, scope} =>
@@ -269,15 +244,7 @@ struct
                                    bound_but_never_written_into,
                                    other,bind} =
                       let
-
                          val _ = List.app insert formal_arreffs
-
-                         (*val _ = log("lvar = " ^ Lvars.pr_lvar lvar ^ ":" ^ Int.toString(length formal_regvars)) *)
-
-                         (* region-polymorphic functions which are exported must have their formal
-                            region parameters connected to global regions with the same runtime type.
-                            This is necessary for soundness of the analysis across program units.
-                         *)
 
                          fun deal_with_one_instance il =
                              let val (actual_rhos, actual_epss, taus) = RType.un_il il
@@ -296,15 +263,9 @@ struct
                                  handle BasisCompat.ListPair.UnequalLengths => die "deal_with_one_instance (2)");
 
                                 List.app insert actual_epss
-
                              end
-
                       in
                         List.app add_node_iter formal_regvars;
-(*
-                        if is_exported lvar then List.app connect_to_global formal_regvars
-                        else ();
-*)
                         List.app add_node_iter formal_arreffs;
                         List.app deal_with_one_instance instances;
                         mk_graph bind

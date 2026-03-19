@@ -470,7 +470,7 @@ structure AtInf : AT_INF =
                                                         in List.app unvisit rho_related
                                                          ; (if b then ATTOP rho else actual')
                                                         end
-                                                 end handle _ => ATTOP rho
+                                                 end handle SME.RegvarEnv => ATTOP rho
                                      in traverse f actuals nil
                                      end
                                    | _ => ( (if debug_which_at()
