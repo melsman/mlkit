@@ -206,9 +206,6 @@ struct
       let
          val children = Eff.represents_with_gets arreff
                         handle ex => die ("insert " ^ pp_nodeVal arreff)
-         val () = List.app (fn e =>
-                               if Eff.is_rho e then print ("*** RHO in represents: " ^ pp_nodeVal e ^ "\n")
-                               else ()) children
          val children = map (fn e => if Eff.is_put e orelse Eff.is_get e orelse Eff.is_mut e then Eff.rho_of e else e)
                             children
       in
