@@ -46,7 +46,6 @@ in
      in Regions/RegionExp.sml
         local open Pickle in Regions/RegionStatEnv.sml end
      end
-     Regions/EffVarEnv.sml
      ../Common/QUASI_ENV.sml
      local open Pickle in ../Common/QuasiEnv.sml end
      local open Edlib Pickle CompilerObjects in Regions/Mul.sml end

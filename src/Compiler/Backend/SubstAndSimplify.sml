@@ -17,7 +17,7 @@ functor SubstAndSimplify(structure LineStmt: LINE_STMT
 struct
   structure PP = PrettyPrint
   structure Labels = AddressLabels
-  structure RegvarFinMap = EffVarEnv
+  structure RegvarFinMap = Effect.Map
   val _ = Flags.add_bool_entry
     {long="print_simplified_program", short=NONE, item=ref false,
      menu=["Printing of intermediate forms", "print simplified program (LineStmt)"], neg=false,

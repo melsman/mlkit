@@ -247,10 +247,11 @@ signature EFFECT = sig
   val topsort           : effect list -> effect list
   val subgraph          : effect list -> effect list
 
-  val eval_phis         : effect list -> effect list (* returns all nodes in graph *)
+  val eval_phis         : effect list -> effect list (* returns all nodes in graph (for ReML) *)
   val check_nodes       : {allnodes:effect list, letregions:effect list} -> unit (* check ReML constraints *)
 
-  val represents        : effect -> effect list
+  val represents_no_gets   : effect -> effect list
+  val represents_with_gets : effect -> effect list
 
   val reset_cone        : cone -> unit
   val reset             : unit -> unit  (* reset list of effect updates; done once pr module *)
@@ -265,5 +266,5 @@ signature EFFECT = sig
   val layoutCone            : cone -> StringTree         (* sets and clears visited field *)
   val layoutEtas            : effect list -> StringTree list (* sets and clears visited field *)
 
-  structure PlaceOrEffectMap : MONO_FINMAP where type dom = effect
+  structure Map : MONO_FINMAP where type dom = effect
 end

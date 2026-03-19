@@ -1,5 +1,5 @@
 
-structure Mul: MUL =
+structure Mul : MUL =
 struct
   structure Eff = Effect
   structure Lam = LambdaExp
@@ -7,7 +7,7 @@ struct
   structure RSE = RegionStatEnv
   structure PP = PrettyPrint
   structure QM_EffVarEnv =
-      QuasiEnv(structure OFinMap = EffVarEnv
+      QuasiEnv(structure OFinMap = Eff.Map
                val key = Effect.key_of_eps_or_rho
                val eq = Effect.eq_effect)
 
@@ -99,7 +99,7 @@ struct
   val empty_mularefmap = GlobalEffVarEnv.empty
   val initial_mularefmap =
     let val _ = Eff.eval_phis [Eff.toplevel_arreff]
-        val mulef = map (fn ae => (ae,INF)) (Eff.represents Eff.toplevel_arreff)
+        val mulef = map (fn ae => (ae,INF)) (Eff.represents_no_gets Eff.toplevel_arreff)
         val mularef = (Eff.toplevel_arreff,mulef)
     in GlobalEffVarEnv.add(Eff.toplevel_arreff, ref mularef, GlobalEffVarEnv.empty)
     end

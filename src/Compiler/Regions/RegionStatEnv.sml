@@ -330,7 +330,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
                                              dump(E.layout_effect_deep(node));
                                              die "mkConeToplevel.closure.node not arrow effect or get/put effect")
                                         end)
-			    acc (E.represents rho_eps) (* very nasty bug fixed; the two arguments to foldL were the wrong way around;  mads *)
+			    acc (E.represents_no_gets rho_eps) (* very nasty bug fixed; the two arguments to foldL were the wrong way around;  mads *)
 			  else if E.is_rho rho_eps then rho_eps :: acc
 			       else acc
                          end)
@@ -362,7 +362,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
                                              dump(E.layout_effect_deep(node));
                                              die "mkConeToplevel.closure.node not arrow effect or get/put effect")
                                       )
-			              acc (E.represents rho_eps)
+			              acc (E.represents_no_gets rho_eps)
 			      else if E.is_rho rho_eps then rho_eps :: acc
 			      else acc
                        )

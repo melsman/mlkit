@@ -1,7 +1,7 @@
 
 structure PhysSizeInf: PHYS_SIZE_INF =
   struct
-    structure RegvarFinMap = EffVarEnv
+    structure RegvarFinMap = Effect.Map
     structure PP = PrettyPrint
     structure LvarMap = Lvars.Map
 

@@ -5,8 +5,6 @@ structure AtInf : AT_INF =
     structure PP = PrettyPrint
     structure Eff = Effect
     structure LLV = LocallyLiveVariables
-    structure BT = IntStringFinMap
-    structure RegvarBT = EffVarEnv
 
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
@@ -60,8 +58,7 @@ structure AtInf : AT_INF =
   fun chat (s : string) = if !Flags.chat then log s else ()
 
   fun show_place p = PP.flatten1(Eff.layout_effect p)
-  fun show_arreffs epss = concat(map (fn eps => " " ^ show_place eps) epss)
-  fun show_places rhos = show_arreffs rhos
+  fun show_places rhos = String.concatWith "," (map show_place rhos)
 
   fun forceATBOT (ATTOP p) = (ATBOT p)
     | forceATBOT (ATBOT p) = (ATBOT p)
@@ -141,27 +138,31 @@ structure AtInf : AT_INF =
 
     datatype rho_desc = LETREGION_BOUND | LETREC_BOUND
 
-    abstype regvar_env = REGVAR_ENV of rho_desc RegvarBT.map
+    abstype regvar_env = REGVAR_ENV of rho_desc Eff.Map.map
     with
       exception RegvarEnv
-      val empty_regvar_env = REGVAR_ENV(RegvarBT.empty)
-      fun declare_regvar_env(x, y, REGVAR_ENV m) = REGVAR_ENV(RegvarBT.add(x,y,m))
-      fun retrieve_regvar_env(x, REGVAR_ENV m) = case (RegvarBT.lookup m x)
-           of SOME v => v
+      val empty_regvar_env = REGVAR_ENV(Eff.Map.empty)
+      fun declare_regvar_env (x, y, REGVAR_ENV m) = REGVAR_ENV(Eff.Map.add(x,y,m))
+      fun retrieve_regvar_env (x, REGVAR_ENV m) =
+          case Eff.Map.lookup m x of
+              SOME v => v
             | NONE => raise RegvarEnv
     end
 
     type lvar_env_range = (sigma*place option) * place list
-    abstype lvar_env =
-      LVAR_ENV of  lvar_env_range BT.map
+    abstype lvar_env = LVAR_ENV of lvar_env_range Lvars.Map.map
     with
       exception LvarEnv
-      val empty_lvar_env = LVAR_ENV(BT.empty)
-      fun declare_lvar_env (x,y,LVAR_ENV m) = LVAR_ENV(BT.add(Lvars.key x,y,m))
+      val empty_lvar_env = LVAR_ENV(Lvars.Map.empty)
+      fun declare_lvar_env (x,y,LVAR_ENV m) = LVAR_ENV(Lvars.Map.add(x,y,m))
       fun retrieve_lvar_env (x,LVAR_ENV m) =
-        case BT.lookup m x of
-        SOME x => x
-        | NONE => raise LvarEnv
+          case Lvars.Map.lookup m x of
+              SOME x => x
+            | NONE => raise LvarEnv
+      fun is_local_lvar_env (x,LVAR_ENV m) =
+          case Lvars.Map.lookup m x of
+              SOME _ => true
+            | NONE => false
     end
 
     type excon_env_range = (sigma*place) * place list
@@ -310,7 +311,7 @@ structure AtInf : AT_INF =
       let
         (* val _ = Profile.profileOn();*)
         fun conflicting_local_lvar lvar : conflict option =
-            let val lvar_res as (_,lrv) = SME.retrieve_lvar_env(Lvars.key lvar, LE)
+            let val lvar_res as (_,lrv) = SME.retrieve_lvar_env(lvar, LE)
             in case rho_points_into lrv of
                    SOME (witness: place) => SOME(LVAR_PROBLEM(rho,lvar,lvar_res,witness))
                  | NONE => NONE
@@ -324,7 +325,7 @@ structure AtInf : AT_INF =
 
         fun conflicting_local_excon (excon: Excon.excon): conflict option =
             let val excon_res as (_,lrv)  = SME.retrieve_excon_env(excon, EE)
-            in case rho_points_into(lrv) of
+            in case rho_points_into lrv of
                    SOME (witness: place) => SOME(EXCON_PROBLEM(rho,excon,excon_res,witness))
                  | _ => NONE
             end handle SME.ExconEnv =>
@@ -346,7 +347,7 @@ structure AtInf : AT_INF =
   fun equal_places rho1 rho2 = Eff.eq_effect(rho1,rho2)
 
   fun letregion_bound (rho,sme,liveset): conflict option * place at=
-      let fun rho_points_into rhos= List.find (equal_places rho) rhos
+      let fun rho_points_into rhos = List.find (equal_places rho) rhos
       in debug1([],liveset);
          any_live(rho,sme,liveset,rho_points_into,ATBOT rho)
       end
@@ -357,7 +358,7 @@ structure AtInf : AT_INF =
 
   fun letrec_bound (rho, sme, liveset): conflict option * place at=
       let (*val _ = Profile.profileOn();*)
-          val rho_related = RegFlow.reachable_in_graph_with_insertion (rho)
+          val rho_related = RegFlow.reachable_in_graph_with_insertion rho
           (*val _ = Profile.profileOff();*)
           fun rho_points_into lrv = List.find is_visited lrv
       in debug1(rho_related,liveset);
@@ -419,17 +420,21 @@ structure AtInf : AT_INF =
   fun mu_to_scheme_and_place (tau:RType.Type, rho_opt : place option) : sigma * place option =
       (RType.type_to_scheme tau, rho_opt)
 
+  (* traverse a list and apply the supplied function to each element and the other elements *)
+  fun traverse f nil acc = nil
+    | traverse f (x::xs) acc = f (x,rev acc @ xs) :: traverse f xs (x::acc)
+
   (********************************)
   (*  sma0 traverses the program  *)
   (*  and inserts storage modes   *)
   (********************************)
 
   fun sma0 (pgm0 as PGM{expression=trip,
-                 export_datbinds,
-                 import_vars,
-                 export_vars,
-                 export_basis,
-                 export_Psi}: (place * LLV.liveset, place*mul, qmularefset ref)LambdaPgm)
+                        export_datbinds,
+                        import_vars,
+                        export_vars,
+                        export_basis,
+                        export_Psi}: (place * LLV.liveset, place*mul, qmularefset ref)LambdaPgm)
       : (place at, place*mul, unit)LambdaPgm =
       let fun sma_trip sme (TR(e, metaType, ateffects, mulef_r)) =
             let fun sma_sw sme (SWITCH(tr,choices,opt)) =
@@ -441,8 +446,41 @@ structure AtInf : AT_INF =
                 val e' =
                  (case e
                     of VAR{lvar,il,plain_arreffs,fix_bound,rhos_actuals=ref actuals,other} =>
-                      let val actuals' = map (which_at sme) actuals  (* also liveset here*)
-                      in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
+                       let val actuals' =
+                               if SME.is_local_lvar_env (lvar,#2 sme) then
+                                 map (which_at sme) actuals  (* also liveset here*)
+                               else
+                                 case #2 il of
+                                     [_] =>  (* single arrow effect *)
+                                     let fun f (actual as (rho,_),others) =
+                                             case which_at sme actual of
+                                                 actual' as ATTOP _ => actual'
+                                               | actual' =>
+                                                 let val other_rhos = map (fn (r,_) => r) others
+                                                 in case SME.retrieve_regvar_env(rho,#1 sme) of
+                                                        SME.LETREGION_BOUND =>
+                                                        if List.exists (equal_places rho) other_rhos
+                                                        then ATTOP rho
+                                                        else actual'
+                                                      | SME.LETREC_BOUND =>
+                                                        let val all_other_rhos = map RegFlow.reachable_in_graph_with_insertion other_rhos
+                                                            val rho_related = RegFlow.reachable_in_graph_with_insertion rho
+                                                            val () = List.app visit rho_related
+                                                            val b = List.exists (List.exists is_visited) all_other_rhos
+                                                        in List.app unvisit rho_related
+                                                         ; (if b then ATTOP rho else actual')
+                                                        end
+                                                 end handle _ => ATTOP rho
+                                     in traverse f actuals nil
+                                     end
+                                   | _ => ( (if debug_which_at()
+                                             then log ("NOT SIMPLE - gives ATTOP for all regargs: " ^ Lvars.pr_lvar lvar
+                                                       ^ "; len(actuals) = " ^ Int.toString (length actuals)
+                                                       ^ "; len(eps) = " ^ Int.toString (length (#2 il))
+                                                       ^ "\n")
+                                             else ())
+                                          ; map (fn (rho, _) => ATTOP rho) actuals)
+                       in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
                              fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
                       end
                      | INTEGER(n, t, alloc) => INTEGER(n, t, Option.map (which_at sme) alloc)
