@@ -1,3 +1,5 @@
+(* Compile with mlkit -Pcee -no_cfold -maximum_inline_size 0 -no_gc *)
+
 local
 fun pr s = (print s; print "\n")
 

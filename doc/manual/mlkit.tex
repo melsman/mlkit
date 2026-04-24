@@ -4312,10 +4312,14 @@ allocation points.  Let an allocation point
 \begin{equation}
 \label{allocpoint}\fw{at}\,\rho
 \end{equation}
-be given.
+be given. Such an allocation point can be associated with the allocation of a
+constant value, an immediate closure, a record value, or the allocation of the
+result of a primitive operation. Another possibility is that the allocation
+point appears as an argument to a region-polymorphic function.
 \bigskip
 
-\noindent{\bf CASE A:} $\rho$ is a global region. Then \fw{attop} is used.
+\noindent{\bf CASE A:} The region $\rho$ is a global region.
+In this case \fw{attop} is used.
 There is a deficiency we have to admit here. The MLKit only puts
 \lstinline{region} bindings around expressions, not around declarations. Thus,
 if one writes
