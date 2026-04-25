@@ -26,10 +26,7 @@
 RegionPageMap*
 regionPageMapInsert(RegionPageMap* regionPageMap, uintptr_t addr)
 {
-  int index;
-  RegionPageMapHashList* newElem;
-
-  newElem = (RegionPageMapHashList*)malloc(sizeof(RegionPageMapHashList));
+  RegionPageMapHashList* newElem = (RegionPageMapHashList*)malloc(sizeof(RegionPageMapHashList));
   if ( newElem == NULL ) {
     die("regionPageMapInsert error");
   }
@@ -37,7 +34,7 @@ regionPageMapInsert(RegionPageMap* regionPageMap, uintptr_t addr)
   newElem->n = 1;
   newElem->addr = addr;
 
-  index = hashRegionPageIndex(addr);
+  int index = hashRegionPageIndex(addr);
   newElem->next = regionPageMap[index];
 
   regionPageMap[index] = newElem;
@@ -49,8 +46,7 @@ regionPageMapInsert(RegionPageMap* regionPageMap, uintptr_t addr)
 void
 regionPageMapZero(RegionPageMap* regionPageMap)
 {
-  int i;
-  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
+  for ( int i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
     {
       regionPageMap[i] = NULL;
     }
@@ -59,9 +55,7 @@ regionPageMapZero(RegionPageMap* regionPageMap)
 RegionPageMap*
 regionPageMapNew(void)
 {
-  RegionPageMap* regionPageMap;
-
-  regionPageMap = (RegionPageMap*)malloc(sizeof(long*) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
+  RegionPageMap* regionPageMap = (RegionPageMap*)malloc(sizeof(long*) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
   if ( regionPageMap == NULL ) {
     die("Unable to allocate memory for RegionPageMapHashTable");
   }
@@ -73,8 +67,7 @@ regionPageMapNew(void)
 RegionPageMap*
 regionPageMapIncr(RegionPageMap* regionPageMap, uintptr_t addr)
 {
-  RegionPageMapHashList* p;
-  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
+  for ( RegionPageMapHashList* p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
     {
       if ( p->addr == addr )
 	{
@@ -88,8 +81,7 @@ regionPageMapIncr(RegionPageMap* regionPageMap, uintptr_t addr)
 uintptr_t
 regionPageMapLookup(RegionPageMap* regionPageMap, uintptr_t addr)
 {
-  RegionPageMapHashList* p;
-  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
+  for ( RegionPageMapHashList* p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
     {
       if ( p->addr == addr )
 	{
@@ -102,15 +94,12 @@ regionPageMapLookup(RegionPageMap* regionPageMap, uintptr_t addr)
 void
 regionPageMapClear(RegionPageMap* regionPageMap)
 {
-  int i;
-  RegionPageMapHashList *p, *n;
-
-  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
+  for ( int i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
     {
-      p = regionPageMap[i];
+      RegionPageMapHashList *p = regionPageMap[i];
       while ( p )
 	{
-	  n = p->next;
+	  RegionPageMapHashList *n = p->next;
 	  free(p);
 	  p = n;
 	}
@@ -219,15 +208,13 @@ void printTopRegInfo() {
 void
 pp_gen(Gen *gen)
 {
-  Rp* rp;
-
   fprintf(stderr,"\n[Gen g%d at addr: %p, fp:%p, a:%p, b:%p\n",
 	  (is_gen_1(*gen)?1:0),
 	  gen,
 	  gen->fp,
 	  gen->a,
 	  rpBoundary(gen->a));
-  for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
+  for (Rp* rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
 #ifdef ENABLE_GEN_GC
     fprintf(stderr,"  Rp %p, next:%p, colorPtr:%p, data: %p, rp+1: %p\n",
 	    rp,
@@ -294,12 +281,11 @@ void printRegionStack() {
 inline size_t
 NoOfPagesInGen(Gen *gen)
 {
-  size_t i;
-  Rp *rp;
+  size_t i = 0;
 
   debug(printf("[NoOfPagesInGen..."));
 
-  for ( i = 0, rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+  for ( Rp* rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     i++;
 
   debug(printf("]\n"));
@@ -342,12 +328,11 @@ printFreeList()
 size_t
 size_free_list()
 {
-  Rp *rp;
   size_t i=0;
 
   LOCK_LOCK(FREELISTMUTEX);
 
-  for ( rp = global_freelist ; rp ; rp = rp-> n )
+  for ( Rp* rp = global_freelist ; rp ; rp = rp-> n )
     i++;
 
   LOCK_UNLOCK(FREELISTMUTEX);
@@ -382,8 +367,7 @@ alloc_new_page(Gen *gen)
   debug(printf("[alloc_new_page: gen: %p", gen);)
 
 #ifdef PROFILING
-  Ro *r;
-  r = get_ro_from_gen(*gen);
+  Ro *r = get_ro_from_gen(*gen);
 #endif /* PROFILING */
 
 #ifdef PROFILING
@@ -633,10 +617,6 @@ void free_lobjs(Lobjs* lobjs)
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
 void deallocateRegion(Context ctx) {
-#ifdef PROFILING
-  int i;
-#endif
-
   debug(printf("[deallocateRegion... top region: %p\n", TOP_REGION));
 
   CHECK_CTX("deallocateRegion");
@@ -645,7 +625,7 @@ void deallocateRegion(Context ctx) {
   callsOfDeallocateRegionInf++;
   regionDescUseInf -= (sizeRo-sizeRoProf);
   regionDescUseProfInf -= sizeRoProf;
-  i = NoOfPagesInRegion(TOP_REGION);
+  int i = NoOfPagesInRegion(TOP_REGION);
   noOfPages -= i;
   allocNowInf -= TOP_REGION->allocNow;
   allocProfNowInf -= TOP_REGION->allocProfNow;
@@ -678,7 +658,6 @@ void deallocateRegion(Context ctx) {
   TOP_REGION = TOP_REGION->p;
 
   debug(printf("]\n"));
-
   return;
 }
 
@@ -686,26 +665,33 @@ inline static Lobjs *
 alloc_lobjs(int n) {
   Lobjs* lobjs;
 #ifdef ENABLE_GC
-  char *p;
   size_t r;
-  size_t sz_bytes;
-  sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + sizeof(Rp);  /* ensure alignment on Rp boundaries */
-  p = malloc(sz_bytes);
+  size_t sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + sizeof(Rp);  /* ensure alignment on Rp boundaries */
+  char* p = malloc(sz_bytes);
   if ( p == NULL )
-    die("alloc_lobjs: malloc returned NULL");
-  if ( (r = (size_t)p % sizeof(Rp)) ) {
-    lobjs = (Lobjs*)(p + sizeof(Rp) - r);
-  } else {
-    lobjs = (Lobjs*)p;
-  }
+    {
+      die("alloc_lobjs: malloc returned NULL");
+    }
+  if ( (r = (size_t)p % sizeof(Rp)) )
+    {
+      lobjs = (Lobjs*)(p + sizeof(Rp) - r);
+    }
+  else
+    {
+      lobjs = (Lobjs*)p;
+    }
   //fprintf(stderr, "Allocated large obj: p=%p; r=%x; lobjs=%p; last_byte=%p; sz_bytes=%d\n", p, r, lobjs, p + sz_bytes, sz_bytes);
   if ( ! is_rp_aligned((size_t)lobjs) )
-    die("alloc_lobjs: large object is not properly aligned.");
+    {
+      die("alloc_lobjs: large object is not properly aligned.");
+    }
   lobjs->orig = p;
 #else
   lobjs = (Lobjs*)malloc(sizeof(uintptr_t)*n + sizeof(Lobjs));
   if ( lobjs == NULL )
-    die("alloc_lobjs: malloc returned NULL");
+    {
+      die("alloc_lobjs: malloc returned NULL");
+    }
 #endif /* ENABLE_GC */
   return lobjs;
 }
@@ -716,9 +702,6 @@ alloc_lobjs(int n) {
  *  The free list has to be empty.                                      *
  *----------------------------------------------------------------------*/
 void callSbrk() {
-  Rp *np, *old_free_list;
-  char *sb;
-  size_t temp;
 
 #ifdef PROFILING
   callsOfSbrk++;
@@ -729,7 +712,7 @@ void callSbrk() {
 
   /* For GC we require alignments according to the size of region pages! */
 
-  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + sizeof(Rp) );
+  char* sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + sizeof(Rp) );
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
@@ -737,6 +720,7 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
+  size_t temp;
   if (( temp = (size_t)(((uintptr_t)sb) % sizeof(Rp) ))) {
     sb = sb + sizeof(Rp) - temp;
   }
@@ -749,8 +733,8 @@ void callSbrk() {
     die("SBRK region page is not properly aligned.");
   }
 
-  old_free_list = global_freelist;
-  np = (Rp *) sb;
+  Rp* old_free_list = global_freelist;
+  Rp* np = (Rp *) sb;
   global_freelist = np;
 
   rp_total++;
@@ -1033,7 +1017,6 @@ void resetGen(Gen *gen)
 #endif /* ENABLE_GC */
 
     MAYBE_DEFINE_CONTEXT;
-
     (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
     (clear_fp(gen->fp))->n = NULL;
@@ -1050,19 +1033,12 @@ void resetGen(Gen *gen)
 Region
 resetRegion(Region rAdr)
 {
-  Ro *r;
-
-#ifdef PROFILING
-  int j;
-#endif
-
   debug(printf("[resetRegions..."));
-
-  r = clearStatusBits(rAdr);
+  Ro* r = clearStatusBits(rAdr);
 
 #ifdef PROFILING
   callsOfResetRegion++;
-  j = NoOfPagesInRegion(r);
+  int j = NoOfPagesInRegion(r);
 
   /* There is always at-least one page in a generation. */
   noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION;
@@ -1079,7 +1055,6 @@ resetRegion(Region rAdr)
 #endif /* ENABLE_GEN_GC */
 
   free_lobjs(r->lobjs);
-
   r->lobjs = NULL;
 
 #ifdef PROFILING
@@ -1088,9 +1063,21 @@ resetRegion(Region rAdr)
 #endif
 
   debug(printf("]\n"));
-
   return rAdr; /* We preserve rAdr and the status bits. */
 }
+
+// ----------------------------------------------------------------
+// maybeResetRegion(r):
+//  Reset region r if the inf-bit and the atbot-bit is set
+// ----------------------------------------------------------------
+inline void
+maybeResetRegion(Region r) {
+  if ( is_inf_and_atbot(r) )
+    {
+      resetRegion(r);
+    }
+}
+
 
 /*-------------------------------------------------------------------------*
  * deallocateRegionsUntil:                                                 *

@@ -875,6 +875,7 @@ static void mkSMLMinus(char * s) {
 String
 REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
 {
+  maybeResetRegion(rAddr);
   char buf[64];
   sprintf(buf, "%.12g", get_d(arg));
   mkSMLMinus(buf);
@@ -892,6 +893,7 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
 String
 REG_POLY_FUN_HDR(generalStringOfFloat, Region rAddr, String format, size_t f)
 {
+  maybeResetRegion(rAddr);
   size_t size = snprintf(NULL, 0, format->data, get_d(f)) + 1;
   char *buf = malloc(size);
   snprintf(buf, size, format->data, get_d(f));

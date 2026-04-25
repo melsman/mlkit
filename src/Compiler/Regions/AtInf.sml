@@ -429,6 +429,36 @@ structure AtInf : AT_INF =
   (*  and inserts storage modes   *)
   (********************************)
 
+  (* For primitives and for calls to simple functions declared non-locally, we use
+     a modular scheme for assigning storage modes:
+        If a region argument is aliased with another argument or a region in the
+        type of a live variable, the region is passed attop. Otherwise:
+         (1) if the region is LETREGION-bound, it is passed atbot
+         (2) if the region is LETREC-bound, it is passed sat
+  *)
+  fun sma_modular_call sme actuals =
+      let fun f (actual as (rho,_),others) =
+              case which_at sme actual of
+                  actual' as ATTOP _ => actual'
+                | actual' =>
+                  let val other_rhos = map (fn (r,_) => r) others
+                  in case SME.retrieve_regvar_env(rho,#1 sme) of
+                         SME.LETREGION_BOUND => (* leaf *)
+                         if List.exists (equal_places rho) other_rhos
+                         then ATTOP rho
+                         else actual'
+                       | SME.LETREC_BOUND =>
+                         let val all_other_rhos = map RegFlow.reachable_in_graph_with_insertion other_rhos
+                             val rho_related = RegFlow.reachable_in_graph_with_insertion rho
+                             val () = List.app visit rho_related
+                             val b = List.exists (List.exists is_visited) all_other_rhos
+                         in List.app unvisit rho_related
+                          ; (if b then ATTOP rho else actual')
+                         end
+                  end handle SME.RegvarEnv => ATTOP rho
+      in traverse f actuals nil
+      end
+
   fun sma0 (pgm0 as PGM{expression=trip,
                         export_datbinds,
                         import_vars,
@@ -451,28 +481,8 @@ structure AtInf : AT_INF =
                                  map (which_at sme) actuals  (* also liveset here*)
                                else
                                  case #2 il of
-                                     [_] =>  (* single arrow effect *)
-                                     let fun f (actual as (rho,_),others) =
-                                             case which_at sme actual of
-                                                 actual' as ATTOP _ => actual'
-                                               | actual' =>
-                                                 let val other_rhos = map (fn (r,_) => r) others
-                                                 in case SME.retrieve_regvar_env(rho,#1 sme) of
-                                                        SME.LETREGION_BOUND =>
-                                                        if List.exists (equal_places rho) other_rhos
-                                                        then ATTOP rho
-                                                        else actual'
-                                                      | SME.LETREC_BOUND =>
-                                                        let val all_other_rhos = map RegFlow.reachable_in_graph_with_insertion other_rhos
-                                                            val rho_related = RegFlow.reachable_in_graph_with_insertion rho
-                                                            val () = List.app visit rho_related
-                                                            val b = List.exists (List.exists is_visited) all_other_rhos
-                                                        in List.app unvisit rho_related
-                                                         ; (if b then ATTOP rho else actual')
-                                                        end
-                                                 end handle SME.RegvarEnv => ATTOP rho
-                                     in traverse f actuals nil
-                                     end
+                                     [_] =>  (* SIMPLE: single arrow effect, function is defined elsewhere. *)
+                                     sma_modular_call sme actuals
                                    | _ => ( (if debug_which_at()
                                              then log ("NOT SIMPLE - gives ATTOP for all regargs: " ^ Lvars.pr_lvar lvar
                                                        ^ "; len(actuals) = " ^ Int.toString (length actuals)
@@ -584,12 +594,14 @@ structure AtInf : AT_INF =
                        EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2},  (* no need for analysis *)
                               sma_trip sme tr1,sma_trip sme tr2)
                      | CCALL ({name, mu_result, rhos_for_result}, trs) =>
-                         CCALL ({name = name, mu_result = mu_result,
-                                 rhos_for_result =
-                                     map (fn ((rho, liveset), i_opt) =>
-                                          (which_at sme (rho, liveset), i_opt))
-                                     rhos_for_result},
-                                map (sma_trip sme) trs)
+                       let val (actuals, iopts) = ListPair.unzip rhos_for_result
+                           val actuals' = sma_modular_call sme actuals
+                           val rhos_for_result' = ListPair.zipEq (actuals',iopts)
+                                                  handle _ => die "ccall.zip"
+                       in CCALL ({name = name, mu_result = mu_result,
+                                  rhos_for_result = rhos_for_result'},
+                                 map (sma_trip sme) trs)
+                       end
                      | BLOCKF64 (alloc, trs) => BLOCKF64(which_at sme alloc,map (sma_trip sme) trs)
                      | SCRATCHMEM (n,alloc) => SCRATCHMEM(n,which_at sme alloc)
                      | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)

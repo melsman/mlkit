@@ -136,10 +136,7 @@ REG_POLY_FUN_HDR(inputStream, Region rd, uintptr_t is1, size_t n)
 
   is = (FILE *)untag_scalar(is1);
 
-  if ( is_inf_and_atbot(rd) )
-    {
-      resetRegion(rd);
-    }
+  maybeResetRegion(rd);
 
   //  i = fread(buf,1,n,is);
   //  return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
@@ -626,13 +623,8 @@ REG_POLY_FUN_HDR(sml_poll, Region listR, Region tupR, Context ctx, uintptr_t pde
     pollfds[i].revents = 0;
   }
 
-  if ( is_inf_and_atbot(listR) ) {
-    resetRegion(listR);
-  }
-
-  if ( is_inf_and_atbot(tupR) ) {
-    resetRegion(tupR);
-  }
+  maybeResetRegion(listR);
+  maybeResetRegion(tupR);
 
   int res = poll(pollfds, n, tm);
 
