@@ -721,13 +721,14 @@ static String
 REG_POLY_FUN_HDR(sml_PosixName, Region rs, size_t e, struct syserr_entry arr[], size_t amount)
 {
   maybeResetRegion(rs);
+  if ( amount == 0 ) { return NULL; }
   size_t i = 0;
-  size_t j = amount;
+  size_t j = amount - 1;
   e = convertIntToC(e);
   while (i <= j)
   {
     size_t k = i + (j-i) / 2;
-    size_t n = arr[k].number - e;
+    int n = arr[k].number - e;
     if (n == 0)
     {
       return REG_POLY_CALL(convertStringToML, rs, arr[k].name);

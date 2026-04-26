@@ -310,39 +310,6 @@ REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e)
   return REG_POLY_CALL(convertStringToML, rAddr, ml_s->data);
 }
 
-/* explodeStringML(rAddr, str): convert a string to a char list.
- * A list is kept in one region, pointed to by rAddr.  */
-
-uintptr_t *
-REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
-{
-  maybeResetRegion(rAddr);
-  uintptr_t *res, *consPtr, *pair, *tpair;
-  size_t sz = sizeStringDefine(str);
-  if ( sz == 0 )
-    {
-      makeNIL(res);
-      return res;
-    }
-  // save first char such that we can return a pointer to it
-  char* p = str->data;
-  REG_POLY_CALL(allocPairML, rAddr, pair);
-  first(pair) = convertIntToML (*p);
-  makeCONS(pair, consPtr);
-  res = consPtr;
-  for ( size_t i = 1 ; i < sz; i++ )
-    {
-      REG_POLY_CALL(allocPairML, rAddr, tpair);
-      first(tpair) = convertIntToML (*p++);
-      makeCONS(tpair, consPtr);
-      second(pair) = (size_t)consPtr;
-      pair = tpair;
-    }
-  makeNIL(consPtr);
-  second(pair) = (size_t)consPtr;
-  return res;
-}
-
 // for debugging */
 void
 printNum(ssize_t n)

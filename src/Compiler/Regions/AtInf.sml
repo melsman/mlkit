@@ -422,7 +422,7 @@ structure AtInf : AT_INF =
 
   (* traverse a list and apply the supplied function to each element and the other elements *)
   fun traverse f nil acc = nil
-    | traverse f (x::xs) acc = f (x,rev acc @ xs) :: traverse f xs (x::acc)
+    | traverse f (x::xs) acc = f (x,List.revAppend (acc,xs)) :: traverse f xs (x::acc)
 
   (********************************)
   (*  sma0 traverses the program  *)
