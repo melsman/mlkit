@@ -303,7 +303,7 @@ MLKit Version~4 extends MLKit Version~3 with the following features:
 \begin{enumerate}
 \item Support for pointer tracing garbage collection. Pointer tracing garbage
   collection works well together with the region memory model.  While most
-  de-allocations can be efficiently performed by region de-allocation, there are
+  deallocations can be efficiently performed by region deallocation, there are
   some uses of memory for which life time prediction is difficult. In these
   cases pointer tracing garbage collection does a good job in collaboration with
   region memory management \cite{hallenberg99,het02}.
@@ -355,7 +355,7 @@ Github web site:
 September, 2001\\[5mm]
 Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, \\
 Tommy H\o jfeld Olesen, and Peter Sestoft \\[5mm]
-Revised 2002, 2004, 2005, 2021 by Martin Elsman
+Revised 2002, 2004, 2005, 2021, 2025, 2026 by Martin Elsman
 \end{flushright}
 
 \newpage
@@ -452,7 +452,7 @@ closely (for example lists and, in functional languages, function closures and
 suspensions).
 
 The beauty of the stack discipline (apart from the fact that it is often very
-efficient in practice) is that it couples allocation points and de-allocation
+efficient in practice) is that it couples allocation points and deallocation
 points in a manner that is intelligible to the programmer. C programmers
 appreciate that whatever memory is allocated for local variables in a procedure
 ceases to exist (and take up memory) when the procedure returns.
@@ -465,7 +465,7 @@ stack space proportional to $N$.
 
 By contrast, programmers have much less help when it comes to managing the heap.
 Two approaches prevail. The first approach is that the programmer manages memory
-herself, using explicit allocation and de-allocation instructions (e.g.,
+herself, using explicit allocation and deallocation instructions (e.g.,
 %
 \index{malloc@\texttt{malloc}}
 %
@@ -475,7 +475,7 @@ herself, using explicit allocation and de-allocation instructions (e.g.,
 %
 \lstinline{free} in C). For non-trivial programs this can be a very significant
 burden, because it is, in general, very hard to make sure that none of the
-values that reside in the memory that one wishes to de-allocate are not needed
+values that reside in the memory that one wishes to deallocate are not needed
 for the rest of the computation.  This puts the programmer in a difficult
 position. If one is too eager to reclaim memory in the heap, the program might
 crash under some peculiar circumstances, which might be hard to find during
@@ -487,7 +487,7 @@ The other prevailing approach is to use automatic garbage collection in the
 heap.  Some implementors of some languages even dispense with the stack
 entirely, relying only on a heap with garbage collection.  Garbage collection
 techniques separate allocation, which is done by the programmer, from
-de-allocation, which is done by the garbage collector.  At first, this might
+deallocation, which is done by the garbage collector.  At first, this might
 seem like the perfect solution: no longer does the programmer have to worry
 about whether memory that is being reclaimed really is dead, for the garbage
 collector only reclaims memory that cannot be reached by the rest of the
@@ -501,7 +501,7 @@ longer used.  However, such tricks often rely on assumptions about the code that
 cannot be checked by the compiler and that are likely to be invalidated as the
 program evolves.
 
-\section{Checked De-Allocation of Memory}
+\section{Checked Deallocation of Memory}
 \label{checked.sec}
 Regions offer an alternative to the two approaches to memory management
 discussed in the previous section.  The runtime model is very simple, at least
@@ -546,7 +546,7 @@ is not necessarily known when the region is allocated.  Thus a region can grow
 gradually (and many regions can grow at the same time) so one might think of the
 region stack as a stack of heaps. However, the region stack really is a stack in
 the sense that (a) if region $r_1$ is allocated before region $r_2$ then $r_2$
-is de-allocated before $r_1$ and (b) when a region is de-allocated, all the
+is deallocated before $r_1$ and (b) when a region is deallocated, all the
 memory occupied by that region is reclaimed in one constant time operation.
 
 Values that reside in one region are often, but not always, of the same type. A
@@ -561,10 +561,10 @@ reference-tracing
 \index{garbage collection}
 %
 garbage collection in combination with region memory management
-\cite{hallenberg99}. While most de-allocations can be efficiently performed by
-region de-allocation, there are some uses of memory for which it is difficult to
-predict when memory can be de-allocated.  In these cases reference-tracing
-garbage collection does a good job in combination with region de-allocation.
+\cite{hallenberg99}. While most deallocations can be efficiently performed by
+region deallocation, there are some uses of memory for which it is difficult to
+predict when memory can be deallocated.  In these cases reference-tracing
+garbage collection does a good job in combination with region deallocation.
 
 In many cases however, one can do just fine without reference-tracing garbage
 collection. Without reference-tracing garbage collection the region stack is the
@@ -586,7 +586,7 @@ heap with no garbage collection, which again would not be sufficient.
 
 But when one has many regions, one obtains the possibility of distinguishing
 between values according to what region they reside in.  MLKit has
-operations for allocating, de-allocating, and extending regions. But it also has
+operations for allocating, deallocating, and extending regions. But it also has
 an explicit operation for
 %
 \index{region!resetting}
@@ -679,7 +679,7 @@ to make decisions that can make the program crash; many programs do not need
 $\resetf$ and hence cannot crash (unless we have bugs in our system).
 
 All other region directives, including directives for allocation and
-de-allocation of regions, are inferred automatically by the compiler.  This
+deallocation of regions, are inferred automatically by the compiler.  This
 happens through a series of fairly complex program analyses and transformations
 (in the excess of twenty-five passes involving three typed intermediate
 languages). These analyses are formally defined and the central one, called
@@ -715,7 +715,7 @@ source program.
 To sum up, the key advantages obtained by using regions compared to more
 traditional memory management schemes are
 \begin{enumerate}
-\item safety of de-allocation is checked by the compiler
+\item safety of deallocation is checked by the compiler
 \item the compiler can in many cases spot potential space leaks
 \item region management is under the control of the user, provided one
   understands the principles of region inference
@@ -816,7 +816,7 @@ Chris Reade's Game of Life program.}
 \end{figure}
 Despite the extensive use of higher-order functions here, there is a great deal
 of stack structure in this computation. For example, the \lstinline{survivors}
-list can be allocated in a local region which can be de-allocated after the list
+list can be allocated in a local region which can be deallocated after the list
 has been appended (\lstinline{@}) to the \lstinline{newborn} list. The
 computation of \lstinline{survivors}, in turn, involves the creation of a
 closure for \lstinline{(twoorthree o liveneighbours)} and additional creation of
@@ -916,7 +916,7 @@ reaches 500Kb and stays there for the remaining generations.}
 \caption{ Using double-copying in the game of Life: (a) generation number $n$
   resides in region \lstinline{r0}; (b) generation $(n+1)$ has been built in
   \lstinline{r1}; (c) region \lstinline{r0} has been reset, the new generation copied
-  into \lstinline{r0} and \lstinline{r1} has been de-allocated.}  \vskip5mm \hrule
+  into \lstinline{r0} and \lstinline{r1} has been deallocated.}  \vskip5mm \hrule
 \label{doublecopy.fig}
 \end{figure}
 
@@ -926,7 +926,7 @@ The above device, which we refer to as
 %
 {\em double copying}, can be seen as a much expanded version of what is often
 called ``tail recursion optimisation''.  In the case of regions, not just the
-stack space, but also region space, is re-used.  Indeed, double copying is
+stack space, but also region space, is reused.  Indeed, double copying is
 similar to invoking a copying garbage collector on specific regions that are
 known not to have live pointers into them.  But by doing the copying ourselves,
 we have full control over when it happens, we know that the cost of copying will
@@ -1115,10 +1115,10 @@ region variables}, which we shall not discuss in this document.
 It is often, but not always, the case that all values that reside in the same
 region have the same type (considered as representations of ML values).
 
-\section{Allocation and De-Allocation of Regions}
+\section{Allocation and Deallocation of Regions}
 \label{aldeal.sec}
 
-The analysis that decides when regions should be allocated and de-allocated is
+The analysis that decides when regions should be allocated and deallocated is
 called {\em region inference}. Region inference inserts several forms of memory
 management directives as directives into the program.  The target language of
 region inference is called
@@ -1127,7 +1127,7 @@ region inference is called
 %
 $\RegExp$.
 
-In $\RegExp$, region allocation and de-allocation are explicit, they are always
+In $\RegExp$, region allocation and deallocation are explicit, they are always
 paired, and they follow the syntactical structure of the source program.  If $e$
 is an expression in $\RegExp$, then so is%
 %
@@ -1299,7 +1299,7 @@ The
 \index{runtime system}
 %
 runtime system is written in C. It is small (less than 30Kb of code when
-compiled).  It contains operations for allocating and de-allocating regions,
+compiled).  It contains operations for allocating and deallocating regions,
 extending regions, obtaining more space from the operating system, recording
 region profiling information, and performing low-level operations for use by the
 Standard ML Basis Library.
@@ -1310,7 +1310,7 @@ It is possible to call
 %
 C functions from MLKit code if you use the native backend.  MLKit takes care
 of the memory allocation, by allocating regions for the result of the call
-before the call and de-allocating the regions at some point after the call.  The
+before the call and deallocating the regions at some point after the call.  The
 C functions can build ML data structures such as lists through abstract
 operations provided by the MLKit runtime system. See Chapter~\ref{ccall.sec} for
 further details.
@@ -1435,7 +1435,7 @@ records and selection of record components. We also use records to introduce
 \index{effect}
 %
 {\em effects}, which are crucial for understanding when regions are allocated
-and de-allocated.
+and deallocated.
 
 \section{Syntax}
 
@@ -1598,14 +1598,14 @@ reducing the conditional to its \lstinline{then} branch.
    end
 \end{smlcode}
 \caption{Region inference decides that the pair is to be allocated in a local,
-  finite region; the region will be de-allocated as soon as the pair becomes
+  finite region; the region will be deallocated as soon as the pair becomes
   garbage.}
 \medskip\hrule
 \label{elimpair.fig}
 \end{figure}
 During evaluation, a region (denoted by \lstinline{r9}) is introduced before the pair
 is allocated; it remains on the region stack until the projection of the pair is
-evaluated, after which the region is de-allocated.
+evaluated, after which the region is deallocated.
 
 The ``\lstinline{:1}'' on the binding occurrences of \lstinline{r9} is a multiplicity
 indicating that there is only one store operation into the region. (The
@@ -1619,9 +1619,9 @@ little region on the runtime stack.
 
 But how does the MLKit know that it is safe to
 %
-\index{region!de-allocation}
+\index{region!deallocation}
 %
-de-allocate \lstinline{r9} when the
+deallocate \lstinline{r9} when the
 %
 \index{region@\texttt{region}}
 %
@@ -1784,7 +1784,7 @@ of type \lstinline{Int31.int} and \lstinline{Int63.int} are represented unboxed.
 garbage collection is enabled, the structure \lstinline{Int} is identical to the
 structure \lstinline{Int63}. When garbage collection is disabled, the structure \lstinline{Int} is identical to the structure \lstinline{Int64}.
 
-The following operations on integers are pre-defined at top level:
+The following operations on integers are predefined at top level:
 %
 \index{=@\texttt{=}}%
 \index{<>@\texttt{<>}}%
@@ -2584,7 +2584,7 @@ list into the same region:
 \end{eqnarray*}
 As we saw in Section~\ref{life.sec}, there are cases where it is useful to copy
 a list from one region into another region, so as to make it possible to
-de-allocate the old region. This copying can be used as a kind of
+deallocate the old region. This copying can be used as a kind of
 programmer-controlled garbage collection in cases where garbage has accumulated
 in the original region.
 
@@ -2926,7 +2926,7 @@ lifetimes.
 
 With region inference, however, the list bound to \lstinline{list} will stay
 allocated throughout the evaluation of the remainder of the \lstinline{let}
-expression.\footnote{One can force de-allocation of the list by inserting
+expression.\footnote{One can force deallocation of the list by inserting
 \lstinline!val _ = resetRegions(list)! after the declaration of \lstinline{n};
 but, as we shall see, there are less draconian ways of achieving the same
 result.}
@@ -3058,7 +3058,7 @@ tail recursion; the reader will see it employed several times in what follows.
 %---------------------------------------------------------
 
 ``Space leak'' is the informal term used when a program uses much more memory
-than one would expect, typically because of memory not being re-cycled as early
+than one would expect, typically because of memory not being recycled as early
 as it could (or not at all).
 
 If a region-polymorphic function with region-annotated type scheme $\sigma$ has
@@ -3181,7 +3181,7 @@ better than the first: \lstinline{f} still has a $\Put$ effect on the regions
 containing \lstinline{x}, but the difference is that these are now represented
 by bound region variables in the type scheme of \lstinline{f}. This
 quantification has the advantages that (1) allocation of space for the list is
-delayed until the list is actually used and (2), the list can be de-allocated
+delayed until the list is actually used and (2), the list can be deallocated
 after the calls have been made (whereas in the original version, \lstinline{x}
 occurs free in the declaration of \lstinline{f} and will be kept alive as long
 as \lstinline{f} can be called.)
@@ -3612,7 +3612,7 @@ regions of $v$ that hold otherwise unrelated parts of $v$.
 
 The automatic memory management that we have discussed for lists extends to
 other recursive data types without problems. For example, binary trees are put
-into regions and are subsequently de-allocated (in a constant time operation)
+into regions and are subsequently deallocated (in a constant time operation)
 when the region is popped. The next section goes through an example to
 illustrate the point.
 
@@ -3689,7 +3689,7 @@ indeed it is. Here is the proof:
     end
 \end{smlcode}
 The exomorphic behavior of \kw{balpre} causes the tree to be allocated in region
-\kw{r131}, which is de-allocated after the call to \kw{preord}.
+\kw{r131}, which is deallocated after the call to \kw{preord}.
 
 This is the kind of certainty about lifetimes we are aiming at.  Imagine, for
 example, that the trees under consideration were terms representing different
@@ -3980,7 +3980,7 @@ expression of the form
 \index{let region@\texttt{let region}}%
 %
 \lstinline!let region $\rho$ in $e$ end!; if $e$ evaluates to an exception
-packet, then the region bound to $\rho$ is de-allocated and the packet is also
+packet, then the region bound to $\rho$ is deallocated and the packet is also
 the result of evaluating the \lstinline{let region} expression.
 
 We have not attempted to design an analysis that would estimate how far down the
@@ -4014,7 +4014,7 @@ evaluated and stored in some region $\rho$. This region will always have
 multiplicity one and therefore be a finite region which is put on the stack.
 Then $e_1$, the result of compiling $\mathit{exp}_1$, is evaluated.  If $e_1$
 terminates with a value, the \lstinline!let region! construct will take care of
-de-allocating the handler.  If $e_1$ terminates with an exception, however, $f$
+deallocating the handler.  If $e_1$ terminates with an exception, however, $f$
 is applied.
 
 Thus the combined cost of raising an exception and searching for the appropriate
@@ -5036,12 +5036,6 @@ containing the file name to be reset upon each iteration.  As it turns out,
 \kw{readWord} will always try to store the string it creates at the bottom of
 the region in question.
 
-In general however, when splitting a program unit into two, one may have to
-insert explicit $\resetr$ into the second unit, when operations from the first
-unit are called. This extra resetting may be necessary because formal region
-parameters of exported functions are connected to global regions in the region
-flow graph (cf., rule B3).
-
 \bigskip
 \hrule
 \begin{smlcode}
@@ -5357,7 +5351,7 @@ $$\{\Get(\kw{r1}), \Get(\kw{r9}), \Get(\kw{r19})\}$$ Notice that \kw{r9}
 occurs free in the type of the lambda abstraction.  But, as pointed out in
 Section~\ref{effects.sec}, the criterion
 %
-\index{region!de-allocation}%
+\index{region!deallocation}%
 %
 for putting a \fw{region} binding of $\rho$ around an expression $e$ is that
 $\rho$ occurs free neither in the type with place of $e$ nor in the type scheme
@@ -5551,14 +5545,14 @@ never region-polymorphic. So in an expression of the form
 all the uses of $\kw{f}$ use the same regions. Indeed, because \kw{f} occurs
 free in the type environment while region inference analyses the body of the
 lambda abstraction, none of the regions that appear in the type of \kw{f} will
-be de-allocated inside the body of the lambda abstraction. Also, such a region
+be deallocated inside the body of the lambda abstraction. Also, such a region
 must be bound outside the lambda abstraction, so any attempt to reset such a
 region inside the body of the abstraction will cause the storage mode analysis
 to complain (by Rule (B1) of Section~\ref{sma.sec}).
 
 Therefore, when a function $f$ is passed as argument to another function $g$, as
 in the expression \kw{$g$($f$)}, first regions are allocated for the use of $f$,
-then $g$ is called, and finally, the regions are de-allocated (provided they are
+then $g$ is called, and finally, the regions are deallocated (provided they are
 not global regions).  Whether the \fw{let region} construct thus introduced
 encloses the call site immediately, as in
 \begin{center}
@@ -5569,7 +5563,7 @@ or further out, as in
   \lstinline!let region $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$) $\ldots$ end!
 \end{center}
 depends on the type and effect of the expression \kw{$g$($f$)} in the usual way:
-regions can be de-allocated when they occur free neither in the type with place
+regions can be deallocated when they occur free neither in the type with place
 of the expression nor in the type environment.
 
 \section{Examples: \texttt{map} and \texttt{foldl}}
@@ -5624,7 +5618,7 @@ up in \kw{r43}, the region of the successor function. Instead, they are put in
 local regions bound to \kw{r35}, one closure in each region.  Also, if we had
 given some more complicated argument to \kw{map}, the body of that function
 could include local \fw{region} declarations. For each list element, regions
-would then be allocated, used, and then de-allocated before proceeding to the
+would then be allocated, used, and then deallocated before proceeding to the
 next list element.
 
 So it might appear that higher-order functions are nothing to worry about when
@@ -5826,7 +5820,7 @@ MLKit's unboxing of function arguments, but in general, one can rely on unboxing
 to ensure tail-calls only when the elements of the argument tuple themselves are
 unboxed; otherwise there is a risk that, for each invocation, fresh regions are
 introduced to hold the arguments to the call, and the call would need to return
-to de-allocate these regions.
+to deallocate these regions.
 
 MLKit can transform a call into a \kw{jmp} tail call even in the case that
 the call appears in the body of a \fw{fn} expression.  Consider the following
@@ -5881,7 +5875,7 @@ where \kw{funcall} is the mnemonic used for non-tail calls to region-polymorphic
 functions. One example is the call to \kw{h} in Figure~\ref{tail2.fig}. Here the
 call to \kw{h} takes a region argument \kw{r13} and an ordinary argument
 \kw{(v134 - 1)}; the call to \kw{h} returns a closure, which needs to be applied
-to \kw{v135} before the function \kw{g} can de-allocate the region \kw{r13} and
+to \kw{v135} before the function \kw{g} can deallocate the region \kw{r13} and
 return.
 
 This case completes all possible cases of applications of region-polymorphic
@@ -6594,7 +6588,7 @@ MulExp program:\footnote{Compiled with \boxml{mlkit -no\_gc
   val r = fncall f 5
 \end{smlcode}
 Notice here that region \kw{r9}, which contains the list \kw{[1]}, is
-de-allocated before the function \kw{f} is applied to the value \kw{5}. If we
+deallocated before the function \kw{f} is applied to the value \kw{5}. If we
 chose to run this program together with a reference tracing garbage collector, a
 fatal error could occur: The memory that contains the list \kw{[1]} could be
 reused for other purposes at the time the garbage collector tries to trace the
@@ -7338,8 +7332,8 @@ gives
 
 In the \kw{INFINITE REGIONS} part, we see the number of calls to infinite region
 operations such as \kw{allocateRegionInf} and \kw{alloc}. The program allocates
-81050 infinite regions and de-allocates 81044; the six global regions are not
-de-allocated before the region statistics is printed and the program terminates.
+81050 infinite regions and deallocates 81044; the six global regions are not
+deallocated before the region statistics is printed and the program terminates.
 The program allocates 1060622 objects in infinite regions. Infinite regions have
 been reset 85882 times. The \kw{deallocateRegionsUntil} operation is called
 whenever an exception is raised, thus, we see that no exceptions were raised by
@@ -7355,7 +7349,7 @@ shows memory utilisation for infinite regions at the moment where the program
 has allocated the largest amount of memory in infinite regions. We also see that
 the maximum allocated space in region pages is 121936 bytes.
 
-In the \kw{STACK} part, we see that the program allocates and de-allocates the
+In the \kw{STACK} part, we see that the program allocates and deallocates the
 same number of finite regions. We also see that the space used for finite
 regions is 144 bytes and that the total use of stack space is 19792 bytes
 (excluding space used to hold profiling information). The stack size values
@@ -7792,7 +7786,7 @@ cannot statically determine the amount of space needed to store the
 value. Instead, regions are passed to the C function as additional arguments and
 the C function must then explicitly allocate space in these regions as needed,
 using a C function provided by the runtime system. The order in which these
-additional arguments are passed to the C function is determined by a pre-order
+additional arguments are passed to the C function is determined by a preorder
 traversal of the result type $\tau$.  For a list type, regions are given in the
 order:
 \begin{enumerate}
@@ -7804,7 +7798,7 @@ We now give an example to show what extra arguments are passed to a
 C function, given the result type. In the example, we use the following
 (optional) naming convention:
 names of arguments holding addresses of
-pre-allocated space in regions
+preallocated space in regions
 start with \kw{vAddr}, while names of arguments
 holding addresses of region descriptors (to be used for allocation in a
 region) start with \kw{rAddr}.
@@ -7814,12 +7808,12 @@ region) start with \kw{rAddr}.
   \kw{vAddrPair}, \kw{rAddrLPairs}, \kw{rAddrEPairs}, \kw{rAddrEStrings} and
   \kw{vAddrReal}, see Figure \ref{args_ex1.fig}.
 
-  Here \kw{vAddrPair} holds an address pointing to pre-allocated storage in
+  Here \kw{vAddrPair} holds an address pointing to preallocated storage in
   which the tuple of the list and the (pointer to the) real should reside. The
   argument \kw{rAddrLPairs} holds the region address for the auxiliary pairs of
   the list. Similarly, the arguments \kw{rAddrEPairs} and \kw{rAddrEStrings}
   hold region addresses for element pairs and strings, respectively. The
-  argument \kw{vAddrReal} holds the address for pre-allocated storage for the
+  argument \kw{vAddrReal} holds the address for preallocated storage for the
   real.
 \end{example}
 
@@ -7867,14 +7861,14 @@ region) start with \kw{rAddr}.
 
 \end{picture}
 \caption{The order of pointers to allocated space and infinite regions is
-  determined from a pre-order traversal of the result type $(\kw{int} \ast
+  determined from a preorder traversal of the result type $(\kw{int} \ast
   \kw{string}) ~\kw{list} \ast \kw{real}$.}
 \label{args_ex1.fig}
 \end{center}
 \hrule
 \end{figure}
 
-Additional arguments holding pointers to pre-allocated space and
+Additional arguments holding pointers to preallocated space and
 infinite regions are passed to the C function prior to the ML
 arguments. Consider again the ML declaration
 \begin{center}
@@ -7889,7 +7883,7 @@ The C function $\mathit{c\_func}$ must then be declared as
 \end{eqnarray}
 \noindent
 where $\mathit{addr}_1$, $\ldots$, $\mathit{addr}_m$ are pointers to
-pre-allocated space and infinite regions as described above.
+preallocated space and infinite regions as described above.
 
 
 %========================================
@@ -8413,7 +8407,7 @@ macro definition
 \end{scriptcode}
 
 Now, for the MLKit to make correct, that is safe, decisions about when to
-de-allocate regions, the endomorphic properties of a C function must be
+deallocate regions, the endomorphic properties of a C function must be
 expressed in the region-annotated type scheme for value identifiers to which the
 C function is bound. The programmer can tell the MLKit about region endomorphic
 behavior of a C function by using type variables.  For example, here is an ML
@@ -8696,7 +8690,7 @@ comments.)
   Function \index{change_elem@\texttt{change\_elem}}\kw{change\_elem} shows the
   use of the macro \kw{elemRecordML}. The result type is \kw{string*int}. The
   function swaps the two elements in the pair. MLKit passes an address to
-  pre-allocated space for the result pair, and an infinite region for the result
+  preallocated space for the result pair, and an infinite region for the result
   string.
 
   At first thought it should be enough to just swap the two arguments, and not
@@ -8715,7 +8709,7 @@ comments.)
 \end{scriptcode}
   This function may work sometimes but it is not safe! Region inference expects
   the result string to be allocated in \kw{stringRho}, and may therefore
-  de-allocate the region containing the argument string, \kw{secondElem\_ml},
+  deallocate the region containing the argument string, \kw{secondElem\_ml},
   while the string in the returned pair is still live. The safe version of
   \verb|change_elem| is found in \kw{libmylib.c}. See
   Section~\ref{C_polymorphism.sec} for inspiration to how a safe non-copying
