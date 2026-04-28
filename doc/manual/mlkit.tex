@@ -6,7 +6,7 @@
 %\usepackage{times}                % times font
 \usepackage{type1cm}               % traditional font - quite thin for screen reading
 \renewcommand{\ttdefault}{cmtt}    % smaller tt-font
-\newcommand{\docversion}{4.7.16}
+\newcommand{\docversion}{4.7.22}
 \usepackage{alltt}
 \makeindex
 \input{genericmac}
@@ -18,7 +18,7 @@
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
-\date{December 15, 2025 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
+\date{April 28, 2026 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
 \raggedbottom
 
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
@@ -100,28 +100,28 @@ Infinite (\lstinline!$\rho$:INF!)& All other regions. At runtime, an infinite re
 %---------------------------------------------------------
 \chapter*{Preface}
 %---------------------------------------------------------
-The MLKit is a compiler infrastructure for
+MLKit is a compiler infrastructure for
 %
 \index{Standard ML}%
 %
-the Standard ML programming language \cite{mthm97}. The MLKit supports all of
+the Standard ML programming language \cite{mthm97}. MLKit supports all of
 Standard ML, including Modules and most parts of the SML Basis Library
-\cite{basislib2004}.  The MLKit features a region-based native backend that
+\cite{basislib2004}.  MLKit features a region-based native backend that
 generates efficient x64 machine code. This version of the compiler is also named
-MLKit with Regions. The MLKit also features a
+MLKit with Regions. MLKit also features a
 %
 \index{JavaScript backend}%
 %
-JavaScript backend, which generates code for execution in web browsers. The
-MLKit with Regions, which this report is about, is intended for the development
-of stand-alone applications that must be reliable, fast, and space efficient.
+JavaScript backend, which generates code for execution in web browsers. MLKit
+with Regions, which this report is about, is intended for the development of
+stand-alone applications that must be reliable, fast, and space efficient.
 
 There has always been a tension between high-level features in programming
 languages and the programmer's legitimate need to understand programs at the
 operational level. Very likely, if a resource conscious programmer is forced to
 make a choice between the two, he will choose the latter.
 
-The MLKit with Regions is the result of a research and development effort, which
+MLKit with Regions is the result of a research and development effort, which
 was initiated at the University of Copenhagen in 1992.  The goal of the project
 has been to develop implementation technology that combines the advantages of
 using a high-level programming language, in this case Standard ML, with a model
@@ -192,6 +192,15 @@ MLKit Version~{\docversion}. Besides from featuring bug-fixes, this version of
 the MLKit extends, and differs from, the MLKit Version~4.7.2 by the following
 features:
 \begin{enumerate}
+\item
+  %
+  \index{storage mode analysis!modular}%
+  %
+  Modular storage mode analysis. MLKit now implements a modular version of the
+  storage mode analysis, which allows for external functions to be passed with
+  regions that have storage mode \fw{atbot}. The modular version of the storage
+  mode analysis makes use of local aliasing information for inferring storage
+  modes (Section~\ref{smaextern.sec}).
 \item
   %
   \index{bit stealing}%
@@ -576,7 +585,7 @@ stack and that region grows dynamically.  This case can be thought of as a
 heap with no garbage collection, which again would not be sufficient.
 
 But when one has many regions, one obtains the possibility of distinguishing
-between values according to what region they reside in.  The MLKit has
+between values according to what region they reside in.  MLKit has
 operations for allocating, de-allocating, and extending regions. But it also has
 an explicit operation for
 %
@@ -653,7 +662,7 @@ progression of the region stack.
 In the MLKit the vast majority of region management is done automatically by the
 compiler and the runtime system.  Indeed, with one exception, source programs
 are written in Standard ML, with no added syntax or special directives. The
-exception has to do with resetting of regions. The MLKit provides two built-in
+exception has to do with resetting of regions. MLKit provides two built-in
 functions
 %
 \index{resetRegions@$\resetr$}%
@@ -1075,7 +1084,7 @@ The
 \index{multiplicity}
 %
 {\em multiplicity} of a region is a statically determined upper bound on the
-number of times a value is put into the region. The MLKit operates with three
+number of times a value is put into the region. MLKit operates with three
 multiplicities: 0, 1 and $\infty$, ordered by $0<1<\infty$. Multiplicities
 annotate binding occurrences of region variables. An expression of the form
 \begin{center}
@@ -1151,7 +1160,7 @@ implementation.
 \index{backend!native}%
 \index{backend!bytecode}%
 
-The MLKit provides two different backends, one that generates native code for
+MLKit provides two different backends, one that generates native code for
 the x64 architecture (running Linux or macOS), the {\em native backend\/} and
 one that generates JavaScript \cite{10.1145/2093328.2093336}.\footnote{Previous
 versions of the MLKit also supported a bytecode backend that allowed for
@@ -1194,8 +1203,8 @@ being represented as a pointer to allocated data for the value. A {\em boxed
   value\/}, on the other hand, is one that is represented by a word-sized pointer
 to the value itself, which is stored in one or more regions.
 
-The MLKit uses unboxed representation for integers, booleans, words, the unit
-value, and characters.  The MLKit uses boxed representation for pairs, records
+MLKit uses unboxed representation for integers, booleans, words, the unit
+value, and characters.  MLKit uses boxed representation for pairs, records
 (with at least one element), reals, exception values, function closures, and
 many constructed values (i.e., data types). Some data types, such as lists and
 booleans, are represented unboxed, however, which is possible by using the lower
@@ -1255,11 +1264,11 @@ The intermediate languages that we shall refer to in the following are
   %
   {\em multiplicity analysis}.
 \end{description}
-The MLKit compiles Standard ML records into $\Lam$-tuples and it compiles
+MLKit compiles Standard ML records into $\Lam$-tuples and it compiles
 Standard ML match expressions and other constructs containing patterns into
 simpler $\Lam$-constructs.
 
-The MLKit contains a
+MLKit contains a
 %
 \index{Lambda optimiser}
 %
@@ -1299,7 +1308,7 @@ It is possible to call
 %
 \index{C!calling}
 %
-C functions from MLKit code if you use the native backend.  The MLKit takes care
+C functions from MLKit code if you use the native backend.  MLKit takes care
 of the memory allocation, by allocating regions for the result of the call
 before the call and de-allocating the regions at some point after the call.  The
 C functions can build ML data structures such as lists through abstract
@@ -1309,7 +1318,7 @@ further details.
 \section{Compiling Programs with the MLKit}
 \label{tryit.sec}
 
-The MLKit is a
+MLKit is a
 %
 \index{batch compilation}
 %
@@ -1377,7 +1386,7 @@ If no errors were found during compilation, the MLKit produces a
 %
 \index{target program}
 %
-{\em target program} in the form of an executable file, called \lstinline{run}. The
+{\em target program} in the form of an executable file, called \lstinline{run}.
 MLKit places \lstinline{run} in the working directory.
 
 Running the target program is done from the UNIX shell by typing
@@ -1572,7 +1581,7 @@ a component of the pair, after which the pair is garbage:\footnote{Program
           in #1 pair
           end
 \end{smlcode}
-The MLKit compiles the declaration into the $\MulExp$ program shown in
+MLKit compiles the declaration into the $\MulExp$ program shown in
 Figure~\ref{elimpair.fig}.  The compiler compiles the program as it is, without
 reducing the conditional to its \lstinline{then} branch.
 \begin{figure}
@@ -1701,7 +1710,7 @@ parameter, the MLKit passes the argument tuple unboxed
 \index{record!unboxed}%
 %
 if it can see that the boxed representation of the tuple is not needed by the
-function. The MLKit does not at present unbox records returned from
+function. MLKit does not at present unbox records returned from
 functions. See Section~\ref{region-polymorphic-functions.sec} on
 page~\pageref{region-polymorphic-functions.sec} for details about unboxed
 function arguments.
@@ -1718,7 +1727,7 @@ specially by the reference-tracing garbage collector.
 \chapter{Basic Values}
 %---------------------------------------------------------
 In this chapter we describe how basic values such as integers, reals,
-strings, and booleans are represented in the MLKit. The MLKit complies to
+strings, and booleans are represented in the MLKit. MLKit complies to
 the Definition of Standard ML (Revised)
 %
 \index{Standard ML!{1997 revision}}
@@ -1751,7 +1760,7 @@ thus in this case values of type \lstinline{int} are really 63-bit signed intege
 Chapter~\ref{gc.chap} describes how to compile programs with garbage collection
 enabled. The structure \lstinline{Int} provides many useful operations on integers of
 type \lstinline{int}.\footnote{To see what operations are available in the \boxml{Int}
-structure, consult the file \boxml{basis/INTEGER.sml}.}  The MLKit also defines
+structure, consult the file \boxml{basis/INTEGER.sml}.}  MLKit also defines
 the structures
 %
 \index{Int31 structure@\lstinline{Int31} structure}
@@ -1889,7 +1898,7 @@ the form
 \lstinline!$c$ at $\rho$!, where $\rho$ is a region variable, indicating the
 region into which the real will be stored.
 
-The MLKit will do its best to eliminate regions holding reals by unboxing reals
+MLKit will do its best to eliminate regions holding reals by unboxing reals
 and representing them in floating point registers or on the runtime stack. Thus,
 in internal representations, MLKit distinguishes between (boxed) reals and
 unboxed 64-bit floating point values (of type \lstinline{f64}). MLKit supports that
@@ -2216,7 +2225,7 @@ of the list.  Similarly, the type forces the auxiliary pairs to be in one region
 
 \section{Example: Basic List Operations}
 \label{listexamples.sec}
-The MLKit compiles the program\footnote{Program \boxml{kitdemo/onetwothree.sml}.}
+MLKit compiles the program\footnote{Program \boxml{kitdemo/onetwothree.sml}.}
 \begin{smlcode}
   let val l = [1, 2, 3];
       val (x::_) = l
@@ -2649,7 +2658,7 @@ ideas is listed in
 %
 Figure~\ref{msort.fig}.\footnote{MLB-file \boxml{kitdemo/msort.mlb}, file
 \boxml{kitdemo/msort.sml}. To compile the project, go to the \boxml{kitdemo}
-directory and execute \boxml{mlkit msort.mlb} from the shell. The MLKit places
+directory and execute \boxml{mlkit msort.mlb} from the shell. MLKit places
 an executable file \boxml{run} in the \boxml{kitdemo} directory. For an
 in-depth description of how to compile and run MLB-files and SML-files, see
 Chapter~\ref{mlb_and_modules.chap}.}
@@ -3086,7 +3095,7 @@ $$(\kw{int},[\rho_{11}])\kw{list}$$ Here we see that $\rho_{11}$ is free in the
 region-annotated type scheme and appears with a $\Put$ effect.
 
 \section{Warnings About Space Leaks}
-The MLKit can be instrumented to issue a warning each time it meets a function
+MLKit can be instrumented to issue a warning each time it meets a function
 that is declared using \lstinline{fun} and has a free $\Put$ effect occurring
 somewhere in its type scheme. The way to tell the MLKit to issue the warnings is
 by passing the option
@@ -3268,7 +3277,7 @@ Because \lstinline{x} and \lstinline{z} are aliases, the result of the
 6).
 
 \section{Runtime Representation of References}
-The MLKit translates an SML expression of the form $\kw{ref}~\exp$ into an
+MLKit translates an SML expression of the form $\kw{ref}~\exp$ into an
 expression of the form (assuming $\exp$ translates into $e$)
 $$\kw{ref}\,\at\,\rho~ e$$ which is evaluated as follows. First $e$ is
 evaluated. Assume that this evaluation yields a value $v$. Here $v$ may be a
@@ -3497,7 +3506,7 @@ deals with the general case.
 
 \section{Spreading Data Types}
 
-The MLKit performs an analysis called
+MLKit performs an analysis called
 %
 \index{spreading}%
 %
@@ -3530,7 +3539,7 @@ introduced by the following declaration of binary trees has arity 1:
   datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
 \end{smlcode}
 
-The MLKit extends the notion of arity (in it's internal languages) to account
+MLKit extends the notion of arity (in it's internal languages) to account
 for regions and effects. For lists, for example, we need a region for holding
 the pairs to which \kw{::} is applied. For the type
 \begin{smlcode}
@@ -3607,10 +3616,10 @@ into regions and are subsequently de-allocated (in a constant time operation)
 when the region is popped. The next section goes through an example to
 illustrate the point.
 
-The MLKit attempts to use an unboxed representation for value constructors when
+MLKit attempts to use an unboxed representation for value constructors when
 possible. We have already seen how cons (i.e., \lstinline{::}) and
-\lstinline{nil} use an unboxed representation (Chapter~\ref{lists.sec}). The
-MLKit uses an advanced scheme for
+\lstinline{nil} use an unboxed representation (Chapter~\ref{lists.sec}). MLKit
+uses an advanced scheme for
 %
 \index{unboxing}%
 %
@@ -3693,10 +3702,10 @@ large) syntax trees are not kept in memory longer than needed.
 \index{unboxing}%
 \index{value!unboxed}%
 
-The MLKit uses a uniform representation of values, which is important for
+MLKit uses a uniform representation of values, which is important for
 compiling generic code (e.g., functions) separately from the code that uses
 it. Still, under these constraints there are many possibilities for securing a
-compact data representation. The MLKit uses tagged regions for some types of
+compact data representation. MLKit uses tagged regions for some types of
 values (instead of tagging the values themselves) and, as we have seen for lists
 and binary trees, datatypes with a single unary constructor that takes boxed
 arguments are implemented using the lower-bit tags in pointers to discriminate
@@ -4078,7 +4087,7 @@ constant-time operation.  Because the same region variable can be bound
 sometimes to a finite region and sometimes to an infinite region at runtime,
 resetting a region can involve a test at runtime.
 
-The MLKit contains an analysis, called the {\em storage mode analysis}, which
+MLKit contains an analysis, called the {\em storage mode analysis}, which
 has two purposes:
 \begin{enumerate}
 \item Inserting automatic resetting of infinite regions, when possible.
@@ -4303,9 +4312,9 @@ transparent to users: although the storage mode analysis and all subsequent
 phases up to code generation operate on K-normal forms, programs are always
 simplified to eliminate the extra \boxml{let}-bindings before they are presented
 to the user.}
-
-The MLKit also computes a set of locally live variables for those allocation
-points that do not occur inside functions.
+%
+MLKit also computes a set of locally live variables for those allocation points
+that do not occur inside functions.
 
 We now give an informal explanation of the rules that assign storage modes to
 allocation points.  Let an allocation point
@@ -4315,12 +4324,16 @@ allocation points.  Let an allocation point
 be given. Such an allocation point can be associated with the allocation of a
 constant value, an immediate closure, a record value, or the allocation of the
 result of a primitive operation. Another possibility is that the allocation
-point appears as an argument to a region-polymorphic function.
+point appears as an argument to a region-polymorphic function. The procedure
+used for determining storage modes for function arguments depends on whether the
+function is declared in the same program unit as the function call. The
+procedure used for calls to externally declared functions is described in
+Section~\ref{smaextern.sec}.
 \bigskip
 
 \noindent{\bf CASE A:} The region $\rho$ is a global region.
 In this case \fw{attop} is used.
-There is a deficiency we have to admit here. The MLKit only puts
+There is a deficiency we have to admit here. MLKit only puts
 \lstinline{region} bindings around expressions, not around declarations. Thus,
 if one writes
 \begin{smlcode}
@@ -4475,15 +4488,12 @@ bound arrow effect of a region-polymorphic function declared in the compilation
 unit and $\epsilon_2.\rea_2$ is a corresponding actual arrow effect then an edge
 from $\epsilon_1$ to $\epsilon_2$ is inserted into the graph.  Also, edges from
 $\epsilon_2$ to every region and effect variable occurring in $\rea_2$ are
-inserted.  Finally, for every region-polymorphic function $f$ declared in the
-program and for every formal region parameter $\rho$ of $f$, if $f$ is exported
-from the compilation unit, then an edge from $\rho$ to the global region of the
-same runtime type as $\rho$ is inserted into the graph. (This is necessary, so
-as to cater for applications of $f$ in subsequent compilation units.)
+inserted.
 
 Let $G$ be the graph thus constructed.  For every node $n$ in the graph, we
 write $\langle n\rangle$ to denote the set of region variables that can be
-reached from $n$, including $n$ itself if $n$ is a region variable.  The rule that replaces (B3) is:
+reached from $n$, including $n$ itself if $n$ is a region variable.  The rule
+that replaces (B3) is:
 %
 \index{region parameter!formal}%
 %
@@ -4504,6 +4514,34 @@ abstraction.  As in (B2), use \fw{atbot} if no locally live variable at the
 allocation point has $\rho$ free in its region-annotated type scheme with place,
 and use \fw{attop} otherwise.
 
+\section{Calls to Externally Declared Functions}
+\label{smaextern.sec}
+
+The procedure used in Section~\ref{sma.sec} for determining storage modes for
+region arguments to a region-polymorphic function assumes that the call appears
+in the program unit in which the function is declared.  For calls to functions
+in other program units, an additional aliasing check is used for determining if
+a region bound by a \fw{let region} construct is passed \fw{attop} or \fw{atbot}
+or whether a function-bound region is passed \fw{attop} or \fw{sat}. If a region
+parameter is aliased with any other instantiated region parameter, the storage
+mode \fw{attop} is used. Otherwise, if it can be determined (using the procedure
+of Section~\ref{sma.sec}) that there are no live values in the region, the
+storage mode \fw{atbot} or \fw{sat} is used, depending on whether the region is
+bound by a \fw{let region} construct or whether the region is bound by a
+region-polymorphic function.
+
+This procedure is used also for determining storage modes for certain primitives
+like \kw{List.concat} and \lstinline{^}, for which it will be safe to store the
+result \fw{atbot} if the region for the result is not aliased with any argument
+regions and if there are no live values in the result region at the call site.
+
+
+We refer to this procedure for determining storage modes as being
+%
+\index{storage mode analysis!modular}
+%
+\emph{modular}, as it relies on only local aliasing information for determining
+the passed storage mode of a region parameter.
 
 \section{Example: Computing the Length of Lists}
 \label{length.sec}
@@ -4624,12 +4662,12 @@ arguments saves us in this situation, we cannot always expect it to do so; if we
 were to collect boxed data in accumulating parameters to the function and this
 data is not to be returned by the function, there is a danger that the recursive
 call would not become a tail call due to the introduction of a \fw{let region}
-construct being wrapped around the recursive call.\footnote{The MLKit features
+construct being wrapped around the recursive call.\footnote{MLKit features
 an option \inline{-preserve_tail_calls}, which ensures that no \fw{region}
 binding is wrapped around a tail-call. This option is enabled by default when
 garbage collection is enabled.}
 
-The next function, \fw{klength}, deserves careful study, because it
+The next function, \kw{klength}, deserves careful study, because it
 is a prototype of a particular schema that can be used again and again
 when programming with regions. Iteration is done by a
 %
@@ -4667,51 +4705,41 @@ that it will contain at most one pair.  This is seen very clearly in the third
 hump of Figure~\ref{length.region.fig}.
 
 Next consider \kw{llength}. The difference from \kw{klength} is that
-\kw{llength'} is now declared outside \kw{llength}.  Although the use of
-\fw{local} makes it clear that \kw{llength'} is not exported from the
-compilation unit, \kw{llength'} must in fact reside in a global region, because
-\kw{llength}, which is exported, calls \kw{llength'}.  Nonetheless, the storage
-mode analysis still achieves constant memory usage. As before, we have arranged
-that iteration is done by a region endomorphism that is initially applied to a
-freshly constructed pair. This pair can reside in a region that is local to the
-body of \kw{llength} (once again, the projection \kw{\#2(llength'(l, 0))} makes
-sure that the pair does not escape the body of \kw{llength}).  The crucial bit
-is now what storage mode \kw{llength'} uses when it stores \kw{(xs, acc+1)}.
-The only locally live variable at that point is \kw{llength'} itself and, as we
-noted earlier, \kw{length'} lives in a global region, which is clearly different
-from the region inside \kw{llength} that contains all the pairs.  Thus, storage
-mode \fw{sat} will be used, as desired.
+\kw{llength'} is now declared outside \kw{llength}.  The storage mode analysis
+still achieves constant memory usage. As before, we have arranged that iteration
+is done by a region endomorphism that is initially applied to a freshly
+constructed pair. This pair can reside in a region that is local to the body of
+\kw{llength} (once again, the projection \kw{\#2(llength'(l, 0))} makes sure
+that the pair does not escape the body of \kw{llength}).  The crucial bit is now
+what storage mode \kw{llength'} uses when it stores \kw{(xs, acc+1)}.  The only
+locally live variable at that point is \kw{llength'} itself and, as we noted
+earlier, \kw{length'} lives in a global region, which is clearly different from
+the region inside \kw{llength} that contains all the pairs.  Thus, storage mode
+\fw{sat} will be used, as desired.
 
 Finally, consider \kw{glength}, which is similar to \kw{llength}, but with the
-crucial difference that \kw{global} is exported from the compilation
-unit. Because \kw{global} may be called from a different compilation unit, then,
-for all we know, \kw{global} may be applied to a pair that resides in the same
-(global) region as \kw{global} itself. Using \fw{sat} when storing \kw{(xs,
-  acc+1)} would then be a big mistake: it would destroy the very function that
-we are trying to call! Therefore, the storage mode analysis assigns \fw{attop}
-to that storage operation.\footnote{To be precise, \boxml{attop} comes about by
-using rule (B3) of Section~\ref{sma.sec}. This example illustrates why we put
-edges from formal region parameters to global regions for exported functions
-when constructing the region flow graph. Notice also that storage mode analysis
-does not take region runtime types into account.}  Consequently, we get a memory
-leak, as shown in the final hump of Figure~\ref{length.region.fig}.
+difference that \kw{global} is exported from the compilation unit. Thus,
+\kw{global} may be called from a different compilation unit. We see, however,
+that \kw{global} behaves the same as \kw{llength} and \kw{klength} with respect
+to memory usage. If \kw{global} is called from another program unit then it is
+determined locally whether the passed region may hold live values at the call
+site, in which case, the region is passed with storage mode \fw{attop}.
 
 To sum up, here is how one writes a loop without using space
 proportional to the number of iterations:
 \index{length of list}%
 \begin{enumerate}
-\item The iteration should be done by an auxiliary, uncurried function that is
-  declared as local to the function that uses it; we refer (informally) to this
-  auxiliary function as the
+\item The iteration should be done by an uncurried
+  %
+  \index{region endomorphism}%
+  %
+  region endomorphic function; we refer (informally) to this
+  function as the
   %
   \index{iterator}%
   %
   {\em iterator}.
-\item The iterator should be a
-  %
-  \index{region endomorphism}%
-  %
-  region endomorphism and should be tail recursive.
+\item The iterator should be tail recursive.
 \item Iteration should start from a suitably fresh initial argument; the result
   of the iteration should be kept clearly separate from the region where the
   iterator function lies.
@@ -4719,8 +4747,8 @@ proportional to the number of iterations:
 Mutual recursion poses no additional complications. All functions in a block of
 mutually recursive functions are put in the same region.
 
-Finally, the reader may be concerned that the two recommended solutions,
-\kw{klength} and \kw{llength}, are much slower than the other versions. This is
+Finally, the reader may be concerned that the recommended solutions,
+\kw{klength}, and \kw{llength}, and \kw{glength}, are much slower than the other versions. This is
 partly an artifact of the profiling software.\footnote{When profiling is turned
 on, every resetting of a region involves resetting of values in the first region
 page of the region.} To get a better picture of the actual cost of the different
@@ -4732,10 +4760,10 @@ results are shown in Figure~\ref{length.timing.fig}. Because \kw{upto} alone
 takes 0.12 seconds to build the list, the differences in times are clear: the
 version of the length function that does not use the stack and that takes its
 argument in registers (i.e., \kw{tlength}) is the fastest. The recommended
-versions of the length function (i.e., \kw{klength} and \kw{llength}) run as
-well as the versions that make use of the runtime stack (i.e., \kw{nlength} and
-\kw{glength}), but are scalable and follow general useful approaches to writing
-recursive functions.
+versions of the length function (i.e., \kw{klength}, \kw{llength}, and
+\kw{glength}) run as well as the versions that make use of the runtime stack
+(i.e., \kw{nlength}), but are scalable and follow general useful approaches to
+writing recursive functions.
 
 \begin{figure}
 \hrule
@@ -4863,7 +4891,7 @@ Figure~\ref{msortreset1.fig}.\footnote{MLB-file:
   end
 \end{smlcode}
 \caption{Variant of \kw{msort} that uses \kw{resetRegions} to improve memory
-  usage. The MLKit fails to infer that the region holding the argument list
+  usage. MLKit fails to infer that the region holding the argument list
   \kw{xs} can be reset after \kw{xs} is split.}
 \label{msortreset1.fig}
 \medskip \hrule
@@ -5668,13 +5696,13 @@ Function applications are ubiquitous in Standard ML programs; in particular,
 iteration is often achieved by function calls. Not surprisingly, careful
 compilation of function calls is essential for obtaining good performance.
 
-The MLKit partitions function calls into four kinds, which are implemented in
+MLKit partitions function calls into four kinds, which are implemented in
 different ways.  At best, a function call is simply realised by a jump in the
 target code.  The resource conscious programmer will want to know the special
 cases; for example, when doing an iterative computation, it is important to know
 whether the space usage is going to be independent of the number of iterations.
 
-The MLKit performs a backwards flow analysis, called
+MLKit performs a backwards flow analysis, called
 %
 \index{call conversion}%
 %
@@ -5749,7 +5777,7 @@ region-polymorphic function (i.e., a known function) takes the form
 where $\rho_1$, $\ldots$, $\rho_n$ are actual region parameters to the function,
 $f$ is the name of a region-polymorphic function, and $e_1 \cdots e_m$, $m \geq
 1$ are value arguments to the function (we often omit the brackets $\kw{(}
-\cdots \kw{)}$ when $m = 1$.) The MLKit turns such a function call into the form
+\cdots \kw{)}$ when $m = 1$.) MLKit turns such a function call into the form
 \begin{center}
   \lstinline!jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] ($e_1,\ldots,e_m$)!
 \end{center}
@@ -5800,7 +5828,7 @@ unboxed; otherwise there is a risk that, for each invocation, fresh regions are
 introduced to hold the arguments to the call, and the call would need to return
 to de-allocate these regions.
 
-The MLKit can transform a call into a \kw{jmp} tail call even in the case that
+MLKit can transform a call into a \kw{jmp} tail call even in the case that
 the call appears in the body of a \fw{fn} expression.  Consider the following
 two mutually recursive functions \kw{g} and \kw{h}:\footnote{Program
 \boxml{kitdemo/tail2.sml} compiled with the flags \boxml{-no\_uncurry} and
@@ -6106,7 +6134,7 @@ MLKit, using
 \index{Standard ML!Modules}%
 %
 Standard ML Modules and the possibility of organising source files in ML Basis
-Files. The MLKit fully supports Standard ML Modules and it has a sophisticated
+Files. MLKit fully supports Standard ML Modules and it has a sophisticated
 system for avoiding unnecessary recompilation. In the following section, we
 describe the notion of ML Basis Files. We then turn to show how to program with
 structures, signatures, and functors.  To enable the programmer to write
@@ -6207,7 +6235,7 @@ renaming of declared identifiers of source files that are included using
 \kw{local}), in the order they are listed, except that each MLB-file is executed
 only the first time it is imported.
 
-The MLKit has a system for managing compilation and recompilation of
+MLKit has a system for managing compilation and recompilation of
 %
 \index{MLB-files}%
 %
@@ -6253,7 +6281,7 @@ executed by running the command
 \end{scriptcode}
 in the working directory.
 
-The MLKit compiles each source file of an MLB-file one at a time, in the order
+MLKit compiles each source file of an MLB-file one at a time, in the order
 mentioned. A source file is compiled under a given set of assumptions, which
 provides, for instance, region-annotated type schemes with places for free
 variables of the source file. Also, compilation of a source file gives rise to
@@ -6398,7 +6426,7 @@ constraints.
 \index{functor}%
 \index{specialisation!functor}%
 %
-Functors map structures to structures. The MLKit specialises a functor every
+Functors map structures to structures. MLKit specialises a functor every
 time it is applied.  Thus, types that are abstract for the programmer (inside a
 functor body) become visible to the compiler.  Region-annotated type schemes and
 other information about identifiers in the actual functor argument are available
@@ -6523,7 +6551,7 @@ propagates its intermediate representation across module boundaries.
 \chapter{Garbage Collection}
 \label{gc.chap}
 %---------------------------------------------------------
-The MLKit supports reference tracing garbage collection in combination with the
+MLKit supports reference tracing garbage collection in combination with the
 region memory model \cite{hallenberg99,het02}.  Garbage collection is also
 possible with region profiling enabled.
 
@@ -6533,7 +6561,7 @@ option to the MLKit compiler at compile time. As we shall see, it is also
 possible to disable garbage collection at runtime for a program that has been
 compiled with garbage collection enabled.
 
-The MLKit also features generational reference-tracing garbage collection
+MLKit also features generational reference-tracing garbage collection
 (option \kw{-gengc}), which in some cases is superior to ordinary
 reference-tracing garbage collection, but which may also cause additional
 fragmentation \cite{elshaljfp21}.
@@ -6594,7 +6622,7 @@ collection is enabled.\footnote{Compiled with \boxml{mlkit -gc
 When garbage collection is enabled, the MLKit makes sure that all values stored
 in a closure are kept live as long as the closure is live.  Assume that the type
 with place $\mu$ of the function associated with the closure is on the form
-$(\mu_1 \ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The MLKit enforces the
+$(\mu_1 \ar{\epsilon.\varphi} \mu_2, \rho_0)$.  MLKit enforces the
 restriction by requiring that for each region variable $\rho$ that occur free in
 the type of free variables of the function (those variables for which values are
 stored in the closure at runtime), $\rho$ occur free in $\mu$. In the
@@ -6856,7 +6884,7 @@ Figure~\ref{scan_rev1_1.fig}.
 \begin{figure}
   \includerp{scan_rev1_1.pdf}
 \caption{Memory is accumulated in the top two bands. The global regions \kw{r1}
-  and \kw{r333643} hold the largest amount of memory. The graph was generated by
+  and \kw{r331112} hold the largest amount of memory. The graph was generated by
   first compiling the \kw{kitdemo/scan\_rev1.mlb} project with profiling enabled
   (option \kw{-prof}). We also add the compiler options \kw{-log\_to\_file},
   \kw{-Ppp}, \kw{-Prfg}, and \kw{-Pcee} for enabling printing of region flow
@@ -6867,52 +6895,60 @@ Figure~\ref{scan_rev1_1.fig}.
 \medskip\hrule
 \end{figure}
 
-The graph shows that region \kw{r333643} accumulates more memory for each time
+The graph shows that region \kw{r331112} accumulates more memory for each time
 it scans the file \kw{life.sml}.
 
-To see what happens in region \kw{r333643}, we make an object profile of that
+To see what happens in region \kw{r331112}, we make an object profile of that
 region, see Figure \ref{scan_rev1_2.fig}.
 \begin{figure}
   \includerp{scan_rev1_2.pdf}
-\caption{There seems to be a space leak at program point \kw{pp894}. The graph
-  was generated by typing \kw{rp2ps -object r333643}.}
+\caption{There seems to be a space leak at program point \kw{pp115}. The graph
+  was generated by typing \kw{rp2ps -object r331112}.}
 \label{scan_rev1_2.fig}
 \medskip\hrule
 \end{figure}
-The object profile shows that program point \kw{pp894} continually allocates
+The object profile shows that program point \kw{pp115} continually allocates
 memory that is first freed when the program terminates. We now search for
-\kw{pp894} in the generated log files and in the log file located in the basis
+\kw{pp115} in the generated log files and in the log file located in the basis
 library folder \kw{\$(SML\_LIB)/basis}).\footnote{Unfortunately, the MLKit
 compiler happily resets the program point counter for each compilation of a
 program unit, thus, there are multiple instances of the program point
-\boxml{pp894}.} Among other places, we find that the program point \boxml{pp894}
+\boxml{pp115}.} Among other places, we find that the program point \boxml{pp115}
 appears in the following fragment in the file \boxml{basis/Int.sml.log}:
 \begin{smlcode}
-  fun toString attop r1T pp859 [r61517s:inf] i =
-   case ... of
-      ...
+  fun conv attop r1T pp65 [r58078s:inf] (rad, radix, i) =
+    case ... of ...
     | _ =>
       let ...
-      in  String.implode [sat r61517s pp894] (...)
+      in  String.implode [sat r58078s pp115] chars
       end
 \end{smlcode}
+We also see that this function is called directly by the function
+\kw{Int.toString} and that the formal region parameter \kw{r59522} is passed
+directly as a parameter in the call to \kw{conv}:
+\begin{smlcode}
+  fun toString attop r1T pp775 [r59522s:inf] i =
+    let val v1738 = DEC
+    in jmp conv[sat r59522s pp776] (v1738, 10, i)
+    end
+\end{smlcode}
 So the space leak is caused by the \kw{String.implode} primitive function being
-called with region \kw{r333643} instantiated for the formal region variable
-\kw{r61517}.
+called with region \kw{r331112} instantiated for the formal region variable
+\kw{r59522}.
 
-We now search for \kw{r333643} in file \kw{scan\_rev1.sml.log} and find the
+We now search for \kw{r331112} in file \kw{scan\_rev1.sml.log} and find the
 following fragment of the region flow graph:
 \begin{small}
 \begin{scriptcode}
-  LETREGION[r333643:inf]
-  readWord[r333197:inf]   --r333197 atbot-->   [*r333643*] ;
-  toString[r61517:inf]   --r61517 attop-->   [*r333643*] ;
+  LETREGION[r331112:inf]
+  readWord[r330770:inf]   --r330770 atbot-->   [*r331112*] ;
+  toString[r59522:inf]   --r59522 attop-->   [*r331112*] ;
 \end{scriptcode}
 \end{small}
-The fragment is read as follows. The formal region variable \kw{r61517} is
-instantiated to the \lstinline{region}-bound region variable \kw{r333643} in a
-call to \kw{toString}. Moreover, also the formal region variable \kw{r333197}
-(of function \kw{readWord}) is instantiated to \kw{r333643}. (The asterisks
+The fragment is read as follows. The formal region variable \kw{r59522} is
+instantiated to the \lstinline{region}-bound region variable \kw{r331112} in a
+call to \kw{toString}. Moreover, also the formal region variable \kw{r330770}
+(of function \kw{readWord}) is instantiated to \kw{r331112}. (The asterisks
 (\kw{*}) denote that the node has been displayed before.)
 
 Region flow graphs are local to each program fragment in a program. A call to a
@@ -6924,10 +6960,10 @@ call-explicit programs found in \kw{basis/Int.sml.log} and
 \kw{kitdemo/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
 eventually call \kw{implode}. However, \kw{readWord} is called only initially,
 thus, we conclude that the space leak is caused by function \kw{Int.toString}
-being called with region \kw{r333643} instantiated for the formal region
-variable \kw{r61517}. Indeed, by inspecting the calls to \kw{toString} in the
+being called with region \kw{r331112} instantiated for the formal region
+variable \kw{r59522}. Indeed, by inspecting the calls to \kw{toString} in the
 call-explicit program found in \kw{scan\_rev1.sml.log}, we see that
-\kw{toString} is called with actual region \kw{r333643}.
+\kw{toString} is called with actual region \kw{r331112}.
 
 The \kw{concat} function from the initial basis catenates a list of strings. But
 all the strings in the argument list to \kw{concat} are required to be in the
@@ -7644,7 +7680,7 @@ In this chapter, we describe how the MLKit programmer can call
 %
 \index{C!calling}%
 %
-C functions from within Standard ML programs.  The MLKit allows ML values to be
+C functions from within Standard ML programs.  MLKit allows ML values to be
 passed to C functions, which again may return ML values.  Not all ML values are
 represented as if they were C values. For instance, C strings are
 null-terminated arrays of characters, whereas ML strings in the MLKit are
@@ -7664,7 +7700,7 @@ the C function as additional arguments.
 In both cases, the MLKit uses region inference to infer the lifetime of
 regions that are passed to the C function.  The region inference
 algorithm does not analyse C functions. Instead, the MLKit inspects the
-ML type provided by the programmer. The MLKit assumes that functions
+ML type provided by the programmer. MLKit assumes that functions
 with monomorphic types are
 %
 \index{region exomorphism}%
@@ -7696,14 +7732,14 @@ user to set up
 %
 \index{call-back function}%
 %
-call-back functions to be executed when specific events occur. The MLKit only
+call-back functions to be executed when specific events occur. MLKit only
 has very limited functionality for letting a C function call ML code.
 
 %========================================================
 \section{Declaring Primitives and C Functions}
 \label{parPassing.sec}
 %========================================================
-The MLKit conforms in large parts to the Standard ML Basis Library. Part
+MLKit conforms in large parts to the Standard ML Basis Library. Part
 of the functionality found in the basis library is programmed in C and
 linked to the MLKit runtime system.  The declarations in system
 dependent parts of the library use a special built-in identifier
@@ -8331,8 +8367,7 @@ header file \kw{src/Runtime/Region.h} of the runtime system provides a macro
 %
 \index{is_inf_and_atbot@\texttt{is\_inf\_and\_atbot}}%
 %
-\kw{is\_inf\_and\_atbot}, which can be used to test whether resetting is safe,
-assuming that the arguments to the C function are dead.
+\kw{is\_inf\_and\_atbot}, which can be used to test whether resetting is safe.
 
 The C function \kw{resetRegion}, which is also provided by the runtime system in
 the header file \kw{src/Runtime/Region.h}, can be used to reset a
@@ -8349,13 +8384,9 @@ constructing the list:
     ...
   }
 \end{scriptcode}
-The C programmer should be careful not to reset regions that potentially contain
-live values. In particular, the C programmer must be conservative and take into
-account possible region aliasing between regions holding arguments and regions
-holding the result.  Clearly, if a region that the C function is supposed to
-return a result in contains part of the value argument(s) of the function, then
-the function should not first reset the region and then try to access the
-argument(s).
+The C programmer can assume that if a parameter region aliases another parameter
+region or a region holding an argument, the parameter region is passed with
+storage mode \fw{attop}.
 
 %=======================================================
 \section{Endomorphisms by Polymorphism}
@@ -8398,7 +8429,7 @@ compiled:
   fun second(pair : 'a * 'b) : 'b =
     prim("select_second", pair)
 \end{smlcode}
-The MLKit associates the following region-annotated type scheme to the value
+MLKit associates the following region-annotated type scheme to the value
 identifier \kw{second}:
 $$\forall \alpha_1\alpha_2\rho\epsilon.(\alpha_1 * \alpha_2, \rho)
 \ar{\epsilon.\{\Get(\rho_3)\}} \alpha_2$$ Notice that the region-annotated type
@@ -8470,7 +8501,7 @@ automate an appropriate build process.
 \section{Dynamic Linking}
 \label{link_at_runtime.sec}
 
-The MLKit supports
+MLKit supports
 %
 \index{dynamic linking}%
 %
@@ -8664,7 +8695,7 @@ comments.)
 \begin{example}\label{change_elem.ex}
   Function \index{change_elem@\texttt{change\_elem}}\kw{change\_elem} shows the
   use of the macro \kw{elemRecordML}. The result type is \kw{string*int}. The
-  function swaps the two elements in the pair. The MLKit passes an address to
+  function swaps the two elements in the pair. MLKit passes an address to
   pre-allocated space for the result pair, and an infinite region for the result
   string.
 
@@ -8722,10 +8753,22 @@ collection.
 \chapter{Summary of Changes}
 %---------------------------------------------------------
 
+\section{Changes Since Version 4.7.16}
+\index{changes!since version 4.7.16}%
+
+Here is an overview of the main changes to MLKit since version 4.7.16.
+
+\subsubsection{Modular Storage Mode Analysis}
+
+MLKit now implements a modular version of the storage mode analysis, which
+allows for external functions to be passed with regions that have storage mode
+\fw{atbot}. The modular version of the storage mode analysis makes use of local
+aliasing information for inferring storage modes. See Section~\ref{smaextern.sec}.
+
 \section{Changes Since Version 4.7.2}
 \index{changes!since version 4.7.2}%
 
-Here is an overview of the main changes to the MLKit since version 4.7.2.
+Here is an overview of the main changes to MLKit since version 4.7.2.
 
 \subsubsection{Double-Ended Bit-Stealing for Uboxing}
 
@@ -8758,14 +8801,14 @@ syntax (e.g., \kw{String.concat}).
 
 \subsubsection{Explicit Programming with Regions and Effects}
 
-The MLKit now supports explicit programming with regions and effects. The
+MLKit now supports explicit programming with regions and effects. The
 resulting language and compiler is called ReML and it features techniques for
 expressing and verifying constraints on regions and effects
 \cite{10.1145/3632921}. ReML is not described in this report.
 
 \subsubsection{Improved C FFI Auto Conversion}
 
-The MLKit now has improved support for interaction with C through an enriched
+MLKit now has improved support for interaction with C through an enriched
 set of supported types, as documented in Section~\ref{auto_conversion.sec}.
 
 \section{Changes Since Version 4.6.1}
@@ -8806,7 +8849,7 @@ x86 native backend has been replaced with an
 %
 x64 native backend, which uses the GNU assembler to create native machine code
 on x86 machines. The new backend also features intra-procedural register
-allocation for floating-point values. The MLKit now also features \kw{Int64.int}
+allocation for floating-point values. MLKit now also features \kw{Int64.int}
 as the default integer and \kw{Word64.word} as the default word type
 (\kw{Int63.int} and \kw{Word63.word} when garbage collection is enabled).
 
@@ -8815,7 +8858,7 @@ as the default integer and \kw{Word64.word} as the default word type
 \index{Github!repository}%
 \index{Repository!Github}%
 %
-The MLKit is now hosted at Github. The repository is
+MLKit is now hosted at Github. The repository is
 \begin{quote}
   \url{https://github.com/melsman/mlkit}
 \end{quote}
@@ -8877,7 +8920,7 @@ the very large''.
 \subsubsection*{File-based Separate Compilation}
 \index{separate compilation}%
 %
-The MLKit now supports file-based separate compilation, based on dependencies
+MLKit now supports file-based separate compilation, based on dependencies
 established from ML Basis Files. The compiler serialises symbol table
 information to disk for each compilation unit, so that this information can be
 deserialised and used when compiling other compilation units.
@@ -8895,7 +8938,7 @@ specification published in \cite{basislib2004}.
 \index{garbage collection}%
 \index{value representation}%
 %
-The MLKit now support untagged representations of heap-allocated pairs, triples,
+MLKit now support untagged representations of heap-allocated pairs, triples,
 and Standard ML references, even when garbage collection is enabled.
 
 \section{Changes Since Version 3}
@@ -8907,7 +8950,7 @@ This section provides an overview of the main changes to the MLKit since version
 \subsubsection*{Garbage Collection}
 \index{garbage collection}%
 %
-The MLKit supports reference tracing garbage collection in combination with the
+MLKit supports reference tracing garbage collection in combination with the
 region memory model. Garbage collection is supported only in the native backend
 version of the MLKit. To enable garbage collection, pass the option \kw{-gc} to
 the MLKit compiler. Garbage collection is also possible with region profiling
@@ -8972,7 +9015,7 @@ there is no runtime overhead in using modules
 \cite{ElsmanICFP99,ElsmanThesis}. See Chapter~\ref{mlb_and_modules.chap}.
 
 \subsubsection*{Standard ML Basis Library}
-The MLKit support a large portion of the
+MLKit supports a large portion of the
 %
 \index{Standard ML Basis Library}%
 %
@@ -8981,7 +9024,7 @@ exactly what parts of the Standard ML Basis Library are supported, consult the
 MLB-file \kw{basis.mlb} located in the directory \kw{basis}.
 
 \subsubsection*{Scalability}
-The MLKit now compiles fairly large programs, including Hafnium's AnnoDomini
+MLKit now compiles fairly large programs, including Hafnium's AnnoDomini
 (58.000 lines of SML) and the MLKit itself (around 80.000 lines).
 
 \subsubsection*{New Match Compiler}
@@ -8990,7 +9033,7 @@ method~\cite{sestoft96}, which is also the basis of the Moscow ML match
 compiler.
 
 \subsubsection*{New StatObject Module}
-The MLKit contains a module,
+MLKit contains a module,
 %
 \index{StatObject}%
 %
