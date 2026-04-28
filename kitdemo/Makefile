@@ -117,7 +117,7 @@ scan_rev1_1.ps: scan_rev1.rp
 	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -region $@ -sampleMax 200
 
 scan_rev1_2.ps: scan_rev1.rp
-	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 333643 $@ -sampleMax 200
+	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 331112 $@ -sampleMax 200
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<

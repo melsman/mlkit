@@ -584,7 +584,7 @@ struct
                 (* Psi records multiplicities for effect variables that are
                  * bound locally within the program unit or are exported from
                  * the program unit. Psi is a quasi-map (i.e., partly imperative)*)
-                let val Phi = map (fn eps => (eps, Eff.represents eps))
+                let val Phi = map (fn eps => (eps, Eff.represents_no_gets eps))
                           ( (*Eff.toplevel_arreff :: ;mael 2004-03-31*) (List.filter Eff.is_arrow_effect effects))
                     val _ = if test then say "  made Phi, now constructing the map Psi..." else ()
                 in makezero_Phi Phi

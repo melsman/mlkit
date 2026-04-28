@@ -351,10 +351,7 @@ REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
   String s;
   mkTagPairML(pair);
   n = convertIntToC(n1);
-  if ( is_inf_and_atbot(sr) )
-    {
-      resetRegion(sr);
-    }
+  maybeResetRegion(sr);
   s = REG_POLY_CALL(allocStringC, sr, n+1);
   char *p = s->data;
   p[n] = '\0';
@@ -723,13 +720,15 @@ sml_findsignal(char *s)
 static String
 REG_POLY_FUN_HDR(sml_PosixName, Region rs, size_t e, struct syserr_entry arr[], size_t amount)
 {
-  size_t i = 0, j, k,n;
-  j = amount;
+  maybeResetRegion(rs);
+  if ( amount == 0 ) { return NULL; }
+  size_t i = 0;
+  size_t j = amount - 1;
   e = convertIntToC(e);
   while (i <= j)
   {
-    k = i + (j-i) / 2;
-    n = arr[k].number - e;
+    size_t k = i + (j-i) / 2;
+    int n = arr[k].number - e;
     if (n == 0)
     {
       return REG_POLY_CALL(convertStringToML, rs, arr[k].name);
@@ -759,13 +758,12 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
 {
   uintptr_t res;
   uintptr_t *list, *pair;
-  char *b;
   struct group gbuf, *gbuf2;
   char  **members;
   mkTagTripleML(triple);
   gid_t gid = (gid_t) convertIntToC(g);
   s = convertIntToC(s) + 1;
-  b = (char *) malloc(s);
+  char* b = (char *) malloc(s);
   if (!b)
   {
     res = errno;
@@ -805,13 +803,12 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
 {
   uintptr_t res;
   uintptr_t *list, *pair;
-  char *b;
   struct group gbuf, *gbuf2;
   char  **members;
   char *name = nameML->data;
   mkTagTripleML(triple);
   s = convertIntToC(s) + 1;
-  b = (char *) malloc(s);
+  char* b = (char *) malloc(s);
   if (!b)
   {
     res = errno;

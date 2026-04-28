@@ -105,46 +105,41 @@ String
 REG_POLY_FUN_HDR(allocStringML, Region rAddr, size_t sizeML)
 {
   size_t sizeC = convertIntToC(sizeML);
-  String strPtr;
 
-  // maybe reset region
-  if ( is_inf_and_atbot(rAddr) )
-    {
-      resetRegion(rAddr);
-    }
-
-  strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
+  maybeResetRegion(rAddr);
+  String strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
 
 String
 REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC)
 {
-  String strPtr;
-  strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
+  String strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
 
 String
-REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
+REG_POLY_FUN_HDR(concatStringML, Region r, String s1, String s2)
 {
-  String res;
-  char *s, *p;
-  size_t i, sz;
+  debug(printf("[enter concatStringML (r=%p,s1=%p,s2=%p)]\n",r,s1,s2);)
 
-  // resetting not possible due to possible aliasing
+  // Notice that _modular storage mode analysis_ ensures that if the atbot-bit
+  // is set, there is no aliasing between the result region and the region
+  // holding the argument strings...
+  maybeResetRegion(r);
 
-  debug(printf("[enter concatStringML (rAddr=%p,str1=%p,str2=%p)]\n", rAddr,str1,str2);)
-  sz = sizeStringDefine(str1) + sizeStringDefine(str2);
-  res = REG_POLY_CALL(allocString, rAddr, sz);
-  p = res->data;
-  s = str1->data;
-  for ( i = 0; i < sizeStringDefine(str1); i++)
+  size_t sz1 = sizeStringDefine(s1);
+  size_t sz2 = sizeStringDefine(s2);
+  size_t sz = sz1 + sz2;
+  String res = REG_POLY_CALL(allocString, r, sz);
+  char* p = res->data;
+  char* s = s1->data;
+  for ( size_t i = 0; i < sz1; i++)
     {
       *p++ = *s++;
     }
-  s = str2->data;
-  for ( i = 0; i < sizeStringDefine(str2); i++)
+  s = s2->data;
+  for ( size_t i = 0; i < sz2; i++)
     {
       *p++ = *s++;
     }
@@ -157,26 +152,17 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 String
 REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
 {
-  String res;
-  size_t length = 0;
-  size_t ys;
-  char *p;
-
-  // maybe reset region
-  if ( is_inf_and_atbot(rAddr) )
-    {
-      resetRegion(rAddr);
-    }
+  maybeResetRegion(rAddr);
 
   // calculate length of string
-  for ( ys = xs; isCONS(ys); ys = tl(ys) )
+  size_t len = 0;
+  for ( size_t ys = xs; isCONS(ys); ys = tl(ys) )
     {
-      length++;
+      len++;
     }
-
-  res = REG_POLY_CALL(allocString, rAddr, length);
-  p = res->data;
-  for ( ys = xs; isCONS(ys); ys = tl(ys) )
+  String res = REG_POLY_CALL(allocString, rAddr, len);
+  char* p = res->data;
+  for ( size_t ys = xs; isCONS(ys); ys = tl(ys) )
     {
       *p++ = (unsigned char) convertIntToC (hd(ys));
     }
@@ -190,27 +176,26 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
 String
 REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs)
 {
-  String res;
-  size_t sz=0;
-  size_t ys;
-  char *p;
+  // Notice that _modular storage mode analysis_ ensures that if the atbot-bit
+  // is set, there is no aliasing between the result region and the region
+  // holding the argument strings...
+  maybeResetRegion(rAddr);
+
+  size_t sz = 0;
 
   // calculate string length and allocate
-  for ( ys = xs; isCONS(ys); ys = tl(ys) )
+  for ( size_t ys = xs; isCONS(ys); ys = tl(ys) )
     {
       sz += sizeStringDefine(hd(ys));
     }
-  res = REG_POLY_CALL(allocString, rAddr, sz);
+  String res = REG_POLY_CALL(allocString, rAddr, sz);
 
-  p = res->data;
-  for ( ys = xs; isCONS(ys); ys = tl(ys) )
+  char* p = res->data;
+  for ( size_t ys = xs; isCONS(ys); ys = tl(ys) )
     {
-      String sd;
-      size_t i;
-      char *s;
-      sd = (String)hd(ys);
-      s = sd->data;
-      for ( i = 0; i < sizeStringDefine(sd); i++ )
+      String sd = (String)hd(ys);
+      char* s = sd->data;
+      for ( size_t i = 0; i < sizeStringDefine(sd); i++ )
 	{
 	  *p++ = *s++;
 	}
@@ -323,53 +308,6 @@ REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e)
 #endif
 
   return REG_POLY_CALL(convertStringToML, rAddr, ml_s->data);
-}
-
-/* explodeStringML(rAddr, str): convert a string to a char list.
- * A list is kept in one region, pointed to by rAddr.  */
-
-uintptr_t *
-REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
-{
-  uintptr_t *res, *consPtr, *pair, *tpair;
-  size_t i, sz;
-  char *p;
-
-  sz = sizeStringDefine(str);
-  if (sz == 0)
-    {
-      makeNIL(res);
-      return res;
-    }
-
-   // save first char such that we can return a pointer to it
-  p = str->data;
-
-#ifdef PROFILING
-  allocPairMLProf(rAddr, pair, pPoint);
-#else
-  allocPairML(rAddr, pair);
-#endif
-
-  first(pair) = convertIntToML (*p);
-  makeCONS(pair, consPtr);
-  res = consPtr;
-  for ( i = 1 ; i < sz; i++ )
-    {
-      #ifdef PROFILING
-      allocPairMLProf(rAddr, tpair, pPoint);
-      #else
-      allocPairML(rAddr, tpair);
-      #endif
-
-      first(tpair) = convertIntToML (*p++);
-      makeCONS(tpair, consPtr);
-      second(pair) = (size_t)consPtr;
-      pair = tpair;
-    }
-  makeNIL(consPtr);
-  second(pair) = (size_t)consPtr;
-  return res;
 }
 
 // for debugging */

@@ -66,7 +66,6 @@ struct
 
    fun findLvar pred (liveset as (lvarset,_)) = Lvarset.findLvar pred lvarset
 
-   fun norm lvarset = lvarset
    fun fromList lvars = Lvarset.lvarsetof(lvars)
 
 
@@ -75,10 +74,9 @@ struct
     (*******************************************)
 
    type liveset = lvarset * Excon.excon list
-   fun norm_liveset (lvarset, excons) = (norm lvarset, excons)
 
    fun layout_liveset (liveset) =
-       case norm_liveset liveset of
+       case liveset of
            (lvarset, excons) =>
            PrettyPrint.NODE{start = "{", finish = "}", indent =1, childsep = PrettyPrint.RIGHT",",
                             children = map (PrettyPrint.LEAF o Lvars.pr_lvar) (Lvarset.members lvarset) @
@@ -223,11 +221,11 @@ struct
           VAR{lvar,...} => (cp_triv_exp e, (singleton lvar, []))
 
         | INTEGER(i,t,NONE) => (cp_triv_exp e, empty_liveset)
-        | INTEGER(i,t,SOME a) => (INTEGER(i,t,SOME(a, norm_liveset liveset)), empty_liveset)
+        | INTEGER(i,t,SOME a) => (INTEGER(i,t,SOME(a, liveset)), empty_liveset)
         | WORD(i,t,NONE) => (cp_triv_exp e, empty_liveset)
-        | WORD(i,t,SOME a) => (WORD(i,t,SOME(a, norm_liveset liveset)), empty_liveset)
-        | STRING(s,place)  => (STRING(s, (place, norm_liveset liveset)),  empty_liveset)
-        | REAL(r,place)    => (REAL(r, (place, norm_liveset liveset)),    empty_liveset)
+        | WORD(i,t,SOME a) => (WORD(i,t,SOME(a, liveset)), empty_liveset)
+        | STRING(s,place)  => (STRING(s, (place, liveset)),  empty_liveset)
+        | REAL(r,place)    => (REAL(r, (place, liveset)),    empty_liveset)
         | F64 r            => (cp_triv_exp e, empty_liveset)
         | UB_RECORD(trs)   =>
           let val children = map (fn tr => llv(tr, liveset)) trs
@@ -241,7 +239,7 @@ struct
                                delete_lvars(freeInBody, map #1 pat)
           in
             (FN{pat=pat,body = body',free = free,
-                alloc = (p, norm_liveset(union_llv(liveset, for_closure)))},
+                alloc = (p, union_llv(liveset, for_closure))},
              for_closure)
           end
         | LETREGION{B,rhos,body} =>
@@ -267,7 +265,7 @@ struct
               val localFree   = diff_llv(union_llv(freeInRhs, freeInScope),
                                          boundByLhs)
           in
-            (FIX{free =free, shared_clos = (rho, norm_liveset(union_llv(localFree, liveset))),
+            (FIX{free =free, shared_clos = (rho, union_llv(localFree, liveset)),
                  functions =
                  map(fn({lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                          bound_but_never_written_into,
@@ -285,9 +283,8 @@ struct
                                   rhos_actuals, other},meta,phi,psi),
               tr2) =>  (* equation 23 and 24 in popl 96 paper *)
           let
-            val liveset = norm_liveset liveset
             val (tr2',live_tr2) = llv(tr2, liveset)
-            val liveset_fx = norm_liveset(union_llv(live_tr2,add_lvar(liveset, f)))  (* see equation 24 *)
+            val liveset_fx = union_llv(live_tr2,add_lvar(liveset, f))  (* see equation 24 *)
           in
             (APP(ck,sr,TR(VAR{lvar=f,il=il,plain_arreffs=plain_arreffs,
                               fix_bound=true, (* see (24) *)
@@ -315,7 +312,6 @@ struct
            (* non-empty list of actual regions: has to be primitive lvar *)
           (case Lvars.primitive lvar of
              SOME _ => let
-                         val liveset = norm_liveset liveset
                          val (tr2',live_tr2) = llv(tr2, liveset)
                        in
                            (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
@@ -336,7 +332,7 @@ struct
         | EXCEPTION(excon,b,mu,rho,tr1) =>
           let val (tr1',freeInScope) = llv(tr1, liveset)
           in
-            (EXCEPTION(excon,b,mu,(rho,norm_liveset(liveset)),tr1'),
+            (EXCEPTION(excon,b,mu,(rho,liveset),tr1'),
              delete_excon(freeInScope, excon))
           end
 
@@ -393,14 +389,14 @@ struct
           end
 
         | CON0{con,il,aux_regions,alloc=NONE} =>
-          let val livehere = norm_liveset liveset
+          let val livehere = liveset
           in
             (CON0{con=con,il=il,aux_regions= map (fn rho => (rho,livehere)) aux_regions,
                   alloc = NONE},
              empty_liveset)
           end
         | CON0{con,il,aux_regions,alloc=SOME alloc} =>
-          let val livehere = norm_liveset liveset
+          let val livehere = liveset
           in
             (CON0{con=con,il=il,aux_regions= map (fn rho => (rho,livehere)) aux_regions,
                   alloc = SOME(alloc,livehere)},
@@ -409,14 +405,14 @@ struct
 
         | CON1({con,il,alloc=NONE},tr1) => (* tr1 is trivial *)
           let val (tr1',freeInArgs) = llv(tr1, liveset)
-              val livehere = norm_liveset(union_llv(liveset, freeInArgs))
+              val livehere = union_llv(liveset, freeInArgs)
           in
             (CON1({con=con,il=il,alloc=NONE}, tr1'),
              freeInArgs)
           end
         | CON1({con,il,alloc=SOME alloc},tr1) => (* tr1 is trivial *)
           let val (tr1',freeInArgs) = llv(tr1, liveset)
-              val livehere = norm_liveset(union_llv(liveset, freeInArgs))
+              val livehere = union_llv(liveset, freeInArgs)
           in
             (CON1({con=con,il=il,alloc=SOME(alloc,livehere)}, tr1'),
              freeInArgs)
@@ -429,7 +425,7 @@ struct
         | EXCON(excon,NONE) => (EXCON(excon,NONE), empty_liveset)
         | EXCON(excon,SOME(rho,tr1)) => (* tr1 trivial *)
           let val (tr1', free_tr1) = llv(tr1, liveset)
-          in (EXCON(excon,SOME((rho, norm_liveset(union_llv(liveset,free_tr1))),tr1')),
+          in (EXCON(excon,SOME((rho, union_llv(liveset,free_tr1)),tr1')),
               add_excon(free_tr1,excon))
           end
         | DEEXCON(excon,tr1) => (* tr1 trivial *)
@@ -440,7 +436,7 @@ struct
         | RECORD(SOME rho, trs) => (* elements of trs trivial *)
           let val children = map (fn tr => llv(tr, liveset)) trs
               val freeInArgs = union_many(map #2 children)
-          in (RECORD(SOME(rho,norm_liveset(union_llv(freeInArgs, liveset))), map #1 children),
+          in (RECORD(SOME(rho,union_llv(freeInArgs, liveset)), map #1 children),
               freeInArgs)
           end
         | RECORD(NONE, nil) => (RECORD(NONE, nil), empty_liveset)
@@ -456,7 +452,7 @@ struct
           end
         | REF(rho,tr1) => (* tr1 trivial *)
           let val (tr1', free_tr1) = llv(tr1, liveset)
-          in (REF((rho,norm_liveset(union_llv(free_tr1, liveset))), tr1'),
+          in (REF((rho,union_llv(free_tr1, liveset)), tr1'),
               free_tr1)
           end
         | ASSIGN(tr1,tr2) => (* tr1 and tr2 trivial *)
@@ -482,7 +478,7 @@ struct
           let
             val children = map (fn tr => llv(tr, liveset)) trs
             val freeInChildren = union_many(map #2 children)
-            val liveset_here = norm_liveset(union_llv(freeInChildren, liveset))
+            val liveset_here = union_llv(freeInChildren, liveset)
           in
             (CCALL ({name = name, mu_result = mu_result,
                      rhos_for_result =
@@ -496,17 +492,16 @@ struct
           let val children = map (fn tr => llv(tr, liveset)) trs
               val freeInArgs = union_many(map #2 children)
           in
-            (BLOCKF64((rho,norm_liveset(union_llv(freeInArgs, liveset))), map #1 children),
+            (BLOCKF64((rho,union_llv(freeInArgs, liveset)), map #1 children),
              freeInArgs)
           end
-        | SCRATCHMEM(n,a) => (SCRATCHMEM(n,(a, norm_liveset liveset)), empty_liveset)
+        | SCRATCHMEM(n,a) => (SCRATCHMEM(n,(a, liveset)), empty_liveset)
         | EXPORT(i,tr1) =>
           let val (tr1', free_in_tr1) = llv(tr1,liveset)
           in (EXPORT(i,tr1'), free_in_tr1)
           end
         | RESET_REGIONS({force,regions_for_resetting,...}, tr1) => (* tr1 is trivial *)
           let
-            val liveset = norm_liveset liveset
             val (tr1', free_tr1) = llv(tr1, liveset)
           in
             (RESET_REGIONS({force=force,

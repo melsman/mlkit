@@ -3,7 +3,7 @@ structure ClosConvEnv :  CLOS_CONV_ENV =
   struct
 
     structure BI = BackendInfo
-    structure RegvarFinMap = EffVarEnv
+    structure RegvarFinMap = Effect.Map
     structure Labels = AddressLabels
     structure PP = PrettyPrint
     structure LvarFinMap = Lvars.Map

@@ -469,6 +469,7 @@ Region allocTripleRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_
 #endif /* ENABLE_GC */
 
 Region resetRegion(Region r);
+void maybeResetRegion(Region r);
 size_t NoOfPagesInRegion(Region r);
 size_t NoOfPagesInGen(Gen* gen);
 

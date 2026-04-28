@@ -1,10 +1,9 @@
 
-structure DropRegions: DROP_REGIONS =
+structure DropRegions : DROP_REGIONS =
   struct
     structure PP = PrettyPrint
     structure Eff = Effect
     structure RSE = RegionStatEnv
-
     structure LvarMap = Lvars.Map
 
     open MulExp AtInf
@@ -61,7 +60,7 @@ structure DropRegions: DROP_REGIONS =
         fun visit_put_rhos [] = ()
           | visit_put_rhos (arreff::arreffs) =
             let fun visit_eval_effect effect = if Eff.is_put effect then visit(Eff.rho_of effect) else ()
-                val _ = List.app visit_eval_effect (Eff.represents arreff)
+                val _ = List.app visit_eval_effect (Eff.represents_no_gets arreff)
             in visit_put_rhos arreffs
             end
         fun unvisit_bot_rhos [] = ()
@@ -125,13 +124,11 @@ structure DropRegions: DROP_REGIONS =
     val export_env = ref empty
 
 
-
-
    (* -----------------------------------------------------------------
     * Environment for Region Variables
     * ----------------------------------------------------------------- *)
 
-    structure PlaceMap = Eff.PlaceOrEffectMap
+    structure PlaceMap = Eff.Map
 
     datatype regenv_res = DROPIT | KEEP | LETREGION_INF (*to disable global regions*)
     type place = RType.place
