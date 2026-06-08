@@ -89,28 +89,28 @@ Principles of Programming Languages_. 1994. [pdf]({{BASE_PATH}}/pdf/popl94.pdf).
 
 ### Theses
 
+* Mikkel Willén. __Programmer-Directed Region Management in ReML__. MSc Thesis. Department of Computer Science, University of Copenhagen. Revised version. June, 2026. [pdf](pdf/willen-thesis-2026.pdf)
+
 * Martin Elsman. __Program Modules, Separate Compilation, and Intermodule
-Optimisation__. PhD thesis. Revised. Department of Computer Science,
+Optimisation__. PhD Thesis. Revised. Department of Computer Science,
 University of Copenhagen. January 1999. [pdf]({{BASE_PATH}}/pdf/phd.pdf), [bibtex]({{BASE_PATH}}/pdf/phd.bibtex.txt).
 
 * Niels Hallenberg. __Combining Garbage Collection and Region Inference
-in The MLKit__. Master's Thesis. Department of Computer Science,
+in The MLKit__. MSc Thesis. Department of Computer Science,
 University of Copenhagen. 1999. [pdf]({{BASE_PATH}}/pdf/nhthesis.pdf).
 
 * Martin Koch and Tommy Højfeld Olesen. __Compiling a Higher-Order
 Call-by-Value Functional Programming Language to a RISC Using a Stack
-of Regions__. Master's Thesis 96-10-5. Department of Computer Science,
+of Regions__. MSc Thesis 96-10-5. Department of Computer Science,
 University of Copenhagen. 1996. [pdf]({{BASE_PATH}}/pdf/kothesis.pdf).
 
-* Martin Elsman. __A Portable Standard ML Implementation__. Master's
+* Martin Elsman. __A Portable Standard ML Implementation__. MSc
 Thesis. Technical University of Denmark. August 1994. [pdf]({{BASE_PATH}}/pdf/masters.pdf), [bibtex]({{BASE_PATH}}/pdf/masters.bibtex.txt).
 
-* Magnus Vejlstrup. __Multiplicity Inference__. Master's Thesis 94-9-1. Department of Computer Science, University of
+* Magnus Vejlstrup. __Multiplicity Inference__. MSc Thesis 94-9-1. Department of Computer Science, University of
 Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
-
-* Mikkel Willén. Programmer-Directed Region Management in ReML. MSc Thesis. Department of Computer Science, University of Copenhagen. Revised version. June, 2026. [pdf](pdf/willen-thesis-2026.pdf)
 
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, and Peter Sestoft. ___Programming with Regions in the
