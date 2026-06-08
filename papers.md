@@ -110,6 +110,8 @@ Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
 
+* Mikkel Willén. Programmer-Directed Region Management in ReML. MSc Thesis. Department of Computer Science, University of Copenhagen. Revised version. June, 2026. [pdf](pdf/willen-thesis-2026.pdf)
+
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, and Peter Sestoft. ___Programming with Regions in the
 MLKit (revised for Version 4.7.16)___. Department of Computer Science, University of Copenhagen. December 2025. [pdf](/pdf/mlkit-4.7.16.pdf), [bibtex](/pdf/mlkit-4.7.16-bibtex.txt).
