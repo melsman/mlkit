@@ -156,6 +156,12 @@ structure OptLambda : OPT_LAMBDA =
              \functions. Real values stored in data structures and\n\
              \passed to functions are still boxed."}
 
+    val drop_unused_funargs_p = Flags.add_bool_entry
+            {long="drop_unused_funargs", short=SOME "dufa",
+             menu=["Optimiser Control", "drop unused funargs"],
+             item=ref true, neg=true, desc=
+             "Drop function arguments that are unused."}
+
     (* max size of recursive function defs. to be specialised. *)
     val max_specialise_size = Flags.add_int_entry
         {long="maximum_specialise_size",short=SOME "max_spec_sz",
@@ -3565,7 +3571,7 @@ structure OptLambda : OPT_LAMBDA =
 *)
                    val (_,t,vtys) =
                        List.foldl (fn ((x,ty),(i,t,vtys)) =>
-                                      if List.exists (fn y => Lvars.eq(x,y)) vs0
+                                      if not(drop_unused_funargs_p()) orelse List.exists (fn y => Lvars.eq(x,y)) vs0
                                       then (i+1,t,(x,ty)::vtys)
                                       else (tick "flatten-dropOpt";
                                             (i+1,t oo Drop i,vtys)))
