@@ -1,4 +1,4 @@
-AC_INIT(MLKit, [v4.7.21])
+AC_INIT(MLKit, [v4.7.22])
 AC_CONFIG_HEADERS([src/Runtime/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/Runtime/Makefile
