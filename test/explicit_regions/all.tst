@@ -103,9 +103,28 @@ mod6.sml              ccl ecte                   (* Signature matching: It is an
                                                     is less general than the implementation type. *)
 mod7.sml              ccl ecte                   (* Signature matching: It is an error if the specification type
                                                     is less general than the implementation type. *)
-
 expty3.sml                                       (* Applying region abstract type bindings *)
 
 err_expty4.sml        ccl ecte                   (* Applied region-abstract type functions are tracked *)
 
 expty4.sml            ccl                        (* ReML Type weakening *)
+
+(* --------------------- *)
+(* Testing region resets *)
+(* --------------------- *)
+resetErr.sml 		  ccl ecte noopt   (* Using an out-of-scope region variable is a compile time error *)
+	
+reset.sml			  noopt			   (* Resetting the region of a dead variable results in a reset *)
+reset2.sml			  ccl noopt		   (* Resetting the region of a live variable results in a warning, and no a reset *)
+reset3.sml			  noopt			   (* Resetting a region containing the data of a dead variables results in a reset *)
+reset4.sml			  ccl noopt		   (* Resetting a region containing the data of a live variable results in a warning, and no a reset *)
+reset5.sml			  noopt			   (* Combination of 1 and 3 *)
+reset6.sml			  ccl noopt		   (* Combination of 2 and 4 *)
+reset7.sml			  noopt  		   (* Resetting multiple explicit regiosn at once *)
+
+forceReset.sml        noopt			   (* Force resetting the region of a dead variable results in reset *)
+forceReset2.sml		  ccl noopt		   (* Force resetting the region of a live variable results in a warning, but still results in a reset *)
+forceReset3.sml       noopt			   (* Force resetting a region containing the data of a dead variables results in a reset *)
+forceReset4.sml		  ccl noopt  	   (* Force resetting a region containing the data of a live variable results in a warning, but still results in a reset *)
+forceReset5.sml       noopt			   (* Combination of 1 and 3 *)
+forceReset6.sml		  ccl noopt 	   (* Combination of 2 and 4 *)

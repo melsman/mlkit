@@ -3,7 +3,7 @@ structure ParseInfo: PARSE_INFO =
     fun impossible s = Crash.impossible ("ParseInfo." ^ s)
 
     structure SourceInfo = SourceInfo
-    structure DFInfo = DFInfo
+    structure DFInfo     = DFInfo
     type SourceInfo      = SourceInfo.SourceInfo
     type DFInfo          = DFInfo.DFInfo
     type StringTree      = PrettyPrint.StringTree

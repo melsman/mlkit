@@ -1,0 +1,4 @@
+1;0;GET / HTTP/1.1
+1;1;Host: example.com
+1;2;User-Agent: Test
+1;3;

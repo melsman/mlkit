@@ -1,0 +1,10 @@
+local
+	$(SML_LIB)/basis/basis-reml.mlb
+	tcp_state.sig
+	simpleio.mlb
+	size.mlb
+in
+	tcp_state.sml
+	driver.sml
+	service.sml
+end

@@ -1,0 +1,22 @@
+[reading source file:	reset2.sml]
+[wrote X64 code file:	MLB/RI_PAR/reset2.sml.s]
+> val f : unit -> int
+  val size : string -> int
+ *** Warnings ***
+resetRegions(x): 
+   You have suggested resetting the regions that appear free 
+   in the type scheme with place of 'x', i.e., in
+   (string,`r)
+   I have NOT done as you requested.
+   Here are my reasons, (one for each region variable concerned):
+   (1)                                                    
+        '`r': there is a conflict with the locally
+        live variable
+        x :(string,`r)
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {`r}
+        Amongst these, '`r' can also be reached from '`r'.
+        Thus I have given '`r' storage mode "attop".
+[wrote X64 code file:	MLB/RI_PAR/base-link_objects.s]
+[wrote executable file:	run]

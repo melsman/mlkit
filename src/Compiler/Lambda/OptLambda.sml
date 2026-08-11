@@ -299,7 +299,7 @@ structure OptLambda : OPT_LAMBDA =
     local
       type exp = LambdaExp
       fun ccall name argtypes restype =
-          CCALLprim {name=name,instances=[],tyvars=[],
+          CCALLprim {name=name,instances=[],regvars=[],tyvars=[],
                      Type=ARROWtype(argtypes,NONE,[restype],NONE)}
       fun f64_bin opr (x:exp,y:exp) : exp =
           PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] f64Type, [x,y])
@@ -447,6 +447,10 @@ structure OptLambda : OPT_LAMBDA =
         fun eq_TypeList (Types ts,Types ts') = eq_Types(ts,ts')
           | eq_TypeList _ = false
 
+        fun eq_regvars (nil,nil) = true
+          | eq_regvars (x::xs,y::ys) = RegVar.eq(x,y) andalso eq_regvars(xs,ys)
+          | eq_regvars _ = false
+
         fun eq_prim m (p,p') =
             case (p,p') of
                 (RECORDprim {regvar=NONE}, RECORDprim {regvar=NONE}) => true
@@ -468,10 +472,10 @@ structure OptLambda : OPT_LAMBDA =
                 eq_Type(t,t') andalso RegVar.eq(rv,rv')
               | (ASSIGNprim {instance=t}, ASSIGNprim {instance=t'}) => eq_Type(t,t')
               | (EQUALprim {instance=t}, EQUALprim {instance=t'}) => eq_Type(t,t')
-              | (RESET_REGIONSprim {instance=t}, RESET_REGIONSprim {instance=t'}) => eq_Type(t,t')
-              | (FORCE_RESET_REGIONSprim {instance=t}, FORCE_RESET_REGIONSprim {instance=t'}) => eq_Type(t,t')
-              | (CCALLprim{name=n,instances=il,tyvars=tvs,Type=t}, CCALLprim{name=n',instances=il',tyvars=tvs',Type=t'}) =>
-                    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t'))
+			  | (RESET_REGIONSprim {instance=t, regvars=rvs}, RESET_REGIONSprim {instance=t', regvars=rvs'}) => eq_Type(t,t') andalso eq_regvars(rvs, rvs')
+			  | (FORCE_RESET_REGIONSprim {instance=t, regvars=rvs}, FORCE_RESET_REGIONSprim {instance=t', regvars=rvs'}) => eq_Type(t,t') andalso ListPair.allEq RegVar.eq (rvs,rvs')
+			  | (CCALLprim{name=n,instances=il,regvars=rvs,tyvars=tvs,Type=t}, CCALLprim{name=n',instances=il',regvars=rvs',tyvars=tvs',Type=t'}) =>
+                    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t')) andalso ListPair.allEq RegVar.eq (rvs,rvs')
               | (EXPORTprim{name=n,instance_arg=a,instance_res=r}, EXPORTprim{name=n',instance_arg=a',instance_res=r'}) =>
                     n = n' andalso eq_Type(a,a') andalso eq_Type(r,r')
               | (BLOCKF64prim, BLOCKF64prim) => true
@@ -507,10 +511,6 @@ structure OptLambda : OPT_LAMBDA =
               | (INCLconstr (r,e,rep,lvopt), INCLconstr (r',e',rep',lvopt')) =>
                 RegVar.eq(r,r') andalso eq_eff(e,e') andalso Report.eq(rep,rep') andalso eq_lvopt(lvopt,lvopt')
               | _ => false
-
-        fun eq_regvars (nil,nil) = true
-          | eq_regvars (x::xs,y::ys) = RegVar.eq(x,y) andalso eq_regvars(xs,ys)
-          | eq_regvars _ = false
 
         fun eq_lamb0 m (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_Type(t,t')
           | eq_lamb0 m (WORD(n,t), WORD(n',t')) = n=n' andalso eq_Type(t,t')
@@ -1593,7 +1593,7 @@ structure OptLambda : OPT_LAMBDA =
                   if not(constant_folding_p()) then NONE
                   else
                     case lamb of
-                        PRIM(CCALLprim{name,instances,tyvars,Type},exps) =>
+					  PRIM(CCALLprim{name,instances,regvars,tyvars,Type},exps) =>
                         let fun Some e = SOME(name,e)
                         in case exps of
                                [STRING (s1,NONE),STRING (s2,NONE)] =>
@@ -2268,12 +2268,12 @@ structure OptLambda : OPT_LAMBDA =
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
                 | ("realInt",[x]) =>
                   (tick "real_to_f64";
-                   (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],tyvars=[],
+                   (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],regvars=[],tyvars=[],
                                                  Type=ARROWtype([intDefaultType()],NONE,[f64Type],NONE)},
                                       [x])), CUNKNOWN))
                 | ("__real_to_int",[x]) =>
                   (tick "real_to_f64";
-                   (PRIM(CCALLprim{name="__f64_to_int",instances=[],tyvars=[],
+                   (PRIM(CCALLprim{name="__f64_to_int",instances=[],regvars=[],tyvars=[],
                                    Type=ARROWtype([f64Type],NONE,[intDefaultType()],NONE)},
                          [real_to_f64 x]), CUNKNOWN))
                 | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
@@ -2286,7 +2286,7 @@ structure OptLambda : OPT_LAMBDA =
                               ARROWtype(argTypes, _, _, _) => argTypes
                             | _ => die "prim(__blockf64_sub_real): expecting arrow type"
                   in tick "real_to_f64";
-                     (f64_to_real (PRIM(CCALLprim{name="__blockf64_sub_f64",instances=[],tyvars=[],
+                    (f64_to_real (PRIM(CCALLprim{name="__blockf64_sub_f64",instances=[],regvars=[],tyvars=[],
                                                   Type=ARROWtype(argTypes,NONE,[f64Type],NONE)},
                                         [t,i])),
                       CUNKNOWN)
@@ -2297,7 +2297,7 @@ structure OptLambda : OPT_LAMBDA =
                               ARROWtype([bType,iType,_], _, _, _) => (bType,iType)
                             | _ => die "prim(__blockf64_update_real): expecting arrow type with three args"
                   in tick "real_to_f64";
-                     (PRIM(CCALLprim{name="__blockf64_update_f64",instances=[],tyvars=[],
+                    (PRIM(CCALLprim{name="__blockf64_update_f64",instances=[],regvars=[],tyvars=[],
                                      Type=ARROWtype([bType,iType,f64Type],NONE,[unitType],NONE)},
                            [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
                       CUNKNOWN)
@@ -3845,14 +3845,14 @@ structure OptLambda : OPT_LAMBDA =
          end
      fun assign tyvars aType instances a (i:int) e =
          let val iType = intDefaultType()
-         in PRIM(CCALLprim{name="word_update0",instances=instances,tyvars=tyvars,
+         in PRIM(CCALLprim{name="word_update0",instances=instances,regvars=[],tyvars=tyvars,
                            Type=ARROWtype([aType,iType,iType],NONE,[unit_Type],NONE)},
                  [a,INTEGER(IntInf.fromInt i,iType),e])
          end
    in
      fun table2d_simplify lamb =
          case lamb of
-             PRIM(CCALLprim{name="word_table2d0",instances,tyvars,
+           PRIM(CCALLprim{name="word_table2d0",instances,regvars,tyvars,
                             Type=ARROWtype([iType,_,_],rv0,[aType],rv)},lambs) =>
              (case map table2d_simplify lambs of
                   [n,nr,nc] =>
@@ -3863,13 +3863,13 @@ structure OptLambda : OPT_LAMBDA =
                       val S = mk_subst (fn () => "table2d_simplify.word_table2d0") (tyvars,instances)
                       val aType' = on_Type S aType
                   in LET{pat=[(lv,nil,aType')],
-                         bind=PRIM(CCALLprim{name="word_table0",instances=instances,
+                         bind=PRIM(CCALLprim{name="word_table0",instances=instances,regvars=regvars,
                                              tyvars=tyvars,
                                              Type=ARROWtype([iType],rv0,[aType],rv)},[n]),
                          scope=exec e0 (exec e1 a)}
                   end
                 | _ => die "table2d_simplify: word_table2d0")
-           | PRIM(CCALLprim{name="word_table2d0_init",instances,tyvars,
+		   | PRIM(CCALLprim{name="word_table2d0_init",instances,regvars,tyvars,
                             Type=ARROWtype([iType,eType,_,_],rv0,[aType],rv)},lambs) =>
              (case map table2d_simplify lambs of
                   [n,e,nr,nc] =>
@@ -3881,7 +3881,7 @@ structure OptLambda : OPT_LAMBDA =
                       val aType' = on_Type S aType
                   in LET{pat=[(lv,nil,aType')],
                          bind=PRIM(CCALLprim{name="word_table_init",instances=instances,
-                                             tyvars=tyvars,
+                                             regvars=regvars,tyvars=tyvars,
                                              Type=ARROWtype([iType,eType],rv0,[aType],rv)},[n,e]),
                          scope=exec e0 (exec e1 a)}
                   end

@@ -108,7 +108,7 @@ structure AtInf : AT_INF =
         end
   end
 
-  fun lay_header (force,lvar,(tau,p:place option)) =
+  fun lay_header_lvar (force,lvar,(tau,p:place option)) =
       if force
       then PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
                    children = [PP.LEAF "You have requested resetting the regions that appear free ",
@@ -120,7 +120,22 @@ structure AtInf : AT_INF =
       else PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
                    children = [PP.LEAF "You have suggested resetting the regions that appear free ",
                                PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
-                               lay_sigma_p(RType.type_to_scheme tau,p)]}
+                               lay_sigma_p(RType.type_to_scheme tau,p),
+							   PP.LEAF "I have NOT done as you requested.",
+							   PP.LEAF "Here are my reasons, (one for each region variable concerned):"]}
+
+  fun lay_header_regvars (force, regvars) =
+	  if force
+	  then PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
+				   children = [PP.LEAF "You have requested resetting the regions ",
+							   PP.LEAF ("{" ^ regvars ^ "}."),
+							   PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
+							   PP.LEAF "Here are my objections (one for each region variable concerned):"]}
+	  else PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
+				   children = [PP.LEAF "You have suggested resetting the regions ",
+							   PP.LEAF ("{" ^ regvars ^ "}."),
+							   PP.LEAF "I have NOT done as you requested.",
+							   PP.LEAF "Here are my reasons, (one for each region variable concerned):"]}
 
   fun lay_set (rhos: place list) =
       PP.HNODE{start ="{", finish = "}", childsep = PP.RIGHT",",
@@ -295,15 +310,24 @@ structure AtInf : AT_INF =
       in loop(1,l)
       end
 
-  fun lay_report (force:bool, lvar, mu, conflicts) : StringTree =
+  fun lay_report_lvar (force:bool, lvar, mu, conflicts) : StringTree =
       let val tau_p =
               case RType.unBOX mu of
                   SOME (tau,p) => (tau,SOME p)
                 | NONE => (mu,NONE)
-      in PP.NODE{start = if force then ("forceResetting(" ^ Lvars.pr_lvar lvar ^ "): ")
-                         else ("resetRegions(" ^ Lvars.pr_lvar lvar ^ "): "),
-                 finish = "", indent = 3, childsep = PP.NOSEP,
-                 children = lay_header(force,lvar,tau_p) :: lay_conflicts(force,conflicts)}
+		  val head = if force then ("forceResetting(" ^ Lvars.pr_lvar lvar ^ "): ")
+					 else ("resetRegions(" ^ Lvars.pr_lvar lvar ^ "): ")
+      in PP.NODE{start = head, finish = "", indent = 3, childsep = PP.NOSEP,
+                 children = lay_header_lvar(force,lvar,tau_p) :: lay_conflicts(force,conflicts)}
+      end
+
+  fun lay_report_regvars (force:bool, rhos, conflicts) : StringTree =
+      let
+		val regvars = String.concatWith ", " (map Eff.pp_eff rhos)
+		val head = if force then ("forceResetting(" ^ regvars ^ "): ")
+				   else ("resetRegions(" ^ regvars ^ "): ")
+      in PP.NODE{start = head, finish = "", indent = 3, childsep = PP.NOSEP,
+                 children = lay_header_regvars(force,regvars) :: lay_conflicts(force,conflicts)}
       end
 
   fun any_live (rho,sme as (_,LE,EE), liveset,
@@ -593,6 +617,32 @@ structure AtInf : AT_INF =
                      | EQUAL ({mu_of_arg1, mu_of_arg2}, tr1,tr2) =>
                        EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2},  (* no need for analysis *)
                               sma_trip sme tr1,sma_trip sme tr2)
+					 | CCALL ({name="resetRegions", mu_result, rhos_for_result}, trs) =>
+						(case trs of
+						   [TR(e,meta,_,_)] =>
+						   	(case meta of
+							  	MulExp.RegionExp.Mus [mu] =>
+								  let
+									val rhos = map #1 (map #1 rhos_for_result)
+									val (place_at_list, conflicts) =
+									  analyse_rhos_for_resetting(sme,(Lvarset.empty, []),rhos)
+									val conflicts' = foldl (fn (SAT rho, acc) => FORMAL_REGION_PARAM rho :: acc
+															  | (_, acc) => acc) conflicts place_at_list
+								  in
+									case conflicts' of
+									  [] => ()
+									| _ => case e of
+											RECORD(NONE, nil) => warn (PP.reportStringTree(lay_report_regvars(true, rhos, conflicts')))
+										  | _ => die "resetRegions: ill-formed expression: argument to resetRegions should be unit";
+									CCALL ({name = "resetRegions", mu_result = mu_result,
+										   rhos_for_result =
+										   map (fn ((rho, liveset), i_opt) =>
+												  (which_at sme (rho, liveset), i_opt))
+											   rhos_for_result},
+										  map (sma_trip sme) trs)
+								  end
+							| _ => die "resetRegions: expected a type and place on argument to resetRegions")
+						| _ => die "ill-formed expression: argument to resetRegions should be unit")
                      | CCALL ({name, mu_result, rhos_for_result}, trs) =>
                        let val (actuals, iopts) = ListPair.unzip rhos_for_result
                            val actuals' = sma_modular_call sme actuals
@@ -605,25 +655,30 @@ structure AtInf : AT_INF =
                      | BLOCKF64 (alloc, trs) => BLOCKF64(which_at sme alloc,map (sma_trip sme) trs)
                      | SCRATCHMEM (n,alloc) => SCRATCHMEM(n,which_at sme alloc)
                      | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
-                     | RESET_REGIONS ({force, liveset=SOME liveset, ...}, tr as (TR(VAR{lvar,...},meta,_,_))) =>
+					 | RESET_REGIONS ({force, liveset=SOME liveset, regions_for_resetting}, tr as (TR(e,meta,_,_))) =>
                           (case meta of
                              MulExp.RegionExp.Mus [mu] =>
-                                   let val free_regions = Eff.remove_duplicates(RType.frv_mu mu)
-                                       val (place_at_list, conflicts) =
-                                           analyse_rhos_for_resetting(sme,liveset,free_regions)
-                                       val conflicts' =
-                                           if force then
-                                             foldl (fn (SAT rho, acc) => FORMAL_REGION_PARAM rho :: acc
-                                                   | (_, acc) => acc) conflicts place_at_list
-                                           else conflicts
-                                   in
-                                     case conflicts' of
-                                         [] => ()
-                                       | _ => warn (PP.reportStringTree(lay_report(force,lvar,mu,conflicts')));
-                                     RESET_REGIONS({force=force,regions_for_resetting = place_at_list, liveset=NONE},
-                                                   sma_trip sme tr)
-                                   end
-                            | _ => die "RESET_REGIONS: expected a type and place on argument to resetRegions"
+							 let
+							   val rhos = map #1 regions_for_resetting
+							   val free_regions = Eff.remove_duplicates(RType.frv_mu mu @ rhos)
+							   val (place_at_list, conflicts) =
+								 analyse_rhos_for_resetting(sme,liveset,free_regions)
+							   val conflicts' =
+								 if force then
+								   foldl (fn (SAT rho, acc) => FORMAL_REGION_PARAM rho :: acc
+											| (_, acc) => acc) conflicts place_at_list
+								 else conflicts
+							 in
+							   case conflicts' of
+								 [] => ()
+							   | _ => case e of
+										VAR{lvar, ...} => warn (PP.reportStringTree(lay_report_lvar(force,lvar,mu,conflicts')))
+									  | RECORD(NONE, nil) => warn (PP.reportStringTree(lay_report_regvars(force, rhos, conflicts')))
+									  | _ => die "RESET_REGIONS: ill-formed expression: argument to RESET_REGIONS should be a variable or unit";
+							   RESET_REGIONS({force=force,regions_for_resetting = place_at_list, liveset=NONE},
+											 sma_trip sme tr)
+							 end
+						   | _ => die "RESET_REGIONS: expected a type and place on argument to resetRegions"
                           )
                      | RESET_REGIONS _ => die "ill-formed expression: argument to RESET_REGIONS should be a variable"
                      | FRAME{declared_lvars, declared_excons} =>

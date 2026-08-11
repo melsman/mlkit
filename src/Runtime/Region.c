@@ -304,6 +304,54 @@ NoOfPagesInRegion(Region r)
 #endif /* ENABLE_GEN_GC */
 }
 
+
+/* Check if a region is at bottom. */
+size_t REG_POLY_FUN_HDR(is_Atbot, Region r) {
+  return convertBoolToML(is_atbot(r));
+}
+
+/* Get number of pages in a region. */
+size_t REG_POLY_FUN_HDR(num_Pages, Region r) {
+  Region r_cleared = clearStatusBits(r);
+  return convertIntToML(NoOfPagesInRegion(r_cleared));
+}
+
+/* Get the memory usage of a region */
+size_t REG_POLY_FUN_HDR(get_Region_Memory_Usage_Bytes, Region r) {
+  Region r_cleared = clearStatusBits(r);
+  return convertIntToML(NoOfPagesInRegion(r_cleared)*REGION_PAGE_SIZE_BYTES -
+						freeInRegion(r_cleared)*WORD_SIZE_BYTES);
+}
+
+
+/* Get size of a region page. */
+size_t get_Page_Size_Bytes () {
+  return convertIntToML(REGION_PAGE_SIZE_BYTES);
+}
+
+/* Get number of allocated region pages, including free list */
+size_t get_Num_Allocated_Pages () {
+  return convertIntToML(rp_total);
+}
+
+/* Get the size of the global free list */
+size_t get_Free_List_Size () {
+  return convertIntToML(size_free_list());
+}
+
+
+
+/* Get the size of the local free list, if PARALLEL is set, else get the size
+   of the global free list */
+size_t get_Thread_Free_List_Size () {
+  return convertIntToML(size_thread_free_list());
+}
+
+/* give the local free list back to the global free list */
+void give_Thread_Free_List_To_Global () {
+  free_thread_free_list();
+}
+
 /*
 void
 printFreeList()
@@ -324,7 +372,8 @@ printFreeList()
 */
 
 
-#ifdef ENABLE_GC
+/* returns the size of the global free list */
+/* #ifdef ENABLE_GC */
 size_t
 size_free_list()
 {
@@ -339,7 +388,50 @@ size_free_list()
 
   return i;
 }
-#endif /*ENABLE_GC*/
+/* #endif /\*ENABLE_GC*\/ */
+
+
+/* returns the size of thread specific free list, if PARALLLEL is set,
+   else returns size_free_list () */
+size_t
+size_thread_free_list() {
+  Rp* rp;
+  size_t i = 0;
+
+  MAYBE_DEFINE_CONTEXT;
+  
+  LOCK_LOCK(FREELISTMUTEX);
+
+  for ( rp = FREELIST ; rp ; rp = rp-> n )
+	i++;
+
+  LOCK_UNLOCK(FREELISTMUTEX);
+
+  return i;
+}
+
+/* gives the pages in the local free list back to the global free list */
+void
+free_thread_free_list() {
+#ifdef PARALLEL
+  MAYBE_DEFINE_CONTEXT;
+
+  LOCK_LOCK(FREELISTMUTEX);
+
+  if ( FREELIST != NULL ) {
+	Rp* fl_tmp = global_freelist;
+	global_freelist = FREELIST;
+	Rp* last = global_freelist;
+	while ( last->n != NULL ) {
+	  last = last->n;
+	}
+	last->n = fl_tmp;
+	FREELIST = NULL;
+  }
+
+  LOCK_UNLOCK(FREELISTMUTEX);
+#endif /* PARALLEL */
+}
 
 /*-------------------------------------------------------------------------*
  *                         Region operations.                              *
@@ -1066,6 +1158,52 @@ resetRegion(Region rAdr)
   return rAdr; /* We preserve rAdr and the status bits. */
 }
 
+/* Copy of the above function, but for profiling. Expanding with macro, would
+   require many changes elsewhere in the code */
+Region
+resetRegionProf(Region rAdr, size_t pPoint)
+{
+  Ro *r;
+
+#ifdef PROFILING
+  int j;
+#endif
+
+  debug(printf("[resetRegions..."));
+
+  r = clearStatusBits(rAdr);
+
+#ifdef PROFILING
+  callsOfResetRegion++;
+  j = NoOfPagesInRegion(r);
+
+  /* There is always at-least one page in a generation. */
+  noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION;
+  profTabDecrNoOfPages(r->regionId, j-MIN_NO_OF_PAGES_IN_REGION);
+
+  allocNowInf -= r->allocNow;
+  profTabDecrAllocNow(r->regionId, r->allocNow, "resetRegion");
+  allocProfNowInf -= r->allocProfNow;
+#endif
+
+  resetGen(&(r->g0));
+#ifdef ENABLE_GEN_GC
+  resetGen(&(r->g1));
+#endif /* ENABLE_GEN_GC */
+
+  free_lobjs(r->lobjs);
+
+  r->lobjs = NULL;
+
+#ifdef PROFILING
+  r->allocNow = 0;
+  r->allocProfNow = 0;
+#endif
+	debug(printf("]\n"));
+
+	return rAdr; /* We preserve rAdr and the status bits. */
+}
+	
 // ----------------------------------------------------------------
 // maybeResetRegion(r):
 //  Reset region r if the inf-bit and the atbot-bit is set
@@ -1077,7 +1215,6 @@ maybeResetRegion(Region r) {
       resetRegion(r);
     }
 }
-
 
 /*-------------------------------------------------------------------------*
  * deallocateRegionsUntil:                                                 *

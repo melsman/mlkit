@@ -143,8 +143,12 @@ structure LambdaExp : LAMBDA_EXP =
       | RaisedExnBind
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
-        CONprim of {con : con, instances : 'Type list, regvar: regvar option}
-      | DECONprim of {con : con, instances : 'Type list, lv_opt:lvar option}
+		CONprim of {con : con,
+					instances : 'Type list,
+					regvar: regvar option}
+	  | DECONprim of {con : con,
+					  instances : 'Type list,
+					  lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
       | RECORDprim of {regvar:regvar option}
@@ -152,11 +156,13 @@ structure LambdaExp : LAMBDA_EXP =
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
-      | REFprim of {instance: 'Type,regvar:regvar option}
+	  | REFprim of {instance: 'Type,
+					regvar:regvar option}
       | ASSIGNprim of {instance: 'Type}
       | EQUALprim of {instance: 'Type}
       | CCALLprim of {name : string,                  (* Primitives, etc. *)
                       instances : 'Type list,
+					  regvars : regvar list,
                       tyvars : tyvar list,
                       Type : 'Type}
       | BLOCKF64prim
@@ -164,10 +170,12 @@ structure LambdaExp : LAMBDA_EXP =
       | EXPORTprim of {name : string,
                        instance_arg : 'Type,
                        instance_res : 'Type}
-      | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed,
-                                                       * but safe, resetting of regions *)
-      | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled,
-                                                       * unsafe resetting of regions *)
+	  | RESET_REGIONSprim of {instance: 'Type,
+							  regvars: regvar list}        (* NOT Standard ML, for programmer-directed,
+														 * but safe, resetting of regions *)
+	  | FORCE_RESET_REGIONSprim of {instance: 'Type,
+									regvars: regvar list}  (* NOT Standard ML, for programmer-controlled,
+														 * unsafe resetting of regions *)
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 
@@ -269,10 +277,10 @@ structure LambdaExp : LAMBDA_EXP =
       | REFprim{instance,regvar} => (foldType g) acc instance
       | ASSIGNprim{instance} => (foldType g) acc instance
       | EQUALprim{instance} => (foldType g) acc instance
-      | CCALLprim {instances, ...} => foldl' (foldType g) acc instances
+      | CCALLprim {instances, regvars, ...} => foldl' (foldType g) acc instances
       | EXPORTprim {instance_arg,instance_res, ...} => (foldType g) ((foldType g) acc instance_arg) instance_res
-      | RESET_REGIONSprim{instance} => (foldType g) acc instance
-      | FORCE_RESET_REGIONSprim{instance} => (foldType g) acc instance
+      | RESET_REGIONSprim{instance, regvars} => (foldType g) acc instance
+      | FORCE_RESET_REGIONSprim{instance, regvars} => (foldType g) acc instance
       | _ => acc
 
    fun size (e: LambdaExp) = foldTD(fn n:int => fn exp => n+1,
@@ -535,6 +543,11 @@ structure LambdaExp : LAMBDA_EXP =
          barify_catch_basislib (unsymb(TyName.pr_TyName' tn))
        else TyName.pr_TyName tn
 
+    fun layoutRegVar r = (PP.LEAF o RegVar.pr) r
+
+    fun layoutRegVars regvars = PP.NODE {start="", finish="", childsep=PP.LEFT " ", indent=0,
+                                         children = map layoutRegVar regvars}
+
     fun layoutPrim layoutType prim =
      case prim of
         CONprim{con,instances,regvar} =>
@@ -679,10 +692,16 @@ structure LambdaExp : LAMBDA_EXP =
       | CCALLprim{name="__greatereq_word63", ...} => PP.LEAF(">=")
       | CCALLprim{name="__greatereq_word64", ...} => PP.LEAF(">=")
 
-      | CCALLprim {name, instances, tyvars, Type} =>
+	  | CCALLprim {name, instances, regvars, tyvars, Type} =>
           if !Flags.print_types then
-              PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
-                       children=map layoutType instances, childsep=PP.LEFT ", "}
+			let
+				(* layout_instances function is not in scope *)
+				val layout_instances = PP.NODE {start="<", finish=">", indent=2,
+												children=map layoutType instances, childsep=PP.LEFT ", "}
+			in
+				PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
+						 children=[layout_instances, layoutRegVars regvars], childsep=PP.RIGHT ","}
+			end
           else
             if !barify_p then
               (case name of
@@ -702,16 +721,16 @@ structure LambdaExp : LAMBDA_EXP =
           else
               if !barify_p then PP.LEAF ("Prim.export " ^ strip_ name)
               else PP.LEAF ("_export " ^ name)
-      | RESET_REGIONSprim {instance} =>
+     | RESET_REGIONSprim {instance, regvars} =>
           if !Flags.print_types then
               PP.NODE{start="resetRegions(", finish=")",indent=2,
-                  children=[layoutType instance],childsep=PP.NOSEP}
-          else PP.LEAF("resetRegions")
-      | FORCE_RESET_REGIONSprim {instance} =>
+					  children=[layoutType instance, layoutRegVars regvars],childsep=PP.RIGHT ","}
+          else PP.LEAF "resetRegions"
+     | FORCE_RESET_REGIONSprim {instance, regvars} =>
           if !Flags.print_types then
               PP.NODE{start="forceResetting(", finish=")",indent=2,
-                  children=[layoutType instance],childsep=PP.NOSEP}
-          else PP.LEAF("forceResetting")
+					  children=[layoutType instance, layoutRegVars regvars],childsep=PP.RIGHT ","}
+          else PP.LEAF "forceResetting"
 
     fun layoutSwitch layoutLambdaExp show_const (SWITCH(lamb,rules,wildcardOpt)) =
       let
@@ -807,10 +826,6 @@ structure LambdaExp : LAMBDA_EXP =
 
     and layoutType_repl t = layoutType0 {repl=true} t
 
-    and layoutRegVar r = (PP.LEAF o RegVar.pr) r
-
-    and layoutRegVars regvars = PP.NODE {start="", finish="", childsep=PP.LEFT " ", indent=0,
-                                         children = map layoutRegVar regvars}
     and layoutTypeList tl =
         case tl of
             Types taus => PP.NODE{start="Types(", finish=")", indent=1,
@@ -1607,9 +1622,11 @@ structure LambdaExp : LAMBDA_EXP =
                 (Pickle.convert(fn t => {instance=t},#instance) pu_Type)
             fun fun_CCALLprim _ =
                 Pickle.con1 CCALLprim (fn CCALLprim a => a | _ => die "pu_prim.CCALLprim")
-                (Pickle.convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t},
-                                 fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
-                 (Pickle.tup3Gen0 (Pickle.string,pu_Types,pu_TypeScheme)))
+				(Pickle.convert (fn (n,il,rvs,(tvs,t))
+								   => {name=n,instances=il, regvars=rvs,tyvars=tvs,Type=t},
+								 fn {name=n,instances=il, regvars=rvs,tyvars=tvs,Type=t}
+								   => (n,il,rvs,(tvs,t)))
+				 (Pickle.tup4Gen0 (Pickle.string,pu_Types,Pickle.listGen RegVar.pu,pu_TypeScheme)))
             fun fun_EXPORTprim _ =
                 Pickle.con1 EXPORTprim (fn EXPORTprim a => a | _ => die "pu_prim.EXPORTprim")
                 (Pickle.convert (fn (n,i1,i2) => {name=n,instance_arg=i1,instance_res=i2},
@@ -1617,10 +1634,14 @@ structure LambdaExp : LAMBDA_EXP =
                  (Pickle.tup3Gen0 (Pickle.string,pu_Type,pu_Type)))
             fun fun_RESET_REGIONSprim _ =
                 Pickle.con1 RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
-                (Pickle.convert(fn t => {instance=t},#instance) pu_Type)
+				(Pickle.convert(fn (t, rvs) => {instance=t, regvars=rvs},
+								fn {instance=t, regvars=rvs} => (t, rvs))
+							   (Pickle.pairGen0(pu_Type, Pickle.listGen RegVar.pu)))
             fun fun_FORCE_RESET_REGIONSprim _ =
-                Pickle.con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
-                (Pickle.convert(fn t => {instance=t},#instance) pu_Type)
+				Pickle.con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
+				(Pickle.convert(fn (t, rvs) => {instance=t, regvars=rvs},
+								fn {instance=t, regvars=rvs} => (t, rvs))
+							   (Pickle.pairGen0(pu_Type, Pickle.listGen RegVar.pu)))
             val fun_BLOCKF64prim = Pickle.con0 BLOCKF64prim
             fun fun_SCRATCHMEMprim _ =
                 Pickle.con1 (fn n => SCRATCHMEMprim {sz=n}) (fn SCRATCHMEMprim {sz=a} => a | _ => die "pu_prim.SCRATCHMEMprim")
@@ -1934,14 +1955,14 @@ structure LambdaExp : LAMBDA_EXP =
       | REFprim{instance,regvar} => tyvars_Type s instance acc
       | ASSIGNprim{instance} => tyvars_Type s instance acc
       | EQUALprim{instance} => tyvars_Type s instance acc
-      | CCALLprim {instances, tyvars, Type, ...} =>
+      | CCALLprim {instances, regvars, tyvars, Type, ...} =>
         tyvars_Types s instances (tyvars_Scheme s (tyvars, Type) acc)
       | BLOCKF64prim => acc
       | SCRATCHMEMprim _ => acc
       | EXPORTprim {instance_arg,instance_res, ...} =>
         tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
-      | RESET_REGIONSprim{instance} => tyvars_Type s instance acc
-      | FORCE_RESET_REGIONSprim{instance} => tyvars_Type s instance acc
+      | RESET_REGIONSprim{instance, regvars} => tyvars_Type s instance acc
+      | FORCE_RESET_REGIONSprim{instance, regvars} => tyvars_Type s instance acc
       | RECORDprim _ => acc
       | SELECTprim _ => acc
       | UB_RECORDprim => acc

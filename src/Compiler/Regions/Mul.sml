@@ -223,7 +223,7 @@ struct
     end
 
   fun equal_qmularefset ((qmularefset1:qmularefset,sigma1),(qmularefset2:qmularefset,sigma2)) =
-      arity_qmularefset(qmularefset1) = arity_qmularefset(qmularefset2) andalso
+      arity_qmularefset qmularefset1 = arity_qmularefset qmularefset2 andalso
 
      (* (1) normalize qmularefsets so that bvs comes in the order of first
       * occurrences in its type. (2) instantiate qmularefsets to fresh
@@ -302,7 +302,7 @@ struct
                             loop(n+1))
           in loop 0;
              Array.update(empty,
-                                    hash(key_of_toplevel_arreff),
+                                    hash key_of_toplevel_arreff,
                                     [(key_of_toplevel_arreff,[])])
           end
 

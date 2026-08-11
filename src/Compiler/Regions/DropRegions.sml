@@ -68,7 +68,7 @@ structure DropRegions : DROP_REGIONS =
             (if bot_region rho then unvisit rho
              else (); unvisit_bot_rhos rhos)
         val _ = visit_put_rhos arreffs
-        val _ = unvisit_bot_rhos places
+        (* val _ = unvisit_bot_rhos places *)
         val bl = map is_visited places
       in reset_bucket(); bl
       end
@@ -333,14 +333,15 @@ structure DropRegions : DROP_REGIONS =
                                    ateffs,mulef), tr2) =>
               (case lookup lvar_env lvar
                  of SOME (FIXBOUND bool_list) =>
-                   let
+				 let
                        val actuals' = filter_bl(bool_list,actuals)
                        val acc = List.foldl (maybe_add regvar_env) acc actuals'
                        val (tr2', acc) = drop env tr2 acc
-                       val actuals' = map S actuals'
-                   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
-                                 rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef),
-                          tr2'), acc)
+					   val actuals' = map S actuals'
+				    in 
+					  (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
+										rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef),
+						   tr2'), acc)
                    end
                   | _ => (case (fix_bound, actuals)
                                of (false, []) =>

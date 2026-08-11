@@ -5,4 +5,5 @@ lib
 config.log
 config.status
 configure
+src/.ccls-cache
 *~

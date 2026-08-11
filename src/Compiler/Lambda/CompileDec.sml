@@ -2011,7 +2011,7 @@ end; (*match compiler local*)
     (* ---------------------------------------------------------------------- *)
 
     fun ccall name argtypes restype =
-      CCALLprim {name = compileCName name, instances = [], tyvars = [],
+		CCALLprim {name = compileCName name, instances = [], regvars = [], tyvars = [],
                  Type = ARROWtype (argtypes,NONE,[restype],NONE)}
 
 
@@ -2769,7 +2769,8 @@ end; (*match compiler local*)
                                  of SOME(TypeInfo.VAR_INFO{instances = [tau]}) =>
                                    compileType tau
                                   | _ => die "compileExp(APPexp..): wrong type info"
-                in PRIM(RESET_REGIONSprim{instance = tau'}, [arg'])
+				    val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
+                in PRIM(RESET_REGIONSprim{instance = tau', regvars=regvars}, [arg'])
                 end
 
             | CE.FORCE_RESET_REGIONS =>
@@ -2778,7 +2779,8 @@ end; (*match compiler local*)
                                  of SOME(TypeInfo.VAR_INFO{instances = [tau]}) =>
                                    compileType tau
                                   | _ => die "compileExp(APPexp..): wrong type info"
-                in PRIM(FORCE_RESET_REGIONSprim{instance = tau'}, [arg'])
+				    val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
+                in PRIM(FORCE_RESET_REGIONSprim{instance = tau', regvars=regvars}, [arg'])
                 end
 
             | CE.ABS =>       overloaded_prim env info CE.ABS       (compileAtexp env) (compileExp env) arg true  []
@@ -2794,7 +2796,7 @@ end; (*match compiler local*)
             | CE.GREATER =>   overloaded_prim env info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
             | CE.LESSEQ =>    overloaded_prim env info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
             | CE.GREATEREQ => overloaded_prim env info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
-            | CE.PRIM => compile_application_of_prim env info arg
+			| CE.PRIM => compile_application_of_prim env info arg regvars_opt 
             | CE.EXPORT =>
                 let val (name,args) = decompose_prim_call arg
                     val (tau_arg,tau_res) = (* The type (tau_arg->tau_res) is the instance of ('a->'b) *)
@@ -2838,7 +2840,7 @@ end; (*match compiler local*)
             ) (*fun compile_application_of_ident*)
 
 
-    and compile_application_of_prim env info atexp =
+    and compile_application_of_prim env info atexp regvars_opt =
 
           (*Application of `prim' to atexp.  We disassemble atexp to get the
            name s of the primitive operation and its arguments.*)
@@ -2962,10 +2964,10 @@ the 12 lines above are very similar to the code below
               | _ =>
                   (*unrecognised prim name: this must be a c call; let us
                    hope the run-time system defines a function called s:*)
-                  compile_application_of_c_function env info s args)
+                  compile_application_of_c_function env info s args regvars_opt)
            end) (*fun compile_application_of_prim*)
 
-    and compile_application_of_c_function env info name args =
+    and compile_application_of_c_function env info name args regvars_opt =
           (case to_TypeInfo info of
              SOME (TypeInfo.VAR_INFO {instances = [tau_argument, tau_result]}) =>
 
@@ -2978,6 +2980,8 @@ the 12 lines above are very similar to the code below
                 tau_argument->tau_result.  From CompileDec and on, we want
                 the instance list to be the instance list of the c function
                 type rather than the instance list of the type of `prim':*)
+
+			   (* Should regvar(s) be prepended to args? *)
                let val taus1 =
                      (case compileType tau_argument of tau1 =>
                         (case List.length args of
@@ -2994,6 +2998,7 @@ the 12 lines above are very similar to the code below
                    val subst = mk_subst
                                  (fn () => "CompileDec.compile_application_of_c_function")
                                     (tyvars, map (fn tv => TLE.TYVARtype {tv=tv}) tyvars_fresh)
+				   val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
 
                    (* Names for certain primitives are altered on the basis of
                     * whether tagging of integers is enabled; see the comment
@@ -3002,6 +3007,7 @@ the 12 lines above are very similar to the code below
                in
                  TLE.PRIM (CCALLprim {name = name,
                                       tyvars = tyvars_fresh,
+									  regvars = regvars,
                                       Type = on_Type subst tau,
                                       instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars},
                            map (compileExp env) args)
