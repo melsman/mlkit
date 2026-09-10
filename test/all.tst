@@ -187,3 +187,6 @@ poll.sml
 enum-eq.sml
 stringconcat.sml               noopt         (* check transformation of calls to argument-transformed functions *)
 sma.sml                        noopt         (* storage mode error - issue #208 *)
+
+(* Tests of Basis Library conformance *)
+word63fold.sml
