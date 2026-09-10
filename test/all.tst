@@ -191,3 +191,4 @@ sma.sml                        noopt         (* storage mode error - issue #208 
 (* Tests of Basis Library conformance *)
 word63fold.sml
 realnan.sml
+realsign.sml
