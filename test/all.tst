@@ -192,3 +192,4 @@ sma.sml                        noopt         (* storage mode error - issue #208 
 word63fold.sml
 realnan.sml
 realsign.sml
+wordneg.sml

@@ -67,7 +67,9 @@ structure Word : WORD =
     val op div = fn (w1:word,w2) => w1 div w2
     val op mod = fn (w1:word,w2) => w1 mod w2
 
-    val ~ = fn w => fromInt(~(toInt w))
+    (* Two's complement negation, which wraps; toInt raises Overflow on
+       a pattern with the top bit set. *)
+    val ~ = fn w => fromInt 0 - w
 
     local
       open StringCvt
