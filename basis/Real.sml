@@ -15,15 +15,23 @@ structure Real : REAL =
 
     fun getCtx () : foreignptr = prim("__get_ctx",())
 
+    fun isNan (x:real) : bool = prim ("isnanFloat", x)
+
+    (* "These raise Overflow if the resulting value cannot be represented
+       as an int, and Domain if r is NaN" -- a NaN passes every range
+       check, so it must be taken out first. *)
     fun floor (r:real) : int =
-        if r >= maxIntReal() + 1.0 orelse r < minIntReal() then raise Overflow
+        if isNan r then raise Domain
+        else if r >= maxIntReal() + 1.0 orelse r < minIntReal() then raise Overflow
         else let val i = real_to_int r
              in if r < real i then i-1 else i
              end
 
 (*    fun floor (x:real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *) *)
-    fun ceil (x:real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
-    fun trunc (x:real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun ceil_ (x:real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
+    fun trunc_ (x:real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun ceil x = if isNan x then raise Domain else ceil_ x
+    fun trunc x = if isNan x then raise Domain else trunc_ x
 
     fun realFloor (x:real) : real = prim ("realFloor", x)
     fun realCeil (x:real) : real = prim ("realCeil", x)
@@ -37,7 +45,6 @@ structure Real : REAL =
     fun toString (x:real) : string = prim ("stringOfFloat", x)
 
     fun sub_unsafe (s:string, i:int) : char = prim ("__bytetable_sub", (s,i))
-    fun isNan (x:real) : bool = prim ("isnanFloat", x)
 
     fun max (x:real, y:real) : real = prim ("__max_real", (x, y))
     fun min (x:real, y:real) : real = prim ("__min_real", (x, y))
