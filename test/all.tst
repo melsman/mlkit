@@ -210,3 +210,4 @@ timer2.sml
 dateoffset.sml
 datefmt.sml
 datescan.sml
+pathvalid.sml
