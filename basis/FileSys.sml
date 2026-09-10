@@ -145,7 +145,8 @@ structure FileSys : OS_FILE_SYS =
             handle Fail s => raiseSys "fullPath" (SOME p) s
         end;
 
-    fun fullPath p =
+    fun fullPath "" = fullPath Path.currentArc
+      | fullPath p =
       (realpath_ p)
       handle Fail "realpath not supported" => mosmlFullPath p
            | Fail s => raiseSys "fullPath" (SOME p) s

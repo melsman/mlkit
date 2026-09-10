@@ -211,3 +211,4 @@ dateoffset.sml
 datefmt.sml
 datescan.sml
 pathvalid.sml
+fullpath.sml
