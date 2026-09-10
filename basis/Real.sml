@@ -46,8 +46,12 @@ structure Real : REAL =
 
     fun sub_unsafe (s:string, i:int) : char = prim ("__bytetable_sub", (s,i))
 
-    fun max (x:real, y:real) : real = prim ("__max_real", (x, y))
-    fun min (x:real, y:real) : real = prim ("__min_real", (x, y))
+    fun max_ (x:real, y:real) : real = prim ("__max_real", (x, y))
+    fun min_ (x:real, y:real) : real = prim ("__min_real", (x, y))
+
+    (* "If one argument is NaN, the other is returned." *)
+    fun max (x, y) = if isNan x then y else if isNan y then x else max_ (x, y)
+    fun min (x, y) = if isNan x then y else if isNan y then x else min_ (x, y)
 
     fun copySign (x:real, y:real) : real = prim("copysignFloat", (x, y))
     fun signBit (x:real) : bool = prim("signbitFloat", x)
@@ -56,7 +60,7 @@ structure Real : REAL =
     fun ldexp (x:real, e:int) : real = prim("ldexpFloat", (x, e))
     fun frexp (x:real) : real * int = prim("frexpFloat", x)
 
-    fun nextAfter (r:real, d:real) : real = prim("nextafterFloat", (r, d))
+    fun nextAfter_ (r:real, d:real) : real = prim("nextafterFloat", (r, d))
 
     fun split (r:real) : {whole:real, frac:real} =
         let val (w,f) = prim("splitFloat", r)
@@ -305,7 +309,8 @@ structure Real : REAL =
         else if isNan r then raise Div
         else r
 
-    fun sameSign (i, j) = sign i = sign j
+    (* sameSign is equality of the sign bits, so that 0.0 and ~0.0 differ. *)
+    fun sameSign (i, j) = signBit i = signBit j
 
     fun class (r:real) : IEEEReal.float_class =
         let open IEEEReal
@@ -315,6 +320,14 @@ structure Real : REAL =
            else if isNormal r then NORMAL
            else SUBNORMAL
         end
+
+    (* "If either argument is NaN, this returns NaN.  If r is +-infinity, it
+       returns +-infinity." -- C's nextafter steps off an infinity. *)
+    fun nextAfter (r, d) =
+        if isNan r then r
+        else if isNan d then d
+        else if r == posInf orelse r == negInf then r
+        else nextAfter_ (r, d)
 
     fun fromManExp {man,exp} : real =
         ldexp(man,exp)

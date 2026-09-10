@@ -526,7 +526,10 @@ realTrunc(ssize_t d, ssize_t x)
 ssize_t
 realRound(ssize_t d, ssize_t x)
 {
-  get_d(d) = round(get_d(x));
+  /* rint rounds to nearest with ties to even (in the default rounding
+   * mode), which is what round : real -> int does; C's round breaks
+   * ties away from zero. */
+  get_d(d) = rint(get_d(x));
   set_dtag(d);
   return d;
 }

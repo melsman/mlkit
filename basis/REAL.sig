@@ -300,9 +300,8 @@ May raise Overflow.
 [trunc r] is numerically largest integer between r and zero (rounds
 towards zero). May raise Overflow.
 
-[round r] is the integer nearest to r, using the default rounding
-mode.  NOTE: This isn't the required behaviour: it should round to
-nearest even integer in case of a tie.  May raise Overflow.
+[round r] is the integer nearest to r; in case of a tie, it rounds
+to the nearest even integer.  May raise Overflow.
 
 [toInt mode x]
 

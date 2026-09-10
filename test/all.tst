@@ -202,3 +202,4 @@ stringscan.sml
 slicebounds.sml
 arrayneg.sml
 realdomain.sml
+realspecial.sml
