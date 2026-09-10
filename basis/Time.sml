@@ -6,142 +6,156 @@ structure Time :> TIME =
     fun getrealtime () : {sec : int, usec : int} =
       prim("sml_getrealtime", ())
 
-    fun negpow10 p = Math.exp(Math.ln 10.0 * real (~p))
-
-    (* Translation to obtain a longer time horizon.  Must agree with
-       TIMEBASE in file Runtime/Time.c. *)
+    (* The runtime adds this to the seconds of the current time; it must
+       agree with TIMEBASE in Runtime/Time.c. *)
     val timebase = Initial.timebase
 
+    (* A time is sec + usec/1000000 seconds, with 0 <= usec < 1000000 and
+       sec of either sign: ~1.5 seconds is {sec = ~2, usec = 500000}.
+       Absolute times are intervals since UTC 00:00 on 1 Jan 1970. *)
     type time = {sec : int, usec : int}
-    (* Invariant: sec >= timebase and 0 <= usec < 1000000.
-       Represents the duration (sec-timebase)+usec/1000000 seconds;
-       or the duration since UTC 00:00 on 1 Jan 1970).
-     *)
 
     exception Time
 
-    val zeroTime = {sec = timebase, usec = 0}
-    fun now () = getrealtime ()
+    val zeroTime = {sec = 0, usec = 0}
 
-    fun fromSeconds s =
-	if IntInf.<(s, 0) then raise Time else {sec=LargeInt.toInt s + timebase, usec=0}
+    fun now () =
+        let val {sec, usec} = getrealtime ()
+        in {sec = sec - timebase, usec = usec}
+        end
 
-    fun fromMilliseconds ms =
-	if IntInf.<(ms, 0) then raise Time else
-	    {sec=LargeInt.toInt ms div 1000+timebase, usec=LargeInt.toInt ms mod 1000 * 1000}
+    val million = 1000000
+    val millionL = IntInf.fromInt million
 
-    fun fromMicroseconds us =
-	if IntInf.<(us, 0) then raise Time else
-	    {sec=LargeInt.toInt us div 1000000+timebase, usec=LargeInt.toInt us mod 1000000}
+    (* Conversion to and from a number of microseconds; a time that does
+       not fit the representation raises Time. *)
+    fun fromMicro (us : IntInf.int) : time =
+        {sec = LargeInt.toInt (IntInf.div (us, millionL)),
+         usec = LargeInt.toInt (IntInf.mod (us, millionL))}
+        handle Overflow => raise Time
 
-    fun fromNanoseconds ns =
-        fromMicroseconds (IntInf.div(ns, IntInf.fromInt 1000))
+    fun toMicro ({sec, usec} : time) : IntInf.int =
+        IntInf.+ (IntInf.* (LargeInt.fromInt sec, millionL), LargeInt.fromInt usec)
 
-    fun toSeconds {sec, usec} =
-	IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase)
+    fun fromSeconds s = fromMicro (IntInf.* (s, millionL))
+    fun fromMilliseconds ms = fromMicro (IntInf.* (ms, IntInf.fromInt 1000))
+    fun fromMicroseconds us = fromMicro us
+    fun fromNanoseconds ns = fromMicro (IntInf.quot (ns, IntInf.fromInt 1000))
 
-    fun toMilliseconds {sec, usec} =
-	IntInf.+(IntInf.*(IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase), 1000),
-		 IntInf.div(LargeInt.fromInt usec, 1000))
-
-    fun toMicroseconds {sec, usec} =
-	IntInf.+(IntInf.*(IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase), 1000000),
-		 LargeInt.fromInt usec)
-
-    fun toNanoseconds t =
-        IntInf.*(IntInf.fromInt 1000, toMicroseconds t)
+    (* "fractions of the time unit are dropped, i.e., the values are
+       rounded towards 0" *)
+    fun toSeconds t = IntInf.quot (toMicro t, millionL)
+    fun toMilliseconds t = IntInf.quot (toMicro t, IntInf.fromInt 1000)
+    fun toMicroseconds t = toMicro t
+    fun toNanoseconds t = IntInf.* (toMicro t, IntInf.fromInt 1000)
 
     fun fromReal r =
-	let
-	    val rf = if r < 0.0 then raise Time else floor (r + real timebase)
-	in
-	    {sec = rf, usec = floor (1000000.0 * (r+real timebase-real rf))}
-	end handle Overflow => raise Time
+        if Real.isNan r then raise Time
+        else fromMicro (Int.toLarge (Real.round (r * 1000000.0)))
+             handle Overflow => raise Time
 
     fun toReal {sec, usec} =
-	real sec - real timebase + real usec / 1000000.0
+        real sec + real usec / 1000000.0
 
-    fun timeToUnits (t, p) = floor(toReal t * negpow10 p + 0.5)
+    fun pow10 0 = 1
+      | pow10 n = 10 * pow10 (n-1)
 
-    fun fmt p t =
-	Real.fmt (StringCvt.FIX (SOME (if p > 0 then p else 0))) (toReal t)
+    (* fmt n t writes t with n decimal digits, rounded to nearest with
+       ties to even, as Real.fmt does; the microseconds are exact, so
+       the digits are computed from them rather than from toReal. *)
+    fun fmt n t =
+        if n < 0 then raise Size
+        else
+          let val us = toMicro t
+              val neg = IntInf.< (us, 0)
+              val us = IntInf.abs us
+              val k = if n > 6 then 6 else n
+              val scale = IntInf.fromInt (pow10 (6 - k))
+              val q = IntInf.div (us, scale)
+              val r2 = IntInf.* (IntInf.mod (us, scale), IntInf.fromInt 2)
+              val rounded =
+                  if IntInf.> (r2, scale)
+                     orelse (r2 = scale andalso IntInf.mod (q, IntInf.fromInt 2) = IntInf.fromInt 1)
+                  then IntInf.+ (q, IntInf.fromInt 1)
+                  else q
+              val unit = IntInf.fromInt (pow10 k)
+              val whole = IntInf.toString (IntInf.div (rounded, unit))
+              val frac = IntInf.toString (IntInf.mod (rounded, unit))
+              fun zeros 0 = ""
+                | zeros i = "0" ^ zeros (i-1)
+          in (if neg then "~" else "")
+             ^ whole
+             ^ (if n = 0 then ""
+                else "." ^ StringCvt.padLeft #"0" k frac ^ zeros (n - k))
+          end
 
     fun toString t = fmt 3 t
 
+    (* scan reads an optional sign (+, - or ~), then digits with an
+       optional point and fraction, or a point and a fraction; the
+       fraction is rounded to microseconds *)
     fun scan getc source =
-    let fun skipWSget getc source =
-	    getc (StringCvt.dropl Char.isSpace getc source)
-	fun decval c = Char.ord c - 48;
-        fun pow10 0 = 1
-	  | pow10 n = 10 * pow10 (n-1)
-	fun mktime intgv decs fracv =
-	    let val usecs = (pow10 (7-decs) * fracv + 5) div 10
-	    in
-		{sec = floor(intgv+real timebase+0.5) + usecs div 1000000,
-		 usec = usecs mod 1000000}
-	    end
-	fun skipdigs src =
-	    case getc src of
-		NONE          => src
-	      | SOME(c, rest) => if Char.isDigit c then skipdigs rest
-				 else src
-	fun frac intgv decs fracv src =
-	    if decs >= 7 then SOME(mktime intgv decs fracv, skipdigs src)
-	    else case getc src of
-		NONE          => SOME(mktime intgv decs fracv, src)
-	      | SOME(c, rest) =>
-		    if Char.isDigit c then
-			frac intgv (decs+1) (10 * fracv + decval c) rest
-		    else
-			SOME(mktime intgv decs fracv, src)
-	fun intg intgv src =
-	    case getc src of
-		NONE              => SOME(mktime intgv 6 0, src)
-	      | SOME (#".", rest) => frac intgv 0 0 rest
-	      | SOME (c, rest)    =>
-		    if Char.isDigit c then
-			intg (10.0 * intgv + real(decval c)) rest
-		    else SOME(mktime intgv 6 0, src)
-    in case skipWSget getc source of
-	NONE             => NONE
-      | SOME(#".", rest) =>
-		    (case getc rest of
-			 NONE          => NONE
-		       | SOME(c, rest) =>
-			     if Char.isDigit c then frac 0.0 1 (decval c) rest
-			     else NONE)
-      | SOME(c, rest)    =>
-	    if Char.isDigit c then intg (real (decval c)) rest else NONE
-    end
+        let fun isDigit c = #"0" <= c andalso c <= #"9"
+            fun digits src acc =
+                case getc src of
+                    SOME (c, rest) => if isDigit c then digits rest (acc ^ String.str c)
+                                      else (acc, src)
+                  | NONE => (acc, src)
+            fun value "" = IntInf.fromInt 0
+              | value s = case IntInf.fromString s of SOME v => v
+                                                     | NONE => raise Time
+            val src = StringCvt.skipWS getc source
+            val (neg, src1) =
+                case getc src of
+                    SOME(#"+", rest) => (false, rest)
+                  | SOME(#"-", rest) => (true, rest)
+                  | SOME(#"~", rest) => (true, rest)
+                  | _ => (false, src)
+            val (ip, src2) = digits src1 ""
+            val (fp, src3) = case getc src2 of
+                                 SOME(#".", rest) =>
+                                   let val (fp, src3) = digits rest ""
+                                   in (SOME fp, src3) end
+                               | _ => (NONE, src2)
+        in
+          if ip = "" andalso (case fp of NONE => true | SOME fp => fp = "") then NONE
+          else
+            let val fp = case fp of NONE => "" | SOME fp => fp
+                (* seven digits of the fraction: six microsecond digits and
+                   one to round by *)
+                val fp7 = if size fp >= 7 then String.substring (fp, 0, 7)
+                          else StringCvt.padRight #"0" 7 fp
+                val micro = IntInf.div (IntInf.+ (value fp7, IntInf.fromInt 5), IntInf.fromInt 10)
+                val us = IntInf.+ (IntInf.* (value ip, millionL), micro)
+            in SOME (fromMicro (if neg then IntInf.~ us else us), src3)
+            end
+        end
 
     fun fromString s = StringCvt.scanString scan s
 
     val op + = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	let val usecs = usec1 + usec2 in
-	    {sec  = trunc(real sec1 - real timebase
-			  + real sec2 + real(usecs div 1000000)),
-	     usec = usecs mod 1000000}
-	end
+        let val usecs = usec1 + usec2
+        in if usecs >= million then {sec = sec1 + sec2 + 1, usec = usecs - million}
+           else {sec = sec1 + sec2, usec = usecs}
+        end handle Overflow => raise Time
 
     and op - = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	let val usecs = usec1 - usec2
-	    val secs  = sec1 - sec2 + usecs div 1000000
-	in
-	    if secs < 0 then raise Time
-	    else {sec = secs + timebase, usec = usecs mod 1000000}
-	end handle Overflow => raise Time
+        let val usecs = usec1 - usec2
+        in if usecs < 0 then {sec = sec1 - sec2 - 1, usec = usecs + million}
+           else {sec = sec1 - sec2, usec = usecs}
+        end handle Overflow => raise Time
 
     val op <  = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	(sec1 < sec2) orelse (sec1=sec2 andalso usec1 < usec2)
+        (sec1 < sec2) orelse (sec1=sec2 andalso usec1 < usec2)
     and op <= = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	(sec1 < sec2) orelse (sec1=sec2 andalso usec1 <= usec2)
+        (sec1 < sec2) orelse (sec1=sec2 andalso usec1 <= usec2)
     and op >  = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	(sec1 > sec2) orelse (sec1=sec2 andalso usec1 > usec2)
+        (sec1 > sec2) orelse (sec1=sec2 andalso usec1 > usec2)
     and op >= = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	(sec1 > sec2) orelse (sec1=sec2 andalso usec1 >= usec2)
+        (sec1 > sec2) orelse (sec1=sec2 andalso usec1 >= usec2)
 
     fun compare (x, y: time) =
-	if x<y then LESS else if x>y then GREATER else EQUAL
+        if x<y then LESS else if x>y then GREATER else EQUAL
 
     fun toPair x = x
   end
