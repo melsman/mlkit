@@ -228,15 +228,30 @@ structure Date :> DATE =
 
     fun localOffset () = Time.fromSeconds (LargeInt.fromInt(Real.round localoffset mod 86400))
 
-    exception Date_toString
-    fun toString date =
-	String.substring(asctime_ (dateToTmoz date), 0, 24)
-	handle Fail _    => raise Date
-	     | Subscript => raise Date_toString
+    fun rev' l = let fun h ([], acc) = acc
+                       | h (x :: xs, acc) = h (xs, x :: acc)
+                 in h (l, []) end
 
+    (* strftime leaves a directive it does not know as it is ("%q"); the
+       Basis Library has it stand for its character ("q").  The known
+       directives are the ones the Basis Library lists; the others are
+       replaced before the format reaches strftime. *)
     fun fmt fmtstr date =
-	(strftime_ (fmtstr, dateToTmoz date))
-	handle Fail _ => raise Date
+	let val tm = dateToTmoz date
+	    fun known c = Char.contains "aAbBcdHIjmMpSUwWxXyYZ%" c
+	    fun sanitize (#"%" :: c :: rest) acc =
+		if known c then sanitize rest (c :: #"%" :: acc)
+		else sanitize rest (c :: acc)
+	      | sanitize [#"%"] acc = sanitize [] (#"%" :: #"%" :: acc)
+	      | sanitize (c :: rest) acc = sanitize rest (c :: acc)
+	      | sanitize [] acc = String.implode (rev' acc)
+	in strftime_ (sanitize (String.explode fmtstr) [], tm)
+	   handle Fail _ => raise Date
+	end
+
+    (* toString is specified as fmt "%a %b %d %H:%M:%S %Y"; asctime pads
+       the day with a space instead of a zero. *)
+    fun toString date = fmt "%a %b %d %H:%M:%S %Y" date
 
     (* To scan dates in the format "Wed Mar  8 19:06:45 1995" *)
 

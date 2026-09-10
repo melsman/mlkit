@@ -208,3 +208,4 @@ realdecimal.sml
 timeneg.sml
 timer2.sml
 dateoffset.sml
+datefmt.sml
