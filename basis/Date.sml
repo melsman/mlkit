@@ -331,7 +331,9 @@ structure Date :> DATE =
 
     fun isDst (DATE { isDst, ... }) = isDst
 
+    (* The offset is kept in seconds east of UTC; it is reported in
+       seconds west of UTC, within one day. *)
     fun offset (DATE { offset, ... }) =
-	Option.map (fn secs => Time.fromSeconds (LargeInt.fromInt((86400 + secs) mod 86400)))
+	Option.map (fn secs => Time.fromSeconds (LargeInt.fromInt((86400 - secs) mod 86400)))
 	           offset
   end
