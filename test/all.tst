@@ -212,3 +212,4 @@ datefmt.sml
 datescan.sml
 pathvalid.sml
 fullpath.sml
+tmpname.sml

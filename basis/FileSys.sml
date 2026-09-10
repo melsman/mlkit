@@ -170,7 +170,15 @@ structure FileSys : OS_FILE_SYS =
 
     fun rmDir p = (rmdir_ p) handle Fail s => raiseSys "rmDir" (SOME p) s;
 
-    fun tmpName () = (tmpnam_ 0) handle Fail s => raiseSys "tmpName" NONE s
+    (* "creates a new empty file with a name that is unique" -- so the
+       file is created, and not just named. *)
+    fun tmpName () =
+      let val f = (tmpnam_ 0) handle Fail s => raiseSys "tmpName" NONE s
+          val os = (prim("openOutStream", (getCtx(), f, failexn)) : int)
+                   handle Fail s => raiseSys "tmpName" (SOME f) s
+      in prim("closeStream", os) : unit;
+         f
+      end
 
     fun modTime p =
         (Time.fromReal (modtime_ p))
