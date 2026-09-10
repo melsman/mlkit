@@ -73,7 +73,7 @@ structure Substring : SUBSTRING =
        *  0 <= i' <= i'+i <= i'+i + (n'-i) = i'+n' <= size s' *)
       else raise Subscript
       | slice ((s', i', n'), i, SOME n) =
-	  if 0 <= i andalso 0 <= n andalso i+n <= n' then (s', i'+i, n)
+	  if 0 <= i andalso 0 <= n andalso n <= n' - i then (s', i'+i, n)
 	  (* If the argument is valid, then so is the result:
 	   *  0 <= i' <= i'+i <= i'+i + n <= i'+n' <= size s' *)
 	  else raise Subscript

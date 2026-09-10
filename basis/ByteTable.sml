@@ -108,7 +108,7 @@ functor ByteTable(eqtype table
 
     fun sliceend (a, i, NONE) = if i < 0 orelse i > length a then raise Subscript
 				else length a
-      | sliceend (a, i, SOME n) = if i < 0 orelse n < 0 orelse i+n > length a then raise Subscript
+      | sliceend (a, i, SOME n) = if i < 0 orelse n < 0 orelse n > length a - i then raise Subscript
 				  else i+n
 
     fun foldli f e a =
@@ -191,8 +191,8 @@ functor ByteTable(eqtype table
 	val n_src = length src
 	val n = (case len of NONE => length src - si | SOME n => n)
       in
-	if n < 0 orelse si < 0 orelse si+n > n_src
-	  orelse di < 0 orelse di+n > n_dst then
+	if n < 0 orelse si < 0 orelse n > n_src - si
+	  orelse di < 0 orelse n > n_dst - di then
 	  raise Subscript
 	else
 	  if si < di then	(* copy from high to low *)
@@ -224,8 +224,8 @@ functor ByteTable(eqtype table
 	val n_src = length_vector src
 	val n = case len of NONE => n_src - si | SOME k => k
       in
-	if n < 0 orelse si < 0 orelse si+n > n_src
-	  orelse di < 0 orelse di+n > n_dst then
+	if n < 0 orelse si < 0 orelse n > n_src - si
+	  orelse di < 0 orelse n > n_dst - di then
 	  raise Subscript
 	else
 	  let

@@ -199,3 +199,4 @@ intquot.sml
 intinffmt.sml
 charscan.sml
 stringscan.sml
+slicebounds.sml
