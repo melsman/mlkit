@@ -214,3 +214,4 @@ pathvalid.sml
 fullpath.sml
 tmpname.sml
 setposout.sml
+eos.sml
