@@ -141,6 +141,7 @@ math.sml                                       (* ok, but not quite the
                                                   library specification *)
 date.sml
 date2.sml
+date3.sml
 timer.sml
 unixpath.sml
 cmdline.sml
