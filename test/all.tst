@@ -215,3 +215,4 @@ fullpath.sml
 tmpname.sml
 setposout.sml
 eos.sml
+caninput.sml
