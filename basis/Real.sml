@@ -112,35 +112,6 @@ structure Real : REAL =
      conversions, AT&T Bell Labs, Numerical Analysis Manuscript 90-10,
      November 30, 1990 *)
 
-    fun fmt spec r =
-      let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
-              let val stop = size s
-                  fun loop i =          (* s[0..i-1] contains no "." or "e" *)
-                      if i = stop then s ^ ".0"
-                      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
-                      else loop (i+1)
-              in loop 0 end
-
-          open StringCvt
-          (* Below we check that the requested number of decimal digits
-           * is reasonable; else sml_general_string_of_float may crash. *)
-      in
-          case spec of
-              SCI NONE     => to_string_gen "%e" r
-            | SCI (SOME n) =>
-                  if n < 0 then raise Size
-                  else to_string_gen ("%." ^ Int.toString n ^ "e") r
-            | FIX NONE     => to_string_gen "%f" r
-            | FIX (SOME n) =>
-                  if n < 0 then raise Size
-                  else to_string_gen ("%." ^ Int.toString n ^ "f") r
-            | GEN NONE     => toString r
-            | GEN (SOME n) =>
-                  if n < 1 then raise Size
-                  else mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
-            | EXACT => fmt (SCI (SOME 30)) r
-      end
-
     fun getstring str getc source =
         let val len = size str
             fun toLower c = if #"A" <= c andalso c <= #"Z" then Char.chr (Char.ord c + 32)
@@ -328,6 +299,39 @@ structure Real : REAL =
         else if isNan d then d
         else if r == posInf orelse r == negInf then r
         else nextAfter_ (r, d)
+
+    fun fmt spec =
+      let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
+              let val stop = size s
+                  fun loop i =          (* s[0..i-1] contains no "." or "e" *)
+                      if i = stop then s ^ ".0"
+                      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
+                      else loop (Int.+ (i, 1))
+              in loop 0 end
+
+          open StringCvt
+          (* The exception is raised when fmt spec is evaluated, before any
+           * value is seen.  Below we also check that the requested number
+           * of decimal digits is reasonable; else
+           * sml_general_string_of_float may crash. *)
+          val () = case spec of
+                       SCI (SOME n) => if Int.< (n, 0) then raise Size else ()
+                     | FIX (SOME n) => if Int.< (n, 0) then raise Size else ()
+                     | GEN (SOME n) => if Int.< (n, 1) then raise Size else ()
+                     | _ => ()
+      in
+          fn r =>
+          case spec of
+              SCI NONE     => to_string_gen "%e" r
+            | SCI (SOME n) => to_string_gen ("%." ^ Int.toString n ^ "e") r
+            | FIX NONE     => to_string_gen "%f" r
+            | FIX (SOME n) => to_string_gen ("%." ^ Int.toString n ^ "f") r
+            | GEN NONE     => toString r
+            | GEN (SOME n) =>
+                  if isFinite r then mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
+                  else toString r
+            | EXACT => to_string_gen "%.30e" r
+      end
 
     fun fromManExp {man,exp} : real =
         ldexp(man,exp)

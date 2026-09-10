@@ -859,7 +859,10 @@ static ssize_t countChar(ssize_t c, char * s) {
 }
 
 // mkSMLMinus: remove all '+', and replace '-' and 'e'
-//     with '~' and 'E', respectively.
+//     with '~' and 'E', respectively.  printf writes the exponent with
+//     at least two digits ("E05"); the Basis Library writes it with as
+//     few as possible ("E5"), so the leading zeros of an exponent are
+//     dropped too, keeping at least one digit.
 static void mkSMLMinus(char * s) {
   char *p, *q;
 
@@ -872,6 +875,16 @@ static void mkSMLMinus(char * s) {
     }
   }
   *q = '\0';
+  for( p = s; *p != '\0' && *p != 'E'; p++ ) ;
+  if( *p == 'E' ) {
+    p++;
+    if( *p == '~' ) p++;
+    q = p;
+    while( *p == '0' && *(p+1) >= '0' && *(p+1) <= '9' ) p++;
+    if( p != q ) {
+      while( (*q++ = *p++) != '\0' ) ;
+    }
+  }
   return;
 }
 
