@@ -195,3 +195,4 @@ realsign.sml
 wordneg.sml
 wordscan.sml
 word8x.sml
+intquot.sml
