@@ -253,17 +253,40 @@ structure Date :> DATE =
        the day with a space instead of a zero. *)
     fun toString date = fmt "%a %b %d %H:%M:%S %Y" date
 
-    (* To scan dates in the format "Wed Mar  8 19:06:45 1995" *)
+    (* To scan dates in the format "Wed Mar 08 19:06:45 1995", that is
+       the format toString writes: leading whitespace is skipped, and the
+       fields are of fixed width. *)
 
-    exception BadFormat;
-    fun getVal (SOME v) = v
-      | getVal NONE     = raise BadFormat;
-
+    exception BadFormat
     fun scan getc src =
-    let val getstring  = StringCvt.splitl Char.isAlpha getc
-	fun getint src = getVal (Int.scan StringCvt.DEC getc src)
-	fun drop p     = StringCvt.dropl p getc
-	fun isColon c  = (c = #":")
+    let fun alpha3 src =
+	    let fun h 0 src acc = (String.implode (rev' acc), src)
+		  | h i src acc =
+		    case getc src of
+			SOME (c, rest) => if Char.isAlpha c then h (i-1) rest (c :: acc)
+					  else raise BadFormat
+		      | NONE => raise BadFormat
+	    in h 3 src [] end
+	fun digits n src =
+	    let fun h 0 src v = (v, src)
+		  | h i src v =
+		    case getc src of
+			SOME (c, rest) => if Char.isDigit c then h (i-1) rest (10*v + Char.ord c - 48)
+					  else raise BadFormat
+		      | NONE => raise BadFormat
+	    in h n src 0 end
+	fun digits1 src =		(* one or more digits *)
+	    let fun h src v n =
+		    case getc src of
+			SOME (c, rest) => if Char.isDigit c then h rest (10*v + Char.ord c - 48) (n+1)
+					  else (v, src, n)
+		      | NONE => (v, src, n)
+		val (v, src', n) = h src 0 0
+	    in if n = 0 then raise BadFormat else (v, src') end
+	fun expect c src =
+	    case getc src of
+		SOME (c', rest) => if c = c' then rest else raise BadFormat
+	      | NONE => raise BadFormat
 
 	val getMonth = fn "Jan" => Jan | "Feb" => Feb | "Mar" => Mar
                      | "Apr" => Apr | "May" => May | "Jun" => Jun
@@ -275,13 +298,18 @@ structure Date :> DATE =
 		     | "Sat" => Sat
 		     | _ => raise BadFormat
 
-	val (wday, src1)  = getstring src
-	val (month, src2) = getstring (drop Char.isSpace src1)
-	val (day, src3)   = getint src2
-	val (hour, src4)  = getint src3
-	val (min, src5)   = getint (drop isColon src4)
-	val (sec, src6)   = getint (drop isColon src5)
-	val (year, src7)  = getint src6
+	val src0 = StringCvt.skipWS getc src
+	val (wday, src1)  = alpha3 src0
+	val (month, src2) = alpha3 (expect #" " src1)
+	(* the day is zero padded, as toString writes it; asctime pads it
+	   with a space, and that is accepted too *)
+	val (day, src3)   = (case getc (expect #" " src2) of
+				 SOME (#" ", rest) => digits 1 rest
+			       | _ => digits 2 (expect #" " src2))
+	val (hour, src4)  = digits 2 (expect #" " src3)
+	val (min, src5)   = digits 2 (expect #":" src4)
+	val (sec, src6)   = digits 2 (expect #":" src5)
+	val (year, src7)  = digits1 (expect #" " src6)
 	val month         = getMonth month
     in SOME (DATE {year = year, month = month,
 		   day = day,  hour = hour, minute = min,
