@@ -1,0 +1,6 @@
+nan < 1 false, nan <= 1 false, nan > 1 false, nan >= 1 false
+1 < nan false, 1 <= nan false, 1 > nan false, 1 >= nan false
+if nan < 1: no, if nan <= 1: no, if nan > 1: no, if nan >= 1: no
+1 < 2 true, 2 < 1 false, 1 <= 1 true, 1 > 2 false, 1 >= 1 true, 2 >= 1 true
+constants: false true false
+Real.== (nan, nan) false, Real.?= (nan, 1) true

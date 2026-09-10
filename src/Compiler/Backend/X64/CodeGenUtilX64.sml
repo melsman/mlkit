@@ -789,10 +789,17 @@ struct
            | _ => die ("resolve_f64_aty: expecting physical register - " ^ f())
   *)
 
-      fun cmpf64_and_jmp (jump,x,y,lab_t,lab_f,fsz,C) =
+      (* ucomisd sets CF=ZF=PF=1 when an operand is a NaN, so the
+         `below' conditions (jb, jbe, cmovb, cmovbe) come out true on a
+         NaN and would make nan < x and nan <= x hold.  The `above'
+         conditions are false on a NaN, so < and <= are expressed as
+         > and >= with the operands swapped: with {swap=true} the
+         comparison is of y against x and the caller passes ja/jae. *)
+      fun cmpf64_and_jmp {swap} (jump,x,y,lab_t,lab_f,fsz,C) =
           let val (x,x_C) = resolve_arg_aty(x,tfreg0,fsz)
               val (y,y_C) = resolve_arg_aty(y,tfreg1,fsz)
-          in x_C(y_C(I.ucomisd (R y, R x) ::
+              val cmp = if swap then I.ucomisd (R x, R y) else I.ucomisd (R y, R x)
+          in x_C(y_C(cmp ::
                      jump lab_t ::
                      G.jump lab_f $
                      rem_dead_code C))
@@ -1361,13 +1368,14 @@ struct
               I.maxsd (R tfreg0, R d) :: C')
        end
 
-     fun cmpf64_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     fun cmpf64_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
              val (y, y_C) = resolve_arg_aty(y,tfreg1,fsz)
              val () = if I.is_freg x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
              val () = if I.is_freg y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
              val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
-         in x_C(y_C(I.ucomisd (R y, R x) ::
+             val cmp = if swap then I.ucomisd (R x, R y) else I.ucomisd (R y, R x)
+         in x_C(y_C(cmp ::
             G.move_num(i2s BI.ml_false, R d_reg) $
             G.move_num(i2s BI.ml_true, R treg1) $
             cmov(R treg1, R d_reg) ::
@@ -1461,13 +1469,14 @@ struct
          copy(b_reg,d_reg, C'))))
        end
 
-     fun cmpf_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     fun cmpf_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
        let val x_C = load_real(x, treg0, fsz, tfreg0)
            val y_C = load_real(y, treg0, fsz, tfreg1)
            val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
            val load_args = x_C o y_C
+           val cmp = if swap then I.ucomisd (R tfreg0, R tfreg1) else I.ucomisd (R tfreg1, R tfreg0)
        in
-         load_args(I.ucomisd (R tfreg1, R tfreg0) ::
+         load_args(cmp ::
          G.move_num(i2s BI.ml_false, R d_reg) $
          G.move_num(i2s BI.ml_true, R treg1) $
          cmov(R treg1, R d_reg) ::
