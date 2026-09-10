@@ -69,7 +69,7 @@ functor ByteTable(eqtype table
       else tabulate (length t,fn j => if i=j then e else sub_unsafe(t,j))
 
     fun array (n, e:elem) : table =
-      if n > maxLen then raise Size
+      if n < 0 orelse n > maxLen then raise Size
       else
 	let val t = alloc_table_unsafe n
 	    fun loop j = if j < n then (update_unsafe(t,j,e); loop (j+1))

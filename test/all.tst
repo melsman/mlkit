@@ -200,3 +200,4 @@ intinffmt.sml
 charscan.sml
 stringscan.sml
 slicebounds.sml
+arrayneg.sml
