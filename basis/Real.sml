@@ -53,6 +53,9 @@ structure Real : REAL =
     fun max (x, y) = if isNan x then y else if isNan y then x else max_ (x, y)
     fun min (x, y) = if isNan x then y else if isNan y then x else min_ (x, y)
 
+    (* The correctly rounded value of a decimal numeral in C syntax. *)
+    fun strtod_ (s : string) : real = prim ("strtodFloat", s)
+
     fun copySign (x:real, y:real) : real = prim("copysignFloat", (x, y))
     fun signBit (x:real) : bool = prim("signbitFloat", x)
     fun isNormal (x:real) : bool = prim("isnormalFloat", x)
@@ -125,101 +128,65 @@ structure Real : REAL =
         in h 0 source
         end
 
+    (* scan reads the numeral --  [+~-]?([0-9]+(.[0-9]+)? | .[0-9]+)([eE][+~-]?[0-9]+)?
+       and the spellings of the infinities and NaN -- and hands the text
+       to strtod, which rounds correctly; accumulating the digits in
+       floating point does not, and EXACT output did not read back. *)
     fun scan getc source =
-      let fun decval c = Char.ord c - 48
-          fun pospow10 0 acc = acc
-            | pospow10 n acc = pospow10 (n-1) (acc * 10.0)
-          fun negpow10 0 acc = acc
-            | negpow10 n acc = negpow10 (n-1) (acc / 10.0)
-          fun pow10 0 = 1.0
-            | pow10 n =
-              if n mod 2 = 0 then
-                  let val x = pow10 (n div 2) in x * x end
-              else 10.0 * pow10 (n-1)
-          fun pointsym src =
+      let fun isDigit c = #"0" <= c andalso c <= #"9"
+          fun digits src acc =
               case getc src of
-                  NONE           => (false, src)
-                | SOME (c, rest) => if c = #"." then (true, rest)
-                                    else (false, src)
-          fun esym src =
-              case getc src of
-                  NONE           => (false, src)
-                | SOME (c, rest) =>
-                      if c = #"e" orelse c = #"E"  then
-                          (true, rest)
-                      else (false, src)
-          fun scandigs first next final source =
-              let fun digs state src =
-                  case getc src of
-                      NONE          => (SOME (final state), src)
-                    | SOME(c, rest) =>
-                          if Char.isDigit c then
-                              digs (next(state, decval c)) rest
-                          else
-                              (SOME (final state), src)
-              in
-                  case getc source of
-                      NONE          => (NONE, source)
-                    | SOME(c, rest) =>
-                          if Char.isDigit c then digs (first (decval c)) rest
-                          else (NONE, source)
-              end
-
-          fun ident x = x
-          val getint  =
-              scandigs real (fn (res, cval) => 10.0 * res + real cval) ident
-          val getfrac =
-              scandigs (fn cval => (1, real cval))
-                       (fn ((decs, frac), cval) => (decs+1, 10.0*frac+real cval))
-                       (fn (decs, frac) => frac / pow10 decs)
-          val getexp = scandigs ident (fn (res, cval) => 10 * res + cval) ident
-
+                  SOME (c, rest) => if isDigit c then digits rest (acc ^ String.str c)
+                                    else (acc, src)
+                | NONE => (acc, src)
           fun sign src =
               case getc src of
-                  SOME(#"+", rest) => (true,  rest)
-                | SOME(#"-", rest) => (false, rest)
-                | SOME(#"~", rest) => (false, rest)
-                | _                => (true,  src )
-
+                  SOME(#"+", rest) => (false, rest)
+                | SOME(#"-", rest) => (true, rest)
+                | SOME(#"~", rest) => (true, rest)
+                | _                => (false, src)
           val src = StringCvt.dropl Char.isSpace getc source
-          val (manpos, src1) = sign src
+          val (neg, src1) = sign src
+          fun signed v = if neg then ~v else v
       in
-        case getstring "infinite" getc src1 of
-            SOME src' => SOME(if manpos then posInf else negInf,src')
+        case getstring "infinity" getc src1 of
+            SOME src' => SOME(signed posInf, src')
           | NONE =>
         case getstring "inf" getc src1 of
-            SOME src' => SOME(if manpos then posInf else negInf,src')
+            SOME src' => SOME(signed posInf, src')
           | NONE =>
         case getstring "nan" getc src1 of
-            SOME src' => SOME(posInf - posInf,src')
+            SOME src' => SOME(signed (posInf - posInf), src')
           | NONE =>
-            let val (intg,   src2) = getint src1
-                val (decpt,  src3) = pointsym src2
-                val (frac,   src4) = getfrac src3
-
-                fun mkres v rest =
-                    SOME(if manpos then v else ~v, rest)
-
-                fun expopt manval src =
-                    let val (esym,   src1) = esym src
-                        val (exppos, src2) = sign src1
-                        val (expv,   rest) = getexp src2
-                    in
-                      case (esym, expv) of
-                          (_,     NONE)     => mkres manval src
-                        | (true,  SOME exp) =>
-                          if exppos then mkres (pospow10 exp manval) rest
-                          else mkres (negpow10 exp manval) rest
-                        | _                 => NONE
-                    end
+            let val (ip, src2) = digits src1 ""
+                (* a point belongs to the numeral only when digits follow
+                   it: "12." is 12 followed by "." *)
+                val (fp, src3) = case getc src2 of
+                                     SOME(#".", rest) =>
+                                       (case digits rest "" of
+                                            ("", _) => (NONE, src2)
+                                          | (fp, src3) => (SOME fp, src3))
+                                   | _ => (NONE, src2)
             in
-              case (intg,     decpt, frac) of
-                  (NONE,      true,  SOME fval) => expopt fval src4
-                | (SOME ival, false, SOME _   ) => NONE
-                | (SOME ival, true,  NONE     ) => mkres ival src2
-                | (SOME ival, false, NONE     ) => expopt ival src2
-                | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
-                | _                             => NONE
+              if ip = "" andalso fp = NONE then NONE
+              else
+                let val (expo, src4) =
+                        case getc src3 of
+                            SOME(c, rest) =>
+                              if c = #"e" orelse c = #"E" then
+                                let val (eneg, rest1) = sign rest
+                                    val (ed, rest2) = digits rest1 ""
+                                in if ed = "" then ("", src3)
+                                   else ("e" ^ (if eneg then "-" else "") ^ ed, rest2)
+                                end
+                              else ("", src3)
+                          | NONE => ("", src3)
+                    val text = (if neg then "-" else "")
+                               ^ (if ip = "" then "0" else ip) ^ "."
+                               ^ (case fp of SOME fp => fp | NONE => "")
+                               ^ expo
+                in SOME (strtod_ text, src4)
+                end
             end
       end
 
@@ -300,6 +267,70 @@ structure Real : REAL =
         else if r == posInf orelse r == negInf then r
         else nextAfter_ (r, d)
 
+    local
+      fun cstring s = String.translate (fn #"~" => "-" | c => String.str c) s
+      fun rev' ([], acc) = acc
+        | rev' (x :: xs, acc) = rev' (xs, x :: acc)
+    in
+      (* toDecimal produces the shortest sequence of decimal digits that
+         reads back as the same real: the %e format is tried with more
+         and more digits until strtod agrees, and 17 significant digits
+         always suffice for a double. *)
+      fun toDecimal r =
+          let open IEEEReal
+              val a = abs r
+              fun shortest p =
+                  let val s = to_string_gen ("%." ^ Int.toString p ^ "e") a
+                  in if Int.>= (p, 16) orelse strtod_ (cstring s) == a then s
+                     else shortest (Int.+ (p, 1))
+                  end
+              (* s is d.dddE<exp>: the digits go before the point, so
+                 0.ddddE<exp+1> is the same number *)
+              fun split s =
+                  let val n = size s
+                      fun getc i = if Int.< (i, n) then SOME (String.sub (s, i), Int.+ (i, 1)) else NONE
+                      fun mant i ds =
+                          if Int.>= (i, n) then (ds, n)
+                          else let val c = String.sub (s, i)
+                               in if c = #"E" then (ds, Int.+ (i, 1))
+                                  else if c = #"." then mant (Int.+ (i, 1)) ds
+                                  else mant (Int.+ (i, 1)) (Int.- (Char.ord c, 48) :: ds)
+                               end
+                      val (rds, ei) = mant 0 []
+                      val e = case Int.scan StringCvt.DEC getc ei of
+                                  SOME (e, _) => e
+                                | NONE => 0
+                      fun stripZeros (0 :: ds) = stripZeros ds
+                        | stripZeros ds = ds
+                  in (rev' (stripZeros rds, []), Int.+ (e, 1))
+                  end
+          in case class r of
+                 (* a NaN has no sign to report: fmt writes every NaN as "nan" *)
+                 NAN => {class = NAN, sign = false, digits = [], exp = 0}
+               | INF => {class = INF, sign = signBit r, digits = [], exp = 0}
+               | ZERO => {class = ZERO, sign = signBit r, digits = [], exp = 0}
+               | cls => let val (digits, exp) = split (shortest 0)
+                        in {class = cls, sign = signBit r, digits = digits, exp = exp}
+                        end
+          end
+
+      fun fromDecimal {class, sign, digits, exp} =
+          let open IEEEReal
+              fun signed r = if sign then ~r else r
+              fun valid [] = true
+                | valid (d :: ds) = Int.<= (0, d) andalso Int.<= (d, 9) andalso valid ds
+              fun str [] = ""
+                | str (d :: ds) = String.str (Char.chr (Int.+ (d, 48))) ^ str ds
+          in case class of
+                 NAN => SOME (signed (posInf - posInf))
+               | INF => SOME (signed posInf)
+               | ZERO => SOME (signed 0.0)
+               | _ => if valid digits then
+                        SOME (signed (strtod_ ("0." ^ str digits ^ "e" ^ cstring (Int.toString exp))))
+                      else NONE
+          end
+    end
+
     fun fmt spec =
       let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
               let val stop = size s
@@ -330,7 +361,7 @@ structure Real : REAL =
             | GEN (SOME n) =>
                   if isFinite r then mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
                   else toString r
-            | EXACT => to_string_gen "%.30e" r
+            | EXACT => IEEEReal.toString (toDecimal r)
       end
 
     fun fromManExp {man,exp} : real =

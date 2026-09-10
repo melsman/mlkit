@@ -2,6 +2,7 @@
  *                        Math                                    *
  *----------------------------------------------------------------*/
 #include <errno.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -904,6 +905,17 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
   } else {
     return REG_POLY_CALL(convertStringToML,rAddr,buf);
   }
+}
+
+// strtodFloat: the correctly rounded value of a decimal numeral, as
+//     strtod computes it.  The string is in C syntax; Real.scan
+//     assembles it from the digits it has read.
+ssize_t
+strtodFloat(ssize_t d, String s)
+{
+  get_d(d) = strtod(s->data, NULL);
+  set_dtag(d);
+  return d;
 }
 
 String

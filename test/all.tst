@@ -204,3 +204,4 @@ arrayneg.sml
 realdomain.sml
 realspecial.sml
 realfmt.sml
+realdecimal.sml

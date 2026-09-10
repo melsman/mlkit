@@ -101,10 +101,8 @@ signature REAL = sig
   val scan         : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader
   val fromString   : string -> real option
 
-(*
   val toDecimal    : real -> IEEEReal.decimal_approx
   val fromDecimal  : IEEEReal.decimal_approx -> real option
-*)
 end
 
 (**
