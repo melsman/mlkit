@@ -216,3 +216,4 @@ tmpname.sml
 setposout.sml
 eos.sml
 caninput.sml
+linkfail.sml        ecte

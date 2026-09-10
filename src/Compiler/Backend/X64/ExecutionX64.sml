@@ -265,10 +265,14 @@ structure ExecutionX64 : EXECUTION =
         in OS.FileSys.remove f handle _ => ()
         end
 
+    (* The assembler and the linker report their failures through their
+       exit status; it used to be ignored, so a failed link left no
+       executable while the compiler reported success. *)
     fun execute_command cmd : unit =
         let val () = if debug_linking() then print ("[Executing: " ^ cmd ^ "]\n")
                      else ()
-        in (OS.Process.system cmd; ())
+        in (if OS.Process.isSuccess (OS.Process.system cmd) then ()
+            else raise Fail ("command failed: " ^ cmd))
            handle (X as OS.SysErr(s,_)) =>
                   ( print ("\nCommand " ^ cmd ^ "\nfailed (" ^ s ^ ")\n")
                   ; raise X)
