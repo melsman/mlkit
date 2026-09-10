@@ -196,3 +196,4 @@ wordneg.sml
 wordscan.sml
 word8x.sml
 intquot.sml
+intinffmt.sml

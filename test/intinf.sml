@@ -250,10 +250,10 @@ val _ = ptest "test19a" test19a
 val test19b = testbin StringCvt.BIN (op orb) "001001001001001001001001001001" "100100100100100100100100100100" "101101101101101101101101101101"
 val _ = ptest "test19b" test19b
 
-val test19c = testbin StringCvt.HEX (op orb) "ffffffffffff" "0" "ffffffffffff"
+val test19c = testbin StringCvt.HEX (op orb) "ffffffffffff" "0" "FFFFFFFFFFFF"
 val _ = ptest "test19c" test19c
 
-val test19d = testbin StringCvt.HEX (op orb) "afffffaffafa" "ffafffaffffa" "ffffffaffffa"
+val test19d = testbin StringCvt.HEX (op orb) "afffffaffafa" "ffafffaffffa" "FFFFFFAFFFFA"
 val _ = ptest "test19d" test19d
 
 val test20a = testbin StringCvt.BIN (op andb) "101" "110" "100"
@@ -262,10 +262,10 @@ val _ = ptest "test20a" test20a
 val test20b = testbin StringCvt.BIN (op andb) "1001001001001001001001001001001" "1100100100100100100100100100100" "1000000000000000000000000000000"
 val _ = ptest "test20b" test20b
 
-val test20c = testbin StringCvt.HEX (op andb) "ffffffffffff" "ffffffffffff" "ffffffffffff"
+val test20c = testbin StringCvt.HEX (op andb) "ffffffffffff" "ffffffffffff" "FFFFFFFFFFFF"
 val _ = ptest "test20c" test20c
 
-val test20d = testbin StringCvt.HEX (op andb) "ffffffffffff" "ffaffffffffa" "ffaffffffffa"
+val test20d = testbin StringCvt.HEX (op andb) "ffffffffffff" "ffaffffffffa" "FFAFFFFFFFFA"
 val _ = ptest "test20d" test20d
 
 end
