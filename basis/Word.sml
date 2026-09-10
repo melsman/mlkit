@@ -104,6 +104,8 @@ structure Word : WORD =
 		    | OCT => (fn c => (#"0" <= c andalso c <= #"7"),  8)
 		    | DEC => (Char.isDigit,                          10)
 		    | HEX => (Char.isHexDigit,                       16)
+	      val maxw = fromInt ~1
+	      val factor = fromInt factor
 	      fun dig1 NONE              = NONE
 		| dig1 (SOME (c1, src1)) =
 		  let fun digr res src =
@@ -111,8 +113,12 @@ structure Word : WORD =
 			      NONE           => SOME (res, src)
 			    | SOME (c, rest) =>
 				  if isDigit c then
-				      digr (fromInt factor * res + hexval c)
-				      rest
+				      let val d = hexval c
+				      in (* factor * res + d fits iff
+					    res <= (maxw - d) div factor *)
+					 if res > (maxw - d) div factor then raise Overflow
+					 else digr (factor * res + d) rest
+				      end
 				  else SOME (res, src)
 		  in
 		      if isDigit c1 then digr (hexval c1) src1

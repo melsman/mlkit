@@ -193,3 +193,4 @@ word63fold.sml
 realnan.sml
 realsign.sml
 wordneg.sml
+wordscan.sml

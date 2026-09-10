@@ -118,11 +118,10 @@ structure Word8 : WORD =
 		  NONE           => return res src
 		| SOME (c, rest) =>
 		    if isDigit c then
-		      let val res1 = factor * res
-			  val res2 = res1 + hexval c
-		      in
-			if res1 < res orelse res2 < res1 then raise Overflow
-			else digr res2 rest
+		      let val d = hexval c
+		      in (* the accumulator stays below 256, so it cannot wrap *)
+			if res > (0w255 - d) div factor then raise Overflow
+			else digr (factor * res + d) rest
 		      end
 		    else
 		      return res src
