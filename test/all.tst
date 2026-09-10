@@ -61,6 +61,7 @@ anoq_Exception.sml
 danwang.mlb
 testmatc.sml        ccl
 excon.sml
+excon2.sml
 dangle4.sml
 ftv.sml
 elabDecBug.sml      ccl ecte
