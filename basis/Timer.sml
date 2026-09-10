@@ -30,14 +30,25 @@ structure Timer :> TIMER =
 
     fun startCPUTimer () = CPUTimer (getrutime_ ())
 
-    fun checkCPUTimer {usr, sys, gc} =
+    (* The runtime reports no collector time of its own (the gc fields
+       of sml_getrutime are zero), so the collector's share of the user
+       time is what it reports, and its system time is zero. *)
+    fun checkCPUTimes {usr, sys, gc} =
 	let val {gcSec, gcUsec, sysSec, sysUsec, usrSec, usrUsec}
 	        = getrutime_ ()
 	    val gc = fromSeconds gcSec + fromMicroseconds gcUsec - gc
-	in {usr = fromSeconds usrSec + fromMicroseconds usrUsec - usr,
-	    sys = fromSeconds sysSec + fromMicroseconds sysUsec - sys + gc
-	    }
+	    val usr = fromSeconds usrSec + fromMicroseconds usrUsec - usr
+	    val sys = fromSeconds sysSec + fromMicroseconds sysUsec - sys
+	in {nongc = {usr = usr - gc, sys = sys},
+	    gc = {usr = gc, sys = zeroTime}}
 	end
+
+    fun checkCPUTimer timer =
+	let val {nongc, gc} = checkCPUTimes timer
+	in {usr = #usr nongc + #usr gc, sys = #sys nongc + #sys gc}
+	end
+
+    fun checkGCTime timer = #usr (#gc (checkCPUTimes timer))
 
     fun startRealTimer () = now ()
 
