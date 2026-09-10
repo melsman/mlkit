@@ -858,7 +858,9 @@ struct
           val k = case w of SEEK_SET => 0
                           | SEEK_END => 1
                           | SEEK_CUR => 2
-          val r = prim("sml_lseek", (fd, p : int, Position.toInt p, k)) : int
+          (* sml_lseek takes (fd, offset, whence): with the offset passed
+             twice, whence got the offset and the seek was relative *)
+          val r = prim("sml_lseek", (fd, Position.toInt p, k)) : int
         in if r = ~1 then raiseSys "lseek" NONE "" else Position.toInt r
         end
 

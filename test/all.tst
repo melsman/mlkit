@@ -213,3 +213,4 @@ datescan.sml
 pathvalid.sml
 fullpath.sml
 tmpname.sml
+setposout.sml
