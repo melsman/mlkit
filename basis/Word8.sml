@@ -54,7 +54,7 @@ structure Word8 : WORD =
 
     fun toLargeWordX (w: word8) =
       if w < 0w128 then toLargeWord w               (* msbit = 0 *)
-      else Word64.orb(toLargeWord w, 0wxFFFFFF00)   (* msbit = 1 *)
+      else Word64.orb(toLargeWord w, Word64.notb 0wxFF)   (* msbit = 1 *)
     val toLargeX = toLargeWordX
 
     fun notb x = xorb(x, 0wxFF)

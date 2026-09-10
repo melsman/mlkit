@@ -194,3 +194,4 @@ realnan.sml
 realsign.sml
 wordneg.sml
 wordscan.sml
+word8x.sml
