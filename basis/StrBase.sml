@@ -108,6 +108,10 @@ structure StrBase : STR_BASE = struct
 
   in
 
+    (* The character after a backslash in an SML string literal.  The
+       escaped formatting sequences \f...f\ are not handled here but by
+       skipMLformats below, since they are passed over rather than
+       converted. *)
     fun fromMLescape getc source =
 	let fun decimal cont src code =
 	      case getc src
@@ -116,18 +120,12 @@ structure StrBase : STR_BASE = struct
 				      then cont rest (code * 10 + ord c - 48)
 				    else raise BadEscape
 	    val from3Dec = decimal (decimal (decimal (fn src => fn code => (chr code, src))))
-	    fun skipform src =
+	    fun hex cont src code =
 	      case getc src
-		of NONE => NONE
-		 | SOME(#"\\", src1) =>
-		    (case getc src1
-		       of NONE => NONE
-			| SOME(#"\\", src2) => fromMLescape getc src2
-			| res => res)
-		 | SOME(c, rest) =>
-		       if c = #" " orelse #"\009" <= c andalso c <= #"\013" then
-			 skipform rest
-		       else NONE
+		of NONE => raise BadEscape
+		 | SOME(c, rest) => if isHexDigit c then cont rest (code * 16 + hexval c)
+				    else raise BadEscape
+	    val from4Hex = hex (hex (hex (hex (fn src => fn code => (chr code, src)))))
 	in
 	  case getc source
 	    of NONE => NONE
@@ -142,9 +140,6 @@ structure StrBase : STR_BASE = struct
 	     | SOME(#"f", rest) => SOME(#"\012", rest) (* FF  *)
 	     | SOME(#"\"", rest) => SOME(#"\"", rest)
 	     | SOME(#"\\", rest) => SOME(#"\\", rest)
-	     | SOME(#" ", rest) => skipform rest
-	     | SOME(#"\n", rest) => skipform rest
-	     | SOME(#"\t", rest) => skipform rest
 	     | SOME(#"^", rest)  =>
 		(case getc rest
 		   of NONE => NONE
@@ -152,9 +147,59 @@ structure StrBase : STR_BASE = struct
 		     if #"@" <= c andalso c <= #"_" then
 		       SOME(chr (ord c - 64), rest)
 		     else NONE)
+	     | SOME(#"u", rest) => (SOME (from4Hex rest 0) handle BadEscape => NONE)
 	     | _ => SOME (from3Dec source 0)
 		   handle BadEscape => NONE
 	end
+
+    fun isPrint c = #" " <= c andalso c <= #"~"
+    fun isFormat c = c = #" " orelse #"\009" <= c andalso c <= #"\013"
+
+    (* skipMLformats getc src passes over the escaped formatting sequences
+       \f...f\ at the front of the stream.  It returns the stream after
+       them and whether there were any, or NONE if the stream starts
+       with a backslash and a formatting character but the sequence is
+       not closed by a backslash: that is an improper escape sequence. *)
+    fun skipMLformats getc src =
+	let fun close src =
+	      case getc src
+		of SOME(#"\\", rest) => SOME rest
+		 | SOME(c, rest) => if isFormat c then close rest else NONE
+		 | NONE => NONE
+	    fun loop (src, skipped) =
+	      case getc src
+		of SOME(#"\\", rest) =>
+		   (case getc rest
+		      of SOME(c, _) =>
+			 if isFormat c then
+			   (case close rest
+			      of SOME src' => loop (src', true)
+			       | NONE => NONE)
+			 else SOME (src, skipped)
+		       | NONE => SOME (src, skipped))
+		 | _ => SOME (src, skipped)
+	in loop (src, false)
+	end
+
+    (* scanMLchar getc src scans one character of an SML string literal:
+       a printable character or an escape sequence, with any escaped
+       formatting sequences before and after it passed over. *)
+    fun scanMLchar getc src =
+	case skipMLformats getc src
+	  of NONE => NONE
+	   | SOME (src1, _) =>
+	     let fun finish (c, rest) =
+		   SOME (c, case skipMLformats getc rest
+			      of SOME (rest', _) => rest'
+			       | NONE => rest)
+	     in case getc src1
+		  of NONE => NONE
+		   | SOME(#"\\", rest) =>
+		     (case fromMLescape getc rest
+			of NONE => NONE
+			 | SOME cr => finish cr)
+		   | SOME(c, rest) => if isPrint c then finish (c, rest) else NONE
+	     end
 
   fun toMLescape c =
 	case c of
@@ -238,6 +283,12 @@ structure StrBase : STR_BASE = struct
 	       | SOME(#"?",  src1) => (#"?",    src1)
 	       | SOME(#"'",  src1) => (#"'",    src1)
 	       | SOME(#"\"", src1) => (#"\"",   src1)
+	       | SOME(#"^",  src1) =>
+		     (case getc src1
+			of SOME(c, src2) =>
+			   if #"@" <= c andalso c <= #"_" then (chr (ord c - 64), src2)
+			   else raise BadEscape
+			 | NONE => raise BadEscape)
 	       | SOME(#"x",  src1) =>
 		     (case getc src1
 			of NONE => raise BadEscape
@@ -254,20 +305,27 @@ structure StrBase : STR_BASE = struct
 	   BadEscape => NONE (* Illegal C escape sequence or character code *)
 	 | Overflow  => NONE (* Character code far too large                *)
 
+  (* scanCchar getc src scans one character in C string syntax: a
+     printable character other than an unescaped double quote, or a C
+     escape sequence. *)
+  fun scanCchar getc src =
+      case getc src
+	of NONE => NONE
+	 | SOME(#"\\", rest) => fromCescape getc rest
+	 | SOME(#"\"", _) => NONE
+	 | SOME(c, rest) => if isPrint c then SOME (c, rest) else NONE
+
+  (* The longest prefix that scans; NONE only when nothing does and the
+     string is not empty. *)
   fun fromCString s =
-	let fun getc (c::cs) = SOME (c,cs)
-	      | getc [] = NONE
-	    fun h acc src =
-	      case getc src
-		of NONE => implode(rev acc)
-		 | SOME(#"\\", src1) => let val (c, src2) = fromCescape' getc src1
-					in h (c::acc) src2
-					end
-		 | SOME(c, src1) => (h (c::acc) src1)
-	in SOME (h [] (explode s))
-	  handle
-	  BadEscape => NONE (* Illegal C escape sequence or character code *)
-	| Overflow  => NONE (* Character code far too large                *)
+	let fun getc i = if i < size s then SOME (sub_unsafe(s, i), i+1) else NONE
+	    fun h acc i =
+	      case scanCchar getc i
+		of SOME(c, j) => h (c::acc) j
+		 | NONE => (acc, i)
+	    val (acc, i) = h [] 0
+	in if i = 0 andalso size s > 0 then NONE
+	   else SOME (implode (rev acc))
 	end
 
   end (* local *)

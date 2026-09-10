@@ -197,3 +197,5 @@ wordscan.sml
 word8x.sml
 intquot.sml
 intinffmt.sml
+charscan.sml
+stringscan.sml

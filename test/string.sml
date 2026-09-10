@@ -260,8 +260,8 @@ val test20 =
 	    "\\^a",
 	    "\\^z",
 	    "\\   a",
-	    "\\   a\\B",
-	    "\\   \\"]);
+	    "\\   a\\B"]
+	   andalso fromString "\\   \\" = SOME "");
 
 
 (* Test cases for C string escape functions *)
