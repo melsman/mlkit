@@ -140,18 +140,20 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
   tmr.tm_wday = convertIntToC(elemRecordML(v,6));
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
-  if (fmt->data[0] == '\0')
-    {
-      return REG_POLY_CALL(convertStringToML, rAddr, "");
-    }
   while (1)
     {
+      buf[0] = '\1';
       ressize = strftime(buf, bufsize, fmt->data, &tmr);
       if (ressize != 0)
 	{
 	  String res = REG_POLY_CALL(convertStringToML, rAddr, buf);
 	  if (buf != stackbuf) free(buf);
 	  return res;
+	}
+      if (buf[0] == '\0')
+	{
+	  if (buf != stackbuf) free(buf);
+	  return REG_POLY_CALL(convertStringToML, rAddr, "");
 	}
       if (bufsize >= MAX_BUFSIZE)
 	{
