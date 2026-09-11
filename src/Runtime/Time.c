@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -97,7 +98,7 @@ sml_mktime (uintptr_t vAddr, uintptr_t v)
 }
 
 String
-REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, uintptr_t exn)
 {
   struct tm tmr;
   char *r;
@@ -120,12 +121,16 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, int exn)
 }
 
 String
-REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t v, uintptr_t exn)
 {
   struct tm tmr;
-  int ressize;
+  size_t ressize;
 #define BUFSIZE 256
-  char buf[BUFSIZE];
+  size_t bufsize = BUFSIZE;
+#define MAX_BUFSIZE (64 * 1024)
+  char stackbuf[BUFSIZE];
+  char *buf = stackbuf;
+  char *nextbuf;
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
   tmr.tm_isdst = convertIntToC(elemRecordML(v,1));
   tmr.tm_mday = convertIntToC(elemRecordML(v,2));
@@ -135,13 +140,38 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
   tmr.tm_wday = convertIntToC(elemRecordML(v,6));
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
-  ressize = strftime(buf, BUFSIZE, fmt->data, &tmr);
-  if ( ressize == 0 || ressize == BUFSIZE )
+  while (1)
     {
-      raise_exn(ctx,exn);
+      buf[0] = '\1';
+      ressize = strftime(buf, bufsize, fmt->data, &tmr);
+      if (ressize != 0)
+	{
+	  String res = REG_POLY_CALL(convertStringToML, rAddr, buf);
+	  if (buf != stackbuf) free(buf);
+	  return res;
+	}
+      if (buf[0] == '\0')
+	{
+	  if (buf != stackbuf) free(buf);
+	  return REG_POLY_CALL(convertStringToML, rAddr, "");
+	}
+      if (bufsize >= MAX_BUFSIZE)
+	{
+	  if (buf != stackbuf) free(buf);
+	  return REG_POLY_CALL(convertStringToML, rAddr, "");
+	}
+      bufsize *= 2;
+      if (bufsize > MAX_BUFSIZE) bufsize = MAX_BUFSIZE;
+      nextbuf = (buf == stackbuf) ? (char *)malloc(bufsize) : (char *)realloc(buf, bufsize);
+      if (nextbuf == NULL)
+	{
+	  if (buf != stackbuf) free(buf);
+	  raise_exn(ctx,exn);
+	}
+      buf = nextbuf;
     }
-  return REG_POLY_CALL(convertStringToML, rAddr, buf);
 #undef BUFSIZE
+#undef MAX_BUFSIZE
 }
 
 uintptr_t
