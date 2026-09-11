@@ -97,7 +97,7 @@ sml_mktime (uintptr_t vAddr, uintptr_t v)
 }
 
 String
-REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, uintptr_t exn)
 {
   struct tm tmr;
   char *r;
@@ -120,10 +120,10 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, int exn)
 }
 
 String
-REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t v, uintptr_t exn)
 {
   struct tm tmr;
-  int ressize;
+  size_t ressize;
 #define BUFSIZE 256
   char buf[BUFSIZE];
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
@@ -135,8 +135,12 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
   tmr.tm_wday = convertIntToC(elemRecordML(v,6));
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
+  if (fmt->data[0] == '\0')
+    {
+      return REG_POLY_CALL(convertStringToML, rAddr, "");
+    }
   ressize = strftime(buf, BUFSIZE, fmt->data, &tmr);
-  if ( ressize == 0 || ressize == BUFSIZE )
+  if (ressize == 0)
     {
       raise_exn(ctx,exn);
     }

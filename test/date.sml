@@ -207,5 +207,9 @@ val test9 =
 	   andalso addd 365 = (Apr, 6, 0)
 	   andalso addd ~1 = (Apr, 5, 0)
            andalso addd ~6 = (Mar, 31, 0))
+
+val test10 =
+    tst' "test10" (fn _ =>
+	   fmt "" (fromTimeUniv Time.zeroTime) = "")
 in
 end
