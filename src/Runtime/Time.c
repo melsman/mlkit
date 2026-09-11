@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -125,7 +126,11 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
   struct tm tmr;
   size_t ressize;
 #define BUFSIZE 256
-  char buf[BUFSIZE];
+  size_t bufsize = BUFSIZE;
+#define MAX_BUFSIZE (64 * 1024)
+  char stackbuf[BUFSIZE];
+  char *buf = stackbuf;
+  char *nextbuf;
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
   tmr.tm_isdst = convertIntToC(elemRecordML(v,1));
   tmr.tm_mday = convertIntToC(elemRecordML(v,2));
@@ -139,13 +144,32 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t 
     {
       return REG_POLY_CALL(convertStringToML, rAddr, "");
     }
-  ressize = strftime(buf, BUFSIZE, fmt->data, &tmr);
-  if (ressize == 0 || ressize == BUFSIZE)
+  while (1)
     {
-      raise_exn(ctx,exn);
+      ressize = strftime(buf, bufsize, fmt->data, &tmr);
+      if (ressize != 0)
+	{
+	  String res = REG_POLY_CALL(convertStringToML, rAddr, buf);
+	  if (buf != stackbuf) free(buf);
+	  return res;
+	}
+      if (bufsize >= MAX_BUFSIZE)
+	{
+	  if (buf != stackbuf) free(buf);
+	  return REG_POLY_CALL(convertStringToML, rAddr, "");
+	}
+      bufsize *= 2;
+      if (bufsize > MAX_BUFSIZE) bufsize = MAX_BUFSIZE;
+      nextbuf = (buf == stackbuf) ? (char *)malloc(bufsize) : (char *)realloc(buf, bufsize);
+      if (nextbuf == NULL)
+	{
+	  if (buf != stackbuf) free(buf);
+	  raise_exn(ctx,exn);
+	}
+      buf = nextbuf;
     }
-  return REG_POLY_CALL(convertStringToML, rAddr, buf);
 #undef BUFSIZE
+#undef MAX_BUFSIZE
 }
 
 uintptr_t

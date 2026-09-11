@@ -211,5 +211,11 @@ val test9 =
 val test10 =
     tst' "test10" (fn _ =>
 	   fmt "" (fromTimeUniv Time.zeroTime) = "")
+
+val test11 =
+    tst' "test11" (fn _ =>
+	   let val longfmt = String.implode (List.tabulate (300, fn _ => #"x"))
+	   in String.size (fmt longfmt (fromTimeUniv Time.zeroTime)) = 300
+	   end)
 in
 end
