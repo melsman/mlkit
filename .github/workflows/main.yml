@@ -27,7 +27,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-14]
+        # MLKit emits x86-64 assembly; use an Intel macOS runner.
+        os: [ubuntu-24.04, macos-15-intel]
         mlcomp: [mlkit, mlton]
 
     runs-on: ${{ matrix.os }}
@@ -66,17 +67,11 @@ jobs:
       - name: Install dependencies (macos)
         if: ${{ env.OS == 'darwin' }}
         run: |
-          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          arch -x86_64 /usr/local/bin/brew install gcc
-          echo 'GCC version:'
-          echo "THECC=gcc-16" >> $GITHUB_ENV
-          echo "/usr/local/bin" >> $GITHUB_PATH
-          which ld
-          ld -v
-          ls /usr/local/bin/gcc*
-          /usr/local/bin/gcc-16 --version
-          brew install autoconf make
-          brew tap homebrew/cask
+          test "$(uname -m)" = x86_64
+          # Use the runner's Intel Homebrew and a versioned GNU compiler.
+          brew install gcc@15 autoconf make
+          echo "THECC=$(brew --prefix gcc@15)/bin/gcc-15" >> "$GITHUB_ENV"
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           mkdir phantomjs
           cd phantomjs
           wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
@@ -88,8 +83,22 @@ jobs:
         if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
         run: |
           echo "THECC: ${{env.THECC}}"
-          which gcc-16
+          "$THECC" --version
           brew install mlton
+
+      - name: Check macOS compiler architecture
+        if: ${{ env.OS == 'darwin' }}
+        run: |
+          "$THECC" --version
+          case "$("$THECC" -dumpmachine)" in
+            x86_64-apple-darwin*) ;;
+            *) echo "Expected an x86-64 Darwin GCC target" >&2; exit 1 ;;
+          esac
+          printf 'int main(void) { return 0; }\n' > "$RUNNER_TEMP/check-cc.c"
+          "$THECC" -c "$RUNNER_TEMP/check-cc.c" -o "$RUNNER_TEMP/check-cc.o"
+          test "$(lipo -archs "$RUNNER_TEMP/check-cc.o")" = x86_64
+          "$THECC" "$RUNNER_TEMP/check-cc.o" -o "$RUNNER_TEMP/check-cc"
+          "$RUNNER_TEMP/check-cc"
 
       - name: Install MLKit and smlpkg
         working-directory: ${{ env.RUNHOME }}
@@ -134,7 +143,7 @@ jobs:
       - name: Build MLKit
         timeout-minutes: 240
         run: |
-          gcc --version
+          "$THECC" --version
           make mlkit VERBOSE=1
           make mlkit_basislibs VERBOSE=1
 
@@ -155,7 +164,7 @@ jobs:
       - name: Configure SmlToJs
         if: ${{ matrix.mlcomp == 'mlton' }}
         run: |
-          ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
+          CC="$THECC" ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
 
       - name: Build SmlToJs
         run: |
