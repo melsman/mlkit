@@ -1,0 +1,6 @@
+min/max with nan: 1.0 1.0 1.0 1.0 nan 1.0 2.0
+nextAfter: inf ~inf nan nan 1.0 true true inf
+sameSign: false true false true true true true
+realRound: 0.0/0 2.0/2 2.0/2 ~0.0/0 ~2.0/~2 ~2.0/~2 0.0/0 4.0/4 ~4.0/~4 0.0/0
+realRound specials: inf ~inf nan true
+pow: nan nan nan inf 1024.0 1.0 1.0 0.0

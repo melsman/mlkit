@@ -1,0 +1,44 @@
+floor nan: Domain
+floor inf: Overflow
+floor ~inf: Overflow
+floor 2.5: 2
+floor ~2.5: ~3
+ceil nan: Domain
+ceil inf: Overflow
+ceil ~inf: Overflow
+ceil 2.5: 3
+ceil ~2.5: ~2
+trunc nan: Domain
+trunc inf: Overflow
+trunc ~inf: Overflow
+trunc 2.5: 2
+trunc ~2.5: ~2
+round nan: Domain
+round inf: Overflow
+round ~inf: Overflow
+round 2.5: 2
+round ~2.5: ~2
+toInt NEAREST nan: Domain
+toInt NEAREST inf: Overflow
+toInt NEAREST ~inf: Overflow
+toInt NEAREST 2.5: 2
+toInt NEAREST ~2.5: ~2
+toInt NEGINF nan: Domain
+toInt NEGINF inf: Overflow
+toInt NEGINF ~inf: Overflow
+toInt NEGINF 2.5: 2
+toInt NEGINF ~2.5: ~3
+toInt POSINF nan: Domain
+toInt POSINF inf: Overflow
+toInt POSINF ~inf: Overflow
+toInt POSINF 2.5: 3
+toInt POSINF ~2.5: ~2
+toInt ZERO nan: Domain
+toInt ZERO inf: Overflow
+toInt ZERO ~inf: Overflow
+toInt ZERO 2.5: 2
+toInt ZERO ~2.5: ~2
+toLargeInt nan: Domain
+toLargeInt inf: Overflow
+toLargeInt 1e20: 100000000000000000000
+floor 1e300: Overflow

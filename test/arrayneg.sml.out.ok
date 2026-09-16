@@ -1,0 +1,6 @@
+Word8Array.array ~1: Size
+CharArray.array ~1: Size
+CharArray.tabulate ~1: Size
+Word8Array.array 0: no exception
+Word8Array.array 3: 3
+Array.array ~1: Size

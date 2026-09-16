@@ -1,0 +1,5 @@
+non-negative: true
+total covers the parts: true
+gc time within total: true
+checkGCTime later is not smaller: true
+real timer runs: true

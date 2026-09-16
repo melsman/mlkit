@@ -1,0 +1,15 @@
+Int quot: Overflow
+Int rem: 0
+Int quot 7 ~2: ~3 rem 1
+Int quot ~7 2: ~3 rem ~1
+Int quot by 0: Div
+Int31 quot: Overflow
+Int31 rem: 0
+Int32 quot: Overflow
+Int32 rem: 0
+Int63 quot: Overflow
+Int63 rem: 0
+Int64 quot: Overflow
+Int64 rem: 0
+Int64 quot 7 ~2: ~3 rem ~1
+Int32 quot minInt 1: ~2147483648

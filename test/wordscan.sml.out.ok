@@ -1,0 +1,23 @@
+Word DEC: Overflow
+Word HEX: Overflow
+Word fromString: Overflow
+Word max: 7FFFFFFFFFFFFFFF
+Word max+1 DEC: Overflow
+Word 2^63-1 DEC: 7FFFFFFFFFFFFFFF
+Word8: Overflow
+Word8 ok: FF
+Word8 DEC 256: Overflow
+Word8 DEC 255: FF
+Word31: Overflow
+Word31 ok: 7FFFFFFF
+Word32: Overflow
+Word32 ok: FFFFFFFF
+Word32 DEC: Overflow
+Word63: Overflow
+Word63 ok: 7FFFFFFFFFFFFFFF
+Word64: Overflow
+Word64 ok: FFFFFFFFFFFFFFFF
+Word64 DEC: Overflow
+Word64 DEC ok: FFFFFFFFFFFFFFFF
+Word16: Overflow
+Word16 ok: FFFF

@@ -1,0 +1,11 @@
+negative: ~1 true ~1.000 ~1.500 ~0.001 ~0.000
+arithmetic: 3.000 1.000 ~1.000 ~0.800 ~0.001 0.000
+towards zero: ~1 ~1 0 0 ~1 ~1
+units: 2 2010 2010000 2010000000 ~2010000000
+fmt: Size 2 1 1.4 1.00 0.001000 0.00100000 ~14.824 ~0 ~3.87
+scan: 1.500 ~1.500 ~1.500 1.000 0.500 2.000 1.000 1.000 NONE NONE ~0.250 NONE NONE
+scan rest: 1.500 "x"
+real: ~2.5 1.5 0.000 1234.568
+compare: true true true LESS true
+now is positive: true
+Time: Time

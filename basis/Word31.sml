@@ -59,7 +59,9 @@ structure Word31 : WORD =
     val op div = fn (w1:word31,w2) => w1 div w2
     val op mod = fn (w1:word31,w2) => w1 mod w2
 
-    val ~ = fn w => fromInt(~(toInt w))
+    (* Two's complement negation, which wraps; toInt raises Overflow on
+       a pattern with the top bit set. *)
+    val ~ = fn w => fromInt 0 - w
 
     local
       open StringCvt
@@ -91,6 +93,7 @@ structure Word31 : WORD =
 		    | OCT => (fn c => (#"0" <= c andalso c <= #"7"),  0w8)
 		    | DEC => (Char.isDigit,                           0w10)
 		    | HEX => (Char.isHexDigit,                        0w16)
+	      val maxw = notb (fromInt 0)
 	      fun dig1 NONE              = NONE
 		| dig1 (SOME (c1, src1)) =
 		  let fun digr res src =
@@ -98,10 +101,10 @@ structure Word31 : WORD =
 			      NONE           => SOME (res, src)
 			    | SOME (c, rest) =>
 				  if isDigit c then
-				    let val res1 = factor * res
-				        val res2 = res1 + hexval c
-				    in if res1 < res orelse res2 < res1 then raise Overflow
-				       else digr res2 rest
+				    let val d = hexval c
+				    in (* factor * res + d fits iff res <= (maxw - d) div factor *)
+				       if res > (maxw - d) div factor then raise Overflow
+				       else digr (factor * res + d) rest
 				    end
 				  else SOME (res, src)
 		  in

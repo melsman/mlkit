@@ -71,33 +71,20 @@ struct (* depends on StrBase *)
 
   fun toString c = StrBase.toMLescape c
 
-  fun scan getc s =
-    case getc s
-	of NONE => NONE
-	 | SOME(#"\\", rest) => (case StrBase.fromMLescape getc rest
-				   of NONE => NONE
-				    | SOME res => SOME res)
-	 | SOME res => SOME res
-
+  fun scan getc s = StrBase.scanMLchar getc s
 
   fun fromString s =
     let fun getc i = if i < size s then SOME (sub_unsafe(s, i), i+1) else NONE
-    in case getc 0
-	   of NONE => NONE
-	    | SOME(#"\\", rest) => (case StrBase.fromMLescape getc rest
-				      of NONE => NONE
-				       | SOME(c, _) => SOME c)
-	    | SOME(c, _ ) => SOME c
+    in case scan getc 0
+	 of NONE => NONE
+	  | SOME(c, _) => SOME c
     end
 
   fun fromCString s =
     let fun getc i = if i < size s then SOME (sub_unsafe(s, i), i+1) else NONE
-    in case getc 0
-	   of NONE => NONE
-	    | SOME(#"\\", rest) => (case StrBase.fromCescape getc rest
-				      of NONE => NONE
-				       | SOME(c, _) => SOME c)
-	    | SOME(c, _ ) => SOME c
+    in case StrBase.scanCchar getc 0
+	 of NONE => NONE
+	  | SOME(c, _) => SOME c
     end
 
   fun toCString c = StrBase.toCescape c

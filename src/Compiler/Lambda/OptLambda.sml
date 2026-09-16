@@ -3,8 +3,14 @@
 structure OptLambda : OPT_LAMBDA =
   struct
 
-    structure W63 = WordN(Word64)
-    structure I63 = IntN(Int64)
+    (* 63-bit words and integers, as used by the tagged backends, emulated
+       in the 64-bit types of the host compiler.  The functors take the
+       width from the argument, so it must be overridden here: passing
+       Word64 as is would make W63 a plain Word64 (its high mask, ~1 << 64,
+       is 0), and signed shifts and range checks would be folded at the
+       wrong width. *)
+    structure W63 = WordN(struct open Word64 val wordSize = 63 end)
+    structure I63 = IntN(struct open Int64 val precision = SOME 63 end)
 
     structure LvarDiGraphScc =
       DiGraphScc(struct

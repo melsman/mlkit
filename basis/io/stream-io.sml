@@ -676,9 +676,19 @@ functor StreamIOExtra (S: STREAM_IO_EXTRA_ARG): STREAM_IO_EXTRA =
                  in
                    (inp, k)
                  end
+               (* what is already buffered, in this buffer and the ones
+                  linked after it: another stream may have read ahead *)
+               fun buffered (inp, pos, next, k) =
+                 let val k = k + (V.length inp - pos)
+                 in if k >= n then n
+                    else case !next of
+                           Link {buf = Buf {inp, next, ...}} => buffered (inp, 0, next, k)
+                         | _ => k
+                 end
+               val k = buffered (inp, pos, next, 0)
              in
-               if pos < V.length inp
-                 then SOME (Int.min (V.length inp - pos, n))
+               if k > 0
+                 then SOME k
                  else case !next of
                         End =>
                           (case extendNB "canInput" is of

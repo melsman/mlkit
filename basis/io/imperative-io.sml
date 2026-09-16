@@ -424,6 +424,10 @@ fun inputAll (ib as In {state, ...}) =
                 val f = !first
                 val l = !last
                 val inp = AS.vector (AS.slice (buf, f, SOME (l - f)))
+                (* the buffer has been consumed; otherwise the same
+                   characters would be read again, and endOfStream
+                   would stay false *)
+                val () = first := l
                 val inps = [inp]
                 fun loop inps =
                    let
@@ -431,7 +435,8 @@ fun inputAll (ib as In {state, ...}) =
                          readVec (augmentedReaderSel (ib, #chunkSize))
                    in
                       if V.length inp = 0
-                         then V.concat (List.rev inps)
+                         then (state := Open {eos = true}
+                               ; V.concat (List.rev inps))
                       else loop (inp :: inps)
                    end
              in

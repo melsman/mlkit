@@ -57,11 +57,17 @@ structure Path : OS_PATH = struct
   fun getVolume p = #2 (splitabsvolrest p);
   fun validVolume{isAbs, vol} = validVol vol;
 
+  (* An arc may not contain the separator. *)
+  fun validArc a =
+      let fun h i = i >= size a orelse (not (isslash (a sub i)) andalso h (i+1))
+      in h 0 end
+
   fun toString (path as {isAbs, vol, arcs}) =
       let fun h []        res = res
 	    | h (a :: ar) res = h ar (a :: slash :: res)
       in
-	  if validVolume{isAbs=isAbs, vol=vol} then
+	  if not (List.all validArc arcs) then raise InvalidArc
+	  else if validVolume{isAbs=isAbs, vol=vol} then
 	      case (isAbs, arcs) of
 		  (false, []         ) => vol
 		| (false, "" :: _    ) => raise Path
@@ -153,7 +159,8 @@ structure Path : OS_PATH = struct
 
   fun isCanonical p = mkCanonical p = p;
 
-  fun joinDirFile {dir, file} = concat(dir, file)
+  fun joinDirFile {dir, file} =
+      if validArc file then concat(dir, file) else raise InvalidArc
 
   fun splitDirFile p =
       let open List
