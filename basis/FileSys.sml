@@ -176,7 +176,13 @@ structure FileSys : OS_FILE_SYS =
       let
           fun createTmp_ f =
               let
-                  val fd = prim("@sml_lower", (f : string, 1 : int, 0x2 : int, 0x6 : int, 0 : int, 1 : int)) : int
+                  val writeOnlyMode = 1
+                  val exclusiveFlag = SysWord.toInt Initial.Posix_File_Sys.O.excl
+                  val userReadPerm = SysWord.toInt Initial.Posix_File_Sys.S.irusr
+                  val userWritePerm = SysWord.toInt Initial.Posix_File_Sys.S.iwusr
+                  val userReadWritePerm = userReadPerm + userWritePerm
+                  val createfKind = 1
+                  val fd = prim("@sml_lower", (f : string, writeOnlyMode, exclusiveFlag, userReadWritePerm, 0 : int, createfKind)) : int
               in
                   if fd = ~1 then
                       if errno_() = Initial.Err.exist then NONE
