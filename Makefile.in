@@ -327,6 +327,12 @@ bootstrap_first:
 MLKIT_FLAGS ?=
 MLKIT_BUILD_LOG ?= mlkit64.log
 
+ifeq ($(shell uname -s),Darwin)
+BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS) -ldexe 'gcc -Wl,-ld_classic,-stack_size,0x10000000'
+else
+BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS)
+endif
+
 .PHONY: bootstrap_next_build
 bootstrap_next_build:
 	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc mlkit64.mlb \
@@ -354,10 +360,12 @@ bootstrap:
 	                        MANDIR=bootstrap/mlkit-v1/man BINDIR=bootstrap/mlkit-v1/bin
 	$(CLEAN) bootstrap/mlkit-v2
 	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2 DATADIR=../mlkit-v2 LIBDIR=../mlkit-v2 \
-	                        MANDIR=../mlkit-v2/man BINDIR=../mlkit-v2/bin
+	                        MANDIR=../mlkit-v2/man BINDIR=../mlkit-v2/bin \
+	                        MLKIT_FLAGS="$(BOOTSTRAP_MLKIT_FLAGS)"
 	$(CLEAN) bootstrap/mlkit-v3
 	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3 DATADIR=../mlkit-v3 LIBDIR=../mlkit-v3 \
-	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin
+	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin \
+	                        MLKIT_FLAGS="$(BOOTSTRAP_MLKIT_FLAGS)"
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
 	if $(DIFF) -s bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit ; then true; else false; fi
