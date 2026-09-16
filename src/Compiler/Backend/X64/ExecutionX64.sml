@@ -59,7 +59,7 @@ structure ExecutionX64 : EXECUTION =
     val link_exe =
         Flags.add_string_entry
         let val macgcc_seminew = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
-            val macgcc_old_or_newer = "gcc -Wl,-stack_size,0x10000000"
+            val macgcc_old_or_newer = "gcc -Wl,-no_uuid,-stack_size,0x10000000"
             val linuxgcc = "gcc"
             val gcc = if onmac_p() then (*
                         case InstsX64.release() of
