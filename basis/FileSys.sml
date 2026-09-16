@@ -173,11 +173,29 @@ structure FileSys : OS_FILE_SYS =
     (* "creates a new empty file with a name that is unique" -- so the
        file is created, and not just named. *)
     fun tmpName () =
-      let val f = (tmpnam_ 0) handle Fail s => raiseSys "tmpName" NONE s
-          val os = (prim("openOutStream", (getCtx(), f, failexn)) : int)
-                   handle Fail s => raiseSys "tmpName" (SOME f) s
-      in prim("closeStream", os) : unit;
-         f
+      let
+          fun createTmp_ f =
+              let
+                  val fd = prim("@sml_lower", (f : string, 1 : int, 0x2 : int, 0x6 : int, 0 : int, 1 : int)) : int
+              in
+                  if fd = ~1 then
+                      if errno_() = Initial.Err.exist then NONE
+                      else raiseSys "tmpName" (SOME f) "open"
+                  else
+                      let val c = prim("@close", fd : int) : int
+                      in
+                          if c = ~1 then raiseSys "tmpName" (SOME f) "close"
+                          else SOME f
+                      end
+              end
+          fun loop c =
+              let val f = (tmpnam_ c) handle Fail s => raiseSys "tmpName" NONE s
+              in case createTmp_ f of
+                     SOME f => f
+                   | NONE => loop (c+1)
+              end
+      in
+          loop 0
       end
 
     fun modTime p =
