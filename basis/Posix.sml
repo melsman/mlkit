@@ -1209,16 +1209,15 @@ struct
       fun getcc ({cc,...} : termios) = cc
 
       fun ccOfInts xs =
-          let
-            fun loop ([], _, acc) = List.rev acc
-              | loop (x::rest, i, acc) =
-                  loop (rest, i+1, (i, Byte.byteToChar (Word8.fromInt x))::acc)
-          in
-            V.cc (loop (xs, 0, []))
-          end
+          V.cc (List.map (fn x =>
+                            let val i = Int.quot (x, 256)
+                                val c = Byte.byteToChar (Word8.fromInt (Int.rem (x, 256)))
+                            in (i, c)
+                            end) xs)
 
       fun ccToInts cc =
-          List.tabulate(V.nccs, fn i => Word8.toInt (Byte.charToByte (V.sub(cc, i))))
+          List.tabulate(V.nccs, fn i =>
+                          i * 256 + Word8.toInt (Byte.charToByte (V.sub(cc, i))))
 
       structure CF =
         struct

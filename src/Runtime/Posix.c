@@ -705,7 +705,7 @@ REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, int fd0)
   for(i = NCCS; i > 0; i--)
   {
     REG_POLY_CALL(allocPairML, rl, pair);
-    first(pair) = convertIntToML((int) ((unsigned char) t.c_cc[i-1]));
+    first(pair) = convertIntToML((int) ((i-1) * 256 + (unsigned char) t.c_cc[i-1]));
     second(pair) = (uintptr_t) list;
     makeCONS(pair, list);
   }
@@ -725,12 +725,11 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
 {
   struct termios t;
   uintptr_t list;
-  int i, fd, action, nccs, cAction, cc_limit;
+  int i, fd, action, nccs, cAction;
   memset(&t, 0, sizeof(struct termios));
   fd = convertIntToC(fd0);
   action = convertIntToC(action0);
   nccs = convertIntToC(nccs0);
-  cc_limit = nccs < NCCS ? nccs : NCCS;
   t.c_iflag = (tcflag_t) convertIntToC(iflag0);
   t.c_oflag = (tcflag_t) convertIntToC(oflag0);
   t.c_cflag = (tcflag_t) convertIntToC(cflag0);
@@ -744,9 +743,15 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
     return convertIntToML(-1);
   }
   list = ccl;
-  for(i = 0; i < cc_limit && isCONS(list); i++)
+  for(i = 0; i < nccs && isCONS(list); i++)
   {
-    t.c_cc[i] = (cc_t) ((unsigned char) convertIntToC((int) hd(list)));
+    int entry = convertIntToC((int) hd(list));
+    int idx = entry / 256;
+    int ccv = entry % 256;
+    if (idx >= 0 && idx < NCCS)
+    {
+      t.c_cc[idx] = (cc_t) ((unsigned char) ccv);
+    }
     list = tl(list);
   }
   cAction = TCSANOW;

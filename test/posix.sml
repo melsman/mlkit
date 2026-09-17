@@ -100,8 +100,19 @@ val _ = tst' "Posix.TTY.TC.getattr" (fn () =>
     let
       val t = Posix.TTY.TC.getattr Posix.FileSys.stdin
       val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t)
+      val t' = Posix.TTY.TC.getattr Posix.FileSys.stdin
+      val cc = Posix.TTY.getcc t
+      val cc' = Posix.TTY.getcc t'
     in
-      true
+      Posix.TTY.getiflag t = Posix.TTY.getiflag t' andalso
+      Posix.TTY.getoflag t = Posix.TTY.getoflag t' andalso
+      Posix.TTY.getcflag t = Posix.TTY.getcflag t' andalso
+      Posix.TTY.getlflag t = Posix.TTY.getlflag t' andalso
+      Posix.TTY.CF.getispeed t = Posix.TTY.CF.getispeed t' andalso
+      Posix.TTY.CF.getospeed t = Posix.TTY.CF.getospeed t' andalso
+      Posix.TTY.V.sub(cc, Posix.TTY.V.eof) = Posix.TTY.V.sub(cc', Posix.TTY.V.eof) andalso
+      Posix.TTY.V.sub(cc, Posix.TTY.V.min) = Posix.TTY.V.sub(cc', Posix.TTY.V.min) andalso
+      Posix.TTY.V.sub(cc, Posix.TTY.V.time) = Posix.TTY.V.sub(cc', Posix.TTY.V.time)
     end
   else
     ((Posix.TTY.TC.getattr Posix.FileSys.stdin; false)
