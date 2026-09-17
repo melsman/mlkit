@@ -1304,10 +1304,12 @@ struct
               end
           fun getpgrp fd =
               let val r = prim("sml_tty_getpgrp", (fd : int)) : int
-              in if r = ~1 then raiseSys "Posix.TTY.TC.getpgrp" NONE "" else r
+              in if r = ~1 then raiseSys "Posix.TTY.TC.getpgrp" NONE ""
+                 else Process.wordToPid (SysWord.fromInt r)
               end
           fun setpgrp (fd, p) =
-              let val r = prim("sml_tty_setpgrp", (fd : int, p : int)) : int
+              let val r = prim("sml_tty_setpgrp",
+                               (fd : int, SysWord.toInt (Process.pidToWord p) : int)) : int
               in if r = ~1 then raiseSys "Posix.TTY.TC.setpgrp" NONE "" else ()
               end
         end

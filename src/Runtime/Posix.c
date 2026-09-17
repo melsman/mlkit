@@ -734,8 +734,14 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
   t.c_oflag = (tcflag_t) convertIntToC(oflag0);
   t.c_cflag = (tcflag_t) convertIntToC(cflag0);
   t.c_lflag = (tcflag_t) convertIntToC(lflag0);
-  cfsetispeed(&t, (speed_t) convertIntToC(ispeed0));
-  cfsetospeed(&t, (speed_t) convertIntToC(ospeed0));
+  if (cfsetispeed(&t, (speed_t) convertIntToC(ispeed0)) == -1)
+  {
+    return convertIntToML(-1);
+  }
+  if (cfsetospeed(&t, (speed_t) convertIntToC(ospeed0)) == -1)
+  {
+    return convertIntToML(-1);
+  }
   list = ccl;
   for(i = 0; i < nccs && isCONS(list); i++)
   {
