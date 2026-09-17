@@ -680,7 +680,7 @@ sml_getTty(size_t i)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, int fd0)
+REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, size_t fd0)
 {
   struct termios t;
   uintptr_t *pair, *list;
@@ -719,9 +719,9 @@ REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, int fd0)
   return oct;
 }
 
-int
-sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lflag0,
-                int ispeed0, int ospeed0, uintptr_t ccl, int nccs0)
+size_t
+sml_tty_setattr(size_t fd0, size_t action0, size_t iflag0, size_t oflag0, size_t cflag0, size_t lflag0,
+                size_t ispeed0, size_t ospeed0, uintptr_t ccl, size_t nccs0)
 {
   struct termios t;
   uintptr_t list;
@@ -773,23 +773,23 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
   return convertIntToML(tcsetattr(fd, cAction, &t));
 }
 
-int
-sml_tty_sendbreak(int fd0, int duration0)
+size_t
+sml_tty_sendbreak(size_t fd0, size_t duration0)
 {
   int fd = convertIntToC(fd0);
   int duration = convertIntToC(duration0);
   return convertIntToML(tcsendbreak(fd, duration));
 }
 
-int
-sml_tty_drain(int fd0)
+size_t
+sml_tty_drain(size_t fd0)
 {
   int fd = convertIntToC(fd0);
   return convertIntToML(tcdrain(fd));
 }
 
-int
-sml_tty_flush(int fd0, int qsel0)
+size_t
+sml_tty_flush(size_t fd0, size_t qsel0)
 {
   int fd = convertIntToC(fd0);
   int qsel = convertIntToC(qsel0);
@@ -809,8 +809,8 @@ sml_tty_flush(int fd0, int qsel0)
   return convertIntToML(tcflush(fd, cQsel));
 }
 
-int
-sml_tty_flow(int fd0, int action0)
+size_t
+sml_tty_flow(size_t fd0, size_t action0)
 {
   int fd = convertIntToC(fd0);
   int action = convertIntToC(action0);
@@ -833,15 +833,15 @@ sml_tty_flow(int fd0, int action0)
   return convertIntToML(tcflow(fd, cAction));
 }
 
-int
-sml_tty_getpgrp(int fd0)
+size_t
+sml_tty_getpgrp(size_t fd0)
 {
   int fd = convertIntToC(fd0);
   return convertIntToML((int) tcgetpgrp(fd));
 }
 
-int
-sml_tty_setpgrp(int fd0, int pid0)
+size_t
+sml_tty_setpgrp(size_t fd0, size_t pid0)
 {
   int fd = convertIntToC(fd0);
   int pid = convertIntToC(pid0);
@@ -923,7 +923,8 @@ REG_POLY_FUN_HDR(sml_errorName, Region rs, uintptr_t e)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR, Region memberR, Context ctx, size_t g, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR,
+		 Region memberR, Context ctx, size_t g, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -968,7 +969,8 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memberR, Context ctx, String nameML, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR,
+		 Region memberR, Context ctx, String nameML, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -1013,7 +1015,8 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
 }
 
 long
-REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR, Context ctx, long u, long s, long exn)
+REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR,
+		 Context ctx, long u, long s, long exn)
 {
   long res;
   char *b;
@@ -1209,7 +1212,7 @@ sml_gettime(uintptr_t pair)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
+REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, size_t fd)
 {
   char *buf;
   int i = 100, r;
@@ -1244,7 +1247,8 @@ REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
 }
 
 uintptr_t*
-REG_POLY_FUN_HDR(cons_pair_of_strings, Region rl, Region rp, Region s1, Region s2, char* str1, char* str2, uintptr_t* list) {
+REG_POLY_FUN_HDR(cons_pair_of_strings, Region rl, Region rp, Region s1, Region s2,
+		 char* str1, char* str2, uintptr_t* list) {
   uintptr_t *lpair, *pair;
   allocPairML(rl, lpair);
   allocPairML(rp, pair);

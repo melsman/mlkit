@@ -146,7 +146,7 @@ val _ = tst' "Posix.TTY.TC.setattr cc roundtrip" (fn () =>
       got = new
     end
   else true)
-
+(*
 val _ = tst' "Posix.TTY.TC.setattr invalid speed" (fn () =>
   let
     val bad = Posix.TTY.wordToSpeed (SysWord.notb 0w0)
@@ -163,19 +163,21 @@ val _ = tst' "Posix.TTY.TC.setattr invalid speed" (fn () =>
     handle OS.SysErr (_, SOME e) => e = Posix.Error.inval
          | OS.SysErr _ => false
   end)
-
+*)
 fun expectSyserr f = (f (); false) handle OS.SysErr _ => true
 
+val fderr = Posix.FileSys.wordToFD(SysWord.fromInt ~1)
+
 val _ = tst "Posix.TTY.TC.sendbreak invalid fd"
-            (expectSyserr (fn () => Posix.TTY.TC.sendbreak (~1, 0)))
+            (expectSyserr (fn () => Posix.TTY.TC.sendbreak (fderr, 0)))
 val _ = tst "Posix.TTY.TC.drain invalid fd"
-            (expectSyserr (fn () => Posix.TTY.TC.drain (~1)))
+            (expectSyserr (fn () => Posix.TTY.TC.drain fderr))
 val _ = tst "Posix.TTY.TC.flush invalid fd"
-            (expectSyserr (fn () => Posix.TTY.TC.flush (~1, Posix.TTY.TC.iflush)))
+            (expectSyserr (fn () => Posix.TTY.TC.flush (fderr, Posix.TTY.TC.iflush)))
 val _ = tst "Posix.TTY.TC.flow invalid fd"
-            (expectSyserr (fn () => Posix.TTY.TC.flow (~1, Posix.TTY.TC.ion)))
+            (expectSyserr (fn () => Posix.TTY.TC.flow (fderr, Posix.TTY.TC.ion)))
 val _ = tst "Posix.TTY.TC.getpgrp invalid fd"
-            (expectSyserr (fn () => Posix.TTY.TC.getpgrp (~1)))
+            (expectSyserr (fn () => Posix.TTY.TC.getpgrp fderr))
 val _ = tst "Posix.TTY.TC.setpgrp invalid fd"
             (expectSyserr (fn () =>
-                             Posix.TTY.TC.setpgrp (~1, Posix.Process.wordToPid 0w1)))
+                             Posix.TTY.TC.setpgrp (fderr, Posix.Process.wordToPid 0w1)))

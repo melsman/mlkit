@@ -645,7 +645,7 @@ struct
     datatype access_mode = A_READ | A_WRITE | A_EXEC
 
     fun iodToFD (x:OS.IO.iodesc) : file_desc option = OS.iodToFD x
-    fun wordToFD (x:SysWord.word) : file_desc = SysWord.toInt x
+    fun wordToFD (x:SysWord.word) : file_desc = SysWord.toIntX x
     fun fdToIOD (x:file_desc) : OS.IO.iodesc = OS.fdToIOD x
     fun fdToWord (x:file_desc) = SysWord.fromInt x
 
@@ -1223,12 +1223,12 @@ struct
         struct
           fun getospeed ({ospeed,...} : termios) = ospeed
           fun getispeed ({ispeed,...} : termios) = ispeed
-          fun setospeed (t, ospeed) =
+          fun setospeed (t:termios, ospeed:speed) : termios =
               let val {iflag, oflag, cflag, lflag, cc, ispeed, ...} = t
               in {iflag = iflag, oflag = oflag, cflag = cflag, lflag = lflag,
                   cc = cc, ispeed = ispeed, ospeed = ospeed}
               end
-          fun setispeed (t, ispeed) =
+          fun setispeed (t:termios, ispeed:speed) : termios =
               let val {iflag, oflag, cflag, lflag, cc, ospeed, ...} = t
               in {iflag = iflag, oflag = oflag, cflag = cflag, lflag = lflag,
                   cc = cc, ispeed = ispeed, ospeed = ospeed}
@@ -1276,10 +1276,10 @@ struct
                 val r = prim("sml_tty_setattr",
                              (fd : int,
                               action : int,
-                             SysWord.toIntX (I.toWord iflag) : int,
-                             SysWord.toIntX (O.toWord oflag) : int,
-                             SysWord.toIntX (C.toWord cflag) : int,
-                             SysWord.toIntX (L.toWord lflag) : int,
+                              SysWord.toIntX (I.toWord iflag) : int,
+                              SysWord.toIntX (O.toWord oflag) : int,
+                              SysWord.toIntX (C.toWord cflag) : int,
+                              SysWord.toIntX (L.toWord lflag) : int,
                               speedToInt ispeed : int,
                               speedToInt ospeed : int,
                               ccToInts cc : int list,
