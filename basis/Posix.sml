@@ -1167,27 +1167,28 @@ struct
           open A
         end
 
-      type speed = SysWord.word
-      fun compareSpeed (s1, s2) = SysWord.compare (s1, s2)
-      fun speedToWord s = s
-      fun wordToSpeed w = w
+      datatype speed = SPEED of int
+      fun compareSpeed (SPEED s1, SPEED s2) = Int.compare (s1, s2)
+      fun speedToWord (SPEED s) = SysWord.fromInt s
+      fun wordToSpeed w = SPEED (SysWord.toIntX w)
+      fun speedToInt (SPEED s) = s
 
-      val b0 = getT 48
-      val b50 = getT 49
-      val b75 = getT 50
-      val b110 = getT 51
-      val b134 = getT 52
-      val b150 = getT 53
-      val b200 = getT 54
-      val b300 = getT 55
-      val b600 = getT 56
-      val b1200 = getT 57
-      val b1800 = getT 58
-      val b2400 = getT 59
-      val b4800 = getT 60
-      val b9600 = getT 61
-      val b19200 = getT 62
-      val b38400 = getT 63
+      val b0 = SPEED (getTi 48)
+      val b50 = SPEED (getTi 49)
+      val b75 = SPEED (getTi 50)
+      val b110 = SPEED (getTi 51)
+      val b134 = SPEED (getTi 52)
+      val b150 = SPEED (getTi 53)
+      val b200 = SPEED (getTi 54)
+      val b300 = SPEED (getTi 55)
+      val b600 = SPEED (getTi 56)
+      val b1200 = SPEED (getTi 57)
+      val b1800 = SPEED (getTi 58)
+      val b2400 = SPEED (getTi 59)
+      val b4800 = SPEED (getTi 60)
+      val b9600 = SPEED (getTi 61)
+      val b19200 = SPEED (getTi 62)
+      val b38400 = SPEED (getTi 63)
 
       type termios =
            { iflag : I.flags,
@@ -1210,12 +1211,14 @@ struct
       fun ccOfInts xs =
           let
             fun loop ([], _, acc) = List.rev acc
-              | loop (x::rest, i, acc) = loop (rest, i+1, (i, Char.chr x)::acc)
+              | loop (x::rest, i, acc) =
+                  loop (rest, i+1, (i, Byte.byteToChar (Word8.fromInt x))::acc)
           in
             V.cc (loop (xs, 0, []))
           end
 
-      fun ccToInts cc = List.tabulate(V.nccs, fn i => Char.ord (V.sub(cc, i)))
+      fun ccToInts cc =
+          List.tabulate(V.nccs, fn i => Word8.toInt (Byte.charToByte (V.sub(cc, i))))
 
       structure CF =
         struct
@@ -1263,8 +1266,8 @@ struct
                                cflag = C.fromWord (SysWord.fromInt cflag),
                                lflag = L.fromWord (SysWord.fromInt lflag),
                                cc = ccOfInts cc,
-                               ispeed = SysWord.fromInt ispeed,
-                               ospeed = SysWord.fromInt ospeed
+                               ispeed = wordToSpeed (SysWord.fromInt ispeed),
+                               ospeed = wordToSpeed (SysWord.fromInt ospeed)
                              }
               end
 
@@ -1278,8 +1281,8 @@ struct
                               SysWord.toInt (O.toWord oflag) : int,
                               SysWord.toInt (C.toWord cflag) : int,
                               SysWord.toInt (L.toWord lflag) : int,
-                              SysWord.toInt ispeed : int,
-                              SysWord.toInt ospeed : int,
+                              speedToInt ispeed : int,
+                              speedToInt ospeed : int,
                               ccToInts cc : int list,
                               V.nccs : int)) : int
               in

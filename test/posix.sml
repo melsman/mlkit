@@ -121,5 +121,6 @@ val _ = tst' "Posix.TTY.TC.setattr invalid speed" (fn () =>
                               }
   in
     (Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t); false)
-    handle OS.SysErr _ => true
+    handle OS.SysErr (_, SOME e) => e = Posix.Error.inval
+         | OS.SysErr _ => false
   end)
