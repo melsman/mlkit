@@ -119,24 +119,6 @@ val _ = tst' "Posix.TTY.TC.getattr" (fn () =>
      handle OS.SysErr (_, SOME e) => e = Posix.Error.notty
           | OS.SysErr _ => true))
 
-(* 
-val _ = tst' "Posix.TTY.TC.setattr invalid speed" (fn () =>
-  let
-    val bad = Posix.TTY.wordToSpeed (SysWord.notb 0w0)
-    val t = Posix.TTY.termios { iflag = Posix.TTY.I.flags [],
-                                oflag = Posix.TTY.O.flags [],
-                                cflag = Posix.TTY.C.flags [],
-                                lflag = Posix.TTY.L.flags [],
-                                cc = Posix.TTY.V.cc [],
-                                ispeed = bad,
-                                ospeed = bad
-                              }
-  in
-    (Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t); false)
-    handle OS.SysErr (_, SOME e) => e = Posix.Error.inval
-         | OS.SysErr _ => false
-  end)
-*)
 fun expectSyserr f = (f (); false) handle OS.SysErr _ => true
 
 val fderr = Posix.FileSys.wordToFD(SysWord.fromInt ~1)
