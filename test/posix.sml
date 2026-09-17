@@ -127,15 +127,21 @@ val _ = tst' "Posix.TTY.TC.setattr cc roundtrip" (fn () =>
       val {iflag,oflag,cflag,lflag,cc,ispeed,ospeed} = Posix.TTY.fieldsOf t
       val old = Posix.TTY.V.sub (cc, Posix.TTY.V.eof)
       val new = if old = #"\^D" then #"\^E" else #"\^D"
-      val t' = Posix.TTY.termios { iflag = iflag, oflag = oflag,
-                                   cflag = cflag, lflag = lflag,
-                                   cc = Posix.TTY.V.update (cc, [(Posix.TTY.V.eof, new)]),
-                                   ispeed = ispeed, ospeed = ospeed
-                                 }
-      val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t')
-      val got = Posix.TTY.V.sub (Posix.TTY.getcc (Posix.TTY.TC.getattr Posix.FileSys.stdin),
-                                 Posix.TTY.V.eof)
-      val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t)
+      fun restore () = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t)
+      val got =
+          ((let
+              val t' = Posix.TTY.termios { iflag = iflag, oflag = oflag,
+                                           cflag = cflag, lflag = lflag,
+                                           cc = Posix.TTY.V.update (cc, [(Posix.TTY.V.eof, new)]),
+                                           ispeed = ispeed, ospeed = ospeed
+                                         }
+              val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t')
+            in
+              Posix.TTY.V.sub (Posix.TTY.getcc (Posix.TTY.TC.getattr Posix.FileSys.stdin),
+                               Posix.TTY.V.eof)
+            end)
+           handle e => (restore (); raise e))
+      val _ = restore ()
     in
       got = new
     end
