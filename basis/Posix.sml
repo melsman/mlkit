@@ -1074,45 +1074,242 @@ struct
           else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
         end
   end
-(*
-      structure TTY =
+  structure TTY : POSIX_TTY =
+    struct
+      type pid = Process.pid
+      type file_desc = ProcEnv.file_desc
+
+      fun getT i = prim("@sml_getTty", i : int) : word
+      fun getTi i = prim("@sml_getTty", i : int) : int
+
+      structure V =
         struct
-          type pid = Process.pid
-          type file_desc = ProcEnv.file_desc
-
-          structure V =
-            struct
-              open Initial.Posix_Values.Tty.V
-            end
-
-          structure I =
-            struct
-              open Initial.Posix_Values.Tty.I
-              structure A = BitFlags(Initial.Posix_Values.Tty.I)
-              open A
-            end
-
-          structure O =
-            struct
-              open Initial.Posix_Values.Tty.O
-              structure A = BitFlags(Initial.Posix_Values.Tty.O)
-              open A
-            end
-
-          structure C =
-            struct
-              open Initial.Posix_Values.Tty.C
-              structure A = BitFlags(Initial.Posix_Values.Tty.C)
-              open A
-            end
-
-          structure L =
-            struct
-              open Initial.Posix_Values.Tty.L
-              structure A = BitFlags(Initial.Posix_Values.Tty.L)
-              open A
-            end
-
+          val eof = getTi 0
+          val eol = getTi 1
+          val erase = getTi 2
+          val intr = getTi 3
+          val kill = getTi 4
+          val min = getTi 5
+          val quit = getTi 6
+          val susp = getTi 7
+          val time = getTi 8
+          val start = getTi 9
+          val stop = getTi 10
+          val nccs = getTi 70
+          type cc = CharVector.vector
+          fun cc updates =
+              List.foldl (fn ((i,c),v) => CharVector.update(v, i, c))
+                         (CharVector.tabulate(nccs, fn _ => #"\000"))
+                         updates
+          fun update (v, updates) =
+              List.foldl (fn ((i,c),acc) => CharVector.update(acc, i, c))
+                         v updates
+          fun sub (v, i) = CharVector.sub(v, i)
         end
-*)
+
+      structure I =
+        struct
+          val brkint = getT 11
+          val icrnl = getT 12
+          val ignbrk = getT 13
+          val igncr = getT 14
+          val ignpar = getT 15
+          val inlcr = getT 16
+          val inpck = getT 17
+          val istrip = getT 18
+          val ixoff = getT 19
+          val ixon = getT 20
+          val parmrk = getT 21
+          val all = getT 44
+          structure A = BitFlags(struct val all = all end)
+          open A
+        end
+
+      structure O =
+        struct
+          val opost = getT 22
+          val all = opost
+          structure A = BitFlags(struct val all = all end)
+          open A
+        end
+
+      structure C =
+        struct
+          val clocal = getT 23
+          val cread = getT 24
+          val cs5 = getT 25
+          val cs6 = getT 26
+          val cs7 = getT 27
+          val cs8 = getT 28
+          val csize = getT 29
+          val cstopb = getT 30
+          val hupcl = getT 31
+          val parenb = getT 32
+          val parodd = getT 33
+          val all = getT 45
+          structure A = BitFlags(struct val all = all end)
+          open A
+        end
+
+      structure L =
+        struct
+          val echo = getT 34
+          val echoe = getT 35
+          val echok = getT 36
+          val echonl = getT 37
+          val icanon = getT 38
+          val iexten = getT 39
+          val isig = getT 40
+          val noflsh = getT 41
+          val tostop = getT 42
+          val all = getT 46
+          structure A = BitFlags(struct val all = all end)
+          open A
+        end
+
+      type speed = SysWord.word
+      fun compareSpeed (s1, s2) = SysWord.compare (s1, s2)
+      fun speedToWord s = s
+      fun wordToSpeed w = w
+
+      val b0 = getT 48
+      val b50 = getT 49
+      val b75 = getT 50
+      val b110 = getT 51
+      val b134 = getT 52
+      val b150 = getT 53
+      val b200 = getT 54
+      val b300 = getT 55
+      val b600 = getT 56
+      val b1200 = getT 57
+      val b1800 = getT 58
+      val b2400 = getT 59
+      val b4800 = getT 60
+      val b9600 = getT 61
+      val b19200 = getT 62
+      val b38400 = getT 63
+
+      type termios =
+           { iflag : I.flags,
+             oflag : O.flags,
+             cflag : C.flags,
+             lflag : L.flags,
+             cc : V.cc,
+             ispeed : speed,
+             ospeed : speed
+           }
+
+      fun termios x = x
+      fun fieldsOf x = x
+      fun getiflag ({iflag,...} : termios) = iflag
+      fun getoflag ({oflag,...} : termios) = oflag
+      fun getcflag ({cflag,...} : termios) = cflag
+      fun getlflag ({lflag,...} : termios) = lflag
+      fun getcc ({cc,...} : termios) = cc
+
+      fun ccOfInts xs =
+          let
+            fun loop ([], _, acc) = List.rev acc
+              | loop (x::rest, i, acc) = loop (rest, i+1, (i, Char.chr x)::acc)
+          in
+            V.cc (loop (xs, 0, []))
+          end
+
+      fun ccToInts cc = List.tabulate(V.nccs, fn i => Char.ord (V.sub(cc, i)))
+
+      structure CF =
+        struct
+          fun getospeed ({ospeed,...} : termios) = ospeed
+          fun getispeed ({ispeed,...} : termios) = ispeed
+          fun setospeed (t, ospeed) =
+              let val {iflag, oflag, cflag, lflag, cc, ispeed, ...} = t
+              in {iflag = iflag, oflag = oflag, cflag = cflag, lflag = lflag,
+                  cc = cc, ispeed = ispeed, ospeed = ospeed}
+              end
+          fun setispeed (t, ispeed) =
+              let val {iflag, oflag, cflag, lflag, cc, ospeed, ...} = t
+              in {iflag = iflag, oflag = oflag, cflag = cflag, lflag = lflag,
+                  cc = cc, ispeed = ispeed, ospeed = ospeed}
+              end
+        end
+
+      structure TC =
+        struct
+          datatype set_action = SA of int
+          val sanow = SA 0
+          val sadrain = SA 1
+          val saflush = SA 2
+
+          datatype flow_action = FA of int
+          val ooff = FA 0
+          val oon = FA 1
+          val ioff = FA 2
+          val ion = FA 3
+
+          datatype queue_sel = QS of int
+          val iflush = QS 0
+          val oflush = QS 1
+          val ioflush = QS 2
+
+          fun getattr fd =
+              let
+                val (r,iflag,oflag,cflag,lflag,ispeed,ospeed,cc) =
+                    prim("sml_tty_getattr", (fd : int))
+                    : (int * int * int * int * int * int * int * int list)
+              in
+                if r = ~1 then raiseSys "Posix.TTY.TC.getattr" NONE ""
+                else termios { iflag = I.fromWord (SysWord.fromInt iflag),
+                               oflag = O.fromWord (SysWord.fromInt oflag),
+                               cflag = C.fromWord (SysWord.fromInt cflag),
+                               lflag = L.fromWord (SysWord.fromInt lflag),
+                               cc = ccOfInts cc,
+                               ispeed = SysWord.fromInt ispeed,
+                               ospeed = SysWord.fromInt ospeed
+                             }
+              end
+
+          fun setattr (fd, SA action,
+                       {iflag,oflag,cflag,lflag,cc,ispeed,ospeed}) =
+              let
+                val r = prim("sml_tty_setattr",
+                             (fd : int,
+                              action : int,
+                              SysWord.toInt (I.toWord iflag) : int,
+                              SysWord.toInt (O.toWord oflag) : int,
+                              SysWord.toInt (C.toWord cflag) : int,
+                              SysWord.toInt (L.toWord lflag) : int,
+                              SysWord.toInt ispeed : int,
+                              SysWord.toInt ospeed : int,
+                              ccToInts cc : int list,
+                              V.nccs : int)) : int
+              in
+                if r = ~1 then raiseSys "Posix.TTY.TC.setattr" NONE "" else ()
+              end
+
+          fun sendbreak (fd, duration) =
+              let val r = prim("sml_tty_sendbreak", (fd : int, duration : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.sendbreak" NONE "" else ()
+              end
+          fun drain fd =
+              let val r = prim("sml_tty_drain", (fd : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.drain" NONE "" else ()
+              end
+          fun flush (fd, QS qsel) =
+              let val r = prim("sml_tty_flush", (fd : int, qsel : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.flush" NONE "" else ()
+              end
+          fun flow (fd, FA action) =
+              let val r = prim("sml_tty_flow", (fd : int, action : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.flow" NONE "" else ()
+              end
+          fun getpgrp fd =
+              let val r = prim("sml_tty_getpgrp", (fd : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.getpgrp" NONE "" else r
+              end
+          fun setpgrp (fd, p) =
+              let val r = prim("sml_tty_setpgrp", (fd : int, p : int)) : int
+              in if r = ~1 then raiseSys "Posix.TTY.TC.setpgrp" NONE "" else ()
+              end
+        end
+    end
 end

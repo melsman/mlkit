@@ -679,6 +679,160 @@ sml_getTty(size_t i)
   return sml_ttyVals[i];
 }
 
+uintptr_t
+REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, int fd0)
+{
+  struct termios t;
+  uintptr_t *pair, *list;
+  size_t i;
+  int fd = convertIntToC(fd0);
+  int r = tcgetattr(fd, &t);
+  mkTagPairML(oct);
+  elemRecordML(oct,0) = convertIntToML(r);
+  maybeResetRegion(rl);
+  makeNIL(list);
+  if (r == -1)
+  {
+    elemRecordML(oct,1) = convertIntToML(0);
+    elemRecordML(oct,2) = convertIntToML(0);
+    elemRecordML(oct,3) = convertIntToML(0);
+    elemRecordML(oct,4) = convertIntToML(0);
+    elemRecordML(oct,5) = convertIntToML(0);
+    elemRecordML(oct,6) = convertIntToML(0);
+    elemRecordML(oct,7) = (uintptr_t) list;
+    return oct;
+  }
+  for(i = NCCS; i > 0; i--)
+  {
+    REG_POLY_CALL(allocPairML, rl, pair);
+    first(pair) = convertIntToML((int) ((unsigned char) t.c_cc[i-1]));
+    second(pair) = (uintptr_t) list;
+    makeCONS(pair, list);
+  }
+  elemRecordML(oct,1) = convertIntToML((int) t.c_iflag);
+  elemRecordML(oct,2) = convertIntToML((int) t.c_oflag);
+  elemRecordML(oct,3) = convertIntToML((int) t.c_cflag);
+  elemRecordML(oct,4) = convertIntToML((int) t.c_lflag);
+  elemRecordML(oct,5) = convertIntToML((int) cfgetispeed(&t));
+  elemRecordML(oct,6) = convertIntToML((int) cfgetospeed(&t));
+  elemRecordML(oct,7) = (uintptr_t) list;
+  return oct;
+}
+
+int
+sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lflag0,
+                int ispeed0, int ospeed0, uintptr_t ccl, int nccs0)
+{
+  struct termios t;
+  uintptr_t list;
+  int i, fd, action, nccs, cAction;
+  memset(&t, 0, sizeof(struct termios));
+  fd = convertIntToC(fd0);
+  action = convertIntToC(action0);
+  nccs = convertIntToC(nccs0);
+  t.c_iflag = (tcflag_t) convertIntToC(iflag0);
+  t.c_oflag = (tcflag_t) convertIntToC(oflag0);
+  t.c_cflag = (tcflag_t) convertIntToC(cflag0);
+  t.c_lflag = (tcflag_t) convertIntToC(lflag0);
+  cfsetispeed(&t, (speed_t) convertIntToC(ispeed0));
+  cfsetospeed(&t, (speed_t) convertIntToC(ospeed0));
+  list = ccl;
+  for(i = 0; i < nccs && isCONS(list); i++)
+  {
+    t.c_cc[i] = (cc_t) ((unsigned char) convertIntToC((int) hd(list)));
+    list = tl(list);
+  }
+  cAction = TCSANOW;
+  switch (action)
+  {
+    case 1:
+      cAction = TCSADRAIN;
+      break;
+    case 2:
+      cAction = TCSAFLUSH;
+      break;
+    default:
+      cAction = TCSANOW;
+      break;
+  }
+  return convertIntToML(tcsetattr(fd, cAction, &t));
+}
+
+int
+sml_tty_sendbreak(int fd0, int duration0)
+{
+  int fd = convertIntToC(fd0);
+  int duration = convertIntToC(duration0);
+  return convertIntToML(tcsendbreak(fd, duration));
+}
+
+int
+sml_tty_drain(int fd0)
+{
+  int fd = convertIntToC(fd0);
+  return convertIntToML(tcdrain(fd));
+}
+
+int
+sml_tty_flush(int fd0, int qsel0)
+{
+  int fd = convertIntToC(fd0);
+  int qsel = convertIntToC(qsel0);
+  int cQsel = TCIOFLUSH;
+  switch (qsel)
+  {
+    case 0:
+      cQsel = TCIFLUSH;
+      break;
+    case 1:
+      cQsel = TCOFLUSH;
+      break;
+    default:
+      cQsel = TCIOFLUSH;
+      break;
+  }
+  return convertIntToML(tcflush(fd, cQsel));
+}
+
+int
+sml_tty_flow(int fd0, int action0)
+{
+  int fd = convertIntToC(fd0);
+  int action = convertIntToC(action0);
+  int cAction = TCION;
+  switch (action)
+  {
+    case 0:
+      cAction = TCOOFF;
+      break;
+    case 1:
+      cAction = TCOON;
+      break;
+    case 2:
+      cAction = TCIOFF;
+      break;
+    default:
+      cAction = TCION;
+      break;
+  }
+  return convertIntToML(tcflow(fd, cAction));
+}
+
+int
+sml_tty_getpgrp(int fd0)
+{
+  int fd = convertIntToC(fd0);
+  return convertIntToML((int) tcgetpgrp(fd));
+}
+
+int
+sml_tty_setpgrp(int fd0, int pid0)
+{
+  int fd = convertIntToC(fd0);
+  int pid = convertIntToC(pid0);
+  return convertIntToML(tcsetpgrp(fd, (pid_t) pid));
+}
+
 #include "SysErrTable.h"
 
 static int

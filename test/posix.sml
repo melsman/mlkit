@@ -63,3 +63,47 @@ val _ = tst' "Posix.FileSys.fstat" (fn () =>
   in
     size1 = size2
   end)
+
+val _ = print "\nFile posix.sml: Testing structure Posix.TTY...\n"
+
+val _ = tst "Posix.TTY.V.nccs > 0" (Posix.TTY.V.nccs > 0)
+
+val _ = tst' "Posix.TTY.V.cc/update/sub" (fn () =>
+  let
+    val cs = Posix.TTY.V.cc [(Posix.TTY.V.eof, #"\^D")]
+    val cs' = Posix.TTY.V.update (cs, [(Posix.TTY.V.eol, #"\n")])
+  in
+    Posix.TTY.V.sub (cs', Posix.TTY.V.eof) = #"\^D" andalso
+    Posix.TTY.V.sub (cs', Posix.TTY.V.eol) = #"\n"
+  end)
+
+val _ = tst' "Posix.TTY.CF" (fn () =>
+  let
+    val t = Posix.TTY.termios { iflag = Posix.TTY.I.flags [],
+                                oflag = Posix.TTY.O.flags [],
+                                cflag = Posix.TTY.C.flags [],
+                                lflag = Posix.TTY.L.flags [],
+                                cc = Posix.TTY.V.cc [],
+                                ispeed = Posix.TTY.b9600,
+                                ospeed = Posix.TTY.b9600
+                              }
+    val t' = Posix.TTY.CF.setispeed (Posix.TTY.CF.setospeed (t, Posix.TTY.b1200),
+                                     Posix.TTY.b2400)
+  in
+    Posix.TTY.CF.getispeed t' = Posix.TTY.b2400 andalso
+    Posix.TTY.CF.getospeed t' = Posix.TTY.b1200
+  end)
+
+val _ = tst' "Posix.TTY.TC.getattr" (fn () =>
+  if Posix.ProcEnv.isatty Posix.FileSys.stdin
+  then
+    let
+      val t = Posix.TTY.TC.getattr Posix.FileSys.stdin
+      val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t)
+    in
+      true
+    end
+  else
+    ((Posix.TTY.TC.getattr Posix.FileSys.stdin; false)
+     handle OS.SysErr (_, SOME e) => e = Posix.Error.notty
+          | OS.SysErr _ => true))
