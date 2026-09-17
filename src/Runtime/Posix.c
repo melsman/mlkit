@@ -745,9 +745,9 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
   list = ccl;
   for(i = 0; i < nccs && isCONS(list); i++)
   {
-    int entry = convertIntToC((int) hd(list));
-    int idx = entry / 256;
-    int ccv = entry % 256;
+    unsigned int entry = (unsigned int) convertIntToC((int) hd(list));
+    int idx = (int) (entry >> 8);
+    int ccv = (int) (entry & 0xFF);
     if (idx >= 0 && idx < NCCS)
     {
       t.c_cc[idx] = (cc_t) ((unsigned char) ccv);
