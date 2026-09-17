@@ -69,9 +69,15 @@ jobs:
         run: |
           test "$(uname -m)" = x86_64
           # Use the runner's Intel Homebrew and a versioned GNU compiler.
-          brew install gcc@15 autoconf make
+          brew update
+          brew install --force --overwrite gcc@15 autoconf make
+          brew link --overwrite gcc@15
           echo "THECC=$(brew --prefix gcc@15)/bin/gcc-15" >> "$GITHUB_ENV"
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          # Sanity check
+          "$THECC" --version
+          "$THECC" -dumpmachine
+          "$THECC" -v
           mkdir phantomjs
           cd phantomjs
           wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
