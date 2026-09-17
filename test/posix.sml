@@ -119,6 +119,28 @@ val _ = tst' "Posix.TTY.TC.getattr" (fn () =>
      handle OS.SysErr (_, SOME e) => e = Posix.Error.notty
           | OS.SysErr _ => true))
 
+val _ = tst' "Posix.TTY.TC.setattr cc roundtrip" (fn () =>
+  if Posix.ProcEnv.isatty Posix.FileSys.stdin
+  then
+    let
+      val t = Posix.TTY.TC.getattr Posix.FileSys.stdin
+      val {iflag,oflag,cflag,lflag,cc,ispeed,ospeed} = Posix.TTY.fieldsOf t
+      val old = Posix.TTY.V.sub (cc, Posix.TTY.V.eof)
+      val new = if old = #"\^D" then #"\^E" else #"\^D"
+      val t' = Posix.TTY.termios { iflag = iflag, oflag = oflag,
+                                   cflag = cflag, lflag = lflag,
+                                   cc = Posix.TTY.V.update (cc, [(Posix.TTY.V.eof, new)]),
+                                   ispeed = ispeed, ospeed = ospeed
+                                 }
+      val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t')
+      val got = Posix.TTY.V.sub (Posix.TTY.getcc (Posix.TTY.TC.getattr Posix.FileSys.stdin),
+                                 Posix.TTY.V.eof)
+      val _ = Posix.TTY.TC.setattr (Posix.FileSys.stdin, Posix.TTY.TC.sanow, t)
+    in
+      got = new
+    end
+  else true)
+
 val _ = tst' "Posix.TTY.TC.setattr invalid speed" (fn () =>
   let
     val bad = Posix.TTY.wordToSpeed (SysWord.notb 0w0)

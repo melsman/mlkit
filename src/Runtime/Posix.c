@@ -726,10 +726,13 @@ sml_tty_setattr(int fd0, int action0, int iflag0, int oflag0, int cflag0, int lf
   struct termios t;
   uintptr_t list;
   int i, fd, action, nccs, cAction;
-  memset(&t, 0, sizeof(struct termios));
   fd = convertIntToC(fd0);
   action = convertIntToC(action0);
   nccs = convertIntToC(nccs0);
+  if (tcgetattr(fd, &t) == -1)
+  {
+    return convertIntToML(-1);
+  }
   t.c_iflag = (tcflag_t) convertIntToC(iflag0);
   t.c_oflag = (tcflag_t) convertIntToC(oflag0);
   t.c_cflag = (tcflag_t) convertIntToC(cflag0);

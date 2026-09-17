@@ -15,6 +15,7 @@ Posix.TTY.V.nccs > 0    	OK
 Posix.TTY.V.cc/update/sub    	OK
 Posix.TTY.CF    	OK
 Posix.TTY.TC.getattr    	OK
+Posix.TTY.TC.setattr cc roundtrip    	OK
 Posix.TTY.TC.setattr invalid speed    	OK
 Posix.TTY.TC.sendbreak invalid fd    	OK
 Posix.TTY.TC.drain invalid fd    	OK
