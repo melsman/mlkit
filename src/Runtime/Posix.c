@@ -687,7 +687,7 @@ REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, size_t fd0)
   size_t i;
   int fd = convertIntToC(fd0);
   int r = tcgetattr(fd, &t);
-  mkTagPairML(oct);
+  mkTagRecordML(oct, 8);
   elemRecordML(oct,0) = convertIntToML(r);
   maybeResetRegion(rl);
   makeNIL(list);
