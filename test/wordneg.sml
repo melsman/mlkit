@@ -2,8 +2,8 @@
  * go through toInt, which raises Overflow on a top bit that is set. *)
 fun p s = print (s ^ "\n")
 fun t f = (f ()) handle Overflow => "Overflow"
-val () = p ("Word: " ^ t (fn () => Word.toString (Word.~ 0wx6C7D9922F47CE479)))
-val () = p ("Word: " ^ t (fn () => Word.toString (Word.~ 0w1)))
+val () = p ("Word63: " ^ t (fn () => Word63.toString (Word63.~ 0wx6C7D9922F47CE479)))
+val () = p ("Word63: " ^ t (fn () => Word63.toString (Word63.~ 0w1)))
 val () = p ("Word: " ^ t (fn () => Word.toString (Word.~ 0w0)))
 val () = p ("Word63: " ^ t (fn () => Word63.toString (Word63.~ 0wx4000000000000001)))
 val () = p ("Word31: " ^ t (fn () => Word31.toString (Word31.~ 0wx40000001)))

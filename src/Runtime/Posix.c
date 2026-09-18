@@ -679,6 +679,175 @@ sml_getTty(size_t i)
   return sml_ttyVals[i];
 }
 
+uintptr_t
+REG_POLY_FUN_HDR(sml_tty_getattr, uintptr_t oct, Region rl, size_t fd0)
+{
+  struct termios t;
+  uintptr_t *pair, *list;
+  size_t i;
+  int fd = convertIntToC(fd0);
+  int r = tcgetattr(fd, &t);
+  mkTagRecordML(oct, 8);
+  elemRecordML(oct,0) = convertIntToML(r);
+  maybeResetRegion(rl);
+  makeNIL(list);
+  if (r == -1)
+  {
+    elemRecordML(oct,1) = convertIntToML(0);
+    elemRecordML(oct,2) = convertIntToML(0);
+    elemRecordML(oct,3) = convertIntToML(0);
+    elemRecordML(oct,4) = convertIntToML(0);
+    elemRecordML(oct,5) = convertIntToML(0);
+    elemRecordML(oct,6) = convertIntToML(0);
+    elemRecordML(oct,7) = (uintptr_t) list;
+    return oct;
+  }
+  for(i = NCCS; i > 0; i--)
+  {
+    REG_POLY_CALL(allocPairML, rl, pair);
+    first(pair) = convertIntToML((int) ((i-1) * 256 + (unsigned char) t.c_cc[i-1]));
+    second(pair) = (uintptr_t) list;
+    makeCONS(pair, list);
+  }
+  elemRecordML(oct,1) = convertIntToML((int) t.c_iflag);
+  elemRecordML(oct,2) = convertIntToML((int) t.c_oflag);
+  elemRecordML(oct,3) = convertIntToML((int) t.c_cflag);
+  elemRecordML(oct,4) = convertIntToML((int) t.c_lflag);
+  elemRecordML(oct,5) = convertIntToML((int) cfgetispeed(&t));
+  elemRecordML(oct,6) = convertIntToML((int) cfgetospeed(&t));
+  elemRecordML(oct,7) = (uintptr_t) list;
+  return oct;
+}
+
+size_t
+sml_tty_setattr(size_t fd0, size_t action0, size_t iflag0, size_t oflag0, size_t cflag0, size_t lflag0,
+                size_t ispeed0, size_t ospeed0, uintptr_t ccl, size_t nccs0)
+{
+  struct termios t;
+  uintptr_t list;
+  int i, fd, action, nccs, cAction;
+  fd = convertIntToC(fd0);
+  action = convertIntToC(action0);
+  nccs = convertIntToC(nccs0);
+  if (tcgetattr(fd, &t) == -1)
+  {
+    return convertIntToML(-1);
+  }
+  t.c_iflag = (tcflag_t) convertIntToC(iflag0);
+  t.c_oflag = (tcflag_t) convertIntToC(oflag0);
+  t.c_cflag = (tcflag_t) convertIntToC(cflag0);
+  t.c_lflag = (tcflag_t) convertIntToC(lflag0);
+  if (cfsetispeed(&t, (speed_t) convertIntToC(ispeed0)) == -1)
+  {
+    return convertIntToML(-1);
+  }
+  if (cfsetospeed(&t, (speed_t) convertIntToC(ospeed0)) == -1)
+  {
+    return convertIntToML(-1);
+  }
+  list = ccl;
+  for(i = 0; i < nccs && isCONS(list); i++)
+  {
+    unsigned int entry = (unsigned int) convertIntToC((int) hd(list));
+    int idx = (int) (entry >> 8);
+    int ccv = (int) (entry & 0xFF);
+    if (idx >= 0 && idx < NCCS)
+    {
+      t.c_cc[idx] = (cc_t) ((unsigned char) ccv);
+    }
+    list = tl(list);
+  }
+  cAction = TCSANOW;
+  switch (action)
+  {
+    case 1:
+      cAction = TCSADRAIN;
+      break;
+    case 2:
+      cAction = TCSAFLUSH;
+      break;
+    default:
+      cAction = TCSANOW;
+      break;
+  }
+  return convertIntToML(tcsetattr(fd, cAction, &t));
+}
+
+size_t
+sml_tty_sendbreak(size_t fd0, size_t duration0)
+{
+  int fd = convertIntToC(fd0);
+  int duration = convertIntToC(duration0);
+  return convertIntToML(tcsendbreak(fd, duration));
+}
+
+size_t
+sml_tty_drain(size_t fd0)
+{
+  int fd = convertIntToC(fd0);
+  return convertIntToML(tcdrain(fd));
+}
+
+size_t
+sml_tty_flush(size_t fd0, size_t qsel0)
+{
+  int fd = convertIntToC(fd0);
+  int qsel = convertIntToC(qsel0);
+  int cQsel = TCIOFLUSH;
+  switch (qsel)
+  {
+    case 0:
+      cQsel = TCIFLUSH;
+      break;
+    case 1:
+      cQsel = TCOFLUSH;
+      break;
+    default:
+      cQsel = TCIOFLUSH;
+      break;
+  }
+  return convertIntToML(tcflush(fd, cQsel));
+}
+
+size_t
+sml_tty_flow(size_t fd0, size_t action0)
+{
+  int fd = convertIntToC(fd0);
+  int action = convertIntToC(action0);
+  int cAction = TCION;
+  switch (action)
+  {
+    case 0:
+      cAction = TCOOFF;
+      break;
+    case 1:
+      cAction = TCOON;
+      break;
+    case 2:
+      cAction = TCIOFF;
+      break;
+    default:
+      cAction = TCION;
+      break;
+  }
+  return convertIntToML(tcflow(fd, cAction));
+}
+
+size_t
+sml_tty_getpgrp(size_t fd0)
+{
+  int fd = convertIntToC(fd0);
+  return convertIntToML((int) tcgetpgrp(fd));
+}
+
+size_t
+sml_tty_setpgrp(size_t fd0, size_t pid0)
+{
+  int fd = convertIntToC(fd0);
+  int pid = convertIntToC(pid0);
+  return convertIntToML(tcsetpgrp(fd, (pid_t) pid));
+}
+
 #include "SysErrTable.h"
 
 static int
@@ -754,7 +923,8 @@ REG_POLY_FUN_HDR(sml_errorName, Region rs, uintptr_t e)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR, Region memberR, Context ctx, size_t g, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR,
+		 Region memberR, Context ctx, size_t g, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -799,7 +969,8 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memberR, Context ctx, String nameML, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR,
+		 Region memberR, Context ctx, String nameML, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -844,7 +1015,8 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
 }
 
 long
-REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR, Context ctx, long u, long s, long exn)
+REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR,
+		 Context ctx, long u, long s, long exn)
 {
   long res;
   char *b;
@@ -1040,7 +1212,7 @@ sml_gettime(uintptr_t pair)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
+REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, size_t fd)
 {
   char *buf;
   int i = 100, r;
@@ -1075,7 +1247,8 @@ REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
 }
 
 uintptr_t*
-REG_POLY_FUN_HDR(cons_pair_of_strings, Region rl, Region rp, Region s1, Region s2, char* str1, char* str2, uintptr_t* list) {
+REG_POLY_FUN_HDR(cons_pair_of_strings, Region rl, Region rp, Region s1, Region s2,
+		 char* str1, char* str2, uintptr_t* list) {
   uintptr_t *lpair, *pair;
   allocPairML(rl, lpair);
   allocPairML(rp, pair);
