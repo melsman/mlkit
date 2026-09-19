@@ -171,6 +171,7 @@ export2.sml
 export3.sml
 
 atExit0.sml
+atExitAlloc.sml
 
 stringsz.sml
 with-escape.sml
