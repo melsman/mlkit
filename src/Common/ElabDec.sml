@@ -1874,7 +1874,7 @@ structure ElabDec: ELABDEC =
                                         {expected= #2 expectedArityReml,
                                          actual= #2 actualArityReml})
                           else
-                            (SOME(TypeFcn.apply (typeFcn, tau_list, map #2 regvars')),
+                            (SOME(TypeFcn.apply (typeFcn, tau_list, regvars)),
                              OG.CONty (okConv i, out_ty_list, regvars', longtycon))
                        end
                      | NONE => (NONE, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, regvars', longtycon)))
