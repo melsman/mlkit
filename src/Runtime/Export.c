@@ -46,10 +46,9 @@ long
 callExportFun(const char *fun, long i)
 {
   long res = -1;
-#ifdef ENABLE_GC
-  long disable_gc_save = disable_gc;
-  disable_gc = 0;
-#endif
+  /* Preserve the caller's GC policy.  In particular, terminateML disables
+   * collection before entering exit callbacks: the C/export bridge does
+   * not provide the ML frame descriptors needed by the stack scanner. */
   //printf("callExportFun %s\n", fun);
   if (!exportmap) return res;
   const void *f1;
@@ -58,8 +57,5 @@ callExportFun(const char *fun, long i)
     f2 = f1;
     res = ((*f2)(i));
   }
-#ifdef ENABLE_GC
-  disable_gc = disable_gc_save;
-#endif
   return res;
 }
