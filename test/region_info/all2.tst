@@ -73,17 +73,4 @@ region_usageWithinAllocatedPages.mlb		parallel
 (* -------------------------------------- *)
 
 size_test.mlb
-size_string_positive.mlb
-size_list_nil_is_word.mlb
-size_list_grows.mlb
-size_tup2_positive.mlb
-size_option_some_gt_none.mlb
-size_leq_regionUsage.mlb
-
-size_int_zero.mlb				parallel
-size_string_positive.mlb			parallel
-size_list_nil_is_word.mlb			parallel
-size_list_grows.mlb				parallel
-size_tup2_positive.mlb				parallel
-size_option_some_gt_none.mlb		 	parallel
-size_leq_regionUsage.mlb			parallel
+size_test.mlb					parallel
