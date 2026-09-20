@@ -61,25 +61,33 @@ structure ExecutionX64 : EXECUTION =
         let val macgcc_seminew = "gcc -Wl,-ld_classic,-stack_size,0x10000000"
             val macgcc_old_or_newer = "gcc -Wl,-stack_size,0x10000000"
             val linuxgcc = "gcc"
-            val gcc = if onmac_p() then
+            val gcc = if onmac_p() then (*
                         case InstsX64.release() of
                             NONE => macgcc_old_or_newer
                           | SOME v => case Real.fromString v of
                                           SOME r => if 23.1 < r andalso r < 25.2 then macgcc_seminew
                                                     else macgcc_old_or_newer
-                                        | NONE => macgcc_old_or_newer
+                                        | NONE => *) macgcc_old_or_newer
                       else linuxgcc
         in
             {long="link_exe", short=SOME "ldexe", item=ref gcc,
              menu=["General Control", "C compiler (used for linking executable)"],
+(*
              desc="This option specifies the command used for linking\n\
                   \an executable. The standard is to use 'gcc' for\n\
                   \linking. When linking with c++ libraries, 'g++' is\n\
                   \the linker you want. On Linux the default is '" ^ linuxgcc ^ "',\n\
-                  \whereas on semi-new macOS systems (23.2-26.1), the default\n\
+                  \whereas on semi-new macOS systems (23.2-25.1), the default\n\
                   \is '" ^ macgcc_seminew ^ "' and on\n\
                   \older or newer macOS systems, the default is\n\
-                  \'" ^ macgcc_old_or_newer ^ "'."}
+                  \'" ^ macgcc_old_or_newer ^ "'." *)
+             desc="This option specifies the command used for linking\n\
+                  \an executable. The standard is to use 'gcc' for\n\
+                  \linking. When linking with c++ libraries, 'g++' is\n\
+                  \the linker you want. On Linux the default is '" ^ linuxgcc ^ "',\n\
+                  \whereas on macOS systems, the default is \n\
+                  \'" ^ macgcc_old_or_newer ^ "'."
+}
         end
 
     val link_shared =
@@ -265,10 +273,14 @@ structure ExecutionX64 : EXECUTION =
         in OS.FileSys.remove f handle _ => ()
         end
 
+    (* The assembler and the linker report their failures through their
+       exit status; it used to be ignored, so a failed link left no
+       executable while the compiler reported success. *)
     fun execute_command cmd : unit =
         let val () = if debug_linking() then print ("[Executing: " ^ cmd ^ "]\n")
                      else ()
-        in (OS.Process.system cmd; ())
+        in (if OS.Process.isSuccess (OS.Process.system cmd) then ()
+            else raise Fail ("command failed: " ^ cmd))
            handle (X as OS.SysErr(s,_)) =>
                   ( print ("\nCommand " ^ cmd ^ "\nfailed (" ^ s ^ ")\n")
                   ; raise X)

@@ -448,8 +448,8 @@ structure LambdaExp : LAMBDA_EXP =
                                   ("v155","(op <>)"), ("v73","!"), ("v77","(op :=)"),
                                   ("Chr61", "Chr")]),
                      ("StringCvt", dupQ "StringCvt" ["radix","DEC","scanString","BIN","OCT","HEX"]),
-                     ("String", [("v64","String.^"), ("v445","String.<"), ("v447","String.<="),
-                                 ("v449","String.>"), ("v451","String.>=")] @
+                     ("String", [("v64","String.^"), ("v481","String.<"), ("v483","String.<="),
+                                 ("v485","String.>"), ("v487","String.>=")] @
                                 dupQ "String" ["size","substring","concat","str","implode","explode","extract",
                                                "sub","translate","tokens","fields","compare","toString",
                                                "fromString","toCString","fromCString","isPrefix","isSuffix"]),
@@ -460,7 +460,7 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Array", dupQ "Array" ["array","maxLen"]),
                      ("Real", dup ["floor", "real"]),
                      ("textio", dupQ "TextIO" ["openOut"]),
-                     ("Int", [("toString","Int.toString"), ("v475","Int.>"), ("v115","Int.+")] @
+                     ("Int", [("toString","Int.toString"), ("v483","Int.>"), ("v123","Int.+")] @
                              dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
                                          "sameSign","scan","fromString","fmt","precision"]),
                      ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("v54","(op /)")]),

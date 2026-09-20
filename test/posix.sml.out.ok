@@ -9,3 +9,15 @@ Posix.IO.close    	OK
 Posix.Process.fork - in parent - child finished    	OK
 Posix.uname    	OK
 Posix.FileSys.fstat    	OK
+
+File posix.sml: Testing structure Posix.TTY...
+Posix.TTY.V.nccs > 0    	OK
+Posix.TTY.V.cc/update/sub    	OK
+Posix.TTY.CF    	OK
+Posix.TTY.TC.getattr    	OK
+Posix.TTY.TC.sendbreak invalid fd    	OK
+Posix.TTY.TC.drain invalid fd    	OK
+Posix.TTY.TC.flush invalid fd    	OK
+Posix.TTY.TC.flow invalid fd    	OK
+Posix.TTY.TC.getpgrp invalid fd    	OK
+Posix.TTY.TC.setpgrp invalid fd    	OK

@@ -61,6 +61,7 @@ anoq_Exception.sml
 danwang.mlb
 testmatc.sml        ccl
 excon.sml
+excon2.sml
 dangle4.sml
 ftv.sml
 elabDecBug.sml      ccl ecte
@@ -140,6 +141,7 @@ math.sml                                       (* ok, but not quite the
                                                   library specification *)
 date.sml
 date2.sml
+date3.sml
 timer.sml
 unixpath.sml
 cmdline.sml
@@ -169,6 +171,7 @@ export2.sml
 export3.sml
 
 atExit0.sml
+atExitAlloc.sml
 
 stringsz.sml
 with-escape.sml
@@ -185,3 +188,33 @@ poll.sml
 enum-eq.sml
 stringconcat.sml               noopt         (* check transformation of calls to argument-transformed functions *)
 sma.sml                        noopt         (* storage mode error - issue #208 *)
+
+(* Tests of Basis Library conformance *)
+word63fold.sml
+realnan.sml
+realsign.sml
+wordneg.sml
+wordscan.sml
+word8x.sml
+intquot.sml
+intinffmt.sml
+charscan.sml
+stringscan.sml
+slicebounds.sml
+arrayneg.sml
+realdomain.sml
+realspecial.sml
+realfmt.sml
+realdecimal.sml
+timeneg.sml
+timer2.sml
+dateoffset.sml
+datefmt.sml
+datescan.sml
+pathvalid.sml
+fullpath.sml
+tmpname.sml
+setposout.sml
+eos.sml
+caninput.sml
+linkfail.sml        ecte

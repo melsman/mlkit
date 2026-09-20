@@ -210,8 +210,7 @@ structure Tester : TESTER =
 		       (TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe})
                        handle Time.Time => (print "bad time1\n" ; raise Fail "bad1")
                        ;
-                         (*		    if noOfErrors() = 0 then OS.Process.success else OS.Process.failure *)
-		         OS.Process.success   (* to make make work! mael 2001-10-22 *)
+                         if noOfErrors() = 0 then OS.Process.success else OS.Process.failure
 		    end) before (TextIO.closeOut (!msglog))
 	    end
 	  | NONE => (print_usage progname; OS.Process.failure)
@@ -246,7 +245,7 @@ structure Tester : TESTER =
       end *)
 
 
-    val _ = (main(CommandLine.name (), CommandLine.arguments ()))
+    val _ = OS.Process.exit (main(CommandLine.name (), CommandLine.arguments ()))
             handle Time.Time => (print "bad time\n" ; raise Fail "bad")
                  | IO.Io{function, name, cause} => raise Fail (function ^ ", " ^ name ^ ", " ^ (General.exnMessage cause))
   end

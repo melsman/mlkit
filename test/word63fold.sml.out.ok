@@ -1,0 +1,14 @@
+~>> top 62 = 0wx7FFFFFFFFFFFFFFF
+~>> top 1 = 0wx6000000000000000
+~>> top 0 = 0wx4000000000000000
+~>> 1 62 = 0wx0
+~>> allOnes 5 = 0wx7FFFFFFFFFFFFFFF
+>> top 62 = 0wx1
+<< 1 62 = 0wx4000000000000000
+<< 1 63 = 0wx0
+Word63 ~>> top 62 = 0wx7FFFFFFFFFFFFFFF
+Int.fromLarge 2^62 = Overflow
+Int.fromLarge (2^62 - 1) = 4611686018427387903
+Int.fromLarge ~2^62 = ~4611686018427387904
+Int.fromLarge (~2^62 - 1) = Overflow
+Int63.fromLarge 2^62 = Overflow

@@ -54,7 +54,7 @@ structure Word8 : WORD =
 
     fun toLargeWordX (w: word8) =
       if w < 0w128 then toLargeWord w               (* msbit = 0 *)
-      else Word64.orb(toLargeWord w, 0wxFFFFFF00)   (* msbit = 1 *)
+      else Word64.orb(toLargeWord w, Word64.notb 0wxFF)   (* msbit = 1 *)
     val toLargeX = toLargeWordX
 
     fun notb x = xorb(x, 0wxFF)
@@ -118,11 +118,10 @@ structure Word8 : WORD =
 		  NONE           => return res src
 		| SOME (c, rest) =>
 		    if isDigit c then
-		      let val res1 = factor * res
-			  val res2 = res1 + hexval c
-		      in
-			if res1 < res orelse res2 < res1 then raise Overflow
-			else digr res2 rest
+		      let val d = hexval c
+		      in (* the accumulator stays below 256, so it cannot wrap *)
+			if res > (0w255 - d) div factor then raise Overflow
+			else digr (factor * res + d) rest
 		      end
 		    else
 		      return res src

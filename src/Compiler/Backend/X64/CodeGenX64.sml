@@ -860,7 +860,8 @@ struct
                       fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,fsz,C)
                       fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
                       fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
-                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmpf64 i = cmpf64_and_jmp {swap=false} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmpf64_swap i = cmpf64_and_jmp {swap=true} (i,x,y,lab_t,lab_f,fsz,C)
                       open PrimName
                   in case name of
                          Equal_int32ub =>  cmp       I.je
@@ -944,8 +945,8 @@ struct
                        | Greatereq_word64ub => cmp_quad       I.jae
                        | Greatereq_word64b =>  cmp_boxed_quad I.jae
 
-                       | Less_f64 => cmpf64 I.jb
-                       | Lesseq_f64 => cmpf64 I.jbe
+                       | Less_f64 => cmpf64_swap I.ja
+                       | Lesseq_f64 => cmpf64_swap I.jae
                        | Greater_f64 => cmpf64 I.ja
                        | Greatereq_f64 => cmpf64 I.jae
                        | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
@@ -1132,8 +1133,8 @@ struct
                             | Less_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
                             | Less_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbq arg
 
-                            | Less_real => cmpf_kill_tmp01_cmov I.cmovbq arg
-                            | Less_f64 => cmpf64_kill_tmp01_cmov I.cmovbq arg
+                            | Less_real => cmpf_kill_tmp01_cmov {swap=true} I.cmovaq arg
+                            | Less_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaq arg
 
                             | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
                             | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovleq arg
@@ -1150,8 +1151,8 @@ struct
                             | Lesseq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
                             | Lesseq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbeq arg
 
-                            | Lesseq_real => cmpf_kill_tmp01_cmov I.cmovbeq arg
-                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov I.cmovbeq arg
+                            | Lesseq_real => cmpf_kill_tmp01_cmov {swap=true} I.cmovaeq arg
+                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaeq arg
 
                             | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
                             | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgq arg
@@ -1168,8 +1169,8 @@ struct
                             | Greater_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
                             | Greater_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaq arg
 
-                            | Greater_real => cmpf_kill_tmp01_cmov I.cmovaq arg
-                            | Greater_f64 => cmpf64_kill_tmp01_cmov I.cmovaq arg
+                            | Greater_real => cmpf_kill_tmp01_cmov {swap=false} I.cmovaq arg
+                            | Greater_f64 => cmpf64_kill_tmp01_cmov {swap=false} I.cmovaq arg
 
                             | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
                             | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgeq arg
@@ -1186,8 +1187,8 @@ struct
                             | Greatereq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
                             | Greatereq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaeq arg
 
-                            | Greatereq_real => cmpf_kill_tmp01_cmov I.cmovaeq arg
-                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov I.cmovaeq arg
+                            | Greatereq_real => cmpf_kill_tmp01_cmov {swap=false} I.cmovaeq arg
+                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov {swap=false} I.cmovaeq arg
 
                             | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
                             | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg

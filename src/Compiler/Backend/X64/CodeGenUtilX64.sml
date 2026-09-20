@@ -789,10 +789,17 @@ struct
            | _ => die ("resolve_f64_aty: expecting physical register - " ^ f())
   *)
 
-      fun cmpf64_and_jmp (jump,x,y,lab_t,lab_f,fsz,C) =
+      (* ucomisd sets CF=ZF=PF=1 when an operand is a NaN, so the
+         `below' conditions (jb, jbe, cmovb, cmovbe) come out true on a
+         NaN and would make nan < x and nan <= x hold.  The `above'
+         conditions are false on a NaN, so < and <= are expressed as
+         > and >= with the operands swapped: with {swap=true} the
+         comparison is of y against x and the caller passes ja/jae. *)
+      fun cmpf64_and_jmp {swap} (jump,x,y,lab_t,lab_f,fsz,C) =
           let val (x,x_C) = resolve_arg_aty(x,tfreg0,fsz)
               val (y,y_C) = resolve_arg_aty(y,tfreg1,fsz)
-          in x_C(y_C(I.ucomisd (R y, R x) ::
+              val cmp = if swap then I.ucomisd (R x, R y) else I.ucomisd (R y, R x)
+          in x_C(y_C(cmp ::
                      jump lab_t ::
                      G.jump lab_f $
                      rem_dead_code C))
@@ -1344,30 +1351,40 @@ struct
      val min_f64 = bin_f64_op "minsd" I.minsd
      val sqrt_f64 = uno_f64_op "sqrtsd" I.sqrtsd
 
+     (* Negation and absolute value operate on the sign bit alone, as
+        IEEE 754 prescribes: 0.0 - x would turn 0.0 into +0.0 rather
+        than ~0.0, and max(x, 0.0 - x) leaves a NaN's sign as it was.
+        The masks are built in the destination register without a
+        memory constant: pcmpeqd of a register with itself gives all
+        ones, and a shift by 63 or 1 keeps just the sign bit or
+        everything but it. *)
+     fun sign_mask r C = I.pcmpeqd (R r, R r) :: I.psllq (I "63", R r) :: C
+     fun magnitude_mask r C = I.pcmpeqd (R r, R r) :: I.psrlq (I "1", R r) :: C
+
      fun neg_f64 (x,d,fsz:int,C) =
        let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
            val (d, C') = resolve_aty_def(d,tfreg1,fsz, C)
        in x_C(copy_f64 (x, tfreg0,
-              I.xorps (R d, R d) ::
-              I.subsd (R tfreg0, R d) :: C'))
+              sign_mask d (
+              I.xorps (R tfreg0, R d) :: C')))
        end
 
      fun abs_f64 (x,d,fsz,C) =
        let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
            val (d, C') = resolve_aty_def(d,tfreg1,fsz, C)
        in x_C(I.movsd (R x, R tfreg0) ::
-              I.xorps (R d, R d) ::
-              I.subsd (R tfreg0, R d) ::
-              I.maxsd (R tfreg0, R d) :: C')
+              magnitude_mask d (
+              I.andps (R tfreg0, R d) :: C'))
        end
 
-     fun cmpf64_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     fun cmpf64_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
              val (y, y_C) = resolve_arg_aty(y,tfreg1,fsz)
              val () = if I.is_freg x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
              val () = if I.is_freg y then () else die ("cmpf64_kill_tmp01_cmov: wrong y register")
              val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
-         in x_C(y_C(I.ucomisd (R y, R x) ::
+             val cmp = if swap then I.ucomisd (R x, R y) else I.ucomisd (R y, R x)
+         in x_C(y_C(cmp ::
             G.move_num(i2s BI.ml_false, R d_reg) $
             G.move_num(i2s BI.ml_true, R treg1) $
             cmov(R treg1, R d_reg) ::
@@ -1446,9 +1463,9 @@ struct
            val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
            val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
        in
-         x_C(I.xorps (R tfreg0,R tfreg0) :: I.subsd (R tfreg1,R tfreg0) ::
+         x_C(sign_mask tfreg0 (I.xorps (R tfreg1,R tfreg0) ::
          b_C(store_real(b_reg,treg1,tfreg0,
-         copy(b_reg,d_reg, C'))))
+         copy(b_reg,d_reg, C')))))
        end
 
      fun absf_kill_tmp01 (b,x,d,fsz,C) =
@@ -1456,18 +1473,19 @@ struct
            val (b_reg, b_C) = resolve_arg_aty(b, treg0, fsz)
            val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
        in
-         x_C(I.xorps (R tfreg0,R tfreg0) :: I.subsd (R tfreg1,R tfreg0) :: I.maxsd (R tfreg1,R tfreg0) ::
+         x_C(magnitude_mask tfreg0 (I.andps (R tfreg1,R tfreg0) ::
          b_C(store_real(b_reg,treg1,tfreg0,
-         copy(b_reg,d_reg, C'))))
+         copy(b_reg,d_reg, C')))))
        end
 
-     fun cmpf_kill_tmp01_cmov cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     fun cmpf_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
        let val x_C = load_real(x, treg0, fsz, tfreg0)
            val y_C = load_real(y, treg0, fsz, tfreg1)
            val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
            val load_args = x_C o y_C
+           val cmp = if swap then I.ucomisd (R tfreg0, R tfreg1) else I.ucomisd (R tfreg1, R tfreg0)
        in
-         load_args(I.ucomisd (R tfreg1, R tfreg0) ::
+         load_args(cmp ::
          G.move_num(i2s BI.ml_false, R d_reg) $
          G.move_num(i2s BI.ml_true, R treg1) $
          cmov(R treg1, R d_reg) ::

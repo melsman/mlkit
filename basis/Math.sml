@@ -30,7 +30,12 @@ structure Math : MATH = struct
   fun acos (a : real) : real = prim ("acosFloat", a)
   fun atan2 (y : real, x : real) : real = prim ("atan2Float", (y,x))
   fun exp (r : real) : real = prim ("expFloat", r)
-  fun pow (x : real, y : real) : real = prim ("powFloat", (x,y))
+  fun pow_ (x : real, y : real) : real = prim ("powFloat", (x,y))
+  (* The Basis Library, unlike C, makes pow(+-1, +-inf) a NaN. *)
+  fun pow (x, y) =
+      if (x == 1.0 orelse x == ~1.0) andalso (y == posInf orelse y == negInf)
+      then sqrt ~1.0
+      else pow_ (x, y)
   local
     fun mkPosInf () : real = prim ("posInfFloat", ())
     fun mkNegInf () : real = prim ("negInfFloat", ())

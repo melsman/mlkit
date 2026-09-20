@@ -22,7 +22,10 @@ signature STR_BASE =
     val toMLescape   : char -> string
     val fromCescape  : ('a -> (char * 'a) option) -> ('a -> (char * 'a) option)
     val toCescape    : char -> string
-    val fromCString  : string -> string option 
+    val fromCString  : string -> string option
+    val skipMLformats : ('a -> (char * 'a) option) -> 'a -> ('a * bool) option
+    val scanMLchar   : ('a -> (char * 'a) option) -> ('a -> (char * 'a) option)
+    val scanCchar    : ('a -> (char * 'a) option) -> ('a -> (char * 'a) option)
 
     val explode   : string -> char list
   end

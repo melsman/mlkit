@@ -1,0 +1,11 @@
+Substring.slice huge n: Subscript
+Substring.slice huge i: Subscript
+Substring.substring huge n: Subscript
+Substring.extract huge n: Subscript
+String.extract huge n: Subscript
+String.substring huge n: Subscript
+CharVectorSlice.slice huge n: Subscript
+Word8ArraySlice.slice huge n: Subscript
+CharArray.copy huge len: no exception
+Word8Array.copyVec huge si: Subscript
+valid slices: bcd cde 

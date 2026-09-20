@@ -1,0 +1,54 @@
+toDecimal 1.5 = NORMAL + [1,5] 1 ; EXACT = 0.15E1 ; IEEEReal.toString = 0.15E1
+toDecimal ~12.25 = NORMAL ~ [1,2,2,5] 2 ; EXACT = ~0.1225E2 ; IEEEReal.toString = ~0.1225E2
+toDecimal 0.0 = ZERO + [] 0 ; EXACT = 0.0 ; IEEEReal.toString = 0.0
+toDecimal ~0.0 = ZERO ~ [] 0 ; EXACT = ~0.0 ; IEEEReal.toString = ~0.0
+toDecimal 100.0 = NORMAL + [1] 3 ; EXACT = 0.1E3 ; IEEEReal.toString = 0.1E3
+toDecimal 0.1 = NORMAL + [1] 0 ; EXACT = 0.1 ; IEEEReal.toString = 0.1
+toDecimal 1E~5 = NORMAL + [1] ~4 ; EXACT = 0.1E~4 ; IEEEReal.toString = 0.1E~4
+toDecimal 123456789.0 = NORMAL + [1,2,3,4,5,6,7,8,9] 9 ; EXACT = 0.123456789E9 ; IEEEReal.toString = 0.123456789E9
+toDecimal 1E300 = NORMAL + [1] 301 ; EXACT = 0.1E301 ; IEEEReal.toString = 0.1E301
+toDecimal 4.94065645841E~324 = SUBNORMAL + [5] ~323 ; EXACT = 0.5E~323 ; IEEEReal.toString = 0.5E~323
+toDecimal 1.79769313486E308 = NORMAL + [1,7,9,7,6,9,3,1,3,4,8,6,2,3,1,5,7] 309 ; EXACT = 0.17976931348623157E309 ; IEEEReal.toString = 0.17976931348623157E309
+toDecimal 2.22507385851E~308 = NORMAL + [2,2,2,5,0,7,3,8,5,8,5,0,7,2,0,1,4] ~307 ; EXACT = 0.22250738585072014E~307 ; IEEEReal.toString = 0.22250738585072014E~307
+toDecimal inf = INF + [] 0 ; EXACT = inf ; IEEEReal.toString = inf
+toDecimal ~inf = INF ~ [] 0 ; EXACT = ~inf ; IEEEReal.toString = ~inf
+toDecimal nan = NAN + [] 0 ; EXACT = nan ; IEEEReal.toString = nan
+toDecimal 0.333333333333 = NORMAL + [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3] 0 ; EXACT = 0.3333333333333333 ; IEEEReal.toString = 0.3333333333333333
+toDecimal 0.666666666667 = NORMAL + [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6] 0 ; EXACT = 0.6666666666666666 ; IEEEReal.toString = 0.6666666666666666
+fromDecimal 0.15E1 = 0.15E1
+fromDecimal ~0.15E1 = ~0.15E1
+fromDecimal no digits = 0.0
+fromDecimal digit 10 = NONE
+fromDecimal digit ~1 = NONE
+fromDecimal inf = inf
+fromDecimal ~inf = ~inf
+fromDecimal ~zero = ~0.0
+fromDecimal nan = nan
+fromDecimal 0.1E~5 = 0.1E~5
+fromDecimal minPos = 0.5E~323
+round trips: ok
+scan "+1.5" = 0.15E1 rest ""
+scan "-1.5" = ~0.15E1 rest ""
+scan "~1.5" = ~0.15E1 rest ""
+scan "1." = 0.1E1 rest "."
+scan ".5" = 0.5 rest ""
+scan "1.5E3" = 0.15E4 rest ""
+scan "1.5e3" = 0.15E4 rest ""
+scan "1.5e~3" = 0.15E~2 rest ""
+scan "1.5e-3" = 0.15E~2 rest ""
+scan "1.5e+3" = 0.15E4 rest ""
+scan "42" = 0.42E2 rest ""
+scan "1.5e" = 0.15E1 rest "e"
+scan "1.5abc" = 0.15E1 rest "abc"
+scan "1.5.5" = 0.15E1 rest ".5"
+scan "." = NONE
+scan "abc" = NONE
+scan "" = NONE
+scan "  7.25x" = 0.725E1 rest "x"
+scan "inf" = inf rest ""
+scan "-infinity" = ~inf rest ""
+scan "nan" = nan rest ""
+scan "0.1000000000000000055511151231257827021181583404541015625" = 0.1 rest ""
+scan "1e400" = inf rest ""
+scan "1e-400" = 0.0 rest ""
+scan "123456789012345678901234567890" = 0.12345678901234568E30 rest ""

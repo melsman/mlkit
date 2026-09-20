@@ -1,0 +1,11 @@
+3.14E0 3E0 3E2 ~1.230E~4 1.500000E0 1.5E300 1.5E~300
+3.14 2 ~1.500000 0.000
+3.14 1E~5 1E2 1.23456789012E14 1E10
+1E300 1E~5 1E~10 123.0 ~0.001 1E15 0.0001
+FIX: inf ~inf nan
+SCI: inf ~inf nan
+GEN: inf ~inf nan
+GEN NONE: inf ~inf nan
+EXACT: inf ~inf nan
+toString: inf ~inf nan
+fmt (FIX ~1): Size, fmt (SCI ~1): Size, fmt (GEN 0): Size, fmt (GEN ~1) 1.0: Size, fmt (GEN 1): no exception

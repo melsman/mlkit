@@ -2,6 +2,7 @@
  *                        Math                                    *
  *----------------------------------------------------------------*/
 #include <errno.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -526,7 +527,10 @@ realTrunc(ssize_t d, ssize_t x)
 ssize_t
 realRound(ssize_t d, ssize_t x)
 {
-  get_d(d) = round(get_d(x));
+  /* rint rounds to nearest with ties to even (in the default rounding
+   * mode), which is what round : real -> int does; C's round breaks
+   * ties away from zero. */
+  get_d(d) = rint(get_d(x));
   set_dtag(d);
   return d;
 }
@@ -856,7 +860,10 @@ static ssize_t countChar(ssize_t c, char * s) {
 }
 
 // mkSMLMinus: remove all '+', and replace '-' and 'e'
-//     with '~' and 'E', respectively.
+//     with '~' and 'E', respectively.  printf writes the exponent with
+//     at least two digits ("E05"); the Basis Library writes it with as
+//     few as possible ("E5"), so the leading zeros of an exponent are
+//     dropped too, keeping at least one digit.
 static void mkSMLMinus(char * s) {
   char *p, *q;
 
@@ -869,6 +876,16 @@ static void mkSMLMinus(char * s) {
     }
   }
   *q = '\0';
+  for( p = s; *p != '\0' && *p != 'E'; p++ ) ;
+  if( *p == 'E' ) {
+    p++;
+    if( *p == '~' ) p++;
+    q = p;
+    while( *p == '0' && *(p+1) >= '0' && *(p+1) <= '9' ) p++;
+    if( p != q ) {
+      while( (*q++ = *p++) != '\0' ) ;
+    }
+  }
   return;
 }
 
@@ -888,6 +905,17 @@ REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, size_t arg)
   } else {
     return REG_POLY_CALL(convertStringToML,rAddr,buf);
   }
+}
+
+// strtodFloat: the correctly rounded value of a decimal numeral, as
+//     strtod computes it.  The string is in C syntax; Real.scan
+//     assembles it from the digits it has read.
+ssize_t
+strtodFloat(ssize_t d, String s)
+{
+  get_d(d) = strtod(s->data, NULL);
+  set_dtag(d);
+  return d;
 }
 
 String

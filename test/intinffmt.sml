@@ -1,0 +1,8 @@
+(* fmt HEX uses upper-case digits, as for the other integer types. *)
+fun p s = print (s ^ "\n")
+val () = p (LargeInt.fmt StringCvt.HEX (LargeInt.fromInt 255))
+val () = p (LargeInt.fmt StringCvt.HEX (LargeInt.fromInt ~48879))
+val () = p (IntInf.fmt StringCvt.HEX (IntInf.pow (IntInf.fromInt 2, 70)))
+val () = p (IntInf.fmt StringCvt.HEX (IntInf.fromInt 0))
+val () = p (IntInf.fmt StringCvt.OCT (IntInf.fromInt 511) ^ " " ^ IntInf.fmt StringCvt.BIN (IntInf.fromInt 10) ^ " " ^ IntInf.fmt StringCvt.DEC (IntInf.fromInt ~10))
+val () = p (Int.fmt StringCvt.HEX 255 ^ " " ^ Word.fmt StringCvt.HEX 0w255)

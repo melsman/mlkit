@@ -1,70 +1,60 @@
+(* IntN(I): integers of precision I.precision, represented in I, which
+   must be at least that wide (e.g. I = struct open Int64 val precision =
+   SOME 63 end).  Operations are carried out in IntInf and their results
+   checked against the precision, so that Overflow is raised exactly when
+   the true result does not fit in the N-bit type, independently of the
+   width of the host compiler's integers. *)
+
 functor IntN(I : INTEGER) :> INTEGER =
   struct
-
-    structure W = Word
     type int = I.int
     val precision = I.precision
-    val wordSize = case precision of
-                       SOME n => n
-                     | NONE => raise Fail "IntN.wordSize not supported"
-    val i2w = W.fromInt o I.toInt
-    val w2i = I.fromInt o W.toIntX
-    val high = W.<<(W.fromInt ~1, W.fromInt wordSize)
-    val low = W.xorb(W.fromInt ~1, high)
+    val bits = case precision of
+                   SOME n => n
+                 | NONE => raise Fail "IntN: precision must be finite"
+    val two = IntInf.fromInt 2
+    val minL = IntInf.~ (IntInf.pow (two, Int.-(bits,1)))
+    val maxL = IntInf.- (IntInf.pow (two, Int.-(bits,1)), IntInf.fromInt 1)
 
-    fun signextend w = if W.>> (w, W.fromInt (Int.-(wordSize,1))) = W.fromInt 0
-                       then w else W.orb(high,w)
+    fun chk (i:IntInf.int) : IntInf.int =
+        if IntInf.<= (minL, i) andalso IntInf.<= (i, maxL) then i
+        else raise Overflow
 
-    val signextendi = w2i o signextend o i2w
+    val fromLarge = I.fromLarge o chk
+    val toLarge = I.toLarge
+    val minInt = SOME (fromLarge minL)
+    val maxInt = SOME (fromLarge maxL)
+    val toInt = I.toInt
+    val fromInt = fromLarge o Int.toLarge
 
-    val minInt0 = w2i (W.<<(0w1,W.fromInt (Int.-(wordSize,1))))
-    val minInt0I = signextendi minInt0
-    val maxInt0 = w2i (W.>>(low,0w1))
-    val minInt = SOME minInt0
-    val maxInt = SOME maxInt0
+    fun lift2 f (a,b) = fromLarge (f (toLarge a, toLarge b))
+    fun lift1 f a = fromLarge (f (toLarge a))
 
-    val toLarge = I.toLarge o signextendi
+    val op + = lift2 IntInf.+
+    val op - = lift2 IntInf.-
+    val op * = lift2 IntInf.*
+    val op div = lift2 IntInf.div
+    val op mod = lift2 IntInf.mod
+    val op quot = lift2 IntInf.quot
+    val op rem = lift2 IntInf.rem
 
-    fun chk i = if I.<=(minInt0I,i) andalso I.<=(i,maxInt0)
-                then i else raise Overflow
+    val compare = I.compare
+    val op < = I.<
+    val op <= = I.<=
+    val op > = I.>
+    val op >= = I.>=
 
-    fun norm w = W.andb(w,low)
-    val normi = w2i o norm o i2w o chk
-    val toLarge = I.toLarge o signextendi
-    val fromLarge = normi o I.fromLarge
-    val toInt = I.toInt o signextendi
-    val fromInt = normi o I.fromInt
+    val ~ = lift1 IntInf.~
+    val abs = lift1 IntInf.abs
+    val min = I.min
+    val max = I.max
+    val sign = I.sign
+    val sameSign = I.sameSign
 
-    infix oo
-    fun f oo g = fn (a,b) => f(g a,g b)
-
-    val op + = normi o I.+ oo signextendi
-    val op - = normi o I.- oo signextendi
-    val op * = normi o I.* oo signextendi
-    val op div = normi o I.div oo signextendi
-    val op mod = normi o I.mod oo signextendi
-    val op quot = normi o I.quot oo signextendi
-    val op rem = normi o I.rem oo signextendi
-
-    val compare = I.compare oo signextendi
-    val op < = I.< oo signextendi
-    val op <= = I.<= oo signextendi
-    val op > = I.> oo signextendi
-    val op >= = I.>= oo signextendi
-
-    val ~ = normi o I.~ o signextendi
-    val abs = normi o I.abs o signextendi
-    val min = normi o I.min oo signextendi
-    val max = normi o I.max oo signextendi
-    val sign = I.sign o signextendi
-    val sameSign = I.sameSign oo signextendi
-
-    val fmt = fn r => I.fmt r o signextendi
-    val toString = I.toString o signextendi
+    val fmt = I.fmt
+    val toString = I.toString
 
     fun scan r gc s =
-        Option.map (fn (i,r) => (normi i,r))
-                   (I.scan r gc s)
-
-    val fromString = Option.map normi o I.fromString
+        Option.map (fn (i,r) => (fromLarge (I.toLarge i), r)) (I.scan r gc s)
+    val fromString = Option.map (fromLarge o I.toLarge) o I.fromString
   end

@@ -81,6 +81,10 @@ signature INSTS_X64 =
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
+    | andps of ea * ea
+    | pcmpeqd of ea * ea
+    | psllq of ea * ea
+    | psrlq of ea * ea
     | minsd of ea * ea
     | ucomisd of ea * ea
     | xorps of ea * ea

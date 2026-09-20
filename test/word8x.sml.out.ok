@@ -1,0 +1,7 @@
+toLargeX E2 = FFFFFFFFFFFFFFE2
+toLargeX 7F = 7F
+toLargeX FF = FFFFFFFFFFFFFFFF
+toLarge FF = FF
+toIntX E2 = ~30
+via large: ~30
+toLargeIntX FF = ~1

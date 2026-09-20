@@ -1,0 +1,5 @@
+signBit (~zero) true, signBit (~(~zero)) false, signBit (~one) true
+signBit (abs (~nan)) false, signBit (abs (~one)) false, abs (~2.5) = 2.5
+1/(~zero) = ~inf
+constants: true false 2.5
+unboxed: true 1.0 ~1.0

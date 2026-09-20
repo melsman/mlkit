@@ -99,6 +99,10 @@ structure InstsX64 : INSTS_X64 =
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
+    | andps of ea * ea
+    | pcmpeqd of ea * ea
+    | psllq of ea * ea
+    | psrlq of ea * ea
     | minsd of ea * ea
     | ucomisd of ea * ea
     | xorps of ea * ea
@@ -471,6 +475,10 @@ structure InstsX64 : INSTS_X64 =
                | addsd a => emit_bin("addsd", a)
                | subsd a => emit_bin("subsd", a)
                | maxsd a => emit_bin("maxsd", a)
+               | andps a => emit_bin("andps", a)
+               | pcmpeqd a => emit_bin("pcmpeqd", a)
+               | psllq a => emit_bin("psllq", a)
+               | psrlq a => emit_bin("psrlq", a)
                | minsd a => emit_bin("minsd", a)
                | ucomisd a => emit_bin("ucomisd", a)
                | xorps a => emit_bin("xorps", a)
@@ -795,6 +803,10 @@ structure InstsX64 : INSTS_X64 =
              | addsd (ea1,ea2) => addsd (Em ea1,Em ea2)
              | subsd (ea1,ea2) => subsd (Em ea1,Em ea2)
              | maxsd (ea1,ea2) => maxsd (Em ea1,Em ea2)
+             | andps (ea1,ea2) => andps (Em ea1,Em ea2)
+             | pcmpeqd (ea1,ea2) => pcmpeqd (Em ea1,Em ea2)
+             | psllq (ea1,ea2) => psllq (Em ea1,Em ea2)
+             | psrlq (ea1,ea2) => psrlq (Em ea1,Em ea2)
              | minsd (ea1,ea2) => minsd (Em ea1,Em ea2)
              | ucomisd (ea1,ea2) => ucomisd (Em ea1,Em ea2)
              | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)

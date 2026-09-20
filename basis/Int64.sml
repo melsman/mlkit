@@ -3,10 +3,15 @@ structure Int64 : INTEGER =
   struct (*Depends on StringCvt and Char*)
 
     (* Primitives *)
+    (* quot (minInt, ~1) and rem (minInt, ~1): the quotient overflows and
+       the machine division instruction traps, so the case is taken out
+       before the primitive is reached; ~x raises Overflow as required. *)
     fun quot (x:int64,y:int64) : int64 = if y = 0 then raise Div
-					 else prim ("__quot_int64", (x,y))
+				     else if y = ~1 then ~x
+				     else prim ("__quot_int64", (x, y))
     fun rem (x:int64,y:int64) : int64 = if y = 0 then raise Div
-				        else prim ("__rem_int64", (x,y))
+				    else if y = ~1 then 0
+				    else prim ("__rem_int64", (x, y))
 
     fun not true = false
       | not false = true

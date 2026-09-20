@@ -1,0 +1,3 @@
+scan: SOME Sat Jan 01 12:30:45 2000 | SOME Sat Jan 01 12:30:45 2000 | NONE | NONE | NONE | SOME Sat Jan 01 12:30:45 2000 | NONE | NONE | SOME Mon Feb 29 00:00:00 2024
+scan rest: 2000 " tail"
+round trip: ok

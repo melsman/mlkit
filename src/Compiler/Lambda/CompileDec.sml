@@ -1141,8 +1141,18 @@ Det finder du nok aldrig ud af.*)
   and match_con pcon (argpats : (int * pat) list)
         (path, termd, ctx, work, rhs, rules) =
         let
-          fun getdargs (Neg _) = map (fn _ => Neg negset.empty) argpats
-            | getdargs (Pos (con, dargs)) = dargs
+          fun unknowndargs () = map (fn _ => Neg negset.empty) argpats
+          (*The sub-descriptions recorded in a Pos description belong to the
+           constructor of that Pos.  They only describe the arguments of
+           `pcon' when that is the same constructor; when staticmatch says
+           Maybe for a Pos of some other constructor (which happens for
+           excons, as two excons may be the same although their longids
+           differ), nothing is known about the arguments of `pcon' -- and
+           the other constructor may even have a different arity, which
+           would leave the work list triples out of step.*)
+          fun getdargs (Neg _) = unknowndargs ()
+            | getdargs (Pos (con, dargs)) =
+                if con_eq (con, pcon) then dargs else unknowndargs ()
           fun getoargs () = map (fn (i, pat) => Access (i, pcon, path)) argpats
           fun succeed' () = succeed
                 ((pcon, []) :: ctx,

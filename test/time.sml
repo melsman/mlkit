@@ -44,18 +44,17 @@ val test2b =
 	   andalso toSeconds litt = 454
 	   andalso toMilliseconds litt = 454501
 	   andalso toMicroseconds litt = 454501701);
-val test2c = tst0 "test2c" ((fromSeconds ~1 seq "WRONG")
-			   handle Time => "OK" | _ => "WRONG")
-val test2d = tst0 "test2d" ((fromMilliseconds ~1 seq "WRONG")
-			   handle Time => "OK" | _ => "WRONG")
-val test2e = tst0 "test2e" ((fromMicroseconds ~1 seq "WRONG")
-			   handle Time => "OK" | _ => "WRONG")
+val test2c = tst' "test2c" (fn _ => toSeconds (fromSeconds ~1) = ~1
+			   andalso fromSeconds ~1 < zeroTime)
+val test2d = tst' "test2d" (fn _ => toMilliseconds (fromMilliseconds ~1) = ~1
+			   andalso toSeconds (fromMilliseconds ~1) = 0)
+val test2e = tst' "test2e" (fn _ => toMicroseconds (fromMicroseconds ~1) = ~1
+			   andalso fromMicroseconds ~1 + fromMicroseconds 1 = zeroTime)
 
 val test3a =
     tst' "test3a" (fn _ => fromReal 0.0 = zeroTime
 		   andalso fromReal 10.25 = fromSeconds 10 + fromMilliseconds 250);
-val test3b = tst0 "test3b" ((fromReal ~1.0 seq "WRONG")
-			   handle Time => "OK" | _ => "WRONG")
+val test3b = tst' "test3b" (fn _ => Real.==(toReal (fromReal ~1.0), ~1.0))
 val test3c = tst0 "test3c" ((fromReal 1E300 seq "WRONG")
 			   handle Time => "OK" | _ => "WRONG")
 
@@ -80,7 +79,7 @@ val test8a =
     tst' "test8a" (fn _ => now() <= now());
 
 val test9a =
-    tst' "test9a" (fn _ => fmt ~1 litt  = "455"
+    tst' "test9a" (fn _ => ((fmt ~1 litt; false) handle Size => true)
 	   andalso fmt 0 litt = "455");
 
 val test9b =
@@ -112,6 +111,6 @@ val test10a =
 
 val test10b =
     List.app (fn s => tst0 "test10b" (case fromString s of NONE => "OK" | _ => "WRONG"))
-         ["", "+189", "~189", "now", "Monday"];
+         ["", "now", "Monday"];
 in
 end

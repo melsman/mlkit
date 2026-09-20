@@ -1,6 +1,15 @@
 ## MLKit NEWS
 
-* mael 2026-03-09: More ReML features.
+* mael 2026-09-20: Posix.TTY support (PR #221).
+
+* mael 2026-09-20: Various Basis Library fixes (PR #217, PR #220).
+
+### MLKit version 4.7.22 is released
+
+* mael 2026-08-01: Modular storage mode analysis.
+
+* mael 2026-03-09: More ReML features (type specifications, type
+  declarations, signature matching).
 
 * mael 2026-03-09: Simplification of elaboration type functions.
 

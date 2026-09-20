@@ -115,17 +115,35 @@ structure String =   (* Depends on StrBase and Char *)
       in h 0
       end
 
-    fun fromString s =
-      let fun getc i = if i < size s then SOME (sub_unsafe(s, i), i+1) else NONE
-	  fun h src res = case getc src
-			    of NONE => SOME (implode(rev res))
-			     | SOME(#"\\", src1) =>
-			      (case StrBase.fromMLescape getc src1
-				 of NONE => NONE
-				  | SOME(c, src2) => h src2 (c :: res))
-			     | SOME(c, src1) => h src1 (c :: res)
-      in h 0 []
+    (* scan reads the body of an SML string literal: as many printable
+       characters and escape sequences as it can, passing over escaped
+       formatting sequences, and stops at the first thing it cannot
+       read.  It returns NONE only when nothing at all could be read
+       from a non-empty stream, so that fromString "" is SOME "". *)
+    fun scan getc src =
+      let fun loop (acc, progress) src =
+	    case StrBase.skipMLformats getc src
+	      of NONE => (acc, progress, src)
+	       | SOME (src1, skipped) =>
+		 let val progress = progress orelse skipped
+		 in case getc src1
+		      of NONE => (acc, progress, src1)
+		       | SOME(#"\\", rest) =>
+			 (case StrBase.fromMLescape getc rest
+			    of NONE => (acc, progress, src1)
+			     | SOME(c, rest') => loop (c::acc, true) rest')
+		       | SOME(c, rest) =>
+			 if Char.isPrint c then loop (c::acc, true) rest
+			 else (acc, progress, src1)
+		 end
+	  val (acc, progress, src') = loop ([], false) src
+      in if progress then SOME (implode (rev acc), src')
+	 else case getc src
+		of NONE => SOME ("", src)
+		 | SOME _ => NONE
       end
+
+    fun fromString s = StringCvt.scanString scan s
 
     fun toString s = StrBase.translate StrBase.toMLescape (s, 0, size s)
     fun fromCString s = StrBase.fromCString s

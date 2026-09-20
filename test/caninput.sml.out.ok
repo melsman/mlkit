@@ -1,0 +1,4 @@
+"": read 0, canInput (f, 1) = SOME 0, canInput (f, 100) = SOME 0, canInput (f', 1) = SOME 0, endOfStream f = true, endOfStream f' = true
+"L": read 1, canInput (f, 1) = SOME 1, canInput (f, 100) = SOME 1, canInput (f', 1) = SOME 0, endOfStream f = false, endOfStream f' = true
+"hello": read 5, canInput (f, 1) = SOME 1, canInput (f, 100) = SOME 5, canInput (f', 1) = SOME 0, endOfStream f = false, endOfStream f' = true
+fresh stream: 2
