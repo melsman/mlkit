@@ -1,7 +1,7 @@
 fun test () =
     let with r
       val name = "isAtbot_true_initial"
-      val ok = Regions.isAtbot `[r] ()
+      val ok = Region.isAtbot `[r] ()
     in
       if ok then print ("OK: " ^ name ^ "\n")
       else print ("FAIL: " ^ name ^ "\n")

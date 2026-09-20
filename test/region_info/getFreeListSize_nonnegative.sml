@@ -1,7 +1,7 @@
 fun test () =
     let
       val name = "getFreeListSize_nonnegative"
-      val ok = (Regions.getFreeListSize () > 0)
+      val ok = (Region.getFreeListSize () > 0)
     in
       if ok then print ("OK: " ^ name ^ "\n")
       else print ("FAIL: " ^ name ^ "\n")

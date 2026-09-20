@@ -1,9 +1,9 @@
 fun test () =
     let
       val name = "giveBack_preservesTotalAllocatedPages"
-	  val b = Regions.getNumAllocatedPages ()
-	  val _ = Regions.giveThreadFreeListToGlobal ()
-	  val after = Regions.getNumAllocatedPages ()
+	  val b = Region.getNumAllocatedPages ()
+	  val _ = Region.giveThreadFreeListToGlobal ()
+	  val after = Region.getNumAllocatedPages ()
       val ok = (after = b)
     in
       if ok then print ("OK: " ^ name ^ "\n")

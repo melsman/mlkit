@@ -24,89 +24,84 @@ Test files may contain Standard ML like comments.
 (* Testing functionality of region module *)
 (* -------------------------------------- *)
 
-resetRegion_doesNotIncreaseMemoryUsage.mlb  nogc
-resetRegion_idempotent_memoryUsage.mlb		nogc
-resetRegion_keepsAtbot_onEmpty.mlb			nogc
-resetRegion_setsAtbot_afterAllocation.mlb	nogc
-resetRegion_resets_with_liveRef.mlb			nogc
-resetRegion_doesNotIncreaseMemoryUsage.mlb  nogc parallel
-resetRegion_idempotent_memoryUsage.mlb		nogc parallel
-resetRegion_keepsAtbot_onEmpty.mlb			nogc parallel
-resetRegion_setsAtbot_afterAllocation.mlb	nogc parallel
-resetRegion_resets_with_liveRef.mlb			nogc parallel
+resetRegion_doesNotIncreaseMemoryUsage.mlb
+resetRegion_idempotent_memoryUsage.mlb
+resetRegion_keepsAtbot_onEmpty.mlb
+resetRegion_setsAtbot_afterAllocation.mlb
+resetRegion_resets_with_liveRef.mlb
+resetRegion_doesNotIncreaseMemoryUsage.mlb  	 parallel
+resetRegion_idempotent_memoryUsage.mlb		 parallel
+resetRegion_keepsAtbot_onEmpty.mlb		 parallel
+resetRegion_setsAtbot_afterAllocation.mlb	 parallel
+resetRegion_resets_with_liveRef.mlb		 parallel
 
+isAtbot_true_initial.mlb
+isAtbot_false_afterAllocation.mlb
+isAtbot_true_initial.mlb			 parallel
+isAtbot_false_afterAllocation.mlb		 parallel
 
-isAtbot_true_initial.mlb					nogc 
-isAtbot_false_afterAllocation.mlb			nogc		 
-isAtbot_true_initial.mlb					nogc parallel
-isAtbot_false_afterAllocation.mlb			nogc parallel
+numPages_nonnegative_initial.mlb
+numPages_increasing_afterAllocation.mlb
+numPages_nonnegative_initial.mlb 		 parallel
+numPages_increasing_afterAllocation.mlb 	 parallel
 
-numPages_nonnegative_initial.mlb 			nogc
-numPages_increasing_afterAllocation.mlb 	nogc
-numPages_nonnegative_initial.mlb 			nogc parallel
-numPages_increasing_afterAllocation.mlb 	nogc parallel
+memoryUsage_nonnegative_initial.mlb
+memoryUsage_increases_afterAllocation.mlb
+memoryUsage_nonnegative_initial.mlb		 parallel
+memoryUsage_increases_afterAllocation.mlb   	 parallel
 
-memoryUsage_nonnegative_initial.mlb			nogc
-memoryUsage_increases_afterAllocation.mlb   nogc
-memoryUsage_nonnegative_initial.mlb			nogc parallel
-memoryUsage_increases_afterAllocation.mlb   nogc parallel
+getPageSizeBytes_stable.mlb
+getPageSizeBytes_positive.mlb
+getPageSizeBytes_stable.mlb			 parallel
+getPageSizeBytes_positive.mlb			 parallel
 
+getNumAllocatedPages_nonnegative.mlb
+getNumAllocatedPages_getFreeList.mlb
+getNumAllocatedPages_nonnegative.mlb		 parallel
+getNumAllocatedPages_getFreeList.mlb		 parallel
 
-getPageSizeBytes_stable.mlb					nogc
-getPageSizeBytes_positive.mlb				nogc
-getPageSizeBytes_stable.mlb					nogc parallel
-getPageSizeBytes_positive.mlb				nogc parallel
+getFreeListSize_nonnegative.mlb
+freeList_lAllocatedPages.mlb
+getFreeListSize_nonnegative.mlb			 parallel
+freeList_lAllocatedPages.mlb			 parallel
 
-getNumAllocatedPages_nonnegative.mlb		nogc
-getNumAllocatedPages_getFreeList.mlb		nogc
-getNumAllocatedPages_nonnegative.mlb		nogc parallel
-getNumAllocatedPages_getFreeList.mlb		nogc parallel
+getThreadFreeListSize_nonnegative.mlb
+threadFree_lTotalAllocated.mlb
+getThreadFreeListSize_nonnegative.mlb		 parallel
+threadFree_lTotalAllocated.mlb			 parallel
 
-getFreeListSize_nonnegative.mlb				nogc
-freeList_lAllocatedPages.mlb				nogc
-getFreeListSize_nonnegative.mlb				nogc parallel
-freeList_lAllocatedPages.mlb				nogc parallel
+giveBack_globalFreeList_nondecreasing.mlb
+giveBack_idempotent_globalFreeList.mlb
+giveBack_idempotent_threadFreeList.mlb
+giveBack_preservesFreeListSum.mlb
+giveBack_preservesTotalAllocatedPages.mlb
+giveBack_threadFreeList_nonincreasing.mlb
+giveBack_globalFreeList_nondecreasing.mlb	 parallel
+giveBack_idempotent_globalFreeList.mlb		 parallel
+giveBack_idempotent_threadFreeList.mlb		 parallel
+giveBack_preservesFreeListSum.mlb		 parallel
+giveBack_preservesTotalAllocatedPages.mlb	 parallel
+giveBack_threadFreeList_nonincreasing.mlb	 parallel
 
-
-getThreadFreeListSize_nonnegative.mlb		nogc
-threadFree_lTotalAllocated.mlb				nogc
-getThreadFreeListSize_nonnegative.mlb		nogc parallel
-threadFree_lTotalAllocated.mlb				nogc parallel
-
-giveBack_globalFreeList_nondecreasing.mlb	nogc
-giveBack_idempotent_globalFreeList.mlb		nogc
-giveBack_idempotent_threadFreeList.mlb		nogc
-giveBack_preservesFreeListSum.mlb			nogc
-giveBack_preservesTotalAllocatedPages.mlb	nogc
-giveBack_threadFreeList_nonincreasing.mlb	nogc
-giveBack_globalFreeList_nondecreasing.mlb	nogc parallel
-giveBack_idempotent_globalFreeList.mlb		nogc parallel
-giveBack_idempotent_threadFreeList.mlb		nogc parallel
-giveBack_preservesFreeListSum.mlb			nogc parallel
-giveBack_preservesTotalAllocatedPages.mlb	nogc parallel
-giveBack_threadFreeList_nonincreasing.mlb	nogc parallel
-
-
-region_usageWithinAllocatedPages.mlb		nogc
-region_usageWithinAllocatedPages.mlb		nogc parallel
-
+region_usageWithinAllocatedPages.mlb
+region_usageWithinAllocatedPages.mlb		 parallel
 
 (* -------------------------------------- *)
 (* Testing Size combinator module         *)
 (* -------------------------------------- *)
 
-size_int_zero.mlb							nogc
-size_string_positive.mlb					nogc
-size_list_nil_is_word.mlb					nogc
-size_list_grows.mlb							nogc
-size_tup2_positive.mlb						nogc
-size_option_some_gt_none.mlb				nogc
-size_leq_regionUsage.mlb					nogc
+size_int_zero.mlb
+size_string_positive.mlb
+size_list_nil_is_word.mlb
+size_list_grows.mlb
+size_tup2_positive.mlb
+size_option_some_gt_none.mlb
+size_leq_regionUsage.mlb
 
-size_int_zero.mlb							nogc parallel
-size_string_positive.mlb					nogc parallel
-size_list_nil_is_word.mlb					nogc parallel
-size_list_grows.mlb							nogc parallel
-size_tup2_positive.mlb						nogc parallel
-size_option_some_gt_none.mlb				nogc parallel
-size_leq_regionUsage.mlb					nogc parallel
+size_int_zero.mlb				 parallel
+size_string_positive.mlb			 parallel
+size_list_nil_is_word.mlb			 parallel
+size_list_grows.mlb				 parallel
+size_tup2_positive.mlb				 parallel
+size_option_some_gt_none.mlb		 	 parallel
+size_leq_regionUsage.mlb			 parallel

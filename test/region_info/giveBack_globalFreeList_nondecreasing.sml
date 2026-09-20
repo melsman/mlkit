@@ -1,9 +1,9 @@
 fun test () =
     let
       val name = "giveBack_globalFreeList_nondecreasing"
-	  val b = Regions.getFreeListSize ()
-	  val _ = Regions.giveThreadFreeListToGlobal ()
-	  val after = Regions.getFreeListSize ()
+	  val b = Region.getFreeListSize ()
+	  val _ = Region.giveThreadFreeListToGlobal ()
+	  val after = Region.getFreeListSize ()
       val ok = (after >= b)
     in
       if ok then print ("OK: " ^ name ^ "\n")

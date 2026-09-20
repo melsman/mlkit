@@ -1,7 +1,7 @@
 fun test () =
     let with r
       val name : string`r = "numPages_nonnegative_initial"
-	  val n = Regions.numPagesOfRegion `[r] ()
+	  val n = Region.numPagesOfRegion `[r] ()
       val ok = (n >= 0)
     in
       if ok then print ("OK: " ^ name ^ "\n")

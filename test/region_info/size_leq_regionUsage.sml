@@ -6,7 +6,7 @@ fun test () =
       val name = "size_leq_regionUsage"
       val s : string`r = CharVector.tabulate (100, fn _ => #"x")
       val computed = Size.size Size.string s
-      val regionUsage = Regions.memoryUsageOfRegion `[r] ()
+      val regionUsage = Region.memoryUsageOfRegion `[r] ()
       val ok = (computed <= regionUsage)
     in
       if ok then print ("OK: " ^ name ^ "\n")

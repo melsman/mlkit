@@ -1,7 +1,7 @@
 fun test () =
     let with r
       val name : string`r = "isAtbot_false_afterAllocation"
-	  val ok = not (Regions.isAtbot `[r] ())
+	  val ok = not (Region.isAtbot `[r] ())
     in
       if ok then
 		print ("OK: " ^ name ^ "\n")

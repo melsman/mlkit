@@ -1,7 +1,7 @@
 fun test () =
     let
       val name = "getNumAllocatedPages_geFreeList"
-      val ok = (Regions.getNumAllocatedPages () >= Regions.getFreeListSize ())
+      val ok = (Region.getNumAllocatedPages () >= Region.getFreeListSize ())
     in
       if ok then print ("OK: " ^ name ^ "\n")
       else print ("FAIL: " ^ name ^ "\n")

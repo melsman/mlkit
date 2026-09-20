@@ -1,3 +1,0 @@
-$(SML_LIB)/basis/reml.mlb
-$(SML_LIB)/basis/basis.mlb
-optlambda_regvar_switch.sml

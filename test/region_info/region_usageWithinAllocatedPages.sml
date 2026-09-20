@@ -1,9 +1,9 @@
 fun test () =
     let with r
       val name = "region_usageWithinAllocatedPages"
-	  val pages = Regions.numPagesOfRegion `[r] ()
-	  val usage = Regions.memoryUsageOfRegion `[r] ()
-	  val ps = Regions.getPageSizeBytes ()
+	  val pages = Region.numPagesOfRegion `[r] ()
+	  val usage = Region.memoryUsageOfRegion `[r] ()
+	  val ps = Region.getPageSizeBytes ()
 	  val bound = (IntInf.fromInt pages) * (IntInf.fromInt ps)
 	  val ok = (IntInf.fromInt usage) <= bound
     in
