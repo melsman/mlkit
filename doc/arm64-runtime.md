@@ -84,9 +84,8 @@ word/pointer model, integer/double sizes and alignment, generation and region
 page sizes, region descriptor fields (including GC/profiling/parallel
 variants), context fields, exception layout, and the string data offset.
 These correspond to data-layout assumptions in BackendInfo and code
-production. ARM GC register saves, root numbering, and frame traversal remain
-an explicit later ABI task; the existing 16-integer/8-float save layout is
-unchanged. No assumption about long double equivalence is needed by these
+production. ARM GC uses the separate snapshot and return-PC index described
+in [arm64-abi.md](arm64-abi.md); the X64 save layout is unchanged. No assumption about long double equivalence is needed by these
 runtime layouts.
 
 ## Validation
@@ -108,8 +107,9 @@ The C smoke test exercises runtime initialization, multi-page allocation,
 large objects, retained contents, and region deallocation. A second test uses
 four runtime threads sharing a protected region, verifying 32,768 allocations
 across page rollover. It is not an ML ABI
-or GC test. Generated ARM programs, GC roots/frames, profiling output, generated parallel
-allocation tests, and bootstrap validation remain later milestones.
+or GC test. The native compiler suite separately validates generated ARM GC
+and profiling paths. Generated parallel allocation and native bootstrap
+validation remain later milestones.
 
 Validation on 2026-09-21 used Apple Clang 21 via `gcc`, macOS arm64, and
 Rosetta 2 for X64 execution. All ten standard archive variants built for both
@@ -118,3 +118,22 @@ legacy archive preservation, and rejection checks passed. An installed X64
 MLKit also compiled and ran `test_dev/int_first.sml` against the new runtime
 with `-no_gc` and with `-gc -prof`. The checkout was left configured for X64.
 Argobots and Linux execution were not tested in this environment.
+
+## ARM GC and profiling integration
+
+`Arm64GC.c` owns a single-threaded registry of image frame indexes, static-data
+ranges, and global root cells. `GC.c` selects the ARM snapshot/frame walker
+under `DARWIN_NATIVE`; the X64 walker is unchanged. Descriptors store 32-bit
+bitmap words in 64-bit slots and identify the saved LR slot explicitly.
+Unknown return PCs abort with a metadata diagnostic instead of scanning code.
+
+Generated allocation selects the matching region kind and profiling helpers.
+Finite profiling descriptors and allocation-point metadata follow the existing
+runtime layout. Function-entry profiling receives the original ML SP, updates
+stack/memory statistics, and invokes `profileTick` when requested. Exception
+unwinding also removes finite profiling descriptors.
+
+All supported MLKit GC/profiling combinations are exercised by the native
+suite. ReML retains its existing no-GC restriction. Parallel registration and
+collection remain milestone 6 work. See [arm64-compiler.md](arm64-compiler.md)
+for foreign-call GC deferral and current language limits.

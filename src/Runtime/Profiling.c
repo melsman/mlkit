@@ -33,6 +33,22 @@ long tellTime;         /* 1, if the next profile tick should print out the
 
 extern unsigned long maxMem;  /* defined in Region.c */
 
+#if defined(DARWIN_NATIVE) && DARWIN_NATIVE
+/* Called with the ML stack pointer before the C preservation frame. */
+void mlkit_arm64_profile_entry(Context ctx, long *sp)
+{
+  unsigned long overhead = regionDescUseProfInf + regionDescUseProfFin + allocProfNowFin;
+  if ((uintptr_t)sp < (uintptr_t)maxStack) {
+    maxStack = (long)sp;
+    maxProfStack = overhead;
+  }
+  long used = (long)((uintptr_t)stackBot - (uintptr_t)sp)
+            + 8 * ((long)allocNowInf - (long)overhead);
+  if (used > 0 && (unsigned long)used > maxMem) maxMem = (unsigned long)used;
+  if (timeToProfile) profileTick(ctx, sp);
+}
+#endif
+
 struct itimerval rttimer;
 struct itimerval old_rttimer;
 int    profileON = TRUE; /* if false profiling is not started after a profileTick. */

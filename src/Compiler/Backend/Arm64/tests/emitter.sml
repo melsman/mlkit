@@ -38,3 +38,26 @@ fun emitCase (count,grow) =
   in G.emit(G.CG{main_lab=main,code=code,imports=([],[]),exports=([],[]),safe=false},base ^ ".s");
      G.emit(G.generate_link_code([main],([],[])),base ^ "-link.s") end
 val () = List.app (fn n=>(emitCase(n,true);emitCase(n,false))) [4,5,6,7]
+
+(* Exercise the production scalar C-call emitter, including the ABI types not
+ * exposed by the source-language automatic FFI. Values are raw IEEE bits. *)
+local
+  open CodeGenUtilArm64
+  structure B=AbiArm64
+  fun bits s = valOf(IntInf.fromString s)
+  fun probe (name,target,fixed,variadic,values) =
+    function(NameLab name) @ stack(true,16) @ store(X 29,SP,0) @ store(X 30,SP,8) @ move(SP,X 29) @
+    scalarCall{name=target,fixed=fixed,variadic=variadic,protectGC=false,
+      loadArgument=fn(i,_)=>constant(List.nth(values,i),X 16)} @
+    load(SP,0,X 29) @ load(SP,8,X 30) @ stack(false,16) @ [ins "ret" []]
+  val doubles=map bits ["4607182418800017408","4611686018427387904","4613937818241073152",
+    "4616189618054758400","4617315517961601024","4618441417868443648","4619567317775286272",
+    "4620693217682128896","4621256167635550208","4621819117588971520"]
+  val mixed=probe("arm64_mixed_probe","arm64_mixed_check",
+    List.tabulate(8,fn _=>B.I64) @ [B.I8,B.U8] @ List.tabulate(10,fn _=>B.F64) @ [B.I16],[],
+    map IntInf.fromInt [1,2,3,4,5,6,7,8,~3,250] @ doubles @ [~1234])
+  val variadic=probe("arm64_variadic_probe","arm64_variadic_check",[B.I32],
+    [B.I8,B.F32,B.F64,B.I64],map bits ["4","~3","1069547520","4612811918334230528","99"])
+  val floatResult=probe("arm64_float_result_probe","arm64_float_result_check",[B.F64],[],[hd doubles])
+  val narrow=probe("arm64_narrow_probe","arm64_narrow_check",[B.I8,B.U16,B.I32],[],[~5,60000,17])
+in val ()=G.emit(mixed @ variadic @ floatResult @ narrow,"scalar-calls.s") end

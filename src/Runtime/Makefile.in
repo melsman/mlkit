@@ -24,7 +24,7 @@ $(error RUNTIME_TARGET is selected by configure)
 endif
 
 SOURCES=Runtime IO String Math Region Icp Table Time Profiling CommandLine \
-        Posix Dlsym Export Socket Repl Layout
+        Posix Dlsym Export Socket Repl Layout Arm64GC
 COMMON=$(addsuffix .c,$(SOURCES)) ../CUtils/hashmap.c ../CUtils/hashmap_typed.c
 VARIANTS=plain tag prof gc gcprof gengc gengcprof gctp gctpprof par
 ALL_OBJECTS=

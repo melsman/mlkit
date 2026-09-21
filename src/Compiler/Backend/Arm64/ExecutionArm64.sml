@@ -176,6 +176,7 @@ structure ExecutionArm64 : EXECUTION =
                   \code. This option is Useful, in particular, when\n\
                   \performing benchmarking."}
 
+    val repl_supports_gc = true
     val backend_name = "Arm64"
 
     type CompileBasis = CompileBasis.CompileBasis
@@ -205,9 +206,12 @@ structure ExecutionArm64 : EXECUTION =
     fun checkTarget () =
       List.app (fn flag => if Flags.is_on0 flag () then
                    reject ("ARM64 backend does not support " ^ flag) else ())
-        ["garbage_collection", "generational_garbage_collection", "region_profiling",
-         "tag_values", "tag_pairs", "parallelism", "extra_gc_checks"]
-    fun preHook () = (checkTarget(); Compile.preHook())
+        ["parallelism"]
+    fun preHook () = (checkTarget();
+      if Flags.is_on0 "generational_garbage_collection" () andalso Flags.is_on0 "tag_pairs" () then
+        reject "Generational GC does not support -tag_pairs" else ();
+      if Flags.is_on "tag_values" andalso Flags.is_on "region_profiling" andalso not(Flags.is_on "garbage_collection") then
+        reject "Tagged profiling requires GC: no tagged no-GC profiling runtime is available" else (); Compile.preHook())
 
     (* Hook to be run after all compilations (for one compilation unit) *)
     val postHook : {unitname:string} -> unit = Compile.postHook
@@ -393,6 +397,7 @@ structure ExecutionArm64 : EXECUTION =
                     | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
                     | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NOGC"
+              val subdir = if Flags.is_on "tag_values" andalso not(gc_p()) then subdir ^ "_TAG" else subdir
               val subdir = if parallelism_p() then
                              if par_alloc_unprotected_p() then
                                subdir ^ "_PAR0"

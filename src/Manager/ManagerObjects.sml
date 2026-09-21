@@ -27,6 +27,7 @@ functor ManagerObjects(
     fun quot s = "`" ^ s ^ "'"
     val op ## = OS.Path.concat infix ##
 
+    val repl_supports_gc = Execution.repl_supports_gc
     val backend_name = Execution.backend_name
     val compile_only = Flags.is_on0 "compile_only"
 

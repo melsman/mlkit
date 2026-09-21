@@ -210,6 +210,7 @@ structure ExecutionX64 : EXECUTION =
                   \code. This option is Useful, in particular, when\n\
                   \performing benchmarking."}
 
+    val repl_supports_gc = false
     val backend_name = "X64"
 
     type CompileBasis = CompileBasis.CompileBasis

@@ -13,7 +13,7 @@ trap 'status=$?; if [ "$status" -ne 0 ]; then
   for log in "$arm_test_dir"/*.log; do [ ! -f "$log" ] || cat "$log"; done
 fi; rm -rf "$arm_test_dir"; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
-cp *.sml native.mlb probe.c "$arm_test_dir/"
+cp *.sml native.mlb probe.c scalar-calls.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
 cd "$arm_test_dir"
 # Generate a finite 33,600-byte record without checking in a huge fixture.
 awk 'BEGIN {
@@ -75,10 +75,51 @@ grep -q 'sub sp, sp, #4080' MLB/ARM64_*/large.sml.s
 find MLB -name '*.o' -exec file {} \; > objects
 if grep -v 'Mach-O 64-bit object arm64' objects; then exit 1; fi
 [ ! -d MLB/RI ]
-# Unsupported GC must fail explicitly, without producing an executable.
-if "$MLKIT_ARM64" --no_basislib -gc -o unsupported native.mlb > unsupported.log 2>&1; then
-  echo 'ARM GC was incorrectly accepted' >&2; exit 1
+# Parallel runtime code generation belongs to milestone 6.
+if "$MLKIT_ARM64" --no_basislib -par -o unsupported native.mlb > unsupported.log 2>&1; then
+  echo 'ARM parallelism was incorrectly accepted' >&2; exit 1
 fi
-grep -q 'ARM64 backend does not support garbage_collection' unsupported.log
+grep -q 'ARM64 backend does not support parallelism' unsupported.log
 [ ! -e unsupported ]
+gcc -arch arm64 -O2 -Wall -Wextra -Werror scalar-calls.c scalar-calls.s -o scalar-calls
+./scalar-calls
+gcc -arch arm64 -c callback.s -o callback.o
+gcc -arch arm64 -O2 -Wall -Wextra -Werror -c foreign.c -o foreign.o
+printf 'OK\nOK\nOK\nOK\nOK\nOK\n' > foreign-expected
+printf 'OK\n' > gc-expected
+for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
+  extra_gc=-extra_gc_checks
+  [ "$compiler" != "$REML_ARM64" ] || extra_gc=""
+  for flags in '' '--tag_values' '-prof' '-gc' '-gc -tag_pairs' '-gengc' '-gc -prof' '-gc -tag_pairs -prof' '-gengc -prof'; do
+    if [ "$compiler" = "$REML_ARM64" ]; then
+      case "$flags" in ''|'-prof') ;; *) continue;; esac
+    fi
+    "$compiler" --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
+    case "$flags" in *-prof*) profile_flags="-notimer 17 -file integration.rp";; *) profile_flags="";; esac
+    case "$flags" in *gc*) report_flags="-report_gc";; *) report_flags="";; esac
+    ./gc-roots $profile_flags $report_flags > actual 2> gc-report.log
+    cmp gc-expected actual
+    if [ -n "$report_flags" ]; then grep -Eq "[1-9][0-9]* collections" gc-report.log; fi
+    "$compiler" --no_basislib $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
+    ./gc-frames $profile_flags > actual
+    cmp gc-expected actual
+    "$compiler" --no_basislib $flags $extra_gc -ldexe 'gcc -arch arm64 callback.o foreign.o' \
+      -o foreign foreign.sml >> integration.log 2>&1
+    ./foreign $profile_flags > actual
+    cmp foreign-expected actual
+  done
+  for flags in '' '-gc' '-gc -tag_pairs' '-gengc'; do
+    [ "$compiler" != "$REML_ARM64" ] || [ -z "$flags" ] || continue
+    "$compiler" --no_basislib $flags $extra_gc < repl-input.txt > repl.log 2>&1
+    grep -q 'REPL GC OK' repl.log
+    grep -q 'uncaught exception Overflow' repl.log
+    grep -q 'REPL RECOVERED' repl.log
+    if grep -Eq 'BAD|Compile error|ARM64 GC metadata|Garbage collection disabled' repl.log; then
+      cat repl.log; exit 1
+    fi
+  done
+done
+gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \
+  "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
+./gc-metadata
 printf 'Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed\n'

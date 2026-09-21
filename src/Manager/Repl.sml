@@ -852,7 +852,7 @@ fun run () : OS.Process.status option =
         SOME mk_runtime =>
         let val () = Flags.turn_on "report_file_sig"
             val () = List.app Flags.block_entry flags_to_block
-            val () = if Flags.is_on "garbage_collection" then
+            val () = if Flags.is_on "garbage_collection" andalso not MO.repl_supports_gc then
                        ( print("|Garbage collection disabled - it is not supported in the REPL!\n")
                        ; Flags.turn_off "garbage_collection"
                        )

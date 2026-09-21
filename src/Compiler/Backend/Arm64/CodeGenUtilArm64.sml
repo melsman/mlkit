@@ -59,4 +59,34 @@ structure CodeGenUtilArm64 = struct
      ins "ldr" [r d,"[" ^ r d ^ ", " ^ pr_lab l ^ "@GOTPAGEOFF]"]]
   fun function l = [Directive ".text", Directive ".p2align 2",
                     Directive(".globl " ^ pr_lab l),Label l]
+  (* loadArgument(i,extraWords) puts argument i's raw bits in x16.
+   * All inputs are staged before any ABI register is overwritten. *)
+  fun scalarCall {name,fixed,variadic,loadArgument,protectGC} =
+    let val {arguments,stackBytes}=AbiArm64.arguments{fixed=fixed,variadic=variadic}
+        val n=length arguments
+        val bytes=stackBytes+16*((n+1) div 2)+16
+        fun promoted (i,{source,passed,...}:AbiArm64.argument) =
+          loadArgument(i,bytes div 8) @
+          (if source=AbiArm64.F32 andalso passed=AbiArm64.F64 then
+             [ins "fmov" ["s30","w16"],ins "fcvt" ["d30","s30"],ins "fmov" ["x16","d30"]]
+           else case source of
+             AbiArm64.I8=>[ins "sxtb" ["w16","w16"]]
+           | AbiArm64.I16=>[ins "sxth" ["w16","w16"]]
+           | AbiArm64.U8=>[ins "uxtb" ["w16","w16"]]
+           | AbiArm64.U16=>[ins "uxth" ["w16","w16"]]
+           | _=>[]) @ store(X 16,SP,stackBytes+8*i)
+        fun place (i,{passed,location,...}:AbiArm64.argument) =
+          case location of AbiArm64.GPR n=>load(SP,stackBytes+8*i,X n)
+          | AbiArm64.FPR n=>load(SP,stackBytes+8*i,D n)
+          | AbiArm64.Stack{offset,bytes}=>load(SP,stackBytes+8*i,X 16) @
+              addOffset(SP,offset,X 17) @
+              [ins (case bytes of 1=>"strb" | 2=>"strh" | _=>"str")
+                [if bytes<8 then "w16" else "x16","[x17]"]]
+        val pause=if not protectGC then [] else address(NameLab "disable_gc",X 16) @
+          load(X 16,0,X 17) @ store(X 17,SP,bytes-16) @ constant(1,X 17) @ store(X 17,X 16,0)
+        val resume=if not protectGC then [] else load(SP,bytes-16,X 17) @
+          address(NameLab "disable_gc",X 16) @ store(X 17,X 16,0)
+    in stack(true,bytes) @ List.concat(mapi promoted arguments) @ pause @
+       List.concat(mapi place arguments) @ [ins "bl" [pr_lab(NameLab name)]] @ resume @ stack(false,bytes) end
+
 end

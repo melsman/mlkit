@@ -1,8 +1,8 @@
 # Initial MLKit/ReML ARM64 ABI
 
 This specifies the first macOS arm64 backend. It is a compiler/runtime
-contract. The initial no-GC emitter implements a subset described in
-[arm64-compiler.md](arm64-compiler.md); GC and full language coverage are pending.
+contract. Implemented coverage and remaining language limits are described in
+[arm64-compiler.md](arm64-compiler.md).
 `FrameLayout.sml` supplies target-dependent frame sizes to CallConv,
 RegAlloc, and CalcOffset. `Arm64/AbiArm64.sml` records the register contract
 and implements scalar C argument/result placement independently of emission.
@@ -114,8 +114,8 @@ The emitter and linker must produce relocatable code/descriptor references;
 the runtime must register each image's index before executing its ML code,
 including dynamically loaded REPL code. A missing entry while walking an
 ML frame is an error, not an implicit end of stack. Foreign entry bridges
-provide an explicit boundary descriptor. Index lookup and registration are
-pending ARM runtime integration; X64 keeps its existing PC-relative metadata.
+for shared images provide an explicit boundary descriptor. Index lookup and
+registration are implemented; X64 keeps its existing PC-relative metadata.
 
 This allows ordinary `bl`/`blr` without manually constructing a continuation
 address. Linker veneers may change x16/x17; they must not change which return
@@ -171,14 +171,14 @@ and restore the foreign frame/preserved registers before returning to C.
 
 ## GC contract
 
-This section describes the required ARM format. The current C collector
-still consumes the X64 format; wire the new format only with the ARM GC stub
-and validate both together in the runtime-integration milestone.
+The C collector selects this ARM format under `DARWIN_NATIVE`. X64 continues
+to consume its original format. The entry check and collector are validated
+together by the runtime-integration tests.
 
 Use a 32-slot integer save block and an eight-slot floating save block. Root
 mask bit i names xi and maps to save word 31-i, matching the existing reversed
 integer-save convention. Slot 0 contains the original ML SP. The x18 slot is
-zero; the stub must not restore it. Save d7 through d0 in increasing addresses
+zero; the entry check must not restore it. Save d7 through d0 in increasing addresses
 after the integer block. Only live value argument registers are marked at
 entry safepoints; context, SP/FP, return addresses, regions, reserved registers,
 and FP values are excluded. Other live values must already have stack homes.
@@ -191,13 +191,13 @@ scan. Use the C ABI to call the collector with context, snapshot pointer,
 and register mask. The collector updates roots in the saved slots; the
 bridge reloads those updated values before continuing ML execution.
 
-The ordinary ML prologue saves incoming LR before any entry collection can
-occur. A GC-call stub must separately preserve the `bl`/`blr` continuation
-in its x30 snapshot slot before calling C, and restore it before returning.
-The collector uses that safepoint PC and the described ML frame state to
-start the walk; older activations use saved LR slots and the return-PC index.
-The bridge continuation and the function's saved incoming LR are distinct
-addresses and must not be substituted for one another. Both are non-roots.
+The implemented entry check is inline: the ML prologue saves incoming LR
+before collection and before allocating locals. The snapshot's argument-area
+pointer refers to the incoming call block. The walker relocates register and
+spilled argument roots, then starts the caller walk from that block's saved
+incoming LR. The snapshot's x30 is restored before execution continues; both
+LR copies and saved FP are non-roots. There is no separate assembly GC stub
+continuation to confuse with the incoming ML return address.
 
 The ARM return-PC index maps to an out-of-line descriptor anchor. Relative
 to that anchor, function number is at word -1, return-PC offset at -2, frame
@@ -212,8 +212,13 @@ multiple bitmap words, and restoration of relocated register roots.
 Emitter/runtime acceptance tests must also cover nested direct/indirect ML
 calls, LR survival across C and GC calls, tail recursion with bounded stack
 use, leaf `ret`, exception-handler entry, and descriptor lookup in linked and
-dynamically loaded images. Full execution coverage of these paths remains pending; the initial smoke
-tests exercise native entry/exit and LR preservation across C calls.
+dynamically loaded images. The native integration suite covers these paths.
+`Arm64GC.c` registers each image's return-PC table, static-data range, and
+addresses of global root cells before executing that image. The table is copied
+and sorted for lookup; the image owns its descriptors and root cells. The REPL
+retains loaded images. Any future unloading path must unregister the table
+before `dlclose`; an unregister operation is provided and tested. X64 keeps its
+existing stack walk and contiguous static-data classification.
 
 ## C calls and callbacks
 
@@ -237,12 +242,20 @@ values; the layout helper additionally models scalar floats for runtime
 bridges. It does not introduce new source-level FFI syntax or silently map
 aggregates, vectors, int128, or arbitrary C++ types to scalar registers.
 
-Emission still needs ML tagging/unboxing, C-width conversion, parallel moves,
-stack placement, indirect/direct calls, callback preservation, and result
-boxing/tagging. The initial emitter supports raw integer-register C primitives, but the
-scalar layout helper is not yet integrated into general FFI emission.
-Keep the milestone's C-boundary implementation checkbox open until calls and
-callbacks execute through the ARM backend.
+`CodeGenUtilArm64.scalarCall` now implements staging, scalar placement,
+narrow-integer extension, packed stack stores, and variadic promotion. Raw and
+automatic source FFI calls use its word-sized path, with ML conversion in
+`CodeGenArm64`. Automatic boxed integer results preserve their destination
+across C. Returning bridges preserve x19–x30 and d8–d15; x18 remains reserved.
+The exported source interface remains `int -> int`, using ML integer
+representation as on X64.
+
+C-call IR currently has no root descriptors. Foreign calls and exported hooks
+therefore defer collection and restore the previous GC policy on return.
+Allocations can request a pending GC, which runs at the next ordinary ML entry.
+Exceptions must be caught within callbacks instead of escaping C frames.
+The REPL's returning bridge supplies a sentinel descriptor and registers loaded
+images, so ordinary ML execution within a shared image can collect normally.
 
 ## Validation and next integration points
 
@@ -258,7 +271,7 @@ Both compiler entry points build with MLKit through `Makefile.arm64`. The
 GC-enabled X64 compiler built with MLKit passes all 130 default `test_dev`
 checks (65 without GC and 65 with generational GC). Native ARM64 execution
 checks are described in [arm64-compiler.md](arm64-compiler.md). These results
-do not establish ARM GC interoperability or a native bootstrap fixed point.
+establish the tested ARM GC paths, but not a native bootstrap fixed point.
 
 A bootstrap limitation remains: using the installed X64 MLKit to build
 this compiler with `-no_gc` produces a compiler that crashes when compiling
@@ -271,7 +284,7 @@ compile and run this profiling reproduction successfully. Tracked in
 
 The ARM instruction module must expose these register roles through
 REGISTER_INFO (including the explicit FP allocator palette) and select the
-ARM FrameLayout. The emitter and collector must implement the contract above
+ARM FrameLayout. The emitter and collector implement the contract above
 as a coordinated change. X64 remains wired to FrameLayout.x64 throughout.
 
 References: [Apple ARM64 ABI](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms)

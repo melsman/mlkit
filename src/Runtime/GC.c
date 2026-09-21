@@ -1383,6 +1383,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   long time_gc_one_ms = 0;
   extern Rp* global_freelist;
+#if !DARWIN_NATIVE
   uintptr_t **sp_ptr;
   uintptr_t *fd_ptr;
   unsigned long fd_size, fd_offset_to_return;
@@ -1390,9 +1391,12 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   long w_idx;
   unsigned long w;
   long offset;
-  uintptr_t *value_ptr;
   long num_d_labs;
   long size_rcf, size_ccf, size_spilled_region_and_float_args;
+#endif
+#if !DARWIN_NATIVE || defined(ENABLE_GEN_GC)
+  uintptr_t *value_ptr;
+#endif
   extern long rp_used;
   extern long rp_total;
   struct rusage rusage_begin;
@@ -1573,6 +1577,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   }
 #endif // ENABLE_GEN_GC
 
+#if DARWIN_NATIVE
+  mlkit_arm64_visit_roots((uintptr_t *)sp,reg_map,evacuate);
+#else
   // Search for live registers
 #ifdef DEBUG_GC
   fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
@@ -1693,6 +1700,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #ifdef DEBUG_GC
   fprintf(stderr,"[GC: Done data labels]\n");
 #endif
+#endif /* DARWIN_NATIVE */
 
   do_scan_stack();
 
