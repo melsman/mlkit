@@ -9,13 +9,14 @@ RES_B_FILES=$(TEST_B_FILES:%.cmd=%-ri.res)
 RESFILES=$(RES_NB_FILES) $(RES_B_FILES)
 
 MLKIT=../../bin/mlkit
+MLKIT_FLAGS?=-no_gc
 
 .PHONY: all
 all: test
 
 %-ri-nb.out: %.cmd Makefile
-	@echo "SML_LIB=../.. $(MLKIT) -no_basislib < $< | .. | .. > $@" >> complog.txt
-	@SML_LIB=../.. $(MLKIT) -no_basislib < $< \
+	@echo "SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -no_basislib < $< | .. | .. > $@" >> complog.txt
+	@SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -no_basislib < $< \
            | grep -v 'MLKit v' \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
@@ -37,8 +38,8 @@ all: test
 	@cat $@ >> complog.txt
 
 %-ri.out: %.cmd Makefile
-	@echo "SML_LIB=../.. $(MLKIT) < $< | .. | .. > $@" >> complog.txt
-	@SML_LIB=../.. $(MLKIT) < $< \
+	@echo "SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) < $< | .. | .. > $@" >> complog.txt
+	@SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) < $< \
            | grep -v 'MLKit v' \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
@@ -70,7 +71,7 @@ test: prepare $(RESFILES)
 
 .PHONY: prepare
 prepare:
-	SML_LIB=../.. $(MLKIT) -no_gc -c ../../basis/repl.mlb
+	SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -c ../../basis/repl.mlb
 
 .PHONY: clean
 clean:

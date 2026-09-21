@@ -10,3 +10,6 @@ src/.ccls-cache
 src/Runtime/build/
 /Makefile
 /src/Runtime/config.h.in
+
+/src/Tools/Rp2ps/build/
+/stage/

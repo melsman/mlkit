@@ -270,8 +270,8 @@ The probes validate the ABI assumptions, not generated ML code.
 Both compiler entry points build with MLKit through `Makefile.arm64`. The
 GC-enabled X64 compiler built with MLKit passes all 130 default `test_dev`
 checks (65 without GC and 65 with generational GC). Native ARM64 execution
-checks are described in [arm64-compiler.md](arm64-compiler.md). These results
-establish the tested ARM GC paths, but not a native bootstrap fixed point.
+checks and the separate native bootstrap fixed-point validation are described
+in [arm64-compiler.md](arm64-compiler.md).
 
 A bootstrap limitation remains: using the installed X64 MLKit to build
 this compiler with `-no_gc` produces a compiler that crashes when compiling

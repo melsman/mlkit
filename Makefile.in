@@ -9,8 +9,8 @@ $(error Set DARWIN_NATIVE when running configure, not make)
 endif
 # Experimental ARM-emitting host compilers have a separate build entry point.
 ifeq ($(DARWIN_NATIVE),1)
-ifneq ($(filter-out runtime install_runtime arm64_compilers clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
-$(error Full ARM build/install is not supported yet; use make runtime or make arm64_compilers)
+ifneq ($(filter-out runtime install_runtime arm64_compilers install_src install_test install_top install_basis clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
+$(error Use make runtime or Makefile.arm64 for native compilers, tools, bootstrap, and installation)
 endif
 endif
 
@@ -205,7 +205,7 @@ install_license:
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
-	$(INSTALLDATA) Makefile Makefile.in $(INSTDIR)
+	$(INSTALLDATA) Makefile Makefile.in Makefile.arm64 $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
 	$(INSTALL) mkinstalldirs configure $(INSTDIR)
 	$(MAKE) install_basis
@@ -277,6 +277,12 @@ install:
 
 .PHONY: install_test
 install_test:
+	for dir in test_dev test/explicit_regions test/parallelism test/repl; do \
+	  $(MKDIR) $(DATADIR)/$$dir; \
+	  for file in $$dir/Makefile $$dir/README $$dir/*.{sml,mlb,c,ok,cmd,tst,script,md}; do \
+	    if test -f "$$file"; then $(INSTALLDATA) "$$file" $(DATADIR)/$$dir; fi; \
+	  done; \
+	done
 	$(MKDIR) $(DATADIR)/test
 	$(MKDIR) $(DATADIR)/test/mlyacc $(DATADIR)/test/ray $(DATADIR)/test/nucleic $(DATADIR)/test/danwang
 	$(MKDIR) $(DATADIR)/test/barnes-hut $(DATADIR)/test/logic
@@ -302,6 +308,9 @@ install_test:
 .PHONY: install_src
 install_src:
 	$(MKDIR) $(INSTDIR)/src
+	$(MKDIR) $(INSTDIR)/kitlib $(INSTDIR)/ml-yacc-lib
+	$(INSTALLDATA) kitlib/*.{sml,sig,mlb} $(INSTDIR)/kitlib
+	$(INSTALLDATA) ml-yacc-lib/*.{sml,sig,mlb} $(INSTDIR)/ml-yacc-lib
 	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Kitlib $(INSTDIR)/src/Pickle
 	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime
 	$(MKDIR) $(INSTDIR)/src/Tools
@@ -313,8 +322,12 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend $(INSTDIR)/src/Compiler/Lambda $(INSTDIR)/src/Compiler/Regions
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X64
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Arm64/tests
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/tests $(INSTDIR)/src/Runtime/tests
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
+	$(MKDIR) $(INSTDIR)/src/Tools/ml-lex $(INSTDIR)/src/Tools/ml-yacc/src
+	$(MKDIR) $(INSTDIR)/src/Tools/ml-yacc/lib $(INSTDIR)/src/Tools/ml-yacc/examples/calc
 	$(INSTALLDATA) src/Makefile src/*.{sml,in} $(INSTDIR)/src
 	$(INSTALLDATA) src/lib/github.com/diku-dk/sml-uref/*.{mlb,sig,sml} $(INSTDIR)/src/lib/github.com/diku-dk/sml-uref
 	$(INSTALLDATA) src/Common/*.{mlb,sig,sml} $(INSTDIR)/src/Common
@@ -326,6 +339,9 @@ install_src:
 	$(INSTALLDATA) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
 	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(INSTALLDATA) src/Compiler/Backend/X64/*.sml $(INSTDIR)/src/Compiler/Backend/X64
+	$(INSTALLDATA) src/Compiler/Backend/Arm64/*.sml $(INSTDIR)/src/Compiler/Backend/Arm64
+	$(INSTALLDATA) src/Compiler/Backend/Arm64/tests/*.{sml,mlb,c,s,sh,txt} $(INSTDIR)/src/Compiler/Backend/Arm64/tests
+	$(INSTALLDATA) src/Compiler/Backend/tests/*.{sml,mlb,c,s,sh} $(INSTDIR)/src/Compiler/Backend/tests
 	$(INSTALLDATA) src/Manager/*.{sml,sig,mlb} $(INSTDIR)/src/Manager
 	$(INSTALLDATA) src/Kitlib/*.{sml,sig,mlb} $(INSTDIR)/src/Kitlib
 	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
@@ -333,11 +349,16 @@ install_src:
 	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,sig,mlb} $(INSTDIR)/src/Edlib
 	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex} $(INSTDIR)/src/Parsing
 	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h,in} $(INSTDIR)/src/Runtime
+	$(INSTALLDATA) src/Runtime/tests/*.{c,sh} $(INSTDIR)/src/Runtime/tests
 	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
 	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,sig,mlb,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h,in} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
+	$(INSTALLDATA) src/Tools/ml-lex/*.{sml,mlb,in} $(INSTDIR)/src/Tools/ml-lex
+	$(INSTALLDATA) src/Tools/ml-yacc/src/*.{sml,sig,mlb,lex,grm} $(INSTDIR)/src/Tools/ml-yacc/src
+	$(INSTALLDATA) src/Tools/ml-yacc/lib/*.{sml,sig,mlb} $(INSTDIR)/src/Tools/ml-yacc/lib
+	$(INSTALLDATA) src/Tools/ml-yacc/examples/calc/*.{lex,grm} $(INSTDIR)/src/Tools/ml-yacc/examples/calc
 
 .PHONY: bootstrap0
 bootstrap0: install_test install_src

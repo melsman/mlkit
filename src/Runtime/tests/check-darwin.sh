@@ -31,6 +31,10 @@ for native in 0 1; do
     src/Runtime/tests/allocation.c lib/darwin-$arch/runtimeSystem.a \
     -Wl,-dead_strip -lm -o "$logs/smoke-$arch"
   run "smoke-$arch" "$logs/smoke-$arch"
+  run "link-profiling-$arch" gcc -arch "$arch" -std=gnu99 -DPROFILING -iquote src/Runtime \
+    src/Runtime/tests/profiling-stream.c lib/darwin-$arch/runtimeSystemProf.a \
+    -Wl,-dead_strip -lm -o "$logs/profiling-$arch"
+  (cd "$logs" && run "profiling-$arch" "$logs/profiling-$arch")
   run "link-par-$arch" gcc -arch "$arch" -std=gnu99 -DPARALLEL -iquote src/Runtime \
     src/Runtime/tests/parallel-allocation.c lib/darwin-$arch/runtimeSystemPar.a \
     -Wl,-dead_strip -lm -pthread -o "$logs/parallel-$arch"

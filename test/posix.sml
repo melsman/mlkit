@@ -116,7 +116,8 @@ val _ = tst' "Posix.TTY.TC.getattr" (fn () =>
     end
   else
     ((Posix.TTY.TC.getattr Posix.FileSys.stdin; false)
-     handle OS.SysErr (_, SOME e) => e = Posix.Error.notty
+     (* Darwin reports ENODEV for /dev/null; regular files report ENOTTY. *)
+     handle OS.SysErr (_, SOME e) => e = Posix.Error.notty orelse e = Posix.Error.nodev
           | OS.SysErr _ => true))
 
 fun expectSyserr f = (f (); false) handle OS.SysErr _ => true

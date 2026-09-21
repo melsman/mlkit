@@ -18,11 +18,12 @@ structure ExecutionArm64 : EXECUTION =
     val () = if onmac_p() then () else raise Fail "ARM64 backend currently requires Darwin"
 
     val be_rigid = false
+    fun shellQuote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c=>c = #"'") s) ^ "'"
 
     local
         fun convertList option s =
             let val l = String.tokens(fn c => c = #",")s
-            in map (fn s => option ^ s) l
+            in map (fn s => option ^ shellQuote s) l
             end
     in
         fun libConvertList s = concat(convertList " -l" s)
@@ -265,8 +266,6 @@ structure ExecutionArm64 : EXECUTION =
                   ; raise X)
         end
 
-    fun shellQuote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c=>c = #"'") s) ^ "'"
-
     fun gas () = if gdb_support() then
                    if onmac_p() then assembler() ^ " -g"
                    else assembler() ^ " --gstabs"
@@ -286,7 +285,7 @@ structure ExecutionArm64 : EXECUTION =
       end
 
     fun strip run =
-      if strip_p() then (execute_command ("strip " ^ run)
+      if strip_p() then (execute_command ("strip " ^ shellQuote run)
                         handle _ => ())
       else ()
 
@@ -434,12 +433,12 @@ structure ExecutionArm64 : EXECUTION =
 
               val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
                               else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
-              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
-                               ^ concat files ^ wa ^ path_to_runtime() ^ nwa
+              val shell_cmd1 = link_shared() ^ " -shared -o " ^ shellQuote runtime_lib ^ " "
+                               ^ concat files ^ wa ^ shellQuote(path_to_runtime()) ^ nwa
                                ^ libdirs ^ libConvertList(libs()) ^ pthread
               val rpath = if onmac_p() then ""
                           else " -Wl,-rpath," ^ mlbdir()
-              val shell_cmd2 = link_exe() ^ rpath ^ " -o " ^ runtime_exe ^ " -L " ^ dir ^ " -lruntime"
+              val shell_cmd2 = link_exe() ^ rpath ^ " -o " ^ shellQuote runtime_exe ^ " -L " ^ shellQuote dir ^ " -lruntime"
           in
             execute_command shell_cmd1;
             message(fn () => "[wrote shared runtime library:\t" ^ runtime_lib ^ "]\n");
@@ -455,13 +454,13 @@ structure ExecutionArm64 : EXECUTION =
           val target = CodeGen.generate_repl_link_code ("main",labs)
           val filename = dir ## mlbdir() ## file
           val filenameo = emit{target=target,filename=filename}
-          val libs_str = String.concat (map (fn l => "-l" ^ l ^ " ") libs)
+          val libs_str = String.concat (map (fn l => "-l" ^ shellQuote l ^ " ") libs)
           val ofiles = filenameo::ofiles
-          val ofiles_str = String.concat (map (fn l => l ^ " ") ofiles)
+          val ofiles_str = String.concat (map (fn l => shellQuote l ^ " ") ofiles)
           val rpath = if onmac_p() then ""
                       else " -Wl,-rpath," ^ mlbdir()
-          val shell_cmd = link_shared() ^ rpath ^ " -o " ^ sofile ^ " -shared "
-                          ^ ofiles_str ^ " -L " ^ mlbdir() ^ " " ^ libs_str
+          val shell_cmd = link_shared() ^ rpath ^ " -o " ^ shellQuote sofile ^ " -shared "
+                          ^ ofiles_str ^ " -L " ^ shellQuote(mlbdir()) ^ " " ^ libs_str
         in execute_command shell_cmd;
            message(fn () => "[wrote " ^ sofile ^ "]\n")
         end

@@ -450,6 +450,7 @@ uintptr_t ptr_hitag_clear_fun(uintptr_t ptr) {
   return ptr_hitag_clear(ptr);
 }
 
-uint16_t ptr_hitag_get_fun(uintptr_t ptr) {
-  return ptr_hitag_get(ptr);
+uintptr_t ptr_hitag_get_fun(uintptr_t ptr) {
+  /* Called as an ML int primitive by the REPL pretty-printer. */
+  return convertIntToML(ptr_hitag_get(ptr));
 }

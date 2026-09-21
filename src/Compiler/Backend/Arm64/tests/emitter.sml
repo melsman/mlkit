@@ -5,6 +5,12 @@ structure G = BackendArm64.CodeGen
 structure L = N.LineStmt
 structure S = N.SubstAndSimplify
 structure I = InstsArm64
+(* Both register palettes can be used for allocation across C calls. *)
+val () = List.app (fn lv => case I.RI.lv_to_reg lv of
+    I.X n => if List.exists (fn r=>r=n) AbiArm64.reservedGPRs
+             then raise Fail "reserved ARM register in allocation palette" else ()
+  | _ => raise Fail "non-GPR in integer allocation palette")
+  (I.RI.caller_save_phregs @ I.RI.callee_save_ccall_phregs)
 val regs = {arg_regs=I.RI.args_phreg,arg_fregs=I.RI.args_phfreg,res_regs=I.RI.res_phreg}
 fun fresh n = List.tabulate(n,fn _=>Lvars.newLvar())
 fun convention (a,r,locals) =
@@ -61,3 +67,17 @@ local
   val floatResult=probe("arm64_float_result_probe","arm64_float_result_check",[B.F64],[],[hd doubles])
   val narrow=probe("arm64_narrow_probe","arm64_narrow_check",[B.I8,B.U16,B.I32],[],[~5,60000,17])
 in val ()=G.emit(mixed @ variadic @ floatResult @ narrow,"scalar-calls.s") end
+
+(* Exercise forward/backward branches beyond both short branch ranges. *)
+local
+  open CodeGenUtilArm64
+  val done=LocalLab(AddressLabels.new_named "far_done")
+  val start=LocalLab(AddressLabels.new_named "far_start")
+  val next=LocalLab(AddressLabels.new_named "far_next")
+  val last=LocalLab(AddressLabels.new_named "far_last")
+  val code=function(NameLab "main") @ constant(0,X 0) @ [ins "b" [pr_lab start],
+    Label done,ins "ret" [],Directive ".space 1100000",Label start,
+    ins "cbz" ["x0",pr_lab next],ins "brk" ["#1"],Directive ".space 1100000",Label next,
+    ins "tbz" ["x0","#0",pr_lab last],ins "brk" ["#2"],Directive ".space 65536",Label last,
+    ins "cmp" ["x0","#0"],ins "b.eq" [pr_lab done],ins "brk" ["#3"]]
+in val ()=G.emit(code,"long-branches.s") end

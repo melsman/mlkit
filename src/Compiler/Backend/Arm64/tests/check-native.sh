@@ -57,6 +57,8 @@ printf '@' | ./reml-regions > actual
 cmp expected actual
 # Internal multi-result calls, including odd and even result padding.
 "${ARM64_EMITTER:?Set ARM64_EMITTER to the host emitter-test executable}" > emitter.log 2>&1
+gcc -arch arm64 long-branches.s -o long-branches
+./long-branches
 for n in 4 5 6 7; do
   for suffix in "" -shrink; do
     gcc -arch arm64 "results$n$suffix.s" "results$n$suffix-link.s" "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o "results$n"
@@ -102,6 +104,9 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     if [ -n "$report_flags" ]; then grep -Eq "[1-9][0-9]* collections" gc-report.log; fi
     "$compiler" --no_basislib $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
     ./gc-frames $profile_flags > actual
+    cmp gc-expected actual
+    "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
+    ./gc-constructors $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -ldexe 'gcc -arch arm64 callback.o foreign.o' \
       -o foreign foreign.sml >> integration.log 2>&1

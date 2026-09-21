@@ -59,11 +59,10 @@ make install_runtime LIBDIR=/tmp/mlkit-runtime-stage
 ```
 
 The experimental ARM backend selects the ARM archive directory and a
-separate `MLB/ARM64_<variant>` cache namespace. General native-mode compiler,
-Basis, bootstrap, and full-install targets remain rejected until full
-language/runtime coverage exists. Use `Makefile.arm64` for the experimental
-host-built compilers and the X64 configuration for ordinary compiler/tool
-builds. Native tool porting and bootstrap remain later milestones.
+separate `MLB/ARM64_<variant>` cache namespace. Use `Makefile.arm64` for
+host-built ARM-emitting compilers, native compiler/tool builds, staged native
+installation, and bootstrap checks; see [arm64-compiler.md](arm64-compiler.md).
+The ordinary compiler/tool targets retain their X64 configuration.
 
 `make -C src/Runtime clean` removes the configured target's intermediate
 build tree. It intentionally preserves installed/copied archives and the other
@@ -110,15 +109,21 @@ four runtime threads sharing a protected region, verifying 32,768 allocations
 across page rollover. It is not an ML ABI
 or GC test. The native compiler suite separately validates generated ARM GC
 and profiling paths. Generated parallel allocation is covered by the compiler parallel suite;
-native bootstrap validation remains a later milestone.
+native bootstrap validation uses the separate `Makefile.arm64 bootstrap` target.
 
-Validation on 2026-09-21 used Apple Clang 21 via `gcc`, macOS arm64, and
-Rosetta 2 for X64 execution. All ten standard archive variants built for both
+Validation on 2026-09-21 used Apple Clang 21 via `gcc`, SDK 26.5, macOS arm64,
+and Rosetta 2 for X64 execution. All ten standard archive variants built for both
 targets; the architecture, allocation, concurrent allocation, installation,
 legacy archive preservation, and rejection checks passed. An installed X64
 MLKit also compiled and ran `test_dev/int_first.sml` against the new runtime
 with `-no_gc` and with `-gc -prof`. The checkout was left configured for X64.
 Linux execution was not tested in this environment.
+
+The matrix also checks repeated profiling samples on both architectures.
+Completed samples are streamed and freed; the runtime no longer links a new
+sample through the previously freed sample. The regression detects that write
+by reusing the freed allocation. A native full-Basis profiling program also
+passes with AddressSanitizer.
 
 ## ARM GC and profiling integration
 

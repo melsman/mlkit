@@ -221,7 +221,10 @@ print_value(char* tau, char* lab) {
     exit(EXIT_FAILURE);
   }
   int ret = 0;
-  if ( strcmp(tau, "int") == 0 || strcmp(tau, "int64") == 0 ) {
+  if ( strcmp(tau, "int63") == 0 ) {
+    /* Int63 is always represented as a tagged word, including without GC. */
+    ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "%lld", (*(long long*)symb) >> 1);
+  } else if ( strcmp(tau, "int") == 0 || strcmp(tau, "int64") == 0 ) {
     ret = snprintf(pretty_topbuf, pretty_topbuf_sz, "%lld", convertIntToC(*(long long*)symb));
   } else if ( strcmp(tau, "bool") == 0 ) {
     if ( *(long long*)symb == mlTRUE ) {
@@ -246,7 +249,7 @@ void
 print_value2(char* tau, char* lab) {
   fprintf(repllog, "{attempt printing with pretty_exported function %s : %s}\n", lab, tau);
   fflush(repllog);
-  size_t(*pretty_exported)(int) = (size_t(*)(int))dlsym(RTLD_DEFAULT,"pretty_exported");
+  long(*pretty_exported)(long) = (long(*)(long))dlsym(RTLD_DEFAULT,"pretty_exported");
   if ( !pretty_exported ) {
     print_value(tau,lab);
     return;
@@ -260,9 +263,10 @@ print_value2(char* tau, char* lab) {
   }
   pretty_hidden_ty = tau;
   pretty_hidden_v = symb;
-  int sz = pretty_exported(0);
-  if ( sz != strlen(pretty_topbuf) ) {
-    fprintf(stderr, "Repl.print_value2: sz error: %d - %s: %s\n", sz, pretty_topbuf, dlerror());
+  /* Exported hooks use ML integer representation, including the GC tag. */
+  long sz = convertIntToC(pretty_exported(convertIntToML(0)));
+  if ( sz < 0 || (size_t)sz != strlen(pretty_topbuf) ) {
+    fprintf(stderr, "Repl.print_value2: sz error: %ld - %s: %s\n", sz, pretty_topbuf, dlerror());
     exit(EXIT_FAILURE);
   }
   return;

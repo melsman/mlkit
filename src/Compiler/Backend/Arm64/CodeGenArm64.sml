@@ -27,7 +27,8 @@ struct
   type AtySS = SS.Aty
   type AsmPrg = A.AsmPrg
   val emit = A.emit
-  fun message f = print(f())
+  val messages_p = Flags.is_on0 "messages"
+  fun message f = if messages_p() then print(f()) else ()
   val extra_gc_checks = Flags.add_bool_entry
     {long="extra_gc_checks",short=NONE,item=ref false,neg=false,
      menu=["Compiler","extra GC checks"],desc="Collect at every ARM64 function entry."}
@@ -290,6 +291,153 @@ struct
             read fsz b (X 16) @ load(X 16,payload(),D 31) @ [ins opn ["d30","d30","d31"]] @
             read fsz buffer (X 16) @ (if tagged() then constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) @ store(X 17,X 16,0) else []) @ store(D 30,X 16,payload()) @ write fsz d (X 16)
         | _=>unsupported "boxed floating arity"
+        fun tagResult () = if tagged() then
+          [ins "lsl" ["x16","x16","#1"],ins "add" ["x16","x16","#1"]] else []
+        fun size shift = case (args,res) of ([a],[d]) =>
+          read fsz a (X 16) @ load(X 16,0,X 16) @
+          [ins "lsr" ["x16","x16","#" ^ Int.toString shift]] @ tagResult() @ write fsz d (X 16)
+          | _ => unsupported "table size arity"
+        fun index t i scale = read fsz t (X 16) @ read fsz i (X 17) @
+          (if tagged() then [ins "asr" ["x17","x17","#1"]] else []) @
+          [ins "add" ["x17","x16","x17, lsl #" ^ Int.toString scale]]
+        fun subscript scale opn scalar = case (args,res) of ([t,i],[d]) =>
+          index t i scale @ [ins opn [if opn="ldrb" orelse opn="ldrh" then "w16" else "x16","[x17, #8]"]] @
+          (if scalar then tagResult() else []) @ write fsz d (X 16)
+          | _ => unsupported "table subscript arity"
+        fun update scale opn scalar = case (args,res) of ([t,i,v],[d]) =>
+          index t i scale @ stack(true,16) @ store(X 17,SP,0) @
+          read (fsz+2) v (X 16) @ load(SP,0,X 17) @ stack(false,16) @
+          (if scalar andalso tagged() then [ins "lsr" ["x16","x16","#1"]] else []) @
+          [ins opn [if opn="strb" orelse opn="strh" then "w16" else "x16","[x17, #8]"]] @
+          constant(1,X 16) @ write fsz d (X 16)
+          | _ => unsupported "table update arity"
+        (* Numerical representation tuples are (value bits, signed, boxed, tagged).
+         * Decode numerical representations before operating, then normalize
+         * and encode the result. LR is available as scratch after the prologue. *)
+        fun normalize (bits,sgn,_,_) reg = if bits=64 then [] else
+          [ins (if sgn then "sbfx" else "ubfx") [r reg,r reg,"#0","#" ^ Int.toString bits]]
+        fun getnumAt level (rep as (bits,sgn,box,tag)) a reg = read level a reg @
+          (if box then load(reg,8,reg) else []) @
+          (if tag then [ins "lsr" [r reg,r reg,"#1"]] else []) @ normalize rep reg
+        fun getnum rep a reg = getnumAt fsz rep a reg
+        fun failUnless cc = let val ok=localFresh()
+          in [ins ("b."^cc) [pr_lab ok]] @ overflow() @ [Label ok] end
+        fun range (bits,sgn,_,_) = if not sgn then [] else
+          if bits=64 then [] else
+            [ins "sbfx" ["x30","x16","#0","#" ^ Int.toString bits],ins "cmp" ["x30","x16"]] @ failUnless "eq"
+        fun putnum (rep as (_,_,box,tag)) buffer d = normalize rep (X 16) @
+          (if tag then [ins "lsl" ["x16","x16","#1"],ins "add" ["x16","x16","#1"]] else []) @
+          (if box then case buffer of SOME b =>
+             stack(true,16) @ store(X 16,SP,0) @ read (fsz+2) b (X 17) @
+             load(SP,0,X 16) @ stack(false,16) @ store(X 16,X 17,8) @
+             constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 16) @
+             store(X 16,X 17,0) @ write fsz d (X 17)
+           | NONE => unsupported "boxed result without buffer"
+           else write fsz d (X 16))
+        fun numeric opn (rep as (bits,sgn,box,tag)) =
+          let val comparison = List.exists(fn x=>x=opn) ["Equal","Less","Lesseq","Greater","Greatereq"]
+              val (buffer,operands) = if box andalso not comparison then
+                  case args of b::xs => (SOME b,xs) | _=>unsupported "numeric buffer"
+                else (NONE,args)
+              val d=case res of [d]=>d | _=>unsupported "numeric result"
+              fun finish code = code @ putnum rep buffer d
+              fun cc () = case opn of "Equal"=>"eq" | "Less"=>if sgn then "lt" else "lo"
+                | "Lesseq"=>if sgn then "le" else "ls" | "Greater"=>if sgn then "gt" else "hi"
+                | _=>if sgn then "ge" else "hs"
+              fun compareResult () = case d of SS.FLOW_VAR_ATY(_,t,f) =>
+                    [ins ("b."^cc()) [pr_lab(LocalLab t)],ins "b" [pr_lab(LocalLab f)]]
+                | _ => [ins "cset" ["x16",cc()],ins "lsl" ["x16","x16","#1"],
+                        ins "add" ["x16","x16","#1"]] @ write fsz d (X 16)
+              fun arithmetic inst = [ins inst ["x16","x16","x17"]] @
+                (if sgn then failUnless "vc" @ range rep else [])
+          in case operands of
+            [a] => getnum rep a (X 16) @ finish
+              ((case opn of
+                 "Neg"=>[ins "negs" ["x16","x16"]] @ failUnless "vc"
+               | "Abs"=>let val done=localFresh() in
+                   [ins "cmp" ["x16","#0"],ins "b.ge" [pr_lab done],ins "negs" ["x16","x16"]] @
+                   failUnless "vc" @ [Label done] end
+               | _=>unsupported("numeric unary "^opn)) @ range rep)
+          | [a,b] => getnum rep a (X 16) @ stack(true,16) @ store(X 16,SP,0) @
+              getnumAt (fsz+2) rep b (X 17) @ load(SP,0,X 16) @ stack(false,16) @
+              (if comparison then [ins "cmp" ["x16","x17"]] @ compareResult()
+               else finish(case opn of
+                 "Plus"=>arithmetic(if sgn then "adds" else "add")
+               | "Minus"=>arithmetic(if sgn then "subs" else "sub")
+               | "Mul"=>(if sgn then [ins "smulh" ["x30","x16","x17"]] else []) @
+                   [ins "mul" ["x16","x16","x17"]] @
+                   (if sgn then [ins "cmp" ["x30","x16, asr #63"]] @ failUnless "eq" @ range rep else [])
+               | "Andb"=>[ins "and" ["x16","x16","x17"]]
+               | "Orb"=>[ins "orr" ["x16","x16","x17"]]
+               | "Xorb"=>[ins "eor" ["x16","x16","x17"]]
+               | _=>unsupported("numeric binary "^opn)))
+          | _ => unsupported "numeric operands"
+          end
+        fun shift opn (rep as (bits,_,box,_)) =
+          let val (buffer,a,b,d) = case (box,args,res) of
+                (false,[a,b],[d])=>(NONE,a,b,d)
+              | (true,[buf,a,b],[d])=>(SOME buf,a,b,d)
+              | _=>unsupported "shift arity"
+              val wide=localFresh() val done=localFresh()
+          in getnum rep a (X 16) @ stack(true,16) @ store(X 16,SP,0) @
+             getnumAt (fsz+2) (if tagged() then (63,false,false,true) else (64,false,false,false)) b (X 17) @
+             load(SP,0,X 16) @ stack(false,16) @
+             (if opn="asr" then normalize (bits,true,false,false) (X 16) else []) @
+             [ins "cmp" ["x17","#"^Int.toString bits],ins "b.hs" [pr_lab wide],
+              ins opn ["x16","x16","x17"],ins "b" [pr_lab done],Label wide] @
+             (if opn="asr" then [ins "asr" ["x16","x16","#63"]] else constant(0,X 16)) @
+             [Label done] @ putnum rep buffer d end
+        fun convert (src as (bits,sgn,_,_)) (dst as (_,signed,box,_)) extend =
+          let val (buffer,a,d) = case (box,args,res) of
+                (false,[a],[d])=>(NONE,a,d)
+              | (true,[buf,a],[d])=>(SOME buf,a,d)
+              | _=>unsupported "conversion arity"
+          in getnum src a (X 16) @
+             (if extend then normalize (bits,true,false,false) (X 16) else []) @
+             (if signed then
+                (if not sgn andalso not extend then
+                  [ins "cmp" ["x16","#0"]] @ failUnless "ge" else []) @ range dst
+              else []) @ putnum dst buffer d end
+        fun realUnary opn = case (args,res) of ([buffer,a],[d]) =>
+          read fsz a (X 16) @ load(X 16,payload(),D 30) @ [ins opn ["d30","d30"]] @
+          read fsz buffer (X 16) @
+          (if tagged() then constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) @ store(X 17,X 16,0) else []) @
+          store(D 30,X 16,payload()) @ write fsz d (X 16)
+          | _=>unsupported "real unary arity"
+        fun realCompare cc = case args of [a,b] =>
+          read fsz a (X 16) @ load(X 16,payload(),D 30) @
+          read fsz b (X 16) @ load(X 16,payload(),D 31) @
+          primitive fsz {name=(case cc of 0=>Less_f64 | 1=>Lesseq_f64 | 2=>Greater_f64 | _=>Greatereq_f64),
+                         args=[SS.PHREG_ATY(D 30),SS.PHREG_ATY(D 31)],res=res}
+          | _=>unsupported "real comparison arity"
+        fun toInt isReal = case (args,res) of ([a],[d]) =>
+          (if isReal then read fsz a (X 16) @ load(X 16,payload(),D 30) else read fsz a (D 30)) @
+          [ins "fcvtzs" ["x16","d30"]] @ tagResult() @ write fsz d (X 16)
+          | _=>unsupported "float conversion arity"
+        fun tableSub scale (rep as (_,_,box,_)) =
+          let val (buffer,t,i,d)=case (box,args,res) of
+                  (false,[t,i],[d])=>(NONE,t,i,d)
+                | (true,[b,t,i],[d])=>(SOME b,t,i,d)
+                | _=>unsupported "wide table subscript"
+          in index t i scale @ [ins "ldr" [if scale=2 then "w16" else "x16","[x17, #8]"]] @
+             putnum rep buffer d end
+        fun tableUpdate scale rep = case (args,res) of ([t,i,v],[d]) =>
+          index t i scale @ stack(true,16) @ store(X 17,SP,0) @
+          getnumAt (fsz+2) rep v (X 16) @ load(SP,0,X 17) @ stack(false,16) @
+          [ins "str" [if scale=2 then "w16" else "x16","[x17, #8]"]] @
+          constant(1,X 16) @ write fsz d (X 16)
+          | _=>unsupported "wide table update"
+        fun blockSub boxed = case (boxed,args,res) of
+            (false,[t,i],[d])=>index t i 3 @ load(X 17,8,D 30) @ write fsz d (D 30)
+          | (true,[b,t,i],[d])=>index t i 3 @ load(X 17,8,D 30) @ read fsz b (X 16) @
+              (if tagged() then constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) @ store(X 17,X 16,0) else []) @
+              store(D 30,X 16,payload()) @ write fsz d (X 16)
+          | _=>unsupported "float block subscript"
+        fun blockUpdate boxed = case (args,res) of ([t,i,v],[d]) =>
+          index t i 3 @ stack(true,16) @ store(X 17,SP,0) @
+          (if boxed then read (fsz+2) v (X 16) @ load(X 16,payload(),D 30) else read (fsz+2) v (D 30)) @
+          load(SP,0,X 17) @ stack(false,16) @ store(D 30,X 17,8) @ constant(1,X 16) @ write fsz d (X 16)
+          | _=>unsupported "float block update"
     in case name of
       Plus_int63 => taggedBinary "adds" true | Minus_int63 => taggedBinary "subs" true
     | Plus_word63 => taggedBinary "add" false | Minus_word63 => taggedBinary "sub" false
@@ -328,7 +476,7 @@ struct
     | Lesseq_word64ub => compare "ls"
     | Greater_word64ub => compare "hi"
     | Greatereq_word64ub => compare "hs"
-    | Equal_int32ub => compare "eq"
+    | Equal_int32ub => numeric "Equal" (32,true,false,false)
     | Equal_int63 => compare "eq" | Equal_word63 => compare "eq"
     | Less_int63 => compare "lt" | Lesseq_int63 => compare "le"
     | Greater_int63 => compare "gt" | Greatereq_int63 => compare "ge"
@@ -339,10 +487,226 @@ struct
     | Lesseq_int64ub => compare "le"
     | Greater_int64ub => compare "gt"
     | Greatereq_int64ub => compare "ge"
-    | Word64ub_to_int64ub => (case (args,res) of ([a],[d])=>read fsz a (X 16) @ write fsz d (X 16)
-                             | _ => unsupported "conversion arity")
-    | Int64ub_to_word64ub => (case (args,res) of ([a],[d])=>read fsz a (X 16) @ write fsz d (X 16)
-                             | _ => unsupported "conversion arity")
+    | Bytetable_size => size 6 | Table_size => size 6 | Blockf64_size => size 9
+    | Bytetable_sub => subscript 0 "ldrb" true
+    | Bytetable_sub_word16 => subscript 1 "ldrh" true
+    | Word_sub0 => subscript 3 "ldr" false
+    | Bytetable_update => update 0 "strb" true
+    | Bytetable_update_word16 => update 1 "strh" true
+    | Word_update0 => update 3 "str" false
+    | Equal_int31 => numeric "Equal" (31,true,false,true)
+    | Equal_int32b => numeric "Equal" (32,true,true,false)
+    | Equal_char => numeric "Equal" (8,false,false,tagged())
+    | Equal_word8 => numeric "Equal" (8,false,false,tagged())
+    | Equal_word31 => numeric "Equal" (31,false,false,true)
+    | Equal_word32ub => numeric "Equal" (32,false,false,false)
+    | Equal_word32b => numeric "Equal" (32,false,true,false)
+    | Equal_int64b => numeric "Equal" (64,true,true,false)
+    | Equal_word64b => numeric "Equal" (64,false,true,false)
+    | Less_int31 => numeric "Less" (31,true,false,true)
+    | Less_int32ub => numeric "Less" (32,true,false,false)
+    | Less_int32b => numeric "Less" (32,true,true,false)
+    | Less_char => numeric "Less" (8,false,false,tagged())
+    | Less_word8 => numeric "Less" (8,false,false,tagged())
+    | Less_word31 => numeric "Less" (31,false,false,true)
+    | Less_word32ub => numeric "Less" (32,false,false,false)
+    | Less_word32b => numeric "Less" (32,false,true,false)
+    | Less_int64b => numeric "Less" (64,true,true,false)
+    | Less_word64b => numeric "Less" (64,false,true,false)
+    | Lesseq_int31 => numeric "Lesseq" (31,true,false,true)
+    | Lesseq_int32ub => numeric "Lesseq" (32,true,false,false)
+    | Lesseq_int32b => numeric "Lesseq" (32,true,true,false)
+    | Lesseq_char => numeric "Lesseq" (8,false,false,tagged())
+    | Lesseq_word8 => numeric "Lesseq" (8,false,false,tagged())
+    | Lesseq_word31 => numeric "Lesseq" (31,false,false,true)
+    | Lesseq_word32ub => numeric "Lesseq" (32,false,false,false)
+    | Lesseq_word32b => numeric "Lesseq" (32,false,true,false)
+    | Lesseq_int64b => numeric "Lesseq" (64,true,true,false)
+    | Lesseq_word64b => numeric "Lesseq" (64,false,true,false)
+    | Greater_int31 => numeric "Greater" (31,true,false,true)
+    | Greater_int32ub => numeric "Greater" (32,true,false,false)
+    | Greater_int32b => numeric "Greater" (32,true,true,false)
+    | Greater_char => numeric "Greater" (8,false,false,tagged())
+    | Greater_word8 => numeric "Greater" (8,false,false,tagged())
+    | Greater_word31 => numeric "Greater" (31,false,false,true)
+    | Greater_word32ub => numeric "Greater" (32,false,false,false)
+    | Greater_word32b => numeric "Greater" (32,false,true,false)
+    | Greater_int64b => numeric "Greater" (64,true,true,false)
+    | Greater_word64b => numeric "Greater" (64,false,true,false)
+    | Greatereq_int31 => numeric "Greatereq" (31,true,false,true)
+    | Greatereq_int32ub => numeric "Greatereq" (32,true,false,false)
+    | Greatereq_int32b => numeric "Greatereq" (32,true,true,false)
+    | Greatereq_char => numeric "Greatereq" (8,false,false,tagged())
+    | Greatereq_word8 => numeric "Greatereq" (8,false,false,tagged())
+    | Greatereq_word31 => numeric "Greatereq" (31,false,false,true)
+    | Greatereq_word32ub => numeric "Greatereq" (32,false,false,false)
+    | Greatereq_word32b => numeric "Greatereq" (32,false,true,false)
+    | Greatereq_int64b => numeric "Greatereq" (64,true,true,false)
+    | Greatereq_word64b => numeric "Greatereq" (64,false,true,false)
+    | Plus_int31 => numeric "Plus" (31,true,false,true)
+    | Plus_int32ub => numeric "Plus" (32,true,false,false)
+    | Plus_int32b => numeric "Plus" (32,true,true,false)
+    | Plus_word31 => numeric "Plus" (31,false,false,true)
+    | Plus_word32ub => numeric "Plus" (32,false,false,false)
+    | Plus_word32b => numeric "Plus" (32,false,true,false)
+    | Plus_int64b => numeric "Plus" (64,true,true,false)
+    | Plus_word64b => numeric "Plus" (64,false,true,false)
+    | Minus_int31 => numeric "Minus" (31,true,false,true)
+    | Minus_int32ub => numeric "Minus" (32,true,false,false)
+    | Minus_int32b => numeric "Minus" (32,true,true,false)
+    | Minus_word31 => numeric "Minus" (31,false,false,true)
+    | Minus_word32ub => numeric "Minus" (32,false,false,false)
+    | Minus_word32b => numeric "Minus" (32,false,true,false)
+    | Minus_int64b => numeric "Minus" (64,true,true,false)
+    | Minus_word64b => numeric "Minus" (64,false,true,false)
+    | Mul_int31 => numeric "Mul" (31,true,false,true)
+    | Mul_int32ub => numeric "Mul" (32,true,false,false)
+    | Mul_int32b => numeric "Mul" (32,true,true,false)
+    | Mul_word31 => numeric "Mul" (31,false,false,true)
+    | Mul_word32ub => numeric "Mul" (32,false,false,false)
+    | Mul_word32b => numeric "Mul" (32,false,true,false)
+    | Mul_int63 => numeric "Mul" (63,true,false,true)
+    | Mul_int64ub => numeric "Mul" (64,true,false,false)
+    | Mul_int64b => numeric "Mul" (64,true,true,false)
+    | Mul_word63 => numeric "Mul" (63,false,false,true)
+    | Mul_word64b => numeric "Mul" (64,false,true,false)
+    | Neg_int31 => numeric "Neg" (31,true,false,true)
+    | Neg_int32ub => numeric "Neg" (32,true,false,false)
+    | Neg_int32b => numeric "Neg" (32,true,true,false)
+    | Neg_int63 => numeric "Neg" (63,true,false,true)
+    | Neg_int64ub => numeric "Neg" (64,true,false,false)
+    | Neg_int64b => numeric "Neg" (64,true,true,false)
+    | Abs_int31 => numeric "Abs" (31,true,false,true)
+    | Abs_int32ub => numeric "Abs" (32,true,false,false)
+    | Abs_int32b => numeric "Abs" (32,true,true,false)
+    | Abs_int63 => numeric "Abs" (63,true,false,true)
+    | Abs_int64ub => numeric "Abs" (64,true,false,false)
+    | Abs_int64b => numeric "Abs" (64,true,true,false)
+    | Andb_word31 => numeric "Andb" (31,false,false,true)
+    | Andb_word32ub => numeric "Andb" (32,false,false,false)
+    | Andb_word32b => numeric "Andb" (32,false,true,false)
+    | Andb_word63 => numeric "Andb" (63,false,false,true)
+    | Andb_word64b => numeric "Andb" (64,false,true,false)
+    | Orb_word31 => numeric "Orb" (31,false,false,true)
+    | Orb_word32ub => numeric "Orb" (32,false,false,false)
+    | Orb_word32b => numeric "Orb" (32,false,true,false)
+    | Orb_word63 => numeric "Orb" (63,false,false,true)
+    | Orb_word64b => numeric "Orb" (64,false,true,false)
+    | Xorb_word31 => numeric "Xorb" (31,false,false,true)
+    | Xorb_word32ub => numeric "Xorb" (32,false,false,false)
+    | Xorb_word32b => numeric "Xorb" (32,false,true,false)
+    | Xorb_word63 => numeric "Xorb" (63,false,false,true)
+    | Xorb_word64b => numeric "Xorb" (64,false,true,false)
+    | Neg_real => realUnary "fneg" | Abs_real => realUnary "fabs"
+    | Less_real => realCompare 0 | Lesseq_real => realCompare 1
+    | Greater_real => realCompare 2 | Greatereq_real => realCompare 3
+    | Max_f64 => fpBinary "fmax" | Min_f64 => fpBinary "fmin"
+    | F64_to_int => toInt false | Real_to_int => toInt true
+    | Is_null => (case args of [a]=>primitive fsz {name=Equal_ptr,args=[a,integer 0],res=res}
+                              | _=>unsupported "null arity")
+    | Shift_left_word31 => shift "lsl" (31,false,false,true)
+    | Shift_left_word32ub => shift "lsl" (32,false,false,false)
+    | Shift_left_word32b => shift "lsl" (32,false,true,false)
+    | Shift_left_word63 => shift "lsl" (63,false,false,true)
+    | Shift_left_word64ub => shift "lsl" (64,false,false,false)
+    | Shift_left_word64b => shift "lsl" (64,false,true,false)
+    | Shift_right_signed_word31 => shift "asr" (31,false,false,true)
+    | Shift_right_signed_word32ub => shift "asr" (32,false,false,false)
+    | Shift_right_signed_word32b => shift "asr" (32,false,true,false)
+    | Shift_right_signed_word63 => shift "asr" (63,false,false,true)
+    | Shift_right_signed_word64ub => shift "asr" (64,false,false,false)
+    | Shift_right_signed_word64b => shift "asr" (64,false,true,false)
+    | Shift_right_unsigned_word31 => shift "lsr" (31,false,false,true)
+    | Shift_right_unsigned_word32ub => shift "lsr" (32,false,false,false)
+    | Shift_right_unsigned_word32b => shift "lsr" (32,false,true,false)
+    | Shift_right_unsigned_word63 => shift "lsr" (63,false,false,true)
+    | Shift_right_unsigned_word64ub => shift "lsr" (64,false,false,false)
+    | Shift_right_unsigned_word64b => shift "lsr" (64,false,true,false)
+    | Int31_to_int32b => convert (31,true,false,true) (32,true,true,false) false
+    | Int31_to_int32ub => convert (31,true,false,true) (32,true,false,false) false
+    | Int32b_to_int31 => convert (32,true,true,false) (31,true,false,true) false
+    | Int32b_to_word32b => convert (32,true,true,false) (32,false,true,false) false
+    | Int32ub_to_int31 => convert (32,true,false,false) (31,true,false,true) false
+    | Int31_to_int64b => convert (31,true,false,true) (64,true,true,false) false
+    | Int31_to_int64ub => convert (31,true,false,true) (64,true,false,false) false
+    | Int64b_to_int31 => convert (64,true,true,false) (31,true,false,true) false
+    | Word31_to_word32b => convert (31,false,false,true) (32,false,true,false) false
+    | Word31_to_word32ub => convert (31,false,false,true) (32,false,false,false) false
+    | Word32b_to_word31 => convert (32,false,true,false) (31,false,false,true) false
+    | Word32ub_to_word31 => convert (32,false,false,false) (31,false,false,true) false
+    | Word31_to_word32ub_X => convert (31,false,false,true) (32,false,false,false) true
+    | Word31_to_word32b_X => convert (31,false,false,true) (32,false,true,false) true
+    | Word32b_to_int32b => convert (32,false,true,false) (32,true,true,false) false
+    | Word32b_to_int32b_X => convert (32,false,true,false) (32,true,true,false) true
+    | Word32ub_to_int32ub => convert (32,false,false,false) (32,true,false,false) false
+    | Word31_to_int31 => convert (31,false,false,true) (31,true,false,true) false
+    | Word32b_to_int31 => convert (32,false,true,false) (31,true,false,true) false
+    | Int32b_to_word31 => convert (32,true,true,false) (31,false,false,true) false
+    | Word32b_to_int31_X => convert (32,false,true,false) (31,true,false,true) true
+    | Word64ub_to_int32ub => convert (64,false,false,false) (32,true,false,false) false
+    | Word32ub_to_word64ub => convert (32,false,false,false) (64,false,false,false) false
+    | Word64ub_to_word32ub => convert (64,false,false,false) (32,false,false,false) false
+    | Word64ub_to_int64ub => convert (64,false,false,false) (64,true,false,false) false
+    | Word64ub_to_int64ub_X => convert (64,false,false,false) (64,true,false,false) true
+    | Word31_to_word64b => convert (31,false,false,true) (64,false,true,false) false
+    | Word31_to_word64b_X => convert (31,false,false,true) (64,false,true,false) true
+    | Word64b_to_int31 => convert (64,false,true,false) (31,true,false,true) false
+    | Word64b_to_int64b_X => convert (64,false,true,false) (64,true,true,false) true
+    | Word64b_to_int64b => convert (64,false,true,false) (64,true,true,false) false
+    | Word32b_to_word64b => convert (32,false,true,false) (64,false,true,false) false
+    | Word32b_to_word64b_X => convert (32,false,true,false) (64,false,true,false) true
+    | Word64b_to_word32b => convert (64,false,true,false) (32,false,true,false) false
+    | Word64b_to_int31_X => convert (64,false,true,false) (31,true,false,true) true
+    | Int32b_to_int64b => convert (32,true,true,false) (64,true,true,false) false
+    | Int32ub_to_int64ub => convert (32,true,false,false) (64,true,false,false) false
+    | Int64b_to_word64b => convert (64,true,true,false) (64,false,true,false) false
+    | Int64ub_to_word64ub => convert (64,true,false,false) (64,false,false,false) false
+    | Int64ub_to_int32ub => convert (64,true,false,false) (32,true,false,false) false
+    | Int63_to_int64b => convert (63,true,false,true) (64,true,true,false) false
+    | Int64b_to_int63 => convert (64,true,true,false) (63,true,false,true) false
+    | Word32b_to_word63 => convert (32,false,true,false) (63,false,false,true) false
+    | Word63_to_word32b => convert (63,false,false,true) (32,false,true,false) false
+    | Word63_to_word31 => convert (63,false,false,true) (31,false,false,true) false
+    | Word31_to_word63 => convert (31,false,false,true) (63,false,false,true) false
+    | Word31_to_word63_X => convert (31,false,false,true) (63,false,false,true) true
+    | Word63_to_word64b => convert (63,false,false,true) (64,false,true,false) false
+    | Word63_to_word64b_X => convert (63,false,false,true) (64,false,true,false) true
+    | Word64b_to_word63 => convert (64,false,true,false) (63,false,false,true) false
+    | Word64ub_to_word63 => convert (64,false,false,false) (63,false,false,true) false
+    | Int31_to_int63 => convert (31,true,false,true) (63,true,false,true) false
+    | Int63_to_int31 => convert (63,true,false,true) (31,true,false,true) false
+    | Int32b_to_int63 => convert (32,true,true,false) (63,true,false,true) false
+    | Int63_to_int32b => convert (63,true,false,true) (32,true,true,false) false
+    | Word32b_to_int63 => convert (32,false,true,false) (63,true,false,true) false
+    | Word32b_to_int63_X => convert (32,false,true,false) (63,true,false,true) true
+    | Word64b_to_word31 => convert (64,false,true,false) (31,false,false,true) false
+    | Word64b_to_int63 => convert (64,false,true,false) (63,true,false,true) false
+    | Word64b_to_int63_X => convert (64,false,true,false) (63,true,false,true) true
+    | Int63_to_int64ub => convert (63,true,false,true) (64,true,false,false) false
+    | Int64ub_to_int63 => convert (64,true,false,false) (63,true,false,true) false
+    | Word63_to_word64ub => convert (63,false,false,true) (64,false,false,false) false
+    | Word63_to_word64ub_X => convert (63,false,false,true) (64,false,false,false) true
+    | Word64ub_to_word31 => convert (64,false,false,false) (31,false,false,true) false
+    | Int64ub_to_int31 => convert (64,true,false,false) (31,true,false,true) false
+    | Word31_to_word64ub => convert (31,false,false,true) (64,false,false,false) false
+    | Word31_to_word64ub_X => convert (31,false,false,true) (64,false,false,false) true
+    | Word32ub_to_int64ub => convert (32,false,false,false) (64,true,false,false) false
+    | Word32ub_to_int64ub_X => convert (32,false,false,false) (64,true,false,false) true
+    | Word32ub_to_word64ub_X => convert (32,false,false,false) (64,false,false,false) true
+    | Blockf64_sub_real => blockSub true | Blockf64_sub_f64 => blockSub false
+    | Blockf64_update_real => blockUpdate true | Blockf64_update_f64 => blockUpdate false
+    | Bytetable_sub_word31 => tableSub 2 (if tagged() then 31 else 32,false,false,tagged())
+    | Bytetable_update_word31 => tableUpdate 2 (if tagged() then 31 else 32,false,false,tagged())
+    | Bytetable_sub_word32ub => tableSub 2 (32,false,false,false)
+    | Bytetable_update_word32ub => tableUpdate 2 (32,false,false,false)
+    | Bytetable_sub_word32b => tableSub 2 (32,false,true,false)
+    | Bytetable_update_word32b => tableUpdate 2 (32,false,true,false)
+    | Bytetable_sub_word63 => tableSub 3 (if tagged() then 63 else 64,false,false,tagged())
+    | Bytetable_update_word63 => tableUpdate 3 (if tagged() then 63 else 64,false,false,tagged())
+    | Bytetable_sub_word64ub => tableSub 3 (64,false,false,false)
+    | Bytetable_update_word64ub => tableUpdate 3 (64,false,false,false)
+    | Bytetable_sub_word64b => tableSub 3 (64,false,true,false)
+    | Bytetable_update_word64b => tableUpdate 3 (64,false,true,false)
     | _ => unsupported ("primitive " ^ PrimName.pp_prim name)
     end
   val dataLabels : label list ref = ref []
@@ -378,6 +742,13 @@ struct
     | LS.ASSIGN {pat,bind=LS.F64 value} => address(static [Directive(".double " ^ String.translate(fn #"~"=>"-" | c=>String.str c) value)],X 16) @ load(X 16,0,D 30) @ write fsz pat (D 30)
     | LS.ASSIGN {pat,bind=LS.STRING value} => address(stringData value,X 16) @ write fsz pat (X 16)
     | LS.ASSIGN {pat,bind=LS.RECORD{elems=[],...}} => constant(1,X 16) @ write fsz pat (X 16)
+    | LS.ASSIGN {pat,bind=LS.BLOCKF64{elems=[],...}} => constant(1,X 16) @ write fsz pat (X 16)
+    | LS.ASSIGN {pat,bind=LS.BLOCKF64{elems,alloc,tag}} =>
+        record fsz pat alloc [constant(IntInf.fromInt(Word.toInt tag),X 16)] elems
+    | LS.ASSIGN {pat,bind=LS.SCRATCHMEM{bytes,alloc,tag}} =>
+        if bytes=0 then constant(1,X 16) @ write fsz pat (X 16)
+        else allocate fsz alloc (1+(bytes+7) div 8) @
+          constant(IntInf.fromInt(Word.toInt tag),X 17) @ store(X 17,X 16,0) @ write fsz pat (X 16)
     | LS.ASSIGN {pat,bind=LS.RECORD{elems,alloc,tag,maybeuntag}} => recordWithUntag maybeuntag fsz pat alloc (header tag) elems
     | LS.ASSIGN {pat,bind=LS.CLOS_RECORD{label,elems=elems as (_,_,rhos),alloc,f64_vars}} =>
         record fsz pat alloc (header(BackendInfo.tag_clos(false,1+length(LS.smash_free elems),1+length rhos+f64_vars)) @ [address(MLFunLab label,X 16)]) (LS.smash_free elems)
@@ -403,7 +774,7 @@ struct
         in case con_kind of
           LS.ENUM i=>value(IntInf.fromInt(if tagged() orelse Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 2*i+1 else i))
         | LS.UNBOXED i=>value(IntInf.fromInt(4*i+3))
-        | LS.UNBOXED_HIGH i=>value(IntInf.fromInt i * 281474976710656)
+        | LS.UNBOXED_HIGH i=>value(IntInf.fromInt i * 281474976710656 + (if tagged() then 1 else 0))
         | LS.BOXED i=>reset @ record fsz pat alloc [constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_con0(false,i))),X 16)] [] end
     | LS.ASSIGN {pat,bind=LS.CON1{con_kind,alloc,arg,...}} =>
         (case con_kind of LS.BOXED i=>record fsz pat alloc
@@ -493,13 +864,23 @@ struct
           (LS.SWITCH(SS.PHREG_ATY(X 16),map(fn((_,k),body)=>(tag k,body)) cases,default)) end
     | LS.SWITCH_W {switch=LS.SWITCH(a,cases,default),precision=63} => switchCode fsz (LS.SWITCH(a,map(fn(n,b)=>(2*n+1,b)) cases,default))
     | LS.SWITCH_I {switch=LS.SWITCH(a,cases,default),precision=63} => switchCode fsz (LS.SWITCH(a,map(fn(n,b)=>(2*n+1,b)) cases,default))
-    | LS.SWITCH_W {switch,precision=64} => switchCode fsz switch
-    | LS.SWITCH_I {switch,precision=64} => switchCode fsz switch
+    | LS.SWITCH_W {switch,precision} => numericSwitch fsz false precision switch
+    | LS.SWITCH_I {switch,precision} => numericSwitch fsz true precision switch
     | LS.RESET_REGIONS {regions_for_resetting,force} =>
         List.concat(map(fn LS.IGNORE=>[] | sma=>let val(a,mode)=regionArg sma
           in if mode=0 andalso not force then [] else internalCall fsz "mlkit_arm64_reset"
             [a,integer(if force orelse mode=2 then 2 else 1)] end) regions_for_resetting)
     | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
+  and numericSwitch fsz signed precision (LS.SWITCH(a,cases,default)) =
+    let val tag=precision=31 orelse precision=63 orelse (precision=8 andalso tagged())
+        val box=tagged() andalso (precision=32 orelse precision=64)
+        fun value n=if tag then 2*n+1 else n
+    in read fsz a (X 16) @ (if box then load(X 16,8,X 16) else []) @
+       (* Int31 values read from packed tables have only their low 32 bits
+        * defined, including the tag; compare the signed encoded value. *)
+       (if precision=31 orelse precision=32 then
+          [ins (if signed then "sxtw" else "uxtw") ["x16","w16"]] else []) @
+       switchCode fsz (LS.SWITCH(SS.PHREG_ATY(X 16),map(fn(n,b)=>(value n,b)) cases,default)) end
   and flow fsz (t,f,yes,no) =
     let val done = localFresh()
     in [Label(LocalLab t)] @ stmts fsz yes @ [ins "b" [pr_lab done],Label(LocalLab f)] @
@@ -607,7 +988,8 @@ struct
        List.concat(map init globals) @ gcInit @
        (if repl then move(X 28,X 0) @ [ins "bl" ["_repl_interp"]]
         else List.concat(ListPair.map(fn(l,pc)=>stack(true,16) @ [ins "bl" [pr_lab(MLFunLab l)],Label pc]) (labs,returnLabels))) @
-       List.concat(map(fn _=>move(X 28,X 0) @ [ins "bl" ["_deallocateRegion"]]) globals) @
+       (* Exit callbacks still allocate in, and reference values from, the
+        * global regions. Keep these alive until terminateML exits. *)
        constant(0,X 0) @ [ins "b" ["_terminateML"]] @
        function alloc @ [ins "tbz" ["x0","#0",pr_lab finite]] @
        stack(true,48) @ store(X 19,SP,0) @ store(X 20,SP,8) @ store(X 30,SP,16) @ store(X 21,SP,24) @ store(X 22,SP,32) @

@@ -1,8 +1,9 @@
 # Experimental Darwin ARM64 compiler
 
-Milestone 3 of #223 introduces ARM64-emitting MLKit and ReML executables.
-They run on the architecture of the MLKit used to build them; this is not a
-native bootstrap. Use MLKit for all compiler builds and checks.
+The ARM64 backend for #223 supports native MLKit and ReML, the Basis Library,
+REPL, tools, and a separate staged installation on Apple Silicon. Native
+MLKit reaches a bootstrap fixed point. Use MLKit with `-gc` for compiler builds
+and checks.
 
 ## Build and run
 
@@ -20,13 +21,16 @@ make -f Makefile.arm64 check MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
 Makefile. `MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc` and can be overridden. The
 GC-enabled host build avoids a crash observed with the no-GC host build
 on wrapper-function samples; generated ARM programs can independently select their supported GC mode.
-These explicit targets do not replace the existing X64 compiler executables
-or enable a full ARM install/bootstrap.
+These initial targets produce ARM-emitting compilers on the host compiler's
+architecture. The native build, installation, and bootstrap targets below
+produce separate ARM64 executables.
 
-The installed bootstrap compiler's linker does not reliably quote paths
-containing spaces. If needed, create a stable, space-free symlink to this
-checkout and set `SML_LIB` to that absolute path for the commands above.
-Keep that alias stable to retain incremental compilation caches.
+The existing driver writes unquoted Basis paths for direct `.sml` inputs,
+REPL startup, and dependency processing. Use a stable, space-free symlink to
+the checkout or installed prefix for `SML_LIB` and `ARM64_PREFIX`. The older X64
+bootstrap compiler also has linker quoting limitations. Keep the alias stable
+to retain incremental compilation caches. Rerun `native-install` when changing
+the prefix: it invalidates Basis caches recorded at a different location.
 
 For example, compile the included two-unit smoke program with:
 
@@ -81,11 +85,10 @@ profiling modes are supported. Tagged no-GC MLKit programs use a separate
 `_TAG` cache variant. Generational GC with tagged pairs and tagged no-GC
 profiling have no corresponding runtime archive and are rejected.
 
-This remains an experimental language subset. Some Basis primitives and
-colon-based dynamic foreign-symbol resolution remain unimplemented. Full
-Basis Library compilation and native compiler bootstrap
-remain later milestones. The REPL tests use `--no_basislib`; full Basis-based
-pretty printing is not established by these tests.
+The full Basis Library and Basis-based REPL tests pass. Colon-based dynamic
+foreign-symbol resolution remains unimplemented. The backend remains
+experimental; the supported runtime combinations and foreign-call boundaries
+below still apply.
 
 The source automatic FFI retains MLKit's word-sized integer/boolean/pointer
 interface. Both raw and automatic calls now spill arguments beyond x7. The
@@ -126,8 +129,8 @@ MLKit with `-gc`. To run the shell test directly, set `SML_LIB`, `MLKIT_ARM64`,
 The source-built compiler limitation in [#225](https://github.com/melsman/mlkit/issues/225)
 also reproduces on a sample containing wrapper functions when the clean
 pre-refactor compiler is built without GC. The GC-enabled host build handles
-that sample. Minimal native execution still does not establish bootstrap
-correctness or full native compiler coverage.
+that sample. Use the separate bootstrap and regression checks below to validate
+native compiler coverage beyond the minimal execution tests.
 
 The X64 compiler built with MLKit also passes all 130 default `test_dev`
 checks, retaining coverage for no-GC and generational-GC execution.
@@ -164,3 +167,88 @@ for the synchronization design, Argobots setup, and validation coverage.
 `ARGOBOTS_ROOT` to include its optional Argobots cases. The fixtures include
 the production `THREAD.sig`/`Thread.sml` wrapper with a minimal prelude, so these
 checks do not depend on full Basis compilation.
+
+## Native compilers, tools, and installation
+
+The full Basis and native compiler builds use the same ARM backend. Build the
+native MLKit, ReML, and their tools into a separate directory:
+
+```sh
+make -f Makefile.arm64 native native-tools
+make -f Makefile.arm64 regressions
+make -f Makefile.arm64 bootstrap
+make -f Makefile.arm64 native-install
+```
+
+These targets default to `bin/mlkit-arm64` as the ARM-emitting compiler; set
+`ARM64_COMPILER` to another ARM-emitting or native MLKit if needed. Compiler
+and SML tool builds explicitly use `-gc`. `ARM64_NATIVE_BIN` defaults to
+`bin/darwin-arm64`, and `ARM64_PREFIX` to `stage/darwin-arm64`. The installation
+copies only verified ARM binaries and runtime archives and rebuilds Basis
+caches using the installed compiler. Set `SML_LIB` to the installed prefix when
+using its compiler. X64 binaries, runtime archives, and caches remain separate.
+The native tools are `kittester`, `rp2ps`, `mlkit-mllex`, and `mlkit-mlyacc`.
+Installation checks generate, compile, and run a calculator parser with the
+installed generators and parser library. `install_src` also packages the
+backend, generator sources, and regression fixtures.
+
+The regression target runs fresh copies of `test_dev`, the full `test` matrix
+(no-GC, GC, generational GC, no-GC/GC profiling, and pthreads), explicit-region
+tests, parallel tests, and the full-Basis REPL suite. It retains logs and
+outputs in a temporary directory printed at startup. Set `REGRESSION_SUITES`
+to a space-separated subset of `dev plain gc gengc prof gcprof par explicit
+parallel repl replgc repltagged replgengc` to rerun selected suites. The REPL
+variants cover no-GC, GC, tagged-pair GC, and generational GC with full Basis
+pretty printing. The focused `check` target additionally
+covers foreign callbacks, forced GC, tagged pairs, and optional Argobots.
+Add `argobots` to `REGRESSION_SUITES` and set `ARGOBOTS_ROOT` to run the full
+parallel suite against the static Argobots library as well.
+
+The bootstrap check uses three stages, each with a fresh cache, verifies each
+compiler's architecture and execution, and compares stripped stage-two and
+stage-three binaries. Run the same check for the compatibility backend with
+`BOOTSTRAP_TARGET=x86_64`, `BOOTSTRAP_COMPILER` set to an X64-emitting MLKit,
+and `SML_LIB` set to the source checkout:
+
+```sh
+sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
+```
+
+The X64 check uses the classic Darwin linker, matching the existing bootstrap
+rule, to avoid nondeterministic GOT ordering in the newer linker. ARM uses the
+default linker. Comparison copies retain the same basename because Apple
+`strip` uses it in the ARM ad-hoc signature. Set
+`BOOTSTRAP_JOBS` to increase MLKit's compilation parallelism (the default is 1),
+or `BOOTSTRAP_LINKER` to test another linker explicitly.
+
+The backend reserves context/exception registers in both allocator palettes,
+relaxes conditional branches through unconditional branches for large generated
+functions, and retains global regions through exit callbacks. Full-suite tests
+exercise packed numeric tables and boxed/unboxed conversions in both tagging
+modes; focused probes cover long branches and GC-visible nullary constructors.
+
+Milestone 7 validation on Apple Silicon with Apple Clang 21 and SDK 26.5:
+
+| Suite | Result |
+| --- | --- |
+| Native and X64 `test_dev` | 130/130 each |
+| Native `test`: no-GC, GC, generational GC, no-GC/GC profiling, pthreads | 180/180 in each configuration |
+| ReML explicit regions | 79/79 |
+| Dedicated pthread and static Argobots suites | 13/13 each |
+| Basis-based and minimal REPL cases: no-GC, GC, tagged-pair GC, generational GC | 8/8 each |
+| Final native and X64 `test` with GC, including the new regression | 181/181 each |
+| Final packed-array `Int31` switch regression | All six native configurations and X64 GC/no-GC |
+| Fresh native and X64 bootstrap | Byte-identical stripped fixed points |
+
+The focused native suite also passes forced-GC, FFI/export, tagging, profiling,
+and long-branch checks. The shared profiler regression passes on both targets
+and a native full-Basis profiling program passes AddressSanitizer. Native
+`rp2ps` produces matching graph data when region/stack graphs are requested
+together or separately; the graph data also matches X64 output.
+The narrow-integer switch regression exposed the corresponding X64 bug as
+well; both backends now normalize the loaded representation before comparing
+it. Additional X64 probes cover boxed and unboxed `Int32` patterns.
+The REPL runtime decodes the tagged ML length returned by the exported
+pretty-printer, returns constructor high-bit tags in ML integer representation,
+and recognizes `int63` in the minimal printer. The fresh SML bootstrap stages
+remain byte-identical after relinking with these final runtime fixes.

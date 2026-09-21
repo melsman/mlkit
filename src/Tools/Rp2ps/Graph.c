@@ -223,6 +223,10 @@ static void Scale(void)
 /***************************************************************************/
 void GraphReset()
 {
+  ResetSamples();
+  free(sampletable);
+  free(identtable);
+  identtable = NULL;
   sampletable = (float *) xmalloc(SampleMax * sizeof(float));
   jobstring = MallocString("Jobstring");
   datestring = MallocString("Datestring");
@@ -269,7 +273,6 @@ void PutFile()
 
   return;
 }
-
 
 
 

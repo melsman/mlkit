@@ -749,15 +749,27 @@ struct
                     I.lab(lab_exit) :: C))
                   end
                | LS.SWITCH_I {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
-                  compileNumSwitch {fsz=fsz,
+                  let
+                    (* Packed narrow integer loads define only the low 32
+                     * bits. Sign-extend before the 64-bit switch compares. *)
+                    val narrow = precision = 31 orelse precision = 32
+                    val (operand, prepare) =
+                      if narrow then
+                        (SS.PHREG_ATY treg1,
+                         fn C => load_aty(opr_aty,treg1,fsz,
+                           I.movslq(if boxedNum precision then D("8",treg1)
+                                    else R (I.doubleOfQuadReg treg1), R treg1) :: C))
+                      else (opr_aty, fn C => C)
+                  in prepare (compileNumSwitch {fsz=fsz,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
                                     toInt=fn i => maybeTagIntOrWord{value=i, precision=precision},
-                                    opr_aty=opr_aty,
-                                    oprBoxed=boxedNum precision,
+                                    opr_aty=operand,
+                                    oprBoxed=not narrow andalso boxedNum precision,
                                     sels=sels,
                                     default=default,
-                                    C=C}
+                                    C=C})
+                  end
                | LS.SWITCH_W {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
                   compileNumSwitch {fsz=fsz,
                                     size_ccf=size_ccf,
