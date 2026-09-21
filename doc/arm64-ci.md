@@ -5,7 +5,7 @@ in `.github/workflows/main.yml`. Existing Linux and Intel macOS coverage remains
 The logical `macos-arm` platform selects `macos-15`, an Apple Silicon runner
 listed in [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
-The MLKit job downloads the existing v4.7.13 Darwin release and uses Rosetta
+The MLKit job downloads the existing v4.7.22 Darwin release and uses Rosetta
 for that X64 seed only. It builds separate X64 compatibility runtime archives
 before configuring `DARWIN_NATIVE=1` and building the ARM64 runtime variants.
 The MLton job uses [Homebrew's native package](https://formulae.brew.sh/formula/mlton)
@@ -35,7 +35,7 @@ that coverage. On a pushed `v*` tag, the MLKit-hosted ARM job publishes
 `dist/mlkit-bin-dist-darwin-x64.tgz`, and the MLKit-hosted X64 job publishes
 that distinct asset. Linux retains `dist/mlkit-bin-dist-linux.tgz`. MLton jobs
 validate distributions but do not publish release assets. Historical seed
-downloads keep their original v4.7.13 filenames.
+downloads keep their original v4.7.22 filenames.
 
 Jobs use separate VMs and host-specific output directories, compiler-cache
 names, installation prefixes, and artifact names. They do not restore caches

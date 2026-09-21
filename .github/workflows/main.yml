@@ -114,7 +114,7 @@ jobs:
           wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
           tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
           echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget -q https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-${{env.OS}}.tgz
+          wget -q https://github.com/melsman/mlkit/releases/download/v4.7.22/mlkit-bin-dist-${{env.OS}}.tgz
           tar xzf mlkit-bin-dist-${{env.OS}}.tgz
           echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
           mkdir -p .mlkit
@@ -269,7 +269,7 @@ jobs:
         run: |
           sudo softwareupdate --install-rosetta --agree-to-license
           curl --fail --location --retry 3 \
-            https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-darwin.tgz \
+            https://github.com/melsman/mlkit/releases/download/v4.7.22/mlkit-bin-dist-darwin.tgz \
             -o "$RUNNER_TEMP/mlkit-seed.tgz"
           tar -xzf "$RUNNER_TEMP/mlkit-seed.tgz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin" >> "$GITHUB_PATH"
