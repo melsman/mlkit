@@ -25,7 +25,7 @@ structure CodeGenUtilArm64 = struct
   fun imm n = "#" ^ Int.toString n
 
   (* An Into helper prepends directly to the supplied code suffix. The list
-   * wrappers also serve the fixed-size fragments used by primitive lowering. *)
+   * wrappers retain the utility API used by standalone emitter tests. *)
   fun moveInto (a,b) code =
     if a=b then code
     else ins (case (a,b) of (D _,_) => "fmov" | (_,D _) => "fmov" | _ => "mov")
@@ -128,7 +128,7 @@ structure CodeGenUtilArm64 = struct
             | AbiArm64.U16 => ins "uxth" ["w16","w16"] :: code
             | _ => code
         in
-          loadArgument(i,bytes div 8) @ code
+          loadArgument(i,bytes div 8) code
         end
       fun place (i,{passed,location,...}:AbiArm64.argument,code) =
         case location of
@@ -150,5 +150,7 @@ structure CodeGenUtilArm64 = struct
     in
       stackInto (true,bytes) (foldri promoted code arguments)
     end
-  fun scalarCall args = scalarCallInto args []
+  fun scalarCall {name,fixed,variadic,loadArgument,protectGC} =
+    scalarCallInto {name=name,fixed=fixed,variadic=variadic,protectGC=protectGC,
+      loadArgument=fn args => fn code => foldr (op ::) code (loadArgument args)} []
 end

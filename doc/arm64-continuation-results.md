@@ -1,6 +1,6 @@
 # ARM64 static-data and code-suffix results
 
-## Changes
+## Initial changes (`9423b92`)
 
 Static data now accumulates as a list of fragments in reverse insertion order,
 with one ordered flattening per output. Adding a constant, frame descriptor,
@@ -57,7 +57,7 @@ execution. They **include compiler garbage collection**: `Timing.sml` uses
 `Timer.checkCPUTimer`, which includes collector time in MLKit. The misleading
 HTML and LaTeX kittester captions are corrected alongside this change.
 
-## Validation
+## Validation of the initial changes
 
 Both nucleic executables produce the expected output. Their two assembly files
 contain the same 243,120 text instructions after normalizing fresh symbol names;
@@ -67,3 +67,46 @@ The focused native ARM64 suite passes for MLKit and ReML, including GC, closures
 exceptions, foreign calls, spills, large frames, profiling, and REPL modes. A new
 regression compiles 2,000 nested scope/region wrappers and checks that their
 following continuation executes exactly once in order (output `AB`).
+
+## Completing suffix passing
+
+The follow-up extends suffix passing to all primitive lowering, constructor and
+scratch-memory setup, automatic C-call conversions, worker/export bridges,
+link-time runtime helpers, and REPL entry code. Record prefixes now describe
+constant/address fields instead of storing prebuilt instruction fragments.
+Foreign-argument loaders also take the suffix directly.
+
+`CG` emits metadata and static data before the completed function text, avoiding
+the final copy of the whole text list. Static chunks are folded onto that text
+once. Remaining `@` operations join operand/register lists or string components,
+not generated instruction lists. The register palette and ABI remain unchanged.
+
+The evaluation first compiles and runs `nucleic.mlb`, comparing the previous
+compiler (`9423b92`) with the fully converted compiler using the same command,
+warmed Basis, and cleared test-local caches as above. The initial result was small, so the comparison was repeated for five compilations
+per version, alternating which compiler ran first. No builds or other tests ran
+concurrently with the measurements.
+
+| Run | Previous compiler CG | Full suffix passing CG |
+| --- | ---: | ---: |
+| 1 | 0.547 s | 0.537 s |
+| 2 | 0.545 s | 0.534 s |
+| 3 | 0.546 s | 0.540 s |
+| 4 | 0.546 s | 0.535 s |
+| 5 | 0.545 s | 0.536 s |
+| **Median** | **0.546 s** | **0.536 s** |
+
+The additional improvement is **0.010 s (1.8%)** at the median. It is consistent
+across these runs, but modest: most of the benefit measured earlier came from
+the first conversion. These measurements do not isolate the contribution of each
+helper or of the final text-copy removal. [Raw timing files](arm64-performance/nucleic-full-suffixes/)
+retain both CG entries for every run.
+
+All ten nucleic executables produce the expected output. The first pair's two
+assembly files have the same 243,120 text instructions after normalizing fresh
+symbol names, including the same branch structure and register operands.
+
+This follow-up has been evaluated on nucleic only. The wider native, ReML,
+parallel, profiling, and regression suites have **not** been rerun for this
+version; the earlier validation section refers to `9423b92`. The change remains
+in the draft integration PR pending that broader validation.

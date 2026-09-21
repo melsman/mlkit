@@ -1,7 +1,9 @@
 # Passing code continuations in the ARM64 emitter
 
-The changes proposed here are now implemented. See the
-[implementation results](arm64-continuation-results.md) for measurements and validation.
+The changes proposed here are now implemented, including suffix passing through
+the remaining primitive and runtime emitters. See the
+[implementation results](arm64-continuation-results.md) for measurements and the
+validation scope of each step.
 
 Passing the remaining instruction list into each emitter is a good fit for
 this backend. Use the same approach as X64: an explicit `inst list` argument,
