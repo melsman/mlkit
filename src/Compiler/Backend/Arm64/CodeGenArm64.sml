@@ -130,24 +130,27 @@ struct
     in
       stackInto (true,8*temp) code
     end
-  val frameIndex : (A.lab*A.lab) list ref = ref []
-  fun continuation bv =
-    let
-      val pc = localFresh()
-      val anchor = DatLab(AddressLabels.new_named "arm64_frame")
-      val () = if gc() then
-          (addStatic (Directive ".data" :: Directive ".p2align 3" ::
-            foldl (fn (w,code) => Directive(".quad 0x" ^ Word32.fmt StringCvt.HEX w) :: code)
-              [Label anchor] bv);
-           frameIndex := (pc,anchor):: !frameIndex) else ()
-    in
-      pc
-    end
-  fun unitSymbol lab suffix = NameLab(AddressLabels.pr_label lab ^ "_arm64_" ^ suffix)
+  (* Return PCs anchor inline descriptors, just as on X64. The branch to
+   * the callee skips the data; returning through x30 reaches executable code. *)
+  fun continuationInto pc bv code =
+    if gc() then
+      Directive ".p2align 3" ::
+      foldl (fn (w,code) => Directive(".quad 0x" ^ Word32.fmt StringCvt.HEX w) :: code)
+        (Label pc :: code) bv
+    else Label pc :: code
   datatype target = Direct of label | Indirect of SS.Aty
+  fun callInto target pc code =
+    if gc() then
+      (addressInto (pc,X 30)
+         ++ instruction (case target of Direct _ => "b" | Indirect _ => "br")
+              [case target of Direct l => pr_lab(MLFunLab l) | Indirect _ => "x17"]) code
+    else
+      (instruction (case target of Direct _ => "bl" | Indirect _ => "blr")
+         [case target of Direct l => pr_lab(MLFunLab l) | Indirect _ => "x17"]) code
+  fun unitSymbol lab suffix = NameLab(AddressLabels.pr_label lab ^ "_arm64_" ^ suffix)
   fun mlcallInto tail fsz target {args,reg_args,fargs,clos,res,bv} code =
     let
-      val returnLabel = if tail then localFresh() else continuation bv
+      val returnLabel = localFresh()
       val gp = (case clos of NONE => [] | SOME a => [a]) @ args @ reg_args
       val fp = fargs
       val sa = rest 8 gp @ rest 8 fp
@@ -165,11 +168,13 @@ struct
                  unsupported "tail call with incompatible result area" else ()
       val stackArgs = mapi (fn (i,_) => i+8) (rest 8 gp) @
                       mapi (fn (i,_) => length gp+8+i) (rest 8 fp)
-      val code = if tail then code else (one (Label returnLabel)
-         ++ resultsInto fsz res) code
-      val code = (case target of
-                    Direct l => ins (if tail then "b" else "bl") [pr_lab(MLFunLab l)]
-                  | Indirect _ => ins (if tail then "br" else "blr") ["x17"]) :: code
+      val code = if tail then
+          (case target of
+             Direct l => ins "b" [pr_lab(MLFunLab l)]
+           | Indirect _ => ins "br" ["x17"]) :: code
+        else (callInto target returnLabel
+           ++ continuationInto returnLabel bv
+           ++ resultsInto fsz res) code
       val code = stackInto (false,8*(if tail then dest else sw)) code
       val code = case target of
                    Direct _ => code
@@ -291,15 +296,12 @@ struct
         ++ storeInto(X 17,X 16,0)
         ++ stackInto(false,16)) code
   fun registerUnitInto l code =
-    (addressInto(unitSymbol l "frames",X 0)
-      ++ loadInto(X 0,0,X 1)
-      ++ addOffsetInto(X 0,8,X 0)
-      ++ addressInto(unitSymbol l "begin",X 2)
-      ++ addressInto(unitSymbol l "end",X 3)
-      ++ addressInto(unitSymbol l "roots",X 4)
-      ++ loadInto(X 4,0,X 5)
-      ++ addOffsetInto(X 4,8,X 4)
-      ++ instruction "bl" ["_mlkit_arm64_register_image"]) code
+    (addressInto(unitSymbol l "roots",X 0)
+      ++ addressInto(unitSymbol l "begin",X 1)
+      ++ addressInto(unitSymbol l "end",X 2)
+      ++ addOffsetInto(X 0,8,X 3)
+      ++ loadInto(X 0,0,X 4)
+      ++ instruction "bl" ["_mlkit_arm64_register_static_image"]) code
   fun static words =
     let
       val l = DatLab(AddressLabels.new_named "arm64_data")
@@ -1610,7 +1612,7 @@ struct
             | _ => unsupported "enumeration deconstruction"))
     | LS.HANDLE {default,handl = (handl,closure),handl_return = (returned,result,bv),offset} =>
         let
-          val ret = continuation bv
+          val ret = localFresh()
           val join = localFresh()
           val off = slot fsz offset
         in
@@ -1632,7 +1634,7 @@ struct
            ++ loadInto (SP,off+16,X 16)
            ++ storeInto (X 16,X 28,8)
            ++ instruction "b" [pr_lab join]
-           ++ one (Label ret)
+           ++ continuationInto ret bv
            ++ writeInto fsz result (X 0)
            ++ stmtsInto fsz returned
            ++ one (Label join)) code
@@ -1887,7 +1889,6 @@ struct
     let
       val () = staticChunks := []
       val () = dataLabels := []
-      val () = frameIndex := []
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
       fun data (l,code) =
@@ -1910,14 +1911,8 @@ struct
       val code = marker "begin" (foldr data (staticDataInto (marker "end" text)) (!dataLabels))
     in
       if not(gc()) then code
-      else marker "frames"
-        (Directive(".quad " ^ Int.toString(length(!frameIndex))) ::
-         foldr (fn ((pc,fd),code) =>
-           (one (Directive(".quad " ^ pr_lab pc))
-              ++ one (Directive(".quad " ^ pr_lab fd))) code)
-           (marker "roots" (Directive(".quad " ^ Int.toString(length(!dataLabels))) ::
-             foldr (fn (l,code) => Directive(".quad " ^ pr_lab(DatLab l)) :: code) code (!dataLabels)))
-           (!frameIndex))
+      else marker "roots" (Directive(".quad " ^ Int.toString(length(!dataLabels))) ::
+        foldr (fn (l,code) => Directive(".quad " ^ pr_lab(DatLab l)) :: code) code (!dataLabels))
     end
   (* Runtime main enters code with the context in x0. This entry terminates
    * the process; returning foreign callbacks need a separate preserving bridge. *)
@@ -1926,12 +1921,14 @@ struct
   fun callUnitsInto (labs,pcs) code =
     ListPair.foldr (fn (l,pc,code) =>
       (stackInto (true,16)
-         ++ instruction "bl" [pr_lab(MLFunLab l)]
+         ++ callInto (Direct l) pc
+         ++ (if gc() then
+               one (Directive ".p2align 3")
+               ++ one (Directive ".quad -1")
+               ++ one (Directive ".quad 0")
+               ++ one (Directive ".quad 0")
+             else fn code => code)
          ++ one (Label pc)) code) code (labs,pcs)
-  fun frameWordsInto pcs sentinel code =
-    foldr (fn (pc,code) =>
-      (one (Directive(".quad " ^ pr_lab pc))
-         ++ one (Directive(".quad " ^ pr_lab sentinel))) code) code pcs
   fun preservingStubInto lab setup target code =
     let
       val bytes = 16*((length savedRegs+2) div 2)
@@ -2017,21 +2014,18 @@ struct
       val uncaught = localFresh()
       val linkBegin = NameLab "arm64_link_begin"
       val linkEnd = NameLab "arm64_link_end"
-      val sentinel = NameLab "arm64_sentinel"
-      val linkFrames = NameLab "arm64_link_frames"
       val returnLabels = map(fn _ => localFresh()) labs
       fun gcInit code =
         if not(gc()) then
           code
         else
           (registerUnitsInto labs
-            ++ addressInto(linkFrames,X 0)
-            ++ constantInto(IntInf.fromInt(length labs),X 1)
-            ++ addressInto(linkBegin,X 2)
-            ++ addressInto(linkEnd,X 3)
+            ++ addressInto(linkBegin,X 0)
+            ++ moveInto(X 0,X 1)
+            ++ addressInto(linkEnd,X 2)
+            ++ constantInto(0,X 3)
             ++ constantInto(0,X 4)
-            ++ constantInto(0,X 5)
-            ++ instruction "bl" ["_mlkit_arm64_register_image"]
+            ++ instruction "bl" ["_mlkit_arm64_register_static_image"]
             ++ addressInto(NameLab "stack_bot_gc",X 16)
             ++ moveInto(SP,X 17)
             ++ storeInto(X 17,X 16,0)) code
@@ -2040,13 +2034,7 @@ struct
           code
         else
           (datum (NameLab "data_begin_addr") [pr_lab linkBegin]
-            ++ datum (NameLab "data_end_addr") [pr_lab linkEnd]
-            ++ one (Directive ".quad -1")
-            ++ one (Directive ".quad 0")
-            ++ one (Directive ".quad 0")
-            ++ one (Label sentinel)
-            ++ datum linkFrames []
-            ++ frameWordsInto returnLabels sentinel) code
+            ++ datum (NameLab "data_end_addr") [pr_lab linkEnd]) code
 
       fun profileStack () code =
         foldr (fn (name,code) => (addressInto (NameLab name,X 16)
@@ -2176,33 +2164,19 @@ struct
       val closure = localFresh()
       val beginData = localFresh()
       val endData = localFresh()
-      val frames = localFresh()
-      val sentinel = localFresh()
       val pcs = map(fn _ => localFresh()) labs
       fun metadata code =
         if not(gc()) then
           code
         else
           (registerUnitsInto labs
-            ++ addressInto(frames,X 0)
-            ++ constantInto(IntInf.fromInt(length pcs),X 1)
-            ++ addressInto(beginData,X 2)
-            ++ addressInto(endData,X 3)
+            ++ addressInto(beginData,X 0)
+            ++ moveInto(X 0,X 1)
+            ++ addressInto(endData,X 2)
+            ++ constantInto(0,X 3)
             ++ constantInto(0,X 4)
-            ++ constantInto(0,X 5)
-            ++ instruction "bl" ["_mlkit_arm64_register_image"]) code
-      val code = if not(gc()) then
-          []
-        else
-          let
-            val code = frameWordsInto pcs sentinel []
-          in
-            (one (Directive ".quad -1")
-               ++ one (Directive ".quad 0")
-               ++ one (Directive ".quad 0")
-               ++ one (Label sentinel)
-               ++ one (Label frames)) code
-          end
+            ++ instruction "bl" ["_mlkit_arm64_register_static_image"]) code
+      val code = []
       val code = (one (Directive(".quad " ^ pr_lab handler))
          ++ one (Label endData)) code
       val code = if tagged() then

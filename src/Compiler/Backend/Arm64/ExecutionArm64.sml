@@ -411,7 +411,8 @@ structure ExecutionArm64 : EXECUTION =
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
                                     else subdir
-          in "MLB" ## ("ARM64_" ^ subdir)
+          (* Inline descriptors are incompatible with the old return-PC index. *)
+          in "MLB" ## ("ARM64_" ^ (if gc_p() then "FD2_" else "") ^ subdir)
           end
     end
 

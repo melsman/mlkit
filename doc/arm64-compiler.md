@@ -61,15 +61,17 @@ an explicit `-no_gc` flag is unnecessary and rejected; omit it.
   integer addition/subtraction check overflow and raise the ML exception.
   Large offsets are materialized through scratch registers, and large stack
   frames use aligned adjustments that fit the instruction immediates.
-- ML calls use `bl`/`blr`, callee-owned FP/LR saves, and `ret`. Tail transfers
+- GC-enabled ML calls set x30 explicitly and use `b`/`br`, with inline frame
+  descriptors immediately before the continuation. No-GC calls use `bl`/`blr`.
+  Both use callee-owned FP/LR saves and `ret`. Tail transfers
   preserve the original LR and result block while changing argument counts.
   The runtime's C `main` enters generated `code`, which installs the context
   and global regions and exits via `terminateML`. This entry does not return
   to C. Exported callbacks and shared-library entries use a separate bridge
   preserving x19–x30 and d8–d15.
 - `ExecutionArm64` assembles with `gcc -arch arm64 -c` and links with
-  `gcc -arch arm64`. The output cache is `MLB/ARM64_<variant>`, distinct from
-  X64 while preserving the manager's two-component cache-directory shape.
+  `gcc -arch arm64`. The output cache is `MLB/ARM64_FD2_<variant>` for GC and
+  `MLB/ARM64_<variant>` otherwise, distinct from X64 while preserving the manager's two-component cache-directory shape.
 - `nativearm64.mlb`, `mlkitarm64.mlb`, and `remlarm64.mlb` select the backend
   explicitly. The X64 configurations continue to select X64.
 
@@ -144,7 +146,8 @@ tagged no-GC, profiling, GC, tagged-pair GC, and generational GC, including all
 three GC/profiling combinations. Collection is forced at every ML function
 entry; profiling samples are forced with `-notimer`. ReML runs the applicable
 plain/profiling cases. A portable optimized C walker test checks relocated
-register/stack/global slots and rejects missing return-PC metadata.
+register/stack/global slots, checks inline descriptors without image
+registration, and rejects reserved registers in the root mask.
 
 Foreign-call tests cover negative/tagged and boxed integers, boolean conversion,
 more than eight arguments, captured exported closures, and assembly checks of
@@ -282,3 +285,6 @@ C-call preservation, peephole, branch-layout, and scheduling opportunities.
 
 The [first optimisation results](arm64-optimisation-results.md) cover smaller
 C-call save sets, a local peephole pass, and a three-benchmark before/after check.
+
+The milestone 12 [inline GC descriptor change](arm64-inline-gc-results.md)
+removes return-PC table lookup while retaining the link-register ABI.

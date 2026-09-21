@@ -84,7 +84,7 @@ word/pointer model, integer/double sizes and alignment, generation and region
 page sizes, region descriptor fields (including GC/profiling/parallel
 variants), context fields, exception layout, and the string data offset.
 These correspond to data-layout assumptions in BackendInfo and code
-production. ARM GC uses the separate snapshot and return-PC index described
+production. ARM GC uses the separate snapshot and inline frame descriptors described
 in [arm64-abi.md](arm64-abi.md); the X64 save layout is unchanged. No assumption about long double equivalence is needed by these
 runtime layouts.
 
@@ -127,11 +127,13 @@ passes with AddressSanitizer.
 
 ## ARM GC and profiling integration
 
-`Arm64GC.c` owns a single-threaded registry of image frame indexes, static-data
+`Arm64GC.c` owns a single-threaded registry of image identities, static-data
 ranges, and global root cells. `GC.c` selects the ARM snapshot/frame walker
 under `DARWIN_NATIVE`; the X64 walker is unchanged. Descriptors store 32-bit
 bitmap words in 64-bit slots and identify the saved LR slot explicitly.
-Unknown return PCs abort with a metadata diagnostic instead of scanning code.
+Frame descriptors immediately precede saved return PCs, with no dynamic
+return-PC table. GC-enabled calls set x30 explicitly and branch over the
+descriptor; saved return PCs therefore point to executable continuations.
 
 Generated allocation selects the matching region kind and profiling helpers.
 Finite profiling descriptors and allocation-point metadata follow the existing

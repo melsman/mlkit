@@ -76,7 +76,7 @@ for n in 4 5 6 7; do
   done
 done
 # Ensure the noinline sample really exercised nested ML calls and a tail branch.
-grep -q 'bl _F.step__noinline' MLB/ARM64_*/calls.sml.s
+grep -q 'bl _F.step__noinline' MLB/ARM64_RI*/calls.sml.s
 grep -q 'b _F.step__noinline' MLB/ARM64_*/calls.sml.s
 grep -Eq 'br x17|blr x17' MLB/ARM64_*/closure.sml.s
 grep -q 'fadd ' MLB/ARM64_*/float.sml.s
@@ -121,7 +121,7 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     ./gc-roots $profile_flags $report_flags > actual 2> gc-report.log
     cmp gc-expected actual
     if [ -n "$report_flags" ]; then grep -Eq "[1-9][0-9]* collections" gc-report.log; fi
-    "$compiler" --no_basislib $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
+    "$compiler" --no_basislib --no_delete_target_files $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
     ./gc-frames $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
@@ -143,6 +143,11 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     fi
   done
 done
+# GC calls materialize x30, and no return-PC index is emitted.
+grep -q 'adrp x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
+if grep -q '_arm64_frames' MLB/ARM64_FD2_*/gc-frames.sml.s; then
+  echo 'GC code still contains a return-PC index' >&2; exit 1
+fi
 gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \
   "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
 ./gc-metadata

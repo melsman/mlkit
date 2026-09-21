@@ -3,15 +3,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct {
-  uintptr_t pc;
-  const uintptr_t *anchor;
-} MLKitArm64Frame;
-
-/* Metadata remains owned by the image until it is unregistered. */
-void mlkit_arm64_register_image(const MLKitArm64Frame *, size_t,
-                               const void *, const void *, uintptr_t **, size_t);
-void mlkit_arm64_unregister_image(const MLKitArm64Frame *);
+/* Static bounds/root cells remain owned by the image until unregistration.
+ * identity uniquely names the image; there is no return-PC index. */
+void mlkit_arm64_register_static_image(const void *, const void *, const void *,
+                               uintptr_t **, size_t);
+void mlkit_arm64_unregister_static_image(const void *);
 int mlkit_arm64_static_pointer(const void *);
 void mlkit_arm64_visit_roots(uintptr_t *, uintptr_t, uintptr_t (*)(uintptr_t));
 #endif

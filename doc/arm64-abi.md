@@ -43,8 +43,9 @@ floating-point values are not. Result registers follow result-list order.
 
 ## ML frames and control transfer
 
-ARM ML calls pass the return address in x30 (LR): direct calls use `bl`,
-indirect calls use `blr`, and normal returns use `ret`. The caller does not
+ARM ML calls pass the return address in x30 (LR), and normal returns use `ret`.
+GC-enabled calls materialize the continuation address in x30 and use `b`/`br`;
+no-GC calls use `bl`/`blr`. The caller does not
 write a return PC into the callee's frame. The callee owns preservation of
 its incoming LR before any instruction or call that would overwrite it,
 including C/runtime calls and GC slow paths. Initially every ML function
@@ -103,23 +104,20 @@ The ARM emitter must not copy X64's implicit hardware return-address push.
 
 ### Return PCs and frame descriptors
 
-The ARM collector looks up descriptors through a return-PC-to-descriptor
-index. Each collecting ML call site has an entry keyed by the exact address
-immediately following its `bl`/`blr`. That address contains executable
-continuation code, never inline descriptor data. Descriptor payloads reside
-out of line. The index also covers runtime/GC continuations used for stack
-walking and explicit entry/exit sentinels.
+The ARM collector reads descriptors immediately before saved return PCs, as
+on X64. A GC-enabled call materializes its continuation in x30 using
+`adrp`/`add`, then transfers with `b` or `br`. After that transfer, the emitter
+aligns to eight bytes and emits the descriptor followed immediately by the
+continuation label. Neither the call nor the return executes descriptor data.
+No-GC calls retain `bl`/`blr`; tail calls keep the original incoming LR.
 
-The emitter and linker must produce relocatable code/descriptor references;
-the runtime must register each image's index before executing its ML code,
-including dynamically loaded REPL code. A missing entry while walking an
-ML frame is an error, not an implicit end of stack. Foreign entry bridges
-for shared images provide an explicit boundary descriptor. Index lookup and
-registration are implemented; X64 keeps its existing PC-relative metadata.
-
-This allows ordinary `bl`/`blr` without manually constructing a continuation
-address. Linker veneers may change x16/x17; they must not change which return
-PC the caller's index entry describes.
+Exception continuations use the same inline layout. Calls into compilation
+units, including dynamically loaded REPL units, have inline boundary sentinels.
+The collector needs no return-PC index, allocation, sorting, or lookup. The
+image registry still tracks static-data ranges and global roots. As on X64,
+a saved return PC must refer to a valid generated descriptor; there is no
+missing-index diagnostic. Linker veneers may change x16/x17, but must preserve
+the explicitly supplied x30. Foreign C calls retain their native ABI.
 
 ### Tail calls and leaf functions
 
@@ -213,10 +211,10 @@ incoming LR. The snapshot's x30 is restored before execution continues; both
 LR copies and saved FP are non-roots. There is no separate assembly GC stub
 continuation to confuse with the incoming ML return address.
 
-The ARM return-PC index maps to an out-of-line descriptor anchor. Relative
-to that anchor, function number is at word -1, return-PC offset at -2, frame
+The saved ARM return PC is the descriptor anchor. Relative
+to that address, function number is at word -1, return-PC offset at -2, frame
 size at -3, and bitmap words at -4 and below. This preserves the existing
-payload ordering without interpreting instructions before LR as metadata.
+payload ordering; the words immediately before LR are data, not instructions.
 Bitmap words contain 32 meaningful bits, stored in 64-bit slots. For bit k, the corresponding word
 is `frameBase + 8*(frameWords-1-k)`. Both saved FP and return PC have zero bits.
 The return-PC offset is the formula above; the frame size includes both
@@ -227,12 +225,17 @@ Emitter/runtime acceptance tests must also cover nested direct/indirect ML
 calls, LR survival across C and GC calls, tail recursion with bounded stack
 use, leaf `ret`, exception-handler entry, and descriptor lookup in linked and
 dynamically loaded images. The native integration suite covers these paths.
-`Arm64GC.c` registers each image's return-PC table, static-data range, and
-addresses of global root cells before executing that image. The table is copied
-and sorted for lookup; the image owns its descriptors and root cells. The REPL
-retains loaded images. Any future unloading path must unregister the table
-before `dlclose`; an unregister operation is provided and tested. X64 keeps its
-existing stack walk and contiguous static-data classification.
+`Arm64GC.c` registers each image's identity, static-data range, and
+addresses of global root cells before executing that image. The image owns its
+inline descriptors and root cells. The REPL retains loaded images. Any future
+unloading path must unregister the image before `dlclose` and ensure no live
+frame points into it; an unregister operation is provided and tested. X64 keeps
+its existing stack walk and contiguous static-data classification.
+
+GC object caches use the `ARM64_FD2_` prefix to exclude objects with the older
+return-PC index ABI. The runtime registration entry point is renamed to
+`mlkit_arm64_register_static_image`, so mixing the old compiler and new runtime
+(or vice versa) fails at link time. Rebuild the ARM runtime when upgrading.
 
 ## C calls and callbacks
 
