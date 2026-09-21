@@ -276,3 +276,6 @@ code-builder operator and the Standard ML cleanup in milestone 10.
 
 See the [20-benchmark ARM64/X64 comparison](arm64-runtime-performance.md)
 for execution times with and without GC, including X64 under Rosetta 2.
+
+See the [optimisation investigation](arm64-optimisation.md) for milestone 12's
+C-call preservation, peephole, branch-layout, and scheduling opportunities.

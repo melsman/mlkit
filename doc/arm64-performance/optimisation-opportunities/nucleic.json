@@ -1,0 +1,20 @@
+[
+  {
+    "file": "nucleic/MLB/ARM64_RI_GC_M8Timingbase/main.sml.s",
+    "sha256": "993a1e27a360c306ded5af8367e1f74935e328a09e1ed67bf89e97bd5f875637",
+    "instructions": 3166,
+    "expanded_conditional_branches": 26,
+    "constant_sequences": 46,
+    "removable_zero_movk": 130,
+    "unconditional_branch_to_next_label": 0
+  },
+  {
+    "file": "nucleic/MLB/ARM64_RI_GC_M8Timingbase/nucleic.sml.s",
+    "sha256": "0c8569aaf92b5022277335942a4ca815c697ad3d09276cd3005eee5977694213",
+    "instructions": 99599,
+    "expanded_conditional_branches": 2330,
+    "constant_sequences": 1633,
+    "removable_zero_movk": 3747,
+    "unconditional_branch_to_next_label": 32
+  }
+]
