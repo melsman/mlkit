@@ -124,6 +124,9 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     "$compiler" --no_basislib --no_delete_target_files $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
     ./gc-frames $profile_flags > actual
     cmp gc-expected actual
+    "$compiler" --no_basislib $flags $extra_gc -o switches switches.sml >> integration.log 2>&1
+    ./switches $profile_flags > actual
+    cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
     ./gc-constructors $profile_flags > actual
     cmp gc-expected actual

@@ -1811,21 +1811,43 @@ struct
     end
   and switchCodeInto fsz (LS.SWITCH(a,cases,default)) code =
     let
-      val done = localFresh()
-      val branches = map (fn (v,body) => (v,localFresh(),body)) cases
-      val code = foldr (fn ((_,l,body),code) =>
-        (one (Label l)
-           ++ stmtsInto fsz body
-           ++ instruction "b" [pr_lab done]) code)
-        (Label done :: code) branches
-      val code = (stmtsInto fsz default
-         ++ instruction "b" [pr_lab done]) code
-      val code = foldr (fn ((v,l,_),code) => (constantInto (v,X 17)
-         ++ instruction "cmp" ["x16","x17"]
-         ++ instruction "b.eq" [pr_lab l]) code) code branches
+      (* Order every selector by its signed 64-bit machine representation.
+       * This also handles Word64 and tagged Word63 cases across the sign bit. *)
+      val modulus = IntInf.pow(2,64)
+      val sign = IntInf.pow(2,63)
+      fun machineValue n =
+        let val n = IntInf.mod(n,modulus)
+        in if n >= sign then n-modulus else n
+        end
+      val cases = map (fn (v,body) => (machineValue v,body)) cases
+      fun compare branch (lab,value,code) =
+        (constantInto (value,X 17)
+           ++ instruction "cmp" ["x16","x17"]
+           ++ instruction branch [pr_lab lab]) code
+      fun label (lab,code) = Label lab :: code
+      fun jump (lab,code) = instruction "b" [pr_lab lab] code
+      fun compile (body,code) = stmtsInto fsz body code
+      fun header (lab,start,_,code) =
+        (* Bounds have already been checked by JumpTables. Entries are signed
+         * offsets from the table, so linked and REPL code need no data fixups. *)
+        (constantInto (start,X 17)
+           ++ instruction "sub" ["x16","x16","x17"]
+           ++ addressInto (lab,X 17)
+           ++ instruction "ldr" ["x16","[x17, x16, lsl #3]"]
+           ++ instruction "add" ["x16","x17","x16"]
+           ++ instruction "br" ["x16"]
+           ++ one (Directive ".p2align 3")) code
+      fun entry (lab,table,code) =
+        Directive(".quad " ^ pr_lab lab ^ " - " ^ pr_lab table) :: code
+      val code = JumpTables.binary_search_new
+        (cases,default,fn (_,code) => code,fn _ => localFresh(),
+         compare "b.ne",compare "b.lt",compare "b.gt",compile,label,jump,
+         fn (a,b) => IntInf.abs(a-b),header,entry,
+         fn (a,b) => pr_lab a = pr_lab b,fn _ => NONE,code)
     in
       readInto fsz a (X 16) code
     end
+
   fun entryGCInto cc code =
     if not(gc()) then code
     else

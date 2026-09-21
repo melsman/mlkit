@@ -21,6 +21,7 @@ emitter: configuration
 check: all emitter
 	ARM64_EMITTER="$(CURDIR)/bin/arm64-emitter-test" SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh
 	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
+	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 
 # Native compiler/tool outputs never replace the X64 compatibility binaries.
 ARM64_COMPILER ?= $(CURDIR)/bin/mlkit-arm64

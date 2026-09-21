@@ -288,3 +288,6 @@ C-call save sets, a local peephole pass, and a three-benchmark before/after chec
 
 The milestone 12 [inline GC descriptor change](arm64-inline-gc-results.md)
 removes return-PC table lookup while retaining the link-register ABI.
+
+Milestone 12 also adds [shared JumpTables switch selection](arm64-jump-table-results.md),
+with linear search, binary search, and relative jump tables following X64’s policy.
