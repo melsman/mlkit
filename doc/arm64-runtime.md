@@ -1,7 +1,8 @@
 # macOS runtime target selection
 
-This implements the runtime portability/build portion of issue #223. It does
-not implement an ARM compiler backend or change the GC stack/register ABI.
+This describes the runtime portability/build portion of issue #223. An
+experimental ARM compiler is described in [arm64-compiler.md](arm64-compiler.md).
+The current C collector still uses the X64 stack/register ABI.
 
 ## Build and toolchain
 
@@ -57,12 +58,12 @@ For example, stage runtime archives without a system install:
 make install_runtime LIBDIR=/tmp/mlkit-runtime-stage
 ```
 
-The ARM backend must select the ARM archive directory and its own compilation
-cache namespace when introduced. Until then, native-mode compiler, Basis
-cache, bootstrap, and full-install targets are rejected. This prevents the
-existing X64 compiler entry points from populating apparent ARM outputs.
-Use the X64 configuration for ordinary compiler/tool builds. Tool porting and
-ARM cache generation belong to later milestones.
+The experimental ARM backend selects the ARM archive directory and a
+separate `MLB/ARM64_<variant>` cache namespace. General native-mode compiler,
+Basis, bootstrap, and full-install targets remain rejected until full
+language/runtime coverage exists. Use `Makefile.arm64` for the experimental
+host-built compilers and the X64 configuration for ordinary compiler/tool
+builds. Native tool porting and bootstrap remain later milestones.
 
 `make -C src/Runtime clean` removes the configured target's intermediate
 build tree. It intentionally preserves installed/copied archives and the other

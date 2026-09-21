@@ -160,8 +160,10 @@ make runtime
 
 Use `DARWIN_NATIVE=0 ./configure CC=gcc` to switch back. Select the mode at
 configure time, not by overriding make variables. ARM compiler generation is
-not implemented yet; native-mode compiler and full-install targets deliberately
-fail rather than mix X64 generated code with an ARM runtime.
+available as an experimental subset through [Makefile.arm64](Makefile.arm64);
+see [ARM64 compiler instructions](doc/arm64-compiler.md). Full native-build
+and full-install targets remain disabled until language/runtime coverage
+is complete.
 
 See [the ARM64 runtime build and validation notes](doc/arm64-runtime.md) for
 artifact locations, SDK/toolchain setup, installation, and the test matrix.

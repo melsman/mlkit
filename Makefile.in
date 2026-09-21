@@ -7,12 +7,16 @@ RUNTIME_TARGET=@RUNTIME_TARGET@
 ifneq ($(DARWIN_NATIVE),@DARWIN_NATIVE@)
 $(error Set DARWIN_NATIVE when running configure, not make)
 endif
-# Until milestone 3, no native compiler can generate matching ARM artifacts.
+# Experimental ARM-emitting host compilers have a separate build entry point.
 ifeq ($(DARWIN_NATIVE),1)
-ifneq ($(filter-out runtime install_runtime clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
-$(error ARM compiler backend is not implemented yet; use make runtime)
+ifneq ($(filter-out runtime install_runtime arm64_compilers clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
+$(error Full ARM build/install is not supported yet; use make runtime or make arm64_compilers)
 endif
 endif
+
+.PHONY: arm64_compilers
+arm64_compilers:
+	$(MAKE) -f Makefile.arm64
 
 .PHONY: runtime
 runtime:

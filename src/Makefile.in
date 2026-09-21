@@ -9,7 +9,7 @@ $(error Set DARWIN_NATIVE when running configure, not make)
 endif
 ifeq ($(DARWIN_NATIVE),1)
 ifneq ($(filter-out mlkit_runtime clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
-$(error ARM compiler backend is not implemented yet; build the runtime only)
+$(error Full ARM build is not supported yet; use the top-level Makefile.arm64)
 endif
 endif
 

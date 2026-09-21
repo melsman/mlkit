@@ -1,7 +1,8 @@
 # Initial MLKit/ReML ARM64 ABI
 
 This specifies the first macOS arm64 backend. It is a compiler/runtime
-contract, not a claim that ARM instruction generation already exists.
+contract. The initial no-GC emitter implements a subset described in
+[arm64-compiler.md](arm64-compiler.md); GC and full language coverage are pending.
 `FrameLayout.sml` supplies target-dependent frame sizes to CallConv,
 RegAlloc, and CalcOffset. `Arm64/AbiArm64.sml` records the register contract
 and implements scalar C argument/result placement independently of emission.
@@ -53,7 +54,8 @@ saves incoming x29/LR and establishes x29 before its first safepoint.
 X64 uses `StackHeader`, ARM uses `LinkRegister 30`. The existing ARM
 `headerWords=2` describes the conservative saved frame, not how the incoming
 return address is passed. This property specifies the future emitter's
-behavior; instruction emission is not implemented by the layout helper.
+behavior. The initial emitter implements register-argument direct calls
+and callee-owned FP/LR saves; the layout helper itself emits no instructions.
 
 All logical offsets in CallConv/CalcOffset are 64-bit words. Low to high
 addresses in a complete activation are:
@@ -202,12 +204,13 @@ multiple bitmap words, and restoration of relocated register roots.
 Emitter/runtime acceptance tests must also cover nested direct/indirect ML
 calls, LR survival across C and GC calls, tail recursion with bounded stack
 use, leaf `ret`, exception-handler entry, and descriptor lookup in linked and
-dynamically loaded images. These execution tests remain pending the emitter.
+dynamically loaded images. Full execution coverage of these paths remains pending; the initial smoke
+tests exercise native entry/exit and LR preservation across C calls.
 
 ## C calls and callbacks
 
 `AbiArm64.arguments` returns argument locations, promoted types, required
-narrow-integer extension, and the total aligned outgoing stack area. Apply
+narrow-integer extension, and the total aligned outgoing stack area. The general emitter must apply
 the same layout in reverse for incoming callback arguments. Integer/pointer
 results use x0, scalar FP results use v0, and void has no result location.
 
@@ -228,7 +231,8 @@ aggregates, vectors, int128, or arbitrary C++ types to scalar registers.
 
 Emission still needs ML tagging/unboxing, C-width conversion, parallel moves,
 stack placement, indirect/direct calls, callback preservation, and result
-boxing/tagging. The scalar layout helper is not a working C-call emitter.
+boxing/tagging. The initial emitter supports raw integer-register C primitives, but the
+scalar layout helper is not yet integrated into general FFI emission.
 Keep the milestone's C-boundary implementation checkbox open until calls and
 callbacks execute through the ARM backend.
 
@@ -242,19 +246,20 @@ assembly probes from C and a C callback from assembly to independently check
 Apple's packed-stack, variadic, register-extension, and frame-record rules.
 The probes validate the ABI assumptions, not generated ML code.
 
-The refactored MLKit and ReML compiler sources typecheck with MLton.
-An X64 MLKit build of the refactored compiler passes all 130 `test_dev`
-checks (65 without GC and 65 with generational GC). A fresh MLton build
-of the final source also passes all 130 checks from a clean test directory
-and eight profiling cases: `int_first`, `exn1`, `f64_1`, and `fib`, each
-with no-GC profiling and generational-GC profiling. This is X64 regression
-coverage, not ARM execution or a native bootstrap fixed-point check.
+Both compiler entry points build with MLKit through `Makefile.arm64`. The
+GC-enabled X64 compiler built with MLKit passes all 130 default `test_dev`
+checks (65 without GC and 65 with generational GC). Native ARM64 execution
+checks are described in [arm64-compiler.md](arm64-compiler.md). These results
+do not establish ARM GC interoperability or a native bootstrap fixed point.
 
 A bootstrap limitation remains: using the installed X64 MLKit to build
 this compiler with `-no_gc` produces a compiler that crashes when compiling
 `int_first.sml` with `--no_basislib -no_gc -prof`. A clean build of the
 pre-refactor source at `0a85302` reproduces the same crash. Do not count
-successful source compilation alone as a validated bootstrap.
+successful source compilation alone as a validated bootstrap. Building the
+X64 compiler with `-gc` instead of `-no_gc` was subsequently verified to
+compile and run this profiling reproduction successfully. Tracked in
+[issue #225](https://github.com/melsman/mlkit/issues/225).
 
 The ARM instruction module must expose these register roles through
 REGISTER_INFO (including the explicit FP allocator palette) and select the
