@@ -19,6 +19,22 @@ val () = testFrame(FrameLayout.arm64,2)
 val () = check "return PC within header"
   (FrameLayout.returnOffsetFromTop FrameLayout.x64=0 andalso
    FrameLayout.returnOffsetFromTop FrameLayout.arm64=1)
+(* Caller/callee agreement with a closure, exhausted banks, region/FP
+ * arguments, and a spilled result. Offsets must include the whole header. *)
+val mixedRegs = {arg_regs=[100,101],arg_fregs=[200],res_regs=[300]}
+val mixedCall = {clos=SOME 10,args=[11,12],reg_args=[13],fargs=[14,15],res=[16,17]}
+fun checkMixed frame =
+  let val (cc,_,_) = CallConv.resolve_cc frame mixedRegs (CallConv.mk_cc mixedCall)
+      val (args,res) = CallConv.resolve_act_cc frame mixedRegs mixedCall
+      val n = CallConv.get_cc_size frame cc
+      val formal = CallConv.get_spilled_args_with_offsets cc @ CallConv.get_spilled_res_with_offsets cc
+  in check "caller/callee spilled-slot agreement"
+       (List.all (fn (lv,off)=>List.exists (fn (v,f)=>v=lv andalso f+n=off) formal) (args@res));
+     check "region and FP arguments excluded from register roots"
+       (CallConv.get_register_args_excluding_region_and_float_args cc=[100,101])
+  end
+val () = checkMixed FrameLayout.x64
+val () = checkMixed FrameLayout.arm64
 local open AbiArm64
   fun locations fixed variadic =
       map #location (#arguments(arguments{fixed=fixed,variadic=variadic}))
@@ -28,6 +44,8 @@ val () = check "independent C banks"
 val () = check "Darwin packed stack bytes"
   (List.drop(locations (List.tabulate(10,fn _=>I8)) [],8)
    = [Stack{offset=0,bytes=1},Stack{offset=1,bytes=1}])
+val () = check "packed stack stores retain their natural width"
+  (#extension(List.last(#arguments(arguments{fixed=List.tabulate(9,fn _=>I8),variadic=[]})))=None)
 val () = check "stack natural alignment"
   (List.drop(locations (List.tabulate(8,fn _=>I64)@[I8,I64,I16]) [],8)
    = [Stack{offset=0,bytes=1},Stack{offset=8,bytes=8},Stack{offset=16,bytes=2}])

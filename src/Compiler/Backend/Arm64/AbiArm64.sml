@@ -24,6 +24,7 @@ struct
   val cCalleeSaveFPRs = List.tabulate(8,fn i => i+8) (* low 64 bits only *)
   val gcIntegerSlots = 32   (* bit i maps to word 31-i; see the GC contract *)
   val gcFloatSlots = 8      (* d0..d7; other live f64s are flushed *)
+  val gcMetadataWords = 4   (* region/FP count, result count, arg count, arg base *)
 
   datatype scalar = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64 | Ptr | F32 | F64
   datatype location = GPR of int | FPR of int | Stack of {offset:int, bytes:int}
@@ -52,7 +53,8 @@ struct
                 else if not(floating t) andalso g < 8 then (GPR g,g+1,f,sp)
                 else let val off = align(sp,bytes t)
                      in (Stack{offset=off,bytes=bytes t},g,f,off+bytes t) end
-              val arg = {source=t,passed=t,location=loc,extension=extension t}
+              val arg = {source=t,passed=t,location=loc,
+                         extension=case loc of GPR _ => extension t | _ => None}
           in place(ts,g',f',sp',arg::acc) end
       val (named,sp) = place(fixed,0,0,0,[])
       fun varargs ([],sp,acc) = (rev acc,sp)
