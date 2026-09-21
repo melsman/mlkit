@@ -45,6 +45,22 @@ fun emitCase (count,grow) =
      G.emit(G.generate_link_code([main],([],[])),base ^ "-link.s") end
 val () = List.app (fn n=>(emitCase(n,true);emitCase(n,false))) [4,5,6,7]
 
+(* Nested statement emission must preserve the following code suffix exactly
+ * once, including through empty region scopes. Check it by executing AB. *)
+local
+  val main = AddressLabels.new_named "nested_scopes"
+  fun put n = L.CCALL{name="putchar",args=[num n],rhos_for_result=[],res=[]}
+  fun nest (0,body) = body
+    | nest (n,body) =
+        nest(n-1,[L.SCOPE{pat=[],scope=[L.LETREGION{rhos=[],body=body}]}])
+  val body = nest(2000,[put 65]) @ [put 66]
+  val code = [L.FUN(main,convention(0,0,0),body)]
+in
+  val () = G.emit(G.CG{main_lab=main,code=code,imports=([],[]),exports=([],[]),safe=false},
+                  "nested-scopes.s")
+  val () = G.emit(G.generate_link_code([main],([],[])),"nested-scopes-link.s")
+end
+
 (* Exercise the production scalar C-call emitter, including the ABI types not
  * exposed by the source-language automatic FFI. Values are raw IEEE bits. *)
 local

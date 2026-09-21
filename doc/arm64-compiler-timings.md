@@ -32,8 +32,10 @@ initial comparison.
 
 The table below uses the displayed HTML values, rounded to hundredths of a
 second. “Total” is the sum of the measured compiler phases, not elapsed
-compilation time. As the reports explain, timings are user CPU time excluding
-garbage collection. They do not include assembler/linker time or program
+compilation time. The timings are user CPU time including garbage collection. The archived
+reports incorrectly say that GC is excluded: `Timing.sml` uses
+`Timer.checkCPUTimer`, and MLKit’s `basis/Timer.sml` includes collector time
+in that result. They do not include assembler/linker time or program
 execution. Each report represents one run; small differences and values near
 zero should not be overinterpreted. This compares the two compiler/host
 combinations, not just the cost of emitting different instruction sets.

@@ -59,6 +59,10 @@ cmp expected actual
 "${ARM64_EMITTER:?Set ARM64_EMITTER to the host emitter-test executable}" > emitter.log 2>&1
 gcc -arch arm64 long-branches.s -o long-branches
 ./long-branches
+gcc -arch arm64 nested-scopes.s nested-scopes-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o nested-scopes
+./nested-scopes > actual
+printf AB > nested-expected
+cmp nested-expected actual
 for n in 4 5 6 7; do
   for suffix in "" -shrink; do
     gcc -arch arm64 "results$n$suffix.s" "results$n$suffix-link.s" "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o "results$n"

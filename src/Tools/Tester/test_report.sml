@@ -204,7 +204,7 @@ structure TestReport : TEST_REPORT =
 	             \The times measured are the times used by different phases of the Kit for compiling \
 	             \the source programs. \
 	             \Timings are written (<i>time</i>/<i>pct</i>), where <i>time</i> is the user \
-	             \time (garbage collection time excluded) in seconds and <i>pct</i> is the percentage \
+	             \CPU time (including garbage collection) in seconds and <i>pct</i> is the percentage \
 	             \of time used in the phase compared to the time used for all the measured phases (the Total column).";
 	      app mktable tables
 	    end

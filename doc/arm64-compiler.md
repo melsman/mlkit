@@ -252,3 +252,10 @@ The REPL runtime decodes the tagged ML length returned by the exported
 pretty-printer, returns constructor high-bit tags in ML integer representation,
 and recognizes `int63` in the minimal printer. The fresh SML bootstrap stages
 remain byte-identical after relinking with these final runtime fixes.
+
+## Compiler performance
+
+See the [initial ARM64/X64 timing comparison](arm64-compiler-timings.md) and
+the [static-data and code-suffix results](arm64-continuation-results.md).
+The latter compares the same ARM64 workloads before and after changing
+instruction-list construction, without changing register handling.

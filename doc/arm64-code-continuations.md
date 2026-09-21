@@ -1,12 +1,14 @@
 # Passing code continuations in the ARM64 emitter
 
+The changes proposed here are now implemented. See the
+[implementation results](arm64-continuation-results.md) for measurements and validation.
+
 Passing the remaining instruction list into each emitter is a good fit for
 this backend. Use the same approach as X64: an explicit `inst list` argument,
 with instructions prepended using `::`. It avoids copying completed instruction
 lists without allocating a function closure for every instruction.
 
-This is a source-level investigation, not a measured implementation of the
-change. The [compiler timing comparison](arm64-compiler-timings.md) motivates
+The original investigation below records the rationale for the change. The [compiler timing comparison](arm64-compiler-timings.md) motivates
 it but does not attribute the observed slowdown to list concatenation alone.
 
 ## Existing precedent and proposed interface
@@ -156,11 +158,11 @@ experiment so any timing improvement can be attributed to list construction.
 Use the existing timed programs, particularly `nucleic`, `kitsimple`, and
 `kitmolgard`, to compare `CG` time. Include an input with many constants/call
 sites and one with deeply nested control flow to exercise the two copying
-patterns. Compare compiler allocation/GC costs too: the current HTML phase
-timings exclude GC and can understate benefits from fewer temporary cells.
+patterns. The phase timings include compiler GC time despite the old HTML description
+claiming otherwise; they do not provide a separate collector-time breakdown.
 
 Reducing allocation-helper saves and argument/result staging is a separate
 optimization requiring liveness and ABI correctness work. It should follow,
 with its own measurements, rather than being mixed into the continuation
-conversion. No emitter or register-allocation behavior has changed in this
-investigation.
+conversion. The subsequent implementation changes list construction; register-allocation
+and save/restore policies remain unchanged.

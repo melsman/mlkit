@@ -218,7 +218,7 @@ structure TestReportLatex : TEST_REPORT =
 	      outln "The times measured are the times used by different phases of the Kit for compiling";
 	      outln "the source programs.";
 	      outln "Timings are written ({\\em time}/{\\em pct}), where {\\em time} is the user";
-	      outln "time (garbage collection time excluded) in seconds and {\\em pct} is the percentage";
+	      outln "CPU time (including garbage collection) in seconds and {\\em pct} is the percentage";
 	      outln "of time used in the phase compared to the time used for all the measured phases (the Total column).";
 	      app mktable tables
 	    end
