@@ -271,3 +271,8 @@ bootstrap phases, and retained test reports and installation artifacts.
 
 The [style and composition report](arm64-style.md) describes the local `++`
 code-builder operator and the Standard ML cleanup in milestone 10.
+
+## Runtime performance
+
+See the [20-benchmark ARM64/X64 comparison](arm64-runtime-performance.md)
+for execution times with and without GC, including X64 under Rosetta 2.
