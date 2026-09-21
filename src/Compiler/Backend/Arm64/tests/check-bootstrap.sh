@@ -15,7 +15,7 @@ case "$BOOTSTRAP_TARGET" in
   *) echo 'Unsupported bootstrap target' >&2; exit 1 ;;
 esac
 BOOTSTRAP_LINKER=${BOOTSTRAP_LINKER:-$default_linker}
-scratch=$(mktemp -d /tmp/mlkit-bootstrap.XXXXXX)
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-bootstrap.XXXXXX")
 echo "Bootstrap outputs: $scratch"
 compiler=$BOOTSTRAP_COMPILER
 # Include the unique run identity, so rerunning this script cannot reuse caches.

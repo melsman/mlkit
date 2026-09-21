@@ -263,3 +263,8 @@ instruction-list construction, without changing register handling.
 The [allocation and reset paths](arm64-allocation-paths.md) use inline page fast
 paths and shared preserving slow paths to shorten generated code and avoid
 register saves on ordinary allocations.
+
+## Continuous integration
+
+See [macOS ARM CI](arm64-ci.md) for the MLKit/MLton host matrix, native build and
+bootstrap phases, and retained test reports and installation artifacts.

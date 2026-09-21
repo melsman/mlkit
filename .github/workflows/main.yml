@@ -2,8 +2,8 @@
 # on various architectures.  The workflow contains a job called
 # "build-test-deploy". It is triggered on push or pull request events
 # on the master branch. It is also triggered when a tag is pushed, in
-# which case a binary distribution is deployed. The build matrix is
-# currently setup to run only with mlkit as the primary SML compiler.
+# which case a binary distribution is deployed. Both MLKit and MLton host
+# builds are tested, with separate X64 and native Apple Silicon jobs.
 
 name: CI
 
@@ -35,7 +35,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup environment
         run: |
@@ -222,3 +222,89 @@ jobs:
           file: dist/mlkit-bin-dist-${{ env.OS }}.tgz
           tag: ${{ github.ref }}
           overwrite: true
+
+  build-test-arm64:
+    name: macos-arm (${{ matrix.mlcomp }})
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-arm]
+        mlcomp: [mlkit, mlton]
+        include:
+          - os: macos-arm
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      ARM64_HOST: ${{ matrix.mlcomp }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Apple Silicon dependencies
+        run: |
+          test "$(uname -m)" = arm64
+          brew install autoconf
+          /usr/bin/gcc --version
+          xcrun --sdk macosx --show-sdk-path
+          ARM64_CI_ROOT="$RUNNER_TEMP/mlkit-darwin-arm64-$ARM64_HOST"
+          echo "ARM64_CI_ROOT=$ARM64_CI_ROOT" >> "$GITHUB_ENV"
+          mkdir -p "$ARM64_CI_ROOT/logs"
+
+      - name: Install released MLKit seed (X64 via Rosetta)
+        if: matrix.mlcomp == 'mlkit'
+        run: |
+          sudo softwareupdate --install-rosetta --agree-to-license
+          curl --fail --location --retry 3 \
+            https://github.com/melsman/mlkit/releases/download/v4.7.13/mlkit-bin-dist-darwin.tgz \
+            -o "$RUNNER_TEMP/mlkit-seed.tgz"
+          tar -xzf "$RUNNER_TEMP/mlkit-seed.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin" >> "$GITHUB_PATH"
+          test "$(lipo -archs "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit")" = x86_64
+          SML_LIB="$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" \
+            "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit" --version
+
+      - name: Install native MLton host
+        if: matrix.mlcomp == 'mlton'
+        run: brew install mlton
+
+      - name: Build target runtimes
+        run: bash .github/scripts/arm64.sh runtime 2>&1 | tee "$ARM64_CI_ROOT/logs/runtime.log"
+
+      - name: Build ARM-emitting seed compilers
+        run: bash .github/scripts/arm64.sh seed 2>&1 | tee "$ARM64_CI_ROOT/logs/seed.log"
+
+      - name: Build and verify native compilers and tools
+        run: bash .github/scripts/arm64.sh native 2>&1 | tee "$ARM64_CI_ROOT/logs/native.log"
+
+      - name: Native, parallel, and full regression checks
+        run: bash .github/scripts/arm64.sh check 2>&1 | tee "$ARM64_CI_ROOT/logs/check.log"
+
+      - name: Three-stage native bootstrap fixed point
+        run: bash .github/scripts/arm64.sh bootstrap 2>&1 | tee "$ARM64_CI_ROOT/logs/bootstrap.log"
+
+      - name: Stage, test, and package native installation
+        run: bash .github/scripts/arm64.sh install 2>&1 | tee "$ARM64_CI_ROOT/logs/install.log"
+
+      - name: Retain logs and test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-darwin-arm64-${{ matrix.mlcomp }}
+          path: |
+            ${{ env.ARM64_CI_ROOT }}/logs/
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.log
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.html
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/TESTmessages
+            config.log
+          retention-days: 14
+
+      - name: Retain native binary distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlkit-bin-dist-darwin-arm64-${{ matrix.mlcomp }}
+          path: ${{ env.ARM64_CI_ROOT }}/mlkit-bin-dist-darwin-arm64-${{ matrix.mlcomp }}.tgz
+          if-no-files-found: error

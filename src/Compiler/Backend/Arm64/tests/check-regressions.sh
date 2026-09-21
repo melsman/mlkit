@@ -5,7 +5,7 @@ set -eu
 : "${MLKIT_ARM64:?Set MLKIT_ARM64}"
 : "${KITTESTER:?Set KITTESTER to the native test driver}"
 REGRESSION_SUITES=${REGRESSION_SUITES:-'dev plain gc gengc prof gcprof par explicit parallel repl replgc repltagged replgengc'}
-scratch=$(mktemp -d /tmp/mlkit-regressions.XXXXXX)
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-regressions.XXXXXX")
 echo "Regression outputs: $scratch"
 export SML_LIB
 for suite in $REGRESSION_SUITES; do

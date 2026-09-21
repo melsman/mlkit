@@ -8,10 +8,14 @@ case "$(uname -s)/$(uname -m)" in
   *) echo 'Native execution checks require Apple Silicon' >&2; exit 1 ;;
 esac
 cd "$(dirname "$0")"
-arm_test_dir=$(mktemp -d /tmp/mlkit-native-arm64.XXXXXX)
+arm_test_dir=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-native-arm64.XXXXXX")
 trap 'status=$?; if [ "$status" -ne 0 ]; then
   for log in "$arm_test_dir"/*.log; do [ ! -f "$log" ] || cat "$log"; done
-fi; rm -rf "$arm_test_dir"; exit "$status"' EXIT
+fi; if [ "${ARM64_KEEP_TEST_OUTPUTS:-0}" = 1 ]; then
+  echo "Native validation outputs: $arm_test_dir"
+else
+  rm -rf "$arm_test_dir"
+fi; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
 cp *.sml native.mlb probe.c scalar-calls.c allocation.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
 cd "$arm_test_dir"

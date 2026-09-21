@@ -7,7 +7,7 @@ set -eu
 case "$(uname -s)/$(uname -m)" in Darwin/arm64) ;; *) exit 1;; esac
 cd "$(dirname "$0")"
 fixtures=$PWD
-scratch=$(mktemp -d /tmp/mlkit-parallel-arm64.XXXXXX)
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-parallel-arm64.XXXXXX")
 echo "Parallel validation logs: $scratch"
 run() {
   run_log=$1; shift
