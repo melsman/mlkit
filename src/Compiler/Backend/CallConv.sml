@@ -109,10 +109,8 @@ structure CallConv : CALL_CONV =
         List.length(filter_out_phreg reg_args) +
         List.length(filter_out_phreg fargs)
 
-    fun get_cc_size cc =
-        get_rcf_size cc +
-        get_ccf_size cc +
-        1 (* The return address occupies one word on the stack. *)
+    fun get_cc_size frame cc =
+        FrameLayout.callWords frame {args=get_ccf_size cc, results=get_rcf_size cc}
 
     fun add_frame_size ({clos,args,reg_args,fargs,res,frame_size},f_size) =
         {clos = clos,
@@ -244,12 +242,12 @@ structure CallConv : CALL_CONV =
               alist_args, alist_res)  (* return assignment lists *)
           end
 
-      fun resolve_cc {arg_regs, arg_fregs, res_regs} {clos,args,reg_args,fargs,res,frame_size} =
+      fun resolve_cc frame {arg_regs, arg_fregs, res_regs} {clos,args,reg_args,fargs,res,frame_size} =
           let val _ = reset_offset()
               val (clos_sty_opt, (acc,regs)) = resolve_sty_opt (clos, ([], arg_regs))
               val (args_stys, reg_args_stys, fargs_stys, lv_phreg_args) =
                   resolve_stys_args (args, reg_args, fargs, (acc,regs,arg_fregs))
-              val _ = get_next_offset() (* The next offset is for the return address *)
+              val _ = List.tabulate(FrameLayout.headerWords frame, fn _ => get_next_offset())
               val (res_stys, (lv_phreg_res,_)) = resolve_stys (res,([],res_regs))    (*memo: is this right on the x86?*)
           in ({clos=clos_sty_opt,
                args=args_stys,
@@ -277,7 +275,7 @@ structure CallConv : CALL_CONV =
 
       fun get_spilled_res cc = map #1 (get_spilled_res_with_offsets cc)
 
-      fun resolve_act_cc {arg_regs, arg_fregs, res_regs}
+      fun resolve_act_cc frame {arg_regs, arg_fregs, res_regs}
                          ({clos: 'a option, args: 'a list, reg_args: 'a list,
                            fargs: 'a list, res: 'a list}: 'a cc0) =
         let fun cons_list_opt (NONE,l) = l
@@ -289,9 +287,8 @@ structure CallConv : CALL_CONV =
             val args_stack = List.drop(args_gpr, List.length arg_regs) handle General.Subscript => []
             val fargs_stack = List.drop(fargs,List.length arg_fregs) handle General.Subscript => []
             val (o_res,aty_res) = calc_offset(res_stack,0,[])
-            val return_lab_offset = o_res
-            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res+1,[])
-        in (aty_args,aty_res(*,return_lab_offset*))
+            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res + FrameLayout.headerWords frame,[])
+        in (aty_args,aty_res)
         end
     end
 

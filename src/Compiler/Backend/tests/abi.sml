@@ -1,0 +1,49 @@
+fun check name condition = if condition then () else raise Fail name
+val noRegs = {arg_regs=[],arg_fregs=[],res_regs=[]}
+val cc0 = {clos=NONE,args=[1,2],reg_args=[],fargs=[],res=[3]}
+fun testFrame (frame,header) =
+  let val (cc,_,_) = CallConv.resolve_cc frame noRegs (CallConv.mk_cc cc0)
+      val (args,res) = CallConv.resolve_act_cc frame noRegs cc0
+  in check "argument order" (args=[(1,1+header),(2,2+header)]);
+     check "result offset" (res=[(3,0)]);
+     check "callee offsets" (CallConv.get_spilled_args_with_offsets cc=[(2,~1),(1,~2)]);
+     check "result below header" (CallConv.get_spilled_res_with_offsets cc=[(3,~(3+header))]);
+     check "call size" (CallConv.get_cc_size frame cc=3+header);
+     List.app (fn locals =>
+       let val n=FrameLayout.alignFrame frame {locals=locals,call=3+header}
+       in check "aligned with minimal padding" (n>=locals andalso n<=locals+1 andalso (n+3+header) mod 2=0) end)
+       (List.tabulate(10,fn i=>i))
+  end
+val () = testFrame(FrameLayout.x64,1)
+val () = testFrame(FrameLayout.arm64,2)
+val () = check "return PC within header"
+  (FrameLayout.returnOffsetFromTop FrameLayout.x64=0 andalso
+   FrameLayout.returnOffsetFromTop FrameLayout.arm64=1)
+local open AbiArm64
+  fun locations fixed variadic =
+      map #location (#arguments(arguments{fixed=fixed,variadic=variadic}))
+in
+val () = check "independent C banks"
+  (locations [I64,F64,I32,F32] [] = [GPR 0,FPR 0,GPR 1,FPR 1])
+val () = check "Darwin packed stack bytes"
+  (List.drop(locations (List.tabulate(10,fn _=>I8)) [],8)
+   = [Stack{offset=0,bytes=1},Stack{offset=1,bytes=1}])
+val () = check "stack natural alignment"
+  (List.drop(locations (List.tabulate(8,fn _=>I64)@[I8,I64,I16]) [],8)
+   = [Stack{offset=0,bytes=1},Stack{offset=8,bytes=8},Stack{offset=16,bytes=2}])
+val () = check "variadic arguments never use spare registers"
+  (locations [Ptr] [I32,F64]=[GPR 0,Stack{offset=0,bytes=8},Stack{offset=8,bytes=8}])
+val promoted = #arguments(arguments{fixed=[],variadic=[I8,U16,F32]})
+val () = check "default argument promotions" (map #passed promoted=[I32,I32,F64])
+val () = check "narrow named extension"
+  (map #extension (#arguments(arguments{fixed=[I8,U8,I16,U16],variadic=[]}))
+   = [SignTo32,ZeroTo32,SignTo32,ZeroTo32])
+val () = check "overflow floating bank"
+  (List.last(locations (List.tabulate(9,fn _=>F64)) [])=Stack{offset=0,bytes=8})
+val () = check "C stack alignment"
+  (#stackBytes(arguments{fixed=List.tabulate(10,fn _=>I8),variadic=[]})=16)
+val () = check "result registers" (result(SOME F64)=SOME(FPR 0) andalso result(SOME Ptr)=SOME(GPR 0) andalso result NONE=NONE)
+val () = check "reserved registers excluded"
+  (List.all (fn r=>not(List.exists (fn a=>a=r) allocatableGPRs)) reservedGPRs)
+end
+val () = print "ABI layout tests passed\n"

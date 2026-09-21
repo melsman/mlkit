@@ -1,0 +1,55 @@
+# Makefile for the MLKit region profiler.
+# Type `gmake' to make rp2ps
+
+top_srcdir=../../..
+
+CC=gcc -std=gnu23
+CFLAGS=-O2 -g -arch x86_64
+INSTALL=/usr/local/bin/ginstall -c
+INSTALLDATA=${INSTALL} -m 644
+INSTALLPROGRAM=${INSTALL}
+MKDIR=$(top_srcdir)/mkinstalldirs
+
+OFILES = Rp2Ps.o ProfileData.o Sample.o Graph.o Curves.o Output.o PostScript.o Error.o Alloc.o
+CFILES = $(OFILES:%.o=%.c)
+
+BINDIR=$(top_srcdir)/bin
+
+OPT=-Wall -std=gnu99 $(CFLAGS)
+
+.PHONY: clean depend
+
+%.o: %.c Makefile
+	$(CC) -c $(OPT) -o $*.o $<
+
+all: $(BINDIR)/rp2ps
+
+$(BINDIR)/rp2ps: rp2ps
+	$(MKDIR) $(BINDIR)
+	$(INSTALLPROGRAM) rp2ps $(BINDIR)
+
+rp2ps: $(OFILES)
+	$(CC) $(CFLAGS) -o rp2ps $(OFILES) -lm
+
+clean:
+	rm -f *.o core a.out *~ rp2ps
+
+depend:
+	mv Makefile.in Makefile.in.bak
+	(sed -n -e '1,/^### DO NOT DELETE THIS LINE/p' Makefile.in.bak;	 \
+         $(CC) -MM $(CFILES)) > Makefile.in
+	rm Makefile.in.bak
+
+### DO NOT DELETE THIS LINE
+Rp2Ps.o: Rp2Ps.c Flags.h Rp2Ps.h Types.h ProfileData.h Sample.h
+ProfileData.o: ProfileData.c Flags.h Error.h Alloc.h Types.h \
+  ProfileData.h Graph.h Output.h Sample.h Rp2Ps.h
+Sample.o: Sample.c Flags.h Error.h Sample.h Alloc.h Types.h Rp2Ps.h
+Graph.o: Graph.c Rp2Ps.h Flags.h Types.h Error.h Output.h Alloc.h \
+  PostScript.h Curves.h
+Curves.o: Curves.c Flags.h Curves.h Output.h Rp2Ps.h Types.h
+Output.o: Output.c Output.h Flags.h Rp2Ps.h Types.h
+PostScript.o: PostScript.c PostScript.h Output.h Flags.h Error.h Rp2Ps.h \
+  Types.h
+Error.o: Error.c Rp2Ps.h Flags.h Types.h
+Alloc.o: Alloc.c Error.h Types.h

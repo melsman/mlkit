@@ -439,7 +439,7 @@ struct
                 comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
                 let
                   val (spilled_args,_) =
-                      CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                      CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
                                                res_regs=RI.res_phreg}
                                               {args=args, clos=clos, reg_args=[], fargs=[], res=res}
                   val offset_codeptr = if BI.tag_values() then "8" else "0"
@@ -463,7 +463,7 @@ struct
                   let
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
                     val (spilled_args,spilled_res) =
-                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
                                                  res_regs=RI.res_phreg}
                                                 {args=args,clos=clos,reg_args=[],fargs=[],res=res}
                     val size_rcf = length spilled_res
@@ -512,7 +512,7 @@ struct
                    *)
                     val (spilled_args,   (* those arguments that need be passed on the stack *)
                          spilled_res) =  (* those return values that are returned on the stack *)
-                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
                                                  res_regs=RI.res_phreg}
                                                 {args=args,clos=clos,reg_args=reg_args,
                                                  fargs=fargs,res=res}
@@ -551,7 +551,7 @@ struct
                   comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
                   let
                     val (spilled_args,spilled_res) =
-                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg,arg_fregs=RI.args_phfreg,
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg,arg_fregs=RI.args_phfreg,
                                                  res_regs=RI.res_phreg}
                                                 {args=args, clos=clos, reg_args=reg_args,
                                                  fargs=fargs, res=res}

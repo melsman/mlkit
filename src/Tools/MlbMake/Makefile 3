@@ -1,0 +1,32 @@
+
+SHELL=/bin/sh
+
+prefix=/usr/local
+sysconfdir=${prefix}/etc
+top_srcdir=../../..
+
+INSTALL=/usr/local/bin/ginstall -c
+
+
+
+BINDIR=${top_srcdir}/bin
+TARGET=mlbmake
+
+include ${top_srcdir}/Makefiledefault
+
+all: ${BINDIR}/${TARGET}
+
+$(BINDIR)/$(TARGET): $(TARGET)
+	${INSTALL} $(TARGET) $(BINDIR)/$(TARGET)
+
+# .PHONY: Configuration.sml
+Configuration.sml: Configuration.sml.in
+	cp -f Configuration.sml.in Configuration.sml
+	echo "    val etcdir = \"$(sysconfdir)\"" >> Configuration.sml
+	echo "  end" >> Configuration.sml
+
+$(TARGET): sources.mlb Makefile *.sml Configuration.sml
+	$(MLCOMP) -output $(TARGET) sources.mlb
+
+clean:
+	rm -rf MLB CM *~ $(TARGET) Configuration.sml

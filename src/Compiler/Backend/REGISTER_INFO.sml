@@ -3,6 +3,8 @@ signature REGISTER_INFO =
     eqtype reg
     type lvar
 
+    val frame_layout : FrameLayout.t
+
     val is_reg     : lvar -> bool
     val lv_to_reg  : lvar -> reg  (* Die if lvar is not a precolored register *)
     val args_phreg : lvar list    (* Machine registers containing arguments *)
@@ -18,6 +20,9 @@ signature REGISTER_INFO =
     val f64_phregs           : lvar list   (* floating point registers available for
                                               register allocation (excluding two tmp
                                               registers) *)
+
+    (* Exact allocator palette; a target may reserve additional spill registers. *)
+    val allocatable_f64_phregs : lvar list
 
     (* CCALLs *)
     val args_reg_ccall             : reg list   (* Machine registers containing arguments in CCALLs *)

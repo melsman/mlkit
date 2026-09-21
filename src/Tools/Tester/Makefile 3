@@ -1,0 +1,21 @@
+
+top_srcdir=../../..
+
+INSTALL=/usr/local/bin/ginstall -c
+INSTALLDATA=${INSTALL} -m 644
+INSTALLPROGRAM=${INSTALL}
+
+BINDIR=$(top_srcdir)/bin
+
+include $(top_srcdir)/Makefiledefault
+
+all: $(BINDIR)/kittester
+
+$(BINDIR)/kittester: kittester
+	$(INSTALLPROGRAM) kittester $(BINDIR)
+
+kittester: KitTester.mlb Makefile *.sml
+	$(MLCOMP) -output kittester KitTester.mlb
+
+clean:
+	rm -rf MLB *~ kittester

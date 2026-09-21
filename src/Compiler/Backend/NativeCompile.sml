@@ -61,7 +61,8 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 					    structure RegAlloc = RegAlloc
 					    structure RI = RegisterInfo)
 
-    structure CalcOffset = CalcOffset(structure LineStmt = LineStmt
+    structure CalcOffset = CalcOffset(val frame_layout = RegisterInfo.frame_layout
+                                      structure LineStmt = LineStmt
 				      structure FetchAndFlush = FetchAndFlush)
 
     structure SubstAndSimplify = SubstAndSimplify(structure LineStmt = LineStmt

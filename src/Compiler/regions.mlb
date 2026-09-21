@@ -83,6 +83,7 @@ in
   in Backend/CLOS_CONV_ENV.sml
      Backend/CLOS_EXP.sml
   end
+  Backend/FrameLayout.sml
   Backend/CALL_CONV.sml
   Backend/BACKEND_INFO.sml
   Backend/REGISTER_INFO.sml
