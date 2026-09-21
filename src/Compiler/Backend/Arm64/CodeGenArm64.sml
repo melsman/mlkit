@@ -38,6 +38,7 @@ struct
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
+  val gengc = Flags.is_on0 "generational_garbage_collection"
   val tagged = BackendInfo.tag_values
   val profiling = Flags.is_on0 "region_profiling"
   val tagPairs = Flags.is_on0 "tag_pairs"
@@ -322,12 +323,136 @@ struct
       LS.ATTOP_LI(_,p) => p | LS.ATTOP_LF(_,p) => p | LS.ATTOP_FI(_,p) => p | LS.ATTOP_FF(_,p) => p
     | LS.ATBOT_LI(_,p) => p | LS.ATBOT_LF(_,p) => p | LS.SAT_FI(_,p) => p | LS.SAT_FF(_,p) => p
     | LS.IGNORE => 0
-  fun allocateInto fsz sma words code =
+  (* 0: known finite; 1: known infinite; 2: inspect the runtime status bit. *)
+  fun regionKind sma =
+    case sma of
+      LS.ATTOP_LF _ => 0 | LS.ATBOT_LF _ => 0
+    | LS.ATTOP_FF _ => 2 | LS.SAT_FF _ => 2
+    | _ => 1
+  fun countInto reg n code =
+    if n >= 0 andalso n < 65536 then ins "mov" [r reg,imm n] :: code
+    else constantInto (IntInf.fromInt n,reg) code
+  fun adjustInto opn reg bytes code =
+    if bytes=0 then code
+    else
+      let
+        val n = Int.min(bytes,4095)
+      in
+        ins opn [r reg,r reg,imm n] :: adjustInto opn reg (bytes-n) code
+      end
+  val allocStub = NameLab "mlkit_arm64_allocate_preserving"
+  val untaggedAllocStub = NameLab "mlkit_arm64_allocate_untagged_preserving"
+  val resetStub = NameLab "mlkit_arm64_reset_preserving"
+  (* Private helper ABI: x16 is the region/result, x17 the word count.
+   * x16/x17/x30 are scratch; all allocatable ML registers survive a slow call.
+   * Profiling passes its program point in an aligned caller stack slot. *)
+  fun allocSlowInto words untag pp code =
     let
-      val (a,mode)=regionArg sma
+      val target = if untag then untaggedAllocStub else allocStub
+      val code = if profiling() then stackInto (false,16) code else code
+      val code = countInto (X 17) words (ins "bl" [pr_lab target] :: code)
     in
-      internalCallInto fsz "mlkit_arm64_alloc" [a,integer words,integer mode,integer 0,integer(programPoint sma)] code
+      if profiling() then stackInto (true,16)
+        (countInto (X 17) pp (storeInto (X 17,SP,0) code))
+      else code
     end
+  fun resetLoadedInto mode code =
+    if mode=0 then code
+    else
+      let
+        val done = localFresh()
+        val slow = localFresh()
+        val generations = if gengc() then [0,16] else [0]
+        val header = if gengc() then 24 else 16
+        val lobjs = if gengc() then 40 else 24
+        fun firstPage off code =
+          ins "and" ["x17","x16","#-4"] ::
+          loadInto (X 17,off+8,X 30) (ins "and" ["x30","x30","#-32"] :: code)
+        fun check (off,code) = firstPage off
+          (loadInto (X 30,0,X 17) (ins "cbnz" ["x17",pr_lab slow] :: code))
+        fun reset (off,code) = firstPage off
+          (ins "add" ["x30","x30",imm header] ::
+           storeInto (X 30,X 17,off)
+             (if gengc() then storeInto (X 30,X 30,~8) code else code))
+        val code = Label done :: code
+        val code = if profiling() orelse parallel() then ins "bl" [pr_lab resetStub] :: code
+          else
+            let
+              val () = addStatic
+                [Directive ".text",Directive ".p2align 2",Label slow,
+                 ins "bl" [pr_lab resetStub],ins "b" [pr_lab done]]
+              val code = foldr reset code generations
+              val code = foldr check code generations
+            in
+              ins "and" ["x17","x16","#-4"] ::
+              loadInto (X 17,lobjs,X 30) (ins "cbnz" ["x30",pr_lab slow] :: code)
+            end
+      in
+        if mode=1 then ins "tbz" ["x16","#1",pr_lab done] :: code else code
+      end
+  fun resetRegionInto fsz force sma code =
+    let
+      val (a,mode) = regionArg sma
+      val mode = if force then 2 else mode
+      val kind = regionKind sma
+    in
+      if kind=0 orelse mode=0 then code
+      else
+        let
+          val done = localFresh()
+          val code = resetLoadedInto mode (Label done :: code)
+          val code = if kind=2 then ins "tbz" ["x16","#0",pr_lab done] :: code else code
+        in
+          readInto fsz a (X 16) code
+        end
+    end
+  fun allocateInRegionInto fsz sma words untag code =
+    let
+      val (a,mode) = regionArg sma
+      val kind = regionKind sma
+      val pp = programPoint sma
+      val done = localFresh()
+      val finite = localFresh()
+      fun finiteCode code =
+        ins "and" ["x16","x16","#-4"] ::
+        (if profiling() then countInto (X 17) pp (storeInto (X 17,X 16,~16) code) else code)
+      fun infiniteCode code =
+        if profiling() orelse (parallel() andalso not(unprotected())) orelse
+           words > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
+          allocSlowInto words untag pp code
+        else
+          let
+            val slow = localFresh()
+            val joined = localFresh()
+            val bytes = 8*words
+            val () = addStatic
+              (Directive ".text" :: Directive ".p2align 2" :: Label slow ::
+               ins "orr" ["x16","x16","#1"] ::
+               allocSlowInto words untag pp [ins "b" [pr_lab joined]])
+            val code = Label joined :: code
+            val code = if gc() then addressInto (NameLab "alloc_period",X 17)
+              (loadInto (X 17,0,X 30)
+                (adjustInto "add" (X 30) bytes (storeInto (X 30,X 17,0) code))) else code
+            val code = moveInto (X 17,X 16)
+              (adjustInto "sub" (X 16) (bytes+(if untag then 8 else 0)) code)
+          in
+            ins "and" ["x16","x16","#-4"] ::
+            loadInto (X 16,0,X 17)
+              (ins "sub" ["x17","x17","#1"] ::
+               ins "orr" ["x30","x17",imm(BackendInfo.size_region_page()-1)] ::
+               adjustInto "add" (X 17) bytes
+                 (ins "cmp" ["x17","x30"] :: ins "b.hi" [pr_lab slow] ::
+                  ins "add" ["x17","x17","#1"] :: storeInto (X 17,X 16,0) code))
+          end
+      val code = if kind=0 then finiteCode code
+        else if kind=1 then resetLoadedInto mode (infiniteCode code)
+        else ins "tbz" ["x16","#0",pr_lab finite] ::
+          resetLoadedInto mode (infiniteCode
+            (ins "b" [pr_lab done] :: Label finite :: finiteCode (Label done :: code)))
+    in
+      readInto fsz a (X 16) code
+    end
+  fun allocateInto fsz sma words code = allocateInRegionInto fsz sma words false code
   (* Keep the destination on the stack while filling it: source operands may
    * use either scratch register during address materialization. *)
   datatype record_field = Constant of IntInf.int | Address of A.lab
@@ -354,11 +479,8 @@ struct
                  else code
       val code = stackInto (true,16) (storeInto (X 16,SP,0) code)
     in
-      if untag then internalCallInto fsz "mlkit_arm64_alloc"
-        [region,integer(length elems),integer mode,integer 1,integer(programPoint alloc)] code
-      else internalCallInto fsz "mlkit_arm64_alloc"
-        [region,integer(length prefix+length elems),integer mode,integer 0,
-         integer(programPoint alloc)] code
+      allocateInRegionInto fsz alloc
+        (if untag then length elems else length prefix+length elems) untag code
     end
   val recordInto = recordWithUntagInto false
   fun regionAllocator place =
@@ -1456,14 +1578,9 @@ struct
         let
           val code = writeInto fsz pat (X 16) code
         in
-          if untag andalso tagged() andalso not(tagPairs()) then
-            let
-              val(a,mode)=regionArg alloc
-            in
-              internalCallInto fsz "mlkit_arm64_alloc" [a,integer(n-1),integer mode,integer 1,integer(programPoint alloc)] code
-            end
-          else
-            allocateInto fsz alloc n code
+          allocateInRegionInto fsz alloc
+            (if untag andalso tagged() andalso not(tagPairs()) then n-1 else n)
+            (untag andalso tagged() andalso not(tagPairs())) code
         end
     | LS.ASSIGN {pat,bind=LS.PASS_PTR_TO_RHO{sma}} =>
         let
@@ -1706,14 +1823,7 @@ struct
         numericSwitchInto fsz true precision switch code
     | LS.RESET_REGIONS {regions_for_resetting,force} =>
         foldr (fn (LS.IGNORE,code) => code
-                | (sma,code) =>
-                    let
-                      val (a,mode) = regionArg sma
-                    in
-                      if mode=0 andalso not force then code
-                      else internalCallInto fsz "mlkit_arm64_reset"
-                        [a,integer(if force orelse mode=2 then 2 else 1)] code
-                    end) code regions_for_resetting
+                | (sma,code) => resetRegionInto fsz force sma code) code regions_for_resetting
     | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
   and numericSwitchInto fsz signed precision (LS.SWITCH(a,cases,default)) code =
     let
@@ -1839,6 +1949,31 @@ struct
   fun frameWordsInto pcs sentinel code =
     foldr (fn (pc,code) =>
       Directive(".quad " ^ pr_lab pc) :: Directive(".quad " ^ pr_lab sentinel) :: code) code pcs
+  fun preservingStubInto lab setup target code =
+    let
+      val bytes = 16*((length savedRegs+2) div 2)
+      val code = stackInto (false,bytes) (ins "ret" [] :: code)
+      val code = loadInto (SP,8*length savedRegs,X 30) code
+      val code = foldri (fn (i,reg,code) => loadInto (SP,8*i,reg) code) code savedRegs
+      val code = ins "bl" [pr_lab target] :: moveInto (X 0,X 16) code
+      val code = setup bytes code
+      val code = storeInto (X 30,SP,8*length savedRegs) code
+      val code = foldri (fn (i,reg,code) => storeInto (reg,SP,8*i) code) code savedRegs
+    in
+      functionInto lab (stackInto (true,bytes) code)
+    end
+  fun allocationStubsInto code =
+    let
+      fun setup untag bytes code =
+        moveInto (X 16,X 0) (moveInto (X 17,X 1)
+          (countInto (X 2) 0 (countInto (X 3) untag
+            (if profiling() then loadInto (SP,bytes,X 4) code else countInto (X 4) 0 code))))
+      val code = preservingStubInto resetStub
+        (fn _ => fn code => moveInto (X 16,X 0) code) (NameLab "resetRegion") code
+      val code = preservingStubInto untaggedAllocStub (setup 1) (NameLab "mlkit_arm64_alloc") code
+    in
+      preservingStubInto allocStub (setup 0) (NameLab "mlkit_arm64_alloc") code
+    end
   fun linkCode repl (labs,_) =
     let
       val globals = [(Effect.toplevel_region_withtype_top,BackendInfo.toplevel_region_withtype_top_lab),
@@ -2034,7 +2169,7 @@ struct
       val code = storeInto(X 19,SP,0) code
       val code = stackInto(true,48) code
       val code = ins "tbz" ["x0","#0",pr_lab finite] :: code
-      val code = functionInto alloc code
+      val code = allocationStubsInto (functionInto alloc code)
       val code = ins "b" ["_terminateML"] :: code
       val code = constantInto(0,X 0) code
       val code = if repl then

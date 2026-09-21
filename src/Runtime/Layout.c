@@ -25,6 +25,14 @@ WORDS(Gen, 2);
 CHECK(gen_a, offsetof(Gen, a) == 0);
 CHECK(gen_fp, offsetof(Gen, fp) == 8);
 CHECK(page_size, sizeof(Rp) == REGION_PAGE_SIZE_BYTES);
+CHECK(arm64_page_mask, REGION_PAGE_SIZE_BYTES == 8192);
+CHECK(page_next, offsetof(Rp, n) == 0);
+#ifdef ENABLE_GEN_GC
+CHECK(page_payload, offsetof(Rp, i) == 24);
+CHECK(page_color, offsetof(Rp, colorPtr) == 16);
+#else
+CHECK(page_payload, offsetof(Rp, i) == 16);
+#endif
 CHECK(ro_g0, offsetof(Ro, g0) == 0);
 #ifdef ENABLE_GEN_GC
 # define GENERATIONS 2

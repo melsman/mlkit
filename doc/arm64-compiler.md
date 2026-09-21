@@ -259,3 +259,7 @@ See the [initial ARM64/X64 timing comparison](arm64-compiler-timings.md) and
 the [static-data and code-suffix results](arm64-continuation-results.md).
 The latter compares the same ARM64 workloads before and after changing
 instruction-list construction, without changing register handling.
+
+The [allocation and reset paths](arm64-allocation-paths.md) use inline page fast
+paths and shared preserving slow paths to shorten generated code and avoid
+register saves on ordinary allocations.

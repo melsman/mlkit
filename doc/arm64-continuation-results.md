@@ -110,3 +110,7 @@ This follow-up has been evaluated on nucleic only. The wider native, ReML,
 parallel, profiling, and regression suites have **not** been rerun for this
 version; the earlier validation section refers to `9423b92`. The change remains
 in the draft integration PR pending that broader validation.
+
+The subsequent [allocation/reset implementation](arm64-allocation-paths.md)
+retains full suffix passing and has passed the wider native, parallel, developer,
+GC, and explicit-region validation listed in that report.

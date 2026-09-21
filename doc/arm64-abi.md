@@ -169,6 +169,20 @@ Crossing a foreign callback boundary by a nonlocal raise is not implicitly
 supported: wrappers must retain the existing exported-call exception policy
 and restore the foreign frame/preserved registers before returning to C.
 
+### Private allocation/reset helper convention
+
+New object-allocation sites pass their region in `x16`, word count in `x17`,
+and receive the result in `x16`. Reset sites pass and retain their region in
+`x16`. Shared preserving stubs save `x0`–`x15`, `x19`–`x26`, `d0`–`d29`, and
+LR in a 448-byte frame before calling the existing runtime helpers. Profiling
+allocation additionally passes its program point in a 16-byte caller stack slot.
+
+Inline allocation/reset paths use only `x16`, `x17`, and `x30`; the incoming ML
+return address is already saved in the function frame. The shared stub preserves
+its own BL return address. These helpers do not collect; allocation may request
+collection at a later ML entry. See [allocation paths](arm64-allocation-paths.md)
+for page boundaries, reset eligibility, and retained runtime bookkeeping.
+
 ## GC contract
 
 The C collector selects this ARM format under `DARWIN_NATIVE`. X64 continues

@@ -97,3 +97,44 @@ local
     ins "tbz" ["x0","#0",pr_lab last],ins "brk" ["#2"],Directive ".space 65536",Label last,
     ins "cmp" ["x0","#0"],ins "b.eq" [pr_lab done],ins "brk" ["#3"]]
 in val ()=G.emit(code,"long-branches.s") end
+
+(* Direct allocation probes cover exact page boundaries, expansion, large
+ * objects, dynamic finite regions, tag-free payloads, and both reset paths. *)
+local
+  fun raw n = S.INTEGER_ATY{value=IntInf.fromInt n,precision=0}
+  val live = [I.X 0,I.X 4,I.X 8,I.X 15,I.X 21,I.X 26,I.D 0,I.D 7,I.D 15,I.D 29]
+  fun probeMode (suffix,gc,gen) =
+    let
+      val () = List.app Flags.turn_off
+        ["garbage_collection","generational_garbage_collection","tag_values","region_profiling"]
+      val () = if gc then List.app Flags.turn_on ["garbage_collection","tag_values"] else ()
+      val () = if gen then Flags.turn_on "generational_garbage_collection" else ()
+      val main = AddressLabels.new_named "allocation_paths"
+      fun sample id =
+        let
+          val region = x 19
+          val sma = if id=5 orelse id=15 orelse id=16 then L.SAT_FF(region,0)
+                    else L.ATTOP_FF(region,0)
+          val words = case id of 1 => 2 | 2 => 1 | 3 => 2048 | 6 => 4 | 7 => 4 | _ => 3
+          val operation = if id >= 10 then
+              L.RESET_REGIONS{force=id<>15 andalso id<>16,regions_for_resetting=[sma]}
+            else L.ASSIGN{pat=x 20,bind=L.PASS_PTR_TO_MEM(sma,words,id=6 orelse id=7)}
+          val seeds = CodeGenUtilArm64.mapi (fn (i,reg) => assign(S.PHREG_ATY reg,raw(100+i))) live
+          val setup = L.CCALL{name="allocation_prepare",args=[x 28,raw id],rhos_for_result=[],res=[region]}
+          val check = L.CCALL{name="allocation_check",
+            args=[x 28,region,(if id >= 10 then raw 0 else x 20),raw id] @ map S.PHREG_ATY live,
+            rhos_for_result=[],res=[]}
+        in
+          setup :: seeds @ [operation,check]
+        end
+      val ids = [0,1,2,3,4,5,6,7,10,11,12,13,14,15,16,17]
+      val code = [L.FUN(main,convention(0,0,0),List.concat(map sample ids))]
+    in
+      G.emit(G.CG{main_lab=main,code=code,imports=([],[]),exports=([],[]),safe=false},
+             "allocation-" ^ suffix ^ ".s");
+      G.emit(G.generate_link_code([main],([],[])),"allocation-" ^ suffix ^ "-link.s")
+    end
+in
+  val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true)]
+  val () = List.app Flags.turn_off ["garbage_collection","generational_garbage_collection","tag_values"]
+end

@@ -13,7 +13,7 @@ trap 'status=$?; if [ "$status" -ne 0 ]; then
   for log in "$arm_test_dir"/*.log; do [ ! -f "$log" ] || cat "$log"; done
 fi; rm -rf "$arm_test_dir"; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
-cp *.sml native.mlb probe.c scalar-calls.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
+cp *.sml native.mlb probe.c scalar-calls.c allocation.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
 cd "$arm_test_dir"
 # Generate a finite 33,600-byte record without checking in a huge fixture.
 awk 'BEGIN {
@@ -87,6 +87,17 @@ if "$MLKIT_ARM64" --no_basislib -par -gc -o unsupported native.mlb > unsupported
 fi
 grep -q 'ARM64 parallelism does not support garbage_collection' unsupported.log
 [ ! -e unsupported ]
+for mode in plain gc gengc; do
+  case "$mode" in
+    plain) defines=""; archive=runtimeSystem.a ;;
+    gc) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC"; archive=runtimeSystemGC.a ;;
+    gengc) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -DENABLE_GEN_GC"; archive=runtimeSystemGenGC.a ;;
+  esac
+  gcc -arch arm64 -O2 -Wall -Wextra -Werror $defines -I"$SML_LIB/src/Runtime" \
+    allocation.c "allocation-$mode.s" "allocation-$mode-link.s" \
+    "$SML_LIB/lib/darwin-arm64/$archive" -o "allocation-$mode"
+  "./allocation-$mode"
+done
 gcc -arch arm64 -O2 -Wall -Wextra -Werror scalar-calls.c scalar-calls.s -o scalar-calls
 ./scalar-calls
 gcc -arch arm64 -c callback.s -o callback.o
