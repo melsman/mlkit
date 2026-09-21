@@ -1686,13 +1686,13 @@ structure StatObject: STATOBJECT =
             let val regvars_regvars' =
                     BasisCompat.ListPair.zipEq(regvars, regvars')
                     handle BasisCompat.ListPair.UnequalLengths => die "instance_with_types.wrong number of regvars'"
-                fun lookRegvar rv =
-                    let fun look nil = rv
-                          | look ((rv',rv'')::ps) = if RegVar.eq(rv,rv') then rv''
-                                                    else look ps
+                (* Substitute the argument location along with the region variable. *)
+                fun lookRi (ri as (_,rv)) : regvar_info =
+                    let fun look nil = ri
+                          | look ((rv',ri')::ps) = if RegVar.eq(rv,rv') then ri'
+                                                   else look ps
                     in look regvars_regvars'
                     end
-                fun lookRi (p,r) : regvar_info = (p,lookRegvar r)
                 fun lookRis ris = List.map lookRi ris
                 fun lookRio NONE = NONE
                   | lookRio (SOME ri) = SOME (lookRi ri)
@@ -1763,9 +1763,10 @@ structure StatObject: STATOBJECT =
                 | fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
               val types = map fresh tvs1
               val regvars = map (fn rv =>
-                                    if RegVar.is_effvar rv
-                                    then RegVar.mk_Fresh "e"
-                                    else RegVar.mk_Fresh "r") rvs1
+                                    (parseInfoDummy,
+                                     if RegVar.is_effvar rv
+                                     then RegVar.mk_Fresh "e"
+                                     else RegVar.mk_Fresh "r")) rvs1
               val ty1 = instance_with_types_regvars (sigma1, types, regvars)
               val ty2 = instance_with_types_regvars (sigma2, types, regvars)
           in Type.eq(ty1,ty2)
@@ -1926,7 +1927,7 @@ structure StatObject: STATOBJECT =
               let val (rn,en) = TyName.arity_reml tn
                   val rvso = case rvs of
                                  nil => NONE
-                               | _ => SOME (parseInfoDummy,map (fn r => (parseInfoDummy,r)) rvs)
+                               | (i,_)::_ => SOME (i,rvs)
               in if length rvs <> rn+en andalso length rvs <> 0 then
                    die ("TypeFcn.tn.wrong ReML arity: " ^ TyName.pr_TyName tn)
                  else Type.from_ConsType(Type.mk_ConsType(taus,tn,rvso))
@@ -2170,7 +2171,7 @@ structure StatObject: STATOBJECT =
                        level = ref (!level)}
                     | TypeFcn_apply' (theta, tau_list) =  (* memo: figure out what to do with rvis - push it down into tau... *)
                       let val rvs = case URef.!! rvis of
-                                        SOME (_,rvis) => map #2 rvis
+                                        SOME (_,rvis) => rvis
                                       | NONE => nil
                           val tau = TypeFcn.apply (theta, tau_list, rvs)
                       in correct_levels_Type tau

@@ -1,6 +1,7 @@
 *.log
 *.out
 *.stderr
+*.auto.mlb
 MLB
 hardlinkA
 hardlinkB

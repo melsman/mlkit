@@ -720,7 +720,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                            end
                                           | _ => die "EQUALprim.Wrong instance kind")
                    | _ => die "EQUALprim.Wrong number of args")
-           | CCALLprim {name, instances, tyvars, Type} =>
+		   | CCALLprim {name, instances, regvars, tyvars, Type} =>
                (valid_ts env instances;
                 valid_s env (tyvars,Type);
                 case mk_instance_ccall ((tyvars, Type), instances) of
@@ -792,7 +792,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                          log "but found type:\n"; log_st (layoutTypes ts);
                          die "Export of function")
                 end)
-           | RESET_REGIONSprim {instance} =>
+		   | RESET_REGIONSprim {instance, regvars} =>
              (valid_t env instance;
               check_t_no_f64 "RESET_REGIONSprim" instance;
               case lexps
@@ -802,7 +802,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      else die "RESET_REGIONSprim2"
                   end
                  | _ => die "RESET_REGIONSprim.Wrong number of args")
-           | FORCE_RESET_REGIONSprim {instance} =>
+		   | FORCE_RESET_REGIONSprim {instance, regvars} =>
              (valid_t env instance;
               check_t_no_f64 "FORCE_RESET_REGIONSprim" instance;
               case lexps

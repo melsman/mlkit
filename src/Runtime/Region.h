@@ -165,7 +165,7 @@ typedef struct rp {
  * index parameter.  -- mael 2001-09-13 */
 
 /* For tag-free garbage collection of pairs, triples, and refs, we
- * make sure that large objects are aligned on 1K boundaries, which
+ * make sure that large objects are aligned on region page boundaries, which
  * makes it possible to determine if a pointer points into the stack,
  * constants in data space, a region in from-space, or a region in
  * to-space. The orig pointer points back to the memory allocated by
@@ -409,7 +409,7 @@ extern Rp * global_freelist;
 #define FREELIST     (freelists[execution_stream_rank()])
 #define MAYBE_DEFINE_CONTEXT
 #define CHECK_CTX(x) ;
-#else
+#else /* not ARGOBOTS */
 #define MAYBE_DEFINE_CONTEXT Context ctx = &(thread_info()->ctx)
 //#define MAYBE_DEFINE_CONTEXT
 //#define FREELIST     ((thread_info()->ctx).freelist)
@@ -417,15 +417,15 @@ extern Rp * global_freelist;
 
 //#define CHECK_CTX(x)   if (ctx != &(thread_info()->ctx)) { printf("uggh: %s\n", x); } ;
 #define CHECK_CTX(x)   ;
-#endif
+#endif /* ARGOBOTS */
 
-#else
+#else /* not PARALLEL */
 
 #define MAYBE_DEFINE_CONTEXT
 #define TOP_REGION   (ctx->topregion)
 #define FREELIST     global_freelist
 #define CHECK_CTX(x) ;
-#endif
+#endif /* PARALLEL */
 
 typedef size_t Protect;
 
@@ -574,5 +574,8 @@ void pp_gen(Gen *gen);
 void chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
+
+size_t size_thread_free_list();
+void free_thread_free_list();
 
 #endif /*REGION_H*/

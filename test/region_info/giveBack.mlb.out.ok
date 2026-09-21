@@ -1,0 +1,6 @@
+OK: giveBack_globalFreeList_nondecreasing
+OK: giveBack_idempotent_globalFreeList
+OK: giveBack_idempotent_threadFreeList
+OK: giveBack_preservesFreeListSum
+OK: giveBack_preservesTotalAllocatedPages
+OK: giveBack_threadFreeList_nonincreasing

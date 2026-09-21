@@ -227,7 +227,7 @@ structure EliminateEq : ELIMINATE_EQ =
             val argty2 = TYVARtype {tv=tv2}
             val ty = ARROWtype([argty1,argty2],NONE,[boolType],NONE)
         in PRIM(CCALLprim {name="__equal_ptr",instances=[instance_ty,instance_ty],
-                           tyvars=[tv1,tv2], Type=ty},
+                           regvars=[], tyvars=[tv1,tv2], Type=ty},
                 [e1,e2])
         end
 
@@ -636,7 +636,7 @@ structure EliminateEq : ELIMINATE_EQ =
          in monolet {lvar = lvar_nX, Type = intDefaultType(), bind =
                      PRIM (CCALLprim {name = "table_size",
                                       (*alpha' is instantiated to alpha (from above):*)
-                                      tyvars = [alpha'], instances = [TYVARtype {tv=alpha}],
+                                      tyvars = [alpha'], instances = [TYVARtype {tv=alpha}], regvars = [],
                                       Type = ARROWtype ([CONStype ([TYVARtype {tv=alpha'}], tyname, NONE)],
                                                         NONE,
                                                         [intDefaultType()],
@@ -650,7 +650,7 @@ structure EliminateEq : ELIMINATE_EQ =
              val tau_alpha' = TYVARtype {tv=alpha'}
          in PRIM (CCALLprim {name = "word_sub0",
                              (*alpha' is instantiated to alpha (from above):*)
-                             tyvars = [alpha'], instances = [TYVARtype {tv=alpha}],
+                             tyvars = [alpha'], instances = [TYVARtype {tv=alpha}], regvars = [],
                              Type = ARROWtype ([CONStype ([tau_alpha'], tyname, NONE), intDefaultType()],
                                                NONE,
                                                [tau_alpha'],
@@ -664,7 +664,7 @@ structure EliminateEq : ELIMINATE_EQ =
    val values_64bit = Flags.is_on0 "values_64bit"
 
    fun ccall name argtypes restype =
-     CCALLprim {name = name, instances = [], tyvars = [],
+       CCALLprim {name = name, instances = [], regvars = [], tyvars = [],
                 Type = ARROWtype (argtypes, NONE, [restype], NONE)}
 
    fun MINUS_INTprim () =

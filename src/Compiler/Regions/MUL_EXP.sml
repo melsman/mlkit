@@ -168,8 +168,10 @@ signature MUL_EXP =
                      mu_res : mu}
                     * ('a,'b,'c)trip
 
-      | RESET_REGIONS of {force: bool, liveset: liveset option, regions_for_resetting: 'a list}
-                          * ('a,'b,'c)trip              (* for programmer-directed resetting of regions;  *)
+    | RESET_REGIONS of {force: bool,
+						liveset: liveset option,
+						regions_for_resetting: 'a list}
+                       * ('a,'b,'c)trip              	(* for programmer-directed resetting of regions;  *)
                                                         (* resetting is forced iff "force" is true.       *)
                                                         (* Forced resetting is not guaranteed to be sound *)
       | FRAME    of {declared_lvars: {lvar : lvar,

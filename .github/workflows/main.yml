@@ -160,6 +160,7 @@ jobs:
           make -C test/explicit_regions all
           make -C test/repl all
           make -C test/parallelism all
+          make -C test/region_info all
 
       - name: Configure SmlToJs
         if: ${{ matrix.mlcomp == 'mlton' }}

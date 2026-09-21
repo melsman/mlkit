@@ -1,0 +1,8 @@
+[reading source file:	resetErr.sml]
+> val f : unit -> int
+  val size : string -> int
+resetErr.sml, line 8, column 31:
+            val _ = resetRegions `[t] ()
+                                 ^^^^
+Explicit region variable t not in scope
+Stopping compilation of MLB-file due to error (code 1).

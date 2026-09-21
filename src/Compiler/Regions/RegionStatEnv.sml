@@ -203,11 +203,11 @@ structure RegionStatEnv: REGION_STAT_ENV =
                   ("e0",       E.toplevel_arreff)])
 
     val initial: regionStatEnv = {tyname_env = tyname_env0,
-				  con_env    = conenv0,
-				  excon_env  = excon_env0,
-				  lvar_env   = LvarMap.empty,
-                                  regvar_env = regvar_env0,
-                                  tyvar_env  = L.TyvarMap.empty}
+								  con_env    = conenv0,
+								  excon_env  = excon_env0,
+								  lvar_env   = LvarMap.empty,
+								  regvar_env = regvar_env0,
+								  tyvar_env  = L.TyvarMap.empty}
 
     fun declareTyName (tyname,arity,{tyname_env, con_env,excon_env,
                                      lvar_env,regvar_env,tyvar_env}) =

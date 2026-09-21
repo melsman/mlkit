@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+* mael 2026-09-21: Additional ReML features, including region statistics and
+  region control through the new Region structure; contributions by Mikkel
+  Willén (PR #222).
+
 * mael 2026-09-20: Posix.TTY support (PR #221).
 
 * mael 2026-09-20: Various Basis Library fixes (PR #217, PR #220).

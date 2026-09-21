@@ -1,0 +1,5 @@
+OK: resetRegion_doesNotIncreaseMemoryUsage
+OK: resetRegion_idempotent_memoryUsage
+OK: resetRegion_keepsAtbot_onEmpty
+OK: resetRegion_setsAtbot_afterAllocation
+OK: resetRegion_resets_with_liveRef

@@ -1,0 +1,7 @@
+OK: size_int_zero
+OK: size_string_positive
+OK: size_list_nil_is_word
+OK: size_list_grows
+OK: size_tup2_positive
+OK: size_option_some_gt_none
+OK: size_leq_regionUsage

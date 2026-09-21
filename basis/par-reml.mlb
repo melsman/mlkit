@@ -1,6 +1,7 @@
 local
   basis.mlb
 in
+  reml.mlb
   THREAD.sig
   ThreadSeq.sml
   Thread-reml.sml

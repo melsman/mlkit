@@ -1,0 +1,32 @@
+[reading source file:	forceReset6.sml]
+[wrote X64 code file:	MLB/RI_PAR/forceReset6.sml.s]
+> infix 0 +
+  val f : unit -> int
+  val size : string -> int
+ *** Warnings ***
+forceResetting(x2): 
+   You have requested resetting the regions that appear free 
+   in the type scheme with place of 'x2', i.e., in
+   (string,`r2)
+   I have done as you requested, but I cannot guarantee that it is safe.
+   Here are my objections (one for each region variable concerned):
+   (1)                                                    
+        I cannot reset '`r2', because of conflict with the locally
+        live variable
+        x2 :(string,`r2)
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {`r2}
+        Amongst these, '`r2' can also be reached from '`r2'.
+        This suggests that you may be destroying data in '`r2'.
+   (2)                                                    
+        I cannot reset '`r1', because of conflict with the locally
+        live variable
+        x1 :(string,`r1)
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {`r1}
+        Amongst these, '`r1' can also be reached from '`r1'.
+        This suggests that you may be destroying data in '`r1'.
+[wrote X64 code file:	MLB/RI_PAR/base-link_objects.s]
+[wrote executable file:	run]

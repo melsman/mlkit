@@ -96,9 +96,9 @@ signature REGION_EXP = sig
       | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
       | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
-		     mu_result : mu, (*mu of result from c function*)
-		     rhos_for_result : ('a * int option) list}
-	            * ('a,'b)trip list  (* Calling C functions *)
+					 mu_result : mu, (*mu of result from c function*)
+					 rhos_for_result : ('a * int option) list}
+						* ('a,'b)trip list (* Calling C functions *)
 
       | BLOCKF64 of 'a * ('a,'b)trip list
       | SCRATCHMEM of int * 'a  (* bytes; type string *)
