@@ -172,7 +172,8 @@ callbacks execute through the ARM backend.
 
 ## Validation and next integration points
 
-Run `sh src/Compiler/Backend/tests/check-abi.sh`. It tests the production
+Run `sh src/Compiler/Backend/tests/check-abi.sh`. The runner uses `mlkit`
+from PATH; set `MLKIT=/path/to/mlkit` to select another MLKit build. It tests the production
 CallConv module with X64 and ARM frame parameters, scalar C placement and
 promotions, and register exclusions. On Apple Silicon it also calls small
 assembly probes from C and a C callback from assembly to independently check
