@@ -1,6 +1,23 @@
+.DEFAULT_GOAL := mlkit
 SHELL=@SHELL@
 
 KITVERSION=@PACKAGE_VERSION@
+DARWIN_NATIVE=@DARWIN_NATIVE@
+RUNTIME_TARGET=@RUNTIME_TARGET@
+ifneq ($(DARWIN_NATIVE),@DARWIN_NATIVE@)
+$(error Set DARWIN_NATIVE when running configure, not make)
+endif
+# Until milestone 3, no native compiler can generate matching ARM artifacts.
+ifeq ($(DARWIN_NATIVE),1)
+ifneq ($(filter-out runtime install_runtime clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
+$(error ARM compiler backend is not implemented yet; use make runtime)
+endif
+endif
+
+.PHONY: runtime
+runtime:
+	$(MAKE) -C src/Runtime all
+
 
 prefix=@prefix@
 datarootdir=@datarootdir@
@@ -191,6 +208,9 @@ install_top:
 
 .PHONY: install_runtime
 install_runtime:
+	$(MKDIR) $(LIBDIR)/lib/$(RUNTIME_TARGET)
+	$(INSTALLDATA) lib/$(RUNTIME_TARGET)/runtimeSystem*.a $(LIBDIR)/lib/$(RUNTIME_TARGET)
+ifeq ($(DARWIN_NATIVE),0)
 	$(MKDIR) $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemProf.a $(LIBDIR)/lib
@@ -199,6 +219,8 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemPar.a $(LIBDIR)/lib
+
+endif
 
 .PHONY: install_include
 install_include:

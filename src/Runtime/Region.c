@@ -892,17 +892,13 @@ allocGen (
   if (maxAllocInf == allocNowInf) maxAllocProfInf = allocProfNowInf;
   r->allocProfNow += sizeObjectDesc;
 
-  //  register long *stackTop asm ("rsp");
-  long stackTop;
-
-#ifdef __clang__
-  __asm__ volatile ("mov %0, SP;"
-		    : "=r" (stackTop)
-		    );
+  uintptr_t stackTop;
+#if defined(__aarch64__) || defined(__arm64__)
+  __asm__ volatile ("mov %0, sp" : "=r" (stackTop));
+#elif defined(__x86_64__)
+  __asm__ volatile ("movq %%rsp, %0" : "=r" (stackTop));
 #else
-  __asm__ volatile ("movq %%rsp, %0;"
-		    : "=r" (stackTop)
-		    );
+#error Unsupported runtime stack pointer architecture
 #endif
 
   maxMem = max(maxMem, ((long)stackBot) - ((long)stackTop) + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin));
@@ -979,7 +975,7 @@ allocGen (
 
       // Partial lock-free atomic allocation
     start:
-      t1 = gen->a;
+      t1 = __atomic_load_n(&gen->a, __ATOMIC_ACQUIRE);
       t2 = t1 + n;
       t3 = rpBoundary(t1);
       if (t2 <= t3) {
@@ -993,7 +989,7 @@ allocGen (
 	REGION_MUTEX_LOCK((r->mutex)->mutex);
 	//printf("taking lock on %p\n", gen);
       locked_start:
-	t1 = gen->a;
+	t1 = __atomic_load_n(&gen->a, __ATOMIC_ACQUIRE);
 	t2 = t1 + n;
 	t3 = rpBoundary(t1);
 	if (t2 <= t3) {
@@ -1026,12 +1022,11 @@ allocGen (
 #endif
 	t1 = alloc_new_page(gen);
 	t2 = t1+n;
-#ifdef __clang__
-	__asm__ volatile("":::"memory"); // Prevent CPU & compiler reordering
-#else
-	__asm__ volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
-#endif
-	gen->a = t2;
+        /* Publish the initialized page before another allocator observes it.
+         * Generated allocation must use an acquire load (or stronger RMW)
+         * before consuming this pointer. X64 uses lock cmpxchgq.
+         */
+        __atomic_store_n(&gen->a, t2, __ATOMIC_RELEASE);
 	REGION_MUTEX_UNLOCK((r->mutex)->mutex);
       }
     }

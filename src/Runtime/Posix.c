@@ -848,7 +848,8 @@ sml_tty_setpgrp(size_t fd0, size_t pid0)
   return convertIntToML(tcsetpgrp(fd, (pid_t) pid));
 }
 
-#include "SysErrTable.h"
+/* Use the configured build directory, not a stale in-source generated file. */
+#include <SysErrTable.h>
 
 static int
 sml_posixFind(char *s, struct syserr_entry arr[], int amount)

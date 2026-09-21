@@ -3,6 +3,15 @@
 # -----------------------------------------------------------
 
 SHELL=@SHELL@
+DARWIN_NATIVE=@DARWIN_NATIVE@
+ifneq ($(DARWIN_NATIVE),@DARWIN_NATIVE@)
+$(error Set DARWIN_NATIVE when running configure, not make)
+endif
+ifeq ($(DARWIN_NATIVE),1)
+ifneq ($(filter-out mlkit_runtime clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
+$(error ARM compiler backend is not implemented yet; build the runtime only)
+endif
+endif
 
 # Some commands
 MKDIR=@top_srcdir@/mkinstalldirs
@@ -26,7 +35,7 @@ mlkit: mlkit_tools mlkit_runtime mlkit_kit
 mlkit_tools: basics rp2ps tester kitbench mlbmake mllex-yacc
 
 .PHONY: mlkit_runtime
-mlkit_runtime: basics
+mlkit_runtime:
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a

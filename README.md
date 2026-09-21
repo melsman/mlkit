@@ -148,6 +148,24 @@ For binary packages, we use
 $ ./configure --sysconfdir=/etc --prefix=/usr
 ```
 
+### macOS runtime targets
+
+The default configuration builds the X64 runtime, including on Apple Silicon
+with Rosetta 2. To build the experimental native ARM64 runtime instead:
+
+```bash
+DARWIN_NATIVE=1 ./configure CC=gcc
+make runtime
+```
+
+Use `DARWIN_NATIVE=0 ./configure CC=gcc` to switch back. Select the mode at
+configure time, not by overriding make variables. ARM compiler generation is
+not implemented yet; native-mode compiler and full-install targets deliberately
+fail rather than mix X64 generated code with an ARM runtime.
+
+See [the ARM64 runtime build and validation notes](doc/arm64-runtime.md) for
+artifact locations, SDK/toolchain setup, installation, and the test matrix.
+
 ## Pre-compile Basis Library and Kit-Library
 
 Execute the following command:

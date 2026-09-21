@@ -19,7 +19,7 @@ OPT=-Wall -std=gnu99 $(CFLAGS)
 
 .PHONY: clean depend
 
-%.o: %.c
+%.o: %.c Makefile
 	$(CC) -c $(OPT) -o $*.o $<
 
 all: $(BINDIR)/rp2ps
@@ -29,7 +29,7 @@ $(BINDIR)/rp2ps: rp2ps
 	$(INSTALLPROGRAM) rp2ps $(BINDIR)
 
 rp2ps: $(OFILES)
-	$(CC) -o rp2ps $(OFILES) -lm
+	$(CC) $(CFLAGS) -o rp2ps $(OFILES) -lm
 
 clean:
 	rm -f *.o core a.out *~ rp2ps
