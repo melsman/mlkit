@@ -13,6 +13,8 @@ sig
   val returnWord : t -> int
   val returnOffsetFromTop : t -> int
   val handlerWords : t -> int
+  val argumentPadding : t -> int -> int
+  val resultPadding : t -> int -> int
   val callWords : t -> {args:int, results:int} -> int
   val alignFrame : t -> {locals:int, call:int} -> int
 end =
@@ -27,7 +29,10 @@ struct
   fun returnWord ({return,...}:t) = return
   fun returnOffsetFromTop (f:t) = returnWord f
   fun handlerWords ({handler,...}:t) = handler
-  fun callWords f {args,results} = args + results + headerWords f
+  fun argumentPadding f n = case returnDelivery f of StackHeader => 0 | LinkRegister _ => n mod 2
+  val resultPadding = argumentPadding
+  fun callWords f {args,results} = args + argumentPadding f args +
+      results + resultPadding f results + headerWords f
   fun alignFrame ({alignment,...}:t) {locals,call} =
       locals + (alignment - (locals + call) mod alignment) mod alignment
 end

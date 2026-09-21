@@ -36,6 +36,7 @@ in
   in local open Pickle in Backend/Arm64/InstsArm64.sml end
      Backend/Arm64/CodeGenUtilArm64.sml
      Backend/Arm64/CodeGenArm64.sml
+     Backend/Arm64/BackendArm64.sml
      local open Pickle Basics Manager
      in Backend/Arm64/ExecutionArm64.sml
      end

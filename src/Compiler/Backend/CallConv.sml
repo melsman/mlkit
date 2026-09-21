@@ -125,7 +125,8 @@ structure CallConv : CALL_CONV =
     (***************************)
     local
       local val next_offset = ref 0
-      in fun reset_offset () = next_offset := 0
+      in fun used_offsets () = ~(!next_offset)
+         fun reset_offset () = next_offset := 0
          fun get_next_offset () = (next_offset := !next_offset - 1; !next_offset)
       end
 
@@ -247,8 +248,16 @@ structure CallConv : CALL_CONV =
               val (clos_sty_opt, (acc,regs)) = resolve_sty_opt (clos, ([], arg_regs))
               val (args_stys, reg_args_stys, fargs_stys, lv_phreg_args) =
                   resolve_stys_args (args, reg_args, fargs, (acc,regs,arg_fregs))
-              val _ = List.tabulate(FrameLayout.headerWords frame, fn _ => get_next_offset())
-              val (res_stys, (lv_phreg_res,_)) = resolve_stys (res,([],res_regs))    (*memo: is this right on the x86?*)
+              val _ = List.tabulate(FrameLayout.headerWords frame + FrameLayout.argumentPadding frame (used_offsets()), fn _ => get_next_offset())
+              val result_base = used_offsets()
+              val (res_stys, (lv_phreg_res,_)) = resolve_stys (res,([],res_regs))
+              (* Match the caller's descending result slots. Retain the X64
+               * convention while defining ARM's multi-result layout. *)
+              val result_end = used_offsets()
+              val res_stys = case FrameLayout.returnDelivery frame of
+                  FrameLayout.StackHeader => res_stys
+                | FrameLayout.LinkRegister _ => map (fn CC_STACK(lv,off) =>
+                    CC_STACK(lv,~(result_base+result_end+1)-off) | sty=>sty) res_stys
           in ({clos=clos_sty_opt,
                args=args_stys,
                reg_args=reg_args_stys,
@@ -286,8 +295,9 @@ structure CallConv : CALL_CONV =
             val args_gpr = cons_list_opt(clos,args@reg_args)      (* general purpose registers *)
             val args_stack = List.drop(args_gpr, List.length arg_regs) handle General.Subscript => []
             val fargs_stack = List.drop(fargs,List.length arg_fregs) handle General.Subscript => []
-            val (o_res,aty_res) = calc_offset(res_stack,0,[])
-            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res + FrameLayout.headerWords frame,[])
+            val (o_res,aty_res) = calc_offset(res_stack,FrameLayout.resultPadding frame (length res_stack),[])
+            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res + FrameLayout.headerWords frame +
+                FrameLayout.argumentPadding frame (length args_stack + length fargs_stack),[])
         in (aty_args,aty_res)
         end
     end

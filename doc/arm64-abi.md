@@ -53,8 +53,7 @@ saves incoming x29/LR and establishes x29 before its first safepoint.
 `FrameLayout.returnDelivery` separates entry delivery from saved storage:
 X64 uses `StackHeader`, ARM uses `LinkRegister 30`. The existing ARM
 `headerWords=2` describes the conservative saved frame, not how the incoming
-return address is passed. This property specifies the future emitter's
-behavior. The initial emitter implements register-argument direct calls
+return address is passed. The emitter implements direct and indirect calls, stack arguments/results,
 and callee-owned FP/LR saves; the layout helper itself emits no instructions.
 
 All logical offsets in CallConv/CalcOffset are 64-bit words. Low to high
@@ -62,17 +61,22 @@ addresses in a complete activation are:
 
 1. Local slots, including any alignment padding.
 2. Spilled incoming arguments in the existing descending-stack order.
-3. Saved caller x29.
-4. Saved return PC.
-5. Spilled result slots.
+3. Argument padding: one word when the spilled-argument count is odd.
+4. Saved caller x29.
+5. Saved return PC.
+6. Spilled results in descending result-list order.
+7. Result padding: one word when the spilled-result count is odd.
 
 The two header words occupy the position formerly occupied by the single
 X64 return-address word. Within the header, saved FP is word 0 and return PC
 is word 1. `FrameLayout.returnOffsetFromTop` measures the return-PC offset
 from the low-address end of that header. If F is the local-word count and A
 is the spilled-argument count, the return-PC offset from the frame base is
-F + A + 1. Frame size is F + A + 2 + R, where R is spilled-result count.
-`alignFrame` pads F so this total is a multiple of two words.
+F + even(A) + 1, where even(n) rounds n up to an even number.
+Frame size is F + even(A) + 2 + even(R), where R is the spilled-result
+count. `alignFrame` rounds F up independently to an even number. Separate
+argument/result padding keeps SP aligned after the callee releases its
+argument/header area and leaves only the result block for its caller.
 
 `resolve_act_cc` offsets describe the existing argument/result reservation
 order, not direct byte offsets from the hardware SP. The ARM emitter must
@@ -90,8 +94,11 @@ account for the transition between LR and its saved slot.
 
 Normal return restores x29 and LR, releases the local/argument/header area
 according to the existing logical slot convention, and executes `ret`.
-Spilled results remain available to the caller. Caller-side alignment
-padding remains accounted for until those results have been fetched.
+Spilled results remain available to the caller, which stages register and
+stack results before writing their destinations and releasing even(R) words.
+Tail transfers stage operands below the active frame, reuse the original
+result block, and reposition the argument/header block for the target. This
+supports changing argument counts without accumulating stack space.
 The ARM emitter must not copy X64's implicit hardware return-address push.
 
 ### Return PCs and frame descriptors
@@ -145,17 +152,18 @@ those validated by Runtime/Layout.c; ReML does not require a separate ABI.
 
 An ARM handler record has six words, at increasing addresses:
 continuation PC, handler closure, previous handler pointer, saved SP,
-saved FP, and a reserved zero word. The first four preserve the existing
-handler contract; the extra FP and padding make restoration explicit and
-keep the record 16-byte sized. The closure slot is the only potential heap
+saved FP, and the saved `context.topregion` pointer. The first four preserve
+the existing handler contract; the FP and region-chain snapshot make
+restoration explicit and keep the record 16-byte sized. The closure slot is the only potential heap
 root in this record; the other fields must not enter the heap root bitmap.
 
 The public raise bridge receives context and exception via the C ABI,
 installs x28, and protects the exception in x27 while deallocating intervening
-regions. It then restores the previous handler, SP and FP, places the handler
+regions until `context.topregion` equals the saved chain snapshot. It then
+restores the previous handler, SP and FP, places the handler
 closure/exception in x0/x1, installs the recorded continuation in LR,
-and branches to the handler without overwriting LR. There must be no GC
-safepoint between protecting the exception in x27 and delivering it to the
+reserves the handler's two-word FP/LR header, and branches to the handler
+without overwriting LR. There must be no GC safepoint between protecting the exception in x27 and delivering it to the
 handler; deallocation must not introduce one.
 Crossing a foreign callback boundary by a nonlocal raise is not implicitly
 supported: wrappers must retain the existing exported-call exception policy

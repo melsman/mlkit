@@ -6,7 +6,7 @@ MLKIT_BOOTSTRAP ?= mlkit
 MLKIT_BOOTSTRAP_FLAGS ?= -gc
 SML_LIB ?= $(CURDIR)
 
-.PHONY: all mlkit reml configuration check
+.PHONY: all mlkit reml emitter configuration check
 all: mlkit reml
 configuration:
 	$(MAKE) -C src/Tools/MlbMake Configuration.sml
@@ -16,5 +16,7 @@ mlkit: configuration
 	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/mlkit-arm64 src/Compiler/mlkitarm64.mlb
 reml: configuration
 	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/reml-arm64 src/Compiler/remlarm64.mlb
-check: all
-	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh
+emitter: configuration
+	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+check: all emitter
+	ARM64_EMITTER="$(CURDIR)/bin/arm64-emitter-test" SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh

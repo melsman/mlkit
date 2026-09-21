@@ -6,10 +6,9 @@ structure ExecutionArm64 : EXECUTION =
     structure PP = PrettyPrint
     structure CompileBasis = CompileBasis
 
-    structure NativeCompile = NativeCompile(structure RegisterInfo = InstsArm64.RI)
+    structure NativeCompile = BackendArm64.NativeCompile
 
-    structure CodeGen = CodeGenArm64(structure LineStmt = NativeCompile.LineStmt
-                                   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
+    structure CodeGen = BackendArm64.CodeGen
 
     val message = CodeGen.message
 
@@ -205,7 +204,7 @@ structure ExecutionArm64 : EXECUTION =
     fun reject msg = (TextIO.output(TextIO.stdErr,msg ^ "\n"); raise Fail msg)
     fun checkTarget () =
       List.app (fn flag => if Flags.is_on0 flag () then
-                   reject ("ARM64 milestone 3 does not support " ^ flag) else ())
+                   reject ("ARM64 backend does not support " ^ flag) else ())
         ["garbage_collection", "generational_garbage_collection", "region_profiling",
          "tag_values", "tag_pairs", "parallelism", "extra_gc_checks"]
     fun preHook () = (checkTarget(); Compile.preHook())

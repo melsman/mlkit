@@ -1,21 +1,21 @@
 fun check name condition = if condition then () else raise Fail name
 val noRegs = {arg_regs=[],arg_fregs=[],res_regs=[]}
 val cc0 = {clos=NONE,args=[1,2],reg_args=[],fargs=[],res=[3]}
-fun testFrame (frame,header) =
+fun testFrame (frame,header,padding) =
   let val (cc,_,_) = CallConv.resolve_cc frame noRegs (CallConv.mk_cc cc0)
       val (args,res) = CallConv.resolve_act_cc frame noRegs cc0
-  in check "argument order" (args=[(1,1+header),(2,2+header)]);
-     check "result offset" (res=[(3,0)]);
+  in check "argument order" (args=[(1,1+header+padding),(2,2+header+padding)]);
+     check "result offset" (res=[(3,padding)]);
      check "callee offsets" (CallConv.get_spilled_args_with_offsets cc=[(2,~1),(1,~2)]);
      check "result below header" (CallConv.get_spilled_res_with_offsets cc=[(3,~(3+header))]);
-     check "call size" (CallConv.get_cc_size frame cc=3+header);
+     check "call size" (CallConv.get_cc_size frame cc=3+header+padding);
      List.app (fn locals =>
-       let val n=FrameLayout.alignFrame frame {locals=locals,call=3+header}
-       in check "aligned with minimal padding" (n>=locals andalso n<=locals+1 andalso (n+3+header) mod 2=0) end)
+       let val n=FrameLayout.alignFrame frame {locals=locals,call=3+header+padding}
+       in check "aligned with minimal padding" (n>=locals andalso n<=locals+1 andalso (n+3+header+padding) mod 2=0) end)
        (List.tabulate(10,fn i=>i))
   end
-val () = testFrame(FrameLayout.x64,1)
-val () = testFrame(FrameLayout.arm64,2)
+val () = testFrame(FrameLayout.x64,1,0)
+val () = testFrame(FrameLayout.arm64,2,1)
 val () = check "return delivery is independent of saved frame layout"
   (FrameLayout.returnDelivery FrameLayout.x64=FrameLayout.StackHeader andalso
    FrameLayout.returnDelivery FrameLayout.arm64=FrameLayout.LinkRegister AbiArm64.linkRegister andalso
@@ -68,4 +68,15 @@ val () = check "result registers" (result(SOME F64)=SOME(FPR 0) andalso result(S
 val () = check "reserved registers excluded"
   (List.all (fn r=>not(List.exists (fn a=>a=r) allocatableGPRs)) reservedGPRs)
 end
+
+val () = List.app (fn a=>List.app(fn r=>
+  let val call={clos=NONE,args=List.tabulate(a,fn i=>i),reg_args=[],fargs=[],res=List.tabulate(r,fn i=>100+i)}
+      val(cc,_,_)=CallConv.resolve_cc FrameLayout.arm64 noRegs (CallConv.mk_cc call)
+      val(args,res)=CallConv.resolve_act_cc FrameLayout.arm64 noRegs call
+      val formal=CallConv.get_spilled_args_with_offsets cc @ CallConv.get_spilled_res_with_offsets cc
+      val n=CallConv.get_cc_size FrameLayout.arm64 cc
+  in check "all ARM argument/result padding combinations" (n mod 2=0 andalso
+       List.all(fn(lv,off)=>List.exists(fn(v,f)=>v=lv andalso f+n=off) formal)(args@res)) end)
+  (List.tabulate(8,fn i=>i))) (List.tabulate(8,fn i=>i))
+
 val () = print "ABI layout tests passed\n"

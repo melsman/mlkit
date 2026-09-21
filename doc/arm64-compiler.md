@@ -48,14 +48,20 @@ an explicit `-no_gc` flag is unnecessary and rejected; omit it.
   are excluded from integer allocation.
 - `CodeGenUtilArm64` materializes 64-bit constants, performs aligned stack
   adjustments, and emits Mach-O GOT-based symbol addresses.
-- `CodeGenArm64` handles unboxed 64-bit word arithmetic, selected comparisons,
-  stack locals, global loads/stores, and raw fixed integer-register C calls.
-  It includes register-only direct ML calls/tail transfers and integer/word
-  flow comparisons. Broader call and
-  exception coverage belongs to milestone 4.
-- ML calls use `bl`, callee-owned FP/LR saves, and `ret`. The C-facing main
-  stub preserves x19-x29 and d8-d15. Return-address header space remains
-  reserved according to the ABI design.
+- `CodeGenArm64` supports direct/indirect ML calls and tail transfers,
+  integer and FP argument banks, spilled arguments/results, closures,
+  records, references, constructors, and exception handlers. Allocation uses
+  the existing plain region runtime, preserving live ML registers across
+  internal helper calls. ReML explicit regions use the same representation.
+- Floating-point arithmetic and comparisons use ARM FP instructions;
+  integer addition/subtraction check overflow and raise the ML exception.
+  Large offsets are materialized through scratch registers, and large stack
+  frames use aligned adjustments that fit the instruction immediates.
+- ML calls use `bl`/`blr`, callee-owned FP/LR saves, and `ret`. Tail transfers
+  preserve the original LR and result block while changing argument counts.
+  The runtime's C `main` enters generated `code`, which installs the context
+  and global regions and exits via `terminateML`. This entry does not return
+  to C; returning callbacks remain future work.
 - `ExecutionArm64` assembles with `gcc -arch arm64 -c` and links with
   `gcc -arch arm64`. The output cache is `MLB/ARM64_<variant>`, distinct from
   X64 while preserving the manager's two-component cache-directory shape.
@@ -67,22 +73,33 @@ command-line/driver code can be factored once both implementations stabilize.
 
 ## Limits and validation
 
-This is a minimal backend, not full Standard ML/ReML execution support.
-Unsupported instructions and modes fail explicitly. In particular, region
-allocation, closures/indirect ML calls, stack-passed call arguments/results,
-FP operations, signed arithmetic with overflow exceptions, exceptions,
-profiling, GC, parallelism, automatic FFI conversions, callbacks, shared
-libraries, and REPL loading are not enabled. Full Basis Library compilation
-and native compiler bootstrap remain later milestones.
+This remains an experimental no-GC subset. Unsupported instructions and
+modes fail explicitly. GC, tagging, profiling, parallelism, automatic FFI
+conversions, callbacks, shared libraries, and REPL loading remain disabled.
+Raw C calls currently support up to eight integer/pointer arguments. Some
+Basis primitives remain unimplemented; full Basis Library compilation and
+native compiler bootstrap remain later milestones.
 
-The native test compiles two units with MLKit and ReML, passes runtime input
-through C `getchar`, computes `(input + 3) * 2 - 69`, and calls C `putchar`.
-Additional cases exercise both comparison branches, non-inlined nested ML
-calls and a tail transfer, checking that real call/branch instructions were
-emitted. Tests check exact output, cross-unit data addressing, executable/object
-architecture, X64 cache isolation, and explicit GC rejection. It requires
-Apple Silicon for execution. Run it directly with `SML_LIB`, `MLKIT_ARM64`,
-and `REML_ARM64` set to absolute paths.
+The permanent native suite compiles and executes MLKit and ReML programs
+covering cross-unit data, comparison branches, captured closures, indirect
+calls, one million tail calls with stack arguments, mixed integer/FP calls,
+NaN comparisons, references, lists, overflow, and nested exception handlers.
+A C probe checks that unwinding restores the region chain. ReML additionally
+runs an explicit-region program. Forty live arguments across a C call
+exercise spilling; a generated finite 4,200-word record exercises a frame
+larger than 32 KiB, large-offset loads/stores, and C-call SP alignment.
+
+An MLKit-built emitter harness tests four through seven return values,
+including odd/even result padding and tail calls that enlarge or shrink the argument
+area. These use production CallConv and code emission directly, since
+source-level tuple returns can remain boxed. The separate ABI suite checks
+all combinations of zero through seven spilled arguments and results.
+
+The suite checks exact output, ARM64 executable/object architecture, X64
+cache isolation, and explicit GC rejection. It requires Apple Silicon.
+`make -f Makefile.arm64 check` builds the compilers and emitter harness using
+MLKit with `-gc`. To run the shell test directly, set `SML_LIB`, `MLKIT_ARM64`,
+`REML_ARM64`, and `ARM64_EMITTER` to absolute paths.
 
 The source-built compiler limitation in [#225](https://github.com/melsman/mlkit/issues/225)
 also reproduces on a sample containing wrapper functions when the clean

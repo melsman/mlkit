@@ -362,7 +362,7 @@ struct
 	val _ = print ("size_fd is " ^ Int.toString size_fd ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
       in
 	(* FunNr :: offsetToReturn :: fdSize :: frameMap *)
-        new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf+FrameLayout.returnOffsetFromTop frame_layout)) :: (Word32.fromInt size_fd) :: ws
+        new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf+FrameLayout.argumentPadding frame_layout size_ccf+FrameLayout.returnOffsetFromTop frame_layout)) :: (Word32.fromInt size_fd) :: ws
       end
 
     fun CBV_sw (CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
