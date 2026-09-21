@@ -493,7 +493,7 @@ install_smltojs: install_smltojs0
 #  $ make smltojs_basislibs
 # -----------------------------------------------------
 OS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
-BIN_DIST=mlkit-bin-dist-$(OS)
+BIN_DIST=mlkit-bin-dist-$(OS)$(if $(filter darwin,$(OS)),-x64)
 .PHONY: mlkit_bin_dist
 mlkit_bin_dist:
 	$(MKDIR) dist

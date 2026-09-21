@@ -71,8 +71,9 @@ case "${1:?Specify a CI phase}" in
     ;;
   install)
     ARM64_NATIVE_BIN="$native" ARM64_PREFIX="$prefix" sh "$tests/install-native.sh"
+    mkdir -p dist
     tar --exclude=MLB --exclude=.arm64-install-prefix \
-      -czf "$ARM64_CI_ROOT/mlkit-bin-dist-darwin-arm64-$ARM64_HOST.tgz" \
+      -czf "dist/mlkit-bin-dist-darwin.tgz" \
       -C "$prefix" .
     ;;
   *) echo "Unknown CI phase: $1" >&2; exit 1 ;;

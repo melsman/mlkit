@@ -24,6 +24,8 @@ on:
 jobs:
 
   build-test-deploy:
+    permissions:
+      contents: write
 
     strategy:
       matrix:
@@ -41,6 +43,11 @@ jobs:
         run: |
           echo "OS=$(uname -s | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "RUNHOME=$(echo $HOME)" >> $GITHUB_ENV
+          if [ "$(uname -s)" = Darwin ]; then
+            echo "DIST_SUFFIX=-x64" >> "$GITHUB_ENV"
+          else
+            echo "DIST_SUFFIX=" >> "$GITHUB_ENV"
+          fi
 
       - name: Install dependencies (linux)
         if: ${{ env.OS == 'linux' }}
@@ -199,10 +206,10 @@ jobs:
       - name: Install binary distribution and test it
         run: |
           mkdir -p ${{ env.RUNHOME }}/tmp
-          cp dist/mlkit-bin-dist-${{ env.OS }}.tgz ${{ env.RUNHOME }}/tmp/
+          cp dist/mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz ${{ env.RUNHOME }}/tmp/
           cd ${{ env.RUNHOME }}/tmp/
-          tar xzf mlkit-bin-dist-${{ env.OS }}.tgz
-          cd mlkit-bin-dist-${{ env.OS }}
+          tar xzf mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz
+          cd mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}
           sudo make install
           cd ${{ env.RUNHOME }}
           rm -rf ${{ env.RUNHOME }}/.mlkit ${{ env.RUNHOME }}/tmp
@@ -215,15 +222,17 @@ jobs:
           make bootstrap
 
       - name: Upload release
-        if: ${{ matrix.mlcomp == 'mlkit' && github.event_name == 'push' && contains(github.ref, '/tags/v') }}
+        if: ${{ matrix.mlcomp == 'mlkit' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/mlkit-bin-dist-${{ env.OS }}.tgz
+          file: dist/mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz
           tag: ${{ github.ref }}
           overwrite: true
 
   build-test-arm64:
+    permissions:
+      contents: write
     name: macos-arm (${{ matrix.mlcomp }})
     timeout-minutes: 360
     strategy:
@@ -239,6 +248,7 @@ jobs:
       run:
         shell: bash
     env:
+      OS: darwin
       ARM64_HOST: ${{ matrix.mlcomp }}
 
     steps:
@@ -309,5 +319,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mlkit-bin-dist-darwin-arm64-${{ matrix.mlcomp }}
-          path: ${{ env.ARM64_CI_ROOT }}/mlkit-bin-dist-darwin-arm64-${{ matrix.mlcomp }}.tgz
+          path: dist/mlkit-bin-dist-${{ env.OS }}.tgz
           if-no-files-found: error
+
+      - name: Upload ARM release
+        if: ${{ matrix.mlcomp == 'mlkit' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/mlkit-bin-dist-${{ env.OS }}.tgz
+          tag: ${{ github.ref }}
+          overwrite: true

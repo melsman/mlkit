@@ -29,8 +29,13 @@ The phases in `.github/scripts/arm64.sh` perform:
    checks, and an archive of the tested installation.
 
 Argobots remains optional and is not provisioned by these jobs. The ARM jobs do
-not run the X64 distribution's JS/PhantomJS tests or publish a GitHub release.
-The existing jobs retain that coverage and release behavior.
+not run the X64 distribution's JS/PhantomJS tests; the existing jobs retain
+that coverage. On a pushed `v*` tag, the MLKit-hosted ARM job publishes
+`dist/mlkit-bin-dist-darwin.tgz` to the release. Darwin X64 jobs build and test
+`dist/mlkit-bin-dist-darwin-x64.tgz`, and the MLKit-hosted X64 job publishes
+that distinct asset. Linux retains `dist/mlkit-bin-dist-linux.tgz`. MLton jobs
+validate distributions but do not publish release assets. Historical seed
+downloads keep their original v4.7.13 filenames.
 
 Jobs use separate VMs and host-specific output directories, compiler-cache
 names, installation prefixes, and artifact names. They do not restore caches
