@@ -299,6 +299,9 @@ jobs:
             ${{ env.ARM64_CI_ROOT }}/tmp/**/*.log
             ${{ env.ARM64_CI_ROOT }}/tmp/**/*.html
             ${{ env.ARM64_CI_ROOT }}/tmp/**/TESTmessages
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/complog.txt
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.res
+            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.mlbres
             config.log
           retention-days: 14
 

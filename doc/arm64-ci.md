@@ -38,6 +38,7 @@ from another run. Test scratch directories respect `TMPDIR`; CI retains native
 fixture output with `ARM64_KEEP_TEST_OUTPUTS=1`. Logs and HTML test reports are
 uploaded even on failure, under `logs-darwin-arm64-{mlkit,mlton}`. Successful
 installations are uploaded as `mlkit-bin-dist-darwin-arm64-{mlkit,mlton}`.
+Basis caches are excluded from the archive so they rebuild at the destination.
 Unpack a distribution to a space-free prefix and set `SML_LIB` to that prefix.
 
 Local workflow validation uses actionlint, shell syntax checks, and the native
