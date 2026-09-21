@@ -110,7 +110,7 @@ structure CallConv : CALL_CONV =
         List.length(filter_out_phreg fargs)
 
     fun get_cc_size frame cc =
-        FrameLayout.callWords frame {args=get_ccf_size cc, results=get_rcf_size cc}
+        FrameLayout.callWords frame {args = get_ccf_size cc, results = get_rcf_size cc}
 
     fun add_frame_size ({clos,args,reg_args,fargs,res,frame_size},f_size) =
         {clos = clos,
@@ -257,10 +257,10 @@ structure CallConv : CALL_CONV =
               val res_stys = case FrameLayout.returnDelivery frame of
                   FrameLayout.StackHeader => res_stys
                 | FrameLayout.LinkRegister _ => map (fn CC_STACK(lv,off) =>
-                    CC_STACK(lv,~(result_base+result_end+1)-off) | sty=>sty) res_stys
-          in ({clos=clos_sty_opt,
-               args=args_stys,
-               reg_args=reg_args_stys,
+                    CC_STACK(lv,~(result_base+result_end+1)-off) | sty => sty) res_stys
+          in ({clos = clos_sty_opt,
+               args = args_stys,
+               reg_args = reg_args_stys,
                fargs=fargs_stys,
                res = res_stys,
                frame_size=frame_size},

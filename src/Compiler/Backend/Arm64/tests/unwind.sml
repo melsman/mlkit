@@ -10,7 +10,8 @@ exception E of word
 exception F of word
 fun boom__noinline(w:word) =
   let val xs = build__noinline(0w100,nil)
-  in raise E (sum__noinline(xs,w)-0w5050) end
+  in raise E (sum__noinline(xs,w)-0w5050)
+  end
 val w:word = prim("getchar",())
 val x = ((boom__noinline w handle E n => raise F (n+0w1)) handle F n => n)
 val y = (boom__noinline x handle E n => n)

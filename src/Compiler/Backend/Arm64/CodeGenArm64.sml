@@ -20,6 +20,12 @@ struct
   structure SS = SubstAndSimplify
   structure A = InstsArm64
   open CodeGenUtilArm64
+  (* Builders compose in instruction order and apply to the suffix right to left. *)
+  infixr 5 ++
+  type builder = A.inst list -> A.inst list
+  fun ((f : builder) ++ (g : builder)) x = f(g x)
+  fun one (i : A.inst) code = i :: code
+  fun instruction name args code = ins name args :: code
   type label = AddressLabels.label
   type ('s,'o,'a) LinePrg = ('s,'o,'a) LS.LinePrg
   type offset = int
@@ -30,11 +36,11 @@ struct
   val messages_p = Flags.is_on0 "messages"
   fun message f = if messages_p() then print(f()) else ()
   val extra_gc_checks = Flags.add_bool_entry
-    {long="extra_gc_checks",short=NONE,item=ref false,neg=false,
-     menu=["Compiler","extra GC checks"],desc="Collect at every ARM64 function entry."}
+    {long = "extra_gc_checks",short = NONE,item = ref false,neg = false,
+     menu = ["Compiler","extra GC checks"],desc = "Collect at every ARM64 function entry."}
   val alloc_protect_always = Flags.add_bool_entry
-    {long="alloc_protect_always",short=NONE,item=ref false,neg=false,
-     menu=["Compiler","always protect allocation"],desc="Always protect parallel allocation."}
+    {long = "alloc_protect_always",short = NONE,item = ref false,neg = false,
+     menu = ["Compiler","always protect allocation"],desc = "Always protect parallel allocation."}
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
@@ -50,7 +56,7 @@ struct
   fun staticDataInto code =
     foldl (fn (chunk,code) => foldr (op ::) code chunk) code (!staticChunks)
   fun numberInto {value,precision} dst code =
-    if tagged() andalso (precision=32 orelse precision=64) then
+    if tagged() andalso (precision = 32 orelse precision = 64) then
       let
         val l = DatLab(AddressLabels.new_named "arm64_integer")
         val () = addStatic
@@ -62,7 +68,7 @@ struct
         addressInto (l,dst) code
       end
     else constantInto
-      (if precision=63 orelse precision=31 orelse (precision=8 andalso tagged())
+      (if precision = 63 orelse precision = 31 orelse (precision = 8 andalso tagged())
        then 2*value+1 else value,dst) code
   fun readInto fsz aty dst code =
     case aty of
@@ -71,7 +77,8 @@ struct
     | SS.INTEGER_ATY n => numberInto n dst code
     | SS.WORD_ATY n => numberInto n dst code
     | SS.REG_I_ATY off =>
-        addOffsetInto (SP,slot fsz off,dst) (ins "orr" [r dst,r dst,"#1"] :: code)
+        (addOffsetInto (SP,slot fsz off,dst)
+           ++ instruction "orr" [r dst,r dst,"#1"]) code
     | SS.REG_F_ATY off => addOffsetInto (SP,slot fsz off,dst) code
     | SS.DROPPED_RVAR_ATY => constantInto (0,dst) code
     | SS.UNIT_ATY => constantInto (1,dst) code
@@ -94,7 +101,8 @@ struct
       val code = foldr (fn (i,code) => loadInto (SP,8*i,X i) code)
                        code (List.tabulate(n,fn i => i))
       val code = foldri (fn (i,a,code) =>
-        readInto (fsz+bytes div 8) a (X 16) (storeInto (X 16,SP,8*i) code))
+        (readInto (fsz+bytes div 8) a (X 16)
+           ++ storeInto (X 16,SP,8*i)) code)
         code args
     in
       stackInto (true,bytes) code
@@ -113,20 +121,21 @@ struct
       val temp = even(length res)
       val code = stackInto (false,8*(temp+rw)) code
       val code = foldri (fn (i,a,code) =>
-        loadInto (SP,8*i,X 16) (writeInto (fsz+rw+temp) a (X 16) code)) code res
+        (loadInto (SP,8*i,X 16)
+           ++ writeInto (fsz+rw+temp) a (X 16)) code) code res
       val code = foldri (fn (i,_,code) =>
         if i<3 then storeInto (X i,SP,8*i) code
-        else loadInto (SP,8*(temp+spilled-1-(i-3)),X 16)
-                      (storeInto (X 16,SP,8*i) code)) code res
+        else (loadInto (SP,8*(temp+spilled-1-(i-3)),X 16)
+           ++ storeInto (X 16,SP,8*i)) code) code res
     in
       stackInto (true,8*temp) code
     end
   val frameIndex : (A.lab*A.lab) list ref = ref []
   fun continuation bv =
     let
-      val pc=localFresh()
-      val anchor=DatLab(AddressLabels.new_named "arm64_frame")
-      val ()=if gc() then
+      val pc = localFresh()
+      val anchor = DatLab(AddressLabels.new_named "arm64_frame")
+      val () = if gc() then
           (addStatic (Directive ".data" :: Directive ".p2align 3" ::
             foldl (fn (w,code) => Directive(".quad 0x" ^ Word32.fmt StringCvt.HEX w) :: code)
               [Label anchor] bv);
@@ -156,32 +165,35 @@ struct
                  unsupported "tail call with incompatible result area" else ()
       val stackArgs = mapi (fn (i,_) => i+8) (rest 8 gp) @
                       mapi (fn (i,_) => length gp+8+i) (rest 8 fp)
-      val code = if tail then code else Label returnLabel :: resultsInto fsz res code
+      val code = if tail then code else (one (Label returnLabel)
+         ++ resultsInto fsz res) code
       val code = (case target of
                     Direct l => ins (if tail then "b" else "bl") [pr_lab(MLFunLab l)]
                   | Indirect _ => ins (if tail then "br" else "blr") ["x17"]) :: code
       val code = stackInto (false,8*(if tail then dest else sw)) code
       val code = case target of
                    Direct _ => code
-                 | Indirect _ => loadInto (SP,8*(length staged-1),X 17)
-                                          (loadInto (X 17,payload(),X 17) code)
+                 | Indirect _ => (loadInto (SP,8*(length staged-1),X 17)
+                    ++ loadInto (X 17,payload(),X 17)) code
       val code = foldri (fn (i,_,code) => loadInto (SP,8*(length gp+i),D i) code)
                         code (first 8 fp)
       val code = foldri (fn (i,_,code) => loadInto (SP,8*i,X i) code) code (first 8 gp)
       val code = if tail then
-                   loadInto (SP,8*(workspace+fsz+even(!currentArgs)),X 29)
-                     (loadInto (SP,8*(workspace+fsz+even(!currentArgs)+1),X 30) code)
+                   (loadInto (SP,8*(workspace+fsz+even(!currentArgs)),X 29)
+                      ++ loadInto (SP,8*(workspace+fsz+even(!currentArgs)+1),X 30)) code
                  else code
       val code = foldri (fn (i,source,code) =>
-        loadInto (SP,8*source,X 16) (storeInto (X 16,SP,8*(dest+ac-1-i)) code))
+        (loadInto (SP,8*source,X 16)
+           ++ storeInto (X 16,SP,8*(dest+ac-1-i))) code)
         code stackArgs
       val code = foldri (fn (i,a,code) =>
-        readInto (fsz+workspace) a (X 16) (storeInto (X 16,SP,8*i) code)) code staged
+        (readInto (fsz+workspace) a (X 16)
+           ++ storeInto (X 16,SP,8*i)) code) code staged
     in
       stackInto (true,8*workspace) code
     end
   (* Precision zero is private to raw runtime-helper arguments. *)
-  fun integer n = SS.INTEGER_ATY{value=IntInf.fromInt n,precision=0}
+  fun integer n = SS.INTEGER_ATY{value = IntInf.fromInt n,precision = 0}
   (* Allocation helpers are invisible to register allocation. Preserve every
    * allocatable register, including the full 64 bits of floating registers. *)
   val savedRegs = List.tabulate(16,X) @ List.tabulate(8,fn i => X(i+19)) @ List.tabulate(30,D)
@@ -190,8 +202,9 @@ struct
       val words = length savedRegs
       val code = stackInto (false,8*words) code
       val code = foldri (fn (i,a,code) => loadInto (SP,8*i,a) code) code savedRegs
-      val code = argumentsInto (fsz+words) args
-        (ins "bl" [pr_lab(NameLab name)] :: moveInto (X 0,X 16) code)
+      val code = (argumentsInto (fsz+words) args
+         ++ instruction "bl" [pr_lab(NameLab name)]
+         ++ moveInto (X 0,X 16)) code
       val code = foldri (fn (i,a,code) => storeInto (a,SP,8*i) code) code savedRegs
     in
       stackInto (true,8*words) code
@@ -200,12 +213,12 @@ struct
    * carries no root map at a C call, so defer collection across that dynamic
    * extent, including callbacks. Pending collection is retained on return. *)
   fun foreignCallInto fsz name args convert code =
-    if name=":" then unsupported "dynamic foreign symbol resolution"
+    if name = ":" then unsupported "dynamic foreign symbol resolution"
     else scalarCallInto
-      {name=name,fixed=map (fn _ => AbiArm64.I64) args,variadic=[],protectGC=gc(),
-       loadArgument=fn (i,extra) => fn code => readInto (fsz+extra) (List.nth(args,i)) (X 16)
-                                    (convert(i,X 16) code)} code
-  fun autoCallInto fsz {name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res=(dst,ft)} code =
+      {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = gc(),
+       loadArgument = fn (i,extra) =>
+         readInto (fsz+extra) (List.nth(args,i)) (X 16) ++ convert(i,X 16)} code
+  fun autoCallInto fsz {name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
     let
       fun convert (i,r) code =
         case #2(List.nth(args,i)) of
@@ -216,25 +229,32 @@ struct
         | LS.ForeignPtr => if tagged() then ins "sub" [pr_reg r,pr_reg r,"#1"] :: code else code
         | LS.CharArray => ins "add" [pr_reg r,pr_reg r,"#8"] :: code
         | LS.Unit => unsupported "unit foreign argument"
-      val boxed = tagged() andalso (ft=LS.Int32 orelse ft=LS.Int64)
-      fun tag code = ins "lsl" ["x0","x0","#1"] :: ins "add" ["x0","x0","#1"] :: code
+      val boxed = tagged() andalso (ft = LS.Int32 orelse ft = LS.Int64)
+      fun tag code = (instruction "lsl" ["x0","x0","#1"]
+         ++ instruction "add" ["x0","x0","#1"]) code
       val code = writeInto fsz dst (X 0) code
       val code = case ft of
           LS.Unit => constantInto (1,X 0) code
-        | LS.Bool => ins "cmp" ["x0","#0"] :: ins "cset" ["x0","ne"] :: tag code
+        | LS.Bool => (instruction "cmp" ["x0","#0"]
+           ++ instruction "cset" ["x0","ne"]
+           ++ tag) code
         | LS.Int => if tagged() then tag code else code
         | LS.ForeignPtr => if tagged() then ins "add" ["x0","x0","#1"] :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
-        | _ => if boxed then loadInto (SP,0,X 16)
-            (storeInto (X 0,X 16,8)
-            (constantInto (IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 17)
-            (storeInto (X 17,X 16,0) (moveInto (X 16,X 0) (stackInto (false,16) code)))))
+        | _ => if boxed then (loadInto (SP,0,X 16)
+           ++ storeInto (X 0,X 16,8)
+           ++ constantInto (IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 17)
+           ++ storeInto (X 17,X 16,0)
+           ++ moveInto (X 16,X 0)
+           ++ stackInto (false,16)) code
           else code
       val code = foreignCallInto (fsz+(if boxed then 2 else 0)) name (map #1 args) convert code
     in
       if boxed then
         case rhos_for_result of
-          [a] => stackInto (true,16) (readInto (fsz+2) a (X 16) (storeInto (X 16,SP,0) code))
+          [a] => (stackInto (true,16)
+             ++ readInto (fsz+2) a (X 16)
+             ++ storeInto (X 16,SP,0)) code
         | _ => unsupported "boxed foreign result without storage"
       else code
     end
@@ -244,55 +264,40 @@ struct
   fun restoreRegisters code =
     foldri (fn (i,r,code) => loadInto (SP,8*i,r) code) code cSaved
   fun saveCInto () code =
-    let
-      val code = addOffsetInto(SP,80,X 29) code
-      val code = saveRegisters code
-    in
-      stackInto(true,160) code
-    end
+    (stackInto(true,160)
+      ++ saveRegisters
+      ++ addOffsetInto(SP,80,X 29)) code
   fun restoreCInto () code =
-    let
-      val code = stackInto(false,160) code
-    in
-      restoreRegisters code
-    end
+    (restoreRegisters
+      ++ stackInto(false,160)) code
   fun deferGCInto () code =
     if not(gc()) then
       code
     else
-      let
-        val code = storeInto(X 17,X 16,0) code
-        val code = constantInto(1,X 17) code
-        val code = storeInto(X 17,SP,0) code
-        val code = loadInto(X 16,0,X 17) code
-        val code = addressInto(NameLab "disable_gc",X 16) code
-      in
-        stackInto(true,16) code
-      end
+      (stackInto(true,16)
+        ++ addressInto(NameLab "disable_gc",X 16)
+        ++ loadInto(X 16,0,X 17)
+        ++ storeInto(X 17,SP,0)
+        ++ constantInto(1,X 17)
+        ++ storeInto(X 17,X 16,0)) code
   fun resumeGCInto () code =
     if not(gc()) then
       code
     else
-      let
-        val code = stackInto(false,16) code
-        val code = storeInto(X 17,X 16,0) code
-        val code = addressInto(NameLab "disable_gc",X 16) code
-      in
-        loadInto(SP,0,X 17) code
-      end
+      (loadInto(SP,0,X 17)
+        ++ addressInto(NameLab "disable_gc",X 16)
+        ++ storeInto(X 17,X 16,0)
+        ++ stackInto(false,16)) code
   fun registerUnitInto l code =
-    let
-      val code = ins "bl" ["_mlkit_arm64_register_image"] :: code
-      val code = addOffsetInto(X 4,8,X 4) code
-      val code = loadInto(X 4,0,X 5) code
-      val code = addressInto(unitSymbol l "roots",X 4) code
-      val code = addressInto(unitSymbol l "end",X 3) code
-      val code = addressInto(unitSymbol l "begin",X 2) code
-      val code = addOffsetInto(X 0,8,X 0) code
-      val code = loadInto(X 0,0,X 1) code
-    in
-      addressInto(unitSymbol l "frames",X 0) code
-    end
+    (addressInto(unitSymbol l "frames",X 0)
+      ++ loadInto(X 0,0,X 1)
+      ++ addOffsetInto(X 0,8,X 0)
+      ++ addressInto(unitSymbol l "begin",X 2)
+      ++ addressInto(unitSymbol l "end",X 3)
+      ++ addressInto(unitSymbol l "roots",X 4)
+      ++ loadInto(X 4,0,X 5)
+      ++ addOffsetInto(X 4,8,X 4)
+      ++ instruction "bl" ["_mlkit_arm64_register_image"]) code
   fun static words =
     let
       val l = DatLab(AddressLabels.new_named "arm64_data")
@@ -333,12 +338,13 @@ struct
     if n >= 0 andalso n < 65536 then ins "mov" [r reg,imm n] :: code
     else constantInto (IntInf.fromInt n,reg) code
   fun adjustInto opn reg bytes code =
-    if bytes=0 then code
+    if bytes = 0 then code
     else
       let
         val n = Int.min(bytes,4095)
       in
-        ins opn [r reg,r reg,imm n] :: adjustInto opn reg (bytes-n) code
+        (instruction opn [r reg,r reg,imm n]
+           ++ adjustInto opn reg (bytes-n)) code
       end
   val allocStub = NameLab "mlkit_arm64_allocate_preserving"
   val untaggedAllocStub = NameLab "mlkit_arm64_allocate_untagged_preserving"
@@ -350,14 +356,16 @@ struct
     let
       val target = if untag then untaggedAllocStub else allocStub
       val code = if profiling() then stackInto (false,16) code else code
-      val code = countInto (X 17) words (ins "bl" [pr_lab target] :: code)
+      val code = (countInto (X 17) words
+         ++ instruction "bl" [pr_lab target]) code
     in
-      if profiling() then stackInto (true,16)
-        (countInto (X 17) pp (storeInto (X 17,SP,0) code))
+      if profiling() then (stackInto (true,16)
+         ++ countInto (X 17) pp
+         ++ storeInto (X 17,SP,0)) code
       else code
     end
   fun resetLoadedInto mode code =
-    if mode=0 then code
+    if mode = 0 then code
     else
       let
         val done = localFresh()
@@ -366,14 +374,17 @@ struct
         val header = if gengc() then 24 else 16
         val lobjs = if gengc() then 40 else 24
         fun firstPage off code =
-          ins "and" ["x17","x16","#-4"] ::
-          loadInto (X 17,off+8,X 30) (ins "and" ["x30","x30","#-32"] :: code)
-        fun check (off,code) = firstPage off
-          (loadInto (X 30,0,X 17) (ins "cbnz" ["x17",pr_lab slow] :: code))
-        fun reset (off,code) = firstPage off
-          (ins "add" ["x30","x30",imm header] ::
-           storeInto (X 30,X 17,off)
-             (if gengc() then storeInto (X 30,X 30,~8) code else code))
+          (instruction "and" ["x17","x16","#-4"]
+             ++ loadInto (X 17,off+8,X 30)
+             ++ instruction "and" ["x30","x30","#-32"]) code
+        fun check (off,code) = (firstPage off
+           ++ loadInto (X 30,0,X 17)
+           ++ instruction "cbnz" ["x17",pr_lab slow]) code
+        fun reset (off,code) =
+          (firstPage off
+           ++ instruction "add" ["x30","x30",imm header]
+           ++ storeInto (X 30,X 17,off)
+           ++ (if gengc() then storeInto (X 30,X 30,~8) else fn code => code)) code
         val code = Label done :: code
         val code = if profiling() orelse parallel() then ins "bl" [pr_lab resetStub] :: code
           else
@@ -384,11 +395,12 @@ struct
               val code = foldr reset code generations
               val code = foldr check code generations
             in
-              ins "and" ["x17","x16","#-4"] ::
-              loadInto (X 17,lobjs,X 30) (ins "cbnz" ["x30",pr_lab slow] :: code)
+              (instruction "and" ["x17","x16","#-4"]
+                 ++ loadInto (X 17,lobjs,X 30)
+                 ++ instruction "cbnz" ["x30",pr_lab slow]) code
             end
       in
-        if mode=1 then ins "tbz" ["x16","#1",pr_lab done] :: code else code
+        if mode = 1 then ins "tbz" ["x16","#1",pr_lab done] :: code else code
       end
   fun resetRegionInto fsz force sma code =
     let
@@ -396,12 +408,13 @@ struct
       val mode = if force then 2 else mode
       val kind = regionKind sma
     in
-      if kind=0 orelse mode=0 then code
+      if kind = 0 orelse mode = 0 then code
       else
         let
           val done = localFresh()
-          val code = resetLoadedInto mode (Label done :: code)
-          val code = if kind=2 then ins "tbz" ["x16","#0",pr_lab done] :: code else code
+          val code = (resetLoadedInto mode
+             ++ one (Label done)) code
+          val code = if kind = 2 then ins "tbz" ["x16","#0",pr_lab done] :: code else code
         in
           readInto fsz a (X 16) code
         end
@@ -414,8 +427,9 @@ struct
       val done = localFresh()
       val finite = localFresh()
       fun finiteCode code =
-        ins "and" ["x16","x16","#-4"] ::
-        (if profiling() then countInto (X 17) pp (storeInto (X 17,X 16,~16) code) else code)
+        (instruction "and" ["x16","x16","#-4"]
+         ++ (if profiling() then countInto (X 17) pp ++ storeInto (X 17,X 16,~16)
+             else fn code => code)) code
       fun infiniteCode code =
         if profiling() orelse (parallel() andalso not(unprotected())) orelse
            words > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
@@ -430,25 +444,33 @@ struct
                ins "orr" ["x16","x16","#1"] ::
                allocSlowInto words untag pp [ins "b" [pr_lab joined]])
             val code = Label joined :: code
-            val code = if gc() then addressInto (NameLab "alloc_period",X 17)
-              (loadInto (X 17,0,X 30)
-                (adjustInto "add" (X 30) bytes (storeInto (X 30,X 17,0) code))) else code
-            val code = moveInto (X 17,X 16)
-              (adjustInto "sub" (X 16) (bytes+(if untag then 8 else 0)) code)
+            val code = if gc() then (addressInto (NameLab "alloc_period",X 17)
+               ++ loadInto (X 17,0,X 30)
+               ++ adjustInto "add" (X 30) bytes
+               ++ storeInto (X 30,X 17,0)) code else code
           in
-            ins "and" ["x16","x16","#-4"] ::
-            loadInto (X 16,0,X 17)
-              (ins "sub" ["x17","x17","#1"] ::
-               ins "orr" ["x30","x17",imm(BackendInfo.size_region_page()-1)] ::
-               adjustInto "add" (X 17) bytes
-                 (ins "cmp" ["x17","x30"] :: ins "b.hi" [pr_lab slow] ::
-                  ins "add" ["x17","x17","#1"] :: storeInto (X 17,X 16,0) code))
+            (instruction "and" ["x16","x16","#-4"]
+             ++ loadInto (X 16,0,X 17)
+             ++ instruction "sub" ["x17","x17","#1"]
+             ++ instruction "orr" ["x30","x17",imm(BackendInfo.size_region_page()-1)]
+             ++ adjustInto "add" (X 17) bytes
+             ++ instruction "cmp" ["x17","x30"]
+             ++ instruction "b.hi" [pr_lab slow]
+             ++ instruction "add" ["x17","x17","#1"]
+             ++ storeInto (X 17,X 16,0)
+             ++ moveInto (X 17,X 16)
+             ++ adjustInto "sub" (X 16) (bytes+(if untag then 8 else 0))) code
           end
-      val code = if kind=0 then finiteCode code
-        else if kind=1 then resetLoadedInto mode (infiniteCode code)
-        else ins "tbz" ["x16","#0",pr_lab finite] ::
-          resetLoadedInto mode (infiniteCode
-            (ins "b" [pr_lab done] :: Label finite :: finiteCode (Label done :: code)))
+      val code = if kind = 0 then finiteCode code
+        else if kind = 1 then (resetLoadedInto mode
+           ++ infiniteCode) code
+        else (instruction "tbz" ["x16","#0",pr_lab finite]
+           ++ resetLoadedInto mode
+           ++ infiniteCode
+           ++ instruction "b" [pr_lab done]
+           ++ one (Label finite)
+           ++ finiteCode
+           ++ one (Label done)) code
     in
       readInto fsz a (X 16) code
     end
@@ -465,30 +487,38 @@ struct
       val (region,mode) = regionArg alloc
       val untag = untag andalso tagged() andalso not(tagPairs())
       val skip = localFresh()
-      val code = loadInto (SP,0,X 16)
-        (stackInto (false,16) (writeInto fsz pat (X 16) code))
+      val code = (loadInto (SP,0,X 16)
+         ++ stackInto (false,16)
+         ++ writeInto fsz pat (X 16)) code
       val code = foldri (fn (i,a,code) =>
-        readInto (fsz+2) a (X 16)
-          (loadInto (SP,0,X 17) (storeInto (X 16,X 17,8*(i+length prefix)) code)))
+        (readInto (fsz+2) a (X 16)
+           ++ loadInto (SP,0,X 17)
+           ++ storeInto (X 16,X 17,8*(i+length prefix))) code)
         code elems
       val code = foldri (fn (i,fragment,code) =>
-        fieldInto fragment (loadInto (SP,0,X 17) (storeInto (X 16,X 17,8*i) code)))
+        (fieldInto fragment
+           ++ loadInto (SP,0,X 17)
+           ++ storeInto (X 16,X 17,8*i)) code)
         (Label skip :: code) prefix
-      val code = if untag then readInto (fsz+2) region (X 17)
-                   (ins "tbnz" ["x17","#0",pr_lab skip] :: code)
+      val code = if untag then (readInto (fsz+2) region (X 17)
+         ++ instruction "tbnz" ["x17","#0",pr_lab skip]) code
                  else code
-      val code = stackInto (true,16) (storeInto (X 16,SP,0) code)
     in
-      allocateInRegionInto fsz alloc
-        (if untag then length elems else length prefix+length elems) untag code
+      (allocateInRegionInto fsz alloc
+        (if untag then length elems else length prefix+length elems) untag
+       ++ stackInto (true,16)
+       ++ storeInto (X 16,SP,0)) code
     end
   val recordInto = recordWithUntagInto false
   fun regionAllocator place =
     let
-        val kind=if gc() andalso not(tagPairs()) then case Effect.get_place_ty place of
-        SOME Effect.PAIR_RT => "Pair" | SOME Effect.REF_RT => "Ref"
-      | SOME Effect.TRIPLE_RT => "Triple" | SOME Effect.ARRAY_RT => "Array"
-      | _ => "" else ""
+      val kind =
+        if gc() andalso not(tagPairs()) then
+          case Effect.get_place_ty place of
+            SOME Effect.PAIR_RT => "Pair" | SOME Effect.REF_RT => "Ref"
+          | SOME Effect.TRIPLE_RT => "Triple" | SOME Effect.ARRAY_RT => "Array"
+          | _ => ""
+        else ""
     in
       if profiling() then "alloc" ^ kind ^ "RegionInfiniteProfiling"
        else "allocate" ^ kind ^ "Region"
@@ -503,103 +533,79 @@ struct
       fun binary opn code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = ins opn ["x16","x16","x17"] :: code
-              val code = readInto fsz b (X 17) code
-            in
-              readInto fsz a (X 16) code
-            end
+            (readInto fsz a (X 16)
+              ++ readInto fsz b (X 17)
+              ++ instruction opn ["x16","x16","x17"]
+              ++ writeInto fsz d (X 16)) code
           | _ => unsupported "primitive arity")
       fun compare cc code =
         (case (args,res) of
           ([a,b],[SS.FLOW_VAR_ATY(_,t,f)]) =>
-            let
-              val code = ins "cmp" ["x16","x17"] ::
-                ins ("b." ^ cc) [pr_lab(LocalLab t)] ::
-                ins "b" [pr_lab(LocalLab f)] :: code
-              val code = readInto fsz b (X 17) code
-            in
-              readInto fsz a (X 16) code
-            end
+            (readInto fsz a (X 16)
+              ++ readInto fsz b (X 17)
+              ++ instruction "cmp" ["x16","x17"]
+              ++ instruction ("b." ^ cc) [pr_lab(LocalLab t)]
+              ++ instruction "b" [pr_lab(LocalLab f)]) code
           | ([a,b],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = ins "cmp" ["x16","x17"] ::
-                ins "cset" ["x16",cc] ::
-                ins "lsl" ["x16","x16","#1"] ::
-                ins "add" ["x16","x16","#1"] :: code
-              val code = readInto fsz b (X 17) code
-            in
-              readInto fsz a (X 16) code
-            end
+            (readInto fsz a (X 16)
+              ++ readInto fsz b (X 17)
+              ++ instruction "cmp" ["x16","x17"]
+              ++ instruction "cset" ["x16",cc]
+              ++ instruction "lsl" ["x16","x16","#1"]
+              ++ instruction "add" ["x16","x16","#1"]
+              ++ writeInto fsz d (X 16)) code
           | _ => unsupported "comparison arity")
       fun fpBinary opn code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let
-              val code = writeInto fsz d (D 30) code
-              val code = ins opn ["d30","d30","d31"] :: code
-              val code = readInto fsz b (D 31) code
-            in
-              readInto fsz a (D 30) code
-            end
+            (readInto fsz a (D 30)
+              ++ readInto fsz b (D 31)
+              ++ instruction opn ["d30","d30","d31"]
+              ++ writeInto fsz d (D 30)) code
           | _ => unsupported "floating binary arity")
       fun fpUnary opn code =
         (case (args,res) of
           ([a],[d]) =>
-            let
-              val code = writeInto fsz d (D 30) code
-              val code = ins opn ["d30","d30"] :: code
-            in
-              readInto fsz a (D 30) code
-            end
+            (readInto fsz a (D 30)
+              ++ instruction opn ["d30","d30"]
+              ++ writeInto fsz d (D 30)) code
           | _ => unsupported "floating unary arity")
       (* MI/LS/GT/GE all reject unordered FP comparisons. Signed integer
        * LT/LE would incorrectly treat NaN as less than another value. *)
       fun fpCompare cc code =
         (case (args,res) of
           ([a,b],[SS.FLOW_VAR_ATY(_,t,f)]) =>
-            let
-              val code = ins "fcmp" ["d30","d31"] ::
-                ins ("b." ^ cc) [pr_lab(LocalLab t)] ::
-                ins "b" [pr_lab(LocalLab f)] :: code
-              val code = readInto fsz b (D 31) code
-            in
-              readInto fsz a (D 30) code
-            end
+            (readInto fsz a (D 30)
+              ++ readInto fsz b (D 31)
+              ++ instruction "fcmp" ["d30","d31"]
+              ++ instruction ("b." ^ cc) [pr_lab(LocalLab t)]
+              ++ instruction "b" [pr_lab(LocalLab f)]) code
           | ([a,b],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = ins "fcmp" ["d30","d31"] ::
-                ins "cset" ["x16",cc] ::
-                ins "lsl" ["x16","x16","#1"] ::
-                ins "add" ["x16","x16","#1"] :: code
-              val code = readInto fsz b (D 31) code
-            in
-              readInto fsz a (D 30) code
-            end
+            (readInto fsz a (D 30)
+              ++ readInto fsz b (D 31)
+              ++ instruction "fcmp" ["d30","d31"]
+              ++ instruction "cset" ["x16",cc]
+              ++ instruction "lsl" ["x16","x16","#1"]
+              ++ instruction "add" ["x16","x16","#1"]
+              ++ writeInto fsz d (X 16)) code
           | _ => unsupported "floating comparison arity")
       fun overflow () code =
-        let
-          val code = ins "b" ["_raise_exn"] :: code
-          val code = moveInto(X 28,X 0) code
-        in
-          addressInto(NameLab "exn_OVERFLOW",X 1) code
-        end
+        (addressInto(NameLab "exn_OVERFLOW",X 1)
+          ++ moveInto(X 28,X 0)
+          ++ instruction "b" ["_raise_exn"]) code
       fun checked opn code =
         (case (args,res) of
           ([a,b],[d]) =>
             let
-              val ok=localFresh()
-              val code = writeInto fsz d (X 16) code
-              val code = Label ok :: code
-              val code = overflow() code
-              val code = ins opn ["x16","x16","x17"] ::
-                ins "b.vc" [pr_lab ok] :: code
-              val code = readInto fsz b (X 17) code
+              val ok = localFresh()
             in
-              readInto fsz a (X 16) code
+              (readInto fsz a (X 16)
+               ++ readInto fsz b (X 17)
+               ++ instruction opn ["x16","x16","x17"]
+               ++ instruction "b.vc" [pr_lab ok]
+               ++ overflow()
+               ++ one (Label ok)
+               ++ writeInto fsz d (X 16)) code
             end
           | _ => unsupported "checked integer arity")
       fun taggedBinary opn adjustment code =
@@ -609,61 +615,56 @@ struct
               val code = writeInto fsz d (X 16) code
               val code = if adjustment then
                   let
-                    val ok=localFresh()
-                    val code = Label ok :: code
-                    val code = overflow() code
+                    val ok = localFresh()
                   in
-                    ins "b.vc" [pr_lab ok] :: code
+                    (instruction "b.vc" [pr_lab ok]
+                     ++ overflow()
+                     ++ one (Label ok)) code
                   end
                 else
                   code
-              val code = ins "sub" ["x17","x17","#1"] ::
-                ins opn ["x16","x16","x17"] :: code
-              val code = readInto fsz b (X 17) code
             in
-              readInto fsz a (X 16) code
+              (readInto fsz a (X 16)
+               ++ readInto fsz b (X 17)
+               ++ instruction "sub" ["x17","x17","#1"]
+               ++ instruction opn ["x16","x16","x17"]) code
             end
           | _ => unsupported "tagged arithmetic arity")
       fun boxed opn code =
         (case (args,res) of
           ([buffer,a,b],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = storeInto(D 30,X 16,payload()) code
+              val code =
+                (storeInto(D 30,X 16,payload())
+                 ++ writeInto fsz d (X 16)) code
               val code = if tagged() then
-                  let
-                    val code = storeInto(X 17,X 16,0) code
-                  in
-                    constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) code
-                  end
+                  (constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
+                    ++ storeInto(X 17,X 16,0)) code
                 else
                   code
-              val code = readInto fsz buffer (X 16) code
-              val code = ins opn ["d30","d30","d31"] :: code
-              val code = loadInto(X 16,payload(),D 31) code
-              val code = readInto fsz b (X 16) code
-              val code = loadInto(X 16,payload(),D 30) code
             in
-              readInto fsz a (X 16) code
+              (readInto fsz a (X 16)
+               ++ loadInto(X 16,payload(),D 30)
+               ++ readInto fsz b (X 16)
+               ++ loadInto(X 16,payload(),D 31)
+               ++ instruction opn ["d30","d30","d31"]
+               ++ readInto fsz buffer (X 16)) code
             end
           | _ => unsupported "boxed floating arity")
       fun tagResult () code =
         if tagged() then
-          ins "lsl" ["x16","x16","#1"] ::
-          ins "add" ["x16","x16","#1"] :: code
+          (instruction "lsl" ["x16","x16","#1"]
+             ++ instruction "add" ["x16","x16","#1"]) code
         else
           code
       fun size shift code =
         (case (args,res) of
           ([a],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = tagResult() code
-              val code = ins "lsr" ["x16","x16","#" ^ Int.toString shift] :: code
-              val code = loadInto(X 16,0,X 16) code
-            in
-              readInto fsz a (X 16) code
-            end
+            (readInto fsz a (X 16)
+              ++ loadInto(X 16,0,X 16)
+              ++ instruction "lsr" ["x16","x16","#" ^ Int.toString shift]
+              ++ tagResult()
+              ++ writeInto fsz d (X 16)) code
           | _ => unsupported "table size arity")
       fun index t i scale code =
         let
@@ -672,9 +673,9 @@ struct
               ins "asr" ["x17","x17","#1"] :: code
             else
               code
-          val code = readInto fsz i (X 17) code
         in
-          readInto fsz t (X 16) code
+          (readInto fsz t (X 16)
+           ++ readInto fsz i (X 17)) code
         end
       fun subscript scale opn scalar code =
         (case (args,res) of
@@ -685,36 +686,37 @@ struct
                   tagResult() code
                 else
                   code
-              val code = ins opn [if opn="ldrb" orelse opn="ldrh" then "w16" else "x16","[x17, #8]"] :: code
             in
-              index t i scale code
+              (index t i scale
+               ++ instruction opn [if opn = "ldrb" orelse opn = "ldrh" then "w16" else "x16","[x17, #8]"]) code
             end
           | _ => unsupported "table subscript arity")
       fun update scale opn scalar code =
         (case (args,res) of
           ([t,i,v],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = constantInto(1,X 16) code
-              val code = ins opn [if opn="strb" orelse opn="strh" then "w16" else "x16","[x17, #8]"] :: code
+              val code =
+                (instruction opn [if opn = "strb" orelse opn = "strh" then "w16" else "x16","[x17, #8]"]
+                 ++ constantInto(1,X 16)
+                 ++ writeInto fsz d (X 16)) code
               val code = if scalar andalso tagged() then
                   ins "lsr" ["x16","x16","#1"] :: code
                 else
                   code
-              val code = stackInto(false,16) code
-              val code = loadInto(SP,0,X 17) code
-              val code = readInto (fsz+2) v (X 16) code
-              val code = storeInto(X 17,SP,0) code
-              val code = stackInto(true,16) code
             in
-              index t i scale code
+              (index t i scale
+               ++ stackInto(true,16)
+               ++ storeInto(X 17,SP,0)
+               ++ readInto (fsz+2) v (X 16)
+               ++ loadInto(SP,0,X 17)
+               ++ stackInto(false,16)) code
             end
           | _ => unsupported "table update arity")
       (* Numerical representation tuples are (value bits, signed, boxed, tagged).
        * Decode numerical representations before operating, then normalize
        * and encode the result. LR is available as scratch after the prologue. *)
       fun normalize (bits,sgn,_,_) reg code =
-        if bits=64 then
+        if bits = 64 then
           code
         else
           ins (if sgn then "sbfx" else "ubfx") [r reg,r reg,"#0","#" ^ Int.toString bits] :: code
@@ -736,49 +738,42 @@ struct
         getnumAt fsz rep a reg code
       fun failUnless cc code =
         let
-          val ok=localFresh()
-          val code = Label ok :: code
-          val code = overflow() code
+          val ok = localFresh()
         in
-          ins ("b."^cc) [pr_lab ok] :: code
+          (instruction ("b."^cc) [pr_lab ok]
+           ++ overflow()
+           ++ one (Label ok)) code
         end
       fun range (bits,sgn,_,_) code =
         if not sgn then
           code
         else
-          if bits=64 then
+          if bits = 64 then
             code
           else
-            let
-              val code = failUnless "eq" code
-            in
-              ins "sbfx" ["x30","x16","#0","#" ^ Int.toString bits] ::
-              ins "cmp" ["x30","x16"] :: code
-            end
+            (instruction "sbfx" ["x30","x16","#0","#" ^ Int.toString bits]
+              ++ instruction "cmp" ["x30","x16"]
+              ++ failUnless "eq") code
       fun putnum (rep as (_,_,box,tag)) buffer d code =
         let
           val code = if box then
               (case buffer of
                 SOME b =>
-                  let
-                    val code = writeInto fsz d (X 17) code
-                    val code = storeInto(X 16,X 17,0) code
-                    val code =
-                      constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 16) code
-                    val code = storeInto(X 16,X 17,8) code
-                    val code = stackInto(false,16) code
-                    val code = loadInto(SP,0,X 16) code
-                    val code = readInto (fsz+2) b (X 17) code
-                    val code = storeInto(X 16,SP,0) code
-                  in
-                    stackInto(true,16) code
-                  end
+                  (stackInto(true,16)
+                    ++ storeInto(X 16,SP,0)
+                    ++ readInto (fsz+2) b (X 17)
+                    ++ loadInto(SP,0,X 16)
+                    ++ stackInto(false,16)
+                    ++ storeInto(X 16,X 17,8)
+                    ++ constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 16)
+                    ++ storeInto(X 16,X 17,0)
+                    ++ writeInto fsz d (X 17)) code
                 | NONE => unsupported "boxed result without buffer")
             else
               writeInto fsz d (X 16) code
           val code = if tag then
-              ins "lsl" ["x16","x16","#1"] ::
-              ins "add" ["x16","x16","#1"] :: code
+              (instruction "lsl" ["x16","x16","#1"]
+                 ++ instruction "add" ["x16","x16","#1"]) code
             else
               code
         in
@@ -786,35 +781,29 @@ struct
         end
       fun numeric opn (rep as (bits,sgn,box,tag)) code =
         let
-          val comparison = List.exists(fn x => x=opn) ["Equal","Less","Lesseq","Greater","Greatereq"]
+          val comparison = List.exists(fn x => x = opn) ["Equal","Less","Lesseq","Greater","Greatereq"]
           val (buffer,operands) = if box andalso not comparison then
                             case args of b::xs => (SOME b,xs) | _ => unsupported "numeric buffer"
                           else (NONE,args)
-          val d=case res of [d] => d | _ => unsupported "numeric result"
+          val d = case res of [d] => d | _ => unsupported "numeric result"
           fun cc () = case opn of "Equal" => "eq" | "Less" => if sgn then "lt" else "lo"
                           | "Lesseq" => if sgn then "le" else "ls" | "Greater" => if sgn then "gt" else "hi"
                           | _ => if sgn then "ge" else "hs"
           fun compareResult () code =
             (case d of
               SS.FLOW_VAR_ATY(_,t,f) =>
-                ins ("b."^cc()) [pr_lab(LocalLab t)] ::
-                ins "b" [pr_lab(LocalLab f)] :: code
+                (instruction ("b."^cc()) [pr_lab(LocalLab t)]
+                   ++ instruction "b" [pr_lab(LocalLab f)]) code
               | _ =>
-                let
-                  val code = writeInto fsz d (X 16) code
-                in
-                  ins "cset" ["x16",cc()] ::
-                  ins "lsl" ["x16","x16","#1"] ::
-                  ins "add" ["x16","x16","#1"] :: code
-                end)
+                (instruction "cset" ["x16",cc()]
+                  ++ instruction "lsl" ["x16","x16","#1"]
+                  ++ instruction "add" ["x16","x16","#1"]
+                  ++ writeInto fsz d (X 16)) code)
           fun arithmetic inst code =
             let
               val code = if sgn then
-                  let
-                    val code = range rep code
-                  in
-                    failUnless "vc" code
-                  end
+                  (failUnless "vc"
+                    ++ range rep) code
                 else
                   code
             in
@@ -826,25 +815,22 @@ struct
               let
                 val code =
                   let
-                    val code = range rep
-                        (putnum rep buffer d code)
+                    val code = (range rep
+                       ++ putnum rep buffer d) code
                   in
                     (case opn of
                       "Neg" =>
-                        let
-                          val code = failUnless "vc" code
-                        in
-                          ins "negs" ["x16","x16"] :: code
-                        end
+                        (instruction "negs" ["x16","x16"]
+                          ++ failUnless "vc") code
                       | "Abs" =>
                         let
-                          val done=localFresh()
-                          val code = Label done :: code
-                          val code = failUnless "vc" code
+                          val done = localFresh()
                         in
-                          ins "cmp" ["x16","#0"] ::
-                          ins "b.ge" [pr_lab done] ::
-                          ins "negs" ["x16","x16"] :: code
+                          (instruction "cmp" ["x16","#0"]
+                           ++ instruction "b.ge" [pr_lab done]
+                           ++ instruction "negs" ["x16","x16"]
+                           ++ failUnless "vc"
+                           ++ one (Label done)) code
                         end
                       | _ => unsupported("numeric unary "^opn))
                   end
@@ -870,13 +856,10 @@ struct
                       | "Mul" =>
                         let
                           val code = if sgn then
-                              let
-                                val code = range rep
-                                    (putnum rep buffer d code)
-                                val code = failUnless "eq" code
-                              in
-                                ins "cmp" ["x30","x16, asr #63"] :: code
-                              end
+                              (instruction "cmp" ["x30","x16, asr #63"]
+                                ++ failUnless "eq"
+                                ++ range rep
+                                ++ putnum rep buffer d) code
                             else
                               putnum rep buffer d code
                           val code = ins "mul" ["x16","x16","x17"] :: code
@@ -887,22 +870,22 @@ struct
                             code
                         end
                       | "Andb" =>
-                        ins "and" ["x16","x16","x17"] ::
-                        putnum rep buffer d code
+                        (instruction "and" ["x16","x16","x17"]
+                           ++ putnum rep buffer d) code
                       | "Orb" =>
-                        ins "orr" ["x16","x16","x17"] ::
-                        putnum rep buffer d code
+                        (instruction "orr" ["x16","x16","x17"]
+                           ++ putnum rep buffer d) code
                       | "Xorb" =>
-                        ins "eor" ["x16","x16","x17"] ::
-                        putnum rep buffer d code
+                        (instruction "eor" ["x16","x16","x17"]
+                           ++ putnum rep buffer d) code
                       | _ => unsupported("numeric binary "^opn))
-                val code = stackInto(false,16) code
-                val code = loadInto(SP,0,X 16) code
-                val code = getnumAt (fsz+2) rep b (X 17) code
-                val code = storeInto(X 16,SP,0) code
-                val code = stackInto(true,16) code
               in
-                getnum rep a (X 16) code
+                (getnum rep a (X 16)
+                 ++ stackInto(true,16)
+                 ++ storeInto(X 16,SP,0)
+                 ++ getnumAt (fsz+2) rep b (X 17)
+                 ++ loadInto(SP,0,X 16)
+                 ++ stackInto(false,16)) code
               end
             | _ => unsupported "numeric operands")
         end
@@ -912,31 +895,31 @@ struct
                           (false,[a,b],[d]) => (NONE,a,b,d)
                         | (true,[buf,a,b],[d]) => (SOME buf,a,b,d)
                         | _ => unsupported "shift arity"
-          val wide=localFresh()
-          val done=localFresh()
-          val code = putnum rep buffer d code
-          val code = Label done :: code
-          val code = if opn="asr" then
+          val wide = localFresh()
+          val done = localFresh()
+          val code =
+            (one (Label done)
+             ++ putnum rep buffer d) code
+          val code = if opn = "asr" then
               ins "asr" ["x16","x16","#63"] :: code
             else
               constantInto(0,X 16) code
-          val code = ins "cmp" ["x17","#"^Int.toString bits] ::
-            ins "b.hs" [pr_lab wide] ::
-            ins opn ["x16","x16","x17"] ::
-            ins "b" [pr_lab done] ::
-            Label wide :: code
-          val code = if opn="asr" then
+          val code = (instruction "cmp" ["x17","#"^Int.toString bits]
+             ++ instruction "b.hs" [pr_lab wide]
+             ++ instruction opn ["x16","x16","x17"]
+             ++ instruction "b" [pr_lab done]
+             ++ one (Label wide)) code
+          val code = if opn = "asr" then
               normalize (bits,true,false,false) (X 16) code
             else
               code
-          val code = stackInto(false,16) code
-          val code = loadInto(SP,0,X 16) code
-          val code =
-            getnumAt (fsz+2) (if tagged() then (63,false,false,true) else (64,false,false,false)) b (X 17) code
-          val code = storeInto(X 16,SP,0) code
-          val code = stackInto(true,16) code
         in
-          getnum rep a (X 16) code
+          (getnum rep a (X 16)
+           ++ stackInto(true,16)
+           ++ storeInto(X 16,SP,0)
+           ++ getnumAt (fsz+2) (if tagged() then (63,false,false,true) else (64,false,false,false)) b (X 17)
+           ++ loadInto(SP,0,X 16)
+           ++ stackInto(false,16)) code
         end
       fun convert (src as (bits,sgn,_,_)) (dst as (_,signed,box,_)) extend code =
         let
@@ -950,11 +933,8 @@ struct
                 val code = range dst code
               in
                 if not sgn andalso not extend then
-                  let
-                    val code = failUnless "ge" code
-                  in
-                    ins "cmp" ["x16","#0"] :: code
-                  end
+                  (instruction "cmp" ["x16","#0"]
+                    ++ failUnless "ge") code
                 else
                   code
               end
@@ -971,130 +951,112 @@ struct
         (case (args,res) of
           ([buffer,a],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = storeInto(D 30,X 16,payload()) code
+              val code =
+                (storeInto(D 30,X 16,payload())
+                 ++ writeInto fsz d (X 16)) code
               val code = if tagged() then
-                  let
-                    val code = storeInto(X 17,X 16,0) code
-                  in
-                    constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) code
-                  end
+                  (constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
+                    ++ storeInto(X 17,X 16,0)) code
                 else
                   code
-              val code = readInto fsz buffer (X 16) code
-              val code = ins opn ["d30","d30"] :: code
-              val code = loadInto(X 16,payload(),D 30) code
             in
-              readInto fsz a (X 16) code
+              (readInto fsz a (X 16)
+               ++ loadInto(X 16,payload(),D 30)
+               ++ instruction opn ["d30","d30"]
+               ++ readInto fsz buffer (X 16)) code
             end
           | _ => unsupported "real unary arity")
       fun realCompare cc code =
         (case args of
           [a,b] =>
-            let
-              val code =
-                primitiveInto fsz {name=(case cc of 0 => Less_f64 | 1 => Lesseq_f64 | 2 => Greater_f64 | _ => Greatereq_f64),
-                                         args=[SS.PHREG_ATY(D 30),SS.PHREG_ATY(D 31)],res=res} code
-              val code = loadInto(X 16,payload(),D 31) code
-              val code = readInto fsz b (X 16) code
-              val code = loadInto(X 16,payload(),D 30) code
-            in
-              readInto fsz a (X 16) code
-            end
+            (readInto fsz a (X 16)
+              ++ loadInto(X 16,payload(),D 30)
+              ++ readInto fsz b (X 16)
+              ++ loadInto(X 16,payload(),D 31)
+              ++ primitiveInto fsz {name = (case cc of 0 => Less_f64 | 1 => Lesseq_f64 | 2 => Greater_f64 | _ => Greatereq_f64),
+                                         args = [SS.PHREG_ATY(D 30),SS.PHREG_ATY(D 31)],res = res}) code
           | _ => unsupported "real comparison arity")
       fun toInt isReal code =
         (case (args,res) of
           ([a],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = tagResult() code
-              val code = ins "fcvtzs" ["x16","d30"] :: code
+              val code =
+                (instruction "fcvtzs" ["x16","d30"]
+                 ++ tagResult()
+                 ++ writeInto fsz d (X 16)) code
             in
               if isReal then
-                let
-                  val code = loadInto(X 16,payload(),D 30) code
-                in
-                  readInto fsz a (X 16) code
-                end
+                (readInto fsz a (X 16)
+                  ++ loadInto(X 16,payload(),D 30)) code
               else
                 readInto fsz a (D 30) code
             end
           | _ => unsupported "float conversion arity")
       fun tableSub scale (rep as (_,_,box,_)) code =
         let
-          val (buffer,t,i,d)=case (box,args,res) of
+          val (buffer,t,i,d) = case (box,args,res) of
                             (false,[t,i],[d]) => (NONE,t,i,d)
                           | (true,[b,t,i],[d]) => (SOME b,t,i,d)
                           | _ => unsupported "wide table subscript"
-          val code = putnum rep buffer d code
-          val code = ins "ldr" [if scale=2 then "w16" else "x16","[x17, #8]"] :: code
         in
-          index t i scale code
+          (index t i scale
+           ++ instruction "ldr" [if scale = 2 then "w16" else "x16","[x17, #8]"]
+           ++ putnum rep buffer d) code
         end
       fun tableUpdate scale rep code =
         (case (args,res) of
           ([t,i,v],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = constantInto(1,X 16) code
-              val code = ins "str" [if scale=2 then "w16" else "x16","[x17, #8]"] :: code
-              val code = stackInto(false,16) code
-              val code = loadInto(SP,0,X 17) code
-              val code = getnumAt (fsz+2) rep v (X 16) code
-              val code = storeInto(X 17,SP,0) code
-              val code = stackInto(true,16) code
-            in
-              index t i scale code
-            end
+            (index t i scale
+              ++ stackInto(true,16)
+              ++ storeInto(X 17,SP,0)
+              ++ getnumAt (fsz+2) rep v (X 16)
+              ++ loadInto(SP,0,X 17)
+              ++ stackInto(false,16)
+              ++ instruction "str" [if scale = 2 then "w16" else "x16","[x17, #8]"]
+              ++ constantInto(1,X 16)
+              ++ writeInto fsz d (X 16)) code
           | _ => unsupported "wide table update")
       fun blockSub boxed code =
         (case (boxed,args,res) of
           (false,[t,i],[d]) =>
-            let
-              val code = writeInto fsz d (D 30) code
-              val code = loadInto(X 17,8,D 30) code
-            in
-              index t i 3 code
-            end
+            (index t i 3
+              ++ loadInto(X 17,8,D 30)
+              ++ writeInto fsz d (D 30)) code
           | (true,[b,t,i],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = storeInto(D 30,X 16,payload()) code
+              val code =
+                (storeInto(D 30,X 16,payload())
+                 ++ writeInto fsz d (X 16)) code
               val code = if tagged() then
-                  let
-                    val code = storeInto(X 17,X 16,0) code
-                  in
-                    constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) code
-                  end
+                  (constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
+                    ++ storeInto(X 17,X 16,0)) code
                 else
                   code
-              val code = readInto fsz b (X 16) code
-              val code = loadInto(X 17,8,D 30) code
             in
-              index t i 3 code
+              (index t i 3
+               ++ loadInto(X 17,8,D 30)
+               ++ readInto fsz b (X 16)) code
             end
           | _ => unsupported "float block subscript")
       fun blockUpdate boxed code =
         (case (args,res) of
           ([t,i,v],[d]) =>
             let
-              val code = writeInto fsz d (X 16) code
-              val code = constantInto(1,X 16) code
-              val code = storeInto(D 30,X 17,8) code
-              val code = stackInto(false,16) code
-              val code = loadInto(SP,0,X 17) code
+              val code =
+                (loadInto(SP,0,X 17)
+                 ++ stackInto(false,16)
+                 ++ storeInto(D 30,X 17,8)
+                 ++ constantInto(1,X 16)
+                 ++ writeInto fsz d (X 16)) code
               val code = if boxed then
-                  let
-                    val code = loadInto(X 16,payload(),D 30) code
-                  in
-                    readInto (fsz+2) v (X 16) code
-                  end
+                  (readInto (fsz+2) v (X 16)
+                    ++ loadInto(X 16,payload(),D 30)) code
                 else
                   readInto (fsz+2) v (D 30) code
-              val code = storeInto(X 17,SP,0) code
-              val code = stackInto(true,16) code
             in
-              index t i 3 code
+              (index t i 3
+               ++ stackInto(true,16)
+               ++ storeInto(X 17,SP,0)) code
             end
           | _ => unsupported "float block update")
     in
@@ -1124,8 +1086,9 @@ struct
           (case (args,res) of
             ([a],[d]) =>
               let
-                val code = writeInto fsz d (D 30) code
-                val code = ins "scvtf" ["d30","x16"] :: code
+                val code =
+                  (instruction "scvtf" ["d30","x16"]
+                   ++ writeInto fsz d (D 30)) code
                 val code = if tagged() then
                     ins "asr" ["x16","x16","#1"] :: code
                   else
@@ -1137,30 +1100,25 @@ struct
         | Real_to_f64 =>
           (case (args,res) of
             ([a],[d]) =>
-              let
-                val code = writeInto fsz d (D 30) code
-                val code = loadInto(X 16,payload(),D 30) code
-              in
-                readInto fsz a (X 16) code
-              end
+              (readInto fsz a (X 16)
+                ++ loadInto(X 16,payload(),D 30)
+                ++ writeInto fsz d (D 30)) code
             | _ => unsupported "real unboxing arity")
         | F64_to_real =>
           (case (args,res) of
             ([a,b],[d]) =>
               let
-                val code = writeInto fsz d (X 16) code
-                val code = storeInto(D 30,X 16,payload()) code
+                val code =
+                  (storeInto(D 30,X 16,payload())
+                   ++ writeInto fsz d (X 16)) code
                 val code = if tagged() then
-                    let
-                      val code = storeInto(X 17,X 16,0) code
-                    in
-                      constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) code
-                    end
+                    (constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
+                      ++ storeInto(X 17,X 16,0)) code
                   else
                     code
-                val code = readInto fsz b (D 30) code
               in
-                readInto fsz a (X 16) code
+                (readInto fsz a (X 16)
+                 ++ readInto fsz b (D 30)) code
               end
             | _ => unsupported "real boxing arity")
         | Get_ctx =>
@@ -1171,11 +1129,8 @@ struct
         | Exn_ptr =>
           (case res of
             [d] =>
-              let
-                val code = writeInto fsz d (X 16) code
-              in
-                loadInto(X 28,8,X 16) code
-              end
+              (loadInto(X 28,8,X 16)
+                ++ writeInto fsz d (X 16)) code
             | _ => unsupported "exception pointer arity")
         | Fresh_exname =>
           let
@@ -1185,22 +1140,19 @@ struct
                 | _ => unsupported "exception name arity")
             val code = if parallel() then
                 let
-                  val retry=localFresh()
+                  val retry = localFresh()
                             (* Incoming LR is already saved in the ML frame; w30 is scratch. *)
                 in
-                  Label retry ::
-                  ins "ldaxr" ["x16","[x17]"] ::
-                  ins "add" ["x16","x16","#1"] ::
-                  ins "stlxr" ["w30","x16","[x17]"] ::
-                  ins "cbnz" ["w30",pr_lab retry] :: code
+                  (one (Label retry)
+                     ++ instruction "ldaxr" ["x16","[x17]"]
+                     ++ instruction "add" ["x16","x16","#1"]
+                     ++ instruction "stlxr" ["w30","x16","[x17]"]
+                     ++ instruction "cbnz" ["w30",pr_lab retry]) code
                 end
               else
-                let
-                  val code = storeInto(X 16,X 17,0) code
-                  val code = ins "add" ["x16","x16","#1"] :: code
-                in
-                  loadInto(X 17,0,X 16) code
-                end
+                (loadInto(X 17,0,X 16)
+                  ++ instruction "add" ["x16","x16","#1"]
+                  ++ storeInto(X 16,X 17,0)) code
           in
             addressInto(NameLab "exnameCounter",X 17) code
           end
@@ -1357,7 +1309,7 @@ struct
         | Is_null =>
           (case args of
             [a] =>
-              primitiveInto fsz {name=Equal_ptr,args=[a,integer 0],res=res} code
+              primitiveInto fsz {name = Equal_ptr,args = [a,integer 0],res = res} code
             | _ => unsupported "null arity")
         | Shift_left_word31 => shift "lsl" (31,false,false,true) code
         | Shift_left_word32ub => shift "lsl" (32,false,false,false) code
@@ -1472,9 +1424,10 @@ struct
   fun dataLabel l = if List.exists (fn x => AddressLabels.eq(x,l)) (!dataLabels) then ()
                     else dataLabels := l :: !dataLabels
   fun epilogueInto fsz code =
-    loadInto (SP,8*(fsz+even(!currentArgs)),X 29)
-      (loadInto (SP,8*(fsz+even(!currentArgs)+1),X 30)
-        (stackInto (false,8*(fsz+even(!currentArgs)+2)) (ins "ret" [] :: code)))
+    (loadInto (SP,8*(fsz+even(!currentArgs)),X 29)
+       ++ loadInto (SP,8*(fsz+even(!currentArgs)+1),X 30)
+       ++ stackInto (false,8*(fsz+even(!currentArgs)+2))
+       ++ instruction "ret" []) code
   (* Build statements right-to-left onto an explicit code suffix. Function
    * context is set by topInto and remains fixed throughout this traversal.
    * Fresh labels and metadata may be registered in a different order, but
@@ -1491,14 +1444,14 @@ struct
             case sz of
               LS.INF => internalCallInto fsz "deallocateRegion" [SS.PHREG_ATY(X 28)] code
             | LS.WORDS n =>
-                if n=0 orelse not(profiling()) then code
+                if n = 0 orelse not(profiling()) then code
                 else internalCallInto fsz "deallocRegionFiniteProfiling" [] code
           fun enter (((place,sz),off),code) =
             case sz of
               LS.INF => internalCallInto fsz (regionAllocator place)
                 [SS.PHREG_ATY(X 28),SS.REG_F_ATY off,integer(regionPolicy false place)] code
             | LS.WORDS n =>
-                if n=0 orelse not(profiling()) then code
+                if n = 0 orelse not(profiling()) then code
                 else internalCallInto fsz "allocRegionFiniteProfiling"
                   [SS.REG_F_ATY(off+BackendInfo.objectDescSizeP+BackendInfo.finiteRegionDescSizeP),
                    integer(Effect.key_of_eps_or_rho place),integer n] code
@@ -1507,84 +1460,83 @@ struct
         in
           foldr enter code rhos
         end
-    | LS.ASSIGN {pat=SS.FLOW_VAR_ATY(_,t,f),bind=LS.CON0{con,...}} =>
+    | LS.ASSIGN {pat = SS.FLOW_VAR_ATY(_,t,f),bind = LS.CON0{con,...}} =>
         ins "b" [pr_lab(LocalLab(if Con.eq(con,Con.con_TRUE) then t else f))] :: code
-    | LS.ASSIGN {pat,bind=LS.ATOM{aty}} =>
-        readInto fsz aty (X 16) (writeInto fsz pat (X 16) code)
-    | LS.ASSIGN {pat,bind=LS.LOAD l} =>
-        addressInto(DatLab l,X 16) (loadInto(X 16,0,X 16) (writeInto fsz pat (X 16) code))
-    | LS.ASSIGN {pat,bind=LS.STORE(aty,l)} =>
+    | LS.ASSIGN {pat,bind = LS.ATOM{aty}} =>
+        (readInto fsz aty (X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.LOAD l} =>
+        (addressInto(DatLab l,X 16)
+           ++ loadInto(X 16,0,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.STORE(aty,l)} =>
         (dataLabel l;
-          let
-            val code = writeInto fsz pat (X 16) code
-            val code = constantInto(1,X 16) code
-            val code = storeInto(X 16,X 17,0) code
-            val code = addressInto(DatLab l,X 17) code
-          in
-            readInto fsz aty (X 16) code
-          end)
-    | LS.ASSIGN {pat,bind=LS.REAL value} =>
-        addressInto(realData value,X 16) (writeInto fsz pat (X 16) code)
-    | LS.ASSIGN {pat,bind=LS.F64 value} =>
-        addressInto(static [Directive(".double " ^ String.translate(fn #"~" => "-" | c => String.str c) value)],X 16)
-          (loadInto(X 16,0,D 30)
-          (writeInto fsz pat (D 30) code))
-    | LS.ASSIGN {pat,bind=LS.STRING value} =>
-        addressInto(stringData value,X 16) (writeInto fsz pat (X 16) code)
-    | LS.ASSIGN {pat,bind=LS.RECORD{elems=[],...}} =>
-        constantInto(1,X 16) (writeInto fsz pat (X 16) code)
-    | LS.ASSIGN {pat,bind=LS.BLOCKF64{elems=[],...}} =>
-        constantInto(1,X 16) (writeInto fsz pat (X 16) code)
-    | LS.ASSIGN {pat,bind=LS.BLOCKF64{elems,alloc,tag}} =>
+          (readInto fsz aty (X 16)
+            ++ addressInto(DatLab l,X 17)
+            ++ storeInto(X 16,X 17,0)
+            ++ constantInto(1,X 16)
+            ++ writeInto fsz pat (X 16)) code)
+    | LS.ASSIGN {pat,bind = LS.REAL value} =>
+        (addressInto(realData value,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.F64 value} =>
+        (addressInto(static [Directive(".double " ^ String.translate(fn #"~" => "-" | c => String.str c) value)],X 16)
+           ++ loadInto(X 16,0,D 30)
+           ++ writeInto fsz pat (D 30)) code
+    | LS.ASSIGN {pat,bind = LS.STRING value} =>
+        (addressInto(stringData value,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.RECORD{elems = [],...}} =>
+        (constantInto(1,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.BLOCKF64{elems = [],...}} =>
+        (constantInto(1,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.BLOCKF64{elems,alloc,tag}} =>
         recordInto fsz pat alloc [Constant(IntInf.fromInt(Word.toInt tag))] elems code
-    | LS.ASSIGN {pat,bind=LS.SCRATCHMEM{bytes,alloc,tag}} =>
-        if bytes=0 then
-          let
-            val code = writeInto fsz pat (X 16) code
-          in
-            constantInto(1,X 16) code
-          end
-        else
-          let
-            val code = writeInto fsz pat (X 16) code
-            val code = storeInto(X 17,X 16,0) code
-            val code = constantInto(IntInf.fromInt(Word.toInt tag),X 17) code
-          in
-            allocateInto fsz alloc (1+(bytes+7) div 8) code
-          end
-    | LS.ASSIGN {pat,bind=LS.RECORD{elems,alloc,tag,maybeuntag}} =>
-        recordWithUntagInto maybeuntag fsz pat alloc (header tag []) elems code
-    | LS.ASSIGN {pat,bind=LS.CLOS_RECORD{label,elems=elems as (_,_,rhos),alloc,f64_vars}} =>
-        recordInto fsz pat alloc (header(BackendInfo.tag_clos(false,1+length(LS.smash_free elems),1+length rhos+f64_vars)) [Address(MLFunLab label)]) (LS.smash_free elems) code
-    | LS.ASSIGN {pat,bind=LS.SCLOS_RECORD{elems=elems as (_,_,rhos),alloc,f64_vars}} =>
-        recordInto fsz pat alloc (header(BackendInfo.tag_sclos(false,length(LS.smash_free elems),length rhos+f64_vars)) []) (LS.smash_free elems) code
-    | LS.ASSIGN {pat,bind=LS.SELECT(i,a)} =>
-        readInto fsz a (X 16) (loadInto(X 16,8*i+payload(),X 16) (writeInto fsz pat (X 16) code))
-    | LS.ASSIGN {pat,bind=LS.DEREF{aty}} =>
-        readInto fsz aty (X 16) (loadInto(X 16,payload(),X 16) (writeInto fsz pat (X 16) code))
-    | LS.ASSIGN {pat,bind=LS.REF(alloc,a)} =>
-        recordWithUntagInto true fsz pat alloc (header(BackendInfo.tag_ref false) []) [a] code
-    | LS.ASSIGN {pat,bind=LS.ASSIGNREF(_,a,b)} =>
-        stackInto(true,16)
-          (readInto (fsz+2) a (X 16)
-          (storeInto(X 16,SP,0)
-          (readInto (fsz+2) b (X 16)
-          (loadInto(SP,0,X 17)
-          (storeInto(X 16,X 17,payload())
-          (stackInto(false,16)
+    | LS.ASSIGN {pat,bind = LS.SCRATCHMEM{bytes,alloc,tag}} =>
+        if bytes = 0 then
           (constantInto(1,X 16)
-          (writeInto fsz pat (X 16) code))))))))
-    | LS.ASSIGN {pat,bind=LS.PASS_PTR_TO_MEM(alloc,n,untag)} =>
-        let
-          val code = writeInto fsz pat (X 16) code
-        in
-          allocateInRegionInto fsz alloc
+            ++ writeInto fsz pat (X 16)) code
+        else
+          (allocateInto fsz alloc (1+(bytes+7) div 8)
+            ++ constantInto(IntInf.fromInt(Word.toInt tag),X 17)
+            ++ storeInto(X 17,X 16,0)
+            ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.RECORD{elems,alloc,tag,maybeuntag}} =>
+        recordWithUntagInto maybeuntag fsz pat alloc (header tag []) elems code
+    | LS.ASSIGN {pat,bind = LS.CLOS_RECORD{label,elems = elems as (_,_,rhos),alloc,f64_vars}} =>
+        recordInto fsz pat alloc (header(BackendInfo.tag_clos(false,1+length(LS.smash_free elems),1+length rhos+f64_vars)) [Address(MLFunLab label)]) (LS.smash_free elems) code
+    | LS.ASSIGN {pat,bind = LS.SCLOS_RECORD{elems = elems as (_,_,rhos),alloc,f64_vars}} =>
+        recordInto fsz pat alloc (header(BackendInfo.tag_sclos(false,length(LS.smash_free elems),length rhos+f64_vars)) []) (LS.smash_free elems) code
+    | LS.ASSIGN {pat,bind = LS.SELECT(i,a)} =>
+        (readInto fsz a (X 16)
+           ++ loadInto(X 16,8*i+payload(),X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.DEREF{aty}} =>
+        (readInto fsz aty (X 16)
+           ++ loadInto(X 16,payload(),X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.REF(alloc,a)} =>
+        recordWithUntagInto true fsz pat alloc (header(BackendInfo.tag_ref false) []) [a] code
+    | LS.ASSIGN {pat,bind = LS.ASSIGNREF(_,a,b)} =>
+        (stackInto(true,16)
+           ++ readInto (fsz+2) a (X 16)
+           ++ storeInto(X 16,SP,0)
+           ++ readInto (fsz+2) b (X 16)
+           ++ loadInto(SP,0,X 17)
+           ++ storeInto(X 16,X 17,payload())
+           ++ stackInto(false,16)
+           ++ constantInto(1,X 16)
+           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.PASS_PTR_TO_MEM(alloc,n,untag)} =>
+        (allocateInRegionInto fsz alloc
             (if untag andalso tagged() andalso not(tagPairs()) then n-1 else n)
-            (untag andalso tagged() andalso not(tagPairs())) code
-        end
-    | LS.ASSIGN {pat,bind=LS.PASS_PTR_TO_RHO{sma}} =>
+            (untag andalso tagged() andalso not(tagPairs()))
+          ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.PASS_PTR_TO_RHO{sma}} =>
         let
-          val (a,mode)=regionArg sma
+          val (a,mode) = regionArg sma
           val code = writeInto fsz pat (X 16) code
           val code = (case mode of
               0 =>
@@ -1595,14 +1547,15 @@ struct
         in
           readInto fsz a (X 16) code
         end
-    | LS.ASSIGN {pat,bind=LS.CON0{con,con_kind,aux_regions,alloc}} =>
+    | LS.ASSIGN {pat,bind = LS.CON0{con,con_kind,aux_regions,alloc}} =>
         let
           fun reset () code =
-            stmtsInto fsz [LS.RESET_REGIONS{force=false,regions_for_resetting=aux_regions}] code
+            stmtsInto fsz [LS.RESET_REGIONS{force = false,regions_for_resetting = aux_regions}] code
           fun value n code =
             let
-              val code = writeInto fsz pat (X 16) code
-              val code = constantInto(n,X 16) code
+              val code =
+                (constantInto(n,X 16)
+                 ++ writeInto fsz pat (X 16)) code
             in
               reset() code
             end
@@ -1622,174 +1575,174 @@ struct
                 reset() code
               end)
         end
-    | LS.ASSIGN {pat,bind=LS.CON1{con_kind,alloc,arg,...}} =>
+    | LS.ASSIGN {pat,bind = LS.CON1{con_kind,alloc,arg,...}} =>
         (case con_kind of
           LS.BOXED i =>
             recordInto fsz pat alloc
                        [Constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_con1(false,i))))] [arg] code
           | LS.UNBOXED i =>
-            let
-              val code = writeInto fsz pat (X 16) code
-              val code = ins "orr" ["x16","x16","x17"] :: code
-              val code = constantInto(IntInf.fromInt i,X 17) code
-            in
-              readInto fsz arg (X 16) code
-            end
+            (readInto fsz arg (X 16)
+              ++ constantInto(IntInf.fromInt i,X 17)
+              ++ instruction "orr" ["x16","x16","x17"]
+              ++ writeInto fsz pat (X 16)) code
           | LS.UNBOXED_HIGH i =>
-            let
-              val code = writeInto fsz pat (X 16) code
-              val code = ins "orr" ["x16","x16","x17"] :: code
-              val code = constantInto(IntInf.fromInt i*281474976710656,X 17) code
-            in
-              readInto fsz arg (X 16) code
-            end
+            (readInto fsz arg (X 16)
+              ++ constantInto(IntInf.fromInt i*281474976710656,X 17)
+              ++ instruction "orr" ["x16","x16","x17"]
+              ++ writeInto fsz pat (X 16)) code
           | _ => unsupported "unary enumeration")
-    | LS.ASSIGN {pat,bind=LS.DECON{con_kind,con_aty,...}} =>
+    | LS.ASSIGN {pat,bind = LS.DECON{con_kind,con_aty,...}} =>
         readInto fsz con_aty (X 16)
           ((case con_kind of
             LS.BOXED _ =>
-              loadInto(X 16,8,X 16)
-                (writeInto fsz pat (X 16) code)
+              (loadInto(X 16,8,X 16)
+                 ++ writeInto fsz pat (X 16)) code
             | LS.UNBOXED 0 =>
               writeInto fsz pat (X 16) code
             | LS.UNBOXED _ =>
-              ins "and" ["x16","x16","#-4"] ::
-              writeInto fsz pat (X 16) code
+              (instruction "and" ["x16","x16","#-4"]
+                 ++ writeInto fsz pat (X 16)) code
             | LS.UNBOXED_HIGH _ =>
-              ins "and" ["x16","x16","#0xffffffffffff"] ::
-              writeInto fsz pat (X 16) code
+              (instruction "and" ["x16","x16","#0xffffffffffff"]
+                 ++ writeInto fsz pat (X 16)) code
             | _ => unsupported "enumeration deconstruction"))
-    | LS.HANDLE {default,handl=(handl,closure),handl_return=(returned,result,bv),offset} =>
+    | LS.HANDLE {default,handl = (handl,closure),handl_return = (returned,result,bv),offset} =>
         let
           val ret = continuation bv
           val join = localFresh()
           val off = slot fsz offset
-          val code = stmtsInto fsz returned (Label join :: code)
-          val code = loadInto (SP,off+16,X 16)
-            (storeInto (X 16,X 28,8)
-              (ins "b" [pr_lab join] :: Label ret :: writeInto fsz result (X 0) code))
-          val code = stmtsInto fsz default code
-          val code = addressInto (ret,X 16) (storeInto (X 16,SP,off)
-            (readInto fsz closure (X 16) (storeInto (X 16,SP,off+8)
-            (loadInto (X 28,8,X 16) (storeInto (X 16,SP,off+16)
-            (moveInto (SP,X 16) (storeInto (X 16,SP,off+24)
-            (storeInto (X 29,SP,off+32) (loadInto (X 28,0,X 16)
-            (storeInto (X 16,SP,off+40) (addOffsetInto (SP,off,X 16)
-            (storeInto (X 16,X 28,8) code))))))))))))
         in
-          stmtsInto fsz handl code
+          (stmtsInto fsz handl
+           ++ addressInto (ret,X 16)
+           ++ storeInto (X 16,SP,off)
+           ++ readInto fsz closure (X 16)
+           ++ storeInto (X 16,SP,off+8)
+           ++ loadInto (X 28,8,X 16)
+           ++ storeInto (X 16,SP,off+16)
+           ++ moveInto (SP,X 16)
+           ++ storeInto (X 16,SP,off+24)
+           ++ storeInto (X 29,SP,off+32)
+           ++ loadInto (X 28,0,X 16)
+           ++ storeInto (X 16,SP,off+40)
+           ++ addOffsetInto (SP,off,X 16)
+           ++ storeInto (X 16,X 28,8)
+           ++ stmtsInto fsz default
+           ++ loadInto (SP,off+16,X 16)
+           ++ storeInto (X 16,X 28,8)
+           ++ instruction "b" [pr_lab join]
+           ++ one (Label ret)
+           ++ writeInto fsz result (X 0)
+           ++ stmtsInto fsz returned
+           ++ one (Label join)) code
         end
     | LS.RAISE {arg,...} =>
-        argumentsInto fsz [SS.PHREG_ATY(X 28),arg] (ins "b" ["_raise_exn"] :: code)
+        (argumentsInto fsz [SS.PHREG_ATY(X 28),arg]
+           ++ instruction "b" ["_raise_exn"]) code
     | LS.FLUSH (aty,off) =>
-        readInto fsz aty (X 16) (storeInto(X 16,SP,slot fsz off) code)
+        (readInto fsz aty (X 16)
+           ++ storeInto(X 16,SP,slot fsz off)) code
     | LS.FETCH (aty,off) =>
-        loadInto(SP,slot fsz off,X 16) (writeInto fsz aty (X 16) code)
+        (loadInto(SP,slot fsz off,X 16)
+           ++ writeInto fsz aty (X 16)) code
     | LS.PRIM p =>
         primitiveInto fsz p code
-    | LS.CCALL {name="spawnone",args=[arg],rhos_for_result=[],res=[res]} =>
+    | LS.CCALL {name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
-          val ()=if parallel() then () else unsupported "spawnone without -par"
-          val entry=localFresh()
+          val () = if parallel() then () else unsupported "spawnone without -par"
+          val entry = localFresh()
                       (* thread_init returns ThreadInfo*. Its leading fields are the
                        * closure and context, checked by Runtime/Layout.c. *)
-          val ()=addStatic
+          val () = addStatic
             (
               let
-                val code = ins "blr" ["x17"] ::
-                  ins "bl" ["_thread_exit"] ::
-                  ins "brk" ["#0"] ::
-                  []
-                val code = stackInto(true,16) code
-                val code = constantInto(1,X 1) code
-                val code = loadInto(X 0,0,X 17) code
-                val code = loadInto(X 0,0,X 0) code
-                val code = addOffsetInto(X 0,8,X 28) code
-                val code = ins "bl" ["_thread_init"] :: code
-                val code = saveCInto() code
+                val code = (instruction "blr" ["x17"]
+                   ++ instruction "bl" ["_thread_exit"]
+                   ++ instruction "brk" ["#0"]) []
               in
-                Directive ".text" ::
-                Directive ".p2align 2" ::
-                Label entry :: code
+                (one (Directive ".text")
+                 ++ one (Directive ".p2align 2")
+                 ++ one (Label entry)
+                 ++ saveCInto()
+                 ++ instruction "bl" ["_thread_init"]
+                 ++ addOffsetInto(X 0,8,X 28)
+                 ++ loadInto(X 0,0,X 0)
+                 ++ loadInto(X 0,0,X 17)
+                 ++ constantInto(1,X 1)
+                 ++ stackInto(true,16)) code
               end)
-          val code = writeInto fsz res (X 0) code
-          val code = stackInto(false,16) code
-          val code = ins "bl" ["_thread_create"] :: code
-          val code = loadInto(SP,0,X 1) code
-          val code = addressInto(entry,X 0) code
-          val code = storeInto(X 16,SP,0) code
-          val code = readInto (fsz+2) arg (X 16) code
         in
-          stackInto(true,16) code
+          (stackInto(true,16)
+           ++ readInto (fsz+2) arg (X 16)
+           ++ storeInto(X 16,SP,0)
+           ++ addressInto(entry,X 0)
+           ++ loadInto(SP,0,X 1)
+           ++ instruction "bl" ["_thread_create"]
+           ++ stackInto(false,16)
+           ++ writeInto fsz res (X 0)) code
         end
     | LS.CCALL {name,args,rhos_for_result,res} =>
         if length res > 1 then unsupported "multiple C results"
-        else foreignCallInto fsz name (rhos_for_result @ args) (fn _ => fn code => code)
-               (resultsInto fsz res code)
+        else (foreignCallInto fsz name (rhos_for_result @ args) (fn _ => fn code => code)
+           ++ resultsInto fsz res) code
     | LS.CCALL_AUTO c =>
         autoCallInto fsz c code
-    | LS.EXPORT{name,clos_lab,arg=(aty,ft1,ft2)} =>
+    | LS.EXPORT{name,clos_lab,arg = (aty,ft1,ft2)} =>
         let
-          val ()=if ft1=LS.Int andalso ft2=LS.Int then () else unsupported "export other than int -> int"
-          val ctx=DatLab(AddressLabels.new_named "arm64_export_ctx")
-          val str=stringData name
-          val ()=dataLabel clos_lab
-          val ()=addStatic
+          val () = if ft1 = LS.Int andalso ft2 = LS.Int then () else unsupported "export other than int -> int"
+          val ctx = DatLab(AddressLabels.new_named "arm64_export_ctx")
+          val str = stringData name
+          val () = dataLabel clos_lab
+          val () = addStatic
             (
               let
                 val code = ins "ret" [] ::
                   []
-                val code = restoreCInto() code
-                val code = resumeGCInto() code
-                val code = ins "blr" ["x17"] :: code
-                val code = stackInto(true,16) code
-                val code = loadInto(X 0,payload(),X 17) code
-                val code = loadInto(X 0,0,X 0) code
-                val code = addressInto(DatLab clos_lab,X 0) code
+                val code =
+                  (addressInto(DatLab clos_lab,X 0)
+                   ++ loadInto(X 0,0,X 0)
+                   ++ loadInto(X 0,payload(),X 17)
+                   ++ stackInto(true,16)
+                   ++ instruction "blr" ["x17"]
+                   ++ resumeGCInto()
+                   ++ restoreCInto()) code
                 val code = if parallel() then
-                    let
-                      val code = moveInto(X 19,X 1) code
-                      val code = addOffsetInto(X 0,8,X 28) code
-                      val code = ins "bl" ["_thread_info"] :: code
-                    in
-                      moveInto(X 0,X 19) code
-                    end
+                    (moveInto(X 0,X 19)
+                      ++ instruction "bl" ["_thread_info"]
+                      ++ addOffsetInto(X 0,8,X 28)
+                      ++ moveInto(X 19,X 1)) code
                   else
-                    let
-                      val code = loadInto(X 16,0,X 28) code
-                      val code = addressInto(ctx,X 16) code
-                    in
-                      moveInto(X 0,X 1) code
-                    end
-                val code = deferGCInto() code
-                val code = saveCInto() code
-                val code = functionInto(NameLab name) code
+                    (moveInto(X 0,X 1)
+                      ++ addressInto(ctx,X 16)
+                      ++ loadInto(X 16,0,X 28)) code
               in
-                Directive ".data" ::
-                Directive ".p2align 3" ::
-                Label ctx ::
-                Directive ".quad 0" :: code
+                (one (Directive ".data")
+                 ++ one (Directive ".p2align 3")
+                 ++ one (Label ctx)
+                 ++ one (Directive ".quad 0")
+                 ++ functionInto(NameLab name)
+                 ++ saveCInto()
+                 ++ deferGCInto()) code
               end)
-          val code = internalCallInto fsz "sml_regCfuns" [SS.PHREG_ATY(X 16),SS.PHREG_ATY(X 17)] code
-          val code = addressInto(NameLab name,X 17) code
-          val code = addressInto(str,X 16) code
-          val code = storeInto(X 28,X 17,0) code
-          val code = addressInto(ctx,X 17) code
-          val code = storeInto(X 16,X 17,0) code
-          val code = addressInto(DatLab clos_lab,X 17) code
         in
-          readInto fsz aty (X 16) code
+          (readInto fsz aty (X 16)
+           ++ addressInto(DatLab clos_lab,X 17)
+           ++ storeInto(X 16,X 17,0)
+           ++ addressInto(ctx,X 17)
+           ++ storeInto(X 28,X 17,0)
+           ++ addressInto(str,X 16)
+           ++ addressInto(NameLab name,X 17)
+           ++ internalCallInto fsz "sml_regCfuns" [SS.PHREG_ATY(X 16),SS.PHREG_ATY(X 17)]) code
         end
     | LS.FUNCALL {opr,args,reg_args,fargs,clos,res,bv} =>
-        mlcallInto false fsz (Direct opr) {args=args,reg_args=reg_args,fargs=fargs,clos=clos,res=res,bv=bv} code
+        mlcallInto false fsz (Direct opr) {args = args,reg_args = reg_args,fargs = fargs,clos = clos,res = res,bv = bv} code
     | LS.JMP {opr,args,reg_args,fargs,clos,res,bv} =>
-        mlcallInto true fsz (Direct opr) {args=args,reg_args=reg_args,fargs=fargs,clos=clos,res=res,bv=bv} code
+        mlcallInto true fsz (Direct opr) {args = args,reg_args = reg_args,fargs = fargs,clos = clos,res = res,bv = bv} code
     | LS.FNCALL {opr,args,clos,res,bv} =>
-        mlcallInto false fsz (Indirect opr) {args=args,reg_args=[],fargs=[],clos=clos,res=res,bv=bv} code
+        mlcallInto false fsz (Indirect opr) {args = args,reg_args = [],fargs = [],clos = clos,res = res,bv = bv} code
     | LS.FNJMP {opr,args,clos,res,bv} =>
-        mlcallInto true fsz (Indirect opr) {args=args,reg_args=[],fargs=[],clos=clos,res=res,bv=bv} code
-    | LS.SWITCH_I {switch=LS.SWITCH(SS.FLOW_VAR_ATY(_,t,f),[(v,yes)],no),...} =>
-        if v=IntInf.fromInt BackendInfo.ml_true then flowInto fsz (t,f,yes,no) code
+        mlcallInto true fsz (Indirect opr) {args = args,reg_args = [],fargs = [],clos = clos,res = res,bv = bv} code
+    | LS.SWITCH_I {switch = LS.SWITCH(SS.FLOW_VAR_ATY(_,t,f),[(v,yes)],no),...} =>
+        if v = IntInf.fromInt BackendInfo.ml_true then flowInto fsz (t,f,yes,no) code
         else flowInto fsz (f,t,yes,no) code
     | LS.SWITCH_C (LS.SWITCH(SS.FLOW_VAR_ATY(_,t,f),[((c,_),yes)],no)) =>
         if Con.eq(c,Con.con_TRUE) then flowInto fsz (t,f,yes,no) code
@@ -1808,14 +1761,15 @@ struct
               LS.ENUM _ => code
             | LS.BOXED _ => loadInto (X 16,0,X 16) code
             | LS.UNBOXED_HIGH _ => ins "lsr" ["x16","x16","#48"] :: code
-            | LS.UNBOXED _ => ins "and" ["x17","x16","#3"] ::
-                ins "cmp" ["x17","#3"] :: ins "csel" ["x16","x16","x17","eq"] :: code
+            | LS.UNBOXED _ => (instruction "and" ["x17","x16","#3"]
+               ++ instruction "cmp" ["x17","#3"]
+               ++ instruction "csel" ["x16","x16","x17","eq"]) code
         in
           readInto fsz a (X 16) code
         end
-    | LS.SWITCH_W {switch=LS.SWITCH(a,cases,default),precision=63} =>
+    | LS.SWITCH_W {switch = LS.SWITCH(a,cases,default),precision = 63} =>
         switchCodeInto fsz (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
-    | LS.SWITCH_I {switch=LS.SWITCH(a,cases,default),precision=63} =>
+    | LS.SWITCH_I {switch = LS.SWITCH(a,cases,default),precision = 63} =>
         switchCodeInto fsz (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
     | LS.SWITCH_W {switch,precision} =>
         numericSwitchInto fsz false precision switch code
@@ -1827,13 +1781,13 @@ struct
     | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
   and numericSwitchInto fsz signed precision (LS.SWITCH(a,cases,default)) code =
     let
-      val tag = precision=31 orelse precision=63 orelse (precision=8 andalso tagged())
-      val box = tagged() andalso (precision=32 orelse precision=64)
+      val tag = precision = 31 orelse precision = 63 orelse (precision = 8 andalso tagged())
+      val box = tagged() andalso (precision = 32 orelse precision = 64)
       fun value n = if tag then 2*n+1 else n
       val code = switchCodeInto fsz
         (LS.SWITCH(SS.PHREG_ATY(X 16),map (fn (n,b) => (value n,b)) cases,default)) code
       (* Int31 values from packed tables have only their encoded low 32 bits. *)
-      val code = if precision=31 orelse precision=32 then
+      val code = if precision = 31 orelse precision = 32 then
                    ins (if signed then "sxtw" else "uxtw") ["x16","w16"] :: code
                  else code
       val code = if box then loadInto (X 16,8,X 16) code else code
@@ -1843,22 +1797,28 @@ struct
   and flowInto fsz (t,f,yes,no) code =
     let
       val done = localFresh()
-      val code = stmtsInto fsz no (Label done :: code)
-      val code = stmtsInto fsz yes
-        (ins "b" [pr_lab done] :: Label(LocalLab f) :: code)
     in
-      Label(LocalLab t) :: code
+      (one (Label(LocalLab t))
+       ++ stmtsInto fsz yes
+       ++ instruction "b" [pr_lab done]
+       ++ one (Label(LocalLab f))
+       ++ stmtsInto fsz no
+       ++ one (Label done)) code
     end
   and switchCodeInto fsz (LS.SWITCH(a,cases,default)) code =
     let
       val done = localFresh()
       val branches = map (fn (v,body) => (v,localFresh(),body)) cases
       val code = foldr (fn ((_,l,body),code) =>
-        Label l :: stmtsInto fsz body (ins "b" [pr_lab done] :: code))
+        (one (Label l)
+           ++ stmtsInto fsz body
+           ++ instruction "b" [pr_lab done]) code)
         (Label done :: code) branches
-      val code = stmtsInto fsz default (ins "b" [pr_lab done] :: code)
-      val code = foldr (fn ((v,l,_),code) => constantInto (v,X 17)
-        (ins "cmp" ["x16","x17"] :: ins "b.eq" [pr_lab l] :: code)) code branches
+      val code = (stmtsInto fsz default
+         ++ instruction "b" [pr_lab done]) code
+      val code = foldr (fn ((v,l,_),code) => (constantInto (v,X 17)
+         ++ instruction "cmp" ["x16","x17"]
+         ++ instruction "b.eq" [pr_lab l]) code) code branches
     in
       readInto fsz a (X 16) code
     end
@@ -1876,23 +1836,31 @@ struct
           | _ => w) 0w0 (CallConv.get_register_args_excluding_region_and_float_args cc)
         val registers = List.filter (fn n => n<>18) (List.tabulate(31,fn i => i))
         val floats = List.tabulate(8,fn i => i)
-        val code = stackInto (false,352) (Label done :: code)
+        val code = (stackInto (false,352)
+           ++ one (Label done)) code
         val code = foldr (fn (n,code) => loadInto (SP,8*(31-n),X n) code) code registers
         val code = foldr (fn (i,code) => loadInto (SP,8*(39-i),D i) code) code floats
-        val code = moveInto (X 28,X 0) (moveInto (SP,X 1)
-          (constantInto (Word32.toLargeInt mask,X 2) (ins "bl" ["_gc"] :: code)))
-        val code = foldri (fn (i,n,code) => constantInto (IntInf.fromInt n,X 16)
-          (storeInto (X 16,SP,320+8*i) code)) code [skip,rc,ac]
+        val code = (moveInto (X 28,X 0)
+           ++ moveInto (SP,X 1)
+           ++ constantInto (Word32.toLargeInt mask,X 2)
+           ++ instruction "bl" ["_gc"]) code
+        val code = foldri (fn (i,n,code) => (constantInto (IntInf.fromInt n,X 16)
+           ++ storeInto (X 16,SP,320+8*i)) code) code [skip,rc,ac]
         val code = foldr (fn (i,code) => storeInto (D i,SP,8*(39-i)) code) code floats
-        val code = addOffsetInto (SP,352,X 16) (storeInto (X 16,SP,0)
-          (storeInto (X 16,SP,344) (constantInto (0,X 16) (storeInto (X 16,SP,104) code))))
+        val code = (addOffsetInto (SP,352,X 16)
+           ++ storeInto (X 16,SP,0)
+           ++ storeInto (X 16,SP,344)
+           ++ constantInto (0,X 16)
+           ++ storeInto (X 16,SP,104)) code
         val code = foldr (fn (n,code) => storeInto (X n,SP,8*(31-n)) code) code registers
         val code = stackInto (true,352) code
         val code = if extra_gc_checks() then code else ins "cbz" ["x16",pr_lab done] :: code
       in
-        addressInto (NameLab "disable_gc",X 16) (loadInto (X 16,0,X 16)
-          (ins "cbnz" ["x16",pr_lab done] :: addressInto (NameLab "time_to_gc",X 16)
-            (loadInto (X 16,0,X 16) code)))
+        (addressInto (NameLab "disable_gc",X 16)
+           ++ loadInto (X 16,0,X 16)
+           ++ instruction "cbnz" ["x16",pr_lab done]
+           ++ addressInto (NameLab "time_to_gc",X 16)
+           ++ loadInto (X 16,0,X 16)) code
       end
   fun topInto (l,cc,body) code =
     let
@@ -1900,14 +1868,18 @@ struct
       val () = currentArgs := ac
       val () = currentResults := CallConv.get_rcf_size cc
       val fsz = CallConv.get_frame_size cc
-      val code = stmtsInto fsz body (epilogueInto fsz code)
+      val code = (stmtsInto fsz body
+         ++ epilogueInto fsz) code
       val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"
                    [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)] code
                  else code
     in
-      functionInto (MLFunLab l) (storeInto (X 29,SP,8*even ac)
-        (storeInto (X 30,SP,8*(even ac+1))
-          (addOffsetInto (SP,8*even ac,X 29) (entryGCInto cc (stackInto (true,8*fsz) code)))))
+      (functionInto (MLFunLab l)
+       ++ storeInto (X 29,SP,8*even ac)
+       ++ storeInto (X 30,SP,8*(even ac+1))
+       ++ addOffsetInto (SP,8*even ac,X 29)
+       ++ entryGCInto cc
+       ++ stackInto (true,8*fsz)) code
     end
   fun CG {main_lab,code,imports,exports,safe} =
     let
@@ -1917,14 +1889,19 @@ struct
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
       fun data (l,code) =
-        Directive ".data" :: Directive ".p2align 3" ::
-        Directive(".globl " ^ pr_lab(DatLab l)) :: Label(DatLab l) :: Directive ".quad 1" :: code
+        (one (Directive ".data")
+           ++ one (Directive ".p2align 3")
+           ++ one (Directive(".globl " ^ pr_lab(DatLab l)))
+           ++ one (Label(DatLab l))
+           ++ one (Directive ".quad 1")) code
       fun marker suffix code =
         let
           val l = unitSymbol main_lab suffix
         in
-          Directive ".data" :: Directive ".p2align 3" ::
-          Directive(".globl " ^ pr_lab l) :: Label l :: code
+          (one (Directive ".data")
+             ++ one (Directive ".p2align 3")
+             ++ one (Directive(".globl " ^ pr_lab l))
+             ++ one (Label l)) code
         end
       (* Metadata is discovered while lowering the functions. Put data before
        * text so the completed instruction stream need not be copied. *)
@@ -1934,7 +1911,8 @@ struct
       else marker "frames"
         (Directive(".quad " ^ Int.toString(length(!frameIndex))) ::
          foldr (fn ((pc,fd),code) =>
-           Directive(".quad " ^ pr_lab pc) :: Directive(".quad " ^ pr_lab fd) :: code)
+           (one (Directive(".quad " ^ pr_lab pc))
+              ++ one (Directive(".quad " ^ pr_lab fd))) code)
            (marker "roots" (Directive(".quad " ^ Int.toString(length(!dataLabels))) ::
              foldr (fn (l,code) => Directive(".quad " ^ pr_lab(DatLab l)) :: code) code (!dataLabels)))
            (!frameIndex))
@@ -1945,34 +1923,43 @@ struct
     foldr (fn (l,code) => registerUnitInto l code) code labs
   fun callUnitsInto (labs,pcs) code =
     ListPair.foldr (fn (l,pc,code) =>
-      stackInto (true,16) (ins "bl" [pr_lab(MLFunLab l)] :: Label pc :: code)) code (labs,pcs)
+      (stackInto (true,16)
+         ++ instruction "bl" [pr_lab(MLFunLab l)]
+         ++ one (Label pc)) code) code (labs,pcs)
   fun frameWordsInto pcs sentinel code =
     foldr (fn (pc,code) =>
-      Directive(".quad " ^ pr_lab pc) :: Directive(".quad " ^ pr_lab sentinel) :: code) code pcs
+      (one (Directive(".quad " ^ pr_lab pc))
+         ++ one (Directive(".quad " ^ pr_lab sentinel))) code) code pcs
   fun preservingStubInto lab setup target code =
     let
       val bytes = 16*((length savedRegs+2) div 2)
-      val code = stackInto (false,bytes) (ins "ret" [] :: code)
-      val code = loadInto (SP,8*length savedRegs,X 30) code
+      val code =
+        (loadInto (SP,8*length savedRegs,X 30)
+         ++ stackInto (false,bytes)
+         ++ instruction "ret" []) code
       val code = foldri (fn (i,reg,code) => loadInto (SP,8*i,reg) code) code savedRegs
-      val code = ins "bl" [pr_lab target] :: moveInto (X 0,X 16) code
+      val code = (instruction "bl" [pr_lab target]
+         ++ moveInto (X 0,X 16)) code
       val code = setup bytes code
       val code = storeInto (X 30,SP,8*length savedRegs) code
       val code = foldri (fn (i,reg,code) => storeInto (reg,SP,8*i) code) code savedRegs
     in
-      functionInto lab (stackInto (true,bytes) code)
+      (functionInto lab
+         ++ stackInto (true,bytes)) code
     end
   fun allocationStubsInto code =
     let
       fun setup untag bytes code =
-        moveInto (X 16,X 0) (moveInto (X 17,X 1)
-          (countInto (X 2) 0 (countInto (X 3) untag
-            (if profiling() then loadInto (SP,bytes,X 4) code else countInto (X 4) 0 code))))
-      val code = preservingStubInto resetStub
-        (fn _ => fn code => moveInto (X 16,X 0) code) (NameLab "resetRegion") code
-      val code = preservingStubInto untaggedAllocStub (setup 1) (NameLab "mlkit_arm64_alloc") code
+        (moveInto (X 16,X 0)
+         ++ moveInto (X 17,X 1)
+         ++ countInto (X 2) 0
+         ++ countInto (X 3) untag
+         ++ (if profiling() then loadInto (SP,bytes,X 4) else countInto (X 4) 0)) code
     in
-      preservingStubInto allocStub (setup 0) (NameLab "mlkit_arm64_alloc") code
+      (preservingStubInto allocStub (setup 0) (NameLab "mlkit_arm64_alloc")
+       ++ preservingStubInto untaggedAllocStub (setup 1) (NameLab "mlkit_arm64_alloc")
+       ++ preservingStubInto resetStub
+        (fn _ => fn code => moveInto (X 16,X 0) code) (NameLab "resetRegion")) code
     end
   fun linkCode repl (labs,_) =
     let
@@ -1988,17 +1975,14 @@ struct
         Directive(".globl " ^ pr_lab l) :: Label l ::
         foldr (fn (s,code) => Directive(".quad " ^ s) :: code) code words
       fun init (place,l) code =
-        let
-          val code = storeInto(X 0,X 17,0) code
-          val code = addressInto(DatLab l,X 17) code
-          val code = ins "bl" [pr_lab(NameLab(regionAllocator place))] ::
-            ins "orr" ["x0","x0","#1"] :: code
-          val code = constantInto(IntInf.fromInt(regionPolicy true place),X 2) code
-          val code = moveInto(SP,X 1) code
-          val code = moveInto(X 28,X 0) code
-        in
-          stackInto(true,8*even(BackendInfo.size_of_reg_desc())) code
-        end
+        (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
+          ++ moveInto(X 28,X 0)
+          ++ moveInto(SP,X 1)
+          ++ constantInto(IntInf.fromInt(regionPolicy true place),X 2)
+          ++ instruction "bl" [pr_lab(NameLab(regionAllocator place))]
+          ++ instruction "orr" ["x0","x0","#1"]
+          ++ addressInto(DatLab l,X 17)
+          ++ storeInto(X 0,X 17,0)) code
       val exceptions = [("MATCH","Match",BackendInfo.exn_MATCH_lab),
         ("BIND","Bind",BackendInfo.exn_BIND_lab),("OVERFLOW","Overflow",BackendInfo.exn_OVERFLOW_lab),
         ("INTERRUPT","Interrupt",BackendInfo.exn_INTERRUPT_lab),("DIV","Div",BackendInfo.exn_DIV_lab),
@@ -2018,265 +2002,253 @@ struct
         foldr (fn ((_,l),code) => datum (DatLab l) ["0"] code)
           (datum (NameLab "exnameCounter") ["7"]
             (foldr (fn ((l,words,lab),code) =>
-              datum l words (datum (DatLab lab) [pr_lab l] code)) code exceptionData)) globals
+              (datum l words
+                 ++ datum (DatLab lab) [pr_lab l]) code) code exceptionData)) globals
       val alloc = NameLab "mlkit_arm64_alloc"
-      val finite=localFresh()
-      val noreset=localFresh()
-      val reset=NameLab "mlkit_arm64_reset"
-      val resetDone=localFresh()
-      val raising=NameLab "raise_exn"
-      val unwind=localFresh()
-      val unwound=localFresh()
-      val uncaught=localFresh()
-      val linkBegin=NameLab "arm64_link_begin"
-      val linkEnd=NameLab "arm64_link_end"
-      val sentinel=NameLab "arm64_sentinel"
-      val linkFrames=NameLab "arm64_link_frames"
-      val returnLabels=map(fn _ => localFresh()) labs
+      val finite = localFresh()
+      val noreset = localFresh()
+      val reset = NameLab "mlkit_arm64_reset"
+      val resetDone = localFresh()
+      val raising = NameLab "raise_exn"
+      val unwind = localFresh()
+      val unwound = localFresh()
+      val uncaught = localFresh()
+      val linkBegin = NameLab "arm64_link_begin"
+      val linkEnd = NameLab "arm64_link_end"
+      val sentinel = NameLab "arm64_sentinel"
+      val linkFrames = NameLab "arm64_link_frames"
+      val returnLabels = map(fn _ => localFresh()) labs
       fun gcInit code =
         if not(gc()) then
           code
         else
-          let
-            val code = storeInto(X 17,X 16,0) code
-            val code = moveInto(SP,X 17) code
-            val code = addressInto(NameLab "stack_bot_gc",X 16) code
-            val code = ins "bl" ["_mlkit_arm64_register_image"] :: code
-            val code = constantInto(0,X 5) code
-            val code = constantInto(0,X 4) code
-            val code = addressInto(linkEnd,X 3) code
-            val code = addressInto(linkBegin,X 2) code
-            val code = constantInto(IntInf.fromInt(length labs),X 1) code
-            val code = addressInto(linkFrames,X 0) code
-          in
-            registerUnitsInto labs code
-          end
+          (registerUnitsInto labs
+            ++ addressInto(linkFrames,X 0)
+            ++ constantInto(IntInf.fromInt(length labs),X 1)
+            ++ addressInto(linkBegin,X 2)
+            ++ addressInto(linkEnd,X 3)
+            ++ constantInto(0,X 4)
+            ++ constantInto(0,X 5)
+            ++ instruction "bl" ["_mlkit_arm64_register_image"]
+            ++ addressInto(NameLab "stack_bot_gc",X 16)
+            ++ moveInto(SP,X 17)
+            ++ storeInto(X 17,X 16,0)) code
       fun gcData code =
         if not(gc()) then
           code
         else
-          let
-            val code =
-              datum linkFrames [] (frameWordsInto returnLabels sentinel code)
-            val code = Directive ".quad -1" ::
-              Directive ".quad 0" ::
-              Directive ".quad 0" ::
-              Label sentinel :: code
-            val code = datum (NameLab "data_end_addr") [pr_lab linkEnd] code
-          in
-            datum (NameLab "data_begin_addr") [pr_lab linkBegin] code
-          end
+          (datum (NameLab "data_begin_addr") [pr_lab linkBegin]
+            ++ datum (NameLab "data_end_addr") [pr_lab linkEnd]
+            ++ one (Directive ".quad -1")
+            ++ one (Directive ".quad 0")
+            ++ one (Directive ".quad 0")
+            ++ one (Label sentinel)
+            ++ datum linkFrames []
+            ++ frameWordsInto returnLabels sentinel) code
 
       fun profileStack () code =
-        foldr (fn (name,code) => addressInto (NameLab name,X 16)
-          (moveInto (SP,X 17) (storeInto (X 17,X 16,0) code)))
+        foldr (fn (name,code) => (addressInto (NameLab name,X 16)
+           ++ moveInto (SP,X 17)
+           ++ storeInto (X 17,X 16,0)) code)
           code ["stackBot","maxStack","maxStackP"]
       fun initGlobals () code = foldr (fn (g,code) => init g code) code globals
       val code = gcData []
-      val code = Label linkEnd :: code
-      val code = staticDataInto code
-      val code = data code
-      val code = Directive ".data" ::
-        Directive ".p2align 3" ::
-        Label linkBegin :: code
-      val code = ins "b" ["_uncaught_exception"] :: code
-      val code = moveInto(X 27,X 3) code
-      val code = loadInto(X 16,payload(),X 2) code
-      val code = loadInto(X 16,8+payload(),X 1) code
-      val code = loadInto(X 27,payload(),X 16) code
-      val code = moveInto(X 28,X 0) code
-      val code = ins "br" ["x17"] ::
-        Label uncaught :: code
-      val code = stackInto(true,16) code
-      val code = loadInto(X 0,payload(),X 17) code
-      val code = moveInto(X 27,X 1) code
-      val code = loadInto(X 19,8,X 0) code
-      val code = loadInto(X 19,0,X 30) code
-      val code = loadInto(X 19,32,X 29) code
-      val code = moveInto(X 16,SP) code
-      val code = loadInto(X 19,24,X 16) code
-      val code = storeInto(X 16,X 28,8) code
-      val code = loadInto(X 19,16,X 16) code
+      val code =
+        (loadInto(X 19,16,X 16)
+         ++ storeInto(X 16,X 28,8)
+         ++ loadInto(X 19,24,X 16)
+         ++ moveInto(X 16,SP)
+         ++ loadInto(X 19,32,X 29)
+         ++ loadInto(X 19,0,X 30)
+         ++ loadInto(X 19,8,X 0)
+         ++ moveInto(X 27,X 1)
+         ++ loadInto(X 0,payload(),X 17)
+         ++ stackInto(true,16)
+         ++ instruction "br" ["x17"]
+         ++ one (Label uncaught)
+         ++ moveInto(X 28,X 0)
+         ++ loadInto(X 27,payload(),X 16)
+         ++ loadInto(X 16,8+payload(),X 1)
+         ++ loadInto(X 16,payload(),X 2)
+         ++ moveInto(X 27,X 3)
+         ++ instruction "b" ["_uncaught_exception"]
+         ++ one (Directive ".data")
+         ++ one (Directive ".p2align 3")
+         ++ one (Label linkBegin)
+         ++ data
+         ++ staticDataInto
+         ++ one (Label linkEnd)) code
       val code = if profiling() then
-          let
-            val code = ins "bl" ["_deallocateRegionsUntil"] :: code
-            val code = moveInto(X 19,X 1) code
-          in
-            moveInto(X 28,X 0) code
-          end
+          (moveInto(X 28,X 0)
+            ++ moveInto(X 19,X 1)
+            ++ instruction "bl" ["_deallocateRegionsUntil"]) code
         else
-          let
-            val code = ins "bl" ["_deallocateRegion"] ::
-              ins "b" [pr_lab unwind] ::
-              Label unwound :: code
-            val code = moveInto(X 28,X 0) code
-            val code = ins "cmp" ["x16","x17"] ::
-              ins "b.eq" [pr_lab unwound] :: code
-            val code = loadInto(X 19,40,X 17) code
-            val code = loadInto(X 28,0,X 16) code
-          in
-            Label unwind :: code
-          end
-      val code = ins "cbz" ["x19",pr_lab uncaught] :: code
-      val code = loadInto(X 28,8,X 19) code
-      val code = moveInto(X 1,X 27) code
-      val code = moveInto(X 0,X 28) code
-      val code = functionInto raising code
-      val code = ins "tbz" ["x0","#0","1f"] ::
-        ins "cmp" ["x1","#2"] ::
-        ins "b.eq" ["2f"] ::
-        ins "tbz" ["x0","#1","1f"] ::
-        Directive "2:" ::
-        ins "b" ["_resetRegion"] ::
-        Directive "1:" ::
-        ins "ret" [] :: code
-      val code = functionInto reset code
-      val code = ins "ret" [] :: code
+          (one (Label unwind)
+            ++ loadInto(X 28,0,X 16)
+            ++ loadInto(X 19,40,X 17)
+            ++ instruction "cmp" ["x16","x17"]
+            ++ instruction "b.eq" [pr_lab unwound]
+            ++ moveInto(X 28,X 0)
+            ++ instruction "bl" ["_deallocateRegion"]
+            ++ instruction "b" [pr_lab unwind]
+            ++ one (Label unwound)) code
+      val code =
+        (instruction "ret" []
+         ++ functionInto reset
+         ++ instruction "tbz" ["x0","#0","1f"]
+         ++ instruction "cmp" ["x1","#2"]
+         ++ instruction "b.eq" ["2f"]
+         ++ instruction "tbz" ["x0","#1","1f"]
+         ++ one (Directive "2:")
+         ++ instruction "b" ["_resetRegion"]
+         ++ one (Directive "1:")
+         ++ instruction "ret" []
+         ++ functionInto raising
+         ++ moveInto(X 0,X 28)
+         ++ moveInto(X 1,X 27)
+         ++ loadInto(X 28,8,X 19)
+         ++ instruction "cbz" ["x19",pr_lab uncaught]) code
       val code = if profiling() then
           storeInto(X 4,X 0,~16) code
         else
           code
-      val code = ins "ret" [] ::
-        Label finite ::
-        ins "and" ["x0","x0","#-4"] :: code
-      val code = stackInto(false,48) code
-      val code = loadInto(SP,16,X 30) code
-      val code = loadInto(SP,8,X 20) code
-      val code = loadInto(SP,0,X 19) code
-      val code = loadInto(SP,24,X 21) code
-      val code = loadInto(SP,32,X 22) code
       val code =
-        ins "bl" [if profiling() then "_allocProfiling" else if parallel() andalso unprotected() then "_alloc_unprotected" else "_alloc"] ::
-        ins "sub" ["x0","x0","x21, lsl #3"] :: code
-      val code = moveInto(X 22,X 2) code
-      val code = moveInto(X 20,X 1) code
-      val code = moveInto(X 19,X 0) code
-      val code = ins "cmp" ["x2","#2"] ::
-        ins "b.eq" [pr_lab resetDone] ::
-        ins "cbz" ["x2",pr_lab noreset] ::
-        ins "tbz" ["x0","#1",pr_lab noreset] ::
-        Label resetDone ::
-        ins "bl" ["_resetRegion"] ::
-        Label noreset :: code
-      val code = moveInto(X 1,X 20) code
-      val code = moveInto(X 0,X 19) code
-      val code = moveInto(X 3,X 21) code
-      val code = moveInto(X 4,X 22) code
-      val code = storeInto(X 22,SP,32) code
-      val code = storeInto(X 21,SP,24) code
-      val code = storeInto(X 30,SP,16) code
-      val code = storeInto(X 20,SP,8) code
-      val code = storeInto(X 19,SP,0) code
-      val code = stackInto(true,48) code
-      val code = ins "tbz" ["x0","#0",pr_lab finite] :: code
-      val code = allocationStubsInto (functionInto alloc code)
-      val code = ins "b" ["_terminateML"] :: code
-      val code = constantInto(0,X 0) code
+        (constantInto(0,X 0)
+         ++ instruction "b" ["_terminateML"]
+         ++ allocationStubsInto
+         ++ functionInto alloc
+         ++ instruction "tbz" ["x0","#0",pr_lab finite]
+         ++ stackInto(true,48)
+         ++ storeInto(X 19,SP,0)
+         ++ storeInto(X 20,SP,8)
+         ++ storeInto(X 30,SP,16)
+         ++ storeInto(X 21,SP,24)
+         ++ storeInto(X 22,SP,32)
+         ++ moveInto(X 4,X 22)
+         ++ moveInto(X 3,X 21)
+         ++ moveInto(X 0,X 19)
+         ++ moveInto(X 1,X 20)
+         ++ instruction "cmp" ["x2","#2"]
+         ++ instruction "b.eq" [pr_lab resetDone]
+         ++ instruction "cbz" ["x2",pr_lab noreset]
+         ++ instruction "tbz" ["x0","#1",pr_lab noreset]
+         ++ one (Label resetDone)
+         ++ instruction "bl" ["_resetRegion"]
+         ++ one (Label noreset)
+         ++ moveInto(X 19,X 0)
+         ++ moveInto(X 20,X 1)
+         ++ moveInto(X 22,X 2)
+         ++ instruction "bl" [if profiling() then "_allocProfiling" else if parallel() andalso unprotected() then "_alloc_unprotected" else "_alloc"]
+         ++ instruction "sub" ["x0","x0","x21, lsl #3"]
+         ++ loadInto(SP,32,X 22)
+         ++ loadInto(SP,24,X 21)
+         ++ loadInto(SP,0,X 19)
+         ++ loadInto(SP,8,X 20)
+         ++ loadInto(SP,16,X 30)
+         ++ stackInto(false,48)
+         ++ instruction "ret" []
+         ++ one (Label finite)
+         ++ instruction "and" ["x0","x0","#-4"]) code
       val code = if repl then
-          let
-            val code = ins "bl" ["_repl_interp"] :: code
-          in
-            moveInto(X 28,X 0) code
-          end
+          (moveInto(X 28,X 0)
+            ++ instruction "bl" ["_repl_interp"]) code
         else
           callUnitsInto (labs,returnLabels) code
-      val code = gcInit code
-      val code = initGlobals () code
+      val code =
+        (initGlobals ()
+         ++ gcInit) code
       val code = if profiling() then
           profileStack () code
         else
           code
-      val code = moveInto(X 0,X 28) code
     in
-      functionInto(NameLab "code") code
+      (functionInto(NameLab "code")
+       ++ moveInto(X 0,X 28)) code
     end
   fun generate_link_code args = linkCode false args
   fun generate_repl_init_code () = linkCode true ([],([],[]))
   fun generate_repl_link_code (name,labs) =
     let
-      val join=localFresh()
-      val handler=localFresh()
-      val closure=localFresh()
-      val beginData=localFresh()
-      val endData=localFresh()
-      val frames=localFresh()
-      val sentinel=localFresh()
-      val pcs=map(fn _ => localFresh()) labs
+      val join = localFresh()
+      val handler = localFresh()
+      val closure = localFresh()
+      val beginData = localFresh()
+      val endData = localFresh()
+      val frames = localFresh()
+      val sentinel = localFresh()
+      val pcs = map(fn _ => localFresh()) labs
       fun metadata code =
         if not(gc()) then
           code
         else
-          let
-            val code = ins "bl" ["_mlkit_arm64_register_image"] :: code
-            val code = constantInto(0,X 5) code
-            val code = constantInto(0,X 4) code
-            val code = addressInto(endData,X 3) code
-            val code = addressInto(beginData,X 2) code
-            val code = constantInto(IntInf.fromInt(length pcs),X 1) code
-            val code = addressInto(frames,X 0) code
-          in
-            registerUnitsInto labs code
-          end
+          (registerUnitsInto labs
+            ++ addressInto(frames,X 0)
+            ++ constantInto(IntInf.fromInt(length pcs),X 1)
+            ++ addressInto(beginData,X 2)
+            ++ addressInto(endData,X 3)
+            ++ constantInto(0,X 4)
+            ++ constantInto(0,X 5)
+            ++ instruction "bl" ["_mlkit_arm64_register_image"]) code
       val code = if not(gc()) then
           []
         else
           let
             val code = frameWordsInto pcs sentinel []
           in
-            Directive ".quad -1" ::
-            Directive ".quad 0" ::
-            Directive ".quad 0" ::
-            Label sentinel ::
-            Label frames :: code
+            (one (Directive ".quad -1")
+               ++ one (Directive ".quad 0")
+               ++ one (Directive ".quad 0")
+               ++ one (Label sentinel)
+               ++ one (Label frames)) code
           end
-      val code = Directive(".quad " ^ pr_lab handler) ::
-        Label endData :: code
+      val code = (one (Directive(".quad " ^ pr_lab handler))
+         ++ one (Label endData)) code
       val code = if tagged() then
           Directive(".quad 0x" ^ Word.toString(BackendInfo.tag_clos(true,1,1))) :: code
         else
           code
-      val code = ins "ret" [] ::
-        Directive ".data" ::
-        Directive ".p2align 3" ::
-        Label beginData ::
-        Label closure :: code
-      val code = stackInto(false,16) code
-      val code = loadInto(SP,8,X 30) code
-      val code = ins "bl" ["_uncaught_exception"] :: code
-      val code = moveInto(X 28,X 0) code
-      val code = loadInto(X 16,payload(),X 2) code
-      val code = loadInto(X 16,8+payload(),X 1) code
-      val code = loadInto(X 1,payload(),X 16) code
-      val code = moveInto(X 1,X 3) code
-      val code = storeInto(X 30,SP,8) code
-      val code = ins "ret" [] ::
-        Label handler :: code
-      val code = restoreCInto() code
-      val code = stackInto(false,48) code
-      val code = storeInto(X 16,X 28,8) code
-      val code = loadInto(SP,16,X 16) code
-      val code = Label join :: code
-      val code = callUnitsInto (labs,pcs) code
-      val code = storeInto(X 16,X 28,8) code
-      val code = moveInto(SP,X 16) code
-      val code = storeInto(X 16,SP,40) code
-      val code = loadInto(X 28,0,X 16) code
-      val code = storeInto(X 29,SP,32) code
-      val code = storeInto(X 16,SP,24) code
-      val code = moveInto(SP,X 16) code
-      val code = storeInto(X 16,SP,16) code
-      val code = loadInto(X 28,8,X 16) code
-      val code = storeInto(X 16,SP,8) code
-      val code = addressInto(closure,X 16) code
-      val code = storeInto(X 16,SP,0) code
-      val code = addressInto(join,X 16) code
-      val code = stackInto(true,48) code
-      val code = metadata code
-      val code = loadInto(X 16,0,X 28) code
-      val code = addressInto(NameLab "top_ctx",X 16) code
-      val code = saveCInto() code
     in
-      functionInto(NameLab name) code
+      (functionInto(NameLab name)
+       ++ saveCInto()
+       ++ addressInto(NameLab "top_ctx",X 16)
+       ++ loadInto(X 16,0,X 28)
+       ++ metadata
+       ++ stackInto(true,48)
+       ++ addressInto(join,X 16)
+       ++ storeInto(X 16,SP,0)
+       ++ addressInto(closure,X 16)
+       ++ storeInto(X 16,SP,8)
+       ++ loadInto(X 28,8,X 16)
+       ++ storeInto(X 16,SP,16)
+       ++ moveInto(SP,X 16)
+       ++ storeInto(X 16,SP,24)
+       ++ storeInto(X 29,SP,32)
+       ++ loadInto(X 28,0,X 16)
+       ++ storeInto(X 16,SP,40)
+       ++ moveInto(SP,X 16)
+       ++ storeInto(X 16,X 28,8)
+       ++ callUnitsInto (labs,pcs)
+       ++ one (Label join)
+       ++ loadInto(SP,16,X 16)
+       ++ storeInto(X 16,X 28,8)
+       ++ stackInto(false,48)
+       ++ restoreCInto()
+       ++ instruction "ret" []
+       ++ one (Label handler)
+       ++ storeInto(X 30,SP,8)
+       ++ moveInto(X 1,X 3)
+       ++ loadInto(X 1,payload(),X 16)
+       ++ loadInto(X 16,8+payload(),X 1)
+       ++ loadInto(X 16,payload(),X 2)
+       ++ moveInto(X 28,X 0)
+       ++ instruction "bl" ["_uncaught_exception"]
+       ++ loadInto(SP,8,X 30)
+       ++ stackInto(false,16)
+       ++ instruction "ret" []
+       ++ one (Directive ".data")
+       ++ one (Directive ".p2align 3")
+       ++ one (Label beginData)
+       ++ one (Label closure)) code
     end
 
 end

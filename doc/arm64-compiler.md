@@ -268,3 +268,6 @@ register saves on ordinary allocations.
 
 See [macOS ARM CI](arm64-ci.md) for the MLKit/MLton host matrix, native build and
 bootstrap phases, and retained test reports and installation artifacts.
+
+The [style and composition report](arm64-style.md) describes the local `++`
+code-builder operator and the Standard ML cleanup in milestone 10.

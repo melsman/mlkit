@@ -8,7 +8,8 @@ fun work__noinline(n:word,w:word) =
   if eq(n,0w0) then w else
   let val xs = build__noinline(0w100,nil)
       val v = fold__noinline(xs,0w0)
-  in work__noinline(n-0w1,w+v-0w5050) end
+  in work__noinline(n-0w1,w+v-0w5050)
+  end
 val w:word = prim("getchar",())
 val _:unit = prim("putchar",work__noinline(0w1000,w)+0w1)
 val _:unit = prim("putchar",0w10)

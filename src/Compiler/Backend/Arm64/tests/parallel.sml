@@ -14,7 +14,8 @@ fun shared () =
         val () = verify b
         val () = verify c
         val () = verify d
-    in verify a end))))
+    in verify a
+    end))))
 fun nested n = if eq(n,0w0) then 0w7 else
   Thread.spawn (fn () => nested(n-0w1))
     (fn t => Thread.get t + Thread.get t)
@@ -24,11 +25,14 @@ fun exceptions () =
                 (fn t => Thread.get t) handle E n => n)
       val () = check(eq(v,0w19))
       val done = ref 0w0
-      fun worker () = let val xs=work()
-                      in (prim(":=",(done,sum__noinline(xs,0w0))):unit) end
+      fun worker () =
+        let val xs = work()
+        in (prim(":=",(done,sum__noinline(xs,0w0))):unit)
+        end
       val () = (Thread.spawn worker (fn _ => raise E 0w1)
                 handle E _ => check(eq(!done,0w33558528)))
-  in () end
+  in ()
+  end
 fun repeat n = if eq(n,0w0) then ()
                else (shared(); exceptions(); repeat(n-0w1))
 (* Each worker creates a distinct dynamic exception constructor. *)
@@ -37,7 +41,8 @@ fun fresh__noinline () =
       fun throw () : unit = raise Local 0w1
       fun catches (f:unit -> unit) =
         (f(); false) handle Local _ => true | _ => false
-  in (throw,catches) end
+  in (throw,catches)
+  end
 fun names n = if eq(n,0w0) then () else
   (Thread.spawn fresh__noinline (fn a => Thread.spawn fresh__noinline (fn b =>
     let val (ta,ca) = Thread.get a
@@ -54,12 +59,15 @@ val () = prim("printStringML","parallel ML passed\n")
 (* A callback registered by the parent must use the worker's context. *)
 exception Callback of int
 fun hook (old:int) =
-  ((let val n:int = prim("arm64_parallel_context",old)
-    in raise Callback n end) handle Callback n => n)
+  ((
+    let val n:int = prim("arm64_parallel_context",old)
+    in raise Callback n
+    end) handle Callback n => n)
 val () = _export("arm64_parallel_hook",hook)
 fun callback () =
   let val n:int = prim("arm64_parallel_callback",())
-  in check(22 < n andalso n < 24) end
+  in check(22 < n andalso n < 24)
+  end
 val () = Thread.spawn callback (fn a => Thread.spawn callback (fn b =>
   (Thread.get a; Thread.get b)))
 val () = prim("printStringML","parallel callback passed\n")

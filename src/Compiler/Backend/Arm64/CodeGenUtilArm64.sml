@@ -27,7 +27,7 @@ structure CodeGenUtilArm64 = struct
   (* An Into helper prepends directly to the supplied code suffix. The list
    * wrappers retain the utility API used by standalone emitter tests. *)
   fun moveInto (a,b) code =
-    if a=b then code
+    if a = b then code
     else ins (case (a,b) of (D _,_) => "fmov" | (_,D _) => "fmov" | _ => "mov")
              [r b,r a] :: code
   fun move args = moveInto args []
@@ -39,7 +39,7 @@ structure CodeGenUtilArm64 = struct
         | loop (k,n,code) =
           let
             val part = IntInf.toInt(IntInf.mod(n,65536))
-            val i = ins (if k=0 then "movz" else "movk")
+            val i = ins (if k = 0 then "movz" else "movk")
                         [r d,imm part,"lsl " ^ imm (k*16)]
           in
             i :: loop(k+1,IntInf.div(n,65536),code)
@@ -49,7 +49,7 @@ structure CodeGenUtilArm64 = struct
     end
   fun constant args = constantInto args []
   fun memory (base,off) =
-    if off >= 0 andalso off mod 8=0 andalso off <= 32760 then
+    if off >= 0 andalso off mod 8 = 0 andalso off <= 32760 then
       "[" ^ r base ^ ", " ^ imm off ^ "]"
     else unsupported "large/unaligned memory offset"
   fun addOffsetInto (base,off,d) code =
@@ -57,23 +57,23 @@ structure CodeGenUtilArm64 = struct
     else constantInto (IntInf.fromInt off,d) (ins "add" [r d,r base,r d] :: code)
   fun addOffset args = addOffsetInto args []
   fun loadInto (base,off,d) code =
-    if off >= 0 andalso off mod 8=0 andalso off <= 32760 then
+    if off >= 0 andalso off mod 8 = 0 andalso off <= 32760 then
       ins "ldr" [r d,memory(base,off)] :: code
     else
       let
-        val tmp = if base=X 17 then X 16 else X 17
+        val tmp = if base = X 17 then X 16 else X 17
       in
         addOffsetInto (base,off,tmp) (ins "ldr" [r d,"[" ^ r tmp ^ "]"] :: code)
       end
   fun load args = loadInto args []
   fun storeInto (s,base,off) code =
-    if off >= 0 andalso off mod 8=0 andalso off <= 32760 then
+    if off >= 0 andalso off mod 8 = 0 andalso off <= 32760 then
       ins "str" [r s,memory(base,off)] :: code
     else
       let
-        val tmp = if s=X 17 orelse base=X 17 then X 16 else X 17
+        val tmp = if s = X 17 orelse base = X 17 then X 16 else X 17
       in
-        if tmp=s orelse tmp=base then
+        if tmp = s orelse tmp = base then
           (* Both scratch registers are occupied by the value and base. *)
           ins "sub" ["sp","sp","#16"] :: ins "str" [r s,"[sp]"] ::
           ins "str" [r base,"[sp, #8]"] ::
@@ -85,7 +85,7 @@ structure CodeGenUtilArm64 = struct
       end
   fun store args = storeInto args []
   fun stackInto (allocate,n) code =
-    if n=0 then code
+    if n = 0 then code
     else if n < 0 orelse n mod 16 <> 0 then raise Fail "ARM64: unaligned stack adjustment"
     else
       let
@@ -111,14 +111,14 @@ structure CodeGenUtilArm64 = struct
    * All inputs are staged before any ABI register is overwritten. *)
   fun scalarCallInto {name,fixed,variadic,loadArgument,protectGC} code =
     let
-      val {arguments,stackBytes} = AbiArm64.arguments{fixed=fixed,variadic=variadic}
+      val {arguments,stackBytes} = AbiArm64.arguments{fixed = fixed,variadic = variadic}
       val n = length arguments
       val bytes = stackBytes+16*((n+1) div 2)+16
       fun promoted (i,{source,passed,...}:AbiArm64.argument,code) =
         let
           val code = storeInto (X 16,SP,stackBytes+8*i) code
           val code =
-            if source=AbiArm64.F32 andalso passed=AbiArm64.F64 then
+            if source = AbiArm64.F32 andalso passed = AbiArm64.F64 then
               ins "fmov" ["s30","w16"] :: ins "fcvt" ["d30","s30"] ::
               ins "fmov" ["x16","d30"] :: code
             else case source of
@@ -151,6 +151,6 @@ structure CodeGenUtilArm64 = struct
       stackInto (true,bytes) (foldri promoted code arguments)
     end
   fun scalarCall {name,fixed,variadic,loadArgument,protectGC} =
-    scalarCallInto {name=name,fixed=fixed,variadic=variadic,protectGC=protectGC,
-      loadArgument=fn args => fn code => foldr (op ::) code (loadArgument args)} []
+    scalarCallInto {name = name,fixed = fixed,variadic = variadic,protectGC = protectGC,
+      loadArgument = fn args => fn code => foldr (op ::) code (loadArgument args)} []
 end

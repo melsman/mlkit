@@ -439,9 +439,9 @@ struct
                 comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
                 let
                   val (spilled_args,_) =
-                      CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
-                                               res_regs=RI.res_phreg}
-                                              {args=args, clos=clos, reg_args=[], fargs=[], res=res}
+                      CallConv.resolve_act_cc RI.frame_layout {arg_regs = RI.args_phreg, arg_fregs = RI.args_phfreg,
+                                               res_regs = RI.res_phreg}
+                                              {args = args, clos = clos, reg_args = [], fargs = [], res = res}
                   val offset_codeptr = if BI.tag_values() then "8" else "0"
                 in
                   if List.length spilled_args > 0 then
@@ -463,9 +463,9 @@ struct
                   let
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
                     val (spilled_args,spilled_res) =
-                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
-                                                 res_regs=RI.res_phreg}
-                                                {args=args,clos=clos,reg_args=[],fargs=[],res=res}
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs = RI.args_phreg, arg_fregs = RI.args_phfreg,
+                                                 res_regs = RI.res_phreg}
+                                                {args = args,clos = clos,reg_args = [],fargs = [],res = res}
                     val size_rcf = length spilled_res
                     val size_ccf = length spilled_args
                     val size_cc = size_rcf+size_ccf+1
@@ -512,10 +512,10 @@ struct
                    *)
                     val (spilled_args,   (* those arguments that need be passed on the stack *)
                          spilled_res) =  (* those return values that are returned on the stack *)
-                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
-                                                 res_regs=RI.res_phreg}
-                                                {args=args,clos=clos,reg_args=reg_args,
-                                                 fargs=fargs,res=res}
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs = RI.args_phreg, arg_fregs = RI.args_phfreg,
+                                                 res_regs = RI.res_phreg}
+                                                {args = args,clos = clos,reg_args = reg_args,
+                                                 fargs = fargs,res = res}
 
                     val size_rcf = length spilled_res
                     val size_ccf_new = length spilled_args
@@ -551,10 +551,10 @@ struct
                   comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
                   let
                     val (spilled_args,spilled_res) =
-                        CallConv.resolve_act_cc RI.frame_layout {arg_regs=RI.args_phreg,arg_fregs=RI.args_phfreg,
-                                                 res_regs=RI.res_phreg}
-                                                {args=args, clos=clos, reg_args=reg_args,
-                                                 fargs=fargs, res=res}
+                        CallConv.resolve_act_cc RI.frame_layout {arg_regs = RI.args_phreg,arg_fregs = RI.args_phfreg,
+                                                 res_regs = RI.res_phreg}
+                                                {args = args, clos = clos, reg_args = reg_args,
+                                                 fargs = fargs, res = res}
                     val size_rcf = List.length spilled_res
                     fun flush_args C =
                       foldr (fn ((aty,offset),C) => push_aty(aty,treg1,fsz+offset,C)) C spilled_args
@@ -748,7 +748,7 @@ struct
                     CG_lss(default,fsz,size_ccf,
                     I.lab(lab_exit) :: C))
                   end
-               | LS.SWITCH_I {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
+               | LS.SWITCH_I {switch = LS.SWITCH(opr_aty,sels,default), precision} =>
                   let
                     (* Packed narrow integer loads define only the low 32
                      * bits. Sign-extend before the 64-bit switch compares. *)
@@ -760,19 +760,19 @@ struct
                            I.movslq(if boxedNum precision then D("8",treg1)
                                     else R (I.doubleOfQuadReg treg1), R treg1) :: C))
                       else (opr_aty, fn C => C)
-                  in prepare (compileNumSwitch {fsz=fsz,
-                                    size_ccf=size_ccf,
-                                    CG_lss=CG_lss,
-                                    toInt=fn i => maybeTagIntOrWord{value=i, precision=precision},
-                                    opr_aty=operand,
-                                    oprBoxed=not narrow andalso boxedNum precision,
-                                    sels=sels,
-                                    default=default,
-                                    C=C})
+                  in prepare (compileNumSwitch {fsz = fsz,
+                                    size_ccf = size_ccf,
+                                    CG_lss = CG_lss,
+                                    toInt = fn i => maybeTagIntOrWord{value = i, precision = precision},
+                                    opr_aty = operand,
+                                    oprBoxed = not narrow andalso boxedNum precision,
+                                    sels = sels,
+                                    default = default,
+                                    C = C})
                   end
-               | LS.SWITCH_W {switch=LS.SWITCH(opr_aty,sels,default), precision} =>
-                  compileNumSwitch {fsz=fsz,
-                                    size_ccf=size_ccf,
+               | LS.SWITCH_W {switch = LS.SWITCH(opr_aty,sels,default), precision} =>
+                  compileNumSwitch {fsz = fsz,
+                                    size_ccf = size_ccf,
                                     CG_lss=CG_lss,
                                     toInt=fn w => maybeTagIntOrWord{value=w, precision=precision},
                                     opr_aty=opr_aty,

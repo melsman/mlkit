@@ -18,7 +18,7 @@ structure ExecutionArm64 : EXECUTION =
     val () = if onmac_p() then () else raise Fail "ARM64 backend currently requires Darwin"
 
     val be_rigid = false
-    fun shellQuote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c=>c = #"'") s) ^ "'"
+    fun shellQuote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
 
     local
         fun convertList option s =
@@ -32,9 +32,9 @@ structure ExecutionArm64 : EXECUTION =
 
     val libs : unit -> string =
         Flags.add_string_entry
-            {long="libs", short=NONE, item=ref "m,c,dl",
-             menu=["General Control", "foreign libraries (archives)"],
-             desc="For accessing a foreign function residing in\n\
+            {long = "libs", short = NONE, item = ref "m,c,dl",
+             menu = ["General Control", "foreign libraries (archives)"],
+             desc = "For accessing a foreign function residing in\n\
                   \an archive named libNAME.a from Standard ML code\n\
                   \(using prim), you need to add 'NAME' to this\n\
                   \comma-separated list. Notice that an object file\n\
@@ -47,9 +47,9 @@ structure ExecutionArm64 : EXECUTION =
 
     val libdirs : unit -> string =
         Flags.add_string_entry
-            {long="libdirs", short=NONE, item=ref "",
-             menu=["General Control", "library directories (paths to archives)"],
-             desc="This option controls where ld looks for\n\
+            {long = "libdirs", short = NONE, item = ref "",
+             menu = ["General Control", "library directories (paths to archives)"],
+             desc = "This option controls where ld looks for\n\
                   \archives. The format is a comma-separated list\n\
                   \of directories; see the -libs entry. The default\n\
                   \is the empty list; thus 'ld' will look for\n\
@@ -59,36 +59,36 @@ structure ExecutionArm64 : EXECUTION =
 
     val link_exe =
         Flags.add_string_entry
-            {long="link_exe", short=SOME "ldexe",
-             item=ref "gcc -arch arm64 -Wl,-stack_size,0x10000000",
-             menu=["General Control", "C compiler (used for linking executable)"],
-             desc="Command for linking Darwin ARM64 executables; overrides must retain the ARM64 target."}
+            {long = "link_exe", short = SOME "ldexe",
+             item = ref "gcc -arch arm64 -Wl,-stack_size,0x10000000",
+             menu = ["General Control", "C compiler (used for linking executable)"],
+             desc = "Command for linking Darwin ARM64 executables; overrides must retain the ARM64 target."}
 
     val link_shared =
         Flags.add_string_entry
-            {long="link_shared", short=SOME "ldshared", item=ref "gcc -arch arm64",
-             menu=["General Control", "C compiler (used for linking shared object)"],
-             desc="This option specifies the command used for linking\n\
+            {long = "link_shared", short = SOME "ldshared", item = ref "gcc -arch arm64",
+             menu = ["General Control", "C compiler (used for linking shared object)"],
+             desc = "This option specifies the command used for linking\n\
                   \a shared object file. The standard is to use 'gcc' for\n\
                   \linking."}
 
     val assembler : unit -> string =
         Flags.add_string_entry
-            {long="assembler", short=SOME "as", item=ref "gcc -arch arm64 -c",
-             menu=["General Control", "Assembler command"],
-             desc="Command for assembling Darwin ARM64 code; overrides must retain the ARM64 target."}
+            {long = "assembler", short = SOME "as", item = ref "gcc -arch arm64 -c",
+             menu = ["General Control", "Assembler command"],
+             desc = "Command for assembling Darwin ARM64 code; overrides must retain the ARM64 target."}
 
     val strip_p =
         Flags.add_bool_entry
-            {long="strip", short=NONE, neg=false, item=ref false,
-             menu=["General Control", "strip executable"],
-             desc="If enabled, MLKit strips the generated executable."}
+            {long = "strip", short = NONE, neg = false, item = ref false,
+             menu = ["General Control", "strip executable"],
+             desc = "If enabled, MLKit strips the generated executable."}
 
     val objs_p =
         Flags.add_bool_entry
-            {long="objs", short=NONE, neg=false, item=ref false,
-             menu=["General Control", "export object files"],
-             desc="If enabled, MLKit writes object-file paths to the file\n\
+            {long = "objs", short = NONE, neg = false, item = ref false,
+             menu = ["General Control", "export object files"],
+             desc = "If enabled, MLKit writes object-file paths to the file\n\
                   \run or the file specified by -output. The path\n\
                   \to the runtime system (archive file) is included. The\n\
                   \option is best used together with the option\n\
@@ -96,9 +96,9 @@ structure ExecutionArm64 : EXECUTION =
 
     val delete_target_files =
         Flags.add_bool_entry
-            {long="delete_target_files", short=NONE, neg=true, item=ref true,
-             menu=["Debug", "delete target files"],
-             desc="Delete assembler files produced by the compiler. If you\n\
+            {long = "delete_target_files", short = NONE, neg = true, item = ref true,
+             menu = ["Debug", "delete target files"],
+             desc = "Delete assembler files produced by the compiler. If you\n\
                   \disable this flag, you can inspect the assembler code\n\
                   \produced by the compiler."}
 
@@ -118,16 +118,16 @@ structure ExecutionArm64 : EXECUTION =
     in
       val gdb_support =
           Flags.add_bool_entry
-              {long="gdb_support", short=SOME "g", neg=false,
-               menu=["Debug","gdb support"], item=ref false,
-               desc=if onmac_p() then desc_darwin else desc}
+              {long = "gdb_support", short = SOME "g", neg = false,
+               menu = ["Debug","gdb support"], item = ref false,
+               desc = if onmac_p() then desc_darwin else desc}
     end
 
     val dangle_stat_p =
         Flags.add_bool_entry
-            {long="dangling_pointers_statistics", short=NONE, neg=false,
-             menu=["Debug","dangling pointers statistics"], item=ref false,
-             desc="When enabled, the compiler prints statistics about\n\
+            {long = "dangling_pointers_statistics", short = NONE, neg = false,
+             menu = ["Debug","dangling pointers statistics"], item = ref false,
+             desc = "When enabled, the compiler prints statistics about\n\
                   \the number of times strengthening of the region typing\n\
                   \rules (to avoid dangling pointers during evaluation)\n\
                   \effects the target program. This flag is useful only\n\
@@ -147,30 +147,30 @@ structure ExecutionArm64 : EXECUTION =
 
     val parallelism_p =
         Flags.add_bool_entry
-            {long="parallelism", short=SOME "par", neg=false,
-             menu=["General Control","parallelism"], item=ref false,
-             desc="When enabled, the runtime system supports\n\
+            {long = "parallelism", short = SOME "par", neg = false,
+             menu = ["General Control","parallelism"], item = ref false,
+             desc = "When enabled, the runtime system supports\n\
                   \parallel threads."}
 
     val par_alloc_unprotected_p =
         Flags.add_bool_entry
-            {long="parallelism_alloc_unprotected", short=SOME "par0", neg=false,
-             menu=["General Control","parallelism allocation unprotected"], item=ref false,
-             desc="When enabled, allocation into a region is not\n\
+            {long = "parallelism_alloc_unprotected", short = SOME "par0", neg = false,
+             menu = ["General Control","parallelism allocation unprotected"], item = ref false,
+             desc = "When enabled, allocation into a region is not\n\
                   \guaranteed to be atomic."}
 
     val argobots_p =
         Flags.add_bool_entry
-            {long="argobots", short=SOME "argo", neg=false,
-             menu=["General Control","use the Argobots lightweight thread library"], item=ref false,
-             desc="When enabled, executables link with the Argobots\n\
+            {long = "argobots", short = SOME "argo", neg = false,
+             menu = ["General Control","use the Argobots lightweight thread library"], item = ref false,
+             desc = "When enabled, executables link with the Argobots\n\
                   \lightweight thread library."}
 
     val mlb_subdir =
         Flags.add_string_entry
-            {long="mlb-subdir", short=NONE, item=ref "",
-             menu=["General Control", "Use MLB subdir-postfix"],
-             desc="For ensuring that the smart recompilation scheme\n\
+            {long = "mlb-subdir", short = NONE, item = ref "",
+             menu = ["General Control", "Use MLB subdir-postfix"],
+             desc = "For ensuring that the smart recompilation scheme\n\
                   \is not reusing target-code compiled with different\n\
                   \settings, a string provided with the mlb-subdir\n\
                   \option can ensure the use of consistently generated\n\
@@ -206,7 +206,7 @@ structure ExecutionArm64 : EXECUTION =
     fun reject msg = (TextIO.output(TextIO.stdErr,msg ^ "\n"); raise Fail msg)
     fun checkTarget () =
       if parallelism_p() then
-        List.app (fn flag=>if Flags.is_on flag then
+        List.app (fn flag => if Flags.is_on flag then
           reject("ARM64 parallelism does not support " ^ flag) else ())
           ["garbage_collection","generational_garbage_collection","tag_values","tag_pairs","region_profiling"]
       else if argobots_p() orelse par_alloc_unprotected_p() then
@@ -233,10 +233,10 @@ structure ExecutionArm64 : EXECUTION =
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
               val {main_lab, code, imports, exports, safe} = target_new
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
-              val linkinfo = mk_linkinfo {code_label=main_lab,
-                                          imports=imports, (* (MLFunLab, DatLab) *)
-                                          exports=exports, (* (MLFunLab, DatLab) *)
-                                          unsafe=not(safe)}
+              val linkinfo = mk_linkinfo {code_label = main_lab,
+                                          imports = imports, (* (MLFunLab, DatLab) *)
+                                          exports = exports, (* (MLFunLab, DatLab) *)
+                                          unsafe = not(safe)}
               val CB = CompileBasis.mk_CompileBasis(cb,closenv)
             in
               CodeRes(ce,CB,asm_prg,linkinfo)
@@ -299,13 +299,14 @@ structure ExecutionArm64 : EXECUTION =
 
     fun link_files_with_runtime_system0 path_to_runtime files run =
         if objs_p()
-        then let val files =
+        then
+          let val files =
                      path_to_runtime() :: files
-                 val content = String.concatWith " " files ^ "\n"
-             in writeFile run content
+              val content = String.concatWith " " files ^ "\n"
+          in writeFile run content
               ; message (fn () => "[wrote object file paths to file:\t" ^ run ^ "]\n")
               ; report_dangle_stat()
-             end
+          end
              handle ? =>
                     ( message (fn () => "[** Failed to write object file paths to the file:\t" ^ run ^ "]\n")
                     ; report_dangle_stat())
@@ -453,7 +454,7 @@ structure ExecutionArm64 : EXECUTION =
           val {dir,file} = OS.Path.splitDirFile name
           val target = CodeGen.generate_repl_link_code ("main",labs)
           val filename = dir ## mlbdir() ## file
-          val filenameo = emit{target=target,filename=filename}
+          val filenameo = emit{target = target,filename = filename}
           val libs_str = String.concat (map (fn l => "-l" ^ shellQuote l ^ " ") libs)
           val ofiles = filenameo::ofiles
           val ofiles_str = String.concat (map (fn l => shellQuote l ^ " ") ofiles)
@@ -468,8 +469,8 @@ structure ExecutionArm64 : EXECUTION =
     val pu_linkinfo =
         let val pu_labels = Pickle.listGen Labels.pu
             val pu_pair = Pickle.pairGen(pu_labels,pu_labels)
-        in Pickle.convert (fn (c,i,e,u) => {code_label=c,imports=i,exports=e,unsafe=u},
-                           fn {code_label=c,imports=i,exports=e,unsafe=u} => (c,i,e,u))
+        in Pickle.convert (fn (c,i,e,u) => {code_label = c,imports = i,exports = e,unsafe = u},
+                           fn {code_label = c,imports = i,exports = e,unsafe = u} => (c,i,e,u))
             (Pickle.tup4Gen(Labels.pu,pu_pair,pu_pair,Pickle.bool))
         end
 

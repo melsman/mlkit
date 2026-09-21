@@ -22,8 +22,8 @@ struct
   datatype return_delivery = StackHeader | LinkRegister of int
   type t = {header:int, return:int, alignment:int, handler:int,
             delivery:return_delivery}
-  val x64 = {header=1, return=0, alignment=2, handler=4, delivery=StackHeader}
-  val arm64 = {header=2, return=1, alignment=2, handler=6, delivery=LinkRegister 30}
+  val x64 = {header = 1, return = 0, alignment = 2, handler = 4, delivery = StackHeader}
+  val arm64 = {header = 2, return = 1, alignment = 2, handler = 6, delivery = LinkRegister 30}
   fun returnDelivery ({delivery,...}:t) = delivery
   fun headerWords ({header,...}:t) = header
   fun returnWord ({return,...}:t) = return

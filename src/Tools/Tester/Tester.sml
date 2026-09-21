@@ -28,8 +28,10 @@ structure Tester : TESTER =
                       if String.isPrefix "[wrote X64 code file:" line orelse
                          String.isPrefix "[wrote ARM64 code file:" line
                       then lines () else line :: lines ()
-            in lines () before TextIO.closeIn input end
-      in readLog s = readLog(s ^ ".ok") end handle _ => false
+            in lines () before TextIO.closeIn input
+            end
+      in readLog s = readLog(s ^ ".ok")
+      end handle _ => false
 
 
     local

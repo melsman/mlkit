@@ -194,7 +194,7 @@ structure TestReportLatex : TEST_REPORT =
 
 	  fun comptime_section [] = ()
 	    | comptime_section(lines: {name: string, entries: (string * Time.time) list} list) =
-	    let val table : comptime_table = map process_comptime_line lines
+     let val table : comptime_table = map process_comptime_line lines
 		val tables : comptime_table list = split_comptime_table table		  
 		fun mktable [] = ()
 		  | mktable (l as {entries,...}::l') =
@@ -212,7 +212,7 @@ structure TestReportLatex : TEST_REPORT =
 		    app (outln o line) l;
 		    endenv "tabular"
 		  end
-	    in
+     in
 	      section "Timings of the Compiler";
 	      outln "This section shows timings for the Kit compiler.";
 	      outln "The times measured are the times used by different phases of the Kit for compiling";
@@ -221,7 +221,7 @@ structure TestReportLatex : TEST_REPORT =
 	      outln "CPU time (including garbage collection) in seconds and {\\em pct} is the percentage";
 	      outln "of time used in the phase compared to the time used for all the measured phases (the Total column).";
 	      app mktable tables
-	    end
+     end
 
 	  fun execution_section	[] = ()
 	    | execution_section (l : runtime_line list) =

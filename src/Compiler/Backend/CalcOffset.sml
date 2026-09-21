@@ -205,8 +205,8 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss (LS.HANDLE{default,handl=(handl,handl_lv),
-			 handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.HANDLE{default,handl = (handl,handl_lv),
+			 handl_return = (handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) =
       let
 	val obj_size = FrameLayout.handlerWords frame_layout
 	val ann_offset = offset+obj_size-1 (*offset+(1-obj_size)*)
@@ -214,8 +214,8 @@ struct
 	val default' = CO_lss(default,LVmap,PHmap,(offset++obj_size)"handle2",[])
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(FrameLayout.handlerWords frame_layout)*),[])
       in
-	LS.HANDLE{default=default',handl=(handl',handl_lv),
-		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default = default',handl = (handl',handl_lv),
+		  handl_return = (handl_return',handl_return_lv,bv),offset = ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss (LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss (LS.SWITCH_I {switch,precision}::lss,LVmap,PHmap,offset,acc) =
@@ -253,7 +253,7 @@ struct
                         ^ "; size_cc: " ^ Int.toString size_cc ^ "\n")
         val () = print ("cc: " ^ CallConv.pr_cc cc ^ "\n")
 *)
-        val size_ff = FrameLayout.alignFrame frame_layout {locals=size_ff0, call=size_cc}
+        val size_ff = FrameLayout.alignFrame frame_layout {locals = size_ff0, call = size_cc}
 
         val cc' = CallConv.add_frame_size(cc,size_ff)
       in
@@ -330,7 +330,7 @@ struct
 
     fun gen_bitvector (L_set,size_ccf,size_rcf,size_ff) =
       let
-	val size_fd = size_ff + FrameLayout.callWords frame_layout {args=size_ccf, results=size_rcf}
+	val size_fd = size_ff + FrameLayout.callWords frame_layout {args = size_ccf, results = size_rcf}
 	val w0 = Word32.fromInt 0
 	fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
 	fun pws ws = app pw ws
@@ -385,7 +385,7 @@ struct
 
     fun CBV_lss (lss,size_ccf,size_rcf,size_ff,LVenv_cc) =
       let
-	val size_cc = FrameLayout.callWords frame_layout {args=size_ccf, results=size_rcf}
+	val size_cc = FrameLayout.callWords frame_layout {args = size_ccf, results = size_rcf}
 	fun CBV_lss' ([],LVenv,L_set) = (L_set,[])
 	  | CBV_lss' (ls::lss,LVenv,L_set) =
 	  (case ls of

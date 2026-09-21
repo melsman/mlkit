@@ -51,21 +51,26 @@ struct
           let val (loc,g',f',sp') =
                 if floating t andalso f < 8 then (FPR f,g,f+1,sp)
                 else if not(floating t) andalso g < 8 then (GPR g,g+1,f,sp)
-                else let val off = align(sp,bytes t)
-                     in (Stack{offset=off,bytes=bytes t},g,f,off+bytes t) end
-              val arg = {source=t,passed=t,location=loc,
-                         extension=case loc of GPR _ => extension t | _ => None}
-          in place(ts,g',f',sp',arg::acc) end
+                else
+                  let val off = align(sp,bytes t)
+                  in (Stack{offset = off,bytes = bytes t},g,f,off+bytes t)
+                  end
+              val arg = {source = t,passed = t,location = loc,
+                         extension = case loc of GPR _ => extension t | _ => None}
+          in place(ts,g',f',sp',arg::acc)
+          end
       val (named,sp) = place(fixed,0,0,0,[])
       fun varargs ([],sp,acc) = (rev acc,sp)
         | varargs (t::ts,sp,acc) =
           let val passed = promotion t
               val off = align(sp,8)
-              val arg = {source=t,passed=passed,
-                         location=Stack{offset=off,bytes=8},extension=None}
-          in varargs(ts,off+8,arg::acc) end
+              val arg = {source = t,passed = passed,
+                         location = Stack{offset = off,bytes = 8},extension = None}
+          in varargs(ts,off+8,arg::acc)
+          end
       val (unnamed,finish) = varargs(variadic,sp,[])
-    in {arguments=named@unnamed,stackBytes=align(finish,16)} end
+    in {arguments = named@unnamed,stackBytes = align(finish,16)}
+    end
 
   (* The same locations describe outgoing C calls and incoming callbacks. *)
   fun result NONE = NONE
