@@ -156,6 +156,8 @@ thread_init_all(void) {
   ti->tid = 0;
   Context ctx = &(ti->ctx);
   ctx->topregion = NULL;
+  ctx->exnptr = NULL;
+  ctx->uncaught_exnname = 0;
 #ifndef ARGOBOTS
   ctx->freelist = NULL;
   ctx->mutex_freelist = NULL;
@@ -310,15 +312,18 @@ void *
 thread_get(ThreadInfo *ti)
 {
   tdebug1("[Entering thread_get - tid = %d]\n", ti->tid);
-  if (ti->joined) {      // return without taking the lock if
+  if (__atomic_load_n(&ti->joined, __ATOMIC_ACQUIRE)) {      // return without taking the lock if
     tdebug1("[Exiting thread_get (joined) - tid = %d]\n", ti->tid)
     return ti->retval;   // ti->joined is true; it is incremental..
   }
-  MUTEX_LOCK(ti->mutex);            // use a mutex; different threads
-  if (ti->joined == 0) {            // may call get on a thread
+  JOIN_MUTEX_LOCK(ti->mutex);            // use a mutex; different threads
+  if (!__atomic_load_n(&ti->joined, __ATOMIC_RELAXED)) {            // may call get on a thread
     thread_join(ti);
+#ifdef ARGOBOTS
+    ABT_thread_free(&ti->thread);
+#endif
     ti->thread = (thread_t)NULL;
-    ti->joined = 1;
+
 #ifndef ARGOBOTS
     if ((ti->ctx).freelist) {
       // take freelist lock and add pages to global freelist
@@ -335,8 +340,10 @@ thread_get(ThreadInfo *ti)
       MUTEX_UNLOCK(global_mutex_freelist_mutex);
     }
 #endif
+    /* Publish retval and completed cleanup to lock-free subsequent readers. */
+    __atomic_store_n(&ti->joined, 1, __ATOMIC_RELEASE);
   }
-  MUTEX_UNLOCK(ti->mutex);
+  JOIN_MUTEX_UNLOCK(ti->mutex);
   tdebug1("[Exiting thread_get - tid = %d]\n", ti->tid)
   return ti->retval;
 }
@@ -355,7 +362,7 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
   ti->arg = arg;
   ti->retval = NULL;
   ti->joined = 0;
-  ti->tid = ++thread_counter;   // atomic?
+  ti->tid = __atomic_add_fetch(&thread_counter, 1, __ATOMIC_RELAXED);
   (ti->ctx).topregion = NULL;
   (ti->ctx).exnptr = NULL;
   (ti->ctx).uncaught_exnname = 0;
@@ -363,7 +370,7 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
   (ti->ctx).freelist = NULL;
   (ti->ctx).mutex_freelist = NULL;
 #endif
-  if (MUTEX_INIT(&(ti->mutex)) != 0) {
+  if (JOIN_MUTEX_INIT(&(ti->mutex)) != 0) {
     printf("ERROR: thread_create: mutex init has failed\n");
     exit(-1);
   }
@@ -384,7 +391,7 @@ function_test(void* f) {
 void
 thread_free(ThreadInfo* t) {
   tdebug1("[Entering thread_free - t = %p]\n", t->thread);
-  MUTEX_DESTROY(&(t->mutex));
+  JOIN_MUTEX_DESTROY(&(t->mutex));
   if (t->thread) {
 #ifdef ARGOBOTS
     ABT_thread_free(&(t->thread));
@@ -455,8 +462,7 @@ mutex_freelist_pop(Context ctx) {  // for use by allocateRegion
     tdebug("]\n");
     return ml;
   }
-  if ( global_mutex_freelist ) {
-    // take lock
+  {
     MUTEX_LOCK(global_mutex_freelist_mutex);
     if ( global_mutex_freelist ) {
       ml = global_mutex_freelist;

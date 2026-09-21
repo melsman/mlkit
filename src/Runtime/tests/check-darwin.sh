@@ -21,7 +21,7 @@ for native in 0 1; do
   count=0
   for archive in lib/darwin-$arch/runtimeSystem*.a; do
     [ "$(lipo -archs "$archive")" = "$arch" ]
-    count=$((count + 1))
+    case "$archive" in *runtimeSystemArPar.a) ;; *) count=$((count + 1));; esac
   done
   [ "$count" = 10 ]
   for object in src/Runtime/build/darwin-$arch/*/*.o; do
@@ -35,6 +35,10 @@ for native in 0 1; do
     src/Runtime/tests/parallel-allocation.c lib/darwin-$arch/runtimeSystemPar.a \
     -Wl,-dead_strip -lm -pthread -o "$logs/parallel-$arch"
   run "parallel-$arch" "$logs/parallel-$arch"
+  run "link-publication-$arch" gcc -arch "$arch" -O2 -std=gnu99 -DPARALLEL -iquote src/Runtime \
+    src/Runtime/tests/parallel-publication.c lib/darwin-$arch/runtimeSystemPar.a \
+    -Wl,-dead_strip -lm -pthread -o "$logs/publication-$arch"
+  run "publication-$arch" "$logs/publication-$arch"
   run "install-$arch" make install_runtime LIBDIR="$logs/stage"
   for archive in lib/darwin-$arch/runtimeSystem*.a; do
     cmp "$archive" "$logs/stage/lib/darwin-$arch/$(basename "$archive")"

@@ -5,6 +5,14 @@
 #include <stdlib.h>
 #include "Spawn.h"
 
+static void yield(void) {
+#ifdef ARGOBOTS
+  ABT_thread_yield();
+#else
+  sched_yield();
+#endif
+}
+
 #define THREADS 4
 #define ALLOCS 8192
 static int ready;
@@ -21,12 +29,13 @@ static void *allocate(ThreadInfo *ti)
   thread_init(ti);
   Worker *w = ti->arg;
   __atomic_add_fetch(&ready, 1, __ATOMIC_RELEASE);
-  while (!__atomic_load_n(&start, __ATOMIC_ACQUIRE)) sched_yield();
+  while (!__atomic_load_n(&start, __ATOMIC_ACQUIRE)) yield();
   for (size_t i = 0; i < ALLOCS; ++i) {
     uintptr_t *p = alloc(w->region, 32);
     w->cells[i] = p;
     for (size_t j = 0; j < 32; ++j) p[j] = (w->id * ALLOCS + i) * 32 + j;
   }
+  thread_exit(NULL);
   return NULL;
 }
 
@@ -40,7 +49,7 @@ void code(Context ctx)
     workers[t].id = t;
     threads[t] = thread_create(allocate, &workers[t]);
   }
-  while (__atomic_load_n(&ready, __ATOMIC_ACQUIRE) != THREADS) sched_yield();
+  while (__atomic_load_n(&ready, __ATOMIC_ACQUIRE) != THREADS) yield();
   __atomic_store_n(&start, 1, __ATOMIC_RELEASE);
   for (size_t t = 0; t < THREADS; ++t) thread_get(threads[t]);
   for (size_t t = 0; t < THREADS; ++t)
@@ -51,5 +60,6 @@ void code(Context ctx)
   assert(ctx->topregion == NULL);
   for (size_t t = 0; t < THREADS; ++t) thread_free(threads[t]);
   puts("parallel C allocation smoke test passed");
+  thread_finalize();
   exit(0);
 }

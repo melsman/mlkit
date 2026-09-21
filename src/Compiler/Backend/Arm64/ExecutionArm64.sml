@@ -204,9 +204,12 @@ structure ExecutionArm64 : EXECUTION =
     (* Hook to be run before any compilation *)
     fun reject msg = (TextIO.output(TextIO.stdErr,msg ^ "\n"); raise Fail msg)
     fun checkTarget () =
-      List.app (fn flag => if Flags.is_on0 flag () then
-                   reject ("ARM64 backend does not support " ^ flag) else ())
-        ["parallelism"]
+      if parallelism_p() then
+        List.app (fn flag=>if Flags.is_on flag then
+          reject("ARM64 parallelism does not support " ^ flag) else ())
+          ["garbage_collection","generational_garbage_collection","tag_values","tag_pairs","region_profiling"]
+      else if argobots_p() orelse par_alloc_unprotected_p() then
+        reject "ARM64 -argo and -par0 require -par" else ()
     fun preHook () = (checkTarget();
       if Flags.is_on0 "generational_garbage_collection" () andalso Flags.is_on0 "tag_pairs" () then
         reject "Generational GC does not support -tag_pairs" else ();
@@ -403,6 +406,7 @@ structure ExecutionArm64 : EXECUTION =
                                subdir ^ "_PAR0"
                              else subdir ^ "_PAR"
                            else subdir
+              val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

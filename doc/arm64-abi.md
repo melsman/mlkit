@@ -291,3 +291,24 @@ References: [Apple ARM64 ABI](https://developer.apple.com/documentation/xcode/wr
 and [AAPCS64](https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst).
 The ML register assignment, handler record, and GC snapshot are MLKit design
 decisions, not requirements imposed by Apple's C ABI.
+
+## Parallel worker boundaries
+
+With `-par`, a C-ABI worker entry receives `ThreadInfo *` in x0. It calls
+`thread_init`, sets x28 to the context at byte offset 8, and reads the closure
+from offset 0. It invokes the untagged ML closure with x0 = closure and
+x1 = unit, reserving the normal 16-byte FP/LR header. The result in x0 goes
+to the nonreturning `thread_exit`. Both pthreads and Argobots use this bridge.
+Runtime layout assertions protect the offsets used here.
+
+Parallel exported callbacks recover x28 from `thread_info`, so a closure
+registered by another thread uses the calling runtime worker's region and exception
+chains. Exceptions must still be handled before returning across a C boundary.
+ML's `Thread` wrapper catches worker exceptions and transports them as results.
+
+Dynamic exception names increment the shared counter with `ldaxr`/`stlxr`.
+The exclusive-store status uses w30 only after the incoming LR has been saved
+in the ML frame. Protected allocation goes through the C allocator's acquire,
+compare/exchange, and release operations; `-par0` explicitly bypasses protection.
+Parallel GC/tagging/profiling combinations are unsupported by the existing
+runtime and rejected by the ARM driver.

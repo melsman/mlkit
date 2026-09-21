@@ -20,3 +20,4 @@ emitter: configuration
 	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
 check: all emitter
 	ARM64_EMITTER="$(CURDIR)/bin/arm64-emitter-test" SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh
+	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh

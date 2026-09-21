@@ -34,6 +34,8 @@ struct
   val alloc_protect_always = Flags.add_bool_entry
     {long="alloc_protect_always",short=NONE,item=ref false,neg=false,
      menu=["Compiler","always protect allocation"],desc="Always protect parallel allocation."}
+  fun parallel () = Flags.is_on "parallelism"
+  fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
   val tagged = BackendInfo.tag_values
   val profiling = Flags.is_on0 "region_profiling"
@@ -237,6 +239,10 @@ struct
     | _=>"" else ""
     in if profiling() then "alloc" ^ kind ^ "RegionInfiniteProfiling"
        else "allocate" ^ kind ^ "Region" end
+  fun regionPolicy global place =
+    if profiling() then Effect.key_of_eps_or_rho place
+    else if parallel() andalso (global orelse alloc_protect_always() orelse Effect.get_protect place = SOME true) then 1
+    else 0
   fun primitive fsz {name,args,res} =
     let open PrimName
         fun binary opn = case (args,res) of
@@ -302,8 +308,13 @@ struct
         read fsz a (X 16) @ read fsz b (D 30) @ (if tagged() then constant(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17) @ store(X 17,X 16,0) else []) @ store(D 30,X 16,payload()) @ write fsz d (X 16) | _=>unsupported "real boxing arity")
     | Get_ctx => (case res of [d]=>write fsz d (X 28) | _=>unsupported "context arity")
     | Exn_ptr => (case res of [d]=>load(X 28,8,X 16) @ write fsz d (X 16) | _=>unsupported "exception pointer arity")
-    | Fresh_exname => address(NameLab "exnameCounter",X 17) @ load(X 17,0,X 16) @
-        [ins "add" ["x16","x16","#1"]] @ store(X 16,X 17,0) @
+    | Fresh_exname =>
+        address(NameLab "exnameCounter",X 17) @
+        (if parallel() then let val retry=localFresh()
+          (* Incoming LR is already saved in the ML frame; w30 is scratch. *)
+          in [Label retry,ins "ldaxr" ["x16","[x17]"],ins "add" ["x16","x16","#1"],
+              ins "stlxr" ["w30","x16","[x17]"],ins "cbnz" ["w30",pr_lab retry]] end
+         else load(X 17,0,X 16) @ [ins "add" ["x16","x16","#1"]] @ store(X 16,X 17,0)) @
         (case res of [d]=>write fsz d (X 16) | _=>unsupported "exception name arity")
     | Equal_ptr => compare "eq"
     | Plus_word64ub => binary "add"
@@ -347,7 +358,7 @@ struct
       LS.SCOPE {scope,...} => stmts fsz scope
     | LS.LETREGION {rhos,body} =>
         List.concat(map(fn ((place,sz),off)=>case sz of LS.INF=>
-          internalCall fsz (regionAllocator place) [SS.PHREG_ATY(X 28),SS.REG_F_ATY off,integer(Effect.key_of_eps_or_rho place)]
+          internalCall fsz (regionAllocator place) [SS.PHREG_ATY(X 28),SS.REG_F_ATY off,integer(regionPolicy false place)]
           | LS.WORDS n=>if n=0 orelse not(profiling()) then [] else
             internalCall fsz "allocRegionFiniteProfiling"
               [SS.REG_F_ATY(off+BackendInfo.objectDescSizeP+BackendInfo.finiteRegionDescSizeP),
@@ -422,6 +433,18 @@ struct
     | LS.FLUSH (aty,off) => read fsz aty (X 16) @ store(X 16,SP,slot fsz off)
     | LS.FETCH (aty,off) => load(SP,slot fsz off,X 16) @ write fsz aty (X 16)
     | LS.PRIM p => primitive fsz p
+    | LS.CCALL {name="spawnone",args=[arg],rhos_for_result=[],res=[res]} =>
+        let val ()=if parallel() then () else unsupported "spawnone without -par"
+            val entry=localFresh()
+            (* thread_init returns ThreadInfo*. Its leading fields are the
+             * closure and context, checked by Runtime/Layout.c. *)
+            val ()=staticData := !staticData @ [Directive ".text",Directive ".p2align 2",Label entry] @
+              saveC() @ [ins "bl" ["_thread_init"]] @ addOffset(X 0,8,X 28) @
+              load(X 0,0,X 0) @ load(X 0,0,X 17) @ constant(1,X 1) @
+              stack(true,16) @ [ins "blr" ["x17"],ins "bl" ["_thread_exit"],ins "brk" ["#0"]]
+        in stack(true,16) @ read (fsz+2) arg (X 16) @ store(X 16,SP,0) @
+           address(entry,X 0) @ load(SP,0,X 1) @ [ins "bl" ["_thread_create"]] @
+           stack(false,16) @ write fsz res (X 0) end
     | LS.CCALL {name,args,rhos_for_result,res} =>
         if length res > 1 then unsupported "multiple C results"
         else foreignCall fsz name (rhos_for_result@args) (fn _=>[]) @ results fsz res
@@ -432,7 +455,13 @@ struct
             val str=stringData name
             val ()=dataLabel clos_lab
             val ()=staticData := !staticData @ [Directive ".data",Directive ".p2align 3",Label ctx,Directive ".quad 0"] @
-              function(NameLab name) @ saveC() @ deferGC() @ move(X 0,X 1) @ address(ctx,X 16) @ load(X 16,0,X 28) @
+              function(NameLab name) @ saveC() @ deferGC() @
+              (if parallel() then
+                 (* The callback runs in the caller's runtime thread, which
+                  * need not be the thread that registered the closure. *)
+                 move(X 0,X 19) @ [ins "bl" ["_thread_info"]] @
+                 addOffset(X 0,8,X 28) @ move(X 19,X 1)
+               else move(X 0,X 1) @ address(ctx,X 16) @ load(X 16,0,X 28)) @
               address(DatLab clos_lab,X 0) @ load(X 0,0,X 0) @ load(X 0,payload(),X 17) @
               stack(true,16) @ [ins "blr" ["x17"]] @ resumeGC() @ restoreC() @ [ins "ret" []]
         in read fsz aty (X 16) @ address(DatLab clos_lab,X 17) @ store(X 16,X 17,0) @
@@ -543,7 +572,7 @@ struct
       val () = staticData := []
       fun datum l words = [Directive ".data",Directive ".p2align 3",
         Directive(".globl " ^ pr_lab l),Label l] @ map(fn s=>Directive(".quad " ^ s)) words
-      fun init (place,l) = stack(true,8*even(BackendInfo.size_of_reg_desc())) @ move(X 28,X 0) @ move(SP,X 1) @ constant(IntInf.fromInt(Effect.key_of_eps_or_rho place),X 2) @
+      fun init (place,l) = stack(true,8*even(BackendInfo.size_of_reg_desc())) @ move(X 28,X 0) @ move(SP,X 1) @ constant(IntInf.fromInt(regionPolicy true place),X 2) @
         [ins "bl" [pr_lab(NameLab(regionAllocator place))],ins "orr" ["x0","x0","#1"]] @ address(DatLab l,X 17) @ store(X 0,X 17,0)
       val exceptions = [("MATCH","Match",BackendInfo.exn_MATCH_lab),
         ("BIND","Bind",BackendInfo.exn_BIND_lab),("OVERFLOW","Overflow",BackendInfo.exn_OVERFLOW_lab),
@@ -586,7 +615,7 @@ struct
        [ins "cmp" ["x2","#2"],ins "b.eq" [pr_lab resetDone],
         ins "cbz" ["x2",pr_lab noreset],ins "tbz" ["x0","#1",pr_lab noreset],Label resetDone,
         ins "bl" ["_resetRegion"],Label noreset] @
-       move(X 19,X 0) @ move(X 20,X 1) @ move(X 22,X 2) @ [ins "bl" [if profiling() then "_allocProfiling" else "_alloc"],ins "sub" ["x0","x0","x21, lsl #3"]] @
+       move(X 19,X 0) @ move(X 20,X 1) @ move(X 22,X 2) @ [ins "bl" [if profiling() then "_allocProfiling" else if parallel() andalso unprotected() then "_alloc_unprotected" else "_alloc"],ins "sub" ["x0","x0","x21, lsl #3"]] @
        load(SP,32,X 22) @ load(SP,24,X 21) @ load(SP,0,X 19) @ load(SP,8,X 20) @ load(SP,16,X 30) @ stack(false,48) @ [ins "ret" [],Label finite,
         ins "and" ["x0","x0","#-4"]] @ (if profiling() then store(X 4,X 0,~16) else []) @ [ins "ret" []] @
        function reset @ [ins "tbz" ["x0","#0","1f"],ins "cmp" ["x1","#2"],

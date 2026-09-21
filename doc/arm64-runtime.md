@@ -2,7 +2,7 @@
 
 This describes the runtime portability/build portion of issue #223. An
 experimental ARM compiler is described in [arm64-compiler.md](arm64-compiler.md).
-The current C collector still uses the X64 stack/register ABI.
+The collector selects a target-specific stack/register ABI.
 
 ## Build and toolchain
 
@@ -75,9 +75,10 @@ Profiling reads SP based on architecture macros, not compiler identity. The
 protected C allocator uses acquire loads of its allocation pointer and a
 release store to publish an initialized page, replacing the compiler-selected
 empty barrier/mfence. Its compare/exchange operations remain sequentially
-consistent. X64 generated allocation uses locked compare/exchange. Future ARM
-generated allocation must provide acquire ordering before consuming published
-pages; building the parallel C archive is not validation of that future path.
+consistent. X64 generated allocation uses locked compare/exchange. ARM generated allocation calls this protected C allocator, including its
+acquire/CAS/release page-publication path; there is no separate inline ARM
+allocation fast path. `-par0` explicitly selects `alloc_unprotected` and requires
+disjoint allocation regions.
 
 `Layout.c` is compiled for every runtime variant. It checks the 64-bit LP64
 word/pointer model, integer/double sizes and alignment, generation and region
@@ -108,8 +109,8 @@ large objects, retained contents, and region deallocation. A second test uses
 four runtime threads sharing a protected region, verifying 32,768 allocations
 across page rollover. It is not an ML ABI
 or GC test. The native compiler suite separately validates generated ARM GC
-and profiling paths. Generated parallel allocation and native bootstrap
-validation remain later milestones.
+and profiling paths. Generated parallel allocation is covered by the compiler parallel suite;
+native bootstrap validation remains a later milestone.
 
 Validation on 2026-09-21 used Apple Clang 21 via `gcc`, macOS arm64, and
 Rosetta 2 for X64 execution. All ten standard archive variants built for both
@@ -117,7 +118,7 @@ targets; the architecture, allocation, concurrent allocation, installation,
 legacy archive preservation, and rejection checks passed. An installed X64
 MLKit also compiled and ran `test_dev/int_first.sml` against the new runtime
 with `-no_gc` and with `-gc -prof`. The checkout was left configured for X64.
-Argobots and Linux execution were not tested in this environment.
+Linux execution was not tested in this environment.
 
 ## ARM GC and profiling integration
 
@@ -134,6 +135,54 @@ stack/memory statistics, and invokes `profileTick` when requested. Exception
 unwinding also removes finite profiling descriptors.
 
 All supported MLKit GC/profiling combinations are exercised by the native
-suite. ReML retains its existing no-GC restriction. Parallel registration and
-collection remain milestone 6 work. See [arm64-compiler.md](arm64-compiler.md)
+suite. ReML retains its existing no-GC restriction. Parallel GC, tagging, and profiling have no supported runtime combination
+and are rejected. The image registry remains single-threaded. See [arm64-compiler.md](arm64-compiler.md)
 for foreign-call GC deferral and current language limits.
+
+## ARM parallel execution (milestone 6)
+
+`-par` supports the existing untagged, no-GC, non-profiling pthread runtime.
+Region protection follows the compiler's effect analysis; global regions are
+protected. `--alloc_protect_always` forces protection of infinite regions.
+The worker bridge initializes thread-local state, installs `ThreadInfo.ctx` in
+x28, invokes the captured ML closure with unit, and passes the ML result to
+`thread_exit`. `Layout.c` checks the closure/context offsets for both runtimes.
+Exported callbacks obtain the calling worker's context through `thread_info`.
+Dynamic exception names use an acquire/release exclusive-update loop.
+
+`thread_get` publishes its result and completed cleanup with release ordering;
+subsequent readers acquire that publication. Thread IDs use an atomic counter,
+and the shared mutex freelist is always inspected under its lock. Argobots
+joins use an Argobots mutex so a suspended joiner does not block the execution
+stream; completed Argobots thread handles are freed after joining. ML's existing
+`Thread` wrapper retains `ThreadInfo` objects because thread values may escape
+and be joined again; this milestone does not change that lifetime policy.
+
+For optional Argobots, build an ARM64 copy of Argobots first, then run:
+
+```sh
+DARWIN_NATIVE=1 ./configure CC=gcc --with-argobots=/absolute/path/to/argobots
+make -C src/Runtime runtimeSystemArPar.a
+ARGOBOTS_ROOT=/absolute/path/to/argobots \
+  make -f Makefile.arm64 check MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
+```
+
+`ARGOBOTS_ROOT` is a configured source build containing `src/include/abt.h` and
+`src/.libs/libabt.a`, in a path without spaces. For application builds use
+`-par -argo` and supply the matching Argobots library to the linker, for example
+`-ldexe 'gcc -arch arm64 /absolute/path/to/argobots/src/.libs/libabt.a'`.
+Argobots caches have an additional `_ARGO` suffix. Programs accept `-p N` to
+select the number of execution streams.
+
+The permanent parallel suite tests MLKit and ReML, inferred/forced protection,
+private-region `-par0`, nested spawning, shared lists across page boundaries,
+repeated joins, worker/parent exceptions, and callbacks on worker contexts.
+Dynamic exception constructors are also created concurrently and checked for
+distinct identities. C stress tests validate page publication and concurrent result readers, thread
+ID uniqueness, and freelist reuse. Argobots runs with one and four execution
+streams. The standard runtime matrix also runs both C tests on X64/Rosetta.
+
+Milestone 6 validation used Argobots source commit
+`bffdf56916879f9321a1d7983fa486736cd1d722`, built with Apple Clang for ARM64.
+The optional test is explicitly reported as skipped when no Argobots build is
+provided; building the archive alone does not count as validation.

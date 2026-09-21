@@ -7,6 +7,9 @@
 #include "Region.h"
 #include "String.h"
 #include "Exception.h"
+#ifdef PARALLEL
+#include "Spawn.h"
+#endif
 
 #define CHECK(name, condition) typedef char layout_##name[(condition) ? 1 : -1]
 #define WORDS(type, n) CHECK(type##_size, sizeof(type) == (n) * 8)
@@ -58,3 +61,8 @@ CHECK(string_data, offsetof(StringDesc, data) == 8);
 CHECK(string_alignment, __alignof__(StringDesc) == 8);
 CHECK(word_alignment, __alignof__(uintptr_t) == 8);
 CHECK(double_alignment, __alignof__(double) == 8);
+
+#ifdef PARALLEL
+CHECK(thread_arg, offsetof(ThreadInfo, arg) == 0);
+CHECK(thread_context, offsetof(ThreadInfo, ctx) == 8);
+#endif

@@ -75,11 +75,11 @@ grep -q 'sub sp, sp, #4080' MLB/ARM64_*/large.sml.s
 find MLB -name '*.o' -exec file {} \; > objects
 if grep -v 'Mach-O 64-bit object arm64' objects; then exit 1; fi
 [ ! -d MLB/RI ]
-# Parallel runtime code generation belongs to milestone 6.
-if "$MLKIT_ARM64" --no_basislib -par -o unsupported native.mlb > unsupported.log 2>&1; then
-  echo 'ARM parallelism was incorrectly accepted' >&2; exit 1
+# Parallel GC remains outside the supported runtime combinations.
+if "$MLKIT_ARM64" --no_basislib -par -gc -o unsupported native.mlb > unsupported.log 2>&1; then
+  echo 'ARM parallel GC was incorrectly accepted' >&2; exit 1
 fi
-grep -q 'ARM64 backend does not support parallelism' unsupported.log
+grep -q 'ARM64 parallelism does not support garbage_collection' unsupported.log
 [ ! -e unsupported ]
 gcc -arch arm64 -O2 -Wall -Wextra -Werror scalar-calls.c scalar-calls.s -o scalar-calls
 ./scalar-calls

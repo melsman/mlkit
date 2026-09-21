@@ -9,7 +9,7 @@ native bootstrap. Use MLKit for all compiler builds and checks.
 Start with a configured checkout and an installed working MLKit. Build both
 runtime targets as described in [arm64-runtime.md](arm64-runtime.md). Keep
 the X64 compatibility archives when using an X64 bootstrap compiler. ARM
-programs link only `lib/darwin-arm64/runtimeSystem.a`.
+programs link the selected variant under `lib/darwin-arm64/`.
 
 ```sh
 make -f Makefile.arm64 MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
@@ -19,7 +19,7 @@ make -f Makefile.arm64 check MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
 `make arm64_compilers` is also available after regenerating the configured
 Makefile. `MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc` and can be overridden. The
 GC-enabled host build avoids a crash observed with the no-GC host build
-on wrapper-function samples; generated ARM programs still run without GC.
+on wrapper-function samples; generated ARM programs can independently select their supported GC mode.
 These explicit targets do not replace the existing X64 compiler executables
 or enable a full ARM install/bootstrap.
 
@@ -82,8 +82,8 @@ profiling modes are supported. Tagged no-GC MLKit programs use a separate
 profiling have no corresponding runtime archive and are rejected.
 
 This remains an experimental language subset. Some Basis primitives and
-colon-based dynamic foreign-symbol resolution remain unimplemented. Parallel
-code generation, full Basis Library compilation, and native compiler bootstrap
+colon-based dynamic foreign-symbol resolution remain unimplemented. Full
+Basis Library compilation and native compiler bootstrap
 remain later milestones. The REPL tests use `--no_basislib`; full Basis-based
 pretty printing is not established by these tests.
 
@@ -118,7 +118,7 @@ source-level tuple returns can remain boxed. The separate ABI suite checks
 all combinations of zero through seven spilled arguments and results.
 
 The suite checks exact output, ARM64 executable/object architecture, X64
-cache isolation, and explicit parallelism rejection. It requires Apple Silicon.
+cache isolation, and rejection of unsupported parallel GC combinations. It requires Apple Silicon.
 `make -f Makefile.arm64 check` builds the compilers and emitter harness using
 MLKit with `-gc`. To run the shell test directly, set `SML_LIB`, `MLKIT_ARM64`,
 `REML_ARM64`, and `ARM64_EMITTER` to absolute paths.
@@ -150,3 +150,17 @@ call C with mixed integer/FP arguments, packed narrow stack fields, and
 promoted variadic arguments. REPL checks load successive shared images, retain
 and traverse list values across images, and continue after an uncaught
 exception, including GC, tagged-pair GC, and generational GC.
+
+## Parallel compilation
+
+Milestone 6 adds native pthread and optional Argobots execution for MLKit and
+ReML (`-par`, or `-par -argo`). These use the existing no-GC, untagged,
+non-profiling runtime configurations. `-argo` and `-par0` require `-par`.
+`-par0` disables allocation protection and is only appropriate when concurrent
+allocations cannot target the same region. See [arm64-runtime.md](arm64-runtime.md)
+for the synchronization design, Argobots setup, and validation coverage.
+
+`make -f Makefile.arm64 check` also runs `tests/check-parallel.sh`; set
+`ARGOBOTS_ROOT` to include its optional Argobots cases. The fixtures include
+the production `THREAD.sig`/`Thread.sml` wrapper with a minimal prelude, so these
+checks do not depend on full Basis compilation.
