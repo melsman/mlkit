@@ -279,3 +279,6 @@ for execution times with and without GC, including X64 under Rosetta 2.
 
 See the [optimisation investigation](arm64-optimisation.md) for milestone 12's
 C-call preservation, peephole, branch-layout, and scheduling opportunities.
+
+The [first optimisation results](arm64-optimisation-results.md) cover smaller
+C-call save sets, a local peephole pass, and a three-benchmark before/after check.

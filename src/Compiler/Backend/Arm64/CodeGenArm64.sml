@@ -32,7 +32,7 @@ struct
   type StoreTypeCO = SS.StoreTypeCO
   type AtySS = SS.Aty
   type AsmPrg = A.AsmPrg
-  val emit = A.emit
+  fun emit (code,file) = A.emit(A.optimise code,file)
   val messages_p = Flags.is_on0 "messages"
   fun message f = if messages_p() then print(f()) else ()
   val extra_gc_checks = Flags.add_bool_entry
@@ -194,9 +194,11 @@ struct
     end
   (* Precision zero is private to raw runtime-helper arguments. *)
   fun integer n = SS.INTEGER_ATY{value = IntInf.fromInt n,precision = 0}
-  (* Allocation helpers are invisible to register allocation. Preserve every
-   * allocatable register, including the full 64 bits of floating registers. *)
-  val savedRegs = List.tabulate(16,X) @ List.tabulate(8,fn i => X(i+19)) @ List.tabulate(30,D)
+  (* Late allocation calls preserve C-clobbered ML registers, including the
+   * FP spill temporaries. C callees already preserve x19-x28 and d8-d15.
+   * Actual collection uses the separate, collector-visible entryGCInto image. *)
+  val savedRegs = List.tabulate(16,X) @ List.tabulate(8,D) @
+                  List.tabulate(14,fn i => D(i+16))
   fun internalCallInto fsz name args code =
     let
       val words = length savedRegs

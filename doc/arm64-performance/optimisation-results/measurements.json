@@ -1,0 +1,214 @@
+{
+  "warmups": 1,
+  "repetitions": 3,
+  "basis": "unchanged M11arm64 compiled Basis for both versions",
+  "results": [
+    {
+      "benchmark": "nucleic",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          1.706607,
+          1.7041110830000008,
+          1.7151380829999994
+        ],
+        "new": [
+          1.669621124999999,
+          1.7192792909999994,
+          1.6802197089999993
+        ]
+      },
+      "median": {
+        "old": 1.706607,
+        "new": 1.6802197089999993
+      },
+      "new_over_old": 0.9845381561191295,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/nucleic-gc.exe",
+        "nucleic.mlb"
+      ],
+      "old_binary_sha256": "336faea0f472e34a16a607a42b8e1617d6c2af4eee1fd6508f8d7894f9ba5b00",
+      "new_binary_sha256": "c684aaf6c62b23cd8c82e61657d31b193c9920267935df19530a0ede382678ee",
+      "expected_output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "nucleic",
+      "mode": "no_gc",
+      "samples": {
+        "old": [
+          0.8288316669999993,
+          0.8206143750000017,
+          0.8301915420000014
+        ],
+        "new": [
+          0.8014095000000019,
+          0.789526249999998,
+          0.788728459000005
+        ]
+      },
+      "median": {
+        "old": 0.8288316669999993,
+        "new": 0.789526249999998
+      },
+      "new_over_old": 0.9525773223141082,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-no_gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/nucleic-no_gc.exe",
+        "nucleic.mlb"
+      ],
+      "old_binary_sha256": "b5100ef431a1507dd4cb4132ca826a00933d6c60011e6ffa7e17d56a8d9c2be7",
+      "new_binary_sha256": "6f547851a015171608c095c2600d3093d34a380c372889f428b22a277590c90f",
+      "expected_output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "mlyacc",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          0.3762947080000032,
+          0.3773366249999981,
+          0.37490079199999116
+        ],
+        "new": [
+          0.39513183299999355,
+          0.3935553329999948,
+          0.40530050000000983
+        ]
+      },
+      "median": {
+        "old": 0.3762947080000032,
+        "new": 0.39513183299999355
+      },
+      "new_over_old": 1.050059500172376,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/mlyacc-gc.exe",
+        "mlyacc.mlb"
+      ],
+      "old_binary_sha256": "fc7cb85d53163a3b7558d3a0d8cac0e9ce92bb05ae9a1e2c4c2698c7ecdcc0b2",
+      "new_binary_sha256": "1d1e2a371f4f33bbaa2098ed4fefb6bf771b76707ea0fc340544054c8668990a",
+      "expected_output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "mlyacc",
+      "mode": "no_gc",
+      "samples": {
+        "old": [
+          0.25461141600000303,
+          0.2545367079999892,
+          0.254880208000003
+        ],
+        "new": [
+          0.2747126250000065,
+          0.2780620829999947,
+          0.27437620899999615
+        ]
+      },
+      "median": {
+        "old": 0.25461141600000303,
+        "new": 0.2747126250000065
+      },
+      "new_over_old": 1.0789485770740272,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-no_gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/mlyacc-no_gc.exe",
+        "mlyacc.mlb"
+      ],
+      "old_binary_sha256": "d3560c026374f3983c274a9cd1494b559613fa3cc897e82c1b7d068174fb9f90",
+      "new_binary_sha256": "73ba837bfed5dc7136240ef24d63bc2bea8b028987f14117a18da27a025dc9ee",
+      "expected_output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "professor",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          0.46201879100000554,
+          0.4618882919999976,
+          0.46314487499999757
+        ],
+        "new": [
+          0.399022875,
+          0.4025309999999962,
+          0.40041845899999373
+        ]
+      },
+      "median": {
+        "old": 0.46201879100000554,
+        "new": 0.40041845899999373
+      },
+      "new_over_old": 0.8666713709486091,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/professor-gc.exe",
+        "professor.sml"
+      ],
+      "old_binary_sha256": "85c1a9579669d80c72108e4e42eb3a2278619851f6c6e5e08c416c4de524cd39",
+      "new_binary_sha256": "41f6519d3b865be11a632559d3c3024b03349aa4480224b0ac47843e9a83f7ba",
+      "expected_output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "benchmark": "professor",
+      "mode": "no_gc",
+      "samples": {
+        "old": [
+          0.46734783300000515,
+          0.40793895800000257,
+          0.4122863330000115
+        ],
+        "new": [
+          0.35547420800000396,
+          0.3659975830000093,
+          0.3647265000000033
+        ]
+      },
+      "median": {
+        "old": 0.4122863330000115,
+        "new": 0.3647265000000033
+      },
+      "new_over_old": 0.8846436828164108,
+      "compile_command": [
+        "/private/tmp/mlkit-m12/mlkit",
+        "-no_gc",
+        "--mlb-subdir",
+        "M11arm64",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12/professor-no_gc.exe",
+        "professor.sml"
+      ],
+      "old_binary_sha256": "3a4cb0b94a12c4ea91e7236d39988403f91251a574055c26d767340d3c3a306c",
+      "new_binary_sha256": "c5bb65a9b90ee8848774dbef154bde7fde63a34cec39c8f77db7b07cb71ca28c",
+      "expected_output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    }
+  ],
+  "date": "2026-09-22",
+  "machine": "Apple M2 Max, 32 GiB RAM, macOS 26.5.1 (25F80)",
+  "baseline_source_revision": "647f854 (backend unchanged from e248ccc)"
+}

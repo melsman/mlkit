@@ -42,7 +42,8 @@ structure CodeGenUtilArm64 = struct
             val i = ins (if k = 0 then "movz" else "movk")
                         [r d,imm part,"lsl " ^ imm (k*16)]
           in
-            i :: loop(k+1,IntInf.div(n,65536),code)
+            if k > 0 andalso part = 0 then loop(k+1,IntInf.div(n,65536),code)
+            else i :: loop(k+1,IntInf.div(n,65536),code)
           end
     in
       loop(0,n,code)

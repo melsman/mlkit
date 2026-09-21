@@ -5,6 +5,58 @@ structure G = BackendArm64.CodeGen
 structure L = N.LineStmt
 structure S = N.SubstAndSimplify
 structure I = InstsArm64
+(* Check both useful rewrites and boundaries where a similar rewrite would
+ * change register width, memory semantics, metadata, or pair encodability. *)
+local
+  open I
+  fun key (Op(n,args)) = n ^ " " ^ String.concatWith "," args
+    | key (Label l) = pr_lab l ^ ":"
+    | key (Directive s) = s
+  fun check (name,input,expected) =
+    if map key (optimise input) = map key expected then ()
+    else raise Fail("ARM64 peephole: " ^ name)
+  fun unchanged (name,code) = check(name,code,code)
+  val l = LocalLab(AddressLabels.new_named "peep_target")
+  val other = LocalLab(AddressLabels.new_named "peep_other")
+  val branch = Op("b",[pr_lab other])
+  val store = Op("str",["x0","[sp, #0]"])
+  val storeD = Op("str",["d0","[sp, #0]"])
+in
+  val () = check("self move",[Op("mov",["x0","x0"])],[])
+  val () = unchanged("32-bit self move clears upper bits",[Op("mov",["w0","w0"])])
+  val () = unchanged("FP self move may clear upper bits",[Op("fmov",["d0","d0"])])
+  val () = check("branch to next",[Op("b",[pr_lab l]),Label l],[Label l])
+  val () = check("conditional to next",[Op("cbz",["x0",pr_lab l]),Label l],[Label l])
+  val () = check("invert condition",[Op("b.eq",[pr_lab l]),branch,Label l],
+    [Op("b.ne",[pr_lab other]),Label l])
+  val () = check("invert bit test",[Op("tbz",["x0","#3",pr_lab l]),branch,Label l],
+    [Op("tbnz",["x0","#3",pr_lab other]),Label l])
+  val () = check("forward stack load",[store,Op("ldr",["x1","[sp, #0]"])],
+    [store,Op("mov",["x1","x0"])])
+  val () = check("forward FP stack load",[storeD,Op("ldr",["d1","[sp, #0]"])],
+    [storeD,Op("fmov",["d1","d0"])])
+  val () = check("pair stores",[store,Op("str",["x1","[sp, #8]"])],
+    [Op("stp",["x0","x1","[sp, #0]"])])
+  val () = check("pair loads at boundary",
+    [Op("ldr",["d0","[sp, #504]"]),Op("ldr",["d1","[sp, #512]"])],
+    [Op("ldp",["d0","d1","[sp, #504]"])])
+  val () = unchanged("pair out of range",
+    [Op("ldr",["x0","[sp, #512]"]),Op("ldr",["x1","[sp, #520]"])])
+  val () = unchanged("pair duplicate load destination",
+    [Op("ldr",["x0","[sp, #0]"]),Op("ldr",["x0","[sp, #8]"])])
+  val () = unchanged("unknown memory",
+    [Op("str",["x0","[x2, #0]"]),Op("ldr",["x1","[x2, #0]"])])
+  val () = unchanged("mixed register widths",[store,Op("ldr",["w1","[sp, #0]"])])
+  val () = unchanged("mixed register banks",[store,Op("ldr",["d1","[sp, #0]"])])
+  val () = unchanged("metadata barrier",[store,Directive ".p2align 3",Op("str",["x1","[sp, #8]"])])
+  val () = unchanged("label barrier",[store,Label l,Op("str",["x1","[sp, #8]"])])
+  val () = unchanged("writeback",[Op("str",["x0","[sp, #0]!"]),Op("ldr",["x1","[sp, #0]!"])])
+  val () = List.app (fn lv =>
+    case I.RI.lv_to_reg lv of
+      X n => if I.RI.is_callee_save_ccall lv = (n >= 19 andalso n <= 26)
+             then () else raise Fail "ARM64 C-preserved allocation register"
+    | _ => raise Fail "ARM64 integer palette") I.RI.caller_save_phregs
+end
 (* Both register palettes can be used for allocation across C calls. *)
 val () = List.app (fn lv => case I.RI.lv_to_reg lv of
     I.X n => if List.exists (fn r => r = n) AbiArm64.reservedGPRs

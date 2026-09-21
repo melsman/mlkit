@@ -1,8 +1,10 @@
 # ARM64 optimisation opportunities
 
 Initial investigation for milestone 12 of issue #223 / PR #224, at `5791e21`.
-This is a design and static-code review; no compiler behaviour has changed and
-no runtime improvement is claimed yet.
+This records the initial design and static-code review. See the
+[implementation and small benchmark check](arm64-optimisation-results.md) for
+the subsequent register-preservation and peephole changes. Instruction
+scheduling is deferred.
 
 The most promising first steps are to reduce redundant register preservation,
 shorten constant materialisation, and avoid unnecessary branch expansion.
