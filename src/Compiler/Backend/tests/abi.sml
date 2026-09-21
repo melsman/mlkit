@@ -16,6 +16,10 @@ fun testFrame (frame,header) =
   end
 val () = testFrame(FrameLayout.x64,1)
 val () = testFrame(FrameLayout.arm64,2)
+val () = check "return delivery is independent of saved frame layout"
+  (FrameLayout.returnDelivery FrameLayout.x64=FrameLayout.StackHeader andalso
+   FrameLayout.returnDelivery FrameLayout.arm64=FrameLayout.LinkRegister AbiArm64.linkRegister andalso
+   FrameLayout.headerWords FrameLayout.arm64=2)
 val () = check "return PC within header"
   (FrameLayout.returnOffsetFromTop FrameLayout.x64=0 andalso
    FrameLayout.returnOffsetFromTop FrameLayout.arm64=1)

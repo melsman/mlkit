@@ -19,7 +19,7 @@ The X64 parameters retain its existing layout and allocation palette.
 | x27 | Exception value during the raise bridge |
 | x28 | Pointer to the runtime `context` |
 | x29 | Frame pointer to a saved-FP/saved-return-PC pair |
-| x30 | Link/continuation register |
+| x30 (LR) | Incoming return address; restored before `ret` or a tail transfer |
 | sp | Hardware stack pointer, always 16-byte aligned |
 | d0-d7 | Unboxed floating-point arguments |
 | d0-d27 | Initial floating-point allocator palette |
@@ -41,6 +41,19 @@ closure/ordinary arguments are roots when live, region pointers and unboxed
 floating-point values are not. Result registers follow result-list order.
 
 ## ML frames and control transfer
+
+ARM ML calls pass the return address in x30 (LR): direct calls use `bl`,
+indirect calls use `blr`, and normal returns use `ret`. The caller does not
+write a return PC into the callee's frame. The callee owns preservation of
+its incoming LR before any instruction or call that would overwrite it,
+including C/runtime calls and GC slow paths. Initially every ML function
+saves incoming x29/LR and establishes x29 before its first safepoint.
+
+`FrameLayout.returnDelivery` separates entry delivery from saved storage:
+X64 uses `StackHeader`, ARM uses `LinkRegister 30`. The existing ARM
+`headerWords=2` describes the conservative saved frame, not how the incoming
+return address is passed. This property specifies the future emitter's
+behavior; instruction emission is not implemented by the layout helper.
 
 All logical offsets in CallConv/CalcOffset are 64-bit words. Low to high
 addresses in a complete activation are:
@@ -65,27 +78,62 @@ translate these logical offsets consistently with formal argument offsets.
 Reserve complete aligned blocks and store slots at offsets: do not implement
 an eight-byte abstract push by temporarily misaligning hardware SP.
 
-Calls explicitly materialize their continuation address and install the
-header before transfer. x29 points at the header once the activation is
-established. Normal return reloads the saved FP and continuation, releases
-the local/argument/header area as specified by the caller/callee convention,
-and makes spilled results available to the caller. No implicit x86-style
-hardware push is assumed. The emitter must retain any caller-side alignment
-padding in its accounting until results have been fetched.
+For the initial layout, the caller reserves the complete aligned outgoing
+area, including space for the two header words, but leaves that header
+uninitialized. The callee stores its incoming x29 and LR into those slots
+and sets x29 to the pair. Reserving storage does not transfer the return
+address through memory. No collection or stack walk may observe a partially
+initialized activation. Prologue and epilogue unwind information must
+account for the transition between LR and its saved slot.
 
-Continuations used by the collector have metadata immediately before their
-labels. ARM can explicitly form the continuation address, branch over the
-metadata into the callee, and return to the continuation label. It must not
-let an ordinary BL return address point into descriptor data. Large distances
-require the emitter's general address materialization, not an assumption
-that every continuation is in ADR range.
+Normal return restores x29 and LR, releases the local/argument/header area
+according to the existing logical slot convention, and executes `ret`.
+Spilled results remain available to the caller. Caller-side alignment
+padding remains accounted for until those results have been fetched.
+The ARM emitter must not copy X64's implicit hardware return-address push.
 
-A tail transfer restores the enclosing FP and preserves the original return
-PC, relocates overlapping arguments safely, and installs the target's
-compatible activation. Start with the existing conservative tail-call
-eligibility; use ordinary call/return when stack layouts cannot be reused.
-Do not silently drop tail calls needed for bounded-space loops: add coverage
-when the ARM emitter implements this path.
+### Return PCs and frame descriptors
+
+The ARM collector looks up descriptors through a return-PC-to-descriptor
+index. Each collecting ML call site has an entry keyed by the exact address
+immediately following its `bl`/`blr`. That address contains executable
+continuation code, never inline descriptor data. Descriptor payloads reside
+out of line. The index also covers runtime/GC continuations used for stack
+walking and explicit entry/exit sentinels.
+
+The emitter and linker must produce relocatable code/descriptor references;
+the runtime must register each image's index before executing its ML code,
+including dynamically loaded REPL code. A missing entry while walking an
+ML frame is an error, not an implicit end of stack. Foreign entry bridges
+provide an explicit boundary descriptor. Index lookup and registration are
+pending ARM runtime integration; X64 keeps its existing PC-relative metadata.
+
+This allows ordinary `bl`/`blr` without manually constructing a continuation
+address. Linker veneers may change x16/x17; they must not change which return
+PC the caller's index entry describes.
+
+### Tail calls and leaf functions
+
+A tail transfer restores the enclosing FP and original incoming LR from
+its saved frame (or retains LR when it was never saved), relocates overlapping
+arguments safely, and tears down the current activation. Transfer with `b`
+or `br`, not `bl`/`blr`: the target must inherit the original caller's return
+address. The target establishes its own frame. Retain the existing tail-call
+eligibility and bounded-space guarantees; argument/result layouts must agree.
+
+The initial emitter conservatively saves FP/LR in every ML function. A later
+leaf optimization may omit the save/restore and leave LR live throughout a
+function that makes no calls, has no GC safepoint or allocating slow path,
+installs no exception handler, and meets platform unwind requirements.
+A source-level leaf that calls a runtime helper is not eligible. A leaf
+returns directly with `ret`; x29 continues to describe its caller's frame.
+
+Initially an optimized leaf still retains the reserved logical header space
+and established argument/result offsets. Its unsaved slots must never be
+scanned. Removing that space requires a separate compatible layout decision
+for direct and indirect calls; it is not implied by passing LR in a register.
+Functions requiring collection or nonlocal exception restoration retain a
+materialized frame until those paths explicitly support a register-held LR.
 
 ## Exceptions and regions
 
@@ -103,9 +151,10 @@ root in this record; the other fields must not enter the heap root bitmap.
 The public raise bridge receives context and exception via the C ABI,
 installs x28, and protects the exception in x27 while deallocating intervening
 regions. It then restores the previous handler, SP and FP, places the handler
-closure/exception in x0/x1, and transfers to the handler with the recorded
-continuation. There must be no GC safepoint between protecting the exception
-in x27 and delivering it to the handler; deallocation must not introduce one.
+closure/exception in x0/x1, installs the recorded continuation in LR,
+and branches to the handler without overwriting LR. There must be no GC
+safepoint between protecting the exception in x27 and delivering it to the
+handler; deallocation must not introduce one.
 Crossing a foreign callback boundary by a nonlocal raise is not implicitly
 supported: wrappers must retain the existing exported-call exception policy
 and restore the foreign frame/preserved registers before returning to C.
@@ -132,15 +181,28 @@ scan. Use the C ABI to call the collector with context, snapshot pointer,
 and register mask. The collector updates roots in the saved slots; the
 bridge reloads those updated values before continuing ML execution.
 
-Frame metadata retains the existing reverse-emission convention: immediately
-before a continuation are function number, return-PC offset, frame size,
-and then bitmap words going toward lower addresses. Bitmap words contain
-32 meaningful bits, stored in 64-bit slots. For bit k, the corresponding word
+The ordinary ML prologue saves incoming LR before any entry collection can
+occur. A GC-call stub must separately preserve the `bl`/`blr` continuation
+in its x30 snapshot slot before calling C, and restore it before returning.
+The collector uses that safepoint PC and the described ML frame state to
+start the walk; older activations use saved LR slots and the return-PC index.
+The bridge continuation and the function's saved incoming LR are distinct
+addresses and must not be substituted for one another. Both are non-roots.
+
+The ARM return-PC index maps to an out-of-line descriptor anchor. Relative
+to that anchor, function number is at word -1, return-PC offset at -2, frame
+size at -3, and bitmap words at -4 and below. This preserves the existing
+payload ordering without interpreting instructions before LR as metadata.
+Bitmap words contain 32 meaningful bits, stored in 64-bit slots. For bit k, the corresponding word
 is `frameBase + 8*(frameWords-1-k)`. Both saved FP and return PC have zero bits.
 The return-PC offset is the formula above; the frame size includes both
 header words and all alignment padding. Terminate at the existing sentinel
 frame-size value. Tests must cover roots around each header, spilled results,
 multiple bitmap words, and restoration of relocated register roots.
+Emitter/runtime acceptance tests must also cover nested direct/indirect ML
+calls, LR survival across C and GC calls, tail recursion with bounded stack
+use, leaf `ret`, exception-handler entry, and descriptor lookup in linked and
+dynamically loaded images. These execution tests remain pending the emitter.
 
 ## C calls and callbacks
 
