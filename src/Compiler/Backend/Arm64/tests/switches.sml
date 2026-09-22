@@ -26,4 +26,9 @@ val () = check (sparse__noinline (~100001) == 99 andalso sparse__noinline (~1000
 val () = check (small__noinline (~1) == 1 andalso small__noinline 1 == 2 andalso small__noinline 0 == 99)
 val () = check (enum__noinline A == 1 andalso enum__noinline D == 4 andalso enum__noinline H == 8)
 val () = check (boxed__noinline (P 10) == 11 andalso boxed__noinline (S 10) == 14 andalso boxed__noinline (U 10) == 16)
+(* Keep the selector live in each arm, including table/default paths. *)
+fun preserve__noinline (x:int) =
+  (case x of 1 => 10 | 2 => 20 | 3 => 30 | 4 => 40 | 5 => 50 | _ => 90) + x
+val () = check (preserve__noinline 1 == 11 andalso preserve__noinline 3 == 33 andalso
+                preserve__noinline 5 == 55 andalso preserve__noinline 7 == 97)
 val () = prim("printStringML","OK\n")

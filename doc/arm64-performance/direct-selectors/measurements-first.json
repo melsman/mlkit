@@ -1,0 +1,288 @@
+{
+  "baseline_revision": "a6d7fb9",
+  "gc": true,
+  "warmups": 1,
+  "repetitions": 5,
+  "basis": "Baseline: rebuilt M12RetAfter Basis; candidate: fresh M12DirectFresh Basis. Both compilers built with MLKit -gc.",
+  "results": [
+    {
+      "benchmark": "nucleic",
+      "samples": {
+        "before": [
+          {
+            "wall_seconds": 0.6417559161782265,
+            "cpu_seconds": 0.638082,
+            "gc_ms": 150.1,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6423824999947101,
+            "cpu_seconds": 0.6389579999999999,
+            "gc_ms": 150.5,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6658486251253635,
+            "cpu_seconds": 0.6565190000000004,
+            "gc_ms": 158.3,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6707987908739597,
+            "cpu_seconds": 0.6611459999999996,
+            "gc_ms": 157.2,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6475445409305394,
+            "cpu_seconds": 0.6432330000000003,
+            "gc_ms": 147.5,
+            "collections": 3106
+          }
+        ],
+        "after": [
+          {
+            "wall_seconds": 0.6443322910927236,
+            "cpu_seconds": 0.6408420000000004,
+            "gc_ms": 150.8,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6422092497814447,
+            "cpu_seconds": 0.6388980000000002,
+            "gc_ms": 152.0,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6430709159467369,
+            "cpu_seconds": 0.6396149999999997,
+            "gc_ms": 152.2,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6576954580377787,
+            "cpu_seconds": 0.6509939999999999,
+            "gc_ms": 147.3,
+            "collections": 3106
+          },
+          {
+            "wall_seconds": 0.6577081668656319,
+            "cpu_seconds": 0.6508280000000002,
+            "gc_ms": 145.0,
+            "collections": 3106
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "wall_seconds": 0.6475445409305394,
+          "cpu_seconds": 0.6432330000000003,
+          "gc_ms": 150.5,
+          "collections": 3106
+        },
+        "after": {
+          "wall_seconds": 0.6443322910927236,
+          "cpu_seconds": 0.6408420000000004,
+          "gc_ms": 150.8,
+          "collections": 3106
+        }
+      },
+      "executables": {
+        "before": {
+          "path": "/private/tmp/mlkit-m12-return-fix/after-nucleic.exe",
+          "sha256": "2fc770e8fce8a756ff692841bbb24ceae7176b8c3639e7a969da01802467e722"
+        },
+        "after": {
+          "path": "/private/tmp/mlkit-m12-direct/after-nucleic.exe",
+          "sha256": "eeb7a0a81d2664dab245de9de5e7605a22e85e8c625707e19acabab4c175d2db"
+        }
+      }
+    },
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "before": [
+          {
+            "wall_seconds": 0.1481539581436664,
+            "cpu_seconds": 0.14409200000000078,
+            "gc_ms": 5.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14986062492243946,
+            "cpu_seconds": 0.14547000000000165,
+            "gc_ms": 6.0,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14772537513636053,
+            "cpu_seconds": 0.14342699999999892,
+            "gc_ms": 5.5,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14823395805433393,
+            "cpu_seconds": 0.14429400000000137,
+            "gc_ms": 5.8,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15462545794434845,
+            "cpu_seconds": 0.14962600000000031,
+            "gc_ms": 5.8,
+            "collections": 28
+          }
+        ],
+        "after": [
+          {
+            "wall_seconds": 0.1527779591269791,
+            "cpu_seconds": 0.14822399999999952,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14789037499576807,
+            "cpu_seconds": 0.14369399999999893,
+            "gc_ms": 5.7,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1469385838136077,
+            "cpu_seconds": 0.14302899999999993,
+            "gc_ms": 4.9,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15387716703116894,
+            "cpu_seconds": 0.14959500000000045,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15031495806761086,
+            "cpu_seconds": 0.14570899999999992,
+            "gc_ms": 5.8,
+            "collections": 28
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "wall_seconds": 0.14823395805433393,
+          "cpu_seconds": 0.14429400000000137,
+          "gc_ms": 5.8,
+          "collections": 28
+        },
+        "after": {
+          "wall_seconds": 0.15031495806761086,
+          "cpu_seconds": 0.14570899999999992,
+          "gc_ms": 5.8,
+          "collections": 28
+        }
+      },
+      "executables": {
+        "before": {
+          "path": "/private/tmp/mlkit-m12-return-fix/after-mlyacc.exe",
+          "sha256": "a40e1cee5a5d8a149c1a2e347c3b9136c4f4d0dcf46ad480279da27ffa0455b2"
+        },
+        "after": {
+          "path": "/private/tmp/mlkit-m12-direct/after-mlyacc.exe",
+          "sha256": "25117d174980e67bd7e66f4295505835b9254d22fbd2b6313693b79869463dc3"
+        }
+      }
+    },
+    {
+      "benchmark": "professor",
+      "samples": {
+        "before": [
+          {
+            "wall_seconds": 0.19313929206691682,
+            "cpu_seconds": 0.18838100000000024,
+            "gc_ms": 3.9,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19388262485153973,
+            "cpu_seconds": 0.1896930000000009,
+            "gc_ms": 3.5,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.1915725409053266,
+            "cpu_seconds": 0.18792700000000045,
+            "gc_ms": 3.7,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.1915251249447465,
+            "cpu_seconds": 0.18784299999999932,
+            "gc_ms": 3.5,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19391020806506276,
+            "cpu_seconds": 0.18917399999999993,
+            "gc_ms": 3.4,
+            "collections": 263
+          }
+        ],
+        "after": [
+          {
+            "wall_seconds": 0.19216366717591882,
+            "cpu_seconds": 0.18788100000000102,
+            "gc_ms": 3.9,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19266754109412432,
+            "cpu_seconds": 0.18802699999999964,
+            "gc_ms": 3.9,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19260404189117253,
+            "cpu_seconds": 0.1887200000000006,
+            "gc_ms": 3.4,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19689354207366705,
+            "cpu_seconds": 0.19162100000000148,
+            "gc_ms": 4.0,
+            "collections": 263
+          },
+          {
+            "wall_seconds": 0.19473841693252325,
+            "cpu_seconds": 0.1893829999999999,
+            "gc_ms": 3.3,
+            "collections": 263
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "wall_seconds": 0.19313929206691682,
+          "cpu_seconds": 0.18838100000000024,
+          "gc_ms": 3.5,
+          "collections": 263
+        },
+        "after": {
+          "wall_seconds": 0.19266754109412432,
+          "cpu_seconds": 0.1887200000000006,
+          "gc_ms": 3.9,
+          "collections": 263
+        }
+      },
+      "executables": {
+        "before": {
+          "path": "/private/tmp/mlkit-m12-return-fix/after-professor.exe",
+          "sha256": "74469e7c28f793d25ebffc678b4050d996e547d666cfa2035ff001fcc11b08a4"
+        },
+        "after": {
+          "path": "/private/tmp/mlkit-m12-direct/after-professor.exe",
+          "sha256": "286c0d1b69c5ebcc4aa8ebc6bcf8b3d97db5eb9c8353bd2cb3071b5ec608d286"
+        }
+      }
+    }
+  ]
+}

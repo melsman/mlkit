@@ -1,0 +1,36 @@
+{
+  "before": {
+    "nucleic": {
+      "files": 4,
+      "instructions": 66924,
+      "scratch_copy_before_cmp": 2
+    },
+    "mlyacc": {
+      "files": 62,
+      "instructions": 213375,
+      "scratch_copy_before_cmp": 511
+    },
+    "professor": {
+      "files": 1,
+      "instructions": 14237,
+      "scratch_copy_before_cmp": 92
+    }
+  },
+  "after": {
+    "nucleic": {
+      "files": 4,
+      "instructions": 66922,
+      "scratch_copy_before_cmp": 0
+    },
+    "mlyacc": {
+      "files": 62,
+      "instructions": 212671,
+      "scratch_copy_before_cmp": 0
+    },
+    "professor": {
+      "files": 1,
+      "instructions": 14145,
+      "scratch_copy_before_cmp": 0
+    }
+  }
+}

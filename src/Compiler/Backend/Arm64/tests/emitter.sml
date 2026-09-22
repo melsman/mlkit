@@ -492,3 +492,33 @@ in
   val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true)]
   val () = List.app Flags.turn_off ["garbage_collection","generational_garbage_collection","tag_values"]
 end
+
+(* Selection must not copy or destructively normalise an allocated selector. *)
+local
+  fun checkMode gc =
+    let
+      val () = List.app Flags.turn_off ["garbage_collection","tag_values"]
+      val () = if gc then List.app Flags.turn_on ["garbage_collection","tag_values"] else ()
+      val main = AddressLabels.new_named "direct_selector"
+      fun generate switch = G.CG{main_lab = main,
+        code = [L.FUN(main,convention(1,1,0),[switch])],
+        imports = ([],[]),exports = ([],[]),safe = false}
+      fun expect (name,ok) = if ok then () else raise Fail("ARM64 direct selector: " ^ name)
+      val enum = generate(L.SWITCH_C(L.SWITCH(x 0,
+        [((Con.con_TRUE,L.ENUM 3),[assign(x 0,num 7)])],[assign(x 0,num 9)])))
+      val () = expect("enum compares allocated source",List.exists
+        (fn A.cmp(I.R(I.X 0),I.I 3) => true | _ => false) enum)
+      val narrow = generate(L.SWITCH_I{precision = 31,
+        switch = L.SWITCH(x 0,[(1,[assign(x 0,num 7)])],[assign(x 0,num 9)])})
+      val () = expect("narrow selector normalises directly into scratch",List.exists
+        (fn A.sxtw(I.R(I.X 16),I.R(I.W 0)) => true | _ => false) narrow)
+      val wide = generate(L.SWITCH_W{precision = 63,
+        switch = L.SWITCH(x 0,[(1,[assign(x 0,num 7)]),(3,[assign(x 0,num 9)])],[])})
+      val () = expect("multi-case selector avoids scratch copy",not(List.exists
+        (fn A.mov(I.R(I.X 16),I.R(I.X 0)) => true | _ => false) wide))
+    in ()
+    end
+in
+  val () = List.app checkMode [false,true]
+  val () = List.app Flags.turn_off ["garbage_collection","tag_values"]
+end

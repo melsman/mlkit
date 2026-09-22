@@ -1963,20 +1963,22 @@ struct
           fun tag k = IntInf.fromInt
             (case k of LS.ENUM i => i | LS.UNBOXED i => i
                      | LS.UNBOXED_HIGH i => i | LS.BOXED i => i)
+          val (src,load) = operandInto fsz a (X 16)
+          val selector = case kind of LS.ENUM _ => src | _ => X 16
           val code = switchCodeInto fsz live
-            (LS.SWITCH(SS.PHREG_ATY(X 16),map (fn ((_,k),body) => (tag k,body)) cases,default)) code
+            (LS.SWITCH(SS.PHREG_ATY selector,map (fn ((_,k),body) => (tag k,body)) cases,default)) code
           val code = case kind of
               LS.ENUM _ => code
-            | LS.BOXED _ => loadInto (X 16,0,X 16) code
-            | LS.UNBOXED_HIGH _ => A.lsr (R(X 16),R(X 16),I(48)) :: code
+            | LS.BOXED _ => loadInto (src,0,X 16) code
+            | LS.UNBOXED_HIGH _ => A.lsr (R(X 16),R(src),I(48)) :: code
             | LS.UNBOXED _ =>
                 if Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS) then
-                  instruction A.and_ (R(X 16),R(X 16),I(3)) code
-                else (instruction A.and_ (R(X 17),R(X 16),I(3))
+                  instruction A.and_ (R(X 16),R(src),I(3)) code
+                else (instruction A.and_ (R(X 17),R(src),I(3))
                ++ instruction A.cmp (R(X 17),I(3))
-               ++ instruction A.csel (R(X 16),R(X 16),R(X 17),C EQ)) code
+               ++ instruction A.csel (R(X 16),R(src),R(X 17),C EQ)) code
         in
-          readInto fsz a (X 16) code
+          load code
         end
     | constructorSwitchInto _ _ _ _ = unsupported "empty constructor switch"
   and numericSwitchInto fsz live signed precision (LS.SWITCH(a,cases,default)) code =
@@ -1984,15 +1986,22 @@ struct
       val tag = precision = 31 orelse precision = 63 orelse (precision = 8 andalso tagged())
       val box = tagged() andalso (precision = 32 orelse precision = 64)
       fun value n = if tag then 2*n+1 else n
+      val (src,load) = operandInto fsz a (X 16)
+      val narrow = precision = 31 orelse precision = 32
+      val selector = if box orelse narrow then X 16 else src
       val code = switchCodeInto fsz live
-        (LS.SWITCH(SS.PHREG_ATY(X 16),map (fn (n,rhs) => (value n,rhs)) cases,default)) code
-      (* Int31 values from packed tables have only their encoded low 32 bits. *)
-      val code = if precision = 31 orelse precision = 32 then
-                   (if signed then A.sxtw else A.uxtw) (R(X 16),R(W 16)) :: code
-                 else code
-      val code = if box then loadInto (X 16,8,X 16) code else code
+        (LS.SWITCH(SS.PHREG_ATY selector,map (fn (n,rhs) => (value n,rhs)) cases,default)) code
+      (* Int31 values from packed tables have only their encoded low 32 bits.
+       * Normalise into scratch storage without modifying an allocated source. *)
+      val code = if narrow then
+          let val input = if box then X 16 else src
+              val low = case input of X n => W n | _ => unsupported "numeric switch register"
+          in (if signed then A.sxtw else A.uxtw) (R(X 16),R low) :: code
+          end
+        else code
+      val code = if box then loadInto (src,8,X 16) code else code
     in
-      readInto fsz a (X 16) code
+      load code
     end
   and flowInto fsz live (t,f,yes,no) code =
     let
@@ -2016,8 +2025,7 @@ struct
         in if n >= sign then n-modulus else n
         end
       val cases = map (fn (v,body) => (machineValue v,body)) cases
-      val (src,load) = if length cases <= 1 then operandInto fsz a (X 16)
-                       else (X 16,readInto fsz a (X 16))
+      val (src,load) = operandInto fsz a (X 16)
       fun compare branch (lab,value,code) =
         (compareConstantInto src value
            ++ instruction branch (L(lab))) code
@@ -2028,7 +2036,7 @@ struct
         (* Bounds have already been checked by JumpTables. Entries are signed
          * offsets from the table, so linked and REPL code need no data fixups. *)
         (constantInto (start,X 17)
-           ++ instruction A.sub (R(X 16),R(X 16),R(X 17))
+           ++ instruction A.sub (R(X 16),R(src),R(X 17))
            ++ addressInto (lab,X 17)
            ++ instruction A.ldr (R(X 16),Indexed(X 17,X 16,LSL,3))
            ++ instruction A.add (R(X 16),R(X 17),R(X 16))

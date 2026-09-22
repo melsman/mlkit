@@ -5,6 +5,10 @@ assembly. The return-prediction issue is fixed; older measurements of tiny-call
 optimisations should not be treated as current expected gains. No production
 compiler or runtime change is made by this investigation.
 
+Follow-up: [direct operands in switch lowering](arm64-direct-selectors.md)
+implements the first lowering step, with smaller code and no consistent
+runtime change in the focused check.
+
 ## Small experiments on the current compiler
 
 The same mlyacc benchmark, GC enabled, on the M2 Max. Each of two batches has
