@@ -313,6 +313,18 @@ struct
       {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = gc(),
        loadArgument = fn (i,extra) =>
          readInto (fsz+extra) (List.nth(args,i)) (X 16) ++ convert(i,X 16)} code
+  (* These Math.c helpers neither allocate nor call back into ML. Div-by-zero
+   * transfers to the exception handler; it does not return through this call.
+   * Keep arbitrary foreign calls, including automatic conversions, protected. *)
+  fun runtimeCallInto fsz name args code =
+    if (name = "__mod_word63" orelse name = "__mod_word31") andalso length args = 4 then
+      if registersPlaced (List.tabulate(4,X)) args then
+        instruction A.bl (L(NameLab name)) code
+      else
+        scalarCallInto
+          {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = false,
+           loadArgument = fn (i,extra) => readInto (fsz+extra) (List.nth(args,i)) (X 16)} code
+    else foreignCallInto fsz name args (fn _ => fn code => code) code
   fun autoCallInto fsz {name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
     let
       fun convert (i,r) code =
@@ -847,6 +859,13 @@ struct
         else
           (if sgn then A.sbfx else A.ubfx) (R(reg),R(reg),I(0),imm (bits)) :: code
       fun getnumAt level (rep as (bits,sgn,box,tag)) a reg code =
+        if rep = (63,false,false,true) then
+          (* A logical shift already produces a normalized 63-bit word. *)
+          (case a of
+             SS.WORD_ATY {value,precision = 63} =>
+               constantInto (IntInf.mod(value,9223372036854775808),reg) code
+           | _ => readInto level a reg (A.lsr (R(reg),R(reg),I(1)) :: code))
+        else
         let
           val code = normalize rep reg code
           val code = if tag then
@@ -903,7 +922,9 @@ struct
             else
               code
         in
-          normalize rep (X 16) code
+          (* Tagging discards bit 63, so another unsigned mask is redundant. *)
+          if rep = (63,false,false,true) then code
+          else normalize rep (X 16) code
         end
       fun numeric opn (rep as (bits,sgn,box,tag)) code =
         let
@@ -1006,7 +1027,16 @@ struct
                            ++ putnum rep buffer d) code
                       | _ => unsupported "numeric binary operation")
               in
-                (getnum rep a (X 16)
+                if rep = (63,false,false,true) andalso
+                   (case rhs of
+                      SS.PHREG_ATY (X n) => n <> 16 andalso n <> 17
+                    | SS.STACK_ATY _ => true
+                    | SS.WORD_ATY _ => true
+                    | _ => false) then
+                  (* Decoding these operands into x17 leaves x16 untouched.
+                   * Retain staging for other representations and operands. *)
+                  (getnum rep a (X 16) ++ getnum rep rhs (X 17)) code
+                else (getnum rep a (X 16)
                  ++ stackInto(true,16)
                  ++ storeInto(X 16,SP,0)
                  ++ getnumAt (fsz+2) rep rhs (X 17)
@@ -1856,7 +1886,7 @@ struct
         end
     | LS.CCALL {name,args,rhos_for_result,res} =>
         if length res > 1 then unsupported "multiple C results"
-        else (foreignCallInto fsz name (rhos_for_result @ args) (fn _ => fn code => code)
+        else (runtimeCallInto fsz name (rhos_for_result @ args)
            ++ resultsInto fsz res) code
     | LS.CCALL_AUTO c =>
         autoCallInto fsz c code

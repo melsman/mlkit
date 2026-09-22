@@ -142,6 +142,9 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     "$compiler" --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
     ./instruction-selection $profile_flags > actual
     cmp gc-expected actual
+    "$compiler" --no_basislib $flags $extra_gc -o word-arithmetic word-arithmetic.sml >> integration.log 2>&1
+    ./word-arithmetic $profile_flags > actual
+    cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
     ./gc-constructors $profile_flags > actual
     cmp gc-expected actual
@@ -206,4 +209,14 @@ fi
 gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \
   "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
 ./gc-metadata
+# Pending requests survive nested foreign callbacks; collection resumes in ML.
+cp "$SML_LIB/src/Compiler/Backend/Arm64/tests/deferred-gc.c" \
+  "$SML_LIB/src/Compiler/Backend/Arm64/tests/deferred-gc.sml" .
+gcc -arch arm64 -O2 -Wall -Wextra -Werror -c deferred-gc.c -o deferred-gc.o
+for flags in '-gc' '-gengc'; do
+  "$MLKIT_ARM64" --no_basislib $flags -extra_gc_checks -ldexe 'gcc -arch arm64 deferred-gc.o' \
+    -o deferred-gc deferred-gc.sml >> integration.log 2>&1
+  ./deferred-gc > actual
+  cmp gc-expected actual
+done
 printf 'Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed\n'

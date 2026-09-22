@@ -1,5 +1,7 @@
 # UF slowdown and DLX memory investigation
 
+Implemented and validated in [UF and DLX production fixes](arm64-uf-dlx-fixes.md).
+
 Measured September 23, 2026, compiler source `6d61e63`, Apple M2 Max,
 macOS 26.5.1. Both backends use `-gc`; X64 runs through Rosetta 2.
 The freshly rebuilt Basis libraries and runtimes from the

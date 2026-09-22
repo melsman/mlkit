@@ -1381,6 +1381,11 @@ region_utilize(long pages, long bytes)
 void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
+  /* Allocation retains requests even while collection is disabled. ARM checks
+   * this at ML safe points too; older backends only test time_to_gc. Keep the
+   * request pending without examining roots during callbacks or shutdown. */
+  if (disable_gc) return;
+
   long time_gc_one_ms = 0;
   extern Rp* global_freelist;
 #if !DARWIN_NATIVE

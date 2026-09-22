@@ -1,0 +1,18 @@
+{
+  "arm64_compiler": {
+    "path": "/private/tmp/mlkit-outliers/mlkit-fixed",
+    "sha256": "f43e29b71f78e8fd9d1baa6b6d865bd3db191b5199f8668abfe55c5dd276d98e"
+  },
+  "x64_compiler": {
+    "path": "/private/tmp/mlkit-gc20-current/mlkit-x64",
+    "sha256": "36097ff0c36395301508002faca45947acf63e66b19ba070e5b1d5beb184eb56"
+  },
+  "arm64_runtime": {
+    "path": "lib/darwin-arm64/runtimeSystemGC.a",
+    "sha256": "649f51af4a095d4aa89b950e7db2af9a48be7f83c6efb40ffa9d1b05035f1cb8"
+  },
+  "x64_runtime": {
+    "path": "lib/darwin-x86_64/runtimeSystemGC.a",
+    "sha256": "0cb01dec0f45d2bcf15126652f5b0f216868398e0774c11a38b24cc7cdc08e10"
+  }
+}

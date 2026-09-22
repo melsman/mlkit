@@ -470,7 +470,9 @@ alloc_new_page(Gen *gen)
 
   #ifdef ENABLE_GC
   rp_used++;
-  if ( (!disable_gc) && (!time_to_gc) )
+  /* Deferral prevents collection, not recording a pending request. C calls
+   * may allocate while disabled; an enabled ML safe point will collect. */
+  if ( !time_to_gc )
     {
       // the treshold suggests when we can garbage collect without allocating
       // more memory.
@@ -930,7 +932,7 @@ allocGen (
 #ifdef ENABLE_GC
       lobjs_current += sizeof(void*)*n;
       lobjs_period += sizeof(void*)*n;
-      if ( (!disable_gc) && (lobjs_current>lobjs_gc_treshold) )
+      if ( lobjs_current>lobjs_gc_treshold )
 	{
 	  time_to_gc = 1;
 	}

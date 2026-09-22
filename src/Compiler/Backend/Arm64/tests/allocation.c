@@ -6,6 +6,7 @@
 #include "Tagging.h"
 #ifdef ENABLE_GC
 #include "GC.h"
+#include "CommandLine.h"
 #endif
 
 static Ro region;
@@ -13,9 +14,40 @@ static uintptr_t finite[8];
 static uintptr_t *before;
 #ifdef ENABLE_GC
 static unsigned long allocated_before;
+
+/* Both allocation paths must retain requests during a foreign-call extent.
+ * No collection may happen here, and the caller's deferral state is unchanged. */
+static void check_deferred_requests(Context ctx) {
+  Ro test_region;
+  long saved_disable = disable_gc;
+  size_t saved_request = time_to_gc;
+  size_t saved_pages = rp_gc_treshold;
+  size_t saved_large = lobjs_gc_treshold;
+  disable_gc = 1;
+  allocateRegion(ctx, &test_region, 0);
+  time_to_gc = 0;
+  rp_gc_treshold = 0;
+  alloc_new_page(&test_region.g0);
+  assert(time_to_gc == 1 && disable_gc == 1);
+  time_to_gc = 0;
+  lobjs_gc_treshold = 0;
+  *alloc(&test_region, 2048) = val_tag_table(2047);
+  assert(time_to_gc == 1 && disable_gc == 1);
+  /* A disabled collector must not inspect even an invalid root image. */
+  gc(ctx, NULL, 0);
+  assert(time_to_gc == 1 && disable_gc == 1);
+  deallocateRegion(ctx);
+  rp_gc_treshold = saved_pages;
+  lobjs_gc_treshold = saved_large;
+  time_to_gc = saved_request;
+  disable_gc = saved_disable;
+}
 #endif
 
 uintptr_t allocation_prepare(Context ctx, uintptr_t id) {
+#ifdef ENABLE_GC
+  if (id == 1) check_deferred_requests(ctx);
+#endif
   if (id == 4 || id == 7 || id == 17) return (uintptr_t)finite;
 #ifdef ENABLE_GC
   if (id == 14) allocatePairRegion(ctx, &region, 0);

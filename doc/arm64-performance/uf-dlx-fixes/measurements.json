@@ -1,0 +1,326 @@
+[
+  {
+    "benchmark": "uf",
+    "samples": {
+      "old-arm64": [
+        {
+          "seconds": 0.17895254190079868,
+          "cpu_seconds": 0.174449,
+          "rss_bytes": 7946240,
+          "gc_ms": 2.2,
+          "collections": 6,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1787597918882966,
+          "cpu_seconds": 0.1742,
+          "rss_bytes": 7962624,
+          "gc_ms": 2.4,
+          "collections": 6,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1785955000668764,
+          "cpu_seconds": 0.174296,
+          "rss_bytes": 7962624,
+          "gc_ms": 2.5,
+          "collections": 6,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.17875716695562005,
+          "cpu_seconds": 0.174282,
+          "rss_bytes": 8781824,
+          "gc_ms": 2.3,
+          "collections": 6,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.17815837496891618,
+          "cpu_seconds": 0.173711,
+          "rss_bytes": 8765440,
+          "gc_ms": 2.5,
+          "collections": 6,
+          "region_pages": 600
+        }
+      ],
+      "arm64": [
+        {
+          "seconds": 0.10804850002750754,
+          "cpu_seconds": 0.103444,
+          "rss_bytes": 7929856,
+          "gc_ms": 2.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1068185418844223,
+          "cpu_seconds": 0.10272,
+          "rss_bytes": 8749056,
+          "gc_ms": 2.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.10610570898279548,
+          "cpu_seconds": 0.101712,
+          "rss_bytes": 8798208,
+          "gc_ms": 2.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1065550409257412,
+          "cpu_seconds": 0.10175799999999999,
+          "rss_bytes": 7929856,
+          "gc_ms": 2.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.10650037485174835,
+          "cpu_seconds": 0.10265699999999998,
+          "rss_bytes": 8749056,
+          "gc_ms": 2.4,
+          "collections": 7,
+          "region_pages": 600
+        }
+      ],
+      "x64": [
+        {
+          "seconds": 0.13897495809942484,
+          "cpu_seconds": 0.13294399999999998,
+          "rss_bytes": 12513280,
+          "gc_ms": 3.4,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.18398179090581834,
+          "cpu_seconds": 0.17695499999999997,
+          "rss_bytes": 12492800,
+          "gc_ms": 4.1,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.15150604187510908,
+          "cpu_seconds": 0.14532299999999998,
+          "rss_bytes": 11673600,
+          "gc_ms": 3.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1398664580192417,
+          "cpu_seconds": 0.133234,
+          "rss_bytes": 12505088,
+          "gc_ms": 3.6,
+          "collections": 7,
+          "region_pages": 600
+        },
+        {
+          "seconds": 0.1386606669984758,
+          "cpu_seconds": 0.13261399999999998,
+          "rss_bytes": 12492800,
+          "gc_ms": 3.4,
+          "collections": 7,
+          "region_pages": 600
+        }
+      ]
+    },
+    "medians": {
+      "old-arm64": {
+        "seconds": 0.17875716695562005,
+        "cpu_seconds": 0.174282,
+        "rss_bytes": 7962624,
+        "gc_ms": 2.4,
+        "collections": 6,
+        "region_pages": 600
+      },
+      "arm64": {
+        "seconds": 0.1065550409257412,
+        "cpu_seconds": 0.10265699999999998,
+        "rss_bytes": 8749056,
+        "gc_ms": 2.6,
+        "collections": 7,
+        "region_pages": 600
+      },
+      "x64": {
+        "seconds": 0.1398664580192417,
+        "cpu_seconds": 0.133234,
+        "rss_bytes": 12492800,
+        "gc_ms": 3.6,
+        "collections": 7,
+        "region_pages": 600
+      }
+    },
+    "executables": {
+      "old-arm64": "83e24d3f075bcd4a89f1dcb9980edb0b323e0474d96fee31366d7917e4105211",
+      "arm64": "97cfc09d395de371f9d7ff1c5297fb4184f700195fe55dfccc76f0d746f04f5f",
+      "x64": "a45a24fae5c73cfe16a6328f683f19c9f4feba63af1679e89d8f9258e34feb12"
+    }
+  },
+  {
+    "benchmark": "dlx",
+    "samples": {
+      "old-arm64": [
+        {
+          "seconds": 0.25480345799587667,
+          "cpu_seconds": 0.250422,
+          "rss_bytes": 134578176,
+          "gc_ms": 1.5,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.2536541249137372,
+          "cpu_seconds": 0.247448,
+          "rss_bytes": 117522432,
+          "gc_ms": 1.7,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.2540717499796301,
+          "cpu_seconds": 0.247819,
+          "rss_bytes": 121012224,
+          "gc_ms": 1.6,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.25440566684119403,
+          "cpu_seconds": 0.249276,
+          "rss_bytes": 125534208,
+          "gc_ms": 1.4,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.2531409999355674,
+          "cpu_seconds": 0.24756699999999998,
+          "rss_bytes": 121585664,
+          "gc_ms": 1.6,
+          "collections": 8,
+          "region_pages": 2200
+        }
+      ],
+      "arm64": [
+        {
+          "seconds": 0.3621728748548776,
+          "cpu_seconds": 0.35659699999999994,
+          "rss_bytes": 28114944,
+          "gc_ms": 131.6,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.36318704206496477,
+          "cpu_seconds": 0.35692,
+          "rss_bytes": 27852800,
+          "gc_ms": 130.8,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3899660420138389,
+          "cpu_seconds": 0.381113,
+          "rss_bytes": 31129600,
+          "gc_ms": 142.1,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.36045020795427263,
+          "cpu_seconds": 0.355241,
+          "rss_bytes": 28934144,
+          "gc_ms": 130.5,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3640803750604391,
+          "cpu_seconds": 0.35824,
+          "rss_bytes": 27295744,
+          "gc_ms": 131.7,
+          "collections": 683,
+          "region_pages": 2400
+        }
+      ],
+      "x64": [
+        {
+          "seconds": 0.37983741611242294,
+          "cpu_seconds": 0.37144499999999997,
+          "rss_bytes": 33124352,
+          "gc_ms": 169.5,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.37912816600874066,
+          "cpu_seconds": 0.372148,
+          "rss_bytes": 35078144,
+          "gc_ms": 168.9,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.38126549986191094,
+          "cpu_seconds": 0.37525200000000003,
+          "rss_bytes": 35086336,
+          "gc_ms": 169.9,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3813562919385731,
+          "cpu_seconds": 0.37318799999999996,
+          "rss_bytes": 39563264,
+          "gc_ms": 163.5,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3797579579986632,
+          "cpu_seconds": 0.370619,
+          "rss_bytes": 37646336,
+          "gc_ms": 166.6,
+          "collections": 683,
+          "region_pages": 2400
+        }
+      ]
+    },
+    "medians": {
+      "old-arm64": {
+        "seconds": 0.2540717499796301,
+        "cpu_seconds": 0.247819,
+        "rss_bytes": 121585664,
+        "gc_ms": 1.6,
+        "collections": 8,
+        "region_pages": 2200
+      },
+      "arm64": {
+        "seconds": 0.36318704206496477,
+        "cpu_seconds": 0.35692,
+        "rss_bytes": 28114944,
+        "gc_ms": 131.6,
+        "collections": 683,
+        "region_pages": 2400
+      },
+      "x64": {
+        "seconds": 0.37983741611242294,
+        "cpu_seconds": 0.372148,
+        "rss_bytes": 35086336,
+        "gc_ms": 168.9,
+        "collections": 683,
+        "region_pages": 2400
+      }
+    },
+    "executables": {
+      "old-arm64": "4a097cdbdc7c208bc99d5cbca32c52c079a5a00d33a1cf313fe4d9114475cc50",
+      "arm64": "a19bd01ceb8c643dbb7f7e7b53ed62195d16c0bf0ae83fbccecf66743f0b9b77",
+      "x64": "0483bc376adc1a71bba29b0361939b3abcf0101f7f51cc0fcbc22632377dcba7"
+    }
+  }
+]
