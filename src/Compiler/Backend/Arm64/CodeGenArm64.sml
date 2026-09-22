@@ -89,6 +89,29 @@ struct
     | SS.STACK_ATY off => storeInto (src,SP,slot fsz off) code
     | SS.UNIT_ATY => code
     | _ => unsupported ("result " ^ SS.pr_aty dst)
+  (* Resolve allocated operands without routing them through scratch registers.
+   * Materialisation still owns x16/x17; keep those out of the direct GPR path. *)
+  fun operandInto fsz aty tmp =
+    case (aty,tmp) of
+      (SS.PHREG_ATY (src as X n),X _) =>
+        if n <> 16 andalso n <> 17 then (src,fn code => code)
+        else (tmp,readInto fsz aty tmp)
+    | (SS.PHREG_ATY (src as D _),D _) => (src,fn code => code)
+    | _ => (tmp,readInto fsz aty tmp)
+  fun destinationInto fsz aty tmp =
+    case (aty,tmp) of
+      (SS.PHREG_ATY (dst as X _),X _) => (dst,fn code => code)
+    | (SS.PHREG_ATY (dst as D _),D _) => (dst,fn code => code)
+    | _ => (tmp,writeInto fsz aty tmp)
+  fun assignInto fsz src dst code =
+    case (src,dst) of
+      (SS.PHREG_ATY a,_) => writeInto fsz dst a code
+    | (SS.STACK_ATY _,SS.PHREG_ATY b) => readInto fsz src b code
+    | (_,SS.PHREG_ATY b) =>
+        (case b of
+           X _ => readInto fsz src b code
+         | _ => (readInto fsz src (X 16) ++ moveInto (X 16,b)) code)
+    | _ => (readInto fsz src (X 16) ++ writeInto fsz dst (X 16)) code
   fun localFresh () = A.LocalLab(AddressLabels.new_named "arm64")
   (* Stage all arguments before loading their target registers. This handles
    * cycles without destroying input registers and keeps SP aligned. *)
@@ -130,6 +153,28 @@ struct
     in
       stackInto (true,8*temp) code
     end
+  fun registersPlaced regs args =
+    List.all (fn (i,a) => case a of SS.PHREG_ATY r => r = List.nth(regs,i)
+                                | _ => false)
+      (mapi (fn x => x) (first (length regs) args))
+  fun mlResultsInto fsz res code =
+    if not(registersPlaced [X 0,X 1,X 2] res) then resultsInto fsz res code
+    else
+      let
+        val spilled = rest 3 res
+        val n = length spilled
+        val rw = even n
+        (* Only stack results need copying. Stage them before writing caller
+         * slots so overlapping destinations remain safe. *)
+        val code = stackInto (false,16*rw) code
+        val code = foldri (fn (i,a,code) =>
+          (loadInto (SP,8*i,X 16)
+           ++ writeInto (fsz+2*rw) a (X 16)) code) code spilled
+        val code = foldri (fn (i,_,code) =>
+          (loadInto (SP,8*(rw+n-1-i),X 16)
+           ++ storeInto (X 16,SP,8*i)) code) code spilled
+      in stackInto (true,8*rw) code
+      end
   (* Return PCs anchor inline descriptors, just as on X64. The branch to
    * the callee skips the data; returning through x30 reaches executable code. *)
   fun continuationInto pc bv code =
@@ -158,7 +203,12 @@ struct
       val aw = even ac
       val rc = Int.max(0,length res-3)
       val rw = even rc
-      val staged = gp @ fp @ (case target of Direct _ => [] | Indirect a => [a])
+      (* RegAlloc has already placed ML register arguments. The fallback also
+       * supports direct users of the code generator with unresolved operands. *)
+      val placed = registersPlaced (map X AbiArm64.mlArgumentGPRs) gp andalso
+                   registersPlaced (map D AbiArm64.mlArgumentFPRs) fp
+      val staged = (if placed then sa else gp @ fp) @
+                   (case target of Direct _ => [] | Indirect a => [a])
       val sw = even(length staged)
       val newCall = aw+2+rw
       val oldArg = even(!currentArgs)+2
@@ -166,7 +216,8 @@ struct
       val dest = if tail then workspace+fsz+oldArg-(aw+2) else sw
       val () = if tail andalso rc <> !currentResults then
                  unsupported "tail call with incompatible result area" else ()
-      val stackArgs = mapi (fn (i,_) => i+8) (rest 8 gp) @
+      val stackArgs = if placed then List.tabulate(ac,fn i => i)
+                      else mapi (fn (i,_) => i+8) (rest 8 gp) @
                       mapi (fn (i,_) => length gp+8+i) (rest 8 fp)
       val code = if tail then
           (case target of
@@ -174,15 +225,16 @@ struct
            | Indirect _ => ins "br" ["x17"]) :: code
         else (callInto target returnLabel
            ++ continuationInto returnLabel bv
-           ++ resultsInto fsz res) code
+           ++ mlResultsInto fsz res) code
       val code = stackInto (false,8*(if tail then dest else sw)) code
       val code = case target of
                    Direct _ => code
                  | Indirect _ => (loadInto (SP,8*(length staged-1),X 17)
                     ++ loadInto (X 17,payload(),X 17)) code
-      val code = foldri (fn (i,_,code) => loadInto (SP,8*(length gp+i),D i) code)
+      val code = if placed then code else foldri (fn (i,_,code) => loadInto (SP,8*(length gp+i),D i) code)
                         code (first 8 fp)
-      val code = foldri (fn (i,_,code) => loadInto (SP,8*i,X i) code) code (first 8 gp)
+      val code = if placed then code else
+        foldri (fn (i,_,code) => loadInto (SP,8*i,X i) code) code (first 8 gp)
       val code = if tail then
                    (loadInto (SP,8*(workspace+fsz+even(!currentArgs)),X 29)
                       ++ loadInto (SP,8*(workspace+fsz+even(!currentArgs)+1),X 30)) code
@@ -534,65 +586,46 @@ struct
   fun primitiveInto fsz {name,args,res} code =
     let
       open PrimName
-      fun binary opn code =
+      fun operation opn tmp1 tmp2 code =
         (case (args,res) of
           ([a,b],[d]) =>
-            (readInto fsz a (X 16)
-              ++ readInto fsz b (X 17)
-              ++ instruction opn ["x16","x16","x17"]
-              ++ writeInto fsz d (X 16)) code
-          | _ => unsupported "primitive arity")
-      fun compare cc code =
+            let val (a,loadA) = operandInto fsz a tmp1
+                val (b,loadB) = operandInto fsz b tmp2
+                val (d,storeD) = destinationInto fsz d tmp1
+            in (loadA ++ loadB ++ instruction opn [r d,r a,r b] ++ storeD) code
+            end
+          | _ => unsupported "binary primitive arity")
+      fun binary opn = operation opn (X 16) (X 17)
+      fun fpBinary opn = operation opn (D 30) (D 31)
+      fun comparison opn tmp1 tmp2 cc code =
         (case (args,res) of
-          ([a,b],[SS.FLOW_VAR_ATY(_,t,f)]) =>
-            (readInto fsz a (X 16)
-              ++ readInto fsz b (X 17)
-              ++ instruction "cmp" ["x16","x17"]
-              ++ instruction ("b." ^ cc) [pr_lab(LocalLab t)]
-              ++ instruction "b" [pr_lab(LocalLab f)]) code
-          | ([a,b],[d]) =>
-            (readInto fsz a (X 16)
-              ++ readInto fsz b (X 17)
-              ++ instruction "cmp" ["x16","x17"]
-              ++ instruction "cset" ["x16",cc]
-              ++ instruction "lsl" ["x16","x16","#1"]
-              ++ instruction "add" ["x16","x16","#1"]
-              ++ writeInto fsz d (X 16)) code
+          ([a,b],[d]) =>
+            let val (a,loadA) = operandInto fsz a tmp1
+                val (b,loadB) = operandInto fsz b tmp2
+                val finish = case d of
+                    SS.FLOW_VAR_ATY(_,t,f) =>
+                      instruction ("b." ^ cc) [pr_lab(LocalLab t)] ++
+                      instruction "b" [pr_lab(LocalLab f)]
+                  | _ =>
+                      let val (d,storeD) = destinationInto fsz d (X 16)
+                      in instruction "cset" [r d,cc] ++
+                         instruction "lsl" [r d,r d,"#1"] ++
+                         instruction "add" [r d,r d,"#1"] ++ storeD
+                      end
+            in (loadA ++ loadB ++ instruction opn [r a,r b] ++ finish) code
+            end
           | _ => unsupported "comparison arity")
-      fun fpBinary opn code =
-        (case (args,res) of
-          ([a,b],[d]) =>
-            (readInto fsz a (D 30)
-              ++ readInto fsz b (D 31)
-              ++ instruction opn ["d30","d30","d31"]
-              ++ writeInto fsz d (D 30)) code
-          | _ => unsupported "floating binary arity")
+      fun compare cc = comparison "cmp" (X 16) (X 17) cc
+      (* MI/LS/GT/GE all reject unordered FP comparisons. *)
+      fun fpCompare cc = comparison "fcmp" (D 30) (D 31) cc
       fun fpUnary opn code =
         (case (args,res) of
           ([a],[d]) =>
-            (readInto fsz a (D 30)
-              ++ instruction opn ["d30","d30"]
-              ++ writeInto fsz d (D 30)) code
+            let val (a,loadA) = operandInto fsz a (D 30)
+                val (d,storeD) = destinationInto fsz d (D 30)
+            in (loadA ++ instruction opn [r d,r a] ++ storeD) code
+            end
           | _ => unsupported "floating unary arity")
-      (* MI/LS/GT/GE all reject unordered FP comparisons. Signed integer
-       * LT/LE would incorrectly treat NaN as less than another value. *)
-      fun fpCompare cc code =
-        (case (args,res) of
-          ([a,b],[SS.FLOW_VAR_ATY(_,t,f)]) =>
-            (readInto fsz a (D 30)
-              ++ readInto fsz b (D 31)
-              ++ instruction "fcmp" ["d30","d31"]
-              ++ instruction ("b." ^ cc) [pr_lab(LocalLab t)]
-              ++ instruction "b" [pr_lab(LocalLab f)]) code
-          | ([a,b],[d]) =>
-            (readInto fsz a (D 30)
-              ++ readInto fsz b (D 31)
-              ++ instruction "fcmp" ["d30","d31"]
-              ++ instruction "cset" ["x16",cc]
-              ++ instruction "lsl" ["x16","x16","#1"]
-              ++ instruction "add" ["x16","x16","#1"]
-              ++ writeInto fsz d (X 16)) code
-          | _ => unsupported "floating comparison arity")
       fun overflow () code =
         (addressInto(NameLab "exn_OVERFLOW",X 1)
           ++ moveInto(X 28,X 0)
@@ -600,38 +633,36 @@ struct
       fun checked opn code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let
-              val ok = localFresh()
+            let val ok = localFresh()
+                val (a,loadA) = operandInto fsz a (X 16)
+                val (b,loadB) = operandInto fsz b (X 17)
+                val (d,storeD) = destinationInto fsz d (X 16)
             in
-              (readInto fsz a (X 16)
-               ++ readInto fsz b (X 17)
-               ++ instruction opn ["x16","x16","x17"]
+              (loadA ++ loadB
+               ++ instruction opn [r d,r a,r b]
                ++ instruction "b.vc" [pr_lab ok]
                ++ overflow()
                ++ one (Label ok)
-               ++ writeInto fsz d (X 16)) code
+               ++ storeD) code
             end
           | _ => unsupported "checked integer arity")
       fun taggedBinary opn adjustment code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = if adjustment then
-                  let
-                    val ok = localFresh()
-                  in
-                    (instruction "b.vc" [pr_lab ok]
-                     ++ overflow()
-                     ++ one (Label ok)) code
-                  end
-                else
-                  code
+            let val (a,loadA) = operandInto fsz a (X 16)
+                val (b,loadB) = operandInto fsz b (X 17)
+                val (d,storeD) = destinationInto fsz d (X 16)
+                val code = storeD code
+                val code = if adjustment then
+                    let val ok = localFresh()
+                    in (instruction "b.vc" [pr_lab ok] ++ overflow()
+                        ++ one (Label ok)) code
+                    end
+                  else code
             in
-              (readInto fsz a (X 16)
-               ++ readInto fsz b (X 17)
-               ++ instruction "sub" ["x17","x17","#1"]
-               ++ instruction opn ["x16","x16","x17"]) code
+              (loadA ++ loadB
+               ++ instruction "sub" ["x17",r b,"#1"]
+               ++ instruction opn [r d,r a,"x17"]) code
             end
           | _ => unsupported "tagged arithmetic arity")
       fun boxed opn code =
@@ -1466,9 +1497,7 @@ struct
         end
     | LS.ASSIGN {pat = SS.FLOW_VAR_ATY(_,t,f),bind = LS.CON0{con,...}} =>
         ins "b" [pr_lab(LocalLab(if Con.eq(con,Con.con_TRUE) then t else f))] :: code
-    | LS.ASSIGN {pat,bind = LS.ATOM{aty}} =>
-        (readInto fsz aty (X 16)
-           ++ writeInto fsz pat (X 16)) code
+    | LS.ASSIGN {pat,bind = LS.ATOM{aty}} => assignInto fsz aty pat code
     | LS.ASSIGN {pat,bind = LS.LOAD l} =>
         (addressInto(DatLab l,X 16)
            ++ loadInto(X 16,0,X 16)

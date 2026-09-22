@@ -68,7 +68,7 @@ gcc -arch arm64 nested-scopes.s nested-scopes-link.s "$SML_LIB/lib/darwin-arm64/
 printf AB > nested-expected
 cmp nested-expected actual
 for n in 4 5 6 7; do
-  for suffix in "" -shrink; do
+  for suffix in "" -shrink -resolved -shrink-resolved; do
     gcc -arch arm64 "results$n$suffix.s" "results$n$suffix-link.s" "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o "results$n"
     "./results$n" > actual
     printf 'ABCDEFG' | cut -c "1-$n" | tr -d '\n' > returned

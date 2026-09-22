@@ -73,7 +73,7 @@ fun convention (a,r,locals) =
 fun x n = S.PHREG_ATY(I.X n)
 fun num n = S.WORD_ATY{value = IntInf.fromInt n,precision = 64}
 fun assign (a,b) = L.ASSIGN{pat = a,bind = L.ATOM{aty = b}}
-fun emitCase (count,grow) =
+fun emitCase (count,grow,resolved) =
   let val main = AddressLabels.new_named "result_main"
       val target = AddressLabels.new_named "result_target"
       val tail = AddressLabels.new_named "result_tail"
@@ -88,16 +88,32 @@ fun emitCase (count,grow) =
       val actual = List.tabulate(callerArgs,fn i => num i)
       val check = List.concat(List.tabulate(count,fn i =>
         [L.CCALL{name = "putchar",args = [List.nth(dests,i)],rhos_for_result = [],res = []}]))
+      fun place values =
+        if resolved then List.take(values,Int.min(8,length values)) else []
+      fun operands values =
+        if resolved then List.tabulate(length values,fn i =>
+          if i<8 then x i else List.nth(values,i)) else values
+      fun setup values = ListPair.map assign
+        (List.tabulate(length(place values),x),place values)
+      val returns = if resolved then List.tabulate(count,fn i =>
+        if i<3 then x i else List.nth(dests,i)) else dests
+      val fetch = if resolved then ListPair.map assign
+        (List.take(dests,3),List.tabulate(3,x)) else []
       val code = [L.FUN(main,convention(0,0,fsz),
-          L.FUNCALL{opr = tail,args = actual,reg_args = [],fargs = [],clos = NONE,res = dests,bv = []}::check),
+          setup actual @
+          (L.FUNCALL{opr = tail,args = operands actual,reg_args = [],fargs = [],clos = NONE,res = returns,bv = []}::
+           fetch @ check)),
         L.FUN(tail,convention(callerArgs,count,0),
-          [L.JMP{opr = target,args = args,reg_args = [],fargs = [],clos = NONE,res = outputs,bv = []}]),
+          setup args @
+          [L.JMP{opr = target,args = operands args,reg_args = [],fargs = [],clos = NONE,res = outputs,bv = []}]),
         L.FUN(target,callee,ListPair.map assign(outputs,List.tabulate(count,fn i => num(65+i))))]
-      val base = "results" ^ Int.toString count ^ (if grow then "" else "-shrink")
+      val base = "results" ^ Int.toString count ^ (if grow then "" else "-shrink") ^
+                 (if resolved then "-resolved" else "")
   in G.emit(G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false},base ^ ".s");
      G.emit(G.generate_link_code([main],([],[])),base ^ "-link.s")
   end
-val () = List.app (fn n => (emitCase(n,true);emitCase(n,false))) [4,5,6,7]
+val () = List.app (fn n => List.app (fn resolved =>
+  (emitCase(n,true,resolved);emitCase(n,false,resolved))) [false,true]) [4,5,6,7]
 
 (* Nested statement emission must preserve the following code suffix exactly
  * once, including through empty region scopes. Check it by executing AB. *)

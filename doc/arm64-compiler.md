@@ -291,3 +291,7 @@ removes return-PC table lookup while retaining the link-register ABI.
 
 Milestone 12 also adds [shared JumpTables switch selection](arm64-jump-table-results.md),
 with linear search, binary search, and relative jump tables following X64’s policy.
+
+The [backend comparison](arm64-backend-comparison.md) identifies remaining
+opportunities. Its first two items are implemented in the
+[call and operand optimisation](arm64-operand-results.md), with a small runtime comparison.
