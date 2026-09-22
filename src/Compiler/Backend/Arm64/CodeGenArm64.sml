@@ -1809,7 +1809,7 @@ struct
         else flowInto fsz (f,t,yes,no) code
     | LS.SWITCH_C (LS.SWITCH(a,[],default)) =>
         stmtsInto fsz default code
-    | LS.SWITCH_C (LS.SWITCH(a,cases as ((_,kind),_)::_,default)) =>
+    | LS.SWITCH_C (LS.SWITCH(a,cases as ((con,kind),_)::_,default)) =>
         let
           (* Constructor selectors are already encoded by closure conversion. *)
           fun tag k = IntInf.fromInt
@@ -1821,7 +1821,10 @@ struct
               LS.ENUM _ => code
             | LS.BOXED _ => loadInto (X 16,0,X 16) code
             | LS.UNBOXED_HIGH _ => ins "lsr" ["x16","x16","#48"] :: code
-            | LS.UNBOXED _ => (instruction "and" ["x17","x16","#3"]
+            | LS.UNBOXED _ =>
+                if Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS) then
+                  instruction "and" ["x16","x16","#3"] code
+                else (instruction "and" ["x17","x16","#3"]
                ++ instruction "cmp" ["x17","#3"]
                ++ instruction "csel" ["x16","x16","x17","eq"]) code
         in
@@ -1988,7 +1991,8 @@ struct
        ++ storeInto (X 29,SP,8*even ac)
        ++ storeInto (X 30,SP,8*(even ac+1))
        ++ addOffsetInto (SP,8*even ac,X 29)
-       ++ entryGCInto cc
+       ++ (if extra_gc_checks() orelse LS.allocating body then entryGCInto cc
+           else fn code => code)
        ++ stackInto (true,8*fsz)) code
     end
   fun CG {main_lab,code,imports,exports,safe} =
@@ -2133,6 +2137,7 @@ struct
             ++ constantInto(0,X 3)
             ++ constantInto(0,X 4)
             ++ instruction "bl" ["_mlkit_arm64_register_static_image"]
+            ++ instruction "bl" ["_mlkit_arm64_seal_main_image"]
             ++ addressInto(NameLab "stack_bot_gc",X 16)
             ++ moveInto(SP,X 17)
             ++ storeInto(X 17,X 16,0)) code

@@ -40,7 +40,7 @@ extern size_t *data_end_addr;
 inline static int
 points_into_dataspace (uintptr_t *p) {
 #if DARWIN_NATIVE
-  return mlkit_arm64_static_pointer(p);
+  return mlkit_arm64_in_static_data(p);
 #else
   return (p >= data_begin_addr) && (p <= data_end_addr);
 #endif

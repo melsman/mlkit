@@ -150,6 +150,33 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     fi
   done
 done
+# Non-allocating list recursion skips entry polling, but forced checks remain.
+# The allocating builder must still poll in the default mode.
+for policy in normal forced; do
+  checks=""
+  [ "$policy" != forced ] || checks=-extra_gc_checks
+  "$MLKIT_ARM64" --no_basislib -gc $checks --mlb-subdir "Poll$policy" \
+    --no_delete_target_files -o "poll-$policy" gc-frames.sml >> integration.log 2>&1
+  "./poll-$policy" > actual
+  cmp gc-expected actual
+  asm="MLB/ARM64_FD2_RI_GC_Poll$policy/gc-frames.sml.s"
+  for fun in sum build; do
+    awk -v name="$fun" '
+      /^\.globl _F\./ { active = index($0, "_F." name "__noinline") > 0 }
+      active { print }
+    ' "$asm" > "$fun-$policy.s"
+    test -s "$fun-$policy.s"
+  done
+  grep -q 'and x16, x16, #3' "sum-$policy.s"
+  if grep -q 'csel x16, x16, x17, eq' "sum-$policy.s"; then
+    echo 'List test still uses general constructor selection' >&2; exit 1
+  fi
+done
+if grep -Eq '_time_to_gc|_disable_gc' sum-normal.s; then
+  echo 'Non-allocating list recursion still polls for GC' >&2; exit 1
+fi
+grep -q '_time_to_gc' build-normal.s
+grep -q '_disable_gc' sum-forced.s
 # GC calls materialize x30, and no return-PC index is emitted.
 grep -q 'adr x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
 # One shared snapshot stub per unit, despite multiple ML function entries.

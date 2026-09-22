@@ -299,3 +299,7 @@ opportunities. Its first two items are implemented in the
 The [record, branch and GC optimisation](arm64-layout-results.md) keeps record
 destinations in registers, shortens nearby branches and addresses, and shares
 the GC snapshot slow path within each compilation unit.
+
+The [static-data, polling and list-test changes](arm64-static-data-results.md)
+remove executable static-image scans from GC, skip entry checks in
+non-allocating functions, and specialize list-constructor tests.

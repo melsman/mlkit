@@ -14,6 +14,21 @@ int main(void) {
   mlkit_arm64_register_static_image(roots,(void *)0x4000,(void *)0x5000,roots,1);
   assert(mlkit_arm64_static_pointer((void *)0x4000));
   assert(!mlkit_arm64_static_pointer((void *)0x5000));
+  uintptr_t second = 8, *second_roots[] = {&second};
+  uintptr_t dynamic = 9, *dynamic_roots[] = {&dynamic};
+  mlkit_arm64_register_static_image(second_roots, (void *)0x6000,
+                                    (void *)0x7000, second_roots, 1);
+  assert(!mlkit_arm64_in_static_data((void *)0x5500));
+  mlkit_arm64_seal_main_image();
+  assert(mlkit_arm64_dynamic_images == 0);
+  assert(mlkit_arm64_in_static_data((void *)0x5500));
+  assert(!mlkit_arm64_in_static_data((void *)0x7000));
+  mlkit_arm64_register_static_image(dynamic_roots, (void *)0x9000,
+                                    (void *)0xa000, dynamic_roots, 1);
+  assert(mlkit_arm64_dynamic_images == 1);
+  assert(mlkit_arm64_in_static_data((void *)0x9000));
+  assert(!mlkit_arm64_in_static_data((void *)0x8000));
+  assert(!mlkit_arm64_in_static_data((void *)0xa000));
   uintptr_t stack[64]={0}, snapshot[44]={0};
   for(unsigned i=0;i<64;i++) stack[i]=i;
   snapshot[31]=11; snapshot[12]=19; /* x0 and x19 */
@@ -26,6 +41,12 @@ int main(void) {
   assert(stack[8]==8 && stack[9]==9); /* uninitialized result slots/padding */
   assert(stack[49]==1049 && stack[18]==1018 && stack[17]==1017);
   assert(stack[45]==(uintptr_t)(sentinel+3) && global==1007);
+  assert(second == 1008 && dynamic == 1009);
+  mlkit_arm64_unregister_static_image(dynamic_roots);
+  assert(mlkit_arm64_dynamic_images == 0);
+  assert(!mlkit_arm64_in_static_data((void *)0x9000));
+  mlkit_arm64_unregister_static_image(second_roots);
+  assert(!mlkit_arm64_in_static_data((void *)0x5500));
   mlkit_arm64_unregister_static_image(roots);
   assert(!mlkit_arm64_static_pointer((void *)0x4000));
   /* Frame walking is independent of image registration. */

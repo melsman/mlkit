@@ -6,3 +6,13 @@ fun retain__noinline(t:tree,n:int) =
 val value = C(A(17,"x"),B)
 val result = retain__noinline(value,100)
 val () = prim("printStringML",case result of C(A(17,_),B) => "OK\n" | _ => "BAD\n")
+
+(* Two nullary constructors must retain their full selector, unlike lists. *)
+datatype mixed = First | Second | Payload of int
+fun classify__noinline First = 11
+  | classify__noinline Second = 22
+  | classify__noinline (Payload n) = n
+val () = if classify__noinline First < 12 andalso
+            21 < classify__noinline Second andalso
+            32 < classify__noinline (Payload 33) then ()
+         else raise Overflow
