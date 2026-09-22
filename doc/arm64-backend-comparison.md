@@ -5,7 +5,8 @@ This is an investigation, with a static check of the existing generated
 `nucleic.sml.s`; no compiler changes or new runtime measurements were made.
 
 Items 1 and 2 are subsequently implemented in the
-[call and operand optimisation](arm64-operand-results.md).
+[call and operand optimisation](arm64-operand-results.md). Items 3, 4 and 5
+are addressed by the [record, branch and GC optimisation](arm64-layout-results.md).
 
 The strongest remaining opportunities are to use the register allocator's
 results directly and to reduce unnecessary stack traffic. ARM64 now shares

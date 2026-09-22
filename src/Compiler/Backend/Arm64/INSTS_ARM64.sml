@@ -6,6 +6,7 @@ signature INSTS_ARM64 = sig
   type AsmPrg = inst list
   val pr_reg : reg -> string
   val optimise : AsmPrg -> AsmPrg
+  val relax : AsmPrg -> AsmPrg
   val emit : AsmPrg * string -> unit
   structure RI : REGISTER_INFO where type reg = reg where type lvar = lvar
 end

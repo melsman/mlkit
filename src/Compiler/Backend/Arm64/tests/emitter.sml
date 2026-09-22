@@ -57,6 +57,54 @@ in
              then () else raise Fail "ARM64 C-preserved allocation register"
     | _ => raise Fail "ARM64 integer palette") I.RI.caller_save_phregs
 end
+(* Range proofs include worst-case padding and inline data. Unknown sizes and
+ * cross-section targets must never justify a short branch or ADR. *)
+local
+  open I
+  val target = LocalLab(AddressLabels.new_named "range_target")
+  val name = pr_lab target
+  fun opCount name code = length(List.filter
+    (fn Op(n,_) => n = name | _ => false) code)
+  fun expect (name,ok) = if ok then () else raise Fail("ARM64 relaxation: " ^ name)
+  fun operands opn = if opn = "tbz" then ["x0","#0",name] else ["x0",name]
+  fun forward opn gap = relax [Op(opn,operands opn),Directive(".space " ^ Int.toString gap),Label target]
+  fun backward opn gap = relax [Label target,Directive(".space " ^ Int.toString gap),Op(opn,operands opn)]
+  val address = [Op("adrp",["x30",name ^ "@PAGE"]),
+                 Op("add",["x30","x30",name ^ "@PAGEOFF"])]
+  val table = [Op("cbz",["x0",name]),Directive ".p2align 3",
+               Directive ".quad 1,2,3",Label target]
+in
+  val () = expect("near conditional",opCount "b" (forward "cbz" 16) = 0)
+  val () = expect("near bit test",opCount "b" (forward "tbz" 16) = 0)
+  val () = expect("forward conditional fits bound",opCount "b" (forward "cbz" 1048564) = 0)
+  val () = expect("forward conditional too far",opCount "b" (forward "cbz" 1048576) = 1)
+  val () = expect("backward conditional boundary",opCount "b" (backward "cbz" 1048576) = 0)
+  val () = expect("backward conditional too far",opCount "b" (backward "cbz" 1048580) = 1)
+  val () = expect("forward bit-test fits bound",opCount "b" (forward "tbz" 32756) = 0)
+  val () = expect("forward bit-test too far",opCount "b" (forward "tbz" 32768) = 1)
+  val () = expect("backward bit-test boundary",opCount "b" (backward "tbz" 32768) = 0)
+  val () = expect("backward bit-test too far",opCount "b" (backward "tbz" 32772) = 1)
+  val () = expect("inline table",opCount "b" (relax table) = 0)
+  val () = expect("alignment can exceed range",opCount "b" (relax
+    [Op("cbz",["x0",name]),Directive ".space 1048564",Directive ".p2align 4",Label target]) = 1)
+  val () = expect("unknown directive",opCount "b" (relax
+    [Op("cbz",["x0",name]),Directive ".fill 100,4,0",Label target]) = 1)
+  val () = expect("section switch",opCount "b" (relax
+    [Op("cbz",["x0",name]),Directive ".data",Label target]) = 1)
+  val () = expect("text span across data",opCount "b" (relax
+    [Directive ".text",Op("cbz",["x0",name]),Directive ".data",
+     Directive ".space 2000000",Directive ".text",Label target]) = 0)
+  val () = expect("unknown section cannot alias text",opCount "b" (relax
+    [Directive ".text",Op("cbz",["x0",name]),Directive ".section __TEXT,__const",Label target]) = 1)
+  val () = expect("unknown size invalidates saved text offset",opCount "b" (relax
+    [Directive ".text",Op("cbz",["x0",name]),Directive ".fill 100,4,0",
+     Directive ".text",Label target]) = 1)
+  val () = expect("near return address",opCount "adr" (relax(address @ [Label target])) = 1)
+  val () = expect("distant address",opCount "adr" (relax
+    (address @ [Directive ".space 1048576",Label target])) = 0)
+  val () = expect("cross-section address",opCount "adr" (relax
+    (address @ [Directive ".data",Label target])) = 0)
+end
 (* Both register palettes can be used for allocation across C calls. *)
 val () = List.app (fn lv => case I.RI.lv_to_reg lv of
     I.X n => if List.exists (fn r => r = n) AbiArm64.reservedGPRs
@@ -114,6 +162,29 @@ fun emitCase (count,grow,resolved) =
   end
 val () = List.app (fn n => List.app (fn resolved =>
   (emitCase(n,true,resolved);emitCase(n,false,resolved))) [false,true]) [4,5,6,7]
+
+(* Record filling must preserve a source that aliases the destination. Also
+ * exercise a non-aliasing register destination and a spilled destination. *)
+local
+  val main = AddressLabels.new_named "record_destinations"
+  fun sample (i,dst) =
+    let val fields = [x 19,S.STACK_ATY 0]
+        fun put field =
+          [L.ASSIGN{pat = x 0,bind = L.SELECT(field,dst)},
+           L.CCALL{name = "putchar",args = [x 0],rhos_for_result = [],res = []}]
+    in
+      [assign(x 19,num(65+i)),assign(S.STACK_ATY 0,num(97+i)),
+       L.ASSIGN{pat = dst,bind = L.RECORD{elems = fields,
+         alloc = L.ATTOP_LF(S.REG_F_ATY 15,0),tag = BackendInfo.tag_record(false,2),
+         maybeuntag = false}}] @ put 0 @ put 1
+    end
+  val body = List.concat(CodeGenUtilArm64.mapi sample [x 19,x 20,S.STACK_ATY 1])
+  val code = [L.FUN(main,convention(0,0,16),body)]
+in
+  val () = G.emit(G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false},
+                  "record-destinations.s")
+  val () = G.emit(G.generate_link_code([main],([],[])),"record-destinations-link.s")
+end
 
 (* Nested statement emission must preserve the following code suffix exactly
  * once, including through empty region scopes. Check it by executing AB. *)

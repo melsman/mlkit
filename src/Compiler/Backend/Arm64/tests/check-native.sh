@@ -63,6 +63,10 @@ cmp expected actual
 "${ARM64_EMITTER:?Set ARM64_EMITTER to the host emitter-test executable}" > emitter.log 2>&1
 gcc -arch arm64 long-branches.s -o long-branches
 ./long-branches
+gcc -arch arm64 record-destinations.s record-destinations-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o record-destinations
+./record-destinations > actual
+printf AaBbCc > record-expected
+cmp record-expected actual
 gcc -arch arm64 nested-scopes.s nested-scopes-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o nested-scopes
 ./nested-scopes > actual
 printf AB > nested-expected
@@ -147,7 +151,11 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
   done
 done
 # GC calls materialize x30, and no return-PC index is emitted.
-grep -q 'adrp x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
+grep -q 'adr x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
+# One shared snapshot stub per unit, despite multiple ML function entries.
+for asm in MLB/ARM64_FD2_*/gc-frames.sml.s; do
+  [ "$(grep -c 'bl _gc$' "$asm")" = 1 ]
+done
 if grep -q '_arm64_frames' MLB/ARM64_FD2_*/gc-frames.sml.s; then
   echo 'GC code still contains a return-PC index' >&2; exit 1
 fi

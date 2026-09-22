@@ -295,3 +295,7 @@ with linear search, binary search, and relative jump tables following X64’s po
 The [backend comparison](arm64-backend-comparison.md) identifies remaining
 opportunities. Its first two items are implemented in the
 [call and operand optimisation](arm64-operand-results.md), with a small runtime comparison.
+
+The [record, branch and GC optimisation](arm64-layout-results.md) keeps record
+destinations in registers, shortens nearby branches and addresses, and shares
+the GC snapshot slow path within each compilation unit.

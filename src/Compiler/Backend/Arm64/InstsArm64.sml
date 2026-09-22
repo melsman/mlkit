@@ -91,23 +91,106 @@ structure InstsArm64 : INSTS_ARM64 = struct
         | _ => loop(rest,i::acc)
     in loop(code,[])
     end
+  (* Bound distances with every conditional branch expanded, every ADRP/ADD
+   * pair intact, and maximum alignment padding. Shrinking code cannot make
+   * any proven local span larger, so no iterative relaxation is necessary.
+   * Track text/data independently across switches, including cold blocks.
+   * Unknown directives end all proofs rather than guessing their size or
+   * section. Cross-span and external targets keep the conservative form. *)
+  fun relax code =
+    let
+      fun decimal s =
+        if size s > 0 andalso List.all Char.isDigit (String.explode s)
+        then Int.fromString s else NONE
+      fun directive s =
+        case String.tokens Char.isSpace s of
+          [".p2align",n] =>
+            (case decimal n of
+               SOME n => if n <= 20 then SOME(IntInf.toInt(IntInf.pow(2,n))-1) else NONE
+             | NONE => NONE)
+        | [".space",n] => decimal n
+        | ".globl"::_ => SOME 0
+        | kind::fields =>
+            if kind = ".quad" orelse kind = ".double" orelse kind = ".byte" then
+              SOME((if kind = ".byte" then 1 else 8) *
+                length(String.tokens (fn c => c = #",") (String.concat fields)))
+            else NONE
+        | _ => NONE
+      val textOffset = ref (1,0)
+      val dataOffset = ref (2,0)
+      val unknownOffset = ref (0,0)
+      val current = ref unknownOffset
+      val serial = ref 2
+      fun fresh () = (serial := !serial+1; (!serial,0))
+      fun barrier () =
+        (textOffset := fresh(); dataOffset := fresh();
+         unknownOffset := fresh(); current := unknownOffset)
+      fun advance n =
+        let val p = !current
+            val (segment,offset) = !p
+        in p := (segment,offset+n)
+        end
+      fun layout ([],labels,acc) = (labels,rev acc)
+        | layout (i::rest,labels,acc) =
+            let val here = !(!current)
+                val labels = case i of Label l => StringFinMap.add(pr_lab l,here,labels)
+                                           | _ => labels
+                val () = case i of
+                    Label _ => ()
+                  | Op(opn,_) => advance(if Option.isSome(inverse opn) then 8 else 4)
+                  | Directive ".text" => current := textOffset
+                  | Directive ".data" => current := dataOffset
+                  | Directive s =>
+                      (case directive s of SOME n => advance n | NONE => barrier())
+            in layout(rest,labels,(i,here)::acc)
+            end
+      val (labels,located) = layout(code,StringFinMap.empty,[])
+      fun within (segment,offset) target low high =
+        case StringFinMap.lookup labels target of
+          SOME (s,p) => s = segment andalso p-offset >= low andalso p-offset <= high
+        | NONE => false
+      fun localAddress (page,off) =
+        if String.isSuffix "@PAGE" page andalso
+           off = String.substring(page,0,size page-5) ^ "@PAGEOFF" then
+          SOME(String.substring(page,0,size page-5))
+        else NONE
+      fun loop ([],acc) = rev acc
+        | loop ((i as Op("adrp",[dst,page]),here)::
+                (j as Op("add",[dst',base,off]),there)::rest,acc) =
+            (case localAddress(page,off) of
+               SOME target =>
+                 if dst = dst' andalso dst = base andalso
+                    within here target (~1048576) 1048575 then
+                   loop(rest,Op("adr",[dst,target])::acc)
+                 else step(i,here,(j,there)::rest,acc)
+             | NONE => step(i,here,(j,there)::rest,acc))
+        | loop ((i,here)::rest,acc) = step(i,here,rest,acc)
+      and step (i,here,rest,acc) =
+        case i of
+          Op(opn,args) =>
+            (case inverse opn of
+               NONE => loop(rest,i::acc)
+             | SOME opposite =>
+                 let val target = List.last args
+                     val reach = if opn = "tbz" orelse opn = "tbnz" then 32768 else 1048576
+                 in
+                   if within here target (~reach) (reach-4) then loop(rest,i::acc)
+                   else
+                     let val skip = LocalLab(AddressLabels.new_named "arm64_branch_skip")
+                         val operands = List.take(args,length args-1)
+                     in loop(rest,Label skip :: Op("b",[target]) ::
+                          Op(opposite,operands @ [pr_lab skip]) :: acc)
+                     end
+                 end)
+        | _ => loop(rest,i::acc)
+    in loop(located,[])
+    end
   fun emit (code,file) =
-    let val os = TextIO.openOut file
-        val serial = ref 0
-        fun operation (s,args) = "\t" ^ s ^ " " ^ String.concatWith ", " args ^ "\n"
-        (* Generated parser functions exceed the conditional branch range.
-         * Use a nearby inverted test followed by the wider unconditional B.
-         * This also covers TBZ/TBNZ's much smaller 32 KiB reach. *)
+    let val code = relax code
+        val os = TextIO.openOut file
         fun line (Label l) = pr_lab l ^ ":\n"
           | line (Directive s) = s ^ "\n"
-          | line (Op (s,args)) = case inverse s of NONE => operation(s,args)
-              | SOME opposite =>
-                let val skip = "L_mlkit_branch_skip_" ^ Int.toString(!serial)
-                    val () = serial := !serial+1
-                    val target = List.last args
-                    val operands = List.take(args,length args-1)
-                in operation(opposite,operands@[skip]) ^ operation("b",[target]) ^ skip ^ ":\n"
-                end
+          | line (Op (s,args)) = "\t" ^ s ^ " " ^ String.concatWith ", " args ^ "\n"
     in (List.app (fn i => TextIO.output(os,line i)) code; TextIO.closeOut os)
        handle e => (TextIO.closeOut os; raise e)
     end

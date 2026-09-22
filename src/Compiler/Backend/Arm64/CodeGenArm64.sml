@@ -531,8 +531,8 @@ struct
       readInto fsz a (X 16) code
     end
   fun allocateInto fsz sma words code = allocateInRegionInto fsz sma words false code
-  (* Keep the destination on the stack while filling it: source operands may
-   * use either scratch register during address materialization. *)
+  (* A non-conflicting allocated destination survives field materialisation.
+   * Keep the stack fallback for spilled destinations and source aliases. *)
   datatype record_field = Constant of IntInf.int | Address of A.lab
   fun header tag fields =
     if tagged() then Constant(IntInf.fromInt(Word.toInt tag)) :: fields else fields
@@ -543,27 +543,54 @@ struct
       val (region,mode) = regionArg alloc
       val untag = untag andalso tagged() andalso not(tagPairs())
       val skip = localFresh()
-      val code = (loadInto (SP,0,X 16)
-         ++ stackInto (false,16)
-         ++ writeInto fsz pat (X 16)) code
-      val code = foldri (fn (i,a,code) =>
-        (readInto (fsz+2) a (X 16)
-           ++ loadInto (SP,0,X 17)
-           ++ storeInto (X 16,X 17,8*(i+length prefix))) code)
-        code elems
-      val code = foldri (fn (i,fragment,code) =>
-        (fieldInto fragment
-           ++ loadInto (SP,0,X 17)
-           ++ storeInto (X 16,X 17,8*i)) code)
-        (Label skip :: code) prefix
-      val code = if untag then (readInto (fsz+2) region (X 17)
-         ++ instruction "tbnz" ["x17","#0",pr_lab skip]) code
-                 else code
+      fun mentions dst (SS.PHREG_ATY src) = src = dst
+        | mentions _ _ = false
+      val resident = case pat of
+          SS.PHREG_ATY (dst as X n) =>
+            if List.exists (fn r => r = n) AbiArm64.allocatableGPRs andalso
+               not(List.exists (mentions dst) elems) andalso
+               not(untag andalso mentions dst region) then SOME dst else NONE
+        | _ => NONE
+      val words = if untag then length elems else length prefix+length elems
     in
-      (allocateInRegionInto fsz alloc
-        (if untag then length elems else length prefix+length elems) untag
-       ++ stackInto (true,16)
-       ++ storeInto (X 16,SP,0)) code
+      case resident of
+        SOME dst =>
+          let
+            val code = foldri (fn (i,a,code) =>
+              case a of
+                SS.PHREG_ATY src => storeInto (src,dst,8*(i+length prefix)) code
+              | _ => (readInto fsz a (X 16)
+                   ++ storeInto (X 16,dst,8*(i+length prefix))) code) code elems
+            val code = foldri (fn (i,fragment,code) =>
+              (fieldInto fragment ++ storeInto (X 16,dst,8*i)) code)
+              (Label skip :: code) prefix
+            val code = if untag then (readInto fsz region (X 17)
+               ++ instruction "tbnz" ["x17","#0",pr_lab skip]) code else code
+          in
+            (allocateInRegionInto fsz alloc words untag
+             ++ moveInto (X 16,dst)) code
+          end
+      | NONE =>
+          let
+            val code = (loadInto (SP,0,X 16)
+               ++ stackInto (false,16)
+               ++ writeInto fsz pat (X 16)) code
+            val code = foldri (fn (i,a,code) =>
+              (readInto (fsz+2) a (X 16)
+                 ++ loadInto (SP,0,X 17)
+                 ++ storeInto (X 16,X 17,8*(i+length prefix))) code) code elems
+            val code = foldri (fn (i,fragment,code) =>
+              (fieldInto fragment
+                 ++ loadInto (SP,0,X 17)
+                 ++ storeInto (X 16,X 17,8*i)) code)
+              (Label skip :: code) prefix
+            val code = if untag then (readInto (fsz+2) region (X 17)
+               ++ instruction "tbnz" ["x17","#0",pr_lab skip]) code else code
+          in
+            (allocateInRegionInto fsz alloc words untag
+             ++ stackInto (true,16)
+             ++ storeInto (X 16,SP,0)) code
+          end
     end
   val recordInto = recordWithUntagInto false
   fun regionAllocator place =
@@ -1877,11 +1904,48 @@ struct
       readInto fsz a (X 16) code
     end
 
+  val unitGCStub : A.lab option ref = ref NONE
+  (* x16 points at [mask,skipped,results,args] metadata; BL supplies the
+   * stub continuation in x30. The incoming ML return PC is already in the
+   * function header and the root walker continues to read it there. *)
+  fun gcStubInto lab code =
+    let
+      val registers = List.filter (fn n => n<>18) (List.tabulate(31,fn i => i))
+      val floats = List.tabulate(8,fn i => i)
+      val code = (stackInto (false,352) ++ instruction "ret" []) code
+      val code = foldr (fn (n,code) => loadInto (SP,8*(31-n),X n) code) code registers
+      val code = foldr (fn (i,code) => loadInto (SP,8*(39-i),D i) code) code floats
+      val code = (loadInto (X 16,0,X 2)
+         ++ moveInto (X 28,X 0)
+         ++ moveInto (SP,X 1)
+         ++ instruction "bl" ["_gc"]) code
+      val code = foldr (fn (i,code) =>
+        (loadInto (X 16,8*(i+1),X 17)
+         ++ storeInto (X 17,SP,320+8*i)) code) code [0,1,2]
+      val code = (addOffsetInto (SP,352,X 17)
+         ++ storeInto (X 17,SP,0)
+         ++ storeInto (X 17,SP,344)
+         ++ constantInto (0,X 17)
+         ++ storeInto (X 17,SP,104)) code
+      val code = foldr (fn (i,code) => storeInto (D i,SP,8*(39-i)) code) code floats
+      val code = foldr (fn (n,code) => storeInto (X n,SP,8*(31-n)) code) code registers
+    in
+      (one (Directive ".text") ++ one (Directive ".p2align 2")
+       ++ one (Label lab) ++ stackInto (true,352)) code
+    end
   fun entryGCInto cc code =
     if not(gc()) then code
     else
       let
         val done = localFresh()
+        val stub = case !unitGCStub of
+            SOME l => l
+          | NONE =>
+              let val l = localFresh()
+                  val () = unitGCStub := SOME l
+                  val () = addStatic (gcStubInto l [])
+              in l
+              end
         val ac = CallConv.get_ccf_size cc
         val rc = CallConv.get_rcf_size cc
         val skip = length(CallConv.get_spilled_region_and_float_args cc)
@@ -1889,33 +1953,24 @@ struct
           case A.RI.lv_to_reg lv of
             X n => Word32.orb(w,Word32.<<(0w1,Word.fromInt n))
           | _ => w) 0w0 (CallConv.get_register_args_excluding_region_and_float_args cc)
-        val registers = List.filter (fn n => n<>18) (List.tabulate(31,fn i => i))
-        val floats = List.tabulate(8,fn i => i)
-        val code = (stackInto (false,352)
-           ++ one (Label done)) code
-        val code = foldr (fn (n,code) => loadInto (SP,8*(31-n),X n) code) code registers
-        val code = foldr (fn (i,code) => loadInto (SP,8*(39-i),D i) code) code floats
-        val code = (moveInto (X 28,X 0)
-           ++ moveInto (SP,X 1)
-           ++ constantInto (Word32.toLargeInt mask,X 2)
-           ++ instruction "bl" ["_gc"]) code
-        val code = foldri (fn (i,n,code) => (constantInto (IntInf.fromInt n,X 16)
-           ++ storeInto (X 16,SP,320+8*i)) code) code [skip,rc,ac]
-        val code = foldr (fn (i,code) => storeInto (D i,SP,8*(39-i)) code) code floats
-        val code = (addOffsetInto (SP,352,X 16)
-           ++ storeInto (X 16,SP,0)
-           ++ storeInto (X 16,SP,344)
-           ++ constantInto (0,X 16)
-           ++ storeInto (X 16,SP,104)) code
-        val code = foldr (fn (n,code) => storeInto (X n,SP,8*(31-n)) code) code registers
-        val code = stackInto (true,352) code
-        val code = if extra_gc_checks() then code else ins "cbz" ["x16",pr_lab done] :: code
-      in
-        (addressInto (NameLab "disable_gc",X 16)
+        val metadata = localFresh()
+        val () = addStatic
+          [Directive ".data",Directive ".p2align 3",Label metadata,
+           Directive(".quad 0x" ^ Word32.fmt StringCvt.HEX mask),
+           Directive(".quad " ^ Int.toString skip),
+           Directive(".quad " ^ Int.toString rc),
+           Directive(".quad " ^ Int.toString ac)]
+        val code = (addressInto (NameLab "disable_gc",X 16)
            ++ loadInto (X 16,0,X 16)
            ++ instruction "cbnz" ["x16",pr_lab done]
-           ++ addressInto (NameLab "time_to_gc",X 16)
-           ++ loadInto (X 16,0,X 16)) code
+           ++ addressInto (metadata,X 16)
+           ++ instruction "bl" [pr_lab stub]
+           ++ one (Label done)) code
+      in
+        if extra_gc_checks() then code
+        else (addressInto (NameLab "time_to_gc",X 16)
+           ++ loadInto (X 16,0,X 16)
+           ++ instruction "cbz" ["x16",pr_lab done]) code
       end
   fun topInto (l,cc,body) code =
     let
@@ -1939,6 +1994,7 @@ struct
   fun CG {main_lab,code,imports,exports,safe} =
     let
       val () = staticChunks := []
+      val () = unitGCStub := NONE
       val () = dataLabels := []
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
