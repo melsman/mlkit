@@ -1,0 +1,23 @@
+{
+  "nucleic": {
+    "files": 4,
+    "scratch_copy_before_cmp": 2,
+    "scratch_zero_definitions": 105,
+    "allocation_accounting_sites": 1082,
+    "gc_poll_sites": 50
+  },
+  "mlyacc": {
+    "files": 62,
+    "scratch_copy_before_cmp": 511,
+    "scratch_zero_definitions": 2269,
+    "allocation_accounting_sites": 2670,
+    "gc_poll_sites": 686
+  },
+  "professor": {
+    "files": 1,
+    "scratch_copy_before_cmp": 92,
+    "scratch_zero_definitions": 120,
+    "allocation_accounting_sites": 99,
+    "gc_poll_sites": 44
+  }
+}

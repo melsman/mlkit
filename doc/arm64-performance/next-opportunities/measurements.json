@@ -1,0 +1,228 @@
+{
+  "production_revision": "a6d7fb9",
+  "gc": true,
+  "warmups": 1,
+  "repetitions": 5,
+  "basis": "All ARM variants share M12RetAfter Basis/runtime; benchmark assembly only changes",
+  "results": [
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "baseline": [
+          {
+            "wall_seconds": 0.15325129078701138,
+            "cpu_seconds": 0.14846900000000007,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15600362489931285,
+            "cpu_seconds": 0.15007600000000007,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1559412081260234,
+            "cpu_seconds": 0.150443,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1546397500205785,
+            "cpu_seconds": 0.1494200000000001,
+            "gc_ms": 6.7,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1550426660105586,
+            "cpu_seconds": 0.14943499999999954,
+            "gc_ms": 6.0,
+            "collections": 28
+          }
+        ],
+        "leaf": [
+          {
+            "wall_seconds": 0.15304908389225602,
+            "cpu_seconds": 0.1481139999999999,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15801758412271738,
+            "cpu_seconds": 0.15136900000000003,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15586687484756112,
+            "cpu_seconds": 0.14951900000000007,
+            "gc_ms": 5.8,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1559135417919606,
+            "cpu_seconds": 0.1507170000000001,
+            "gc_ms": 5.8,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15593300014734268,
+            "cpu_seconds": 0.15111999999999975,
+            "gc_ms": 6.0,
+            "collections": 28
+          }
+        ],
+        "inline": [
+          {
+            "wall_seconds": 0.1509455000050366,
+            "cpu_seconds": 0.1457529999999998,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1733398330397904,
+            "cpu_seconds": 0.1657469999999997,
+            "gc_ms": 7.4,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15322429197840393,
+            "cpu_seconds": 0.1474419999999996,
+            "gc_ms": 6.6,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1497723748907447,
+            "cpu_seconds": 0.14467799999999997,
+            "gc_ms": 5.7,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15137445903383195,
+            "cpu_seconds": 0.14582100000000014,
+            "gc_ms": 6.2,
+            "collections": 28
+          }
+        ],
+        "comparisons": [
+          {
+            "wall_seconds": 0.15162962512113154,
+            "cpu_seconds": 0.14626699999999984,
+            "gc_ms": 6.4,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14991220901720226,
+            "cpu_seconds": 0.1449730000000001,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15482158306986094,
+            "cpu_seconds": 0.14833300000000058,
+            "gc_ms": 6.0,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15258183307014406,
+            "cpu_seconds": 0.1472810000000001,
+            "gc_ms": 6.4,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.14978662505745888,
+            "cpu_seconds": 0.14452899999999985,
+            "gc_ms": 5.7,
+            "collections": 28
+          }
+        ],
+        "constants": [
+          {
+            "wall_seconds": 0.15442762500606477,
+            "cpu_seconds": 0.14998800000000007,
+            "gc_ms": 6.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15503679192624986,
+            "cpu_seconds": 0.14950899999999992,
+            "gc_ms": 6.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15423904196359217,
+            "cpu_seconds": 0.14928899999999992,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15430408297106624,
+            "cpu_seconds": 0.14984599999999965,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.15373975015245378,
+            "cpu_seconds": 0.14881400000000056,
+            "gc_ms": 5.8,
+            "collections": 28
+          }
+        ]
+      },
+      "medians": {
+        "baseline": {
+          "wall_seconds": 0.1550426660105586,
+          "cpu_seconds": 0.14943499999999954,
+          "gc_ms": 6.2,
+          "collections": 28
+        },
+        "leaf": {
+          "wall_seconds": 0.1559135417919606,
+          "cpu_seconds": 0.1507170000000001,
+          "gc_ms": 6.0,
+          "collections": 28
+        },
+        "inline": {
+          "wall_seconds": 0.15137445903383195,
+          "cpu_seconds": 0.14582100000000014,
+          "gc_ms": 6.2,
+          "collections": 28
+        },
+        "comparisons": {
+          "wall_seconds": 0.15162962512113154,
+          "cpu_seconds": 0.14626699999999984,
+          "gc_ms": 6.1,
+          "collections": 28
+        },
+        "constants": {
+          "wall_seconds": 0.15430408297106624,
+          "cpu_seconds": 0.14950899999999992,
+          "gc_ms": 6.2,
+          "collections": 28
+        }
+      },
+      "executables": {
+        "baseline": {
+          "path": "/private/tmp/mlkit-m12-next/mlyacc-baseline.exe",
+          "sha256": "3ddef8484a7f5084e254f9ed19ca05c5e76a989663a58c891de3b58b7a80e369"
+        },
+        "leaf": {
+          "path": "/private/tmp/mlkit-m12-next/mlyacc-leaf.exe",
+          "sha256": "35e812ede934a156693902fe066bde8bf5871c36d91cfa8ed9ee9676510a9307"
+        },
+        "inline": {
+          "path": "/private/tmp/mlkit-m12-next/mlyacc-inline.exe",
+          "sha256": "0a38aefc525277fd7b06931c1c553e71795c4f611b984547f52ce9393524ef08"
+        },
+        "comparisons": {
+          "path": "/private/tmp/mlkit-m12-next/mlyacc-comparisons.exe",
+          "sha256": "485438b96c1987db6449f681268aa9ca013ac41c0239b1c32317d6c30fa92ff1"
+        },
+        "constants": {
+          "path": "/private/tmp/mlkit-m12-next/mlyacc-constants.exe",
+          "sha256": "e9fa43078b32852b215c783072d77500a2a912946fc39d1b251d682feb327156"
+        }
+      }
+    }
+  ]
+}

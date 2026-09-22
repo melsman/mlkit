@@ -8,6 +8,10 @@ Items 1 and 2 are subsequently implemented in the
 [call and operand optimisation](arm64-operand-results.md). Items 3, 4 and 5
 are addressed by the [record, branch and GC optimisation](arm64-layout-results.md).
 
+For the current priorities after the return fix, see
+[the follow-up investigation](arm64-next-opportunities.md). The analysis below
+describes the earlier revision.
+
 The strongest remaining opportunities are to use the register allocator's
 results directly and to reduce unnecessary stack traffic. ARM64 now shares
 the broad strategies of X64: code-suffix construction, register allocation,
