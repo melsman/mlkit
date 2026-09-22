@@ -1,0 +1,9 @@
+_F.gtTerm5_li4Gg7IeAdZkom7kAq7rxA:
+	leaq -8(%rsp),%rsp
+	movq %rax,%rdx
+	cmpq %rbx,%rdx
+	movq $1,%rdi
+	movq $3,%r11
+	cmovgq %r11,%rdi
+	leaq 8(%rsp),%rsp
+	ret

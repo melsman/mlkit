@@ -1,0 +1,26 @@
+_F.count37_0dPagHutgtsMrMoJoTfbxl:
+	leaq -8(%rsp),%rsp
+	movq %rbx,%r11
+	andq $3,%r11
+	cmpq $0,%r11
+	jne L_newSelLab_eBRqJiHUZgzoLLJzvJaNks
+	cmpq $1,%rdi
+	jne L_newSelLab_MbcG8yTvRrADtzkpTyTgya
+	movq 8(%rbx),%rdi
+	leaq 8(%rsp),%rsp
+	ret
+	.p2align 0x4
+L_newSelLab_MbcG8yTvRrADtzkpTyTgya:
+	movq 16(%rbx),%rbx
+	subq $3,%rdi
+	jo ___raise_overflow
+	addq $1,%rdi
+	jo ___raise_overflow
+	leaq 8(%rsp),%rsp
+	jmp _F.count37_0dPagHutgtsMrMoJoTfbxl
+	.p2align 0x4
+L_newSelLab_eBRqJiHUZgzoLLJzvJaNks:
+	movq 8(%rax),%rbx
+	movq %rbx,%rsi
+	movq %r14,%rdi
+	call _raise_exn

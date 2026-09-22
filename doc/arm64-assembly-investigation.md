@@ -10,6 +10,8 @@ Follow-up: [compile-time live-register preservation](arm64-live-register-results
 is now implemented for region entry/exit calls.
 [Identity wrappers and self-tail loops](arm64-tail-frame-results.md) also have
 a production implementation and a separate small benchmark comparison.
+The [remaining-slowdown investigation](arm64-residual-slowdown.md) measures
+the next opportunities after both implementations and a fresh Basis rebuild.
 
 ## Measurements
 

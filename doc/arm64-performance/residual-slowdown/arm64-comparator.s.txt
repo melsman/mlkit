@@ -1,0 +1,14 @@
+_F.gtTerm5_r9immfQaI4F15rxHvYYQoe:
+	stp x29, x30, [sp, #0]
+	add x29, sp, #0
+	mov x16, x0
+	mov x3, x16
+	mov x16, x1
+	mov x1, x16
+	cmp x3, x1
+	cset x0, gt
+	lsl x0, x0, #1
+	add x0, x0, #1
+	ldp x29, x30, [sp, #0]
+	add sp, sp, #16
+	ret 
