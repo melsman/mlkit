@@ -1,0 +1,270 @@
+{
+  "production_revision": "924178a",
+  "gc": true,
+  "warmups": 1,
+  "repetitions": 5,
+  "basis": "All ARM variants share M12SelectFinal Basis/runtime; benchmark assembly only changes",
+  "results": [
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "x64": [
+          {
+            "wall_seconds": 0.20056670811027288,
+            "cpu_seconds": 0.19321999999999998,
+            "gc_ms": 8.7,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.1964237499050796,
+            "cpu_seconds": 0.18922699999999973,
+            "gc_ms": 8.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.20131841604597867,
+            "cpu_seconds": 0.19494600000000062,
+            "gc_ms": 8.5,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.2003947920165956,
+            "cpu_seconds": 0.19473199999999946,
+            "gc_ms": 8.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.222483417019248,
+            "cpu_seconds": 0.2142170000000001,
+            "gc_ms": 9.6,
+            "collections": 28
+          }
+        ],
+        "baseline": [
+          {
+            "wall_seconds": 0.24531979206949472,
+            "cpu_seconds": 0.240536,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.24938200018368661,
+            "cpu_seconds": 0.24443499999999993,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.24682620796374977,
+            "cpu_seconds": 0.2418409999999997,
+            "gc_ms": 6.0,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.24911574996076524,
+            "cpu_seconds": 0.24414100000000005,
+            "gc_ms": 6.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.24660070799291134,
+            "cpu_seconds": 0.24115399999999998,
+            "gc_ms": 5.8,
+            "collections": 28
+          }
+        ],
+        "leaf": [
+          {
+            "wall_seconds": 0.2394358750898391,
+            "cpu_seconds": 0.23396299999999984,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.23890666593797505,
+            "cpu_seconds": 0.23472900000000002,
+            "gc_ms": 5.7,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.23926550010219216,
+            "cpu_seconds": 0.234512000000001,
+            "gc_ms": 5.8,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.2424190838355571,
+            "cpu_seconds": 0.23720399999999958,
+            "gc_ms": 6.5,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.2410860420204699,
+            "cpu_seconds": 0.2355190000000007,
+            "gc_ms": 6.4,
+            "collections": 28
+          }
+        ],
+        "inline": [
+          {
+            "wall_seconds": 0.22347141685895622,
+            "cpu_seconds": 0.21761099999999986,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.22196662495844066,
+            "cpu_seconds": 0.216406,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.21931908302940428,
+            "cpu_seconds": 0.21463699999999958,
+            "gc_ms": 5.9,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.22554458281956613,
+            "cpu_seconds": 0.2206820000000007,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.22015574993565679,
+            "cpu_seconds": 0.2150399999999988,
+            "gc_ms": 6.1,
+            "collections": 28
+          }
+        ],
+        "comparisons": [
+          {
+            "wall_seconds": 0.2205576670821756,
+            "cpu_seconds": 0.215293,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.21928370906971395,
+            "cpu_seconds": 0.21469400000000033,
+            "gc_ms": 5.9,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.2183167499024421,
+            "cpu_seconds": 0.21275899999999942,
+            "gc_ms": 6.0,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.22333025000989437,
+            "cpu_seconds": 0.21863499999999997,
+            "gc_ms": 6.1,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.2185153749305755,
+            "cpu_seconds": 0.21409900000000104,
+            "gc_ms": 6.9,
+            "collections": 28
+          }
+        ],
+        "brreturns": [
+          {
+            "wall_seconds": 0.1698350419756025,
+            "cpu_seconds": 0.16549700000000023,
+            "gc_ms": 6.2,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.16932462505064905,
+            "cpu_seconds": 0.16427000000000014,
+            "gc_ms": 6.0,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.16989762498997152,
+            "cpu_seconds": 0.16520799999999913,
+            "gc_ms": 5.8,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.17148583312518895,
+            "cpu_seconds": 0.16657499999999958,
+            "gc_ms": 6.3,
+            "collections": 28
+          },
+          {
+            "wall_seconds": 0.17095270799472928,
+            "cpu_seconds": 0.16607500000000064,
+            "gc_ms": 5.5,
+            "collections": 28
+          }
+        ]
+      },
+      "medians": {
+        "x64": {
+          "wall_seconds": 0.20056670811027288,
+          "cpu_seconds": 0.19473199999999946,
+          "gc_ms": 8.5,
+          "collections": 28
+        },
+        "baseline": {
+          "wall_seconds": 0.24682620796374977,
+          "cpu_seconds": 0.2418409999999997,
+          "gc_ms": 6.2,
+          "collections": 28
+        },
+        "leaf": {
+          "wall_seconds": 0.2394358750898391,
+          "cpu_seconds": 0.23472900000000002,
+          "gc_ms": 6.1,
+          "collections": 28
+        },
+        "inline": {
+          "wall_seconds": 0.22196662495844066,
+          "cpu_seconds": 0.216406,
+          "gc_ms": 6.2,
+          "collections": 28
+        },
+        "comparisons": {
+          "wall_seconds": 0.21928370906971395,
+          "cpu_seconds": 0.21469400000000033,
+          "gc_ms": 6.1,
+          "collections": 28
+        },
+        "brreturns": {
+          "wall_seconds": 0.16989762498997152,
+          "cpu_seconds": 0.16549700000000023,
+          "gc_ms": 6.0,
+          "collections": 28
+        }
+      },
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/mlyacc-x64-gc.exe",
+          "sha256": "636ff554c1f37b8de3e617c20341997206a765b5f3302c8cc23e9b28db38cf66"
+        },
+        "baseline": {
+          "path": "/private/tmp/mlkit-m12-mlyacc-study/mlyacc-baseline.exe",
+          "sha256": "5c0ee89c13ebdb1612089695a3a9fcabf3ef25be89ef428ac8cfbdb47e5e1ea9"
+        },
+        "leaf": {
+          "path": "/private/tmp/mlkit-m12-mlyacc-study/mlyacc-leaf.exe",
+          "sha256": "11883043b3612cfe0cc74874d9b720a18dc8ce829ed7c3e04a4ea55ce105fd86"
+        },
+        "inline": {
+          "path": "/private/tmp/mlkit-m12-mlyacc-study/mlyacc-inline.exe",
+          "sha256": "3ce0c4db9d0e7811e62fbea1e70bd9bc444b22b4dbe8cb81116be20689aba3e8"
+        },
+        "comparisons": {
+          "path": "/private/tmp/mlkit-m12-mlyacc-study/mlyacc-comparisons.exe",
+          "sha256": "7122b57a167b0b3cae68040c3cf97cf9168a9cff7fb5b5aae212249432309a69"
+        },
+        "brreturns": {
+          "path": "/private/tmp/mlkit-m12-mlyacc-study/mlyacc-brreturns.exe",
+          "sha256": "a0c179159af8d746cdf3c0909f4875c71f6b2b6ac59e2477c349bc229b530485"
+        }
+      }
+    }
+  ]
+}

@@ -10,6 +10,9 @@ This investigation changes no production compiler or runtime code.
 Follow-up: [instruction selection and peephole cleanup](arm64-instruction-selection-results.md)
 are implemented. The inlining opportunity remains deferred.
 
+Later investigation: [GC call/return prediction mismatch](arm64-mlyacc-return-prediction.md)
+identifies a substantially larger mlyacc cost after these improvements.
+
 ## Controlled experiments
 
 Median wall-clock seconds on the same M2 Max, GC enabled. Each variant uses
