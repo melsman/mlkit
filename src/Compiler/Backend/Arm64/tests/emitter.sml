@@ -186,6 +186,92 @@ in
   val () = G.emit(G.generate_link_code([main],([],[])),"record-destinations-link.s")
 end
 
+(* Identity wrappers must not touch the frame; reordered arguments must still
+ * be shuffled. Self loops reuse only an empty local frame, with register args.
+ * Keep forced-polling and profiling entries on the ordinary path. *)
+local
+  val main = AddressLabels.new_named "tail_frames"
+  val target = AddressLabels.new_named "tail_target"
+  val wrapper = AddressLabels.new_named "tail_identity"
+  val reorder = AddressLabels.new_named "tail_reorder"
+  val loop = AddressLabels.new_named "tail_loop"
+  val locals = AddressLabels.new_named "tail_locals"
+  val stackLoop = AddressLabels.new_named "tail_stack"
+  val swapLoop = AddressLabels.new_named "tail_swap"
+  val fpTarget = AddressLabels.new_named "tail_fp_target"
+  val fpWrapper = AddressLabels.new_named "tail_fp_wrapper"
+  val fp = S.PHREG_ATY(I.D 0)
+  fun tail lab args fargs = L.JMP{opr = lab,args = args,reg_args = [],fargs = fargs,
+                                 clos = NONE,res = [x 0],bv = []}
+  fun call lab args fargs = L.FUNCALL{opr = lab,args = args,reg_args = [],fargs = fargs,
+                                    clos = NONE,res = [x 0],bv = []}
+  val put = L.CCALL{name = "putchar",args = [x 0],rhos_for_result = [],res = []}
+  fun loopBody lab = [L.SWITCH_W{precision = 64,
+    switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
+      [L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
+       tail lab [x 0,x 1] []])}]
+  val (fpcc,_,_) = CallConv.resolve_cc FrameLayout.arm64 regs
+    (CallConv.mk_cc{clos = NONE,args = fresh 1,reg_args = [],fargs = fresh 1,res = fresh 1})
+  val fpcc = CallConv.add_frame_size(fpcc,0)
+  val stackcc = convention(9,1,0)
+  val stackArg = S.STACK_ATY(#2(hd(CallConv.get_spilled_args_with_offsets stackcc)))
+  fun fallbackBody lab args = [L.SWITCH_W{precision = 64,
+    switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
+      [L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
+       tail lab args []])}]
+  val code = [L.FUN(main,convention(0,0,0),
+      [call wrapper [num 0,num 65] [],put,
+       call reorder [num 66,num 0] [],put,
+       call loop [num 100000,num 67] [],put,
+       call locals [num 100000,num 68] [],put,
+       assign(fp,num 69),call fpWrapper [num 0] [fp],put,
+       call stackLoop ([num 100000,num 70] @ List.tabulate(7,fn _ => num 0)) [],put,
+       call swapLoop [num 100001,num 0,num 71] [],put]),
+    L.FUN(wrapper,convention(2,1,2),[L.SCOPE{pat = [],scope = [L.LETREGION{rhos = [],body = [tail target [x 0,x 1] []]}]}]),
+    L.FUN(reorder,convention(2,1,0),[tail target [x 1,x 0] []]),
+    L.FUN(target,convention(2,1,0),[assign(x 0,x 1)]),
+    L.FUN(loop,convention(2,1,0),loopBody loop),
+    L.FUN(locals,convention(2,1,2),loopBody locals),
+    L.FUN(fpWrapper,fpcc,[tail fpTarget [x 0] [fp]]),
+    L.FUN(fpTarget,fpcc,[assign(x 0,fp)]),
+    L.FUN(stackLoop,stackcc,fallbackBody stackLoop (List.tabulate(8,x) @ [stackArg])),
+    L.FUN(swapLoop,convention(3,1,0),fallbackBody swapLoop [x 0,x 2,x 1])]
+  fun generate () = G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false}
+  fun after lab [] = raise Fail "missing frame-test function"
+    | after lab (I.Label l::rest) = if I.pr_lab l = I.pr_lab(I.MLFunLab lab) then rest else after lab rest
+    | after lab (_::rest) = after lab rest
+  fun direct lab target code =
+    case after lab code of
+      I.Op("b",[to])::_ => to = I.pr_lab(I.MLFunLab target)
+    | _ => false
+  fun branches lab code = List.exists
+    (fn I.Op("b",[to]) => to = I.pr_lab(I.MLFunLab lab) | _ => false) code
+  fun expect (name,ok) = if ok then () else raise Fail("ARM64 tail frames: " ^ name)
+  val normal = generate()
+  val () = expect("identity wrapper",direct wrapper target normal)
+  val () = expect("FP identity wrapper",direct fpWrapper fpTarget normal)
+  val () = expect("argument permutation",not(direct reorder target normal))
+  val () = expect("self-loop entry",not(branches loop normal))
+  val () = expect("local frame fallback",branches locals normal)
+  val () = expect("stack argument fallback",branches stackLoop normal)
+  val () = expect("self-call shuffle fallback",branches swapLoop normal)
+  val () = G.emit(normal,"tail-frames.s")
+  val () = G.emit(G.generate_link_code([main],([],[])),"tail-frames-link.s")
+  fun conservative flag =
+    let
+      val () = Flags.turn_on "garbage_collection"
+      val () = Flags.turn_on flag
+      val assembly = generate()
+      val () = Flags.turn_off flag
+      val () = Flags.turn_off "garbage_collection"
+    in
+      expect(flag ^ " wrapper",not(direct wrapper target assembly));
+      expect(flag ^ " loop",branches loop assembly)
+    end
+in
+  val () = List.app conservative ["extra_gc_checks","region_profiling"]
+end
+
 (* Region calls have compile-time save sets. Substitute hostile helpers that
  * clobber every C-volatile ML register, check SP alignment, and touch the passed
  * region descriptor. This exercises empty, odd and mixed-bank save sets. *)

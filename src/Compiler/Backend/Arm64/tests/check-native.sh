@@ -75,6 +75,10 @@ gcc -arch arm64 region-live.s region-live-link.s "$SML_LIB/lib/darwin-arm64/runt
 ./region-live > actual
 printf ABCDEFGHIJKLMNOP > region-live-expected
 cmp region-live-expected actual
+gcc -arch arm64 tail-frames.s tail-frames-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o tail-frames
+./tail-frames > actual
+printf ABCDEFG > tail-frames-expected
+cmp tail-frames-expected actual
 for n in 4 5 6 7; do
   for suffix in "" -shrink -resolved -shrink-resolved; do
     gcc -arch arm64 "results$n$suffix.s" "results$n$suffix-link.s" "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o "results$n"
@@ -181,6 +185,12 @@ if grep -Eq '_time_to_gc|_disable_gc' sum-normal.s; then
 fi
 grep -q '_time_to_gc' build-normal.s
 grep -q '_disable_gc' sum-forced.s
+# The ordinary non-allocating loop reuses its frame. Allocating and forced-GC
+# loops must still reach their normal entries and collection checks.
+grep -q 'b L_arm64_loop_' sum-normal.s
+if grep -q 'b L_arm64_loop_' sum-forced.s build-normal.s; then
+  echo 'Frame reuse bypassed a required GC entry' >&2; exit 1
+fi
 # GC calls materialize x30, and no return-PC index is emitted.
 grep -q 'adr x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
 # One shared snapshot stub per unit, despite multiple ML function entries.

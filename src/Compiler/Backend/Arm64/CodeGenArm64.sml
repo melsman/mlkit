@@ -41,6 +41,12 @@ struct
   val alloc_protect_always = Flags.add_bool_entry
     {long = "alloc_protect_always",short = NONE,item = ref false,neg = false,
      menu = ["Compiler","always protect allocation"],desc = "Always protect parallel allocation."}
+  val tail_wrappers = Flags.add_bool_entry
+    {long = "arm64_tail_wrappers",short = NONE,item = ref true,neg = true,
+     menu = ["Compiler","ARM64 tail wrappers"],desc = "Omit frames in identity tail wrappers."}
+  val self_loops = Flags.add_bool_entry
+    {long = "arm64_self_loops",short = NONE,item = ref true,neg = true,
+     menu = ["Compiler","ARM64 self loops"],desc = "Reuse frames in simple non-allocating self-tail recursion."}
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
@@ -135,6 +141,7 @@ struct
   fun rest n xs = List.drop(xs,Int.min(n,length xs))
   val currentArgs = ref 0
   val currentResults = ref 0
+  val currentLoop : (label * A.lab) option ref = ref NONE
   (* The callee releases its locals, argument area and header. The caller
    * receives a separately aligned result area and then releases that area. *)
   fun resultsInto fsz res code =
@@ -195,6 +202,7 @@ struct
   fun unitSymbol lab suffix = NameLab(AddressLabels.pr_label lab ^ "_arm64_" ^ suffix)
   fun mlcallInto tail fsz target {args,reg_args,fargs,clos,res,bv} code =
     let
+      val suffix = code
       val returnLabel = localFresh()
       val gp = (case clos of NONE => [] | SOME a => [a]) @ args @ reg_args
       val fp = fargs
@@ -247,7 +255,11 @@ struct
         (readInto (fsz+workspace) a (X 16)
            ++ storeInto (X 16,SP,8*i)) code) code staged
     in
-      stackInto (true,8*workspace) code
+      case (tail,placed,ac,target,!currentLoop) of
+        (true,true,0,Direct target,SOME (self,loop)) =>
+          if AddressLabels.eq(target,self) then instruction "b" [pr_lab loop] suffix
+          else stackInto (true,8*workspace) code
+      | _ => stackInto (true,8*workspace) code
     end
   (* Precision zero is private to raw runtime-helper arguments. *)
   fun integer n = SS.INTEGER_ATY{value = IntInf.fromInt n,precision = 0}
@@ -2033,8 +2045,75 @@ struct
            ++ loadInto (X 16,0,X 16)
            ++ instruction "cbz" ["x16",pr_lab done]) code
       end
+  (* Match the IR, not an assembly pattern: every operand must already be
+   * in its incoming argument register, with identical argument/result shapes.
+   * The unused local frame can then be omitted along with its header saves. *)
+  fun identityTail cc statements =
+    let
+      val incoming = CallConv.decompose_cc cc
+      fun sameLength (xs,ys) = length xs = length ys
+      fun find [LS.SCOPE {scope,...}] = find scope
+        | find [LS.LETREGION {rhos,body}] =
+            if List.all (fn ((_,LS.WORDS _),_) => true | _ => false) rhos
+            then find body else NONE
+        | find [LS.JMP {opr,args,reg_args,fargs,clos,res,...}] =
+            let val gp = (case clos of NONE => [] | SOME a => [a]) @ args @ reg_args
+            in
+              if CallConv.get_ccf_size cc = 0 andalso length gp <= 8 andalso length fargs <= 8
+                 andalso sameLength(args,#args incoming)
+                 andalso sameLength(reg_args,#reg_args incoming)
+                 andalso sameLength(fargs,#fargs incoming)
+                 andalso Option.isSome clos = Option.isSome(#clos incoming)
+                 andalso sameLength(res,#res incoming) andalso length res <= 3
+                 andalso registersPlaced (map X AbiArm64.mlArgumentGPRs) gp
+                 andalso registersPlaced (map D AbiArm64.mlArgumentFPRs) fargs
+                 andalso registersPlaced (map X AbiArm64.mlResultGPRs) res
+              then SOME opr else NONE
+            end
+        | find _ = NONE
+    in find statements
+    end
+  (* Keep the first loop implementation deliberately small. These primitives
+   * emit inline arithmetic/comparisons (possibly an exiting raise), never calls.
+   * Frames with locals, incoming stack arguments, regions or handlers stay on
+   * the normal tail-call path. Forced polling and profiling do too. *)
+  fun loopPrimitive name =
+    let open PrimName
+    in case name of
+         Plus_int63 => true | Minus_int63 => true
+       | Plus_word63 => true | Minus_word63 => true
+       | Plus_int64ub => true | Minus_int64ub => true
+       | Equal_int63 => true | Equal_word63 => true | Equal_ptr => true
+       | Less_int63 => true | Lesseq_int63 => true
+       | Greater_int63 => true | Greatereq_int63 => true
+       | Less_word63 => true | Lesseq_word63 => true
+       | Greater_word63 => true | Greatereq_word63 => true
+       | Plus_f64 => true | Minus_f64 => true | Mul_f64 => true | Div_f64 => true
+       | _ => false
+    end
+  fun loopStatements self statements = List.all (loopStatement self) statements
+  and loopStatement (self as (label,recursive)) ls =
+    case ls of
+      LS.SCOPE {scope,...} => loopStatements self scope
+    | LS.LETREGION {rhos = [],body} => loopStatements self body
+    | LS.SWITCH_I {switch,...} => loopSwitch self (switchParts switch)
+    | LS.SWITCH_W {switch,...} => loopSwitch self (switchParts switch)
+    | LS.SWITCH_C switch => loopSwitch self (switchParts switch)
+    | LS.ASSIGN {bind,...} =>
+        (case bind of
+           LS.ATOM _ => true | LS.LOAD _ => true | LS.STORE _ => true
+         | LS.SELECT _ => true | LS.DECON _ => true | LS.DEREF _ => true
+         | LS.CON0 {con_kind = LS.ENUM _,aux_regions = [],alloc = LS.IGNORE,...} => true
+         | _ => false)
+    | LS.PRIM {name,...} => loopPrimitive name
+    | LS.JMP {opr,...} => (if AddressLabels.eq(opr,label) then recursive := true else (); true)
+    | LS.RAISE _ => true
+    | _ => false
+  and loopSwitch self (_,cases,default) =
+    loopStatements self default andalso List.all (loopStatements self) cases
   fun topInto (l,cc,body) code =
     let
+      val suffix = code
       val ac = CallConv.get_ccf_size cc
       val () = currentArgs := ac
       val () = currentResults := CallConv.get_rcf_size cc
@@ -2043,22 +2122,39 @@ struct
        * results are already stored; the three register result slots suffice. *)
       val results = first (length(CallConv.get_res_lvars cc)) [X 0,X 1,X 2]
       val () = functionRegs := results
-      fun remember a = (functionRegs := unionRegs(atyRegs a,!functionRegs); a)
+      val frameOperand = ref false
+      fun remember a =
+        (functionRegs := unionRegs(atyRegs a,!functionRegs);
+         (case a of SS.STACK_ATY _ => frameOperand := true
+                  | SS.REG_I_ATY _ => frameOperand := true
+                  | SS.REG_F_ATY _ => frameOperand := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
+      val optimiseFrame = not(profiling()) andalso not(extra_gc_checks())
+      val wrapper = if optimiseFrame andalso tail_wrappers() then identityTail cc body else NONE
+      val recursive = ref false
+      val loop = if optimiseFrame andalso self_loops() andalso fsz = 0 andalso ac = 0
+                    andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
+                    andalso not(LS.allocating body) andalso loopStatements (l,recursive) body andalso !recursive
+                 then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE
+      val () = currentLoop := Option.map (fn loop => (l,loop)) loop
       val code = (stmtsInto fsz results body
          ++ epilogueInto fsz) code
       val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"
                    [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)] code
                  else code
     in
-      (functionInto (MLFunLab l)
+      case wrapper of
+        SOME target => (functionInto (MLFunLab l)
+          ++ instruction "b" [pr_lab(MLFunLab target)]) suffix
+      | NONE => (functionInto (MLFunLab l)
        ++ storeInto (X 29,SP,8*even ac)
        ++ storeInto (X 30,SP,8*(even ac+1))
        ++ addOffsetInto (SP,8*even ac,X 29)
        ++ (if extra_gc_checks() orelse LS.allocating body then entryGCInto cc
            else fn code => code)
-       ++ stackInto (true,8*fsz)) code
+       ++ stackInto (true,8*fsz)
+       ++ (case loop of SOME lab => one (Label lab) | NONE => fn code => code)) code
     end
   fun CG {main_lab,code,imports,exports,safe} =
     let

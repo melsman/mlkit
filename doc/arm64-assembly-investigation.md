@@ -8,6 +8,8 @@ changed by this investigation.
 
 Follow-up: [compile-time live-register preservation](arm64-live-register-results.md)
 is now implemented for region entry/exit calls.
+[Identity wrappers and self-tail loops](arm64-tail-frame-results.md) also have
+a production implementation and a separate small benchmark comparison.
 
 ## Measurements
 
