@@ -5,147 +5,165 @@ structure G = BackendArm64.CodeGen
 structure L = N.LineStmt
 structure S = N.SubstAndSimplify
 structure I = InstsArm64
+structure A = I
 (* Check both useful rewrites and boundaries where a similar rewrite would
  * change register width, memory semantics, metadata, or pair encodability. *)
 local
   open I
-  fun key (Op(n,args)) = n ^ " " ^ String.concatWith "," args
-    | key (Label l) = pr_lab l ^ ":"
-    | key (Directive s) = s
+  val key = pr_inst
   fun check (name,input,expected) =
     if map key (optimise input) = map key expected then ()
     else raise Fail("ARM64 peephole: " ^ name)
   fun unchanged (name,code) = check(name,code,code)
   val l = LocalLab(AddressLabels.new_named "peep_target")
   val other = LocalLab(AddressLabels.new_named "peep_other")
-  val branch = Op("b",[pr_lab other])
-  val store = Op("str",["x0","[sp, #0]"])
-  val storeD = Op("str",["d0","[sp, #0]"])
+  val branch = A.b (I.L(other))
+  val store = A.str (I.R(I.X 0),I.M(I.SP,0))
+  val storeD = A.str (I.R(I.D 0),I.M(I.SP,0))
 in
-  val () = check("self move",[Op("mov",["x0","x0"])],[])
-  val () = unchanged("32-bit self move clears upper bits",[Op("mov",["w0","w0"])])
-  val () = unchanged("FP self move may clear upper bits",[Op("fmov",["d0","d0"])])
-  val () = check("branch to next",[Op("b",[pr_lab l]),Label l],[Label l])
-  val () = check("conditional to next",[Op("cbz",["x0",pr_lab l]),Label l],[Label l])
-  val () = check("invert condition",[Op("b.eq",[pr_lab l]),branch,Label l],
-    [Op("b.ne",[pr_lab other]),Label l])
-  val () = check("invert bit test",[Op("tbz",["x0","#3",pr_lab l]),branch,Label l],
-    [Op("tbnz",["x0","#3",pr_lab other]),Label l])
-  val () = check("forward stack load",[store,Op("ldr",["x1","[sp, #0]"])],
-    [store,Op("mov",["x1","x0"])])
-  val () = check("forward FP stack load",[storeD,Op("ldr",["d1","[sp, #0]"])],
-    [storeD,Op("fmov",["d1","d0"])])
-  val () = check("pair stores",[store,Op("str",["x1","[sp, #8]"])],
-    [Op("stp",["x0","x1","[sp, #0]"])])
+  val () = check("self move",[A.mov (I.R(I.X 0),I.R(I.X 0))],[])
+  val () = unchanged("32-bit self move clears upper bits",[A.mov (I.R(I.W 0),I.R(I.W 0))])
+  val () = unchanged("FP self move may clear upper bits",[A.fmov (I.R(I.D 0),I.R(I.D 0))])
+  val () = check("branch to next",[A.b (I.L(l)),Label l],[Label l])
+  val () = check("conditional to next",[A.cbz (I.R(I.X 0),I.L(l)),Label l],[Label l])
+  val () = check("invert condition",[A.b_eq (I.L(l)),branch,Label l],
+    [A.b_ne (I.L(other)),Label l])
+  val () = check("invert bit test",[A.tbz (I.R(I.X 0),I.I(3),I.L(l)),branch,Label l],
+    [A.tbnz (I.R(I.X 0),I.I(3),I.L(other)),Label l])
+  val () = check("forward stack load",[store,A.ldr (I.R(I.X 1),I.M(I.SP,0))],
+    [store,A.mov (I.R(I.X 1),I.R(I.X 0))])
+  val () = check("forward FP stack load",[storeD,A.ldr (I.R(I.D 1),I.M(I.SP,0))],
+    [storeD,A.fmov (I.R(I.D 1),I.R(I.D 0))])
+  val () = check("pair stores",[store,A.str (I.R(I.X 1),I.M(I.SP,8))],
+    [A.stp (I.R(I.X 0),I.R(I.X 1),I.M(I.SP,0))])
   val () = check("pair loads at boundary",
-    [Op("ldr",["d0","[sp, #504]"]),Op("ldr",["d1","[sp, #512]"])],
-    [Op("ldp",["d0","d1","[sp, #504]"])])
+    [A.ldr (I.R(I.D 0),I.M(I.SP,504)),A.ldr (I.R(I.D 1),I.M(I.SP,512))],
+    [A.ldp (I.R(I.D 0),I.R(I.D 1),I.M(I.SP,504))])
   val () = unchanged("pair out of range",
-    [Op("ldr",["x0","[sp, #512]"]),Op("ldr",["x1","[sp, #520]"])])
+    [A.ldr (I.R(I.X 0),I.M(I.SP,512)),A.ldr (I.R(I.X 1),I.M(I.SP,520))])
   val () = unchanged("pair duplicate load destination",
-    [Op("ldr",["x0","[sp, #0]"]),Op("ldr",["x0","[sp, #8]"])])
+    [A.ldr (I.R(I.X 0),I.M(I.SP,0)),A.ldr (I.R(I.X 0),I.M(I.SP,8))])
   val () = unchanged("unknown memory",
-    [Op("str",["x0","[x2, #0]"]),Op("ldr",["x1","[x2, #0]"])])
-  val () = unchanged("mixed register widths",[store,Op("ldr",["w1","[sp, #0]"])])
-  val () = unchanged("mixed register banks",[store,Op("ldr",["d1","[sp, #0]"])])
-  val () = unchanged("metadata barrier",[store,Directive ".p2align 3",Op("str",["x1","[sp, #8]"])])
-  val () = unchanged("label barrier",[store,Label l,Op("str",["x1","[sp, #8]"])])
-  val () = unchanged("writeback",[Op("str",["x0","[sp, #0]!"]),Op("ldr",["x1","[sp, #0]!"])])
+    [A.str (I.R(I.X 0),I.M(I.X 2,0)),A.ldr (I.R(I.X 1),I.M(I.X 2,0))])
+  val () = unchanged("mixed register widths",[store,A.ldr (I.R(I.W 1),I.M(I.SP,0))])
+  val () = unchanged("mixed register banks",[store,A.ldr (I.R(I.D 1),I.M(I.SP,0))])
+  val () = unchanged("metadata barrier",[store,Directive(I.Align 3),A.str (I.R(I.X 1),I.M(I.SP,8))])
+  val () = unchanged("label barrier",[store,Label l,A.str (I.R(I.X 1),I.M(I.SP,8))])
+  val () = unchanged("writeback",[A.str (I.R(I.X 0),I.PreIndex(I.SP,0)),A.ldr (I.R(I.X 1),I.PreIndex(I.SP,0))])
   val () = check("round-trip copy",
-    [Op("mov",["x16","x1"]),Op("mov",["x1","x16"])],
-    [Op("mov",["x16","x1"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.mov (I.R(I.X 1),I.R(I.X 16))],
+    [A.mov (I.R(I.X 16),I.R(I.X 1))])
   val () = check("fold address copy",
-    [Op("mov",["x16","x1"]),Op("ldr",["x16","[x16, #8]"])],
-    [Op("ldr",["x16","[x1, #8]"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.ldr (I.R(I.X 16),I.M(I.X 16,8))],
+    [A.ldr (I.R(I.X 16),I.M(I.X 1,8))])
   val () = unchanged("address copy remains live",
-    [Op("mov",["x16","x1"]),Op("ldr",["x0","[x16, #8]"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.ldr (I.R(I.X 0),I.M(I.X 16,8))])
   val () = unchanged("address writeback barrier",
-    [Op("mov",["x16","x1"]),Op("ldr",["x16","[x16, #8]!"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.ldr (I.R(I.X 16),I.PreIndex(I.X 16,8))])
   val () = check("fold ALU copy",
-    [Op("mov",["x16","x1"]),Op("and",["x16","x16","#3"])],
-    [Op("and",["x16","x1","#3"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.and_ (I.R(I.X 16),I.R(I.X 16),I.I(3))],
+    [A.and_ (I.R(I.X 16),I.R(I.X 1),I.I(3))])
   val () = unchanged("ALU copy remains live",
-    [Op("mov",["x16","x1"]),Op("add",["x0","x16","#1"])])
+    [A.mov (I.R(I.X 16),I.R(I.X 1)),A.add (I.R(I.X 0),I.R(I.X 16),I.I(1))])
   val () = check("keep known-zero definition",
-    [Op("movz",["x17","#0","lsl #0"]),Op("orr",["x0","x0","x17"])],
-    [Op("movz",["x17","#0","lsl #0"])])
+    [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0)),A.orr (I.R(I.X 0),I.R(I.X 0),I.R(I.X 17))],
+    [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0))])
   val () = unchanged("unknown OR operand",
-    [Op("movz",["x17","#1","lsl #0"]),Op("orr",["x0","x0","x17"])])
+    [A.movz (I.R(I.X 17),I.I(1),I.ShiftImm(I.LSL,0)),A.orr (I.R(I.X 0),I.R(I.X 0),I.R(I.X 17))])
   val () = check("descending pair",
-    [Op("ldr",["x0","[sp, #24]"]),Op("ldr",["x1","[sp, #16]"])],
-    [Op("ldp",["x1","x0","[sp, #16]"])])
+    [A.ldr (I.R(I.X 0),I.M(I.SP,24)),A.ldr (I.R(I.X 1),I.M(I.SP,16))],
+    [A.ldp (I.R(I.X 1),I.R(I.X 0),I.M(I.SP,16))])
   val () = check("negative heap pair",
-    [Op("ldr",["d0","[x2, #-504]"]),Op("ldr",["d1","[x2, #-512]"])],
-    [Op("ldp",["d1","d0","[x2, #-512]"])])
+    [A.ldr (I.R(I.D 0),I.M(I.X 2,~504)),A.ldr (I.R(I.D 1),I.M(I.X 2,~512))],
+    [A.ldp (I.R(I.D 1),I.R(I.D 0),I.M(I.X 2,~512))])
   val () = unchanged("first load changes base",
-    [Op("ldr",["x2","[x2, #0]"]),Op("ldr",["x1","[x2, #8]"])])
+    [A.ldr (I.R(I.X 2),I.M(I.X 2,0)),A.ldr (I.R(I.X 1),I.M(I.X 2,8))])
   val () = check("last load may overwrite base",
-    [Op("ldr",["x1","[x2, #0]"]),Op("ldr",["x2","[x2, #8]"])],
-    [Op("ldp",["x1","x2","[x2, #0]"])])
+    [A.ldr (I.R(I.X 1),I.M(I.X 2,0)),A.ldr (I.R(I.X 2),I.M(I.X 2,8))],
+    [A.ldp (I.R(I.X 1),I.R(I.X 2),I.M(I.X 2,0))])
   val () = unchanged("pair below signed range",
-    [Op("str",["x0","[sp, #-520]"]),Op("str",["x1","[sp, #-512]"])])
+    [A.str (I.R(I.X 0),I.M(I.SP,~520)),A.str (I.R(I.X 1),I.M(I.SP,~512))])
   val () = check("thread bit-test retaining metadata",
-    [Op("tbz",["x0","#0",pr_lab l]),Directive ".quad 0",Label l,branch],
-    [Op("tbz",["x0","#0",pr_lab other]),Directive ".quad 0",Label l,branch])
+    [A.tbz (I.R(I.X 0),I.I(0),I.L(l)),Directive(I.Quad ["0"]),Label l,branch],
+    [A.tbz (I.R(I.X 0),I.I(0),I.L(other)),Directive(I.Quad ["0"]),Label l,branch])
   val () = unchanged("thread cycle terminates",
-    [Label l,branch,Directive ".quad 0",Label other,Op("b",[pr_lab l])])
+    [Label l,branch,Directive(I.Quad ["0"]),Label other,A.b (I.L(l))])
   val () = unchanged("directive blocks threading",
-    [Op("b.eq",[pr_lab l]),Directive ".quad 0",Label l,Directive ".quad 0",branch])
+    [A.b_eq (I.L(l)),Directive(I.Quad ["0"]),Label l,Directive(I.Quad ["0"]),branch])
   val () = List.app (fn lv =>
     case I.RI.lv_to_reg lv of
-      X n => if I.RI.is_callee_save_ccall lv = (n >= 19 andalso n <= 26)
+      I.X n => if I.RI.is_callee_save_ccall lv = (n >= 19 andalso n <= 26)
              then () else raise Fail "ARM64 C-preserved allocation register"
     | _ => raise Fail "ARM64 integer palette") I.RI.caller_save_phregs
+end
+(* Rendering is tested separately from optimisation. Widths, relocation kinds
+ * and signed operands must survive the typed representation unchanged. *)
+local
+  open I
+  fun printed (i,text) =
+    if pr_inst i = text then () else raise Fail "ARM64 instruction printer"
+in
+  val () = printed(A.b_ne(I.Forward 1),"\tb.ne 1f\n")
+  val () = printed(A.ldr(I.R(I.W 16),I.M(I.X 17,8)),"\tldr w16, [x17, #8]\n")
+  val () = printed(A.and_(I.R(I.X 16),I.R(I.X 16),I.I(~4)),"\tand x16, x16, #-4\n")
+  val () = printed(A.add(I.R(I.X 0),I.R(I.X 1),I.Shifted(I.X 2,I.LSL,3)),
+    "\tadd x0, x1, x2, lsl #3\n")
+  val () = printed(A.movz(I.R(I.X 0),I.I 7,I.ShiftImm(I.LSL,16)),
+    "\tmovz x0, #7, lsl #16\n")
+  val () = printed(A.cset(I.R(I.X 0),I.C I.HS),"\tcset x0, hs\n")
+  val () = printed(A.fcvt(I.R(I.D 0),I.R(I.S 1)),"\tfcvt d0, s1\n")
 end
 (* Range proofs include worst-case padding and inline data. Unknown sizes and
  * cross-section targets must never justify a short branch or ADR. *)
 local
   open I
   val target = LocalLab(AddressLabels.new_named "range_target")
-  val name = pr_lab target
-  fun opCount name code = length(List.filter
-    (fn Op(n,_) => n = name | _ => false) code)
+  val name = I.L target
+  fun opCount predicate code = length(List.filter predicate code)
+  fun isBranch (A.b _) = true | isBranch _ = false
+  fun isAddress (A.adr _) = true | isAddress _ = false
   fun expect (name,ok) = if ok then () else raise Fail("ARM64 relaxation: " ^ name)
-  fun operands opn = if opn = "tbz" then ["x0","#0",name] else ["x0",name]
-  fun forward opn gap = relax [Op(opn,operands opn),Directive(".space " ^ Int.toString gap),Label target]
-  fun backward opn gap = relax [Label target,Directive(".space " ^ Int.toString gap),Op(opn,operands opn)]
-  val address = [Op("adrp",["x30",name ^ "@PAGE"]),
-                 Op("add",["x30","x30",name ^ "@PAGEOFF"])]
-  val table = [Op("cbz",["x0",name]),Directive ".p2align 3",
-               Directive ".quad 1,2,3",Label target]
+  fun cb target = A.cbz(I.R(I.X 0),target)
+  fun tb target = A.tbz(I.R(I.X 0),I.I 0,target)
+  fun forward make gap = relax [make name,Directive(I.Space gap),Label target]
+  fun backward make gap = relax [Label target,Directive(I.Space gap),make name]
+  val address = [A.adrp (I.R(I.X 30),I.Page target),
+                 A.add (I.R(I.X 30),I.R(I.X 30),I.PageOff target)]
+  val table = [A.cbz (I.R(I.X 0),name),Directive(I.Align 3),
+               Directive(I.Quad ["1","2","3"]),Label target]
 in
-  val () = expect("near conditional",opCount "b" (forward "cbz" 16) = 0)
-  val () = expect("near bit test",opCount "b" (forward "tbz" 16) = 0)
-  val () = expect("forward conditional fits bound",opCount "b" (forward "cbz" 1048564) = 0)
-  val () = expect("forward conditional too far",opCount "b" (forward "cbz" 1048576) = 1)
-  val () = expect("backward conditional boundary",opCount "b" (backward "cbz" 1048576) = 0)
-  val () = expect("backward conditional too far",opCount "b" (backward "cbz" 1048580) = 1)
-  val () = expect("forward bit-test fits bound",opCount "b" (forward "tbz" 32756) = 0)
-  val () = expect("forward bit-test too far",opCount "b" (forward "tbz" 32768) = 1)
-  val () = expect("backward bit-test boundary",opCount "b" (backward "tbz" 32768) = 0)
-  val () = expect("backward bit-test too far",opCount "b" (backward "tbz" 32772) = 1)
-  val () = expect("inline table",opCount "b" (relax table) = 0)
-  val () = expect("alignment can exceed range",opCount "b" (relax
-    [Op("cbz",["x0",name]),Directive ".space 1048564",Directive ".p2align 4",Label target]) = 1)
-  val () = expect("unknown directive",opCount "b" (relax
-    [Op("cbz",["x0",name]),Directive ".fill 100,4,0",Label target]) = 1)
-  val () = expect("section switch",opCount "b" (relax
-    [Op("cbz",["x0",name]),Directive ".data",Label target]) = 1)
-  val () = expect("text span across data",opCount "b" (relax
-    [Directive ".text",Op("cbz",["x0",name]),Directive ".data",
-     Directive ".space 2000000",Directive ".text",Label target]) = 0)
-  val () = expect("unknown section cannot alias text",opCount "b" (relax
-    [Directive ".text",Op("cbz",["x0",name]),Directive ".section __TEXT,__const",Label target]) = 1)
-  val () = expect("unknown size invalidates saved text offset",opCount "b" (relax
-    [Directive ".text",Op("cbz",["x0",name]),Directive ".fill 100,4,0",
-     Directive ".text",Label target]) = 1)
-  val () = expect("near return address",opCount "adr" (relax(address @ [Label target])) = 1)
-  val () = expect("distant address",opCount "adr" (relax
-    (address @ [Directive ".space 1048576",Label target])) = 0)
-  val () = expect("cross-section address",opCount "adr" (relax
-    (address @ [Directive ".data",Label target])) = 0)
+  val () = expect("near conditional",opCount isBranch (forward cb 16) = 0)
+  val () = expect("near bit test",opCount isBranch (forward tb 16) = 0)
+  val () = expect("forward conditional fits bound",opCount isBranch (forward cb 1048564) = 0)
+  val () = expect("forward conditional too far",opCount isBranch (forward cb 1048576) = 1)
+  val () = expect("backward conditional boundary",opCount isBranch (backward cb 1048576) = 0)
+  val () = expect("backward conditional too far",opCount isBranch (backward cb 1048580) = 1)
+  val () = expect("forward bit-test fits bound",opCount isBranch (forward tb 32756) = 0)
+  val () = expect("forward bit-test too far",opCount isBranch (forward tb 32768) = 1)
+  val () = expect("backward bit-test boundary",opCount isBranch (backward tb 32768) = 0)
+  val () = expect("backward bit-test too far",opCount isBranch (backward tb 32772) = 1)
+  val () = expect("inline table",opCount isBranch (relax table) = 0)
+  val () = expect("alignment can exceed range",opCount isBranch (relax
+    [A.cbz (I.R(I.X 0),name),Directive(I.Space 1048564),Directive(I.Align 4),Label target]) = 1)
+  val () = expect("unknown directive",opCount isBranch (relax
+    [A.cbz (I.R(I.X 0),name),Directive(I.Raw (".fill 100,4,0")),Label target]) = 1)
+  val () = expect("section switch",opCount isBranch (relax
+    [A.cbz (I.R(I.X 0),name),Directive(I.Data),Label target]) = 1)
+  val () = expect("text span across data",opCount isBranch (relax
+    [Directive(I.Text),A.cbz (I.R(I.X 0),name),Directive(I.Data),
+     Directive(I.Space 2000000),Directive(I.Text),Label target]) = 0)
+  val () = expect("unknown section cannot alias text",opCount isBranch (relax
+    [Directive(I.Text),A.cbz (I.R(I.X 0),name),Directive(I.Raw (".section __TEXT,__const")),Label target]) = 1)
+  val () = expect("unknown size invalidates saved text offset",opCount isBranch (relax
+    [Directive(I.Text),A.cbz (I.R(I.X 0),name),Directive(I.Raw (".fill 100,4,0")),
+     Directive(I.Text),Label target]) = 1)
+  val () = expect("near return address",opCount isAddress (relax(address @ [Label target])) = 1)
+  val () = expect("distant address",opCount isAddress (relax
+    (address @ [Directive(I.Space 1048576),Label target])) = 0)
+  val () = expect("cross-section address",opCount isAddress (relax
+    (address @ [Directive(I.Data),Label target])) = 0)
 end
-(* Both register palettes can be used for allocation across C calls. *)
+(* Both register palettes can be used for allocation across I.C calls. *)
 val () = List.app (fn lv => case I.RI.lv_to_reg lv of
     I.X n => if List.exists (fn r => r = n) AbiArm64.reservedGPRs
              then raise Fail "reserved ARM register in allocation palette" else ()
@@ -160,7 +178,7 @@ fun convention (a,r,locals) =
   end
 fun x n = S.PHREG_ATY(I.X n)
 fun num n = S.WORD_ATY{value = IntInf.fromInt n,precision = 64}
-fun assign (a,b) = L.ASSIGN{pat = a,bind = L.ATOM{aty = b}}
+fun assign (a,rhs) = L.ASSIGN{pat = a,bind = L.ATOM{aty = rhs}}
 fun emitCase (count,grow,resolved) =
   let val main = AddressLabels.new_named "result_main"
       val target = AddressLabels.new_named "result_target"
@@ -278,14 +296,14 @@ local
     L.FUN(swapLoop,convention(3,1,0),fallbackBody swapLoop [x 0,x 2,x 1])]
   fun generate () = G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false}
   fun after lab [] = raise Fail "missing frame-test function"
-    | after lab (I.Label l::rest) = if I.pr_lab l = I.pr_lab(I.MLFunLab lab) then rest else after lab rest
+    | after lab (I.Label l::rest) = if I.eq_lab(l,I.MLFunLab lab) then rest else after lab rest
     | after lab (_::rest) = after lab rest
   fun direct lab target code =
     case after lab code of
-      I.Op("b",[to])::_ => to = I.pr_lab(I.MLFunLab target)
+      A.b (I.L to)::_ => I.eq_lab(to,I.MLFunLab target)
     | _ => false
   fun branches lab code = List.exists
-    (fn I.Op("b",[to]) => to = I.pr_lab(I.MLFunLab lab) | _ => false) code
+    (fn A.b (I.L to) => I.eq_lab(to,I.MLFunLab lab) | _ => false) code
   fun expect (name,ok) = if ok then () else raise Fail("ARM64 tail frames: " ^ name)
   val normal = generate()
   val () = expect("identity wrapper",direct wrapper target normal)
@@ -313,7 +331,7 @@ in
 end
 
 (* Region calls have compile-time save sets. Substitute hostile helpers that
- * clobber every C-volatile ML register, check SP alignment, and touch the passed
+ * clobber every I.C-volatile ML register, check I.SP alignment, and touch the passed
  * region descriptor. This exercises empty, odd and mixed-bank save sets. *)
 local
   open CodeGenUtilArm64
@@ -354,16 +372,16 @@ local
   val code = [L.FUN(main,convention(0,0,32),body),
               L.FUN(target,convention(0,1,16),[region 15 [assign(x 0,num 79)]]),
               L.FUN(flowTarget,convention(1,1,16),flowBody)]
-  fun redirect (I.Op("bl",["_allocateRegion"])) = I.Op("bl",["_live_region_enter"])
-    | redirect (I.Op("bl",["_deallocateRegion"])) = I.Op("bl",["_live_region_exit"])
+  fun redirect (A.bl (I.L(NameLab "allocateRegion"))) = A.bl (I.L(NameLab "live_region_enter"))
+    | redirect (A.bl (I.L(NameLab "deallocateRegion"))) = A.bl (I.L(NameLab "live_region_exit"))
     | redirect i = i
   val volatile = List.tabulate(16,I.X) @ List.tabulate(8,I.D) @
                  List.tabulate(14,fn i => I.D(i+16))
   fun helper (name,enter) =
-    function(I.NameLab name) @ [ins "mov" ["x16","sp"],ins "tst" ["x16","#15"],
-      ins "b.eq" ["1f"],ins "brk" ["#1"],I.Directive "1:"] @
+    function(I.NameLab name) @ [A.mov (I.R(I.X 16),I.R(I.SP)),A.tst (I.R(I.X 16),I.I(15)),
+      A.b_eq (I.Forward 1),A.brk (I.I(1)),I.Directive(I.NumericLabel 1)] @
     (if enter then constant(78,I.X 16) @ store(I.X 16,I.X 1,0) else []) @
-    constant(0,I.X 16) @ List.concat(map (fn r => move(I.X 16,r)) volatile) @ [ins "ret" []]
+    constant(0,I.X 16) @ List.concat(map (fn r => move(I.X 16,r)) volatile) @ [A.ret]
 in
   val () = G.emit(map redirect
     (G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false}) @
@@ -387,17 +405,17 @@ in
   val () = G.emit(G.generate_link_code([main],([],[])),"nested-scopes-link.s")
 end
 
-(* Exercise the production scalar C-call emitter, including the ABI types not
+(* Exercise the production scalar I.C-call emitter, including the ABI types not
  * exposed by the source-language automatic FFI. Values are raw IEEE bits. *)
 local
   open CodeGenUtilArm64
   structure B = AbiArm64
   fun bits s = valOf(IntInf.fromString s)
   fun probe (name,target,fixed,variadic,values) =
-    function(NameLab name) @ stack(true,16) @ store(X 29,SP,0) @ store(X 30,SP,8) @ move(SP,X 29) @
+    function(NameLab name) @ stack(true,16) @ store(I.X 29,I.SP,0) @ store(I.X 30,I.SP,8) @ move(I.SP,I.X 29) @
     scalarCall{name = target,fixed = fixed,variadic = variadic,protectGC = false,
-      loadArgument = fn(i,_) => constant(List.nth(values,i),X 16)} @
-    load(SP,0,X 29) @ load(SP,8,X 30) @ stack(false,16) @ [ins "ret" []]
+      loadArgument = fn(i,_) => constant(List.nth(values,i),I.X 16)} @
+    load(I.SP,0,I.X 29) @ load(I.SP,8,I.X 30) @ stack(false,16) @ [A.ret]
   val doubles = map bits ["4607182418800017408","4611686018427387904","4613937818241073152",
     "4616189618054758400","4617315517961601024","4618441417868443648","4619567317775286272",
     "4620693217682128896","4621256167635550208","4621819117588971520"]
@@ -417,11 +435,11 @@ local
   val start = LocalLab(AddressLabels.new_named "far_start")
   val next = LocalLab(AddressLabels.new_named "far_next")
   val last = LocalLab(AddressLabels.new_named "far_last")
-  val code = function(NameLab "main") @ constant(0,X 0) @ [ins "b" [pr_lab start],
-    Label done,ins "ret" [],Directive ".space 1100000",Label start,
-    ins "cbz" ["x0",pr_lab next],ins "brk" ["#1"],Directive ".space 1100000",Label next,
-    ins "tbz" ["x0","#0",pr_lab last],ins "brk" ["#2"],Directive ".space 65536",Label last,
-    ins "cmp" ["x0","#0"],ins "b.eq" [pr_lab done],ins "brk" ["#3"]]
+  val code = function(NameLab "main") @ constant(0,I.X 0) @ [A.b (I.L(start)),
+    Label done,A.ret,Directive(I.Space 1100000),Label start,
+    A.cbz (I.R(I.X 0),I.L(next)),A.brk (I.I(1)),Directive(I.Space 1100000),Label next,
+    A.tbz (I.R(I.X 0),I.I(0),I.L(last)),A.brk (I.I(2)),Directive(I.Space 65536),Label last,
+    A.cmp (I.R(I.X 0),I.I(0)),A.b_eq (I.L(done)),A.brk (I.I(3))]
 in val () = G.emit(code,"long-branches.s") end
 
 (* Direct allocation probes cover exact page boundaries, expansion, large

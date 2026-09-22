@@ -33,7 +33,9 @@ in
   Backend/Arm64/INSTS_ARM64.sml
   open Tools
   local open CompilerObjects
-  in local open Pickle in Backend/Arm64/InstsArm64.sml end
+  in Backend/Arm64/Arm64Instructions.sml
+     Backend/Arm64/PrintArm64.sml
+     local open Pickle in Backend/Arm64/InstsArm64.sml end
      Backend/Arm64/CodeGenUtilArm64.sml
      Backend/Arm64/CodeGenArm64.sml
      Backend/Arm64/BackendArm64.sml

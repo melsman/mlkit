@@ -1,0 +1,18 @@
+[
+  {
+    "file": "MLB/ARM64_FD2_RI_GC_M12SelectFinal/nucleic.sml.s",
+    "same_after_format_normalisation": true
+  },
+  {
+    "file": "MLB/ARM64_FD2_RI_GC_M12SelectFinal/main.sml.s",
+    "same_after_format_normalisation": true
+  },
+  {
+    "file": "MLB/ARM64_FD2_RI_GC_M12SelectFinal/main0.sml.s",
+    "same_after_format_normalisation": true
+  },
+  {
+    "file": "MLB/ARM64_FD2_RI_GC_M12SelectFinal/base-link_objects.s",
+    "same_after_format_normalisation": true
+  }
+]

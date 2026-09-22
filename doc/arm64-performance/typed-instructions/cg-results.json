@@ -1,0 +1,105 @@
+{
+  "baseline_revision": "ec0c186",
+  "host": "Both compilers are X64-hosted MLKit -gc builds running under Rosetta2",
+  "basis_cache": "M12SelectFinal, warmed and shared; all benchmark-local compilation caches absent each run",
+  "runs": [
+    {
+      "variant": "before",
+      "run": 1,
+      "cg_seconds": 0.097,
+      "compile_wall_seconds": 3.8411967081483454,
+      "entries": [
+        0.091,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "before-1/KITtimings"
+      ]
+    },
+    {
+      "variant": "after",
+      "run": 1,
+      "cg_seconds": 0.056999999999999995,
+      "compile_wall_seconds": 3.7114790419582278,
+      "entries": [
+        0.051,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "after-1/KITtimings"
+      ]
+    },
+    {
+      "variant": "after",
+      "run": 2,
+      "cg_seconds": 0.079,
+      "compile_wall_seconds": 3.7774100829847157,
+      "entries": [
+        0.073,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "after-2/KITtimings"
+      ]
+    },
+    {
+      "variant": "before",
+      "run": 2,
+      "cg_seconds": 0.098,
+      "compile_wall_seconds": 3.838635249994695,
+      "entries": [
+        0.092,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "before-2/KITtimings"
+      ]
+    },
+    {
+      "variant": "before",
+      "run": 3,
+      "cg_seconds": 0.101,
+      "compile_wall_seconds": 3.8389590829610825,
+      "entries": [
+        0.095,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "before-3/KITtimings"
+      ]
+    },
+    {
+      "variant": "after",
+      "run": 3,
+      "cg_seconds": 0.057999999999999996,
+      "compile_wall_seconds": 3.7045474578626454,
+      "entries": [
+        0.052,
+        0.005,
+        0.001
+      ],
+      "timing_files": [
+        "after-3/KITtimings"
+      ]
+    }
+  ],
+  "median_cg_seconds": {
+    "before": 0.098,
+    "after": 0.057999999999999996
+  },
+  "compilers": {
+    "before": {
+      "path": "/private/tmp/mlkit-m12-select/mlkit",
+      "sha256": "018f508383b4caa10922b7d63cb6ac541f803d2d0426711e69b9c1c089e7fce9"
+    },
+    "after": {
+      "path": "/private/tmp/mlkit-m12-typed/mlkit",
+      "sha256": "c940d369813e96108152eeaee239dab45291ea604906c9919b0a3e9ad5c2c4a8"
+    }
+  }
+}

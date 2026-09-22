@@ -47,9 +47,10 @@ an explicit `-no_gc` flag is unnecessary and rejected; omit it.
 
 ## Current implementation
 
-- `InstsArm64` implements the ARM register interface and an initial assembly
-  representation/emitter. x18, FP, LR, context, exception, and scratch registers
-  are excluded from integer allocation.
+- `InstsArm64` implements the ARM register interface and a typed instruction
+  representation and optimiser. `PrintArm64` renders assembly separately.
+  x18, FP, LR, context, exception, and scratch registers are excluded from
+  integer allocation.
 - `CodeGenUtilArm64` materializes 64-bit constants, performs aligned stack
   adjustments, and emits Mach-O GOT-based symbol addresses.
 - `CodeGenArm64` supports direct/indirect ML calls and tail transfers,
@@ -307,3 +308,7 @@ non-allocating functions, and specialize list-constructor tests.
 The [assembly investigation](arm64-assembly-investigation.md) follows up on
 mlyacc and professor with a fresh Basis, call counts, literature references,
 and isolated peephole, scheduling and frame/preservation experiments.
+
+The [typed-instruction refactor](arm64-typed-instructions.md) replaces string
+mnemonics and operands with datatypes and records a nucleic compilation-time
+comparison.

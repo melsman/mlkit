@@ -1,6 +1,6 @@
-signature INSTS_ARM64 = sig
-  include INSTS_BASE
-  type lvar
+(* Shared instruction representation. Assembly syntax belongs to PrintArm64. *)
+structure Arm64Instructions = struct
+  open InstsBase
   datatype reg = X of int | W of int | D of int | S of int | SP
   datatype condition = EQ | NE | LT | GE | GT | LE | LO | HS | HI | LS | MI | PL | VS | VC
   datatype shift = LSL | LSR | ASR
@@ -92,11 +92,4 @@ signature INSTS_ARM64 = sig
     | ubfx of ea * ea * ea * ea
     | csel of ea * ea * ea * ea
     | ret
-  type AsmPrg = inst list
-  val pr_reg : reg -> string
-  val pr_inst : inst -> string
-  val optimise : AsmPrg -> AsmPrg
-  val relax : AsmPrg -> AsmPrg
-  val emit : AsmPrg * string -> unit
-  structure RI : REGISTER_INFO where type reg = reg where type lvar = lvar
 end
