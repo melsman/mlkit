@@ -1,0 +1,53 @@
+{
+  "mlyacc-peephole": {
+    "counts": {
+      "roundtrip_copy": 4161,
+      "load_base_copy": 4404,
+      "alu_source_copy": 4315,
+      "zero_or": 1503,
+      "adjacent_pair": 4388,
+      "branch_thread": 1383
+    },
+    "changed_units": 44,
+    "instructions_before_in_changed_units": 275075,
+    "instructions_after_in_changed_units": 256304
+  },
+  "mlyacc-schedule": {
+    "counts": {
+      "independent_stack_loads_hoisted_one_instruction": 2390
+    },
+    "changed_units": 37,
+    "instructions_before_in_changed_units": 272465,
+    "instructions_after_in_changed_units": 272465
+  },
+  "professor-peephole": {
+    "counts": {
+      "roundtrip_copy": 216,
+      "load_base_copy": 181,
+      "alu_source_copy": 171,
+      "zero_or": 36,
+      "adjacent_pair": 166,
+      "branch_thread": 137
+    },
+    "changed_units": 1,
+    "instructions_before_in_changed_units": 22364,
+    "instructions_after_in_changed_units": 21594
+  },
+  "professor-schedule": {
+    "counts": {
+      "independent_stack_loads_hoisted_one_instruction": 170
+    },
+    "changed_units": 1,
+    "instructions_before_in_changed_units": 22364,
+    "instructions_after_in_changed_units": 22364
+  },
+  "professor-region_fp": {
+    "counts": {
+      "FP_save_restore_instructions_removed": 3652,
+      "region_call_sites": 166
+    },
+    "changed_units": 1,
+    "instructions_before_in_changed_units": 22364,
+    "instructions_after_in_changed_units": 18712
+  }
+}

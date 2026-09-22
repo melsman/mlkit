@@ -303,3 +303,7 @@ the GC snapshot slow path within each compilation unit.
 The [static-data, polling and list-test changes](arm64-static-data-results.md)
 remove executable static-image scans from GC, skip entry checks in
 non-allocating functions, and specialize list-constructor tests.
+
+The [assembly investigation](arm64-assembly-investigation.md) follows up on
+mlyacc and professor with a fresh Basis, call counts, literature references,
+and isolated peephole, scheduling and frame/preservation experiments.
