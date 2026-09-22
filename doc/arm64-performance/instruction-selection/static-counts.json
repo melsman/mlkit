@@ -1,0 +1,22 @@
+{
+  "mlyacc": {
+    "before": {
+      "units": 62,
+      "instructions": 246726
+    },
+    "after": {
+      "units": 62,
+      "instructions": 213375
+    }
+  },
+  "professor": {
+    "before": {
+      "units": 1,
+      "instructions": 15744
+    },
+    "after": {
+      "units": 1,
+      "instructions": 14237
+    }
+  }
+}

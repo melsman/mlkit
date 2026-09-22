@@ -109,6 +109,30 @@ struct
       (SS.PHREG_ATY (dst as X _),X _) => (dst,fn code => code)
     | (SS.PHREG_ATY (dst as D _),D _) => (dst,fn code => code)
     | _ => (tmp,writeInto fsz aty tmp)
+  (* Immediates must denote machine values, not boxed constants. *)
+  fun machineConstant aty =
+    let
+      fun number {value,precision} =
+        if tagged() andalso (precision = 32 orelse precision = 64) then NONE
+        else SOME(if precision = 63 orelse precision = 31 orelse
+                     (precision = 8 andalso tagged()) then 2*value+1 else value)
+    in
+      case aty of
+        SS.INTEGER_ATY n => number n
+      | SS.WORD_ATY n => number n
+      | _ => NONE
+    end
+  fun smallImmediate (n:IntInf.int) = n >= 0 andalso n <= 4095
+  fun immediate n = "#" ^ IntInf.toString n
+  fun compareConstantInto src value code =
+    if smallImmediate value then instruction "cmp" [r src,immediate value] code
+    else (constantInto(value,X 17)
+       ++ instruction "cmp" [r src,"x17"]) code
+  fun selectInto fsz aty offset pat code =
+    let val (src,load) = operandInto fsz aty (X 16)
+        val (dst,store) = destinationInto fsz pat (X 16)
+    in (load ++ loadInto(src,offset,dst) ++ store) code
+    end
   fun assignInto fsz src dst code =
     case (src,dst) of
       (SS.PHREG_ATY a,_) => writeInto fsz dst a code
@@ -630,10 +654,17 @@ struct
       fun operation opn tmp1 tmp2 code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let val (a,loadA) = operandInto fsz a tmp1
+            let val constant = machineConstant b
+                val (a,loadA) = operandInto fsz a tmp1
                 val (b,loadB) = operandInto fsz b tmp2
                 val (d,storeD) = destinationInto fsz d tmp1
-            in (loadA ++ loadB ++ instruction opn [r d,r a,r b] ++ storeD) code
+                val operation = case constant of
+                    SOME n =>
+                      if (opn = "add" orelse opn = "sub") andalso smallImmediate n then
+                        instruction opn [r d,r a,immediate n]
+                      else loadB ++ instruction opn [r d,r a,r b]
+                  | NONE => loadB ++ instruction opn [r d,r a,r b]
+            in (loadA ++ operation ++ storeD) code
             end
           | _ => unsupported "binary primitive arity")
       fun binary opn = operation opn (X 16) (X 17)
@@ -641,7 +672,8 @@ struct
       fun comparison opn tmp1 tmp2 cc code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let val (a,loadA) = operandInto fsz a tmp1
+            let val constant = machineConstant b
+                val (a,loadA) = operandInto fsz a tmp1
                 val (b,loadB) = operandInto fsz b tmp2
                 val finish = case d of
                     SS.FLOW_VAR_ATY(_,t,f) =>
@@ -653,7 +685,13 @@ struct
                          instruction "lsl" [r d,r d,"#1"] ++
                          instruction "add" [r d,r d,"#1"] ++ storeD
                       end
-            in (loadA ++ loadB ++ instruction opn [r a,r b] ++ finish) code
+                val compare =
+                  case (opn,constant) of
+                    ("cmp",SOME n) =>
+                      if smallImmediate n then instruction "cmp" [r a,immediate n]
+                      else loadB ++ instruction opn [r a,r b]
+                  | _ => loadB ++ instruction opn [r a,r b]
+            in (loadA ++ compare ++ finish) code
             end
           | _ => unsupported "comparison arity")
       fun compare cc = comparison "cmp" (X 16) (X 17) cc
@@ -674,13 +712,19 @@ struct
       fun checked opn code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let val ok = localFresh()
+            let val constant = machineConstant b
+                val ok = localFresh()
                 val (a,loadA) = operandInto fsz a (X 16)
                 val (b,loadB) = operandInto fsz b (X 17)
                 val (d,storeD) = destinationInto fsz d (X 16)
+                val arithmetic = case constant of
+                    SOME n =>
+                      if (opn = "adds" orelse opn = "subs") andalso smallImmediate n then
+                        instruction opn [r d,r a,immediate n]
+                      else loadB ++ instruction opn [r d,r a,r b]
+                  | NONE => loadB ++ instruction opn [r d,r a,r b]
             in
-              (loadA ++ loadB
-               ++ instruction opn [r d,r a,r b]
+              (loadA ++ arithmetic
                ++ instruction "b.vc" [pr_lab ok]
                ++ overflow()
                ++ one (Label ok)
@@ -690,7 +734,8 @@ struct
       fun taggedBinary opn adjustment code =
         (case (args,res) of
           ([a,b],[d]) =>
-            let val (a,loadA) = operandInto fsz a (X 16)
+            let val constant = machineConstant b
+                val (a,loadA) = operandInto fsz a (X 16)
                 val (b,loadB) = operandInto fsz b (X 17)
                 val (d,storeD) = destinationInto fsz d (X 16)
                 val code = storeD code
@@ -700,10 +745,16 @@ struct
                         ++ one (Label ok)) code
                     end
                   else code
-            in
-              (loadA ++ loadB
-               ++ instruction "sub" ["x17",r b,"#1"]
-               ++ instruction opn [r d,r a,"x17"]) code
+                val arithmetic =
+                  case constant of
+                    SOME n =>
+                      if smallImmediate(n-1) then
+                        instruction opn [r d,r a,immediate(n-1)]
+                      else loadB ++ instruction "sub" ["x17",r b,"#1"] ++
+                           instruction opn [r d,r a,"x17"]
+                  | NONE => loadB ++ instruction "sub" ["x17",r b,"#1"] ++
+                            instruction opn [r d,r a,"x17"]
+            in (loadA ++ arithmetic) code
             end
           | _ => unsupported "tagged arithmetic arity")
       fun boxed opn code =
@@ -1637,13 +1688,9 @@ struct
     | LS.ASSIGN {pat,bind = LS.SCLOS_RECORD{elems = elems as (_,_,rhos),alloc,f64_vars}} =>
         recordInto fsz pat alloc (header(BackendInfo.tag_sclos(false,length(LS.smash_free elems),length rhos+f64_vars)) []) (LS.smash_free elems) code
     | LS.ASSIGN {pat,bind = LS.SELECT(i,a)} =>
-        (readInto fsz a (X 16)
-           ++ loadInto(X 16,8*i+payload(),X 16)
-           ++ writeInto fsz pat (X 16)) code
+        selectInto fsz a (8*i+payload()) pat code
     | LS.ASSIGN {pat,bind = LS.DEREF{aty}} =>
-        (readInto fsz aty (X 16)
-           ++ loadInto(X 16,payload(),X 16)
-           ++ writeInto fsz pat (X 16)) code
+        selectInto fsz aty (payload()) pat code
     | LS.ASSIGN {pat,bind = LS.REF(alloc,a)} =>
         recordWithUntagInto true fsz pat alloc (header(BackendInfo.tag_ref false) []) [a] code
     | LS.ASSIGN {pat,bind = LS.ASSIGNREF(_,a,b)} =>
@@ -1719,20 +1766,16 @@ struct
               ++ writeInto fsz pat (X 16)) code
           | _ => unsupported "unary enumeration")
     | LS.ASSIGN {pat,bind = LS.DECON{con_kind,con_aty,...}} =>
-        readInto fsz con_aty (X 16)
-          ((case con_kind of
-            LS.BOXED _ =>
-              (loadInto(X 16,8,X 16)
-                 ++ writeInto fsz pat (X 16)) code
-            | LS.UNBOXED 0 =>
-              writeInto fsz pat (X 16) code
-            | LS.UNBOXED _ =>
-              (instruction "and" ["x16","x16","#-4"]
-                 ++ writeInto fsz pat (X 16)) code
-            | LS.UNBOXED_HIGH _ =>
-              (instruction "and" ["x16","x16","#0xffffffffffff"]
-                 ++ writeInto fsz pat (X 16)) code
-            | _ => unsupported "enumeration deconstruction"))
+        (case con_kind of
+           LS.BOXED _ => selectInto fsz con_aty 8 pat code
+         | LS.UNBOXED 0 => assignInto fsz con_aty pat code
+         | _ =>
+             (readInto fsz con_aty (X 16)
+              ++ (case con_kind of
+                    LS.UNBOXED _ => instruction "and" ["x16","x16","#-4"]
+                  | LS.UNBOXED_HIGH _ => instruction "and" ["x16","x16","#0xffffffffffff"]
+                  | _ => unsupported "enumeration deconstruction")
+              ++ writeInto fsz pat (X 16)) code)
     | LS.HANDLE {default,handl = (handl,closure),handl_return = (returned,result,bv),offset} =>
         let
           val ret = localFresh()
@@ -1879,7 +1922,36 @@ struct
         else flowInto fsz live (f,t,yes,no) code
     | LS.SWITCH_C (LS.SWITCH(a,[],default)) =>
         stmtsInto fsz live default code
-    | LS.SWITCH_C (LS.SWITCH(a,cases as ((con,kind),_)::_,default)) =>
+    | LS.SWITCH_C (sw as LS.SWITCH(a,[((con,LS.UNBOXED _),yes)],no)) =>
+        (* Valid list values have low bits 00 (CONS) or 11 (NIL).
+         * The constructor identity, not just its numeric tag, proves this. *)
+        if Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS) then
+          let val (src,load) = operandInto fsz a (X 16)
+              val otherwise = localFresh()
+              val done = localFresh()
+              val branch = if Con.eq(con,Con.con_CONS) then "tbnz" else "tbz"
+          in
+            (load ++ instruction branch [r src,"#0",pr_lab otherwise]
+             ++ stmtsInto fsz live yes ++ instruction "b" [pr_lab done]
+             ++ one(Label otherwise) ++ stmtsInto fsz live no
+             ++ one(Label done)) code
+          end
+        else constructorSwitchInto fsz live sw code
+    | LS.SWITCH_C sw => constructorSwitchInto fsz live sw code
+    | LS.SWITCH_W {switch = LS.SWITCH(a,cases,default),precision = 63} =>
+        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
+    | LS.SWITCH_I {switch = LS.SWITCH(a,cases,default),precision = 63} =>
+        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
+    | LS.SWITCH_W {switch,precision} =>
+        numericSwitchInto fsz live false precision switch code
+    | LS.SWITCH_I {switch,precision} =>
+        numericSwitchInto fsz live true precision switch code
+    | LS.RESET_REGIONS {regions_for_resetting,force} =>
+        foldr (fn (LS.IGNORE,code) => code
+                | (sma,code) => resetRegionInto fsz force sma code) code regions_for_resetting
+    | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
+  and constructorSwitchInto fsz live
+        (LS.SWITCH(a,cases as ((con,kind),_)::_,default)) code =
         let
           (* Constructor selectors are already encoded by closure conversion. *)
           fun tag k = IntInf.fromInt
@@ -1900,18 +1972,7 @@ struct
         in
           readInto fsz a (X 16) code
         end
-    | LS.SWITCH_W {switch = LS.SWITCH(a,cases,default),precision = 63} =>
-        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
-    | LS.SWITCH_I {switch = LS.SWITCH(a,cases,default),precision = 63} =>
-        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
-    | LS.SWITCH_W {switch,precision} =>
-        numericSwitchInto fsz live false precision switch code
-    | LS.SWITCH_I {switch,precision} =>
-        numericSwitchInto fsz live true precision switch code
-    | LS.RESET_REGIONS {regions_for_resetting,force} =>
-        foldr (fn (LS.IGNORE,code) => code
-                | (sma,code) => resetRegionInto fsz force sma code) code regions_for_resetting
-    | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
+    | constructorSwitchInto _ _ _ _ = unsupported "empty constructor switch"
   and numericSwitchInto fsz live signed precision (LS.SWITCH(a,cases,default)) code =
     let
       val tag = precision = 31 orelse precision = 63 orelse (precision = 8 andalso tagged())
@@ -1949,9 +2010,10 @@ struct
         in if n >= sign then n-modulus else n
         end
       val cases = map (fn (v,body) => (machineValue v,body)) cases
+      val (src,load) = if length cases <= 1 then operandInto fsz a (X 16)
+                       else (X 16,readInto fsz a (X 16))
       fun compare branch (lab,value,code) =
-        (constantInto (value,X 17)
-           ++ instruction "cmp" ["x16","x17"]
+        (compareConstantInto src value
            ++ instruction branch [pr_lab lab]) code
       fun label (lab,code) = Label lab :: code
       fun jump (lab,code) = instruction "b" [pr_lab lab] code
@@ -1974,7 +2036,7 @@ struct
          fn (a,b) => IntInf.abs(a-b),header,entry,
          fn (a,b) => pr_lab a = pr_lab b,fn _ => NONE,code)
     in
-      readInto fsz a (X 16) code
+      load code
     end
 
   val unitGCStub : A.lab option ref = ref NONE

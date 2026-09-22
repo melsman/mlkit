@@ -139,6 +139,9 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     "$compiler" --no_basislib $flags $extra_gc -o switches switches.sml >> integration.log 2>&1
     ./switches $profile_flags > actual
     cmp gc-expected actual
+    "$compiler" --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
+    ./instruction-selection $profile_flags > actual
+    cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
     ./gc-constructors $profile_flags > actual
     cmp gc-expected actual
@@ -175,7 +178,7 @@ for policy in normal forced; do
     ' "$asm" > "$fun-$policy.s"
     test -s "$fun-$policy.s"
   done
-  grep -q 'and x16, x16, #3' "sum-$policy.s"
+  grep -Eq 'tb(n)?z x[0-9]+, #0,' "sum-$policy.s"
   if grep -q 'csel x16, x16, x17, eq' "sum-$policy.s"; then
     echo 'List test still uses general constructor selection' >&2; exit 1
   fi

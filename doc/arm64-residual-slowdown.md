@@ -7,6 +7,9 @@ instruction selection in professor's list-indexing loop. Broader peephole
 cleanup helps both. These explain part, but not all, of the X64/Rosetta 2 gap.
 This investigation changes no production compiler or runtime code.
 
+Follow-up: [instruction selection and peephole cleanup](arm64-instruction-selection-results.md)
+are implemented. The inlining opportunity remains deferred.
+
 ## Controlled experiments
 
 Median wall-clock seconds on the same M2 Max, GC enabled. Each variant uses

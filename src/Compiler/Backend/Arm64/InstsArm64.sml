@@ -32,17 +32,48 @@ structure InstsArm64 : INSTS_ARM64 = struct
           | #"d" => if n <= 31 then SOME "fmov" else NONE
           | _ => NONE)
       | NONE => NONE
-  fun stackOffset s =
+  fun decimal n = String.translate (fn #"~" => "-" | c => str c) (Int.toString n)
+  fun memory (base,off) = "[" ^ base ^ ", #" ^ decimal off ^ "]"
+  (* Only ordinary constant-offset addresses; no writeback or register index. *)
+  fun memoryOffset s =
     case String.tokens (fn c => c = #"[" orelse c = #"]" orelse
                                c = #"," orelse c = #" ") s of
-      ["sp",n] =>
-        if not(String.isPrefix "#" n) then NONE
+      [base,n] =>
+        if (base <> "sp" andalso registerClass base <> SOME "mov") orelse
+           not(String.isPrefix "#" n) then NONE
         else
           (case Int.fromString(String.extract(n,1,NONE)) of
-             SOME off => if off >= 0 andalso s = "[sp, #" ^ Int.toString off ^ "]"
-                         then SOME off else NONE
+             SOME off => if s = memory(base,off) then SOME(base,off) else NONE
            | NONE => NONE)
     | _ => NONE
+  fun stackOffset s =
+    case memoryOffset s of SOME("sp",off) => SOME off | _ => NONE
+  (* Resolve only label-only blocks ending in B. Never remove the labels:
+   * return PCs, GC descriptors and exception tables can still reference them. *)
+  fun threadBranches code =
+    let
+      fun scan (Label l::rest,pending,table) = scan(rest,l::pending,table)
+        | scan (Op("b",[target])::rest,pending,table) =
+            scan(rest,[],foldl (fn (l,t) => StringFinMap.add(pr_lab l,target,t)) table pending)
+        | scan (_::rest,_,table) = scan(rest,[],table)
+        | scan ([],_,table) = table
+      val table = scan(code,[],StringFinMap.empty)
+      fun resolve original =
+        let
+          fun follow (target,seen) =
+            if List.exists (fn s => s = target) seen then original
+            else case StringFinMap.lookup table target of
+              SOME next => follow(next,target::seen)
+            | NONE => target
+        in follow(original,[])
+        end
+      fun rewrite (Op(opn,args)) =
+            if (opn = "b" orelse Option.isSome(inverse opn)) andalso not(null args) then
+              Op(opn,List.take(args,length args-1) @ [resolve(List.last args)])
+            else Op(opn,args)
+        | rewrite i = i
+    in map rewrite code
+    end
   fun optimise code =
     let
       fun sameClass (a,b) =
@@ -51,12 +82,21 @@ structure InstsArm64 : INSTS_ARM64 = struct
         | _ => false
       fun pair (opn,a,ma,b,mb) =
         if not(sameClass(a,b)) orelse (opn = "ldr" andalso a = b) then NONE
-        else case (stackOffset ma,stackOffset mb) of
-          (SOME x,SOME y) =>
-            if x mod 8 = 0 andalso x <= 504 andalso y = x+8 then
-              SOME(Op(if opn = "ldr" then "ldp" else "stp",[a,b,ma]))
-            else NONE
+        else case (memoryOffset ma,memoryOffset mb) of
+          (SOME(base,x),SOME(base',y)) =>
+            let val low = Int.min(x,y)
+            in
+              if base = base' andalso low mod 8 = 0 andalso low >= ~512 andalso
+                 low <= 504 andalso Int.abs(x-y) = 8 andalso
+                 not(opn = "ldr" andalso a = base) then
+                SOME(Op(if opn = "ldr" then "ldp" else "stp",
+                        (if x < y then [a,b] else [b,a]) @ [memory(base,low)]))
+              else NONE
+            end
         | _ => NONE
+      fun integer s = registerClass s = SOME "mov"
+      fun immediateALU opn = List.exists (fn n => n = opn)
+        ["add","sub","and","orr","eor","lsr","lsl","asr"]
       fun loop ([],acc) = rev acc
         | loop ((i as Op(opn,[a,b]))::rest,acc) =
             if opn = "mov" andalso a = b andalso registerClass a = SOME opn then loop(rest,acc)
@@ -64,7 +104,30 @@ structure InstsArm64 : INSTS_ARM64 = struct
         | loop (i::rest,acc) = window(i,rest,acc)
       and window (i,rest,acc) =
         case (i,rest) of
-          (Op("b",[target]),(lab as Label l)::tail) =>
+          (Op("mov",[a,b]),Op("mov",[c,d])::tail) =>
+            if integer a andalso integer b andalso a = d andalso b = c then
+              loop(i::tail,acc)
+            else loop(rest,i::acc)
+        | (Op("mov",[a,b]),Op(opn,[dst,addr])::tail) =>
+            if integer a andalso integer b andalso dst = a andalso
+               List.exists (fn n => n = opn) ["ldr","ldrb","ldrh"] then
+              (case memoryOffset addr of
+                 SOME(base,off) =>
+                   if base = a then loop(Op(opn,[dst,memory(b,off)])::tail,acc)
+                   else loop(rest,i::acc)
+               | NONE => loop(rest,i::acc))
+            else loop(rest,i::acc)
+        | (Op("mov",[a,b]),Op(opn,[dst,src,imm])::tail) =>
+            if integer a andalso integer b andalso dst = a andalso src = a andalso
+               immediateALU opn andalso String.isPrefix "#" imm then
+              loop(Op(opn,[dst,b,imm])::tail,acc)
+            else loop(rest,i::acc)
+        | (Op("movz",[zero,"#0","lsl #0"]),Op("orr",[dst,a,b])::tail) =>
+            if integer zero andalso integer dst andalso
+               ((a = dst andalso b = zero) orelse (a = zero andalso b = dst)) then
+              loop(i::tail,acc)
+            else loop(rest,i::acc)
+        | (Op("b",[target]),(lab as Label l)::tail) =>
             if target = pr_lab l then loop(lab::tail,acc)
             else loop(rest,i::acc)
         | (Op(opn,args),(lab as Label l)::tail) =>
@@ -89,6 +152,12 @@ structure InstsArm64 : INSTS_ARM64 = struct
                | NONE => loop(rest,i::acc))
             else loop(rest,i::acc)
         | _ => loop(rest,i::acc)
+      (* Bounded extra sweeps expose adjacent patterns hidden by a copy or
+       * branch removed on the preceding sweep; compilation remains linear
+       * apart from finite-map lookup and branch-chain resolution. *)
+      val code = threadBranches code
+      val code = loop(code,[])
+      val code = loop(code,[])
     in loop(code,[])
     end
   (* Bound distances with every conditional branch expanded, every ADRP/ADD

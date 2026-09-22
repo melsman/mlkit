@@ -51,6 +51,46 @@ in
   val () = unchanged("metadata barrier",[store,Directive ".p2align 3",Op("str",["x1","[sp, #8]"])])
   val () = unchanged("label barrier",[store,Label l,Op("str",["x1","[sp, #8]"])])
   val () = unchanged("writeback",[Op("str",["x0","[sp, #0]!"]),Op("ldr",["x1","[sp, #0]!"])])
+  val () = check("round-trip copy",
+    [Op("mov",["x16","x1"]),Op("mov",["x1","x16"])],
+    [Op("mov",["x16","x1"])])
+  val () = check("fold address copy",
+    [Op("mov",["x16","x1"]),Op("ldr",["x16","[x16, #8]"])],
+    [Op("ldr",["x16","[x1, #8]"])])
+  val () = unchanged("address copy remains live",
+    [Op("mov",["x16","x1"]),Op("ldr",["x0","[x16, #8]"])])
+  val () = unchanged("address writeback barrier",
+    [Op("mov",["x16","x1"]),Op("ldr",["x16","[x16, #8]!"])])
+  val () = check("fold ALU copy",
+    [Op("mov",["x16","x1"]),Op("and",["x16","x16","#3"])],
+    [Op("and",["x16","x1","#3"])])
+  val () = unchanged("ALU copy remains live",
+    [Op("mov",["x16","x1"]),Op("add",["x0","x16","#1"])])
+  val () = check("keep known-zero definition",
+    [Op("movz",["x17","#0","lsl #0"]),Op("orr",["x0","x0","x17"])],
+    [Op("movz",["x17","#0","lsl #0"])])
+  val () = unchanged("unknown OR operand",
+    [Op("movz",["x17","#1","lsl #0"]),Op("orr",["x0","x0","x17"])])
+  val () = check("descending pair",
+    [Op("ldr",["x0","[sp, #24]"]),Op("ldr",["x1","[sp, #16]"])],
+    [Op("ldp",["x1","x0","[sp, #16]"])])
+  val () = check("negative heap pair",
+    [Op("ldr",["d0","[x2, #-504]"]),Op("ldr",["d1","[x2, #-512]"])],
+    [Op("ldp",["d1","d0","[x2, #-512]"])])
+  val () = unchanged("first load changes base",
+    [Op("ldr",["x2","[x2, #0]"]),Op("ldr",["x1","[x2, #8]"])])
+  val () = check("last load may overwrite base",
+    [Op("ldr",["x1","[x2, #0]"]),Op("ldr",["x2","[x2, #8]"])],
+    [Op("ldp",["x1","x2","[x2, #0]"])])
+  val () = unchanged("pair below signed range",
+    [Op("str",["x0","[sp, #-520]"]),Op("str",["x1","[sp, #-512]"])])
+  val () = check("thread bit-test retaining metadata",
+    [Op("tbz",["x0","#0",pr_lab l]),Directive ".quad 0",Label l,branch],
+    [Op("tbz",["x0","#0",pr_lab other]),Directive ".quad 0",Label l,branch])
+  val () = unchanged("thread cycle terminates",
+    [Label l,branch,Directive ".quad 0",Label other,Op("b",[pr_lab l])])
+  val () = unchanged("directive blocks threading",
+    [Op("b.eq",[pr_lab l]),Directive ".quad 0",Label l,Directive ".quad 0",branch])
   val () = List.app (fn lv =>
     case I.RI.lv_to_reg lv of
       X n => if I.RI.is_callee_save_ccall lv = (n >= 19 andalso n <= 26)

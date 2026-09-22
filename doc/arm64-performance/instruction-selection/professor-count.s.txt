@@ -1,0 +1,35 @@
+_F.count37_JPD2Eh6QMLmmy9n7CCpyMf:
+	stp x29, x30, [sp, #0]
+	add x29, sp, #0
+L_arm64_loop_UuffqCMpOlSpQbF5F6Xz9g:
+	tbnz x1, #0, L_arm64_4ziEDsn38TbJxc6P1X3EQc
+	cmp x2, #1
+	b.ne L_arm64_FH9acFKv9R8B7P2xav9xHE
+	ldr x0, [x1, #8]
+	b L_arm64_CievSXQLbzKjhH3q3CfUgf
+L_arm64_FH9acFKv9R8B7P2xav9xHE:
+	ldr x1, [x1, #16]
+	subs x2, x2, #2
+	b.vc L_arm64_loop_UuffqCMpOlSpQbF5F6Xz9g
+	adrp x1, _exn_OVERFLOW@GOTPAGE
+	ldr x1, [x1, _exn_OVERFLOW@GOTPAGEOFF]
+	mov x0, x28
+	b _raise_exn
+L_arm64_t5PjokFJFhrEjVammGyLDE:
+	b L_arm64_loop_UuffqCMpOlSpQbF5F6Xz9g
+L_arm64_AV5IfPLTdAZcH7P6JRbgkf:
+	b L_arm64_CievSXQLbzKjhH3q3CfUgf
+L_arm64_4ziEDsn38TbJxc6P1X3EQc:
+	ldr x1, [x0, #8]
+	sub sp, sp, #16
+	mov x16, x28
+	str x16, [sp, #0]
+	mov x16, x1
+	str x16, [sp, #8]
+	ldp x0, x1, [sp, #0]
+	add sp, sp, #16
+	b _raise_exn
+L_arm64_CievSXQLbzKjhH3q3CfUgf:
+	ldp x29, x30, [sp, #0]
+	add sp, sp, #16
+	ret 
