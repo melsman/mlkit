@@ -1,0 +1,349 @@
+{
+  "baseline_revision": "91b950f",
+  "x64_binary_revision": "milestone 11 (unchanged X64 backend)",
+  "warmups": 1,
+  "repetitions": 3,
+  "runtime_flag": "-report_gc",
+  "basis": "unchanged M12Inline Basis; exact same ML objects for original ARM64 and range-reject experiment",
+  "results": [
+    {
+      "benchmark": "nucleic",
+      "samples": {
+        "x64": [
+          {
+            "wall": 0.9573766250000002,
+            "cpu": 0.9518970000000007,
+            "gc_cpu": 0.1966,
+            "outside_gc_cpu": 0.7552970000000007,
+            "collections": 3106
+          },
+          {
+            "wall": 0.9500513749999993,
+            "cpu": 0.9439659999999996,
+            "gc_cpu": 0.19340000000000002,
+            "outside_gc_cpu": 0.7505659999999996,
+            "collections": 3106
+          },
+          {
+            "wall": 0.9507868330000004,
+            "cpu": 0.9462709999999999,
+            "gc_cpu": 0.19519999999999998,
+            "outside_gc_cpu": 0.7510709999999998,
+            "collections": 3106
+          }
+        ],
+        "arm64": [
+          {
+            "wall": 1.4369959999999997,
+            "cpu": 1.4324189999999999,
+            "gc_cpu": 0.8024,
+            "outside_gc_cpu": 0.6300189999999999,
+            "collections": 3106
+          },
+          {
+            "wall": 1.4436739999999997,
+            "cpu": 1.439037000000001,
+            "gc_cpu": 0.8058,
+            "outside_gc_cpu": 0.633237000000001,
+            "collections": 3106
+          },
+          {
+            "wall": 1.4300439590000007,
+            "cpu": 1.4255990000000005,
+            "gc_cpu": 0.798,
+            "outside_gc_cpu": 0.6275990000000005,
+            "collections": 3106
+          }
+        ],
+        "arm64_range_reject": [
+          {
+            "wall": 0.8194319160000001,
+            "cpu": 0.8163630000000004,
+            "gc_cpu": 0.18930000000000002,
+            "outside_gc_cpu": 0.6270630000000004,
+            "collections": 3106
+          },
+          {
+            "wall": 0.822170625,
+            "cpu": 0.8192729999999998,
+            "gc_cpu": 0.1928,
+            "outside_gc_cpu": 0.6264729999999998,
+            "collections": 3106
+          },
+          {
+            "wall": 0.8248169999999995,
+            "cpu": 0.8216500000000004,
+            "gc_cpu": 0.1948,
+            "outside_gc_cpu": 0.6268500000000005,
+            "collections": 3106
+          }
+        ]
+      },
+      "median": {
+        "x64": {
+          "wall": 0.9507868330000004,
+          "cpu": 0.9462709999999999,
+          "gc_cpu": 0.19519999999999998,
+          "outside_gc_cpu": 0.7510709999999998,
+          "collections": 3106
+        },
+        "arm64": {
+          "wall": 1.4369959999999997,
+          "cpu": 1.4324189999999999,
+          "gc_cpu": 0.8024,
+          "outside_gc_cpu": 0.6300189999999999,
+          "collections": 3106
+        },
+        "arm64_range_reject": {
+          "wall": 0.822170625,
+          "cpu": 0.8192729999999998,
+          "gc_cpu": 0.1928,
+          "outside_gc_cpu": 0.6268500000000005,
+          "collections": 3106
+        }
+      },
+      "lookup_counters": "[GC(800.6ms): 3106 collections, 300kb rpages]\nstatic lookups=30857737 probes=837178726 hits=13444636 registrations=45\n",
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/nucleic-x64-gc.exe",
+          "sha256": "11f68cd28dbabd6f8147fde2cae7061ae5214992499e99e28afaf7dac99bc657"
+        },
+        "arm64": {
+          "path": "/private/tmp/mlkit-m12-layout/nucleic-gc.exe",
+          "sha256": "502de2fdbeb8ce5d6fc4f1f8b5dd6130bf9aca2f9503365de89166fc1041d74c"
+        },
+        "arm64_range_reject": {
+          "path": "/private/tmp/mlkit-m12-diagnosis/nucleic-fast.exe",
+          "sha256": "46550d81f81c73ecd485fa93a49df2d47e0e2ad8ce1a9b385fb499d32f974512"
+        }
+      },
+      "expected_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "x64": [
+          {
+            "wall": 0.19116191699999874,
+            "cpu": 0.1862820000000016,
+            "gc_cpu": 0.0076,
+            "outside_gc_cpu": 0.17868200000000162,
+            "collections": 28
+          },
+          {
+            "wall": 0.21486545899999854,
+            "cpu": 0.20877700000000043,
+            "gc_cpu": 0.0087,
+            "outside_gc_cpu": 0.20007700000000045,
+            "collections": 28
+          },
+          {
+            "wall": 0.19530262500000006,
+            "cpu": 0.1906279999999969,
+            "gc_cpu": 0.008400000000000001,
+            "outside_gc_cpu": 0.18222799999999692,
+            "collections": 28
+          }
+        ],
+        "arm64": [
+          {
+            "wall": 0.3833480829999978,
+            "cpu": 0.3799859999999977,
+            "gc_cpu": 0.09509999999999999,
+            "outside_gc_cpu": 0.28488599999999775,
+            "collections": 28
+          },
+          {
+            "wall": 0.38176583299999933,
+            "cpu": 0.37810699999999664,
+            "gc_cpu": 0.094,
+            "outside_gc_cpu": 0.28410699999999667,
+            "collections": 28
+          },
+          {
+            "wall": 0.3742678340000012,
+            "cpu": 0.3717960000000009,
+            "gc_cpu": 0.0916,
+            "outside_gc_cpu": 0.2801960000000009,
+            "collections": 28
+          }
+        ],
+        "arm64_range_reject": [
+          {
+            "wall": 0.2968009589999987,
+            "cpu": 0.29296799999999834,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.28676799999999836,
+            "collections": 28
+          },
+          {
+            "wall": 0.2875222079999986,
+            "cpu": 0.2848540000000013,
+            "gc_cpu": 0.0066,
+            "outside_gc_cpu": 0.2782540000000013,
+            "collections": 28
+          },
+          {
+            "wall": 0.28577458299999847,
+            "cpu": 0.28332400000000213,
+            "gc_cpu": 0.0056,
+            "outside_gc_cpu": 0.27772400000000214,
+            "collections": 28
+          }
+        ]
+      },
+      "median": {
+        "x64": {
+          "wall": 0.19530262500000006,
+          "cpu": 0.1906279999999969,
+          "gc_cpu": 0.008400000000000001,
+          "outside_gc_cpu": 0.18222799999999692,
+          "collections": 28
+        },
+        "arm64": {
+          "wall": 0.38176583299999933,
+          "cpu": 0.37810699999999664,
+          "gc_cpu": 0.094,
+          "outside_gc_cpu": 0.28410699999999667,
+          "collections": 28
+        },
+        "arm64_range_reject": {
+          "wall": 0.2875222079999986,
+          "cpu": 0.2848540000000013,
+          "gc_cpu": 0.0062,
+          "outside_gc_cpu": 0.2782540000000013,
+          "collections": 28
+        }
+      },
+      "lookup_counters": "[GC(95.9ms): 28 collections, 1500kb rpages]\nstatic lookups=709177 probes=81180045 hits=10958 registrations=116\n",
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/mlyacc-x64-gc.exe",
+          "sha256": "636ff554c1f37b8de3e617c20341997206a765b5f3302c8cc23e9b28db38cf66"
+        },
+        "arm64": {
+          "path": "/private/tmp/mlkit-m12-layout/mlyacc-gc.exe",
+          "sha256": "b8d3a661cb3e85807b37fca203f246500136464496c0f1082ba461743515e892"
+        },
+        "arm64_range_reject": {
+          "path": "/private/tmp/mlkit-m12-diagnosis/mlyacc-fast.exe",
+          "sha256": "db0c502e49f65e91148cf91f38ab7e1598a1de01534caea6815d7478703097f5"
+        }
+      },
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "professor",
+      "samples": {
+        "x64": [
+          {
+            "wall": 0.24013083399999857,
+            "cpu": 0.23571199999999948,
+            "gc_cpu": 0.0057,
+            "outside_gc_cpu": 0.23001199999999947,
+            "collections": 263
+          },
+          {
+            "wall": 0.2443843329999993,
+            "cpu": 0.23998900000000023,
+            "gc_cpu": 0.0055,
+            "outside_gc_cpu": 0.23448900000000023,
+            "collections": 263
+          },
+          {
+            "wall": 0.23819608299999828,
+            "cpu": 0.2337849999999999,
+            "gc_cpu": 0.0058,
+            "outside_gc_cpu": 0.2279849999999999,
+            "collections": 263
+          }
+        ],
+        "arm64": [
+          {
+            "wall": 0.37702658399999933,
+            "cpu": 0.3736849999999998,
+            "gc_cpu": 0.022600000000000002,
+            "outside_gc_cpu": 0.3510849999999998,
+            "collections": 263
+          },
+          {
+            "wall": 0.3773037919999993,
+            "cpu": 0.3740870000000003,
+            "gc_cpu": 0.0217,
+            "outside_gc_cpu": 0.3523870000000003,
+            "collections": 263
+          },
+          {
+            "wall": 0.3737547499999998,
+            "cpu": 0.3709580000000001,
+            "gc_cpu": 0.022699999999999998,
+            "outside_gc_cpu": 0.3482580000000001,
+            "collections": 263
+          }
+        ],
+        "arm64_range_reject": [
+          {
+            "wall": 0.359295165999999,
+            "cpu": 0.3563920000000025,
+            "gc_cpu": 0.0045,
+            "outside_gc_cpu": 0.3518920000000025,
+            "collections": 263
+          },
+          {
+            "wall": 0.35764533400000076,
+            "cpu": 0.3548130000000027,
+            "gc_cpu": 0.0045,
+            "outside_gc_cpu": 0.3503130000000027,
+            "collections": 263
+          },
+          {
+            "wall": 0.38006541600000077,
+            "cpu": 0.37465999999999666,
+            "gc_cpu": 0.0055,
+            "outside_gc_cpu": 0.36915999999999666,
+            "collections": 263
+          }
+        ]
+      },
+      "median": {
+        "x64": {
+          "wall": 0.24013083399999857,
+          "cpu": 0.23571199999999948,
+          "gc_cpu": 0.0057,
+          "outside_gc_cpu": 0.23001199999999947,
+          "collections": 263
+        },
+        "arm64": {
+          "wall": 0.37702658399999933,
+          "cpu": 0.3736849999999998,
+          "gc_cpu": 0.022600000000000002,
+          "outside_gc_cpu": 0.3510849999999998,
+          "collections": 263
+        },
+        "arm64_range_reject": {
+          "wall": 0.359295165999999,
+          "cpu": 0.3563920000000025,
+          "gc_cpu": 0.0045,
+          "outside_gc_cpu": 0.3518920000000025,
+          "collections": 263
+        }
+      },
+      "lookup_counters": "[GC(24.2ms): 263 collections, 200kb rpages]\nstatic lookups=548132 probes=21412933 hits=54757 registrations=43\n",
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/professor-x64-gc.exe",
+          "sha256": "ef3d970a779d722b64d0349f80986d18cdafb46b6268b9a77a20f49af076720c"
+        },
+        "arm64": {
+          "path": "/private/tmp/mlkit-m12-layout/professor-gc.exe",
+          "sha256": "35ffd8a613a864e470baeaadf868624642ab8ad08ba202189e9b55ca2bb3ab89"
+        },
+        "arm64_range_reject": {
+          "path": "/private/tmp/mlkit-m12-diagnosis/professor-fast.exe",
+          "sha256": "941a7ca326d96c79b8ab083bebfaec01a52f29674fe71ffa8cd3f15f0f8c674f"
+        }
+      },
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    }
+  ]
+}
