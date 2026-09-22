@@ -1,6 +1,6 @@
 # macOS ARM GitHub Actions
 
-Milestone 9 adds `macos-arm` jobs for both `mlkit` and `mlton` host compilers
+Milestone 9 adds `macos-arm` coverage with the `mlkit` host compiler
 in `.github/workflows/main.yml`. Existing Linux and Intel macOS coverage remains.
 The logical `macos-arm` platform selects `macos-15`, an Apple Silicon runner
 listed in [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
@@ -8,10 +8,14 @@ listed in [GitHub's runner reference](https://docs.github.com/en/actions/referen
 The MLKit job downloads the existing v4.7.22 Darwin release and uses Rosetta
 for that X64 seed only. It builds separate X64 compatibility runtime archives
 before configuring `DARWIN_NATIVE=1` and building the ARM64 runtime variants.
-The MLton job uses [Homebrew's native package](https://formulae.brew.sh/formula/mlton)
-and its own Basis to build the ARM-emitting seed compilers. MLton is used only
-in its dedicated CI host entry; local development continues to use MLKit.
-Both jobs then use the seed MLKit to produce native ARM64 MLKit, ReML, and tools.
+The seed MLKit then produces native ARM64 MLKit, ReML, and tools.
+The X64 seed compilers are linked with a 1 GiB stack and the classic linker,
+matching local compiler builds; CI verifies the Mach-O stack size. The former
+256 MiB configuration failed during native compiler compilation with a worker
+`SIGBUS` in [run 35742801677](https://github.com/melsman/mlkit/actions/runs/35742801677/job/106796615162).
+Stack exhaustion is the suspected cause, consistent with the earlier
+[local host-stack findings](arm64-inline-gc-results.md); the hosted rerun must
+confirm whether this fixes that failure.
 All MLKit compiler/tool builds explicitly use `-gc`.
 
 The phases in `.github/scripts/arm64.sh` perform:
@@ -41,11 +45,11 @@ Jobs use separate VMs and host-specific output directories, compiler-cache
 names, installation prefixes, and artifact names. They do not restore caches
 from another run. Test scratch directories respect `TMPDIR`; CI retains native
 fixture output with `ARM64_KEEP_TEST_OUTPUTS=1`. Logs and HTML test reports are
-uploaded even on failure, under `logs-darwin-arm64-{mlkit,mlton}`. Successful
-installations are uploaded as `mlkit-bin-dist-darwin-arm64-{mlkit,mlton}`.
+uploaded even on failure, under `logs-darwin-arm64-mlkit`. Successful
+installations are uploaded as `mlkit-bin-dist-darwin-arm64-mlkit`.
 Basis caches are excluded from the archive so they rebuild at the destination.
 Unpack a distribution to a space-free prefix and set `SML_LIB` to that prefix.
 
 Local workflow validation uses actionlint, shell syntax checks, and the native
 suite with CI log retention enabled. Hosted run outcomes are tracked on PR #224;
-configuration validation alone does not establish that both hosted jobs pass.
+configuration validation alone does not establish that the hosted job passes.

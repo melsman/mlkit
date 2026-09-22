@@ -34,10 +34,15 @@ case "${1:?Specify a CI phase}" in
     mkdir -p "$seed"
     for compiler in mlkit reml; do
       if [ "$ARM64_HOST" = mlkit ]; then
+        # Large compiler units exhaust the former 256 MiB host stack. Match
+        # the 1 GiB/classic-linker configuration used for local compiler builds.
         mlkit -gc --mlb-subdir "${cache}_Seed" \
-          -ldexe 'gcc -arch x86_64 -Wl,-stack_size,0x10000000' \
+          -ldexe 'gcc -arch x86_64 -Wl,-ld_classic,-stack_size,0x40000000' \
           -o "$seed/$compiler" "src/Compiler/${compiler}arm64.mlb"
         test "$(lipo -archs "$seed/$compiler")" = x86_64
+        stack_size=$(otool -l "$seed/$compiler" | awk '$1 == "stacksize" {print $2}')
+        echo "$compiler seed stack size: $stack_size bytes"
+        test "$stack_size" = 1073741824
       else
         # Use MLton's own Basis, not the source tree's MLKit-specific Basis.
         env -u SML_LIB mlton @MLton ram-slop 0.7 -- \

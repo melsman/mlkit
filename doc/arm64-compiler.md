@@ -270,7 +270,7 @@ register saves on ordinary allocations.
 
 ## Continuous integration
 
-See [macOS ARM CI](arm64-ci.md) for the MLKit/MLton host matrix, native build and
+See [macOS ARM CI](arm64-ci.md) for the MLKit host configuration, native build and
 bootstrap phases, and retained test reports and installation artifacts.
 
 The [style and composition report](arm64-style.md) describes the local `++`

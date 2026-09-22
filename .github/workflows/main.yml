@@ -239,7 +239,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-arm]
-        mlcomp: [mlkit, mlton]
+        mlcomp: [mlkit]
         include:
           - os: macos-arm
             runner: macos-15
@@ -276,10 +276,6 @@ jobs:
           test "$(lipo -archs "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit")" = x86_64
           SML_LIB="$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" \
             "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit" --version
-
-      - name: Install native MLton host
-        if: matrix.mlcomp == 'mlton'
-        run: brew install mlton
 
       - name: Build target runtimes
         run: bash .github/scripts/arm64.sh runtime 2>&1 | tee "$ARM64_CI_ROOT/logs/runtime.log"
