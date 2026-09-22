@@ -6,6 +6,9 @@ followed by conservative peephole cleanup. A simple load-rescheduling trial
 does not improve these benchmarks. No production compiler or runtime code is
 changed by this investigation.
 
+Follow-up: [compile-time live-register preservation](arm64-live-register-results.md)
+is now implemented for region entry/exit calls.
+
 ## Measurements
 
 The earlier runs reused an older Basis. Rebuilding the entire GC Basis with

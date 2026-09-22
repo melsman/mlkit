@@ -186,6 +186,65 @@ in
   val () = G.emit(G.generate_link_code([main],([],[])),"record-destinations-link.s")
 end
 
+(* Region calls have compile-time save sets. Substitute hostile helpers that
+ * clobber every C-volatile ML register, check SP alignment, and touch the passed
+ * region descriptor. This exercises empty, odd and mixed-bank save sets. *)
+local
+  open CodeGenUtilArm64
+  val main = AddressLabels.new_named "region_live"
+  val target = AddressLabels.new_named "region_live_return"
+  val flowTarget = AddressLabels.new_named "region_live_flow"
+  val yes = AddressLabels.new_named "region_live_yes"
+  val no = AddressLabels.new_named "region_live_no"
+  val flow = S.FLOW_VAR_ATY(Lvars.newLvar(),yes,no)
+  val (rho,_) = Effect.freshRhoWithTy(Effect.TOP_RT,Effect.emptyCone)
+  fun region off body = L.LETREGION{rhos = [((rho,L.INF),off)],body = body}
+  fun aty r = S.PHREG_ATY r
+  fun put off = L.CCALL{name = "putchar",args = [S.STACK_ATY off],rhos_for_result = [],res = []}
+  fun sample (inputs,outputs,firstChar) =
+    let
+      val setup = CodeGenUtilArm64.mapi (fn (i,r) => assign(aty r,num(firstChar+i))) inputs
+      val capture = CodeGenUtilArm64.mapi (fn (i,r) => L.FLUSH(aty r,i)) inputs
+      val produce = CodeGenUtilArm64.mapi
+        (fn (i,r) => assign(aty r,num(firstChar+length inputs+i))) outputs
+      val finish = CodeGenUtilArm64.mapi (fn (i,r) => L.FLUSH(aty r,length inputs+i)) outputs
+    in setup @ [region 15 (capture @ produce)] @ finish @
+       List.tabulate(length inputs+length outputs,put)
+    end
+  val body = sample([I.X 4],[I.X 5],65) @
+    sample([I.D 0,I.D 16,I.D 29],[I.D 1,I.D 17,I.D 28],67) @
+    sample([I.X 4,I.D 16,I.D 8,I.X 19],[I.D 7],73) @
+    [region 15 [region 23 []],put 15,
+     L.FUNCALL{opr = target,args = [],reg_args = [],fargs = [],clos = NONE,res = [x 0],bv = []},
+     L.CCALL{name = "putchar",args = [x 0],rhos_for_result = [],res = []},
+     L.FUNCALL{opr = flowTarget,args = [num 80],reg_args = [],fargs = [],clos = NONE,res = [x 0],bv = []},
+     L.CCALL{name = "putchar",args = [x 0],rhos_for_result = [],res = []}]
+  val flowBody = [assign(x 4,x 0),
+    region 15 [L.ASSIGN{pat = flow,bind = L.CON0{con = Con.con_TRUE,
+      con_kind = L.ENUM 1,aux_regions = [],alloc = L.IGNORE}}],
+    assign(x 4,num 0),
+    L.SWITCH_C(L.SWITCH(flow,[((Con.con_TRUE,L.ENUM 1),[assign(x 0,x 4)])],
+      [assign(x 0,num 0)]))]
+  val code = [L.FUN(main,convention(0,0,32),body),
+              L.FUN(target,convention(0,1,16),[region 15 [assign(x 0,num 79)]]),
+              L.FUN(flowTarget,convention(1,1,16),flowBody)]
+  fun redirect (I.Op("bl",["_allocateRegion"])) = I.Op("bl",["_live_region_enter"])
+    | redirect (I.Op("bl",["_deallocateRegion"])) = I.Op("bl",["_live_region_exit"])
+    | redirect i = i
+  val volatile = List.tabulate(16,I.X) @ List.tabulate(8,I.D) @
+                 List.tabulate(14,fn i => I.D(i+16))
+  fun helper (name,enter) =
+    function(I.NameLab name) @ [ins "mov" ["x16","sp"],ins "tst" ["x16","#15"],
+      ins "b.eq" ["1f"],ins "brk" ["#1"],I.Directive "1:"] @
+    (if enter then constant(78,I.X 16) @ store(I.X 16,I.X 1,0) else []) @
+    constant(0,I.X 16) @ List.concat(map (fn r => move(I.X 16,r)) volatile) @ [ins "ret" []]
+in
+  val () = G.emit(map redirect
+    (G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false}) @
+    helper("live_region_enter",true) @ helper("live_region_exit",false),"region-live.s")
+  val () = G.emit(G.generate_link_code([main],([],[])),"region-live-link.s")
+end
+
 (* Nested statement emission must preserve the following code suffix exactly
  * once, including through empty region scopes. Check it by executing AB. *)
 local

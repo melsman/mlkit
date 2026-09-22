@@ -256,18 +256,20 @@ struct
    * Actual collection uses the separate, collector-visible entryGCInto image. *)
   val savedRegs = List.tabulate(16,X) @ List.tabulate(8,D) @
                   List.tabulate(14,fn i => D(i+16))
-  fun internalCallInto fsz name args code =
+  fun internalCallLiveInto live fsz name args code =
     let
-      val words = length savedRegs
+      val regs = List.filter (fn r => List.exists (fn s => r = s) live) savedRegs
+      val words = even(length regs)
       val code = stackInto (false,8*words) code
-      val code = foldri (fn (i,a,code) => loadInto (SP,8*i,a) code) code savedRegs
+      val code = foldri (fn (i,a,code) => loadInto (SP,8*i,a) code) code regs
       val code = (argumentsInto (fsz+words) args
          ++ instruction "bl" [pr_lab(NameLab name)]
          ++ moveInto (X 0,X 16)) code
-      val code = foldri (fn (i,a,code) => storeInto (a,SP,8*i) code) code savedRegs
+      val code = foldri (fn (i,a,code) => storeInto (a,SP,8*i) code) code regs
     in
       stackInto (true,8*words) code
     end
+  fun internalCallInto fsz name args = internalCallLiveInto savedRegs fsz name args
   (* Foreign calls may re-enter ML through an exported hook. The existing IR
    * carries no root map at a C call, so defer collection across that dynamic
    * extent, including callbacks. Pending collection is retained on return. *)
@@ -1490,39 +1492,92 @@ struct
        ++ loadInto (SP,8*(fsz+even(!currentArgs)+1),X 30)
        ++ stackInto (false,8*(fsz+even(!currentArgs)+2))
        ++ instruction "ret" []) code
+  (* Physical-register liveness is separate from GC root liveness: raw words,
+   * region pointers and unboxed doubles all need preservation here. Only
+   * C-clobbered registers can require a save at a region helper call. *)
+  fun memberReg r rs = List.exists (fn s => r = s) rs
+  fun unionRegs (rs,ss) = foldl (fn (r,ss) => if memberReg r ss then ss else r::ss) ss rs
+  fun atyRegs (SS.PHREG_ATY r) = if memberReg r savedRegs then [r] else []
+    | atyRegs _ = []
+  val functionRegs : A.reg list ref = ref []
+  val conservativeRegionCalls = ref false
+  fun regionCallInto live =
+    internalCallLiveInto (if !conservativeRegionCalls then savedRegs else live)
+  val registerLvars = map (fn lv => (A.RI.lv_to_reg lv,lv)) (A.RI.all_regs @ A.RI.f64_phregs)
+  fun registerLvar r = #2(valOf(List.find (fn (s,_) => r = s) registerLvars))
+  fun switchParts (LS.SWITCH(a,cases,default)) = (a,map #2 cases,default)
+  fun liveStmts statements live = foldr (fn (ls,live) => liveStmt ls live) live statements
+  and liveSwitch (a,cases,default) live =
+    unionRegs(atyRegs a,foldl (fn (body,rs) => unionRegs(liveStmts body live,rs))
+      (liveStmts default live) cases)
+  and liveStmt ls live =
+    case ls of
+      LS.SCOPE {scope,...} => liveStmts scope live
+    | LS.LETREGION {body,...} => liveStmts body live
+    (* Exception transfers are not ordinary fall-through edges. Keep the
+     * blanket set before and throughout handlers until those edges are modelled. *)
+    | LS.HANDLE _ => savedRegs
+    | LS.SWITCH_I {switch,...} => liveSwitch (switchParts switch) live
+    | LS.SWITCH_W {switch,...} => liveSwitch (switchParts switch) live
+    | LS.SWITCH_C switch => liveSwitch (switchParts switch) live
+    | LS.SWITCH_S switch => liveSwitch (switchParts switch) live
+    | LS.SWITCH_E switch => liveSwitch (switchParts switch) live
+    | _ =>
+        let
+          val flow = ref false
+          fun atom a =
+            case a of
+              SS.PHREG_ATY r => if memberReg r savedRegs then LS.PHREG(registerLvar r) else LS.UNIT
+            | SS.FLOW_VAR_ATY _ => (flow := true; LS.UNIT)
+            | _ => LS.UNIT
+          val mapped = hd(LS.map_lss atom (fn x => x) (fn x => x) [ls])
+          val (defs,uses) = LS.def_use_var_ls mapped
+          val defs = map A.RI.lv_to_reg defs
+          val uses = map A.RI.lv_to_reg uses
+          val incoming = unionRegs(uses,List.filter (fn r => not(memberReg r defs)) live)
+        in
+          (* Flow-producing operations jump directly to a later switch arm.
+           * Include every register used in this function on that edge, so a
+           * skipped definition cannot incorrectly kill a branch's input. *)
+          if !flow then unionRegs(!functionRegs,incoming) else incoming
+        end
   (* Build statements right-to-left onto an explicit code suffix. Function
    * context is set by topInto and remains fixed throughout this traversal.
    * Fresh labels and metadata may be registered in a different order, but
    * each label is bound before emission and its frame association stays paired. *)
-  fun stmtsInto fsz statements code =
-    foldr (fn (ls,code) => stmtInto fsz ls code) code statements
-  and stmtInto fsz ls code =
+  fun stmtsInto fsz live statements code = #1(stmtsLiveInto fsz live statements code)
+  and stmtsLiveInto fsz live statements code =
+    foldr (fn (ls,(code,live)) => stmtLiveInto fsz live ls code) (code,live) statements
+  and stmtLiveInto fsz live ls code =
     case ls of
       LS.SCOPE {scope,...} =>
-        stmtsInto fsz scope code
+        stmtsLiveInto fsz live scope code
     | LS.LETREGION {rhos,body} =>
         let
           fun release (((_,sz),_),code) =
             case sz of
-              LS.INF => internalCallInto fsz "deallocateRegion" [SS.PHREG_ATY(X 28)] code
+              LS.INF => regionCallInto live fsz "deallocateRegion" [SS.PHREG_ATY(X 28)] code
             | LS.WORDS n =>
                 if n = 0 orelse not(profiling()) then code
-                else internalCallInto fsz "deallocRegionFiniteProfiling" [] code
+                else regionCallInto live fsz "deallocRegionFiniteProfiling" [] code
+          val code = foldr release code (rev rhos)
+          val (code,entryLive) = stmtsLiveInto fsz live body code
           fun enter (((place,sz),off),code) =
             case sz of
-              LS.INF => internalCallInto fsz (regionAllocator place)
+              LS.INF => regionCallInto entryLive fsz (regionAllocator place)
                 [SS.PHREG_ATY(X 28),SS.REG_F_ATY off,integer(regionPolicy false place)] code
             | LS.WORDS n =>
                 if n = 0 orelse not(profiling()) then code
-                else internalCallInto fsz "allocRegionFiniteProfiling"
+                else regionCallInto entryLive fsz "allocRegionFiniteProfiling"
                   [SS.REG_F_ATY(off+BackendInfo.objectDescSizeP+BackendInfo.finiteRegionDescSizeP),
                    integer(Effect.key_of_eps_or_rho place),integer n] code
-          val code = foldr release code (rev rhos)
-          val code = stmtsInto fsz body code
         in
-          foldr enter code rhos
+          (foldr enter code rhos,entryLive)
         end
-    | LS.ASSIGN {pat = SS.FLOW_VAR_ATY(_,t,f),bind = LS.CON0{con,...}} =>
+    | _ => (stmtInto fsz live ls code,liveStmt ls live)
+  and stmtInto fsz live ls code =
+    case ls of
+      LS.ASSIGN {pat = SS.FLOW_VAR_ATY(_,t,f),bind = LS.CON0{con,...}} =>
         ins "b" [pr_lab(LocalLab(if Con.eq(con,Con.con_TRUE) then t else f))] :: code
     | LS.ASSIGN {pat,bind = LS.ATOM{aty}} => assignInto fsz aty pat code
     | LS.ASSIGN {pat,bind = LS.LOAD l} =>
@@ -1610,7 +1665,7 @@ struct
     | LS.ASSIGN {pat,bind = LS.CON0{con,con_kind,aux_regions,alloc}} =>
         let
           fun reset () code =
-            stmtsInto fsz [LS.RESET_REGIONS{force = false,regions_for_resetting = aux_regions}] code
+            stmtsInto fsz live [LS.RESET_REGIONS{force = false,regions_for_resetting = aux_regions}] code
           fun value n code =
             let
               val code =
@@ -1671,8 +1726,9 @@ struct
           val ret = localFresh()
           val join = localFresh()
           val off = slot fsz offset
-        in
-          (stmtsInto fsz handl
+          val previous = !conservativeRegionCalls
+          val () = conservativeRegionCalls := true
+          val code = (stmtsInto fsz live handl
            ++ addressInto (ret,X 16)
            ++ storeInto (X 16,SP,off)
            ++ readInto fsz closure (X 16)
@@ -1686,14 +1742,16 @@ struct
            ++ storeInto (X 16,SP,off+40)
            ++ addOffsetInto (SP,off,X 16)
            ++ storeInto (X 16,X 28,8)
-           ++ stmtsInto fsz default
+           ++ stmtsInto fsz live default
            ++ loadInto (SP,off+16,X 16)
            ++ storeInto (X 16,X 28,8)
            ++ instruction "b" [pr_lab join]
            ++ continuationInto ret bv
            ++ writeInto fsz result (X 0)
-           ++ stmtsInto fsz returned
+           ++ stmtsInto fsz live returned
            ++ one (Label join)) code
+          val () = conservativeRegionCalls := previous
+        in code
         end
     | LS.RAISE {arg,...} =>
         (argumentsInto fsz [SS.PHREG_ATY(X 28),arg]
@@ -1802,20 +1860,20 @@ struct
     | LS.FNJMP {opr,args,clos,res,bv} =>
         mlcallInto true fsz (Indirect opr) {args = args,reg_args = [],fargs = [],clos = clos,res = res,bv = bv} code
     | LS.SWITCH_I {switch = LS.SWITCH(SS.FLOW_VAR_ATY(_,t,f),[(v,yes)],no),...} =>
-        if v = IntInf.fromInt BackendInfo.ml_true then flowInto fsz (t,f,yes,no) code
-        else flowInto fsz (f,t,yes,no) code
+        if v = IntInf.fromInt BackendInfo.ml_true then flowInto fsz live (t,f,yes,no) code
+        else flowInto fsz live (f,t,yes,no) code
     | LS.SWITCH_C (LS.SWITCH(SS.FLOW_VAR_ATY(_,t,f),[((c,_),yes)],no)) =>
-        if Con.eq(c,Con.con_TRUE) then flowInto fsz (t,f,yes,no) code
-        else flowInto fsz (f,t,yes,no) code
+        if Con.eq(c,Con.con_TRUE) then flowInto fsz live (t,f,yes,no) code
+        else flowInto fsz live (f,t,yes,no) code
     | LS.SWITCH_C (LS.SWITCH(a,[],default)) =>
-        stmtsInto fsz default code
+        stmtsInto fsz live default code
     | LS.SWITCH_C (LS.SWITCH(a,cases as ((con,kind),_)::_,default)) =>
         let
           (* Constructor selectors are already encoded by closure conversion. *)
           fun tag k = IntInf.fromInt
             (case k of LS.ENUM i => i | LS.UNBOXED i => i
                      | LS.UNBOXED_HIGH i => i | LS.BOXED i => i)
-          val code = switchCodeInto fsz
+          val code = switchCodeInto fsz live
             (LS.SWITCH(SS.PHREG_ATY(X 16),map (fn ((_,k),body) => (tag k,body)) cases,default)) code
           val code = case kind of
               LS.ENUM _ => code
@@ -1831,23 +1889,23 @@ struct
           readInto fsz a (X 16) code
         end
     | LS.SWITCH_W {switch = LS.SWITCH(a,cases,default),precision = 63} =>
-        switchCodeInto fsz (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
+        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
     | LS.SWITCH_I {switch = LS.SWITCH(a,cases,default),precision = 63} =>
-        switchCodeInto fsz (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
+        switchCodeInto fsz live (LS.SWITCH(a,map(fn(n,b) => (2*n+1,b)) cases,default)) code
     | LS.SWITCH_W {switch,precision} =>
-        numericSwitchInto fsz false precision switch code
+        numericSwitchInto fsz live false precision switch code
     | LS.SWITCH_I {switch,precision} =>
-        numericSwitchInto fsz true precision switch code
+        numericSwitchInto fsz live true precision switch code
     | LS.RESET_REGIONS {regions_for_resetting,force} =>
         foldr (fn (LS.IGNORE,code) => code
                 | (sma,code) => resetRegionInto fsz force sma code) code regions_for_resetting
     | _ => unsupported (LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls)
-  and numericSwitchInto fsz signed precision (LS.SWITCH(a,cases,default)) code =
+  and numericSwitchInto fsz live signed precision (LS.SWITCH(a,cases,default)) code =
     let
       val tag = precision = 31 orelse precision = 63 orelse (precision = 8 andalso tagged())
       val box = tagged() andalso (precision = 32 orelse precision = 64)
       fun value n = if tag then 2*n+1 else n
-      val code = switchCodeInto fsz
+      val code = switchCodeInto fsz live
         (LS.SWITCH(SS.PHREG_ATY(X 16),map (fn (n,b) => (value n,b)) cases,default)) code
       (* Int31 values from packed tables have only their encoded low 32 bits. *)
       val code = if precision = 31 orelse precision = 32 then
@@ -1857,18 +1915,18 @@ struct
     in
       readInto fsz a (X 16) code
     end
-  and flowInto fsz (t,f,yes,no) code =
+  and flowInto fsz live (t,f,yes,no) code =
     let
       val done = localFresh()
     in
       (one (Label(LocalLab t))
-       ++ stmtsInto fsz yes
+       ++ stmtsInto fsz live yes
        ++ instruction "b" [pr_lab done]
        ++ one (Label(LocalLab f))
-       ++ stmtsInto fsz no
+       ++ stmtsInto fsz live no
        ++ one (Label done)) code
     end
-  and switchCodeInto fsz (LS.SWITCH(a,cases,default)) code =
+  and switchCodeInto fsz live (LS.SWITCH(a,cases,default)) code =
     let
       (* Order every selector by its signed 64-bit machine representation.
        * This also handles Word64 and tagged Word63 cases across the sign bit. *)
@@ -1885,7 +1943,7 @@ struct
            ++ instruction branch [pr_lab lab]) code
       fun label (lab,code) = Label lab :: code
       fun jump (lab,code) = instruction "b" [pr_lab lab] code
-      fun compile (body,code) = stmtsInto fsz body code
+      fun compile (body,code) = stmtsInto fsz live body code
       fun header (lab,start,_,code) =
         (* Bounds have already been checked by JumpTables. Entries are signed
          * offsets from the table, so linked and REPL code need no data fixups. *)
@@ -1981,7 +2039,14 @@ struct
       val () = currentArgs := ac
       val () = currentResults := CallConv.get_rcf_size cc
       val fsz = CallConv.get_frame_size cc
-      val code = (stmtsInto fsz body
+      (* Return values remain live through a final region release. Stack
+       * results are already stored; the three register result slots suffice. *)
+      val results = first (length(CallConv.get_res_lvars cc)) [X 0,X 1,X 2]
+      val () = functionRegs := results
+      fun remember a = (functionRegs := unionRegs(atyRegs a,!functionRegs); a)
+      val _ = LS.map_lss remember (fn x => x) (fn x => x) body
+      val () = conservativeRegionCalls := false
+      val code = (stmtsInto fsz results body
          ++ epilogueInto fsz) code
       val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"
                    [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)] code
