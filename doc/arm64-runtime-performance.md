@@ -1,5 +1,9 @@
 # ARM64 and X64 runtime performance
 
+For the latest GC results after milestone 12, including memory usage, see
+[the September 23 comparison](arm64-gc20-current.md). The measurements below
+are the historical milestone-11 baseline.
+
 Milestone 11 of issue #223 / PR #224 compares 20 benchmarks with GC (`-gc`)
 and without GC (`-no_gc`). Region inference stays enabled in both modes.
 X64 executables run under Rosetta 2; ARM64 executables run natively on the
