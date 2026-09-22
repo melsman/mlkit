@@ -1,5 +1,10 @@
 # ARM64 and X64 runtime performance
 
+These milestone-11 measurements predate later backend optimizations. Newer
+comparisons are available for [20 GC benchmarks](arm64-gc20-current.md) and
+[20 non-GC benchmarks](arm64-nogc20-current.md), with subsequent
+[UF/DLX GC fixes and measurements](arm64-uf-dlx-fixes.md).
+
 For the latest GC results after milestone 12, including memory usage, see
 [the September 23 comparison](arm64-gc20-current.md). The measurements below
 are the historical milestone-11 baseline.
