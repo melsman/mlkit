@@ -1553,7 +1553,9 @@ struct
     (loadInto (SP,8*(fsz+even(!currentArgs)),X 29)
        ++ loadInto (SP,8*(fsz+even(!currentArgs)+1),X 30)
        ++ stackInto (false,8*(fsz+even(!currentArgs)+2))
-       ++ (one A.ret)) code
+       (* GC calls materialise x30 and branch without a hardware call.
+        * Pair them with an ordinary indirect branch, not a return-stack pop. *)
+       ++ one (if gc() then A.br (R(X 30)) else A.ret)) code
   (* Physical-register liveness is separate from GC root liveness: raw words,
    * region pointers and unboxed doubles all need preservation here. Only
    * C-clobbered registers can require a save at a region helper call. *)
@@ -1861,6 +1863,7 @@ struct
     | LS.EXPORT{name,clos_lab,arg = (aty,ft1,ft2)} =>
         let
           val () = if ft1 = LS.Int andalso ft2 = LS.Int then () else unsupported "export other than int -> int"
+          val returnLab = localFresh()
           val ctx = DatLab(AddressLabels.new_named "arm64_export_ctx")
           val textValue = stringData name
           val () = dataLabel clos_lab
@@ -1874,7 +1877,11 @@ struct
                    ++ loadInto(X 0,0,X 0)
                    ++ loadInto(X 0,payload(),X 17)
                    ++ stackInto(true,16)
-                   ++ instruction A.blr (R(X 17))
+                   (* Collection is deferred across this bridge, so no GC
+                    * descriptor is needed. Match the callee's ML return kind
+                    * without disturbing the enclosing native call/return. *)
+                   ++ callInto (Indirect (SS.PHREG_ATY(X 17))) returnLab
+                   ++ one (Label returnLab)
                    ++ resumeGCInto()
                    ++ restoreCInto()) code
                 val code = if parallel() then

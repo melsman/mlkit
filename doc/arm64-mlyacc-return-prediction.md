@@ -6,6 +6,9 @@ ML returns from `ret` to `br x30` reduces runtime by 30–31% in two batches,
 turning a 21–23% deficit against X64/Rosetta 2 into a 15% advantage. This is a
 diagnostic assembly experiment; production compiler code is unchanged.
 
+Follow-up: [the compiler implementation and fresh-Basis results](arm64-return-fix-results.md)
+confirm the gain across nucleic, mlyacc and professor.
+
 ## Current calling convention
 
 `CodeGenArm64.callInto` uses `adr x30, continuation` followed by `b` (or `br`)

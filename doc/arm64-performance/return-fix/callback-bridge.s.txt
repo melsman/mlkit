@@ -1,0 +1,49 @@
+_arm64_hook:
+	sub sp, sp, #160
+	stp x19, x20, [sp, #0]
+	stp x21, x22, [sp, #16]
+	stp x23, x24, [sp, #32]
+	stp x25, x26, [sp, #48]
+	stp x27, x28, [sp, #64]
+	stp x29, x30, [sp, #80]
+	stp d8, d9, [sp, #96]
+	stp d10, d11, [sp, #112]
+	stp d12, d13, [sp, #128]
+	stp d14, d15, [sp, #144]
+	add x29, sp, #80
+	sub sp, sp, #16
+	adrp x16, _disable_gc@GOTPAGE
+	ldr x16, [x16, _disable_gc@GOTPAGEOFF]
+	ldr x17, [x16, #0]
+	str x17, [sp, #0]
+	movz x17, #1, lsl #0
+	str x17, [x16, #0]
+	mov x1, x0
+	adrp x16, _D.arm64_export_ctx_eOzp1h2ICHnl6fIB1htqia@GOTPAGE
+	ldr x16, [x16, _D.arm64_export_ctx_eOzp1h2ICHnl6fIB1htqia@GOTPAGEOFF]
+	ldr x28, [x16, #0]
+	adrp x0, _D.ExportClosLab_arm64_hook_c4GyZP6aYpPYLJveNQdBit@GOTPAGE
+	ldr x0, [x0, _D.ExportClosLab_arm64_hook_c4GyZP6aYpPYLJveNQdBit@GOTPAGEOFF]
+	ldr x0, [x0, #0]
+	ldr x17, [x0, #8]
+	sub sp, sp, #16
+	adr x30, L_arm64_DbimmDsCd5eFAmMOiRTJtv
+	br x17
+L_arm64_DbimmDsCd5eFAmMOiRTJtv:
+	ldr x17, [sp, #0]
+	adrp x16, _disable_gc@GOTPAGE
+	ldr x16, [x16, _disable_gc@GOTPAGEOFF]
+	str x17, [x16, #0]
+	add sp, sp, #16
+	ldp x19, x20, [sp, #0]
+	ldp x21, x22, [sp, #16]
+	ldp x23, x24, [sp, #32]
+	ldp x25, x26, [sp, #48]
+	ldp x27, x28, [sp, #64]
+	ldp x29, x30, [sp, #80]
+	ldp d8, d9, [sp, #96]
+	ldp d10, d11, [sp, #112]
+	ldp d12, d13, [sp, #128]
+	ldp d14, d15, [sp, #144]
+	add sp, sp, #160
+	ret

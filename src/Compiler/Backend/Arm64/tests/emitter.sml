@@ -305,7 +305,16 @@ local
   fun branches lab code = List.exists
     (fn A.b (I.L to) => I.eq_lab(to,I.MLFunLab lab) | _ => false) code
   fun expect (name,ok) = if ok then () else raise Fail("ARM64 tail frames: " ^ name)
+  fun firstReturn [] = raise Fail "missing ML return"
+    | firstReturn (A.ret::_) = false
+    | firstReturn (A.br (I.R(I.X 30))::_) = true
+    | firstReturn (_::rest) = firstReturn rest
   val normal = generate()
+  val () = expect("non-GC ML return uses ret",not(firstReturn(after target normal)))
+  val () = Flags.turn_on "garbage_collection"
+  val gcAssembly = generate()
+  val () = Flags.turn_off "garbage_collection"
+  val () = expect("GC ML return uses br x30",firstReturn(after target gcAssembly))
   val () = expect("identity wrapper",direct wrapper target normal)
   val () = expect("FP identity wrapper",direct fpWrapper fpTarget normal)
   val () = expect("argument permutation",not(direct reorder target normal))
@@ -323,6 +332,7 @@ local
       val () = Flags.turn_off flag
       val () = Flags.turn_off "garbage_collection"
     in
+      expect(flag ^ " GC return",firstReturn(after target assembly));
       expect(flag ^ " wrapper",not(direct wrapper target assembly));
       expect(flag ^ " loop",branches loop assembly)
     end

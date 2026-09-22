@@ -1,0 +1,29 @@
+ARM64 generated mixed, packed-stack, and variadic C calls passed
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+Using output file integration.rp.
+ARM64 GC register/stack/global relocation, inline descriptors, and reserved-register checks passed
+Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed
+Native validation outputs: /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-native-arm64.wDKrZG

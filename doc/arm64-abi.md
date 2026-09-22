@@ -20,7 +20,7 @@ The X64 parameters retain its existing layout and allocation palette.
 | x27 | Exception value during the raise bridge |
 | x28 | Pointer to the runtime `context` |
 | x29 | Frame pointer to a saved-FP/saved-return-PC pair |
-| x30 (LR) | Incoming return address; restored before `ret` or a tail transfer |
+| x30 (LR) | Incoming return address; restored before ML return or a tail transfer |
 | sp | Hardware stack pointer, always 16-byte aligned |
 | d0-d7 | Unboxed floating-point arguments |
 | d0-d27 | Initial floating-point allocator palette |
@@ -43,7 +43,8 @@ floating-point values are not. Result registers follow result-list order.
 
 ## ML frames and control transfer
 
-ARM ML calls pass the return address in x30 (LR), and normal returns use `ret`.
+ARM ML calls pass the return address in x30 (LR). GC-mode ML returns use
+`br x30`; non-GC ML returns use `ret`.
 GC-enabled calls materialize the continuation address in x30 and use `b`/`br`;
 no-GC calls use `bl`/`blr`. The caller does not
 write a return PC into the callee's frame. The callee owns preservation of
@@ -94,7 +95,13 @@ initialized activation. Prologue and epilogue unwind information must
 account for the transition between LR and its saved slot.
 
 Normal return restores x29 and LR, releases the local/argument/header area
-according to the existing logical slot convention, and executes `ret`.
+according to the existing logical slot convention, and executes `br x30` in
+GC mode or `ret` otherwise. The return opcode matches the calling convention:
+GC calls use explicit continuations without a hardware return-stack push;
+non-GC calls use `bl`/`blr`. Native helper and C bridge returns retain `ret`.
+Exported callbacks enter GC-mode ML code with an explicit continuation and
+`br`, preserving the enclosing native call/return pairing. Collection remains
+deferred across that bridge, so its continuation needs no GC descriptor.
 Spilled results remain available to the caller, which stages register and
 stack results before writing their destinations and releasing even(R) words.
 Tail transfers stage operands below the active frame, reuse the original
