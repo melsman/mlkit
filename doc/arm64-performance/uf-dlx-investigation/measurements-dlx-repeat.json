@@ -1,0 +1,164 @@
+[
+  {
+    "benchmark": "dlx",
+    "samples": {
+      "x64": [
+        {
+          "seconds": 0.37189912516623735,
+          "cpu_seconds": 0.363728,
+          "rss_bytes": 35086336,
+          "gc_ms": 160.7,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3703167501371354,
+          "cpu_seconds": 0.362845,
+          "rss_bytes": 32882688,
+          "gc_ms": 159.4,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3734799160156399,
+          "cpu_seconds": 0.365843,
+          "rss_bytes": 33492992,
+          "gc_ms": 161.7,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.37025399995036423,
+          "cpu_seconds": 0.36368199999999995,
+          "rss_bytes": 32956416,
+          "gc_ms": 162.2,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.37263379199430346,
+          "cpu_seconds": 0.365689,
+          "rss_bytes": 39346176,
+          "gc_ms": 162.8,
+          "collections": 683,
+          "region_pages": 2400
+        }
+      ],
+      "arm64": [
+        {
+          "seconds": 0.2492307920474559,
+          "cpu_seconds": 0.242962,
+          "rss_bytes": 90259456,
+          "gc_ms": 1.7,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.24976375000551343,
+          "cpu_seconds": 0.244834,
+          "rss_bytes": 94044160,
+          "gc_ms": 1.5,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.25018116692081094,
+          "cpu_seconds": 0.24379699999999999,
+          "rss_bytes": 114950144,
+          "gc_ms": 1.7,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.24966720887459815,
+          "cpu_seconds": 0.24459599999999998,
+          "rss_bytes": 89686016,
+          "gc_ms": 1.6,
+          "collections": 8,
+          "region_pages": 2200
+        },
+        {
+          "seconds": 0.2524414591025561,
+          "cpu_seconds": 0.246224,
+          "rss_bytes": 131694592,
+          "gc_ms": 1.6,
+          "collections": 8,
+          "region_pages": 2200
+        }
+      ],
+      "request": [
+        {
+          "seconds": 0.35788983292877674,
+          "cpu_seconds": 0.352164,
+          "rss_bytes": 28000256,
+          "gc_ms": 127.3,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.3554324589204043,
+          "cpu_seconds": 0.350245,
+          "rss_bytes": 27246592,
+          "gc_ms": 129.7,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.35606445791199803,
+          "cpu_seconds": 0.350624,
+          "rss_bytes": 27230208,
+          "gc_ms": 128.1,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.35876670805737376,
+          "cpu_seconds": 0.35340099999999997,
+          "rss_bytes": 27803648,
+          "gc_ms": 130.3,
+          "collections": 683,
+          "region_pages": 2400
+        },
+        {
+          "seconds": 0.35923337494023144,
+          "cpu_seconds": 0.35393899999999995,
+          "rss_bytes": 27230208,
+          "gc_ms": 128.4,
+          "collections": 683,
+          "region_pages": 2400
+        }
+      ]
+    },
+    "medians": {
+      "x64": {
+        "seconds": 0.37189912516623735,
+        "cpu_seconds": 0.363728,
+        "rss_bytes": 33492992,
+        "gc_ms": 161.7,
+        "collections": 683,
+        "region_pages": 2400
+      },
+      "arm64": {
+        "seconds": 0.24976375000551343,
+        "cpu_seconds": 0.24459599999999998,
+        "rss_bytes": 94044160,
+        "gc_ms": 1.6,
+        "collections": 8,
+        "region_pages": 2200
+      },
+      "request": {
+        "seconds": 0.35788983292877674,
+        "cpu_seconds": 0.352164,
+        "rss_bytes": 27246592,
+        "gc_ms": 128.4,
+        "collections": 683,
+        "region_pages": 2400
+      }
+    },
+    "executables": {
+      "x64": "86eb3c98b43a84490e177f91d126b0e9fa0917d8cf43ceedd9b0bb9355c82f14",
+      "arm64": "4a097cdbdc7c208bc99d5cbca32c52c079a5a00d33a1cf313fe4d9114475cc50",
+      "request": "c955980c8a711ae2aebe8b086ac34f8a14d5389d7500228d323ca12b5db62c96"
+    }
+  }
+]
