@@ -33,7 +33,8 @@ check: all emitter
 	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
 	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 
-# Native compiler/tool outputs never replace the X64 compatibility binaries.
+# The low-level targets keep their outputs separate. The configured top-level
+# native build publishes them under the usual bin names through `build`.
 ARM64_COMPILER ?= $(CURDIR)/bin/mlkit-arm64
 ARM64_CACHE ?= Native
 ARM64_NATIVE_BIN ?= $(CURDIR)/bin/darwin-arm64
@@ -58,3 +59,16 @@ native-install:
 	SML_LIB="$(SML_LIB)" ARM64_NATIVE_BIN="$(ARM64_NATIVE_BIN)" ARM64_PREFIX="$(ARM64_PREFIX)" sh src/Compiler/Backend/Arm64/tests/install-native.sh
 regressions:
 	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(ARM64_NATIVE_BIN)/mlkit" REML_ARM64="$(ARM64_NATIVE_BIN)/reml" KITTESTER="$(ARM64_NATIVE_BIN)/kittester" sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
+
+# Entry point for the normal Makefile after configuring DARWIN_NATIVE=1.
+# Keep the seed, native compilation, and publication ordered. An explicitly
+# supplied ARM64_COMPILER can be used directly (for example, the CI seed).
+.PHONY: build
+ifeq ($(ARM64_COMPILER),$(CURDIR)/bin/mlkit-arm64)
+build: mlkit
+endif
+build:
+	$(MAKE) -f Makefile.arm64 native native-tools
+	@set -e; for tool in mlkit reml kittester mlkit-mllex mlkit-mlyacc rp2ps; do \
+	  ln -sf "$(abspath $(ARM64_NATIVE_BIN))/$$tool" "bin/$$tool"; \
+	done

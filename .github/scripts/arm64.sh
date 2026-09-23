@@ -58,7 +58,7 @@ case "${1:?Specify a CI phase}" in
     done
     ;;
   native)
-    make -f Makefile.arm64 native native-tools \
+    make mlkit \
       ARM64_COMPILER="$seed/mlkit" ARM64_CACHE="$cache" \
       ARM64_NATIVE_BIN="$native" ARM64_BUILD="$ARM64_CI_ROOT/rp2ps"
     "$native/mlkit" -gc --mlb-subdir "$cache" \

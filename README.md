@@ -163,8 +163,7 @@ spaces and run these commands from the repository root:
 export SML_LIB="$PWD"
 ./autobuild
 DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
-make -j3 runtime
-make -f Makefile.arm64 mlkit native native-tools
+make -j3
 ```
 
 Only the ARM64 runtime is built in the checkout. The first compiler build
@@ -174,37 +173,42 @@ ARM-emitting bootstrap compiler at `bin/mlkit-arm64`, which then builds the
 native compilers. Compiler builds use `-gc`; the Makefile also configures the
 bootstrap compiler's larger stack automatically.
 
-The native executables are placed in `bin/darwin-arm64`: `mlkit`, `reml`,
-`kittester`, `mlkit-mllex`, `mlkit-mlyacc`, and `rp2ps`. Omit `native-tools`
-from the build command if you only need MLKit and ReML. Verify and run MLKit
-with:
+The native executables are available at the usual `bin/mlkit`, `bin/reml`,
+`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rp2ps` paths
+(linked to `bin/darwin-arm64`). Verify and run MLKit with:
 
 ```bash
-lipo -archs bin/darwin-arm64/mlkit   # should print arm64
-bin/darwin-arm64/mlkit --version
-bin/darwin-arm64/mlkit             # start the REPL
+lipo -archs bin/mlkit   # should print arm64
+bin/mlkit --version
+bin/mlkit             # start the REPL
 ```
 
 Keep `SML_LIB` pointing at the checkout when using these build outputs. The
 bootstrap step selects its installed library separately, so this setting
 does not force the installed X64 compiler to use the checkout's runtime.
 To select a different bootstrap executable, pass
-`MLKIT_BOOTSTRAP=/path/to/mlkit` to `make -f Makefile.arm64`. For an unpacked
+`MLKIT_BOOTSTRAP=/path/to/mlkit` to `make`. For an unpacked
 seed whose library is not configured in an installed `mlb-path-map`, also
 pass `MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`.
 
-For a separate native installation in your home directory, use:
+The standard targets work for both backends: `make mlkit` (also the default),
+`make build_basislibs` (an alias for `mlkit_basislibs`), `make mlkit_libs`,
+`make test`, `make bootstrap`, and `make install`. `make all` also builds
+SMLtoJs and its libraries. The configured `DARWIN_NATIVE` selects the backend;
+set it when running `configure`, not on the `make` command line.
+
+For a separate native installation in your home directory, add
+`--prefix="$HOME/mlkit-arm64"` to the configure command above, then run:
 
 ```bash
-make -f Makefile.arm64 native-install ARM64_PREFIX="$HOME/mlkit-arm64"
-export SML_LIB="$HOME/mlkit-arm64"
-"$SML_LIB/bin/mlkit"
+make build_basislibs
+make install
+export SML_LIB="$HOME/mlkit-arm64/lib/mlkit"
+"$HOME/mlkit-arm64/bin/mlkit"
 ```
 
-This installation target requires `native-tools` to have been built and
-also runs installation checks. Use a prefix without spaces. The general
-precompilation, bootstrap, and installation commands below apply to the X64
-build; ARM64 uses the dedicated targets in `Makefile.arm64`.
+Use a prefix without spaces. `make install` installs the previously built
+compilers, tools, and Basis caches; it also supports `DESTDIR` for packaging.
 
 See the [ARM64 compiler instructions](doc/arm64-compiler.md) for testing and
 bootstrap targets, and the [runtime notes](doc/arm64-runtime.md) for runtime

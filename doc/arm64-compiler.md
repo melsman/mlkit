@@ -15,11 +15,10 @@ for the initial host build. Only the ARM64 runtime needs to be built locally:
 export SML_LIB="$PWD"
 ./autobuild
 DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
-make -j3 runtime
-make -f Makefile.arm64 mlkit native native-tools
+make -j3
 
-lipo -archs bin/darwin-arm64/mlkit   # arm64
-bin/darwin-arm64/mlkit --version
+lipo -archs bin/mlkit   # arm64
+bin/mlkit --version
 ```
 
 The bootstrap recipes use the installed MLKit's own Basis library, cached
@@ -37,10 +36,20 @@ read-only. Do not add a cache suffix to the bootstrap flags in that case.
 `MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc`; on macOS it also selects the classic
 linker and a 1 GiB stack for the generated host compiler, avoiding stack
 exhaustion during native compiler compilation. It can be overridden explicitly.
-The `mlkit`, `reml`, and `emitter` targets produce ARM-emitting executables on
-the host compiler's architecture. `native` produces ARM64 MLKit and ReML in
+The low-level `Makefile.arm64` targets `mlkit`, `reml`, and `emitter` produce
+ARM-emitting executables on the host compiler's architecture. `native` produces ARM64 MLKit and ReML in
 `bin/darwin-arm64`; `native-tools` adds the native tools. `make arm64_compilers`
 remains a shortcut for the initial MLKit/ReML host builds.
+
+With `DARWIN_NATIVE=1`, the normal Makefile delegates compiler/tool builds to
+`Makefile.arm64` and publishes the native executables at the standard `bin/*`
+paths. Use `make build_basislibs`, `make mlkit_libs`, `make test`,
+`make bootstrap`, and `make install` as with X64. Configure `--prefix` to
+choose the installation directory; `make install` supports `DESTDIR` and
+installs the ARM64 Basis caches under `lib/mlkit/basis/MLB`. Precompile the
+Basis before installing. `make all` includes native-hosted SMLtoJs and its
+JavaScript libraries. The low-level targets below remain useful for backend
+development and the separate staged-installation checks.
 
 The existing driver writes unquoted Basis paths for direct `.sml` inputs,
 REPL startup, and dependency processing. Use a stable, space-free symlink to
