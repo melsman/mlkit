@@ -326,20 +326,6 @@ and `man/man1`. License information is located in the file
 
 The MLKit has a number of [known bugs and limitations](http://elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
 
-## Appendix A: Directory Structure of the Sources
-
-    kit/
-       README
-       configure
-       Makefile.in
-       src/
-       basis/
-       doc/mlkit.pdf
-          /license/MLKit-LICENSE
-       man/man1/rp2ps.1
-       kitdemo/
-       test/
-
 ## Appendix B: Quick Compilation and Installation Guide
 
 We assume that MLton >= 20051202 is installed on the system as
@@ -366,7 +352,3 @@ $ sudo make install
 ```
 
 See the section "Try It" above to test the installation.
-
-## Appendix C: Displaying Region Flow Graphs with VCG
-
-The [VCG tool](http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html) can be used to show region flow graphs.
