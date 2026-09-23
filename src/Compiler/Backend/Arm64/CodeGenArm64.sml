@@ -470,12 +470,17 @@ struct
   (* Private helper ABI: x16 is the region/result, x17 the word count.
    * x16/x17/x30 are scratch; all allocatable ML registers survive a slow call.
    * Profiling passes its program point in an aligned caller stack slot. *)
+  (* Mach-O symbol stubs may overwrite x16/x17. These private helpers take
+   * arguments in those registers, so resolve the GOT entry into the saved LR
+   * scratch register and call it without entering a linker-generated stub. *)
+  fun privateCallInto target =
+    addressInto (target,X 30) ++ instruction A.blr (R(X 30))
   fun allocSlowInto words untag pp code =
     let
       val target = if untag then untaggedAllocStub else allocStub
       val code = if profiling() then stackInto (false,16) code else code
       val code = (countInto (X 17) words
-         ++ instruction A.bl (L(target))) code
+         ++ privateCallInto target) code
     in
       if profiling() then (stackInto (true,16)
          ++ countInto (X 17) pp
@@ -504,12 +509,12 @@ struct
            ++ storeInto (X 30,X 17,off)
            ++ (if gengc() then storeInto (X 30,X 30,~8) else fn code => code)) code
         val code = Label done :: code
-        val code = if profiling() orelse parallel() then A.bl (L(resetStub)) :: code
+        val code = if profiling() orelse parallel() then privateCallInto resetStub code
           else
             let
               val () = addStatic
-                [Directive(Text),Directive(Align 2),Label slow,
-                 A.bl (L(resetStub)),A.b (L(done))]
+                (Directive(Text) :: Directive(Align 2) :: Label slow ::
+                 privateCallInto resetStub [A.b (L(done))])
               val code = foldr reset code generations
               val code = foldr check code generations
             in

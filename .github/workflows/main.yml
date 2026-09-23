@@ -295,20 +295,16 @@ jobs:
       - name: Stage, test, and package native installation
         run: bash .github/scripts/arm64.sh install 2>&1 | tee "$ARM64_CI_ROOT/logs/install.log"
 
+      - name: Stage logs without following test symlinks
+        if: always()
+        run: python3 .github/scripts/collect-arm64-logs.py "$ARM64_CI_ROOT"
+
       - name: Retain logs and test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: logs-darwin-arm64-${{ matrix.mlcomp }}
-          path: |
-            ${{ env.ARM64_CI_ROOT }}/logs/
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.log
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.html
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/TESTmessages
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/complog.txt
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.res
-            ${{ env.ARM64_CI_ROOT }}/tmp/**/*.mlbres
-            config.log
+          path: ${{ env.ARM64_CI_ROOT }}/reports/
           retention-days: 14
 
       - name: Retain native binary distribution
