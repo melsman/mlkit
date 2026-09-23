@@ -182,9 +182,8 @@ DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
 make -j3
 ```
 
-Only the ARM64 runtime is built in the checkout. The first compiler build
-uses the installed MLKit's own Basis library, cached objects, and matching
-runtime, so a `DARWIN_NATIVE=0` build is unnecessary. It produces an
+The first compiler build uses the installed MLKit's own Basis library,
+cached objects, and matching runtime, so a `DARWIN_NATIVE=0` build is unnecessary. It produces an
 ARM-emitting bootstrap compiler at `bin/mlkit-arm64`, which then builds the
 native compilers. Compiler builds use `-gc`; the Makefile also configures the
 bootstrap compiler's larger stack automatically.
