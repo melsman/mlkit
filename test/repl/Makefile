@@ -86,3 +86,9 @@ prepare:
 .PHONY: clean
 clean:
 	rm -rf MLB *~ *.res *.out *.out.log *.out.err complog.txt run
+
+# Force collections between independently loaded phrases and through callbacks.
+.PHONY: test_gc
+test_gc:
+	MLKIT="$(abspath $(MLKIT))" SML_LIB="$(abspath ../..)" CC="$(CC)" GC_FLAGS=-gc ./check-gc-images.sh
+	MLKIT="$(abspath $(MLKIT))" SML_LIB="$(abspath ../..)" CC="$(CC)" GC_FLAGS=-gengc ./check-gc-images.sh

@@ -210,7 +210,7 @@ if grep -q '_arm64_frames' MLB/ARM64_FD2_*/gc-frames.sml.s; then
   echo 'GC code still contains a return-PC index' >&2; exit 1
 fi
 gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \
-  "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
+  "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/StaticGC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
 ./gc-metadata
 # Pending requests survive nested foreign callbacks; collection resumes in ML.
 cp "$SML_LIB/src/Compiler/Backend/Arm64/tests/deferred-gc.c" \

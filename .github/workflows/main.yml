@@ -166,6 +166,7 @@ jobs:
           make -C test test_mlkit_no_gc
           make -C test/explicit_regions all
           make -C test/repl all
+          make -C test/repl test_gc CC="$THECC"
           make -C test/parallelism all
           make -C test/region_info all
 

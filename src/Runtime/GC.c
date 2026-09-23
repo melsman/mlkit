@@ -1695,7 +1695,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
 
   // Search for data labels; they are part of the root-set.
-  num_d_labs = *data_lab_ptr; /* Number of data labels */
+  num_d_labs = data_lab_ptr ? *data_lab_ptr : 0; /* Number of data labels */
   for ( offset = 1 ; offset <= num_d_labs ; offset++ ) {
     // Evacuate value in data labels
     value_ptr = *(((uintptr_t **)data_lab_ptr) + offset);
@@ -1705,6 +1705,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #ifdef DEBUG_GC
   fprintf(stderr,"[GC: Done data labels]\n");
 #endif
+  mlkit_gc_visit_static_roots(evacuate);
 #endif /* DARWIN_NATIVE */
 
   do_scan_stack();

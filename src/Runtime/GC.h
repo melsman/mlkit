@@ -42,7 +42,9 @@ points_into_dataspace (uintptr_t *p) {
 #if DARWIN_NATIVE
   return mlkit_arm64_in_static_data(p);
 #else
-  return (p >= data_begin_addr) && (p <= data_end_addr);
+  return ((uintptr_t)p >= (uintptr_t)data_begin_addr &&
+          (uintptr_t)p <= (uintptr_t)data_end_addr) ||
+    (mlkit_gc_dynamic_images && mlkit_gc_static_pointer(p));
 #endif
 }
 

@@ -1436,6 +1436,14 @@ struct
                             I.dot_globl (lab,I.FUNC), (* The C function entry *)
                             I.lab lab]
                          @ (map (fn r => I.push (R r)) callee_saves_ccall) (* 5+2 regs *)
+                         (* A C callback has no ML frame descriptor. Preserve the
+                          * caller's GC policy, including nested callbacks. *)
+                         @ (if gc_p() then
+                              [I.subq(I "16", R rsp),
+                               I.movq(L(NameLab "disable_gc"), R r10),
+                               I.movq(R r10, D("0",rsp)),
+                               I.movq(I "1", L(NameLab "disable_gc"))]
+                            else [])
                          @ [I.movq (L ctx_lab, R r14),            (* load ctx into ctx register *)
                             I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
@@ -1444,6 +1452,11 @@ struct
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
+                         @ (if gc_p() then
+                              [I.movq(D("0",rsp), R r10),
+                               I.movq(R r10, L(NameLab "disable_gc")),
+                               I.addq(I "16", R rsp)]
+                            else [])
                          @ (map (fn r => I.pop (R r)) (List.rev callee_saves_ccall))
                          @ [I.ret])
 
@@ -1604,6 +1617,14 @@ struct
         fun data_end_progunit_lab (MLFunLab l) = data_x_progunit_lab "end" l
           | data_end_progunit_lab _ = die "data_end_progunit_lab"
         fun data_end_lab a = data_x_lab "end" a
+        fun data_roots_progunit_lab (MLFunLab l) = data_x_progunit_lab "roots" l
+          | data_roots_progunit_lab _ = die "data_roots_progunit_lab"
+        fun data_roots (l, labs) =
+          if gc_p() then
+            I.dot_data :: I.dot_align 8 ::
+            data_x_lab "roots" (l, I.dot_quad (Int.toString (length labs)) ::
+              map (fn l => I.dot_quad (I.pr_lab (DatLab l))) labs)
+          else []
     end
 
     (***************************************************)
@@ -1637,7 +1658,7 @@ struct
                                                    (#2 exports))
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
-                       static_data = static_data main_lab}
+                       static_data = static_data main_lab @ data_roots (main_lab, #2 exports)}
         val x64_prg = x64_optimise x64_prg
         val _ = chat "]\n"
       in
@@ -2026,6 +2047,18 @@ struct
                 end
             else C
 
+        (* Called at an aligned C boundary, before entering ML code. *)
+        fun register_repl_units (labs,C) =
+          if not (gc_p()) then C
+          else
+            foldr (fn (l,C) =>
+              I.movq(LA (data_roots_progunit_lab l), R rdi) ::
+              I.movq(LA (data_begin_progunit_lab l), R rsi) ::
+              I.movq(LA (data_end_progunit_lab l), R rdx) ::
+              I.movq(D("0",rdi), R r8) ::
+              G.lea(D("8",rdi), rcx) $
+              I.call(NameLab "mlkit_gc_register_static_image") :: C) C labs
+
         fun generate_jump_code_progunits (progunit_labs,C) =
           foldr (fn (l,C) =>
                  let val next_lab = new_local_lab "next_progunit_lab"
@@ -2308,6 +2341,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             (* Install argument context in context register *)
             I.movq(R rdi, R r14) ::
 
+            generate_data_begin_end([],
+
             (* Initialize profiling *)
             init_prof(
 
@@ -2326,7 +2361,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.call(NameLab "repl_interp") ::
 
             (* Exit instructions - never gets here... *)
-            I.ret :: C))))))
+            I.ret :: C)))))))
 
         val init_code = (main_insts o raise_insts o
                          toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
@@ -2371,6 +2406,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             (* Push callee-save regs *)
             push_callee(
 
+            register_repl_units(progunit_labs,
+
             (* Install top context in context register; setup in Runtime.c *)
             I.movq(L(NameLab "top_ctx"), R r14) ::
 
@@ -2388,7 +2425,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             pop_callee(
             G.add(I "8", rsp) $        (* align *)
-            I.ret :: C))))))
+            I.ret :: C)))))))
 
       in
         {top_decls = [],
