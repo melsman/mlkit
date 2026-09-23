@@ -262,14 +262,30 @@ $ make install
 
 ## Making a Binary Package
 
-To build a binary package, execute the command
+After configuring for the desired native backend, build the compilers and
+libraries, then create the package:
+
 ```bash
-$ make mlkit_x64_tgz
+$ make all
+$ make mlkit_bin_dist
 ```
 
-This command leaves a package `mlkit-X.Y.Z-x64.tgz` in the `dist/`
-directory. For building a binary package, the installation step above
-is not needed and the bootstrapping step is optional. The binary package includes both the MLKit with Regions compiler (i.e., the `mlkit` executable) and [SMLtoJs](/README_SMLTOJS.md) (i.e., an executables named `smltojs`).
+On macOS, configure with `DARWIN_NATIVE=1` for Arm64 or `DARWIN_NATIVE=0`
+(the default) for X64. Linux uses the X64 backend. The package is placed in
+`dist/` with a name determined by the configured platform and backend:
+
+| Platform and backend | Package |
+| --- | --- |
+| macOS Arm64 | `mlkit-bin-dist-darwin.tgz` |
+| macOS X64 | `mlkit-bin-dist-darwin-x64.tgz` |
+| Linux X64 | `mlkit-bin-dist-linux.tgz` |
+
+The package includes MLKit (`mlkit`), ReML (`reml`),
+[SMLtoJs](/README_SMLTOJS.md) (`smltojs`), supporting tools, runtime libraries,
+and precompiled Basis libraries. Installation is not required before
+packaging, and bootstrapping is optional. After unpacking the archive, run
+`make install` in the unpacked directory, optionally setting
+`PREFIX=/path/to/install`.
 
 ## Try It
 
