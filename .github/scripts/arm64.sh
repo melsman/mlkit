@@ -18,7 +18,7 @@ tests=src/Compiler/Backend/Arm64/tests
 case "${1:?Specify a CI phase}" in
   runtime)
     sh autobuild
-    DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler='mlkit -gc'
+    DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
     make -j3 runtime
     # A clean native job must not depend on checkout-built X64 compatibility archives.
     test ! -e lib/runtimeSystemGC.a

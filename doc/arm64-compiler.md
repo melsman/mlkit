@@ -15,7 +15,7 @@ for the initial host build. Only the ARM64 runtime needs to be built locally:
 export SML_LIB="$PWD"
 autoconf -o configure configure.ac
 autoheader configure.ac
-DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler='mlkit -gc'
+DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
 make -j3 runtime
 make -f Makefile.arm64 mlkit native native-tools
 
