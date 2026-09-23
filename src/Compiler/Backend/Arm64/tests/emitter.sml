@@ -78,9 +78,8 @@ in
     [A.ldp (I.R(I.D 1),I.R(I.D 0),I.M(I.X 2,~512))])
   val () = unchanged("first load changes base",
     [A.ldr (I.R(I.X 2),I.M(I.X 2,0)),A.ldr (I.R(I.X 1),I.M(I.X 2,8))])
-  val () = check("last load may overwrite base",
-    [A.ldr (I.R(I.X 1),I.M(I.X 2,0)),A.ldr (I.R(I.X 2),I.M(I.X 2,8))],
-    [A.ldp (I.R(I.X 1),I.R(I.X 2),I.M(I.X 2,0))])
+  val () = unchanged("keep pointer-chasing loads separate",
+    [A.ldr (I.R(I.X 1),I.M(I.X 2,0)),A.ldr (I.R(I.X 2),I.M(I.X 2,8))])
   val () = unchanged("pair below signed range",
     [A.str (I.R(I.X 0),I.M(I.SP,~520)),A.str (I.R(I.X 1),I.M(I.SP,~512))])
   val () = check("thread bit-test retaining metadata",
@@ -245,7 +244,7 @@ in
 end
 
 (* Identity wrappers must not touch the frame; reordered arguments must still
- * be shuffled. Self loops reuse only an empty local frame, with register args.
+ * be shuffled. Self loops reuse local frames without GC, with register args.
  * Keep forced-polling and profiling entries on the ordinary path. *)
 local
   val main = AddressLabels.new_named "tail_frames"
@@ -319,7 +318,8 @@ local
   val () = expect("FP identity wrapper",direct fpWrapper fpTarget normal)
   val () = expect("argument permutation",not(direct reorder target normal))
   val () = expect("self-loop entry",not(branches loop normal))
-  val () = expect("local frame fallback",branches locals normal)
+  val () = expect("local frame reuse",not(branches locals normal))
+  val () = expect("GC local frame fallback",branches locals gcAssembly)
   val () = expect("stack argument fallback",branches stackLoop normal)
   val () = expect("self-call shuffle fallback",branches swapLoop normal)
   val () = G.emit(normal,"tail-frames.s")

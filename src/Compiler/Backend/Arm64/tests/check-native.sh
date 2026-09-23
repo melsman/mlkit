@@ -142,6 +142,9 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     "$compiler" --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
     ./instruction-selection $profile_flags > actual
     cmp gc-expected actual
+    "$compiler" --no_basislib $flags -o loop-spills loop-spills.sml >> integration.log 2>&1
+    ./loop-spills $profile_flags > actual
+    cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o word-arithmetic word-arithmetic.sml >> integration.log 2>&1
     ./word-arithmetic $profile_flags > actual
     cmp gc-expected actual

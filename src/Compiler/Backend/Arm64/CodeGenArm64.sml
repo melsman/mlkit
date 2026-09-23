@@ -46,7 +46,7 @@ struct
      menu = ["Compiler","ARM64 tail wrappers"],desc = "Omit frames in identity tail wrappers."}
   val self_loops = Flags.add_bool_entry
     {long = "arm64_self_loops",short = NONE,item = ref true,neg = true,
-     menu = ["Compiler","ARM64 self loops"],desc = "Reuse frames in simple non-allocating self-tail recursion."}
+     menu = ["Compiler","ARM64 self loops"],desc = "Reuse frames in eligible self-tail recursion."}
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
@@ -89,6 +89,19 @@ struct
     | SS.DROPPED_RVAR_ATY => constantInto (0,dst) code
     | SS.UNIT_ATY => constantInto (1,dst) code
     | _ => unsupported ("operand " ^ SS.pr_aty aty)
+  (* Reading these values into x16 leaves an address in x17 intact. Large
+   * stack offsets need x17 as scratch and retain the staging fallback. *)
+  fun preservesAddress fsz aty =
+    case aty of
+      SS.PHREG_ATY (X n) => n <> 16 andalso n <> 17
+    | SS.STACK_ATY off =>
+        let val n = slot fsz off
+        in n >= 0 andalso n mod 8 = 0 andalso n <= 32760
+        end
+    | SS.INTEGER_ATY _ => true
+    | SS.WORD_ATY _ => true
+    | SS.UNIT_ATY => true
+    | _ => false
   fun writeInto fsz dst src code =
     case dst of
       SS.PHREG_ATY d => moveInto (src,d) code
@@ -317,7 +330,8 @@ struct
    * transfers to the exception handler; it does not return through this call.
    * Keep arbitrary foreign calls, including automatic conversions, protected. *)
   fun runtimeCallInto fsz name args code =
-    if (name = "__mod_word63" orelse name = "__mod_word31") andalso length args = 4 then
+    if (name = "__mod_word63" orelse name = "__mod_word31" orelse
+        name = "__mod_word64ub" orelse name = "__mod_word32ub") andalso length args = 4 then
       if registersPlaced (List.tabulate(4,X)) args then
         instruction A.bl (L(NameLab name)) code
       else
@@ -843,11 +857,12 @@ struct
                   code
             in
               (index t i scale
-               ++ stackInto(true,16)
-               ++ storeInto(X 17,SP,0)
-               ++ readInto (fsz+2) v (X 16)
-               ++ loadInto(SP,0,X 17)
-               ++ stackInto(false,16)) code
+               ++ (if preservesAddress fsz v then readInto fsz v (X 16)
+                   else stackInto(true,16)
+                     ++ storeInto(X 17,SP,0)
+                     ++ readInto (fsz+2) v (X 16)
+                     ++ loadInto(SP,0,X 17)
+                     ++ stackInto(false,16))) code
             end
           | _ => unsupported "table update arity")
       (* Numerical representation tuples are (value bits, signed, boxed, tagged).
@@ -1027,14 +1042,14 @@ struct
                            ++ putnum rep buffer d) code
                       | _ => unsupported "numeric binary operation")
               in
-                if rep = (63,false,false,true) andalso
-                   (case rhs of
+                if (case rhs of
                       SS.PHREG_ATY (X n) => n <> 16 andalso n <> 17
                     | SS.STACK_ATY _ => true
                     | SS.WORD_ATY _ => true
+                    | SS.INTEGER_ATY _ => true
                     | _ => false) then
                   (* Decoding these operands into x17 leaves x16 untouched.
-                   * Retain staging for other representations and operands. *)
+                   * Retain staging for operands using reserved scratch registers. *)
                   (getnum rep a (X 16) ++ getnum rep rhs (X 17)) code
                 else (getnum rep a (X 16)
                  ++ stackInto(true,16)
@@ -1725,13 +1740,15 @@ struct
     | LS.ASSIGN {pat,bind = LS.REF(alloc,a)} =>
         recordWithUntagInto true fsz pat alloc (header(BackendInfo.tag_ref false) []) [a] code
     | LS.ASSIGN {pat,bind = LS.ASSIGNREF(_,a,rhs)} =>
-        (stackInto(true,16)
-           ++ readInto (fsz+2) a (X 16)
-           ++ storeInto(X 16,SP,0)
-           ++ readInto (fsz+2) rhs (X 16)
-           ++ loadInto(SP,0,X 17)
+        ((if preservesAddress fsz rhs then
+             readInto fsz a (X 17) ++ readInto fsz rhs (X 16)
+           else stackInto(true,16)
+             ++ readInto (fsz+2) a (X 16)
+             ++ storeInto(X 16,SP,0)
+             ++ readInto (fsz+2) rhs (X 16)
+             ++ loadInto(SP,0,X 17)
+             ++ stackInto(false,16))
            ++ storeInto(X 16,X 17,payload())
-           ++ stackInto(false,16)
            ++ constantInto(1,X 16)
            ++ writeInto fsz pat (X 16)) code
     | LS.ASSIGN {pat,bind = LS.PASS_PTR_TO_MEM(alloc,n,untag)} =>
@@ -2179,10 +2196,10 @@ struct
         | find _ = NONE
     in find statements
     end
-  (* Keep the first loop implementation deliberately small. These primitives
-   * emit inline arithmetic/comparisons (possibly an exiting raise), never calls.
-   * Frames with locals, incoming stack arguments, regions or handlers stay on
-   * the normal tail-call path. Forced polling and profiling do too. *)
+  (* GC loops retain the small non-allocating whitelist so entry polling is
+   * preserved. Without GC, ordinary spill slots and nested calls may reuse the
+   * frame too. Incoming stack arguments, addressable local regions, handlers,
+   * forced polling and profiling retain the normal tail-call path. *)
   fun loopPrimitive name =
     let open PrimName
     in case name of
@@ -2190,6 +2207,8 @@ struct
        | Plus_word63 => true | Minus_word63 => true
        | Plus_int64ub => true | Minus_int64ub => true
        | Equal_int63 => true | Equal_word63 => true | Equal_ptr => true
+       | Equal_int64ub => true | Less_int64ub => true | Lesseq_int64ub => true
+       | Greater_int64ub => true | Greatereq_int64ub => true
        | Less_int63 => true | Lesseq_int63 => true
        | Greater_int63 => true | Greatereq_int63 => true
        | Less_word63 => true | Lesseq_word63 => true
@@ -2206,17 +2225,123 @@ struct
     | LS.SWITCH_W {switch,...} => loopSwitch self (switchParts switch)
     | LS.SWITCH_C switch => loopSwitch self (switchParts switch)
     | LS.ASSIGN {bind,...} =>
-        (case bind of
+        not(gc()) orelse (case bind of
            LS.ATOM _ => true | LS.LOAD _ => true | LS.STORE _ => true
          | LS.SELECT _ => true | LS.DECON _ => true | LS.DEREF _ => true
          | LS.CON0 {con_kind = LS.ENUM _,aux_regions = [],alloc = LS.IGNORE,...} => true
          | _ => false)
-    | LS.PRIM {name,...} => loopPrimitive name
+    | LS.PRIM {name,...} => not(gc()) orelse loopPrimitive name
+    | LS.FLUSH _ => not(gc())
+    | LS.FETCH _ => not(gc())
+    | LS.FUNCALL _ => not(gc())
+    | LS.FNCALL _ => not(gc())
+    | LS.CCALL _ => not(gc())
     | LS.JMP {opr,...} => (if AddressLabels.eq(opr,label) then recursive := true else (); true)
     | LS.RAISE _ => true
     | _ => false
   and loopSwitch self (_,cases,default) =
     loopStatements self default andalso List.all (loopStatements self) cases
+  (* Delay private spill-slot writes until their value is needed or its source
+   * register changes. At a small branch, copy a short continuation into each
+   * arm so a call-free path can read the original register/record directly.
+   * This is only used for no-GC loops without addressable frame objects: GC
+   * maps and aliases of stack slots must never observe an uncommitted write. *)
+  fun sinkLoopSpills fsz body =
+    let
+      val budget = ref 32
+      fun flat [] = []
+        | flat (LS.SCOPE {scope,...}::rest) = flat scope @ flat rest
+        | flat (LS.LETREGION {rhos = [],body}::rest) = flat body @ flat rest
+        | flat (ls::rest) = ls :: flat rest
+      fun mentioned off statements =
+        let val found = ref false
+            fun visit a = (case a of SS.STACK_ATY n => if n = off then found := true else ()
+                                  | _ => (); a)
+            val _ = LS.map_lss visit (fn n => (if n = off then found := true else (); n)) (fn x => x) statements
+        in !found
+        end
+      fun source bind = case bind of
+          LS.ATOM {aty = SS.PHREG_ATY r} => SOME r
+        | LS.SELECT(_,SS.PHREG_ATY r) => SOME r
+        | _ => NONE
+      fun lookup pending off = List.find (fn (n,_) => n = off) pending
+      fun commit entries = map (fn (off,bind) => LS.ASSIGN {pat = SS.STACK_ATY off,bind = bind}) entries
+      fun atom pending a = case a of
+          SS.STACK_ATY off => (case lookup pending off of
+              SOME(_,LS.ATOM {aty = rhsBind}) => rhsBind | _ => a)
+        | _ => a
+      fun simple pending bind = case bind of
+          LS.ATOM {aty = a as SS.STACK_ATY off} =>
+            (case lookup pending off of SOME(_,rhsBind) => rhsBind | NONE => LS.ATOM {aty = a})
+        | LS.ATOM {aty = a} => LS.ATOM {aty = a}
+        | LS.SELECT(i,a) => LS.SELECT(i,atom pending a)
+        | LS.DEREF {aty} => LS.DEREF {aty = atom pending aty}
+        | LS.DECON {con,con_kind,con_aty} => LS.DECON {con = con,con_kind = con_kind,con_aty = atom pending con_aty}
+        | _ => bind
+      fun pure bind = case bind of
+          LS.ATOM {aty = SS.FLOW_VAR_ATY _} => false
+        | LS.ATOM _ => true | LS.SELECT _ => true | LS.DEREF _ => true | LS.DECON _ => true
+        | LS.RECORD {elems = [],...} => true
+        | LS.BLOCKF64 {elems = [],...} => true
+        | LS.CON0 {con_kind,aux_regions = [],alloc = LS.IGNORE,...} =>
+            (case con_kind of LS.BOXED _ => false | _ => true)
+        | _ => false
+      fun short rest = length rest <= 4 andalso List.all
+        (fn LS.ASSIGN {pat = SS.FLOW_VAR_ATY _,...} => false
+          | LS.ASSIGN {bind,...} => pure bind | LS.JMP _ => true | _ => false) rest
+      fun walk pending statements =
+        case statements of
+          [] => []
+        | all as ls::rest =>
+          let
+            fun barrier () = commit (List.filter (fn (off,_) => mentioned off all) pending) @
+              (ls :: walk [] rest)
+            fun branch make (LS.SWITCH(a,cases,default)) =
+              if (case a of SS.FLOW_VAR_ATY _ => true | _ => false) orelse
+                 not(short rest) orelse length cases > 2 orelse !budget <= 0 then barrier()
+              else
+                let
+                  val () = budget := !budget-1
+                  val a = atom pending a
+                  val needed = List.filter (fn (off,_) => SS.eq_aty(a,SS.STACK_ATY off)) pending
+                  val pending = List.filter (fn (off,_) => not(SS.eq_aty(a,SS.STACK_ATY off))) pending
+                in commit needed @ [make(LS.SWITCH(a,
+                     map (fn (key,arm) => (key,walk pending (flat arm @ rest))) cases,
+                     walk pending (flat default @ rest)))]
+                end
+          in
+            case ls of
+              LS.ASSIGN {pat,bind} =>
+                if not(pure bind) orelse (case pat of SS.FLOW_VAR_ATY _ => true | _ => false) then barrier()
+                else
+                  let
+                    val bind = simple pending bind
+                    val rewritten = LS.ASSIGN {pat = pat,bind = bind}
+                    val reads = List.filter (fn (off,_) => mentioned off [LS.ASSIGN {pat = SS.UNIT_ATY,bind = bind}]) pending
+                    val pending = List.filter (fn (off,_) => not(List.exists (fn (n,_) => n = off) reads)) pending
+                    val pending = List.filter (fn (off,_) => not(SS.eq_aty(pat,SS.STACK_ATY off))) pending
+                    val (killed,kept) = List.partition
+                      (fn (_,rhsBind) => case source rhsBind of SOME r => SS.eq_aty(pat,SS.PHREG_ATY r) | NONE => false) pending
+                    val killed = List.filter (fn (off,_) => mentioned off rest) killed
+                    val delayed = case (pat,source bind) of
+                        (SS.STACK_ATY off,SOME (X n)) =>
+                          if off >= 0 andalso off < fsz andalso n <> 16 andalso n <> 17 andalso
+                             length kept < 8 then SOME(off,bind) else NONE
+                      | _ => NONE
+                  in
+                    commit reads @ commit killed @
+                    (case delayed of SOME entry => walk (kept @ [entry]) rest
+                     | NONE => rewritten :: walk kept rest)
+                  end
+            | LS.SWITCH_C sw => branch LS.SWITCH_C sw
+            | LS.SWITCH_I {switch,precision} =>
+                branch (fn sw => LS.SWITCH_I {switch = sw,precision = precision}) switch
+            | LS.SWITCH_W {switch,precision} =>
+                branch (fn sw => LS.SWITCH_W {switch = sw,precision = precision}) switch
+            | _ => barrier()
+          end
+    in walk [] (flat body)
+    end
   fun topInto (l,cc,body) code =
     let
       val suffix = code
@@ -2229,9 +2354,12 @@ struct
       val results = first (length(CallConv.get_res_lvars cc)) [X 0,X 1,X 2]
       val () = functionRegs := results
       val frameOperand = ref false
+      val spillSafe = ref true
       fun remember a =
         (functionRegs := unionRegs(atyRegs a,!functionRegs);
-         (case a of SS.STACK_ATY _ => frameOperand := true
+         (case a of SS.PHREG_ATY (X n) => if n = 16 orelse n = 17 then spillSafe := false else ()
+                  | _ => ());
+         (case a of SS.STACK_ATY _ => if gc() then frameOperand := true else ()
                   | SS.REG_I_ATY _ => frameOperand := true
                   | SS.REG_F_ATY _ => frameOperand := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
@@ -2239,11 +2367,12 @@ struct
       val optimiseFrame = not(profiling()) andalso not(extra_gc_checks())
       val wrapper = if optimiseFrame andalso tail_wrappers() then identityTail cc body else NONE
       val recursive = ref false
-      val loop = if optimiseFrame andalso self_loops() andalso fsz = 0 andalso ac = 0
+      val loop = if optimiseFrame andalso self_loops() andalso (not(gc()) orelse fsz = 0) andalso ac = 0
                     andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
-                    andalso not(LS.allocating body) andalso loopStatements (l,recursive) body andalso !recursive
+                    andalso (not(gc()) orelse not(LS.allocating body)) andalso loopStatements (l,recursive) body andalso !recursive
                  then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE
       val () = currentLoop := Option.map (fn loop => (l,loop)) loop
+      val body = if not(gc()) andalso fsz > 0 andalso !spillSafe andalso Option.isSome loop then sinkLoopSpills fsz body else body
       val code = (stmtsInto fsz results body
          ++ epilogueInto fsz) code
       val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"

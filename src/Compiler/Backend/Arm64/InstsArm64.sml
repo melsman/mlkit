@@ -82,7 +82,7 @@ structure InstsArm64 : INSTS_ARM64 = struct
             in
               if sameClass(a,rhs) andalso base = base' andalso low mod 8 = 0 andalso
                  low >= ~512 andalso low <= 504 andalso Int.abs(x-y) = 8 andalso
-                 not(load andalso (eq_ea(a,rhs) orelse eq_ea(a,R base))) then
+                 not(load andalso (eq_ea(a,rhs) orelse eq_ea(a,R base) orelse eq_ea(rhs,R base))) then
                 SOME(if x < y then make(a,rhs,M(base,low)) else make(rhs,a,M(base,low)))
               else NONE
             end
