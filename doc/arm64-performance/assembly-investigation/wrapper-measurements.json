@@ -1,0 +1,116 @@
+{
+  "revision": "07cf1e8",
+  "warmups": 1,
+  "repetitions": 5,
+  "order": "seeded shuffle per round",
+  "runtime_flag": "-report_gc",
+  "variants": "fresh Basis rebuilt by current MLKit; isolated assembly experiments affect benchmark units only",
+  "results": [
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "fresh_basis": [
+          {
+            "wall": 0.2857757918536663,
+            "cpu": 0.28005,
+            "gc_cpu": 0.0066,
+            "outside_gc_cpu": 0.27345,
+            "collections": 28
+          },
+          {
+            "wall": 0.28362254216335714,
+            "cpu": 0.27766500000000005,
+            "gc_cpu": 0.006,
+            "outside_gc_cpu": 0.27166500000000005,
+            "collections": 28
+          },
+          {
+            "wall": 0.28829816705547273,
+            "cpu": 0.28214900000000004,
+            "gc_cpu": 0.0060999999999999995,
+            "outside_gc_cpu": 0.27604900000000004,
+            "collections": 28
+          },
+          {
+            "wall": 0.2825950840488076,
+            "cpu": 0.27668000000000026,
+            "gc_cpu": 0.0063,
+            "outside_gc_cpu": 0.2703800000000003,
+            "collections": 28
+          },
+          {
+            "wall": 0.28723720903508365,
+            "cpu": 0.281346,
+            "gc_cpu": 0.0064,
+            "outside_gc_cpu": 0.27494599999999997,
+            "collections": 28
+          }
+        ],
+        "wrappers": [
+          {
+            "wall": 0.2713450831361115,
+            "cpu": 0.26415999999999995,
+            "gc_cpu": 0.0064,
+            "outside_gc_cpu": 0.25775999999999993,
+            "collections": 28
+          },
+          {
+            "wall": 0.2731262091547251,
+            "cpu": 0.267245,
+            "gc_cpu": 0.0066,
+            "outside_gc_cpu": 0.260645,
+            "collections": 28
+          },
+          {
+            "wall": 0.2689529589843005,
+            "cpu": 0.2634309999999999,
+            "gc_cpu": 0.0064,
+            "outside_gc_cpu": 0.2570309999999999,
+            "collections": 28
+          },
+          {
+            "wall": 0.269865500042215,
+            "cpu": 0.2636020000000002,
+            "gc_cpu": 0.0060999999999999995,
+            "outside_gc_cpu": 0.25750200000000023,
+            "collections": 28
+          },
+          {
+            "wall": 0.27757433406077325,
+            "cpu": 0.26840599999999987,
+            "gc_cpu": 0.0063,
+            "outside_gc_cpu": 0.26210599999999984,
+            "collections": 28
+          }
+        ]
+      },
+      "median": {
+        "fresh_basis": {
+          "wall": 0.2857757918536663,
+          "cpu": 0.28005,
+          "gc_cpu": 0.0063,
+          "outside_gc_cpu": 0.27345,
+          "collections": 28
+        },
+        "wrappers": {
+          "wall": 0.2713450831361115,
+          "cpu": 0.26415999999999995,
+          "gc_cpu": 0.0064,
+          "outside_gc_cpu": 0.25775999999999993,
+          "collections": 28
+        }
+      },
+      "executables": {
+        "fresh_basis": {
+          "path": "/private/tmp/mlkit-m12-assembly/mlyacc-gc.exe",
+          "sha256": "f963534ed7050bf65f4776adb10399c1ed32b0c8141225db20fd5074fee564a5"
+        },
+        "wrappers": {
+          "path": "/private/tmp/mlkit-m12-assembly/mlyacc-wrappers.exe",
+          "sha256": "149d58f0e3c500ba6637891da40fac2dadd250d7234d0b9d52f594eb79aaabae"
+        }
+      },
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    }
+  ]
+}

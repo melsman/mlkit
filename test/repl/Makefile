@@ -9,14 +9,22 @@ RES_B_FILES=$(TEST_B_FILES:%.cmd=%-ri.res)
 RESFILES=$(RES_NB_FILES) $(RES_B_FILES)
 
 MLKIT=../../bin/mlkit
+MLKIT_FLAGS?=-no_gc
+
+# Expected nonzero exits are explicit in <test>.status.ok (chdir tests EOF).
+# Keep outputs when a compiler/runtime failure interrupts the suite.
+.PRECIOUS: %-ri.out %-ri-nb.out
 
 .PHONY: all
 all: test
 
 %-ri-nb.out: %.cmd Makefile
-	@echo "SML_LIB=../.. $(MLKIT) -no_basislib < $< | .. | .. > $@" >> complog.txt
-	@SML_LIB=../.. $(MLKIT) -no_basislib < $< \
-           | grep -v 'MLKit v' \
+	@echo "SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -no_basislib < $< > $@.log 2> $@.err" >> complog.txt
+	@status=0; SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -no_basislib < $< > $@.log 2> $@.err || status=$$?; \
+         expected=0; if [ -f $*.status.ok ]; then expected=$$(cat $*.status.ok); fi; \
+         if [ "$$expected" = nonzero ]; then [ $$status -ne 0 ]; else [ $$status -eq $$expected ]; fi || \
+         { cat $@.err >&2; echo "REPL exit status $$status (expected $$expected)" >&2; exit 1; }
+	@grep -v 'MLKit v' < $@.log \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
            | grep -v 'Type :help;' \
@@ -37,9 +45,12 @@ all: test
 	@cat $@ >> complog.txt
 
 %-ri.out: %.cmd Makefile
-	@echo "SML_LIB=../.. $(MLKIT) < $< | .. | .. > $@" >> complog.txt
-	@SML_LIB=../.. $(MLKIT) < $< \
-           | grep -v 'MLKit v' \
+	@echo "SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) < $< > $@.log 2> $@.err" >> complog.txt
+	@status=0; SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) < $< > $@.log 2> $@.err || status=$$?; \
+         expected=0; if [ -f $*.status.ok ]; then expected=$$(cat $*.status.ok); fi; \
+         if [ "$$expected" = nonzero ]; then [ $$status -ne 0 ]; else [ $$status -eq $$expected ]; fi || \
+         { cat $@.err >&2; echo "REPL exit status $$status (expected $$expected)" >&2; exit 1; }
+	@grep -v 'MLKit v' < $@.log \
            | grep -v 'Garbage collection disabled' \
            | grep -v 'Basis Library and Pretty Printing not loaded' \
            | grep -v 'Type :help;' \
@@ -70,8 +81,14 @@ test: prepare $(RESFILES)
 
 .PHONY: prepare
 prepare:
-	SML_LIB=../.. $(MLKIT) -no_gc -c ../../basis/repl.mlb
+	SML_LIB=../.. $(MLKIT) $(MLKIT_FLAGS) -c ../../basis/repl.mlb
 
 .PHONY: clean
 clean:
-	rm -rf MLB *~ *.res *.out complog.txt run
+	rm -rf MLB *~ *.res *.out *.out.log *.out.err complog.txt run
+
+# Force collections between independently loaded phrases and through callbacks.
+.PHONY: test_gc
+test_gc:
+	MLKIT="$(abspath $(MLKIT))" SML_LIB="$(abspath ../..)" CC="$(CC)" GC_FLAGS=-gc ./check-gc-images.sh
+	MLKIT="$(abspath $(MLKIT))" SML_LIB="$(abspath ../..)" CC="$(CC)" GC_FLAGS=-gengc ./check-gc-images.sh

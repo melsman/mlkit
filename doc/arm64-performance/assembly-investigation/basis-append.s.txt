@@ -1,0 +1,79 @@
+_F._17_0H3gc8BrsuQXNFsib977mr:
+	stp x29, x30, [sp, #0]
+	add x29, sp, #0
+	adrp x16, _time_to_gc@GOTPAGE
+	ldr x16, [x16, _time_to_gc@GOTPAGEOFF]
+	ldr x16, [x16, #0]
+	cbz x16, L_arm64_K4G5141dy3vOkZxRLpHNml
+	adrp x16, _disable_gc@GOTPAGE
+	ldr x16, [x16, _disable_gc@GOTPAGEOFF]
+	ldr x16, [x16, #0]
+	cbnz x16, L_arm64_K4G5141dy3vOkZxRLpHNml
+	adrp x16, L_arm64_UXv0Rfrj7aLmq3uZMorOTp@PAGE
+	add x16, x16, L_arm64_UXv0Rfrj7aLmq3uZMorOTp@PAGEOFF
+	bl L_arm64_glZsHhNx3p67BfHIr3GZ7h
+L_arm64_K4G5141dy3vOkZxRLpHNml:
+	sub sp, sp, #16
+	str x2, [sp, #8]
+	mov x16, x0
+	and x16, x16, #3
+	movz x17, #3, lsl #0
+	cmp x16, x17
+	b.eq L_arm64_iXvhDHRcmOgMoDxlDnCpOc
+L_arm64_Pvhn17LRZK3RuiarDsAxAa:
+	mov x16, x0
+	mov x3, x16
+	mov x16, x3
+	ldr x16, [x16, #8]
+	str x16, [sp, #0]
+	mov x16, x3
+	ldr x16, [x16, #16]
+	mov x0, x16
+	ldr x16, [sp, #8]
+	mov x2, x16
+	sub sp, sp, #16
+	adr x30, L_arm64_vaJQgJTqJjB90oEgKi3pyd
+	b _F._17_0H3gc8BrsuQXNFsib977mr
+.p2align 3
+.quad 0x8
+.quad 0x4
+.quad 0x3
+.quad 0xC
+L_arm64_vaJQgJTqJjB90oEgKi3pyd:
+	ldr x16, [sp, #8]
+	and x16, x16, #-4
+	ldr x17, [x16, #0]
+	sub x17, x17, #1
+	orr x30, x17, #8191
+	add x17, x17, #16
+	cmp x17, x30
+	b.hi L_arm64_pQh0YrFmTgj77jPfObaSec
+	add x17, x17, #1
+	str x17, [x16, #0]
+	mov x16, x17
+	sub x16, x16, #24
+	adrp x17, _alloc_period@GOTPAGE
+	ldr x17, [x17, _alloc_period@GOTPAGEOFF]
+	ldr x30, [x17, #0]
+	add x30, x30, #16
+	str x30, [x17, #0]
+L_arm64_xZNyAGUxOklgxZ9tNSHsnc:
+	mov x1, x16
+	ldr x17, [sp, #8]
+	tbnz x17, #0, L_arm64_YYaEZfEVfvToGjTQ6rcaAo
+	movz x16, #6, lsl #0
+	movk x16, #16, lsl #16
+	str x16, [x1, #0]
+L_arm64_YYaEZfEVfvToGjTQ6rcaAo:
+	ldr x16, [sp, #0]
+	str x16, [x1, #8]
+	str x0, [x1, #16]
+	mov x16, x1
+	movz x17, #0, lsl #0
+	orr x16, x16, x17
+	mov x1, x16
+L_arm64_iXvhDHRcmOgMoDxlDnCpOc:
+	mov x0, x1
+	ldp x29, x30, [sp, #16]
+	add sp, sp, #32
+	ret

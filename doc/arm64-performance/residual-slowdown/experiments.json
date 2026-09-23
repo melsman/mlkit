@@ -1,0 +1,56 @@
+{
+  "mlyacc-peephole": {
+    "changed_units": 44,
+    "counts": {
+      "roundtrip_copy": 4165,
+      "load_base_copy": 4403,
+      "alu_source_copy": 4312,
+      "zero_or": 1503,
+      "adjacent_pair": 4387,
+      "branch_thread": 1445
+    }
+  },
+  "mlyacc-leaf": {
+    "changed_units": 14,
+    "counts": {
+      "leaf_headers_removed": 37
+    }
+  },
+  "mlyacc-inline": {
+    "changed_units": 12,
+    "counts": {
+      "calls_inlined": 199,
+      "callee:_F.eq_term3_8AnN4ffRRYidbIKi6D1eMl": 19,
+      "callee:_F.eq_nonterm4_D2UcR3gHcsasOPxrD6KKMc": 29,
+      "callee:_F.symbolMake28_R9rhpIy567fkAYUyzzcJoo": 12,
+      "callee:_F.gtNonterm7_BM52K5uiGSbXHGDxyJcHki": 37,
+      "callee:_F.gtTerm5_r9immfQaI4F15rxHvYYQoe": 8,
+      "callee:_F.gt3_k73jSgaBSz3LYekQVQRp5k": 8,
+      "callee:_F.eq2_hblgRPSBpnpQ8BlGiMQs2k": 8,
+      "callee:_F.eq_state5_Y1xL5GclNTP03UraxENpkc": 2,
+      "callee:_F.symbolName26_n7680iNFLh52cH7sf4CL1b": 49,
+      "callee:_F.symbolPos27_iy8qlHzBfX0Po7V6UgImrc": 27
+    }
+  },
+  "professor-peephole": {
+    "changed_units": 1,
+    "counts": {
+      "roundtrip_copy": 216,
+      "load_base_copy": 181,
+      "alu_source_copy": 171,
+      "zero_or": 36,
+      "adjacent_pair": 166,
+      "branch_thread": 143
+    }
+  },
+  "professor-leaf": {
+    "changed_units": 1,
+    "counts": {
+      "leaf_headers_removed": 2
+    }
+  },
+  "professor-inline": {
+    "changed_units": 0,
+    "counts": {}
+  }
+}

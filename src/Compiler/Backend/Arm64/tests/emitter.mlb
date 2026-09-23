@@ -1,0 +1,8 @@
+local
+  ../../../prebackend.mlb
+  ../../../nativearm64.mlb
+  ../../../regions.mlb
+  open BasLib CompilerObjects Tools
+in
+  emitter.sml
+end

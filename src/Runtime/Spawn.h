@@ -14,7 +14,8 @@
 // #endif
 //
 
-// Even when Argobots are used, we use Posix mutexes for cheaper locking
+// Region/free-list critical sections do not yield and use Posix mutexes.
+// Joins can yield and use an Argobots mutex when running on Argobots.
 
 #include <sys/types.h>
 #include "Region.h"
@@ -36,6 +37,13 @@ extern Rp **freelists;                         // Array of N=posixThreads region
 extern thread_mutex_list_t **mutex_freelists;  // Array of N=posixThreads mutex freelists
 typedef ABT_thread thread_t;
 typedef ABT_key thread_key_t;
+/* A join may yield the ULT. Do not block its execution stream with a
+ * pthread mutex held across ABT_thread_join. */
+typedef ABT_mutex thread_join_mutex_t;
+#define JOIN_MUTEX_INIT(m) ABT_mutex_create(m)
+#define JOIN_MUTEX_LOCK(m) ABT_mutex_lock(m)
+#define JOIN_MUTEX_UNLOCK(m) ABT_mutex_unlock(m)
+#define JOIN_MUTEX_DESTROY(m) ABT_mutex_free(m)
 
 // typedef ABT_mutex thread_mutex_t;
 // #define MUTEX_LOCK(m) ABT_mutex_lock(m)
@@ -51,6 +59,11 @@ int execution_stream_rank(void);
 #else
 typedef pthread_t thread_t;
 typedef pthread_key_t thread_key_t;
+typedef pthread_mutex_t thread_join_mutex_t;
+#define JOIN_MUTEX_INIT(m) pthread_mutex_init(m,NULL)
+#define JOIN_MUTEX_LOCK(m) pthread_mutex_lock(&(m))
+#define JOIN_MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+#define JOIN_MUTEX_DESTROY(m) pthread_mutex_destroy(m)
 
 extern thread_mutex_list_t *global_mutex_freelist;
 
@@ -70,7 +83,7 @@ typedef struct ti {
   context ctx;
   int tid;
   thread_t thread;
-  thread_mutex_t mutex;
+  thread_join_mutex_t mutex;
   void* retval;
   int joined;
 #ifdef ARGOBOTS

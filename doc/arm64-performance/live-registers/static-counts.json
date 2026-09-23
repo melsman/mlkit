@@ -1,0 +1,13 @@
+{
+  "benchmark": "professor",
+  "old": {
+    "instructions": 22364,
+    "fp_memory_instructions": 3668,
+    "region_calls": 166
+  },
+  "new": {
+    "instructions": 15762,
+    "fp_memory_instructions": 38,
+    "region_calls": 166
+  }
+}

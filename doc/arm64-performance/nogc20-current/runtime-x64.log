@@ -1,0 +1,27 @@
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h gen_syserror.c -o build/darwin-x86_64/gen_syserror
+build/darwin-x86_64/gen_syserror > build/darwin-x86_64/SysErrTable.h.tmp
+mv build/darwin-x86_64/SysErrTable.h.tmp build/darwin-x86_64/SysErrTable.h
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Runtime.c -o build/darwin-x86_64/plain/Runtime.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c String.c -o build/darwin-x86_64/plain/String.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Math.c -o build/darwin-x86_64/plain/Math.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c IO.c -o build/darwin-x86_64/plain/IO.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Region.c -o build/darwin-x86_64/plain/Region.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Icp.c -o build/darwin-x86_64/plain/Icp.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Table.c -o build/darwin-x86_64/plain/Table.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Time.c -o build/darwin-x86_64/plain/Time.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Profiling.c -o build/darwin-x86_64/plain/Profiling.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c CommandLine.c -o build/darwin-x86_64/plain/CommandLine.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Posix.c -o build/darwin-x86_64/plain/Posix.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Dlsym.c -o build/darwin-x86_64/plain/Dlsym.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Export.c -o build/darwin-x86_64/plain/Export.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Socket.c -o build/darwin-x86_64/plain/Socket.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Repl.c -o build/darwin-x86_64/plain/Repl.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Layout.c -o build/darwin-x86_64/plain/Layout.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c Arm64GC.c -o build/darwin-x86_64/plain/Arm64GC.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c ../CUtils/hashmap.c -o build/darwin-x86_64/plain/hashmap.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch x86_64 -iquote . -Ibuild/darwin-x86_64 -include Target.h  -MMD -MP -c ../CUtils/hashmap_typed.c -o build/darwin-x86_64/plain/hashmap_typed.o
+rm -f build/darwin-x86_64/runtimeSystem.a
+ar rc build/darwin-x86_64/runtimeSystem.a build/darwin-x86_64/plain/Runtime.o build/darwin-x86_64/plain/IO.o build/darwin-x86_64/plain/String.o build/darwin-x86_64/plain/Math.o build/darwin-x86_64/plain/Region.o build/darwin-x86_64/plain/Icp.o build/darwin-x86_64/plain/Table.o build/darwin-x86_64/plain/Time.o build/darwin-x86_64/plain/Profiling.o build/darwin-x86_64/plain/CommandLine.o build/darwin-x86_64/plain/Posix.o build/darwin-x86_64/plain/Dlsym.o build/darwin-x86_64/plain/Export.o build/darwin-x86_64/plain/Socket.o build/darwin-x86_64/plain/Repl.o build/darwin-x86_64/plain/Layout.o build/darwin-x86_64/plain/Arm64GC.o build/darwin-x86_64/plain/hashmap.o build/darwin-x86_64/plain/hashmap_typed.o
+../../mkinstalldirs ../../lib/darwin-x86_64
+/usr/local/bin/ginstall -c -m 644 build/darwin-x86_64/runtimeSystem.a ../../lib/darwin-x86_64/runtimeSystem.a
+/usr/local/bin/ginstall -c -m 644 build/darwin-x86_64/runtimeSystem.a ../../lib/runtimeSystem.a

@@ -10,6 +10,7 @@ structure ExecutionBarry : EXECUTION =
 
     fun die s = (print ("ExecutionBarry.Die: " ^ s); raise Fail s)
 
+    val repl_supports_gc = false
     val backend_name = "Barry"
     val backend_longname = "Barry - the Standard ML barifier"
 

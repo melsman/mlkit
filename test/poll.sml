@@ -108,6 +108,11 @@ fun main () =
         ( TextIO.closeIn ctp_in
         ; TextIO.closeOut ptc_out
         ; viewProc (ptc_in_fd, ptc_in) (ctp_out_fd, ctp_out)
+        (* Reap the model before the parent's exit closes its pipe. Otherwise
+         * the child can report an EOF exception after the success message. *)
+        ; Posix.Process.kill (Posix.Process.K_PROC model_pid, Posix.Signal.term)
+        ; Posix.Process.waitpid (Posix.Process.W_CHILD model_pid, [])
+        ; ()
         )
   end
 

@@ -1,0 +1,2348 @@
+{
+  "metadata": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "compiler_revision": "8b4ec13a7f52c32cb5fda48e82237c7865f06fb5",
+    "bench_revision": "5bff5c9c925ac6fc43b1a98bf506edc40c8019df",
+    "bitstealing_revision": "03d473dcd7042183fffcf727e85eed6bbacf7f73",
+    "compiler_sha256": {
+      "arm64": "5cffdb82dc3393bdfcfd8aaf7f4dae3e7adc20be0c63a7370cd35be6cddcabb5",
+      "x64": "3f2e74a036b6915bf5992bdae44524abb801283d336182dcb4fda6e9fb86ed3a"
+    },
+    "repetitions": 5,
+    "warmups": 1,
+    "metric": "elapsed seconds, perf_counter, separate process per sample",
+    "cpu": "Apple M2 Max",
+    "memory_bytes": 34359738368,
+    "macos": "26.5.1 (25F80)",
+    "toolchain": "Apple clang 21.0.0 (clang-2100.1.1.101)",
+    "runtime_sha256": {
+      "lib/runtimeSystem.a": "dbecb1e39d1dd0ec87948155e940407143f1c8119a99fc9e723df592bf1436b1",
+      "lib/runtimeSystemGC.a": "502584ad8c4bf5b949f13dab058e718bf12db3e4bc51ffb5d0622908afe7bda0",
+      "lib/darwin-arm64/runtimeSystem.a": "5022931d908bbb07aa23f445d4d6a72eb2a679b96d7a18255c907b49ee4c593c",
+      "lib/darwin-arm64/runtimeSystemGC.a": "5946a3ff8851cd96d44f06f034d9c278b193f2c04bb92143cbfac0d15d9376e8"
+    },
+    "measurement_date": "2026-09-21"
+  },
+  "results": [
+    {
+      "name": "calc",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/calc/calc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/calc-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "calc.mlb"
+      ],
+      "samples": [
+        2.5307308339999963,
+        2.494173999999987,
+        2.538762709000025,
+        2.5127305419999857,
+        2.558732292000002
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/calc-x64-gc.exe",
+      "median": 2.5307308339999963,
+      "min": 2.494173999999987,
+      "max": 2.558732292000002,
+      "output_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "name": "calc",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/calc/calc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/calc-arm64-gc.exe",
+        "calc.mlb"
+      ],
+      "samples": [
+        5.55340187500002,
+        5.620788291999986,
+        5.582412708999982,
+        5.566592125,
+        5.594329332999962
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/calc-arm64-gc.exe",
+      "median": 5.582412708999982,
+      "min": 5.55340187500002,
+      "max": 5.620788291999986,
+      "output_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "name": "calc",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/calc/calc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/calc-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "calc.mlb"
+      ],
+      "samples": [
+        1.1583073749999926,
+        1.1776608330000045,
+        1.1722914160000073,
+        1.167910500000005,
+        1.175493332999963
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/calc-x64-no_gc.exe",
+      "median": 1.1722914160000073,
+      "min": 1.1583073749999926,
+      "max": 1.1776608330000045,
+      "output_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "name": "calc",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/calc/calc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/calc-arm64-no_gc.exe",
+        "calc.mlb"
+      ],
+      "samples": [
+        2.280666542000006,
+        2.291097667000031,
+        2.284563124999977,
+        2.2557588750000264,
+        2.2981779169999754
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/calc-arm64-no_gc.exe",
+      "median": 2.284563124999977,
+      "min": 2.2557588750000264,
+      "max": 2.2981779169999754,
+      "output_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "name": "DLX",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/dlx/dlx.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/DLX-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "dlx.mlb"
+      ],
+      "samples": [
+        0.4432608750000213,
+        0.40175104100001136,
+        0.39220524999996087,
+        0.39279858300000114,
+        0.39551850000003697
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/DLX-x64-gc.exe",
+      "median": 0.39551850000003697,
+      "min": 0.39220524999996087,
+      "max": 0.4432608750000213,
+      "output_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "name": "DLX",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/dlx/dlx.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/DLX-arm64-gc.exe",
+        "dlx.mlb"
+      ],
+      "samples": [
+        0.5118678329999966,
+        0.5196342080000136,
+        0.5108444159999976,
+        0.5119989579999924,
+        0.5109979169999974
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/DLX-arm64-gc.exe",
+      "median": 0.5118678329999966,
+      "min": 0.5108444159999976,
+      "max": 0.5196342080000136,
+      "output_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "name": "DLX",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/dlx/dlx.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/DLX-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "dlx.mlb"
+      ],
+      "samples": [
+        0.23758474999999635,
+        0.23406012499998496,
+        0.23869450000000825,
+        0.2448198330000082,
+        0.23608383300000924
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/DLX-x64-no_gc.exe",
+      "median": 0.23758474999999635,
+      "min": 0.23406012499998496,
+      "max": 0.2448198330000082,
+      "output_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "name": "DLX",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/dlx/dlx.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/DLX-arm64-no_gc.exe",
+        "dlx.mlb"
+      ],
+      "samples": [
+        0.36325833399996554,
+        0.36543174999997063,
+        0.36713974999997845,
+        0.36573199999997996,
+        0.36666262499994673
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/DLX-arm64-no_gc.exe",
+      "median": 0.36573199999997996,
+      "min": 0.36325833399996554,
+      "max": 0.36713974999997845,
+      "output_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "name": "kbc",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/kbc/kbc.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/kbc-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "kbc.sml"
+      ],
+      "samples": [
+        0.798034040999994,
+        0.7811337919999914,
+        0.7885391249999998,
+        0.7828051670000491,
+        0.7858173329999545
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/kbc-x64-gc.exe",
+      "median": 0.7858173329999545,
+      "min": 0.7811337919999914,
+      "max": 0.798034040999994,
+      "output_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "name": "kbc",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/kbc/kbc.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/kbc-arm64-gc.exe",
+        "kbc.sml"
+      ],
+      "samples": [
+        1.164558999999997,
+        1.1631789999999569,
+        1.1599393330000112,
+        1.1583964590000164,
+        1.1610005840000213
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/kbc-arm64-gc.exe",
+      "median": 1.1610005840000213,
+      "min": 1.1583964590000164,
+      "max": 1.164558999999997,
+      "output_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "name": "kbc",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/kbc/kbc.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/kbc-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "kbc.sml"
+      ],
+      "samples": [
+        0.6346459590000109,
+        0.6355612909999877,
+        0.6345111670000279,
+        0.6346193749999998,
+        0.6354180409999799
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/kbc-x64-no_gc.exe",
+      "median": 0.6346459590000109,
+      "min": 0.6345111670000279,
+      "max": 0.6355612909999877,
+      "output_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "name": "kbc",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/kbc/kbc.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/kbc-arm64-no_gc.exe",
+        "kbc.sml"
+      ],
+      "samples": [
+        1.0511589170000093,
+        1.0567239580000205,
+        1.0521522920000166,
+        1.052614374999962,
+        1.0526740829999994
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/kbc-arm64-no_gc.exe",
+      "median": 1.052614374999962,
+      "min": 1.0511589170000093,
+      "max": 1.0567239580000205,
+      "output_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "name": "lexgen",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/lexgen/lexgen.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/lexgen-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "lexgen.sml"
+      ],
+      "samples": [
+        0.4741310830000316,
+        0.512595540999996,
+        0.46742216699999517,
+        0.4624133749999828,
+        0.4671083339999882
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/lexgen-x64-gc.exe",
+      "median": 0.46742216699999517,
+      "min": 0.4624133749999828,
+      "max": 0.512595540999996,
+      "output_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "name": "lexgen",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/lexgen/lexgen.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/lexgen-arm64-gc.exe",
+        "lexgen.sml"
+      ],
+      "samples": [
+        0.8613037090000262,
+        0.8733860000000391,
+        0.9125101250000398,
+        0.8697881669999674,
+        0.8670169999999757
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/lexgen-arm64-gc.exe",
+      "median": 0.8697881669999674,
+      "min": 0.8613037090000262,
+      "max": 0.9125101250000398,
+      "output_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "name": "lexgen",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/lexgen/lexgen.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/lexgen-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "lexgen.sml"
+      ],
+      "samples": [
+        0.39728533300001345,
+        0.42374670899999956,
+        0.39594541699995034,
+        0.40493537499997956,
+        0.398839291999991
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/lexgen-x64-no_gc.exe",
+      "median": 0.398839291999991,
+      "min": 0.39594541699995034,
+      "max": 0.42374670899999956,
+      "output_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "name": "lexgen",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/lexgen/lexgen.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/lexgen-arm64-no_gc.exe",
+        "lexgen.sml"
+      ],
+      "samples": [
+        0.5958799169999907,
+        0.5958792089999747,
+        0.5987388750000378,
+        0.5972018340000318,
+        0.5982229159999974
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/lexgen-arm64-no_gc.exe",
+      "median": 0.5972018340000318,
+      "min": 0.5958792089999747,
+      "max": 0.5987388750000378,
+      "output_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "name": "logic",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/logic/logic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/logic-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "logic.mlb"
+      ],
+      "samples": [
+        1.1130701250000357,
+        1.1059851659999822,
+        1.1323045409999963,
+        1.1149268750000374,
+        1.1067294169999968
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/logic-x64-gc.exe",
+      "median": 1.1130701250000357,
+      "min": 1.1059851659999822,
+      "max": 1.1323045409999963,
+      "output_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "name": "logic",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/logic/logic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/logic-arm64-gc.exe",
+        "logic.mlb"
+      ],
+      "samples": [
+        5.189304665999998,
+        5.179943874999992,
+        5.229482707999978,
+        5.182998542000007,
+        5.263943416000018
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/logic-arm64-gc.exe",
+      "median": 5.189304665999998,
+      "min": 5.179943874999992,
+      "max": 5.263943416000018,
+      "output_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "name": "logic",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/logic/logic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/logic-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "logic.mlb"
+      ],
+      "samples": [
+        0.732356708999987,
+        0.7348027909999928,
+        0.7229683750000504,
+        0.7901574589999996,
+        0.7450612500000489
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/logic-x64-no_gc.exe",
+      "median": 0.7348027909999928,
+      "min": 0.7229683750000504,
+      "max": 0.7901574589999996,
+      "output_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "name": "logic",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/logic/logic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/logic-arm64-no_gc.exe",
+        "logic.mlb"
+      ],
+      "samples": [
+        0.7909050829999842,
+        0.783912416000021,
+        0.7904887920000192,
+        0.8088415000000282,
+        0.8014016250000395
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/logic-arm64-no_gc.exe",
+      "median": 0.7909050829999842,
+      "min": 0.783912416000021,
+      "max": 0.8088415000000282,
+      "output_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "name": "nucleic",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/nucleic/nucleic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/nucleic-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "nucleic.mlb"
+      ],
+      "samples": [
+        1.009897292000005,
+        0.9967424999999821,
+        0.9477837089999639,
+        0.9737580419999858,
+        0.9860057920000145
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/nucleic-x64-gc.exe",
+      "median": 0.9860057920000145,
+      "min": 0.9477837089999639,
+      "max": 1.009897292000005,
+      "output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "name": "nucleic",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/nucleic/nucleic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/nucleic-arm64-gc.exe",
+        "nucleic.mlb"
+      ],
+      "samples": [
+        1.7659222919999138,
+        1.6849327090000088,
+        1.601028499999984,
+        1.6451497919999838,
+        1.6328291669999544
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/nucleic-arm64-gc.exe",
+      "median": 1.6451497919999838,
+      "min": 1.601028499999984,
+      "max": 1.7659222919999138,
+      "output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "name": "nucleic",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/nucleic/nucleic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/nucleic-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "nucleic.mlb"
+      ],
+      "samples": [
+        1.0907906669999647,
+        1.039190916999928,
+        1.0235237910000023,
+        1.0473864999999023,
+        1.0752582500000472
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/nucleic-x64-no_gc.exe",
+      "median": 1.0473864999999023,
+      "min": 1.0235237910000023,
+      "max": 1.0907906669999647,
+      "output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "name": "nucleic",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/nucleic/nucleic.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/nucleic-arm64-no_gc.exe",
+        "nucleic.mlb"
+      ],
+      "samples": [
+        0.8706011250000074,
+        0.842106332999947,
+        0.8457045410000319,
+        0.8420399579999867,
+        0.8635034999999789
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/nucleic-arm64-no_gc.exe",
+      "median": 0.8457045410000319,
+      "min": 0.8420399579999867,
+      "max": 0.8706011250000074,
+      "output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "name": "patricia",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/patricia/patricia.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/patricia-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "patricia.sml"
+      ],
+      "samples": [
+        3.9964880840000205,
+        4.023342875000026,
+        4.0248220419999825,
+        4.00434670900006,
+        3.9745305000000144
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/patricia-x64-gc.exe",
+      "median": 4.00434670900006,
+      "min": 3.9745305000000144,
+      "max": 4.0248220419999825,
+      "output_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "name": "patricia",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/patricia/patricia.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/patricia-arm64-gc.exe",
+        "patricia.sml"
+      ],
+      "samples": [
+        10.768367667000007,
+        10.773542459000055,
+        10.830600582999978,
+        10.795348249999961,
+        10.744342500000016
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/patricia-arm64-gc.exe",
+      "median": 10.773542459000055,
+      "min": 10.744342500000016,
+      "max": 10.830600582999978,
+      "output_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "name": "patricia",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/patricia/patricia.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/patricia-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "patricia.sml"
+      ],
+      "samples": [
+        2.366052792000005,
+        2.3378367499999513,
+        2.2634611670000595,
+        2.2925914589999365,
+        2.261674040999992
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/patricia-x64-no_gc.exe",
+      "median": 2.2925914589999365,
+      "min": 2.261674040999992,
+      "max": 2.366052792000005,
+      "output_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "name": "patricia",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/patricia/patricia.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/patricia-arm64-no_gc.exe",
+        "patricia.sml"
+      ],
+      "samples": [
+        2.2747395000000097,
+        2.3242376250000234,
+        2.3076558330000125,
+        2.3094311660000812,
+        2.393839666999952
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/patricia-arm64-no_gc.exe",
+      "median": 2.3094311660000812,
+      "min": 2.2747395000000097,
+      "max": 2.393839666999952,
+      "output_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "name": "ray",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/ray/ray.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/ray-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "ray.mlb"
+      ],
+      "samples": [
+        0.38336708400004227,
+        0.3912601250000307,
+        0.40286858299998585,
+        0.3848606669999981,
+        0.3973323329998948
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/ray-x64-gc.exe",
+      "median": 0.3912601250000307,
+      "min": 0.38336708400004227,
+      "max": 0.40286858299998585,
+      "output_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "name": "ray",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/ray/ray.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/ray-arm64-gc.exe",
+        "ray.mlb"
+      ],
+      "samples": [
+        0.5517393339999899,
+        0.5537409999999454,
+        0.5559571249999635,
+        0.5524809159999222,
+        0.5544979999999669
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/ray-arm64-gc.exe",
+      "median": 0.5537409999999454,
+      "min": 0.5517393339999899,
+      "max": 0.5559571249999635,
+      "output_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "name": "ray",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/ray/ray.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/ray-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "ray.mlb"
+      ],
+      "samples": [
+        0.3583664579999777,
+        0.3969350830000167,
+        0.35345312499998727,
+        0.35429775000000063,
+        0.35423549999995885
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/ray-x64-no_gc.exe",
+      "median": 0.35429775000000063,
+      "min": 0.35345312499998727,
+      "max": 0.3969350830000167,
+      "output_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "name": "ray",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/ray/ray.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/ray-arm64-no_gc.exe",
+        "ray.mlb"
+      ],
+      "samples": [
+        0.4871163330000172,
+        0.48581704200000786,
+        0.48691245800000615,
+        0.48597050000000763,
+        0.4867800829999851
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/ray-arm64-no_gc.exe",
+      "median": 0.4867800829999851,
+      "min": 0.48581704200000786,
+      "max": 0.4871163330000172,
+      "output_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "name": "uf",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/uf/uf.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/uf-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "uf.mlb"
+      ],
+      "samples": [
+        0.14057458399997813,
+        0.14061708400004136,
+        0.14382129199998417,
+        0.13892599999996946,
+        0.14671258299995316
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/uf-x64-gc.exe",
+      "median": 0.14061708400004136,
+      "min": 0.13892599999996946,
+      "max": 0.14671258299995316,
+      "output_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "name": "uf",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/uf/uf.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/uf-arm64-gc.exe",
+        "uf.mlb"
+      ],
+      "samples": [
+        0.2445583329999863,
+        0.2428936659999863,
+        0.24178683399998135,
+        0.24038224999992508,
+        0.24358320900000763
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/uf-arm64-gc.exe",
+      "median": 0.2428936659999863,
+      "min": 0.24038224999992508,
+      "max": 0.2445583329999863,
+      "output_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "name": "uf",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/uf/uf.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/uf-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "uf.mlb"
+      ],
+      "samples": [
+        0.11078837500008376,
+        0.1107326669999793,
+        0.10943824999992557,
+        0.10921554200001538,
+        0.11100079199991342
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/uf-x64-no_gc.exe",
+      "median": 0.1107326669999793,
+      "min": 0.10921554200001538,
+      "max": 0.11100079199991342,
+      "output_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "name": "uf",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/uf/uf.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/uf-arm64-no_gc.exe",
+        "uf.mlb"
+      ],
+      "samples": [
+        0.173821582999949,
+        0.1717177499999707,
+        0.17128883299994868,
+        0.17197533300009127,
+        0.17111733299998377
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/uf-arm64-no_gc.exe",
+      "median": 0.1717177499999707,
+      "min": 0.17111733299998377,
+      "max": 0.173821582999949,
+      "output_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "name": "vliw",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/vliw/vliw.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/vliw-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "vliw.sml"
+      ],
+      "samples": [
+        0.5218813330000103,
+        0.5138327920000165,
+        0.5187218749999829,
+        0.5217262920000394,
+        0.5247133330000224
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/vliw-x64-gc.exe",
+      "median": 0.5217262920000394,
+      "min": 0.5138327920000165,
+      "max": 0.5247133330000224,
+      "output_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "name": "vliw",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-published/src/vliw/vliw.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/vliw-arm64-gc.exe",
+        "vliw.sml"
+      ],
+      "samples": [
+        0.8640937500000518,
+        0.8584978330000013,
+        0.8600042500000882,
+        0.8549351249999972,
+        0.8556493749999845
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/vliw-arm64-gc.exe",
+      "median": 0.8584978330000013,
+      "min": 0.8549351249999972,
+      "max": 0.8640937500000518,
+      "output_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "name": "vliw",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/vliw/vliw.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/vliw-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "vliw.sml"
+      ],
+      "samples": [
+        0.4755754999999908,
+        0.47511162500006776,
+        0.48208212500003356,
+        0.47990550000008625,
+        0.47738145899995743
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/vliw-x64-no_gc.exe",
+      "median": 0.47738145899995743,
+      "min": 0.47511162500006776,
+      "max": 0.48208212500003356,
+      "output_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "name": "vliw",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-published/src/vliw/vliw.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/vliw-arm64-no_gc.exe",
+        "vliw.sml"
+      ],
+      "samples": [
+        0.7558973750000177,
+        0.7586581250000108,
+        0.7620088329999817,
+        0.7578203749999375,
+        0.7538497499999721
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/vliw-arm64-no_gc.exe",
+      "median": 0.7578203749999375,
+      "min": 0.7538497499999721,
+      "max": 0.7620088329999817,
+      "output_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "name": "mlyacc",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mlyacc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mlyacc-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mlyacc.mlb"
+      ],
+      "samples": [
+        0.21097895799994149,
+        0.2111189590000322,
+        0.21302491599999485,
+        0.207268499999941,
+        0.21182141700001011
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mlyacc-x64-gc.exe",
+      "median": 0.2111189590000322,
+      "min": 0.207268499999941,
+      "max": 0.21302491599999485,
+      "output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "name": "mlyacc",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mlyacc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mlyacc-arm64-gc.exe",
+        "mlyacc.mlb"
+      ],
+      "samples": [
+        0.4012624169999981,
+        0.40649779199998193,
+        0.3957258750000392,
+        0.3990083329999834,
+        0.39838987500002077
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mlyacc-arm64-gc.exe",
+      "median": 0.3990083329999834,
+      "min": 0.3957258750000392,
+      "max": 0.40649779199998193,
+      "output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "name": "mlyacc",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mlyacc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mlyacc-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mlyacc.mlb"
+      ],
+      "samples": [
+        0.2126964170000747,
+        0.21352545800004918,
+        0.2116340410000248,
+        0.210122374999969,
+        0.21539570800007368
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mlyacc-x64-no_gc.exe",
+      "median": 0.2126964170000747,
+      "min": 0.210122374999969,
+      "max": 0.21539570800007368,
+      "output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "name": "mlyacc",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mlyacc.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mlyacc-arm64-no_gc.exe",
+        "mlyacc.mlb"
+      ],
+      "samples": [
+        0.271992833000013,
+        0.2723342499999717,
+        0.2741839579999805,
+        0.2673320420000209,
+        0.26555145800000446
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mlyacc-arm64-no_gc.exe",
+      "median": 0.271992833000013,
+      "min": 0.26555145800000446,
+      "max": 0.2741839579999805,
+      "output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "name": "professor",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/professor.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/professor-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "professor.sml"
+      ],
+      "samples": [
+        0.26129437499992036,
+        0.25790858299990305,
+        0.26640170899997884,
+        0.2542997089999517,
+        0.2611437079999632
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/professor-x64-gc.exe",
+      "median": 0.2611437079999632,
+      "min": 0.2542997089999517,
+      "max": 0.26640170899997884,
+      "output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "name": "professor",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/professor.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/professor-arm64-gc.exe",
+        "professor.sml"
+      ],
+      "samples": [
+        0.4839561249999633,
+        0.4823530830000209,
+        0.469876791000047,
+        0.47109599999998863,
+        0.47081437500003176
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/professor-arm64-gc.exe",
+      "median": 0.47109599999998863,
+      "min": 0.469876791000047,
+      "max": 0.4839561249999633,
+      "output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "name": "professor",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/professor.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/professor-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "professor.sml"
+      ],
+      "samples": [
+        0.21538216700002977,
+        0.21550266700000975,
+        0.21117237500004649,
+        0.21223512500000652,
+        0.21416529099997206
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/professor-x64-no_gc.exe",
+      "median": 0.21416529099997206,
+      "min": 0.21117237500004649,
+      "max": 0.21550266700000975,
+      "output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "name": "professor",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/professor.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/professor-arm64-no_gc.exe",
+        "professor.sml"
+      ],
+      "samples": [
+        0.4145297909999499,
+        0.41298462499992183,
+        0.4141898330000231,
+        0.40811604199996054,
+        0.40621891700004653
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/professor-arm64-no_gc.exe",
+      "median": 0.41298462499992183,
+      "min": 0.40621891700004653,
+      "max": 0.4145297909999499,
+      "output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "name": "barnes-hut",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/barnes-hut.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/barnes-hut-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "barnes-hut.mlb"
+      ],
+      "samples": [
+        0.9342217500000061,
+        0.9223749169999564,
+        1.0218490830000064,
+        0.9234380409999403,
+        0.9500339169999279
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/barnes-hut-x64-gc.exe",
+      "median": 0.9342217500000061,
+      "min": 0.9223749169999564,
+      "max": 1.0218490830000064,
+      "output_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "name": "barnes-hut",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/barnes-hut.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/barnes-hut-arm64-gc.exe",
+        "barnes-hut.mlb"
+      ],
+      "samples": [
+        3.0590258329999642,
+        3.051005250000003,
+        3.083091833000026,
+        3.0698648339999863,
+        3.1026357910000115
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/barnes-hut-arm64-gc.exe",
+      "median": 3.0698648339999863,
+      "min": 3.051005250000003,
+      "max": 3.1026357910000115,
+      "output_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "name": "barnes-hut",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/barnes-hut.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/barnes-hut-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "barnes-hut.mlb"
+      ],
+      "samples": [
+        1.5680232920000208,
+        1.6031638750000639,
+        1.5420820829999684,
+        1.5425050829999236,
+        1.5422854580000376
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/barnes-hut-x64-no_gc.exe",
+      "median": 1.5425050829999236,
+      "min": 1.5420820829999684,
+      "max": 1.6031638750000639,
+      "output_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "name": "barnes-hut",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/barnes-hut.mlb",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/barnes-hut-arm64-no_gc.exe",
+        "barnes-hut.mlb"
+      ],
+      "samples": [
+        2.4823997080000026,
+        2.4658657079999102,
+        2.4661897500000123,
+        2.473932416000025,
+        2.473393334000093
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/barnes-hut-arm64-no_gc.exe",
+      "median": 2.473393334000093,
+      "min": 2.4658657079999102,
+      "max": 2.4823997080000026,
+      "output_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "name": "fft",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/fft.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/fft-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "fft.sml"
+      ],
+      "samples": [
+        0.4406332089999978,
+        0.4524803750000501,
+        0.4402877919999355,
+        0.44576358299991625,
+        0.43273162500008766
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/fft-x64-gc.exe",
+      "median": 0.4406332089999978,
+      "min": 0.43273162500008766,
+      "max": 0.4524803750000501,
+      "output_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "name": "fft",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/fft.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/fft-arm64-gc.exe",
+        "fft.sml"
+      ],
+      "samples": [
+        0.7911671669999123,
+        0.7883296249999603,
+        0.7931591670001126,
+        0.7877105420000134,
+        0.792356916000017
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/fft-arm64-gc.exe",
+      "median": 0.7911671669999123,
+      "min": 0.7877105420000134,
+      "max": 0.7931591670001126,
+      "output_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "name": "fft",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/fft.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/fft-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "fft.sml"
+      ],
+      "samples": [
+        0.331988709000143,
+        0.32645404200002304,
+        0.33432270899993455,
+        0.32885508300000765,
+        0.33213883299981717
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/fft-x64-no_gc.exe",
+      "median": 0.331988709000143,
+      "min": 0.32645404200002304,
+      "max": 0.33432270899993455,
+      "output_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "name": "fft",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/fft.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/fft-arm64-no_gc.exe",
+        "fft.sml"
+      ],
+      "samples": [
+        0.448598666999942,
+        0.4474404580000737,
+        0.4476659590000054,
+        0.4475505829998383,
+        0.44892929200000253
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/fft-arm64-no_gc.exe",
+      "median": 0.4476659590000054,
+      "min": 0.4474404580000737,
+      "max": 0.44892929200000253,
+      "output_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "name": "life",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/life.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/life-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "life.sml"
+      ],
+      "samples": [
+        0.758308833000001,
+        0.7709945829999469,
+        0.7861805829998048,
+        0.7582362089999606,
+        0.8189827909998257
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/life-x64-gc.exe",
+      "median": 0.7709945829999469,
+      "min": 0.7582362089999606,
+      "max": 0.8189827909998257,
+      "output_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "name": "life",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/life.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/life-arm64-gc.exe",
+        "life.sml"
+      ],
+      "samples": [
+        2.3317129999998087,
+        2.278547125000159,
+        2.273359833000086,
+        2.2778160409998236,
+        2.3090339999998832
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/life-arm64-gc.exe",
+      "median": 2.278547125000159,
+      "min": 2.273359833000086,
+      "max": 2.3317129999998087,
+      "output_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "name": "life",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/life.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/life-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "life.sml"
+      ],
+      "samples": [
+        0.5051773330001197,
+        0.5082504580000204,
+        0.4954827499998373,
+        0.49565708399995856,
+        0.49851762499997676
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/life-x64-no_gc.exe",
+      "median": 0.49851762499997676,
+      "min": 0.4954827499998373,
+      "max": 0.5082504580000204,
+      "output_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "name": "life",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/life.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/life-arm64-no_gc.exe",
+        "life.sml"
+      ],
+      "samples": [
+        0.7904602500000237,
+        0.7946917499998563,
+        0.7953807080000388,
+        0.7946423329999561,
+        0.7991457499999797
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/life-arm64-no_gc.exe",
+      "median": 0.7946917499998563,
+      "min": 0.7904602500000237,
+      "max": 0.7991457499999797,
+      "output_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "name": "mandelbrot",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mandelbrot.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mandelbrot-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mandelbrot.sml"
+      ],
+      "samples": [
+        0.3166257079999468,
+        0.31692608400021527,
+        0.3184696249998069,
+        0.31848424999998315,
+        0.32898770900010277
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mandelbrot-x64-gc.exe",
+      "median": 0.3184696249998069,
+      "min": 0.3166257079999468,
+      "max": 0.32898770900010277,
+      "output_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "name": "mandelbrot",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mandelbrot.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mandelbrot-arm64-gc.exe",
+        "mandelbrot.sml"
+      ],
+      "samples": [
+        0.5458882499999618,
+        0.5414218329999585,
+        0.5415698750000502,
+        0.5866429999998672,
+        0.5419686249999813
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mandelbrot-arm64-gc.exe",
+      "median": 0.5419686249999813,
+      "min": 0.5414218329999585,
+      "max": 0.5866429999998672,
+      "output_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "name": "mandelbrot",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mandelbrot.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mandelbrot-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mandelbrot.sml"
+      ],
+      "samples": [
+        0.3176835839999512,
+        0.31756799999993746,
+        0.31809941599999547,
+        0.31685170800005835,
+        0.3185154580000926
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mandelbrot-x64-no_gc.exe",
+      "median": 0.3176835839999512,
+      "min": 0.31685170800005835,
+      "max": 0.3185154580000926,
+      "output_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "name": "mandelbrot",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mandelbrot.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mandelbrot-arm64-no_gc.exe",
+        "mandelbrot.sml"
+      ],
+      "samples": [
+        0.4945895420000852,
+        0.49640833300009035,
+        0.49702979199992114,
+        0.49535683399994923,
+        0.4943132079999941
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mandelbrot-arm64-no_gc.exe",
+      "median": 0.49535683399994923,
+      "min": 0.4943132079999941,
+      "max": 0.49702979199992114,
+      "output_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "name": "mpuz",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mpuz.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mpuz-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mpuz.sml"
+      ],
+      "samples": [
+        0.4186528750001344,
+        0.4294889159998547,
+        0.4273412909999479,
+        0.4186875410000539,
+        0.4299434580000252
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mpuz-x64-gc.exe",
+      "median": 0.4273412909999479,
+      "min": 0.4186528750001344,
+      "max": 0.4299434580000252,
+      "output_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "name": "mpuz",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mpuz.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mpuz-arm64-gc.exe",
+        "mpuz.sml"
+      ],
+      "samples": [
+        0.7490140419999989,
+        0.7524169579999125,
+        0.7468606660002024,
+        0.7520547080000597,
+        0.7473654579998765
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mpuz-arm64-gc.exe",
+      "median": 0.7490140419999989,
+      "min": 0.7468606660002024,
+      "max": 0.7524169579999125,
+      "output_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "name": "mpuz",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mpuz.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mpuz-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mpuz.sml"
+      ],
+      "samples": [
+        0.2771507920001568,
+        0.27967775000001893,
+        0.2774985840001136,
+        0.27891124999996464,
+        0.2776425409999774
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mpuz-x64-no_gc.exe",
+      "median": 0.2776425409999774,
+      "min": 0.2771507920001568,
+      "max": 0.27967775000001893,
+      "output_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "name": "mpuz",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/mpuz.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/mpuz-arm64-no_gc.exe",
+        "mpuz.sml"
+      ],
+      "samples": [
+        0.6691252499999791,
+        0.6681725830001142,
+        0.6693169999998645,
+        0.6692186660000061,
+        0.6701252920001934
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/mpuz-arm64-no_gc.exe",
+      "median": 0.6692186660000061,
+      "min": 0.6681725830001142,
+      "max": 0.6701252920001934,
+      "output_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "name": "msort",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/msort.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/msort-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "msort.sml"
+      ],
+      "samples": [
+        0.5765040419998968,
+        0.572866207999823,
+        0.5717647080000461,
+        0.5711517500001264,
+        0.56289429200001
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/msort-x64-gc.exe",
+      "median": 0.5717647080000461,
+      "min": 0.56289429200001,
+      "max": 0.5765040419998968,
+      "output_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "name": "msort",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/msort.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/msort-arm64-gc.exe",
+        "msort.sml"
+      ],
+      "samples": [
+        1.5172833340000125,
+        1.543962042000203,
+        1.510199000000057,
+        1.5129039170001306,
+        1.5102384159999929
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/msort-arm64-gc.exe",
+      "median": 1.5129039170001306,
+      "min": 1.510199000000057,
+      "max": 1.543962042000203,
+      "output_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "name": "msort",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/msort.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/msort-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "msort.sml"
+      ],
+      "samples": [
+        0.388252040999987,
+        0.3868197080000755,
+        0.3910858750000443,
+        0.3857434170001852,
+        0.3894188750000467
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/msort-x64-no_gc.exe",
+      "median": 0.388252040999987,
+      "min": 0.3857434170001852,
+      "max": 0.3910858750000443,
+      "output_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "name": "msort",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/msort.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/msort-arm64-no_gc.exe",
+        "msort.sml"
+      ],
+      "samples": [
+        0.4059902910000801,
+        0.40408258299999034,
+        0.40728887499994926,
+        0.40461999999979525,
+        0.40565062499990745
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/msort-arm64-no_gc.exe",
+      "median": 0.40565062499990745,
+      "min": 0.40408258299999034,
+      "max": 0.40728887499994926,
+      "output_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "name": "simple",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/simple.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/simple-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "simple.sml"
+      ],
+      "samples": [
+        0.622525916000086,
+        0.6272496249998767,
+        0.6153339590000542,
+        0.6128203749999557,
+        0.6186810829999558
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/simple-x64-gc.exe",
+      "median": 0.6186810829999558,
+      "min": 0.6128203749999557,
+      "max": 0.6272496249998767,
+      "output_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "name": "simple",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/simple.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/simple-arm64-gc.exe",
+        "simple.sml"
+      ],
+      "samples": [
+        1.27678737500014,
+        1.2307338330001585,
+        1.2497029170001497,
+        1.2550447920000352,
+        1.2314312920000248
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/simple-arm64-gc.exe",
+      "median": 1.2497029170001497,
+      "min": 1.2307338330001585,
+      "max": 1.27678737500014,
+      "output_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "name": "simple",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/simple.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/simple-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "simple.sml"
+      ],
+      "samples": [
+        0.4882178749999184,
+        0.45791525000004185,
+        0.45621637499993994,
+        0.45721800000001167,
+        0.45473841700004414
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/simple-x64-no_gc.exe",
+      "median": 0.45721800000001167,
+      "min": 0.45473841700004414,
+      "max": 0.4882178749999184,
+      "output_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "name": "simple",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/simple.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/simple-arm64-no_gc.exe",
+        "simple.sml"
+      ],
+      "samples": [
+        1.2620073750001666,
+        1.1938840840000466,
+        1.1854797920000237,
+        1.2117537500000708,
+        1.2021247909999602
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/simple-arm64-no_gc.exe",
+      "median": 1.2021247909999602,
+      "min": 1.1854797920000237,
+      "max": 1.2620073750001666,
+      "output_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "name": "zebra",
+      "arch": "x64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/zebra.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/zebra-x64-gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "zebra.sml"
+      ],
+      "samples": [
+        0.8021503330000996,
+        0.7755755830000908,
+        0.8006257500001084,
+        0.779998624999962,
+        0.7865039159999014
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/zebra-x64-gc.exe",
+      "median": 0.7865039159999014,
+      "min": 0.7755755830000908,
+      "max": 0.8021503330000996,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "zebra",
+      "arch": "arm64",
+      "mode": "gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/zebra.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/zebra-arm64-gc.exe",
+        "zebra.sml"
+      ],
+      "samples": [
+        1.4792172499999197,
+        1.4781469579997975,
+        1.4748672499999884,
+        1.4794791250001254,
+        1.4743662079999922
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/zebra-arm64-gc.exe",
+      "median": 1.4781469579997975,
+      "min": 1.4743662079999922,
+      "max": 1.4794791250001254,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "zebra",
+      "arch": "x64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/zebra.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit-x64-backend",
+        "--mlb-subdir",
+        "M11x64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/zebra-x64-no_gc.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "zebra.sml"
+      ],
+      "samples": [
+        0.5785848329999226,
+        0.5784158330000082,
+        0.5863387500000954,
+        0.5809484999999768,
+        0.5807346659998984
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/zebra-x64-no_gc.exe",
+      "median": 0.5807346659998984,
+      "min": 0.5784158330000082,
+      "max": 0.5863387500000954,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "zebra",
+      "arch": "arm64",
+      "mode": "no_gc",
+      "source": "/private/tmp/mlkit-m11-bench/benchmarks/zebra.sml",
+      "compile_command": [
+        "/private/tmp/mlkit-m10/mlkit",
+        "--mlb-subdir",
+        "M11arm64",
+        "-no_gc",
+        "-o",
+        "/private/tmp/mlkit-m11-final/zebra-arm64-no_gc.exe",
+        "zebra.sml"
+      ],
+      "samples": [
+        1.26478262500018,
+        1.266912750000074,
+        1.26833425000018,
+        1.2616002919999119,
+        1.2743778750000274
+      ],
+      "exe": "/private/tmp/mlkit-m11-final/zebra-arm64-no_gc.exe",
+      "median": 1.266912750000074,
+      "min": 1.2616002919999119,
+      "max": 1.2743778750000274,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

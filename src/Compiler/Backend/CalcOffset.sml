@@ -1,4 +1,5 @@
-functor CalcOffset(structure LineStmt: LINE_STMT
+functor CalcOffset(val frame_layout : FrameLayout.t
+                   structure LineStmt: LINE_STMT
 		       where type con = Con.con
 		       where type excon = Excon.excon
 		       where type lvar = Lvars.lvar
@@ -204,17 +205,17 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss (LS.HANDLE{default,handl=(handl,handl_lv),
-			 handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.HANDLE{default,handl = (handl,handl_lv),
+			 handl_return = (handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) =
       let
-	val obj_size = BI.size_of_handle()
+	val obj_size = FrameLayout.handlerWords frame_layout
 	val ann_offset = offset+obj_size-1 (*offset+(1-obj_size)*)
 	val handl' = CO_lss(handl,LVmap,PHmap,(offset++obj_size)"handl",[])
 	val default' = CO_lss(default,LVmap,PHmap,(offset++obj_size)"handle2",[])
-	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
+	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(FrameLayout.handlerWords frame_layout)*),[])
       in
-	LS.HANDLE{default=default',handl=(handl',handl_lv),
-		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default = default',handl = (handl',handl_lv),
+		  handl_return = (handl_return',handl_return_lv,bv),offset = ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss (LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss (LS.SWITCH_I {switch,precision}::lss,LVmap,PHmap,offset,acc) =
@@ -246,13 +247,13 @@ struct
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
 
         val size_ff0 = get_max_offset ()
-        val size_cc = CallConv.get_cc_size cc
+        val size_cc = CallConv.get_cc_size frame_layout cc
 (*
         val () = print (Labels.pr_label lab ^ "size_ff0: " ^ Int.toString size_ff0
                         ^ "; size_cc: " ^ Int.toString size_cc ^ "\n")
         val () = print ("cc: " ^ CallConv.pr_cc cc ^ "\n")
 *)
-        val size_ff = if (size_ff0 + size_cc) mod 2 = 0 then size_ff0 else size_ff0+1
+        val size_ff = FrameLayout.alignFrame frame_layout {locals = size_ff0, call = size_cc}
 
         val cc' = CallConv.add_frame_size(cc,size_ff)
       in
@@ -329,7 +330,7 @@ struct
 
     fun gen_bitvector (L_set,size_ccf,size_rcf,size_ff) =
       let
-	val size_fd = size_ff+size_ccf+size_rcf+1 (* +1 for return address *)
+	val size_fd = size_ff + FrameLayout.callWords frame_layout {args = size_ccf, results = size_rcf}
 	val w0 = Word32.fromInt 0
 	fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
 	fun pws ws = app pw ws
@@ -361,7 +362,7 @@ struct
 	val _ = print ("size_fd is " ^ Int.toString size_fd ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
       in
 	(* FunNr :: offsetToReturn :: fdSize :: frameMap *)
-        new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf)) :: (Word32.fromInt size_fd) :: ws
+        new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf+FrameLayout.argumentPadding frame_layout size_ccf+FrameLayout.returnOffsetFromTop frame_layout)) :: (Word32.fromInt size_fd) :: ws
       end
 
     fun CBV_sw (CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
@@ -384,7 +385,7 @@ struct
 
     fun CBV_lss (lss,size_ccf,size_rcf,size_ff,LVenv_cc) =
       let
-	val size_cc = size_ccf + size_rcf + 1 (* +1 for return address *)
+	val size_cc = FrameLayout.callWords frame_layout {args = size_ccf, results = size_rcf}
 	fun CBV_lss' ([],LVenv,L_set) = (L_set,[])
 	  | CBV_lss' (ls::lss,LVenv,L_set) =
 	  (case ls of
@@ -518,7 +519,7 @@ struct
 	(* size_fd = size_cc + size_ff *)
 	val size_rcf = CallConv.get_rcf_size cc
 	val size_ccf = CallConv.get_ccf_size cc
-	val size_cc = CallConv.get_cc_size cc (* incl. return address *)
+	val size_cc = CallConv.get_cc_size frame_layout cc (* incl. return address *)
 	val size_ff = CallConv.get_frame_size cc
 	val args_on_stack_cc = CallConv.get_spilled_args_with_offsets cc
 	val LVenv_cc = List.foldl (fn ((lv,offset),LVenv) => LvarFinMap.add(lv,offset+size_cc,LVenv))

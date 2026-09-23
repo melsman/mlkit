@@ -17,7 +17,7 @@ signature CALL_CONV =
     val get_res_lvars : cc -> lvar list
     val get_arg_lvars : cc -> lvar list
 
-    val resolve_cc    : {arg_regs:lvar list, arg_fregs:lvar list, res_regs:lvar list}
+    val resolve_cc    : FrameLayout.t -> {arg_regs:lvar list, arg_fregs:lvar list, res_regs:lvar list}
                         -> cc -> cc * (lvar*lvar) list * (lvar*lvar) list
 
     val resolve_app   : {arg_regs:lvar list, arg_fregs:lvar list, res_regs:lvar list}
@@ -49,11 +49,11 @@ signature CALL_CONV =
 
     val get_frame_size                : cc -> int
     val add_frame_size                : cc * int -> cc
-    val get_cc_size                   : cc -> int
+    val get_cc_size                   : FrameLayout.t -> cc -> int
     val get_rcf_size                  : cc -> int
     val get_ccf_size                  : cc -> int
 
-    val resolve_act_cc                : {arg_regs:lvar list, arg_fregs:lvar list, res_regs:lvar list}
+    val resolve_act_cc                : FrameLayout.t -> {arg_regs:lvar list, arg_fregs:lvar list, res_regs:lvar list}
                                         -> 'a cc0 -> ('a * int) list * ('a * int) list
 
     val handl_return_phreg            : lvar list -> lvar

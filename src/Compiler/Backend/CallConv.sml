@@ -109,10 +109,8 @@ structure CallConv : CALL_CONV =
         List.length(filter_out_phreg reg_args) +
         List.length(filter_out_phreg fargs)
 
-    fun get_cc_size cc =
-        get_rcf_size cc +
-        get_ccf_size cc +
-        1 (* The return address occupies one word on the stack. *)
+    fun get_cc_size frame cc =
+        FrameLayout.callWords frame {args = get_ccf_size cc, results = get_rcf_size cc}
 
     fun add_frame_size ({clos,args,reg_args,fargs,res,frame_size},f_size) =
         {clos = clos,
@@ -127,7 +125,8 @@ structure CallConv : CALL_CONV =
     (***************************)
     local
       local val next_offset = ref 0
-      in fun reset_offset () = next_offset := 0
+      in fun used_offsets () = ~(!next_offset)
+         fun reset_offset () = next_offset := 0
          fun get_next_offset () = (next_offset := !next_offset - 1; !next_offset)
       end
 
@@ -244,16 +243,24 @@ structure CallConv : CALL_CONV =
               alist_args, alist_res)  (* return assignment lists *)
           end
 
-      fun resolve_cc {arg_regs, arg_fregs, res_regs} {clos,args,reg_args,fargs,res,frame_size} =
+      fun resolve_cc frame {arg_regs, arg_fregs, res_regs} {clos,args,reg_args,fargs,res,frame_size} =
           let val _ = reset_offset()
               val (clos_sty_opt, (acc,regs)) = resolve_sty_opt (clos, ([], arg_regs))
               val (args_stys, reg_args_stys, fargs_stys, lv_phreg_args) =
                   resolve_stys_args (args, reg_args, fargs, (acc,regs,arg_fregs))
-              val _ = get_next_offset() (* The next offset is for the return address *)
-              val (res_stys, (lv_phreg_res,_)) = resolve_stys (res,([],res_regs))    (*memo: is this right on the x86?*)
-          in ({clos=clos_sty_opt,
-               args=args_stys,
-               reg_args=reg_args_stys,
+              val _ = List.tabulate(FrameLayout.headerWords frame + FrameLayout.argumentPadding frame (used_offsets()), fn _ => get_next_offset())
+              val result_base = used_offsets()
+              val (res_stys, (lv_phreg_res,_)) = resolve_stys (res,([],res_regs))
+              (* Match the caller's descending result slots. Retain the X64
+               * convention while defining ARM's multi-result layout. *)
+              val result_end = used_offsets()
+              val res_stys = case FrameLayout.returnDelivery frame of
+                  FrameLayout.StackHeader => res_stys
+                | FrameLayout.LinkRegister _ => map (fn CC_STACK(lv,off) =>
+                    CC_STACK(lv,~(result_base+result_end+1)-off) | sty => sty) res_stys
+          in ({clos = clos_sty_opt,
+               args = args_stys,
+               reg_args = reg_args_stys,
                fargs=fargs_stys,
                res = res_stys,
                frame_size=frame_size},
@@ -277,7 +284,7 @@ structure CallConv : CALL_CONV =
 
       fun get_spilled_res cc = map #1 (get_spilled_res_with_offsets cc)
 
-      fun resolve_act_cc {arg_regs, arg_fregs, res_regs}
+      fun resolve_act_cc frame {arg_regs, arg_fregs, res_regs}
                          ({clos: 'a option, args: 'a list, reg_args: 'a list,
                            fargs: 'a list, res: 'a list}: 'a cc0) =
         let fun cons_list_opt (NONE,l) = l
@@ -288,10 +295,10 @@ structure CallConv : CALL_CONV =
             val args_gpr = cons_list_opt(clos,args@reg_args)      (* general purpose registers *)
             val args_stack = List.drop(args_gpr, List.length arg_regs) handle General.Subscript => []
             val fargs_stack = List.drop(fargs,List.length arg_fregs) handle General.Subscript => []
-            val (o_res,aty_res) = calc_offset(res_stack,0,[])
-            val return_lab_offset = o_res
-            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res+1,[])
-        in (aty_args,aty_res(*,return_lab_offset*))
+            val (o_res,aty_res) = calc_offset(res_stack,FrameLayout.resultPadding frame (length res_stack),[])
+            val (_,aty_args) = calc_offset(args_stack@fargs_stack,o_res + FrameLayout.headerWords frame +
+                FrameLayout.argumentPadding frame (length args_stack + length fargs_stack),[])
+        in (aty_args,aty_res)
         end
     end
 

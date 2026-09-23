@@ -17,6 +17,24 @@
  */
 #define NHASH           513
 static ENTRYPTR hashtable[ NHASH ];
+
+/* Each graph consumes and scales its own samples. Reuse the identifiers,
+ * but discard those samples before constructing another graph. */
+void ResetSamples(void)
+{
+  for (int i = 0; i < NHASH; ++i) {
+    for (ENTRYPTR e = hashtable[i]; e; e = e->next) {
+      while (e->samples) {
+        SAMPLEPTR s = e->samples;
+        e->samples = s->next;
+        FreeSample(s);
+      }
+    }
+  }
+  nsamples = 0;
+  nidents = 0;
+}
+
 static int Hash(char* s)
 {
   int r;

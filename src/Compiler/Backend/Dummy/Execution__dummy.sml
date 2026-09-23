@@ -30,6 +30,7 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 					       structure PP = PP)
 
     val be_rigid = false
+    val repl_supports_gc = false
     val backend_name = "Dummy"
     val backend_longname = "Dummy (no output generated)"
 

@@ -1,0 +1,15 @@
+--- msort.sml
++++ shared-head.sml
+@@ -81,8 +81,10 @@
+ fun merge(xs, []):int list = xs
+   | merge([], ys) = ys
+   | merge(l1 as x::xs, l2 as y::ys) =
+-    if x<y then x :: merge(xs, l2)
+-    else y :: merge(l1, ys)
++    let val (head,left,right) =
++          if x<y then (x,xs,l2) else (y,l1,ys)
++    in head :: merge(left,right)
++    end
+ 
+ (* splitting a list *)
+ fun split(x::y::zs, l, r) = split(zs, x::l, y::r)

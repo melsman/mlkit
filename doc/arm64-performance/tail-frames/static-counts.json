@@ -1,0 +1,38 @@
+{
+  "old": {
+    "mlyacc": {
+      "instructions": 247289,
+      "direct_wrappers": 0,
+      "self_loop_branches": 0
+    },
+    "professor": {
+      "instructions": 15762,
+      "direct_wrappers": 0,
+      "self_loop_branches": 0
+    }
+  },
+  "wrappers": {
+    "mlyacc": {
+      "instructions": 246913,
+      "direct_wrappers": 47,
+      "self_loop_branches": 0
+    },
+    "professor": {
+      "instructions": 15762,
+      "direct_wrappers": 0,
+      "self_loop_branches": 0
+    }
+  },
+  "both": {
+    "mlyacc": {
+      "instructions": 246726,
+      "direct_wrappers": 47,
+      "self_loop_branches": 65
+    },
+    "professor": {
+      "instructions": 15744,
+      "direct_wrappers": 0,
+      "self_loop_branches": 6
+    }
+  }
+}

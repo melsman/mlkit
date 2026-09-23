@@ -1,0 +1,33 @@
+{
+  "mlyacc": {
+    "_F.union19_vIqAG0ro9f8j627xIiUJjm": 4811120,
+    "_F.gtTerm5_r9immfQaI4F15rxHvYYQoe": 4511040,
+    "_F.gt3_vDuFhEpxmGFcQDrEK2Bxbp": 4511040,
+    "_F.eq_term3_8AnN4ffRRYidbIKi6D1eMl": 2433360,
+    "_F.eq2_esgggT9Gil3R5EEeRVT8Vl": 2409740,
+    "_F._17_0H3gc8BrsuQXNFsib977mr": 1594620,
+    "_F.gt3_sjR1YKVRS8xcueALPFXTop": 624460,
+    "_F.gt3_LOGxZAiBCc0F8HrBhgAEBi": 581660,
+    "_F.eq2_2ZpYp6saVdQBhs9D1HTHIp": 273980,
+    "_F.gt3_ePYb8xJfEMA3MSerrCex5v": 99780,
+    "_F.eq2_eKsvng8dAD28157oLPXbFu": 90480,
+    "_F.union19_PrRy6aQfzHFh0lZsH27C9i": 47720,
+    "_F.gt3_otA1CNncgLhs8srVSA3UGk": 40540,
+    "_F.eq2_p1aiYlkMgYneHKkXdTE7Db": 18960,
+    "_F.union19_vFTQK0hDjDfqgSp7pZTeOl": 17900,
+    "_F.gt3_S9UqupEi3f04Txc5kAaOlg": 15560,
+    "_F.union19_TUCsdb0dRE6oLCt85ioO1m": 9600,
+    "_F.eq2_htXuEUzsPc6O1ZJMsRggqD": 8540,
+    "_F.gt3_udkeYm1TBH1Q9xhiyFvCua": 180,
+    "_F.union19_TxzbISM2hjrb6JCIuFeyfb": 0,
+    "_F.eq2_5ibJNdDmsGFfzIbvygtMga": 0,
+    "_F.union19_PrpkVkhpobQ5cCP5nMTolk": 0,
+    "_F.eq2_hxdxM4xEuF8piyLF35Ralf": 0,
+    "_F.union19_nSEZJabibvJntxj56hcgkq": 0
+  },
+  "professor": {
+    "_F.count37_JPD2Eh6QMLmmy9n7CCpyMf": 27023610,
+    "_F._17_0H3gc8BrsuQXNFsib977mr": 6995460,
+    "_F.findSol55_3vNAfZiANlEc0sqsmqu5Aj": 4318580
+  }
+}

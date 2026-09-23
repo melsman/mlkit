@@ -1,0 +1,7 @@
+{
+  "arm64.exe": "454406942a44c0d263f4ee896ce06edbd0793dd2e184f809e30e51ea14b30853",
+  "x64.exe": "71c420a198f1170c36a8469fa7a9035e3dac2deecdf6aa5dcb020bf2a1e6324f",
+  "arm64-phase.exe": "c4b47a84f4ad2a4f3c2ae429f0fee794f4ab1ad0aca6b9288fd90fe4c066a186",
+  "x64-phase.exe": "e6cbbf3da5c60a56a24616b6336aa0208de1058ba03eaad8978bbae0ddb11118",
+  "shared-head.exe": "8cc8c8339aaccb6262181737bb216aa8eface982f8951d04bc7d4e52260d58f1"
+}

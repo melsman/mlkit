@@ -1,0 +1,14 @@
+{
+  "call": {
+    "call_sites": 3,
+    "multiply_sites": 0
+  },
+  "mul": {
+    "call_sites": 0,
+    "multiply_sites": 3
+  },
+  "both": {
+    "call_sites": 3,
+    "multiply_sites": 3
+  }
+}

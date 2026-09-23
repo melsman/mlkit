@@ -574,6 +574,7 @@ structure InstsX64 : INSTS_X64 =
 
     structure RI : REGISTER_INFO =
       struct
+        val frame_layout = FrameLayout.x64
         type lvar = lvar
         type lvarset = Lvarset.lvarset
         type reg = reg
@@ -615,6 +616,9 @@ structure InstsX64 : INSTS_X64 =
                  v8,v9,v10,v11,v12,v13,v14,v15] => (v0,v1,v2,v3,v4,v5,v6,v7,
                                                     v8,v9,v10,v11,v12,v13,v14,v15)
               | _ => die "RI.all_fregs mismatch"
+
+        (* xmm12/xmm13 remain reserved by the existing X64 allocation policy. *)
+        val allocatable_f64_phregs = List.take(f64_phregs, 12)
 
         val f64_phregset = Lvarset.lvarsetof f64_phregs
 

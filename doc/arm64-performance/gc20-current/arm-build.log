@@ -1,0 +1,3 @@
+[wrote X64 code file:	MLB/RI_GC_M7X64Final/base-link_objects.s]
+ld: warning: -ld_classic is deprecated and will be removed in a future release
+[wrote executable file:	/private/tmp/mlkit-gc20-current/mlkit-arm64]

@@ -1,0 +1,32 @@
+[
+  {
+    "excerpt": "mlyacc-union.s.txt",
+    "source": "/private/tmp/mlkit-m12-assembly/bench/mlyacc/MLB/ARM64_FD2_RI_GC_M12Study/link.sml.code38.s",
+    "first_line": 2309,
+    "source_sha256": "0309356b4a7b4be2e40b14f77fd9aed90cd54f9e2fe40934fb3e3d8044f990ff"
+  },
+  {
+    "excerpt": "mlyacc-wrappers.s.txt",
+    "source": "/private/tmp/mlkit-m12-assembly/bench/mlyacc/MLB/ARM64_FD2_RI_GC_M12Study/link.sml.code37.s",
+    "first_line": 26,
+    "source_sha256": "9affe2cb7dde74f1ff84e85a5f6715cae522a3935455ca27b647c5aa97b6d333"
+  },
+  {
+    "excerpt": "professor-count.s.txt",
+    "source": "/private/tmp/mlkit-m12-assembly/bench/MLB/ARM64_FD2_RI_GC_M12Study/professor.sml.s",
+    "first_line": 19294,
+    "source_sha256": "3cee4ee4cd11535149d2402d1a695b6e00bb2da3c9cc5b1c63e1f357ea546041"
+  },
+  {
+    "excerpt": "professor-search.s.txt",
+    "source": "/private/tmp/mlkit-m12-assembly/bench/MLB/ARM64_FD2_RI_GC_M12Study/professor.sml.s",
+    "first_line": 6466,
+    "source_sha256": "3cee4ee4cd11535149d2402d1a695b6e00bb2da3c9cc5b1c63e1f357ea546041"
+  },
+  {
+    "excerpt": "basis-append.s.txt",
+    "source": "/Users/mael/Documents/ChatGPT/MLKit work/mlkit/basis/MLB/ARM64_FD2_RI_GC_M12Study/List.sml.s",
+    "first_line": 3876,
+    "source_sha256": "9915bcfa7f39cfe384abcd72d9ed70ce56fbc107adfa4082374d1cc059d4d1af"
+  }
+]

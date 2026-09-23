@@ -95,13 +95,13 @@ struct
              res_regs=RI.res_phreg}
             LS.PHREG
             {clos=clos,args=args,
-             reg_args=reg_args,fargs=fargs,res=res}
+             reg_args = reg_args,fargs = fargs,res = res}
 
     fun resolve_cc cc =
-        CallConv.resolve_cc
-            {arg_regs=RI.args_phreg,
-             arg_fregs=RI.args_phfreg,
-             res_regs=RI.res_phreg}
+        CallConv.resolve_cc RI.frame_layout
+            {arg_regs = RI.args_phreg,
+             arg_fregs = RI.args_phfreg,
+             res_regs = RI.res_phreg}
             cc
 
     fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
@@ -440,10 +440,7 @@ struct
                adjList:=nil; alias:=NONE; color:=SOME key; lrs:=no_call; uses:=0))
           precolored
 
-  val () = if List.length RI.f64_phregs <> 14 then
-             die "RegAlloc: f64_phregs error"
-           else ()
-  val f64_phregs = List.take (RI.f64_phregs, 12)
+  val f64_phregs = RI.allocatable_f64_phregs
   val Kfpr = List.length f64_phregs
   val Kgpr = List.length RI.caller_save_phregs
 

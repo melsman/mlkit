@@ -33,6 +33,22 @@ long tellTime;         /* 1, if the next profile tick should print out the
 
 extern unsigned long maxMem;  /* defined in Region.c */
 
+#if defined(DARWIN_NATIVE) && DARWIN_NATIVE
+/* Called with the ML stack pointer before the C preservation frame. */
+void mlkit_arm64_profile_entry(Context ctx, long *sp)
+{
+  unsigned long overhead = regionDescUseProfInf + regionDescUseProfFin + allocProfNowFin;
+  if ((uintptr_t)sp < (uintptr_t)maxStack) {
+    maxStack = (long)sp;
+    maxProfStack = overhead;
+  }
+  long used = (long)((uintptr_t)stackBot - (uintptr_t)sp)
+            + 8 * ((long)allocNowInf - (long)overhead);
+  if (used > 0 && (unsigned long)used > maxMem) maxMem = (unsigned long)used;
+  if (timeToProfile) profileTick(ctx, sp);
+}
+#endif
+
 struct itimerval rttimer;
 struct itimerval old_rttimer;
 int    profileON = TRUE; /* if false profiling is not started after a profileTick. */
@@ -40,8 +56,7 @@ int    profileON = TRUE; /* if false profiling is not started after a profileTic
 char * freeProfiling;  /* Pointer to free-chunk of mem. to profiling data. */
 long freeProfilingRest; /* Number of bytes left in freeProfiling-chunk.     */
 
-TickList * firstTick; /* Pointer to data for the first tick. */
-TickList * lastTick;  /* Pointer to data for the last tick. */
+TickList * firstTick; /* Current sample, available to the diagnostic printer. */
 
 /* The following two global arrays are used as hash tables during
  * a profile tick. */
@@ -934,11 +949,9 @@ profileTick(Context ctx, long *stackTop)
     }
   newTick->nTick   = NULL;
   newTick->fRegion = NULL;
-  if (firstTick == NULL)
-    firstTick = newTick;
-  else
-    lastTick->nTick = newTick;
-  lastTick = newTick;
+  /* Completed samples are streamed and freed below. Linking through the
+   * previous sample would write into freed memory on the next tick. */
+  firstTick = newTick;
 
   /* Initialize hash table for regions. */
   initializeRegionListTable();
@@ -1141,6 +1154,7 @@ profileTick(Context ctx, long *stackTop)
     }
 
   outputProfileTick(newTick);
+  firstTick = NULL;
   freeTick(newTick);
 
   if ( profileON && profType != noTimer )
@@ -1159,7 +1173,7 @@ profileTick(Context ctx, long *stackTop)
 }
 
 /*-------------------------------------------------------------------*
- * PrintProfile: Print all collected data on screen.                 *
+ * PrintProfile: Print the current sample on screen.                 *
  *-------------------------------------------------------------------*/
 void
 printProfile(void)

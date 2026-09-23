@@ -1,0 +1,23 @@
+_F.count37_JPD2Eh6QMLmmy9n7CCpyMf:
+	stp x29, x30, [sp, #0]
+	add x29, sp, #0
+L_study_count_loop:
+	tbnz x1, #0, L_study_count_empty
+	cmp x2, #1
+	b.eq L_study_count_found
+	ldr x1, [x1, #16]
+	subs x2, x2, #2
+	b.vc L_study_count_loop
+	adrp x1, _exn_OVERFLOW@GOTPAGE
+	ldr x1, [x1, _exn_OVERFLOW@GOTPAGEOFF]
+	mov x0, x28
+	b _raise_exn
+L_study_count_found:
+	ldr x0, [x1, #8]
+	ldp x29, x30, [sp, #0]
+	add sp, sp, #16
+	ret
+L_study_count_empty:
+	ldr x1, [x0, #8]
+	mov x0, x28
+	b _raise_exn

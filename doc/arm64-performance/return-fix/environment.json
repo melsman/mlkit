@@ -1,0 +1,11 @@
+{
+  "host": "M2 Max (same machine as preceding measurements)",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.5.1\nBuildVersion:\t\t25F80\n",
+  "files": {
+    "/private/tmp/mlkit-m12-return-fix/mlkit": "8f45f7eb3aa7aebcd544a370301e8c495ac09bb28c966fd7b287d61cb72475b4",
+    "/private/tmp/mlkit-m12-return-fix/mlkit-x64": "36097ff0c36395301508002faca45947acf63e66b19ba070e5b1d5beb184eb56",
+    "/private/tmp/mlkit-m12-typed/mlkit": "c940d369813e96108152eeaee239dab45291ea604906c9919b0a3e9ad5c2c4a8",
+    "lib/darwin-arm64/runtimeSystemGC.a": "94486e44b4279f0b73ab16b1c1a4b627cac008281394bfd70ff2ee3c28f4b6a0",
+    "lib/darwin-x86_64/runtimeSystemGC.a": "502584ad8c4bf5b949f13dab058e718bf12db3e4bc51ffb5d0622908afe7bda0"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "local-loop": {
+    "reference_stores": 0,
+    "array_stores": 0
+  },
+  "stores": {
+    "reference_stores": 2,
+    "array_stores": 1
+  },
+  "store-loop": {
+    "reference_stores": 2,
+    "array_stores": 1
+  },
+  "all": {
+    "reference_stores": 2,
+    "array_stores": 1
+  }
+}

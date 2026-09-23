@@ -1,0 +1,116 @@
+{
+  "warmups": 1,
+  "repetitions": 3,
+  "basis": "unchanged M12Inline GC Basis; benchmark units freshly compiled for each version",
+  "results": [
+    {
+      "benchmark": "nucleic",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          1.662357708,
+          1.6662744999999992,
+          1.6712085410000004
+        ],
+        "new": [
+          1.6800106660000003,
+          1.6664594170000004,
+          1.6607874159999998
+        ]
+      },
+      "median": {
+        "old": 1.6662744999999992,
+        "new": 1.6664594170000004
+      },
+      "new_over_old": 1.0001109763127272,
+      "compile_command": [
+        "/private/tmp/mlkit-m12-jump/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M12Inline",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12-jump/nucleic-gc.exe",
+        "nucleic.mlb"
+      ],
+      "old_binary_sha256": "48ca9f17615d3108b2105a59d33689a58a9b17c5ac02d1fa23270d961fb16136",
+      "new_binary_sha256": "de7ca2062dc3c16b02735cc32fe1796bec046afae8a7a4cc6f53748e0e0a0e08",
+      "expected_output_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "mlyacc",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          0.48227449999999905,
+          0.4815316669999987,
+          0.4804362499999968
+        ],
+        "new": [
+          0.4799479999999985,
+          0.4811535830000011,
+          0.48020587499999934
+        ]
+      },
+      "median": {
+        "old": 0.4815316669999987,
+        "new": 0.48020587499999934
+      },
+      "new_over_old": 0.9972467189785061,
+      "compile_command": [
+        "/private/tmp/mlkit-m12-jump/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M12Inline",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12-jump/mlyacc-gc.exe",
+        "mlyacc.mlb"
+      ],
+      "old_binary_sha256": "25b390bf0060ed3eec4da0d65851ed2504bd418a96b67cf7048bb8a089a1f72e",
+      "new_binary_sha256": "5b1ced2692c285bd7a7290ab29ad02c41b1935c70c0c0893264f6dfa562eb7b8",
+      "expected_output_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "professor",
+      "mode": "gc",
+      "samples": {
+        "old": [
+          0.46244587500000023,
+          0.46346216599999934,
+          0.4617550829999999
+        ],
+        "new": [
+          0.46078558299999983,
+          0.45987754200000097,
+          0.45805520799999755
+        ]
+      },
+      "median": {
+        "old": 0.46244587500000023,
+        "new": 0.45987754200000097
+      },
+      "new_over_old": 0.9944461976225882,
+      "compile_command": [
+        "/private/tmp/mlkit-m12-jump/mlkit",
+        "-gc",
+        "--mlb-subdir",
+        "M12Inline",
+        "--no_delete_target_files",
+        "-o",
+        "/private/tmp/mlkit-m12-jump/professor-gc.exe",
+        "professor.sml"
+      ],
+      "old_binary_sha256": "8a2281ccc8a33b40f8c37801e69d0b3e0b6f72b760912c28235db8333cef9802",
+      "new_binary_sha256": "fadaa1f4cdebd5f6b7d446e89162d2a51deaa8e569622efa8979ab4179f9c5c6",
+      "expected_output_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    }
+  ],
+  "baseline_revision": "0452e87",
+  "jump_table_dispatches": {
+    "nucleic": 0,
+    "mlyacc": 7,
+    "professor": 17
+  },
+  "host": "X64-hosted MLKit built with -gc and a 1 GiB stack; benchmarks execute natively on ARM64"
+}

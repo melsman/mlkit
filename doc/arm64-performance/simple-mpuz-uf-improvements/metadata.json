@@ -1,0 +1,32 @@
+{
+  "baseline_commit": "052ee41",
+  "host": "Apple M2 Max, macOS 26.5.1",
+  "host_build_compiler": "/private/tmp/mlkit-m7/x64-final",
+  "host_build_flags": "-gc --mlb-subdir M7X64Final -ldexe gcc -arch x86_64 -Wl,-ld_classic,-stack_size,0x40000000",
+  "compilers": {
+    "old": {
+      "path": "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+      "sha256": "d64d94049caa812642086acce828d0012b32cf4a5302efc5d3fff01262fb9043",
+      "cache_suffixes": [
+        "ThreeFinalnogcold",
+        "ThreeFinalgcold"
+      ]
+    },
+    "arm64": {
+      "path": "/private/tmp/mlkit-three-fixed/mlkit-v2",
+      "sha256": "bda8b7092aeb5cb66e202c988639373452ea6629493889b26c968e6d76b34359",
+      "cache_suffixes": [
+        "ThreeFinalnogcarm64",
+        "ThreeFinalgcarm64"
+      ]
+    },
+    "x64": {
+      "path": "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+      "sha256": "1d7ca4c475072afa70bad543b617147925d148ecbcaff48edd8053cb1e3b575f",
+      "cache_suffixes": [
+        "ThreeFinalnogcx64",
+        "ThreeFinalgcx64"
+      ]
+    }
+  }
+}

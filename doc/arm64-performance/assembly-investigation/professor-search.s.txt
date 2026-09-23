@@ -1,0 +1,160 @@
+_F.findSol55_3vNAfZiANlEc0sqsmqu5Aj:
+	stp x29, x30, [sp, #16]
+	add x29, sp, #16
+	adrp x16, _time_to_gc@GOTPAGE
+	ldr x16, [x16, _time_to_gc@GOTPAGEOFF]
+	ldr x16, [x16, #0]
+	cbz x16, L_arm64_Ipttrs7XuQQuO2tDvRnRZb
+	adrp x16, _disable_gc@GOTPAGE
+	ldr x16, [x16, _disable_gc@GOTPAGEOFF]
+	ldr x16, [x16, #0]
+	cbnz x16, L_arm64_Ipttrs7XuQQuO2tDvRnRZb
+	adrp x16, L_arm64_yqMl9AZUKUQ11V7zx2s4vm@PAGE
+	add x16, x16, L_arm64_yqMl9AZUKUQ11V7zx2s4vm@PAGEOFF
+	bl L_arm64_s2f0uxkedUucZXahbLLrSm
+L_arm64_Ipttrs7XuQQuO2tDvRnRZb:
+	sub sp, sp, #416
+	str x0, [sp, #360]
+	mov x16, x4
+	stp x16, x3, [sp, #368]
+	stp x2, x7, [sp, #384]
+	stp x6, x5, [sp, #400]
+	mov x16, x1
+	and x16, x16, #3
+	movz x17, #3, lsl #0
+	cmp x16, x17
+	b.ne L_arm64_AzZBm6uzPULtXhCRMKntKe
+	ldr x16, [sp, #384]
+	and x16, x16, #3
+	movz x17, #3, lsl #0
+	cmp x16, x17
+	b.ne L_arm64_V6OInyUxyl14HrUNQg7Src
+	adrp x16, _D.arm64_data_ogmMMTqSssnimm9dkgqgLc@GOTPAGE
+	ldr x16, [x16, _D.arm64_data_ogmMMTqSssnimm9dkgqgLc@GOTPAGEOFF]
+	mov x1, x16
+	ldr x16, [sp, #360]
+	ldr x16, [x16, #24]
+	mov x0, x16
+	sub sp, sp, #16
+	adr x30, L_arm64_SF96tA8qYGABTAplTRNLRe
+	b _F.print17_Rh2G0aujD8mDvsDka1Ogbx
+.p2align 3
+.quad 0x0
+.quad 0x300
+.quad 0x38
+.quad 0x37
+.quad 0x7A
+L_arm64_SF96tA8qYGABTAplTRNLRe:
+	ldr x16, [sp, #368]
+	mov x4, x16
+	ldr x16, [sp, #408]
+	and x16, x16, #-4
+	ldr x17, [x16, #0]
+	sub x17, x17, #1
+	orr x30, x17, #8191
+	add x17, x17, #16
+	cmp x17, x30
+	b.hi L_arm64_AYbRmqruvTuog8Kcq3QRYo
+	add x17, x17, #1
+	str x17, [x16, #0]
+	mov x16, x17
+	sub x16, x16, #24
+	adrp x17, _alloc_period@GOTPAGE
+	ldr x17, [x17, _alloc_period@GOTPAGEOFF]
+	ldr x30, [x17, #0]
+	add x30, x30, #16
+	str x30, [x17, #0]
+L_arm64_suQcAmTAUPSXk5CzzQxFjq:
+	mov x1, x16
+	ldr x17, [sp, #408]
+	tbnz x17, #0, L_arm64_D7QQ0Po94b9nada0xphhXm
+	movz x16, #6, lsl #0
+	movk x16, #16, lsl #16
+	str x16, [x1, #0]
+L_arm64_D7QQ0Po94b9nada0xphhXm:
+	ldr x16, [sp, #376]
+	str x16, [x1, #8]
+	str x4, [x1, #16]
+	mov x16, x1
+	movz x17, #0, lsl #0
+	orr x16, x16, x17
+	mov x0, x16
+	b L_arm64_b7Po8VIkTh3vfuBtdtCxOh
+L_arm64_V6OInyUxyl14HrUNQg7Src:
+	ldr x16, [sp, #376]
+	ldr x16, [x16, #8]
+	mov x1, x16
+	mov x16, x1
+	str x16, [sp, #352]
+	ldr x16, [sp, #376]
+	ldr x16, [x16, #16]
+	str x16, [sp, #344]
+	sub sp, sp, #304
+	stp x0, x1, [sp, #0]
+	stp x2, x3, [sp, #16]
+	stp x4, x5, [sp, #32]
+	stp x6, x7, [sp, #48]
+	stp x8, x9, [sp, #64]
+	stp x10, x11, [sp, #80]
+	stp x12, x13, [sp, #96]
+	stp x14, x15, [sp, #112]
+	stp d0, d1, [sp, #128]
+	stp d2, d3, [sp, #144]
+	stp d4, d5, [sp, #160]
+	stp d6, d7, [sp, #176]
+	stp d16, d17, [sp, #192]
+	stp d18, d19, [sp, #208]
+	stp d20, d21, [sp, #224]
+	stp d22, d23, [sp, #240]
+	stp d24, d25, [sp, #256]
+	stp d26, d27, [sp, #272]
+	stp d28, d29, [sp, #288]
+	sub sp, sp, #32
+	mov x16, x28
+	str x16, [sp, #0]
+	add x16, sp, #648
+	str x16, [sp, #8]
+	movz x16, #0, lsl #0
+	str x16, [sp, #16]
+	ldp x0, x1, [sp, #0]
+	ldr x2, [sp, #16]
+	add sp, sp, #32
+	bl _allocateRegion
+	mov x16, x0
+	ldp x0, x1, [sp, #0]
+	ldp x2, x3, [sp, #16]
+	ldp x4, x5, [sp, #32]
+	ldp x6, x7, [sp, #48]
+	ldp x8, x9, [sp, #64]
+	ldp x10, x11, [sp, #80]
+	ldp x12, x13, [sp, #96]
+	ldp x14, x15, [sp, #112]
+	ldp d0, d1, [sp, #128]
+	ldp d2, d3, [sp, #144]
+	ldp d4, d5, [sp, #160]
+	ldp d6, d7, [sp, #176]
+	ldp d16, d17, [sp, #192]
+	ldp d18, d19, [sp, #208]
+	ldp d20, d21, [sp, #224]
+	ldp d22, d23, [sp, #240]
+	ldp d24, d25, [sp, #256]
+	ldp d26, d27, [sp, #272]
+	ldp d28, d29, [sp, #288]
+	add sp, sp, #304
+	sub sp, sp, #304
+	stp x0, x1, [sp, #0]
+	stp x2, x3, [sp, #16]
+	stp x4, x5, [sp, #32]
+	stp x6, x7, [sp, #48]
+	stp x8, x9, [sp, #64]
+	stp x10, x11, [sp, #80]
+	stp x12, x13, [sp, #96]
+	stp x14, x15, [sp, #112]
+	stp d0, d1, [sp, #128]
+	stp d2, d3, [sp, #144]
+	stp d4, d5, [sp, #160]
+	stp d6, d7, [sp, #176]
+	stp d16, d17, [sp, #192]
+	stp d18, d19, [sp, #208]
+	stp d20, d21, [sp, #224]
+	stp d22, d23, [sp, #240]

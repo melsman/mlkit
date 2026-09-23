@@ -1,0 +1,37 @@
+--- a/src/Runtime/Arm64GC.c
++++ b/src/Runtime/Arm64GC.c
+@@ -11,6 +11,14 @@
+   struct Image *next;
+ } Image;
+ static Image *images;
++static uintptr_t static_low=UINTPTR_MAX, static_high=0;
++static void bounds(void) {
++  static_low=UINTPTR_MAX; static_high=0;
++  for (Image *p=images;p;p=p->next) {
++    if (p->begin<static_low) static_low=p->begin;
++    if (p->end>static_high) static_high=p->end;
++  }
++}
+
+ static void invalid(const char *reason) {
+   fprintf(stderr, "ARM64 GC metadata: %s\n", reason);
+@@ -26,16 +34,17 @@
+   Image *p=calloc(1,sizeof(*p));
+   if (!p) invalid("out of memory");
+   p->identity=identity; p->begin=(uintptr_t)begin; p->end=(uintptr_t)end;
+-  p->roots=roots; p->root_count=root_count; p->next=images; images=p;
++  p->roots=roots; p->root_count=root_count; p->next=images; images=p; bounds();
+ }
+ void mlkit_arm64_unregister_static_image(const void *identity) {
+   Image **link=&images;
+   while (*link && (*link)->identity!=identity) link=&(*link)->next;
+   if (!*link) invalid("unknown image");
+-  Image *p=*link; *link=p->next; free(p);
++  Image *p=*link; *link=p->next; free(p); bounds();
+ }
+ int mlkit_arm64_static_pointer(const void *ptr) {
+   uintptr_t v=(uintptr_t)ptr;
++  if(v<static_low || v>=static_high) return 0;
+   for(Image *p=images;p;p=p->next) if(v>=p->begin && v<p->end) return 1;
+   return 0;
+ }

@@ -8,6 +8,7 @@
  *------------------------------------*/
 
 void MakeIdentTable(void);
+void ResetSamples(void);
 void allocNewSample(int sampleNo, float sampleTime);
 void storeSampleEntry(int sampleNo, float sampleTime, char* id, float nbytes);
 void addComment(float commentTime, char *comment);

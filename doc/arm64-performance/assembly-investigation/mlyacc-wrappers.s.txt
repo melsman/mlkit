@@ -1,0 +1,10 @@
+_F.gt3_vDuFhEpxmGFcQDrEK2Bxbp:
+	stp x29, x30, [sp, #0]
+	add x29, sp, #0
+	sub sp, sp, #16
+	ldp x29, x30, [sp, #16]
+	add sp, sp, #16
+	b _F.gtTerm5_r9immfQaI4F15rxHvYYQoe
+	ldp x29, x30, [sp, #0]
+	add sp, sp, #16
+	ret

@@ -1,0 +1,27 @@
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h gen_syserror.c -o build/darwin-arm64/gen_syserror
+build/darwin-arm64/gen_syserror > build/darwin-arm64/SysErrTable.h.tmp
+mv build/darwin-arm64/SysErrTable.h.tmp build/darwin-arm64/SysErrTable.h
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Runtime.c -o build/darwin-arm64/gc/Runtime.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c IO.c -o build/darwin-arm64/gc/IO.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c String.c -o build/darwin-arm64/gc/String.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Math.c -o build/darwin-arm64/gc/Math.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Region.c -o build/darwin-arm64/gc/Region.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Icp.c -o build/darwin-arm64/gc/Icp.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Table.c -o build/darwin-arm64/gc/Table.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Time.c -o build/darwin-arm64/gc/Time.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Profiling.c -o build/darwin-arm64/gc/Profiling.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c CommandLine.c -o build/darwin-arm64/gc/CommandLine.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Posix.c -o build/darwin-arm64/gc/Posix.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Dlsym.c -o build/darwin-arm64/gc/Dlsym.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Export.c -o build/darwin-arm64/gc/Export.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Socket.c -o build/darwin-arm64/gc/Socket.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Repl.c -o build/darwin-arm64/gc/Repl.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Layout.c -o build/darwin-arm64/gc/Layout.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c Arm64GC.c -o build/darwin-arm64/gc/Arm64GC.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c ../CUtils/hashmap.c -o build/darwin-arm64/gc/hashmap.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c ../CUtils/hashmap_typed.c -o build/darwin-arm64/gc/hashmap_typed.o
+gcc -std=gnu23 -Wall -std=gnu99 -fPIC  -O2 -g -arch arm64 -iquote . -Ibuild/darwin-arm64 -include Target.h -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -MMD -MP -c GC.c -o build/darwin-arm64/gc/GC.o
+rm -f build/darwin-arm64/runtimeSystemGC.a
+ar rc build/darwin-arm64/runtimeSystemGC.a build/darwin-arm64/gc/Runtime.o build/darwin-arm64/gc/IO.o build/darwin-arm64/gc/String.o build/darwin-arm64/gc/Math.o build/darwin-arm64/gc/Region.o build/darwin-arm64/gc/Icp.o build/darwin-arm64/gc/Table.o build/darwin-arm64/gc/Time.o build/darwin-arm64/gc/Profiling.o build/darwin-arm64/gc/CommandLine.o build/darwin-arm64/gc/Posix.o build/darwin-arm64/gc/Dlsym.o build/darwin-arm64/gc/Export.o build/darwin-arm64/gc/Socket.o build/darwin-arm64/gc/Repl.o build/darwin-arm64/gc/Layout.o build/darwin-arm64/gc/Arm64GC.o build/darwin-arm64/gc/hashmap.o build/darwin-arm64/gc/hashmap_typed.o build/darwin-arm64/gc/GC.o
+../../mkinstalldirs ../../lib/darwin-arm64
+/usr/local/bin/ginstall -c -m 644 build/darwin-arm64/runtimeSystemGC.a ../../lib/darwin-arm64/runtimeSystemGC.a

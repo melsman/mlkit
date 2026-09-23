@@ -1,0 +1,17 @@
+{
+  "brreturns": {
+    "text_bytes": 2818012,
+    "changed_instructions": 1197,
+    "only_change": "ret -> br x30; text length, addresses and all other instructions identical"
+  },
+  "brunions": {
+    "text_bytes": 2818012,
+    "changed_instructions": 7,
+    "only_change": "ret -> br x30; text length, addresses and all other instructions identical"
+  },
+  "brcomparisons": {
+    "text_bytes": 2818012,
+    "changed_instructions": 88,
+    "only_change": "ret -> br x30; text length, addresses and all other instructions identical"
+  }
+}

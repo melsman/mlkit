@@ -3,6 +3,7 @@
  *----------------------------------------------------------------*/
 
 #include "Flags.h"
+#include "Arm64GC.h"
 
 #ifndef GC_H
 #define GC_H
@@ -38,7 +39,13 @@ extern size_t *data_end_addr;
 
 inline static int
 points_into_dataspace (uintptr_t *p) {
-  return (p >= data_begin_addr) && (p <= data_end_addr);
+#if DARWIN_NATIVE
+  return mlkit_arm64_in_static_data(p);
+#else
+  return ((uintptr_t)p >= (uintptr_t)data_begin_addr &&
+          (uintptr_t)p <= (uintptr_t)data_end_addr) ||
+    (mlkit_gc_dynamic_images && mlkit_gc_static_pointer(p));
+#endif
 }
 
 size_t size_lobj(size_t tag);

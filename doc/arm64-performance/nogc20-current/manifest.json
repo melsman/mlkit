@@ -1,0 +1,866 @@
+{
+  "metadata": {
+    "revision": "e9b80cc722e2b206888a9a27b48ea2327f53c0f4",
+    "source_revisions": {
+      "bench": "5bff5c9c925ac6fc43b1a98bf506edc40c8019df",
+      "paper": "03d473dcd7042183fffcf727e85eed6bbacf7f73"
+    },
+    "platform": "macOS-26.5.1-x86_64-i386-64bit-Mach-O",
+    "date": "2026-09-23",
+    "gc": false,
+    "warmups": 1,
+    "repetitions": 5,
+    "memory_metric": "wait4 rusage.ru_maxrss, Darwin bytes, peak process RSS",
+    "timing_metric": "perf_counter elapsed seconds, separate process, includes startup and I/O",
+    "compiler_sha256": {
+      "arm64": "d64d94049caa812642086acce828d0012b32cf4a5302efc5d3fff01262fb9043",
+      "x64": "1d7ca4c475072afa70bad543b617147925d148ecbcaff48edd8053cb1e3b575f"
+    },
+    "runtime_sha256": {
+      "darwin-arm64": "3d318bda01b32c3cb976d5831ad7a95745e4cfaea833965b53ba0698af29323c",
+      "darwin-x86_64": "007b36f13dd56da0580f4aa94bbfbd1a92557f8bf582a675217e615e1589ed01"
+    }
+  },
+  "configurations": [
+    {
+      "benchmark": "barnes-hut",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/barnes-hut.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/barnes-hut.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/barnes-hut-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "barnes-hut.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/barnes-hut-x64.exe",
+      "exe_sha256": "321c41d62507d42dcdcfd163820b6f7472533c3d8756a4a62a7d0693898dee2b",
+      "expected_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "benchmark": "barnes-hut",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/barnes-hut.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/barnes-hut.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/barnes-hut-arm64.exe",
+        "barnes-hut.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/barnes-hut-arm64.exe",
+      "exe_sha256": "4f39e4d4542212a88a357a2b938b69ab2a4c60a7ca8f8a6c920910466a5935b2",
+      "expected_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "benchmark": "calc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/calc",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/calc/calc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/calc/calc.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/calc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "calc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/calc-x64.exe",
+      "exe_sha256": "a671da2747ff68fe424b0e5ceffeb4fe6c9b978128ee03a3df5c8cc8dd032b00",
+      "expected_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "benchmark": "calc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/calc",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/calc/calc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/calc/calc.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/calc-arm64.exe",
+        "calc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/calc-arm64.exe",
+      "exe_sha256": "cbe3d114edd6e9905697b7bc6be418c30140de2a3cd01bf981c0101b5ffc1252",
+      "expected_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "benchmark": "DLX",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/dlx",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/dlx/dlx.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/dlx/dlx.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/DLX-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "dlx.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/DLX-x64.exe",
+      "exe_sha256": "4f2570a7e42fa08014fe33cb27d0be9d5cf0c4ee3614ed57341d2bfc2b5dde6b",
+      "expected_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "benchmark": "DLX",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/dlx",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/dlx/dlx.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/dlx/dlx.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/DLX-arm64.exe",
+        "dlx.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/DLX-arm64.exe",
+      "exe_sha256": "f204c1d3d229c6fe4b7affbe81f1af35640cd348d22d4e7c2d69fadd70f3b592",
+      "expected_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "benchmark": "fft",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/fft.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/fft.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/fft-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "fft.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/fft-x64.exe",
+      "exe_sha256": "2e81917ef7c241d58af8661f20e5acb122c7551d03b93766b654eb8a1b4ddab0",
+      "expected_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "benchmark": "fft",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/fft.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/fft.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/fft-arm64.exe",
+        "fft.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/fft-arm64.exe",
+      "exe_sha256": "a41d6c881458463f224063e221339a4c8bd7f94b6287934b55d0eb4f6711a3e6",
+      "expected_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "benchmark": "kbc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/kbc",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/kbc/kbc.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/kbc/kbc.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/kbc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "kbc.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/kbc-x64.exe",
+      "exe_sha256": "3e1ae7284d9368caaa9209408da80353ff45a99b2a2c8d06118bde0774cf4718",
+      "expected_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "benchmark": "kbc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/kbc",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/kbc/kbc.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/kbc/kbc.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/kbc-arm64.exe",
+        "kbc.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/kbc-arm64.exe",
+      "exe_sha256": "44b10ee76df59b1fbca610d2ab23365ec93b3866c1ef950ef7cb8635fb6ac52a",
+      "expected_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "benchmark": "lexgen",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen/lexgen.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen/lexgen.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/lexgen-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "lexgen.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/lexgen-x64.exe",
+      "exe_sha256": "9e736a533b1401b43f0aded2c6571ad356faae09b4fafa2d52a4d2918bf49e26",
+      "expected_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "benchmark": "lexgen",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen/lexgen.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/lexgen/lexgen.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/lexgen-arm64.exe",
+        "lexgen.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/lexgen-arm64.exe",
+      "exe_sha256": "4f1f34d9890f1309bb190c6b5bdc7c762f0de3533b975dcb324d53d91ebcc5e9",
+      "expected_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "benchmark": "life",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/life.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/life.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/life-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "life.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/life-x64.exe",
+      "exe_sha256": "c222f48f1b13fc7e46ee1ba9d2f87395f46b23c9d753c4b36f6ce3d4453bc020",
+      "expected_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "benchmark": "life",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/life.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/life.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/life-arm64.exe",
+        "life.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/life-arm64.exe",
+      "exe_sha256": "bb74e77e331d0fc3c3659d87714592c5b0602b7fec6526049b2b808a17f19d5c",
+      "expected_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "benchmark": "logic",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/logic",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/logic/logic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/logic/logic.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/logic-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "logic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/logic-x64.exe",
+      "exe_sha256": "1f4f0b3b6ad27f27a42b30bb58b477cf8499ca52228a67ae2dadf1c8ab1005a3",
+      "expected_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "benchmark": "logic",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/logic",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/logic/logic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/logic/logic.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/logic-arm64.exe",
+        "logic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/logic-arm64.exe",
+      "exe_sha256": "890b8f0d2cf6832e8d1e9b877a9a213db48fca50adf2e4e1b506b6e8ce44b786",
+      "expected_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "benchmark": "mandelbrot",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mandelbrot.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mandelbrot.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mandelbrot-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mandelbrot.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mandelbrot-x64.exe",
+      "exe_sha256": "fab6b0dd5530dbd11940e3fe6012bdf62e0c931f4268aa96c1f7529fde6cf8bc",
+      "expected_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "benchmark": "mandelbrot",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mandelbrot.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mandelbrot.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mandelbrot-arm64.exe",
+        "mandelbrot.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mandelbrot-arm64.exe",
+      "exe_sha256": "66660b867ad0e66d9c7eaaa57cacd22d874783ddc763bb295741c0e91e0eeab9",
+      "expected_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "benchmark": "mlyacc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mlyacc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mlyacc.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mlyacc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mlyacc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mlyacc-x64.exe",
+      "exe_sha256": "a6ccf0657a72bb48f364227d6ae2cd952fd193c989bf9d966d4d7a731f245086",
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "mlyacc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mlyacc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mlyacc.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mlyacc-arm64.exe",
+        "mlyacc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mlyacc-arm64.exe",
+      "exe_sha256": "a90ee385ce9cd4201685337d943190cfe1fceac98d9b704717dacbc061213122",
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "mpuz",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mpuz.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mpuz.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mpuz-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mpuz.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mpuz-x64.exe",
+      "exe_sha256": "0dc9718700397471f4ae48d49fafbc0c4b8d29cc035c54be89144401c0b99f61",
+      "expected_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "benchmark": "mpuz",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mpuz.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/mpuz.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/mpuz-arm64.exe",
+        "mpuz.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/mpuz-arm64.exe",
+      "exe_sha256": "9d76afd5ca2cfbf7574a5b9ff0bea77c1cd4ab440aa0ed0ceb36251887d91eda",
+      "expected_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "benchmark": "msort",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/msort.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/msort.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/msort-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "msort.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/msort-x64.exe",
+      "exe_sha256": "7d6b1877a696a684fd1e256860d0d56ae74ff7331e27c6fcb26d2c48a7c029a6",
+      "expected_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "benchmark": "msort",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/msort.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/msort.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/msort-arm64.exe",
+        "msort.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/msort-arm64.exe",
+      "exe_sha256": "3332bacacbb94189bc47a59e0182f7444ca40155d00d04343d5fb7f160571a03",
+      "expected_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "benchmark": "nucleic",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic/nucleic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic/nucleic.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/nucleic-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "nucleic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/nucleic-x64.exe",
+      "exe_sha256": "f2c8c864f5bfdea80b1e4d5060c4bcdb41693386ca9045ed9aa018614b09eb95",
+      "expected_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "nucleic",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic/nucleic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/nucleic/nucleic.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/nucleic-arm64.exe",
+        "nucleic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/nucleic-arm64.exe",
+      "exe_sha256": "fbe27ab19b077967671c30636ee79178ea42bbba43fa7085eca9c524313a5442",
+      "expected_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "patricia",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/patricia",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/patricia/patricia.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/patricia/patricia.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/patricia-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "patricia.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/patricia-x64.exe",
+      "exe_sha256": "ef48d344d376c3ce61f9215ab45304337724a15376c051b517f44fbf66024ab3",
+      "expected_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "benchmark": "patricia",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/patricia",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/patricia/patricia.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/patricia/patricia.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/patricia-arm64.exe",
+        "patricia.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/patricia-arm64.exe",
+      "exe_sha256": "c534aac24dd5bd4b71203ce711d970f797ce4ce17b36c8f4fbc0a39a5c6f7b0f",
+      "expected_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "benchmark": "professor",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/professor.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/professor.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/professor-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "professor.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/professor-x64.exe",
+      "exe_sha256": "b54679a6ac7f3c41c5773a96afc464ef612881b6b977341365efffb0809e8827",
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "benchmark": "professor",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/professor.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/professor.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/professor-arm64.exe",
+        "professor.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/professor-arm64.exe",
+      "exe_sha256": "1b610b60014dede7cad4db6341f8e34c6d0c89b0ce7650d34c2c1d8af22475ae",
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "benchmark": "ray",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/ray",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/ray/ray.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/ray/ray.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/ray-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "ray.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/ray-x64.exe",
+      "exe_sha256": "a24b761e6c743372cc3f448d2593ea74db4a475730d252de3f494a08fe0f0e95",
+      "expected_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "benchmark": "ray",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/ray",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/ray/ray.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/ray/ray.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/ray-arm64.exe",
+        "ray.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/ray-arm64.exe",
+      "exe_sha256": "d2d33d65ff0144d31ec69c80cb49b665be0af0120d36947ebdf14744a4e23b61",
+      "expected_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "benchmark": "simple",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/simple.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/simple.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/simple-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "simple.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/simple-x64.exe",
+      "exe_sha256": "b1d9823c43e8fbc91a0e56f83cbad31175b35d97205e62ca746ea32f6a1272b1",
+      "expected_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "benchmark": "simple",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/simple.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/simple.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/simple-arm64.exe",
+        "simple.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/simple-arm64.exe",
+      "exe_sha256": "869a926b3b1afaa2a919f6e354b8cd0ed14beca3f8a769f980a50913740f631c",
+      "expected_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "benchmark": "uf",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/uf",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/uf/uf.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/uf/uf.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/uf-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "uf.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/uf-x64.exe",
+      "exe_sha256": "39711bdd2dcdffed568c139f6838e8596b4fb71132c2019b08a7058781cd014d",
+      "expected_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "benchmark": "uf",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/uf",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/uf/uf.mlb.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/uf/uf.mlb",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/uf-arm64.exe",
+        "uf.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/uf-arm64.exe",
+      "exe_sha256": "0cb8320467c067ebb15d5f9576df3370a26071d7aca9b0973e64488c9f6d0ea3",
+      "expected_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "benchmark": "vliw",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/vliw",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/vliw/vliw.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/vliw/vliw.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/vliw-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "vliw.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/vliw-x64.exe",
+      "exe_sha256": "411b52d472b49244004e51a916fc9ad29cf557ebde95d3f4d194ab338c50b10f",
+      "expected_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "benchmark": "vliw",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/paper/src/vliw",
+      "expected": "/private/tmp/mlkit-nogc20-current/paper/src/vliw/vliw.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/paper/src/vliw/vliw.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/vliw-arm64.exe",
+        "vliw.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/vliw-arm64.exe",
+      "exe_sha256": "a4154f7a21c7ca2153edc33e26d7a5d564f33a94bdb8c298a686b74c8ca6903d",
+      "expected_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "benchmark": "zebra",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/zebra.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/zebra.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-x64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/zebra-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "zebra.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/zebra-x64.exe",
+      "exe_sha256": "28d77bd55780cfcfa3135174ffc4479350c74e276bc340146a369c3f9932911e",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "benchmark": "zebra",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-nogc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/zebra.sml.out.ok",
+      "source": "/private/tmp/mlkit-nogc20-current/bench/benchmarks/zebra.sml",
+      "command": [
+        "/private/tmp/mlkit-nogc20-current/mlkit-arm64",
+        "-no_gc",
+        "--mlb-subdir",
+        "NoGC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-nogc20-current/zebra-arm64.exe",
+        "zebra.sml"
+      ],
+      "exe": "/private/tmp/mlkit-nogc20-current/zebra-arm64.exe",
+      "exe_sha256": "d9491c2e5f2d3856bb5edb1d7c9f5b0c55d209ddc40c13b4e43336c7381fd9d2",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "shared-head": [
+    {
+      "seconds": 0.49098525010049343,
+      "cpu_seconds": 0.481496,
+      "rss_bytes": 169803776,
+      "gc": "[GC(199.0ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.47134699998423457,
+      "cpu_seconds": 0.46487599999999996,
+      "rss_bytes": 169787392,
+      "gc": "[GC(194.9ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.4727782499976456,
+      "cpu_seconds": 0.465394,
+      "rss_bytes": 169836544,
+      "gc": "[GC(193.8ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.47414845903404057,
+      "cpu_seconds": 0.466123,
+      "rss_bytes": 169852928,
+      "gc": "[GC(194.0ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.47568875015713274,
+      "cpu_seconds": 0.46735799999999994,
+      "rss_bytes": 169787392,
+      "gc": "[GC(193.9ms): 26 collections, 12600kb rpages]"
+    }
+  ],
+  "arm64": [
+    {
+      "seconds": 0.4650377498473972,
+      "cpu_seconds": 0.458557,
+      "rss_bytes": 153845760,
+      "gc": "[GC(193.5ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.47289545787498355,
+      "cpu_seconds": 0.46413299999999996,
+      "rss_bytes": 153796608,
+      "gc": "[GC(195.0ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.4693478748667985,
+      "cpu_seconds": 0.46110399999999996,
+      "rss_bytes": 153796608,
+      "gc": "[GC(194.3ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.4681532920803875,
+      "cpu_seconds": 0.460445,
+      "rss_bytes": 153780224,
+      "gc": "[GC(192.4ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.46627079183235765,
+      "cpu_seconds": 0.45876599999999995,
+      "rss_bytes": 153812992,
+      "gc": "[GC(193.2ms): 26 collections, 12600kb rpages]"
+    }
+  ],
+  "x64": [
+    {
+      "seconds": 0.5647130000870675,
+      "cpu_seconds": 0.555411,
+      "rss_bytes": 138833920,
+      "gc": "[GC(238.7ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.5660514577757567,
+      "cpu_seconds": 0.558553,
+      "rss_bytes": 138825728,
+      "gc": "[GC(238.8ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.5709840001072735,
+      "cpu_seconds": 0.558211,
+      "rss_bytes": 138846208,
+      "gc": "[GC(239.5ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.5660422500222921,
+      "cpu_seconds": 0.5527989999999999,
+      "rss_bytes": 138854400,
+      "gc": "[GC(240.6ms): 26 collections, 12600kb rpages]"
+    },
+    {
+      "seconds": 0.5658939590211958,
+      "cpu_seconds": 0.558746,
+      "rss_bytes": 138842112,
+      "gc": "[GC(240.1ms): 26 collections, 12600kb rpages]"
+    }
+  ]
+}

@@ -63,6 +63,7 @@ signature EXECUTION =
 
     val mk_sharedlib : string list * lab list * string list * string * string -> unit
 
+    val repl_supports_gc : bool
     val backend_name : string (* e.g., X86, KAM, Barry, JS *)
 
     val mlbdir : unit -> string

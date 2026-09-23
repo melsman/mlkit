@@ -1,0 +1,50 @@
+# Experimental ARM64-emitting compilers, built with an existing MLKit.
+# The compiler executables themselves use the bootstrap compiler's architecture.
+.DEFAULT_GOAL := all
+.NOTPARALLEL:
+MLKIT_BOOTSTRAP ?= mlkit
+MLKIT_BOOTSTRAP_FLAGS ?= -gc
+SML_LIB ?= $(CURDIR)
+
+.PHONY: all mlkit reml emitter configuration check
+all: mlkit reml
+configuration:
+	$(MAKE) -C src/Tools/MlbMake Configuration.sml
+	@test -f src/Version.sml || (echo 'Run configure before building the compiler' >&2; exit 1)
+	mkdir -p bin
+mlkit: configuration
+	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/mlkit-arm64 src/Compiler/mlkitarm64.mlb
+reml: configuration
+	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/reml-arm64 src/Compiler/remlarm64.mlb
+emitter: configuration
+	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+check: all emitter
+	ARM64_EMITTER="$(CURDIR)/bin/arm64-emitter-test" SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh
+	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
+	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
+
+# Native compiler/tool outputs never replace the X64 compatibility binaries.
+ARM64_COMPILER ?= $(CURDIR)/bin/mlkit-arm64
+ARM64_CACHE ?= Native
+ARM64_NATIVE_BIN ?= $(CURDIR)/bin/darwin-arm64
+ARM64_BUILD ?= $(CURDIR)/src/Tools/Rp2ps/build/darwin-arm64
+ARM64_PREFIX ?= $(SML_LIB)/stage/darwin-arm64
+
+.PHONY: native native-tools bootstrap native-install regressions
+native: configuration
+	mkdir -p "$(ARM64_NATIVE_BIN)"
+	SML_LIB="$(SML_LIB)" "$(ARM64_COMPILER)" -gc --mlb-subdir "$(ARM64_CACHE)" -o "$(ARM64_NATIVE_BIN)/mlkit" src/Compiler/mlkitarm64.mlb
+	SML_LIB="$(SML_LIB)" "$(ARM64_COMPILER)" -gc --mlb-subdir "$(ARM64_CACHE)" -o "$(ARM64_NATIVE_BIN)/reml" src/Compiler/remlarm64.mlb
+native-tools:
+	mkdir -p "$(ARM64_NATIVE_BIN)" "$(ARM64_BUILD)"
+	SML_LIB="$(SML_LIB)" "$(ARM64_COMPILER)" -gc --mlb-subdir "$(ARM64_CACHE)" -o "$(ARM64_NATIVE_BIN)/kittester" src/Tools/Tester/KitTester.mlb
+	SML_LIB="$(SML_LIB)" "$(ARM64_COMPILER)" -gc --mlb-subdir "$(ARM64_CACHE)" -o "$(ARM64_NATIVE_BIN)/mlkit-mllex" src/Tools/ml-lex/ml-lex.mlb
+	SML_LIB="$(SML_LIB)" "$(ARM64_COMPILER)" -gc --mlb-subdir "$(ARM64_CACHE)" -o "$(ARM64_NATIVE_BIN)/mlkit-mlyacc" src/Tools/ml-yacc/src/ml-yacc.mlb
+	gcc -arch arm64 -O2 -Wall -std=gnu99 src/Tools/Rp2ps/*.c -lm -o "$(ARM64_BUILD)/rp2ps"
+	cp "$(ARM64_BUILD)/rp2ps" "$(ARM64_NATIVE_BIN)/rp2ps"
+bootstrap:
+	SML_LIB="$(SML_LIB)" BOOTSTRAP_COMPILER="$(ARM64_COMPILER)" sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
+native-install:
+	SML_LIB="$(SML_LIB)" ARM64_NATIVE_BIN="$(ARM64_NATIVE_BIN)" ARM64_PREFIX="$(ARM64_PREFIX)" sh src/Compiler/Backend/Arm64/tests/install-native.sh
+regressions:
+	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(ARM64_NATIVE_BIN)/mlkit" REML_ARM64="$(ARM64_NATIVE_BIN)/reml" KITTESTER="$(ARM64_NATIVE_BIN)/kittester" sh src/Compiler/Backend/Arm64/tests/check-regressions.sh

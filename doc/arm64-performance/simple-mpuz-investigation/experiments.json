@@ -1,0 +1,18 @@
+{
+  "simple-loops": {
+    "loops": 1,
+    "multiply_staging_sites": 0
+  },
+  "mpuz-loops": {
+    "loops": 5,
+    "multiply_staging_sites": 0
+  },
+  "mpuz-arithmetic": {
+    "loops": 0,
+    "multiply_staging_sites": 9
+  },
+  "mpuz-both": {
+    "loops": 5,
+    "multiply_staging_sites": 9
+  }
+}

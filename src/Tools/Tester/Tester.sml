@@ -17,7 +17,21 @@ structure Tester : TESTER =
       in (TextIO.inputAll(is1) = TextIO.inputAll(is2) before (close()))
       end handle _ => false
 
-    fun equal_to_okfile s = files_equal(s,s^".ok")
+    (* Assembly progress depends on the backend and cache layout. Keep
+     * diagnostic/signature comparisons exact, excluding only these notices. *)
+    fun equal_to_okfile s =
+      let fun readLog file =
+            let val input = TextIO.openIn file
+                fun lines () = case TextIO.inputLine input of
+                    NONE => []
+                  | SOME line =>
+                      if String.isPrefix "[wrote X64 code file:" line orelse
+                         String.isPrefix "[wrote ARM64 code file:" line
+                      then lines () else line :: lines ()
+            in lines () before TextIO.closeIn input
+            end
+      in readLog s = readLog(s ^ ".ok")
+      end handle _ => false
 
 
     local

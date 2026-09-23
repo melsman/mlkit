@@ -1,0 +1,4 @@
+local $(SML_LIB)/basis/basis.mlb
+      nativearm64.mlb
+in ../Common/KitArm64.sml
+end

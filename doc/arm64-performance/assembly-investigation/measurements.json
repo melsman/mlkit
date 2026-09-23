@@ -1,0 +1,558 @@
+{
+  "revision": "07cf1e8",
+  "warmups": 1,
+  "repetitions": 5,
+  "order": "seeded shuffle per round",
+  "runtime_flag": "-report_gc",
+  "variants": "fresh Basis rebuilt by current MLKit; isolated assembly experiments affect benchmark units only",
+  "results": [
+    {
+      "benchmark": "mlyacc",
+      "samples": {
+        "x64": [
+          {
+            "wall": 0.2022130419500172,
+            "cpu": 0.1942319999999997,
+            "gc_cpu": 0.0085,
+            "outside_gc_cpu": 0.1857319999999997,
+            "collections": 28
+          },
+          {
+            "wall": 0.20404745801351964,
+            "cpu": 0.19681799999999985,
+            "gc_cpu": 0.008400000000000001,
+            "outside_gc_cpu": 0.18841799999999986,
+            "collections": 28
+          },
+          {
+            "wall": 0.20412583299912512,
+            "cpu": 0.1962090000000003,
+            "gc_cpu": 0.0089,
+            "outside_gc_cpu": 0.1873090000000003,
+            "collections": 28
+          },
+          {
+            "wall": 0.2065220419317484,
+            "cpu": 0.19881199999999932,
+            "gc_cpu": 0.008400000000000001,
+            "outside_gc_cpu": 0.19041199999999933,
+            "collections": 28
+          },
+          {
+            "wall": 0.20334649994038045,
+            "cpu": 0.19546199999999947,
+            "gc_cpu": 0.0085,
+            "outside_gc_cpu": 0.18696199999999946,
+            "collections": 28
+          }
+        ],
+        "previous_basis": [
+          {
+            "wall": 0.3072287500835955,
+            "cpu": 0.3004109999999998,
+            "gc_cpu": 0.006900000000000001,
+            "outside_gc_cpu": 0.2935109999999998,
+            "collections": 28
+          },
+          {
+            "wall": 0.3034356669522822,
+            "cpu": 0.29719700000000016,
+            "gc_cpu": 0.005900000000000001,
+            "outside_gc_cpu": 0.29129700000000014,
+            "collections": 28
+          },
+          {
+            "wall": 0.30526983295567334,
+            "cpu": 0.29928300000000013,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.29308300000000015,
+            "collections": 28
+          },
+          {
+            "wall": 0.3053670839872211,
+            "cpu": 0.2996319999999996,
+            "gc_cpu": 0.0064,
+            "outside_gc_cpu": 0.2932319999999996,
+            "collections": 28
+          },
+          {
+            "wall": 0.30516545893624425,
+            "cpu": 0.2991640000000001,
+            "gc_cpu": 0.0057,
+            "outside_gc_cpu": 0.2934640000000001,
+            "collections": 28
+          }
+        ],
+        "fresh_basis": [
+          {
+            "wall": 0.29007774987258017,
+            "cpu": 0.28387600000000024,
+            "gc_cpu": 0.0065,
+            "outside_gc_cpu": 0.27737600000000023,
+            "collections": 28
+          },
+          {
+            "wall": 0.2944745421409607,
+            "cpu": 0.2885880000000001,
+            "gc_cpu": 0.0065,
+            "outside_gc_cpu": 0.2820880000000001,
+            "collections": 28
+          },
+          {
+            "wall": 0.2929740829858929,
+            "cpu": 0.2870070000000001,
+            "gc_cpu": 0.0068,
+            "outside_gc_cpu": 0.28020700000000015,
+            "collections": 28
+          },
+          {
+            "wall": 0.29102908284403384,
+            "cpu": 0.28461399999999976,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.2784139999999998,
+            "collections": 28
+          },
+          {
+            "wall": 0.29188529192470014,
+            "cpu": 0.2861910000000009,
+            "gc_cpu": 0.0068,
+            "outside_gc_cpu": 0.27939100000000094,
+            "collections": 28
+          }
+        ],
+        "peephole": [
+          {
+            "wall": 0.281485625077039,
+            "cpu": 0.2751749999999998,
+            "gc_cpu": 0.0064,
+            "outside_gc_cpu": 0.26877499999999976,
+            "collections": 28
+          },
+          {
+            "wall": 0.27599033317528665,
+            "cpu": 0.2700489999999996,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.2638489999999996,
+            "collections": 28
+          },
+          {
+            "wall": 0.27741475007496774,
+            "cpu": 0.27132700000000004,
+            "gc_cpu": 0.005900000000000001,
+            "outside_gc_cpu": 0.265427,
+            "collections": 28
+          },
+          {
+            "wall": 0.27962591708637774,
+            "cpu": 0.27333300000000055,
+            "gc_cpu": 0.0065,
+            "outside_gc_cpu": 0.26683300000000054,
+            "collections": 28
+          },
+          {
+            "wall": 0.27708816598169506,
+            "cpu": 0.2704200000000002,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.26422000000000023,
+            "collections": 28
+          }
+        ],
+        "schedule": [
+          {
+            "wall": 0.2883869588840753,
+            "cpu": 0.28290700000000024,
+            "gc_cpu": 0.0068,
+            "outside_gc_cpu": 0.27610700000000027,
+            "collections": 28
+          },
+          {
+            "wall": 0.2930260000284761,
+            "cpu": 0.28710999999999987,
+            "gc_cpu": 0.0062,
+            "outside_gc_cpu": 0.2809099999999999,
+            "collections": 28
+          },
+          {
+            "wall": 0.2911588749848306,
+            "cpu": 0.28572799999999976,
+            "gc_cpu": 0.0066,
+            "outside_gc_cpu": 0.27912799999999977,
+            "collections": 28
+          },
+          {
+            "wall": 0.2953329998999834,
+            "cpu": 0.28775700000000015,
+            "gc_cpu": 0.006,
+            "outside_gc_cpu": 0.28175700000000015,
+            "collections": 28
+          },
+          {
+            "wall": 0.29600112489424646,
+            "cpu": 0.28932,
+            "gc_cpu": 0.0063,
+            "outside_gc_cpu": 0.28302000000000005,
+            "collections": 28
+          }
+        ]
+      },
+      "median": {
+        "x64": {
+          "wall": 0.20404745801351964,
+          "cpu": 0.1962090000000003,
+          "gc_cpu": 0.0085,
+          "outside_gc_cpu": 0.1873090000000003,
+          "collections": 28
+        },
+        "previous_basis": {
+          "wall": 0.30526983295567334,
+          "cpu": 0.29928300000000013,
+          "gc_cpu": 0.0062,
+          "outside_gc_cpu": 0.2932319999999996,
+          "collections": 28
+        },
+        "fresh_basis": {
+          "wall": 0.29188529192470014,
+          "cpu": 0.2861910000000009,
+          "gc_cpu": 0.0065,
+          "outside_gc_cpu": 0.27939100000000094,
+          "collections": 28
+        },
+        "peephole": {
+          "wall": 0.27741475007496774,
+          "cpu": 0.27132700000000004,
+          "gc_cpu": 0.0062,
+          "outside_gc_cpu": 0.265427,
+          "collections": 28
+        },
+        "schedule": {
+          "wall": 0.2930260000284761,
+          "cpu": 0.28710999999999987,
+          "gc_cpu": 0.0063,
+          "outside_gc_cpu": 0.2809099999999999,
+          "collections": 28
+        }
+      },
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/mlyacc-x64-gc.exe",
+          "sha256": "636ff554c1f37b8de3e617c20341997206a765b5f3302c8cc23e9b28db38cf66"
+        },
+        "previous_basis": {
+          "path": "/private/tmp/mlkit-m12-static/mlyacc-gc.exe",
+          "sha256": "8864ba30d15760451920ebce6157c4d0fbf516b2ab1ef4e97a5eaaa8e48b4265"
+        },
+        "fresh_basis": {
+          "path": "/private/tmp/mlkit-m12-assembly/mlyacc-gc.exe",
+          "sha256": "f963534ed7050bf65f4776adb10399c1ed32b0c8141225db20fd5074fee564a5"
+        },
+        "peephole": {
+          "path": "/private/tmp/mlkit-m12-assembly/mlyacc-peephole.exe",
+          "sha256": "5b9f6efd291082b09af5c457f33ba963c2dd7a79f489400924312deea41de813"
+        },
+        "schedule": {
+          "path": "/private/tmp/mlkit-m12-assembly/mlyacc-schedule.exe",
+          "sha256": "0a78d8074fee974f1b239fd12b3302d94c29c2f3faaca710f27c430e053a7232"
+        }
+      },
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "professor",
+      "samples": {
+        "x64": [
+          {
+            "wall": 0.25249108299613,
+            "cpu": 0.24343199999999943,
+            "gc_cpu": 0.0058,
+            "outside_gc_cpu": 0.23763199999999943,
+            "collections": 263
+          },
+          {
+            "wall": 0.2531696669757366,
+            "cpu": 0.243560000000001,
+            "gc_cpu": 0.0058,
+            "outside_gc_cpu": 0.237760000000001,
+            "collections": 263
+          },
+          {
+            "wall": 0.25455433409661055,
+            "cpu": 0.2458609999999991,
+            "gc_cpu": 0.005,
+            "outside_gc_cpu": 0.2408609999999991,
+            "collections": 263
+          },
+          {
+            "wall": 0.24950216710567474,
+            "cpu": 0.24024300000000065,
+            "gc_cpu": 0.0046,
+            "outside_gc_cpu": 0.23564300000000066,
+            "collections": 263
+          },
+          {
+            "wall": 0.24847800005227327,
+            "cpu": 0.23991099999999754,
+            "gc_cpu": 0.006,
+            "outside_gc_cpu": 0.23391099999999754,
+            "collections": 263
+          }
+        ],
+        "previous_basis": [
+          {
+            "wall": 0.37411783286370337,
+            "cpu": 0.3663269999999993,
+            "gc_cpu": 0.004,
+            "outside_gc_cpu": 0.3623269999999993,
+            "collections": 263
+          },
+          {
+            "wall": 0.372104249894619,
+            "cpu": 0.36488300000000073,
+            "gc_cpu": 0.0047,
+            "outside_gc_cpu": 0.36018300000000075,
+            "collections": 263
+          },
+          {
+            "wall": 0.3744437920395285,
+            "cpu": 0.36735500000000143,
+            "gc_cpu": 0.0035,
+            "outside_gc_cpu": 0.3638550000000014,
+            "collections": 263
+          },
+          {
+            "wall": 0.3748924171086401,
+            "cpu": 0.367359000000003,
+            "gc_cpu": 0.0035,
+            "outside_gc_cpu": 0.363859000000003,
+            "collections": 263
+          },
+          {
+            "wall": 0.3735458329319954,
+            "cpu": 0.3661929999999971,
+            "gc_cpu": 0.0057,
+            "outside_gc_cpu": 0.3604929999999971,
+            "collections": 263
+          }
+        ],
+        "fresh_basis": [
+          {
+            "wall": 0.35581616684794426,
+            "cpu": 0.34826900000000116,
+            "gc_cpu": 0.0048,
+            "outside_gc_cpu": 0.34346900000000113,
+            "collections": 263
+          },
+          {
+            "wall": 0.3571157918777317,
+            "cpu": 0.3495470000000006,
+            "gc_cpu": 0.0037,
+            "outside_gc_cpu": 0.3458470000000006,
+            "collections": 263
+          },
+          {
+            "wall": 0.3585886671207845,
+            "cpu": 0.35097200000000195,
+            "gc_cpu": 0.0048,
+            "outside_gc_cpu": 0.3461720000000019,
+            "collections": 263
+          },
+          {
+            "wall": 0.3573081670328975,
+            "cpu": 0.3496940000000014,
+            "gc_cpu": 0.0039,
+            "outside_gc_cpu": 0.3457940000000014,
+            "collections": 263
+          },
+          {
+            "wall": 0.35978670814074576,
+            "cpu": 0.35219800000000134,
+            "gc_cpu": 0.0050999999999999995,
+            "outside_gc_cpu": 0.34709800000000135,
+            "collections": 263
+          }
+        ],
+        "peephole": [
+          {
+            "wall": 0.3517467500641942,
+            "cpu": 0.3439969999999999,
+            "gc_cpu": 0.005,
+            "outside_gc_cpu": 0.3389969999999999,
+            "collections": 263
+          },
+          {
+            "wall": 0.3517569159157574,
+            "cpu": 0.34494899999999973,
+            "gc_cpu": 0.0039,
+            "outside_gc_cpu": 0.3410489999999997,
+            "collections": 263
+          },
+          {
+            "wall": 0.35168545809574425,
+            "cpu": 0.3444519999999991,
+            "gc_cpu": 0.0045,
+            "outside_gc_cpu": 0.3399519999999991,
+            "collections": 263
+          },
+          {
+            "wall": 0.35326137486845255,
+            "cpu": 0.3454819999999983,
+            "gc_cpu": 0.0053,
+            "outside_gc_cpu": 0.34018199999999826,
+            "collections": 263
+          },
+          {
+            "wall": 0.3509127500001341,
+            "cpu": 0.3432179999999989,
+            "gc_cpu": 0.0039,
+            "outside_gc_cpu": 0.3393179999999989,
+            "collections": 263
+          }
+        ],
+        "schedule": [
+          {
+            "wall": 0.35787404188886285,
+            "cpu": 0.350120999999999,
+            "gc_cpu": 0.004,
+            "outside_gc_cpu": 0.346120999999999,
+            "collections": 263
+          },
+          {
+            "wall": 0.35930050001479685,
+            "cpu": 0.35204300000000155,
+            "gc_cpu": 0.004200000000000001,
+            "outside_gc_cpu": 0.34784300000000157,
+            "collections": 263
+          },
+          {
+            "wall": 0.35851495899260044,
+            "cpu": 0.35139499999999835,
+            "gc_cpu": 0.0048,
+            "outside_gc_cpu": 0.3465949999999983,
+            "collections": 263
+          },
+          {
+            "wall": 0.3548237499780953,
+            "cpu": 0.3474289999999999,
+            "gc_cpu": 0.0034,
+            "outside_gc_cpu": 0.34402899999999986,
+            "collections": 263
+          },
+          {
+            "wall": 0.35531533299945295,
+            "cpu": 0.3484469999999993,
+            "gc_cpu": 0.0047,
+            "outside_gc_cpu": 0.3437469999999993,
+            "collections": 263
+          }
+        ],
+        "region_fp": [
+          {
+            "wall": 0.333123667165637,
+            "cpu": 0.32553799999999966,
+            "gc_cpu": 0.004900000000000001,
+            "outside_gc_cpu": 0.32063799999999965,
+            "collections": 263
+          },
+          {
+            "wall": 0.33274262491613626,
+            "cpu": 0.32510699999999815,
+            "gc_cpu": 0.004,
+            "outside_gc_cpu": 0.32110699999999814,
+            "collections": 263
+          },
+          {
+            "wall": 0.33082975004799664,
+            "cpu": 0.324100999999998,
+            "gc_cpu": 0.0056,
+            "outside_gc_cpu": 0.318500999999998,
+            "collections": 263
+          },
+          {
+            "wall": 0.3290695829782635,
+            "cpu": 0.3223550000000026,
+            "gc_cpu": 0.0044,
+            "outside_gc_cpu": 0.3179550000000026,
+            "collections": 263
+          },
+          {
+            "wall": 0.33032974996604025,
+            "cpu": 0.32266799999999884,
+            "gc_cpu": 0.0039,
+            "outside_gc_cpu": 0.31876799999999883,
+            "collections": 263
+          }
+        ]
+      },
+      "median": {
+        "x64": {
+          "wall": 0.25249108299613,
+          "cpu": 0.24343199999999943,
+          "gc_cpu": 0.0058,
+          "outside_gc_cpu": 0.23763199999999943,
+          "collections": 263
+        },
+        "previous_basis": {
+          "wall": 0.37411783286370337,
+          "cpu": 0.3663269999999993,
+          "gc_cpu": 0.004,
+          "outside_gc_cpu": 0.3623269999999993,
+          "collections": 263
+        },
+        "fresh_basis": {
+          "wall": 0.3573081670328975,
+          "cpu": 0.3496940000000014,
+          "gc_cpu": 0.0048,
+          "outside_gc_cpu": 0.3458470000000006,
+          "collections": 263
+        },
+        "peephole": {
+          "wall": 0.3517467500641942,
+          "cpu": 0.3444519999999991,
+          "gc_cpu": 0.0045,
+          "outside_gc_cpu": 0.3399519999999991,
+          "collections": 263
+        },
+        "schedule": {
+          "wall": 0.35787404188886285,
+          "cpu": 0.350120999999999,
+          "gc_cpu": 0.004200000000000001,
+          "outside_gc_cpu": 0.346120999999999,
+          "collections": 263
+        },
+        "region_fp": {
+          "wall": 0.33082975004799664,
+          "cpu": 0.324100999999998,
+          "gc_cpu": 0.0044,
+          "outside_gc_cpu": 0.31876799999999883,
+          "collections": 263
+        }
+      },
+      "executables": {
+        "x64": {
+          "path": "/private/tmp/mlkit-m11-final/professor-x64-gc.exe",
+          "sha256": "ef3d970a779d722b64d0349f80986d18cdafb46b6268b9a77a20f49af076720c"
+        },
+        "previous_basis": {
+          "path": "/private/tmp/mlkit-m12-static/professor-gc.exe",
+          "sha256": "87ff6677cc57b318df5fe6b358c2d65e14615fd42e76ab840076ddc6b6bc3c46"
+        },
+        "fresh_basis": {
+          "path": "/private/tmp/mlkit-m12-assembly/professor-gc.exe",
+          "sha256": "12455a0860602d5187a57fd0e9bea3b1ce66419664d5591fab252635a1503993"
+        },
+        "peephole": {
+          "path": "/private/tmp/mlkit-m12-assembly/professor-peephole.exe",
+          "sha256": "3aca32c94fccfd136912cf259881742cb3250305a9f76cb971e3c5302f36b5ad"
+        },
+        "schedule": {
+          "path": "/private/tmp/mlkit-m12-assembly/professor-schedule.exe",
+          "sha256": "fc5715a19ad0ed03df1295be4a4200039ea070b26db364ee3eb713b6340b4e59"
+        },
+        "region_fp": {
+          "path": "/private/tmp/mlkit-m12-assembly/professor-region_fp.exe",
+          "sha256": "4007e491e4d33c703cceacf3233c617d8616d1de9536274682c7bebda600868f"
+        }
+      },
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    }
+  ]
+}

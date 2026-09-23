@@ -1,0 +1,12 @@
+{
+  "before": {
+    "functions": 8213,
+    "ret": 8162,
+    "br_x30": 0
+  },
+  "after": {
+    "functions": 8213,
+    "ret": 0,
+    "br_x30": 8162
+  }
+}

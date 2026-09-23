@@ -1,0 +1,10 @@
+{
+  "mlyacc": {
+    "identity_tail_wrappers_simplified": 46,
+    "instructions_removed": 230
+  },
+  "professor": {
+    "identity_tail_wrappers_simplified": 0,
+    "instructions_removed": 0
+  }
+}

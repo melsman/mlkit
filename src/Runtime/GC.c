@@ -1381,8 +1381,14 @@ region_utilize(long pages, long bytes)
 void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
+  /* Allocation retains requests even while collection is disabled. ARM checks
+   * this at ML safe points too; older backends only test time_to_gc. Keep the
+   * request pending without examining roots during callbacks or shutdown. */
+  if (disable_gc) return;
+
   long time_gc_one_ms = 0;
   extern Rp* global_freelist;
+#if !DARWIN_NATIVE
   uintptr_t **sp_ptr;
   uintptr_t *fd_ptr;
   unsigned long fd_size, fd_offset_to_return;
@@ -1390,9 +1396,12 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   long w_idx;
   unsigned long w;
   long offset;
-  uintptr_t *value_ptr;
   long num_d_labs;
   long size_rcf, size_ccf, size_spilled_region_and_float_args;
+#endif
+#if !DARWIN_NATIVE || defined(ENABLE_GEN_GC)
+  uintptr_t *value_ptr;
+#endif
   extern long rp_used;
   extern long rp_total;
   struct rusage rusage_begin;
@@ -1573,6 +1582,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   }
 #endif // ENABLE_GEN_GC
 
+#if DARWIN_NATIVE
+  mlkit_arm64_visit_roots((uintptr_t *)sp,reg_map,evacuate);
+#else
   // Search for live registers
 #ifdef DEBUG_GC
   fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
@@ -1683,7 +1695,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
 
   // Search for data labels; they are part of the root-set.
-  num_d_labs = *data_lab_ptr; /* Number of data labels */
+  num_d_labs = data_lab_ptr ? *data_lab_ptr : 0; /* Number of data labels */
   for ( offset = 1 ; offset <= num_d_labs ; offset++ ) {
     // Evacuate value in data labels
     value_ptr = *(((uintptr_t **)data_lab_ptr) + offset);
@@ -1693,6 +1705,8 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #ifdef DEBUG_GC
   fprintf(stderr,"[GC: Done data labels]\n");
 #endif
+  mlkit_gc_visit_static_roots(evacuate);
+#endif /* DARWIN_NATIVE */
 
   do_scan_stack();
 

@@ -1,0 +1,866 @@
+{
+  "metadata": {
+    "revision": "36f68fdb72891035fb063ce0fd2bd2b30a7e227e",
+    "source_revisions": {
+      "bench": "5bff5c9c925ac6fc43b1a98bf506edc40c8019df",
+      "paper": "03d473dcd7042183fffcf727e85eed6bbacf7f73"
+    },
+    "platform": "macOS-26.5.1-x86_64-i386-64bit-Mach-O",
+    "date": "2026-09-23",
+    "gc": true,
+    "warmups": 1,
+    "repetitions": 5,
+    "memory_metric": "wait4 rusage.ru_maxrss, Darwin bytes, peak process RSS",
+    "timing_metric": "perf_counter elapsed seconds, separate process, includes startup and I/O",
+    "compiler_sha256": {
+      "arm64": "d7181a4aeaf474f835d4a9884c5f7a9b904dc9e661013c1cfe118a767cf2f957",
+      "x64": "36097ff0c36395301508002faca45947acf63e66b19ba070e5b1d5beb184eb56"
+    },
+    "runtime_sha256": {
+      "darwin-arm64": "6fbb802e286e53110a0173a467f24d10c6eeeab89348de09892295a36370a117",
+      "darwin-x86_64": "2b0b77fc035432c0bd645c4586ae3b4f8cca429582663cadb9850d98c20de62c"
+    }
+  },
+  "configurations": [
+    {
+      "benchmark": "barnes-hut",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/barnes-hut.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/barnes-hut.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/barnes-hut-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "barnes-hut.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/barnes-hut-x64.exe",
+      "exe_sha256": "36a8209b3d210b294c8c9535f7d8746e2475f0a5b4e2e54c06c12ea04f6ea86f",
+      "expected_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "benchmark": "barnes-hut",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/barnes-hut.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/barnes-hut.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/barnes-hut-arm64.exe",
+        "barnes-hut.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/barnes-hut-arm64.exe",
+      "exe_sha256": "e4e8a336ef38ed316affc9c4c38e9bea461d0457799acb5bddd77679a6c62e1d",
+      "expected_sha256": "103f3a5b5c09290e3397bc7e67ed8e80a615864725d363ee238ff279c1c81726"
+    },
+    {
+      "benchmark": "calc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/calc",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/calc/calc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/calc/calc.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/calc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "calc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/calc-x64.exe",
+      "exe_sha256": "8b9c45efc456639cc5b164c2bb32fc8c5260bdef8cff1fa3f4b2f1d764ae3f68",
+      "expected_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "benchmark": "calc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/calc",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/calc/calc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/calc/calc.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/calc-arm64.exe",
+        "calc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/calc-arm64.exe",
+      "exe_sha256": "ce29866b82d5c6812c162e48ea5f2c84f8c42c946b138a50b4cfbd9c6a309c24",
+      "expected_sha256": "84b632de509ed5f6fa5a1e2a05f468a62d1eeb986bd18d2528ff5531509399c8"
+    },
+    {
+      "benchmark": "DLX",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/dlx",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/dlx/dlx.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/dlx/dlx.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/DLX-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "dlx.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/DLX-x64.exe",
+      "exe_sha256": "e8f98c7ec5fb009bcc493ecdfe5cc48e5a76491f1e4fb207a29f850912051eb7",
+      "expected_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "benchmark": "DLX",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/dlx",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/dlx/dlx.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/dlx/dlx.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/DLX-arm64.exe",
+        "dlx.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/DLX-arm64.exe",
+      "exe_sha256": "07e55a1309b09340649e6f556e2680518287ba2a36ff2b9b57d6c6105f209d5c",
+      "expected_sha256": "484e2dcde6be0e2d7ea518c6d4e7a8b2dc28f871db7a620eb85acf829456f5e0"
+    },
+    {
+      "benchmark": "fft",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/fft.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/fft.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/fft-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "fft.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/fft-x64.exe",
+      "exe_sha256": "e29e8da505df63d059537b732c1b2205c88a15f900ddb3fb8d43516c4e7fa0b9",
+      "expected_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "benchmark": "fft",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/fft.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/fft.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/fft-arm64.exe",
+        "fft.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/fft-arm64.exe",
+      "exe_sha256": "0edc8a7dd834f14ae6e25c25539072a8afeda8628bcaf2249bd0fbcbfd48266c",
+      "expected_sha256": "44687ce974671437119dee8f4ac5e651f03043e7f6131036c85f04ee4b8e665e"
+    },
+    {
+      "benchmark": "kbc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/kbc",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/kbc/kbc.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/kbc/kbc.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/kbc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "kbc.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/kbc-x64.exe",
+      "exe_sha256": "5f4cff0e4721332671802dc3843684c34d13a63c4271d1fb2442ee635d5ce4b0",
+      "expected_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "benchmark": "kbc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/kbc",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/kbc/kbc.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/kbc/kbc.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/kbc-arm64.exe",
+        "kbc.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/kbc-arm64.exe",
+      "exe_sha256": "b454ef548eb3d2cb09d65bbf36a772381f45ea2fcb5d2794bef4b9ea44b180e8",
+      "expected_sha256": "3b334b823e96157978f5c6ce2382f14937c73a0956a5b2a0e5c62112ba183432"
+    },
+    {
+      "benchmark": "lexgen",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/lexgen",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/lexgen/lexgen.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/lexgen/lexgen.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/lexgen-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "lexgen.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/lexgen-x64.exe",
+      "exe_sha256": "0b38fe36bd2fc9ede5c0eb15e0b05f88342899b6c99eaf5514b4294c7832c78d",
+      "expected_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "benchmark": "lexgen",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/lexgen",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/lexgen/lexgen.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/lexgen/lexgen.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/lexgen-arm64.exe",
+        "lexgen.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/lexgen-arm64.exe",
+      "exe_sha256": "deed382278390f2f9917bdf1ec76830f0351e4a6872e729ec81c32b76c21db1d",
+      "expected_sha256": "2d05f1ac332d45ea36f5f810c1708ba807f96a0d22831ba699353889a97daaff"
+    },
+    {
+      "benchmark": "life",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/life.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/life.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/life-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "life.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/life-x64.exe",
+      "exe_sha256": "91e4a4248d94e9c4342ea930464afae72ddfa7240d1b4350c11a917c717b5bdd",
+      "expected_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "benchmark": "life",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/life.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/life.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/life-arm64.exe",
+        "life.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/life-arm64.exe",
+      "exe_sha256": "2c39717928a5fcf393bdb4a344140a240361919f59143441752ce0b69b876f04",
+      "expected_sha256": "3a881d61748f6959844153ce54f073823683780f1de44aeb21fbc745d5f7b349"
+    },
+    {
+      "benchmark": "logic",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/logic",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/logic/logic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/logic/logic.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/logic-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "logic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/logic-x64.exe",
+      "exe_sha256": "a8d9cde5660da05fbb275c514d19e67ceab8cea598744fb1bedd6f0c77dff8ca",
+      "expected_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "benchmark": "logic",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/logic",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/logic/logic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/logic/logic.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/logic-arm64.exe",
+        "logic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/logic-arm64.exe",
+      "exe_sha256": "446ae81b47adb42d67f60c19f8863942601215f19fa9a9bc54b9378d0b27e598",
+      "expected_sha256": "44e46bf5f01ebe0b030dee9a46cf57dd44092c0b813d16c5f4006bbc3eb131d1"
+    },
+    {
+      "benchmark": "mandelbrot",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mandelbrot.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mandelbrot.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mandelbrot-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mandelbrot.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mandelbrot-x64.exe",
+      "exe_sha256": "a11d5f8a1167a9a22d6616831b9647db142d1e317cedef52359dec06c4e9d406",
+      "expected_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "benchmark": "mandelbrot",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mandelbrot.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mandelbrot.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mandelbrot-arm64.exe",
+        "mandelbrot.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mandelbrot-arm64.exe",
+      "exe_sha256": "6611a60992df779f1097333c0f68b4684cc2b407466226dc4b0954852aae4789",
+      "expected_sha256": "f6cebdefabcb999ee6a58a83ffc88ca50bc25bd9bc5d5bbcfc8efd217bfbca66"
+    },
+    {
+      "benchmark": "mlyacc",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mlyacc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mlyacc.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mlyacc-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mlyacc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mlyacc-x64.exe",
+      "exe_sha256": "553d984a4da335d3e9ca7cd1b525b09a34e374afb653a73ba529f94e359e4427",
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "mlyacc",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mlyacc.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mlyacc.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mlyacc-arm64.exe",
+        "mlyacc.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mlyacc-arm64.exe",
+      "exe_sha256": "3735d320e61ef1e1bc55d4aa4d61829c2e70b6f096d7b832b13f2227f079c8b8",
+      "expected_sha256": "7fbbe4259eb31c3249a1d36a0b2ffdf9f8b15eeedffa3ff83f5a44366c9b13a3"
+    },
+    {
+      "benchmark": "mpuz",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mpuz.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mpuz.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mpuz-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "mpuz.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mpuz-x64.exe",
+      "exe_sha256": "a2a80e2fb0da6e98c6902e4facae6f4ddc5a910602b7b6011e5124bd5d06b99e",
+      "expected_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "benchmark": "mpuz",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mpuz.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/mpuz.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/mpuz-arm64.exe",
+        "mpuz.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/mpuz-arm64.exe",
+      "exe_sha256": "cccb90629627604d8e34d0a211651d3049cec05b43f0e7205e433de468dd78bb",
+      "expected_sha256": "2e6154ed3b0a803398587ba21e3c425b0b0e7e0fa808206de66491de9335066a"
+    },
+    {
+      "benchmark": "msort",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/msort.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/msort.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/msort-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "msort.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/msort-x64.exe",
+      "exe_sha256": "204e6721b3573f9ff4b6ea54dc3450dfab4d57cd60c8d91cc89173aaa4890a5a",
+      "expected_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "benchmark": "msort",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/msort.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/msort.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/msort-arm64.exe",
+        "msort.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/msort-arm64.exe",
+      "exe_sha256": "f280b0bf5e0673b2c011760089e3176db9bcab7f1bedd63e26675b85e330077f",
+      "expected_sha256": "b73dd0823def3f76f9f7ba82bbc3b6bbb73a7c4242079d8baa5e42c477a91a03"
+    },
+    {
+      "benchmark": "nucleic",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/nucleic",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/nucleic/nucleic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/nucleic/nucleic.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/nucleic-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "nucleic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/nucleic-x64.exe",
+      "exe_sha256": "8fa19f2cc44e49e9c48ebc7d8e15beacfa28302c2fb7342cde29dd287151ac98",
+      "expected_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "nucleic",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/nucleic",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/nucleic/nucleic.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/nucleic/nucleic.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/nucleic-arm64.exe",
+        "nucleic.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/nucleic-arm64.exe",
+      "exe_sha256": "c270d6bd5d4d4b200f57b6018138e2de2a02bab4a808e79fc22e874085e9442c",
+      "expected_sha256": "eff2906dc8f6d10da753f78c53bbb4c2fc0a1b4bc925c1ec535b5f42902a240a"
+    },
+    {
+      "benchmark": "patricia",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/patricia",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/patricia/patricia.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/patricia/patricia.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/patricia-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "patricia.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/patricia-x64.exe",
+      "exe_sha256": "b2b88baf4194686566c878aef6c1e9118a81e811cb75b93ddf150d2669c7399d",
+      "expected_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "benchmark": "patricia",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/patricia",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/patricia/patricia.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/patricia/patricia.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/patricia-arm64.exe",
+        "patricia.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/patricia-arm64.exe",
+      "exe_sha256": "c21d153f5cf5c9feee8576fa020c4eadba71b828a2f45449875ccd0da4a8e77c",
+      "expected_sha256": "a8ff4aba71421214022e39ac8d7b258a44599bee62f7283cc425b96ec1b2ed49"
+    },
+    {
+      "benchmark": "professor",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/professor.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/professor.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/professor-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "professor.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/professor-x64.exe",
+      "exe_sha256": "43f923afe708f1a3d77b9fe7dcf36898cbeb42c03462ac18fd2e4c40cc8b5e06",
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "benchmark": "professor",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/professor.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/professor.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/professor-arm64.exe",
+        "professor.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/professor-arm64.exe",
+      "exe_sha256": "67384996029c29478d71183cac4df465fb535ecc88b3b7a6f8123f0f8b701817",
+      "expected_sha256": "0f9d314b325f2c5eb9646898897e0415005636d3b27bc531b7dca8aed1a53097"
+    },
+    {
+      "benchmark": "ray",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/ray",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/ray/ray.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/ray/ray.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/ray-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "ray.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/ray-x64.exe",
+      "exe_sha256": "db5cf3d5eae824044b827d1f16caeb9c416d92f9174c2a8f7a0675185a95ab7b",
+      "expected_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "benchmark": "ray",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/ray",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/ray/ray.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/ray/ray.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/ray-arm64.exe",
+        "ray.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/ray-arm64.exe",
+      "exe_sha256": "608aed74b695824ecfbb035c0b2de0489b5fa69b8c065ecf24be0075e9ea248d",
+      "expected_sha256": "3f49b05e937330a1a373c5b6f90bebf4a091570699959359c7251b22248d45ad"
+    },
+    {
+      "benchmark": "simple",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/simple.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/simple.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/simple-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "simple.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/simple-x64.exe",
+      "exe_sha256": "7210c90c82401b7849e63adaa9c41069744aec9ef34db5691968fb49338aa2fb",
+      "expected_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "benchmark": "simple",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/simple.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/simple.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/simple-arm64.exe",
+        "simple.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/simple-arm64.exe",
+      "exe_sha256": "6eecc257bddb0eef6fd52e12a8f058c4c3a208254e04bcc50ee27c92283d9d4d",
+      "expected_sha256": "b8cbd38a1003f153c3f45360cc419e6b7916c7739e788778211c51086e0ac339"
+    },
+    {
+      "benchmark": "uf",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/uf",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/uf/uf.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/uf/uf.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/uf-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "uf.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/uf-x64.exe",
+      "exe_sha256": "41bf1064b2867057c99e5ebcd55a0fd9e76940256ea97348f53bab632c8ef7c9",
+      "expected_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "benchmark": "uf",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/uf",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/uf/uf.mlb.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/uf/uf.mlb",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/uf-arm64.exe",
+        "uf.mlb"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/uf-arm64.exe",
+      "exe_sha256": "94ef768b7a960d325178b6912b17338dcc34ea3136daa74ba405cebc19fdb1c4",
+      "expected_sha256": "58aaf1fef2e219c141088dc7c99f019f23e6afaf53f5e08ebab4b13173c48b4e"
+    },
+    {
+      "benchmark": "vliw",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/vliw",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/vliw/vliw.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/vliw/vliw.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/vliw-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "vliw.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/vliw-x64.exe",
+      "exe_sha256": "70e904a5dfe7d61560295bd3dab4e6cc0120b4be2e2f20e130d4b346be336b7a",
+      "expected_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "benchmark": "vliw",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/paper/src/vliw",
+      "expected": "/private/tmp/mlkit-gc20-current/paper/src/vliw/vliw.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/paper/src/vliw/vliw.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/vliw-arm64.exe",
+        "vliw.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/vliw-arm64.exe",
+      "exe_sha256": "dcfeb4e48c09db5baac514735ae2b220de44ce1a28febc7ba41565573ced2463",
+      "expected_sha256": "66fe315bd57adc9affa1632475f8742e342875f50ae056cbe3e6c81fb0936e13"
+    },
+    {
+      "benchmark": "zebra",
+      "arch": "x64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/zebra.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/zebra.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-x64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentx64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/zebra-x64.exe",
+        "-as",
+        "as -arch x86_64 -q",
+        "-ldexe",
+        "gcc -arch x86_64 -Wl,-stack_size,0x10000000",
+        "zebra.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/zebra-x64.exe",
+      "exe_sha256": "c3067650780807be79f5eaf99d331ee8d85eec61d0f245c63597460412426cfa",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "benchmark": "zebra",
+      "arch": "arm64",
+      "cwd": "/private/tmp/mlkit-gc20-current/bench/benchmarks",
+      "expected": "/private/tmp/mlkit-gc20-current/bench/benchmarks/zebra.sml.out.ok",
+      "source": "/private/tmp/mlkit-gc20-current/bench/benchmarks/zebra.sml",
+      "command": [
+        "/private/tmp/mlkit-gc20-current/mlkit-arm64",
+        "-gc",
+        "--mlb-subdir",
+        "GC20Currentarm64",
+        "-o",
+        "/private/tmp/mlkit-gc20-current/zebra-arm64.exe",
+        "zebra.sml"
+      ],
+      "exe": "/private/tmp/mlkit-gc20-current/zebra-arm64.exe",
+      "exe_sha256": "fd7eab3c522fe902d6c8a71398117cc3f7dd91c2fa2a01c4cce28fc03246a07c",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
