@@ -67,3 +67,26 @@ On Apple Silicon, with X64 programs running under Rosetta 2:
   compiled for both architectures.
 
 Linux execution and hosted CI results remain to be checked by CI.
+
+
+## Installed-distribution regression
+
+[The Ubuntu MLKit job](https://github.com/melsman/mlkit/actions/runs/35834098068/job/107093304925?pr=224)
+passed its source-tree tests but failed its installed-distribution REPL smoke test.
+`mlkit_basislibs` compiled `repl.mlb` only without GC; the GC variant compiled only
+`basis.mlb`. With GC now enabled in the REPL, the installed compiler tried to
+compile the missing `repl.sml` cache in the root-owned library directory. The
+resulting `Failed to write dependencies ... repl.sml.d` error prevented loading
+the Basis. The subsequent arithmetic type error came from missing infix
+information, not from generated arithmetic code or the collector.
+
+The build now precompiles `repl.mlb` with GC, which also prepares `basis.mlb`.
+The installed-distribution CI check runs from a fresh temporary directory and
+requires correct arithmetic, `List.tabulate`, and list pretty-printing. It rejects
+Basis-loading diagnostics even if the REPL subsequently exits successfully.
+
+Local verification reproduced both the dependency-write error and the arithmetic
+type error with a read-only staged X64 installation. Adding the GC REPL cache
+made the same check pass. A second check passed after copying the prepared
+installation to a new read-only location and temporarily hiding the original,
+verifying that the cache is relocatable. Hosted Linux validation awaits CI.

@@ -81,11 +81,12 @@ smltojs:
 
 all: mlkit mlkit_basislibs smltojs smltojs_basislibs
 
+# The default-GC REPL must load from a read-only installed Basis cache.
 .PHONY: mlkit_basislibs
 mlkit_basislibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof -Pcee -Prfg -Ppp -print_rho_types -Paux -log_to_file basis.mlb)
 
