@@ -326,7 +326,7 @@ and `man/man1`. License information is located in the file
 
 The MLKit has a number of [known bugs and limitations](http://elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
 
-## Appendix B: Quick Compilation and Installation Guide
+## Appendix A: Quick Compilation and Installation Guide
 
 We assume that MLton >= 20051202 is installed on the system as
 described above.
