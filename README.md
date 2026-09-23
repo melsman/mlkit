@@ -1,8 +1,8 @@
 ## MLKit
 
 The [MLKit](http://elsman.com/mlkit) is a compiler toolkit for the
-Standard ML language, including **The MLKit with Regions**, which features a native
-backend for the x64 architecture, based on region inference, and
+Standard ML language, including **The MLKit with Regions**, which features native
+backends for the X64 and Arm64 architectures, based on region inference, and
 **SMLtoJs**, which features a JavaScript backend targeting web browsers. The two
 compilers share the same frontend and compilation management scheme.
 
@@ -47,12 +47,13 @@ directory different from `/usr/local/mlkit` by instead typing
   is available from the [MLKit home
   page](http://melsman.github.io/mlkit).
 
-## MLKit with Regions - The x64 Native Backend
+## MLKit - Native Backends
 
 This version of the compiler is based on region inference and has the
 following features:
 
-- An x64 native backend (works with Linux and macOS).
+- An X64 native backend for Linux and macOS, and an Arm64 native backend
+  for macOS on Apple Silicon.
 
 - Memory allocation directives (both allocation and deallocation) are
   inferred by the compiler, which uses a number of program analyses
@@ -67,6 +68,21 @@ following features:
 
 - Region inference may be augmented with reference-tracing garbage
   collection to achieve better memory behavior.
+
+## ReML
+
+ReML extends Standard ML with explicit regions, effects, and constraints on
+regions and effects. Programmers can express these annotations in their
+programs, and the compiler checks them alongside its region and effect
+inference.
+
+ReML supports both the X64 and Arm64 native backends. It is built alongside
+MLKit by `make mlkit` and is available as `bin/reml` in the build tree or
+`reml` after installation. See the [explicit-region examples and tests](test/explicit_regions)
+for examples of the language.
+
+ReML supports parallel threads, but does not currently support
+reference-tracing garbage collection.
 
 ## SMLtoJs - The JavaScript Backend
 
