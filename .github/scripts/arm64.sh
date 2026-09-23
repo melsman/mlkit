@@ -18,13 +18,11 @@ tests=src/Compiler/Backend/Arm64/tests
 case "${1:?Specify a CI phase}" in
   runtime)
     sh autobuild
-    if [ "$ARM64_HOST" = mlkit ]; then
-      # The published seed is X64; only this first host build uses Rosetta.
-      DARWIN_NATIVE=0 ./configure CC=/usr/bin/gcc --with-compiler='mlkit -gc'
-      make -j3 runtime
-    fi
     DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler='mlkit -gc'
     make -j3 runtime
+    # A clean native job must not depend on checkout-built X64 compatibility archives.
+    test ! -e lib/runtimeSystemGC.a
+    test ! -d lib/darwin-x86_64
     for archive in lib/darwin-arm64/runtimeSystem*.a; do
       test "$(lipo -archs "$archive")" = arm64
     done
@@ -32,11 +30,17 @@ case "${1:?Specify a CI phase}" in
   seed)
     make -f Makefile.arm64 configuration
     mkdir -p "$seed"
+    bootstrap_env=(env -u SML_LIB)
+    if [ -n "${MLKIT_BOOTSTRAP_SML_LIB:-}" ]; then
+      bootstrap_env=(env "SML_LIB=$MLKIT_BOOTSTRAP_SML_LIB")
+    fi
     for compiler in mlkit reml; do
       if [ "$ARM64_HOST" = mlkit ]; then
         # Large compiler units exhaust the former 256 MiB host stack. Match
         # the 1 GiB/classic-linker configuration used for local compiler builds.
-        mlkit -gc --mlb-subdir "${cache}_Seed" \
+        # Use the release's Basis/cache/runtime without adding a cache suffix:
+        # an installed seed may be read-only and cannot build new Basis caches.
+        "${bootstrap_env[@]}" mlkit -gc \
           -ldexe 'gcc -arch x86_64 -Wl,-ld_classic,-stack_size,0x40000000' \
           -o "$seed/$compiler" "src/Compiler/${compiler}arm64.mlb"
         test "$(lipo -archs "$seed/$compiler")" = x86_64

@@ -159,11 +159,11 @@ make runtime
 ```
 
 Use `DARWIN_NATIVE=0 ./configure CC=gcc` to switch back. Select the mode at
-configure time, not by overriding make variables. ARM compiler generation is
-available as an experimental subset through [Makefile.arm64](Makefile.arm64);
-see [ARM64 compiler instructions](doc/arm64-compiler.md). Full native-build
-and full-install targets remain disabled until language/runtime coverage
-is complete.
+configure time, not by overriding make variables. Build native ARM64 compilers and tools through
+[Makefile.arm64](Makefile.arm64); see the
+[clean-checkout build instructions](doc/arm64-compiler.md#build-and-run).
+An installed X64 MLKit supplies its own bootstrap Basis and runtime, so a
+local X64 runtime build is unnecessary.
 
 See [the ARM64 runtime build and validation notes](doc/arm64-runtime.md) for
 artifact locations, SDK/toolchain setup, installation, and the test matrix.

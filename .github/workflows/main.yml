@@ -275,6 +275,7 @@ jobs:
             -o "$RUNNER_TEMP/mlkit-seed.tgz"
           tar -xzf "$RUNNER_TEMP/mlkit-seed.tgz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin" >> "$GITHUB_PATH"
+          echo "MLKIT_BOOTSTRAP_SML_LIB=$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" >> "$GITHUB_ENV"
           test "$(lipo -archs "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit")" = x86_64
           SML_LIB="$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" \
             "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit" --version

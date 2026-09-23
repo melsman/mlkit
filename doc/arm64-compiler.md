@@ -7,23 +7,41 @@ and checks.
 
 ## Build and run
 
-Start with a configured checkout and an installed working MLKit. Build both
-runtime targets as described in [arm64-runtime.md](arm64-runtime.md). Keep
-the X64 compatibility archives when using an X64 bootstrap compiler. ARM
-programs link the selected variant under `lib/darwin-arm64/`.
+On Apple Silicon, start with a clean checkout, Xcode command-line tools,
+Autoconf, and an installed MLKit on `PATH`. An installed X64 MLKit uses Rosetta
+for the initial host build. Only the ARM64 runtime needs to be built locally:
 
 ```sh
-make -f Makefile.arm64 MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
-make -f Makefile.arm64 check MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
+export SML_LIB="$PWD"
+autoconf -o configure configure.ac
+autoheader configure.ac
+DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler='mlkit -gc'
+make -j3 runtime
+make -f Makefile.arm64 mlkit native native-tools
+
+lipo -archs bin/darwin-arm64/mlkit   # arm64
+bin/darwin-arm64/mlkit --version
 ```
 
-`make arm64_compilers` is also available after regenerating the configured
-Makefile. `MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc` and can be overridden. The
-GC-enabled host build avoids a crash observed with the no-GC host build
-on wrapper-function samples; generated ARM programs can independently select their supported GC mode.
-These initial targets produce ARM-emitting compilers on the host compiler's
-architecture. The native build, installation, and bootstrap targets below
-produce separate ARM64 executables.
+The bootstrap recipes use the installed MLKit's own Basis library, cached
+objects, and matching runtime. They ignore the checkout's `SML_LIB` for that
+step; subsequent ARM64 compilation uses it normally. No X64 runtime archives
+or `DARWIN_NATIVE=0` configuration are needed in the checkout. Keep `SML_LIB`
+pointing at the checkout when running the resulting native compiler.
+
+Use `MLKIT_BOOTSTRAP=/path/to/mlkit` to select another host compiler. If that
+compiler's library is not configured in its installed `mlb-path-map`, also set
+`MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`. This is useful for an unpacked
+release. The seed needs a prepared GC Basis cache when its installation is
+read-only. Do not add a cache suffix to the bootstrap flags in that case.
+
+`MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc`; on macOS it also selects the classic
+linker and a 1 GiB stack for the generated host compiler, avoiding stack
+exhaustion during native compiler compilation. It can be overridden explicitly.
+The `mlkit`, `reml`, and `emitter` targets produce ARM-emitting executables on
+the host compiler's architecture. `native` produces ARM64 MLKit and ReML in
+`bin/darwin-arm64`; `native-tools` adds the native tools. `make arm64_compilers`
+remains a shortcut for the initial MLKit/ReML host builds.
 
 The existing driver writes unquoted Basis paths for direct `.sml` inputs,
 REPL startup, and dependency processing. Use a stable, space-free symlink to

@@ -6,8 +6,9 @@ The logical `macos-arm` platform selects `macos-15`, an Apple Silicon runner
 listed in [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
 The MLKit job downloads the existing v4.7.22 Darwin release and uses Rosetta
-for that X64 seed only. It builds separate X64 compatibility runtime archives
-before configuring `DARWIN_NATIVE=1` and building the ARM64 runtime variants.
+for that X64 seed only. Bootstrap compilation uses the release's precompiled
+Basis and matching X64 runtime. The checkout is configured only with
+`DARWIN_NATIVE=1` and builds only ARM64 runtime variants.
 The seed MLKit then produces native ARM64 MLKit, ReML, and tools.
 The X64 seed compilers are linked with a 1 GiB stack and the classic linker,
 matching local compiler builds; CI verifies the Mach-O stack size. The former

@@ -3,7 +3,17 @@
 .DEFAULT_GOAL := all
 .NOTPARALLEL:
 MLKIT_BOOTSTRAP ?= mlkit
+# Use the bootstrap compiler's installed Basis and matching runtime, even when
+# SML_LIB points at this checkout for subsequent native compilation.
+# Override this for an unpacked seed without an installed mlb-path-map.
+MLKIT_BOOTSTRAP_SML_LIB ?=
+BOOTSTRAP_ENV = $(if $(strip $(MLKIT_BOOTSTRAP_SML_LIB)),env SML_LIB="$(MLKIT_BOOTSTRAP_SML_LIB)",env -u SML_LIB)
+ifeq ($(shell uname -s),Darwin)
+# The generated host compiler needs a larger stack for compiling itself.
+MLKIT_BOOTSTRAP_FLAGS ?= -gc -ldexe 'gcc -Wl,-ld_classic,-stack_size,0x40000000'
+else
 MLKIT_BOOTSTRAP_FLAGS ?= -gc
+endif
 SML_LIB ?= $(CURDIR)
 
 .PHONY: all mlkit reml emitter configuration check
@@ -13,11 +23,11 @@ configuration:
 	@test -f src/Version.sml || (echo 'Run configure before building the compiler' >&2; exit 1)
 	mkdir -p bin
 mlkit: configuration
-	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/mlkit-arm64 src/Compiler/mlkitarm64.mlb
+	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/mlkit-arm64 src/Compiler/mlkitarm64.mlb
 reml: configuration
-	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/reml-arm64 src/Compiler/remlarm64.mlb
+	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/reml-arm64 src/Compiler/remlarm64.mlb
 emitter: configuration
-	SML_LIB="$(SML_LIB)" "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
 check: all emitter
 	ARM64_EMITTER="$(CURDIR)/bin/arm64-emitter-test" SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-native.sh
 	SML_LIB="$(SML_LIB)" MLKIT_ARM64="$(CURDIR)/bin/mlkit-arm64" REML_ARM64="$(CURDIR)/bin/reml-arm64" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
