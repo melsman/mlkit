@@ -10,7 +10,10 @@ group: navigation
 
 <img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/books.gif">
 
-* [Installation](http://github.com/melsman/mlkit)
+* [Installation and platform support]({{BASE_PATH}}/download.html)
+* [Interactive REPL]({{BASE_PATH}}/repl.html)
+* [ReML: explicit regions and effects]({{BASE_PATH}}/reml.html)
+* [SMLtoJs: Standard ML in the browser]({{BASE_PATH}}/smltojs.html)
 * [Bootstrapping]({{BASE_PATH}}/bootstrap.html)
 * [MLKit Basis Library Implementation]({{BASE_PATH}}/basis.html)
 * [ML Basis Files]({{BASE_PATH}}/mlbasisfiles.html)

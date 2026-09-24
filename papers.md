@@ -112,6 +112,10 @@ Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
 
+* Martin Elsman. __Agentic Development of an ARM64 Compiler Backend__. DIKU Technical Report. Department of Computer Science, University of Copenhagen. September 2026. [PDF](https://elsman.com/pdf/arm64.pdf).
+
+* Martin Elsman. __Crafting a REPL for HOT Compiled Execution__. DIKU Technical Report. Department of Computer Science, University of Copenhagen. September 2026. [PDF](https://elsman.com/pdf/repl.pdf).
+
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, and Peter Sestoft. ___Programming with Regions in the
 MLKit (revised for Version 4.7.16)___. Department of Computer Science, University of Copenhagen. December 2025. [pdf](/pdf/mlkit-4.7.16.pdf), [bibtex](/pdf/mlkit-4.7.16-bibtex.txt).

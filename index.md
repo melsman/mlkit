@@ -4,10 +4,32 @@ layout: front
 ---
 {% include JB/setup %}
 
-<!-- Example row of columns -->
+<!-- Compiler features -->
 <div class="row">
 
   <div class="col-lg-9"> <!-- Left part -->
+    <div class="row">
+      <div class="col-md-4">
+        <h2>MLKit</h2>
+        <p>Compile Standard ML to native code with region-based memory management. Target x64 on Linux and macOS, or arm64 on Apple Silicon.</p>
+        <p><a href="{{BASE_PATH}}/download.html#arm64">Native arm64 support &raquo;</a></p>
+      </div>
+      <div class="col-md-4">
+        <h2>ReML</h2>
+        <p>Add explicit regions, effects, and effect constraints to Standard ML for more control over allocation and memory use.</p>
+        <p><a href="{{BASE_PATH}}/reml.html">Explore ReML &raquo;</a></p>
+      </div>
+      <div class="col-md-4">
+        <h2>SMLtoJs</h2>
+        <p>Compile Standard ML to JavaScript, integrate with browser APIs, or try the compiler in the Online SML IDE.</p>
+        <p><a href="{{BASE_PATH}}/smltojs.html">Explore SMLtoJs &raquo;</a></p>
+      </div>
+    </div>
+    <div class="well">
+      <h3>Try Standard ML interactively</h3>
+      <p>Run <code>mlkit</code> without arguments to start the REPL. Evaluate expressions, define functions, and load projects in an interactive session.</p>
+      <a href="{{BASE_PATH}}/repl.html">Get started with the REPL &raquo;</a>
+    </div>
     <div class="row">
       <div class="col-lg-4">
 	 <h3>SML'97</h3>
@@ -35,7 +57,7 @@ layout: front
       </div>
     </div>
 
-    <!-- Example row of columns -->
+    <!-- Compiler features -->
     <div class="row">
       <div class="col-lg-4">
 	 <h3>Open Source</h3>
@@ -62,7 +84,7 @@ layout: front
       </div>
     </div>
 
-    <!-- Example row of columns -->
+    <!-- Compiler features -->
     <div class="row">
       <div class="col-lg-4">
 	 <h3>Interface to C</h3>
@@ -79,13 +101,13 @@ layout: front
        </div>
        <div class="col-lg-4">
 	 <h3>Multiple Backends</h3>
-	   <p>Multiple backends are provided, including one that
-	      generates x64 native machine code for the Linux and macOS operating
-	      systems and one that generates JavaScript.</p>
+	   <p>MLKit generates x64 native code for Linux and macOS, and the new
+              arm64 backend targets Apple Silicon. <a href="{{BASE_PATH}}/smltojs.html">SMLtoJs</a>
+              generates JavaScript for the browser.</p>
       </div>
     </div>
 
-    <!-- Example row of columns -->
+    <!-- Compiler features -->
     <div class="row">
       <div class="col-lg-4">
 	 <h3>Hosted at Github</h3>
@@ -97,6 +119,7 @@ layout: front
    <div class="panel panel-default">
       <div class="panel-heading">News</div>
       <table class="table">
+    <tr><td><b>From the development sources:</b> The new <a href="{{BASE_PATH}}/download.html#arm64">arm64 backend</a> supports native MLKit, ReML, and the REPL on Apple Silicon.</td></tr>
     <tr><td><b>2025-12-16:</b> <a href="https://github.com/melsman/mlkit/releases/tag/v4.7.17">MLKit 4.7.17</a> is released and available in binary forms for Linux and macOS. A revised version of <a href="/pdf/mlkit-4.7.16.pdf">the manual</a> is available.</td></tr>
 	<tr><td><b>2022-12-29:</b> <a href="https://github.com/melsman/mlkit/releases/tag/v4.7.2">MLKit 4.7.2</a> is released and available in binary forms for Linux and macOS. The release features a <a href="/pdf/mlkit-4.7.2.pdf">revised version of the manual</a>.</td></tr>
 	<tr><td><b>2021-12-31:</b> <a href="https://github.com/melsman/mlkit/releases/tag/v4.6.0">MLKit 4.6.0</a> is released and available in binary forms for Linux and macOS. The release features a <a href="/pdf/mlkit-4.6.0.pdf">revised version of the manual</a>, which reflects the changes since version 4.3.0.</td></tr>
@@ -110,8 +133,10 @@ layout: front
    <div class="panel panel-default">
       <div class="panel-heading">Links</div>
       <table class="table">
+        <tr><td><a href="{{BASE_PATH}}/reml.html">ReML</a> &mdash; Program with explicit regions and effects.</td></tr>
+        <tr><td><a href="{{BASE_PATH}}/repl.html">MLKit REPL</a> &mdash; Work interactively with native Standard ML.</td></tr>
 	<tr><td><a href="https://diku-dk.github.io/sml-ide">Online SML IDE</a> &mdash; Compile SML programs in your browser and save your programs in a dedicated Dropbox App folder.</td></tr>
-	<tr><td><a href="http://www.smlserver.org/smltojs">SMLtoJs</a> &mdash; Compile SML programs into JavaScript.</td></tr>
+	<tr><td><a href="{{BASE_PATH}}/smltojs.html">SMLtoJs</a> &mdash; Compile SML programs into JavaScript.</td></tr>
 	<tr><td><a href="http://www.smlserver.org/">SMLserver</a> &mdash; Use SML on the Web server.</td></tr>
       </table>
   </div>
