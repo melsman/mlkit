@@ -58,11 +58,11 @@ For example, stage runtime archives without a system install:
 make install_runtime LIBDIR=/tmp/mlkit-runtime-stage
 ```
 
-The experimental ARM backend selects the ARM archive directory and a
-separate `MLB/ARM64_<variant>` cache namespace. Use `Makefile.arm64` for
-host-built ARM-emitting compilers, native compiler/tool builds, staged native
-installation, and bootstrap checks; see [arm64-compiler.md](arm64-compiler.md).
-The ordinary compiler/tool targets retain their X64 configuration.
+The ARM backend selects the ARM archive directory and a separate
+`MLB/ARM64_<variant>` cache namespace. With `DARWIN_NATIVE=1`, the ordinary
+compiler/tool targets delegate to `Makefile.arm64` and publish native tools
+at the standard `bin/*` paths. Basis builds, tests, bootstrap, and installation
+use the configured backend; see [arm64-compiler.md](arm64-compiler.md).
 
 `make -C src/Runtime clean` removes the configured target's intermediate
 build tree. It intentionally preserves installed/copied archives and the other

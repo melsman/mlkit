@@ -1,8 +1,8 @@
 ## MLKit
 
 The [MLKit](http://elsman.com/mlkit) is a compiler toolkit for the
-Standard ML language, including **The MLKit with Regions**, which features a native
-backend for the x64 architecture, based on region inference, and
+Standard ML language, including **The MLKit with Regions**, which features native
+backends for the X64 and Arm64 architectures, based on region inference, and
 **SMLtoJs**, which features a JavaScript backend targeting web browsers. The two
 compilers share the same frontend and compilation management scheme.
 
@@ -47,12 +47,13 @@ directory different from `/usr/local/mlkit` by instead typing
   is available from the [MLKit home
   page](http://melsman.github.io/mlkit).
 
-## MLKit with Regions - The x64 Native Backend
+## MLKit - Native Backends
 
 This version of the compiler is based on region inference and has the
 following features:
 
-- An x64 native backend (works with Linux and macOS).
+- An X64 native backend for Linux and macOS, and an Arm64 native backend
+  for macOS on Apple Silicon.
 
 - Memory allocation directives (both allocation and deallocation) are
   inferred by the compiler, which uses a number of program analyses
@@ -67,6 +68,21 @@ following features:
 
 - Region inference may be augmented with reference-tracing garbage
   collection to achieve better memory behavior.
+
+## ReML
+
+ReML extends Standard ML with explicit regions, effects, and constraints on
+regions and effects. Programmers can express these annotations in their
+programs, and the compiler checks them alongside its region and effect
+inference.
+
+ReML supports both the X64 and Arm64 native backends. It is built alongside
+MLKit by `make mlkit` and is available as `bin/reml` in the build tree or
+`reml` after installation. See the [explicit-region examples and tests](test/explicit_regions)
+for examples of the language.
+
+ReML supports parallel threads, but does not currently support
+reference-tracing garbage collection.
 
 ## SMLtoJs - The JavaScript Backend
 
@@ -120,6 +136,10 @@ tools.
 
 ## Compilation
 
+For native Apple Silicon builds, follow
+[Native ARM64 on macOS](#native-arm64-on-macos) below. The following commands
+build the X64 backend.
+
 After having checked out the sources from Github, execute the command:
 ```bash
 $ ./autobuild
@@ -148,25 +168,66 @@ For binary packages, we use
 $ ./configure --sysconfdir=/etc --prefix=/usr
 ```
 
-### macOS runtime targets
+### Native ARM64 on macOS
 
-The default configuration builds the X64 runtime, including on Apple Silicon
-with Rosetta 2. To build the experimental native ARM64 runtime instead:
+To build native MLKit, ReML, and tools on an Apple Silicon Mac, you need
+Xcode command-line tools, Autoconf, and a working MLKit on `PATH`. An installed
+X64 MLKit can bootstrap the build using Rosetta 2. Use a checkout path without
+spaces and run these commands from the repository root:
 
 ```bash
-DARWIN_NATIVE=1 ./configure CC=gcc
-make runtime
+export SML_LIB="$PWD"
+./autobuild
+DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
+make -j3
 ```
 
-Use `DARWIN_NATIVE=0 ./configure CC=gcc` to switch back. Select the mode at
-configure time, not by overriding make variables. ARM compiler generation is
-available as an experimental subset through [Makefile.arm64](Makefile.arm64);
-see [ARM64 compiler instructions](doc/arm64-compiler.md). Full native-build
-and full-install targets remain disabled until language/runtime coverage
-is complete.
+The first compiler build uses the installed MLKit's own Basis library,
+cached objects, and matching runtime, so a `DARWIN_NATIVE=0` build is unnecessary. It produces an
+ARM-emitting bootstrap compiler at `bin/mlkit-arm64`, which then builds the
+native compilers. Compiler builds use `-gc`; the Makefile also configures the
+bootstrap compiler's larger stack automatically.
 
-See [the ARM64 runtime build and validation notes](doc/arm64-runtime.md) for
-artifact locations, SDK/toolchain setup, installation, and the test matrix.
+The native executables are available at the usual `bin/mlkit`, `bin/reml`,
+`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rp2ps` paths
+(linked to `bin/darwin-arm64`). Verify and run MLKit with:
+
+```bash
+lipo -archs bin/mlkit   # should print arm64
+bin/mlkit --version
+bin/mlkit             # start the REPL
+```
+
+Keep `SML_LIB` pointing at the checkout when using these build outputs. The
+bootstrap step selects its installed library separately, so this setting
+does not force the installed X64 compiler to use the checkout's runtime.
+To select a different bootstrap executable, pass
+`MLKIT_BOOTSTRAP=/path/to/mlkit` to `make`. For an unpacked
+seed whose library is not configured in an installed `mlb-path-map`, also
+pass `MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`.
+
+The standard targets work for both backends: `make mlkit` (also the default),
+`make build_basislibs` (an alias for `mlkit_basislibs`), `make mlkit_libs`,
+`make test`, `make bootstrap`, and `make install`. `make all` also builds
+SMLtoJs and its libraries. The configured `DARWIN_NATIVE` selects the backend;
+set it when running `configure`, not on the `make` command line.
+
+For a separate native installation in your home directory, add
+`--prefix="$HOME/mlkit-arm64"` to the configure command above, then run:
+
+```bash
+make build_basislibs
+make install
+export SML_LIB="$HOME/mlkit-arm64/lib/mlkit"
+"$HOME/mlkit-arm64/bin/mlkit"
+```
+
+Use a prefix without spaces. `make install` installs the previously built
+compilers, tools, and Basis caches; it also supports `DESTDIR` for packaging.
+
+See the [ARM64 compiler instructions](doc/arm64-compiler.md) for testing and
+bootstrap targets, and the [runtime notes](doc/arm64-runtime.md) for runtime
+variants and SDK/toolchain details.
 
 ## Pre-compile Basis Library and Kit-Library
 
@@ -201,14 +262,30 @@ $ make install
 
 ## Making a Binary Package
 
-To build a binary package, execute the command
+After configuring for the desired native backend, build the compilers and
+libraries, then create the package:
+
 ```bash
-$ make mlkit_x64_tgz
+$ make all
+$ make mlkit_bin_dist
 ```
 
-This command leaves a package `mlkit-X.Y.Z-x64.tgz` in the `dist/`
-directory. For building a binary package, the installation step above
-is not needed and the bootstrapping step is optional. The binary package includes both the MLKit with Regions compiler (i.e., the `mlkit` executable) and [SMLtoJs](/README_SMLTOJS.md) (i.e., an executables named `smltojs`).
+On macOS, configure with `DARWIN_NATIVE=1` for Arm64 or `DARWIN_NATIVE=0`
+(the default) for X64. Linux uses the X64 backend. The package is placed in
+`dist/` with a name determined by the configured platform and backend:
+
+| Platform and backend | Package |
+| --- | --- |
+| macOS Arm64 | `mlkit-bin-dist-darwin.tgz` |
+| macOS X64 | `mlkit-bin-dist-darwin-x64.tgz` |
+| Linux X64 | `mlkit-bin-dist-linux.tgz` |
+
+The package includes MLKit (`mlkit`), ReML (`reml`),
+[SMLtoJs](/README_SMLTOJS.md) (`smltojs`), supporting tools, runtime libraries,
+and precompiled Basis libraries. Installation is not required before
+packaging, and bootstrapping is optional. After unpacking the archive, run
+`make install` in the unpacked directory, optionally setting
+`PREFIX=/path/to/install`.
 
 ## Try It
 
@@ -249,21 +326,7 @@ and `man/man1`. License information is located in the file
 
 The MLKit has a number of [known bugs and limitations](http://elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
 
-## Appendix A: Directory Structure of the Sources
-
-    kit/
-       README
-       configure
-       Makefile.in
-       src/
-       basis/
-       doc/mlkit.pdf
-          /license/MLKit-LICENSE
-       man/man1/rp2ps.1
-       kitdemo/
-       test/
-
-## Appendix B: Quick Compilation and Installation Guide
+## Appendix A: Quick Compilation and Installation Guide
 
 We assume that MLton >= 20051202 is installed on the system as
 described above.
@@ -289,7 +352,3 @@ $ sudo make install
 ```
 
 See the section "Try It" above to test the installation.
-
-## Appendix C: Displaying Region Flow Graphs with VCG
-
-The [VCG tool](http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html) can be used to show region flow graphs.
