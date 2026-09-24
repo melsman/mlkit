@@ -1,5 +1,9 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.23 is released
+
+* mael 2026-09-24: Arm64 Native backend (PR #224, PR #227).
+
 * mael 2026-09-21: Additional ReML features, including region statistics and
   region control through the new Region structure; contributions by Mikkel
   Willén (PR #222).
