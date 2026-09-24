@@ -6,7 +6,7 @@ signature ENV = sig
   val pp : bool -> t -> string   (* bool specifies whether values are printed *)
   val pu : t Pickle.pu
 end
-                
+
 signature SMLTOJS_COMP = sig
   structure Env : ENV
   type modcode
@@ -23,7 +23,7 @@ structure SmlToJsComp : SMLTOJS_COMP = struct
   val dummyExn = IO.ClosedStream  (* force loading of IO.js file *)
   fun chat(s: string) = if !Flags.chat then print (s^"\n") else ()
 
-  structure E : EXECUTION 
+  structure E : EXECUTION
                     where type target = ExpToJs.Js * {exports: string list,
                                                       imports: string list}
     = ExecutionJS
@@ -72,7 +72,7 @@ structure SmlToJsComp : SMLTOJS_COMP = struct
 
   fun mlbdir() = "MLB/Js0"
 
-  structure IntModules = 
+  structure IntModules =
     IntModules(structure ManagerObjects = MO
                structure Execution = E
                structure ModCodeMini = ModCodeMini
@@ -90,36 +90,36 @@ structure SmlToJsComp : SMLTOJS_COMP = struct
   exception PARSE_ELAB_ERROR of ParseElab.ErrorCode.ErrorCode list
 
   fun compile (e:Env.t, src:string) : Env.t * modcode =
-      let 
+      let
         val _ = Flags.reset_warnings ()
         val mlbfile = mk_name()
         val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
         val _ = Name.bucket := []
         val _ = Name.baseSet mlbfile
         val (infB,elabB,oe,intB) = Basis.un e
-        val res = ParseElab.parse_elab 
+        val res = ParseElab.parse_elab
                       {absprjid=abs_mlbfile,
                        src=ParseElab.SrcString src,
-                       infB=infB, elabB=elabB} 
-      in case res of 
-           ParseElab.FAILURE (report, error_codes) => 
+                       infB=infB, elabB=elabB}
+      in case res of
+           ParseElab.FAILURE (report, error_codes) =>
            (  print "\n"
             ; print_error_report report
             ; raise PARSE_ELAB_ERROR error_codes)
-         | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
-           let 
+         | ParseElab.SUCCESS {doreport,infB=infB',elabB=elabB',topdec} =>
+           let
              val _ = chat "[opacity elimination begin...]"
              val (topdec', oe') = OpacityElim.opacity_elimination(oe, topdec)
              val _ = chat "[opacity elimination end...]"
              val _ = chat "[interpretation begin...]"
              val functor_inline = false
              val smlfile = mk_name()
-             val (intB', modc) = 
-                 IntModules.interp(functor_inline, abs_mlbfile, 
+             val (intB', modc) =
+                 IntModules.interp(functor_inline, abs_mlbfile,
                                    intB, topdec', smlfile)
              val _ = List.app Name.mk_rigid (!Name.bucket)
              val _ = Name.bucket := []
-             val _ = chat "[interpretation end...]"                      
+             val _ = chat "[interpretation end...]"
              val B' = Basis.mk(infB',elabB',oe',intB')
            in (B',modc)
            end
@@ -127,8 +127,8 @@ structure SmlToJsComp : SMLTOJS_COMP = struct
 
   fun execute mc = exec_mc mc
 
-  fun load_url _ = raise Fail "SmlToJsComp.load_url not implemented" 
-  fun link _ = raise Fail "SmlToJsComp.link not implemented" 
+  fun load_url _ = raise Fail "SmlToJsComp.load_url not implemented"
+  fun link _ = raise Fail "SmlToJsComp.link not implemented"
 
   val pp = pp_mc
 end

@@ -65,6 +65,7 @@ local
            basis W =
              bas
                WORD.sig Word32.sml Word8.sml Word31.sml
+	       Word64Dummy.sml
              end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end
@@ -96,7 +97,7 @@ local
     basis IntInf =
        let open General List ArrayVector String Word Int Real
        in bas ann safeLinkTimeElimination
-              in INT_INF.sml IntInf.sml
+              in INT_INF.sml IntInf.sml Int64Dummy.sml
               end
           end
        end
