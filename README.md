@@ -190,8 +190,9 @@ make -j3
 The first compiler build uses the installed MLKit's own Basis library,
 cached objects, and matching runtime. It produces a native bootstrap compiler
 at `bin/mlkit-arm64`, which then builds the native compilers. Compiler builds
-use `-gc`; the Makefile also configures the bootstrap compiler's larger stack
-automatically.
+use the default GC mode. The Makefile links the bootstrap compiler with a
+512 MiB stack for self-compilation (the ARM64 linker maximum), using
+`gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
 
 The native executables are available at the usual `bin/mlkit`, `bin/reml`,
 `bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rp2ps` paths
