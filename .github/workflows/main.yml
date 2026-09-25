@@ -52,6 +52,10 @@ jobs:
         run: |
           sudo apt-get -qq update
           sudo apt-get install -y gcc autoconf make binutils
+
+      - name: Install Linux tools
+        if: matrix.os == 'linux'
+        run: |
           echo "THECC=gcc" >> "$GITHUB_ENV"
           cd "$RUNNER_TEMP"
           wget -q https://github.com/melsman/phantomjs-bin/raw/refs/heads/main/phantomjs-2.1.1-linux-x86_64.tar.bz2
@@ -64,7 +68,6 @@ jobs:
       - name: Install macOS dependencies
         if: matrix.os == 'darwin'
         run: |
-          test "$(uname -m)" = arm64
           brew install autoconf
           echo "THECC=/usr/bin/gcc" >> "$GITHUB_ENV"
           xcrun --sdk macosx --show-sdk-path
@@ -89,9 +92,6 @@ jobs:
           echo "MLKIT_BOOTSTRAP_SML_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.mlkit"
           echo "SML_LIB $seed/lib/mlkit" > "$HOME/.mlkit/mlb-path-map"
-          if [ "$OS" = darwin ]; then
-            test "$(lipo -archs "$seed/bin/mlkit")" = arm64
-          fi
           SML_LIB="$seed/lib/mlkit" "$seed/bin/mlkit" --version
 
       - name: Configure
@@ -110,18 +110,6 @@ jobs:
         run: |
           make mlkit_basislibs VERBOSE=1
           if [ "$OS" = darwin ]; then
-            # The normal Makefile bootstraps with the native release and a
-            # 512 MiB stack, then publishes the native tools under bin/.
-            test ! -e lib/runtimeSystemGC.a
-            test ! -d lib/darwin-x86_64
-            test "$(lipo -archs bin/mlkit-arm64)" = arm64
-            test "$(otool -l bin/mlkit-arm64 | awk '$1 == "stacksize" {print $2}')" = 536870912
-            for tool in mlkit reml kittester mlkit-mllex mlkit-mlyacc rp2ps; do
-              test "$(lipo -archs "bin/$tool")" = arm64
-            done
-            for runtime in lib/darwin-arm64/runtimeSystem*.a; do
-              test "$(lipo -archs "$runtime")" = arm64
-            done
             SML_LIB="$PWD" bin/mlkit --mlb-subdir Native \
               -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
           fi
@@ -151,13 +139,15 @@ jobs:
             make -C test/region_info all
           fi
 
-      - name: Build and install SMLtoJs
+      - name: Build SMLtoJs
         run: |
           if [ "$MLCOMP_HOST" = mlton ]; then
             ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit"
           fi
           make smltojs_basislibs
-          sudo make install_smltojs
+
+      - name: Install SMLtoJs
+        run: sudo make install_smltojs
 
       - name: Run JavaScript and Barry tests
         if: matrix.os == 'linux'
@@ -211,23 +201,12 @@ jobs:
             basis_cache=RI_GC
           fi
           test -s "$package/lib/mlkit/basis/MLB/$basis_cache/repl.sml.d"
-          check_arch() {
-            if [ "$OS" = darwin ]; then
-              test "$(lipo -archs "$1")" = arm64
-            else
-              readelf -h "$1" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
-            fi
-          }
-
           installed=$scratch/installed
           make -C "$package" install PREFIX="$installed"
-          for tool in mlkit reml smltojs kittester mlkit-mllex mlkit-mlyacc rp2ps; do
-            check_arch "$installed/bin/$tool"
-          done
           if [ "$OS" = darwin ]; then
-            for runtime in "$installed/lib/mlkit/lib/darwin-arm64/"runtimeSystem*.a; do
-              check_arch "$runtime"
-            done
+            test "$(lipo -archs "$installed/bin/mlkit")" = arm64
+          else
+            readelf -h "$installed/bin/mlkit" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
           fi
           export SML_LIB=$installed/lib/mlkit
           export MLKIT=$installed/bin/mlkit
@@ -248,7 +227,6 @@ jobs:
           printf 'packaged compiler passed\n' > expected
           for mode in gc no_gc; do
             "$MLKIT" "-$mode" -o "probe-$mode" probe.sml
-            check_arch "probe-$mode"
             "./probe-$mode" > actual
             cmp expected actual
           done

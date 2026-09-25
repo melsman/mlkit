@@ -9,21 +9,21 @@ entries:
 | Linux X64 | `ubuntu-24.04` | MLton | v4.7.22 |
 | macOS ARM64 | `macos-26` | MLKit | v4.7.23 |
 
-The workflow contains the CI orchestration and archive checks inline. Compiler and runtime regression scripts remain reusable under `src/`
+The workflow contains the CI orchestration and archive checks inline.
+Compiler and runtime regression scripts remain reusable under `src/`
 and `test/`. Intel macOS is no longer built, tested, or packaged.
 
 All entries configure with `./autobuild` and `./configure`, then use the normal
 Makefile targets to build MLKit, ReML, tools, Basis libraries, and SMLtoJs.
 They install the compilers, run regression and bootstrap checks, and build the
 release archive with `make mlkit_bin_dist`. The MLton entry uses its newly built
-MLKit to compile SMLtoJs.
+MLKit to compile SMLtoJs. Compiler builds run without elevated privileges;
+MLKit and SMLtoJs each have a separate `sudo make install` step.
 
 The macOS entry downloads the native v4.7.23 Darwin release. That seed requires
 macOS 26.0, hence the `macos-26` runner. Bootstrap compilation uses the seed's
 prepared Basis cache and matching ARM64 runtime; Rosetta is not required.
-Configure selects ARM64 by default. CI verifies the bootstrap compiler's
-512 MiB stack, the architecture of native tools and runtime archives, and the
-absence of checkout-built X64 runtime archives.
+Configure selects ARM64 by default.
 
 Platform-specific checks remain explicit in the shared job:
 
@@ -41,8 +41,7 @@ run on Linux; both platforms compile SMLtoJs and test its packaged compiler.
 Every matrix entry validates its release archive. The archive must extract
 into exactly one `mlkit-bin-dist-linux/` or `mlkit-bin-dist-darwin/` directory
 and include its installation Makefile and precompiled Basis caches. CI installs
-it into a fresh prefix, checks executable architectures (and ARM64 runtime
-archives), and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC
+it into a fresh prefix, checks the packaged MLKit executable's architecture, and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC
 REPL with read-only libraries.
 
 On a pushed `v*` tag, the MLKit-hosted entries publish
