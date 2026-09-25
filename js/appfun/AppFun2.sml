@@ -35,15 +35,23 @@ struct
       in List.exists (fn s => String.isSubstring s a) touchDevices
       end
 
-  fun serverGet file =
-      let val file = file ^ "?_=" ^ Real.toString (Time.toReal(Time.now())) (* avoid cache *)
-          open Js.XMLHttpRequest
+  (* Static example files use normal HTTP caching. Never block the UI on I/O. *)
+  fun serverGet file success failure =
+      let open Js.XMLHttpRequest
           val r = new()
-          val () = openn r {method="GET",url=file,async=false}
-          val () = send r NONE
-      in case response r of
-             SOME res => res
-           | NONE => raise Fail ("serverGet failed on file " ^ file)
+          val finished = ref false
+          fun complete () =
+              if state r <> 4 orelse !finished then ()
+              else
+                (finished := true;
+                 case (status r, response r) of
+                     (SOME code, SOME body) =>
+                     if code >= 200 andalso code < 300 then success body
+                     else failure ("Failed to load " ^ file ^ " (HTTP " ^ Int.toString code ^ ")")
+                   | _ => failure ("Failed to load " ^ file))
+          val () = openn r {method="GET",url=file,async=true}
+          val () = onStateChange r complete
+      in send r NONE
       end
 
   val outarea = taga0 "textarea" [("readonly","readonly")]
@@ -121,51 +129,32 @@ struct
   fun logerr s = (notify_err s; log0 s)
   fun logwarn s = (notify_warn s; log0 s)
 
-  val topelem = Js.documentElement Js.document
+  (* Use element properties rather than sibling positions: the HTML shell
+   * contains whitespace and already has a body. Also support generated,
+   * unbundled pages, which may still execute scripts in the head. *)
+  val head = Js.Element.fromForeignPtr
+      (JsCore.exec0 {stmt="return document.head;",res=JsCore.fptr} ())
 
-  fun appendStyleLink path =
-      case Js.firstChild topelem of
-          SOME head =>
-          Js.appendChild head (taga0 "link" [("rel","stylesheet"), ("href", path)])
-        | NONE => raise Fail "appendStyleLink"
-
-  fun appendIconLink path =
-      case Js.firstChild topelem of
-          SOME head =>
-          Js.appendChild head (taga0 "link" [("rel","shortcut icon"), ("type","image/x-icon"), ("href", path)])
-        | NONE => raise Fail "appendStyleLink"
-
-  fun appendScript path =
-      case Js.firstChild topelem of
-          SOME head =>
-          Js.appendChild head (taga0 "script" [("type","text/javascript"), ("src", path)])
-        | NONE => raise Fail "appendScript"
-
-  fun cleanupBody () =
-      case Js.firstChild topelem of
-          SOME head =>
-          (case Js.nextSibling head of
-               SOME goodbody =>
-               (case Js.nextSibling goodbody of
-                    SOME badbody => Js.removeChild topelem badbody
-                  | NONE => raise Fail "cleanupBody")
-             | NONE => raise Fail "cleanupBody2")
-        | NONE => raise Fail "cleanupBody3"
+  fun appendLink rel path =
+      let val exists = JsCore.exec2
+              {stmt="return Array.prototype.some.call(document.querySelectorAll('link'), \
+                    \function(l) { return l.rel === rel && l.getAttribute('href') === path; });",
+               arg1=("rel",JsCore.string),arg2=("path",JsCore.string),res=JsCore.bool} (rel,path)
+      in if exists then ()
+         else Js.appendChild head (taga0 "link" [("rel",rel),("href",path)])
+      end
 
   fun createBody () =
-      case Js.firstChild topelem of
-          SOME head =>
-          ((case Js.nextSibling head of
-                SOME body => Js.removeChild topelem body
-              | NONE => ());
-           Js.appendChild topelem (taga0 "body" [("class","claro"), ("id", "body")]))
-        | NONE => raise Fail "createBody"
+      JsCore.exec0
+          {stmt="var b = document.body; \
+                \if (!b) { b = document.createElement('body'); document.documentElement.appendChild(b); } \
+                \b.classList.add('claro'); b.id = 'body';",
+           res=JsCore.unit} ()
 
-  val () = appendStyleLink "dijit/themes/claro/claro.css"
-  val () = appendStyleLink "js/codemirror/codemirror.css"
-  val () = appendScript "js/codemirror/sml.js"
-  val () = appendStyleLink "appfunstyle.css"
-  val () = appendIconLink "favicon.ico"
+  val () = appendLink "stylesheet" "dijit/themes/claro/claro.css"
+  val () = appendLink "stylesheet" "js/codemirror/codemirror.css"
+  val () = appendLink "stylesheet" "appfunstyle.css"
+  val () = appendLink "icon" "favicon.ico"
   val () = createBody ()
 
   fun getElem id : Js.elem =
@@ -173,7 +162,35 @@ struct
           SOME e => e
         | NONE => raise Fail "getElem"
 
-  val () = List.app appendScript X.script_paths
+  fun removeLoadingMessage () =
+      case Js.getElementById Js.document "smltojs-loading" of
+          SOME e => (case Js.parent e of SOME p => Js.removeChild p e | NONE => ())
+        | NONE => ()
+
+  fun mark name =
+      JsCore.exec1
+          {stmt="if (window.performance && performance.mark) performance.mark(name);",
+           arg1=("name",JsCore.string),res=JsCore.unit} name
+
+  fun loadScript path done =
+      let open JsCore infix ==>
+      in exec3
+          {stmt="var s = document.createElement('script'); s.src = path; \
+                \s.onload = function() { done(); }; \
+                \s.onerror = function() { failed('Failed to load ' + path + '. Please reload.'); }; \
+                \document.head.appendChild(s);",
+           arg1=("path",string),arg2=("done",unit ==> unit),
+           arg3=("failed",string ==> unit),res=unit} (path,done,logerr)
+      end
+
+  (* Preserve ordering within script_paths. Preloads in the HTML only
+   * fetch; these loaders execute. *)
+  fun loadScripts [] done = done()
+    | loadScripts (p::ps) done = loadScript p (fn () => loadScripts ps done)
+
+  val scriptsReady = ref false
+  val tryStart = ref (fn () => ())
+  val () = loadScripts X.script_paths (fn () => (scriptsReady := true; (!tryStart)()))
 
   type editor =
        {get: unit -> string,
@@ -375,24 +392,25 @@ struct
     end
 
     (* [loadFileContentFromServer f] loads the file f from the server *)
-    fun loadFileContentFromServer f =
+    fun loadFileContentFromServer f cont =
         case rev(String.tokens (fn c => c = #"/") f) of
-            x :: _ => let val c = serverGet ("otests/" ^ x ^ "_")
-                      in log ("loaded file " ^ qq f ^ " from server");
-                         c
-                      end
-          | _ => raise Fail ("failed to load server file content for " ^ f)
+            x :: _ => serverGet ("otests/" ^ x ^ "_")
+                        (fn c => (log ("loaded file " ^ qq f ^ " from server"); cont c)) logerr
+          | _ => logerr ("failed to load server file content for " ^ f)
 
     (* [loadFileContent filename cont] calls cont(SOME c) if the file filename
      * (with content c) is not already loaded in a tab. It calls cont(NONE)
-     * if the file is already in a tab. Raises (Fail msg) in case of
-     * error. *)
+     * if the file is already in a tab. Server request failures are
+     * reported in the message log without opening a tab. *)
 
     fun loadFileContent filename (cont:string option->unit) : unit =
         if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then
           (current := filename; cont NONE)
         else if isServerPath filename then
-          cont(SOME(loadFileContentFromServer filename))
+          loadFileContentFromServer filename
+            (fn c => if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then
+                       (current := filename; cont NONE)
+                     else cont (SOME c))
         else case !fileStore of
                  SOME fs =>
                  Dropbox.FileStore.content fs filename (fn c =>
@@ -634,9 +652,8 @@ struct
         end (*handle X as Fail msg => (logerr msg; raise X)*)
   end (* structure Files *)
 
-  val ftsServer =
-      let val content = serverGet "otests/content"
-          val content = String.translate (fn c => if Char.isSpace c then "" else String.str c) content
+  fun parseServerFiles content =
+      let val content = String.translate (fn c => if Char.isSpace c then "" else String.str c) content
           val lines = String.tokens (fn c => c = #";") content
           fun processFiles folder files =
               let val files = String.tokens (fn c => c = #",") files
@@ -652,9 +669,19 @@ struct
                   end
                 | [] => []
                 | _ => (logerr "syntax error in otests/content file"; [])
-      in [("id","Server"),("name","Server"),("kind","folder"),("parent","0")] ::
-         List.foldr (fn (l,a) => processLine l @ a) nil lines
+      in List.foldr (fn (l,a) => processLine l @ a) nil lines
       end
+
+  val serverFiles : (string * string) list list option ref = ref NONE
+  val serverStore : treeStore option ref = ref NONE
+  fun populateServer () =
+      case (!serverFiles, !serverStore) of
+          (SOME files, SOME store) =>
+          (serverFiles := NONE; List.app (treeStoreAdd store) files)
+        | _ => ()
+
+  val () = serverGet "otests/content"
+      (fn content => (serverFiles := SOME (parseServerFiles content); populateServer())) logerr
 
   fun addEditorTab (tabs,tmap) filename content =
       let val inarea = taga "textarea" [("style","border:0;")] ($content)
@@ -879,7 +906,9 @@ struct
 
   val everything =
       advTabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] >>= (fn (tabsmap,{select=selecttab,close=closetab}) =>
-      treeStore ([("id", "0"),("name","/"),("kind","folder")]::ftsServer) >>= (fn fts =>
+      treeStore [[("id","0"),("name","/"),("kind","folder")],
+                 [("id","Server"),("name","Server"),("kind","folder"),("parent","0")]] >>=
+      (fn fts => (serverStore := SOME fts; populateServer(); ret fts)) >>= (fn fts =>
       tree [("region", "left"),("splitter","true"),("style","width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
       menu tabsmap fts closetab >>= (fn top =>
       pane [("title","Output")] outareaDiv >>= (fn outputpane =>
@@ -895,24 +924,24 @@ struct
   val () = Js.appendChild (getElem "body") notifyAreaElem
   val () = Js.appendChild (getElem "body") dropboxAreaElem
 
-  val () = attachToElement (getElem "body") everything (fn () => ())
+  val uiReady = ref false
+  val started = ref false
+  fun startWhenReady () =
+      if !uiReady andalso !scriptsReady andalso not (!started) then
+        (started := true;
+         X.onloadhook {out=out};
+         ignore (Js.setInterval 10000 Files.autosave))
+      else ()
 
-  fun onload() =
-      let
-        val () = cleanupBody()
-        val () = outRef := outfun
-        val () = X.onloadhook {out=out}
-        val _ = Js.setInterval 10000 Files.autosave
-      in ()
-      end
-
-  fun setWindowOnload (f: unit -> unit) : unit =
-      let open JsCore infix ==>
-      in exec1{arg1=("a", unit ==> unit),
-               stmt="return window.onload=a;",
-               res=unit} f
-      end
-
-  val () = setWindowOnload onload
+  val () = outRef := outfun
+  val () = tryStart := startWhenReady
+  (* Load the CodeMirror mode before Dojo installs its AMD define function;
+   * otherwise the mode's UMD wrapper registers as an anonymous Dojo module. *)
+  val () = loadScript "js/codemirror/sml.js"
+      (fn () => attachToElement (getElem "body") everything
+          (fn () => (removeLoadingMessage();
+                     uiReady := true;
+                     mark "smltojs-ui-ready";
+                     startWhenReady())))
 
 end

@@ -36,10 +36,11 @@ favicon.ico: smltojs_logo_no_text.png
 SRC_ROOT=$(shell cd ..; pwd)
 SMLTOJS_LIB=$(SRC_ROOT)/js
 SMLTOJS=SML_LIB=$(SMLTOJS_LIB) $(SRC_ROOT)/bin/smltojs
-CODEMIRRORFLAGS=-jslibs "../../js/codemirror/codemirror.js"
+ONLINE_LIB_FLAGS=-jslibs "../../js/codemirror/codemirror.js" "../../js/online/loader.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js} js/doc/images/*.png
-DOJO=/Users/mael/dojo-release-1.9.1
+DOJO ?= /Users/mael/dojo-release-1.9.1
+TERSER = ./node_modules/.bin/terser
 
 IDE_BASISLIBS=Initial General Option List ListPair Vector VectorSlice	\
    Array ArraySlice Array2 ByteTable ByteSlice StringCvt String2	\
@@ -61,11 +62,10 @@ IDE_EXTRACODE=Array2-sml ArraySlice-sml-code1 ArraySlice-sml-code3	\
 IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 
 #
-# We bundle javascript files together in two bundles, one for code to
-# be used for starting the app (bundle.js) and one for holding basis
-# environment bindings and basis library code that the compiler is not
-# using (bundle_extra.js).  The bundle_extra.js file needs to be kept
-# in sync with the mentioned basislibs files in SmlToJsCompApp.sml.
+# The UI entry point comes first in smltojs0.mlb. package.mjs splits its
+# script prefix into bundle.js and the remaining compiler into bundle_compiler.js.
+# bundle_extra.js holds serialized Basis environments and additional runtime code;
+# keep its lists in sync with basislibs in SmlToJsCompiler.sml.
 #
 # Before running "make smltojsonline", make sure to run "make smltojs;
 # make smltojs_basislibs" in the parent directory; otherwise, certain
@@ -78,9 +78,14 @@ IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 #   python3 -m http.server 8000
 #
 
-smltojsonline: Makefile doc favicon.ico
+# Install the pinned minifier with "npm ci" in this directory first.
+.PHONY: check-online-tools
+check-online-tools:
+	@test -x $(TERSER) || { echo 'Run npm ci in js/ before building the online IDE.' >&2; exit 1; }
+
+smltojsonline: check-online-tools Makefile online/index.html online/terser.json online/loader.js online/package.mjs doc favicon.ico
 	rm -rf smltojsonline
-	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
+	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(ONLINE_LIB_FLAGS) -o index smltojs0.mlb)
 	mkdir -p smltojsonline
 	cp -p ../src/Compiler/index.html smltojsonline/
 	(cd ..; tar c `sed 's/.*src="\(.*\)".*/\1/g' < js/smltojsonline/index.html | grep '\.js'` $(THEBASISFILES) $(JSDOCFILES) $(CODEMIRRORFILES) | tar xv -C js/smltojsonline/)
@@ -92,16 +97,18 @@ smltojsonline: Makefile doc favicon.ico
 	cp -p otests/content smltojsonline/otests/
 	(cd otests; for f in `ls *.sml`; do cp -p $${f} ../smltojsonline/otests/$${f}_; done)
 	(cd otests; cp -p *.png ../smltojsonline/otests)
-	(cd smltojsonline; cat index.html | grep 'script type' | sed -e 's/^.*src=\"\([^"]*\)".*$$/\1/' | xargs cat > bundle.js)
-	(cd smltojsonline; mv index.html index-split.html)
-	(cd smltojsonline; echo '<script type="text/javascript" src="bundle.js"></script>' > index.html)
-	(cd smltojsonline; cat $(IDE_BASISLIBS_PATHS) $(IDE_EXTRACODE_PATHS) > bundle_extra.js)
+	node online/package.mjs smltojsonline
+	cp online/index.html smltojsonline/index.html
+	(cd smltojsonline; cat $(IDE_BASISLIBS_PATHS) $(IDE_EXTRACODE_PATHS) > bundle_extra.unminified.js)
+	$(TERSER) smltojsonline/bundle.unminified.js --config-file online/terser.json --output smltojsonline/bundle.js
+	$(TERSER) smltojsonline/bundle_compiler.unminified.js --config-file online/terser.json --output smltojsonline/bundle_compiler.js
+	$(TERSER) smltojsonline/bundle_extra.unminified.js --config-file online/terser.json --output smltojsonline/bundle_extra.js
 
 # Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
 # in the parent directory; otherwise, certain js-files are missing and will not be
 # part of the packaged tar-file.
 smltojs_web: Makefile doc
-	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
+	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(ONLINE_LIB_FLAGS) -o index smltojs0.mlb)
 	(cd ..; cp src/Compiler/index.html .)
 	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html js/appfun/style.css $(THEBASISFILES) js/smltojs_logo_color160.png $(JSDOCFILES) $(CODEMIRRORFILES))
 

@@ -1,6 +1,12 @@
-structure SmlToJsAppArg : APP_ARG = struct
-  open SmlToJsComp
+(* The UI and compiler share these callbacks without loading compiler code. *)
+structure SmlToJsBridge = struct
+  val compute : (string -> string -> unit) ref =
+      ref (fn _ => fn _ => print "[Compiler is still loading. Please try again shortly.]\n")
+  val initialize : ({out : string -> unit, ready : unit -> unit, failed : string -> unit} -> unit) ref =
+      ref (fn _ => raise Fail "Compiler did not register its initializer")
+end
 
+structure SmlToJsAppArg : APP_ARG = struct
   open Js.Element
   infix &
 
@@ -74,92 +80,23 @@ structure SmlToJsAppArg : APP_ARG = struct
        "val () = List.app fac [10,20,30,40]"
       ])
 
-  fun timeit f x =
-      let val rt = Timer.startRealTimer()
-        val res = f x
-        val t = Timer.checkRealTimer rt
-      in (res,t)
-      end
-
-  val basislibs = ["Initial","General","Option", "List", "ListPair",
-                   "Vector", "VectorSlice", "Array", "ArraySlice", "Array2", "ByteTable", "ByteSlice",
-                   "StringCvt", "String2", "Substring", "Text", "Bool", "IntInfRep",
-                   "Word32", "Word8", "Word31", "Pack32Little", "Pack32Big", "Byte",
-                   "Int32", "Int31",
-                   "Math", "Real",
-                   "IntInf",
-                   "Time", "Random", "Path", "Date", "Timer", "TextIO",
-                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "formlets", "utest"
-                  ]
-
-  val script_paths = ["bundle_extra.js"]
-(*
-      let fun basispath n = "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
-          fun implpath n = "js/basis/MLB/Js/" ^ n ^ ".js"
-      in List.map basispath basislibs @
-         List.map implpath ["Array2-sml","ArraySlice-sml-code1","ArraySlice-sml-code3",
-                            "VectorSlice-sml-code1","VectorSlice-sml-code3",
-                            "ByteTable-sml-code11","ByteTable-sml-code14","ByteTable-sml-code16",
-                            "ByteTable-sml-code17","ByteTable-sml-code20","ByteTable-sml-code22",
-                            "ByteTable-sml-code3","ByteTable-sml-code5","ByteTable-sml-code6",
-                            "ByteTable-sml-code9",
-                            "ByteSlice-sml-code1","ByteSlice-sml-code10","ByteSlice-sml-code12",
-                            "ByteSlice-sml-code3","ByteSlice-sml-code4","ByteSlice-sml-code6",
-                            "ByteSlice-sml-code7","ByteSlice-sml-code9",
-                            "Bool-sml", "Char-sml", "Byte-sml", "StrBase-sml", "Math-sml",
-                            "Html-sml","Rwp-sml",
-                            "Parsercomb-sml","XMLrpcClient-sml-code1",
-                            "XMLrpcClient-sml-code2", "XMLrpcClient-sml-code3","utest-sml"]
-      (* modules that are not used by SMLtoJs itself are not loaded
-       * and need to be mentioned here, so that they can be
-       * explicitly loaded! *)
-      end
-*)
-
-  val envRef : Env.t option ref = ref NONE
-
-  fun exnMsg (e:exn) : string = prim("execStmtJS", ("return e.toString()","e",e))
-
-  fun compute f inputstring =
-      let
-        fun load_env_all() =
-            case !envRef of
-              SOME e => e
-            | NONE => raise Fail "impossible: load_env_all"
-        val timing = true
-        val () = print ("[Compiling file " ^ f ^ "]\n")
-        fun printtime s t =
-            if timing then print ("[" ^ s ^ " time: " ^ Time.toString t ^ "]\n")
-            else ()
-        val e = load_env_all()
-        val ((e',mc),compiletime) = timeit compile (e,inputstring)
-        val _ = printtime "Compile" compiletime
-      in
-        let val () = print "[Executing]\n"
-            val ((),exectime) = timeit execute mc
-        in print "\n";
-           printtime "Execution" exectime
-        end handle ? => print ("Uncaught exception " ^ General.exnName ? ^ "\n")
-      end
-
+  val script_paths = []
   val computeLabel = "Compile->Run"
+  fun compute file source = (!SmlToJsBridge.compute) file source
 
   fun onloadhook {out : string -> unit} =
-      let
-        infix ++
-        fun e ++ e' = Env.plus (e,e')
-        fun load_env n =
-            let val () = out "."
-                val eb_s = JsCore.exec0{stmt="return " ^ n ^ "_sml_eb;",res=JsCore.string}()
-            (* val () = out ("Unpickling " ^ n ^ "\n") *)
-            in Pickle.unpickle Env.pu eb_s
-            end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)
-
-        fun load_envs e nil = (envRef := (SOME e); out " Done]\n")
-          | load_envs e (n::ns) =
-            (Js.setTimeout 0 (fn () => load_envs (e ++ load_env n) ns); ())
-      in out "[Loading Basis Library ";
-         load_envs (Env.initial()) basislibs
+      let open JsCore infix ==>
+          fun initialize () =
+              (!SmlToJsBridge.initialize)
+                  {out=out, ready=fn () => exec0
+                      {stmt="window.smltojsLoading.ready();",res=unit} (),
+                   failed=fn message => exec1
+                      {stmt="window.smltojsLoading.failed(message);",
+                       arg1=("message",string),res=unit} message}
+      in exec2
+          {stmt="window.smltojsLoading.start(initialize, report);",
+           arg1=("initialize",unit ==> unit),
+           arg2=("report",string ==> unit),res=unit} (initialize,out)
       end
 
   val dropboxKey = SOME "ybrud729cldjn66"

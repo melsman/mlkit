@@ -3,10 +3,24 @@ functor WordN(W : WORD) :> WORD =
     type word = W.word
     val wordSize = W.wordSize
     val toLarge = W.toLarge
-    val high = W.<<(W.fromInt ~1, Word.fromInt W.wordSize)
-    val low = W.xorb(W.fromInt ~1, high)
-    fun signextend w = if W.>> (w, Word.fromInt (wordSize - 1)) = W.fromInt 0 then w else W.orb(high,w)
-    fun norm w = W.andb(w,low)
+    (* SMLtoJs uses a dummy Word64 when hosting the compiler. Constructing
+       its unused W63 helper must not invoke Word64 operations at startup.
+       Cache the masks on first use, retaining the native implementation. *)
+    val masks : (word * word) option ref = ref NONE
+    fun getMasks () =
+        case !masks of
+            SOME pair => pair
+          | NONE =>
+            let val high = W.<<(W.fromInt ~1, Word.fromInt W.wordSize)
+                val low = W.xorb(W.fromInt ~1, high)
+                val pair = (high,low)
+            in masks := SOME pair;
+               pair
+            end
+    fun high () = #1 (getMasks())
+    fun low () = #2 (getMasks())
+    fun signextend w = if W.>> (w, Word.fromInt (wordSize - 1)) = W.fromInt 0 then w else W.orb(high(),w)
+    fun norm w = W.andb(w,low())
     val toLargeX = W.toLargeX o signextend
     val toLargeWord = toLarge
     val toLargeWordX = toLargeX
@@ -45,8 +59,8 @@ functor WordN(W : WORD) :> WORD =
 
     val fmt = W.fmt
     val toString = W.toString
-    fun scan r gc s = let val v = W.scan r gc s in Option.map (fn (w,r) => if W.andb(w,high) = W.fromInt 0 then (w,r) else raise Overflow) v end
-    fun fromString s = let val v = W.fromString s in Option.map (fn w => if W.andb(w,high) = W.fromInt 0 then w else raise Overflow) v end
+    fun scan r gc s = let val v = W.scan r gc s in Option.map (fn (w,r) => if W.andb(w,high()) = W.fromInt 0 then (w,r) else raise Overflow) v end
+    fun fromString s = let val v = W.fromString s in Option.map (fn w => if W.andb(w,high()) = W.fromInt 0 then w else raise Overflow) v end
   end
 (*
 structure Word30 = WF(struct open Word val wordSize = 30 end)
