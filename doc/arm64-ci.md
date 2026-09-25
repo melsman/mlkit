@@ -22,7 +22,9 @@ MLKit and SMLtoJs each have a separate `sudo make install` step.
 
 The macOS entry downloads the native v4.7.23 Darwin release. That seed requires
 macOS 26.0, hence the `macos-26` runner. Bootstrap compilation uses the seed's
-prepared Basis cache and matching ARM64 runtime; Rosetta is not required.
+prepared Basis cache and matching ARM64 runtime to build MLKit, ReML, and
+the SML tools directly, without an intermediate compiler build. Rosetta is
+not required.
 Configure selects ARM64 by default.
 
 Platform-specific checks remain explicit in the shared job:

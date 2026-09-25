@@ -31,13 +31,16 @@ compiler's library is not configured in its installed `mlb-path-map`, also set
 release. The seed needs a prepared GC Basis cache when its installation is
 read-only. Do not add a cache suffix to the bootstrap flags in that case.
 
-`MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc`; on macOS it also selects ARM64 linking
-and a 512 MiB stack for the generated host compiler, avoiding stack
-exhaustion during native compiler compilation. It can be overridden explicitly.
+Compiler builds use the seed's default GC mode. On macOS,
+`MLKIT_BOOTSTRAP_FLAGS` selects ARM64 linking and a 512 MiB stack for the
+generated executables, avoiding stack exhaustion during self-compilation.
+It can be overridden explicitly.
 The low-level `Makefile.arm64` targets `mlkit`, `reml`, and `emitter` produce
-ARM-emitting executables on the host compiler's architecture. `native` produces ARM64 MLKit and ReML in
-`bin/darwin-arm64`; `native-tools` adds the native tools. `make arm64_compilers`
-remains a shortcut for the initial MLKit/ReML host builds.
+native ARM64 executables at `bin/mlkit-arm64`, `bin/reml-arm64`, and
+`bin/arm64-emitter-test`. `native` builds
+MLKit and ReML directly with the installed native seed in `bin/darwin-arm64`;
+`native-tools` builds the tools with that same seed. `make arm64_compilers`
+remains a shortcut for the low-level MLKit/ReML builds.
 
 With `DARWIN_NATIVE=1`, the normal Makefile delegates compiler/tool builds to
 `Makefile.arm64` and publishes the native executables at the standard `bin/*`
@@ -207,9 +210,13 @@ make -f Makefile.arm64 bootstrap
 make -f Makefile.arm64 native-install
 ```
 
-These targets default to `bin/mlkit-arm64` as the ARM-emitting compiler; set
-`ARM64_COMPILER` to another ARM-emitting or native MLKit if needed. Compiler
-and SML tool builds explicitly use `-gc`. `ARM64_NATIVE_BIN` defaults to
+The build targets default to `MLKIT_BOOTSTRAP` as the native seed; set
+`ARM64_COMPILER` to override it, and `MLKIT_BOOTSTRAP_SML_LIB` to select its
+matching installed libraries when needed. The seed directly builds both
+compilers and the SML tools, using its default GC mode and prepared Basis
+cache. The separate `bootstrap` target starts from the resulting
+`bin/darwin-arm64/mlkit` and retains the three-stage fixed-point check.
+`ARM64_NATIVE_BIN` defaults to
 `bin/darwin-arm64`, and `ARM64_PREFIX` to `stage/darwin-arm64`. The installation
 copies only verified ARM binaries and runtime archives and rebuilds Basis
 caches using the installed compiler. Set `SML_LIB` to the installed prefix when

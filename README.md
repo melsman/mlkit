@@ -187,10 +187,10 @@ export SML_LIB="$PWD"
 make -j3
 ```
 
-The first compiler build uses the installed MLKit's own Basis library,
-cached objects, and matching runtime. It produces a native bootstrap compiler
-at `bin/mlkit-arm64`, which then builds the native compilers. Compiler builds
-use the default GC mode. The Makefile links the bootstrap compiler with a
+The installed native MLKit builds MLKit, ReML, and the SML tools directly,
+using its own Basis library, cached objects, and matching runtime. There is
+no intermediate compiler build. Compiler builds use the default GC mode.
+The Makefile links the generated executables with a
 512 MiB stack for self-compilation (the ARM64 linker maximum), using
 `gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
 
