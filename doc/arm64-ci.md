@@ -9,8 +9,7 @@ entries:
 | Linux X64 | `ubuntu-24.04` | MLton | v4.7.22 |
 | macOS ARM64 | `macos-26` | MLKit | v4.7.23 |
 
-The workflow contains the CI orchestration, archive checks, and log collection
-inline. Compiler and runtime regression scripts remain reusable under `src/`
+The workflow contains the CI orchestration and archive checks inline. Compiler and runtime regression scripts remain reusable under `src/`
 and `test/`. Intel macOS is no longer built, tested, or packaged.
 
 All entries configure with `./autobuild` and `./configure`, then use the normal
@@ -51,12 +50,11 @@ On a pushed `v*` tag, the MLKit-hosted entries publish
 The MLton entry validates its archive but does not publish a release asset.
 No Darwin X64 package is produced.
 
-Each entry runs in a separate VM with its own temporary directory. Logs and
-test reports are collected without following test symlinks and uploaded even
-on failure as `logs-<platform>-<host compiler>`. Successful archives are also
-uploaded as `mlkit-bin-dist-<platform>-<host compiler>`. No caches are restored
-from another run. Native fixture output is retained with
-`ARM64_KEEP_TEST_OUTPUTS=1`.
+Each entry runs in a separate VM and uses the runner's temporary directory.
+Build and test output is available in the normal GitHub Actions step logs;
+there is no separate log collection or upload. Successful archives are uploaded
+as `mlkit-bin-dist-<platform>-<host compiler>`. No caches are restored from
+another run.
 
 To install a release, unpack it, enter its top-level directory, and run
 `make install`, optionally with `PREFIX=/path/to/install`. Use a space-free

@@ -47,13 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up build directories
-        run: |
-          ci_root="$RUNNER_TEMP/mlkit-$OS-$MLCOMP_HOST"
-          mkdir -p "$ci_root/logs" "$ci_root/tmp" "$ci_root/seed"
-          echo "CI_ROOT=$ci_root" >> "$GITHUB_ENV"
-          echo "TMPDIR=$ci_root/tmp" >> "$GITHUB_ENV"
-
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
         run: |
@@ -86,11 +79,12 @@ jobs:
 
       - name: Install released MLKit seed
         run: |
+          mkdir -p "$RUNNER_TEMP/seed"
           curl --fail --location --retry 3 \
             "https://github.com/melsman/mlkit/releases/download/$SEED_VERSION/mlkit-bin-dist-$OS.tgz" \
-            -o "$CI_ROOT/seed.tgz"
-          tar -xzf "$CI_ROOT/seed.tgz" -C "$CI_ROOT/seed"
-          seed="$CI_ROOT/seed/mlkit-bin-dist-$OS"
+            -o "$RUNNER_TEMP/seed.tgz"
+          tar -xzf "$RUNNER_TEMP/seed.tgz" -C "$RUNNER_TEMP/seed"
+          seed="$RUNNER_TEMP/seed/mlkit-bin-dist-$OS"
           echo "$seed/bin" >> "$GITHUB_PATH"
           echo "MLKIT_BOOTSTRAP_SML_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.mlkit"
@@ -102,7 +96,6 @@ jobs:
 
       - name: Configure
         run: |
-          exec > >(tee "$CI_ROOT/logs/configure.log") 2>&1
           ./autobuild
           "$THECC" --version
           if [ "$MLCOMP_HOST" = mlton ]; then
@@ -115,7 +108,6 @@ jobs:
       - name: Build MLKit, ReML, tools, and Basis libraries
         timeout-minutes: 240
         run: |
-          exec > >(tee "$CI_ROOT/logs/build.log") 2>&1
           make mlkit_basislibs VERBOSE=1
           if [ "$OS" = darwin ]; then
             # The normal Makefile bootstraps with the native release and a
@@ -139,12 +131,10 @@ jobs:
 
       - name: Run compiler and runtime regression tests
         run: |
-          exec > >(tee "$CI_ROOT/logs/tests.log") 2>&1
           if [ "$OS" = darwin ]; then
             export SML_LIB="$PWD"
             export MLKIT_ARM64="$PWD/bin/mlkit" REML_ARM64="$PWD/bin/reml"
             export ARM64_EMITTER="$PWD/bin/arm64-emitter-test" KITTESTER="$PWD/bin/kittester"
-            export ARM64_KEEP_TEST_OUTPUTS=1
             tests=src/Compiler/Backend/Arm64/tests
             sh "$tests/check-native.sh"
             sh "$tests/check-parallel.sh"
@@ -163,7 +153,6 @@ jobs:
 
       - name: Build and install SMLtoJs
         run: |
-          exec > >(tee "$CI_ROOT/logs/smltojs.log") 2>&1
           if [ "$MLCOMP_HOST" = mlton ]; then
             ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit"
           fi
@@ -173,7 +162,6 @@ jobs:
       - name: Run JavaScript and Barry tests
         if: matrix.os == 'linux'
         run: |
-          exec > >(tee "$CI_ROOT/logs/js-barry.log") 2>&1
           export OPENSSL_CONF=/dev/null
           make -C js/test test
           make barry
@@ -181,7 +169,6 @@ jobs:
 
       - name: Test bootstrap fixed point
         run: |
-          exec > >(tee "$CI_ROOT/logs/bootstrap.log") 2>&1
           if [ "$OS" = darwin ]; then
             SML_LIB="$PWD" BOOTSTRAP_COMPILER="$PWD/bin/mlkit" \
               sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
@@ -192,18 +179,14 @@ jobs:
       - name: Test native installation across runtime modes
         if: matrix.os == 'darwin'
         run: |
-          exec > >(tee "$CI_ROOT/logs/install.log") 2>&1
-          SML_LIB="$PWD" ARM64_NATIVE_BIN="$PWD/bin" ARM64_PREFIX="$CI_ROOT/install" \
+          SML_LIB="$PWD" ARM64_NATIVE_BIN="$PWD/bin" ARM64_PREFIX="$RUNNER_TEMP/install" \
             sh src/Compiler/Backend/Arm64/tests/install-native.sh
 
       - name: Build binary distribution
-        run: |
-          exec > >(tee "$CI_ROOT/logs/package-build.log") 2>&1
-          make mlkit_bin_dist
+        run: make mlkit_bin_dist
 
       - name: Install and test the release archive
         run: |
-          exec > >(tee "$CI_ROOT/logs/package.log") 2>&1
           root=$(pwd)
           package_name=mlkit-bin-dist-$OS
           archive=$PWD/dist/$package_name.tgz
@@ -273,47 +256,6 @@ jobs:
           test -s probe-js.html
           sh "$root/test/repl/check-installed.sh"
           echo "$OS release archive passed"
-
-      - name: Stage logs without following test symlinks
-        if: always()
-        run: |
-          python3 - <<'PYLOG'
-          import os
-          from pathlib import Path
-          import shutil
-
-          root = Path(os.environ["CI_ROOT"])
-          destination = root / "reports"
-          suffixes = {".log", ".html", ".res", ".mlbres", ".out", ".err"}
-          names = {"TESTmessages", "complog.txt"}
-          workspace = Path.cwd()
-          directories = [(root / "logs", root), (root / "tmp", root)]
-          directories += [(workspace / name, workspace) for name in ("test", "test_dev", "js/test")]
-          for directory, base in directories:
-              for current, dirs, files in os.walk(directory, followlinks=False):
-                  dirs[:] = [name for name in dirs if not (Path(current) / name).is_symlink()]
-                  for name in files:
-                      source = Path(current) / name
-                      if source.is_symlink() or not source.is_file():
-                          continue
-                      if directory.name != "logs" and source.suffix not in suffixes and name not in names:
-                          continue
-                      target = destination / source.relative_to(base)
-                      target.parent.mkdir(parents=True, exist_ok=True)
-                      shutil.copy2(source, target)
-          config = Path("config.log")
-          if config.is_file():
-              destination.mkdir(parents=True, exist_ok=True)
-              shutil.copy2(config, destination / config.name)
-          PYLOG
-
-      - name: Retain logs and test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-${{ matrix.platform }}-${{ matrix.mlcomp }}
-          path: ${{ env.CI_ROOT }}/reports/
-          retention-days: 14
 
       - name: Retain binary distribution
         uses: actions/upload-artifact@v4
