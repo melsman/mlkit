@@ -94,8 +94,8 @@ an explicit `-no_gc` flag is unnecessary and rejected; omit it.
   to C. Exported callbacks and shared-library entries use a separate bridge
   preserving x19–x30 and d8–d15.
 - `ExecutionArm64` assembles with `gcc -arch arm64 -c` and links with
-  `gcc -arch arm64`. The output cache is `MLB/ARM64_FD2_<variant>` for GC and
-  `MLB/ARM64_<variant>` otherwise, distinct from X64 while preserving the manager's two-component cache-directory shape.
+  `gcc -arch arm64`. The output cache is `MLB/ARM64_<variant>`, distinct from X64
+  while preserving the manager's two-component cache-directory shape.
 - `nativearm64.mlb`, `mlkitarm64.mlb`, and `remlarm64.mlb` select the backend
   explicitly. The X64 configurations continue to select X64.
 

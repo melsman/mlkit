@@ -5,7 +5,7 @@
     "fmov": 4114,
     "four_instruction_fp_sequences": 635,
     "assembly_sha256": "1e4a0af22ac65f2728ce5d7029aeab23ece96c3ceb001eb1fc58e7260fe488e4",
-    "path": "/private/tmp/mlkit-m12-jump/artifact/nucleic/MLB/ARM64_FD2_RI_GC_M12Inline/nucleic.sml.s",
+    "path": "/private/tmp/mlkit-m12-jump/artifact/nucleic/MLB/ARM64_RI_GC_M12Inline/nucleic.sml.s",
     "opcodes": {
       "orr": 2268,
       "mov": 18803,
@@ -56,7 +56,7 @@
     "fmov": 1424,
     "four_instruction_fp_sequences": 0,
     "assembly_sha256": "d8dec6e784c208919cd9c0cb48a78e4aad4c3dc2974ed6debbd040d079e292ac",
-    "path": "/private/tmp/mlkit-m12-operands/artifact/nucleic/MLB/ARM64_FD2_RI_GC_M12Inline/nucleic.sml.s",
+    "path": "/private/tmp/mlkit-m12-operands/artifact/nucleic/MLB/ARM64_RI_GC_M12Inline/nucleic.sml.s",
     "opcodes": {
       "orr": 2268,
       "mov": 18162,

@@ -164,7 +164,7 @@ algorithm. Their absence should no longer be used to explain performance.
    contracts for GC, exceptions, callbacks and profiling.
 
 The static nucleic check used the existing JumpTables benchmark artifact at
-`/private/tmp/mlkit-m12-jump/artifact/nucleic/MLB/ARM64_FD2_RI_GC_M12Inline/nucleic.sml.s`.
+`/private/tmp/mlkit-m12-jump/artifact/nucleic/MLB/ARM64_RI_GC_M12Inline/nucleic.sml.s`.
 That source unit contains 93,688 instruction lines, 18,803 `mov` instructions,
 4,114 `fmov` instructions, 635 adjacent four-instruction scratch FP arithmetic
 sequences, 2,330 expanded conditional sites, and 54 inline calls to `_gc`.

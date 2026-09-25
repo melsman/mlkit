@@ -239,8 +239,7 @@ unloading path must unregister the image before `dlclose` and ensure no live
 frame points into it; an unregister operation is provided and tested. X64 keeps
 its existing stack walk and contiguous static-data classification.
 
-GC object caches use the `ARM64_FD2_` prefix to exclude objects with the older
-return-PC index ABI. The runtime registration entry point is renamed to
+ARM64 object caches use the `ARM64_` prefix. The runtime registration entry point is
 `mlkit_arm64_register_static_image`, so mixing the old compiler and new runtime
 (or vice versa) fails at link time. Rebuild the ARM runtime when upgrading.
 

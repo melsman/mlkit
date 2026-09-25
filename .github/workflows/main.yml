@@ -196,7 +196,7 @@ jobs:
           package=$scratch/$package_name
           test -f "$package/Makefile"
           if [ "$OS" = darwin ]; then
-            basis_cache=ARM64_FD2_RI_GC
+            basis_cache=ARM64_RI_GC
           else
             basis_cache=RI_GC
           fi
