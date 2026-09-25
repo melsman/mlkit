@@ -295,8 +295,11 @@ jobs:
       - name: Three-stage native bootstrap fixed point
         run: bash .github/scripts/arm64.sh bootstrap 2>&1 | tee "$ARM64_CI_ROOT/logs/bootstrap.log"
 
-      - name: Stage, test, and package native installation
+      - name: Stage and test native installation
         run: bash .github/scripts/arm64.sh install 2>&1 | tee "$ARM64_CI_ROOT/logs/install.log"
+
+      - name: Build and test native release archive
+        run: bash .github/scripts/arm64.sh package 2>&1 | tee "$ARM64_CI_ROOT/logs/package.log"
 
       - name: Stage logs without following test symlinks
         if: always()

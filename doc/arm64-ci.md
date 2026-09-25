@@ -31,7 +31,13 @@ The phases in `.github/scripts/arm64.sh` perform:
 5. Three fresh native bootstrap stages and a stripped stage-two/stage-three
    fixed-point comparison.
 6. Staged native installation tests across runtime modes, installed generator
-   checks, and an archive of the tested installation.
+   checks, and profiling-tool checks.
+7. Standard `make all` and `make mlkit_bin_dist` packaging, including native
+   SMLtoJs and precompiled Basis libraries. The archive must contain exactly
+   one top-level `mlkit-bin-dist-darwin/` directory. CI extracts that archive,
+   installs it into a fresh prefix, checks executable/runtime architectures,
+   and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC REPL
+   with read-only libraries.
 
 Argobots remains optional and is not provisioned by these jobs. The ARM jobs do
 not run the X64 distribution's JS/PhantomJS tests; the existing jobs retain
@@ -48,8 +54,11 @@ from another run. Test scratch directories respect `TMPDIR`; CI retains native
 fixture output with `ARM64_KEEP_TEST_OUTPUTS=1`. Logs and HTML test reports are
 uploaded even on failure, under `logs-darwin-arm64-mlkit`. Successful
 installations are uploaded as `mlkit-bin-dist-darwin-arm64-mlkit`.
-Basis caches are excluded from the archive so they rebuild at the destination.
-Unpack a distribution to a space-free prefix and set `SML_LIB` to that prefix.
+The archive includes its installation Makefile and Basis caches. Unpack it,
+enter `mlkit-bin-dist-darwin/`, and run `make install` (optionally with
+`PREFIX=/path/to/install`). Use a space-free prefix; for a custom prefix,
+follow the installer's library-path instructions. The development installation
+checked in phase 6 is separate from the release archive tested in phase 7.
 
 Local workflow validation uses actionlint, shell syntax checks, and the native
 suite with CI log retention enabled. Hosted run outcomes are tracked on PR #224;

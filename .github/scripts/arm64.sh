@@ -80,10 +80,13 @@ case "${1:?Specify a CI phase}" in
     ;;
   install)
     ARM64_NATIVE_BIN="$native" ARM64_PREFIX="$prefix" sh "$tests/install-native.sh"
-    mkdir -p dist
-    tar --exclude=MLB --exclude=.arm64-install-prefix \
-      -czf "dist/mlkit-bin-dist-darwin.tgz" \
-      -C "$prefix" .
+    ;;
+  package)
+    make all \
+      ARM64_COMPILER="$seed/mlkit" ARM64_CACHE="$cache" \
+      ARM64_NATIVE_BIN="$native" ARM64_BUILD="$ARM64_CI_ROOT/rp2ps"
+    make mlkit_bin_dist
+    bash .github/scripts/check-arm64-package.sh "$root/dist/mlkit-bin-dist-darwin.tgz"
     ;;
   *) echo "Unknown CI phase: $1" >&2; exit 1 ;;
 esac
