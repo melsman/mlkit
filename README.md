@@ -16,14 +16,17 @@ Basis Library](http://elsman.com/mlkit/basis.html).
 
 ## Installation
 
-Under macOS, MLKit is available through Homebrew: Just execute `brew
-install mlkit`. Under Linux, you may download the latest binary
-tgz-distribution of MLKit from
-https://github.com/melsman/mlkit/releases/latest
+MLKit is not currently available through Homebrew. For macOS and Linux,
+download a binary distribution from the
+[latest GitHub release](https://github.com/melsman/mlkit/releases/latest):
+
+- macOS on Apple Silicon: `mlkit-bin-dist-darwin.tgz`.
+- macOS on Intel: `mlkit-bin-dist-darwin-x64.tgz`.
+- Linux on X64: `mlkit-bin-dist-linux.tgz`.
 
 Once downloaded and unpacked, execute `make install` from within the
 top-directory of the unpacked distribution. You may install MLKit in a
-directory different from `/usr/local/mlkit` by instead typing
+directory different from `/usr/local` by instead typing
 `PREFIX=myinstallpath make install`.
 
 ## Features
