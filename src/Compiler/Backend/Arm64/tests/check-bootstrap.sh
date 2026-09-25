@@ -8,10 +8,6 @@ BOOTSTRAP_JOBS=${BOOTSTRAP_JOBS:-1}
 case "$BOOTSTRAP_TARGET" in
   arm64) source=mlkitarm64.mlb
     default_linker='gcc -arch arm64 -Wl,-stack_size,0x10000000' ;;
-  x86_64) source=mlkit64.mlb
-    # Match the existing X64 bootstrap rule: the new linker can reorder GOT
-    # entries between otherwise identical links.
-    default_linker='gcc -arch x86_64 -Wl,-ld_classic,-stack_size,0x10000000' ;;
   *) echo 'Unsupported bootstrap target' >&2; exit 1 ;;
 esac
 BOOTSTRAP_LINKER=${BOOTSTRAP_LINKER:-$default_linker}

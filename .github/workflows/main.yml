@@ -1,323 +1,244 @@
-# This is the MLKit main workflow for building and testing the MLKit
-# on various architectures.  The workflow contains a job called
-# "build-test-deploy". It is triggered on push or pull request events
-# on the master branch. It is also triggered when a tag is pushed, in
-# which case a binary distribution is deployed. Both MLKit and MLton host
-# builds are tested, with separate X64 and native Apple Silicon jobs.
-
+# Linux X64 and macOS ARM64 share the same build, package, and release pipeline.
 name: CI
 
 on:
-
   push:
-    branches: [ master ]
-
-    tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-
+    branches: [master]
+    tags: ['v*']
   pull_request:
-    branches: [ master ]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: [master]
   workflow_dispatch:
 
+# A new PR revision supersedes every matrix job from its previous run.
+# Other events use a unique run ID so releases and master builds finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-
   build-test-deploy:
+    name: ${{ matrix.platform }} (${{ matrix.mlcomp }})
     permissions:
       contents: write
-
-    strategy:
-      matrix:
-        # MLKit emits x86-64 assembly; use an Intel macOS runner.
-        os: [ubuntu-24.04, macos-15-intel]
-        mlcomp: [mlkit, mlton]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-
-      - uses: actions/checkout@v4
-
-      - name: Setup environment
-        run: |
-          echo "OS=$(uname -s | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-          echo "RUNHOME=$(echo $HOME)" >> $GITHUB_ENV
-          if [ "$(uname -s)" = Darwin ]; then
-            echo "DIST_SUFFIX=-x64" >> "$GITHUB_ENV"
-          else
-            echo "DIST_SUFFIX=" >> "$GITHUB_ENV"
-          fi
-
-      - name: Install dependencies (linux)
-        if: ${{ env.OS == 'linux' }}
-        run: |
-          sudo apt-get -qq update
-          sudo apt-get install -y gcc autoconf make
-          echo "THECC=gcc" >> $GITHUB_ENV
-          mkdir phantomjs
-          cd phantomjs
-          wget -q https://github.com/melsman/phantomjs-bin/raw/refs/heads/main/phantomjs-2.1.1-linux-x86_64.tar.bz2
-          tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
-          cp -p phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/
-          cd ..
-
-      - name: Install dependencies (linux, mlton)
-        if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
-        working-directory: ${{ env.RUNHOME }}
-        run: |
-          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
-          wget -q https://github.com/MLton/mlton/releases/download/on-20241230-release/mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
-          tar xzf mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
-          echo "$HOME/mlton-20241230-1.amd64-linux.ubuntu-24.04_static/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies (macos)
-        if: ${{ env.OS == 'darwin' }}
-        run: |
-          test "$(uname -m)" = x86_64
-          # Use the runner's Intel Homebrew and a versioned GNU compiler.
-          brew install gcc@15 autoconf make
-          echo "THECC=$(brew --prefix gcc@15)/bin/gcc-15" >> "$GITHUB_ENV"
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
-          mkdir phantomjs
-          cd phantomjs
-          wget -q https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip
-          unzip phantomjs-2.1.1-macosx.zip
-          cp -p phantomjs-2.1.1-macosx/bin/phantomjs /usr/local/bin/
-          cd ..
-
-      - name: Install dependencies (macos, mlton)
-        if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
-        run: |
-          echo "THECC: ${{env.THECC}}"
-          "$THECC" --version
-          brew install mlton
-
-      - name: Check macOS compiler architecture
-        if: ${{ env.OS == 'darwin' }}
-        run: |
-          "$THECC" --version
-          case "$("$THECC" -dumpmachine)" in
-            x86_64-apple-darwin*) ;;
-            *) echo "Expected an x86-64 Darwin GCC target" >&2; exit 1 ;;
-          esac
-          printf 'int main(void) { return 0; }\n' > "$RUNNER_TEMP/check-cc.c"
-          "$THECC" -c "$RUNNER_TEMP/check-cc.c" -o "$RUNNER_TEMP/check-cc.o"
-          test "$(lipo -archs "$RUNNER_TEMP/check-cc.o")" = x86_64
-          "$THECC" "$RUNNER_TEMP/check-cc.o" -o "$RUNNER_TEMP/check-cc"
-          "$RUNNER_TEMP/check-cc"
-
-      - name: Install MLKit and smlpkg
-        working-directory: ${{ env.RUNHOME }}
-        run: |
-          echo "[OS: $OS, HOME: $RUNHOME, THECC: ${{env.THECC}}]"
-          wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-${{env.OS}}.tgz
-          tar xzf smlpkg-bin-dist-${{env.OS}}.tgz
-          echo "$HOME/smlpkg-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          wget -q https://github.com/melsman/mlkit/releases/download/v4.7.22/mlkit-bin-dist-${{env.OS}}.tgz
-          tar xzf mlkit-bin-dist-${{env.OS}}.tgz
-          echo "$HOME/mlkit-bin-dist-${{env.OS}}/bin" >> $GITHUB_PATH
-          mkdir -p .mlkit
-          echo "SML_LIB $HOME/mlkit-bin-dist-${{env.OS}}/lib/mlkit" > .mlkit/mlb-path-map
-
-      - name: Check MLton
-        if: ${{ matrix.mlcomp == 'mlton' }}
-        run: |
-          mlton
-          echo 'github.event_name: ' ${{ github.event_name }}
-          echo 'github.ref: ' ${{ github.ref }}
-
-      - name: Check MLKit
-        if: ${{ matrix.mlcomp == 'mlkit' }}
-        run: |
-          mlkit --version
-          smlpkg --version
-          echo 'github.event_name: ' ${{ github.event_name }}
-          echo 'github.ref: ' ${{ github.ref }}
-
-      - name: Configure With MLton
-        if: ${{ matrix.mlcomp == 'mlton' }}
-        run: |
-          ./autobuild
-          CC=${{env.THECC}} ./configure --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
-
-      - name: Configure With MLKit
-        if: ${{ matrix.mlcomp == 'mlkit' }}
-        run: |
-          ./autobuild
-          CC=${{env.THECC}} ./configure --with-compiler=mlkit
-
-      - name: Build MLKit
-        timeout-minutes: 240
-        run: |
-          "$THECC" --version
-          make mlkit VERBOSE=1
-          make mlkit_basislibs VERBOSE=1
-
-      - name: Install MLKit
-        run: |
-          sudo make install
-
-      - name: Run MLKit tests
-        run: |
-          make -C test_dev test
-          make -C test_dev test_prof
-          make -C test test_mlkit
-          make -C test test_mlkit_no_gc
-          make -C test/explicit_regions all
-          make -C test/repl all
-          make -C test/repl test_gc CC="$THECC"
-          make -C test/parallelism all
-          make -C test/region_info all
-
-      - name: Configure SmlToJs
-        if: ${{ matrix.mlcomp == 'mlton' }}
-        run: |
-          CC="$THECC" ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
-
-      - name: Build SmlToJs
-        run: |
-          make smltojs
-          make smltojs_basislibs
-
-      - name: Install SmlToJs
-        run: |
-          sudo make install_smltojs
-
-      - name: Run SmlToJs tests (darwin)
-        if: ${{ env.OS == 'darwin' }}
-        run: |
-          make -C js/test test
-
-      - name: Run SmlToJs tests (linux)
-        if: ${{ env.OS == 'linux' }}
-        run: |
-          export OPENSSL_CONF=/dev/null
-          make -C js/test test
-
-      - name: Build and run Barry tests
-        run: |
-          make barry
-          make -C test/barry all
-
-      - name: Build binary distribution
-        run: |
-          make mlkit_bin_dist
-
-      - name: Install binary distribution and test it
-        run: |
-          mkdir -p ${{ env.RUNHOME }}/tmp
-          cp dist/mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz ${{ env.RUNHOME }}/tmp/
-          cd ${{ env.RUNHOME }}/tmp/
-          tar xzf mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz
-          cd mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}
-          sudo make install
-          cd ${{ env.RUNHOME }}
-          rm -rf ${{ env.RUNHOME }}/.mlkit ${{ env.RUNHOME }}/tmp
-          SML_LIB=/usr/local/lib/mlkit /usr/local/bin/mlkit --version
-          SML_LIB=/usr/local/lib/mlkit /usr/local/bin/smltojs --version
-          SML_LIB=/usr/local/lib/mlkit MLKIT=/usr/local/bin/mlkit \
-            "$GITHUB_WORKSPACE/test/repl/check-installed.sh"
-
-      - name: Test bootstrapping
-        run: |
-          make bootstrap
-
-      - name: Upload release
-        if: ${{ matrix.mlcomp == 'mlkit' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/mlkit-bin-dist-${{ env.OS }}${{ env.DIST_SUFFIX }}.tgz
-          tag: ${{ github.ref }}
-          overwrite: true
-
-  build-test-arm64:
-    permissions:
-      contents: write
-    name: macos-arm (${{ matrix.mlcomp }})
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-arm]
-        mlcomp: [mlkit]
         include:
-          - os: macos-arm
-            runner: macos-15
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            os: linux
+            mlcomp: mlkit
+            seed_version: v4.7.22
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            os: linux
+            mlcomp: mlton
+            seed_version: v4.7.22
+          - platform: macos-arm64
+            # The native v4.7.23 seed requires macOS 26.0 or newer.
+            runner: macos-26
+            os: darwin
+            mlcomp: mlkit
+            seed_version: v4.7.23
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: bash
     env:
-      OS: darwin
-      ARM64_HOST: ${{ matrix.mlcomp }}
+      OS: ${{ matrix.os }}
+      MLCOMP_HOST: ${{ matrix.mlcomp }}
+      SEED_VERSION: ${{ matrix.seed_version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Install Apple Silicon dependencies
+      - name: Install Linux dependencies
+        if: matrix.os == 'linux'
         run: |
-          test "$(uname -m)" = arm64
+          sudo apt-get -qq update
+          sudo apt-get install -y gcc autoconf make binutils
+
+      - name: Install Linux tools
+        if: matrix.os == 'linux'
+        run: |
+          echo "THECC=gcc" >> "$GITHUB_ENV"
+          cd "$RUNNER_TEMP"
+          wget -q https://github.com/melsman/phantomjs-bin/raw/refs/heads/main/phantomjs-2.1.1-linux-x86_64.tar.bz2
+          tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2
+          echo "$RUNNER_TEMP/phantomjs-2.1.1-linux-x86_64/bin" >> "$GITHUB_PATH"
+          wget -q https://github.com/diku-dk/smlpkg/releases/download/v0.1.4/smlpkg-bin-dist-linux.tgz
+          tar xzf smlpkg-bin-dist-linux.tgz
+          echo "$RUNNER_TEMP/smlpkg-bin-dist-linux/bin" >> "$GITHUB_PATH"
+
+      - name: Install macOS dependencies
+        if: matrix.os == 'darwin'
+        run: |
           brew install autoconf
-          /usr/bin/gcc --version
+          echo "THECC=/usr/bin/gcc" >> "$GITHUB_ENV"
           xcrun --sdk macosx --show-sdk-path
-          ARM64_CI_ROOT="$RUNNER_TEMP/mlkit-darwin-arm64-$ARM64_HOST"
-          echo "ARM64_CI_ROOT=$ARM64_CI_ROOT" >> "$GITHUB_ENV"
-          mkdir -p "$ARM64_CI_ROOT/logs"
 
-      - name: Install released MLKit seed (X64 via Rosetta)
-        if: matrix.mlcomp == 'mlkit'
+      - name: Install MLton
+        if: matrix.mlcomp == 'mlton'
         run: |
-          sudo softwareupdate --install-rosetta --agree-to-license
+          cd "$RUNNER_TEMP"
+          wget -q https://github.com/MLton/mlton/releases/download/on-20241230-release/mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          tar xzf mlton-20241230-1.amd64-linux.ubuntu-24.04_static.tgz
+          echo "$RUNNER_TEMP/mlton-20241230-1.amd64-linux.ubuntu-24.04_static/bin" >> "$GITHUB_PATH"
+
+      - name: Install released MLKit seed
+        run: |
+          mkdir -p "$RUNNER_TEMP/seed"
           curl --fail --location --retry 3 \
-            https://github.com/melsman/mlkit/releases/download/v4.7.22/mlkit-bin-dist-darwin.tgz \
-            -o "$RUNNER_TEMP/mlkit-seed.tgz"
-          tar -xzf "$RUNNER_TEMP/mlkit-seed.tgz" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin" >> "$GITHUB_PATH"
-          echo "MLKIT_BOOTSTRAP_SML_LIB=$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" >> "$GITHUB_ENV"
-          test "$(lipo -archs "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit")" = x86_64
-          SML_LIB="$RUNNER_TEMP/mlkit-bin-dist-darwin/lib/mlkit" \
-            "$RUNNER_TEMP/mlkit-bin-dist-darwin/bin/mlkit" --version
+            "https://github.com/melsman/mlkit/releases/download/$SEED_VERSION/mlkit-bin-dist-$OS.tgz" \
+            -o "$RUNNER_TEMP/seed.tgz"
+          tar -xzf "$RUNNER_TEMP/seed.tgz" -C "$RUNNER_TEMP/seed"
+          seed="$RUNNER_TEMP/seed/mlkit-bin-dist-$OS"
+          echo "$seed/bin" >> "$GITHUB_PATH"
+          echo "MLKIT_BOOTSTRAP_SML_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/.mlkit"
+          echo "SML_LIB $seed/lib/mlkit" > "$HOME/.mlkit/mlb-path-map"
+          SML_LIB="$seed/lib/mlkit" "$seed/bin/mlkit" --version
 
-      - name: Build target runtimes
-        run: bash .github/scripts/arm64.sh runtime 2>&1 | tee "$ARM64_CI_ROOT/logs/runtime.log"
+      - name: Configure
+        run: |
+          ./autobuild
+          "$THECC" --version
+          if [ "$MLCOMP_HOST" = mlton ]; then
+            mlton
+            ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
+          else
+            ./configure CC="$THECC" --with-compiler=mlkit
+          fi
 
-      - name: Build ARM-emitting seed compilers
-        run: bash .github/scripts/arm64.sh seed 2>&1 | tee "$ARM64_CI_ROOT/logs/seed.log"
+      - name: Build MLKit, ReML, tools, and Basis libraries
+        timeout-minutes: 240
+        run: |
+          make mlkit_basislibs VERBOSE=1
+          if [ "$OS" = darwin ]; then
+            SML_LIB="$PWD" bin/mlkit --mlb-subdir Native \
+              -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+          fi
 
-      - name: Build and verify native compilers and tools
-        run: bash .github/scripts/arm64.sh native 2>&1 | tee "$ARM64_CI_ROOT/logs/native.log"
+      - name: Install MLKit
+        run: sudo make install
 
-      - name: Native, parallel, and full regression checks
-        run: bash .github/scripts/arm64.sh check 2>&1 | tee "$ARM64_CI_ROOT/logs/check.log"
+      - name: Run compiler and runtime regression tests
+        run: |
+          if [ "$OS" = darwin ]; then
+            export SML_LIB="$PWD"
+            export MLKIT_ARM64="$PWD/bin/mlkit" REML_ARM64="$PWD/bin/reml"
+            export ARM64_EMITTER="$PWD/bin/arm64-emitter-test" KITTESTER="$PWD/bin/kittester"
+            tests=src/Compiler/Backend/Arm64/tests
+            sh "$tests/check-native.sh"
+            sh "$tests/check-parallel.sh"
+            sh "$tests/check-regressions.sh"
+          else
+            make -C test_dev test
+            make -C test_dev test_prof
+            make -C test test_mlkit
+            make -C test test_mlkit_no_gc
+            make -C test/explicit_regions all
+            make -C test/repl all
+            make -C test/repl test_gc CC="$THECC"
+            make -C test/parallelism all
+            make -C test/region_info all
+          fi
 
-      - name: Three-stage native bootstrap fixed point
-        run: bash .github/scripts/arm64.sh bootstrap 2>&1 | tee "$ARM64_CI_ROOT/logs/bootstrap.log"
+      - name: Build SMLtoJs
+        run: |
+          if [ "$MLCOMP_HOST" = mlton ]; then
+            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit"
+          fi
+          make smltojs_basislibs
 
-      - name: Stage, test, and package native installation
-        run: bash .github/scripts/arm64.sh install 2>&1 | tee "$ARM64_CI_ROOT/logs/install.log"
+      - name: Install SMLtoJs
+        run: sudo make install_smltojs
 
-      - name: Stage logs without following test symlinks
-        if: always()
-        run: python3 .github/scripts/collect-arm64-logs.py "$ARM64_CI_ROOT"
+      - name: Run JavaScript and Barry tests
+        if: matrix.os == 'linux'
+        run: |
+          export OPENSSL_CONF=/dev/null
+          make -C js/test test
+          make barry
+          make -C test/barry all
 
-      - name: Retain logs and test reports
-        if: always()
+      - name: Test bootstrap fixed point
+        run: |
+          if [ "$OS" = darwin ]; then
+            SML_LIB="$PWD" BOOTSTRAP_COMPILER="$PWD/bin/mlkit" \
+              sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
+          else
+            make bootstrap
+          fi
+
+      - name: Test native installation across runtime modes
+        if: matrix.os == 'darwin'
+        run: |
+          SML_LIB="$PWD" ARM64_NATIVE_BIN="$PWD/bin" ARM64_PREFIX="$RUNNER_TEMP/install" \
+            sh src/Compiler/Backend/Arm64/tests/install-native.sh
+
+      - name: Build binary distribution
+        run: make mlkit_bin_dist
+
+      - name: Install and test the release archive
+        run: |
+          root=$(pwd)
+          package_name=mlkit-bin-dist-$OS
+          archive=$PWD/dist/$package_name.tgz
+          scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-package.XXXXXX")
+          echo "Package check outputs: $scratch"
+
+          tar -xzf "$archive" -C "$scratch"
+          package=$scratch/$package_name
+          if [ "$OS" = darwin ]; then
+            basis_cache=ARM64_RI_GC
+          else
+            basis_cache=RI_GC
+          fi
+          test -s "$package/lib/mlkit/basis/MLB/$basis_cache/repl.sml.d"
+          installed=$scratch/installed
+          make -C "$package" install PREFIX="$installed"
+          if [ "$OS" = darwin ]; then
+            test "$(lipo -archs "$installed/bin/mlkit")" = arm64
+          else
+            readelf -h "$installed/bin/mlkit" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
+          fi
+          export SML_LIB=$installed/lib/mlkit
+          export MLKIT=$installed/bin/mlkit
+          "$MLKIT" --version
+          "$installed/bin/reml" --version
+          SML_LIB="$installed/lib/smltojs" "$installed/bin/smltojs" --version
+
+          # A normal installation may be read-only to its users. It must not need to
+          # recreate the Basis caches that were tested before packaging.
+          chmod -R a-w "$installed/lib"
+          mkdir "$scratch/user"
+          cd "$scratch/user"
+          cat > probe.sml <<'SML'
+          val answer = List.foldl op+ 0 (List.tabulate (7, fn i => i + 3))
+          val () = if answer = 42 then print "packaged compiler passed\n"
+                   else raise Fail "incorrect result"
+          SML
+          printf 'packaged compiler passed\n' > expected
+          for mode in gc no_gc; do
+            "$MLKIT" "-$mode" -o "probe-$mode" probe.sml
+            "./probe-$mode" > actual
+            cmp expected actual
+          done
+          SML_LIB="$installed/lib/smltojs" "$installed/bin/smltojs" -o probe-js probe.sml
+          test -s probe-js.html
+          sh "$root/test/repl/check-installed.sh"
+          echo "$OS release archive passed"
+
+      - name: Retain binary distribution
         uses: actions/upload-artifact@v4
         with:
-          name: logs-darwin-arm64-${{ matrix.mlcomp }}
-          path: ${{ env.ARM64_CI_ROOT }}/reports/
-          retention-days: 14
-
-      - name: Retain native binary distribution
-        uses: actions/upload-artifact@v4
-        with:
-          name: mlkit-bin-dist-darwin-arm64-${{ matrix.mlcomp }}
+          name: mlkit-bin-dist-${{ matrix.platform }}-${{ matrix.mlcomp }}
           path: dist/mlkit-bin-dist-${{ env.OS }}.tgz
           if-no-files-found: error
 
-      - name: Upload ARM release
+      - name: Upload release
         if: ${{ matrix.mlcomp == 'mlkit' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         uses: svenstaro/upload-release-action@v2
         with:

@@ -13,10 +13,9 @@ and liveset directly relative to the saved PC. It no longer copies or sorts
 frame tables or searches them for each frame. Image registration remains for
 static-data bounds and global root cells, including loaded REPL images.
 
-The GC cache prefix changes to `ARM64_FD2_`, and the runtime registration API
-becomes `mlkit_arm64_register_static_image`. Rebuild the ARM runtime together
-with the compiler; older GC objects are excluded from the new cache, and mixed
-compiler/runtime registration ABIs fail at link time.
+GC caches use the `ARM64_` prefix, and the runtime registration API is
+`mlkit_arm64_register_static_image`. Rebuild the ARM runtime together with the
+compiler; mixed compiler/runtime registration ABIs fail at link time.
 
 ## Validation
 

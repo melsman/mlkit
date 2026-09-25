@@ -12,7 +12,7 @@
     "adr_x30": 0,
     "adrp_x30": 60,
     "assembly_sha256": "d8dec6e784c208919cd9c0cb48a78e4aad4c3dc2974ed6debbd040d079e292ac",
-    "path": "/private/tmp/mlkit-m12-operands/artifact/nucleic/MLB/ARM64_FD2_RI_GC_M12Inline/nucleic.sml.s",
+    "path": "/private/tmp/mlkit-m12-operands/artifact/nucleic/MLB/ARM64_RI_GC_M12Inline/nucleic.sml.s",
     "opcodes": {
       "orr": 2268,
       "mov": 18162,
@@ -70,7 +70,7 @@
     "adr_x30": 60,
     "adrp_x30": 0,
     "assembly_sha256": "f6fd557099eaf6180e758802967093db765f790ff402a2fecbdb344b69408a08",
-    "path": "/private/tmp/mlkit-m12-layout/artifact/nucleic/MLB/ARM64_FD2_RI_GC_M12Inline/nucleic.sml.s",
+    "path": "/private/tmp/mlkit-m12-layout/artifact/nucleic/MLB/ARM64_RI_GC_M12Inline/nucleic.sml.s",
     "opcodes": {
       "orr": 2268,
       "mov": 15293,

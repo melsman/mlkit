@@ -16,14 +16,18 @@ Basis Library](http://elsman.com/mlkit/basis.html).
 
 ## Installation
 
-Under macOS, MLKit is available through Homebrew: Just execute `brew
-install mlkit`. Under Linux, you may download the latest binary
-tgz-distribution of MLKit from
-https://github.com/melsman/mlkit/releases/latest
+MLKit is not currently available through Homebrew. For macOS and Linux,
+download a binary distribution from the
+[latest GitHub release](https://github.com/melsman/mlkit/releases/latest):
+
+- macOS on Apple Silicon: `mlkit-bin-dist-darwin.tgz`.
+- Linux on X64: `mlkit-bin-dist-linux.tgz`.
+
+Current macOS builds require Apple Silicon; Intel macOS is no longer supported.
 
 Once downloaded and unpacked, execute `make install` from within the
 top-directory of the unpacked distribution. You may install MLKit in a
-directory different from `/usr/local/mlkit` by instead typing
+directory different from `/usr/local` by instead typing
 `PREFIX=myinstallpath make install`.
 
 ## Features
@@ -52,7 +56,7 @@ directory different from `/usr/local/mlkit` by instead typing
 This version of the compiler is based on region inference and has the
 following features:
 
-- An X64 native backend for Linux and macOS, and an Arm64 native backend
+- An X64 native backend for Linux, and an Arm64 native backend
   for macOS on Apple Silicon.
 
 - Memory allocation directives (both allocation and deallocation) are
@@ -113,8 +117,8 @@ Linux, Debian, gentoo, or similar is needed. The MLKit also works on
 macOS and has also earlier been reported to run on the FreeBSD/x64
 platform, with a little tweaking.
 
-To compile the MLKit, a Standard ML compiler is needed, which needs to
-be one of the following:
+On macOS, use a native Arm64 MLKit v4.7.23 or newer as described below.
+For Linux builds, the Standard ML compiler can be one of the following:
 
 __[MLton](http://mlton.org) >= 20051202:__
 ```bash
@@ -138,7 +142,7 @@ tools.
 
 For native Apple Silicon builds, follow
 [Native ARM64 on macOS](#native-arm64-on-macos) below. The following commands
-build the X64 backend.
+build the X64 backend on Linux.
 
 After having checked out the sources from Github, execute the command:
 ```bash
@@ -171,22 +175,24 @@ $ ./configure --sysconfdir=/etc --prefix=/usr
 ### Native ARM64 on macOS
 
 To build native MLKit, ReML, and tools on an Apple Silicon Mac, you need
-Xcode command-line tools, Autoconf, and a working MLKit on `PATH`. An installed
-X64 MLKit can bootstrap the build using Rosetta 2. Use a checkout path without
-spaces and run these commands from the repository root:
+Xcode command-line tools, Autoconf, and a native Arm64 MLKit on `PATH`
+(v4.7.23 or newer). The published v4.7.23 Arm64 binaries require macOS 26
+or newer. Use a checkout path without spaces and run these commands from
+the repository root:
 
 ```bash
 export SML_LIB="$PWD"
 ./autobuild
-DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
+./configure CC=/usr/bin/gcc --with-compiler=mlkit
 make -j3
 ```
 
-The first compiler build uses the installed MLKit's own Basis library,
-cached objects, and matching runtime, so a `DARWIN_NATIVE=0` build is unnecessary. It produces an
-ARM-emitting bootstrap compiler at `bin/mlkit-arm64`, which then builds the
-native compilers. Compiler builds use `-gc`; the Makefile also configures the
-bootstrap compiler's larger stack automatically.
+The installed native MLKit builds MLKit, ReML, and the SML tools directly,
+using its own Basis library, cached objects, and matching runtime. There is
+no intermediate compiler build. Compiler builds use the default GC mode.
+The Makefile links the generated executables with a
+512 MiB stack for self-compilation (the ARM64 linker maximum), using
+`gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
 
 The native executables are available at the usual `bin/mlkit`, `bin/reml`,
 `bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rp2ps` paths
@@ -200,7 +206,7 @@ bin/mlkit             # start the REPL
 
 Keep `SML_LIB` pointing at the checkout when using these build outputs. The
 bootstrap step selects its installed library separately, so this setting
-does not force the installed X64 compiler to use the checkout's runtime.
+does not force the installed compiler to use the checkout's runtime.
 To select a different bootstrap executable, pass
 `MLKIT_BOOTSTRAP=/path/to/mlkit` to `make`. For an unpacked
 seed whose library is not configured in an installed `mlb-path-map`, also
@@ -209,8 +215,8 @@ pass `MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`.
 The standard targets work for both backends: `make mlkit` (also the default),
 `make build_basislibs` (an alias for `mlkit_basislibs`), `make mlkit_libs`,
 `make test`, `make bootstrap`, and `make install`. `make all` also builds
-SMLtoJs and its libraries. The configured `DARWIN_NATIVE` selects the backend;
-set it when running `configure`, not on the `make` command line.
+SMLtoJs and its libraries. Configure selects Arm64 on macOS and X64 on Linux
+automatically.
 
 For a separate native installation in your home directory, add
 `--prefix="$HOME/mlkit-arm64"` to the configure command above, then run:
@@ -270,14 +276,12 @@ $ make all
 $ make mlkit_bin_dist
 ```
 
-On macOS, configure with `DARWIN_NATIVE=1` for Arm64 or `DARWIN_NATIVE=0`
-(the default) for X64. Linux uses the X64 backend. The package is placed in
+Configure selects Arm64 on macOS and X64 on Linux. The package is placed in
 `dist/` with a name determined by the configured platform and backend:
 
 | Platform and backend | Package |
 | --- | --- |
 | macOS Arm64 | `mlkit-bin-dist-darwin.tgz` |
-| macOS X64 | `mlkit-bin-dist-darwin-x64.tgz` |
 | Linux X64 | `mlkit-bin-dist-linux.tgz` |
 
 The package includes MLKit (`mlkit`), ReML (`reml`),
@@ -328,8 +332,8 @@ The MLKit has a number of [known bugs and limitations](http://elsman.com/mlkit/b
 
 ## Appendix A: Quick Compilation and Installation Guide
 
-We assume that MLton >= 20051202 is installed on the system as
-described above.
+For this Linux build, we assume that MLton >= 20051202 is installed as
+described above. For macOS, follow [Native ARM64 on macOS](#native-arm64-on-macos).
 
 After having checked out the sources from Github, execute the command:
 ```bash

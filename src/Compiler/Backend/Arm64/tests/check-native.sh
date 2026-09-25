@@ -176,7 +176,7 @@ for policy in normal forced; do
     --no_delete_target_files -o "poll-$policy" gc-frames.sml >> integration.log 2>&1
   "./poll-$policy" > actual
   cmp gc-expected actual
-  asm="MLB/ARM64_FD2_RI_GC_Poll$policy/gc-frames.sml.s"
+  asm="MLB/ARM64_RI_GC_Poll$policy/gc-frames.sml.s"
   for fun in sum build; do
     awk -v name="$fun" '
       /^\.globl _F\./ { active = index($0, "_F." name "__noinline") > 0 }
@@ -201,12 +201,12 @@ if grep -q 'b L_arm64_loop_' sum-forced.s build-normal.s; then
   echo 'Frame reuse bypassed a required GC entry' >&2; exit 1
 fi
 # GC calls materialize x30, and no return-PC index is emitted.
-grep -q 'adr x30, ' MLB/ARM64_FD2_*/gc-frames.sml.s
+grep -q 'adr x30, ' MLB/ARM64_RI_*GC*/gc-frames.sml.s
 # One shared snapshot stub per unit, despite multiple ML function entries.
-for asm in MLB/ARM64_FD2_*/gc-frames.sml.s; do
+for asm in MLB/ARM64_RI_*GC*/gc-frames.sml.s; do
   [ "$(grep -c 'bl _gc$' "$asm")" = 1 ]
 done
-if grep -q '_arm64_frames' MLB/ARM64_FD2_*/gc-frames.sml.s; then
+if grep -q '_arm64_frames' MLB/ARM64_RI_*GC*/gc-frames.sml.s; then
   echo 'GC code still contains a return-PC index' >&2; exit 1
 fi
 gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \

@@ -1,56 +1,61 @@
-# macOS ARM GitHub Actions
+# Native GitHub Actions
 
-Milestone 9 adds `macos-arm` coverage with the `mlkit` host compiler
-in `.github/workflows/main.yml`. Existing Linux and Intel macOS coverage remains.
-The logical `macos-arm` platform selects `macos-15`, an Apple Silicon runner
-listed in [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+`.github/workflows/main.yml` defines one build-and-test job with three matrix
+entries:
 
-The MLKit job downloads the existing v4.7.22 Darwin release and uses Rosetta
-for that X64 seed only. Bootstrap compilation uses the release's precompiled
-Basis and matching X64 runtime. The checkout is configured only with
-`DARWIN_NATIVE=1` and builds only ARM64 runtime variants.
-The seed MLKit then produces native ARM64 MLKit, ReML, and tools.
-The X64 seed compilers are linked with a 1 GiB stack and the classic linker,
-matching local compiler builds; CI verifies the Mach-O stack size. The former
-256 MiB configuration failed during native compiler compilation with a worker
-`SIGBUS` in [run 35742801677](https://github.com/melsman/mlkit/actions/runs/35742801677/job/106796615162).
-Stack exhaustion is the suspected cause, consistent with the earlier
-[local host-stack findings](arm64-inline-gc-results.md); the hosted rerun must
-confirm whether this fixes that failure.
-All MLKit compiler/tool builds explicitly use `-gc`.
+| Platform | Runner | Host compiler | Released seed |
+| --- | --- | --- | --- |
+| Linux X64 | `ubuntu-24.04` | MLKit | v4.7.22 |
+| Linux X64 | `ubuntu-24.04` | MLton | v4.7.22 |
+| macOS ARM64 | `macos-26` | MLKit | v4.7.23 |
 
-The phases in `.github/scripts/arm64.sh` perform:
+The workflow contains the CI orchestration and archive checks inline.
+Compiler and runtime regression scripts remain reusable under `src/`
+and `test/`. Intel macOS is no longer built, tested, or packaged.
 
-1. Explicit runtime target configuration and archive architecture checks.
-2. Seed compiler builds and architecture/version checks.
-3. Native MLKit, ReML, emitter harness, kittester, lexer/parser generators, and
-   rp2ps builds, with ARM64 architecture checks for every executable.
-4. Native integration and pthread tests, followed by all default regression
-   suites: developer, no-GC, GC, generational GC, profiling, GC/profiling,
-   pthreads, explicit regions, parallelism, and four REPL configurations.
-5. Three fresh native bootstrap stages and a stripped stage-two/stage-three
-   fixed-point comparison.
-6. Staged native installation tests across runtime modes, installed generator
-   checks, and an archive of the tested installation.
+All entries configure with `./autobuild` and `./configure`, then use the normal
+Makefile targets to build MLKit, ReML, tools, Basis libraries, and SMLtoJs.
+They install the compilers, run regression and bootstrap checks, and build the
+release archive with `make mlkit_bin_dist`. The MLton entry uses its newly built
+MLKit to compile SMLtoJs. Compiler builds run without elevated privileges;
+MLKit and SMLtoJs each have a separate `sudo make install` step.
 
-Argobots remains optional and is not provisioned by these jobs. The ARM jobs do
-not run the X64 distribution's JS/PhantomJS tests; the existing jobs retain
-that coverage. On a pushed `v*` tag, the MLKit-hosted ARM job publishes
-`dist/mlkit-bin-dist-darwin.tgz` to the release. Darwin X64 jobs build and test
-`dist/mlkit-bin-dist-darwin-x64.tgz`, and the MLKit-hosted X64 job publishes
-that distinct asset. Linux retains `dist/mlkit-bin-dist-linux.tgz`. MLton jobs
-validate distributions but do not publish release assets. Historical seed
-downloads keep their original v4.7.22 filenames.
+The macOS entry downloads the native v4.7.23 Darwin release. That seed requires
+macOS 26.0, hence the `macos-26` runner. Bootstrap compilation uses the seed's
+prepared Basis cache and matching ARM64 runtime to build MLKit, ReML, and
+the SML tools directly, without an intermediate compiler build. Rosetta is
+not required.
+Configure selects ARM64 by default.
 
-Jobs use separate VMs and host-specific output directories, compiler-cache
-names, installation prefixes, and artifact names. They do not restore caches
-from another run. Test scratch directories respect `TMPDIR`; CI retains native
-fixture output with `ARM64_KEEP_TEST_OUTPUTS=1`. Logs and HTML test reports are
-uploaded even on failure, under `logs-darwin-arm64-mlkit`. Successful
-installations are uploaded as `mlkit-bin-dist-darwin-arm64-mlkit`.
-Basis caches are excluded from the archive so they rebuild at the destination.
-Unpack a distribution to a space-free prefix and set `SML_LIB` to that prefix.
+Platform-specific checks remain explicit in the shared job:
 
-Local workflow validation uses actionlint, shell syntax checks, and the native
-suite with CI log retention enabled. Hosted run outcomes are tracked on PR #224;
-configuration validation alone does not establish that the hosted job passes.
+- Linux runs developer, profiling, GC/non-GC, explicit-region, REPL, parallelism,
+  region-info, JavaScript/PhantomJS, and Barry tests, followed by `make bootstrap`.
+- macOS runs the native emitter/integration and pthread tests, then the ARM64
+  regression suites covering developer, GC/non-GC, generational GC, profiling,
+  GC/profiling, pthreads, explicit regions, parallelism, and four REPL modes.
+  It also runs three native bootstrap stages with a stripped stage-two/stage-three
+  fixed-point comparison, and staged installation checks across runtime modes.
+
+Argobots remains optional and is not provisioned. JavaScript execution tests
+run on Linux; both platforms compile SMLtoJs and test its packaged compiler.
+
+Every matrix entry extracts its release archive and installs from the
+`mlkit-bin-dist-linux/` or `mlkit-bin-dist-darwin/` directory into a fresh prefix.
+CI checks the precompiled Basis cache, checks the packaged MLKit executable's architecture, and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC
+REPL with read-only libraries.
+
+On a pushed `v*` tag, the MLKit-hosted entries publish
+`dist/mlkit-bin-dist-linux.tgz` and `dist/mlkit-bin-dist-darwin.tgz`.
+The MLton entry validates its archive but does not publish a release asset.
+No Darwin X64 package is produced.
+
+Each entry runs in a separate VM and uses the runner's temporary directory.
+Build and test output is available in the normal GitHub Actions step logs;
+there is no separate log collection or upload. Successful archives are uploaded
+as `mlkit-bin-dist-<platform>-<host compiler>`. No caches are restored from
+another run.
+
+To install a release, unpack it, enter its top-level directory, and run
+`make install`, optionally with `PREFIX=/path/to/install`. Use a space-free
+prefix; for a custom prefix, follow the installer's library-path instructions.
