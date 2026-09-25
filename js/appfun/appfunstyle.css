@@ -64,3 +64,16 @@ textarea
     width: 24px;
     z-index:1;
 }
+
+#smltojs-compiler-status {
+  position: fixed;
+  bottom: 4px;
+  right: 12px;
+  z-index: 1000;
+  padding: 3px 8px;
+  background: #eef3f8;
+  color: #24364b;
+  border: 1px solid #b6c5d4;
+  border-radius: 3px;
+  font: 12px sans-serif;
+}

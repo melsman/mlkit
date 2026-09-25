@@ -1,4 +1,5 @@
 local
+   smltojs-ui.mlb
    prebackend0.mlb
    open BasLib
    open Compiler Tools
@@ -15,8 +16,6 @@ local
 in Backend/JS/ExecutionJS.sml 
    local $SML_LIB/basis/js.mlb
    in Backend/JS/SmlToJsComp.sml
-      local $SML_LIB/appfun/appfun2.mlb
-      in Backend/JS/SmlToJsCompApp.sml
-      end
+      Backend/JS/SmlToJsCompiler.sml
    end
 end

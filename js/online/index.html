@@ -8,8 +8,7 @@
   <link rel="stylesheet" href="js/codemirror/codemirror.css">
   <link rel="stylesheet" href="appfunstyle.css">
   <link rel="icon" href="favicon.ico">
-  <!-- Fetch early, but let AppFun and Dojo execute these in dependency order. -->
-  <link rel="preload" href="bundle_extra.js" as="script">
+  <!-- Prioritize the UI. Compiler assets are requested after the UI paints. -->
   <link rel="preload" href="dojo/dojo.js" as="script">
   <script defer src="bundle.js"></script>
 </head>
