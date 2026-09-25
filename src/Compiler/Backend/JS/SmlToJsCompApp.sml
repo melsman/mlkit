@@ -121,6 +121,8 @@ structure SmlToJsAppArg : APP_ARG = struct
   fun exnMsg (e:exn) : string = prim("execStmtJS", ("return e.toString()","e",e))
 
   fun compute f inputstring =
+      if not (Option.isSome (!envRef)) then print "[Compiler is still loading. Please try again shortly.]\n"
+      else
       let
         fun load_env_all() =
             case !envRef of
@@ -155,10 +157,21 @@ structure SmlToJsAppArg : APP_ARG = struct
             in Pickle.unpickle Env.pu eb_s
             end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)
 
-        fun load_envs e nil = (envRef := (SOME e); out " Done]\n")
+        fun load_envs e nil =
+            (envRef := SOME e;
+             JsCore.exec0
+                 {stmt="if (window.performance && performance.mark && performance.measure) { \
+                       \performance.mark('smltojs-compiler-ready'); \
+                       \performance.measure('smltojs-startup', {start: 0, end: 'smltojs-compiler-ready'}); \
+                       \performance.measure('smltojs-basis-init', 'smltojs-basis-start', 'smltojs-compiler-ready'); }",
+                  res=JsCore.unit} ();
+             out " Done]\n")
           | load_envs e (n::ns) =
             (Js.setTimeout 0 (fn () => load_envs (e ++ load_env n) ns); ())
-      in out "[Loading Basis Library ";
+      in JsCore.exec0
+             {stmt="if (window.performance && performance.mark) performance.mark('smltojs-basis-start');",
+              res=JsCore.unit} ();
+         out "[Loading Basis Library ";
          load_envs (Env.initial()) basislibs
       end
 
