@@ -9,6 +9,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
+# A new PR revision supersedes every matrix job from its previous run.
+# Other events use a unique run ID so releases and master builds finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-test-deploy:
     name: ${{ matrix.platform }} (${{ matrix.mlcomp }})
