@@ -15,14 +15,18 @@ AC_CONFIG_FILES([src/Runtime/Makefile
                  src/Tools/Tester/Makefile
                  src/Version.sml])
 
-# The compiler backend is still X64 by default, even on Apple Silicon.
-AC_ARG_VAR([DARWIN_NATIVE], [1 for the experimental macOS arm64 runtime; 0 for X64 (default)])
-AS_IF([test -z "$DARWIN_NATIVE"], [DARWIN_NATIVE=0])
+# macOS uses ARM64; other platforms retain the X64 build.
+AC_ARG_VAR([DARWIN_NATIVE], [1 on macOS (default); 0 on other platforms (default)])
+AS_IF([test -z "$DARWIN_NATIVE"], [
+  AS_CASE([`uname -s`], [Darwin], [DARWIN_NATIVE=1], [DARWIN_NATIVE=0])
+])
 AS_CASE([$DARWIN_NATIVE], [0|1], [], [AC_MSG_ERROR([DARWIN_NATIVE must be 0 or 1])])
 AS_IF([test -z "$CC"], [CC=gcc])
 AS_CASE([`uname -s`],
   [Darwin], [
-    AS_IF([test "$DARWIN_NATIVE" = 1], [MLKIT_ARCH=arm64], [MLKIT_ARCH=x86_64])
+    AS_IF([test "$DARWIN_NATIVE" != 1], [AC_MSG_ERROR([macOS supports only ARM64; omit DARWIN_NATIVE or set it to 1])])
+    AS_IF([test "`uname -m`" != arm64], [AC_MSG_ERROR([macOS requires Apple Silicon and a native arm64 shell])])
+    MLKIT_ARCH=arm64
     RUNTIME_TARGET=darwin-$MLKIT_ARCH
     CFLAGS="${CFLAGS:--O2 -g} -arch $MLKIT_ARCH"
   ],
@@ -36,14 +40,8 @@ AC_PROG_CC
 AC_MSG_CHECKING([whether the compiler target agrees with DARWIN_NATIVE])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
 #if defined(__APPLE__)
-# if $DARWIN_NATIVE
-#  if !defined(__aarch64__) && !defined(__arm64__)
-#   error DARWIN_NATIVE requires arm64
-#  endif
-# else
-#  if !defined(__x86_64__)
-#   error The default backend requires x86_64
-#  endif
+# if !$DARWIN_NATIVE || (!defined(__aarch64__) && !defined(__arm64__))
+#  error macOS requires the ARM64 backend
 # endif
 #endif
 int main(void) { return 0; }

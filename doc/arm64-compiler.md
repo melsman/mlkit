@@ -1,4 +1,4 @@
-# Experimental Darwin ARM64 compiler
+# Darwin ARM64 compiler
 
 The ARM64 backend for #223 supports native MLKit and ReML, the Basis Library,
 REPL, tools, and a separate staged installation on Apple Silicon. Native
@@ -8,13 +8,12 @@ and checks.
 ## Build and run
 
 On Apple Silicon, start with a clean checkout, Xcode command-line tools,
-Autoconf, and an installed MLKit on `PATH`. An installed X64 MLKit uses Rosetta
-for the initial host build. Only the ARM64 runtime needs to be built locally:
+Autoconf, and a native Arm64 MLKit v4.7.23 or newer on `PATH`:
 
 ```sh
 export SML_LIB="$PWD"
 ./autobuild
-DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
+./configure CC=/usr/bin/gcc --with-compiler=mlkit
 make -j3
 
 lipo -archs bin/mlkit   # arm64
@@ -23,8 +22,7 @@ bin/mlkit --version
 
 The bootstrap recipes use the installed MLKit's own Basis library, cached
 objects, and matching runtime. They ignore the checkout's `SML_LIB` for that
-step; subsequent ARM64 compilation uses it normally. No X64 runtime archives
-or `DARWIN_NATIVE=0` configuration are needed in the checkout. Keep `SML_LIB`
+step; subsequent ARM64 compilation uses it normally. Keep `SML_LIB`
 pointing at the checkout when running the resulting native compiler.
 
 Use `MLKIT_BOOTSTRAP=/path/to/mlkit` to select another host compiler. If that
@@ -33,8 +31,8 @@ compiler's library is not configured in its installed `mlb-path-map`, also set
 release. The seed needs a prepared GC Basis cache when its installation is
 read-only. Do not add a cache suffix to the bootstrap flags in that case.
 
-`MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc`; on macOS it also selects the classic
-linker and a 1 GiB stack for the generated host compiler, avoiding stack
+`MLKIT_BOOTSTRAP_FLAGS` defaults to `-gc`; on macOS it also selects ARM64 linking
+and a 512 MiB stack for the generated host compiler, avoiding stack
 exhaustion during native compiler compilation. It can be overridden explicitly.
 The low-level `Makefile.arm64` targets `mlkit`, `reml`, and `emitter` produce
 ARM-emitting executables on the host compiler's architecture. `native` produces ARM64 MLKit and ReML in
@@ -53,8 +51,7 @@ development and the separate staged-installation checks.
 
 The existing driver writes unquoted Basis paths for direct `.sml` inputs,
 REPL startup, and dependency processing. Use a stable, space-free symlink to
-the checkout or installed prefix for `SML_LIB` and `ARM64_PREFIX`. The older X64
-bootstrap compiler also has linker quoting limitations. Keep the alias stable
+the checkout or installed prefix for `SML_LIB` and `ARM64_PREFIX`. Keep the alias stable
 to retain incremental compilation caches. Rerun `native-install` when changing
 the prefix: it invalidates Basis caches recorded at a different location.
 
@@ -236,18 +233,9 @@ parallel suite against the static Argobots library as well.
 
 The bootstrap check uses three stages, each with a fresh cache, verifies each
 compiler's architecture and execution, and compares stripped stage-two and
-stage-three binaries. Run the same check for the compatibility backend with
-`BOOTSTRAP_TARGET=x86_64`, `BOOTSTRAP_COMPILER` set to an X64-emitting MLKit,
-and `SML_LIB` set to the source checkout:
-
-```sh
-sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
-```
-
-The X64 check uses the classic Darwin linker, matching the existing bootstrap
-rule, to avoid nondeterministic GOT ordering in the newer linker. ARM uses the
-default linker. Comparison copies retain the same basename because Apple
-`strip` uses it in the ARM ad-hoc signature. Set
+stage-three binaries. This check targets ARM64; Linux X64 continues to use
+its normal `make bootstrap` target. Comparison copies retain the same basename
+because Apple `strip` uses it in the ARM ad-hoc signature. Set
 `BOOTSTRAP_JOBS` to increase MLKit's compilation parallelism (the default is 1),
 or `BOOTSTRAP_LINKER` to test another linker explicitly.
 

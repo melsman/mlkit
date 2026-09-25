@@ -1,5 +1,4 @@
-# Experimental ARM64-emitting compilers, built with an existing MLKit.
-# The compiler executables themselves use the bootstrap compiler's architecture.
+# ARM64 compilers, built with an existing native MLKit on macOS.
 .DEFAULT_GOAL := all
 .NOTPARALLEL:
 MLKIT_BOOTSTRAP ?= mlkit
@@ -9,8 +8,8 @@ MLKIT_BOOTSTRAP ?= mlkit
 MLKIT_BOOTSTRAP_SML_LIB ?=
 BOOTSTRAP_ENV = $(if $(strip $(MLKIT_BOOTSTRAP_SML_LIB)),env SML_LIB="$(MLKIT_BOOTSTRAP_SML_LIB)",env -u SML_LIB)
 ifeq ($(shell uname -s),Darwin)
-# The generated host compiler needs a larger stack for compiling itself.
-MLKIT_BOOTSTRAP_FLAGS ?= -gc -ldexe 'gcc -Wl,-ld_classic,-stack_size,0x40000000'
+# Reserve a larger stack for self-compilation; the ARM64 linker allows at most 512 MiB.
+MLKIT_BOOTSTRAP_FLAGS ?= -gc -ldexe 'gcc -arch arm64 -Wl,-stack_size,0x20000000'
 else
 MLKIT_BOOTSTRAP_FLAGS ?= -gc
 endif

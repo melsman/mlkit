@@ -1,9 +1,9 @@
 #!/bin/bash
 # CI phases are separate so failures and logs identify the failing operation.
 set -euo pipefail
-: "${ARM64_HOST:?Set ARM64_HOST to mlkit or mlton}"
+ARM64_HOST=${ARM64_HOST:-mlkit}
 : "${ARM64_CI_ROOT:?Set ARM64_CI_ROOT to a space-free output directory}"
-case "$ARM64_HOST" in mlkit|mlton) ;; *) exit 1 ;; esac
+test "$ARM64_HOST" = mlkit
 case "$(uname -s)/$(uname -m)" in Darwin/arm64) ;; *) exit 1 ;; esac
 root=$(pwd)
 export SML_LIB=$root
@@ -18,7 +18,7 @@ tests=src/Compiler/Backend/Arm64/tests
 case "${1:?Specify a CI phase}" in
   runtime)
     sh autobuild
-    DARWIN_NATIVE=1 ./configure CC=/usr/bin/gcc --with-compiler=mlkit
+    ./configure CC=/usr/bin/gcc --with-compiler=mlkit
     make -j3 runtime
     # A clean native job must not depend on checkout-built X64 compatibility archives.
     test ! -e lib/runtimeSystemGC.a
@@ -35,25 +35,15 @@ case "${1:?Specify a CI phase}" in
       bootstrap_env=(env "SML_LIB=$MLKIT_BOOTSTRAP_SML_LIB")
     fi
     for compiler in mlkit reml; do
-      if [ "$ARM64_HOST" = mlkit ]; then
-        # Large compiler units exhaust the former 256 MiB host stack. Match
-        # the 1 GiB/classic-linker configuration used for local compiler builds.
-        # Use the release's Basis/cache/runtime without adding a cache suffix:
-        # an installed seed may be read-only and cannot build new Basis caches.
-        "${bootstrap_env[@]}" mlkit -gc \
-          -ldexe 'gcc -arch x86_64 -Wl,-ld_classic,-stack_size,0x40000000' \
-          -o "$seed/$compiler" "src/Compiler/${compiler}arm64.mlb"
-        test "$(lipo -archs "$seed/$compiler")" = x86_64
-        stack_size=$(otool -l "$seed/$compiler" | awk '$1 == "stacksize" {print $2}')
-        echo "$compiler seed stack size: $stack_size bytes"
-        test "$stack_size" = 1073741824
-      else
-        # Use MLton's own Basis, not the source tree's MLKit-specific Basis.
-        env -u SML_LIB mlton @MLton ram-slop 0.7 -- \
-          -drop-pass deepFlatten -drop-pass refFlatten -verbose 2 \
-          -output "$seed/$compiler" "src/Compiler/${compiler}arm64.mlb"
-        test "$(lipo -archs "$seed/$compiler")" = arm64
-      fi
+      # Use the native release's prepared Basis cache and runtime. Reserve a
+      # 512 MiB stack (the ARM64 linker maximum) for self-compilation.
+      "${bootstrap_env[@]}" mlkit \
+        -ldexe 'gcc -arch arm64 -Wl,-stack_size,0x20000000' \
+        -o "$seed/$compiler" "src/Compiler/${compiler}arm64.mlb"
+      test "$(lipo -archs "$seed/$compiler")" = arm64
+      stack_size=$(otool -l "$seed/$compiler" | awk '$1 == "stacksize" {print $2}')
+      echo "$compiler seed stack size: $stack_size bytes"
+      test "$stack_size" = 536870912
       "$seed/$compiler" --version
     done
     ;;

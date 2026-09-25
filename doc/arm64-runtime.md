@@ -1,28 +1,25 @@
 # macOS runtime target selection
 
-This describes the runtime portability/build portion of issue #223. An
-experimental ARM compiler is described in [arm64-compiler.md](arm64-compiler.md).
+This describes the runtime portability/build portion of issue #223. The
+ARM compiler is described in [arm64-compiler.md](arm64-compiler.md).
 The collector selects a target-specific stack/register ABI.
 
 ## Build and toolchain
 
-Run `sh autobuild` once to generate configure and config.h.in. The supported
-macOS configurations are:
+Run `./autobuild` once to generate configure and config.h.in. macOS requires
+Apple Silicon and selects the ARM64 runtime by default:
 
 ```sh
-DARWIN_NATIVE=0 ./configure CC=gcc
-make runtime -j4
-
-DARWIN_NATIVE=1 ./configure CC=gcc
+./configure CC=gcc
 make runtime -j4
 ```
 
-Both use `gcc`. With Apple's command-line tools this is Apple Clang. Configure
-adds `-arch x86_64` or `-arch arm64` to CFLAGS and checks the compiler's target
-macros. The runtime checks those macros again for every translation unit, so
-changing CC/CFLAGS during make cannot silently build the wrong architecture.
-DARWIN_NATIVE accepts only 0 or 1; 1 requires macOS. Configure remains native
-on non-macOS hosts with DARWIN_NATIVE=0.
+With Apple's command-line tools, `gcc` is Apple Clang. Configure adds
+`-arch arm64` to CFLAGS and checks the compiler's target macros. The runtime
+checks those macros again for every translation unit, so changing CC/CFLAGS
+during make cannot silently build the wrong architecture. `DARWIN_NATIVE`
+defaults to 1 on macOS and 0 elsewhere; setting it to 0 on macOS is rejected.
+Intel macOS and execution of the build under Rosetta are no longer supported.
 
 Use a compiler supporting Apple's `-arch` option and an installed macOS SDK.
 `xcrun --find gcc` and `xcrun --sdk macosx --show-sdk-path` identify the selected
@@ -31,24 +28,17 @@ when selecting a different Xcode/SDK. Custom CFLAGS must be appropriate for the
 selected target. Do not pass multiple architectures; universal runtime
 archives are not supported by this configuration.
 
-On Apple Silicon the x86_64 configuration requires Rosetta 2 to run configure
-probes, the errno-table generator, and X64 compiler/tools. No translated shell
-is required when gcc supports explicit target selection. On Intel Macs,
-running arm64 configure probes and smoke tests requires an ARM machine; this
-is not a cross-compilation setup.
-
 ## Artifact and installation isolation
 
 Objects, generated dependencies, and the errno-table generator/header live in
-`src/Runtime/build/darwin-arm64/` or `src/Runtime/build/darwin-x86_64/`, with
+`src/Runtime/build/darwin-arm64/`, with
 separate subdirectories for each runtime variant. CUtils objects are built
 there too. Makefile/config/header changes invalidate the affected objects.
 Reconfigure sequentially; concurrent builds under different configurations in
 the same checkout are not supported.
 
-Archives are copied to `lib/darwin-arm64/` or `lib/darwin-x86_64/`. Only X64
-also refreshes `lib/runtimeSystem*.a`, for compatibility with the current X64
-compiler. Native builds never overwrite those compatibility archives.
+Archives are copied to `lib/darwin-arm64/`. Linux X64 builds use their own
+target directory and also refresh `lib/runtimeSystem*.a` for the X64 compiler.
 
 `make install_runtime` installs the configured target's archives below
 `$(LIBDIR)/lib/<target>/`; X64 also installs its existing compatibility paths.
@@ -90,18 +80,18 @@ runtime layouts.
 
 ## Validation
 
-On an Apple Silicon Mac with Rosetta 2, run:
+On an Apple Silicon Mac, run:
 
 ```sh
 sh src/Runtime/tests/check-darwin.sh
 ```
 
-The script builds all ten standard runtime variants for X64 and ARM, checks
-archive/object architecture, runs a C-entry allocation smoke test on each,
-checks installation and legacy archive isolation, and checks invalid/mismatched
-configurations. It leaves the checkout configured for X64. Argobots is optional
-and requires a matching architecture build supplied with `--with-argobots`;
-its archive is not part of the default matrix.
+The script builds all ten standard ARM64 runtime variants using the default
+configuration, checks archive/object architecture, runs C allocation,
+profiling, and parallelism tests, checks installation, and rejects invalid or
+mismatched configurations. It leaves the checkout configured for ARM64.
+Argobots is optional and requires a matching architecture build supplied with
+`--with-argobots`; its archive is not part of the default matrix.
 
 The C smoke test exercises runtime initialization, multi-page allocation,
 large objects, retained contents, and region deallocation. A second test uses
@@ -111,7 +101,7 @@ or GC test. The native compiler suite separately validates generated ARM GC
 and profiling paths. Generated parallel allocation is covered by the compiler parallel suite;
 native bootstrap validation uses the separate `Makefile.arm64 bootstrap` target.
 
-Validation on 2026-09-21 used Apple Clang 21 via `gcc`, SDK 26.5, macOS arm64,
+Historical validation on 2026-09-21 used Apple Clang 21 via `gcc`, SDK 26.5, macOS arm64,
 and Rosetta 2 for X64 execution. All ten standard archive variants built for both
 targets; the architecture, allocation, concurrent allocation, installation,
 legacy archive preservation, and rejection checks passed. An installed X64
@@ -119,7 +109,7 @@ MLKit also compiled and ran `test_dev/int_first.sml` against the new runtime
 with `-no_gc` and with `-gc -prof`. The checkout was left configured for X64.
 Linux execution was not tested in this environment.
 
-The matrix also checks repeated profiling samples on both architectures.
+The current ARM64 runtime checks also exercise repeated profiling samples.
 Completed samples are streamed and freed; the runtime no longer links a new
 sample through the previously freed sample. The regression detects that write
 by reusing the freed allocation. A native full-Basis profiling program also
@@ -187,7 +177,7 @@ repeated joins, worker/parent exceptions, and callbacks on worker contexts.
 Dynamic exception constructors are also created concurrently and checked for
 distinct identities. C stress tests validate page publication and concurrent result readers, thread
 ID uniqueness, and freelist reuse. Argobots runs with one and four execution
-streams. The standard runtime matrix also runs both C tests on X64/Rosetta.
+streams. The standard runtime checks run these C tests on ARM64.
 
 Milestone 6 validation used Argobots source commit
 `bffdf56916879f9321a1d7983fa486736cd1d722`, built with Apple Clang for ARM64.

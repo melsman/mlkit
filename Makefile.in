@@ -400,13 +400,7 @@ BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS) -ldexe 'gcc -arch arm64 -Wl,-stack_size,0
 else
 BOOTSTRAP_SOURCE = mlkit64.mlb
 MLKIT_BUILD_LOG ?= mlkit64.log
-
-ifeq ($(shell uname -s),Darwin)
-BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS) -ldexe 'gcc -Wl,-ld_classic,-stack_size,0x10000000'
-else
 BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS)
-endif
-
 endif
 
 .PHONY: bootstrap_next_build
@@ -522,7 +516,7 @@ install_smltojs: install_smltojs0
 #  $ make smltojs_basislibs
 # -----------------------------------------------------
 OS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
-BIN_DIST=mlkit-bin-dist-$(OS)$(if $(filter 0darwin,$(DARWIN_NATIVE)$(OS)),-x64)
+BIN_DIST=mlkit-bin-dist-$(OS)
 .PHONY: mlkit_bin_dist
 mlkit_bin_dist:
 	$(MKDIR) dist
