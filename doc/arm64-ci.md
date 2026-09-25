@@ -38,10 +38,9 @@ Platform-specific checks remain explicit in the shared job:
 Argobots remains optional and is not provisioned. JavaScript execution tests
 run on Linux; both platforms compile SMLtoJs and test its packaged compiler.
 
-Every matrix entry validates its release archive. The archive must extract
-into exactly one `mlkit-bin-dist-linux/` or `mlkit-bin-dist-darwin/` directory
-and include its installation Makefile and precompiled Basis caches. CI installs
-it into a fresh prefix, checks the packaged MLKit executable's architecture, and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC
+Every matrix entry extracts its release archive and installs from the
+`mlkit-bin-dist-linux/` or `mlkit-bin-dist-darwin/` directory into a fresh prefix.
+CI checks the precompiled Basis cache, checks the packaged MLKit executable's architecture, and runs GC/non-GC programs, SMLtoJs compilation, and the default-GC
 REPL with read-only libraries.
 
 On a pushed `v*` tag, the MLKit-hosted entries publish

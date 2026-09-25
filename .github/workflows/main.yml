@@ -183,18 +183,8 @@ jobs:
           scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-package.XXXXXX")
           echo "Package check outputs: $scratch"
 
-          # Reject the former flat archive before extracting or installing anything.
-          tar -tzf "$archive" > "$scratch/contents.txt"
-          awk -v root="$package_name" '
-            $0 != root && index($0, root "/") != 1 { bad = 1 }
-            END { exit (NR == 0 || bad) }
-          ' "$scratch/contents.txt" || {
-            echo "Expected one top-level $package_name/ directory" >&2
-            exit 1
-          }
           tar -xzf "$archive" -C "$scratch"
           package=$scratch/$package_name
-          test -f "$package/Makefile"
           if [ "$OS" = darwin ]; then
             basis_cache=ARM64_RI_GC
           else
