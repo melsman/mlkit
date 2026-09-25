@@ -45,7 +45,7 @@ jobs:
       SEED_VERSION: ${{ matrix.seed_version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
