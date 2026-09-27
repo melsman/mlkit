@@ -486,7 +486,7 @@ fun page h idx b =
     let val str_idx_link = taga "a" " href='str_idx.html'" ($"Structures")
         val sig_idx_link = taga "a" " href='sig_idx.html'" ($"Signatures")
         val id_idx_link = taga "a" " href='id_idx.html'" ($"Identifiers")
-        val search = taga0 "input" " id='tags' placeholder='Search' style='width:100%; margin-right:20px;'"
+        val search = taga0 "input" " id='tags' placeholder='Search' style='display:block; box-sizing:border-box; width:100%; margin:0;'"
         val head =
           tag "head"
             (taga0 "link" " rel='stylesheet' href='jquery-ui.css'" &
