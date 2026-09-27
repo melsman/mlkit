@@ -910,7 +910,9 @@ struct
       Menu.item m_help ("About", SOME EditorIcon.newPage, fn() => infoDialogOk ("About " ^ X.application_title) (X.about())) >>= (fn () =>
       Menu.item m_help ("Powered by...", SOME EditorIcon.newPage, fn() => infoDialogOk "Powered by..." (poweredby())) >>= (fn () =>
       layoutContainer [("region", "top"),("style","height:30px;")] [logo, w_left, w_right] >>=
-      (fn toolbar => (Js.appendChild (domNode toolbar) dropboxAreaElem; ret toolbar))
+      (fn toolbar => (Js.appendChild (domNode toolbar) dropboxAreaElem;
+                      Js.appendChild (domNode toolbar) notifyAreaElem;
+                      ret toolbar))
       )))))))))))))))))
 
   val everything =
@@ -925,12 +927,12 @@ struct
       tabContainer [("region", "center"),("style","height:30%;"),("tabPosition","bottom")] [outputpane,logpane] >>= (fn centerbot =>
       borderContainer [("region", "center")] [#1 tabsmap,centerbot] >>= (fn center =>
       (case X.rightPane of
-           SOME generator => pane [("region", "right"), ("splitter","true")] (generator()) >>= (fn p => ret [p])
+           SOME generator => pane [("region", "right"), ("splitter","true"),
+                                    ("class","app_right_pane")] (generator()) >>= (fn p => ret [p])
          | NONE => ret [])  >>= (fn rights =>
       borderContainer [("style", "height: 100%; width: 100%;")] ([left,top,center] @ rights)
       )))))))))
 
-  val () = Js.appendChild (getElem "body") notifyAreaElem
 
   val uiReady = ref false
   val started = ref false

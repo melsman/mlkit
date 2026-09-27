@@ -12,6 +12,8 @@ body
 }
 textarea
 {
+    display: block;
+    box-sizing: border-box;
     font-family:courier,monospace;
     border:0;
     border-top-width:0;
@@ -28,10 +30,10 @@ textarea
 .notify_area
 {
     position: absolute;
-    top:19px;
-    left:-50px;
-    margin-left:50%;
-    margin-right:50%;
+    top:50%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
     padding-left:10px;
     padding-right: 10px;
     padding-top: 2px;
@@ -69,4 +71,10 @@ textarea
     right:100px;
     width: 24px;
     z-index:1;
+}
+
+/* The embedded document owns scrolling; leave no inline baseline gap. */
+.app_right_pane > iframe
+{
+    display: block;
 }
