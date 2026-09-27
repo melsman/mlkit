@@ -39,7 +39,6 @@ SMLTOJS=SML_LIB=$(SMLTOJS_LIB) $(SRC_ROOT)/bin/smltojs
 ONLINE_LIB_FLAGS=-jslibs "../../js/codemirror/codemirror.js" "../../js/online/loader.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js} js/doc/images/*.png
-DOJO ?= /Users/mael/dojo-release-1.9.1
 TERSER = ./node_modules/.bin/terser
 
 IDE_BASISLIBS=Initial General Option List ListPair Vector VectorSlice	\
@@ -83,14 +82,14 @@ IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 check-online-tools:
 	@test -x $(TERSER) || { echo 'Run npm ci in js/ before building the online IDE.' >&2; exit 1; }
 
-smltojsonline: check-online-tools Makefile online/index.html online/terser.json online/loader.js online/package.mjs doc favicon.ico
+smltojsonline: check-online-tools Makefile online/index.html online/terser.json online/loader.js online/package.mjs online/build-dojo.mjs online/dojo.profile.js doc favicon.ico
 	rm -rf smltojsonline
 	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(ONLINE_LIB_FLAGS) -o index smltojs0.mlb)
 	mkdir -p smltojsonline
 	cp -p ../src/Compiler/index.html smltojsonline/
 	(cd ..; tar c `sed 's/.*src="\(.*\)".*/\1/g' < js/smltojsonline/index.html | grep '\.js'` $(THEBASISFILES) $(JSDOCFILES) $(CODEMIRRORFILES) | tar xv -C js/smltojsonline/)
 	cp -p appfun/dropbox.png appfun/nodropbox.png appfun/appfunstyle.css smltojsonline/
-	cp -pa $(DOJO)/dojo $(DOJO)/dijit smltojsonline/
+	node online/build-dojo.mjs smltojsonline
 	cp -pa test/appfuntest/smltojs_logo_transparent_small.png smltojsonline/
 	cp favicon.ico smltojsonline/
 	mkdir -p smltojsonline/otests

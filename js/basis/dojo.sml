@@ -72,7 +72,7 @@ structure Dojo :> DOJO = struct
                                                     k())))
          in case !thunks of
                 SOME nil => (* first call *)
-                (JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+                (JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true, async: true};",
                                res=JsCore.unit} ();
                  thunks := SOME [f];
                  Js.loadScript "dojo/dojo.js" (fn () =>

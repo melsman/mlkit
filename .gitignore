@@ -13,3 +13,5 @@ src/Runtime/build/
 
 /src/Tools/Rp2ps/build/
 /stage/
+
+/js/.cache/

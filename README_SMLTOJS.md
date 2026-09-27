@@ -81,6 +81,33 @@ seed with `./configure --with-compiler=/path/to/mlkit` or
 `MLKIT_BOOTSTRAP_SML_LIB` to its `lib/mlkit` directory so its matching
 Basis library and runtime are used.
 
+## Building the online IDE
+
+After building SMLtoJs and its Basis libraries:
+
+```sh
+cd js
+npm ci
+make smltojsonline
+```
+
+Publish the entire `js/smltojsonline/` directory. Its Dojo startup layer
+contains the IDE widgets and their dependencies; other modules and resources
+remain in `dojo/`, `dijit/`, and `dojox/` for programs to load on demand.
+Do not deploy only the JavaScript bundles.
+
+The build downloads the checksum-verified Dojo 1.9.1 source release, uses its
+build tools to resolve dependencies and templates, and minifies the startup
+layer with the pinned Terser. Node.js 18 or newer and `tar` are required. Downloads and
+build output are cached under `js/.cache/`; subsequent unchanged builds work
+without downloading Dojo again. Changes to the profile, builder script or
+npm lockfile invalidate the built-layer cache. See
+`js/online/dojo.profile.js` for the startup module list and
+`js/.cache/dojo-1.9.1/build.log` for the builder's diagnostics.
+
+Rebuild `make smltojs_basislibs` before packaging when changing
+`js/basis/dojo.sml`, since the online compiler embeds the Basis libraries.
+
 ## How it Works
 
 The SMLtoJs executable `bin/smltojs` takes as argument an sml-file
