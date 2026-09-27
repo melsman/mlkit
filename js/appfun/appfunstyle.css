@@ -56,10 +56,16 @@ textarea
     z-index:1;
 }
 
+.application_logo
+{
+    display: block;
+}
+
 .dropbox_area
 {
     position: absolute;
-    top:18px;
+    top:50%;
+    transform: translateY(-50%);
     right:100px;
     width: 24px;
     z-index:1;

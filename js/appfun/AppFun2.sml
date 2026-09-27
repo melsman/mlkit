@@ -253,9 +253,9 @@ struct
   fun noop() = ()
   fun put s () = outfun (s^"\n")
 
-  val logo = taga0 "img" [("src", X.application_logo),("height","30px"),("alt",X.application_title)]
+  val logo = taga0 "img" [("src", X.application_logo),("height","30"),("class","application_logo"),("alt",X.application_title)]
 
-  val menuStyle = ("style","border:0;padding:2;")
+  val menuStyle = ("style","border:0;padding:2px;")
 
   fun qq s = "'" ^ s ^ "'"
 
@@ -896,12 +896,13 @@ struct
         ret ()))) >>= (fn () =>
       Menu.item m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn () =>
       Menu.item m_left ("Clear output", NONE, clearoutarea) >>= (fn () =>
-      pane [("region", "left"),("style","padding:0;padding-right:10;background-color:#eeeeee;")] logo >>= (fn logo =>
+      pane [("region", "left"),("style","padding:0;padding-right:10px;background-color:#eeeeee;")] logo >>= (fn logo =>
       Menu.mk [("region", "right"),menuStyle] >>= (fn (w_right, m_right) =>
       Menu.menu m_right "Help" >>= (fn m_help =>
       Menu.item m_help ("About", SOME EditorIcon.newPage, fn() => infoDialogOk ("About " ^ X.application_title) (X.about())) >>= (fn () =>
       Menu.item m_help ("Powered by...", SOME EditorIcon.newPage, fn() => infoDialogOk "Powered by..." (poweredby())) >>= (fn () =>
-      layoutContainer [("region", "top"),("style","height:30px;")] [logo, w_left, w_right]
+      layoutContainer [("region", "top"),("style","height:30px;")] [logo, w_left, w_right] >>=
+      (fn toolbar => (Js.appendChild (domNode toolbar) dropboxAreaElem; ret toolbar))
       )))))))))))))))))
 
   val everything =
@@ -922,7 +923,6 @@ struct
       )))))))))
 
   val () = Js.appendChild (getElem "body") notifyAreaElem
-  val () = Js.appendChild (getElem "body") dropboxAreaElem
 
   val uiReady = ref false
   val started = ref false
