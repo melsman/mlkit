@@ -8,7 +8,7 @@ open Js.Element Rwp
 
 val b = arr (Date.toString o Date.fromTimeLocal) (timer 100)
 
-val e = taga "p" [("style","width:200;")] ($"")
+val e = taga "p" [("style","width:200px;")] ($"")
 
 val () = insertDOM_elem e b
 

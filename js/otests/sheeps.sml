@@ -10,7 +10,7 @@ val scoreElem = tag "span" ($"0")
 val msgElem = tag "span" ($"?")
 val timeElem = tag "span" ($"0")
 
-val body = taga "div" [("style","width:600;height:600;")]
+val body = taga "div" [("style","width:600px;height:600px;")]
              (taga "h1" [("align","center")] ($"RWP Example: Sheeps") &
               taga "h2" [("align","center")] ($"Score: " & scoreElem
                                               & $" " & $"Time: " & timeElem) &
