@@ -7,7 +7,7 @@ signature APP_ARG = sig
   val computeLabel       : string
   val about              : unit -> Js.elem
   val script_paths       : string list
-  val onloadhook         : {out: string -> unit} -> unit
+  val onloadhook         : {out: string -> unit, ready: unit -> unit} -> unit
   val syntaxhighlight    : bool
   val dropboxKey         : string option
   val fileExtensions     : string list
@@ -871,6 +871,13 @@ struct
               linkMLKitRep() & $".")
       end
 
+  val computeItem : widget option ref = ref NONE
+
+  fun computationReady () =
+      case !computeItem of
+          SOME item => setBoolProperty ("disabled",false) item
+        | NONE => ()
+
   fun menu tabs fts closetab =
       Menu.mk [("region", "center"),menuStyle] >>= (fn (w_left, m_left) =>
       Menu.menu m_left "File" >>= (fn m_file =>
@@ -894,7 +901,8 @@ struct
         in run m
         end;
         ret ()))) >>= (fn () =>
-      Menu.item m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn () =>
+      Menu.itemWidget m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn item =>
+      (setBoolProperty ("disabled",true) item; computeItem := SOME item; ret ())) >>= (fn () =>
       Menu.item m_left ("Clear output", NONE, clearoutarea) >>= (fn () =>
       pane [("region", "left"),("style","padding:0;padding-right:10px;background-color:#eeeeee;")] logo >>= (fn logo =>
       Menu.mk [("region", "right"),menuStyle] >>= (fn (w_right, m_right) =>
@@ -929,7 +937,7 @@ struct
   fun startWhenReady () =
       if !uiReady andalso !scriptsReady andalso not (!started) then
         (started := true;
-         X.onloadhook {out=out};
+         X.onloadhook {out=out,ready=computationReady};
          ignore (Js.setInterval 10000 Files.autosave))
       else ()
 

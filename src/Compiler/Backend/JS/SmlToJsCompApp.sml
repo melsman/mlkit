@@ -84,12 +84,11 @@ structure SmlToJsAppArg : APP_ARG = struct
   val computeLabel = "Compile->Run"
   fun compute file source = (!SmlToJsBridge.compute) file source
 
-  fun onloadhook {out : string -> unit} =
+  fun onloadhook {out : string -> unit, ready : unit -> unit} =
       let open JsCore infix ==>
           fun initialize () =
               (!SmlToJsBridge.initialize)
-                  {out=out, ready=fn () => exec0
-                      {stmt="window.smltojsLoading.ready();",res=unit} (),
+                  {out=out, ready=ready,
                    failed=fn message => exec1
                       {stmt="window.smltojsLoading.failed(message);",
                        arg1=("message",string),res=unit} message}

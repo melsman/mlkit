@@ -26,8 +26,8 @@ Startup has three stages:
    `loader.js` fetches `bundle_compiler.js` and preloads `bundle_extra.js`.
    It executes the compiler first, then the extra Basis code.
 3. The compiler unpickles the Basis environment, yielding between libraries.
-   The status indicator changes from loading to initializing to ready.
-   Compile clicks before readiness report that the compiler is still loading.
+   Compile->Run stays disabled until initialization succeeds, then becomes
+   enabled.
    Download and initialization failures leave the IDE usable and show an error.
 
 The HTML loading message is preserved until the UI is attached. Startup does
@@ -83,10 +83,10 @@ but is not a measurement of GitHub Pages download performance.
 
 Delay or block `bundle_compiler.js` using browser network tools. Verify that
 the File and Help menus, editing an opened file, and documentation navigation
-work before the compiler is ready. An early Compile click should show a
-loading message. After the download finishes, the same edited file should
+work before the compiler is ready. Compile->Run should remain disabled while loading. After the download finishes, the same edited file should
 compile normally. Repeat with a failed `bundle_extra.js` request and verify
-that the status reports failure without removing the editor.
+that the output reports failure and Compile->Run remains disabled without
+removing the editor.
 
 This change reduces the JavaScript required before the IDE appears. It does
 not move the compiler into a worker: parsing/executing the compiler bundle

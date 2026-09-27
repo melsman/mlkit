@@ -66,6 +66,7 @@ signature DOJO = sig
     val mk     : hash -> (widget * menu) M
     val menu   : menu -> string -> menu M
     val item   : menu -> string * icon option * (unit -> unit) -> unit M
+    val itemWidget : menu -> string * icon option * (unit -> unit) -> widget M
   end
 
   type 'a editCon

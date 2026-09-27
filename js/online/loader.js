@@ -3,18 +3,7 @@
   "use strict";
   var started = false;
   var report;
-  function status(message) {
-    var element = document.getElementById("smltojs-compiler-status");
-    if (!element) {
-      element = document.createElement("span");
-      element.id = "smltojs-compiler-status";
-      element.setAttribute("role", "status");
-      document.body.appendChild(element);
-    }
-    element.textContent = message;
-  }
   function failed(error) {
-    status("Compiler failed to load — reload to retry");
     report("[Compiler startup failed: " + String(error) + ". Please reload.]\n");
   }
   function script(path) {
@@ -31,7 +20,6 @@
       if (started) return;
       started = true;
       report = output;
-      status("Compiler loading…");
       requestAnimationFrame(function () {
         setTimeout(function () {
           // Fetch the Basis alongside the compiler, but execute it afterwards.
@@ -44,13 +32,11 @@
           var compiler = window.smltojsLoading.compilerLoaded ? Promise.resolve() : script("bundle_compiler.js");
           compiler.then(function () { return script("bundle_extra.js"); })
             .then(function () {
-              status("Compiler initializing…");
               initialize();
             }).catch(failed);
         }, 0);
       });
     },
-    ready: function () { status("Compiler ready"); },
     failed: failed
   };
 }());
