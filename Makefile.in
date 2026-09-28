@@ -78,7 +78,7 @@ endif
 	$(MAKE) man_mlkit
 
 ifeq ($(DARWIN_NATIVE),1)
-smltojs barry: mlkit
+barry: mlkit
 # Direct diagnostic tests expect the Basis signatures to be cached.
 test: mlkit_basislibs
 endif
@@ -87,7 +87,7 @@ endif
 smltojs:
 	$(MKDIR) bin
 ifeq ($(DARWIN_NATIVE),1)
-	SML_LIB="$(CWD)" bin/mlkit --mlb-subdir Native -o bin/smltojs src/Compiler/smltojs.mlb
+	$(MAKE) -f Makefile.arm64 smltojs MLKIT_BOOTSTRAP="$(MLKIT_BOOTSTRAP)"
 else
 	$(MAKE) -C src smltojs
 endif

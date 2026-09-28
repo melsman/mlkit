@@ -170,7 +170,7 @@ local
   fun runit g0 n = 
       loop (fn (i,g)=>(i+1,next g)) (fn (i,_) => i < n) g0
 
-  val e = taga "p" [("style","width:500;height:500;")]
+  val e = taga "p" [("style","width:500px;height:500px;")]
            (tag "h4" ($"Status: " & statusElem) & boardElem)
 in
   val () = Dojo.runDialog "Game of Life" e

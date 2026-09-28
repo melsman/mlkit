@@ -6,7 +6,7 @@ structure AppFunArg = struct
   val application_title = "TestofAppFun Functor"
   val application_logo = "smltojs_logo_transparent_small.png" 
   val syntaxhighlight = true
-  val about = $"This application..."
+  fun about () = $"This application..."
   val demoinput = SOME (String.concatWith "\n"
       ["fun loop (n,acc) : IntInf.int =",
        "  if n = 0 then acc",
@@ -19,8 +19,9 @@ structure AppFunArg = struct
        "val () = List.app fac [10,20,30,40]"
       ])
 
-  fun compute s = print "compute called\n"
-  fun onloadhook _ = ()
+  fun compute file source = print "compute called\n"
+  val computeLabel = "Compile->Run"
+  fun onloadhook {out,ready} = ready()
   val script_paths = []
   val dropboxKey = SOME "384tq7rviyh4lrg"
   val fileExtensions = ["sml","sig","mlb","txt"]

@@ -1,0 +1,17 @@
+{
+  "module": false,
+  "toplevel": false,
+  "compress": {
+    "toplevel": false,
+    "unsafe": false
+  },
+  "mangle": {
+    "toplevel": false,
+    "properties": false,
+    "eval": false
+  },
+  "format": {
+    "comments": "some",
+    "ascii_only": true
+  }
+}

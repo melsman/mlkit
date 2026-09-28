@@ -72,7 +72,7 @@ structure Dojo :> DOJO = struct
                                                     k())))
          in case !thunks of
                 SOME nil => (* first call *)
-                (JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+                (JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true, async: true};",
                                res=JsCore.unit} ();
                  thunks := SOME [f];
                  Js.loadScript "dojo/dojo.js" (fn () =>
@@ -333,9 +333,9 @@ structure Dojo :> DOJO = struct
          in f (dropdownmenu, false)
          end))
 
-    fun item (m,top) (s,i,onclick) : unit M =
+    fun itemWidget (m,top) (s,i,onclick) : widget M =
         let val path = if top then "dijit/MenuBarItem" else "dijit/MenuItem"
-        in fn (f : unit -> unit) =>
+        in fn (f : widget -> unit) =>
               require1 path (fn MenuItem =>
               let val h = [("label",s)]
                   val h = case i of SOME p => p :: h
@@ -346,9 +346,11 @@ structure Dojo :> DOJO = struct
                                         stmt="i.set('onClick', f);",
                                         res=JsCore.unit} (i,onclick)
               in addChild m i
-               ; f()
+               ; f i
               end)
         end
+
+    fun item m args = itemWidget m args >>= (fn _ => ret ())
   end
 
   structure JsUtil = struct

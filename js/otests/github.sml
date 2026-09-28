@@ -18,7 +18,7 @@ fun get_info u =
 fun get u =
   let open Js.Element
   in Dojo.runDialog ("Github info for " ^ u) 
-       (taga "textarea" [("readonly","true"),("style","width:600;height:600;")] ($(get_info u)))
+       (taga "textarea" [("readonly","true"),("style","width:600px;height:600px;")] ($(get_info u)))
   end
   
 val () = get "melsman"

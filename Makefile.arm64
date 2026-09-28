@@ -15,7 +15,7 @@ MLKIT_BOOTSTRAP_FLAGS ?=
 endif
 SML_LIB ?= $(CURDIR)
 
-.PHONY: all mlkit reml emitter configuration check
+.PHONY: all mlkit reml smltojs emitter configuration check
 all: mlkit reml
 configuration:
 	$(MAKE) -C src/Tools/MlbMake Configuration.sml
@@ -25,6 +25,8 @@ mlkit: configuration
 	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/mlkit-arm64 src/Compiler/mlkitarm64.mlb
 reml: configuration
 	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/reml-arm64 src/Compiler/remlarm64.mlb
+smltojs: configuration
+	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/smltojs src/Compiler/smltojs.mlb
 emitter: configuration
 	$(BOOTSTRAP_ENV) "$(MLKIT_BOOTSTRAP)" $(MLKIT_BOOTSTRAP_FLAGS) -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
 check: all emitter
