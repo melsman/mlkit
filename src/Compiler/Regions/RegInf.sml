@@ -197,7 +197,17 @@ struct
               case RSE.lookupExcon rse ex of
                   SOME mu =>
                   (case RType.unBOX mu of
-                       SOME(ty,p) => p :: fv_sigma (RType.type_to_scheme ty) @ acc
+                       SOME(ty,p) =>
+                       (case RType.unFUN ty of
+                            SOME(args,_,results) =>
+                            (* The outer arrow describes a unary exception
+                             * constructor, not a captured function. Its fresh
+                             * effect is never invoked by EXCON and must not
+                             * escape into the closure's effect. Retain the
+                             * annotations of the argument and result types. *)
+                            p :: List.concat (map (fv_sigma o RType.type_to_scheme)
+                                                  (args @ results)) @ acc
+                          | NONE => p :: fv_sigma (RType.type_to_scheme ty) @ acc)
                      | NONE => fv_sigma (RType.type_to_scheme mu) @ acc)
                 | NONE => die "gc_compute_delta.effects_ex"
           val (lvs,exs) = case free of

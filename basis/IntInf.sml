@@ -649,82 +649,10 @@ structure IntInf : INT_INF =
     fun zneg [] = zero()
       | zneg digits = _IntInf{negative=true, digits=digits}
 
-(*
-    local
-	fun minNeg() : int31 = valOf Int31.minInt
-	fun bigNatMinNeg() = BN.addOne (BN.bignat (~(minNeg()+1)))
-	fun bigIntMinNeg() = negi (bigNatMinNeg())
-    in
-
-	fun toInt (IntInf{digits=[], ...}) : Int.int = 0
-	  | toInt (IntInf{negative=false, digits}) = Int31.toInt(BN.int digits)
-	  | toInt (IntInf{negative=true, digits}) =
-	    (Int31.toInt(~(BN.int digits))) handle _ =>
-                if digits = bigNatMinNeg() then Int31.toInt(minNeg()) else raise Overflow
-
-	fun fromInt 0 = zero()
-	  | fromInt i =
-	    let val i = Int31.fromInt i
-	    in
-		if i < 0
-		    then if (i = minNeg())
-			     then bigIntMinNeg()
-			 else IntInf{negative=true, digits= BN.bignat (~i)}
-		else IntInf{negative=false, digits= BN.bignat i}
-	    end
-    end (* local *)
-*)
-
-      (* Implementation of toInt and fromInt. The implementation works
-       * for both Int=Int31 and Int=Int32 ; mael 2005-12-14 *)
-
-    local
-	fun minNeg() = valOf Int32.minInt
-	fun maxDigit() = Int32.fromInt(Int31.toInt((BN.maxDigit())))
-	fun nbase() = Int32.fromInt(Int31.toInt BN.nbase)
-	fun lgBase() = Word.fromInt(Int31.toInt BN.lgBase)
-	fun notNbase() = Word32.notb(Word32.fromInt(Int31.toInt BN.nbase))
-	fun natInfFromI32 (0 : Int32.int) : int31 list = []
-	  | natInfFromI32 i =
-	    let
-		fun bn (0w0 : Word32.word) = []
-		  | bn i =
-		    let
-			fun dmbase n = (Word32.>> (n, lgBase()), Word32.andb (n, notNbase()))
-			val (q,r) = dmbase i
-		    in
-			(Int31.fromInt(Word32.toInt r)) :: bn q
-		    end
-	    in
-		if i <= maxDigit() then [Int31.fromInt(Int32.toInt i)]
-		else bn (Word32.fromLargeInt(Int32.toLarge i))
-	    end
-
-	fun natInfToI32 [] : int32 = 0
-	  | natInfToI32 [d] = Int32.fromInt (Int31.toInt d)
-	  | natInfToI32 [d,e] = ~(nbase()*(Int32.fromInt (Int31.toInt e))) + (Int32.fromInt (Int31.toInt d))
-	  | natInfToI32 (d::r) = ~(nbase()*natInfToI32 r) + (Int32.fromInt (Int31.toInt d))
-
-	fun bigNatMinNeg() = BN.addOne (natInfFromI32 (~(minNeg()+1)))
-	fun bigIntMinNeg() = negi (bigNatMinNeg())
-
-	fun intInfToI32 (_IntInf{digits=[], ...}) = 0
-	  | intInfToI32 (_IntInf{negative=false, digits}) = natInfToI32 digits
-	  | intInfToI32 (_IntInf{negative=true, digits}) =
-	    (Int32.~(natInfToI32 digits)) handle _ =>
-                if digits = bigNatMinNeg() then minNeg() else raise Overflow
-
-	fun i32ToIntInf (0:Int32.int) = zero()
-	  | i32ToIntInf i =
-	    if i < 0
-		then if (i = minNeg())
-			 then bigIntMinNeg()
-		     else _IntInf{negative=true, digits= natInfFromI32 (Int32.~i)}
-            else _IntInf{negative=false, digits= natInfFromI32 i}
-    in
-	fun toInt x = Int32.toInt(intInfToI32 x)
-	fun fromInt x = i32ToIntInf(Int32.fromInt x)
-    end (* local *)
+    (* Use the full default-int range, including minInt. Int's conversions
+     * share the IntInfRep representation and check the destination range. *)
+    fun toInt x = Int.fromLarge x
+    fun fromInt x = Int.toLarge x
 
     fun toLarge (x:intinf) : intinf = x
     fun fromLarge (x:intinf) : intinf = x

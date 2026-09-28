@@ -138,6 +138,7 @@ jobs:
             make -C test_dev test_prof
             make -C test test_mlkit
             make -C test test_mlkit_no_gc
+            make -C test test_c_call_alignment
             make -C test/explicit_regions all
             make -C test/repl all
             make -C test/repl test_gc CC="$THECC"

@@ -219,3 +219,13 @@ setposout.sml
 eos.sml
 caninput.sml
 linkfail.sml        ecte
+
+(* GitHub issues #230, #231, and #232. *)
+intinf_full_int.sml
+datatype_ref_equality.sml
+datatype_function_no_equality.sml ecte
+mul_exception_app.sml
+mul_exception_tree.sml
+mul_exception_helper.sml
+real_nextafter.sml
+mul_exception_function.sml

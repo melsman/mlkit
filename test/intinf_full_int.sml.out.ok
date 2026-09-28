@@ -1,0 +1,7 @@
+int boundaries: OK
+32-bit boundary: OK
+out of range: OK
+LargeInt: OK
+Time conversions: OK
+Time arithmetic: OK
+Date 2100: OK

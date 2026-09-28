@@ -1,0 +1,6 @@
+inward: OK
+outward: OK
+equal infinities: OK
+NaN: OK
+zero steps: OK
+equal zeros: OK

@@ -476,7 +476,7 @@ val test38 =
     tst "test38" (isNan(nextAfter (nan, 2.0)) andalso isNan(nextAfter (2.0,nan)))
 
 val test39 =
-    tst "test39" (Real.==(nextAfter (negInf, 0.0), negInf) andalso Real.==(nextAfter (posInf, 0.0), posInf))
+    tst "test39" (Real.==(nextAfter (negInf, 0.0), ~maxFinite) andalso Real.==(nextAfter (posInf, 0.0), maxFinite))
 
 val test40 =
     tst "test40" ((checkFloat nan; false) handle General.Div => true)
