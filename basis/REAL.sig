@@ -265,7 +265,7 @@ equivalent to #frac o split.
 direction of t. Thus, if t is less than r, nextAfter returns the
 largest representable floating-point number less than r. If r = t then
 it returns r. If either argument is NaN, this returns NaN. If r is
-+-infinity and t differs from r, it returns +-maxFinite.
++-infinity, it returns +-infinity.
 
 [checkFloat x] raises Overflow if x is an infinity, and raises Div if
 x is NaN. Otherwise, it returns its argument.  This can be used to

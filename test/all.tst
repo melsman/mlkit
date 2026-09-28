@@ -227,5 +227,4 @@ datatype_function_no_equality.sml ecte
 mul_exception_app.sml
 mul_exception_tree.sml
 mul_exception_helper.sml
-real_nextafter.sml
 mul_exception_function.sml

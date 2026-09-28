@@ -259,11 +259,12 @@ structure Real : REAL =
            else SUBNORMAL
         end
 
-    (* Step toward d even when r is infinite: the adjacent value toward
-     * a finite number is the largest finite value with r's sign. *)
+    (* "If either argument is NaN, this returns NaN.  If r is +-infinity, it
+       returns +-infinity." -- C's nextafter steps off an infinity. *)
     fun nextAfter (r, d) =
         if isNan r then r
         else if isNan d then d
+        else if r == posInf orelse r == negInf then r
         else nextAfter_ (r, d)
 
     local
