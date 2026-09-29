@@ -68,6 +68,11 @@ const assert=require('assert');
 class Element {
  constructor(tag=''){this.tag=tag;this.children=[];this.attrs={};this.style={};this.value='';this.textContent='';}
  setAttribute(k,v){this.attrs[k]=v;}
+ getAttribute(k){return this.attrs[k]??null;}
+ removeAttribute(k){delete this.attrs[k];}
+ querySelectorAll(tag){return this.children.flatMap(n=>[...(n.tag===tag?[n]:[]),...n.querySelectorAll(tag)]);}
+ cloneNode(deep){const n=new Element(this.tag);n.attrs={...this.attrs};n.textContent=this.textContent;if(deep)n.children=this.children.map(c=>c.cloneNode(true));return n;}
+ getContext(){return {font:'',measureText(text){return {width:[...text].length*parseFloat(this.font)*.7};}};}
  append(...nodes){this.children.push(...nodes);}
  replaceChildren(...nodes){this.children=nodes;}
  addEventListener(){}
@@ -75,6 +80,7 @@ class Element {
 const elements=new Map();
 const document={getElementById:id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelectorAll:()=>[]};
 for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'],['sample','0']])document.getElementById(id).value=value;
+document.getElementById('chart').tag='svg';document.getElementById('chart').setAttribute('viewBox','0 0 1002 668');
 for(const id of ['show-base','show-kind','show-peak'])document.getElementById(id).checked=true;
 '''+script+r'''
 assert.equal(samples[0].max_pages,'123');
@@ -117,6 +123,17 @@ assert(baseName({...sourceRegion,source:'REPL #3'})==='REPL #3');
 assert(baseName({...sourceRegion,unit:'<global>'})==='global');
 assert(baseName(samples[0].regions[0])===samples[0].regions[0].unit);
 assert(regionKey(sourceRegion)===regionKey({...sourceRegion,source:'/elsewhere/life.sml'}));
+const exported=exportSvgDocument();
+assert.equal(exported.tag,'svg');assert.equal(exported.attrs.width,'1440');
+assert(exported.querySelectorAll('text').some(n=>n.textContent==='Region profile for program.sml (GC enabled)'));
+assert(exported.querySelectorAll('text').some(n=>n.textContent==='Garbage collections: 17'));
+const exportChart=exported.querySelectorAll('svg')[0];assert.equal(exportChart.attrs.width/exportChart.attrs.height,1.5);
+assert.equal(exportChart.querySelectorAll('polygon').length,model().bands.length);
+assert(exportChart.querySelectorAll('polygon').every(n=>!n.attrs.fill.startsWith('hsl')));
+assert(exported.querySelectorAll('text').some(n=>Number(n.attrs.x)>1026));
+assert(exported.querySelectorAll('text').every(n=>Number(n.attrs.y)<Number(exported.attrs.height)));
+const originalName=samples[0].regions[0].name;samples[0].regions[0].name='Very long region '.repeat(100);
+const tall=exportSvgDocument();assert(Number(tall.attrs.height)>Number(exported.attrs.height));samples[0].regions[0].name=originalName;draw();
 const beforeLabels=model().totals.slice(),beforeKeys=model().bands.map(b=>b.key);
 assert(label(samples[0].regions[2]).endsWith('(finite)'));
 assert(label({...samples[0].regions[2],finite_bytes:'0'}).endsWith('(finite)'));
@@ -163,7 +180,7 @@ for(const [time,unit] of [['500','ns'],['500000','µs'],['500000000','ms'],['500
  unitFixture.time=time;draw();assert(el('chart').children.some(n=>n.textContent==='Elapsed time ('+unit+') · single snapshot'));
  assert(el('caption').textContent.includes(' '+unit+' · '));
 }
-samples=[];draw();assert(el('caption').textContent.includes('No completed'));
+samples=[];draw();assert(el('caption').textContent.includes('No completed'));assert(el('export-svg').disabled);assert.throws(exportSvgDocument,/No completed/);
 console.log('Stacked graph: exact sums, ordering, colors, filters/migration, units, truncation, old/empty/single samples passed');
 '''
     subprocess.run(['node','-'],input=driver,text=True,check=True)

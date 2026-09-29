@@ -221,6 +221,14 @@ programs and their dependencies to obtain types and source filenames. Existing p
 readable, and the JSON-lines stream remains version 3. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
+**Download SVG** saves the current graph as a standalone vector image. The
+caption, selected metric/view, graph, right-side legend and applicable GC/stack/
+peak notes are all inside the SVG. The graph retains its 3:2 aspect ratio;
+long labels wrap and the outer image grows to accommodate every legend entry.
+Export follows the selected regions, filters, label options and peak display,
+regardless of where the HTML legend is placed. No server or external assets are
+needed. Open the SVG in a vector editor or convert it to PDF when needed.
+
 The **Pages** metric shows the full memory capacity of assigned region pages,
 without subtracting unused tails. Its axis uses scaled memory units and its table
 shows exact bytes, with page counts in a separate column. **Page footprint**
