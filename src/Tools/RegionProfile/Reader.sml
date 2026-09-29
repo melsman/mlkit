@@ -67,7 +67,7 @@ struct
                                   val cache = case find r "cache_bytes" of SOME v => v | NONE => Num "0"
                                   val extra = [("end_time",get r "time"),("frames",get r "frames"),
                                                ("pages_visited",get r "pages_visited"),("cache_bytes",cache),
-                                               ("regions",Arr(rev(!regions))),("stacks",stackData)]
+                                               ("page_bytes",get h "page_bytes"),("regions",Arr(rev(!regions))),("stacks",stackData)]
                                   val fields = List.filter (fn (k,_) => not(List.exists (fn (n,_) => n = k) extra)) (fields begin)
                               in samples := Obj(fields @ extra) :: !samples; pending := NONE end
                          end

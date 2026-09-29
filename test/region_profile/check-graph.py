@@ -77,13 +77,21 @@ const document={getElementById:id=>{if(!elements.has(id))elements.set(id,new Ele
 for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'],['sample','0']])document.getElementById(id).value=value;
 '''+script+r'''
 assert.equal(samples[0].max_pages,'123');
-samples[0].regions[0].pages='2';
+samples[0].regions[0].pages='2';samples[0].regions[0].unused_tail='16384';
 el('metric').value='pages';draw();
-assert.deepStrictEqual(model().totals,[2n,0n]);
-samples[0].regions[0].pages='0';
+assert.deepStrictEqual(model().totals,[16384n,0n]);
+samples[0].regions[0].pages='0';samples[0].regions[0].unused_tail='0';
 assert(el('chart').children.some(n=>n.attrs['data-peak']==='pages'&&n.attrs.y1===n.attrs.y2));
-assert(el('chart').children.some(n=>n.textContent==='Allocated pages'));
-el('scope').value='thread:1';draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));
+assert(el('chart').children.some(n=>n.textContent==='Memory (KiB)'));
+for(const metric of ['pages','page_footprint','total']){
+ el('metric').value=metric;draw();
+ const line=el('chart').children.find(n=>n.attrs['data-peak']==='pages');assert(line);
+ assert.equal(line.attrs.y1,line.attrs.y2);
+ if(metric!=='total'){assert.equal(line.attrs.y1,'65');assert(el('chart').children.some(n=>n.textContent.includes('984 KiB (123 pages)')));}
+ assert(el('chart').children.some(n=>n.textContent.includes('123 pages')));
+ el('scope').value='thread:1';draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));el('scope').value='all';
+}
+el('metric').value='large_bytes';draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));
 el('scope').value='all';el('metric').value='total';el('limit').value='1';draw();
 assert.equal(model().bands.length,3); // largest region, stack, Other
 assert.equal(model().bands[0].key,'other');

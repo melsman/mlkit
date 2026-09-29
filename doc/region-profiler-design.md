@@ -310,7 +310,8 @@ viewer are separate work.
   `rp2ps`; use deterministic tie-breaking. Show the ten largest regions by
   default, with a user-selectable limit (0 means all) and an Other band for the
   remainder. Order the legend top-to-bottom to match the graph. Add a Pages
-  metric with a horizontal process-wide maximum line in the aggregate view.
+  metric in memory units, with a horizontal process-wide peak page-capacity
+  line in the aggregate Pages, Regions + ML stack, and Page footprint views.
   Count assigned pages, excluding free caches and including GC from/to-space
   overlap; maintain no maximum stack counter.
   Support the aggregate of all threads and filtering to one selected logical

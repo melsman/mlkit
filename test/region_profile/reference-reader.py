@@ -72,7 +72,7 @@ def read_samples(stream):
                 regions.append(record)
             else:
                 completed.append({**pending, "end_time": record["time"], "frames": record["frames"],
-                       "pages_visited": record["pages_visited"], "cache_bytes": record.get("cache_bytes",0), "regions": regions,
+                       "pages_visited": record["pages_visited"], "cache_bytes": record.get("cache_bytes",0), "regions": regions, "page_bytes": header["page_bytes"],
                        "stacks": stacks if header["version"] >= 3 else None})
                 pending, regions = None, []
         elif kind not in ("mark", "thread_start", "thread_end", "binding", "session_end", "sample_skipped"):

@@ -176,11 +176,15 @@ them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
 
-The **Pages** metric counts whole assigned region pages, without subtracting
-unused tails; its axis and table use pages. **Page footprint** uses bytes and
-subtracts unused last-page tails in each generation. In the aggregate Pages
-view, a red horizontal line shows the process-wide maximum allocated page count,
-including allocations between snapshots. This line is omitted in filtered views
+The **Pages** metric shows the full memory capacity of assigned region pages,
+without subtracting unused tails. Its axis uses scaled memory units and its table
+shows exact bytes, with page counts in a separate column. **Page footprint**
+subtracts unused last-page tails in each generation. In the aggregate **Pages**,
+**Regions + ML stack**, and **Page footprint** views, a red horizontal line shows
+the process-wide maximum allocated page count multiplied by the recorded page
+size, including allocations between snapshots. This is a page-capacity reference,
+not a maximum for combined region-and-stack memory; stack storage and large
+objects are excluded. The axis accommodates both the bands and reference line. This line is omitted in filtered views
 because the counter is process-wide. Older files without the counter show an
 unavailable notice. Optional `max_pages` fields on version-3 `sample_end` and
 `session_end` records store the running and final maximum. The reader uses the
