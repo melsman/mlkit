@@ -4,6 +4,9 @@ type ('a,'b) token
 type svalue
 val EOF:  'a * 'a -> (svalue,'a) token
 val BACKQUOTE:  'a * 'a -> (svalue,'a) token
+val ATTOP:  'a * 'a -> (svalue,'a) token
+val SAT:  'a * 'a -> (svalue,'a) token
+val ATBOT:  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
 val AQID: (string) *  'a * 'a -> (svalue,'a) token

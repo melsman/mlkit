@@ -454,18 +454,18 @@ structure OptLambda : OPT_LAMBDA =
           | eq_TypeList _ = false
 
         fun eq_regvars (nil,nil) = true
-          | eq_regvars (x::xs,y::ys) = RegVar.eq(x,y) andalso eq_regvars(xs,ys)
+          | eq_regvars (x::xs,y::ys) = RegVar.same_annotation(x,y) andalso eq_regvars(xs,ys)
           | eq_regvars _ = false
 
         fun eq_prim m (p,p') =
             case (p,p') of
                 (RECORDprim {regvar=NONE}, RECORDprim {regvar=NONE}) => true
-              | (RECORDprim {regvar=SOME rv1}, RECORDprim {regvar=SOME rv2}) => RegVar.eq(rv1,rv2)
+              | (RECORDprim {regvar=SOME rv1}, RECORDprim {regvar=SOME rv2}) => RegVar.same_annotation(rv1,rv2)
               | (SELECTprim {index=i},SELECTprim {index=i'}) => i=i'
               | (CONprim {con,instances=il,regvar=NONE}, CONprim {con=con',instances=il',regvar=NONE}) =>
                     Con.eq(con,con') andalso eq_Types(il,il')
               | (CONprim {con,instances=il,regvar=SOME rv}, CONprim {con=con',instances=il',regvar=SOME rv'}) =>
-                    Con.eq(con,con') andalso eq_Types(il,il') andalso RegVar.eq(rv,rv')
+                    Con.eq(con,con') andalso eq_Types(il,il') andalso RegVar.same_annotation(rv,rv')
               | (EXCONprim excon, EXCONprim excon') => Excon.eq(excon,excon')
               | (DEEXCONprim excon, DEEXCONprim excon') => Excon.eq(excon,excon')
               | (UB_RECORDprim,UB_RECORDprim) => true
@@ -475,13 +475,13 @@ structure OptLambda : OPT_LAMBDA =
               | (DEREFprim {instance=t}, DEREFprim {instance=t'}) => eq_Type(t,t')
               | (REFprim {instance=t,regvar=NONE}, REFprim {instance=t',regvar=NONE}) => eq_Type(t,t')
               | (REFprim {instance=t,regvar=SOME rv}, REFprim {instance=t',regvar=SOME rv'}) =>
-                eq_Type(t,t') andalso RegVar.eq(rv,rv')
+                eq_Type(t,t') andalso RegVar.same_annotation(rv,rv')
               | (ASSIGNprim {instance=t}, ASSIGNprim {instance=t'}) => eq_Type(t,t')
               | (EQUALprim {instance=t}, EQUALprim {instance=t'}) => eq_Type(t,t')
 			  | (RESET_REGIONSprim {instance=t, regvars=rvs}, RESET_REGIONSprim {instance=t', regvars=rvs'}) => eq_Type(t,t') andalso eq_regvars(rvs, rvs')
-			  | (FORCE_RESET_REGIONSprim {instance=t, regvars=rvs}, FORCE_RESET_REGIONSprim {instance=t', regvars=rvs'}) => eq_Type(t,t') andalso ListPair.allEq RegVar.eq (rvs,rvs')
+			  | (FORCE_RESET_REGIONSprim {instance=t, regvars=rvs}, FORCE_RESET_REGIONSprim {instance=t', regvars=rvs'}) => eq_Type(t,t') andalso ListPair.allEq RegVar.same_annotation (rvs,rvs')
 			  | (CCALLprim{name=n,instances=il,regvars=rvs,tyvars=tvs,Type=t}, CCALLprim{name=n',instances=il',regvars=rvs',tyvars=tvs',Type=t'}) =>
-                    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t')) andalso ListPair.allEq RegVar.eq (rvs,rvs')
+                    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t')) andalso ListPair.allEq RegVar.same_annotation (rvs,rvs')
               | (EXPORTprim{name=n,instance_arg=a,instance_res=r}, EXPORTprim{name=n',instance_arg=a',instance_res=r'}) =>
                     n = n' andalso eq_Type(a,a') andalso eq_Type(r,r')
               | (BLOCKF64prim, BLOCKF64prim) => true
@@ -601,11 +601,11 @@ structure OptLambda : OPT_LAMBDA =
 
     fun small_const lamb =
         case lamb of
-          REAL _ => true
+          REAL (_,NONE) => true
         | INTEGER _ => true
         | WORD _ => true
         | PRIM(CONprim {con,...},[]) => true
-        | STRING (s, _) => String.size s < 100
+        | STRING (s, NONE) => String.size s < 100
         | _ => false
 
    (* -----------------------------------------------------
@@ -2000,7 +2000,11 @@ structure OptLambda : OPT_LAMBDA =
            | WORD _ => (lamb, CCONST {exp=lamb})
            | PRIM(CONprim {con,...},[]) => if is_boolean con orelse aggressive_opt() then (lamb, CCONST {exp=lamb})
                                            else fail
+           (* Explicit allocation sites must not move or disappear through
+            * constant propagation before their storage modes are checked. *)
+           | STRING (_,SOME _) => fail
            | STRING _ => (lamb, CCONST {exp=lamb})
+           | REAL (_,SOME _) => fail
            | REAL _ => (lamb, CCONST {exp=lamb})
            | F64 _ => (lamb, CCONST {exp=lamb})
            | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>   (* lvar bound in scope *)
@@ -2220,7 +2224,7 @@ structure OptLambda : OPT_LAMBDA =
             then ( tick "equal true 2"
                  ; reduce (env,(e,CUNKNOWN)))
             else fail
-          | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
+          | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,NONE)]) =>
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))
           | PRIM(CCALLprim{name="__real_to_f64",...},[e]) =>

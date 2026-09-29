@@ -227,6 +227,9 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | _		 => if is_reml() then
                               if text = "`" then keyword BACKQUOTE
                               else if text = "##" then keyword HASHHASH
+                              else if text = "atbot" then keyword ATBOT
+                              else if text = "sat" then keyword SAT
+                              else if text = "attop" then keyword ATTOP
                               else ID(text, p1, p2)
                             else ID(text, p1, p2)
       end

@@ -146,6 +146,7 @@ type arg = unit
 
 (* Additional reserved keyword for supporting region annotations *)
 
+        | ATBOT | SAT | ATTOP
         | BACKQUOTE
 
 (* Junk: *)
@@ -252,6 +253,8 @@ type arg = unit
         | FClause                       of FClause
 
 (* ReML *)
+        | AllocVar                      of RegVar.regvar
+        | AllocVars                     of RegVar.regvar list
         | RegVarSeq                     of RegVar.regvar list
         | RegVarSeq1                    of RegVar.regvar list
 
@@ -863,25 +866,25 @@ AndSigBind_opt:
 
 AtExp:
           SCon          ( SCONatexp (PP SConleft SConright, SCon, NONE) )
-        | SCon BACKQUOTE EqIdent
+        | SCon BACKQUOTE AllocVar
                         ( SCONatexp (PP SConleft SConright, SCon,
-                                     SOME (PP BACKQUOTEleft EqIdentright,
-                                           RegVar.mk_Named EqIdent)) )
-        | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                                     SOME (PP BACKQUOTEleft AllocVarright,
+                                           AllocVar)) )
+        | LongOpIdent BACKQUOTE LBRACKET AllocVars RBRACKET
                         ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             IDENTatexp (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
                                          SOME (PP BACKQUOTEleft RBRACKETright,
-                                               map RegVar.mk_Named EqIdent_seq1))
+                                               AllocVars))
                           end )
-        | LongOpIdent BACKQUOTE EqIdent
+        | LongOpIdent BACKQUOTE AllocVar
                         ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             IDENTatexp (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
-                                         SOME (PP BACKQUOTEleft EqIdentright,
-                                               [RegVar.mk_Named EqIdent]))
+                                         SOME (PP BACKQUOTEleft AllocVarright,
+                                               [AllocVar]))
                           end )
         | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
                           in
@@ -891,10 +894,10 @@ AtExp:
         | LBRACE ExpRow_opt RBRACE
                         ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
                                        NONE) )
-        | LBRACE ExpRow_opt RBRACE BACKQUOTE EqIdent
+        | LBRACE ExpRow_opt RBRACE BACKQUOTE AllocVar
                         ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
-                                       SOME (PP BACKQUOTEleft EqIdentright,
-                                             RegVar.mk_Named EqIdent)) )
+                                       SOME (PP BACKQUOTEleft AllocVarright,
+                                             AllocVar)) )
         | LET Dec IN Exp_ END
                         ( LETatexp (PP LETleft ENDright, Dec, Exp_) )
         | LPAREN Exp_ RPAREN
@@ -914,10 +917,10 @@ AtExp:
         | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE, NONE) )
         | LPAREN ExpComma_seq2 RPAREN
                         ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 NONE )
-        | LPAREN ExpComma_seq2 RPAREN BACKQUOTE EqIdent
+        | LPAREN ExpComma_seq2 RPAREN BACKQUOTE AllocVar
                         ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2
-                                                (SOME(PP BACKQUOTEleft EqIdentright,
-                                                      RegVar.mk_Named EqIdent)) )
+                                                (SOME(PP BACKQUOTEleft AllocVarright,
+                                                      AllocVar)) )
         | HASH Label    ( hash (PP HASHleft Labelright) Label )
         | LPAREN ExpSemicolon_seq2 RPAREN
                         ( PARatexp (PP LPARENleft RPARENright,
@@ -1673,3 +1676,14 @@ RegVarSeq1:
                         ( [RegVar.mk_Named EqIdent] )
         | BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
                         ( map RegVar.mk_Named EqIdent_seq1 )
+
+AllocVar:
+          EqIdent       ( RegVar.mk_Named EqIdent )
+        | ATBOT EqIdent ( RegVar.with_storage_mode (RegVar.ATBOT, RegVar.mk_Named EqIdent) )
+        | SAT EqIdent   ( RegVar.with_storage_mode (RegVar.SAT, RegVar.mk_Named EqIdent) )
+        | ATTOP EqIdent ( RegVar.with_storage_mode (RegVar.ATTOP, RegVar.mk_Named EqIdent) )
+
+AllocVars:
+          AllocVar                 ( [AllocVar] )
+        | AllocVar AllocVars       ( AllocVar :: AllocVars )
+        | AllocVar COMMA AllocVars ( AllocVar :: AllocVars )

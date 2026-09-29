@@ -146,6 +146,9 @@ jobs:
             make -C test/region_info all
           fi
 
+      - name: Check explicit storage modes
+        run: make -C test/explicit_regions test_storage_modes
+
       - name: Build SMLtoJs
         run: |
           if [ "$MLCOMP_HOST" = mlton ]; then

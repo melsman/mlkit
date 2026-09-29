@@ -35,6 +35,7 @@ signature REGION_EXP = sig
                                    place: place option} list,
 		  declared_excons: (excon * mu option) list}
 
+      | StorageModes of (place * RegVar.regvar) list * metaType
       | RaisedExnBind (* to be a raised Bind exception. *)
 
 
@@ -137,6 +138,8 @@ signature REGION_EXP = sig
 
     type StringTree
 
+    val plainMeta : metaType -> metaType
+    val storageModes : metaType -> (place * RegVar.regvar) list
     val layMeta : metaType -> StringTree
     val layoutLambdaPgm: ('a -> StringTree option) -> ('b -> StringTree option) ->
                          ('a, 'b)LambdaPgm -> StringTree

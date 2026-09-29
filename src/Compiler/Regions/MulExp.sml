@@ -363,7 +363,7 @@ struct
                 case e of
                    VAR {lvar, il, plain_arreffs, fix_bound=true, rhos_actuals, other} =>
                    if Lvars.pr_lvar lvar = "par" andalso warn_on_parallel_puts() then
-                     (case mt of
+                     (case RegionExp.plainMeta mt of
                           RegionExp.Mus[mu] =>
                           (case R.unBOX mu of
                                SOME (ty,p) =>
@@ -927,14 +927,17 @@ struct
              | LETREGION{body, ...} => warn_dangle_trip TE body
              | _ => ()
 
-           and warn_dangle_trip TE (TR(e,RegionExp.Mus[mu],_,_)) =
+           and warn_dangle_trip TE (TR(e,mt,a,b)) =
+               warn_dangle_plain TE (TR(e,RegionExp.plainMeta mt,a,b))
+
+           and warn_dangle_plain TE (TR(e,RegionExp.Mus[mu],_,_)) =
                (case R.unBOX mu of
                     SOME(ty,_) =>
                     (case R.unFUN ty of
                          SOME (_,eps,_) => warn_dangle TE (e,SOME eps)
                        | NONE => warn_dangle TE (e, NONE))
                     | NONE => warn_dangle TE (e, NONE))
-             | warn_dangle_trip TE (TR(e,_,_,_)) = warn_dangle TE (e, NONE)
+             | warn_dangle_plain TE (TR(e,_,_,_)) = warn_dangle TE (e, NONE)
 
            and warn_dangle_i TE (SWITCH(e, list, e')) =
                (warn_dangle_trip TE e;
@@ -2315,7 +2318,7 @@ struct
            kne tr1 (fn tr1' =>
             if atomic tr1' then k(f tr1')
             else
-              case mu1 of
+              case RegionExp.plainMeta mu1 of
                 RegionExp.RaisedExnBind =>
                 k(e_to_t(LET{k_let = true,
                              pat = [],

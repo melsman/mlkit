@@ -1,9 +1,13 @@
 (* region variables *)
 
 signature REGVAR = sig
+  datatype storage_mode = ATBOT | SAT | ATTOP
   type regvar
   val mk_Fresh : string -> regvar
   val mk_Named : string -> regvar
+  val with_storage_mode : storage_mode * regvar -> regvar
+  val storage_mode : regvar -> storage_mode option
+  val same_annotation : regvar * regvar -> bool
   val pr       : regvar -> string
   val pu       : regvar Pickle.pu
 

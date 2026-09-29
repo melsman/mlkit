@@ -24,3 +24,7 @@ test: all
 .PHONY: clean
 clean:
 	rm -rf *~ *.log test_report.html MLB KITversion TESTmessages *.out runexe all.sml
+
+.PHONY: test_storage_modes
+test_storage_modes:
+	REML="$(abspath ../../bin/reml)" MLKIT="$(abspath ../../bin/mlkit)" SML_LIB="$(abspath ../..)" sh check-storage-modes.sh

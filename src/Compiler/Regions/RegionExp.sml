@@ -48,7 +48,8 @@ datatype metaType =
                                       place: place option} list,
                      declared_excons: (excon * mu option) list}
 
-         | RaisedExnBind (* to be a raised Bind exception. *)
+         | StorageModes of (place * RegVar.regvar) list * metaType
+      | RaisedExnBind (* to be a raised Bind exception. *)
 
 
 datatype ('a,'b) LambdaPgm = PGM of
@@ -138,6 +139,14 @@ datatype ('a,'b) LambdaPgm = PGM of
 
      and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip *
                                        ('c * ('a,'b)trip) list * ('a,'b)trip option
+
+(* Site annotations travel with the expression metadata, independently of
+ * region identity, until storage mode analysis consumes them. *)
+fun plainMeta (StorageModes(_,mt)) = plainMeta mt
+  | plainMeta mt = mt
+
+fun storageModes (StorageModes(a,_)) = a
+  | storageModes _ = []
 
 fun cons_if_there (NONE, l) = l
   | cons_if_there (SOME x, l) = x::l
@@ -279,7 +288,8 @@ fun layout_declared_lvar' {lvar, compound, create_region_record, regvars, sigma,
 
 fun layout_declared_excon (excon,mu_opt) = PP.LEAF(Excon.pr_excon(excon))   (* memo: "of mu" maybe *)
 
-fun layMeta (Mus mus) = layMus mus
+fun layMeta (StorageModes(_,mt)) = layMeta mt
+  | layMeta (Mus mus) = layMus mus
   | layMeta (Frame{declared_lvars, declared_excons}) =
     let val l1 = map layout_declared_lvar' declared_lvars
         val l2 = map layout_declared_excon declared_excons

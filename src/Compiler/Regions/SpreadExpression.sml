@@ -215,7 +215,8 @@ struct
 
   datatype cont = TAIL | NOTAIL
 
-  fun retract (B, t as E'.TR(e, E'.Mus mus, phi), cont, tvs) =
+  fun retract (B, t as E'.TR(e, mt, phi), cont, tvs) =
+    case E'.plainMeta mt of E'.Mus mus =>
     if false andalso preserve_tail_calls() andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
       let val free_rhos_and_epss = R.ann_mus mus []
           val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
@@ -236,7 +237,7 @@ struct
                                      body = t}, E'.Mus mus, phi'),
         NOTAIL, tvs)
     end
-    | retract (B, t, c, tvs) = (B, t, c, tvs)
+    | _ => (B, t, cont, tvs)
 
   val count_RegEffClos = ref 0 (* for statistics (toplas submission) *)
 
@@ -250,7 +251,10 @@ struct
      and fix expressions.
   *)
 
-  fun unMus s (E'.Mus mus) = mus
+  fun typeTrip (E'.TR(e,mt,phi)) = E'.TR(e,E'.plainMeta mt,phi)
+
+  fun unMus s (E'.StorageModes(_,mt)) = unMus s mt
+    | unMus s (E'.Mus mus) = mus
     | unMus s (E'.Frame _) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a Frame")
     | unMus s (E'.RaisedExnBind) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a RaisedExnBind")
 
@@ -589,16 +593,16 @@ struct
       (* unify types of branches - when they are not frames or raised Bind types *)
 
       val (B,metatype) =
-          case List.find (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
+          case List.find (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) (map typeTrip new_choices) of
               SOME(E'.TR(_,E'.Mus mus1,_)) =>
               (List.foldl (fn (E'.TR(_,E'.Mus mus,_),B) => R.unify_mus(mus,mus1)B
                           | (E'.TR(_, _, _),B) => B)
                           B
-                          (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
+                          (map typeTrip (case new_last of NONE => new_choices | SOME t' => t'::new_choices)),
                E'.Mus mus1)
             | SOME _ => die "spreadSwitch"
             | NONE =>
-              case List.find (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
+              case List.find (fn E'.TR(_,E'.Frame _, _) => true | _ => false) (map typeTrip new_choices) of
                   SOME (E'.TR(_,metatype,_)) => (B,metatype)
                 | NONE => (B, E'.RaisedExnBind)
 
@@ -631,7 +635,38 @@ struct
         spreadSwitch B spread con excon_mus (E.SWITCH(e0, map (fn ((c,_),e) => (c,e)) choices, last),
                                              toplevel,cont)
 
-    fun S (B,e,toplevel:bool,cont:cont) : cone * (place,unit)E'.trip * cont * tyvar list =
+    fun optList NONE = []
+      | optList (SOME r) = [r]
+
+    fun annotate annotations (E'.TR(E'.LETREGION_B{B,discharged_phi,body},mt,phi)) =
+        E'.TR(E'.LETREGION_B{B=B,discharged_phi=discharged_phi,
+                            body=annotate annotations body},mt,phi)
+      | annotate annotations (E'.TR(e,mt,phi)) =
+        E'.TR(e,E'.StorageModes(annotations,mt),phi)
+
+    fun S (B,e,toplevel,cont) =
+    let val (B,t as E'.TR(e',mt,phi),cont,tvs) = S0(B,e,toplevel,cont)
+        val rvs = case e of
+                      E.VAR{regvars,...} => regvars
+                    | E.STRING(_,rv) => optList rv
+                    | E.REAL(_,rv) => optList rv
+                    | E.PRIM(E.CONprim{regvar,...},_) => optList regvar
+                    | E.PRIM(E.REFprim{regvar,...},_) => optList regvar
+                    | E.PRIM(E.RECORDprim{regvar},_) => optList regvar
+                    | E.PRIM(E.CCALLprim{regvars,...},_) => regvars
+                    | _ => []
+        val annotations = List.mapPartial
+            (fn rv => case RegVar.storage_mode rv of
+                          NONE => NONE
+                        | SOME _ =>
+                          case RSE.lookupRegVar rse rv of
+                              SOME p => SOME(p,rv)
+                            | NONE => deepError rv "Explicit region variable is not in scope") rvs
+    in (B, if null annotations then t
+           else annotate annotations t,cont,tvs)
+    end
+
+    and S0 (B,e,toplevel:bool,cont:cont) : cone * (place,unit)E'.trip * cont * tyvar list =
       (case e of
       E.VAR{lvar, instances : E.Type list, regvars} =>
        (case RSE.lookupLvar rse lvar of
@@ -824,7 +859,7 @@ struct
            val (B, t2 as E'.TR(e2, meta2, phi2), cont, tvs2) = S(B, e2_ML, toplevel, cont)
         in
           (B, E'.TR(E'.LET{pat = nil,
-                           bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
+                           bind = t1, scope = t2}, E'.plainMeta meta2, Eff.mkUnion([phi1,phi2])),
            cont,
            spuriousJoin tvs1 tvs2)
         end
@@ -855,7 +890,7 @@ struct
            val (B, t2 as E'.TR(e2, meta2, phi2),cont,tvs2) = spreadExp(B,rse,e2_ML,toplevel,cont)
         in
           retract(B, E'.TR(E'.LET{pat = pat'_list,
-                                  bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
+                                  bind = t1, scope = t2}, E'.plainMeta meta2, Eff.mkUnion([phi1,phi2])),
                   cont,
                   spuriousJoin tvs1 tvs2)
         end
@@ -907,7 +942,7 @@ good *)
             val (B, t2 as E'.TR(_, meta2, phi2), cont, tvs2) = spreadExp(B, rse2, scope,toplevel,cont)
             val e' = E'.FIX{shared_clos=rho,functions = functions',scope = t2}
         in
-          retract(B, E'.TR(e', meta2, Eff.mkUnion([phi1,phi2])),
+          retract(B, E'.TR(e', E'.plainMeta meta2, Eff.mkUnion([phi1,phi2])),
                   cont,
                   spuriousJoin tvs tvs2)
         end (* FIX *)
@@ -962,7 +997,7 @@ good *)
                        then nil
                        else R.ftv_ty tau
         in
-          retract(B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2,
+          retract(B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), E'.plainMeta meta2,
                            Eff.mkUnion([Eff.mkPut rho,phi2])),
                   cont,
                   RSE.spuriousJoin tvs tvs')
@@ -1216,8 +1251,9 @@ good *)
     | E.PRIM(E.EXCONprim excon, [arg]) =>
         (case S(B,arg, false, NOTAIL) of
           (* expression denotes value *)
-          (B,t_arg as E'.TR(arg_e, E'.Mus mus, phi_arg), _, tvs) =>
-            let val mu = noSome (RSE.lookupExcon rse excon) ".S: unary exception constructor not in RSE"
+          (B,t_arg as E'.TR(arg_e, mt, phi_arg), _, tvs) =>
+            let val mus = unMus "S.EXCON" mt
+                val mu = noSome (RSE.lookupExcon rse excon) ".S: unary exception constructor not in RSE"
                 val (tau,_) = noSome (R.unBOX mu) ".S: unary exception constructor function not boxed"
             in case R.unFUN tau of
                    SOME(mus1,arreff,mus_result as [mu_result]) =>
@@ -1232,10 +1268,7 @@ good *)
                    end
                  | _ => die "S: unary exception constructor ill-typed"
             end
-          (* expression denotes frame or failing top-level binding : *)
-          | (B,t_arg as E'.TR(arg_e, E'.RaisedExnBind, phi_arg), _, _) =>
-            die "S: exception constructor applied to frame or raised Bind exception"
-          | _ => die "S(B,PRIM(EXCON...),...)"
+
        )
     | E.PRIM(E.DEEXCONprim excon, [arg]) =>
         let
@@ -1263,7 +1296,7 @@ good *)
                     let val (B, trip, _, tvs') = S(B,arg, false, NOTAIL)
                     in (B, trip::trips, spuriousJoin tvs' tvs)
                     end) (B,[],[]) args
-            val tau = R.mkRECORD(map (fn E'.TR(_,E'.Mus [mu],_) => mu | _ => die "S.record: boxed arg") trips)
+            val tau = R.mkRECORD(map (fn E'.TR(_,mt,_) => case unMus "S.record" mt of [mu] => mu | _ => die "S.record: boxed arg") trips)
             val (rho, mu, B) = maybe_explicit_rho_opt rse B tau rv_opt
             val phis = map (fn E'.TR(_,_,phi) => phi) trips
             val phis = case rho of
@@ -1413,10 +1446,12 @@ good *)
                     let val (B, trip, _, tvs') = S(B,arg, false, NOTAIL)
                     in (B, trip::trips, spuriousJoin tvs' tvs)
                     end) (B,[],[]) args
-            val () = List.app (fn E'.TR(_,E'.Mus [mu],_) =>
+            val () = List.app (fn E'.TR(_,mt,_) =>
+                              let val mu = hd (unMus "BLOCKF64" mt)
+                              in
                                   if R.isF64Type mu then ()
                                   else die "S.blockf64: expecting f64 type"
-                                | _ => die "S.blockf64: expecting one mu") trips
+                              end) trips
             val (B, rho, mu) = freshBoxMu "BLOCKF64prim" B R.stringType
             val phi = Eff.mkUnion(Eff.mkPut rho :: map (fn E'.TR(_,_,phi) => phi) trips)
         in

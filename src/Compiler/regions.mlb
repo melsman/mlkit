@@ -58,7 +58,7 @@ in
         Regions/SpreadDataType.sml
         local open Edlib
         in local open SyntaxObjects in Regions/SpreadExpression.sml end
-           Regions/AtInf.sml
+           local open SyntaxObjects in Regions/AtInf.sml end
            local open Pickle in Regions/DropRegions.sml end
         end
         local open Pickle

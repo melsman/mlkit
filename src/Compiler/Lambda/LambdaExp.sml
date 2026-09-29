@@ -11,6 +11,8 @@ structure LambdaExp : LAMBDA_EXP =
     type con = Con.con
     type excon = Excon.excon
     type TyName = TyName.TyName
+    (* Allocation/argument occurrences carry optional storage modes and source
+     * reports in RegVar; binding and type occurrences have no storage mode. *)
     type regvar = RegVar.regvar
     type Report = Report.Report
 
