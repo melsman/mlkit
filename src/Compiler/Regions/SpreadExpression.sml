@@ -253,7 +253,8 @@ struct
 
   fun typeTrip (E'.TR(e,mt,phi)) = E'.TR(e,E'.plainMeta mt,phi)
 
-  fun unMus s (E'.StorageModes(_,mt)) = unMus s mt
+  fun unMus s (E'.ArgumentModes{meta,...}) = unMus s meta
+    | unMus s (E'.StorageModes(_,mt)) = unMus s mt
     | unMus s (E'.Mus mus) = mus
     | unMus s (E'.Frame _) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a Frame")
     | unMus s (E'.RaisedExnBind) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a RaisedExnBind")
@@ -645,10 +646,9 @@ struct
         E'.TR(e,E'.StorageModes(annotations,mt),phi)
 
     fun S (B,e,toplevel,cont) =
-    let val (B,t as E'.TR(e',mt,phi),cont,tvs) = S0(B,e,toplevel,cont)
+    let val (B,t,cont,tvs) = S0(B,e,toplevel,cont)
         val rvs = case e of
-                      E.VAR{regvars,...} => regvars
-                    | E.STRING(_,rv) => optList rv
+                      E.STRING(_,rv) => optList rv
                     | E.REAL(_,rv) => optList rv
                     | E.PRIM(E.CONprim{regvar,...},_) => optList regvar
                     | E.PRIM(E.REFprim{regvar,...},_) => optList regvar
@@ -721,9 +721,15 @@ struct
               val mu = case place0opt of
                            SOME p => R.mkBOX(tau,p)
                          | NONE => tau
+              val annotations = List.filter
+                  (fn (_,rv) => Option.isSome (RegVar.storage_mode rv))
+                  (ListPair.zip(formal_regvars,regvars))
+              val meta = if null annotations then E'.Mus [mu]
+                         else E'.ArgumentModes{formals=annotations,actuals=ref [],meta=E'.Mus [mu]}
+              val () = E'.resolveArgumentModes meta (#1 (R.bv sigma))
             in
                 (B,E'.TR(E'.VAR{lvar = lvar, fix_bound=fix_bound, il_r = il_r},
-                         E'.Mus [mu], phi),
+                         meta, phi),
                  NOTAIL,
                  tvs_spurious)
             end

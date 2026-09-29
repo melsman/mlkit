@@ -385,7 +385,8 @@ type arg = unit
 
 %left   COLON           (* L/R is arbitrary. ":" is looser than infix. *)
 %right  ARROW
-%left   ID EQUALS       (* L/R fairly arbitrary: we resolve infixes later. *)
+%nonassoc BACKQUOTE
+%left   ID EQUALS ATBOT SAT ATTOP HASHHASH       (* L/R fairly arbitrary: we resolve infixes later. *)
 
 %right  STAR
 
@@ -408,7 +409,12 @@ type arg = unit
 %start          TopDec
 %%
 
+(* Storage-mode words are soft keywords: the tokens are ordinary identifiers
+ * everywhere except the two-word AllocVar productions below. *)
 Ident:    ID            ( ID )
+        | ATBOT %prec BACKQUOTE ( "atbot" )
+        | SAT %prec BACKQUOTE   ( "sat" )
+        | ATTOP %prec BACKQUOTE ( "attop" )
         | STAR          ( "*" )
 
 OpIdent:  Ident         ( OP_OPT(Ident, false) )
@@ -420,6 +426,9 @@ EqIdent:  Ident         ( Ident )
 
 TypeIdent:
           ID            ( ID )
+        | ATBOT         ( "atbot" )
+        | SAT           ( "sat" )
+        | ATTOP         ( "attop" )
 
 LongTypeIdent:
           TypeIdent     ( [TypeIdent] )

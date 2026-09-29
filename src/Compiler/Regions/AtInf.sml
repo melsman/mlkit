@@ -544,8 +544,12 @@ structure AtInf : AT_INF =
                                                        ^ "\n")
                                              else ())
                                           ; map (fn (rho, _) => ATTOP rho) actuals)
-                           val actuals' = ListPair.mapEq
-                               (fn ((rho,_),a) => check(rho,a)) (actuals,actuals')
+                           val actuals' = case RegionExp.argumentModes metaType of
+                                              NONE => actuals'
+                                            | SOME modes => ListPair.mapEq
+                                              (fn (NONE,a) => a
+                                                | (SOME rv,a) => check_mode rv a)
+                                              (modes,actuals')
                        in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
                              fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
                       end

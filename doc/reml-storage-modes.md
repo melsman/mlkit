@@ -38,7 +38,12 @@ f `[r1, attop r2] ()
 
 The existing whitespace-separated region argument lists remain valid. Storage
 modes are not permitted in region bindings, region annotations in types, or
-ordinary Standard ML mode. Existing ReML programs need no new annotations.
+ordinary Standard ML mode. The words are contextual: `val atbot = 34`,
+functions named `sat`, record labels named `attop`, and region names with these
+spellings remain valid. In an allocation annotation, `atbot r` means a mode
+followed by a region name; a single name such as `f` followed by `` `[atbot] ``
+uses the region named `atbot` without specifying a mode.
+Existing ReML programs need no new annotations.
 
 Run the focused regression checks after building the compilers and runtime:
 

@@ -334,7 +334,8 @@ struct
          in il_r:= (il, fn p => p);
             (case RSE.lookupLvar rse lvar of
                  SOME(_,_,_,sigma,_,_, _) =>
-                 let val (tau_1, B, updates: (effect * Effect.delta_phi)list,
+                 let val () = Exp.resolveArgumentModes mt (#1 (RType.bv sigma))
+                     val (tau_1, B, updates: (effect * Effect.delta_phi)list,
                           spuriousPairs: (effect * RType.Type)list) =
                          instClever (SOME lvar,sigma,il) B
                          handle _ =>
