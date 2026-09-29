@@ -309,7 +309,9 @@ viewer are separate work.
   region bands by the sum of their sampled sizes, smallest first, matching
   `rp2ps`; use deterministic tie-breaking. Show the ten largest regions by
   default, with a user-selectable limit (0 means all) and an Other band for the
-  remainder. Order the legend top-to-bottom to match the graph. Add a Pages
+  remainder. Order the legend top-to-bottom to match the graph, with optional
+  placement on the right. Provide checkboxes for base names, finite/infinite
+  kind, inferred region type, and peak page capacity. Add a Pages
   metric in memory units, with a horizontal process-wide peak page-capacity
   line in the aggregate Pages, Regions + ML stack, and Page footprint views.
   Count assigned pages, excluding free caches and including GC from/to-space

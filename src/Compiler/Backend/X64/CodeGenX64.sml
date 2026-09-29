@@ -73,9 +73,11 @@ struct
       fun binding ((place,sz),off) =
         [Int.toString(Effect.key_of_eps_or_rho place),Int.toString(fsz-off-1),
          (case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n),
-         rpBindingName place]
+         rpBindingName place,
+         (case Effect.get_place_ty place of NONE => "0"
+                                        | SOME ty => Int.toString(Effect.ord_runType ty))]
     in
-      ["0x52504d32",Int.toString(fsz+ac),Int.toString delta,
+      ["0x52504d33",Int.toString(fsz+ac),Int.toString delta,
        Int.toString(length(!rpRegions)),I.pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
     end
   fun rpEmit words code =
@@ -1417,7 +1419,7 @@ struct
                    val pc = new_local_lab "rp_thread_return"
                    fun callThread code = if sampledProfile() then
                      I.push(LA pc) :: I.jmp(R r10) :: I.dot_p2align "3" ::
-                     I.dot_quad "-1" :: I.dot_quad "0x52504d32" :: I.lab pc :: code
+                     I.dot_quad "-1" :: I.dot_quad "0x52504d33" :: I.lab pc :: code
                      else I.call'(R r10) :: code
                    val offset_codeptr = if BI.tag_values() then "8" else "0"
                    val call_closure_lab = new_local_lab (name ^ "_call_closure")
@@ -1558,7 +1560,7 @@ struct
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10)]                       (* call ML function *)
-                         @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d32"] else [])
+                         @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d33"] else [])
                          @ [I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
                          @ (if gc_p() then
@@ -2182,7 +2184,7 @@ struct
                    I.dot_p2align "3" ::
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
-                   I.dot_quad (if sampledProfile() then "0x52504d32" else "0xFFFFFFFFFFFFFFFF") :: (* Entry sentinel. *)
+                   I.dot_quad (if sampledProfile() then "0x52504d33" else "0xFFFFFFFFFFFFFFFF") :: (* Entry sentinel. *)
                    I.lab next_lab ::
                    C))
                  end) C progunit_labs
@@ -2375,8 +2377,13 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
         val _ = reset_label_counter()
 
         val () = if sampledProfile() then
-          add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
-                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d32"]
+          add_static_data ([I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
+                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d33",
+                           I.dot_globl(NameLab "mlkit_rp_globals",I.OBJ),I.lab(NameLab "mlkit_rp_globals")] @
+            (List.concat(map (fn (place,l) =>
+               [I.dot_quad(I.pr_lab(DatLab l)),I.dot_quad(case Effect.get_place_ty place of
+                   NONE => "0" | SOME ty => Int.toString(Effect.ord_runType ty))]) global_region_labs)
+             @ [I.dot_quad "0",I.dot_quad "0"]))
           else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
@@ -2448,8 +2455,13 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val _ = reset_static_data()
         val _ = reset_label_counter()
         val () = if sampledProfile() then
-          add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
-                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d32"]
+          add_static_data ([I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
+                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d33",
+                           I.dot_globl(NameLab "mlkit_rp_globals",I.OBJ),I.lab(NameLab "mlkit_rp_globals")] @
+            (List.concat(map (fn (place,l) =>
+               [I.dot_quad(I.pr_lab(DatLab l)),I.dot_quad(case Effect.get_place_ty place of
+                   NONE => "0" | SOME ty => Int.toString(Effect.ord_runType ty))]) global_region_labs)
+             @ [I.dot_quad "0",I.dot_quad "0"]))
           else ()
 
         fun main_insts C =

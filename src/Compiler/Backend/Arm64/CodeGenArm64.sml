@@ -245,9 +245,11 @@ struct
       fun binding ((place,sz),off) =
         [Int.toString(Effect.key_of_eps_or_rho place),Int.toString(!rpFrame-off-1),
          (case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n),
-         rpBindingName place]
+         rpBindingName place,
+         (case Effect.get_place_ty place of NONE => "0"
+                                        | SOME ty => Int.toString(Effect.ord_runType ty))]
     in
-      ["0x52504d32",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
+      ["0x52504d33",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
        Int.toString(length(!rpRegions)),pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
     end
   fun rpEmit words code =
@@ -1952,7 +1954,7 @@ struct
                 val call = if sampledProfile() then
                     addressInto(pc,X 30) ++ instruction A.br (R(X 17))
                     ++ one (Directive(Align 3))
-                    ++ one (Directive(Quad ["-1","0x52504d32"])) ++ one (Label pc)
+                    ++ one (Directive(Quad ["-1","0x52504d33"])) ++ one (Label pc)
                   else instruction A.blr (R(X 17))
                 val code = (call
                    ++ instruction A.bl (L(NameLab "thread_exit"))
@@ -2029,7 +2031,7 @@ struct
                    ++ callInto (Indirect (SS.PHREG_ATY(X 17))) returnLab
                    ++ (if sampledProfile() then
                          one (Directive(Align 3)) ++ one (Directive(Quad ["-2"]))
-                         ++ one (Directive(Quad ["0x52504d32"])) else fn code => code)
+                         ++ one (Directive(Quad ["0x52504d33"])) else fn code => code)
                    ++ one (Label returnLab)
                    ++ resumeGCInto()
                    ++ restoreCInto()) code
@@ -2541,7 +2543,7 @@ struct
          ++ (if sampledProfile() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
-               ++ one (Directive(Quad ["0x52504d32"]))
+               ++ one (Directive(Quad ["0x52504d33"]))
              else if gc() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
@@ -2594,7 +2596,11 @@ struct
         Directive(Global (l)) :: Label l ::
         foldr (fn (s,code) => Directive(Quad [s]) :: code) code words
       val () = if sampledProfile() then
-        addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d32"] []) else ()
+        (addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d33"] []);
+         addStatic (datum (NameLab "mlkit_rp_globals")
+           (List.concat(map (fn (place,l) =>
+              [pr_lab(DatLab l),case Effect.get_place_ty place of
+                                  NONE => "0" | SOME ty => Int.toString(Effect.ord_runType ty)]) globals) @ ["0","0"]) [])) else ()
       fun init (place,l) code =
         (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
           ++ moveInto(X 28,X 0)

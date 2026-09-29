@@ -26,6 +26,7 @@ if mode == "runtime":
     assert len(samples) == 4
     assert [s['stacks'][0]['active_bytes'] for s in samples] == [1056,512,512,512]
     assert [s['stacks'][0]['stack_bytes'] for s in samples] == [1008,488,488,488]
+    assert {r['binding']:r['region_type'] for r in samples[0]['regions']} == {11:'pair',12:'string',13:'bot'}
     first = samples[0]
     assert first["frames"] == 2 and first["pages_visited"] == 2
     assert totals(first, "page_footprint") == 8264
@@ -56,6 +57,8 @@ if mode == "runtime":
     parsed = list(reader.read_samples(io.StringIO("".join(json.dumps(r)+"\n" for r in records))))
     assert parsed[0]["regions"][0]["large_bytes"] == 2**60 + 1
 elif mode == "regions":
+    assert {r['region_type'] for r in samples[0]['regions'] if r['unit']=='<global>'} == {'top','string','pair','array','ref','triple'}
+    assert all(r['region_type']!='unavailable' for s in samples for r in s['regions'])
     assert len(samples) == 9, len(samples)
     assert [totals(s, "finite_bytes") for s in samples[:7]] == [32,16,16,16,0,48,32]
     assert [totals(s, "large_bytes") for s in samples] == [24008,24008,0,0,0,0,0,0,0]

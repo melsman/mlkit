@@ -12,10 +12,10 @@ static const uintptr_t sentinel[] = {UINTPTR_MAX, MLKIT_RP_MAGIC};
 static uintptr_t *make_map(uintptr_t *dst, uintptr_t ret, uintptr_t delta,
                            uintptr_t count, const uintptr_t *entries) {
   uintptr_t header[] = {MLKIT_RP_MAGIC,ret,delta,count,(uintptr_t)&unit};
-  uintptr_t *end = dst+5+4*count;
+  uintptr_t *end = dst+5+5*count;
   for (size_t i=0; i<5; i++) *(end-1-i)=header[i];
   end[-5] -= (uintptr_t)(end-5);
-  for (size_t i=0; i<4*count; i++) *(end-6-i)=entries[i];
+  for (size_t i=0; i<5*count; i++) *(end-6-i)=entries[i];
   return end;
 }
 int main(int argc, char **argv) {
@@ -49,9 +49,9 @@ int main(int argc, char **argv) {
   big->next=NULL; r->lobjs=big;
   mlkit_rp_large_alloc(big,512);
   context ctx={0}; ctx.topregion=r;
-  uintptr_t entries[]={11,8,UINTPTR_MAX,0,12,2,3,0,13,3,0,0};
+  uintptr_t entries[]={11,8,UINTPTR_MAX,0,2,12,2,3,0,1,13,3,0,0,7};
   uintptr_t *parent=make_map(map1,63,5,3,entries);
-  uintptr_t child_entries[]={12,2,3,0};
+  uintptr_t child_entries[]={12,2,3,0,1};
   uintptr_t *child=make_map(map2,63,0,1,child_entries);
   /* Parent map is associated with child's return PC; parent storage uses the
    * second frame, after four spilled-result words. */

@@ -79,7 +79,8 @@ end-of-ML-stack anchor.
   identity is the static key; equal source names in different units are distinct.
   Explicit ReML region names are retained and interned per compilation unit.
 
-Native map version 2 extends the M1 map with relative source-name references.
+Native map version 3 extends the earlier maps with relative source-name
+references and inferred region types.
 GC bitmaps precede the profiler extension; both GC walkers locate the original
 bitmap before interpreting roots. Polling bridges preserve live registers.
 ARM64 optimized self-loop backedges pass through the poll; other tail calls
@@ -176,14 +177,29 @@ them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
 
-Three display checkboxes default to on. **Show base names** includes the
+The base-name, kind, type and peak-capacity checkboxes default to on. **Show base names** includes the
 compilation-unit base name in region labels (global regions use `global`).
 **Show region kind** adds `finite` or `infinite` from the recorded kind, including
 zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
-use pages and may hold large objects. These label options apply to the legend,
+use pages and may hold large objects. **Show region type** adds the compiler's
+inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
+from finite/infinite kind. Optional `region_type` fields in region records carry
+this information; older files or unavailable metadata show `type unavailable`.
+These label options apply to the legend,
 band tooltips and region-grouped table without merging distinct bindings.
 **Show Peak page capacity** toggles the reference line and its annotation;
 when hidden, the memory axis scales to the sampled bands alone.
+**Legend on the right** places the legend beside the graph on wide screens;
+it defaults to off and falls back to below the graph on narrow screens. While
+selected, labels use compact region IDs such as `r5` instead of `Region #5`,
+retaining any selected base names, kinds, types and explicit region names.
+
+Region types come from native frame-map version 3 (magic `0x52504d33`), which
+adds one type word per binding, plus a linker-generated table of global region
+slots and types. Profiling builds now use cache suffix `_RP5`; rebuild profiled
+programs and their dependencies to obtain types. Existing profile files remain
+readable, and the JSON-lines stream remains version 3. No object scans or
+allocation bookkeeping are needed to obtain region types.
 
 The **Pages** metric shows the full memory capacity of assigned region pages,
 without subtracting unused tails. Its axis uses scaled memory units and its table

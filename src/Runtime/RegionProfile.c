@@ -349,6 +349,7 @@ typedef struct Record {
   const char *unit, *name;
   uint64_t id, thread, pages, tail, big, finite, desc;
   int worker, infinite, cpu;
+  uintptr_t run_type;
   uint64_t g0_pages, g0_tail, g1_pages, g1_tail;
 } Record;
 static Record *records;
@@ -363,7 +364,7 @@ static void save_record(Record r) {
   records[record_count++] = r;
 }
 static void region_record(const char *unit, const char *name, uint64_t id, uintptr_t *storage,
-                          uintptr_t words, uint64_t *pages_visited) {
+                          uintptr_t words, uintptr_t run_type, uint64_t *pages_visited) {
   uint64_t pages = 0, tail = 0, big = 0, finite = 0, desc = 0;
   uint64_t g0_pages = 0, g0_tail = 0;
   if (words == UINTPTR_MAX) {
@@ -381,7 +382,7 @@ static void region_record(const char *unit, const char *name, uint64_t id, uintp
   } else finite = (uint64_t)words*sizeof(uintptr_t);
   *pages_visited += pages;
   save_record((Record){unit,name,id,record_thread,pages,tail,big,finite,desc,
-                       record_worker,words == UINTPTR_MAX,record_cpu,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
+                       record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
 }
 /* Binding definitions are emitted once on first observation. The native unit
  * strings live in resident code images, including retained REPL libraries. */
@@ -419,6 +420,19 @@ static uint64_t cache_pages(void) {
 #endif
   return pages;
 }
+/* Values match Effect.ord_runType; zero means unavailable. */
+static const char *run_type_name(uintptr_t type) {
+  static const char *names[] = {"unavailable","string","pair","array","ref","triple","top","bot"};
+  return type < sizeof(names)/sizeof(*names) ? names[type] : "unavailable";
+}
+/* Linker metadata maps global region pointer slots to their inferred types. */
+typedef struct { Region *slot; uintptr_t type; } GlobalType;
+__attribute__((weak)) const GlobalType mlkit_rp_globals[] = {{NULL,0}};
+static uintptr_t global_type(Region r) {
+  for (const GlobalType *g = mlkit_rp_globals; g->slot; g++)
+    if (clearStatusBits(*g->slot) == r) return g->type;
+  return 0;
+}
 static void write_record(const Record *r) {
   const char *unit = r->unit, *name = r->name;
   uint64_t id = r->id, pages = r->pages, tail = r->tail, big = r->big;
@@ -429,6 +443,7 @@ static void write_record(const Record *r) {
   fprintf(output, ",\"g0_pages\":%" PRIu64 ",\"g0_unused_tail\":%" PRIu64
           ",\"g1_pages\":%" PRIu64 ",\"g1_unused_tail\":%" PRIu64,
           r->g0_pages,r->g0_tail,r->g1_pages,r->g1_tail);
+  fprintf(output,",\"region_type\":\"%s\"",run_type_name(r->run_type));
   fputs(",\"name\":", output);
   quoted_bytes(name, strlen(name));
   fprintf(output, ",\"binding\":%" PRIu64 ",\"kind\":\"%s\",\"pages\":%" PRIu64
@@ -496,14 +511,14 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     if (++*frames > 1000000 || map[-4] > 1000000) fail("invalid frame metadata");
     const char *unit = ((String)((uintptr_t)(map-5)+map[-5]))->data;
     for (uintptr_t i = 0; i < map[-4]; i++) {
-      const uintptr_t *entry = map-6-4*i;
+      const uintptr_t *entry = map-6-5*i;
       if (entry[-2] != UINTPTR_MAX) {
         uint64_t bytes = entry[-2]*sizeof(uintptr_t);
         uintptr_t end = (uintptr_t)(base+entry[-1])+bytes;
         if (end > high) high = end; /* Includes spilled result reservations. */
         finite += bytes;
       }
-      region_record(unit, entry[-3] ? ((String)((uintptr_t)(entry-3)+entry[-3]))->data : "", entry[0], base+entry[-1], entry[-2], pages);
+      region_record(unit, entry[-3] ? ((String)((uintptr_t)(entry-3)+entry[-3]))->data : "", entry[0], base+entry[-1], entry[-2], entry[-4], pages);
     }
     uintptr_t *ret = base+map[-2];
     if ((uintptr_t)(ret+1) > high) high = (uintptr_t)(ret+1);
@@ -522,7 +537,7 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     size_t i;
     for (i = 0; i < seen_count && seen[i] != r; i++) {}
     if (i == seen_count)
-      region_record("<global>", "", global_id(r), (uintptr_t *)r, UINTPTR_MAX, pages);
+      region_record("<global>", "", global_id(r), (uintptr_t *)r, UINTPTR_MAX, global_type(r), pages);
   }
 }
 static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uintptr_t op) {

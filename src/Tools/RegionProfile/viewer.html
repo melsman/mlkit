@@ -8,6 +8,8 @@ h1{font-size:28px}button,select,input{font:inherit}button,select,input[type=numb
 @media(max-width:850px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){body{margin:20px auto;padding:0 12px}.controls{grid-template-columns:1fr}}
 svg{background:white;border:1px solid #bdcbd3;width:100%;height:auto;margin:18px 0}
 input[type=range]{width:100%}table{border-collapse:collapse;width:100%;background:white}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left;overflow-wrap:anywhere}p{line-height:1.5}.note{color:#4d626f}#status{min-height:24px}
+.graph-layout.legend-right{display:grid;grid-template-columns:minmax(0,3fr) minmax(220px,1fr);gap:20px;align-items:start}.graph-layout.legend-right #legend{margin-top:18px;max-height:440px;overflow:auto}.graph-layout>*{min-width:0}
+@media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
 .axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
 </style><h1>MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership. Worker identity is the owner's execution stream at sampling time, not the origin of allocations.</p>
@@ -20,11 +22,16 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <div class="display-options" aria-label="Graph display options">
 <label><input id="show-base" type="checkbox" checked>Show base names</label>
 <label><input id="show-kind" type="checkbox" checked>Show region kind</label>
+<label><input id="show-type" type="checkbox" checked>Show region type</label>
+<label><input id="legend-right" type="checkbox">Legend on the right</label>
 <label><input id="show-peak" type="checkbox" checked>Show Peak page capacity</label>
 </div>
 <p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
+<div id="graph-layout" class="graph-layout">
 <svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="Stacked region and ML stack footprint over elapsed time in seconds"></svg>
-<p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p><div id="legend" aria-label="Region legend, top to bottom"></div>
+<div id="legend" aria-label="Region legend, top to bottom"></div>
+</div>
+<p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
 <table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
@@ -35,9 +42,12 @@ function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')retur
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function bytes(r){if(el('metric').value==='pages')return BigInt(r.page_footprint)+BigInt(r.unused_tail);return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
 function label(r){
- let name=(r.name?r.name:'Region')+' #'+r.binding;
+ let name=el('legend-right').checked?(r.name?r.name+' · ':'')+'r'+r.binding:(r.name?r.name:'Region')+' #'+r.binding;
  if(el('show-base').checked)name+=' · '+(r.unit==='<global>'?'global':r.unit);
- if(el('show-kind').checked)name+=' ('+(['finite','infinite'].includes(r.kind)?r.kind:'kind unavailable')+')';
+ const details=[];
+ if(el('show-kind').checked)details.push(['finite','infinite'].includes(r.kind)?r.kind:'kind unavailable');
+ if(el('show-type').checked)details.push(r.region_type&&r.region_type!=='unavailable'?r.region_type:'type unavailable');
+ if(details.length)name+=' ('+details.join(', ')+')';
  return name;
 }
 function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
@@ -66,6 +76,7 @@ function scopes(){
 }
 function svg(tag,attrs,text){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=text;el('chart').append(n);return n;}
 function draw(){
+ el('graph-layout').className='graph-layout'+(el('legend-right').checked?' legend-right':'');
  const slider=el('sample');slider.max=Math.max(0,samples.length-1);const index=Number(slider.value),s=samples[index];
  el('rows').replaceChildren();el('chart').replaceChildren();el('legend').replaceChildren();
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
@@ -99,6 +110,6 @@ function draw(){
  el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
  el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The stack band includes active ML frame storage and resident descriptors, excluding finite reservations already shown in region bands.';
 }
-for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-peak'])el(id).addEventListener('input',draw);
+for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
 scopes();draw();
 </script></html>
