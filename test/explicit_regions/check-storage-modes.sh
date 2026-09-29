@@ -4,100 +4,21 @@ set -eu
 : "${REML:?Set REML to the ReML compiler executable}"
 : "${MLKIT:?Set MLKIT to the Standard ML compiler executable}"
 : "${SML_LIB:?Set SML_LIB to the source or installation directory}"
+examples=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-storage-modes.XXXXXX")
 trap 'status=$?; if [ "$status" -ne 0 ]; then
   for log in "$work"/*.log; do [ ! -f "$log" ] || cat "$log"; done
 fi; rm -rf "$work"; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
 cd "$work"
-cat > good.sml <<'SML'
-infix 6 +
-infix 4 >
-fun print (s:string) : unit = prim("printStringML",s)
-fun deref (x:'a ref) : 'a = prim("!",x)
-fun direct () =
-    let with rs rp rr
-        val a = "A"`atbot rs
-        val b = "B"`attop rs
-        val p = (a,b)`atbot rp
-        val r = ref`atbot rr p
-        val (a,b) = deref r
-    in print a; print b
-    end
-fun f `r () : real = 5.4`sat r
-fun g `r () : real = f `sat r ()
-fun pair `[r1 r2] () : real * real = (5.4`sat r1,6.4`sat r2)
-fun mix `r () : real =
-    let with r2
-        val (x,y) = pair `[sat r, atbot r2] ()
-    in x + y
-    end
-fun calls () =
-    let with r r2
-        val x = g `atbot r ()
-        val y = f `attop r ()
-        val (a,b) = pair `[attop r, atbot r2] ()
-        val z = mix `attop r ()
-    in if x + y + a + b + z > 30.0 then print "C" else print "FAIL"
-    end
-fun branches flag =
-    let with r
-        val s = if flag then "D"`attop r else "E"`attop r
-    in print s
-    end
-datatype box = Box of string | Other of word
-fun records () =
-    let with rs rr rc
-        val a = "E"`atbot rs
-        val r = {text=a,flag=true}`atbot rr
-        val b = Box`atbot rc (#text r)
-    in case b of Box s => print s | Other _ => print "FAIL"
-    end
-val _ = (direct (); calls (); branches true; records ())
-SML
-cat > live.sml <<'SML'
-infix +
-fun f () =
-    let with r
-        val x = 5.4`r
-        val y = 6.4`atbot r
-    in prim("storage_mode_consume",(x,y)) : unit
-    end
-SML
-cat > local_sat.sml <<'SML'
-infix +
-fun f () = let with r in 5.4`sat r + 1.0 end
-SML
-cat > formal_atbot.sml <<'SML'
-fun f `r () : real = 5.4`atbot r
-SML
-cat > live_sat.sml <<'SML'
-infix +
-fun f `r () : unit =
-    let val x = 5.4`r
-        val y = 6.4`sat r
-    in prim("storage_mode_consume",(x,y)) : unit
-    end
-SML
-cat > call_live.sml <<'SML'
-infix +
-fun f `r () : real = 5.4`r
-fun g () =
-    let with r
-        val x = 5.4`r
-        val y = f `atbot r ()
-    in prim("storage_mode_consume",(x,y)) : unit
-    end
-SML
-cat > call_local_sat.sml <<'SML'
-infix +
-fun f `r () : real = 5.4`r
-fun g () = let with r in f `sat r () + 1.0 end
-SML
-cat > call_formal_atbot.sml <<'SML'
-fun f `r () : real = 5.4`r
-fun g `r () : real = f `atbot r ()
-SML
+cp "$examples/storage_modes.sml" good.sml
+cp "$examples/err_storage_mode_live.sml" live.sml
+cp "$examples/err_storage_mode_local_sat.sml" local_sat.sml
+cp "$examples/err_storage_mode_formal_atbot.sml" formal_atbot.sml
+cp "$examples/err_storage_mode_live_sat.sml" live_sat.sml
+cp "$examples/err_storage_mode_call_live.sml" call_live.sml
+cp "$examples/err_storage_mode_call_local_sat.sml" call_local_sat.sml
+cp "$examples/err_storage_mode_call_formal_atbot.sml" call_formal_atbot.sml
 cat > alias.sml <<'SML'
 fun f `[r1 r2] () : real * real = (5.4`r1,6.4`r2)
 fun g () =
@@ -170,24 +91,7 @@ printf 'standard.sml\n' > standard.mlb
 if "$MLKIT" -no_basislib -c standard.mlb > standard.log 2>&1; then
   echo 'Standard ML accepted ReML storage modes' >&2; exit 1
 fi
-cat > names.sml <<'SML'
-infix +
-infix 4 >
-fun print (s:string) : unit = prim("printStringML",s)
-type atbot = int
-structure Constructors = struct datatype sat = attop of atbot end
-structure atbot = struct val sat = 7 end
-fun sat (Constructors.attop atbot) = atbot
-fun example () =
-    let val atbot = 34
-        val sat = sat (Constructors.attop atbot)
-        val attop = {atbot=sat, sat=atbot.sat, attop=1}
-    in #atbot attop + #sat attop + #attop attop
-    end
-val _ = if example () > 41 then
-            (if 43 > example () then print "OK" else print "FAIL")
-        else print "FAIL"
-SML
+cp "$examples/storage_mode_names.sml" names.sml
 printf 'names.sml\n' > names.mlb
 for compiler in "$MLKIT" "$REML"; do
   "$compiler" --mlb-subdir "StorageNames$(basename "$compiler")" -no_basislib -o names names.mlb > names.log 2>&1
@@ -196,19 +100,7 @@ for compiler in "$MLKIT" "$REML"; do
   cmp expected actual
 done
 # The same words can name explicit regions and appear in region types.
-cat > region_names.sml <<'SML'
-fun print (s:string) : unit = prim("printStringML",s)
-fun f `atbot () : string`atbot = "OK"`sat atbot
-fun g () = let with sat in print (f `atbot sat ()) end
-fun triple `[atbot sat attop] () : string * string * string =
-    ("A"`atbot,"B"`sat,"C"`attop)
-fun bare () =
-    let with atbot sat attop
-        val (a,b,c) = triple `[atbot,sat,attop] ()
-    in print a; print b; print c
-    end
-val _ = (g (); bare ())
-SML
+cp "$examples/storage_mode_region_names.sml" region_names.sml
 printf 'region_names.sml\n' > region_names.mlb
 "$REML" -no_basislib -o region_names region_names.mlb > region_names.log 2>&1
 ./region_names > actual

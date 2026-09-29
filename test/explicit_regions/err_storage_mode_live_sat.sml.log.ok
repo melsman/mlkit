@@ -1,0 +1,8 @@
+[reading source file:	err_storage_mode_live_sat.sml]
+> infix 0 +
+  val f : unit -> unit
+err_storage_mode_live_sat.sml, line 5, column 19:
+          val y = 6.4`sat r
+                     ^^^^^^
+Explicit storage mode `sat r` disagrees with inferred storage mode attop
+Stopping compilation of MLB-file due to error (code 1).

@@ -1,0 +1,8 @@
+[reading source file:	err_storage_mode_call_formal_atbot.sml]
+> val f : unit -> real
+  val g : unit -> real
+err_storage_mode_call_formal_atbot.sml, line 3, column 23:
+  fun g `r () : real = f `atbot r ()
+                         ^^^^^^^^
+Explicit storage mode `atbot r` disagrees with inferred storage mode sat
+Stopping compilation of MLB-file due to error (code 1).
