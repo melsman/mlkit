@@ -13,6 +13,15 @@ struct
           val samples = ref []
           val marks = ref []
           val pagePeak = ref NONE
+          val collections = ref NONE
+          val complete = ref false
+          fun noteCollections r =
+              case find r "gc_collections" of
+                  NONE => ()
+                | SOME _ =>
+                  let val n = uint r "gc_collections"
+                  in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
+                  end
           fun notePeak r =
               case find r "max_pages" of
                   NONE => ()
@@ -51,7 +60,7 @@ struct
                        (require (not(Option.isSome(!pending))) "nested samples";
                         ignore(uint r "sample"); ignore(uint r "time");
                         pending := SOME r; regions := []; stacks := [])
-                     | "session_end" => notePeak r
+                     | "session_end" => (notePeak r; noteCollections r; complete := true)
                      | "mark" => (ignore(uint r "time"); marks := r :: !marks)
                      | k =>
                        if List.exists (fn t => t = k) ["region","stack","sample_end"] then
@@ -61,6 +70,7 @@ struct
                             else if k = "stack" then (checkStack r; stacks := r :: !stacks)
                             else
                               let val () = notePeak r
+                                  val () = noteCollections r
                                   val () = app (fn key => ignore(uint r key)) ["time","frames","pages_visited"]
                                   val old = uint h "version" < 3
                                   val stackData = if old then Null else Arr(rev(!stacks))
@@ -88,9 +98,21 @@ struct
               let val (here,later) = partition (uint s "time") ms []
               in Obj(fields s @ [("marks",Arr here)]) :: attach ss later end
           val result = attach (rev(!samples)) (rev(!marks))
-      in case !pagePeak of
-             NONE => result
-           | SOME p => map (fn s => Obj(fields s @ [("max_pages",Num(IntInf.toString p))])) result
+          val result = case !pagePeak of
+                           NONE => result
+                         | SOME p => map (fn s => Obj(fields s @ [("max_pages",Num(IntInf.toString p))])) result
+          val h = valOf(!header)
+          val source = case find h "main_source" of
+                           NONE => Null
+                         | SOME v => (ignore(string v); v)
+          val gc = case find h "gc_enabled" of
+                       NONE => Null
+                     | SOME (Bool b) => Bool b
+                     | SOME _ => raise Fail "invalid GC enabled flag"
+          val metadata = Obj[("main_source",source),("gc_enabled",gc),
+                             ("gc_collections",case !collections of NONE => Null | SOME n => Num(IntInf.toString n)),
+                             ("complete",Bool(!complete))]
+      in {samples=result,metadata=metadata}
       end
 
 end

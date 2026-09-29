@@ -12,6 +12,19 @@ records = [json.loads(line) for line in open(filename)]
 with open(filename) as stream:
     samples = list(reader.read_samples(stream))
 assert samples
+header=records[0]
+assert type(header['gc_enabled']) is bool
+assert records[-1]['type']=='session_end'
+count=records[-1]['gc_collections']
+assert count>=max(r.get('gc_collections',0) for r in records)
+if mode!='repl':
+    assert header['gc_enabled']==(mode in ('gc','gengc'))
+    assert Path(header['main_source']).name==mode+'.sml'
+else:
+    assert header['main_source']=='REPL'
+if header['gc_enabled'] and mode in ('gc','gengc'):
+    assert count>0 and count>=sum(s['reason']=='after_gc' for s in samples)
+if not header['gc_enabled']: assert count==0
 for s in samples:
     assert s['stacks'] is not None
     assert sum(r['finite_bytes'] for r in s['stacks']) == sum(r['finite_bytes'] for r in s['regions'])

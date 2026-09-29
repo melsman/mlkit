@@ -52,6 +52,7 @@ struct
 
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
+  fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ Labels.pr_label l)
   val rpSource = ref (NameLab "unused_rp_source")
   val rpUnit = ref (NameLab "unused_rp_unit")
   val rpNames = ref []
@@ -1772,6 +1773,9 @@ struct
                                                    (main_lab::(#1 exports)))
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab,I.OBJ))
                                                    (#2 exports))
+        val () = if sampledProfile() then
+          add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(rpSourceSlot main_lab,I.OBJ),
+                           I.lab(rpSourceSlot main_lab),I.dot_quad(I.pr_lab(!rpSource) ^ " + 8")] else ()
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab @ data_roots (main_lab, #2 exports)}
@@ -2387,6 +2391,14 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
                    NONE => "0" | SOME ty => Int.toString(Effect.ord_runType ty))]) global_region_labs)
              @ [I.dot_quad "0",I.dot_quad "0"]))
           else ()
+        val () = if sampledProfile() then
+          let val source = gen_string_lab "unknown source"
+              val fallback = NameLab "mlkit_rp_source_fallback"
+              val slot = if null linkinfos then fallback else rpSourceSlot(List.last linkinfos)
+          in add_static_data [I.dot_data,I.dot_p2align "3",I.lab fallback,I.dot_quad(I.pr_lab source ^ " + 8"),
+               I.dot_globl(NameLab "mlkit_rp_main_source_slot",I.OBJ),I.lab(NameLab "mlkit_rp_main_source_slot"),I.dot_quad(I.pr_lab slot)]
+          end
+          else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*
@@ -2466,6 +2478,13 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
              @ [I.dot_quad "0",I.dot_quad "0"]))
           else ()
 
+        val () = if sampledProfile() then
+          let val source = gen_string_lab "REPL"
+              val slot = NameLab "mlkit_rp_source_fallback"
+          in add_static_data [I.dot_data,I.dot_p2align "3",I.lab slot,I.dot_quad(I.pr_lab source ^ " + 8"),
+               I.dot_globl(NameLab "mlkit_rp_main_source_slot",I.OBJ),I.lab(NameLab "mlkit_rp_main_source_slot"),I.dot_quad(I.pr_lab slot)]
+          end
+          else ()
         fun main_insts C =
            (I.dot_text ::
             I.dot_align 8 ::

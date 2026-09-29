@@ -25,7 +25,7 @@ rows = [region(1,0,4,'A',1,HUGE),region(1,0,4,'A',1,3),  # recursive instances
         region(2,1,5,'B',1,16,8),region(1,0,4,'<global>',0,32)]
 stack = [dict(type='stack',sample=1,thread=1,worker=0,cpu=4,active_bytes=64,finite_bytes=0,stack_bytes=64),
          dict(type='stack',sample=1,thread=2,worker=1,cpu=5,active_bytes=40,finite_bytes=8,stack_bytes=32)]
-header = dict(type='header',format='mlkit-region-profile',version=3,page_bytes=8192)
+header = dict(type='header',format='mlkit-region-profile',version=3,page_bytes=8192,main_source='/project/program.sml',gc_enabled=True)
 records = [header]
 for i in (1,2):
     records.append(dict(type='sample_begin',sample=i,time=i*1000000,reason='explicit'))
@@ -34,7 +34,7 @@ for i in (1,2):
         if i==2 and r['thread']==1: r['cpu']=5  # migration, not allocation origin
         records.append(r)
     records.append(dict(type='sample_end',sample=i,time=i*1000000+1,frames=2,pages_visited=0))
-records.append(dict(type='session_end',time=3000000,max_pages=123))
+records.append(dict(type='session_end',time=3000000,max_pages=123,gc_collections=17))
 wire = ''.join(json.dumps(r)+'\n' for r in records)
 samples = list(reader.read_samples(wire.splitlines(keepends=True)))
 assert len(samples)==2
@@ -78,6 +78,8 @@ for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'
 for(const id of ['show-base','show-kind','show-peak'])document.getElementById(id).checked=true;
 '''+script+r'''
 assert.equal(samples[0].max_pages,'123');
+assert.equal(el('profile-title').textContent,'Region profile for program.sml (GC enabled)');
+assert.equal(el('gc-note').textContent,'Garbage collections: 17');
 samples[0].regions[0].pages='2';samples[0].regions[0].unused_tail='16384';
 el('metric').value='pages';draw();
 assert.deepStrictEqual(model().totals,[16384n,0n]);

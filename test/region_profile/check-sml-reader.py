@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='rp-sml-reader-') as d:
     rows=[json.loads(l) for l in Path(sys.argv[1]).read_text().splitlines()]
     for r in rows:
         if r['type']=='region':
-            r['name']='\"\\\n\0é λ 😀 </script> __DATA__ __LIVE__'
+            r['name']='\"\\\n\0é λ 😀 </script> __DATA__ __META__ __LIVE__'
             r['large_bytes']=2**64-1
     text=''.join(json.dumps(r)+'\n' for r in rows)
     compare(text)
@@ -52,4 +52,15 @@ with tempfile.TemporaryDirectory(prefix='rp-sml-reader-') as d:
                 '{"type":"header","format":"mlkit-region-profile","version":03,"page_bytes":8192}\n',
                 '{"type":"header","format":"\\uD800"}\n','[true,]\n']:
         run(bad,False)
+    header=dict(type='header',format='mlkit-region-profile',version=3,page_bytes=8192,
+                main_source='/tmp/__DATA__ __META__ </script>.sml',gc_enabled=True)
+    summary=dict(type='session_end',gc_collections=2**60+3)
+    assert run(json.dumps(header)+'\n'+json.dumps(summary)+'\n')==[]
+    metadata=json.loads(output.read_text().split('const profile=')[1].split(';\n')[0])
+    assert metadata==dict(main_source=header['main_source'],gc_enabled=True,gc_collections=str(2**60+3),complete=True)
+    assert run(json.dumps(header)+'\n')==[]
+    metadata=json.loads(output.read_text().split('const profile=')[1].split(';\n')[0])
+    assert metadata['gc_collections'] is None and metadata['complete'] is False
+    run(json.dumps(dict(header,gc_enabled='yes'))+'\n',False)
+    run(json.dumps(header)+'\n'+json.dumps(dict(summary,gc_collections=-1))+'\n',False)
 print('SML reader: exact uint64, Unicode/escaping, v1/v2/v3, truncation, and malformed input passed')

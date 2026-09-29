@@ -26,6 +26,14 @@
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "profiler requests need lock-free signal-safe atomics");
 
 __attribute__((weak)) const uintptr_t mlkit_rp_capable = 0;
+__attribute__((weak)) const char * const *mlkit_rp_main_source_slot;
+#ifdef ENABLE_GC
+#define RP_GC_ENABLED "true"
+#else
+#define RP_GC_ENABLED "false"
+#endif
+static uint64_t gc_collections;
+void mlkit_rp_gc_completed(void) { gc_collections++; }
 int mlkit_rp_enabled;
 /* Count assigned pages, including GC from/to-space overlap, but not cached
  * pages. No per-region counters; releases traverse links, never page contents.
@@ -275,7 +283,7 @@ void mlkit_rp_close(void) {
     fprintf(output,"{\"type\":\"thread_end\",\"thread\":%" PRIu64
             ",\"time\":%" PRIu64 ",\"reason\":\"process_exit\"}\n",p->id,timestamp());
   fprintf(output,"{\"type\":\"session_end\",\"time\":%" PRIu64
-          ",\"samples\":%" PRIu64 ",\"max_pages\":%" PRIu64 "}\n",timestamp(),sequence,atomic_load(&maximum_pages));
+          ",\"samples\":%" PRIu64 ",\"max_pages\":%" PRIu64 ",\"gc_collections\":%" PRIu64 "}\n",timestamp(),sequence,atomic_load(&maximum_pages),gc_collections);
   FILE *f = output;
   output = NULL;
   if (fclose(f)) fail("cannot close profile output");
@@ -298,8 +306,11 @@ void mlkit_rp_init(void) {
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":3,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu}\n",
-          sizeof(uintptr_t), sizeof(Rp));
+  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":3,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu,\"gc_enabled\":%s,\"main_source\":",
+          sizeof(uintptr_t), sizeof(Rp), RP_GC_ENABLED);
+  const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
+  quoted_bytes(main_source,strlen(main_source));
+  fputs("}\n",output);
   if (fflush(output)) fail("cannot write profile header");
   if (mlkit_rp_control) {
     struct sockaddr_un address = {0};
@@ -589,8 +600,8 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
             sequence,r->thread,r->worker,r->cpu,r->active,r->finite,r->active-r->finite);
   }
   fprintf(output, "{\"type\":\"sample_end\",\"sample\":%" PRIu64
-          ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 ",\"max_pages\":%" PRIu64 "}\n",
-          sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp), atomic_load(&maximum_pages));
+          ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 ",\"max_pages\":%" PRIu64 ",\"gc_collections\":%" PRIu64 "}\n",
+          sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp), atomic_load(&maximum_pages),gc_collections);
   if (ferror(output)) fail("cannot write profile output");
   if (fflush(output)) fail("cannot flush profile output");
   LOCK();

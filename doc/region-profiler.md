@@ -161,6 +161,16 @@ make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 bin/rpview profile.rp --output profile.html
 ```
 
+The page caption is `Region profile for X (GC Y)`, where X is the main source
+basename (the final linked ML initialization unit) and Y is `enabled` or
+`disabled`. REPL sessions use `REPL`. The header records `main_source` and
+`gc_enabled`, so this works even without completed snapshots. For GC-enabled
+programs, the page shows the number of completed collections below the graph.
+The counter includes collections while sampling is paused and does not require
+`-rp_gc_samples`. `sample_end` and `session_end` carry `gc_collections`; a file
+without its final summary shows the recorded count as incomplete. Missing
+metadata in older profiles is shown as unknown/unavailable, never as zero.
+
 The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
 The tool validates the stream before opening its output and rejects an output
 path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks the nine largest
@@ -206,7 +216,7 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP6`; rebuild profiled
+slots and types. Profiling builds now use cache suffix `_RP7`; rebuild profiled
 programs and their dependencies to obtain types and source filenames. Existing profile files remain
 readable, and the JSON-lines stream remains version 3. No object scans or
 allocation bookkeeping are needed to obtain region types.

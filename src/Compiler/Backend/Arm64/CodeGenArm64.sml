@@ -55,6 +55,7 @@ struct
   val profiling = Flags.is_on0 "region_profiling"
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
+  fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ AddressLabels.pr_label l)
   val rpSource = ref (NameLab "unused_rp_source")
   val rpUnit = ref (NameLab "unused_rp_unit")
   val rpName = ref (fn (_:string) => NameLab "unused_rp_name")
@@ -2509,6 +2510,9 @@ struct
       val () = rpName := stringData
       val () = if sampledProfile() then rpSource := stringData(!Flags.current_source_file) else ()
       val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
+      val () = if sampledProfile() then
+        addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpSourceSlot main_lab)),
+                   Label(rpSourceSlot main_lab),Directive(Quad [pr_lab(!rpSource) ^ " + 8"])] else ()
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
       fun data (l,code) =
@@ -2603,6 +2607,14 @@ struct
            (List.concat(map (fn (place,l) =>
               [pr_lab(DatLab l),case Effect.get_place_ty place of
                                   NONE => "0" | SOME ty => Int.toString(Effect.ord_runType ty)]) globals) @ ["0","0"]) [])) else ()
+      val () = if sampledProfile() then
+        let val source = if repl then stringData "REPL" else stringData "unknown source"
+            val fallback = NameLab "mlkit_rp_source_fallback"
+            val slot = if repl orelse null labs then fallback else rpSourceSlot(List.last labs)
+        in addStatic (datum fallback [pr_lab source ^ " + 8"] []);
+           addStatic (datum (NameLab "mlkit_rp_main_source_slot") [pr_lab slot] [])
+        end
+        else ()
       fun init (place,l) code =
         (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
           ++ moveInto(X 28,X 0)

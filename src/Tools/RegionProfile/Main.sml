@@ -18,8 +18,8 @@ struct
           val inputId = OS.FileSys.fileId (!file)
           val same = (inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false
           val () = if same then raise Fail "input and output must be different files" else ()
-          val samples = ProfileReader.read (!file)
-          val page = ProfilePage.html samples
+          val profile = ProfileReader.read (!file)
+          val page = ProfilePage.html profile
           val out = TextIO.openOut (!output)
           val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))
       in TextIO.closeOut out; print(!output ^ "\n") end

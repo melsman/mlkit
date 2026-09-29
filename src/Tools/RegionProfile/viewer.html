@@ -11,7 +11,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .graph-layout.legend-right{display:grid;grid-template-columns:minmax(0,3fr) minmax(220px,1fr);gap:20px;align-items:start}.graph-layout.legend-right #legend{margin-top:18px;max-height:440px;overflow:auto}.graph-layout>*{min-width:0}
 @media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
 .axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
-</style><h1>MLKit region profile</h1>
+</style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership. Worker identity is the owner's execution stream at sampling time, not the origin of allocations.</p>
 <div class="controls" aria-label="Profile controls">
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
@@ -31,11 +31,12 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <svg id="chart" viewBox="0 0 1002 668" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
 <div id="legend" aria-label="Region legend, top to bottom"></div>
 </div>
-<p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p>
+<p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
 <table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
 const samples=__DATA__;
+const profile=__META__;
 const el=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg';
 const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';let h=2166136261;for(const b of new TextEncoder().encode(key))h=Math.imul(h^b,16777619)>>>0;return `hsl(${h%360} 62% 52%)`;}
@@ -117,5 +118,11 @@ function draw(){
  el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The ML stack band excludes finite regions, whose reserved space is shown in the region bands. It includes active ML frame storage and resident descriptors.';
 }
 for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
+const mainName=profile.main_source?profile.main_source.split(/[\\/]/).at(-1):'unknown source';
+const gcState=profile.gc_enabled===true?'enabled':profile.gc_enabled===false?'disabled':'unknown';
+el('profile-title').textContent='Region profile for '+mainName+' (GC '+gcState+')';
+el('profile-title').title=profile.main_source||'';
+document.title=el('profile-title').textContent;
+el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(profile.gc_collections===null?'unavailable':BigInt(profile.gc_collections).toLocaleString())+(profile.complete?'':' (recorded so far)'):'';
 scopes();draw();
 </script></html>

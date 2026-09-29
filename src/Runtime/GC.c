@@ -1995,6 +1995,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 
   time_to_gc = 0;
   doing_gc = 0; // Mutex on the garbage collector
+  if (mlkit_rp_enabled) mlkit_rp_gc_completed();
   rp_gc_sample(ctx, sp, 5, profile_major);
 
   if (raised_exn_interupt)
