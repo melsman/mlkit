@@ -774,7 +774,7 @@ in
   val _ = app (add false)
   [
    ("region_profile", NONE, "sampled region profiling", ref false,
-    "Emit metadata for explicit region snapshots (single-threaded, no GC)."),
+    "Emit metadata and safe-point polls for sampled region profiling."),
    ("region_profiling", SOME "prof", "region profiling", region_profiling,
     "Enable region profiling. Object code stemming\n\
      \from compiling a program with region profiling enabled\n\

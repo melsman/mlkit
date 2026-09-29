@@ -112,9 +112,13 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 
 	val _ = if Flags.is_on "region_profile" then
           app (fn flag => if Flags.is_on flag then
-                 raise Fail ("-region_profile M1 does not support " ^ flag)
-               else ()) ["garbage_collection", "parallelism", "region_profiling", "tag_values"]
+                 raise Fail ("-region_profile does not support " ^ flag)
+               else ()) ["region_profiling"]
           else ()
+        val _ = if Flags.is_on "region_profile" andalso Flags.is_on "parallelism"
+                   andalso Flags.is_on "garbage_collection" then
+                  raise Fail "-region_profile with GC and parallelism is not supported"
+                else ()
         val _ = RegionFlowGraphProfiling.reset_graph ()
 
 	val {main_lab,code,imports,exports,env=clos_env1} =

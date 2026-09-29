@@ -1,11 +1,12 @@
 # A sampled region profiler
 
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
-This document specifies the overall design. [M1 explicit snapshots](region-profiler-m1.md)
-are implemented for single-threaded no-GC execution, with ARM64 execution
-checks and X64 cross-assembly checks; X64 execution validation is pending.
-Only the M1 subset of the flags and API behavior is available. Later milestones
-below remain proposed acceptance criteria for completing the feature.
+This document specifies the overall design. All six implementation milestones
+are now present; see [usage, validation, and measurements](region-profiler.md).
+ARM64 execution checks cover the implemented runtime combinations. X64 compiler
+builds and cross-assembly checks pass, but X64 execution validation remains
+pending the ThinkPad. Milestone boxes below track implementation, not completion
+of that outstanding cross-backend validation.
 
 ## Objectives and scope
 
@@ -172,6 +173,7 @@ Runtime options use the existing single-dash, underscore convention, with an
 | `-rp_gc_samples` | Off | Add before/after-GC samples; requires a GC runtime. |
 | `-rp_paused` | Off | Enable the session but start with automatic sampling paused. |
 | `-rp_report` | Off | Print profiling statistics to stderr at normal exit. |
+| `-rp_control SOCKET` | Off | Enable a private local socket for live controls at safe points. |
 
 Require `-rp` explicitly; other options configure it. Reject malformed values
 and invalid combinations rather than silently ignoring them. An interval of
@@ -230,9 +232,11 @@ session, all operations are no-ops. Sampling while paused does not disable the
 bookkeeping necessary for later snapshots, including large-object sizes.
 
 The REPL should expose these operations and forward startup profiler options
-to its runtime process. Keep a session across phrases. Register each loaded
-unit's maps and name table before running its initializer; assign unique unit
-identities to avoid collisions between phrases. Account for persistent/global
+to its runtime process. Keep a session across phrases. Each loaded unit carries self-describing maps and interned name references,
+available before its initializer runs, with unique compiler-generated unit
+identities to avoid collisions between phrases. Stream binding definitions are
+emitted on first observation; no second native-image registry is needed while
+loaded code remains resident. Account for persistent/global
 regions even while no phrase is executing, and define the idle REPL boundary.
 The existing dynamic GC-image registration provides a model, but profiling
 registration must also work without GC. Loaded code currently stays resident;
@@ -260,7 +264,7 @@ shared buffer rather than walking remote process memory.
 
 ## Implementation milestones
 
-- [ ] **M1: Single-threaded, no-GC explicit sampling.** Implementation and
+- [x] **M1: Single-threaded, no-GC explicit sampling.** Implementation and
   ARM64 checks are present; X64 execution checks remain pending. Implement compiler
   maps and safe sampling bridges on ARM64 and X64, finite-region reservations,
   page-list counting, and large-object accounting. Add the core session/API
@@ -268,28 +272,28 @@ shared buffer rather than walking remote process memory.
   known page growth, unused tails, reset, nested/recursive finite regions,
   reused stack slots, zero-sized regions, and large objects. Compare measured
   bytes against controlled allocations, not just successful program exit.
-- [ ] **M2: Periodic sampling and overhead.** Add timer-requested sampling,
+- [x] **M2: Periodic sampling and overhead.** Add timer-requested sampling,
   entry/backedge polls, request coalescing, the runtime flags, `--` handling,
   and `-rp_report`. Validate tail recursion, exceptions, C boundaries, short
   phases, and metadata compatibility. Benchmark uninstrumented, instrumented
   but disabled, enabled but paused, and actively sampled runs across intervals
   and heap sizes. Measure file size, traversal cost, and sampling delay before
   deciding whether to maintain page counts.
-- [ ] **M3: Pthreads.** Add the registry and coordinated snapshots, lifecycle
+- [x] **M3: Pthreads.** Add the registry and coordinated snapshots, lifecycle
   records, shared-region deduplication, and owner attribution. Exercise
   concurrent growth/reset, joins, thread exit, blocked calls, and shared-region
   allocation. Check aggregate totals and stress the rendezvous for deadlocks.
-- [ ] **M4: Argobots and REPL/ReML.** Make the rendezvous scheduler-aware and
+- [x] **M4: Argobots and REPL/ReML.** Make the rendezvous scheduler-aware and
   report logical-thread/execution-stream identities. Add REPL option forwarding,
   per-unit metadata registration, persistent-region accounting, and explicit
   ReML names. Test more logical threads than workers, joins and suspension,
   repeated phrases, retained closures, exceptions, and duplicate region names.
-- [ ] **M5: Single-threaded GC and generational GC.** Add stable pre/post-GC
+- [x] **M5: Single-threaded GC and generational GC.** Add stable pre/post-GC
   snapshots, per-generation tail accounting, and large-object reclamation
   tracking. Validate minor/major collections, both generations' unused tails,
   finite stack reservations, and requests arriving during collection. Repeat
   relevant REPL checks with GC. GC plus parallel execution remains excluded.
-- [ ] **M6: Visualization and live access.** Polish offline region/thread/worker
+- [x] **M6: Visualization and live access.** Polish offline region/thread/worker
   views, then add a live record transport and attach controls. Reuse the file
   record model and expose measurement/attribution semantics in the viewer.
 

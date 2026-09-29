@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read complete M1 region snapshots; summarize them as CSV or JSON.
+"""Read complete region snapshots; summarize them as CSV or JSON.
 
 The JSON-lines stream has unsigned 64-bit byte/nanosecond counters. Readers
 must preserve integer precision. A sample is committed by its sample_end;
@@ -28,8 +28,8 @@ def read_samples(stream):
             raise ValueError(f"line {number}: expected a record")
         kind = record.get("type")
         if header is None:
-            if kind != "header" or record.get("format") != "mlkit-region-profile" or record.get("version") != 1:
-                raise ValueError("expected a version 1 mlkit-region-profile header")
+            if kind != "header" or record.get("format") != "mlkit-region-profile" or record.get("version") not in (1, 2):
+                raise ValueError("expected a version 1 or 2 mlkit-region-profile header")
             header = record
         elif kind == "sample_begin":
             if pending is not None:
@@ -45,12 +45,19 @@ def read_samples(stream):
                         raise ValueError(f"invalid uint64 field {key}")
                 if record["page_footprint"] != record["pages"]*header["page_bytes"]-record["unused_tail"]:
                     raise ValueError("inconsistent page accounting")
+                if "g0_pages" in record:
+                    for key in ("g0_pages", "g1_pages", "g0_unused_tail", "g1_unused_tail"):
+                        v = record.get(key)
+                        if type(v) is not int or not 0 <= v < 2**64:
+                            raise ValueError(f"invalid uint64 field {key}")
+                    if record["pages"] != record["g0_pages"]+record["g1_pages"] or record["unused_tail"] != record["g0_unused_tail"]+record["g1_unused_tail"]:
+                        raise ValueError("inconsistent generation accounting")
                 regions.append(record)
             else:
                 yield {**pending, "end_time": record["time"], "frames": record["frames"],
-                       "pages_visited": record["pages_visited"], "regions": regions}
+                       "pages_visited": record["pages_visited"], "cache_bytes": record.get("cache_bytes",0), "regions": regions}
                 pending, regions = None, []
-        elif kind != "mark":
+        elif kind not in ("mark", "thread_start", "thread_end", "binding", "session_end", "sample_skipped"):
             raise ValueError(f"unknown record type {kind!r}")
     if header is None:
         raise ValueError("missing profile header")

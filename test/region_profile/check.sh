@@ -42,7 +42,7 @@ printf '%s\n' "$OUT/callback.sml" > "$OUT/callback.mlb"
 if "$OUT/callback" -rp -rp_file "$OUT/callback.rp" > "$OUT/callback.out" 2>&1; then
   echo 'Sampling across a C callback unexpectedly succeeded' >&2; exit 1
 fi
-grep -q 'M1 cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
+grep -q 'cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
 # Public API and a fully instrumented Basis use a separate cache variant.
 cp "$ROOT/test/region_profile/api.sml" "$OUT/"
 printf '%s\n' "$ROOT/kitlib/region-profile.mlb" "$ROOT/basis/basis.mlb" "$OUT/api.sml" > "$OUT/api.mlb"

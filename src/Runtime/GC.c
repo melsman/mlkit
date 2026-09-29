@@ -1,3 +1,4 @@
+#include "RegionProfile.h"
 /*----------------------------------------------------------------*
  *                     Garbage Collection                         *
  *----------------------------------------------------------------*/
@@ -1378,6 +1379,24 @@ region_utilize(long pages, long bytes)
 // GC ALGORITHM
 // --------------------
 
+static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
+  if (!mlkit_rp_enabled || !mlkit_rp_gc_samples) return;
+  uintptr_t *image = (uintptr_t *)sp;
+#if DARWIN_NATIVE
+  uintptr_t *incoming = (uintptr_t *)image[43];
+  size_t args = image[42];
+  uintptr_t *ret = incoming+args+(args&1)+1;
+#else
+  uintptr_t *ret = image+NUM_REGS+NUM_FREGS+3+image[NUM_REGS+NUM_FREGS+2];
+#endif
+  const uintptr_t *map = (const uintptr_t *)*ret;
+  uintptr_t *base = map[-1] == MLKIT_RP_MAGIC && map[-2] < UINTPTR_MAX-1
+                  ? ret+map[-3] : ret;
+  mlkit_rp_gc_major = major;
+  mlkit_rp_capture(ctx, base, map, op);
+  mlkit_rp_gc_major = -1;
+}
+
 void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
@@ -1414,6 +1433,12 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   // Mutex on the garbage collector; used by alloc_new_page in
   // Region.c for determining whether the tospace-bit should be set on
   // new allocated pages.
+#ifdef ENABLE_GEN_GC
+  int profile_major = only_major_gc || major_p;
+#else
+  int profile_major = 1;
+#endif
+  rp_gc_sample(ctx, sp, 4, profile_major);
   doing_gc = 1;
 
 #ifdef CHECK_GC
@@ -1643,7 +1668,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   fprintf(stderr,"[GC: FD processing]\n");
 #endif
 
-  fd_ptr = *sp_ptr;
+  fd_ptr = (uintptr_t *)mlkit_rp_gc_map(*sp_ptr);
   fd_offset_to_return = *(fd_ptr-2);
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
@@ -1684,7 +1709,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 	}
 
       sp_ptr = sp_ptr + fd_offset_to_return + 1; // Points at next return address.
-      fd_ptr = *sp_ptr;
+      fd_ptr = (uintptr_t *)mlkit_rp_gc_map(*sp_ptr);
       fd_offset_to_return = *(fd_ptr-2);
       fd_size = *(fd_ptr-3);
       predSPDef(sp_ptr,size_rcf);
@@ -1763,6 +1788,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 		char* orig;
 		lobjs_current -= size_lobj(*tag_ptr);
 		orig = lobjs->orig;
+                mlkit_rp_large_free(lobjs);
 		lobjs = clear_lobj_bit(lobjs->next);
 		free(orig);            // deallocate object
 	      }
@@ -1968,6 +1994,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 
   time_to_gc = 0;
   doing_gc = 0; // Mutex on the garbage collector
+  rp_gc_sample(ctx, sp, 5, profile_major);
 
   if (raised_exn_interupt)
     raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);

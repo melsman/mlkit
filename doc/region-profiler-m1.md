@@ -1,5 +1,9 @@
 # Region profiler M1: explicit snapshots
 
+This records the initial M1 implementation. For the implemented M2–M6 controls,
+runtime combinations, version 2 format, and current checks, see
+[the profiler guide](region-profiler.md).
+
 M1 implements explicit, single-threaded snapshots without garbage collection.
 The runtime counts region pages by traversing links and subtracts the unused
 last-page tail. It records finite-region stack reservations and separately

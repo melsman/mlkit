@@ -51,6 +51,32 @@ type opaq_env = MO.opaq_env
  * Logging and various utitlity functions
  * ------------------------------------------- *)
 
+(* Runtime profiler flags configure the child session, never the compiler's
+ * own execution. Block changes once that child has been launched. *)
+fun rpBool name = Flags.add_bool_entry
+    {long = name, short = NONE, neg = false, item = ref false,
+     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
+fun rpString (name,value) = Flags.add_string_entry
+    {long = name, short = NONE, item = ref value,
+     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
+val rpEnabled = rpBool "rp"
+val rpPaused = rpBool "rp_paused"
+val rpReport = rpBool "rp_report"
+val rpGC = rpBool "rp_gc_samples"
+val rpFile = rpString ("rp_file","profile.rp")
+val rpInterval = rpString ("rp_interval","10ms")
+val rpControl = rpString ("rp_control","")
+fun rpArguments () =
+    (if rpEnabled() then ["-rp"] else []) @
+         (if rpEnabled() orelse rpFile() <> "profile.rp"
+          then ["-rp_file",rpFile()] else []) @
+         (if rpEnabled() orelse rpInterval() <> "10ms"
+          then ["-rp_interval",rpInterval()] else []) @
+         (if rpPaused() then ["-rp_paused"] else []) @
+         (if rpReport() then ["-rp_report"] else []) @
+         (if rpGC() then ["-rp_gc_samples"] else []) @
+         (if rpControl() = "" then [] else ["-rp_control",rpControl()])
+
 fun die (s:string) : 'a =
     (print("Error: " ^ s ^ "\n"); raise Fail ("Internal Error - Repl: " ^ s))
 fun log (s:string) : unit = TextIO.output (!Flags.log, s)
@@ -117,6 +143,7 @@ local
          else ()
       end
 in
+  fun send_TERMINATE fd = send_cmd (fd,"TERMINATE;")
   fun send_LOADRUN (fd, lib) : unit =
       send_cmd (fd, "LOADRUN " ^ lib ^ ";")
 
@@ -626,14 +653,22 @@ fun process_cmd rt_exe stepno state (rp:rp) (cmd:string) libs_acc deps =
               ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe,
                                               "-command_pipe", command_pipe_name,
                                               "-reply_pipe", reply_pipe_name,
-                                              "-repl_logfile", repl_logfile])
+                                              "-repl_logfile", repl_logfile] @ rpArguments())
               ; OS.Process.exit OS.Process.failure (* never gets here *)
               )
       val () = debug "created fifos"
-      val command_pipe = Posix.FileSys.openf(command_pipe_name,
-                                             Posix.FileSys.O_WRONLY,
-                                             Posix.FileSys.O.flags[])
-                         handle _ => die "run: failed to open command_pipe"
+      (* Profiler startup can reject flags or fail to open its output before
+       * the child opens the FIFO. Detect that exit instead of hanging. *)
+      fun openCommand () =
+          (Posix.FileSys.openf(command_pipe_name,Posix.FileSys.O_WRONLY,
+                              Posix.FileSys.O.nonblock)
+           handle e as OS.SysErr (_,SOME code) =>
+             if code <> Posix.Error.nxio then raise e
+             else case Posix.Process.waitpid_nh(Posix.Process.W_CHILD childpid,[]) of
+                      SOME _ => die "REPL runtime exited during startup (see its diagnostic)"
+                    | NONE => (OS.Process.sleep(Time.fromMilliseconds 10); openCommand()))
+      val command_pipe = openCommand()
+      val () = Posix.IO.setfl(command_pipe,Posix.IO.O.flags[])
       val () = debug "opened command_pipe"
       val reply_pipe = Posix.FileSys.openf(reply_pipe_name,
                                            Posix.FileSys.O_RDONLY,
@@ -669,7 +704,8 @@ end
 
 fun do_exit (rp:rp) status =
     ( print "Exiting\n"
-    ; Posix.Process.kill (Posix.Process.K_PROC (#pid rp), Posix.Signal.kill)
+    ; send_TERMINATE (#command_pipe rp)
+    ; ignore (receive_EXN_or_DONE (#reply_pipe rp))
     ; Posix.Process.wait()
     ; OS.Process.exit status
     )
@@ -837,6 +873,7 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
     "mlb-subdir", "link_time_dead_code_elimination", "libs",
+    "rp", "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval", "rp_control",
     "link_code", "libdirs", "import_basislib",
     "generational_garbage_collection", "gdb_support",
     "garbage_collection", "extra_gc_checks", "compile_only",
@@ -848,9 +885,8 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "report_file_sig", "log_to_file"]
 
 fun run () : OS.Process.status option =
-    if Flags.is_on "region_profile" then
-      (print "Sampled region profiling in the REPL is planned for M4.\n";
-       SOME OS.Process.failure)
+    if rpEnabled() andalso not(Flags.is_on "region_profile") then
+      (print "REPL -rp requires -region_profile.\n"; SOME OS.Process.failure)
     else case MO.mk_repl_runtime of
         SOME mk_runtime =>
         let val () = Flags.turn_on "report_file_sig"

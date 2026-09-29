@@ -53,18 +53,44 @@ struct
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   val rpUnit = ref (NameLab "unused_rp_unit")
+  val rpNames = ref []
+  fun rpBindingName place =
+    case Effect.getRegVar place of
+      NONE => "0"
+    | SOME _ =>
+      let
+        val key = Effect.key_of_eps_or_rho place
+        val lab = case List.find (fn (id,_) => id = key) (!rpNames) of
+                    SOME (_,lab) => lab
+                  | NONE =>
+                    let val lab = gen_string_lab (Effect.pp_eff place)
+                    in rpNames := (key,lab) :: !rpNames; lab
+                    end
+      in I.pr_lab lab ^ " - ."
+      end
   fun rpWords fsz ac delta =
     let
       fun binding ((place,sz),off) =
         [Int.toString(Effect.key_of_eps_or_rho place),Int.toString(fsz-off-1),
-         case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n]
+         (case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n),
+         rpBindingName place]
     in
-      ["0x52504d31",Int.toString(fsz+ac),Int.toString delta,
+      ["0x52504d32",Int.toString(fsz+ac),Int.toString delta,
        Int.toString(length(!rpRegions)),I.pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
     end
-  fun rpEmit words code = foldl (fn (w,c) => I.dot_quad w :: c) code words
+  fun rpEmit words code =
+    let
+      fun emit (w,c) =
+        if String.isSuffix " - ." w then
+          let val anchor = NameLab("mlkit_rp_anchor_" ^ I.pr_lab(new_local_lab "offset"))
+          in I.lab anchor :: I.dot_quad (String.substring(w,0,size w-4) ^
+                                         " - " ^ I.pr_lab anchor) :: c
+          end
+        else I.dot_quad w :: c
+    in foldl emit code words
+    end
   fun rpContinuation fsz ac delta bv code =
-    if sampledProfile() then I.dot_p2align "3" :: rpEmit (rpWords fsz ac delta) code else gen_bv(bv,code)
+    if sampledProfile() then I.dot_p2align "3" :: gen_bv(bv,rpEmit (rpWords fsz ac delta) code) else gen_bv(bv,code)
   fun rpCurrentMap fsz ac =
     let
       val lab = new_local_lab "rp_map"
@@ -72,6 +98,34 @@ struct
                  rpEmit (rpWords fsz ac 0) [I.lab lab])
     in lab
     end
+
+  fun rpInternal fsz name args code =
+    let
+      val regs = [rdi,rsi,rdx,rcx,r8,r9,rax] @ map RI.lv_to_reg RI.f64_phregs
+      fun save (r,c) = if I.is_freg r then
+            G.sub(I "8",rsp) (I.movsd(R r,D("",rsp)) :: c)
+          else I.push(R r) :: c
+      fun restore (r,c) = if I.is_freg r then
+            I.movsd(D("",rsp),R r) :: G.add(I "8",rsp) c
+          else I.pop(R r) :: c
+    in
+      foldl save (compile_c_call_prim(name,args,NONE,fsz+length regs,treg0,
+                   foldr restore code regs)) regs
+    end
+  fun rpPoll fsz ac code =
+    if not(sampledProfile()) then code
+    else
+      let
+        val done = new_local_lab "rp_poll_done"
+        val lab = rpCurrentMap fsz ac
+        val call = rpInternal fsz "mlkit_rp_poll"
+                     [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg1]
+                     (I.lab done :: code)
+      in
+        load_label_addr(NameLab "mlkit_rp_pending",SS.PHREG_ATY treg0,treg0,0,
+          I.cmpl(I "0",D("0",treg0)) :: I.je done ::
+          load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
+      end
 
   fun inlineable C =
       case C of
@@ -1360,6 +1414,11 @@ struct
                     * extracts the closure pointer and the closure environment from the argument
                     * and makes an ML call to the function represented by the closure. *)
                    val name = "spawnone"
+                   val pc = new_local_lab "rp_thread_return"
+                   fun callThread code = if sampledProfile() then
+                     I.push(LA pc) :: I.jmp(R r10) :: I.dot_p2align "3" ::
+                     I.dot_quad "-1" :: I.dot_quad "0x52504d32" :: I.lab pc :: code
+                     else I.call'(R r10) :: code
                    val offset_codeptr = if BI.tag_values() then "8" else "0"
                    val call_closure_lab = new_local_lab (name ^ "_call_closure")
                    val _ = add_static_data ([I.dot_text,
@@ -1374,8 +1433,7 @@ struct
                                                I.movq(D("0",rdi),R rax) ::           (* extract closure from threadinfo arg into closure register *)
                                                G.lea(D("8",rdi),r14) $               (* extract ctx from threadinfo and store it in ctx-register r14 *)
                                                I.movq(D(offset_codeptr,rax), R r10) :: (* extract code pointer into %r10 from C arg *)
-                                               I.call' (R r10) ::                    (* call ML function *)
-                                               I.movq(R rdi, R treg0) :: nil)
+                                               callThread (I.movq(R rdi, R treg0) :: nil))
                                             @ compile_c_call_prim("thread_exit", [SS.PHREG_ATY treg0], NONE, fsz (* not used *), treg1,
                                               [I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
@@ -1388,15 +1446,26 @@ struct
                     compile_c_call_prim("thread_create", [SS.PHREG_ATY treg0,SS.PHREG_ATY treg1], SOME res, fsz, treg1, C))
                  end
                | LS.CCALL{name,args,rhos_for_result,res} =>
-                  if sampledProfile() andalso
+                  if sampledProfile() andalso name = "thread_get" then
+                    let val lab = rpCurrentMap fsz size_ccf
+                    in
+                      load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,
+                        rpInternal fsz "mlkit_rp_wait_enter"
+                          [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg1]
+                          (compile_c_call_prim(name,rhos_for_result @ args,
+                            case res of [] => NONE | [a] => SOME a | _ => die "thread_get results",
+                            fsz,treg1,rpInternal fsz "mlkit_rp_wait_leave" [SS.PHREG_ATY r14] C)))
+                    end
+                  else if sampledProfile() andalso
                      List.exists (fn n => n = name) ["mlkit_rp_start","mlkit_rp_pause","mlkit_rp_sample"] then
                     let
                       val lab = rpCurrentMap fsz size_ccf
                       val opno = if name = "mlkit_rp_start" then 0 else if name = "mlkit_rp_pause" then 1 else 2
                     in
                       G.load_ea(LA lab,treg0) $
+                      I.movq(I(Int.toString opno),R treg1) ::
                       compile_c_call_prim("mlkit_rp_capture",
-                        [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg0,mkIntAty opno],
+                        [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg0,SS.PHREG_ATY treg1],
                         case res of [] => NONE | [a] => SOME a | _ => die "rp results",fsz,treg1,C)
                     end
                   else
@@ -1489,7 +1558,7 @@ struct
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10)]                       (* call ML function *)
-                         @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d31"] else [])
+                         @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d32"] else [])
                          @ [I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
                          @ (if gc_p() then
@@ -1633,7 +1702,7 @@ struct
             base_plus_offset(rsp,WORDS(~fsz),rsp,
             do_simple_memprof(
             do_prof(
-            CG_lss(lss,fsz,size_ccf, return_code
+            rpPoll fsz size_ccf (CG_lss(lss,fsz,size_ccf, return_code)
             )))))
       in
         gen_fn(lab, C @ GCsnippet @ get_code_blocks())
@@ -1693,6 +1762,7 @@ struct
         val _ = chat "[X64 Code Generation..."
         val _ = reset_static_data()
         val _ = reset_label_counter()
+        val () = rpNames := []
         val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
@@ -2112,7 +2182,7 @@ struct
                    I.dot_p2align "3" ::
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
-                   I.dot_quad (if sampledProfile() then "0x52504d31" else "0xFFFFFFFFFFFFFFFF") :: (* Entry sentinel. *)
+                   I.dot_quad (if sampledProfile() then "0x52504d32" else "0xFFFFFFFFFFFFFFFF") :: (* Entry sentinel. *)
                    I.lab next_lab ::
                    C))
                  end) C progunit_labs
@@ -2306,7 +2376,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
 
         val () = if sampledProfile() then
           add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
-                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d31"]
+                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d32"]
           else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
@@ -2377,6 +2447,10 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
       let
         val _ = reset_static_data()
         val _ = reset_label_counter()
+        val () = if sampledProfile() then
+          add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
+                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d32"]
+          else ()
 
         fun main_insts C =
            (I.dot_text ::

@@ -37,7 +37,8 @@ if mode == "runtime":
     text = pathlib.Path(path).read_text()
     lines = text.splitlines(keepends=True)
     # Drop the final end record: unfinished snapshot must not be reported.
-    assert len(list(reader.read_samples(io.StringIO("".join(lines[:-1]))))) == 3
+    last_end = max(i for i,line in enumerate(lines) if json.loads(line)["type"] == "sample_end")
+    assert len(list(reader.read_samples(io.StringIO("".join(lines[:last_end]))))) == 3
     assert len(list(reader.read_samples(io.StringIO(text + '{"type":')))) == 4
     try:
         list(reader.read_samples(io.StringIO(text + "invalid\n")))

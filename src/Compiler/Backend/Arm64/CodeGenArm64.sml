@@ -56,6 +56,7 @@ struct
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   val rpUnit = ref (NameLab "unused_rp_unit")
+  val rpName = ref (fn (_:string) => NameLab "unused_rp_name")
   val rpFrame = ref 0
   val rpArgs = ref 0
   val tagPairs = Flags.is_on0 "tag_pairs"
@@ -224,16 +225,42 @@ struct
            ++ storeInto (X 16,SP,8*i)) code) code spilled
       in stackInto (true,8*rw) code
       end
+  val rpNames = ref []
+  fun rpBindingName place =
+    case Effect.getRegVar place of
+      NONE => "0"
+    | SOME _ =>
+      let
+        val key = Effect.key_of_eps_or_rho place
+        val lab = case List.find (fn (id,_) => id = key) (!rpNames) of
+                    SOME (_,lab) => lab
+                  | NONE =>
+                    let val lab = (!rpName) (Effect.pp_eff place)
+                    in rpNames := (key,lab) :: !rpNames; lab
+                    end
+      in pr_lab lab ^ " - ."
+      end
   fun rpWords delta =
     let
       fun binding ((place,sz),off) =
         [Int.toString(Effect.key_of_eps_or_rho place),Int.toString(!rpFrame-off-1),
-         case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n]
+         (case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n),
+         rpBindingName place]
     in
-      ["0x52504d31",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
+      ["0x52504d32",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
        Int.toString(length(!rpRegions)),pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
     end
-  fun rpEmit words code = foldl (fn (w,c) => Directive(Quad [w]) :: c) code words
+  fun rpEmit words code =
+    let
+      fun emit (w,c) =
+        if String.isSuffix " - ." w then
+          let val anchor = NameLab("mlkit_rp_anchor_" ^ pr_lab(localFresh()))
+          in Label anchor :: Directive(Quad [String.substring(w,0,size w-4) ^
+                                               " - " ^ pr_lab anchor]) :: c
+          end
+        else Directive(Quad [w]) :: c
+    in foldl emit code words
+    end
   fun rpCurrentMap () =
     let
       val lab = localFresh()
@@ -243,7 +270,9 @@ struct
   (* Return PCs anchor inline descriptors, just as on X64. The branch to
    * the callee skips the data; returning through x30 reaches executable code. *)
   fun rpContinuationInto pc delta bv code =
-    if sampledProfile() then Directive(Align 3) :: rpEmit (rpWords delta) (Label pc :: code)
+    if sampledProfile() then Directive(Align 3) ::
+      foldl (fn (w,c) => Directive(Quad ["0x" ^ Word32.fmt StringCvt.HEX w]) :: c)
+        (rpEmit (rpWords delta) (Label pc :: code)) (if gc() then bv else [])
     else if gc() then Directive(Align 3) ::
       foldl (fn (w,c) => Directive(Quad ["0x" ^ Word32.fmt StringCvt.HEX w]) :: c) (Label pc :: code) bv
     else Label pc :: code
@@ -337,6 +366,21 @@ struct
       stackInto (true,8*words) code
     end
   fun internalCallInto fsz name args = internalCallLiveInto savedRegs fsz name args
+  fun rpPollInto fsz code =
+    if not(sampledProfile()) then code
+    else
+      let
+        val done = localFresh()
+        val map = rpCurrentMap()
+      in
+        (addressInto(NameLab "mlkit_rp_pending",X 16)
+         ++ instruction A.ldr (R(W 16),M(X 16,0))
+         ++ instruction A.cbz (R(W 16),L(done))
+         ++ addressInto(map,X 17)
+         ++ internalCallInto fsz "mlkit_rp_poll"
+              [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1),SS.PHREG_ATY(X 17)]
+         ++ one (Label done)) code
+      end
   (* Foreign calls may re-enter ML through an exported hook. The existing IR
    * carries no root map at a C call, so defer collection across that dynamic
    * extent, including callbacks. Pending collection is retained on return. *)
@@ -1904,7 +1948,13 @@ struct
           val () = addStatic
             (
               let
-                val code = (instruction A.blr (R(X 17))
+                val pc = localFresh()
+                val call = if sampledProfile() then
+                    addressInto(pc,X 30) ++ instruction A.br (R(X 17))
+                    ++ one (Directive(Align 3))
+                    ++ one (Directive(Quad ["-1","0x52504d32"])) ++ one (Label pc)
+                  else instruction A.blr (R(X 17))
+                val code = (call
                    ++ instruction A.bl (L(NameLab "thread_exit"))
                    ++ instruction A.brk (I(0))) []
               in
@@ -1930,7 +1980,17 @@ struct
            ++ writeInto fsz res (X 0)) code
         end
     | LS.CCALL {name,args,rhos_for_result,res} =>
-        if sampledProfile() andalso
+        if sampledProfile() andalso name = "thread_get" then
+          let val lab = rpCurrentMap()
+          in
+            (addressInto(lab,X 17)
+             ++ internalCallInto fsz "mlkit_rp_wait_enter"
+                [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1),SS.PHREG_ATY(X 17)]
+             ++ runtimeCallInto fsz name (rhos_for_result @ args)
+             ++ internalCallInto fsz "mlkit_rp_wait_leave" [SS.PHREG_ATY(X 28)]
+             ++ resultsInto fsz res) code
+          end
+        else if sampledProfile() andalso
            List.exists (fn n => n = name) ["mlkit_rp_start","mlkit_rp_pause","mlkit_rp_sample"] then
           let
             val lab = rpCurrentMap()
@@ -1969,7 +2029,7 @@ struct
                    ++ callInto (Indirect (SS.PHREG_ATY(X 17))) returnLab
                    ++ (if sampledProfile() then
                          one (Directive(Align 3)) ++ one (Directive(Quad ["-2"]))
-                         ++ one (Directive(Quad ["0x52504d31"])) else fn code => code)
+                         ++ one (Directive(Quad ["0x52504d32"])) else fn code => code)
                    ++ one (Label returnLab)
                    ++ resumeGCInto()
                    ++ restoreCInto()) code
@@ -2409,8 +2469,8 @@ struct
                   | SS.REG_F_ATY _ => frameOperand := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
-      val optimiseFrame = not(sampledProfile()) andalso not(profiling()) andalso not(extra_gc_checks())
-      val wrapper = if optimiseFrame andalso tail_wrappers() then identityTail cc body else NONE
+      val optimiseFrame = not(profiling()) andalso not(extra_gc_checks())
+      val wrapper = if optimiseFrame andalso not(sampledProfile()) andalso tail_wrappers() then identityTail cc body else NONE
       val recursive = ref false
       val loop = if optimiseFrame andalso self_loops() andalso (not(gc()) orelse fsz = 0) andalso ac = 0
                     andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
@@ -2420,6 +2480,7 @@ struct
       val body = if not(gc()) andalso fsz > 0 andalso !spillSafe andalso Option.isSome loop then sinkLoopSpills fsz body else body
       val code = (stmtsInto fsz results body
          ++ epilogueInto fsz) code
+      val code = rpPollInto fsz code
       val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"
                    [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)] code
                  else code
@@ -2441,6 +2502,8 @@ struct
       val () = staticChunks := []
       val () = unitGCStub := NONE
       val () = dataLabels := []
+      val () = rpNames := []
+      val () = rpName := stringData
       val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
@@ -2478,7 +2541,7 @@ struct
          ++ (if sampledProfile() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
-               ++ one (Directive(Quad ["0x52504d31"]))
+               ++ one (Directive(Quad ["0x52504d32"]))
              else if gc() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
@@ -2531,7 +2594,7 @@ struct
         Directive(Global (l)) :: Label l ::
         foldr (fn (s,code) => Directive(Quad [s]) :: code) code words
       val () = if sampledProfile() then
-        addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d31"] []) else ()
+        addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d32"] []) else ()
       fun init (place,l) code =
         (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
           ++ moveInto(X 28,X 0)

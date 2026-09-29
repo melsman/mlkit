@@ -15,3 +15,5 @@ src/Runtime/build/
 /stage/
 
 /js/.cache/
+
+/test/region_profile/__pycache__/
