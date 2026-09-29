@@ -1,8 +1,8 @@
 # A sampled region profiler
 
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
-This document specifies the overall design. All six implementation milestones
-are now present; see [usage, validation, and measurements](region-profiler.md).
+This document specifies the overall design. M1–M7 are implemented.
+See [usage, validation, and measurements](region-profiler.md).
 ARM64 execution checks cover the implemented runtime combinations. X64 compiler
 builds and cross-assembly checks pass, but X64 execution validation remains
 pending the ThinkPad. Milestone boxes below track implementation, not completion
@@ -252,15 +252,17 @@ flushed prefix while the process is running. Record completeness and timing
 information so delayed or incomplete captures cannot masquerade as exact
 simultaneous snapshots.
 
-Extend `rp2ps` or add a converter for aggregate region and stack graphs.
-Legacy object-allocation-site views cannot be reconstructed from these
-samples. Check numeric ranges and semantics when exporting to the old format;
-do not silently truncate counters or present footprint as exact payload.
+Extend the HTML viewer with combined, colored region-and-stack graphs (M7).
+Keep `rp2ps` unchanged. A separate future integration could add a new input path
+there; legacy object-allocation-site views cannot be reconstructed from these
+samples. Do not silently truncate counters or present footprint as exact payload.
 
 Record per-thread data and perform region/thread/worker filtering and
-aggregation in the viewer. Defer runtime filtering options and live attach.
-A future viewer can consume the same records through a control socket or
-shared buffer rather than walking remote process memory.
+aggregation in the generated HTML. Keep the workflow offline: the profiled
+program writes `profile.rp`; the compiled SML `rpview` tool reads that file and
+writes `profile.html`. Embed the template in the executable, with no Python,
+HTTP server, or network dependency. Runtime filtering and any future live
+viewer are separate work.
 
 ## Implementation milestones
 
@@ -293,13 +295,46 @@ shared buffer rather than walking remote process memory.
   tracking. Validate minor/major collections, both generations' unused tails,
   finite stack reservations, and requests arriving during collection. Repeat
   relevant REPL checks with GC. GC plus parallel execution remains excluded.
-- [x] **M6: Visualization and live access.** Polish offline region/thread/worker
-  views, then add a live record transport and attach controls. Reuse the file
-  record model and expose measurement/attribution semantics in the viewer.
+- [x] **M6: Visualization.** Provide offline region/thread/worker views using
+  the file record model and expose measurement/attribution semantics. The
+  runtime control socket is available to external clients; the bundled HTTP
+  viewer was replaced by the simpler offline workflow in M7.
+
+- [x] **M7: Stacked region-and-stack graphs.** Add a graph showing all region
+  bindings and the stack together as colored, stacked areas over time, with
+  a legend and labelled axes: elapsed time with explicit units (for example,
+  seconds), and memory with explicit units (bytes, KiB, MiB, or GiB). Keep each
+  region's color and vertical order stable across the displayed timeline. Sort
+  region bands by the sum of their sampled sizes, smallest first, matching
+  `rp2ps`; use deterministic tie-breaking and retain all regions by default.
+  Support the aggregate of all threads and filtering to one selected logical
+  thread or execution stream. Label execution streams as such: physical-core
+  selection must not be inferred from worker IDs. Record the OS logical CPU
+  at the publishing safe point on Linux; permit CPU filtering, including changes
+  of CPU between samples. CPU identity is unavailable on macOS and is labelled
+  accordingly. This is logical-processor attribution, not a physical-core or
+  allocation-origin measurement.
+  Attribute shared regions once by lifetime owner, consistent with the existing
+  stream, and make the treatment of persistent/global storage visible in
+  filtered views. Extend the sampled stream to measure active ML stack storage;
+  version 3 adds per-thread active/finite/remaining-stack byte counts, while
+  older files display a stack-unavailable notice. Keep finite-region reservations
+  in their region bands and exclude
+  those bytes from the stack band; account for descriptors exactly once. Label
+  the stack metric as active ML stack storage, not reserved OS stack capacity
+  or arbitrary foreign-call stack usage. Extend the existing
+  interactive HTML viewer. Implement the file-to-HTML converter in Standard ML
+  under `src/Tools/RegionProfile`, with its template embedded in the executable.
+  Leave the legacy `rp2ps` tool unchanged. Preserve 64-bit
+  counters through aggregation and label peaks as sampled maxima. Validate
+  band sums against measured totals, ordering/colors, axis units, thread/worker
+  filters, shared-region deduplication, recursion/finite-stack accounting,
+  missing identities, and truncated streams. Include an example graph and
+  document the input and filtering options.
 
 Run relevant generated-code and runtime checks on both native backends.
 X64 execution checks are planned for the ThinkPad once access is available;
-they have not yet been performed for M1. Record results
+they have not yet been performed for the implemented milestones. Record results
 and overhead numbers as milestones are implemented, rather than assuming
 that existing GC tests validate the new profiler.
 

@@ -74,6 +74,7 @@ else
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
 	$(MAKE) -C src reml
+	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit"
 endif
 	$(MAKE) man_mlkit
 
@@ -261,6 +262,7 @@ install0:
 	$(INSTALL) bin/mlkit-mllex $(BINDIR)
 	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
 	$(INSTALL) bin/rp2ps $(BINDIR)
+	$(INSTALL) bin/rpview $(BINDIR)
 	$(INSTALL) bin/kittester $(BINDIR)
 	$(MKDIR) $(LIBDIR)
 	$(MKDIR) $(LIBDIR)/mlkit
@@ -345,7 +347,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X64
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Arm64/tests
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/tests $(INSTDIR)/src/Runtime/tests
-	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
+	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps $(INSTDIR)/src/Tools/RegionProfile
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/Tools/ml-lex $(INSTDIR)/src/Tools/ml-yacc/src
 	$(MKDIR) $(INSTDIR)/src/Tools/ml-yacc/lib $(INSTDIR)/src/Tools/ml-yacc/examples/calc
@@ -373,6 +375,7 @@ install_src:
 	$(INSTALLDATA) src/Runtime/tests/*.{c,sh} $(INSTDIR)/src/Runtime/tests
 	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
 	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,sig,mlb,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
+	$(INSTALLDATA) src/Tools/RegionProfile/*.{sml,mlb,html,in} src/Tools/RegionProfile/Makefile $(INSTDIR)/src/Tools/RegionProfile
 	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h,in} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
@@ -389,7 +392,7 @@ bootstrap0: install_test install_src
 bootstrap_first:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
+	$(INSTALL) bin/{mlkit,rp2ps,rpview} $(BINDIR)
 	$(MAKE) bootstrap0
 
 MLKIT_FLAGS ?=
@@ -412,7 +415,7 @@ bootstrap_next_build:
 bootstrap_next_install:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{rp2ps,kittester} $(BINDIR)
+	$(INSTALL) bin/{rp2ps,rpview,kittester} $(BINDIR)
 	$(INSTALL) src/Compiler/run $(BINDIR)/mlkit
 	$(MAKE) install_test
 	$(MAKE) install_src
@@ -573,3 +576,7 @@ test:
 	$(MAKE) -j1 -C test test_mlkit_no_gc
 	$(MAKE) -j1 -C test/explicit_regions all
 	$(MAKE) -j1 -C test/parallelism all
+
+.PHONY: rpview
+rpview:
+	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit"

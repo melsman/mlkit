@@ -4,6 +4,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 CC=${CC:-cc}
 PYTHON=${PYTHON:-python3}
+RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp-extended.XXXXXX")
 echo "Extended profiler artifacts: $OUT"
 export SML_LIB="$ROOT"
@@ -48,7 +49,7 @@ printf '%s\n' "$ROOT/basis/basis.mlb" "$ROOT/basis/par.mlb" "$OUT/foreign.sml" >
 "$OUT/foreign" -rp -rp_interval 1ms -rp_report -rp_file "$OUT/foreign.rp" > "$OUT/foreign.out" 2> "$OUT/foreign.report"
 grep -q 'foreign wait ok' "$OUT/foreign.out"
 grep -q 'safe_point_timeout' "$OUT/foreign.rp"
-"$PYTHON" "$ROOT/src/Tools/RegionProfile/rp-read.py" "$OUT/foreign.rp" > "$OUT/foreign.csv"
+"$RPVIEW" "$OUT/foreign.rp" --output "$OUT/foreign.html" > /dev/null
 echo 'Blocked foreign call: cancellation, progress, and stream checks passed'
 # Invalid REPL runtime options must fail promptly, rather than disappear or
 # leave the compiler blocked opening a FIFO after its child exits.
@@ -65,6 +66,6 @@ for mode in no_gc gc; do
  grep -q 'repl profile ok' "$OUT/repl-$mode.log"
  "$PYTHON" "$ROOT/test/region_profile/check-extended.py" repl "$OUT/repl-$mode.rp"
 done
-"$PYTHON" "$ROOT/src/Tools/RegionProfile/rp-view.py" "$OUT/parallel.rp" --output "$OUT/profile.html"
+"$RPVIEW" "$OUT/parallel.rp" --output "$OUT/profile.html"
 echo "Live socket test (requires local socket permissions): $PYTHON $ROOT/test/region_profile/check-live.py $OUT/periodic"
 echo 'Extended profiler checks passed'

@@ -1,0 +1,82 @@
+structure ProfileReader =
+struct
+  open ProfileJson
+  fun read path =
+      let val input = BinIO.openIn path
+          val bytes = (BinIO.inputAll input handle e => (BinIO.closeIn input; raise e))
+          val () = BinIO.closeIn input
+          val lines = String.fields (fn c => c = #"\n") (Byte.bytesToString bytes)
+          val header = ref NONE
+          val pending = ref NONE
+          val regions = ref []
+          val stacks = ref []
+          val samples = ref []
+          val marks = ref []
+          fun require b msg = if b then () else raise Fail msg
+          fun checkRegion r =
+              let val () = app (fn k => ignore(uint r k))
+                      ["pages","unused_tail","page_footprint","large_bytes","finite_bytes","descriptor_bytes","thread","binding"]
+                  val h = valOf(!header)
+                  val () = require (uint r "page_footprint" = uint r "pages" * uint h "page_bytes" - uint r "unused_tail") "inconsistent page accounting"
+                  val () = ignore(string(get r "unit"))
+              in case find r "g0_pages" of
+                     NONE => ()
+                   | SOME _ =>
+                     (app (fn k => ignore(uint r k)) ["g0_pages","g1_pages","g0_unused_tail","g1_unused_tail"];
+                      require (uint r "pages" = uint r "g0_pages" + uint r "g1_pages" andalso
+                               uint r "unused_tail" = uint r "g0_unused_tail" + uint r "g1_unused_tail") "inconsistent generation accounting")
+              end
+          fun checkStack r =
+              (app (fn k => ignore(uint r k)) ["active_bytes","finite_bytes","stack_bytes","thread"];
+               require (uint r "active_bytes" = uint r "finite_bytes" + uint r "stack_bytes") "inconsistent stack accounting";
+               require (not(List.exists (fn s => uint s "thread" = uint r "thread") (!stacks))) "duplicate thread stack")
+          fun add r =
+              case !header of
+                  NONE =>
+                  (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
+                   require (List.exists (fn n => uint r "version" = n) [1,2,3]) "unsupported profile version";
+                   require (uint r "page_bytes" > 0) "invalid page size";
+                   header := SOME r)
+                | SOME h =>
+                  (case kind r of
+                       "sample_begin" =>
+                       (require (not(Option.isSome(!pending))) "nested samples";
+                        ignore(uint r "sample"); ignore(uint r "time");
+                        pending := SOME r; regions := []; stacks := [])
+                     | "mark" => (ignore(uint r "time"); marks := r :: !marks)
+                     | k =>
+                       if List.exists (fn t => t = k) ["region","stack","sample_end"] then
+                         let val begin = case !pending of SOME s => s | NONE => raise Fail "record outside sample"
+                             val () = require (uint r "sample" = uint begin "sample") "record outside its sample"
+                         in if k = "region" then (checkRegion r; regions := r :: !regions)
+                            else if k = "stack" then (checkStack r; stacks := r :: !stacks)
+                            else
+                              let val () = app (fn key => ignore(uint r key)) ["time","frames","pages_visited"]
+                                  val old = uint h "version" < 3
+                                  val stackData = if old then Null else Arr(rev(!stacks))
+                                  val cache = case find r "cache_bytes" of SOME v => v | NONE => Num "0"
+                                  val extra = [("end_time",get r "time"),("frames",get r "frames"),
+                                               ("pages_visited",get r "pages_visited"),("cache_bytes",cache),
+                                               ("regions",Arr(rev(!regions))),("stacks",stackData)]
+                                  val fields = List.filter (fn (k,_) => not(List.exists (fn (n,_) => n = k) extra)) (fields begin)
+                              in samples := Obj(fields @ extra) :: !samples; pending := NONE end
+                         end
+                       else require (List.exists (fn t => t = k)
+                              ["thread_start","thread_end","binding","session_end","sample_skipped"]) ("unknown record: " ^ k))
+          (* The final split field is either empty or an uncommitted record. *)
+          fun consume [] = ()
+            | consume [_] = ()
+            | consume (line::rest) = (add(parse line); consume rest)
+          val () = consume lines
+          val () = require (Option.isSome(!header)) "missing profile header"
+          fun partition _ [] acc = (rev acc,[])
+            | partition time (m::ms) acc = if uint m "time" <= time then partition time ms (m::acc)
+                                          else (rev acc,m::ms)
+          fun attach [] _ = []
+            | attach [s] ms = [Obj(fields s @ [("marks",Arr ms)])]
+            | attach (s::ss) ms =
+              let val (here,later) = partition (uint s "time") ms []
+              in Obj(fields s @ [("marks",Arr here)]) :: attach ss later end
+      in attach (rev(!samples)) (rev(!marks)) end
+
+end

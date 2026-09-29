@@ -7,8 +7,7 @@ old `-prof` object profiler; the two cannot be combined.
 ```sh
 mlkit -no_gc -region_profile -o app app.mlb
 ./app -rp -rp_interval 10ms -rp_file profile.rp -rp_report
-python3 src/Tools/RegionProfile/rp-read.py profile.rp
-python3 src/Tools/RegionProfile/rp-view.py profile.rp --output profile.html
+rpview profile.rp --output profile.html
 ```
 
 Supported combinations are single-threaded no-GC, GC and generational GC, and
@@ -123,9 +122,17 @@ behind another snapshot and rendezvous waiting. Traversal and serialization
 wall time are separate; CPU time measures the sampling thread. These are
 measurement costs, not allocation costs or an application-wide CPU profile.
 
-## Stream and live viewer
+## Stream and offline HTML viewer
 
-Output is version 2 JSON Lines. The reader also accepts M1 version 1 files.
+Output is version 3 JSON Lines. The reader also accepts version 1 and 2 files.
+Version 3 adds a `stack` record per captured thread with `active_bytes`,
+`finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`. The active span
+runs from the innermost captured ML frame through the outermost ML return slot,
+including alignment and spilled-result reservations. It excludes the sampler's
+C frames, foreign-call frames, and unused OS stack capacity. Native map version
+2 is unchanged; relink executables with the new runtime to record stack data.
+The reader validates stack arithmetic and preserves missing stack data in older
+streams as unavailable, rather than zero.
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
@@ -133,49 +140,101 @@ The stream preserves unsigned 64-bit counters. The viewer transports them as
 decimal strings and sums them with `BigInt`; only chart coordinates use floating
 point.
 
-The offline HTML has no external dependencies. It provides a timeline, a
-snapshot selector, metric selection, markers, and tables grouped by binding,
-lifetime owner or execution stream. Maxima are explicitly labelled as sampled.
+`rpview` is a compiled Standard ML program in `src/Tools/RegionProfile`.
+It reads a profile file and writes one self-contained HTML file. Both building
+and running the tool require no Python. The HTML/JavaScript template is embedded
+in the executable at build time by a small SML helper; the installed executable
+needs no template files. There is no HTTP server, live polling, or network access
+in the tool or generated page. Open the output directly in a browser and
+regenerate it to include new samples.
+
+The normal build/install includes `bin/rpview`. To build it separately with an
+existing native compiler:
 
 ```sh
-./app -rp -rp_control /tmp/app-profile.sock -rp_file /tmp/app-profile.rp
-python3 src/Tools/RegionProfile/rp-view.py /tmp/app-profile.rp \
-  --serve --control /tmp/app-profile.sock
+make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
+bin/rpview profile.rp --output profile.html
 ```
 
-The viewer prints a loopback URL. It polls the append-only file for committed
-samples and sends start/pause/sample/flush commands through the local socket.
-Commands are queued until an ML or idle-REPL safe point; HTTP acceptance is not
-an acknowledgement of completed capture. The socket is created with owner-only
-permissions, refuses to replace an existing path, and is removed on normal
-shutdown. The HTTP server binds only to loopback and authenticates control
-requests with a per-server token. Large files are currently re-read by the live
-viewer; incremental transport is a future scalability improvement.
+The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
+The tool validates the stream before opening its output and rejects an output
+path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks all
+region bindings and the remaining ML stack as colored bands. The legend lists
+bands from bottom to top; ordering is by summed sampled sizes, smallest first,
+as in `rp2ps`. All bands are retained. A binding keeps its color when changing
+snapshots or filters. Axes show elapsed seconds and automatically scaled memory
+units (bytes, KiB, MiB, etc.); tooltips and tables retain exact byte counters.
+Finite reservations belong to their region bands, so the stack band subtracts
+them. Resident descriptors are already part of the stack span; descriptors and
+free-page caches are not added again. The runtime report's `sampled_peak_bytes`
+remains a region-only peak; the default graph's sampled maximum includes stack.
+
+The **View** selector applies to both graph and table: all threads, one logical
+thread, one Argobots execution stream, or one OS logical CPU where recorded.
+Linux records the CPU when a thread publishes its safe-point anchor; migration
+can move that owner's storage between CPU bands over time. This is not physical
+core topology or allocation-origin tracking. macOS reports CPU identity as
+unavailable, while Argobots execution-stream selection remains available.
+Shared and persistent/global regions follow their lifetime owner's recorded
+identity and are counted once. Unavailable identities have explicit selectors;
+older files show a stack-unavailable notice.
+
+The snapshot slider, metric selection, markers, and table grouping remain
+available. Changing table grouping does not merge the region bands. Maxima are
+explicitly labelled as sampled. `rp2ps` remains unchanged.
+
+A reproducible ReML example uses three named regions with different growth/reset
+phases and a growing recursive stack:
+
+```sh
+printf '%s\n' "$PWD/test/region_profile/graph.sml" > /tmp/region-graph.mlb
+reml -no_par -region_profile -o /tmp/region-graph /tmp/region-graph.mlb
+/tmp/region-graph -rp -rp_interval 0 -rp_file /tmp/region-graph.rp
+rpview /tmp/region-graph.rp --output graph.html
+```
+
+Hover a legend entry to see its full unit/binding identity. Select a snapshot to
+inspect exact values; the vertical guide shows its position on the timeline.
+
+The existing runtime `-rp_control` socket remains available to external clients,
+but is not needed for this workflow. Use runtime flags or `RegionProfile` API
+operations to select phases, then convert the resulting file to HTML. Optional
+runtime controls are tested separately from the offline viewer.
 
 ## Validation and measurements
 
 ```sh
+make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
 python3 test/region_profile/check-live.py /path/to/instrumented/periodic
 python3 test/region_profile/check-viewer.py /path/to/profile.rp
+python3 test/region_profile/check-graph.py  # requires Node.js for graph-code tests
+python3 test/region_profile/check-sml-reader.py /path/to/profile.rp
 ```
 
-The scripts accept `MLKIT`, `REML`, `CC`, and `PYTHON` overrides as appropriate.
+The regression harness uses Python and, for graph-code tests, Node.js; neither
+is a dependency of the built tool. Scripts accept `MLKIT`, `REML`, `RPVIEW`, `CC`,
+and `PYTHON` overrides as appropriate. Tests run a relocated viewer with an empty
+executable search path to check that it needs no interpreter or external assets.
 The live test needs local socket permissions. The extended script prints all
 artifact paths. Build `runtimeSystemArPar.a` first for its optional Argobots test.
 
 ARM64 checks cover controlled finite/page/large-object totals, reset and release,
 recursion, spilled results, exceptions, periodic tail loops, paused operation,
 invalid intervals, repeated snapshots, shared allocations, joins and thread
-exit, GC/genGC, retained REPL values/closures and clean shutdown. Both generation
+exit, blocked foreign calls, GC/genGC, retained REPL values/closures and clean shutdown.
+M7 checks cover exact frame spans and finite subtraction, recursive stack growth,
+colored band sums/order, thread/worker/CPU filters (including synthetic CPU
+migration), axis units, old/truncated/single-sample streams, and counters above
+2^53. Linux CPU capture and X64 stack execution await the ThinkPad checks. Both generation
 tails were also checked against exact synthetic totals under ASan/UBSan.
 Argobots 1.2 passed with thirteen logical threads and one or two execution
 streams. The viewer was checked in the browser, and live commands/socket cleanup
 passed. X64 compiler builds and cross-assembly checks cover polling, GC sampling
 bridges, callbacks and thread creation; execution is still pending.
 
-A local ARM64 benchmark ran a billion iterations of a deliberately tiny loop,
+An M2 ARM64 benchmark, before the M7 stack records were added, ran a billion iterations of a deliberately tiny loop,
 with seven runs per mode. Median elapsed times were:
 
 | Mode | Seconds | Profile bytes, last run |

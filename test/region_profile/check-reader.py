@@ -6,7 +6,7 @@ import pathlib
 import sys
 
 root = pathlib.Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("rp_reader", root / "src/Tools/RegionProfile/rp-read.py")
+spec = importlib.util.spec_from_file_location("rp_reader", root / "test/region_profile/reference-reader.py")
 reader = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reader)
 
@@ -24,6 +24,8 @@ mode, path = sys.argv[1:]
 samples = load(path)
 if mode == "runtime":
     assert len(samples) == 4
+    assert [s['stacks'][0]['active_bytes'] for s in samples] == [1056,512,512,512]
+    assert [s['stacks'][0]['stack_bytes'] for s in samples] == [1008,488,488,488]
     first = samples[0]
     assert first["frames"] == 2 and first["pages_visited"] == 2
     assert totals(first, "page_footprint") == 8264

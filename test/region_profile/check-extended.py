@@ -4,7 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
-spec = importlib.util.spec_from_file_location("reader", Path(__file__).resolve().parents[2]/"src/Tools/RegionProfile/rp-read.py")
+spec = importlib.util.spec_from_file_location("reader", Path(__file__).resolve().parents[2]/"test/region_profile/reference-reader.py")
 reader = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reader)
 mode, filename = sys.argv[1:]
@@ -12,6 +12,11 @@ records = [json.loads(line) for line in open(filename)]
 with open(filename) as stream:
     samples = list(reader.read_samples(stream))
 assert samples
+for s in samples:
+    assert s['stacks'] is not None
+    assert sum(r['finite_bytes'] for r in s['stacks']) == sum(r['finite_bytes'] for r in s['regions'])
+    assert all(r['stack_bytes']+r['finite_bytes']==r['active_bytes'] for r in s['stacks'])
+    assert all(r['cpu'] >= -1 for r in s['regions']+s['stacks'])
 assert [s['sample'] for s in samples] == list(range(1,len(samples)+1))
 assert all(a['end_time'] <= b['time'] for a,b in zip(samples,samples[1:]))
 if mode == 'periodic':

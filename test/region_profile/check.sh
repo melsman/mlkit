@@ -5,6 +5,7 @@ MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 REML=${REML:-$ROOT/bin/reml-arm64}
 CC=${CC:-cc}
 PYTHON=${PYTHON:-python3}
+RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp.XXXXXX")
 echo "Region profiler test artifacts: $OUT"
 export SML_LIB="$ROOT"
@@ -51,4 +52,20 @@ printf '%s\n' "$ROOT/kitlib/region-profile.mlb" "$ROOT/basis/basis.mlb" "$OUT/ap
 grep -qx 'first:-rp:application' "$OUT/api.out"
 "$PYTHON" "$ROOT/test/region_profile/check-reader.py" api "$OUT/api.rp"
 (cd "$OUT" && ./api -- disabled > disabled.out && test ! -e profile.rp)
-echo 'M1 region profiler checks passed'
+cp "$ROOT/test/region_profile/graph.sml" "$OUT/"
+printf '%s\n' "$OUT/graph.sml" > "$OUT/graph.mlb"
+"$REML" -no_par -region_profile -o "$OUT/graph" "$OUT/graph.mlb" > "$OUT/graph.build" 2>&1
+"$OUT/graph" -rp -rp_interval 0 -rp_file "$OUT/graph.rp" > "$OUT/graph.out"
+"$PYTHON" - "$OUT/graph.rp" <<'CHECK_GRAPH'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+assert {'`alpha','`beta','`gamma'} <= {r['name'] for r in rows if r['type']=='region'}
+stacks = [r for r in rows if r['type']=='stack']
+assert len(stacks)==25
+# Each non-tail recursive activation adds a 64-byte native frame on ARM64.
+# Other backends must still grow monotonically through the recursive phase.
+assert all(a['active_bytes'] < b['active_bytes'] for a,b in zip(stacks[:23],stacks[1:24]))
+assert all(r['active_bytes']==r['stack_bytes']+r['finite_bytes'] for r in stacks)
+CHECK_GRAPH
+"$RPVIEW" "$OUT/graph.rp" --output "$OUT/graph.html"
+echo 'Region profiler accounting and graph example checks passed'

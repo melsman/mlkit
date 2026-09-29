@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 /* Cooperative sampled region snapshots. Never scan object/page contents. */
 #include "RegionProfile.h"
 #include "String.h"
@@ -14,6 +17,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #ifdef PARALLEL
 #include "Spawn.h"
 #endif
@@ -51,7 +57,7 @@ static pthread_mutex_t large_lock = PTHREAD_MUTEX_INITIALIZER;
 typedef struct Participant {
   Context ctx;
   uint64_t id;
-  int worker, stable; /* 0: executing, 1: parked, 2: join, 3: not started */
+  int worker, cpu, stable; /* 0: executing, 1: parked, 2: join, 3: not started */
   uintptr_t *base;
   const uintptr_t *map;
   struct Participant *next;
@@ -59,7 +65,7 @@ typedef struct Participant {
 static Participant *participants;
 static int rendezvous, serializing;
 static uint64_t record_thread;
-static int record_worker = -1;
+static int record_worker = -1, record_cpu = -1;
 
 typedef struct Large {
   void *address;
@@ -142,6 +148,11 @@ static void await_release(void) { while (rendezvous) progress(); }
 static void await_output(void) { while (serializing) progress(); }
 static void set_anchor(Participant *p, uintptr_t *base, const uintptr_t *map) {
   p->base = base; p->map = map;
+#ifdef __linux__
+  p->cpu = sched_getcpu();
+#else
+  p->cpu = -1; /* No portable current-CPU query on this platform. */
+#endif
 #ifdef ARGOBOTS
   p->worker = execution_stream_rank();
 #else
@@ -152,7 +163,7 @@ void mlkit_rp_thread_create(Context ctx, int id) {
   if (!mlkit_rp_enabled) return;
   LOCK();
   Participant *p = checked_alloc(sizeof(*p));
-  *p = (Participant){.ctx=ctx,.id=(uint64_t)id,.worker=-1,.stable=3,.next=participants};
+  *p = (Participant){.ctx=ctx,.id=(uint64_t)id,.worker=-1,.cpu=-1,.stable=3,.next=participants};
   participants = p;
   await_output();
   if (output) fprintf(output, "{\"type\":\"thread_start\",\"thread\":%d,\"time\":%" PRIu64 "}\n", id, timestamp());
@@ -271,7 +282,7 @@ void mlkit_rp_init(void) {
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":2,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu}\n",
+  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":3,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu}\n",
           sizeof(uintptr_t), sizeof(Rp));
   if (fflush(output)) fail("cannot write profile header");
   if (mlkit_rp_control) {
@@ -321,7 +332,7 @@ static int remember(Region r) {
 typedef struct Record {
   const char *unit, *name;
   uint64_t id, thread, pages, tail, big, finite, desc;
-  int worker, infinite;
+  int worker, infinite, cpu;
   uint64_t g0_pages, g0_tail, g1_pages, g1_tail;
 } Record;
 static Record *records;
@@ -354,7 +365,7 @@ static void region_record(const char *unit, const char *name, uint64_t id, uintp
   } else finite = (uint64_t)words*sizeof(uintptr_t);
   *pages_visited += pages;
   save_record((Record){unit,name,id,record_thread,pages,tail,big,finite,desc,
-                       record_worker,words == UINTPTR_MAX,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
+                       record_worker,words == UINTPTR_MAX,record_cpu,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
 }
 /* Binding definitions are emitted once on first observation. The native unit
  * strings live in resident code images, including retained REPL libraries. */
@@ -397,7 +408,7 @@ static void write_record(const Record *r) {
   uint64_t id = r->id, pages = r->pages, tail = r->tail, big = r->big;
   uint64_t finite = r->finite, desc = r->desc;
   fprintf(output, "{\"type\":\"region\",\"sample\":%" PRIu64 ",\"thread\":%" PRIu64
-          ",\"worker\":%d,\"unit\":", sequence, r->thread, r->worker);
+          ",\"worker\":%d,\"cpu\":%d,\"unit\":", sequence, r->thread, r->worker, r->cpu);
   quoted_bytes(unit, strlen(unit));
   fprintf(output, ",\"g0_pages\":%" PRIu64 ",\"g0_unused_tail\":%" PRIu64
           ",\"g1_pages\":%" PRIu64 ",\"g1_unused_tail\":%" PRIu64,
@@ -442,8 +453,26 @@ static uint64_t global_id(Region r) {
   *g = (GlobalRegion){r,next_global_id++,globals}; globals = g;
   return g->id;
 }
+typedef struct StackRecord {
+  uint64_t thread, active, finite;
+  int worker, cpu;
+} StackRecord;
+static StackRecord *stacks;
+static size_t stack_count, stack_capacity;
+static void save_stack(uint64_t active, uint64_t finite) {
+  if (finite > active) fail("finite reservations exceed active ML stack span");
+  if (stack_count == stack_capacity) {
+    stack_capacity = stack_capacity ? 2*stack_capacity : 16;
+    StackRecord *p = realloc(stacks,stack_capacity*sizeof(*p));
+    if (!p) fail("out of memory");
+    stacks = p;
+  }
+  stacks[stack_count++] = (StackRecord){record_thread,active,finite,record_worker,record_cpu};
+}
 static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
                  uint64_t *frames, uint64_t *pages) {
+  uintptr_t low = (uintptr_t)base, high = low;
+  uint64_t finite = 0;
   for (;;) {
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing or incompatible ML frame metadata");
     if (map[-2] == UINTPTR_MAX) break;
@@ -452,9 +481,16 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     const char *unit = ((String)((uintptr_t)(map-5)+map[-5]))->data;
     for (uintptr_t i = 0; i < map[-4]; i++) {
       const uintptr_t *entry = map-6-4*i;
+      if (entry[-2] != UINTPTR_MAX) {
+        uint64_t bytes = entry[-2]*sizeof(uintptr_t);
+        uintptr_t end = (uintptr_t)(base+entry[-1])+bytes;
+        if (end > high) high = end; /* Includes spilled result reservations. */
+        finite += bytes;
+      }
       region_record(unit, entry[-3] ? ((String)((uintptr_t)(entry-3)+entry[-3]))->data : "", entry[0], base+entry[-1], entry[-2], pages);
     }
     uintptr_t *ret = base+map[-2];
+    if ((uintptr_t)(ret+1) > high) high = (uintptr_t)(ret+1);
     map = (const uintptr_t *)*ret;
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing caller metadata: rebuild all ML libraries with -region_profile");
     if (map[-2] == UINTPTR_MAX) break;
@@ -463,6 +499,7 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     if (parent <= base) fail("non-increasing ML frame chain");
     base = parent;
   }
+  save_stack(high-low,finite);
   /* Global regions outlive all compilation-unit calls and have no ML frame.
    * Locals already recorded through maps are deduplicated here. */
   for (Region r = ctx->topregion; r; r = r->p) {
@@ -486,9 +523,10 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
   sequence++;
   seen_count = 0;
   record_count = 0;
+  stack_count = 0;
   if (participants) {
     for (Participant *p = participants; p; p = p->next) {
-      record_thread = p->id; record_worker = p->worker;
+      record_thread = p->id; record_worker = p->worker; record_cpu = p->cpu;
       if (p->map) walk(p->ctx,p->base,p->map,&frames,&pages);
     }
   } else walk(ctx,base,map,&frames,&pages);
@@ -509,6 +547,13 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
           ",\"gc_kind\":\"%s\",\"reason\":\"%s\"}\n", sequence, start, request_time, sample_wait,
           mlkit_rp_gc_major < 0 ? "none" : mlkit_rp_gc_major ? "major" : "minor", op == 0 ? "start" : op == 1 ? "pause" : op == 3 ? "periodic" : op == 4 ? "before_gc" : op == 5 ? "after_gc" : "explicit");
   for (size_t i = 0; i < record_count; i++) write_record(&records[i]);
+  for (size_t i = 0; i < stack_count; i++) {
+    const StackRecord *r = &stacks[i];
+    fprintf(output,"{\"type\":\"stack\",\"sample\":%" PRIu64
+            ",\"thread\":%" PRIu64 ",\"worker\":%d,\"cpu\":%d,\"active_bytes\":%" PRIu64
+            ",\"finite_bytes\":%" PRIu64 ",\"stack_bytes\":%" PRIu64 "}\n",
+            sequence,r->thread,r->worker,r->cpu,r->active,r->finite,r->active-r->finite);
+  }
   fprintf(output, "{\"type\":\"sample_end\",\"sample\":%" PRIu64
           ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 "}\n",
           sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp));

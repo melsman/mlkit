@@ -1,6 +1,6 @@
 # Region profiler M1: explicit snapshots
 
-This records the initial M1 implementation. For the implemented M2–M6 controls,
+This records the initial M1 implementation. For the implemented M2–M7 controls,
 runtime combinations, version 2 format, and current checks, see
 [the profiler guide](region-profiler.md).
 
@@ -42,7 +42,7 @@ Compile and run:
 ```sh
 mlkit -no_gc -region_profile -o program program.mlb
 ./program -rp -rp_paused -rp_file experiment.rp -- application-arguments
-python3 src/Tools/RegionProfile/rp-read.py experiment.rp
+rpview experiment.rp --output experiment.html
 ```
 
 Use `reml -no_par -region_profile` for a ReML executable. X64 ReML enables
@@ -117,8 +117,8 @@ source-level ReML display names are deferred to M4. Recursive instances can
 produce several records with the same unit and binding; sum them for a binding
 view instead of overwriting them.
 
-The reader emits one CSV summary row per complete snapshot. `--json` emits
-complete snapshots with their individual region records. The raw stream also
+The original M1 reader emitted CSV summaries and JSON snapshots. It has since
+been replaced by the SML `rpview` file-to-HTML tool; see the current guide. The raw stream also
 contains markers; ML string labels are escaped byte-by-byte, preserving NUL
 and control bytes. M1 does not export legacy object-allocation-site data or
 claim to measure process RSS, reachable data, cached free pages, or total
