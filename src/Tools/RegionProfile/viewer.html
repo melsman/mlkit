@@ -17,14 +17,14 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
 <label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option><option value="worker">Execution stream</option></select></label>
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
-<label>Regions shown <input id="limit" type="number" min="0" step="1" value="10" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
+<label>Regions shown <input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
 <div class="display-options" aria-label="Graph display options">
-<label><input id="show-base" type="checkbox" checked>Show base names</label>
-<label><input id="show-kind" type="checkbox" checked>Show region kind</label>
-<label><input id="show-type" type="checkbox" checked>Show region type</label>
-<label><input id="legend-right" type="checkbox">Legend on the right</label>
-<label><input id="show-peak" type="checkbox" checked>Show Peak page capacity</label>
+<label><input id="show-base" type="checkbox">Show base names</label>
+<label><input id="show-kind" type="checkbox">Show region kind</label>
+<label><input id="show-type" type="checkbox">Show region type</label>
+<label><input id="legend-right" type="checkbox" checked>Legend on the right</label>
+<label><input id="show-peak" type="checkbox">Show Peak page capacity</label>
 </div>
 <p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
 <div id="graph-layout" class="graph-layout">

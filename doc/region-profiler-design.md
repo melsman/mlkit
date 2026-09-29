@@ -307,7 +307,7 @@ viewer are separate work.
   seconds), and memory with explicit units (bytes, KiB, MiB, or GiB). Keep each
   region's color and vertical order stable across the displayed timeline. Sort
   region bands by the sum of their sampled sizes, smallest first, matching
-  `rp2ps`; use deterministic tie-breaking. Show the ten largest regions by
+  `rp2ps`; use deterministic tie-breaking. Show the nine largest regions by
   default, with a user-selectable limit (0 means all) and an Other band for the
   remainder. Order the legend top-to-bottom to match the graph, with optional
   placement on the right. Provide checkboxes for base names, finite/infinite

@@ -163,7 +163,7 @@ bin/rpview profile.rp --output profile.html
 
 The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
 The tool validates the stream before opening its output and rejects an output
-path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks the ten largest
+path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks the nine largest
 region bindings and the remaining ML stack as colored bands. **Regions shown**
 sets the number of individual regions (0 retains all); the largest are selected
 by summed sampled size. **Other** sums the omitted regions at each snapshot and
@@ -179,7 +179,8 @@ them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
 
-The base-name, kind, type and peak-capacity checkboxes default to on. **Show base names** includes the
+Only **Legend on the right** is checked by default; base names, kind, type and
+peak capacity start hidden. **Show base names** includes the
 compilation-unit base name in region labels (global regions use `global`).
 **Show region kind** adds `finite` or `infinite` from the recorded kind, including
 zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
@@ -192,7 +193,7 @@ band tooltips and region-grouped table without merging distinct bindings.
 **Show Peak page capacity** toggles the reference line and its annotation;
 when hidden, the memory axis scales to the sampled bands alone.
 **Legend on the right** places the legend beside the graph on wide screens;
-it defaults to off and falls back to below the graph on narrow screens. While
+it defaults to on and falls back to below the graph on narrow screens. While
 selected, labels use compact region IDs such as `r5` instead of `Region #5`,
 retaining any selected base names, kinds, types and explicit region names. Hover
 over a legend label, graph band, or region-grouped table label to see the full
