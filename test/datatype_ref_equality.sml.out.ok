@@ -1,0 +1,5 @@
+function ref: OK
+function array: OK
+abstract ref: OK
+abstract array: OK
+recursive: OK

@@ -57,3 +57,8 @@ hardlinkA:
 
 hardlinkB:
 	ln hardlinkA hardlinkB
+
+# Linux x86-64 ABI regression (ordinary and auto-converted foreign calls).
+.PHONY: test_c_call_alignment
+test_c_call_alignment:
+	../src/Compiler/Backend/X64/tests/check-c-call-alignment.sh

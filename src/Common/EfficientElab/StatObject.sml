@@ -1857,7 +1857,9 @@ structure StatObject: STATOBJECT =
               (Type.RecType.fold (fn (tau, res) => res orelse violates_equality0 T tau)
                false r)
              | CONSTYPE (taus, tyname, _) =>
-              (if TyName.equality tyname orelse TyName.Set.member tyname T then
+              (if TyName.eq (tyname, TyName.tyName_REF) orelse
+                  TyName.eq (tyname, TyName.tyName_ARRAY) then false
+               else if TyName.equality tyname orelse TyName.Set.member tyname T then
                  foldl (fn (tau, res) => res orelse violates_equality0 T tau)
                  false taus
                else true)

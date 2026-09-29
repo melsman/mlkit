@@ -119,12 +119,17 @@ struct
               end
        | _ => I.call(NameLab name) :: C
 
-    (* 1. push stack arguments
-       2. shuffle register arguments (adjust fsz)
-       3. align rsp (and modify location of stack arguments)
-       4. make the call
-       5. on return, reestablish (esp)
-     *)
+    (* ML frames keep rsp 16-byte aligned. Put padding above the stack
+     * arguments so the first argument remains immediately above the return
+     * address, and account for it when loading arguments from the ML frame. *)
+    fun with_stack_args push_arg fsz args F C =
+        let val nargs = List.length args
+            val pad = nargs mod 2
+            val code = push_args push_arg (fsz + pad) args
+                         (maybe_align (nargs + pad) F C)
+        in if pad = 0 then code
+           else G.sub (I "8", RI.spreg) code
+        end
 
     fun drop n nil = nil
       | drop 0 xs = xs
@@ -136,7 +141,6 @@ struct
         let fun push_arg (aty,fsz,C) = push_aty(aty,tmp,fsz,C)
             val nargs = List.length args
             val args_stack = drop (List.length RI.args_reg_ccall) args
-            val nargs_stack = List.length args_stack
             val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = map (fn (x,y) => (x,(),y)) args
             fun store_ret (SOME d,C) = move_reg_into_aty(rax,d,fsz,C)
@@ -146,27 +150,18 @@ struct
             val dynlinklab = "localResolveLibFnManual"
             fun mv (aty,_,r,sz_ff,C) = load_aty(aty,r,sz_ff,C)
         in shuffle_args fsz mv args
-            (push_args push_arg fsz args_stack
-              (maybe_align nargs_stack
-                (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
-                  (store_ret(opt_ret,C))))
+            (with_stack_args push_arg fsz args_stack
+              (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
+              (store_ret(opt_ret,C)))
         end
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
-     * convert the C result to an ML result. Currently supports at most 6 arguments. *)
+     * convert the C result to an ML result. *)
 
     fun compile_c_call_auto (name,args,rhos_for_result,opt_res,fsz,tmp,C) =
         let
             val nargs = List.length args (* not used for static calls *)
             val args_stack = drop (List.length RI.args_reg_ccall) args
-            val nargs_stack = List.length args_stack
-(*
-            val () = if List.length args_stack > 0 then
-                       die ("compile_c_call_auto: at most " ^
-                            Int.toString (List.length RI.args_reg_ccall) ^
-                            " arguments are supported")
-                     else ()
-*)
             val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = List.map (fn ((x:SS.Aty,y:LS.foreign_type),z:reg) => (x,y,z)) args
 
@@ -265,10 +260,9 @@ struct
             val dynlinklab = "localResolveLibFnAuto"
         in maybe_push_rho_for_result fsz (fn fsz =>
             shuffle_args fsz mov_arg args
-              (push_args push_arg fsz args_stack
-                (maybe_align nargs_stack
-                  (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-                    (store_result(opt_res,C)))))
+              (with_stack_args push_arg fsz args_stack
+                (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
+                (store_result(opt_res,C))))
         end
     end
 
