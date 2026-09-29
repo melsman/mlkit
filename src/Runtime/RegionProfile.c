@@ -346,7 +346,7 @@ static int remember(Region r) {
   return 1;
 }
 typedef struct Record {
-  const char *unit, *name;
+  const char *unit, *name, *source;
   uint64_t id, thread, pages, tail, big, finite, desc;
   int worker, infinite, cpu;
   uintptr_t run_type;
@@ -363,7 +363,7 @@ static void save_record(Record r) {
   }
   records[record_count++] = r;
 }
-static void region_record(const char *unit, const char *name, uint64_t id, uintptr_t *storage,
+static void region_record(const char *unit, const char *name, const char *source, uint64_t id, uintptr_t *storage,
                           uintptr_t words, uintptr_t run_type, uint64_t *pages_visited) {
   uint64_t pages = 0, tail = 0, big = 0, finite = 0, desc = 0;
   uint64_t g0_pages = 0, g0_tail = 0;
@@ -381,7 +381,7 @@ static void region_record(const char *unit, const char *name, uint64_t id, uintp
     desc = sizeof(Ro);
   } else finite = (uint64_t)words*sizeof(uintptr_t);
   *pages_visited += pages;
-  save_record((Record){unit,name,id,record_thread,pages,tail,big,finite,desc,
+  save_record((Record){unit,name,source,id,record_thread,pages,tail,big,finite,desc,
                        record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
 }
 /* Binding definitions are emitted once on first observation. The native unit
@@ -440,6 +440,8 @@ static void write_record(const Record *r) {
   fprintf(output, "{\"type\":\"region\",\"sample\":%" PRIu64 ",\"thread\":%" PRIu64
           ",\"worker\":%d,\"cpu\":%d,\"unit\":", sequence, r->thread, r->worker, r->cpu);
   quoted_bytes(unit, strlen(unit));
+  fputs(",\"source\":",output);
+  quoted_bytes(r->source,strlen(r->source));
   fprintf(output, ",\"g0_pages\":%" PRIu64 ",\"g0_unused_tail\":%" PRIu64
           ",\"g1_pages\":%" PRIu64 ",\"g1_unused_tail\":%" PRIu64,
           r->g0_pages,r->g0_tail,r->g1_pages,r->g1_tail);
@@ -510,15 +512,16 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     if (map[-2] == UINTPTR_MAX-1) fail("cannot sample across a C-to-ML callback boundary");
     if (++*frames > 1000000 || map[-4] > 1000000) fail("invalid frame metadata");
     const char *unit = ((String)((uintptr_t)(map-5)+map[-5]))->data;
+    const char *source = ((String)((uintptr_t)(map-6)+map[-6]))->data;
     for (uintptr_t i = 0; i < map[-4]; i++) {
-      const uintptr_t *entry = map-6-5*i;
+      const uintptr_t *entry = map-7-5*i;
       if (entry[-2] != UINTPTR_MAX) {
         uint64_t bytes = entry[-2]*sizeof(uintptr_t);
         uintptr_t end = (uintptr_t)(base+entry[-1])+bytes;
         if (end > high) high = end; /* Includes spilled result reservations. */
         finite += bytes;
       }
-      region_record(unit, entry[-3] ? ((String)((uintptr_t)(entry-3)+entry[-3]))->data : "", entry[0], base+entry[-1], entry[-2], entry[-4], pages);
+      region_record(unit, entry[-3] ? ((String)((uintptr_t)(entry-3)+entry[-3]))->data : "", source, entry[0], base+entry[-1], entry[-2], entry[-4], pages);
     }
     uintptr_t *ret = base+map[-2];
     if ((uintptr_t)(ret+1) > high) high = (uintptr_t)(ret+1);
@@ -537,7 +540,7 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     size_t i;
     for (i = 0; i < seen_count && seen[i] != r; i++) {}
     if (i == seen_count)
-      region_record("<global>", "", global_id(r), (uintptr_t *)r, UINTPTR_MAX, global_type(r), pages);
+      region_record("<global>", "", "global", global_id(r), (uintptr_t *)r, UINTPTR_MAX, global_type(r), pages);
   }
 }
 static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uintptr_t op) {

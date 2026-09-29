@@ -79,8 +79,8 @@ end-of-ML-stack anchor.
   identity is the static key; equal source names in different units are distinct.
   Explicit ReML region names are retained and interned per compilation unit.
 
-Native map version 3 extends the earlier maps with relative source-name
-references and inferred region types.
+Native map version 4 extends the earlier maps with relative source-name
+references, inferred region types and source filenames.
 GC bitmaps precede the profiler extension; both GC walkers locate the original
 bitmap before interpreting roots. Polling bridges preserve live registers.
 ARM64 optimized self-loop backedges pass through the poll; other tail calls
@@ -181,7 +181,11 @@ remains a region-only peak; the default graph's sampled maximum includes stack.
 
 Only **Legend on the right** is checked by default; base names, kind, type and
 peak capacity start hidden. **Show base names** includes the
-compilation-unit base name in region labels (global regions use `global`).
+source filename in region labels, such as `life.sml` (global regions use
+`global`, and interactive code uses `REPL #N`). Full source paths and internal
+unit identifiers appear in hover details. The internal unit identifier remains
+the aggregation key, so matching filenames do not merge distinct regions.
+Older profiles without a source field retain their internal base names.
 **Show region kind** adds `finite` or `infinite` from the recorded kind, including
 zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
 use pages and may hold large objects. **Show region type** adds the compiler's
@@ -197,12 +201,13 @@ it defaults to on and falls back to below the graph on narrow screens. While
 selected, labels use compact region IDs such as `r5` instead of `Region #5`,
 retaining any selected base names, kinds, types and explicit region names. Hover
 over a legend label, graph band, or region-grouped table label to see the full
-base name, type and kind, regardless of the label-display checkboxes.
+source path, base name, type and kind, regardless of the label-display checkboxes.
 
-Region types come from native frame-map version 3 (magic `0x52504d33`), which
-adds one type word per binding, plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP5`; rebuild profiled
-programs and their dependencies to obtain types. Existing profile files remain
+Region types come from native frame-map version 4 (magic `0x52504d34`), which
+includes a source-name reference per frame and one type word per binding,
+plus a linker-generated table of global region
+slots and types. Profiling builds now use cache suffix `_RP6`; rebuild profiled
+programs and their dependencies to obtain types and source filenames. Existing profile files remain
 readable, and the JSON-lines stream remains version 3. No object scans or
 allocation bookkeeping are needed to obtain region types.
 

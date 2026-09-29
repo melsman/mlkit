@@ -41,16 +41,17 @@ const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';let h=2166136261;for(const b of new TextEncoder().encode(key))h=Math.imul(h^b,16777619)>>>0;return `hsl(${h%360} 62% 52%)`;}
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function bytes(r){if(el('metric').value==='pages')return BigInt(r.page_footprint)+BigInt(r.unused_tail);return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
+function baseName(r){return r.unit==='<global>'?'global':r.source?r.source.split(/[\\/]/).at(-1):r.unit;}
 function label(r){
  let name=el('legend-right').checked?(r.name?r.name+' · ':'')+'r'+r.binding:(r.name?r.name:'Region')+' #'+r.binding;
- if(el('show-base').checked)name+=' · '+(r.unit==='<global>'?'global':r.unit);
+ if(el('show-base').checked)name+=' · '+baseName(r);
  const details=[];
  if(el('show-kind').checked)details.push(['finite','infinite'].includes(r.kind)?r.kind:'kind unavailable');
  if(el('show-type').checked)details.push(r.region_type&&r.region_type!=='unavailable'?r.region_type:'type unavailable');
  if(details.length)name+=' ('+details.join(', ')+')';
  return name;
 }
-function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+(r.unit==='<global>'?'global':r.unit)+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
+function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+baseName(r)+(r.source?'\nSource: '+r.source:'')+'\nUnit: '+r.unit+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
 function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
 
 function model(){

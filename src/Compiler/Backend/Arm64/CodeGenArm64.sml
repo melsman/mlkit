@@ -55,6 +55,7 @@ struct
   val profiling = Flags.is_on0 "region_profiling"
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
+  val rpSource = ref (NameLab "unused_rp_source")
   val rpUnit = ref (NameLab "unused_rp_unit")
   val rpName = ref (fn (_:string) => NameLab "unused_rp_name")
   val rpFrame = ref 0
@@ -249,8 +250,8 @@ struct
          (case Effect.get_place_ty place of NONE => "0"
                                         | SOME ty => Int.toString(Effect.ord_runType ty))]
     in
-      ["0x52504d33",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
-       Int.toString(length(!rpRegions)),pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
+      ["0x52504d34",Int.toString(!rpFrame+even(!rpArgs)+1),Int.toString delta,
+       Int.toString(length(!rpRegions)),pr_lab(!rpUnit) ^ " - .",pr_lab(!rpSource) ^ " - ."] @ List.concat(map binding (!rpRegions))
     end
   fun rpEmit words code =
     let
@@ -1954,7 +1955,7 @@ struct
                 val call = if sampledProfile() then
                     addressInto(pc,X 30) ++ instruction A.br (R(X 17))
                     ++ one (Directive(Align 3))
-                    ++ one (Directive(Quad ["-1","0x52504d33"])) ++ one (Label pc)
+                    ++ one (Directive(Quad ["-1","0x52504d34"])) ++ one (Label pc)
                   else instruction A.blr (R(X 17))
                 val code = (call
                    ++ instruction A.bl (L(NameLab "thread_exit"))
@@ -2031,7 +2032,7 @@ struct
                    ++ callInto (Indirect (SS.PHREG_ATY(X 17))) returnLab
                    ++ (if sampledProfile() then
                          one (Directive(Align 3)) ++ one (Directive(Quad ["-2"]))
-                         ++ one (Directive(Quad ["0x52504d33"])) else fn code => code)
+                         ++ one (Directive(Quad ["0x52504d34"])) else fn code => code)
                    ++ one (Label returnLab)
                    ++ resumeGCInto()
                    ++ restoreCInto()) code
@@ -2506,6 +2507,7 @@ struct
       val () = dataLabels := []
       val () = rpNames := []
       val () = rpName := stringData
+      val () = if sampledProfile() then rpSource := stringData(!Flags.current_source_file) else ()
       val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
@@ -2543,7 +2545,7 @@ struct
          ++ (if sampledProfile() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
-               ++ one (Directive(Quad ["0x52504d33"]))
+               ++ one (Directive(Quad ["0x52504d34"]))
              else if gc() then
                one (Directive(Align 3))
                ++ one (Directive(Quad ["-1"]))
@@ -2596,7 +2598,7 @@ struct
         Directive(Global (l)) :: Label l ::
         foldr (fn (s,code) => Directive(Quad [s]) :: code) code words
       val () = if sampledProfile() then
-        (addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d33"] []);
+        (addStatic (datum (NameLab "mlkit_rp_capable") ["0x52504d34"] []);
          addStatic (datum (NameLab "mlkit_rp_globals")
            (List.concat(map (fn (place,l) =>
               [pr_lab(DatLab l),case Effect.get_place_ty place of

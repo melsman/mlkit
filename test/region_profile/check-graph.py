@@ -108,6 +108,13 @@ el('legend-right').checked=true;draw();assert.equal(el('graph-layout').className
 assert(label({...samples[0].regions[0],name:'',binding:'5'}).startsWith('r5 · '));
 el('legend-right').checked=false;draw();assert.equal(el('graph-layout').className,'graph-layout');
 assert(label({...samples[0].regions[0],name:'',binding:'5'}).startsWith('Region #5 · '));
+const sourceRegion={...samples[0].regions[0],source:'/project/test/life.sml'};
+assert(label(sourceRegion).includes('life.sml'));assert(!label(sourceRegion).includes('/project/'));
+assert(detail(sourceRegion).includes('Source: /project/test/life.sml'));
+assert(baseName({...sourceRegion,source:'REPL #3'})==='REPL #3');
+assert(baseName({...sourceRegion,unit:'<global>'})==='global');
+assert(baseName(samples[0].regions[0])===samples[0].regions[0].unit);
+assert(regionKey(sourceRegion)===regionKey({...sourceRegion,source:'/elsewhere/life.sml'}));
 const beforeLabels=model().totals.slice(),beforeKeys=model().bands.map(b=>b.key);
 assert(label(samples[0].regions[2]).endsWith('(finite)'));
 assert(label({...samples[0].regions[2],finite_bytes:'0'}).endsWith('(finite)'));

@@ -8,14 +8,16 @@
 const uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
 Rp *global_freelist;
 static const struct { size_t size; char data[5]; } unit = {0,"test"};
+static const struct { size_t size; char data[19]; } source = {0,"/fixtures/test.sml"};
 static const uintptr_t sentinel[] = {UINTPTR_MAX, MLKIT_RP_MAGIC};
 static uintptr_t *make_map(uintptr_t *dst, uintptr_t ret, uintptr_t delta,
                            uintptr_t count, const uintptr_t *entries) {
-  uintptr_t header[] = {MLKIT_RP_MAGIC,ret,delta,count,(uintptr_t)&unit};
-  uintptr_t *end = dst+5+5*count;
-  for (size_t i=0; i<5; i++) *(end-1-i)=header[i];
+  uintptr_t header[] = {MLKIT_RP_MAGIC,ret,delta,count,(uintptr_t)&unit,(uintptr_t)&source};
+  uintptr_t *end = dst+6+5*count;
+  for (size_t i=0; i<6; i++) *(end-1-i)=header[i];
   end[-5] -= (uintptr_t)(end-5);
-  for (size_t i=0; i<5*count; i++) *(end-6-i)=entries[i];
+  end[-6] -= (uintptr_t)(end-6);
+  for (size_t i=0; i<5*count; i++) *(end-7-i)=entries[i];
   return end;
 }
 int main(int argc, char **argv) {

@@ -42,6 +42,7 @@ elif mode in ('gc','gengc'):
         assert any(r['g1_pages'] and r['g1_unused_tail'] for s in samples for r in s['regions'])
 else:
     assert mode == 'repl'
+    assert any(r.get('source','').startswith('REPL #') for s in samples for r in s['regions'])
     assert sum(s['reason'] == 'explicit' for s in samples) == 2
     assert all(any(r['unit'] == '<global>' for r in s['regions']) for s in samples)
 print(mode+': stream, timing, and accounting checks passed')

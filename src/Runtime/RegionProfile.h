@@ -6,14 +6,14 @@
 #include <stdatomic.h>
 #include "Region.h"
 
-/* Version 3 native map, read backwards from its end/return PC (64-bit words):
+/* Version 4 native map, read backwards from its end/return PC (64-bit words):
  * magic, return-slot offset from frame base, caller-base delta from return
- * slot, binding count, PC-relative ML unit-name string, then (id, offset, size, relative name, run type) quintuples.
+ * slot, binding count, PC-relative ML unit-name string, PC-relative source-name string, then (id, offset, size, relative name, run type) quintuples.
  * Size UINTPTR_MAX denotes an infinite region; return offset UINTPTR_MAX
  * terminates an ML entry; UINTPTR_MAX-1 marks an unsupported C callback boundary. Unit and name offsets
  * are relative to their own words; zero means no explicit name. Other offsets
  * and sizes are in machine words. */
-#define MLKIT_RP_MAGIC UINT64_C(0x52504d33)
+#define MLKIT_RP_MAGIC UINT64_C(0x52504d34)
 extern const uintptr_t mlkit_rp_capable;
 extern int mlkit_rp_enabled;
 extern _Atomic int mlkit_rp_pending;
@@ -51,6 +51,6 @@ static inline const uintptr_t *mlkit_rp_gc_map(const uintptr_t *fd) {
   static const uintptr_t end[] = {UINTPTR_MAX,0,0};
   if (fd[-1] != MLKIT_RP_MAGIC) return fd;
   if (fd[-2] >= UINTPTR_MAX-1) return end+3;
-  return fd-5-5*fd[-4];
+  return fd-6-5*fd[-4];
 }
 #endif
