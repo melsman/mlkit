@@ -192,7 +192,9 @@ when hidden, the memory axis scales to the sampled bands alone.
 **Legend on the right** places the legend beside the graph on wide screens;
 it defaults to off and falls back to below the graph on narrow screens. While
 selected, labels use compact region IDs such as `r5` instead of `Region #5`,
-retaining any selected base names, kinds, types and explicit region names.
+retaining any selected base names, kinds, types and explicit region names. Hover
+over a legend label, graph band, or region-grouped table label to see the full
+base name, type and kind, regardless of the label-display checkboxes.
 
 Region types come from native frame-map version 3 (magic `0x52504d33`), which
 adds one type word per binding, plus a linker-generated table of global region

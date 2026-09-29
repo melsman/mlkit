@@ -97,7 +97,7 @@ el('scope').value='all';el('metric').value='total';el('limit').value='1';draw();
 assert.equal(model().bands.length,3); // largest region, stack, Other
 assert.equal(model().bands[0].key,'other');
 assert.equal(model().bands[0].values[0],56n);
-assert.deepStrictEqual(el('legend').children.map(n=>n.title),model().bands.map(b=>b.label).reverse());
+assert.deepStrictEqual(el('legend').children.map(n=>n.children[1].textContent),model().bands.map(b=>b.label).reverse());
 el('limit').value='0';draw();
 el('show-type').checked=true;
 assert(label(samples[0].regions[0]).includes('type unavailable'));
@@ -116,6 +116,9 @@ assert(label(samples[0].regions[3]).includes(' · global'));
 el('show-base').checked=false;el('show-kind').checked=false;el('group').value='region';draw();
 assert(!label(samples[0].regions[3]).includes('global'));
 assert(!label(samples[0].regions[0]).includes('(infinite)'));
+assert(el('legend').children.some(n=>n.title.includes('Base name: global')&&n.title.includes('Region kind: infinite')));
+assert(detail({...samples[0].regions[0],region_type:'pair'}).includes('Region type: pair'));
+assert(el('rows').children.some(n=>(n.children[0].title||'').includes('Region kind: finite')));
 // A and B have identical display names with base names and kinds hidden.
 assert.equal(label(samples[0].regions[0]),label(samples[0].regions[2]));
 assert.equal(el('rows').children.length,4); // distinct bindings still have distinct rows
