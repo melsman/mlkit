@@ -832,7 +832,7 @@ fun repl (rt_exe, stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.st
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "safeLinkTimeElimination", "repository", "strip", "tag_pairs",
-    "tag_values", "unbox_reals", "warn_spurious", "region_profiling",
+    "tag_values", "unbox_reals", "warn_spurious", "region_profiling", "region_profile",
     "recompile_basislib", "print_K_normal_forms",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
@@ -848,7 +848,10 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "report_file_sig", "log_to_file"]
 
 fun run () : OS.Process.status option =
-    case MO.mk_repl_runtime of
+    if Flags.is_on "region_profile" then
+      (print "Sampled region profiling in the REPL is planned for M4.\n";
+       SOME OS.Process.failure)
+    else case MO.mk_repl_runtime of
         SOME mk_runtime =>
         let val () = Flags.turn_on "report_file_sig"
             val () = List.app Flags.block_entry flags_to_block

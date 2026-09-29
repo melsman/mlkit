@@ -147,7 +147,7 @@ structure ExecutionArm64 : EXECUTION =
 
     val parallelism_p =
         Flags.add_bool_entry
-            {long = "parallelism", short = SOME "par", neg = false,
+            {long = "parallelism", short = SOME "par", neg = true,
              menu = ["General Control","parallelism"], item = ref false,
              desc = "When enabled, the runtime system supports\n\
                   \parallel threads."}
@@ -407,6 +407,7 @@ structure ExecutionArm64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP1" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

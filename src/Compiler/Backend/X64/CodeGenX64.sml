@@ -50,6 +50,29 @@ struct
 
   val ctx_exnptr_offs = "8"  (* one word offset in Context struct *)
 
+  val sampledProfile = Flags.is_on0 "region_profile"
+  val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
+  val rpUnit = ref (NameLab "unused_rp_unit")
+  fun rpWords fsz ac delta =
+    let
+      fun binding ((place,sz),off) =
+        [Int.toString(Effect.key_of_eps_or_rho place),Int.toString(fsz-off-1),
+         case sz of LS.INF => "-1" | LS.WORDS n => Int.toString n]
+    in
+      ["0x52504d31",Int.toString(fsz+ac),Int.toString delta,
+       Int.toString(length(!rpRegions)),I.pr_lab(!rpUnit) ^ " - ."] @ List.concat(map binding (!rpRegions))
+    end
+  fun rpEmit words code = foldl (fn (w,c) => I.dot_quad w :: c) code words
+  fun rpContinuation fsz ac delta bv code =
+    if sampledProfile() then I.dot_p2align "3" :: rpEmit (rpWords fsz ac delta) code else gen_bv(bv,code)
+  fun rpCurrentMap fsz ac =
+    let
+      val lab = new_local_lab "rp_map"
+      val () = add_static_data (I.dot_data :: I.dot_p2align "3" ::
+                 rpEmit (rpWords fsz ac 0) [I.lab lab])
+    in lab
+    end
+
   fun inlineable C =
       case C of
           (i as I.jmp _) :: C => SOME ([i], i :: rem_dead_code C)
@@ -490,10 +513,10 @@ struct
                     val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                         (* Move rsp after rcf *)
-                    if gc_p() orelse length spilled_args > 0
+                    if gc_p() orelse sampledProfile() orelse length spilled_args > 0
                     then let val return_lab = new_local_lab "ret_fncall"
                          in I.push(LA return_lab) ::                                       (* Push Return Label *)
-                            flush_args(jmp I.jmp 0 (gen_bv(bv, I.lab return_lab :: C')))
+                            flush_args(jmp I.jmp 0 (rpContinuation fsz size_ccf (size_rcf+1) bv (I.lab return_lab :: C')))
                          end
                     else jmp I.call' 1 C')
                   end)
@@ -565,11 +588,11 @@ struct
                     val C' = fetch_res C
                   in
                     base_plus_offset(rsp,WORDS(~size_rcf),rsp,                          (* Move rsp after rcf *)
-                    if gc_p() orelse length spilled_args > 0
+                    if gc_p() orelse sampledProfile() orelse length spilled_args > 0
                     then
                       let val return_lab = new_local_lab "ret_funcall"
                       in I.push(LA return_lab) ::                                           (* Push Return Label *)
-                         flush_args(jmp(gen_bv(bv, I.lab return_lab :: C')))
+                         flush_args(jmp(rpContinuation fsz size_ccf (size_rcf+1) bv (I.lab return_lab :: C')))
                       end
                     else I.call(MLFunLab opr) :: C')
                   end)
@@ -669,9 +692,13 @@ struct
                            | LineStmt.INF =>
                             compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
                   in
-                    foldr alloc_region_prim
-                    (CG_lss(body,fsz,size_ccf,
-                            foldl dealloc_region_prim C rhos)) rhos
+                    let
+                      val previous = !rpRegions
+                      val () = rpRegions := rhos @ previous
+                      val bodyCode = CG_lss(body,fsz,size_ccf,foldl dealloc_region_prim C rhos)
+                      val () = rpRegions := previous
+                    in foldr alloc_region_prim bodyCode rhos
+                    end
                   end )
                | LS.SCOPE{pat,scope} => CG_lss(scope,fsz,size_ccf,C)
                | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty,bv),offset} =>
@@ -714,7 +741,7 @@ struct
                     fun handl_return_code C =
                       let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg RI.res_phreg)
                       in comment ("HANDL RETURN CODE: handl_return_aty = res_phreg",
-                         gen_bv(bv,
+                         rpContinuation fsz size_ccf 1 bv (
                          I.lab handl_return_lab ::
                          move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,fsz,
                          CG_lss(handl_return,fsz,size_ccf,
@@ -1361,6 +1388,18 @@ struct
                     compile_c_call_prim("thread_create", [SS.PHREG_ATY treg0,SS.PHREG_ATY treg1], SOME res, fsz, treg1, C))
                  end
                | LS.CCALL{name,args,rhos_for_result,res} =>
+                  if sampledProfile() andalso
+                     List.exists (fn n => n = name) ["mlkit_rp_start","mlkit_rp_pause","mlkit_rp_sample"] then
+                    let
+                      val lab = rpCurrentMap fsz size_ccf
+                      val opno = if name = "mlkit_rp_start" then 0 else if name = "mlkit_rp_pause" then 1 else 2
+                    in
+                      G.load_ea(LA lab,treg0) $
+                      compile_c_call_prim("mlkit_rp_capture",
+                        [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg0,mkIntAty opno],
+                        case res of [] => NONE | [a] => SOME a | _ => die "rp results",fsz,treg1,C)
+                    end
+                  else
                   let
                     fun comp_c_call (all_args,res,C) =
                       compile_c_call_prim(name, all_args, res, fsz, treg1, C)
@@ -1449,8 +1488,9 @@ struct
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
                             I.push (LA return_lab),               (* push return address *)
-                            I.jmp (R r10),                        (* call ML function *)
-                            I.lab return_lab,
+                            I.jmp (R r10)]                       (* call ML function *)
+                         @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d31"] else [])
+                         @ [I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
                          @ (if gc_p() then
                               [I.movq(D("0",rsp), R r10),
@@ -1559,7 +1599,7 @@ struct
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val fsz = CallConv.get_frame_size cc
-        val fsz = if not(gc_p()) andalso fsz = 1 andalso basic_lss lss then 0
+        val fsz = if not(gc_p()) andalso not(sampledProfile()) andalso fsz = 1 andalso basic_lss lss then 0
                       else fsz
 (*
         val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
@@ -1583,6 +1623,7 @@ struct
             else (fn C => C, nil)
 
         val () = reset_code_blocks()
+        val () = rpRegions := []
 
         val return_code =
             base_plus_offset(rsp,WORDS(fsz+size_ccf),rsp,
@@ -1652,6 +1693,7 @@ struct
         val _ = chat "[X64 Code Generation..."
         val _ = reset_static_data()
         val _ = reset_label_counter()
+        val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab,I.OBJ))
@@ -2067,9 +2109,10 @@ struct
                    I.push(LA next_lab) ::
                    comment ("JUMP TO NEXT PROGRAM UNIT",
                    I.jmp(L l) ::
+                   I.dot_p2align "3" ::
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
-                   I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary function number. *)
+                   I.dot_quad (if sampledProfile() then "0x52504d31" else "0xFFFFFFFFFFFFFFFF") :: (* Entry sentinel. *)
                    I.lab next_lab ::
                    C))
                  end) C progunit_labs
@@ -2261,6 +2304,10 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
         val _ = reset_static_data()
         val _ = reset_label_counter()
 
+        val () = if sampledProfile() then
+          add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),
+                           I.lab(NameLab "mlkit_rp_capable"),I.dot_quad "0x52504d31"]
+          else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*

@@ -1,3 +1,4 @@
+#include "RegionProfile.h"
 /*----------------------------------------------------------------*
  *                        Regions                                 *
  *----------------------------------------------------------------*/
@@ -695,6 +696,7 @@ void free_lobjs(Lobjs* lobjs)
       lobjs_current -= size_lobj(tag);
 #endif
       lobjsTmp = clear_lobj_bit(lobjs->next);
+      mlkit_rp_large_free(lobjs);
 #ifdef ENABLE_GC
       free(lobjs->orig);
 #else
@@ -923,6 +925,7 @@ allocGen (
       // fprintf(stderr,"Allocating large object (of type %lu) of %zu words\n", rtype(*gen), n);
       //#endif
       lobjs = alloc_lobjs(n);
+      mlkit_rp_large_alloc(lobjs, n);
       //fprintf(stderr,"Allocated large object of %d words (address: %p) ; header at %p\n", n, &(lobjs->value), lobjs);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;

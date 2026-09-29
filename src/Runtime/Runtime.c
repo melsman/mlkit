@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "Runtime.h"
 #include "Flags.h"
+#include "RegionProfile.h"
 #include "Tagging.h"
 #include "String.h"
 #include "Math.h"
@@ -392,6 +393,7 @@ main(int argc, char *argv[])
   setStackSizeUnlimited();
 
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
+  mlkit_rp_init();
 
 #ifdef PARALLEL
   Context ctx = thread_init_all();

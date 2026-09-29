@@ -1,9 +1,11 @@
 # A sampled region profiler
 
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
-This document specifies the proposed implementation; the new flags, API, and
-file format described below are not implemented yet. The implementation
-milestones are acceptance criteria for completing the feature.
+This document specifies the overall design. [M1 explicit snapshots](region-profiler-m1.md)
+are implemented for single-threaded no-GC execution, with ARM64 execution
+checks and X64 cross-assembly checks; X64 execution validation is pending.
+Only the M1 subset of the flags and API behavior is available. Later milestones
+below remain proposed acceptance criteria for completing the feature.
 
 ## Objectives and scope
 
@@ -258,7 +260,8 @@ shared buffer rather than walking remote process memory.
 
 ## Implementation milestones
 
-- [ ] **M1: Single-threaded, no-GC explicit sampling.** Implement compiler
+- [ ] **M1: Single-threaded, no-GC explicit sampling.** Implementation and
+  ARM64 checks are present; X64 execution checks remain pending. Implement compiler
   maps and safe sampling bridges on ARM64 and X64, finite-region reservations,
   page-list counting, and large-object accounting. Add the core session/API
   and versioned output plus a reader or aggregate graph conversion. Validate
@@ -292,7 +295,7 @@ shared buffer rather than walking remote process memory.
 
 Run relevant generated-code and runtime checks on both native backends.
 X64 execution checks are planned for the ThinkPad once access is available;
-they have not been performed as part of this design proposal. Record results
+they have not yet been performed for M1. Record results
 and overhead numbers as milestones are implemented, rather than assuming
 that existing GC tests validate the new profiler.
 

@@ -1,0 +1,9 @@
+val () = RegionProfile.mark "quote\" slash\\ newline\n nul\000tail"
+val () = RegionProfile.start ()
+val () = RegionProfile.start ()
+val () = RegionProfile.sample ()
+val () = RegionProfile.pause ()
+val () = RegionProfile.pause ()
+val () = RegionProfile.sample ()
+val () = RegionProfile.flush ()
+val () = print (String.concatWith ":" (CommandLine.arguments ()) ^ "\n")

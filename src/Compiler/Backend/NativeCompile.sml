@@ -110,7 +110,12 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 		       safe:bool}  =
       let
 
-	val _ = RegionFlowGraphProfiling.reset_graph ()
+	val _ = if Flags.is_on "region_profile" then
+          app (fn flag => if Flags.is_on flag then
+                 raise Fail ("-region_profile M1 does not support " ^ flag)
+               else ()) ["garbage_collection", "parallelism", "region_profiling", "tag_values"]
+          else ()
+        val _ = RegionFlowGraphProfiling.reset_graph ()
 
 	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
