@@ -176,6 +176,15 @@ them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
 
+Three display checkboxes default to on. **Show base names** includes the
+compilation-unit base name in region labels (global regions use `global`).
+**Show region kind** adds `finite` or `infinite` from the recorded kind, including
+zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
+use pages and may hold large objects. These label options apply to the legend,
+band tooltips and region-grouped table without merging distinct bindings.
+**Show Peak page capacity** toggles the reference line and its annotation;
+when hidden, the memory axis scales to the sampled bands alone.
+
 The **Pages** metric shows the full memory capacity of assigned region pages,
 without subtracting unused tails. Its axis uses scaled memory units and its table
 shows exact bytes, with page counts in a separate column. **Page footprint**

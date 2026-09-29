@@ -4,6 +4,7 @@
 body{font:16px system-ui,sans-serif;margin:32px auto;max-width:1100px;padding:0 20px;color:#182c39;background:#f7f9fa}
 h1{font-size:28px}button,select,input{font:inherit}button,select,input[type=number]{padding:9px 10px;border:1px solid #bdcbd3;border-radius:6px;background:white;color:inherit;box-sizing:border-box}
 .controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 170px;gap:16px;padding:18px;background:#eaf0f3;border-radius:10px;align-items:start}.controls label{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:600;min-width:0}.controls select{width:100%;min-width:0}.controls input{width:100%}.controls small{font-size:12px;font-weight:400;color:#4d626f;line-height:1.4}
+.display-options{display:flex;flex-wrap:wrap;gap:12px 24px;margin:14px 0}.display-options label{display:flex;align-items:center;gap:7px;font-size:14px}.display-options input{accent-color:#2563eb;width:16px;height:16px}
 @media(max-width:850px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){body{margin:20px auto;padding:0 12px}.controls{grid-template-columns:1fr}}
 svg{background:white;border:1px solid #bdcbd3;width:100%;height:auto;margin:18px 0}
 input[type=range]{width:100%}table{border-collapse:collapse;width:100%;background:white}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left;overflow-wrap:anywhere}p{line-height:1.5}.note{color:#4d626f}#status{min-height:24px}
@@ -16,6 +17,12 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
 <label>Regions shown <input id="limit" type="number" min="0" step="1" value="10" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
+<div class="display-options" aria-label="Graph display options">
+<label><input id="show-base" type="checkbox" checked>Show base names</label>
+<label><input id="show-kind" type="checkbox" checked>Show region kind</label>
+<label><input id="show-peak" type="checkbox" checked>Show Peak page capacity</label>
+</div>
+<p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
 <svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="Stacked region and ML stack footprint over elapsed time in seconds"></svg>
 <p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p><div id="legend" aria-label="Region legend, top to bottom"></div>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
@@ -27,8 +34,14 @@ const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';let h=2166136261;for(const b of new TextEncoder().encode(key))h=Math.imul(h^b,16777619)>>>0;return `hsl(${h%360} 62% 52%)`;}
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function bytes(r){if(el('metric').value==='pages')return BigInt(r.page_footprint)+BigInt(r.unused_tail);return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
-function label(r){return r.name?r.name+' · '+r.unit+' #'+r.binding:r.unit==='<global>'?'Persistent/global #'+r.binding:'Region #'+r.binding+' · '+r.unit;}
-function key(r){switch(el('group').value){case 'region':return label(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
+function label(r){
+ let name=(r.name?r.name:'Region')+' #'+r.binding;
+ if(el('show-base').checked)name+=' · '+(r.unit==='<global>'?'global':r.unit);
+ if(el('show-kind').checked)name+=' ('+(['finite','infinite'].includes(r.kind)?r.kind:'kind unavailable')+')';
+ return name;
+}
+function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
+
 function model(){
  const bands=new Map();
  function entry(k,name){if(!bands.has(k))bands.set(k,{key:k,label:name,values:samples.map(()=>0n)});return bands.get(k);}
@@ -58,7 +71,7 @@ function draw(){
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
  const {bands,totals,hidden}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),isPages=el('metric').value==='pages';
  const peakMetric=['pages','total','page_footprint'].includes(el('metric').value);
- const recordedPeak=peakMetric&&el('scope').value==='all'&&s.max_pages!==undefined?BigInt(s.max_pages)*BigInt(s.page_bytes):null;
+ const recordedPeak=el('show-peak').checked&&peakMetric&&el('scope').value==='all'&&s.max_pages!==undefined?BigInt(s.max_pages)*BigInt(s.page_bytes):null;
  const max=(recordedPeak!==null&&recordedPeak>peak?recordedPeak:peak)||1n,valueUnit='bytes';
  el('value-unit').textContent='Bytes';
  const first=BigInt(samples[0].time),last=BigInt(samples.at(-1).time),span=last-first||1n;
@@ -78,14 +91,14 @@ function draw(){
  svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+peak.toLocaleString()+' '+valueUnit);
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+(Number(recordedPeak)/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:5})+' '+unit+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:325,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
- const groups=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);}
+ const groups=new Map(),groupLabels=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
  if(el('metric').value==='total'&&s.stacks)groups.set('ML stack (excluding finite regions)',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
- for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('rows').append(tr);}
+ for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [groupLabels.get(k)||k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('rows').append(tr);}
  el('marks').textContent=(s.marks||[]).map(m=>'Marker '+(Number(m.time)/1e9).toFixed(6)+' s: '+m.label).join(' · ');
  el('caption').textContent='Snapshot '+s.sample+' · '+(Number(s.time)/1e9).toFixed(6)+' s · '+s.reason+' · selected total '+totals[index].toLocaleString()+' '+valueUnit+' · process-wide cached pages '+BigInt(s.cache_bytes||0).toLocaleString()+' bytes (excluded)';
- el('peak-note').textContent=!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
+ el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
  el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The stack band includes active ML frame storage and resident descriptors, excluding finite reservations already shown in region bands.';
 }
-for(const id of ['sample','metric','group','scope','limit'])el(id).addEventListener('input',draw);
+for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-peak'])el(id).addEventListener('input',draw);
 scopes();draw();
 </script></html>

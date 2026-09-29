@@ -75,6 +75,7 @@ class Element {
 const elements=new Map();
 const document={getElementById:id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelectorAll:()=>[]};
 for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'],['sample','0']])document.getElementById(id).value=value;
+for(const id of ['show-base','show-kind','show-peak'])document.getElementById(id).checked=true;
 '''+script+r'''
 assert.equal(samples[0].max_pages,'123');
 samples[0].regions[0].pages='2';samples[0].regions[0].unused_tail='16384';
@@ -98,6 +99,21 @@ assert.equal(model().bands[0].key,'other');
 assert.equal(model().bands[0].values[0],56n);
 assert.deepStrictEqual(el('legend').children.map(n=>n.title),model().bands.map(b=>b.label).reverse());
 el('limit').value='0';draw();
+const beforeLabels=model().totals.slice(),beforeKeys=model().bands.map(b=>b.key);
+assert(label(samples[0].regions[2]).endsWith('(finite)'));
+assert(label({...samples[0].regions[2],finite_bytes:'0'}).endsWith('(finite)'));
+assert(label(samples[0].regions[0]).endsWith('(infinite)'));
+assert(label(samples[0].regions[3]).includes(' · global'));
+el('show-base').checked=false;el('show-kind').checked=false;el('group').value='region';draw();
+assert(!label(samples[0].regions[3]).includes('global'));
+assert(!label(samples[0].regions[0]).includes('(infinite)'));
+// A and B have identical display names with base names and kinds hidden.
+assert.equal(label(samples[0].regions[0]),label(samples[0].regions[2]));
+assert.equal(el('rows').children.length,4); // distinct bindings still have distinct rows
+assert.deepStrictEqual(model().totals,beforeLabels);assert.deepStrictEqual(model().bands.map(b=>b.key),beforeKeys);
+el('show-peak').checked=false;draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));assert.equal(el('peak-note').textContent,'');
+el('show-peak').checked=true;draw();assert(el('chart').children.some(n=>n.attrs['data-peak']));
+el('show-base').checked=true;el('show-kind').checked=true;el('group').value='aggregate';draw();
 const huge=2n**60n+1n;
 assert.deepStrictEqual(model().totals,[huge+155n,huge+155n]);
 assert.equal(model().bands.length,4); // A, B, global, stack; duplicate names not merged
