@@ -28,7 +28,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 </div>
 <p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
 <div id="graph-layout" class="graph-layout">
-<svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="Stacked region and ML stack footprint over elapsed time in seconds"></svg>
+<svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
 <div id="legend" aria-label="Region legend, top to bottom"></div>
 </div>
 <p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p>
@@ -88,26 +88,30 @@ function draw(){
  el('value-unit').textContent='Bytes';
  const first=BigInt(samples[0].time),last=BigInt(samples.at(-1).time),span=last-first||1n;
  let factor=1n,unit=valueUnit;for(const u of ['KiB','MiB','GiB','TiB','PiB','EiB']){if(max<factor*1024n)break;factor*=1024n;unit=u;}
+ const timeUnit=last>=1000000000n?'s':last>=1000000n?'ms':last>=1000n?'µs':'ns';
+ const timeFactor={s:1e9,ms:1e6,'µs':1e3,ns:1}[timeUnit];
+ const timeText=v=>(Number(v)/timeFactor).toLocaleString(undefined,{maximumSignificantDigits:6})+' '+timeUnit;
+ const memoryText=v=>(Number(v)/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:5})+' '+unit;
  const x=i=>80+880*Number(BigInt(samples[i].time)-first)/Number(span), y=v=>325-260*Number(v)/Number(max);
  let bottom=samples.map(()=>0n);
  for(const b of bands){const top=bottom.map((v,i)=>v+b.values[i]);let points=top.map((v,i)=>`${x(i)},${y(v)}`).concat(bottom.map((v,i)=>`${x(i)},${y(v)}`).reverse()).join(' ');
   if(samples.length===1)points=`80,${y(top[0])} 960,${y(top[0])} 960,${y(bottom[0])} 80,${y(bottom[0])}`;
-  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=(b.detail||b.label)+' · selected snapshot: '+b.values[index].toLocaleString()+' '+valueUnit;area.append(title);bottom=top;
+  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=(b.detail||b.label)+' · selected snapshot: '+memoryText(b.values[index])+' ('+b.values[index].toLocaleString()+' bytes)';area.append(title);bottom=top;
  }
  for(const b of [...bands].reverse()){
   const item=document.createElement('div');item.className='legend-item';item.title=b.detail||b.label;const swatch=document.createElement('span');swatch.className='swatch';swatch.style.background=bandColor(b.key);const name=document.createElement('span');name.textContent=b.label;item.append(swatch,name);el('legend').append(item);
  }
  svg('path',{d:'M80 65 V325 H960',fill:'none',stroke:'#334155'});
- for(let i=0;i<=5;i++){const v=Number(max)*i/5;svg('text',{x:70,y:329-260*i/5,'text-anchor':'end',class:'axis'},(v/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:4}));const t=Number(first)+Number(last-first)*i/5;svg('text',{x:80+880*i/5,y:348,'text-anchor':'middle',class:'axis'},(t/1e9).toLocaleString(undefined,{maximumSignificantDigits:5}));}
- svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:380,'text-anchor':'middle',class:'axis'},'Elapsed time (s)'+(samples.length===1?' · single snapshot':''));
- svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+peak.toLocaleString()+' '+valueUnit);
- if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+(Number(recordedPeak)/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:5})+' '+unit+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
+ for(let i=0;i<=5;i++){const v=Number(max)*i/5;svg('text',{x:70,y:329-260*i/5,'text-anchor':'end',class:'axis'},(v/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:4}));const t=Number(first)+Number(last-first)*i/5;svg('text',{x:80+880*i/5,y:348,'text-anchor':'middle',class:'axis'},(t/timeFactor).toLocaleString(undefined,{maximumSignificantDigits:5}));}
+ svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:380,'text-anchor':'middle',class:'axis'},'Elapsed time ('+timeUnit+')'+(samples.length===1?' · single snapshot':''));
+ svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+memoryText(peak));
+ if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:325,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
  const groups=new Map(),groupLabels=new Map(),groupDetails=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);if(el('group').value==='region'&&k!=='Other')groupDetails.set(k,detail(r));groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
  if(el('metric').value==='total'&&s.stacks)groups.set('ML stack (excluding finite regions)',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
  for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [groupLabels.get(k)||k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length&&groupDetails.has(k))td.title=groupDetails.get(k);tr.append(td);}el('rows').append(tr);}
- el('marks').textContent=(s.marks||[]).map(m=>'Marker '+(Number(m.time)/1e9).toFixed(6)+' s: '+m.label).join(' · ');
- el('caption').textContent='Snapshot '+s.sample+' · '+(Number(s.time)/1e9).toFixed(6)+' s · '+s.reason+' · selected total '+totals[index].toLocaleString()+' '+valueUnit+' · process-wide cached pages '+BigInt(s.cache_bytes||0).toLocaleString()+' bytes (excluded)';
+ el('marks').textContent=(s.marks||[]).map(m=>'Marker '+timeText(m.time)+': '+m.label).join(' · ');
+ el('caption').textContent='Snapshot '+s.sample+' · '+timeText(s.time)+' · '+s.reason+' · selected total '+memoryText(totals[index])+' · process-wide cached pages '+memoryText(BigInt(s.cache_bytes||0))+' (excluded)';
  el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
  el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The stack band includes active ML frame storage and resident descriptors, excluding finite reservations already shown in region bands.';
 }

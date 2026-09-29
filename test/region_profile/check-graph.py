@@ -136,12 +136,24 @@ check('thread:1',[huge+99n,huge+99n]);check('thread:2',[56n,56n]);
 check('worker:0',[huge+99n,huge+99n]);check('worker:1',[56n,56n]);
 check('cpu:4',[huge+99n,0n]);check('cpu:5',[56n,huge+155n]);
 check('cpu:-1',[0n,0n]);check('all',[huge+155n,huge+155n]);
-assert(el('chart').children.some(n=>n.textContent==='Elapsed time (s)'));
+assert(el('chart').children.some(n=>n.textContent==='Elapsed time (ms)'));
 assert(el('chart').children.some(n=>n.textContent==='Memory (EiB)'));
 assert(el('chart').children.filter(n=>n.tag==='polygon').length===4);
 el('metric').value='large_bytes';draw();assert.deepStrictEqual(model().totals,[huge+51n,huge+51n]);
 el('metric').value='total';samples=[samples[0]];draw();assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
 samples[0].stacks=null;draw();assert(el('stack-note').textContent.includes('unavailable'));assert(!model().bands.some(b=>b.key==='stack'));
+const unitFixture=JSON.parse(JSON.stringify(samples[0]));
+unitFixture.stacks=[];unitFixture.regions=[unitFixture.regions[0]];
+unitFixture.regions[0].page_footprint='0';unitFixture.regions[0].finite_bytes='0';
+samples=[unitFixture];el('show-peak').checked=false;
+for(const [size,unit] of [['512','bytes'],['1024','KiB'],[String(2**20),'MiB'],[String(2**30),'GiB']]){
+ unitFixture.regions[0].large_bytes=size;draw();assert(el('chart').children.some(n=>n.textContent==='Memory ('+unit+')'));
+ assert(el('caption').textContent.includes(unit));
+}
+for(const [time,unit] of [['500','ns'],['500000','µs'],['500000000','ms'],['5000000000','s']]){
+ unitFixture.time=time;draw();assert(el('chart').children.some(n=>n.textContent==='Elapsed time ('+unit+') · single snapshot'));
+ assert(el('caption').textContent.includes(' '+unit+' · '));
+}
 samples=[];draw();assert(el('caption').textContent.includes('No completed'));
 console.log('Stacked graph: exact sums, ordering, colors, filters/migration, units, truncation, old/empty/single samples passed');
 '''

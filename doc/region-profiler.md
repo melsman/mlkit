@@ -170,8 +170,10 @@ by summed sampled size. **Other** sums the omitted regions at each snapshot and
 occupies the bottom band. The stack does not count against the region limit.
 Remaining bands run smallest to largest, bottom to top, as in `rp2ps`. The
 legend follows their appearance from top to bottom. A binding keeps its color when changing
-snapshots or filters. Axes show elapsed seconds and automatically scaled memory
-units (bytes, KiB, MiB, etc.); tooltips and tables retain exact byte counters.
+snapshots or filters. Axes choose elapsed-time units (ns, µs, ms or s) from the recorded elapsed
+time and memory units (bytes, KiB, MiB, GiB, etc.) from the displayed range.
+Captions, markers and peak annotations use the same units. Band tooltips also
+include exact byte counts, and tables retain exact byte counters.
 Finite reservations belong to their region bands, so the stack band subtracts
 them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
