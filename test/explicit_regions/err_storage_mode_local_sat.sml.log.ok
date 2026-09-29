@@ -1,0 +1,8 @@
+[reading source file:	err_storage_mode_local_sat.sml]
+> infix 0 +
+  val f : unit -> real
+err_storage_mode_local_sat.sml, line 3, column 28:
+  fun f () = let with r in 5.4`sat r + 1.0 end
+                              ^^^^^^
+Explicit storage mode `sat r` disagrees with inferred storage mode atbot
+Stopping compilation of MLB-file due to error (code 1).

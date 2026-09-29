@@ -1538,6 +1538,8 @@ struct
       | gen_fresh_res_lvars (RE.Mus _) = die "gen_fresh_res: expecting singleton mu."
       | gen_fresh_res_lvars (RE.Frame _) = []
       | gen_fresh_res_lvars (RE.RaisedExnBind) = []
+      | gen_fresh_res_lvars (RE.StorageModes _) = die "unconsumed storage mode annotations"
+      | gen_fresh_res_lvars (RE.ArgumentModes _) = die "unconsumed argument storage modes"
 
     (* Convert ~n to -n *)
     fun convert_real r =    (* Translate a real constant into C notation: *)

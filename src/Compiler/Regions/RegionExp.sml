@@ -48,6 +48,10 @@ datatype metaType =
                                       place: place option} list,
                      declared_excons: (excon * mu option) list}
 
+         | StorageModes of (place * RegVar.regvar) list * metaType
+         | ArgumentModes of {formals: (RegVar.regvar * RegVar.regvar) list,
+                             actuals: RegVar.regvar option list ref,
+                             meta: metaType}
          | RaisedExnBind (* to be a raised Bind exception. *)
 
 
@@ -138,6 +142,29 @@ datatype ('a,'b) LambdaPgm = PGM of
 
      and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip *
                                        ('c * ('a,'b)trip) list * ('a,'b)trip option
+
+(* Site annotations travel with the expression metadata, independently of
+ * region identity, until storage mode analysis consumes them. *)
+fun plainMeta (StorageModes(_,mt)) = plainMeta mt
+  | plainMeta (ArgumentModes{meta,...}) = plainMeta meta
+  | plainMeta mt = mt
+
+fun storageModes (StorageModes(a,_)) = a
+  | storageModes _ = []
+
+fun argumentModes (ArgumentModes{actuals,...}) = SOME(!actuals)
+  | argumentModes _ = NONE
+
+(* Region inference may change a function's quantified regions. Resolve by
+ * formal name after each scheme transformation, not by equality of possibly
+ * aliased actual regions. *)
+fun resolveArgumentModes (ArgumentModes{formals,actuals,...}) rhos =
+    actuals := map (fn rho =>
+                      case Eff.getRegVar rho of
+                          NONE => NONE
+                        | SOME formal =>
+                          Option.map #2 (List.find (fn (f,_) => RegVar.eq(f,formal)) formals)) rhos
+  | resolveArgumentModes _ _ = ()
 
 fun cons_if_there (NONE, l) = l
   | cons_if_there (SOME x, l) = x::l
@@ -279,7 +306,9 @@ fun layout_declared_lvar' {lvar, compound, create_region_record, regvars, sigma,
 
 fun layout_declared_excon (excon,mu_opt) = PP.LEAF(Excon.pr_excon(excon))   (* memo: "of mu" maybe *)
 
-fun layMeta (Mus mus) = layMus mus
+fun layMeta (StorageModes(_,mt)) = layMeta mt
+  | layMeta (ArgumentModes{meta,...}) = layMeta meta
+  | layMeta (Mus mus) = layMus mus
   | layMeta (Frame{declared_lvars, declared_excons}) =
     let val l1 = map layout_declared_lvar' declared_lvars
         val l2 = map layout_declared_excon declared_excons

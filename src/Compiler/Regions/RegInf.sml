@@ -88,11 +88,14 @@ struct
        handle _ => die "Below.popAndClean failed\n"
     end
 
-  fun retract (B, body as Exp.TR(e, Exp.Mus mus, phi),
+  fun typeTrip (Exp.TR(e,mt,phi)) = Exp.TR(e,Exp.plainMeta mt,phi)
+
+  fun retract (B, body as Exp.TR(e, mt, phi),
                delta_phi_body: Effect.delta_phi,
                discharged_basis: effect list ref,
                discharged_phi: effect list ref,
                old_effect_of_letregion): cone * Effect.delta_phi =
+        case Exp.plainMeta mt of Exp.Mus mus =>
         let
           (*val () = print "[Retract..."*)
           val (B_discharge,B_keep) = Below(B, mus)
@@ -111,7 +114,7 @@ struct
            (*print "]\n";*)
            (B_keep, delta_letregion)
         end
-    | retract (B, t,_,_,_,_) = (B, delta_emp)
+    | _ => (B, delta_emp)
 
   fun inferEffects (device: string -> unit) : cone * rse * (place,unit)Exp.trip -> cone =
   let
@@ -331,14 +334,15 @@ struct
          in il_r:= (il, fn p => p);
             (case RSE.lookupLvar rse lvar of
                  SOME(_,_,_,sigma,_,_, _) =>
-                 let val (tau_1, B, updates: (effect * Effect.delta_phi)list,
+                 let val () = Exp.resolveArgumentModes mt (#1 (RType.bv sigma))
+                     val (tau_1, B, updates: (effect * Effect.delta_phi)list,
                           spuriousPairs: (effect * RType.Type)list) =
                          instClever (SOME lvar,sigma,il) B
                          handle _ =>
                                 die ("inst failed; type scheme:\n" ^
                                      PP.flatten1(RType.mk_lay_sigma false sigma) ^ "\n")
                      val B =
-                         case mt of
+                         case Exp.plainMeta mt of
                              Exp.Mus [mu] =>
                              let val tau = case RType.unBOX mu of SOME (ty,_) => ty | NONE => mu
                                  val B' = unify_ty (tau,tau_1) B handle _ => die "unify_ty failed\n"
@@ -407,7 +411,7 @@ struct
                                         let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                         (B,delta_emp) ts
        | Exp.FN{pat, body, alloc, free} =>
-           (case mt of
+           (case Exp.plainMeta mt of
               Exp.Mus [mu0] =>
               (case RType.unBOX mu0 of
                    SOME(ty,rho) =>
@@ -609,7 +613,7 @@ struct
        | Exp.APP(t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
                val eps_phi0 =
-                   case t1 of
+                   case typeTrip t1 of
                        Exp.TR(_, Exp.Mus [mu],_) =>
                        (case RType.unBOX mu of
                             SOME(ty,_) =>
@@ -641,7 +645,7 @@ struct
        | Exp.HANDLE(t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
                val eps_phi0 =
-                   case t2 of
+                   case typeTrip t2 of
                        Exp.TR(_, Exp.Mus [mu],_) =>
                        (case RType.unBOX mu of
                             SOME(ty,_) =>

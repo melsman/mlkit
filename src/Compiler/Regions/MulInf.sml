@@ -39,7 +39,7 @@ struct
   fun max_psis psis = Mul.max_psis psis
 
   fun get_psi (MulExp.TR(_,_,_,psi_r as ref psi)) = psi
-  fun get_mu (MulExp.TR(_,mu,_,_)) = mu
+  fun get_mu (MulExp.TR(_,mu,_,_)) = RegionExp.plainMeta mu
 
   fun get_boxed_place s tr =
       case get_mu tr of
@@ -155,7 +155,7 @@ struct
              in psi_r:= psi
              end
           | FN{pat,body,free,alloc} =>
-            (case mu of
+            (case RegionExp.plainMeta mu of
                  RegionExp.Mus[mu] =>
                  (case RType.unBOX mu of
                       SOME (ty,_) =>
@@ -635,11 +635,11 @@ struct
             val (export_lvars, export_excons) =
               let open MulExp
                   val TR(_,metatype,_,_) = tr'
-              in case metatype
+              in case RegionExp.plainMeta metatype
                    of RegionExp.Frame{declared_lvars,declared_excons} =>
                      (map #lvar declared_lvars, map #1 declared_excons)
                     | RegionExp.RaisedExnBind => ([],[])
-                    | RegionExp.Mus _ => die "export"
+                    | _ => die "export"
               end
 
             val export_rhos =

@@ -483,6 +483,29 @@ structure AtInf : AT_INF =
       in traverse f actuals nil
       end
 
+  fun check_mode rv inferred =
+      let fun fail () =
+              let open Report infix //
+                  val loc = case RegVar.get_location_report rv of
+                                SOME r => r
+                              | NONE => null
+                  val mode = case inferred of ATBOT _ => "atbot"
+                                            | SAT _ => "sat"
+                                            | ATTOP _ => "attop"
+              in raise DeepError
+                  (loc // line ("Explicit storage mode `" ^ RegVar.pr rv ^
+                                "` disagrees with inferred storage mode " ^ mode))
+              end
+      in case (RegVar.storage_mode rv,inferred) of
+             (NONE,_) => inferred
+           | (SOME RegVar.ATTOP,ATBOT p) => ATTOP p
+           | (SOME RegVar.ATTOP,SAT p) => ATTOP p
+           | (SOME RegVar.ATTOP,ATTOP p) => ATTOP p
+           | (SOME RegVar.ATBOT,ATBOT _) => inferred
+           | (SOME RegVar.SAT,SAT _) => inferred
+           | _ => fail ()
+      end
+
   fun sma0 (pgm0 as PGM{expression=trip,
                         export_datbinds,
                         import_vars,
@@ -491,7 +514,14 @@ structure AtInf : AT_INF =
                         export_Psi}: (place * LLV.liveset, place*mul, qmularefset ref)LambdaPgm)
       : (place at, place*mul, unit)LambdaPgm =
       let fun sma_trip sme (TR(e, metaType, ateffects, mulef_r)) =
-            let fun sma_sw sme (SWITCH(tr,choices,opt)) =
+            let val annotations = RegionExp.storageModes metaType
+                fun check (rho,inferred) =
+                    List.foldl (fn ((p,rv),a) =>
+                                    if equal_places rho p then check_mode rv a else a)
+                               inferred annotations
+                fun which_at sme (actual as (rho,_)) =
+                    check(rho, #2 (which_at0 false (sme,rho,#2 actual)))
+                fun sma_sw sme (SWITCH(tr,choices,opt)) =
                   let val tr' = sma_trip sme tr
                       val choices' = map (fn (a,tr) => (a,sma_trip sme tr)) choices
                       val opt' = case opt of SOME tr => SOME (sma_trip sme tr) | NONE => NONE
@@ -502,7 +532,7 @@ structure AtInf : AT_INF =
                     of VAR{lvar,il,plain_arreffs,fix_bound,rhos_actuals=ref actuals,other} =>
                        let val actuals' =
                                if SME.is_local_lvar_env (lvar,#2 sme) then
-                                 map (which_at sme) actuals  (* also liveset here*)
+                                 map (fn (rho,ls) => #2 (which_at0 false (sme,rho,ls))) actuals
                                else
                                  case #2 il of
                                      [_] =>  (* SIMPLE: single arrow effect, function is defined elsewhere. *)
@@ -514,6 +544,12 @@ structure AtInf : AT_INF =
                                                        ^ "\n")
                                              else ())
                                           ; map (fn (rho, _) => ATTOP rho) actuals)
+                           val actuals' = case RegionExp.argumentModes metaType of
+                                              NONE => actuals'
+                                            | SOME modes => ListPair.mapEq
+                                              (fn (NONE,a) => a
+                                                | (SOME rv,a) => check_mode rv a)
+                                              (modes,actuals')
                        in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
                              fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
                       end
@@ -620,7 +656,7 @@ structure AtInf : AT_INF =
 					 | CCALL ({name="resetRegions", mu_result, rhos_for_result}, trs) =>
 						(case trs of
 						   [TR(e,meta,_,_)] =>
-						   	(case meta of
+                            (case RegionExp.plainMeta meta of
 							  	MulExp.RegionExp.Mus [mu] =>
 								  let
 									val rhos = map #1 (map #1 rhos_for_result)
@@ -645,7 +681,9 @@ structure AtInf : AT_INF =
 						| _ => die "ill-formed expression: argument to resetRegions should be unit")
                      | CCALL ({name, mu_result, rhos_for_result}, trs) =>
                        let val (actuals, iopts) = ListPair.unzip rhos_for_result
-                           val actuals' = sma_modular_call sme actuals
+                           val actuals' = ListPair.mapEq
+                               (fn ((rho,_),a) => check(rho,a))
+                               (actuals,sma_modular_call sme actuals)
                            val rhos_for_result' = ListPair.zipEq (actuals',iopts)
                                                   handle _ => die "ccall.zip"
                        in CCALL ({name = name, mu_result = mu_result,
@@ -656,7 +694,7 @@ structure AtInf : AT_INF =
                      | SCRATCHMEM (n,alloc) => SCRATCHMEM(n,which_at sme alloc)
                      | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
 					 | RESET_REGIONS ({force, liveset=SOME liveset, regions_for_resetting}, tr as (TR(e,meta,_,_))) =>
-                          (case meta of
+                          (case RegionExp.plainMeta meta of
                              MulExp.RegionExp.Mus [mu] =>
 							 let
 							   val rhos = map #1 regions_for_resetting
@@ -685,14 +723,15 @@ structure AtInf : AT_INF =
                       let fun f {lvar,sigma,other,place} = {lvar=lvar,sigma=sigma,other=(),place=place}
                       in FRAME{declared_lvars=map f declared_lvars, declared_excons = declared_excons}
                       end
-                   ) handle _ =>
+                   ) handle ex as Report.DeepError _ => raise ex
+                          | _ =>
                            (log "\nStorage Mode Analysis failed at expression:";
                             dump(MulExp.layoutLambdaExp (fn _ => NONE) (fn _ => NONE) (fn _ => NONE)
                                                         (fn _ => fn _ => NONE) (fn _ => false) (fn _ => NONE)
                                                         e);
                             raise AbortExpression)
 
-            in TR(e', metaType, ateffects, mulef_r)
+            in TR(e', RegionExp.plainMeta metaType, ateffects, mulef_r)
             end
           and sma_fn (sme,regvar_env0,pat,body,free,alloc) =
               let val (_, LE, EE) = sme
