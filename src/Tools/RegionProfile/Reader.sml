@@ -12,6 +12,14 @@ struct
           val stacks = ref []
           val samples = ref []
           val marks = ref []
+          val pagePeak = ref NONE
+          fun notePeak r =
+              case find r "max_pages" of
+                  NONE => ()
+                | SOME _ =>
+                  let val n = uint r "max_pages"
+                  in pagePeak := SOME (case !pagePeak of NONE => n | SOME p => IntInf.max(p,n))
+                  end
           fun require b msg = if b then () else raise Fail msg
           fun checkRegion r =
               let val () = app (fn k => ignore(uint r k))
@@ -43,6 +51,7 @@ struct
                        (require (not(Option.isSome(!pending))) "nested samples";
                         ignore(uint r "sample"); ignore(uint r "time");
                         pending := SOME r; regions := []; stacks := [])
+                     | "session_end" => notePeak r
                      | "mark" => (ignore(uint r "time"); marks := r :: !marks)
                      | k =>
                        if List.exists (fn t => t = k) ["region","stack","sample_end"] then
@@ -51,7 +60,8 @@ struct
                          in if k = "region" then (checkRegion r; regions := r :: !regions)
                             else if k = "stack" then (checkStack r; stacks := r :: !stacks)
                             else
-                              let val () = app (fn key => ignore(uint r key)) ["time","frames","pages_visited"]
+                              let val () = notePeak r
+                                  val () = app (fn key => ignore(uint r key)) ["time","frames","pages_visited"]
                                   val old = uint h "version" < 3
                                   val stackData = if old then Null else Arr(rev(!stacks))
                                   val cache = case find r "cache_bytes" of SOME v => v | NONE => Num "0"
@@ -77,6 +87,10 @@ struct
             | attach (s::ss) ms =
               let val (here,later) = partition (uint s "time") ms []
               in Obj(fields s @ [("marks",Arr here)]) :: attach ss later end
-      in attach (rev(!samples)) (rev(!marks)) end
+          val result = attach (rev(!samples)) (rev(!marks))
+      in case !pagePeak of
+             NONE => result
+           | SOME p => map (fn s => Obj(fields s @ [("max_pages",Num(IntInf.toString p))])) result
+      end
 
 end

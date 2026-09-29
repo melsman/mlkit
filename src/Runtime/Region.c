@@ -532,6 +532,7 @@ alloc_new_page(Gen *gen)
 #endif
   }
 
+  if (mlkit_rp_enabled) mlkit_rp_page_alloc();
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
 #ifdef ENABLE_GEN_GC
@@ -745,9 +746,11 @@ void deallocateRegion(Context ctx) {
 
   /* Insert the region pages in the freelist; there is always
    * at least one page in a generation. */
+  if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(TOP_REGION->g0.fp));
   last_rp_of_gen(&(TOP_REGION->g0))->n = FREELIST;  // Free pages in generation 0
   FREELIST = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
+  if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(TOP_REGION->g1.fp));
   last_rp_of_gen(&(TOP_REGION->g1))->n = FREELIST;  // Free pages in generation 1
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
@@ -1109,6 +1112,7 @@ void resetGen(Gen *gen)
 #endif /* ENABLE_GC */
 
     MAYBE_DEFINE_CONTEXT;
+    if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(gen->fp)->n);
     (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
     (clear_fp(gen->fp))->n = NULL;

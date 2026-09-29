@@ -13,6 +13,12 @@ export SML_LIB="$ROOT"
 $CC -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/region-profile.c" -o "$OUT/runtime"
 "$OUT/runtime" "$OUT/runtime.rp"
+"$PYTHON" - "$OUT/runtime.rp" <<'PYTEST'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+assert rows[-1]['max_pages'] == 7, rows[-1]
+assert all(r['max_pages'] == 2 for r in rows if r['type'] == 'sample_end')
+PYTEST
 "$PYTHON" "$ROOT/test/region_profile/check-reader.py" runtime "$OUT/runtime.rp"
 $CC -c "$ROOT/test/region_profile/fixture.c" -o "$OUT/fixture.o"
 ar rcs "$OUT/librpfixture.a" "$OUT/fixture.o"

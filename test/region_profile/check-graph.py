@@ -34,6 +34,7 @@ for i in (1,2):
         if i==2 and r['thread']==1: r['cpu']=5  # migration, not allocation origin
         records.append(r)
     records.append(dict(type='sample_end',sample=i,time=i*1000000+1,frames=2,pages_visited=0))
+records.append(dict(type='session_end',time=3000000,max_pages=123))
 wire = ''.join(json.dumps(r)+'\n' for r in records)
 samples = list(reader.read_samples(wire.splitlines(keepends=True)))
 assert len(samples)==2
@@ -75,6 +76,20 @@ const elements=new Map();
 const document={getElementById:id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelectorAll:()=>[]};
 for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'],['sample','0']])document.getElementById(id).value=value;
 '''+script+r'''
+assert.equal(samples[0].max_pages,'123');
+samples[0].regions[0].pages='2';
+el('metric').value='pages';draw();
+assert.deepStrictEqual(model().totals,[2n,0n]);
+samples[0].regions[0].pages='0';
+assert(el('chart').children.some(n=>n.attrs['data-peak']==='pages'&&n.attrs.y1===n.attrs.y2));
+assert(el('chart').children.some(n=>n.textContent==='Allocated pages'));
+el('scope').value='thread:1';draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));
+el('scope').value='all';el('metric').value='total';el('limit').value='1';draw();
+assert.equal(model().bands.length,3); // largest region, stack, Other
+assert.equal(model().bands[0].key,'other');
+assert.equal(model().bands[0].values[0],56n);
+assert.deepStrictEqual(el('legend').children.map(n=>n.title),model().bands.map(b=>b.label).reverse());
+el('limit').value='0';draw();
 const huge=2n**60n+1n;
 assert.deepStrictEqual(model().totals,[huge+155n,huge+155n]);
 assert.equal(model().bands.length,4); // A, B, global, stack; duplicate names not merged

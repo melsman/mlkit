@@ -22,7 +22,8 @@ The design also covers the REPL and explicit regions in ReML.
 
 This is a sampled storage profiler. It does not reconstruct object allocation
 sites or establish which objects are reachable. Short-lived regions and peaks
-between samples may be missed. Reported maxima are sampled maxima.
+between samples may be missed. Footprint and stack maxima are sampled maxima. The allocated-page maximum is
+maintained exactly by a process-wide counter, including while sampling is paused.
 
 ## Measurements
 
@@ -40,8 +41,8 @@ the viewer can also display reserved page capacity. The footprint includes
 page headers and unused space left in earlier pages; it is not exact object
 payload size. Use the runtime's actual page size for the selected variant.
 
-Do not initially maintain page counts. Measure traversal overhead first. If
-needed, a later optimization can maintain counts at page growth, reset, and
+Do not maintain per-region page counts. Measure traversal overhead first. If
+needed, a later optimization can maintain per-region counts at page growth, reset, and
 reclamation, without instrumenting every small allocation.
 
 Large objects are allocated outside the page lists and must be accounted for
@@ -306,7 +307,12 @@ viewer are separate work.
   seconds), and memory with explicit units (bytes, KiB, MiB, or GiB). Keep each
   region's color and vertical order stable across the displayed timeline. Sort
   region bands by the sum of their sampled sizes, smallest first, matching
-  `rp2ps`; use deterministic tie-breaking and retain all regions by default.
+  `rp2ps`; use deterministic tie-breaking. Show the ten largest regions by
+  default, with a user-selectable limit (0 means all) and an Other band for the
+  remainder. Order the legend top-to-bottom to match the graph. Add a Pages
+  metric with a horizontal process-wide maximum line in the aggregate view.
+  Count assigned pages, excluding free caches and including GC from/to-space
+  overlap; maintain no maximum stack counter.
   Support the aggregate of all threads and filtering to one selected logical
   thread or execution stream. Label execution streams as such: physical-core
   selection must not be inferred from worker IDs. Record the OS logical CPU
@@ -326,7 +332,8 @@ viewer are separate work.
   interactive HTML viewer. Implement the file-to-HTML converter in Standard ML
   under `src/Tools/RegionProfile`, with its template embedded in the executable.
   Leave the legacy `rp2ps` tool unchanged. Preserve 64-bit
-  counters through aggregation and label peaks as sampled maxima. Validate
+  counters through aggregation and distinguish sampled footprint/stack peaks
+  from the maintained page maximum. Validate
   band sums against measured totals, ordering/colors, axis units, thread/worker
   filters, shared-region deduplication, recursion/finite-stack accounting,
   missing identities, and truncated streams. Include an example graph and

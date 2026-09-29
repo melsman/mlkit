@@ -27,6 +27,22 @@ _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "profiler requests need lock-free sign
 
 __attribute__((weak)) const uintptr_t mlkit_rp_capable = 0;
 int mlkit_rp_enabled;
+/* Count assigned pages, including GC from/to-space overlap, but not cached
+ * pages. No per-region counters; releases traverse links, never page contents.
+ * These counters remain active while snapshot collection is paused. */
+static _Atomic uint64_t assigned_pages, maximum_pages;
+void mlkit_rp_page_alloc(void) {
+  uint64_t n = atomic_fetch_add_explicit(&assigned_pages, 1, memory_order_relaxed)+1;
+  uint64_t peak = atomic_load_explicit(&maximum_pages, memory_order_relaxed);
+  while (peak < n && !atomic_compare_exchange_weak_explicit(
+           &maximum_pages, &peak, n, memory_order_relaxed, memory_order_relaxed)) {}
+}
+void mlkit_rp_pages_free(Rp *p) {
+  uint64_t n = 0;
+  for (; p; p = p->n) n++;
+  atomic_fetch_sub_explicit(&assigned_pages, n, memory_order_relaxed);
+}
+
 _Atomic int mlkit_rp_pending;
 uint64_t mlkit_rp_interval_us = 10000;
 int mlkit_rp_report;
@@ -252,14 +268,14 @@ void mlkit_rp_close(void) {
     fprintf(stderr, "region profiler: samples=%" PRIu64 " pages_visited=%" PRIu64
             " frames=%" PRIu64 " coalesced=%" PRIu64 " skipped=%" PRIu64
             " capture_ns=%" PRIu64 " traversal_ns=%" PRIu64 " serialization_ns=%" PRIu64
-            " wait_ns=%" PRIu64 " cpu_ns=%" PRIu64 " max_delay_ns=%" PRIu64 " sampled_peak_bytes=%" PRIu64 "\n",
+            " wait_ns=%" PRIu64 " cpu_ns=%" PRIu64 " max_delay_ns=%" PRIu64 " sampled_peak_bytes=%" PRIu64 " max_pages=%" PRIu64 "\n",
             sequence, total_pages, total_frames, coalesced, skipped, capture_ns,
-            traversal_ns, serialization_ns, wait_ns, cpu_ns, max_delay_ns, peak_bytes);
+            traversal_ns, serialization_ns, wait_ns, cpu_ns, max_delay_ns, peak_bytes, atomic_load(&maximum_pages));
   for (Participant *p = participants; p; p = p->next)
     fprintf(output,"{\"type\":\"thread_end\",\"thread\":%" PRIu64
             ",\"time\":%" PRIu64 ",\"reason\":\"process_exit\"}\n",p->id,timestamp());
   fprintf(output,"{\"type\":\"session_end\",\"time\":%" PRIu64
-          ",\"samples\":%" PRIu64 "}\n",timestamp(),sequence);
+          ",\"samples\":%" PRIu64 ",\"max_pages\":%" PRIu64 "}\n",timestamp(),sequence,atomic_load(&maximum_pages));
   FILE *f = output;
   output = NULL;
   if (fclose(f)) fail("cannot close profile output");
@@ -555,8 +571,8 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
             sequence,r->thread,r->worker,r->cpu,r->active,r->finite,r->active-r->finite);
   }
   fprintf(output, "{\"type\":\"sample_end\",\"sample\":%" PRIu64
-          ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 "}\n",
-          sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp));
+          ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 ",\"max_pages\":%" PRIu64 "}\n",
+          sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp), atomic_load(&maximum_pages));
   if (ferror(output)) fail("cannot write profile output");
   if (fflush(output)) fail("cannot flush profile output");
   LOCK();

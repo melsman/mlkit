@@ -15,6 +15,7 @@ import sys
 
 
 def read_samples(stream):
+    completed, peak = [], None
     header = None
     pending = None
     regions, stacks = [], []
@@ -28,6 +29,11 @@ def read_samples(stream):
         if not isinstance(record, dict):
             raise ValueError(f"line {number}: expected a record")
         kind = record.get("type")
+        if kind in ("sample_end", "session_end") and "max_pages" in record:
+            n = record["max_pages"]
+            if type(n) is not int or not 0 <= n < 2**64:
+                raise ValueError("invalid uint64 field max_pages")
+            peak = max(peak or 0, n)
         if header is None:
             if kind != "header" or record.get("format") != "mlkit-region-profile" or record.get("version") not in (1, 2, 3):
                 raise ValueError("expected a version 1, 2 or 3 mlkit-region-profile header")
@@ -65,15 +71,18 @@ def read_samples(stream):
                         raise ValueError("inconsistent generation accounting")
                 regions.append(record)
             else:
-                yield {**pending, "end_time": record["time"], "frames": record["frames"],
+                completed.append({**pending, "end_time": record["time"], "frames": record["frames"],
                        "pages_visited": record["pages_visited"], "cache_bytes": record.get("cache_bytes",0), "regions": regions,
-                       "stacks": stacks if header["version"] >= 3 else None}
+                       "stacks": stacks if header["version"] >= 3 else None})
                 pending, regions = None, []
         elif kind not in ("mark", "thread_start", "thread_end", "binding", "session_end", "sample_skipped"):
             raise ValueError(f"unknown record type {kind!r}")
     if header is None:
         raise ValueError("missing profile header")
 
+    for sample in completed:
+        if peak is not None: sample["max_pages"] = peak
+        yield sample
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

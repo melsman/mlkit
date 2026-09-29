@@ -33,6 +33,8 @@ void mlkit_rp_thread_exit(Context);
 uintptr_t mlkit_rp_wait_enter(Context, uintptr_t *, const uintptr_t *);
 uintptr_t mlkit_rp_wait_leave(Context);
 void mlkit_rp_close(void);
+void mlkit_rp_page_alloc(void);
+void mlkit_rp_pages_free(Rp *);
 void mlkit_rp_idle(Context);
 void mlkit_rp_large_alloc(void *, size_t);
 void mlkit_rp_large_free(void *);

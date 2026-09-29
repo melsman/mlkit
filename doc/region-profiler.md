@@ -25,7 +25,7 @@ PR draft until those checks have been completed.
 | `-rp_interval Nms`, `Ns`, or `0` | Integral wall-clock interval; defaults to `10ms`. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
-| `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, and the sampled peak. |
+| `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
 | `-rp_control SOCKET` | Bind a private Unix datagram socket for local live controls. |
 | `--` | End runtime options and preserve subsequent application arguments verbatim. |
 
@@ -57,8 +57,12 @@ end-of-ML-stack anchor.
   zero bytes.
 * Infinite bindings are measured by following page links and subtracting the
   unused tail of the last page. Page headers and slack in earlier pages remain
-  included. No object or page payload is scanned; **no new page count is
-  maintained**.
+  included. No object or page payload is scanned; **no per-region page count is
+  maintained**. A process-wide atomic live count and high-water mark track page
+  allocation, reset, release and GC reclamation while `-rp` is enabled, even
+  when sampling is paused. Released chains are counted by following their links.
+  The maximum excludes cached free pages and includes simultaneous GC from-space
+  and to-space. No maximum stack counter is maintained.
 * Both generations have their own page counts and unused-tail subtraction.
   Large-object allocation sizes are recorded separately and removed on region
   reset/release and GC reclamation.
@@ -158,16 +162,30 @@ bin/rpview profile.rp --output profile.html
 
 The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
 The tool validates the stream before opening its output and rejects an output
-path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks all
-region bindings and the remaining ML stack as colored bands. The legend lists
-bands from bottom to top; ordering is by summed sampled sizes, smallest first,
-as in `rp2ps`. All bands are retained. A binding keeps its color when changing
+path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks the ten largest
+region bindings and the remaining ML stack as colored bands. **Regions shown**
+sets the number of individual regions (0 retains all); the largest are selected
+by summed sampled size. **Other** sums the omitted regions at each snapshot and
+occupies the bottom band. The stack does not count against the region limit.
+Remaining bands run smallest to largest, bottom to top, as in `rp2ps`. The
+legend follows their appearance from top to bottom. A binding keeps its color when changing
 snapshots or filters. Axes show elapsed seconds and automatically scaled memory
 units (bytes, KiB, MiB, etc.); tooltips and tables retain exact byte counters.
 Finite reservations belong to their region bands, so the stack band subtracts
 them. Resident descriptors are already part of the stack span; descriptors and
 free-page caches are not added again. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
+
+The **Pages** metric counts whole assigned region pages, without subtracting
+unused tails; its axis and table use pages. **Page footprint** uses bytes and
+subtracts unused last-page tails in each generation. In the aggregate Pages
+view, a red horizontal line shows the process-wide maximum allocated page count,
+including allocations between snapshots. This line is omitted in filtered views
+because the counter is process-wide. Older files without the counter show an
+unavailable notice. Optional `max_pages` fields on version-3 `sample_end` and
+`session_end` records store the running and final maximum. The reader uses the
+largest recorded value, including the final summary after the last snapshot;
+a truncated file can only report the maximum recorded before truncation.
 
 The **View** selector applies to both graph and table: all threads, one logical
 thread, one Argobots execution stream, or one OS logical CPU where recorded.

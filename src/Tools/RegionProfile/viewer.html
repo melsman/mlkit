@@ -5,21 +5,22 @@ body{font:16px system-ui,sans-serif;margin:32px auto;max-width:1100px;padding:0 
 h1{font-size:28px}label,button,select{margin-right:12px}button,select{font:inherit;padding:7px}
 svg{background:white;border:1px solid #bdcbd3;width:100%;height:auto;margin:18px 0}
 input[type=range]{width:100%}table{border-collapse:collapse;width:100%;background:white}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left;overflow-wrap:anywhere}p{line-height:1.5}.note{color:#4d626f}#status{min-height:24px}
-.axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:center;min-width:0;font-size:13px}.legend-item>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:center;min-width:0;font-size:13px}.legend-item>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
 </style><h1>MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership. Worker identity is the owner's execution stream at sampling time, not the origin of allocations.</p>
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
 <label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option><option value="worker">Execution stream</option></select></label>
-<label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
+<label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
+<label>Regions shown <input id="limit" type="number" min="0" step="1" value="10" style="width:5em"> (0 = all)</label>
 <svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="Stacked region and ML stack footprint over elapsed time in seconds"></svg>
-<p class="note" id="stack-note"></p><p class="note">All bands are retained and ordered by summed sampled sizes, smallest first. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p><div id="legend" aria-label="Region legend, bottom to top"></div>
+<p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p><div id="legend" aria-label="Region legend, top to bottom"></div>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
-<table><thead><tr><th>Group</th><th>Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
+<table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
 const samples=__DATA__;
 const el=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg';
 const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
-function bandColor(key){if(key==='stack')return '#64748b';let h=2166136261;for(const b of new TextEncoder().encode(key))h=Math.imul(h^b,16777619)>>>0;return `hsl(${h%360} 62% 52%)`;}
+function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';let h=2166136261;for(const b of new TextEncoder().encode(key))h=Math.imul(h^b,16777619)>>>0;return `hsl(${h%360} 62% 52%)`;}
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function bytes(r){return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
 function label(r){return r.name?r.name+' · '+r.unit+' #'+r.binding:r.unit==='<global>'?'Persistent/global #'+r.binding:'Region #'+r.binding+' · '+r.unit;}
@@ -30,9 +31,12 @@ function model(){
  samples.forEach((s,i)=>{for(const r of s.regions)if(selected(r))entry(regionKey(r),label(r)).values[i]+=bytes(r);
   if(el('metric').value==='total'&&s.stacks!==null&&s.stacks!==undefined)entry('stack','ML stack (excluding finite regions)').values[i]=s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n);
  });
- const ordered=[...bands.values()];for(const b of ordered)b.sum=b.values.reduce((a,v)=>a+v,0n);
+ let ordered=[...bands.values()];for(const b of ordered)b.sum=b.values.reduce((a,v)=>a+v,0n);
  ordered.sort((a,b)=>a.sum===b.sum?(a.key<b.key?-1:a.key>b.key?1:0):a.sum<b.sum?-1:1);
- return {bands:ordered,totals:samples.map((s,i)=>ordered.reduce((a,b)=>a+b.values[i],0n))};
+ const limit=Math.max(0,Math.floor(Number(el('limit').value)||0)), regions=ordered.filter(b=>b.key!=='stack');
+ const hidden=new Set(limit?regions.slice(0,Math.max(0,regions.length-limit)).map(b=>b.key):[]);
+ if(hidden.size){const omitted=ordered.filter(b=>hidden.has(b.key));ordered=ordered.filter(b=>!hidden.has(b.key));ordered.unshift({key:'other',label:'Other ('+hidden.size+' regions)',values:samples.map((s,i)=>omitted.reduce((a,b)=>a+b.values[i],0n))});}
+ return {hidden,bands:ordered,totals:samples.map((s,i)=>ordered.reduce((a,b)=>a+b.values[i],0n))};
 }
 function scopes(){
  const old=el('scope').value||'all', options=[['all','All threads']];
@@ -48,28 +52,34 @@ function draw(){
  const slider=el('sample');slider.max=Math.max(0,samples.length-1);const index=Number(slider.value),s=samples[index];
  el('rows').replaceChildren();el('chart').replaceChildren();el('legend').replaceChildren();
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
- const {bands,totals}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),max=peak||1n;
+ const {bands,totals,hidden}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),isPages=el('metric').value==='pages';
+ const recordedPeak=isPages&&el('scope').value==='all'&&s.max_pages!==undefined?BigInt(s.max_pages):null;
+ const max=(recordedPeak!==null&&recordedPeak>peak?recordedPeak:peak)||1n,valueUnit=isPages?'pages':'bytes';
+ el('value-unit').textContent=isPages?'Pages':'Bytes';
  const first=BigInt(samples[0].time),last=BigInt(samples.at(-1).time),span=last-first||1n;
- let factor=1n,unit='bytes';for(const u of ['KiB','MiB','GiB','TiB','PiB','EiB']){if(peak<factor*1024n)break;factor*=1024n;unit=u;}
+ let factor=1n,unit=valueUnit;for(const u of ['KiB','MiB','GiB','TiB','PiB','EiB']){if(isPages||peak<factor*1024n)break;factor*=1024n;unit=u;}
  const x=i=>80+880*Number(BigInt(samples[i].time)-first)/Number(span), y=v=>325-260*Number(v)/Number(max);
  let bottom=samples.map(()=>0n);
  for(const b of bands){const top=bottom.map((v,i)=>v+b.values[i]);let points=top.map((v,i)=>`${x(i)},${y(v)}`).concat(bottom.map((v,i)=>`${x(i)},${y(v)}`).reverse()).join(' ');
   if(samples.length===1)points=`80,${y(top[0])} 960,${y(top[0])} 960,${y(bottom[0])} 80,${y(bottom[0])}`;
-  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=b.label+' · selected snapshot: '+b.values[index].toLocaleString()+' bytes';area.append(title);bottom=top;
+  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=b.label+' · selected snapshot: '+b.values[index].toLocaleString()+' '+valueUnit;area.append(title);bottom=top;
+ }
+ for(const b of [...bands].reverse()){
   const item=document.createElement('div');item.className='legend-item';item.title=b.label;const swatch=document.createElement('span');swatch.className='swatch';swatch.style.background=bandColor(b.key);const name=document.createElement('span');name.textContent=b.label;item.append(swatch,name);el('legend').append(item);
  }
  svg('path',{d:'M80 65 V325 H960',fill:'none',stroke:'#334155'});
  for(let i=0;i<=5;i++){const v=Number(max)*i/5;svg('text',{x:70,y:329-260*i/5,'text-anchor':'end',class:'axis'},(v/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:4}));const t=Number(first)+Number(last-first)*i/5;svg('text',{x:80+880*i/5,y:348,'text-anchor':'middle',class:'axis'},(t/1e9).toLocaleString(undefined,{maximumSignificantDigits:5}));}
- svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:380,'text-anchor':'middle',class:'axis'},'Elapsed time (s)'+(samples.length===1?' · single snapshot':''));
- svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+peak.toLocaleString()+' bytes');
+ svg('text',{x:80,y:43,class:'axis'},(isPages?'Allocated pages':'Memory ('+unit+')'));svg('text',{x:520,y:380,'text-anchor':'middle',class:'axis'},'Elapsed time (s)'+(samples.length===1?' · single snapshot':''));
+ svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+peak.toLocaleString()+' '+valueUnit);
+ if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Maximum allocated pages: '+recordedPeak.toLocaleString());}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:325,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
- const groups=new Map();for(const r of s.regions.filter(selected)){const k=key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);}
+ const groups=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);}
  if(el('metric').value==='total'&&s.stacks)groups.set('ML stack (excluding finite regions)',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
  for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('rows').append(tr);}
  el('marks').textContent=(s.marks||[]).map(m=>'Marker '+(Number(m.time)/1e9).toFixed(6)+' s: '+m.label).join(' · ');
- el('caption').textContent='Snapshot '+s.sample+' · '+(Number(s.time)/1e9).toFixed(6)+' s · '+s.reason+' · selected total '+totals[index].toLocaleString()+' bytes · process-wide cached pages '+BigInt(s.cache_bytes||0).toLocaleString()+' bytes (excluded)';
- el('stack-note').textContent=samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The stack band includes active ML frame storage and resident descriptors, excluding finite reservations already shown in region bands.';
+ el('caption').textContent='Snapshot '+s.sample+' · '+(Number(s.time)/1e9).toFixed(6)+' s · '+s.reason+' · selected total '+totals[index].toLocaleString()+' '+valueUnit+' · process-wide cached pages '+BigInt(s.cache_bytes||0).toLocaleString()+' bytes (excluded)';
+ el('stack-note').textContent=isPages?'Pages counts whole region pages, without subtracting free tails. Cached pages, large objects and stack storage are excluded. '+(el('scope').value!=='all'?'The process-wide maximum line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The maximum includes allocations between snapshots and GC from/to-space overlap, including periods when sampling is paused.'):samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The stack band includes active ML frame storage and resident descriptors, excluding finite reservations already shown in region bands.';
 }
-for(const id of ['sample','metric','group','scope'])el(id).addEventListener('input',draw);
+for(const id of ['sample','metric','group','scope','limit'])el(id).addEventListener('input',draw);
 scopes();draw();
 </script></html>

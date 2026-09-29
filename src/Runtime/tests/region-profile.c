@@ -36,11 +36,13 @@ int main(int argc, char **argv) {
   assert(posix_memalign((void **)&first,sizeof(Rp),sizeof(Rp))==0);
   assert(posix_memalign((void **)&last,sizeof(Rp),sizeof(Rp))==0);
   first->n=last; last->n=NULL;
+  mlkit_rp_page_alloc(); mlkit_rp_page_alloc();
   r->g0.fp=first; r->g0.a=last->i+7;
 #ifdef ENABLE_GEN_GC
   Rp *older;
   assert(posix_memalign((void **)&older,sizeof(Rp),sizeof(Rp))==0);
   older->n=NULL;
+  mlkit_rp_page_alloc();
   r->g1.fp=older; r->g1.a=older->i+5;
 #endif
   Lobjs *big=malloc(sizeof(Lobjs)+4096);
@@ -67,6 +69,14 @@ int main(int argc, char **argv) {
   mlkit_rp_capture(&ctx,stack+68,parent,1);
   mlkit_rp_capture(&ctx,stack+68,parent,1); /* idempotent */
   mlkit_rp_capture(&ctx,stack+68,parent,2); /* explicit while paused */
+  /* A peak entirely between snapshots, after the last snapshot and paused.
+   * Releasing and reacquiring the same chain must not accumulate live pages. */
+  mlkit_rp_pages_free(first);
+  for (int round = 0; round < 3; round++) {
+    for (int i = 0; i < 7; i++) mlkit_rp_page_alloc();
+    for (int i = 0; i < 3; i++) mlkit_rp_pages_free(first);
+    mlkit_rp_pages_free(last);
+  }
   mlkit_rp_flush();
   mlkit_rp_close();
   free(first); free(last);

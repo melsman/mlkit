@@ -1740,6 +1740,7 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
 
   // We Are Done And Can Now Insert from-space Into The FreeList
+  if (mlkit_rp_enabled) mlkit_rp_pages_free(from_space_begin);
   from_space_end->n = global_freelist;
   global_freelist = from_space_begin;
 
