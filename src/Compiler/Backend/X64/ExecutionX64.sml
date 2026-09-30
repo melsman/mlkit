@@ -425,7 +425,7 @@ structure ExecutionX64 : EXECUTION =
                                subdir ^ "_PAR0"
                              else subdir ^ "_PAR"
                            else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP8" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP9" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

@@ -549,6 +549,8 @@ struct
                | LS.FNCALL{opr,args,clos,res,bv} =>
                   comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
                   let
+                    (* The caller map uses incoming stack arguments, not this call's outgoing arguments. *)
+                    val caller_size_ccf = size_ccf
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
                     val (spilled_args,spilled_res) =
                         CallConv.resolve_act_cc RI.frame_layout {arg_regs = RI.args_phreg, arg_fregs = RI.args_phfreg,
@@ -581,7 +583,7 @@ struct
                     if gc_p() orelse sampledProfile() orelse length spilled_args > 0
                     then let val return_lab = new_local_lab "ret_fncall"
                          in I.push(LA return_lab) ::                                       (* Push Return Label *)
-                            flush_args(jmp I.jmp 0 (rpContinuation fsz size_ccf (size_rcf+1) bv (I.lab return_lab :: C')))
+                            flush_args(jmp I.jmp 0 (rpContinuation fsz caller_size_ccf (size_rcf+1) bv (I.lab return_lab :: C')))
                          end
                     else jmp I.call' 1 C')
                   end)

@@ -18,11 +18,11 @@ rpview profile.rp --output profile.html
 Supported combinations are single-threaded no-GC, GC and generational GC, and
 no-GC pthreads or experimental Argobots. The Argobots runtime is an optional
 source build and is not shipped or installed by the normal release targets. **GC plus parallelism remains excluded.** Both
-native backends emit the metadata and polling bridges. ARM64 execution checks
-are passing. Initial ThinkPad X64 execution passed the accounting/graph suite
-and exposed GCC weak-constant folding and profiler-call stack alignment issues.
-Both are fixed; the complete X64 rerun remains pending after the SSH connection
-became unavailable. Keep the PR draft until those checks have completed.
+native backends emit the metadata and polling bridges. The complete profiler
+CI suite passes on ARM64 and native Linux X64, including GC, generational GC,
+pthreads, REPL sessions, and read-only installed API caches. The ThinkPad X64
+compilers were built with MLKit; runtime archives were built with GCC 15.2.
+X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 
 ## Controls
 
@@ -263,8 +263,8 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP8` (including the
-X64 profiler-call alignment fix). Compile programs and their dependencies
+slots and types. Profiling builds now use cache suffix `_RP9` (including the
+X64 profiler-call alignment and indirect-call frame-map fixes). Compile programs and their dependencies
 with the current compiler and runtime to obtain version-5 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
@@ -272,7 +272,7 @@ Release builds precompile the Basis (including REPL support) and Kit libraries
 together with `kitlib/region-profile.mlb`, for ordinary and sampled-profiler
 builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
-and the `_RP8` cache suffix. Legacy `-prof` libraries are no longer precompiled
+and the `_RP9` cache suffix. Legacy `-prof` libraries are no longer precompiled
 or selected for installation; they can still be compiled from source.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from

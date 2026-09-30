@@ -26,7 +26,7 @@ run () {
     cat "$OUT/$name.log"
   else
     cat "$OUT/$name.log" >&2
-    find "$OUT/tmp" -type f \( -name '*.build' -o -name '*.log' -o -name stderr \) \
+    find "$OUT/tmp" -type f \( -name '*.build' -o -name '*.log' -o -name '*.report' -o -name '*.out' -o -name stderr \) \
       -exec sh -c 'for file do echo "--- $file"; tail -n 30 "$file"; done' sh {} + >&2
     echo "Profiler CI failed: $name; artifacts retained at $OUT" >&2
     exit 1

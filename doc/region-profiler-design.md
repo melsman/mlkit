@@ -3,11 +3,10 @@
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
 This document specifies the overall design. M1–M7 are implemented.
 See [usage, validation, and measurements](region-profiler.md).
-ARM64 execution checks cover the implemented runtime combinations. Initial
-ThinkPad X64 execution passed accounting/graph checks and exposed two issues
-(GCC weak-constant folding and profiler-call alignment), now fixed. The complete
-X64 rerun is pending after SSH became unavailable. Milestone boxes track
-implementation, not completion of outstanding cross-backend validation.
+The complete profiler CI suite passes on ARM64 and native Linux X64, including
+GC, generational GC, pthreads, REPL sessions, and read-only installation of
+`RegionProfile` and `Region`. The ThinkPad X64 compilers were built with MLKit.
+The native X64 accounting fixture also passes ASan/UBSan.
 
 ## Objectives and scope
 
@@ -297,7 +296,7 @@ viewer are separate work.
 ## Implementation milestones
 
 - [x] **M1: Single-threaded, no-GC explicit sampling.** Implementation and
-  ARM64 checks are present; X64 execution checks remain pending. Implement compiler
+  ARM64/X64 checks pass. Implement compiler
   maps and safe sampling bridges on ARM64 and X64, finite-region reservations,
   page-list counting, and large-object accounting. Add the core session/API
   and versioned output plus a reader or aggregate graph conversion. Validate
@@ -372,8 +371,8 @@ viewer are separate work.
   document the input and filtering options.
 
 Run relevant generated-code and runtime checks on both native backends.
-Complete the ThinkPad X64 execution rerun when connectivity is restored. Record results
-and overhead numbers as milestones are implemented, rather than assuming
+The native CI entry point covers both platforms. Record results and overhead
+numbers as milestones are implemented, rather than assuming
 that existing GC tests validate the new profiler.
 
 ## Initial implementation touchpoints

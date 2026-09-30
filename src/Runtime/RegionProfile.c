@@ -164,13 +164,16 @@ static void progress(void) {
 }
 static void await_release(void) { while (rendezvous) progress(); }
 static void await_output(void) { while (serializing) progress(); }
+static int current_cpu(void) {
+#ifdef __linux__
+  return sched_getcpu();
+#else
+  return -1; /* No portable current-CPU query on this platform. */
+#endif
+}
 static void set_anchor(Participant *p, uintptr_t *base, const uintptr_t *map) {
   p->base = base; p->map = map;
-#ifdef __linux__
-  p->cpu = sched_getcpu();
-#else
-  p->cpu = -1; /* No portable current-CPU query on this platform. */
-#endif
+  p->cpu = current_cpu();
 #ifdef ARGOBOTS
   p->worker = execution_stream_rank();
 #else
@@ -568,7 +571,10 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
       record_thread = p->id; record_worker = p->worker; record_cpu = p->cpu;
       if (p->map) walk(p->ctx,p->base,p->map,&frames,&pages);
     }
-  } else walk(ctx,base,map,&frames,&pages);
+  } else {
+    record_cpu = current_cpu();
+    walk(ctx,base,map,&frames,&pages);
+  }
   uint64_t footprint = 0;
   for (size_t i = 0; i < record_count; i++)
     footprint += records[i].pages*sizeof(Rp)-records[i].tail+records[i].big+records[i].finite;

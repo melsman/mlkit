@@ -45,7 +45,7 @@ $CC -c "$ROOT/test/region_profile/foreign.c" -o "$OUT/foreign.o"
 ar rcs "$OUT/libforeign.a" "$OUT/foreign.o" "$OUT/periodic.o"
 cp "$ROOT/test/region_profile/foreign.sml" "$OUT/"
 printf '%s\n' "$ROOT/basis/basis.mlb" "$ROOT/basis/par.mlb" "$OUT/foreign.sml" > "$OUT/foreign.mlb"
-"$MLKIT" -no_gc -par -region_profile -libdirs "$OUT" -libs foreign -o "$OUT/foreign" "$OUT/foreign.mlb" > "$OUT/foreign.build" 2>&1
+"$MLKIT" -no_gc -par -region_profile -libdirs "$OUT" -libs foreign,m,c,dl -o "$OUT/foreign" "$OUT/foreign.mlb" > "$OUT/foreign.build" 2>&1
 "$OUT/foreign" -rp -rp_interval 1ms -rp_report -rp_file "$OUT/foreign.rp" > "$OUT/foreign.out" 2> "$OUT/foreign.report"
 grep -q 'foreign wait ok' "$OUT/foreign.out"
 "$RPVIEW" "$OUT/foreign.rp" --format json > "$OUT/foreign.json"
