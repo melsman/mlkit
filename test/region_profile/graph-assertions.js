@@ -1,3 +1,8 @@
+el('metric').value='stack';draw();
+assert.deepStrictEqual(model().totals,samples.map(s=>s.stacks.reduce((n,r)=>n+BigInt(r.stack_bytes),0n)+s.regions.filter(r=>r.kind==='finite').reduce((n,r)=>n+BigInt(r.finite_bytes),0n)));
+assert(model().bands.every(b=>b.key==='stack'||samples.some(s=>s.regions.some(r=>r.kind==='finite'&&regionKey(r)===b.key))));
+assert(!el('chart').children.some(n=>n.attrs['data-peak']));
+el('metric').value='total';draw();
 const originalReasons=samples.map(s=>s.reason);
 samples[0].reason='before_gc';samples[1].reason='after_gc';draw();
 const gcBars=el('chart').children.filter(n=>n.attrs['data-gc']==='duration');

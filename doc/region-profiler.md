@@ -230,8 +230,11 @@ time and memory units (bytes, KiB, MiB, GiB, etc.) from the displayed range.
 Captions, markers and peak annotations use the same units. Band tooltips also
 include exact byte counts, and tables retain exact byte counters.
 Finite reservations belong to their region bands, so the stack band subtracts
-them. Resident descriptors are already part of the stack span; descriptors and
-free-page caches are not added again. The runtime report's `sampled_peak_bytes`
+them. Infinite-region descriptors stored in active ML stack frames are already
+part of that span; global and persistent descriptors outside it are excluded.
+Descriptors and free-page caches are not added again. The **ML stack + finite
+regions** metric (`--metric stack`) shows the ML stack band plus finite-region
+reservations, excluding infinite-region pages and large objects. The runtime report's `sampled_peak_bytes`
 remains a region-only peak; the default graph's sampled maximum includes stack.
 
 Only **Legend on the right** is checked by default; base names, kind, type and
@@ -314,7 +317,7 @@ rpview profile.rp -o profile.html --show-base --show-kind --show-type
 The output extension selects SVG or HTML; `--format svg|html` overrides it.
 Without an output path, the default is `profile.html` (or `profile.svg` with
 `--format svg`). Both outputs accept `--caption TEXT`, `--regions N` (0 = all),
-`--metric total|pages|page_footprint|large_bytes|finite_bytes|descriptor_bytes`,
+`--metric total|stack|pages|page_footprint|large_bytes|finite_bytes|descriptor_bytes`,
 and `--scope all|thread:N|worker:N|cpu:N`. Worker/CPU identity `-1` selects
 unavailable identities. `--show-base`, `--show-kind`, `--show-type`, and
 `--show-peak` enable the corresponding settings; `--hide-*` disables them.

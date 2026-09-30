@@ -32,6 +32,7 @@ struct
                           | [field,value] => (case find r field of NONE => value = "-1" | _ => strField r field = value)
                           | _ => false
         fun bytes r = if metric = "total" then number r "page_footprint" + number r "large_bytes" + number r "finite_bytes"
+                      else if metric = "stack" then number r "finite_bytes"
                       else if metric = "pages" then number r "page_footprint" + number r "unused_tail"
                       else number r metric
         val allRegions = List.concat(map (fn s => list s "regions") samples)
@@ -61,9 +62,9 @@ struct
             end
         fun values k = map (fn s => foldl (fn (r,n) => if selected r andalso key r = k then n + bytes r else n) 0 (list s "regions")) samples
         fun sum xs = foldl (op +) (0:IntInf.int) xs
-        val regionKeys = List.filter (fn k => List.exists (fn r => selected r andalso key r = k) allRegions) keys
+        val regionKeys = List.filter (fn k => List.exists (fn r => selected r andalso key r = k andalso (metric <> "stack" orelse get r "kind" = Str "finite")) allRegions) keys
         val regions = map (fn k => (k,label(valOf(List.find (fn r => key r = k) allRegions)),values k)) regionKeys
-        val stack = if metric = "total"
+        val stack = if metric = "total" orelse metric = "stack"
                     then [("stack","ML stack",map (fn s => sum(map (fn r => number r "stack_bytes") (List.filter selected (list s "stacks")))) samples)] else []
         fun less ((k,_,v),(k',_,v')) = sum v < sum v' orelse (sum v = sum v' andalso k < k')
         val ordered = sort less (regions @ stack)
@@ -90,7 +91,7 @@ struct
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
         val caption = opt "caption" ("Region profile for " ^ main ^ " (GC " ^ gc ^ ")")
-        val metricName = case metric of "total" => "Regions + ML stack" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Descriptors (separate)"
+        val metricName = case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Descriptors (separate)"
         val scopeName = case String.fields (fn c => c = #":") scope of
                             ["thread",n] => "Thread " ^ n | ["worker",n] => "Execution stream " ^ n | ["cpu",n] => "CPU (logical core) " ^ n | _ => "All threads"
         (* Conservative character widths keep labels within the vector canvas,

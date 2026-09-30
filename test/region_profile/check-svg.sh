@@ -50,6 +50,12 @@ contains 'Samples: 2'
 contains 'Memory (EiB)'
 grep '<polygon ' "$OUT/lines" | sed 's/ points=.*//' > "$OUT/colors"
 [ "$(sed 's/.*fill="//' "$OUT/colors" | sort -u | wc -l | tr -d ' ')" -eq 4 ]
+svg --metric stack --show-peak
+count 1
+contains 'Sampled maximum: 64.00 bytes'
+contains 'Metric: ML stack + finite regions'
+! grep -q 'stroke-dasharray="8 4"' "$OUT/lines"
+svg
 for scope in thread:1 worker:0 cpu:4; do
     svg --scope "$scope"
     count 3

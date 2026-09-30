@@ -18,7 +18,7 @@ struct
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --regions N             Largest regions to show (default 9; 0 = all)\n\
-                     \  --metric NAME           total (default), pages, page_footprint,\n\
+                     \  --metric NAME           total (default), stack, pages, page_footprint,\n\
                      \                          large_bytes, finite_bytes, descriptor_bytes\n\
                      \  --scope VIEW            all (default), thread:N, worker:N, cpu:N\n\
                      \                          Use -1 for unavailable worker/CPU identity\n\
@@ -41,7 +41,7 @@ struct
               (case natural value of SOME n => (setting "limit" (ProfileJson.Num(Int.toString n)); options rest)
                                   | NONE => raise Fail "regions must be a nonnegative integer")
             | options ("--metric"::value::rest) =
-              (choice "metric" value ["total","pages","page_footprint","large_bytes","finite_bytes","descriptor_bytes"]; options rest)
+              (choice "metric" value ["total","stack","pages","page_footprint","large_bytes","finite_bytes","descriptor_bytes"]; options rest)
             | options ("--group"::value::rest) =
               (choice "group" value ["aggregate","region","thread","worker"]; options rest)
             | options ("--scope"::value::rest) =
