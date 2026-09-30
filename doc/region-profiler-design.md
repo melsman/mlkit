@@ -125,6 +125,13 @@ library frames. Include the option in compilation-cache identities and
 diagnose unsupported mixed builds. In particular, an executable with no
 profiling metadata must reject `-rp` with a recompilation instruction.
 
+Release precompilation pairs ordinary and sampled-profiler caches for non-GC,
+non-GC pthread parallelism, and GC configurations. Basis caches include REPL
+support; Kit libraries use the same configuration matrix. Legacy-profiler
+caches are built only on demand from source, not included in the release cache
+set. Non-GC sampled Basis compilation retains region-annotated code and region
+types in per-file logs, without region-flow graphs or program-point listings.
+
 ## Threads and attribution
 
 Use cooperative sampling. A timer or explicit request advances a sampling

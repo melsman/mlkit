@@ -259,6 +259,14 @@ X64 profiler-call alignment fix). Compile programs and their dependencies
 with the current compiler and runtime to obtain version-5 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
+Release builds precompile the Basis (including REPL support) and Kit libraries
+for ordinary and sampled-profiler builds in three configurations: non-GC,
+non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
+and the `_RP8` cache suffix. Legacy `-prof` libraries are no longer precompiled
+or selected for installation; they can still be compiled from source.
+The non-GC sampled Basis build writes per-file logs containing region-annotated
+code and region types, without region-flow graphs or program-point listings.
+
 **Download SVG** saves the current graph as a standalone vector image. The
 caption, selected metric/view, graph, right-side legend and applicable GC/
 peak notes are all inside the SVG. The graph retains its 3:2 aspect ratio;
