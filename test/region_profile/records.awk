@@ -29,3 +29,23 @@ function parse(line,    key,token,k) {
     need(line ~ /^[ \t]*}[ \t]*$/, "expected flat record")
 }
 { parse($0) }
+# Resolve definition references independently of rpview for fixture accounting.
+f["type"]=="binding" {
+    id=f["definition"]
+    need(!(id in definitions),"duplicate definition")
+    definitions[id]=1
+    identity=f["unit"] SUBSEP f["binding"] SUBSEP f["source"] SUBSEP f["name"] SUBSEP f["kind"] SUBSEP f["region_type"]
+    need(!(identity in emitted),"static metadata emitted more than once")
+    emitted[identity]=1
+    split("unit source name region_type kind binding",keys," ")
+    for (i in keys) metadata[id,keys[i]]=f[keys[i]]
+}
+f["type"]=="region" {
+    id=f["definition"]
+    need(id in definitions,"undefined binding")
+    split("unit source name region_type kind binding",keys," ")
+    for (i in keys) {
+        need(!(keys[i] in f),"repeated static metadata")
+        f[keys[i]]=metadata[id,keys[i]]
+    }
+}

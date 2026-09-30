@@ -253,6 +253,16 @@ flushed prefix while the process is running. Record completeness and timing
 information so delayed or incomplete captures cannot masquerade as exact
 simultaneous snapshots.
 
+The current JSON-lines format is version 4. Emit immutable binding definitions
+once on first observation, before the first snapshot referencing them. Each
+session-local definition ID identifies the unit, source binding number, source
+filename, explicit name, finite/infinite kind, and inferred region type. Snapshot
+region records carry only that ID, dynamic attribution, and storage counters.
+Definitions can appear between snapshots as new bindings are discovered, including
+in later REPL phrases. Do not pre-scan loaded code or repeat static strings in
+measurements. Readers resolve definitions incrementally and diagnose missing or
+duplicate IDs; different metadata variants of a source binding have distinct IDs.
+
 Extend the HTML viewer with combined, colored region-and-stack graphs (M7).
 Keep `rp2ps` unchanged. A separate future integration could add a new input path
 there; legacy object-allocation-site views cannot be reconstructed from these
@@ -326,7 +336,7 @@ viewer are separate work.
   Attribute shared regions once by lifetime owner, consistent with the existing
   stream, and make the treatment of persistent/global storage visible in
   filtered views. Extend the sampled stream to measure active ML stack storage;
-  the current version-3 format includes per-thread active/finite/remaining-stack
+  the current version-4 format includes per-thread active/finite/remaining-stack
   byte counts. Reject earlier profile formats. Keep finite-region reservations
   in their region bands and exclude
   those bytes from the stack band; account for descriptors exactly once. Label

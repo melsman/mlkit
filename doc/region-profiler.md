@@ -129,7 +129,7 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is version 3 JSON Lines; `rpview` accepts only this current format and
+Output is version 4 JSON Lines; `rpview` accepts only this current format and
 rejects other version numbers. Each captured thread has a `stack` record with
 `active_bytes`, `finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`.
 The active span runs from the innermost captured ML frame through the outermost
@@ -138,6 +138,18 @@ the sampler's C frames, foreign-call frames, and unused OS stack capacity.
 The reader validates stack arithmetic, generation/page accounting and the
 required current metadata: source names, region kinds/types, page maxima, cache
 bytes and GC counts. Native frame maps use version 4.
+Binding definitions carry a session-local `definition` ID and the static
+`unit`, `binding`, `source`, `name`, `kind`, and `region_type` fields. Definitions
+are emitted once, immediately before the first snapshot that uses them; no
+up-front list is needed, including for code loaded by later REPL phrases.
+A region measurement contains only its `definition` reference, sample/thread/
+worker/CPU identities, and changing storage counters. Different metadata for the
+same source binding receives a separate definition; source binding identities
+still control graph grouping. `rpview` resolves references and rejects undefined
+IDs, duplicate definitions, and inline static metadata in measurements.
+Only the current format is supported. Relink profiled executables with the
+current runtime and regenerate data files; native compiler frame maps are unchanged.
+
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
@@ -199,7 +211,7 @@ the aggregation key, so matching filenames do not merge distinct regions.
 zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
 use pages and may hold large objects. **Show region type** adds the compiler's
 inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
-from finite/infinite kind. The `region_type` field carries this information;
+from finite/infinite kind. The `region_type` field in binding definitions carries this information;
 an unavailable inferred type is displayed as `type unavailable`.
 These label options apply to the legend,
 band tooltips and region-grouped table without merging distinct bindings.
@@ -217,7 +229,7 @@ includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
 slots and types. Profiling builds now use cache suffix `_RP8` (including the
 X64 profiler-call alignment fix). Compile programs and their dependencies
-with the current compiler and runtime to obtain version-3 profiles. No object scans or
+with the current compiler and runtime to obtain version-4 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 **Download SVG** saves the current graph as a standalone vector image. The

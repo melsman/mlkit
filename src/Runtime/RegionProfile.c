@@ -299,7 +299,7 @@ void mlkit_rp_init(void) {
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":3,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu,\"gc_enabled\":%s,\"main_source\":",
+  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":4,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu,\"gc_enabled\":%s,\"main_source\":",
           sizeof(uintptr_t), sizeof(Rp), RP_GC_ENABLED);
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   quoted_bytes(main_source,strlen(main_source));
@@ -342,6 +342,7 @@ typedef struct Record {
   int worker, infinite, cpu;
   uintptr_t run_type;
   uint64_t g0_pages, g0_tail, g1_pages, g1_tail;
+  uint64_t definition;
 } Record;
 static Record *records;
 static size_t record_count, record_capacity;
@@ -373,26 +374,38 @@ static void region_record(const char *unit, const char *name, const char *source
   } else finite = (uint64_t)words*sizeof(uintptr_t);
   *pages_visited += pages;
   save_record((Record){unit,name,source,id,record_thread,pages,tail,big,finite,desc,
-                       record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail});
+                       record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail,0});
 }
 /* Binding definitions are emitted once on first observation. The native unit
  * strings live in resident code images, including retained REPL libraries. */
 typedef struct Definition {
-  const char *unit;
-  uint64_t id;
+  Record metadata;
   struct Definition *next;
 } Definition;
 static Definition *definitions;
-static void define_record(const Record *r) {
-  for (Definition *d = definitions; d; d = d->next)
-    if (d->id == r->id && !strcmp(d->unit,r->unit)) return;
+static uint64_t definition_count;
+static const char *run_type_name(uintptr_t type);
+static void define_record(Record *r) {
+  for (Definition *d = definitions; d; d = d->next) {
+    const Record *m = &d->metadata;
+    if (m->id == r->id && m->infinite == r->infinite && m->run_type == r->run_type &&
+        !strcmp(m->unit,r->unit) && !strcmp(m->source,r->source) && !strcmp(m->name,r->name)) {
+      r->definition = m->definition;
+      return;
+    }
+  }
+  if (definition_count == UINT64_MAX) fail("too many binding definitions");
+  r->definition = ++definition_count;
   Definition *d = checked_alloc(sizeof(*d));
-  *d = (Definition){r->unit,r->id,definitions}; definitions = d;
-  fputs("{\"type\":\"binding\",\"unit\":",output);
+  *d = (Definition){*r,definitions}; definitions = d;
+  fprintf(output,"{\"type\":\"binding\",\"definition\":%" PRIu64 ",\"unit\":",r->definition);
   quoted_bytes(r->unit,strlen(r->unit));
   fprintf(output,",\"binding\":%" PRIu64 ",\"name\":",r->id);
   quoted_bytes(r->name,strlen(r->name));
-  fputs("}\n",output);
+  fputs(",\"source\":",output);
+  quoted_bytes(r->source,strlen(r->source));
+  fprintf(output,",\"kind\":\"%s\",\"region_type\":\"%s\"}\n",
+          r->infinite ? "infinite" : "finite",run_type_name(r->run_type));
 }
 static uint64_t count_cache(Rp *p) {
   uint64_t count = 0;
@@ -425,25 +438,18 @@ static uintptr_t global_type(Region r) {
   return 0;
 }
 static void write_record(const Record *r) {
-  const char *unit = r->unit, *name = r->name;
-  uint64_t id = r->id, pages = r->pages, tail = r->tail, big = r->big;
+  uint64_t pages = r->pages, tail = r->tail, big = r->big;
   uint64_t finite = r->finite, desc = r->desc;
   fprintf(output, "{\"type\":\"region\",\"sample\":%" PRIu64 ",\"thread\":%" PRIu64
-          ",\"worker\":%d,\"cpu\":%d,\"unit\":", sequence, r->thread, r->worker, r->cpu);
-  quoted_bytes(unit, strlen(unit));
-  fputs(",\"source\":",output);
-  quoted_bytes(r->source,strlen(r->source));
+          ",\"worker\":%d,\"cpu\":%d,\"definition\":%" PRIu64,
+          sequence, r->thread, r->worker, r->cpu, r->definition);
   fprintf(output, ",\"g0_pages\":%" PRIu64 ",\"g0_unused_tail\":%" PRIu64
           ",\"g1_pages\":%" PRIu64 ",\"g1_unused_tail\":%" PRIu64,
           r->g0_pages,r->g0_tail,r->g1_pages,r->g1_tail);
-  fprintf(output,",\"region_type\":\"%s\"",run_type_name(r->run_type));
-  fputs(",\"name\":", output);
-  quoted_bytes(name, strlen(name));
-  fprintf(output, ",\"binding\":%" PRIu64 ",\"kind\":\"%s\",\"pages\":%" PRIu64
+  fprintf(output, ",\"pages\":%" PRIu64
           ",\"unused_tail\":%" PRIu64 ",\"page_footprint\":%" PRIu64
           ",\"large_bytes\":%" PRIu64 ",\"finite_bytes\":%" PRIu64
-          ",\"descriptor_bytes\":%" PRIu64 "}\n", id,
-          r->infinite ? "infinite" : "finite", pages, tail,
+          ",\"descriptor_bytes\":%" PRIu64 "}\n", pages, tail,
           pages*sizeof(Rp)-tail, big, finite, desc);
 }
 /* Validate all continuation chains before recording any bytes. A callback is

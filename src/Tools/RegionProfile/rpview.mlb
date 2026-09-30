@@ -1,4 +1,6 @@
 $(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/BINARYMAP.sig
+$(SML_LIB)/basis/Binarymap.sml
 Json.sml
 Reader.sml
 Html.sml

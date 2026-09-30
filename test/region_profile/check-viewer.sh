@@ -38,8 +38,8 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 4; do
-    sed -e "s/\"version\": 3/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
+for version in 0 1 2 3 5; do
+    sed -e "s/\"version\": 4/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
 done
@@ -48,7 +48,7 @@ for invalid in '{"type":"header","type":"header"}' '{"type":"header","format":"m
     reject
 done
 cat > profile.rp <<'DATA'
-{"type":"header","format":"mlkit-region-profile","version":3,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
+{"type":"header","format":"mlkit-region-profile","version":4,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
 {"type":"session_end","gc_collections":1152921504606846979,"max_pages":0}
 DATA
 run
@@ -88,3 +88,29 @@ run
 grep -Fq '😀' profile.html
 grep -Fq '\u0000' profile.html
 echo 'Offline viewer: uint64, escaping, metadata, current format and unsupported versions, truncation, malformed input and aliases passed'
+# Definitions precede use, are immutable, and replace inline static metadata.
+sed '/"type": "binding"/d' original.rp > profile.rp
+reject
+grep -q 'unknown binding definition' stderr
+awk '{print; if ($0 ~ /"type": "binding"/) print}' original.rp > profile.rp
+reject
+grep -q 'duplicate binding definition' stderr
+sed '/"type": "region"/s/"definition":/"unit": "override", "definition":/' original.rp > profile.rp
+reject
+grep -q 'static metadata in region record' stderr
+# Definition IDs are independent of source-level binding numbers and exact uint64s.
+sed 's/"definition": 1/"definition": 18446744073709551615/g' original.rp > profile.rp
+run
+# A later snapshot may introduce a newly loaded unit with a reused binding number.
+awk '
+ /"type": "binding", "definition": 3/ {
+   later=$0; sub(/"definition": 3/,"\"definition\": 4",later)
+   sub(/"unit": "<global>"/,"\"unit\": \"later-unit\"",later)
+ }
+ /"type": "sample_begin", "sample": 2/ {print later}
+ /"type": "region", "sample": 2/ {sub(/"definition": 3/,"\"definition\": 4")}
+ {print}
+' original.rp > profile.rp
+run
+grep '^const samples=' profile.html | grep -Fq 'later-unit'
+echo 'Binding definitions: reuse, late discovery, uint64 IDs and invalid references passed'
