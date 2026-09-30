@@ -43,7 +43,7 @@ const exported=exportSvgDocument();
 assert.equal(exported.tag,'svg');assert(Number(exported.attrs.width)<1440);
 assert(!exported.querySelectorAll('text').some(n=>n.textContent.includes('ML stack band')));
 assert(exported.querySelectorAll('text').some(n=>n.textContent==='Region profile for program.sml (GC enabled)'));
-assert(exported.querySelectorAll('text').some(n=>n.textContent==='Garbage collections: 17'));
+assert(exported.querySelectorAll('text').some(n=>n.textContent.includes('Metric:') && n.textContent.includes('Garbage collections: 17')));
 const exportChart=exported.querySelectorAll('svg')[0];assert.equal(exportChart.attrs.width/exportChart.attrs.height,1.5);
 assert.equal(exportChart.querySelectorAll('polygon').length,model().bands.length);
 assert(exportChart.querySelectorAll('polygon').every(n=>!n.attrs.fill.startsWith('hsl')));

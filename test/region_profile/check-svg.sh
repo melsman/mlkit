@@ -19,7 +19,7 @@ reject() { if run "$@"; then echo 'Unexpected success' >&2; exit 1; fi; }
 svg
 count 4
 contains 'Region profile for main.sml (GC enabled)'
-contains 'Garbage collections: 17'
+contains 'Metric: Regions + ML stack · View: All threads · Garbage collections: 17'
 contains 'Memory (EiB)'
 grep '<polygon ' "$OUT/lines" | sed 's/ points=.*//' > "$OUT/colors"
 [ "$(sed 's/.*fill="//' "$OUT/colors" | sort -u | wc -l | tr -d ' ')" -eq 4 ]

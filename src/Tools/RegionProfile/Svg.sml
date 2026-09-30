@@ -118,8 +118,12 @@ struct
             in split (units(explode s)) "" []
             end
         fun paragraph s x y available size = foldl (fn (line,y) => (text x y size "start" line; y+size*1.4)) y (wrap size available s)
+        val gcSummary = if gc = "enabled" then
+                            " · Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
+                            (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")
+                        else ""
         val top = paragraph caption 16.0 34.0 (canvasWidth-32.0) 26.0
-        val top = paragraph ("Metric: " ^ metricName ^ " · View: " ^ scopeName) 16.0 (top+4.0) (canvasWidth-32.0) 16.0 + 12.0
+        val top = paragraph ("Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary) 16.0 (top+4.0) (canvasWidth-32.0) 16.0 + 12.0
         fun x sample = 88.0 + 880.0 * real(number sample "time"-first) / real(IntInf.max(1,last-first))
         fun y n = top+593.0-528.0*real n/real maximum
         fun point (s,v) = fmt(x s) ^ "," ^ fmt(y v)
@@ -176,8 +180,6 @@ struct
                         (emit("<rect x=\"1026\" y=\"" ^ fmt(yy-11.0) ^ "\" width=\"12\" height=\"12\" rx=\"2\" fill=\"" ^ color k ^ "\"/>");
                          paragraph name 1048.0 yy (legendWidth-22.0) 16.0+12.0)) legendY (rev bands)
         val foot = Real.max(top+668.0,legendY)+12.0
-        val foot = if gc = "enabled" then paragraph ("Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
-                            (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")) 16.0 foot (canvasWidth-32.0) 16.0+12.0 else foot
         val foot = case pagePeak of NONE => foot | SOME _ => paragraph "Peak page capacity excludes cached pages, large objects and stack storage; it includes allocations between snapshots and GC from/to-space overlap." 16.0 foot (canvasWidth-32.0) 16.0+12.0
         val height = foot+12.0
       in "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" ^ fmt canvasWidth ^ "\" height=\"" ^ fmt height ^ "\" viewBox=\"0 0 " ^ fmt canvasWidth ^ " " ^ fmt height ^ "\" font-family=\"Arial, sans-serif\" font-size=\"16\" fill=\"#182c39\" role=\"img\"><title>" ^ escape caption ^ "</title><rect width=\"100%\" height=\"100%\" fill=\"white\"/>" ^ String.concat(rev(!output)) ^ "</svg>\n"
