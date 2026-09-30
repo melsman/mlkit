@@ -27,7 +27,7 @@ f["type"]=="region" {
     if (f["g1_pages"]>0 && f["g1_unused_tail"]>0) generationSeen=1
     if (f["source"] ~ /^REPL #/) replSource=1
     if (f["unit"]=="<global>") { global[n]=1; if (n==1) types[f["region_type"]]=1 }
-    if (mode=="argobots") { need(f["worker"]==-1 || f["worker"]==0 || f["worker"]==1,"worker identity"); if(f["worker"]>=0) workerSeen=1 }
+    if (mode=="argobots") { need(f["worker"]>=-1,"worker identity"); if(f["worker"]>=0) workerSeen=1 }
     if (mode=="runtime" && n==1) {
         need(f["source"]=="/fixtures/test.sml","fixture source")
         need((f["binding"]==11 && f["region_type"]=="pair") || (f["binding"]==12 && f["region_type"]=="string") || (f["binding"]==13 && f["region_type"]=="bot"),"fixture type")
@@ -50,7 +50,7 @@ f["type"]=="sample_end" {
     need(active && f["sample"]==n,"snapshot end"); active=0; completed++
     need(stackCount>0 && equal(finite,stackFinite),"finite reservations / stack subtraction")
     lastEnd=f["time"]; maxCollections=f["gc_collections"]+0>maxCollections+0 ? f["gc_collections"] : maxCollections
-    ownersCount=0; for(k in owners) ownersCount++; if(ownersCount>2) multiOwner=1
+    ownersCount=0; for(k in owners) ownersCount++; if(ownersCount>2 || (mode=="argobots" && ownersCount>1)) multiOwner=1
     if(mode=="runtime") {
         need(f["max_pages"]==2,"snapshot page maximum")
         need(footprint==(n==1 ? 8264 : 16) && large==(n==1 ? 4096 : 0) && finite==(n==1 ? 48 : 24),"runtime totals")

@@ -19,7 +19,9 @@ per-object descriptors or separate profiling runtime variant.
 The supported targets are X64 and ARM64, initially without GC, including
 parallel execution. Single-threaded GC and generational GC follow. Combining
 GC with parallel execution is a separate investigation and is out of scope.
-The design also covers the REPL and explicit regions in ReML.
+The design also covers the REPL and explicit regions in ReML. Argobots support
+is experimental: its runtime is built explicitly from source, is not shipped by
+release installations, and its X64 validation is not a release requirement.
 
 This is a sampled storage profiler. It does not reconstruct object allocation
 sites or establish which objects are reachable. Short-lived regions and peaks

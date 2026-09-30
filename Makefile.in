@@ -235,7 +235,8 @@ install_top:
 .PHONY: install_runtime
 install_runtime:
 	$(MKDIR) $(LIBDIR)/lib/$(RUNTIME_TARGET)
-	$(INSTALLDATA) lib/$(RUNTIME_TARGET)/runtimeSystem*.a $(LIBDIR)/lib/$(RUNTIME_TARGET)
+	# Experimental Argobots is built explicitly and is not part of an installation.
+	$(INSTALLDATA) $(filter-out lib/$(RUNTIME_TARGET)/runtimeSystemArPar.a,$(wildcard lib/$(RUNTIME_TARGET)/runtimeSystem*.a)) $(LIBDIR)/lib/$(RUNTIME_TARGET)
 ifeq ($(DARWIN_NATIVE),0)
 	$(MKDIR) $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)/lib

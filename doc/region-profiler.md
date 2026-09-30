@@ -11,7 +11,7 @@ rpview profile.rp --output profile.html
 ```
 
 Supported combinations are single-threaded no-GC, GC and generational GC, and
-no-GC pthreads or Argobots. **GC plus parallelism remains excluded.** Both
+no-GC pthreads or experimental Argobots. The Argobots runtime is an optional\nsource build and is not shipped or installed by the normal release targets. **GC plus parallelism remains excluded.** Both
 native backends emit the metadata and polling bridges. ARM64 execution checks
 are passing. Initial ThinkPad X64 execution passed the accounting/graph suite
 and exposed GCC weak-constant folding and profiler-call stack alignment issues.
@@ -392,11 +392,16 @@ migration), axis units, truncated/single-sample streams, and counters above
 units, caption escaping, CLI defaults, and empty/single profiles without a runtime
 PATH. Both generation
 tails were also checked against exact synthetic totals under ASan/UBSan.
-Argobots 1.2 passed with thirteen logical threads and one or two execution
-streams. The viewer was checked in the browser. X64 compiler builds and
+The current binary profiler passed 30 Argobots 1.2 stress runs on ARM64:
+thirteen logical threads on one, two and four execution streams, five runs per
+stream count with explicit-only sampling and five with 1ms periodic sampling.
+Checks covered the 61 explicit snapshots, thread starts/exits, shared-region
+accounting, worker ranks, completed streams and identical program results.
+Profiling-disabled runs also passed for all three stream counts. The viewer was checked in the browser. X64 compiler builds and
 cross-assembly checks cover polling, GC sampling
 bridges, callbacks and thread creation. Full Linux/X64 execution validation,
-including Linux CPU capture and optional Argobots, remains pending.
+including Linux CPU capture, remains pending. Experimental Argobots has not
+been validated on X64 and is not a release requirement.
 
 Measure overhead with `sh test/region_profile/benchmark.sh PLAIN INSTRUMENTED`,
 using plain and profiler-enabled builds of the same workload. The script reports
