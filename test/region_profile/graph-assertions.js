@@ -1,3 +1,13 @@
+const originalReasons=samples.map(s=>s.reason);
+samples[0].reason='before_gc';samples[1].reason='after_gc';draw();
+const gcTicks=el('chart').children.filter(n=>n.attrs['data-tick']==='gc');
+assert.equal(gcTicks.length,1);assert.equal(Number(gcTicks[0].attrs.x1),960);
+assert.equal(gcTicks[0].attrs.stroke,'#dc2626');
+samples.forEach((s,i)=>s.reason=originalReasons[i]);draw();
+const snapshotTicks=el('chart').children.filter(n=>n.attrs['data-tick']==='snapshot');
+assert.equal(snapshotTicks.length,samples.length);
+assert.deepStrictEqual(snapshotTicks.map(n=>Number(n.attrs.x1)),[80,960]);
+assert(snapshotTicks.every(n=>n.attrs.stroke==='#2563eb'&&Number(n.attrs.y2)-Number(n.attrs.y1)===4));
 // Execution-stream controls appear only when the profile records worker IDs.
 const streamSamples=samples;
 const streamGroup=el('group').value,streamScope=el('scope').value;

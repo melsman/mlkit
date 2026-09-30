@@ -134,6 +134,8 @@ function draw(){
  svg('path',{d:'M80 65 V593 H960',fill:'none',stroke:'#334155'});
  for(const v of axisTicks(0,Number(max)/Number(factor))){const yy=y(v*Number(factor));svg('line',{x1:74,x2:80,y1:yy,y2:yy,stroke:'#334155','data-tick':'memory'});svg('text',{x:70,y:yy+4,'text-anchor':'end',class:'axis'},tickLabel(v));}
  for(const t of axisTicks(Number(first)/timeFactor,Number(last)/timeFactor)){const xx=80+880*(t*timeFactor-Number(first))/Number(span);svg('line',{x1:xx,x2:xx,y1:593,y2:599,stroke:'#334155','data-tick':'time'});svg('text',{x:xx,y:616,'text-anchor':'middle',class:'axis'},tickLabel(t));}
+ for(let i=0;i<samples.length;i++)svg('line',{x1:x(i),x2:x(i),y1:589,y2:593,stroke:'#2563eb','stroke-width':2,'data-tick':'snapshot'});
+ for(let i=0;i<samples.length;i++)if(samples[i].reason==='after_gc')svg('line',{x1:x(i),x2:x(i),y1:593,y2:598,stroke:'#dc2626','stroke-width':2,'data-tick':'gc'});
  svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:648,'text-anchor':'middle',class:'axis'},'Elapsed time ('+timeUnit+')'+(samples.length===1?' · single snapshot':''));
  svg('text',{x:960,y:22,'text-anchor':'end',class:'axis','data-summary':'maximum'},'Sampled maximum: '+memoryText(peak));
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}

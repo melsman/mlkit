@@ -28,7 +28,16 @@ count() { [ "$(grep -c '<polygon ' "$OUT/lines")" -eq "$1" ]; }
 contains() { grep -Fq "$1" "$OUT/lines"; }
 reject() { if run "$@"; then echo 'Unexpected success' >&2; exit 1; fi; }
 svg
+[ "$(grep -c 'data-tick="snapshot"' "$OUT/lines")" -eq 2 ]
+grep 'data-tick="snapshot"' "$OUT/lines" | grep -q 'stroke="#2563eb"'
 count 4
+! grep -q 'data-tick="gc"' "$OUT/lines"
+sed 's/"reason":"explicit"/"reason":"after_gc"/g' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+svg
+[ "$(grep -c 'data-tick="gc"' "$OUT/lines")" -eq 2 ]
+grep 'data-tick="gc"' "$OUT/lines" | grep -q 'stroke="#dc2626"'
+cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
+svg
 contains 'Region profile for main.sml (GC enabled)'
 contains 'Metric: Regions + ML stack · View: All threads · Garbage collections: 17'
 contains 'Samples: 2'

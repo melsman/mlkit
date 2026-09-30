@@ -172,6 +172,16 @@ struct
                     in tick "time" xx (top+593.0) xx (top+599.0);
                        text xx (top+616.0) 16.0 "middle" (Real.fmt (if length samples = 1 then StringCvt.GEN(SOME 12) else StringCvt.FIX(SOME timeDecimals)) t)
                     end) timeTicks
+        val () = List.app (fn sample =>
+                    emit("<line data-tick=\"snapshot\" x1=\"" ^ fmt(x sample) ^
+                         "\" x2=\"" ^ fmt(x sample) ^ "\" y1=\"" ^ fmt(top+589.0) ^
+                         "\" y2=\"" ^ fmt(top+593.0) ^ "\" stroke=\"#2563eb\" stroke-width=\"2\"/>")) samples
+        val () = List.app (fn sample =>
+                    if get sample "reason" = Str "after_gc" then
+                      emit("<line data-tick=\"gc\" x1=\"" ^ fmt(x sample) ^
+                           "\" x2=\"" ^ fmt(x sample) ^ "\" y1=\"" ^ fmt(top+593.0) ^
+                           "\" y2=\"" ^ fmt(top+598.0) ^ "\" stroke=\"#dc2626\" stroke-width=\"2\"/>")
+                    else ()) samples
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
         val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
         val () = case pagePeak of NONE => () | SOME n =>
