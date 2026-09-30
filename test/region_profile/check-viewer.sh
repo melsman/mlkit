@@ -38,10 +38,10 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 1 2; do
+for version in 0 1 2 4; do
     sed -e "s/\"version\": 3/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
-    run
-    grep '^const samples=' profile.html | grep -Fq '"stacks":null'
+    reject
+    grep -q 'unsupported profile version' stderr
 done
 for invalid in '{"type":"header","type":"header"}' '{"type":"header","format":"mlkit-region-profile","version":03,"page_bytes":8192}' '{"type":"header","format":"\uD800"}' '[true,]'; do
     printf '%s\n' "$invalid" > profile.rp
@@ -49,7 +49,7 @@ for invalid in '{"type":"header","type":"header"}' '{"type":"header","format":"m
 done
 cat > profile.rp <<'DATA'
 {"type":"header","format":"mlkit-region-profile","version":3,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
-{"type":"session_end","gc_collections":1152921504606846979}
+{"type":"session_end","gc_collections":1152921504606846979,"max_pages":0}
 DATA
 run
 grep -Fq 'const samples=[];' profile.html
@@ -62,8 +62,17 @@ grep '^const profile=' profile.html | grep -Fq '"gc_collections":null,"complete"
 sed 's/"gc_enabled":true/"gc_enabled":"yes"/' header.rp > profile.rp
 reject
 cp header.rp profile.rp
-printf '%s\n' '{"type":"session_end","gc_collections":-1}' >> profile.rp
+printf '%s\n' '{"type":"session_end","gc_collections":-1,"max_pages":0}' >> profile.rp
 reject
+# Current records require stack data and source/type/summary metadata.
+sed '/"type": "stack"/d' original.rp > profile.rp
+reject
+grep -q 'missing stack records' stderr
+for field in source region_type g0_pages max_pages gc_collections cache_bytes main_source gc_enabled; do
+    sed "s/\"$field\":/\"removed_$field\":/g" original.rp > profile.rp
+    reject
+    grep -q "missing $field" stderr
+done
 # Syntactically valid but inconsistent records must still be rejected.
 sed 's/"active_bytes": 64/"active_bytes": 65/' original.rp > profile.rp
 reject
@@ -78,4 +87,4 @@ sed 's/same <\/script> name/\\\"\\\\\\n\\u0000é λ \\uD83D\\uDE00 <\/script> __
 run
 grep -Fq '😀' profile.html
 grep -Fq '\u0000' profile.html
-echo 'Offline viewer: uint64, escaping, metadata, v1/v2/v3, truncation, malformed input and aliases passed'
+echo 'Offline viewer: uint64, escaping, metadata, current format and unsupported versions, truncation, malformed input and aliases passed'

@@ -80,7 +80,7 @@ end-of-ML-stack anchor.
   identity is the static key; equal source names in different units are distinct.
   Explicit ReML region names are retained and interned per compilation unit.
 
-Native map version 4 extends the earlier maps with relative source-name
+Native map version 4 contains relative source-name
 references, inferred region types and source filenames.
 GC bitmaps precede the profiler extension; both GC walkers locate the original
 bitmap before interpreting roots. Polling bridges preserve live registers.
@@ -129,15 +129,15 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is version 3 JSON Lines. The reader also accepts version 1 and 2 files.
-Version 3 adds a `stack` record per captured thread with `active_bytes`,
-`finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`. The active span
-runs from the innermost captured ML frame through the outermost ML return slot,
-including alignment and spilled-result reservations. It excludes the sampler's
-C frames, foreign-call frames, and unused OS stack capacity. Native map version
-2 is unchanged; relink executables with the new runtime to record stack data.
-The reader validates stack arithmetic and preserves missing stack data in older
-streams as unavailable, rather than zero.
+Output is version 3 JSON Lines; `rpview` accepts only this current format and
+rejects other version numbers. Each captured thread has a `stack` record with
+`active_bytes`, `finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`.
+The active span runs from the innermost captured ML frame through the outermost
+ML return slot, including alignment and spilled-result reservations. It excludes
+the sampler's C frames, foreign-call frames, and unused OS stack capacity.
+The reader validates stack arithmetic, generation/page accounting and the
+required current metadata: source names, region kinds/types, page maxima, cache
+bytes and GC counts. Native frame maps use version 4.
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
@@ -168,8 +168,8 @@ basename (the final linked ML initialization unit) and Y is `enabled` or
 programs, the page shows the number of completed collections below the graph.
 The counter includes collections while sampling is paused and does not require
 `-rp_gc_samples`. `sample_end` and `session_end` carry `gc_collections`; a file
-without its final summary shows the recorded count as incomplete. Missing
-metadata in older profiles is shown as unknown/unavailable, never as zero.
+without its final summary shows the recorded count as incomplete. A header-only
+file has no recorded collection count yet; this is shown as unavailable.
 
 The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
 The tool validates the stream before opening its output and rejects an output
@@ -195,13 +195,12 @@ source filename in region labels, such as `life.sml` (global regions use
 `global`, and interactive code uses `REPL #N`). Full source paths and internal
 unit identifiers appear in hover details. The internal unit identifier remains
 the aggregation key, so matching filenames do not merge distinct regions.
-Older profiles without a source field retain their internal base names.
 **Show region kind** adds `finite` or `infinite` from the recorded kind, including
 zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
 use pages and may hold large objects. **Show region type** adds the compiler's
 inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
-from finite/infinite kind. Optional `region_type` fields in region records carry
-this information; older files or unavailable metadata show `type unavailable`.
+from finite/infinite kind. The `region_type` field carries this information;
+an unavailable inferred type is displayed as `type unavailable`.
 These label options apply to the legend,
 band tooltips and region-grouped table without merging distinct bindings.
 **Show Peak page capacity** toggles the reference line and its annotation;
@@ -217,9 +216,8 @@ Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
 slots and types. Profiling builds now use cache suffix `_RP8` (including the
-X64 profiler-call alignment fix); rebuild profiled
-programs and their dependencies to obtain types and source filenames. Existing profile files remain
-readable, and the JSON-lines stream remains version 3. No object scans or
+X64 profiler-call alignment fix). Compile programs and their dependencies
+with the current compiler and runtime to obtain version-3 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 **Download SVG** saves the current graph as a standalone vector image. The
@@ -269,8 +267,7 @@ the process-wide maximum allocated page count multiplied by the recorded page
 size, including allocations between snapshots. This is a page-capacity reference,
 not a maximum for combined region-and-stack memory; stack storage and large
 objects are excluded. The axis accommodates both the bands and reference line. This line is omitted in filtered views
-because the counter is process-wide. Older files without the counter show an
-unavailable notice. Optional `max_pages` fields on version-3 `sample_end` and
+because the counter is process-wide. The `max_pages` fields on `sample_end` and
 `session_end` records store the running and final maximum. The reader uses the
 largest recorded value, including the final summary after the last snapshot;
 a truncated file can only report the maximum recorded before truncation.
@@ -283,7 +280,7 @@ core topology or allocation-origin tracking. macOS reports CPU identity as
 unavailable, while Argobots execution-stream selection remains available.
 Shared and persistent/global regions follow their lifetime owner's recorded
 identity and are counted once. Unavailable identities have explicit selectors;
-older files show a stack-unavailable notice.
+each completed snapshot includes its captured threads' stack records.
 
 The snapshot slider, metric selection, markers, and table grouping remain
 available. Changing table grouping does not merge the region bands. Maxima are
@@ -324,11 +321,9 @@ Scripts accept `MLKIT`, `REML`, `RPVIEW`, and `CC` overrides as appropriate.
 independent native-fixture accounting/lifecycle expectations with `awk`.
 Those native fixtures have small counters; exact uint64 boundary checks use
 literal expected strings in `check-viewer.sh`, avoiding awk floating-point
-rounding. That suite also covers malformed records, older stream versions,
+rounding. That suite also covers malformed records, unsupported format versions,
 truncation, Unicode, injection escaping, metadata, relocation with an empty
-executable search path, and input/output aliases. The former general-purpose
-reference reader has been removed; the focused shell fixtures replace its
-differential test role.
+executable search path, and input/output aliases.
 
 `check-svg.sh` checks the direct vector output and CLI defaults; if `xmllint`
 is installed, it additionally checks XML well-formedness. `check-graph.sh`
@@ -345,7 +340,7 @@ invalid intervals, repeated snapshots, shared allocations, joins and thread
 exit, blocked foreign calls, GC/genGC, retained REPL values/closures and clean shutdown.
 M7 checks cover exact frame spans and finite subtraction, recursive stack growth,
 colored band sums/order, thread/worker/CPU filters (including synthetic CPU
-migration), axis units, old/truncated/single-sample streams, and counters above
+migration), axis units, truncated/single-sample streams, and counters above
 2^53. The direct SML SVG suite covers filters, aggregation, palette stability,
 units, caption escaping, CLI defaults, and empty/single profiles without a runtime
 PATH. Both generation
@@ -353,47 +348,14 @@ tails were also checked against exact synthetic totals under ASan/UBSan.
 Argobots 1.2 passed with thirteen logical threads and one or two execution
 streams. The viewer was checked in the browser. X64 compiler builds and
 cross-assembly checks cover polling, GC sampling
-bridges, callbacks and thread creation. Initial Linux/X64 execution on the
-ThinkPad passed the native accounting/graph suite after diagnosing GCC folding
-of weak const initializers. Periodic sampling then exposed an unaligned C call
-in the profiler register-save bridge. The runtime now reads volatile weak
-constants, and the bridge pads its saved registers to preserve 16-byte stack
-alignment. The optimized runtime regression catches weak-constant folding;
-`_RP8` invalidates cached code with the old bridge. A full X64 rerun, including
-Linux CPU capture, remains pending because SSH became unavailable during the
-rebuild. Optional Argobots has not yet been run on X64.
+bridges, callbacks and thread creation. Full Linux/X64 execution validation,
+including Linux CPU capture and optional Argobots, remains pending.
 
-An M2 ARM64 benchmark, before the M7 stack records were added, ran a billion iterations of a deliberately tiny loop,
-with seven runs per mode. Median elapsed times were:
-
-| Mode | Seconds | Profile bytes, last run |
-| --- | ---: | ---: |
-| Uninstrumented | 0.865 | 0 |
-| Instrumented, disabled | 1.149 | 0 |
-| Enabled, paused | 1.150 | 185 |
-| Active, 1ms | 1.170 | 1,769,680 |
-| Active, 10ms | 1.154 | 177,307 |
-| Active, 100ms | 1.149 | 19,694 |
-
-This exposes the cost of a poll relative to almost no useful loop work: about
-33% over the uninstrumented loop even with the session disabled. It is not a
-representative application overhead figure. Active sampling at 10ms added less
-than 1% relative to the instrumented loop in this experiment. Timing and sample
-counts vary with scheduling; the default interval remains provisional.
-
-An isolated C fixture captured one region 1,000 times, writing to `/dev/null`:
-
-| Pages per region | Mean traversal time per snapshot |
-| ---: | ---: |
-| 1 | 0.029 µs |
-| 16 | 0.089 µs |
-| 256 | 1.069 µs |
-| 4,096 | 47.480 µs |
-
-The last case represents about 32 MiB of region pages. These hot-list results do
-not cover arbitrary heap layouts or thread contention. They support retaining
-page traversal for now; maintaining a page count would not remove polling or
-serialization costs. The shell benchmark reports seven-run medians using
-POSIX `time -p`; its timing resolution is platform-dependent. Reproduce with `sh test/region_profile/benchmark.sh` and
-`src/Runtime/tests/region-profile-bench.c` before making that tradeoff on X64 or
-representative applications.
+Measure overhead with `sh test/region_profile/benchmark.sh PLAIN INSTRUMENTED`,
+using plain and profiler-enabled builds of the same workload. The script reports
+seven-run medians for disabled, paused and active sampling at several intervals.
+It uses POSIX `time -p`, whose resolution is platform-dependent. Use
+`src/Runtime/tests/region-profile-bench.c` to isolate page-list traversal costs.
+Measure representative programs and thread contention before replacing page-list
+traversal with maintained per-region counts; such counts would not remove polling
+or serialization costs.

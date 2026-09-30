@@ -47,7 +47,7 @@ const colorKeys=[...colorWeights.keys()].sort((a,b)=>colorWeights.get(a)===color
 function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';return palette[colorKeys.indexOf(key)%palette.length];}
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function bytes(r){if(el('metric').value==='pages')return BigInt(r.page_footprint)+BigInt(r.unused_tail);return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
-function baseName(r){return r.unit==='<global>'?'global':r.source?r.source.split(/[\\/]/).at(-1):r.unit;}
+function baseName(r){return r.unit==='<global>'?'global':r.source.split(/[\\/]/).at(-1);}
 function label(r){
  let name=el('legend-right').checked?(r.name?r.name+' · ':'')+'r'+r.binding:(r.name?r.name:'Region')+' #'+r.binding;
  if(el('show-base').checked)name+=' · '+baseName(r);
@@ -64,7 +64,7 @@ function model(){
  const bands=new Map();
  function entry(k,name,detail=name){if(!bands.has(k))bands.set(k,{key:k,label:name,detail,values:samples.map(()=>0n)});return bands.get(k);}
  samples.forEach((s,i)=>{for(const r of s.regions)if(selected(r))entry(regionKey(r),label(r),detail(r)).values[i]+=bytes(r);
-  if(el('metric').value==='total'&&s.stacks!==null&&s.stacks!==undefined)entry('stack','ML stack').values[i]=s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n);
+  if(el('metric').value==='total')entry('stack','ML stack').values[i]=s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n);
  });
  let ordered=[...bands.values()];for(const b of ordered)b.sum=b.values.reduce((a,v)=>a+v,0n);
  ordered.sort((a,b)=>a.sum===b.sum?(a.key<b.key?-1:a.key>b.key?1:0):a.sum<b.sum?-1:1);
@@ -76,7 +76,7 @@ function model(){
 function scopes(){
  const old=el('scope').value||'all', options=[['all','All threads']];
  for(const [field,title] of [['thread','Thread'],['worker','Execution stream'],['cpu','CPU (logical core)']]){
-  const ids=new Set(samples.flatMap(s=>s.regions.concat(s.stacks||[])).map(r=>String(r[field]??-1)));
+  const ids=new Set(samples.flatMap(s=>s.regions.concat(s.stacks)).map(r=>String(r[field]??-1)));
   for(const id of [...ids].filter(id=>id!=='-1').sort((a,b)=>BigInt(a)<BigInt(b)?-1:1))options.push([field+':'+id,title+' '+id]);
   if(ids.has('-1')&&field!=='thread')options.push([field+':-1',title+' unavailable']);
  }
@@ -91,7 +91,7 @@ function draw(){
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
  const {bands,totals,hidden}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),isPages=el('metric').value==='pages';
  const peakMetric=['pages','total','page_footprint'].includes(el('metric').value);
- const recordedPeak=el('show-peak').checked&&peakMetric&&el('scope').value==='all'&&s.max_pages!==undefined?BigInt(s.max_pages)*BigInt(s.page_bytes):null;
+ const recordedPeak=el('show-peak').checked&&peakMetric&&el('scope').value==='all'?BigInt(s.max_pages)*BigInt(s.page_bytes):null;
  const max=(recordedPeak!==null&&recordedPeak>peak?recordedPeak:peak)||1n,valueUnit='bytes';
  el('value-unit').textContent='Bytes';
  const first=BigInt(samples[0].time),last=BigInt(samples.at(-1).time),span=last-first||1n;
@@ -116,12 +116,12 @@ function draw(){
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:593,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
  const groups=new Map(),groupLabels=new Map(),groupDetails=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);if(el('group').value==='region'&&k!=='Other')groupDetails.set(k,detail(r));groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
- if(el('metric').value==='total'&&s.stacks)groups.set('ML stack',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
+ if(el('metric').value==='total')groups.set('ML stack',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
  for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [groupLabels.get(k)||k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length&&groupDetails.has(k))td.title=groupDetails.get(k);tr.append(td);}el('rows').append(tr);}
  el('marks').textContent=(s.marks||[]).map(m=>'Marker '+timeText(m.time)+': '+m.label).join(' · ');
  el('caption').textContent='Snapshot '+s.sample+' · '+timeText(s.time)+' · '+s.reason+' · selected total '+memoryText(totals[index])+' · process-wide cached pages '+memoryText(BigInt(s.cache_bytes||0))+' (excluded)';
- el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':recordedPeak===null?'This older profile has no recorded maximum page count.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
- el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':samples.some(s=>s.stacks===null||s.stacks===undefined)?'Stack data unavailable in this older stream; regions are shown without an assumed stack value.':'The ML stack band excludes finite regions, whose reserved space is shown in the region bands. It includes active ML frame storage and resident descriptors.';
+ el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
+ el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':el('metric').value!=='total'?'':'The ML stack band excludes finite regions, whose reserved space is shown in the region bands. It includes active ML frame storage and resident descriptors.';
 }
 // Export only SVG elements: no HTML, scripts, external styles or font assets.
 function exportSvgDocument(){
@@ -176,8 +176,8 @@ function downloadSvg(){
 el('export-svg').addEventListener('click',downloadSvg);
 
 for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
-const mainName=profile.main_source?profile.main_source.split(/[\\/]/).at(-1):'unknown source';
-const gcState=profile.gc_enabled===true?'enabled':profile.gc_enabled===false?'disabled':'unknown';
+const mainName=profile.main_source.split(/[\\/]/).at(-1);
+const gcState=profile.gc_enabled?'enabled':'disabled';
 el('profile-title').textContent='Region profile for '+mainName+' (GC '+gcState+')';
 el('profile-title').title=profile.main_source||'';
 document.title=el('profile-title').textContent;

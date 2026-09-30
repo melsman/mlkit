@@ -50,7 +50,7 @@ struct
             let val name = strField r "name"
                 val source = strField r "source"
                 val unit = strField r "unit"
-                val basename = if unit = "<global>" then "global" else if source = "" then unit else base source
+                val basename = if unit = "<global>" then "global" else base source
                 fun info field fallback = case strField r field of "" => fallback | s => s
                 val details = (if flag "show-kind" false then [info "kind" "kind unavailable"] else []) @
                               (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
@@ -63,7 +63,7 @@ struct
         fun sum xs = foldl (op +) (0:IntInf.int) xs
         val regionKeys = List.filter (fn k => List.exists (fn r => selected r andalso key r = k) allRegions) keys
         val regions = map (fn k => (k,label(valOf(List.find (fn r => key r = k) allRegions)),values k)) regionKeys
-        val stack = if metric = "total" andalso List.exists (fn s => case find s "stacks" of SOME (Arr _) => true | _ => false) samples
+        val stack = if metric = "total"
                     then [("stack","ML stack",map (fn s => sum(map (fn r => number r "stack_bytes") (List.filter selected (list s "stacks")))) samples)] else []
         fun less ((k,_,v),(k',_,v')) = sum v < sum v' orelse (sum v = sum v' andalso k < k')
         val ordered = sort less (regions @ stack)
@@ -87,8 +87,8 @@ struct
         val (factor,unit) = memUnit 1 ["bytes","KiB","MiB","GiB","TiB","PiB","EiB"]
         val (timeFactor,timeUnit) = if last >= 1000000000 then (1.0E9,"s") else if last >= 1000000 then (1.0E6,"ms") else if last >= 1000 then (1.0E3,"µs") else (1.0,"ns")
         fun memory n = fmt(real n / real factor) ^ " " ^ unit
-        val main = case strField metadata "main_source" of "" => "unknown source" | s => base s
-        val gc = case find metadata "gc_enabled" of SOME (Bool true) => "enabled" | SOME (Bool false) => "disabled" | _ => "unknown"
+        val main = base(string(get metadata "main_source"))
+        val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
         val caption = opt "caption" ("Region profile for " ^ main ^ " (GC " ^ gc ^ ")")
         val metricName = case metric of "total" => "Regions + ML stack" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Descriptors (separate)"
         val scopeName = case String.fields (fn c => c = #":") scope of

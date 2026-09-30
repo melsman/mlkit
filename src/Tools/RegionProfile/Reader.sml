@@ -16,32 +16,24 @@ struct
           val collections = ref NONE
           val complete = ref false
           fun noteCollections r =
-              case find r "gc_collections" of
-                  NONE => ()
-                | SOME _ =>
-                  let val n = uint r "gc_collections"
-                  in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
-                  end
+              let val n = uint r "gc_collections"
+              in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
+              end
           fun notePeak r =
-              case find r "max_pages" of
-                  NONE => ()
-                | SOME _ =>
-                  let val n = uint r "max_pages"
-                  in pagePeak := SOME (case !pagePeak of NONE => n | SOME p => IntInf.max(p,n))
-                  end
+              let val n = uint r "max_pages"
+              in pagePeak := SOME(case !pagePeak of NONE => n | SOME p => IntInf.max(p,n))
+              end
           fun require b msg = if b then () else raise Fail msg
           fun checkRegion r =
               let val () = app (fn k => ignore(uint r k))
                       ["pages","unused_tail","page_footprint","large_bytes","finite_bytes","descriptor_bytes","thread","binding"]
                   val h = valOf(!header)
                   val () = require (uint r "page_footprint" = uint r "pages" * uint h "page_bytes" - uint r "unused_tail") "inconsistent page accounting"
-                  val () = ignore(string(get r "unit"))
-              in case find r "g0_pages" of
-                     NONE => ()
-                   | SOME _ =>
-                     (app (fn k => ignore(uint r k)) ["g0_pages","g1_pages","g0_unused_tail","g1_unused_tail"];
-                      require (uint r "pages" = uint r "g0_pages" + uint r "g1_pages" andalso
-                               uint r "unused_tail" = uint r "g0_unused_tail" + uint r "g1_unused_tail") "inconsistent generation accounting")
+                  val () = app (fn k => ignore(string(get r k))) ["unit","source","name","region_type"]
+                  val () = require (List.exists (fn k => string(get r "kind") = k) ["finite","infinite"]) "invalid region kind"
+              in app (fn k => ignore(uint r k)) ["g0_pages","g1_pages","g0_unused_tail","g1_unused_tail"];
+                 require (uint r "pages" = uint r "g0_pages" + uint r "g1_pages" andalso
+                          uint r "unused_tail" = uint r "g0_unused_tail" + uint r "g1_unused_tail") "inconsistent generation accounting"
               end
           fun checkStack r =
               (app (fn k => ignore(uint r k)) ["active_bytes","finite_bytes","stack_bytes","thread"];
@@ -51,7 +43,7 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (List.exists (fn n => uint r "version" = n) [1,2,3]) "unsupported profile version";
+                   require (uint r "version" = 3) "unsupported profile version (expected version 3)";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
@@ -71,13 +63,12 @@ struct
                             else
                               let val () = notePeak r
                                   val () = noteCollections r
+                                  val () = require (not(null(!stacks))) "missing stack records"
                                   val () = app (fn key => ignore(uint r key)) ["time","frames","pages_visited"]
-                                  val old = uint h "version" < 3
-                                  val stackData = if old then Null else Arr(rev(!stacks))
-                                  val cache = case find r "cache_bytes" of SOME v => v | NONE => Num "0"
+                                  val () = ignore(uint r "cache_bytes")
                                   val extra = [("end_time",get r "time"),("frames",get r "frames"),
-                                               ("pages_visited",get r "pages_visited"),("cache_bytes",cache),
-                                               ("page_bytes",get h "page_bytes"),("regions",Arr(rev(!regions))),("stacks",stackData)]
+                                               ("pages_visited",get r "pages_visited"),("cache_bytes",get r "cache_bytes"),
+                                               ("page_bytes",get h "page_bytes"),("regions",Arr(rev(!regions))),("stacks",Arr(rev(!stacks)))]
                                   val fields = List.filter (fn (k,_) => not(List.exists (fn (n,_) => n = k) extra)) (fields begin)
                               in samples := Obj(fields @ extra) :: !samples; pending := NONE end
                          end
@@ -102,13 +93,11 @@ struct
                            NONE => result
                          | SOME p => map (fn s => Obj(fields s @ [("max_pages",Num(IntInf.toString p))])) result
           val h = valOf(!header)
-          val source = case find h "main_source" of
-                           NONE => Null
-                         | SOME v => (ignore(string v); v)
-          val gc = case find h "gc_enabled" of
-                       NONE => Null
-                     | SOME (Bool b) => Bool b
-                     | SOME _ => raise Fail "invalid GC enabled flag"
+          val source = get h "main_source"
+          val () = ignore(string source)
+          val gc = case get h "gc_enabled" of
+                       Bool b => Bool b
+                     | _ => raise Fail "invalid GC enabled flag"
           val metadata = Obj[("main_source",source),("gc_enabled",gc),
                              ("gc_collections",case !collections of NONE => Null | SOME n => Num(IntInf.toString n)),
                              ("complete",Bool(!complete))]

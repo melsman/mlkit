@@ -84,7 +84,6 @@ assert(el('chart').children.some(n=>n.textContent==='Memory (EiB)'));
 assert(el('chart').children.filter(n=>n.tag==='polygon').length===4);
 el('metric').value='large_bytes';draw();assert.deepStrictEqual(model().totals,[huge+51n,huge+51n]);
 el('metric').value='total';samples=[samples[0]];draw();assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
-samples[0].stacks=null;draw();assert(el('stack-note').textContent.includes('unavailable'));assert(!model().bands.some(b=>b.key==='stack'));
 const unitFixture=JSON.parse(JSON.stringify(samples[0]));
 unitFixture.stacks=[];unitFixture.regions=[unitFixture.regions[0]];
 unitFixture.regions[0].page_footprint='0';unitFixture.regions[0].finite_bytes='0';
@@ -98,4 +97,4 @@ for(const [time,unit] of [['500','ns'],['500000','µs'],['500000000','ms'],['500
  assert(el('caption').textContent.includes(' '+unit+' · '));
 }
 samples=[];draw();assert(el('caption').textContent.includes('No completed'));assert(el('export-svg').disabled);assert.throws(exportSvgDocument,/No completed/);
-console.log('Stacked graph: exact sums, ordering, colors, filters/migration, units, truncation, old/empty/single samples passed');
+console.log('Stacked graph: exact sums, ordering, colors, filters/migration, units, truncation, empty/single samples passed');

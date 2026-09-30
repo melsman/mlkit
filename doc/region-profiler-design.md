@@ -298,8 +298,8 @@ viewer are separate work.
   relevant REPL checks with GC. GC plus parallel execution remains excluded.
 - [x] **M6: Visualization.** Provide offline region/thread/worker views using
   the file record model and expose measurement/attribution semantics. The
-  offline workflow replaces the earlier HTTP viewer; no live-control socket
-  or external command listener is included.
+  workflow uses profile files and includes no live-control socket or external
+  command listener.
 
 - [x] **M7: Stacked region-and-stack graphs.** Add a graph showing all region
   bindings and the stack together as colored, stacked areas over time, with
@@ -326,8 +326,8 @@ viewer are separate work.
   Attribute shared regions once by lifetime owner, consistent with the existing
   stream, and make the treatment of persistent/global storage visible in
   filtered views. Extend the sampled stream to measure active ML stack storage;
-  version 3 adds per-thread active/finite/remaining-stack byte counts, while
-  older files display a stack-unavailable notice. Keep finite-region reservations
+  the current version-3 format includes per-thread active/finite/remaining-stack
+  byte counts. Reject earlier profile formats. Keep finite-region reservations
   in their region bands and exclude
   those bytes from the stack band; account for descriptors exactly once. Label
   the stack metric as active ML stack storage, not reserved OS stack capacity
