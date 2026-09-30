@@ -16,8 +16,6 @@ src/Runtime/build/
 
 /js/.cache/
 
-/test/region_profile/__pycache__/
-
 /src/Tools/RegionProfile/build/
 /src/Tools/RegionProfile/embed
 /src/Tools/RegionProfile/Html.sml
