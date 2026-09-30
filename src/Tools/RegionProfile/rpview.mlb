@@ -3,4 +3,5 @@ Json.sml
 Reader.sml
 Html.sml
 Page.sml
+Svg.sml
 Main.sml
