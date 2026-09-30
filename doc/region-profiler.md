@@ -315,19 +315,35 @@ runtime controls are tested separately from the offline viewer.
 make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
-python3 test/region_profile/check-live.py /path/to/instrumented/periodic
-python3 test/region_profile/check-viewer.py /path/to/profile.rp
-python3 test/region_profile/check-graph.py  # requires Node.js for graph-code tests
-python3 test/region_profile/check-svg.py
-python3 test/region_profile/check-sml-reader.py /path/to/profile.rp
+sh test/region_profile/check-live.sh /path/to/instrumented/periodic
+sh test/region_profile/check-viewer.sh /path/to/profile.rp
+sh test/region_profile/check-graph.sh /tmp/rp-graph-check  # open the emitted HTML in a browser
+sh test/region_profile/check-svg.sh
 ```
 
-The regression harness uses Python and, for graph-code tests, Node.js; neither
-is a dependency of the built tool. Scripts accept `MLKIT`, `REML`, `RPVIEW`, `CC`,
-and `PYTHON` overrides as appropriate. Tests run a relocated viewer with an empty
-executable search path to check that it needs no interpreter or external assets.
-The live test needs local socket permissions. The extended script prints all
-artifact paths. Build `runtimeSystemArPar.a` first for its optional Argobots test.
+The regression harness uses POSIX shell and standard tools such as `awk`,
+`sed`, `grep`, `sort`, and `cmp`; it requires neither Python nor Node.js.
+Scripts accept `MLKIT`, `REML`, `RPVIEW`, and `CC` overrides as appropriate.
+`check-records.sh` validates streams with the compiled SML reader and checks
+independent native-fixture accounting/lifecycle expectations with `awk`.
+Those native fixtures have small counters; exact uint64 boundary checks use
+literal expected strings in `check-viewer.sh`, avoiding awk floating-point
+rounding. That suite also covers malformed records, older stream versions,
+truncation, Unicode, injection escaping, metadata, relocation with an empty
+executable search path, and input/output aliases. The former general-purpose
+reference reader has been removed; the focused shell fixtures replace its
+differential test role.
+
+`check-svg.sh` checks the direct vector output and CLI defaults; if `xmllint`
+is installed, it additionally checks XML well-formedness. `check-graph.sh`
+generates a self-contained browser test page containing the original graph
+assertions and the current viewer script. Open the emitted `check-graph.html`
+to run the interactive model/export checks and see PASS or FAIL; generating
+the page alone does not run those assertions. No JavaScript command-line runtime
+is required. The live-control shell test builds a tiny C datagram sender with
+`CC`, since portable shell does not expose Unix datagrams. It needs local socket
+permissions. The extended script prints all artifact paths. Build
+`runtimeSystemArPar.a` first for its optional Argobots test.
 
 ARM64 checks cover controlled finite/page/large-object totals, reset and release,
 recursion, spilled results, exceptions, periodic tail loops, paused operation,
@@ -383,6 +399,7 @@ An isolated C fixture captured one region 1,000 times, writing to `/dev/null`:
 The last case represents about 32 MiB of region pages. These hot-list results do
 not cover arbitrary heap layouts or thread contention. They support retaining
 page traversal for now; maintaining a page count would not remove polling or
-serialization costs. Reproduce with `test/region_profile/benchmark.py` and
+serialization costs. The shell benchmark reports seven-run medians using
+POSIX `time -p`; its timing resolution is platform-dependent. Reproduce with `sh test/region_profile/benchmark.sh` and
 `src/Runtime/tests/region-profile-bench.c` before making that tradeoff on X64 or
 representative applications.

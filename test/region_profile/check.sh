@@ -4,7 +4,6 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 REML=${REML:-$ROOT/bin/reml-arm64}
 CC=${CC:-cc}
-PYTHON=${PYTHON:-python3}
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp.XXXXXX")
 echo "Region profiler test artifacts: $OUT"
@@ -13,20 +12,14 @@ export SML_LIB="$ROOT"
 $CC -O2 -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/region-profile.c" -o "$OUT/runtime"
 "$OUT/runtime" "$OUT/runtime.rp"
-"$PYTHON" - "$OUT/runtime.rp" <<'PYTEST'
-import json, sys
-rows = [json.loads(line) for line in open(sys.argv[1])]
-assert rows[-1]['max_pages'] == 7, rows[-1]
-assert all(r['max_pages'] == 2 for r in rows if r['type'] == 'sample_end')
-PYTEST
-"$PYTHON" "$ROOT/test/region_profile/check-reader.py" runtime "$OUT/runtime.rp"
+sh "$ROOT/test/region_profile/check-records.sh" runtime "$OUT/runtime.rp"
 $CC -c "$ROOT/test/region_profile/fixture.c" -o "$OUT/fixture.o"
 ar rcs "$OUT/librpfixture.a" "$OUT/fixture.o"
 # Copy sources so each run compiles fresh metadata without clearing user caches.
 cp "$ROOT/test/region_profile/regions.sml" "$ROOT/test/region_profile/regions.mlb" "$OUT/"
 "$REML" -no_par -region_profile -libdirs "$OUT" -libs rpfixture -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
 "$OUT/regions" -rp -rp_file "$OUT/regions.rp"
-"$PYTHON" "$ROOT/test/region_profile/check-reader.py" regions "$OUT/regions.rp"
+sh "$ROOT/test/region_profile/check-records.sh" regions "$OUT/regions.rp"
 cp "$ROOT/test/region_profile/basic.sml" "$ROOT/test/region_profile/basic.mlb" "$OUT/"
 "$MLKIT" -no_gc -o "$OUT/plain" "$OUT/basic.mlb" > "$OUT/plain.build" 2>&1
 "$OUT/plain" > "$OUT/plain.out"
@@ -56,22 +49,12 @@ printf '%s\n' "$ROOT/kitlib/region-profile.mlb" "$ROOT/basis/basis.mlb" "$OUT/ap
 "$MLKIT" -no_gc -region_profile -o "$OUT/api" "$OUT/api.mlb" > "$OUT/api.build" 2>&1
 "$OUT/api" -rp -rp_paused -rp_file "$OUT/api.rp" -- first -rp application > "$OUT/api.out"
 grep -qx 'first:-rp:application' "$OUT/api.out"
-"$PYTHON" "$ROOT/test/region_profile/check-reader.py" api "$OUT/api.rp"
+sh "$ROOT/test/region_profile/check-records.sh" api "$OUT/api.rp"
 (cd "$OUT" && ./api -- disabled > disabled.out && test ! -e profile.rp)
 cp "$ROOT/test/region_profile/graph.sml" "$OUT/"
 printf '%s\n' "$OUT/graph.sml" > "$OUT/graph.mlb"
 "$REML" -no_par -region_profile -o "$OUT/graph" "$OUT/graph.mlb" > "$OUT/graph.build" 2>&1
 "$OUT/graph" -rp -rp_interval 0 -rp_file "$OUT/graph.rp" > "$OUT/graph.out"
-"$PYTHON" - "$OUT/graph.rp" <<'CHECK_GRAPH'
-import json, sys
-rows = [json.loads(line) for line in open(sys.argv[1])]
-assert {'`alpha','`beta','`gamma'} <= {r['name'] for r in rows if r['type']=='region'}
-stacks = [r for r in rows if r['type']=='stack']
-assert len(stacks)==25
-# Each non-tail recursive activation adds a 64-byte native frame on ARM64.
-# Other backends must still grow monotonically through the recursive phase.
-assert all(a['active_bytes'] < b['active_bytes'] for a,b in zip(stacks[:23],stacks[1:24]))
-assert all(r['active_bytes']==r['stack_bytes']+r['finite_bytes'] for r in stacks)
-CHECK_GRAPH
+sh "$ROOT/test/region_profile/check-records.sh" graph "$OUT/graph.rp"
 "$RPVIEW" "$OUT/graph.rp" --output "$OUT/graph.html"
 echo 'Region profiler accounting and graph example checks passed'

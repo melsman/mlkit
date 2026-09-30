@@ -3,7 +3,6 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 CC=${CC:-cc}
-PYTHON=${PYTHON:-python3}
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp-extended.XXXXXX")
 echo "Extended profiler artifacts: $OUT"
@@ -15,7 +14,7 @@ printf '%s\n' "$OUT/periodic.sml" > "$OUT/periodic.mlb"
 "$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs periodic -o "$OUT/periodic" "$OUT/periodic.mlb" > "$OUT/periodic.build" 2>&1
 "$OUT/periodic" -rp -rp_interval 1ms -rp_report -rp_file "$OUT/periodic.rp" > "$OUT/periodic.out" 2> "$OUT/periodic.report"
 grep -q 'periodic ok' "$OUT/periodic.out"
-"$PYTHON" "$ROOT/test/region_profile/check-extended.py" periodic "$OUT/periodic.rp"
+sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/periodic.rp"
 "$OUT/periodic" -rp -rp_paused -rp_file "$OUT/paused.rp" > /dev/null
 ! grep -q '"type":"sample_begin"' "$OUT/paused.rp"
 for duration in -1 1 1.5ms 1us 999999999999999999999s; do
@@ -37,10 +36,10 @@ for mode in gc gengc parallel argobots; do
  printf '%s\n' "$OUT/$mode.sml" >> "$OUT/$mode.mlb"
  "$MLKIT" $flags -region_profile $libs -o "$OUT/$mode" "$OUT/$mode.mlb" > "$OUT/$mode.build" 2>&1
  "$OUT/$mode" -rp -rp_interval 1ms -rp_report -rp_file "$OUT/$mode.rp" $runtime > "$OUT/$mode.out" 2> "$OUT/$mode.report"
- "$PYTHON" "$ROOT/test/region_profile/check-extended.py" "$mode" "$OUT/$mode.rp"
+ sh "$ROOT/test/region_profile/check-records.sh" "$mode" "$OUT/$mode.rp"
 done
 "$OUT/gengc" -rp -rp_interval 0 -rp_gc_samples -only_major_gc -rp_file "$OUT/gengc-major.rp" > "$OUT/gengc-major.out"
-"$PYTHON" "$ROOT/test/region_profile/check-extended.py" gengc "$OUT/gengc-major.rp"
+sh "$ROOT/test/region_profile/check-records.sh" gengc "$OUT/gengc-major.rp"
 $CC -c "$ROOT/test/region_profile/foreign.c" -o "$OUT/foreign.o"
 ar rcs "$OUT/libforeign.a" "$OUT/foreign.o" "$OUT/periodic.o"
 cp "$ROOT/test/region_profile/foreign.sml" "$OUT/"
@@ -53,19 +52,16 @@ grep -q 'safe_point_timeout' "$OUT/foreign.rp"
 echo 'Blocked foreign call: cancellation, progress, and stream checks passed'
 # Invalid REPL runtime options must fail promptly, rather than disappear or
 # leave the compiler blocked opening a FIFO after its child exits.
-"$PYTHON" - "$MLKIT" <<'CHECK_REPL'
-import subprocess, sys
-result = subprocess.run([sys.argv[1], "-no_gc", "-region_profile", "-rp_paused"],
-                        input=":quit\n", text=True, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT, timeout=30)
-assert "require -rp" in result.stdout, result.stdout
-CHECK_REPL
+status=0
+printf ':quit\n' | sh "$ROOT/test/region_profile/with-timeout.sh" 30 "$MLKIT" -no_gc -region_profile -rp_paused > "$OUT/invalid-repl.log" 2>&1 || status=$?
+[ "$status" -ne 124 ]
+grep -q 'require -rp' "$OUT/invalid-repl.log"
 for mode in no_gc gc; do
  mkdir "$OUT/repl-$mode"
  (cd "$OUT/repl-$mode" && "$MLKIT" -"$mode" -region_profile -rp -rp_interval 0 -rp_report -rp_file "$OUT/repl-$mode.rp" < "$ROOT/test/region_profile/repl.cmd" > "$OUT/repl-$mode.log" 2>&1)
  grep -q 'repl profile ok' "$OUT/repl-$mode.log"
- "$PYTHON" "$ROOT/test/region_profile/check-extended.py" repl "$OUT/repl-$mode.rp"
+ sh "$ROOT/test/region_profile/check-records.sh" repl "$OUT/repl-$mode.rp"
 done
 "$RPVIEW" "$OUT/parallel.rp" --output "$OUT/profile.html"
-echo "Live socket test (requires local socket permissions): $PYTHON $ROOT/test/region_profile/check-live.py $OUT/periodic"
+echo "Live socket test (requires local socket permissions): sh $ROOT/test/region_profile/check-live.sh $OUT/periodic"
 echo 'Extended profiler checks passed'
