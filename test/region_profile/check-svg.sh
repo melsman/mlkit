@@ -36,6 +36,11 @@ sed 's/"reason":"explicit"/"reason":"after_gc"/g' "$ROOT/test/region_profile/svg
 svg
 [ "$(grep -c 'data-tick="gc"' "$OUT/lines")" -eq 2 ]
 grep 'data-tick="gc"' "$OUT/lines" | grep -q 'stroke="#dc2626"'
+sed '2s/"reason":"explicit"/"reason":"before_gc"/;11s/"reason":"explicit"/"reason":"after_gc"/' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+svg
+[ "$(grep -c 'data-gc="duration"' "$OUT/lines")" -eq 1 ]
+! grep -q 'data-tick="gc"' "$OUT/lines"
+contains 'width="880.00" height="4" fill="#dc2626"'
 cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
 svg
 contains 'Region profile for main.sml (GC enabled)'

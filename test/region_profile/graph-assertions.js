@@ -1,8 +1,10 @@
 const originalReasons=samples.map(s=>s.reason);
 samples[0].reason='before_gc';samples[1].reason='after_gc';draw();
-const gcTicks=el('chart').children.filter(n=>n.attrs['data-tick']==='gc');
-assert.equal(gcTicks.length,1);assert.equal(Number(gcTicks[0].attrs.x1),960);
-assert.equal(gcTicks[0].attrs.stroke,'#dc2626');
+const gcBars=el('chart').children.filter(n=>n.attrs['data-gc']==='duration');
+assert.equal(gcBars.length,1);assert.equal(gcBars[0].attrs.fill,'#dc2626');
+assert(Number(gcBars[0].attrs.width)>0);
+samples[0].reason='explicit';draw();
+assert.equal(el('chart').children.filter(n=>n.attrs['data-tick']==='gc').length,1);
 samples.forEach((s,i)=>s.reason=originalReasons[i]);draw();
 const snapshotTicks=el('chart').children.filter(n=>n.attrs['data-tick']==='snapshot');
 assert.equal(snapshotTicks.length,samples.length);

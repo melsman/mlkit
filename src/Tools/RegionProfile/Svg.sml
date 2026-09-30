@@ -176,12 +176,27 @@ struct
                     emit("<line data-tick=\"snapshot\" x1=\"" ^ fmt(x sample) ^
                          "\" x2=\"" ^ fmt(x sample) ^ "\" y1=\"" ^ fmt(top+589.0) ^
                          "\" y2=\"" ^ fmt(top+593.0) ^ "\" stroke=\"#2563eb\" stroke-width=\"2\"/>")) samples
-        val () = List.app (fn sample =>
-                    if get sample "reason" = Str "after_gc" then
-                      emit("<line data-tick=\"gc\" x1=\"" ^ fmt(x sample) ^
-                           "\" x2=\"" ^ fmt(x sample) ^ "\" y1=\"" ^ fmt(top+593.0) ^
-                           "\" y2=\"" ^ fmt(top+598.0) ^ "\" stroke=\"#dc2626\" stroke-width=\"2\"/>")
-                    else ()) samples
+        fun gcBars _ [] = ()
+          | gcBars pending (sample::rest) =
+            if get sample "reason" = Str "before_gc" then gcBars (SOME sample) rest
+            else if get sample "reason" = Str "after_gc" then
+              let val finish = number sample "time"
+                  val start = case pending of SOME prior => number prior "end_time" | NONE => finish
+                  val paired = case pending of
+                      SOME prior => get prior "gc_kind" = get sample "gc_kind" andalso start <= finish
+                    | NONE => false
+                  val left = 88.0+880.0*real(start-first)/real(IntInf.max(1,last-first))
+                  val () = if paired then
+                      emit("<rect data-gc=\"duration\" x=\"" ^ fmt left ^ "\" y=\"" ^ fmt(top+594.0) ^
+                           "\" width=\"" ^ fmt(Real.max(1.0,x sample-left)) ^ "\" height=\"4\" fill=\"#dc2626\"><title>GC interval: " ^
+                           fmt(real(finish-start)/timeFactor) ^ " " ^ timeUnit ^ "</title></rect>")
+                    else emit("<line data-tick=\"gc\" x1=\"" ^ fmt(x sample) ^
+                              "\" x2=\"" ^ fmt(x sample) ^ "\" y1=\"" ^ fmt(top+593.0) ^
+                              "\" y2=\"" ^ fmt(top+598.0) ^ "\" stroke=\"#dc2626\" stroke-width=\"2\"/>")
+              in gcBars NONE rest
+              end
+            else gcBars pending rest
+        val () = gcBars NONE samples
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
         val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
         val () = case pagePeak of NONE => () | SOME n =>

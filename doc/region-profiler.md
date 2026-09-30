@@ -282,10 +282,14 @@ including an explicit region parameter.
 The non-GC sampled Basis build writes per-file logs containing region-annotated
 code and region types, without region-flow graphs or program-point listings.
 
-Small blue ticks above the time axis mark every completed snapshot. Red ticks
-below it mark recorded GC completions, once per collection using the `after_gc`
-snapshot produced by `-rp_gc_samples`. Counts alone do not supply GC timestamps;
-profiles recorded without those snapshots cannot show individual GC marks.
+Small blue ticks above the time axis mark every completed snapshot. Thin red
+bars below it show GC intervals, from the end of a `before_gc` snapshot to the
+start of the matching `after_gc` snapshot recorded with `-rp_gc_samples`. These
+are observed intervals, including any intervening profiler overhead, rather
+than separate measurements of collector CPU time. A GC completion without a
+matching start remains a red tick. Very short bars have a minimum width of one
+SVG unit for visibility. Counts alone do not supply timestamps, so profiles
+recorded without GC snapshots cannot show individual GC intervals.
 Both HTML and SVG outputs include these marks.
 
 **Download SVG** saves the current graph as a standalone vector image. The
