@@ -6,11 +6,11 @@ RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-viewer.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
 cp "$RPVIEW" "$OUT/rpview"
-cp "$ROOT/test/region_profile/graph-fixture.rp" "$OUT/profile.rp"
+cp "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.rp"
 # Resolve optional native input paths before entering the relocated directory.
 for profile in "$@"; do PATH=/nonexistent "$OUT/rpview" "$profile" -o "$OUT/native.html" > /dev/null; done
 cd "$OUT"
-run() { PATH=/nonexistent ./rpview profile.rp -o profile.html "$@" >stdout 2>stderr; }
+run() { sh "$ROOT/test/region_profile/encode-fixture.sh" profile.rp binary.rp >stdout 2>stderr && PATH=/nonexistent ./rpview binary.rp -o profile.html "$@" >stdout 2>stderr; }
 reject() { if run "$@"; then echo 'Unexpected success' >&2; exit 1; fi; }
 run
 cp profile.rp original.rp
@@ -19,10 +19,10 @@ cp profile.html original.html
 grep -Fq '\u003c/script>' profile.html
 grep -Fq '"1152921504606846977"' profile.html
 ! grep -Eq 'fetch\(|<script src=' profile.html
-for alias in profile.rp hardlink.rp symlink.rp; do
-    case "$alias" in hardlink.rp) ln profile.rp "$alias";; symlink.rp) ln -s profile.rp "$alias";; esac
-    reject -o "$alias"
-    cmp original.rp profile.rp
+for alias in binary.rp hardlink.rp symlink.rp; do
+    case "$alias" in hardlink.rp) ln binary.rp "$alias";; symlink.rp) ln -s binary.rp "$alias";; esac
+    if PATH=/nonexistent ./rpview binary.rp -o "$alias" >stdout 2>stderr; then exit 1; fi
+    grep -q 'input and output' stderr
 done
 printf '{"type":' >> profile.rp
 run
@@ -38,8 +38,8 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 5; do
-    sed -e "s/\"version\": 4/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
+for version in 0 1 2 3 4 6; do
+    sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
 done
@@ -48,7 +48,7 @@ for invalid in '{"type":"header","type":"header"}' '{"type":"header","format":"m
     reject
 done
 cat > profile.rp <<'DATA'
-{"type":"header","format":"mlkit-region-profile","version":4,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
+{"type":"header","format":"mlkit-region-profile","version":5,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
 {"type":"session_end","gc_collections":1152921504606846979,"max_pages":0}
 DATA
 run

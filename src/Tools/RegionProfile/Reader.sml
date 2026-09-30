@@ -1,12 +1,8 @@
 structure ProfileReader =
 struct
   open ProfileJson
-  fun read path =
-      let val input = BinIO.openIn path
-          val bytes = (BinIO.inputAll input handle e => (BinIO.closeIn input; raise e))
-          val () = BinIO.closeIn input
-          val lines = String.fields (fn c => c = #"\n") (Byte.bytesToString bytes)
-          val header = ref NONE
+  fun fromRecords records =
+      let val header = ref NONE
           val definitions = ref (Binarymap.mkDict IntInf.compare)
           val pending = ref NONE
           val regions = ref []
@@ -62,7 +58,7 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (uint r "version" = 4) "unsupported profile version (expected version 4)";
+                   require (uint r "version" = 5) "unsupported profile version (expected version 5)";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
@@ -94,11 +90,7 @@ struct
                          end
                        else require (List.exists (fn t => t = k)
                               ["thread_start","thread_end","session_end","sample_skipped"]) ("unknown record: " ^ k))
-          (* The final split field is either empty or an uncommitted record. *)
-          fun consume [] = ()
-            | consume [_] = ()
-            | consume (line::rest) = (add(parse line); consume rest)
-          val () = consume lines
+          val () = app add records
           val () = require (Option.isSome(!header)) "missing profile header"
           fun partition _ [] acc = (rev acc,[])
             | partition time (m::ms) acc = if uint m "time" <= time then partition time ms (m::acc)
@@ -124,4 +116,5 @@ struct
       in {samples=result,metadata=metadata}
       end
 
+  fun read path = fromRecords(ProfileBinary.read path)
 end

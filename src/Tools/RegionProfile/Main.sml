@@ -14,8 +14,8 @@ struct
           fun natural s =
               if size s > 0 andalso List.all Char.isDigit (explode s) then Int.fromString s else NONE
           fun help () =
-              (print "Usage: rpview [profile.rp] [-o output.html|output.svg] [options]\n\
-                     \  --format html|svg       Infer from output extension by default\n\
+              (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
+                     \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --regions N             Largest regions to show (default 9; 0 = all)\n\
                      \  --metric NAME           total (default), pages, page_footprint,\n\
@@ -34,8 +34,8 @@ struct
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
-              if value = "html" orelse value = "svg" then (format := value; options rest)
-              else raise Fail "format must be html or svg"
+              if value = "html" orelse value = "svg" orelse value = "json" then (format := value; options rest)
+              else raise Fail "format must be html, svg or json"
             | options ("--caption"::value::rest) = (setting "caption" (ProfileJson.Str value); options rest)
             | options ("--regions"::value::rest) =
               (case natural value of SOME n => (setting "limit" (ProfileJson.Num(Int.toString n)); options rest)
@@ -67,12 +67,19 @@ struct
               else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
               else (file := value; haveFile := true; options rest)
           val () = options args
-          val svg = if !format = "" then String.isSuffix ".svg" (String.map Char.toLower (!output)) else !format = "svg"
-          val () = if svg andalso not(!haveOutput) then output := "profile.svg" else ()
+          val selected = if !format <> "" then !format
+                         else if String.isSuffix ".svg" (String.map Char.toLower (!output)) then "svg"
+                         else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
+                                 String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
+                         else "html"
+          val () = if !haveOutput then ()
+                   else if selected = "svg" then output := "profile.svg"
+                   else if selected = "json" then output := "-" else ()
           val inputId = OS.FileSys.fileId (!file)
-          val same = (inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false
+          val same = !output <> "-" andalso ((inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false)
           val () = if same then raise Fail "input and output must be different files" else ()
-          val profile = ProfileReader.read (!file)
+          val records = ProfileBinary.read (!file)
+          val profile = ProfileReader.fromRecords records
           val config = ProfileJson.Obj (!settings)
           val () = case ProfileJson.find config "scope" of
                        SOME (ProfileJson.Str scope) =>
@@ -85,10 +92,11 @@ struct
                            in if List.exists matches rows then () else raise Fail ("scope not present in profile: " ^ scope)
                            end
                      | _ => ()
-          val page = if svg then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
-          val out = TextIO.openOut (!output)
+          val page = if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+                     else if selected = "svg" then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
+          val out = if !output = "-" then TextIO.stdOut else TextIO.openOut (!output)
           val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))
-      in TextIO.closeOut out; print(!output ^ "\n")
+      in if !output = "-" then TextIO.flushOut out else (TextIO.closeOut out; print(!output ^ "\n"))
       end
 end
 fun profileError message =

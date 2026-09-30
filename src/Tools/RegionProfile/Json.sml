@@ -114,24 +114,27 @@ struct
           val () = space ()
       in if !pos = len then result else error "trailing input" end
 
-  fun quote s =
+  fun quoteMode html s =
       let fun escape c =
               case c of
                   #"\"" => "\\\"" | #"\\" => "\\\\" | #"\n" => "\\n"
-                | #"\r" => "\\r" | #"\t" => "\\t" | #"<" => "\\u003c"
+                | #"\r" => "\\r" | #"\t" => "\\t" | #"<" => if html then "\\u003c" else "<"
                 | _ => if ord c < 32 then
                          let val h = Int.fmt StringCvt.HEX (ord c)
                          in "\\u00" ^ (if size h = 1 then "0" else "") ^ h end
                        else str c
       in "\"" ^ String.translate escape s ^ "\"" end
-  fun encode exact value =
+  fun encodeMode html exact value =
       case value of
-          Obj fields => "{" ^ String.concatWith "," (map (fn (k,v) => quote k ^ ":" ^ encode exact v) fields) ^ "}"
-        | Arr values => "[" ^ String.concatWith "," (map (encode exact) values) ^ "]"
-        | Str s => quote s
-        | Num s => if exact then quote s else s
+          Obj fields => "{" ^ String.concatWith "," (map (fn (k,v) => quoteMode html k ^ ":" ^ encodeMode html exact v) fields) ^ "}"
+        | Arr values => "[" ^ String.concatWith "," (map (encodeMode html exact) values) ^ "]"
+        | Str s => quoteMode html s
+        | Num s => if exact then quoteMode html s else s
         | Bool b => Bool.toString b
         | Null => "null"
+  val quote = quoteMode true
+  val encode = encodeMode true
+  val encodeJson = encodeMode false false
   fun fields (Obj xs) = xs | fields _ = error "expected object"
   fun find value name = Option.map #2 (List.find (fn (k,_) => k = name) (fields value))
   fun get value name = case find value name of SOME v => v | NONE => error ("missing " ^ name)

@@ -25,9 +25,9 @@ _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "profiler requests need lock-free sign
 __attribute__((weak)) const volatile uintptr_t mlkit_rp_capable = 0;
 __attribute__((weak)) const char * const *mlkit_rp_main_source_slot;
 #ifdef ENABLE_GC
-#define RP_GC_ENABLED "true"
+#define RP_GC_ENABLED 1
 #else
-#define RP_GC_ENABLED "false"
+#define RP_GC_ENABLED 0
 #endif
 static uint64_t gc_collections;
 void mlkit_rp_gc_completed(void) { gc_collections++; }
@@ -177,6 +177,42 @@ static void set_anchor(Participant *p, uintptr_t *base, const uintptr_t *map) {
   p->worker = -1;
 #endif
 }
+/* Portable wire format: magic/version, then LE uint32 payload length, byte tag,
+ * fixed-order LE uint64 counters, and LE uint32-length-prefixed byte strings.
+ * Never serialize native structs. One buffered stdio write per record. */
+static unsigned char *wire;
+static size_t wire_capacity;
+static void little_endian(unsigned char *p, uint64_t n, size_t bytes) {
+  for (size_t i = 0; i < bytes; i++, n >>= 8) p[i] = (unsigned char)n;
+}
+static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
+                        const char *const *strings, size_t nstrings, const size_t *lengths) {
+  size_t size = 1 + count*8;
+  for (size_t i = 0; i < nstrings; i++) {
+    size_t n = lengths ? lengths[i] : strlen(strings[i]);
+    if (n > UINT32_MAX-4 || size > UINT32_MAX-4-n) fail("profile record too large");
+    size += 4+n;
+  }
+  if (size > SIZE_MAX-4) fail("profile record too large");
+  if (size+4 > wire_capacity) {
+    unsigned char *p = realloc(wire,size+4);
+    if (!p) fail("out of memory");
+    wire = p; wire_capacity = size+4;
+  }
+  little_endian(wire,size,4); wire[4] = tag;
+  size_t offset = 5;
+  for (size_t i = 0; i < count; i++, offset += 8) little_endian(wire+offset,values[i],8);
+  for (size_t i = 0; i < nstrings; i++) {
+    size_t n = lengths ? lengths[i] : strlen(strings[i]);
+    little_endian(wire+offset,n,4); offset += 4;
+    memcpy(wire+offset,strings[i],n); offset += n;
+  }
+  if (fwrite(wire,1,size+4,output) != size+4) fail("cannot write profile record");
+}
+#define NUMS(...) (const uint64_t[]){__VA_ARGS__}, sizeof((const uint64_t[]){__VA_ARGS__})/sizeof(uint64_t)
+#define STRS(...) (const char *const[]){__VA_ARGS__}, sizeof((const char *const[]){__VA_ARGS__})/sizeof(char *), NULL
+#define NO_STRINGS NULL, 0, NULL
+
 void mlkit_rp_thread_create(Context ctx, int id) {
   if (!mlkit_rp_enabled) return;
   LOCK();
@@ -184,7 +220,7 @@ void mlkit_rp_thread_create(Context ctx, int id) {
   *p = (Participant){.ctx=ctx,.id=(uint64_t)id,.worker=-1,.cpu=-1,.stable=3,.next=participants};
   participants = p;
   await_output();
-  if (output) fprintf(output, "{\"type\":\"thread_start\",\"thread\":%d,\"time\":%" PRIu64 "}\n", id, timestamp());
+  if (output) emit_record(2,NUMS(id,timestamp()),NO_STRINGS);
   UNLOCK();
 }
 void mlkit_rp_thread_enter(Context ctx) {
@@ -204,7 +240,7 @@ void mlkit_rp_thread_exit(Context ctx) {
   /* No ML frame remains after the closure returns. */
   *link = p->next;
   await_output();
-  if (output) fprintf(output, "{\"type\":\"thread_end\",\"thread\":%" PRIu64 ",\"time\":%" PRIu64 "}\n", p->id, timestamp());
+  if (output) emit_record(3,NUMS(p->id,timestamp()),STRS(""));
   free(p);
   UNLOCK();
 }
@@ -221,15 +257,6 @@ uintptr_t mlkit_rp_wait_leave(Context ctx) {
   Participant *p = participant(ctx);
   await_release(); p->stable = 0;
   UNLOCK(); return 1;
-}
-static void quoted_bytes(const char *s, size_t n) {
-  fputc('"', output);
-  for (const unsigned char *p = (const unsigned char *)s; n; p++, n--) {
-    if (*p == '"' || *p == '\\') fprintf(output, "\\%c", *p);
-    else if (*p < 32 || *p >= 127) fprintf(output, "\\u%04x", *p);
-    else fputc(*p, output);
-  }
-  fputc('"', output);
 }
 /* The handler only requests work. It never touches an ML stack or stdio. */
 static void request_sample(int sig) { (void)sig; mlkit_rp_pending = 1; }
@@ -273,10 +300,8 @@ void mlkit_rp_close(void) {
             sequence, total_pages, total_frames, coalesced, skipped, capture_ns,
             traversal_ns, serialization_ns, wait_ns, cpu_ns, max_delay_ns, peak_bytes, atomic_load(&maximum_pages));
   for (Participant *p = participants; p; p = p->next)
-    fprintf(output,"{\"type\":\"thread_end\",\"thread\":%" PRIu64
-            ",\"time\":%" PRIu64 ",\"reason\":\"process_exit\"}\n",p->id,timestamp());
-  fprintf(output,"{\"type\":\"session_end\",\"time\":%" PRIu64
-          ",\"samples\":%" PRIu64 ",\"max_pages\":%" PRIu64 ",\"gc_collections\":%" PRIu64 "}\n",timestamp(),sequence,atomic_load(&maximum_pages),gc_collections);
+    emit_record(3,NUMS(p->id,timestamp()),STRS("process_exit"));
+  emit_record(4,NUMS(timestamp(),sequence,atomic_load(&maximum_pages),gc_collections),NO_STRINGS);
   FILE *f = output;
   output = NULL;
   if (fclose(f)) fail("cannot close profile output");
@@ -295,15 +320,14 @@ void mlkit_rp_init(void) {
 #ifndef ENABLE_GC
   if (mlkit_rp_gc_samples) fail("-rp_gc_samples requires a GC runtime");
 #endif
-  output = fopen(mlkit_rp_filename, "w");
+  output = fopen(mlkit_rp_filename, "wb");
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  fprintf(output, "{\"type\":\"header\",\"format\":\"mlkit-region-profile\",\"version\":4,\"time_unit\":\"ns\",\"size_unit\":\"bytes\",\"word_bytes\":%zu,\"page_bytes\":%zu,\"gc_enabled\":%s,\"main_source\":",
-          sizeof(uintptr_t), sizeof(Rp), RP_GC_ENABLED);
+  static const unsigned char magic[] = {'M','L','K','R','P',0,5,0};
+  if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
-  quoted_bytes(main_source,strlen(main_source));
-  fputs("}\n",output);
+  emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
   if (fflush(output)) fail("cannot write profile header");
   if (mlkit_rp_interval_us) {
     struct sigaction previous_alarm;
@@ -398,14 +422,8 @@ static void define_record(Record *r) {
   r->definition = ++definition_count;
   Definition *d = checked_alloc(sizeof(*d));
   *d = (Definition){*r,definitions}; definitions = d;
-  fprintf(output,"{\"type\":\"binding\",\"definition\":%" PRIu64 ",\"unit\":",r->definition);
-  quoted_bytes(r->unit,strlen(r->unit));
-  fprintf(output,",\"binding\":%" PRIu64 ",\"name\":",r->id);
-  quoted_bytes(r->name,strlen(r->name));
-  fputs(",\"source\":",output);
-  quoted_bytes(r->source,strlen(r->source));
-  fprintf(output,",\"kind\":\"%s\",\"region_type\":\"%s\"}\n",
-          r->infinite ? "infinite" : "finite",run_type_name(r->run_type));
+  emit_record(5,NUMS(r->definition,r->id),
+              STRS(r->unit,r->name,r->source,r->infinite ? "infinite" : "finite",run_type_name(r->run_type)));
 }
 static uint64_t count_cache(Rp *p) {
   uint64_t count = 0;
@@ -438,19 +456,9 @@ static uintptr_t global_type(Region r) {
   return 0;
 }
 static void write_record(const Record *r) {
-  uint64_t pages = r->pages, tail = r->tail, big = r->big;
-  uint64_t finite = r->finite, desc = r->desc;
-  fprintf(output, "{\"type\":\"region\",\"sample\":%" PRIu64 ",\"thread\":%" PRIu64
-          ",\"worker\":%d,\"cpu\":%d,\"definition\":%" PRIu64,
-          sequence, r->thread, r->worker, r->cpu, r->definition);
-  fprintf(output, ",\"g0_pages\":%" PRIu64 ",\"g0_unused_tail\":%" PRIu64
-          ",\"g1_pages\":%" PRIu64 ",\"g1_unused_tail\":%" PRIu64,
-          r->g0_pages,r->g0_tail,r->g1_pages,r->g1_tail);
-  fprintf(output, ",\"pages\":%" PRIu64
-          ",\"unused_tail\":%" PRIu64 ",\"page_footprint\":%" PRIu64
-          ",\"large_bytes\":%" PRIu64 ",\"finite_bytes\":%" PRIu64
-          ",\"descriptor_bytes\":%" PRIu64 "}\n", pages, tail,
-          pages*sizeof(Rp)-tail, big, finite, desc);
+  emit_record(7,NUMS(sequence,r->thread,(uint64_t)(int64_t)r->worker,(uint64_t)(int64_t)r->cpu,
+                    r->definition,r->g0_pages,r->g0_tail,r->g1_pages,r->g1_tail,
+                    r->pages,r->tail,r->pages*sizeof(Rp)-r->tail,r->big,r->finite,r->desc),NO_STRINGS);
 }
 /* Validate all continuation chains before recording any bytes. A callback is
  * deliberately not a quiescent foreign boundary; timer requests remain pending. */
@@ -573,21 +581,17 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
   serializing = 1;
   UNLOCK();
   for (size_t i = 0; i < record_count; i++) define_record(&records[i]);
-  fprintf(output, "{\"type\":\"sample_begin\",\"sample\":%" PRIu64 ",\"time\":%" PRIu64
-          ",\"requested_time\":%" PRIu64 ",\"wait_ns\":%" PRIu64
-          ",\"gc_kind\":\"%s\",\"reason\":\"%s\"}\n", sequence, start, request_time, sample_wait,
-          mlkit_rp_gc_major < 0 ? "none" : mlkit_rp_gc_major ? "major" : "minor", op == 0 ? "start" : op == 1 ? "pause" : op == 3 ? "periodic" : op == 4 ? "before_gc" : op == 5 ? "after_gc" : "explicit");
+  emit_record(6,NUMS(sequence,start,request_time,sample_wait),
+              STRS(mlkit_rp_gc_major < 0 ? "none" : mlkit_rp_gc_major ? "major" : "minor",
+                   op == 0 ? "start" : op == 1 ? "pause" : op == 3 ? "periodic" : op == 4 ? "before_gc" : op == 5 ? "after_gc" : "explicit"));
   for (size_t i = 0; i < record_count; i++) write_record(&records[i]);
   for (size_t i = 0; i < stack_count; i++) {
     const StackRecord *r = &stacks[i];
-    fprintf(output,"{\"type\":\"stack\",\"sample\":%" PRIu64
-            ",\"thread\":%" PRIu64 ",\"worker\":%d,\"cpu\":%d,\"active_bytes\":%" PRIu64
-            ",\"finite_bytes\":%" PRIu64 ",\"stack_bytes\":%" PRIu64 "}\n",
-            sequence,r->thread,r->worker,r->cpu,r->active,r->finite,r->active-r->finite);
+    emit_record(8,NUMS(sequence,r->thread,(uint64_t)(int64_t)r->worker,(uint64_t)(int64_t)r->cpu,
+                      r->active,r->finite,r->active-r->finite),NO_STRINGS);
   }
-  fprintf(output, "{\"type\":\"sample_end\",\"sample\":%" PRIu64
-          ",\"time\":%" PRIu64 ",\"frames\":%" PRIu64 ",\"pages_visited\":%" PRIu64 ",\"cache_pages\":%" PRIu64 ",\"cache_bytes\":%" PRIu64 ",\"max_pages\":%" PRIu64 ",\"gc_collections\":%" PRIu64 "}\n",
-          sequence, timestamp(), frames, pages, cached_pages, cached_pages*sizeof(Rp), atomic_load(&maximum_pages),gc_collections);
+  emit_record(9,NUMS(sequence,timestamp(),frames,pages,cached_pages,cached_pages*sizeof(Rp),
+                    atomic_load(&maximum_pages),gc_collections),NO_STRINGS);
   if (ferror(output)) fail("cannot write profile output");
   if (fflush(output)) fail("cannot flush profile output");
   LOCK();
@@ -637,8 +641,7 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
         /* Unknown foreign calls are not quiescent: never inspect their stacks. */
         if (op != 3) fail("cannot complete snapshot: a thread did not reach a safe point");
         skipped++;
-        fprintf(output,"{\"type\":\"sample_skipped\",\"time\":%" PRIu64
-                ",\"reason\":\"safe_point_timeout\"}\n",timestamp());
+        emit_record(10,NUMS(timestamp()),STRS("safe_point_timeout"));
         UNLOCK(); return 1;
       }
       progress();
@@ -687,9 +690,8 @@ uintptr_t mlkit_rp_mark(String label) {
   LOCK();
   await_output();
   if (!output) { UNLOCK(); return 1; }
-  fprintf(output, "{\"type\":\"mark\",\"time\":%" PRIu64 ",\"label\":", timestamp());
-  quoted_bytes(label->data, sizeStringDefine(label));
-  fputs("}\n", output);
+  emit_record(11,NUMS(timestamp()),(const char *const[]){label->data},1,
+              (const size_t[]){sizeStringDefine(label)});
   if (ferror(output)) fail("cannot write profile output");
   UNLOCK();
   return 1;

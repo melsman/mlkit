@@ -253,7 +253,7 @@ flushed prefix while the process is running. Record completeness and timing
 information so delayed or incomplete captures cannot masquerade as exact
 simultaneous snapshots.
 
-The current JSON-lines format is version 4. Emit immutable binding definitions
+The current binary format is version 5. Emit immutable binding definitions
 once on first observation, before the first snapshot referencing them. Each
 session-local definition ID identifies the unit, source binding number, source
 filename, explicit name, finite/infinite kind, and inferred region type. Snapshot
@@ -262,6 +262,12 @@ Definitions can appear between snapshots as new bindings are discovered, includi
 in later REPL phrases. Do not pre-scan loaded code or repeat static strings in
 measurements. Readers resolve definitions incrementally and diagnose missing or
 duplicate IDs; different metadata variants of a source binding have distinct IDs.
+Encode each record with a 32-bit payload length, byte tag, fixed-order 64-bit
+integers, and length-prefixed byte strings. Use explicit little-endian encoding,
+never native C layouts, and preserve uint64 precision and marker NUL bytes.
+Buffer each record and write through stdio without decimal formatting. Keep
+JSON as an `rpview --format json` inspection output, preserving raw record order
+and definition references. The current reader rejects earlier encodings.
 
 Extend the HTML viewer with combined, colored region-and-stack graphs (M7).
 Keep `rp2ps` unchanged. A separate future integration could add a new input path
@@ -336,7 +342,7 @@ viewer are separate work.
   Attribute shared regions once by lifetime owner, consistent with the existing
   stream, and make the treatment of persistent/global storage visible in
   filtered views. Extend the sampled stream to measure active ML stack storage;
-  the current version-4 format includes per-thread active/finite/remaining-stack
+  the current version-5 format includes per-thread active/finite/remaining-stack
   byte counts. Reject earlier profile formats. Keep finite-region reservations
   in their region bands and exclude
   those bytes from the stack band; account for descriptors exactly once. Label

@@ -47,7 +47,8 @@ printf '%s\n' "$ROOT/basis/basis.mlb" "$ROOT/basis/par.mlb" "$OUT/foreign.sml" >
 "$MLKIT" -no_gc -par -region_profile -libdirs "$OUT" -libs foreign -o "$OUT/foreign" "$OUT/foreign.mlb" > "$OUT/foreign.build" 2>&1
 "$OUT/foreign" -rp -rp_interval 1ms -rp_report -rp_file "$OUT/foreign.rp" > "$OUT/foreign.out" 2> "$OUT/foreign.report"
 grep -q 'foreign wait ok' "$OUT/foreign.out"
-grep -q 'safe_point_timeout' "$OUT/foreign.rp"
+"$RPVIEW" "$OUT/foreign.rp" --format json > "$OUT/foreign.json"
+grep -q 'safe_point_timeout' "$OUT/foreign.json"
 "$RPVIEW" "$OUT/foreign.rp" --output "$OUT/foreign.html" > /dev/null
 echo 'Blocked foreign call: cancellation, progress, and stream checks passed'
 # Invalid REPL runtime options must fail promptly, rather than disappear or

@@ -4,8 +4,8 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-svg.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
-cp "$ROOT/test/region_profile/svg-fixture.rp" "$OUT/profile.rp"
-run() { PATH=/nonexistent "$RPVIEW" "$OUT/profile.rp" -o "$OUT/graph.svg" "$@" > "$OUT/stdout" 2> "$OUT/stderr"; }
+cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
+run() { sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/profile.rp" "$OUT/input.rp"; PATH=/nonexistent "$RPVIEW" "$OUT/input.rp" -o "$OUT/graph.svg" "$@" > "$OUT/stdout" 2> "$OUT/stderr"; }
 svg() {
     run "$@"
     awk '{gsub(/></,">\n<"); print}' "$OUT/graph.svg" > "$OUT/lines"
@@ -54,12 +54,12 @@ reject --scope core:1
 reject --scope thread:999
 reject --format pdf
 reject --caption
-reject -o "$OUT/profile.rp"
+reject -o "$OUT/input.rp"
 # Retain one committed snapshot.
-sed '/"type":"sample_begin","sample":2/,$d' "$ROOT/test/region_profile/svg-fixture.rp" > "$OUT/profile.rp"
+sed '/"type":"sample_begin","sample":2/,$d' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
 svg
 contains 'single snapshot'
-sed -n '1p' "$ROOT/test/region_profile/svg-fixture.rp" > "$OUT/profile.rp"
+sed -n '1p' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
 reject
 grep -q 'no completed snapshots' "$OUT/stderr"
 echo 'SML SVG: filters, aggregation, colours, units, caption, CLI defaults and empty/single profiles passed'

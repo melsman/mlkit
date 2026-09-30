@@ -1,0 +1,7 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/BINARYMAP.sig
+$(SML_LIB)/basis/Binarymap.sml
+../../src/Tools/RegionProfile/Json.sml
+../../src/Tools/RegionProfile/Binary.sml
+../../src/Tools/RegionProfile/Reader.sml
+encode-fixture.sml

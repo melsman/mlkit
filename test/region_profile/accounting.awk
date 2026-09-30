@@ -67,7 +67,7 @@ f["type"]=="sample_end" {
 }
 f["type"]=="thread_start" { starts[f["thread"]]++; startCount++ }
 f["type"]=="thread_end" { ends[f["thread"]]=1 }
-f["type"]=="mark" && mode=="api" { need(f["label"]=="quote\\\" slash\\\\ newline\\u000a nul\\u0000tail","marker escaping"); markSeen=1 }
+f["type"]=="mark" && mode=="api" { need(f["label"]=="quote\\\" slash\\\\ newline\\n nul\\u0000tail","marker escaping"); markSeen=1 }
 f["type"]=="session_end" { session=1; count=f["gc_collections"]; maxPages=f["max_pages"] }
 END {
     if(failed) exit 1

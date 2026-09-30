@@ -6,7 +6,8 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=${1:-$(mktemp -d "${TMPDIR:-/tmp}/rp-graph.XXXXXX")}
 mkdir -p "$OUT"
-"$RPVIEW" "$ROOT/test/region_profile/graph-fixture.rp" -o "$OUT/profile.html" > /dev/null
+sh "$ROOT/test/region_profile/encode-fixture.sh" "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.rp"
+"$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html" > /dev/null
 {
     printf '%s\n' '<!doctype html><meta charset="utf-8"><title>Region graph regression</title><pre id="result">RUNNING</pre><script>'
     printf '%s\n' 'const resultNode=window.document.getElementById("result");' 'try {'

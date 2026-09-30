@@ -129,8 +129,8 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is version 4 JSON Lines; `rpview` accepts only this current format and
-rejects other version numbers. Each captured thread has a `stack` record with
+Output is a compact version-5 binary stream; `rpview` accepts only this current format and
+rejects JSON input and other version numbers. Each captured thread has a `stack` record with
 `active_bytes`, `finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`.
 The active span runs from the innermost captured ML frame through the outermost
 ML return slot, including alignment and spilled-result reservations. It excludes
@@ -146,19 +146,46 @@ A region measurement contains only its `definition` reference, sample/thread/
 worker/CPU identities, and changing storage counters. Different metadata for the
 same source binding receives a separate definition; source binding identities
 still control graph grouping. `rpview` resolves references and rejects undefined
-IDs, duplicate definitions, and inline static metadata in measurements.
+IDs and duplicate definitions. Static metadata has no slot in measurement records.
 Only the current format is supported. Relink profiled executables with the
 current runtime and regenerate data files; native compiler frame maps are unchanged.
 
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
+The file starts with eight bytes: `4d 4c 4b 52 50 00 05 00` (`MLKRP`, NUL,
+version 5, NUL). Each record starts with a little-endian 32-bit payload length,
+followed by a one-byte tag and its fixed-order fields. Numeric fields are
+little-endian 64-bit integers; worker/CPU `-1` uses the all-ones representation.
+Strings are byte sequences with a little-endian 32-bit length, preserving
+embedded NULs in markers. The format uses neither native structs nor pointers,
+so decoding is independent of architecture, alignment and host byte order.
+The runtime buffers one encoded record and writes it through buffered stdio.
+Tags and field order are specified by `ProfileBinary.schema` in
+`src/Tools/RegionProfile/Binary.sml` and the matching runtime writer.
+
+For readable output, dump the decoded records as JSON Lines:
+
+```sh
+rpview profile.rp --format json                 # stdout
+rpview profile.rp -o profile.json               # file; infer format
+rpview profile.rp --format json -o -            # explicit stdout
+```
+
+JSON output preserves the record sequence, definition IDs, timestamps, markers,
+thread events and exact decimal integers; it does not apply graph filters or
+expand definitions into every measurement. A partial final binary record is
+ignored. Complete records from an unfinished sample remain visible in the dump,
+but that sample is excluded from graphs. JSON is an inspection output, not a
+second supported input format. Do not parse large counters as floating-point
+numbers in external tools.
+
 The stream preserves unsigned 64-bit counters. The viewer transports them as
 decimal strings and sums them with `BigInt`; only chart coordinates use floating
 point.
 
 `rpview` is a compiled Standard ML program in `src/Tools/RegionProfile`.
-It reads a profile file and writes one self-contained HTML file. Both building
+It reads a binary profile file and writes HTML, SVG, or decoded JSON Lines. Both building
 and running the tool require no Python. The HTML/JavaScript template is embedded
 in the executable at build time by a small SML helper; the installed executable
 needs no template files. There is no HTTP server, live polling, or network access
@@ -229,7 +256,7 @@ includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
 slots and types. Profiling builds now use cache suffix `_RP8` (including the
 X64 profiler-call alignment fix). Compile programs and their dependencies
-with the current compiler and runtime to obtain version-4 profiles. No object scans or
+with the current compiler and runtime to obtain version-5 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 **Download SVG** saves the current graph as a standalone vector image. The
@@ -321,6 +348,7 @@ socket or external command listener.
 make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
+sh test/region_profile/check-binary.sh
 sh test/region_profile/check-viewer.sh /path/to/profile.rp
 sh test/region_profile/check-graph.sh /tmp/rp-graph-check  # open the emitted HTML in a browser
 sh test/region_profile/check-svg.sh
@@ -336,6 +364,13 @@ literal expected strings in `check-viewer.sh`, avoiding awk floating-point
 rounding. That suite also covers malformed records, unsupported format versions,
 truncation, Unicode, injection escaping, metadata, relocation with an empty
 executable search path, and input/output aliases.
+
+`check-binary.sh` uses hand-encoded wire bytes to check little-endian decoding,
+uint64 limits, JSON/stdout output, every truncation point in a final record,
+and malformed headers, tags, lengths and booleans. Editable JSON test fixtures
+are converted by the test-only SML encoder (`encode-fixture.sh`); `rpview` itself
+accepts only binary files. The encoder uses `MLKIT` and can be overridden with
+`RPENCODER` for a prebuilt executable.
 
 `check-svg.sh` checks the direct vector output and CLI defaults; if `xmllint`
 is installed, it additionally checks XML well-formedness. `check-graph.sh`
