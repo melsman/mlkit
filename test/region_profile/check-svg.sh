@@ -20,6 +20,8 @@ svg
 count 4
 contains 'Region profile for main.sml (GC enabled)'
 contains 'Metric: Regions + ML stack · View: All threads · Garbage collections: 17'
+contains 'Samples: 2'
+[ "$(grep -c 'Sampled maximum:' "$OUT/lines")" -eq 1 ]
 contains 'Memory (EiB)'
 grep '<polygon ' "$OUT/lines" | sed 's/ points=.*//' > "$OUT/colors"
 [ "$(sed 's/.*fill="//' "$OUT/colors" | sort -u | wc -l | tr -d ' ')" -eq 4 ]

@@ -126,7 +126,7 @@ function draw(){
  for(const v of axisTicks(0,Number(max)/Number(factor))){const yy=y(v*Number(factor));svg('line',{x1:74,x2:80,y1:yy,y2:yy,stroke:'#334155','data-tick':'memory'});svg('text',{x:70,y:yy+4,'text-anchor':'end',class:'axis'},tickLabel(v));}
  for(const t of axisTicks(Number(first)/timeFactor,Number(last)/timeFactor)){const xx=80+880*(t*timeFactor-Number(first))/Number(span);svg('line',{x1:xx,x2:xx,y1:593,y2:599,stroke:'#334155','data-tick':'time'});svg('text',{x:xx,y:616,'text-anchor':'middle',class:'axis'},tickLabel(t));}
  svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:648,'text-anchor':'middle',class:'axis'},'Elapsed time ('+timeUnit+')'+(samples.length===1?' · single snapshot':''));
- svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+memoryText(peak));
+ svg('text',{x:960,y:22,'text-anchor':'end',class:'axis','data-summary':'maximum'},'Sampled maximum: '+memoryText(peak));
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:593,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
  const groups=new Map(),groupLabels=new Map(),groupDetails=new Map();for(const r of s.regions.filter(selected)){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);if(el('group').value==='region'&&k!=='Other')groupDetails.set(k,detail(r));groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
@@ -165,8 +165,10 @@ function exportSvgDocument(){
  add(root,'style',{},'.axis{font:16px Arial,sans-serif;fill:#334155}');
  let top=paragraph(el('profile-title').textContent,16,34,width-32,26,'bold');
  const option=id=>el(id).selectedOptions?.[0]?.textContent||el(id).value;
- top=paragraph('Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:''),16,top+4,width-32)+12;
+ const maximumText=Array.from(el('chart').children).find(n=>n.getAttribute('data-summary')==='maximum')?.textContent||'';
+ top=paragraph('Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:'')+' · Samples: '+samples.length+' · '+maximumText,16,top+4,width-32)+12;
  const chart=el('chart').cloneNode(true);chart.removeAttribute('id');chart.setAttribute('x','8');chart.setAttribute('y',String(top));chart.setAttribute('width','1002');chart.setAttribute('height','668');
+ chart.replaceChildren(...Array.from(chart.children).filter(n=>n.getAttribute('data-summary')!=='maximum'));
  root.append(chart);
  let legendY=top+32;legendY=paragraph('Regions',1026,legendY,legendWidth,18,'bold')+12;
  const polygons=chart.querySelectorAll('polygon');

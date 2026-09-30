@@ -123,7 +123,7 @@ struct
                             (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")
                         else ""
         val top = paragraph caption 16.0 34.0 (canvasWidth-32.0) 26.0
-        val top = paragraph ("Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary) 16.0 (top+4.0) (canvasWidth-32.0) 16.0 + 12.0
+        val top = paragraph ("Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary ^ " · Samples: " ^ Int.toString(length samples) ^ " · Sampled maximum: " ^ memory peak) 16.0 (top+4.0) (canvasWidth-32.0) 16.0 + 12.0
         fun x sample = 88.0 + 880.0 * real(number sample "time"-first) / real(IntInf.max(1,last-first))
         fun y n = top+593.0-528.0*real n/real maximum
         fun point (s,v) = fmt(x s) ^ "," ^ fmt(y v)
@@ -171,7 +171,6 @@ struct
                     end) timeTicks
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
         val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
-        val () = text 968.0 (top+22.0) 16.0 "end" ("Sampled maximum: " ^ memory peak)
         val () = case pagePeak of NONE => () | SOME n =>
                    (emit("<line x1=\"88\" x2=\"968\" y1=\"" ^ fmt(y n) ^ "\" y2=\"" ^ fmt(y n) ^ "\" stroke=\"#b91c1c\" stroke-width=\"2\" stroke-dasharray=\"8 4\"/>");
                     text 968.0 (top+43.0) 16.0 "end" ("Peak page capacity: " ^ memory n))
