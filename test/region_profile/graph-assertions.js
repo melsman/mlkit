@@ -1,3 +1,18 @@
+// Execution-stream controls appear only when the profile records worker IDs.
+const streamSamples=samples;
+const streamGroup=el('group').value,streamScope=el('scope').value;
+samples=streamSamples.map(s=>({...s,regions:s.regions.map(r=>({...r,worker:-1})),stacks:s.stacks.map(r=>({...r,worker:-1}))}));
+el('group').value='worker';el('scope').value='worker:-1';scopes();
+assert(!el('scope').children.some(o=>o.value.startsWith('worker:')));
+assert(!el('group').children.some(o=>o.value==='worker'));
+assert.equal(el('scope').value,'all');assert.equal(el('group').value,'aggregate');
+assert.equal(el('execution-stream-note').textContent,'');
+samples=streamSamples;scopes();
+assert(el('scope').children.some(o=>o.value==='worker:0'));
+assert(el('group').children.some(o=>o.value==='worker'));
+assert(el('execution-stream-note').textContent.includes('experimental'));
+el('group').value=streamGroup;el('scope').value=streamScope;
+
 
 assert.equal(samples[0].max_pages,'123');
 assert.equal(el('profile-title').textContent,'Region profile for program.sml (GC enabled)');

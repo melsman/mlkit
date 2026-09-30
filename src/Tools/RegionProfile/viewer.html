@@ -12,10 +12,10 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 @media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
 .axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
 </style><h1 id="profile-title">MLKit region profile</h1>
-<p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership. Worker identity is the owner's execution stream at sampling time, not the origin of allocations.</p>
+<p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
-<label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option><option value="worker">Execution stream</option></select></label>
+<label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option></select></label>
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
 <label>Regions shown <input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
@@ -32,7 +32,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <svg id="chart" viewBox="0 0 1002 668" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
 <div id="legend" aria-label="Region legend, top to bottom"></div>
 </div>
-<p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available; an execution stream is not a physical core.</p>
+<p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available.<span id="execution-stream-note"></span></p>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
 <table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
@@ -75,8 +75,17 @@ function model(){
 }
 function scopes(){
  const old=el('scope').value||'all', options=[['all','All threads']];
+ const rows=samples.flatMap(s=>s.regions.concat(s.stacks));
+ const hasStreams=rows.some(r=>r.worker!==undefined&&BigInt(r.worker)>=0n);
+ const oldGroup=el('group').value||'aggregate';
+ const groups=[['aggregate','Aggregate'],['region','Region binding'],['thread','Lifetime owner']];
+ if(hasStreams)groups.push(['worker','Execution stream']);
+ el('group').replaceChildren();for(const [value,name] of groups){const o=document.createElement('option');o.value=value;o.textContent=name;el('group').append(o);}
+ el('group').value=groups.some(o=>o[0]===oldGroup)?oldGroup:'aggregate';
+ el('execution-stream-note').textContent=hasStreams?' Argobots execution streams are experimental and do not identify physical cores. Stream attribution follows the owner at sampling time, not the origin of allocations.':'';
  for(const [field,title] of [['thread','Thread'],['worker','Execution stream'],['cpu','CPU (logical core)']]){
-  const ids=new Set(samples.flatMap(s=>s.regions.concat(s.stacks)).map(r=>String(r[field]??-1)));
+  if(field==='worker'&&!hasStreams)continue;
+  const ids=new Set(rows.map(r=>String(r[field]??-1)));
   for(const id of [...ids].filter(id=>id!=='-1').sort((a,b)=>BigInt(a)<BigInt(b)?-1:1))options.push([field+':'+id,title+' '+id]);
   if(ids.has('-1')&&field!=='thread')options.push([field+':-1',title+' unavailable']);
  }
@@ -203,5 +212,5 @@ el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(pro
 scopes();
 const defaults=__OPTIONS__;
 for(const [id,value] of Object.entries(defaults)){if(id==='caption'){el('profile-title').textContent=value;document.title=value;}else if(typeof value==='boolean')el(id).checked=value;else el(id).value=String(value);}
-draw();
+scopes();draw();
 </script></html>

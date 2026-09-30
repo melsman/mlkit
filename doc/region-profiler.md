@@ -315,7 +315,10 @@ The **View** selector applies to both graph and table: all threads, one logical
 thread, one Argobots execution stream, or one OS logical CPU where recorded.
 Linux records the CPU when a thread publishes its safe-point anchor; migration
 can move that owner's storage between CPU bands over time. This is not physical
-core topology or allocation-origin tracking. macOS reports CPU identity as
+core topology or allocation-origin tracking. Execution-stream selectors and table
+grouping appear only when the profile
+contains recorded execution-stream IDs; ordinary profiles omit these controls.
+Argobots profiles label this support as experimental. macOS reports CPU identity as
 unavailable, while Argobots execution-stream selection remains available.
 Shared and persistent/global regions follow their lifetime owner's recorded
 identity and are counted once. Unavailable identities have explicit selectors;
