@@ -4,7 +4,18 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-viewer.XXXXXX")
-trap 'rm -rf "$OUT"' EXIT HUP INT TERM
+cleanup () {
+  status=$?
+  if [ "$status" -eq 0 ]; then rm -rf "$OUT"
+  else
+    echo "Failed test artifacts retained at $OUT" >&2
+    for file in "$OUT/stdout" "$OUT/stderr"; do
+      if [ -f "$file" ]; then cat "$file" >&2; fi
+    done
+  fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 cp "$RPVIEW" "$OUT/rpview"
 cp "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.rp"
 # Resolve optional native input paths before entering the relocated directory.

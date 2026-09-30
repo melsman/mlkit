@@ -3,7 +3,18 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-svg.XXXXXX")
-trap 'rm -rf "$OUT"' EXIT HUP INT TERM
+cleanup () {
+  status=$?
+  if [ "$status" -eq 0 ]; then rm -rf "$OUT"
+  else
+    echo "Failed test artifacts retained at $OUT" >&2
+    for file in "$OUT/stdout" "$OUT/stderr"; do
+      if [ -f "$file" ]; then cat "$file" >&2; fi
+    done
+  fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
 run() { sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/profile.rp" "$OUT/input.rp"; PATH=/nonexistent "$RPVIEW" "$OUT/input.rp" -o "$OUT/graph.svg" "$@" > "$OUT/stdout" 2> "$OUT/stderr"; }
 svg() {

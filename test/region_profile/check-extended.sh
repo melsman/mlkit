@@ -16,7 +16,8 @@ printf '%s\n' "$OUT/periodic.sml" > "$OUT/periodic.mlb"
 grep -q 'periodic ok' "$OUT/periodic.out"
 sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/periodic.rp"
 "$OUT/periodic" -rp -rp_paused -rp_file "$OUT/paused.rp" > /dev/null
-! grep -q '"type":"sample_begin"' "$OUT/paused.rp"
+"$RPVIEW" "$OUT/paused.rp" --format json > "$OUT/paused.json"
+! grep -q '"type":"sample_begin"' "$OUT/paused.json"
 for duration in -1 1 1.5ms 1us 999999999999999999999s; do
  if "$OUT/periodic" -rp -rp_interval "$duration" > "$OUT/invalid.out" 2>&1; then
   echo "Accepted invalid duration: $duration" >&2; exit 1

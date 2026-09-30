@@ -4,7 +4,18 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-binary.XXXXXX")
-trap 'rm -rf "$OUT"' EXIT HUP INT TERM
+cleanup () {
+  status=$?
+  if [ "$status" -eq 0 ]; then rm -rf "$OUT"
+  else
+    echo "Failed test artifacts retained at $OUT" >&2
+    for file in "$OUT/stdout" "$OUT/stderr"; do
+      if [ -f "$file" ]; then cat "$file" >&2; fi
+    done
+  fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 cd "$OUT"
 # Magic, 37-byte header: word=8, page=8192, GC=false, source=test.sml.
 {

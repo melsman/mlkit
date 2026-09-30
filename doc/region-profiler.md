@@ -370,6 +370,15 @@ socket or external command listener.
 
 ## Validation and measurements
 
+After `make mlkit_basislibs`, run `sh test/region_profile/check-ci.sh` for the
+native CI suite. It uses `bin/mlkit`, `bin/reml`, and `bin/rpview`, with optional
+absolute-path overrides through `MLKIT`, `REML`, and `RPVIEW`; `CC` overrides the
+C compiler. The existing Linux X64 and macOS ARM64 CI jobs run this entry point.
+It covers accounting, GC, pthreads, REPL sessions, binary decoding, HTML/SVG
+generation, and both region APIs against a staged read-only installation.
+It retains logs and reports failure details, and excludes optional Argobots
+experiments, timing benchmarks, and browser-executed graph assertions.
+
 ```sh
 make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 sh test/region_profile/check.sh
