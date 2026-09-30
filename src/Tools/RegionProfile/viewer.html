@@ -16,7 +16,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <div class="controls" aria-label="Profile controls">
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
 <label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option></select></label>
-<label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="stack">ML stack + finite regions</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Descriptors (separate)</option></select></label>
+<label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="stack">ML stack + finite regions</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Infinite-region descriptors</option></select></label>
 <label>Regions shown <input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
 <div class="display-options" aria-label="Graph display options">

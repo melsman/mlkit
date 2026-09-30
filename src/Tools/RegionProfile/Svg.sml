@@ -91,7 +91,7 @@ struct
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
         val caption = opt "caption" ("Region profile for " ^ main ^ " (GC " ^ gc ^ ")")
-        val metricName = case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Descriptors (separate)"
+        val metricName = case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"
         val scopeName = case String.fields (fn c => c = #":") scope of
                             ["thread",n] => "Thread " ^ n | ["worker",n] => "Execution stream " ^ n | ["cpu",n] => "CPU (logical core) " ^ n | _ => "All threads"
         (* Conservative character widths keep labels within the vector canvas,
