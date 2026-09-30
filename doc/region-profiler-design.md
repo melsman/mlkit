@@ -3,10 +3,11 @@
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
 This document specifies the overall design. M1–M7 are implemented.
 See [usage, validation, and measurements](region-profiler.md).
-ARM64 execution checks cover the implemented runtime combinations. X64 compiler
-builds and cross-assembly checks pass, but X64 execution validation remains
-pending the ThinkPad. Milestone boxes below track implementation, not completion
-of that outstanding cross-backend validation.
+ARM64 execution checks cover the implemented runtime combinations. Initial
+ThinkPad X64 execution passed accounting/graph checks and exposed two issues
+(GCC weak-constant folding and profiler-call alignment), now fixed. The complete
+X64 rerun is pending after SSH became unavailable. Milestone boxes track
+implementation, not completion of outstanding cross-backend validation.
 
 ## Objectives and scope
 
@@ -343,8 +344,7 @@ viewer are separate work.
   document the input and filtering options.
 
 Run relevant generated-code and runtime checks on both native backends.
-X64 execution checks are planned for the ThinkPad once access is available;
-they have not yet been performed for the implemented milestones. Record results
+Complete the ThinkPad X64 execution rerun when connectivity is restored. Record results
 and overhead numbers as milestones are implemented, rather than assuming
 that existing GC tests validate the new profiler.
 

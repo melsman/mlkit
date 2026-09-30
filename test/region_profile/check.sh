@@ -10,7 +10,7 @@ OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp.XXXXXX")
 echo "Region profiler test artifacts: $OUT"
 export SML_LIB="$ROOT"
 # CC may include a target flag, e.g. 'gcc -arch x86_64'.
-$CC -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
+$CC -O2 -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/region-profile.c" -o "$OUT/runtime"
 "$OUT/runtime" "$OUT/runtime.rp"
 "$PYTHON" - "$OUT/runtime.rp" <<'PYTEST'

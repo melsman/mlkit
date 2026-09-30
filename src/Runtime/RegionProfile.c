@@ -25,7 +25,9 @@
 #endif
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "profiler requests need lock-free signal-safe atomics");
 
-__attribute__((weak)) const uintptr_t mlkit_rp_capable = 0;
+/* Generated ML code overrides these weak defaults. Volatile prevents GCC
+ * from folding their initializers before the linker resolves the symbols. */
+__attribute__((weak)) const volatile uintptr_t mlkit_rp_capable = 0;
 __attribute__((weak)) const char * const *mlkit_rp_main_source_slot;
 #ifdef ENABLE_GC
 #define RP_GC_ENABLED "true"
@@ -438,9 +440,9 @@ static const char *run_type_name(uintptr_t type) {
 }
 /* Linker metadata maps global region pointer slots to their inferred types. */
 typedef struct { Region *slot; uintptr_t type; } GlobalType;
-__attribute__((weak)) const GlobalType mlkit_rp_globals[] = {{NULL,0}};
+__attribute__((weak)) const volatile GlobalType mlkit_rp_globals[] = {{NULL,0}};
 static uintptr_t global_type(Region r) {
-  for (const GlobalType *g = mlkit_rp_globals; g->slot; g++)
+  for (const volatile GlobalType *g = mlkit_rp_globals; g->slot; g++)
     if (clearStatusBits(*g->slot) == r) return g->type;
   return 0;
 }

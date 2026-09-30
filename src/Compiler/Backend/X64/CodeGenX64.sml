@@ -112,9 +112,16 @@ struct
       fun restore (r,c) = if I.is_freg r then
             I.movsd(D("",rsp),R r) :: G.add(I "8",rsp) c
           else I.pop(R r) :: c
+      (* C calls require rsp to remain 16-byte aligned. The saved caller
+       * registers occupy an odd number of words; account for the padding
+       * both in stack-relative ML arguments and when restoring the frame. *)
+      val pad = length regs mod 2
+      val after = if pad = 0 then code else G.add(I "8",rsp) code
+      val call = foldl save
+                   (compile_c_call_prim(name,args,NONE,fsz+length regs+pad,treg0,
+                      foldr restore after regs)) regs
     in
-      foldl save (compile_c_call_prim(name,args,NONE,fsz+length regs,treg0,
-                   foldr restore code regs)) regs
+      if pad = 0 then call else G.sub(I "8",rsp) call
     end
   fun rpPoll fsz ac code =
     if not(sampledProfile()) then code

@@ -30,6 +30,8 @@ for s in samples:
     assert sum(r['finite_bytes'] for r in s['stacks']) == sum(r['finite_bytes'] for r in s['regions'])
     assert all(r['stack_bytes']+r['finite_bytes']==r['active_bytes'] for r in s['stacks'])
     assert all(r['cpu'] >= -1 for r in s['regions']+s['stacks'])
+if sys.platform.startswith('linux'):
+    assert any(r['cpu'] >= 0 for s in samples for r in s['regions']+s['stacks']), 'Linux CPU identity not captured'
 assert [s['sample'] for s in samples] == list(range(1,len(samples)+1))
 assert all(a['end_time'] <= b['time'] for a,b in zip(samples,samples[1:]))
 if mode == 'periodic':

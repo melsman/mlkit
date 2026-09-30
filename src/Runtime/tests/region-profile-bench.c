@@ -2,7 +2,7 @@
 #include "RegionProfile.h"
 #include <assert.h>
 #include <stdlib.h>
-const uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
+const volatile uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
 Rp *global_freelist;
 int main(int argc, char **argv) {
   assert(argc == 3);

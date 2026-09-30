@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
+const volatile uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
 Rp *global_freelist;
 static const struct { size_t size; char data[5]; } unit = {0,"test"};
 static const struct { size_t size; char data[19]; } source = {0,"/fixtures/test.sml"};

@@ -14,7 +14,7 @@
  * are relative to their own words; zero means no explicit name. Other offsets
  * and sizes are in machine words. */
 #define MLKIT_RP_MAGIC UINT64_C(0x52504d34)
-extern const uintptr_t mlkit_rp_capable;
+extern const volatile uintptr_t mlkit_rp_capable;
 extern int mlkit_rp_enabled;
 extern _Atomic int mlkit_rp_pending;
 extern uint64_t mlkit_rp_interval_us;

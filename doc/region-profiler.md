@@ -13,8 +13,10 @@ rpview profile.rp --output profile.html
 Supported combinations are single-threaded no-GC, GC and generational GC, and
 no-GC pthreads or Argobots. **GC plus parallelism remains excluded.** Both
 native backends emit the metadata and polling bridges. ARM64 execution checks
-are passing; X64 execution still needs the planned ThinkPad checks. Keep the
-PR draft until those checks have been completed.
+are passing. Initial ThinkPad X64 execution passed the accounting/graph suite
+and exposed GCC weak-constant folding and profiler-call stack alignment issues.
+Both are fixed; the complete X64 rerun remains pending after the SSH connection
+became unavailable. Keep the PR draft until those checks have completed.
 
 ## Controls
 
@@ -216,18 +218,49 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP7`; rebuild profiled
+slots and types. Profiling builds now use cache suffix `_RP8` (including the
+X64 profiler-call alignment fix); rebuild profiled
 programs and their dependencies to obtain types and source filenames. Existing profile files remain
 readable, and the JSON-lines stream remains version 3. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 **Download SVG** saves the current graph as a standalone vector image. The
-caption, selected metric/view, graph, right-side legend and applicable GC/stack/
+caption, selected metric/view, graph, right-side legend and applicable GC/
 peak notes are all inside the SVG. The graph retains its 3:2 aspect ratio;
 long labels wrap and the outer image grows to accommodate every legend entry.
 Export follows the selected regions, filters, label options and peak display,
 regardless of where the HTML legend is placed. No server or external assets are
-needed. Open the SVG in a vector editor or convert it to PDF when needed.
+needed. The ML-stack band explanation is omitted from SVG output. Axis and
+legend text use 16 SVG user units, and the right margin adjusts to the
+legend width. Open the SVG in a vector editor or convert it to PDF when needed.
+
+`rpview` can also generate SVG directly, entirely in Standard ML:
+
+```sh
+rpview profile.rp -o profile.svg
+rpview profile.rp -o pages.svg --metric pages --regions 9 --show-peak
+rpview profile.rp -o thread.svg --scope thread:2 --caption 'Thread 2 allocations'
+rpview profile.rp -o profile.html --show-base --show-kind --show-type
+```
+
+The output extension selects SVG or HTML; `--format svg|html` overrides it.
+Without an output path, the default is `profile.html` (or `profile.svg` with
+`--format svg`). Both outputs accept `--caption TEXT`, `--regions N` (0 = all),
+`--metric total|pages|page_footprint|large_bytes|finite_bytes|descriptor_bytes`,
+and `--scope all|thread:N|worker:N|cpu:N`. Worker/CPU identity `-1` selects
+unavailable identities. `--show-base`, `--show-kind`, `--show-type`, and
+`--show-peak` enable the corresponding settings; `--hide-*` disables them.
+`--legend-right` (default) selects compact region names and a right-hand HTML
+legend; `--legend-below` selects longer names and a legend below the HTML graph.
+SVG always places its legend inside the image on the right. `--group
+aggregate|region|thread|worker` selects the HTML table grouping. These options
+set the initial HTML controls, which remain interactive. `--help` lists them.
+No completed snapshots is an error for SVG; HTML can display an empty profile.
+
+The colour palette cycles through contrasting hues, starting with the largest
+regions by summed full-profile occupancy. Colours remain fixed across metrics,
+region limits and thread/core filters, and match between HTML and direct SVG.
+ML stack and Other have separate neutral colours.
 
 The **Pages** metric shows the full memory capacity of assigned region pages,
 without subtracting unused tails. Its axis uses scaled memory units and its table
@@ -285,6 +318,7 @@ ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended
 python3 test/region_profile/check-live.py /path/to/instrumented/periodic
 python3 test/region_profile/check-viewer.py /path/to/profile.rp
 python3 test/region_profile/check-graph.py  # requires Node.js for graph-code tests
+python3 test/region_profile/check-svg.py
 python3 test/region_profile/check-sml-reader.py /path/to/profile.rp
 ```
 
@@ -302,12 +336,22 @@ exit, blocked foreign calls, GC/genGC, retained REPL values/closures and clean s
 M7 checks cover exact frame spans and finite subtraction, recursive stack growth,
 colored band sums/order, thread/worker/CPU filters (including synthetic CPU
 migration), axis units, old/truncated/single-sample streams, and counters above
-2^53. Linux CPU capture and X64 stack execution await the ThinkPad checks. Both generation
+2^53. The direct SML SVG suite covers filters, aggregation, palette stability,
+units, caption escaping, CLI defaults, and empty/single profiles without a runtime
+PATH. Both generation
 tails were also checked against exact synthetic totals under ASan/UBSan.
 Argobots 1.2 passed with thirteen logical threads and one or two execution
 streams. The viewer was checked in the browser, and live commands/socket cleanup
 passed. X64 compiler builds and cross-assembly checks cover polling, GC sampling
-bridges, callbacks and thread creation; execution is still pending.
+bridges, callbacks and thread creation. Initial Linux/X64 execution on the
+ThinkPad passed the native accounting/graph suite after diagnosing GCC folding
+of weak const initializers. Periodic sampling then exposed an unaligned C call
+in the profiler register-save bridge. The runtime now reads volatile weak
+constants, and the bridge pads its saved registers to preserve 16-byte stack
+alignment. The optimized runtime regression catches weak-constant folding;
+`_RP8` invalidates cached code with the old bridge. A full X64 rerun, including
+Linux CPU capture, remains pending because SSH became unavailable during the
+rebuild. Optional Argobots has not yet been run on X64.
 
 An M2 ARM64 benchmark, before the M7 stack records were added, ran a billion iterations of a deliberately tiny loop,
 with seven runs per mode. Median elapsed times were:
