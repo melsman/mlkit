@@ -12,11 +12,6 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -60,12 +55,9 @@ int mlkit_rp_gc_samples;
 int mlkit_rp_gc_major = -1;
 static uint64_t capture_ns, total_pages, max_delay_ns, next_due_ns;
 static uint64_t traversal_ns, serialization_ns, wait_ns, cpu_ns, total_frames, coalesced, skipped, peak_bytes;
-static struct sigaction previous_alarm;
 static int timer_installed;
 int mlkit_rp_initially_paused;
 const char *mlkit_rp_filename = "profile.rp";
-const char *mlkit_rp_control;
-static int control_fd = -1;
 static FILE *output;
 static int active;
 static uint64_t sequence, request_time, sample_wait;
@@ -255,8 +247,8 @@ int mlkit_rp_parse_interval(const char *s) {
 static void timer_state(int running) {
   if (!timer_installed) return;
   struct itimerval timer = {0};
-  if (running || control_fd >= 0) {
-    uint64_t interval = mlkit_rp_interval_us ? mlkit_rp_interval_us : 10000;
+  if (running) {
+    uint64_t interval = mlkit_rp_interval_us;
     timer.it_value.tv_sec = interval/1000000;
     timer.it_value.tv_usec = interval%1000000;
     timer.it_interval = timer.it_value;
@@ -269,7 +261,6 @@ void mlkit_rp_close(void) {
   LOCK();
   await_output();
   if (!output) { UNLOCK(); return; }
-  if (control_fd >= 0) { close(control_fd); control_fd = -1; unlink(mlkit_rp_control); }
   timer_state(0);
   /* Keep the harmless handler until process exit: another OS thread may
    * still have an already-delivered SIGALRM queued after timer disarm. */
@@ -314,26 +305,13 @@ void mlkit_rp_init(void) {
   quoted_bytes(main_source,strlen(main_source));
   fputs("}\n",output);
   if (fflush(output)) fail("cannot write profile header");
-  if (mlkit_rp_control) {
-    struct sockaddr_un address = {0};
-    address.sun_family = AF_UNIX;
-    if (strlen(mlkit_rp_control) >= sizeof(address.sun_path)) fail("control socket path too long");
-    strcpy(address.sun_path, mlkit_rp_control);
-    control_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (control_fd < 0) fail("cannot create control socket");
-    mode_t previous = umask(0077);
-    int rc = bind(control_fd, (struct sockaddr *)&address, sizeof(address));
-    umask(previous);
-    /* Never unlink an existing path: it may belong to another process. */
-    if (rc || fcntl(control_fd, F_SETFL, O_NONBLOCK) < 0 ||
-        fcntl(control_fd, F_SETFD, FD_CLOEXEC) < 0) fail("cannot bind control socket");
-  }
-  if (mlkit_rp_interval_us || control_fd >= 0) {
+  if (mlkit_rp_interval_us) {
+    struct sigaction previous_alarm;
     struct itimerval old;
     if (getitimer(ITIMER_REAL, &old) || sigaction(SIGALRM, NULL, &previous_alarm))
       fail("cannot inspect sampling timer");
     if (old.it_value.tv_sec || old.it_value.tv_usec || previous_alarm.sa_handler != SIG_DFL)
-      fail("SIGALRM/ITIMER_REAL already in use; use -rp_interval 0 without -rp_control");
+      fail("SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
     struct sigaction action = {0};
     action.sa_handler = request_sample;
     action.sa_flags = SA_RESTART;
@@ -686,23 +664,6 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
   return result;
 }
 uintptr_t mlkit_rp_poll(Context ctx, uintptr_t *base, const uintptr_t *map) {
-  if (control_fd >= 0) {
-    char command[32];
-    /* Bound the work per poll, so an attached client cannot starve ML. */
-    for (int i = 0; i < 8; i++) {
-      ssize_t n = recv(control_fd, command, sizeof(command)-1, 0);
-      if (n < 0) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
-          fail("cannot read control socket");
-        break;
-      }
-      command[n] = 0;
-      if (!strcmp(command,"start")) mlkit_rp_capture(ctx,base,map,0);
-      else if (!strcmp(command,"pause")) mlkit_rp_capture(ctx,base,map,1);
-      else if (!strcmp(command,"sample")) mlkit_rp_capture(ctx,base,map,2);
-      else if (!strcmp(command,"flush")) mlkit_rp_flush();
-    }
-  }
   return mlkit_rp_capture(ctx, base, map, 3);
 }
 /* Non-instrumented compilation remains usable with profiling disabled. */

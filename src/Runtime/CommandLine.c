@@ -46,7 +46,6 @@ printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0] [-rp_gc_samples] [-rp_report]] [-- application arguments]\n");
-  fprintf(stderr,"      [-rp_control SOCKET] (requires -rp)\n");
   fprintf(stderr,"      [-help, -h] \n");
   fprintf(stderr,"      [-command_pipe n] \n");
   fprintf(stderr,"      [-reply_pipe n] \n");
@@ -141,10 +140,6 @@ parseCmdLineArgs(int argc, char *argv[])
       app_arg_index += 2;
       match = 1;
       continue;
-    }
-    if (strcmp(argv[0], "-rp_control") == 0) {
-      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_control requires a socket path\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_control = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_file") == 0) {
       if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }

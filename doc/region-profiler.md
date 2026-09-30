@@ -28,7 +28,6 @@ became unavailable. Keep the PR draft until those checks have completed.
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
-| `-rp_control SOCKET` | Bind a private Unix datagram socket for local live controls. |
 | `--` | End runtime options and preserve subsequent application arguments verbatim. |
 
 Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
@@ -115,13 +114,12 @@ inside C-to-ML callbacks are deferred; explicit sampling across such a callback
 boundary remains unsupported and is diagnosed. Ordinary callbacks continue to
 work when no explicit snapshot is requested inside them.
 
-Periodic/live operation reserves `SIGALRM` and `ITIMER_REAL` and rejects an
+Periodic sampling reserves `SIGALRM` and `ITIMER_REAL` and rejects an
 existing timer/handler at startup. Applications using them must use
-`-rp_interval 0` without `-rp_control`. The profiler retains its harmless signal
+`-rp_interval 0`. The profiler retains its harmless signal
 handler until process exit, because a signal can still be pending on another
-OS thread after timer disarm. A control socket keeps a timer running while
-paused, or at 10ms when the sampling interval is zero, so commands can be
-handled at subsequent safe points.
+OS thread after timer disarm. Pausing disarms the sampling timer;
+`-rp_interval 0` installs no timer or signal handler.
 
 Requests coalesce; they never build a sample backlog. `coalesced` in the report
 estimates elapsed superseded timer intervals. `wait_ns` includes time queued
@@ -304,10 +302,9 @@ rpview /tmp/region-graph.rp --output graph.html
 Hover a legend entry to see its full unit/binding identity. Select a snapshot to
 inspect exact values; the vertical guide shows its position on the timeline.
 
-The existing runtime `-rp_control` socket remains available to external clients,
-but is not needed for this workflow. Use runtime flags or `RegionProfile` API
-operations to select phases, then convert the resulting file to HTML. Optional
-runtime controls are tested separately from the offline viewer.
+Use runtime flags or `RegionProfile` API operations to select phases, then
+convert the resulting file to HTML or SVG. The runtime has no live-control
+socket or external command listener.
 
 ## Validation and measurements
 
@@ -315,7 +312,6 @@ runtime controls are tested separately from the offline viewer.
 make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
-sh test/region_profile/check-live.sh /path/to/instrumented/periodic
 sh test/region_profile/check-viewer.sh /path/to/profile.rp
 sh test/region_profile/check-graph.sh /tmp/rp-graph-check  # open the emitted HTML in a browser
 sh test/region_profile/check-svg.sh
@@ -340,9 +336,7 @@ generates a self-contained browser test page containing the original graph
 assertions and the current viewer script. Open the emitted `check-graph.html`
 to run the interactive model/export checks and see PASS or FAIL; generating
 the page alone does not run those assertions. No JavaScript command-line runtime
-is required. The live-control shell test builds a tiny C datagram sender with
-`CC`, since portable shell does not expose Unix datagrams. It needs local socket
-permissions. The extended script prints all artifact paths. Build
+is required. The extended script prints all artifact paths. Build
 `runtimeSystemArPar.a` first for its optional Argobots test.
 
 ARM64 checks cover controlled finite/page/large-object totals, reset and release,
@@ -357,8 +351,8 @@ units, caption escaping, CLI defaults, and empty/single profiles without a runti
 PATH. Both generation
 tails were also checked against exact synthetic totals under ASan/UBSan.
 Argobots 1.2 passed with thirteen logical threads and one or two execution
-streams. The viewer was checked in the browser, and live commands/socket cleanup
-passed. X64 compiler builds and cross-assembly checks cover polling, GC sampling
+streams. The viewer was checked in the browser. X64 compiler builds and
+cross-assembly checks cover polling, GC sampling
 bridges, callbacks and thread creation. Initial Linux/X64 execution on the
 ThinkPad passed the native accounting/graph suite after diagnosing GCC folding
 of weak const initializers. Periodic sampling then exposed an unaligned C call

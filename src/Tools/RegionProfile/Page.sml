@@ -13,5 +13,4 @@ struct
           val suffix = replace(Substring.string(Substring.triml 8 tail),"__OPTIONS__",ProfileJson.encode false options)
       in Substring.string left ^ data ^ Substring.string middle ^ ProfileJson.encode true metadata ^ suffix
       end
-  fun html profile = htmlWith (ProfileJson.Obj []) profile
 end

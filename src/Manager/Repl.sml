@@ -65,7 +65,6 @@ val rpReport = rpBool "rp_report"
 val rpGC = rpBool "rp_gc_samples"
 val rpFile = rpString ("rp_file","profile.rp")
 val rpInterval = rpString ("rp_interval","10ms")
-val rpControl = rpString ("rp_control","")
 fun rpArguments () =
     (if rpEnabled() then ["-rp"] else []) @
          (if rpEnabled() orelse rpFile() <> "profile.rp"
@@ -74,8 +73,7 @@ fun rpArguments () =
           then ["-rp_interval",rpInterval()] else []) @
          (if rpPaused() then ["-rp_paused"] else []) @
          (if rpReport() then ["-rp_report"] else []) @
-         (if rpGC() then ["-rp_gc_samples"] else []) @
-         (if rpControl() = "" then [] else ["-rp_control",rpControl()])
+         (if rpGC() then ["-rp_gc_samples"] else [])
 
 fun die (s:string) : 'a =
     (print("Error: " ^ s ^ "\n"); raise Fail ("Internal Error - Repl: " ^ s))
@@ -873,7 +871,7 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
     "mlb-subdir", "link_time_dead_code_elimination", "libs",
-    "rp", "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval", "rp_control",
+    "rp", "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval",
     "link_code", "libdirs", "import_basislib",
     "generational_garbage_collection", "gdb_support",
     "garbage_collection", "extra_gc_checks", "compile_only",

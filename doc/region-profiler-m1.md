@@ -1,7 +1,7 @@
 # Region profiler M1: explicit snapshots
 
 This records the initial M1 implementation. For the implemented M2–M7 controls,
-runtime combinations, version 2 format, and current checks, see
+runtime combinations, version 3 format, and current checks, see
 [the profiler guide](region-profiler.md).
 
 M1 implements explicit, single-threaded snapshots without garbage collection.
@@ -10,8 +10,8 @@ last-page tail. It records finite-region stack reservations and separately
 tracks large-object sizes. Objects and region descriptors retain their normal
 layout, and the executable links the ordinary runtime archive.
 
-Periodic sampling, thread rendezvous, GC sampling, REPL sessions, and live
-viewing remain later milestones in [the design](region-profiler-design.md).
+Periodic sampling, thread rendezvous, GC sampling, REPL sessions, and offline
+visualization are covered by later milestones in [the design](region-profiler-design.md).
 M1 does not add polling points or maintain page counters.
 
 ## Build and use

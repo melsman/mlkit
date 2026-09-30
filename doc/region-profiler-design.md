@@ -175,7 +175,6 @@ Runtime options use the existing single-dash, underscore convention, with an
 | `-rp_gc_samples` | Off | Add before/after-GC samples; requires a GC runtime. |
 | `-rp_paused` | Off | Enable the session but start with automatic sampling paused. |
 | `-rp_report` | Off | Print profiling statistics to stderr at normal exit. |
-| `-rp_control SOCKET` | Off | Enable a private local socket for live controls at safe points. |
 
 Require `-rp` explicitly; other options configure it. Reject malformed values
 and invalid combinations rather than silently ignoring them. An interval of
@@ -299,8 +298,8 @@ viewer are separate work.
   relevant REPL checks with GC. GC plus parallel execution remains excluded.
 - [x] **M6: Visualization.** Provide offline region/thread/worker views using
   the file record model and expose measurement/attribution semantics. The
-  runtime control socket is available to external clients; the bundled HTTP
-  viewer was replaced by the simpler offline workflow in M7.
+  offline workflow replaces the earlier HTTP viewer; no live-control socket
+  or external command listener is included.
 
 - [x] **M7: Stacked region-and-stack graphs.** Add a graph showing all region
   bindings and the stack together as colored, stacked areas over time, with

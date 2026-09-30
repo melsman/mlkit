@@ -63,5 +63,4 @@ for mode in no_gc gc; do
  sh "$ROOT/test/region_profile/check-records.sh" repl "$OUT/repl-$mode.rp"
 done
 "$RPVIEW" "$OUT/parallel.rp" --output "$OUT/profile.html"
-echo "Live socket test (requires local socket permissions): sh $ROOT/test/region_profile/check-live.sh $OUT/periodic"
 echo 'Extended profiler checks passed'
