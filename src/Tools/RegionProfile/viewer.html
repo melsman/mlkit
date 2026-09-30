@@ -85,9 +85,13 @@ function scopes(){
 function svg(tag,attrs,text){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=text;el('chart').append(n);return n;}
 function axisTicks(lo,hi){
  if(hi===lo)return [lo];
- const raw=(hi-lo)/5,base=10**Math.floor(Math.log10(raw));
- const step=[1,2,5,10].find(n=>n*base>=raw)*base;
- const start=Math.ceil(lo/step-1e-10),end=Math.floor(hi/step+1e-10);
+ const raw=(hi-lo)/6,base=10**Math.floor(Math.log10(raw));
+ const candidates=[1,1.5,2,2.5,3,4,5,6,8,10].map(n=>{
+  const step=n*base,start=Math.ceil(lo/step-1e-10),end=Math.floor(hi/step+1e-10),count=end-start+1;
+  return {step,start,end,score:Math.max(0,5-count,count-7)*100+Math.abs(count-6)};
+ });
+ candidates.sort((a,b)=>a.score-b.score);
+ const {step,start,end}=candidates[0];
  return Array.from({length:Math.max(0,end-start+1)},(_,i)=>Number(((start+i)*step).toPrecision(12)));
 }
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}

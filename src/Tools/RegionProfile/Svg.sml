@@ -134,14 +134,21 @@ struct
         val () = emit("<path d=\"M88 " ^ fmt(top+65.0) ^ " V" ^ fmt(top+593.0) ^ " H968\" fill=\"none\" stroke=\"#334155\"/>")
         fun ticks lo hi =
             if Real.==(lo,hi) then ([lo],0)
-            else let val raw = (hi-lo)/5.0
+            else let val raw = (hi-lo)/6.0
                      val power = Real.floor(Math.ln raw / Math.ln 10.0)
                      val base = Math.pow(10.0,Real.fromInt power)
-                     val multiple = valOf(List.find (fn n => n*base >= raw) [1.0,2.0,5.0,10.0])
-                     val step = multiple*base
-                     val start = Real.realCeil(lo/step-1.0E~10)
-                     val count = Real.floor(hi/step-start+1.0E~10)+1
-                 in (List.tabulate(Int.max(0,count),fn i => (start+Real.fromInt i)*step),Int.min(12,Int.max(0,~power)))
+                     fun candidate multiple =
+                         let val step = multiple*base
+                             val start = Real.realCeil(lo/step-1.0E~10)
+                             val count = Int.max(0,Real.floor(hi/step-start+1.0E~10)+1)
+                             val score = 100*Int.max(0,Int.max(5-count,count-7))+Int.abs(count-6)
+                         in (score,multiple,step,start,count)
+                         end
+                     val choices = map candidate [1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0,10.0]
+                     val (_,multiple,step,start,count) =
+                         foldl (fn (c,best) => if #1 c < #1 best then c else best) (hd choices) (tl choices)
+                     val extra = if Real.==(multiple,Real.realFloor multiple) then 0 else 1
+                 in (List.tabulate(count,fn i => (start+Real.fromInt i)*step),Int.min(12,Int.max(0,extra-power)))
                  end
         fun tick axis x1 y1 x2 y2 =
             emit("<line data-tick=\"" ^ axis ^ "\" x1=\"" ^ fmt x1 ^ "\" y1=\"" ^ fmt y1 ^
