@@ -132,11 +132,32 @@ struct
                      in emit("<polygon data-band=\"" ^ escape k ^ "\" fill=\"" ^ color k ^ "\" points=\"" ^ points ^ "\"><title>" ^ escape name ^ "</title></polygon>"); bottom := upper
                      end) bands
         val () = emit("<path d=\"M88 " ^ fmt(top+65.0) ^ " V" ^ fmt(top+593.0) ^ " H968\" fill=\"none\" stroke=\"#334155\"/>")
-        val () = List.app (fn i =>
-                    let val fraction = Real.fromInt i / 5.0
-                    in text 78.0 (top+597.0-528.0*fraction) 16.0 "end" (fmt(real maximum*fraction/real factor));
-                       text (88.0+880.0*fraction) (top+616.0) 16.0 "middle" (fmt((real first+real(last-first)*fraction)/timeFactor))
-                    end) [0,1,2,3,4,5]
+        fun ticks lo hi =
+            if Real.==(lo,hi) then ([lo],0)
+            else let val raw = (hi-lo)/5.0
+                     val power = Real.floor(Math.ln raw / Math.ln 10.0)
+                     val base = Math.pow(10.0,Real.fromInt power)
+                     val multiple = valOf(List.find (fn n => n*base >= raw) [1.0,2.0,5.0,10.0])
+                     val step = multiple*base
+                     val start = Real.realCeil(lo/step-1.0E~10)
+                     val count = Real.floor(hi/step-start+1.0E~10)+1
+                 in (List.tabulate(Int.max(0,count),fn i => (start+Real.fromInt i)*step),Int.min(12,Int.max(0,~power)))
+                 end
+        fun tick axis x1 y1 x2 y2 =
+            emit("<line data-tick=\"" ^ axis ^ "\" x1=\"" ^ fmt x1 ^ "\" y1=\"" ^ fmt y1 ^
+                 "\" x2=\"" ^ fmt x2 ^ "\" y2=\"" ^ fmt y2 ^ "\" stroke=\"#334155\"/>")
+        val (memoryTicks,memoryDecimals) = ticks 0.0 (real maximum/real factor)
+        val () = List.app (fn v =>
+                    let val yy = top+593.0-528.0*v*real factor/real maximum
+                    in tick "memory" 82.0 yy 88.0 yy;
+                       text 78.0 (yy+4.0) 16.0 "end" (Real.fmt (StringCvt.FIX(SOME memoryDecimals)) v)
+                    end) memoryTicks
+        val (timeTicks,timeDecimals) = ticks (real first/timeFactor) (real last/timeFactor)
+        val () = List.app (fn t =>
+                    let val xx = 88.0+880.0*(t*timeFactor-real first)/real(IntInf.max(1,last-first))
+                    in tick "time" xx (top+593.0) xx (top+599.0);
+                       text xx (top+616.0) 16.0 "middle" (Real.fmt (if length samples = 1 then StringCvt.GEN(SOME 12) else StringCvt.FIX(SOME timeDecimals)) t)
+                    end) timeTicks
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
         val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
         val () = text 968.0 (top+22.0) 16.0 "end" ("Sampled maximum: " ^ memory peak)

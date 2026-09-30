@@ -83,7 +83,16 @@ function scopes(){
  el('scope').replaceChildren();for(const [value,name] of options){const o=document.createElement('option');o.value=value;o.textContent=name;el('scope').append(o);}el('scope').value=options.some(o=>o[0]===old)?old:'all';
 }
 function svg(tag,attrs,text){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=text;el('chart').append(n);return n;}
+function axisTicks(lo,hi){
+ if(hi===lo)return [lo];
+ const raw=(hi-lo)/5,base=10**Math.floor(Math.log10(raw));
+ const step=[1,2,5,10].find(n=>n*base>=raw)*base;
+ const start=Math.ceil(lo/step-1e-10),end=Math.floor(hi/step+1e-10);
+ return Array.from({length:Math.max(0,end-start+1)},(_,i)=>Number(((start+i)*step).toPrecision(12)));
+}
+function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
+
  el('export-svg').disabled=!samples.length;
  el('graph-layout').className='graph-layout'+(el('legend-right').checked?' legend-right':'');
  const slider=el('sample');slider.max=Math.max(0,samples.length-1);const index=Number(slider.value),s=samples[index];
@@ -110,7 +119,8 @@ function draw(){
   const item=document.createElement('div');item.className='legend-item';item.title=b.detail||b.label;const swatch=document.createElement('span');swatch.className='swatch';swatch.style.background=bandColor(b.key);const name=document.createElement('span');name.textContent=b.label;item.append(swatch,name);el('legend').append(item);
  }
  svg('path',{d:'M80 65 V593 H960',fill:'none',stroke:'#334155'});
- for(let i=0;i<=5;i++){const v=Number(max)*i/5;svg('text',{x:70,y:597-528*i/5,'text-anchor':'end',class:'axis'},(v/Number(factor)).toLocaleString(undefined,{maximumSignificantDigits:4}));const t=Number(first)+Number(last-first)*i/5;svg('text',{x:80+880*i/5,y:616,'text-anchor':'middle',class:'axis'},(t/timeFactor).toLocaleString(undefined,{maximumSignificantDigits:5}));}
+ for(const v of axisTicks(0,Number(max)/Number(factor))){const yy=y(v*Number(factor));svg('line',{x1:74,x2:80,y1:yy,y2:yy,stroke:'#334155','data-tick':'memory'});svg('text',{x:70,y:yy+4,'text-anchor':'end',class:'axis'},tickLabel(v));}
+ for(const t of axisTicks(Number(first)/timeFactor,Number(last)/timeFactor)){const xx=80+880*(t*timeFactor-Number(first))/Number(span);svg('line',{x1:xx,x2:xx,y1:593,y2:599,stroke:'#334155','data-tick':'time'});svg('text',{x:xx,y:616,'text-anchor':'middle',class:'axis'},tickLabel(t));}
  svg('text',{x:80,y:43,class:'axis'},'Memory ('+unit+')');svg('text',{x:520,y:648,'text-anchor':'middle',class:'axis'},'Elapsed time ('+timeUnit+')'+(samples.length===1?' · single snapshot':''));
  svg('text',{x:960,y:22,'text-anchor':'end',class:'axis'},'Sampled maximum: '+memoryText(peak));
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}

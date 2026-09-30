@@ -38,9 +38,9 @@ contains 'pair'
 for metric in pages page_footprint large_bytes finite_bytes descriptor_bytes; do svg --metric "$metric" --regions 0; count 3; done
 svg --metric pages --show-peak
 contains 'Peak page capacity: 32.00 KiB'
-contains '<line '
+contains 'stroke-dasharray='
 svg --metric page_footprint --show-peak --scope thread:1
-! grep -q '<line ' "$OUT/lines"
+! grep -q 'stroke-dasharray=' "$OUT/lines"
 caption='Custom </script> <&> "caption" __DATA__ __META__ __OPTIONS__'
 svg --caption "$caption"
 contains '<title>Custom &lt;/script&gt; &lt;&amp;&gt; &quot;caption&quot; __DATA__ __META__ __OPTIONS__</title>'
