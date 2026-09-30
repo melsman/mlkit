@@ -110,6 +110,13 @@ mlkit_basislibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -region_profile repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par -region_profile repl.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -region_profile -Pcee -print_rho_types -Paux -log_to_file repl.mlb)
+	@set -e; for flags in '-no_gc' '-no_gc -par' '-gc' \
+	  '-no_gc -region_profile' '-no_gc -par -region_profile' '-gc -region_profile'; do \
+	  (cd kitlib && SML_LIB=.. ../bin/mlkit -c $$flags region-profile.mlb); \
+	done
+	@set -e; for flags in '-no_par' '-par' '-no_par -rp' '-par -rp'; do \
+	  (cd basis && SML_LIB=.. ../bin/reml -c $$flags reml.mlb); \
+	done
 
 .PHONY: mlkit_kitlibs
 mlkit_kitlibs: mlkit
@@ -122,7 +129,7 @@ mlkit_kitlibs: mlkit
 
 .PHONY: mlkit_cleanlibs
 mlkit_cleanlibs:
-	(cd basis && find . -name MLB -type d | xargs rm -rf)
+	find basis kitlib -name MLB -type d -prune -exec rm -rf {} +
 
 .PHONY: mlkit_libs
 mlkit_libs: mlkit_cleanlibs
@@ -157,12 +164,13 @@ endif
 
 .PHONY: install_mlkit_basislibs
 install_mlkit_basislibs:
-	@set -e; for dir in basis basis/io; do \
+	@set -e; for dir in basis basis/io kitlib; do \
 	  for cache in $(BASIS_CACHES); do \
 	    test -d "$$dir/MLB/$$cache" || { echo "Run make build_basislibs before installing" >&2; exit 1; }; \
 	    $(MKDIR) "$(LIBDIR)/$$dir/MLB/$$cache"; \
 	    set --; \
-	    for file in $$dir/MLB/$$cache/*; do \
+	    pattern='*'; test "$$dir" != kitlib || pattern='region-profile.*'; \
+	    for file in $$dir/MLB/$$cache/$$pattern; do \
 	      case "$$file" in \
 	        *.d|*.eb|*.eb1|*.lnk|*.o|*.df|*.rev) \
 	          set -- "$$@" "$$file" ;; \
@@ -211,6 +219,8 @@ install_kitdemo:
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
+	$(MKDIR) $(LIBDIR)/kitlib
+	$(INSTALLDATA) -p kitlib/region-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 	@set -e; for file in basis/*.log; do if test -f "$$file"; then $(INSTALLDATA) -p "$$file" $(LIBDIR)/basis; fi; done

@@ -266,10 +266,19 @@ with the current compiler and runtime to obtain version-5 profiles. No object sc
 allocation bookkeeping are needed to obtain region types.
 
 Release builds precompile the Basis (including REPL support) and Kit libraries
-for ordinary and sampled-profiler builds in three configurations: non-GC,
+together with `kitlib/region-profile.mlb`, for ordinary and sampled-profiler
+builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
 and the `_RP8` cache suffix. Legacy `-prof` libraries are no longer precompiled
 or selected for installation; they can still be compiled from source.
+The profiler API sources and their matching caches are installed under
+`$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from
+a read-only installation. `test/region_profile/check-installed-api.sh` checks
+all six MLKit configurations and ordinary/profiled ReML with and without
+parallelism against such an installation. `basis/reml.mlb` (the `Region`
+structure) is also precompiled with ReML for those four non-GC configurations
+and installed in the matching Basis caches. The check exercises both APIs,
+including an explicit region parameter.
 The non-GC sampled Basis build writes per-file logs containing region-annotated
 code and region types, without region-flow graphs or program-point listings.
 
