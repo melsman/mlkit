@@ -1,17 +1,23 @@
 # Sampled region profiler
 
-Compile the executable and its ML dependencies with `-region_profile`. Enable a
+The compiler flag `-rp` is an alias for `-region_profile` in both MLKit and ReML.
+For batch compilation it emits profiling metadata; run the resulting executable
+with `-rp` to start recording. In an interactive session, either spelling enables
+both metadata generation and profiling of the session runtime.
+
+Compile the executable and its ML dependencies with `-rp` (or `-region_profile`). Enable a
 session with the executable's `-rp` option. This profiler is independent of the
 old `-prof` object profiler; the two cannot be combined.
 
 ```sh
-mlkit -no_gc -region_profile -o app app.mlb
+mlkit -no_gc -rp -o app app.mlb
 ./app -rp -rp_interval 10ms -rp_file profile.rp -rp_report
 rpview profile.rp --output profile.html
 ```
 
 Supported combinations are single-threaded no-GC, GC and generational GC, and
-no-GC pthreads or experimental Argobots. The Argobots runtime is an optional\nsource build and is not shipped or installed by the normal release targets. **GC plus parallelism remains excluded.** Both
+no-GC pthreads or experimental Argobots. The Argobots runtime is an optional
+source build and is not shipped or installed by the normal release targets. **GC plus parallelism remains excluded.** Both
 native backends emit the metadata and polling bridges. ARM64 execution checks
 are passing. Initial ThinkPad X64 execution passed the accounting/graph suite
 and exposed GCC weak-constant folding and profiler-call stack alignment issues.
@@ -40,8 +46,8 @@ states at the timer deadline.
 The REPL accepts the same profiler options at startup. For example:
 
 ```sh
-mlkit -no_gc -region_profile -rp -rp_interval 20ms -rp_file repl.rp
-mlkit -gengc -region_profile -rp -rp_gc_samples
+mlkit -no_gc -rp -rp_interval 20ms -rp_file repl.rp
+mlkit -gengc -region_profile -rp_gc_samples
 ```
 
 Runtime options are forwarded to its child process and remain fixed across

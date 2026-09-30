@@ -54,12 +54,14 @@ echo 'Blocked foreign call: cancellation, progress, and stream checks passed'
 # Invalid REPL runtime options must fail promptly, rather than disappear or
 # leave the compiler blocked opening a FIFO after its child exits.
 status=0
-printf ':quit\n' | sh "$ROOT/test/region_profile/with-timeout.sh" 30 "$MLKIT" -no_gc -region_profile -rp_paused > "$OUT/invalid-repl.log" 2>&1 || status=$?
+printf ':quit\n' | sh "$ROOT/test/region_profile/with-timeout.sh" 30 "$MLKIT" -no_gc -rp_paused > "$OUT/invalid-repl.log" 2>&1 || status=$?
 [ "$status" -ne 124 ]
 grep -q 'require -rp' "$OUT/invalid-repl.log"
 for mode in no_gc gc; do
+ profile_flag=-rp
+ if [ "$mode" = gc ]; then profile_flag=-region_profile; fi
  mkdir "$OUT/repl-$mode"
- (cd "$OUT/repl-$mode" && "$MLKIT" -"$mode" -region_profile -rp -rp_interval 0 -rp_report -rp_file "$OUT/repl-$mode.rp" < "$ROOT/test/region_profile/repl.cmd" > "$OUT/repl-$mode.log" 2>&1)
+ (cd "$OUT/repl-$mode" && "$MLKIT" -"$mode" "$profile_flag" -rp_interval 0 -rp_report -rp_file "$OUT/repl-$mode.rp" < "$ROOT/test/region_profile/repl.cmd" > "$OUT/repl-$mode.log" 2>&1)
  grep -q 'repl profile ok' "$OUT/repl-$mode.log"
  sh "$ROOT/test/region_profile/check-records.sh" repl "$OUT/repl-$mode.rp"
 done

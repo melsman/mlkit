@@ -94,7 +94,7 @@ reduce memory retained by the process. Region footprints are not process RSS.
 
 ## Compiler metadata and safe points
 
-A proposed compiler option, `-region_profile`, emits profiling metadata and
+The compiler option `-region_profile` (short form `-rp`) emits profiling metadata and
 polls independently of the existing `-prof` mode and GC options. It links the
 ordinary runtime for the selected execution mode. Profiling is disabled at
 runtime unless explicitly enabled.

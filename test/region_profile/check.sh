@@ -17,7 +17,7 @@ $CC -c "$ROOT/test/region_profile/fixture.c" -o "$OUT/fixture.o"
 ar rcs "$OUT/librpfixture.a" "$OUT/fixture.o"
 # Copy sources so each run compiles fresh metadata without clearing user caches.
 cp "$ROOT/test/region_profile/regions.sml" "$ROOT/test/region_profile/regions.mlb" "$OUT/"
-"$REML" -no_par -region_profile -libdirs "$OUT" -libs rpfixture -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
+"$REML" -no_par -rp -libdirs "$OUT" -libs rpfixture -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
 "$OUT/regions" -rp -rp_file "$OUT/regions.rp"
 sh "$ROOT/test/region_profile/check-records.sh" regions "$OUT/regions.rp"
 cp "$ROOT/test/region_profile/basic.sml" "$ROOT/test/region_profile/basic.mlb" "$OUT/"
@@ -46,7 +46,7 @@ grep -q 'cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
 # Public API and a fully instrumented Basis use a separate cache variant.
 cp "$ROOT/test/region_profile/api.sml" "$OUT/"
 printf '%s\n' "$ROOT/kitlib/region-profile.mlb" "$ROOT/basis/basis.mlb" "$OUT/api.sml" > "$OUT/api.mlb"
-"$MLKIT" -no_gc -region_profile -o "$OUT/api" "$OUT/api.mlb" > "$OUT/api.build" 2>&1
+"$MLKIT" -no_gc -rp -o "$OUT/api" "$OUT/api.mlb" > "$OUT/api.build" 2>&1
 "$OUT/api" -rp -rp_paused -rp_file "$OUT/api.rp" -- first -rp application > "$OUT/api.out"
 grep -qx 'first:-rp:application' "$OUT/api.out"
 sh "$ROOT/test/region_profile/check-records.sh" api "$OUT/api.rp"

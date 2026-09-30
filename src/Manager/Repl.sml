@@ -59,7 +59,7 @@ fun rpBool name = Flags.add_bool_entry
 fun rpString (name,value) = Flags.add_string_entry
     {long = name, short = NONE, item = ref value,
      menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
-val rpEnabled = rpBool "rp"
+val rpEnabled = Flags.is_on0 "region_profile"
 val rpPaused = rpBool "rp_paused"
 val rpReport = rpBool "rp_report"
 val rpGC = rpBool "rp_gc_samples"
@@ -871,7 +871,7 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
     "mlb-subdir", "link_time_dead_code_elimination", "libs",
-    "rp", "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval",
+    "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval",
     "link_code", "libdirs", "import_basislib",
     "generational_garbage_collection", "gdb_support",
     "garbage_collection", "extra_gc_checks", "compile_only",
@@ -883,9 +883,7 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "report_file_sig", "log_to_file"]
 
 fun run () : OS.Process.status option =
-    if rpEnabled() andalso not(Flags.is_on "region_profile") then
-      (print "REPL -rp requires -region_profile.\n"; SOME OS.Process.failure)
-    else case MO.mk_repl_runtime of
+    case MO.mk_repl_runtime of
         SOME mk_runtime =>
         let val () = Flags.turn_on "report_file_sig"
             val () = List.app Flags.block_entry flags_to_block
