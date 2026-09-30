@@ -123,7 +123,10 @@ struct
                             (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")
                         else ""
         val top = paragraph caption 16.0 34.0 (canvasWidth-32.0) 26.0
-        val top = paragraph ("Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary ^ " · Samples: " ^ Int.toString(length samples) ^ " · Sampled maximum: " ^ memory peak) 16.0 (top+4.0) (canvasWidth-32.0) 16.0 + 12.0
+        val summary = "Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary ^ " · Samples: " ^ Int.toString(length samples) ^ " · Sampled maximum: " ^ memory peak
+        val summarySize = Real.min(16.0,(canvasWidth-32.0)/width 1.0 summary)
+        val () = text 16.0 (top+4.0) summarySize "start" summary
+        val top = top+4.0+summarySize*1.4+12.0
         fun x sample = 88.0 + 880.0 * real(number sample "time"-first) / real(IntInf.max(1,last-first))
         fun y n = top+593.0-528.0*real n/real maximum
         fun point (s,v) = fmt(x s) ^ "," ^ fmt(y v)
