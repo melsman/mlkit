@@ -166,7 +166,91 @@ percentage follows from this deliberately small FFI-heavy benchmark.
 Decision: retain **selective diversion** and keep `-allocation_profile`
 **opt-in**. Global diversion paid additional cost for unselected allocations
 without improving the selected case. Disabled capability was not cheap enough
-in this workload to justify enabling it in every `-rp` build. Native Linux X64
-hardware timings, broader application benchmarks, Argobots migration tests,
-line/column metadata, and release-cache policy remain further validation and
-integration work; they are not claimed as completed by these local results.
+in this workload to justify enabling it in every `-rp` build. The investigation
+below adds native Linux X64 timings and reduces that disabled overhead. Broader
+application benchmarks, Argobots migration tests, line/column metadata, and
+release-cache policy remain further validation and integration work.
+
+### Disabled C-call wrapper investigation
+
+The original attribution wrappers always saved/restored caller-clobbered ML
+registers and called `mlkit_rp_foreign_enter` / `mlkit_rp_foreign_leave`, even
+when the helpers immediately returned because attribution was disabled.
+Both backends now test `mlkit_rp_allocation_enabled` before that work. The
+enabled path retains the same origin stack and callback/exception handling.
+Selection is fixed at process startup; the guard does not depend on the
+snapshot profiler's start/pause state. Entry and return each test the flag,
+avoiding duplication of the foreign call or a new saved flag across callbacks.
+
+`benchmark-allocation-wrappers.sh OLD_REML NEW_REML` compares three workloads:
+the existing pair-plus-C-consumer loop, the same pair loop with an ML projection
+instead of the C consumer, and a scalar C-call loop without per-iteration ML
+allocation. The baseline is compiled with `-rp`; before/after add
+`-allocation_profile`. All three execute without runtime profiling options.
+Both compiler executables must use a compatible runtime; set `SML_LIB` to that
+tree. The script uses separate caches, retains generated assembly, warms each
+executable, and rotates measurement order across nine runs. The default is
+30,000,010 loop iterations, including the ten iterations after region reset.
+These are deliberately small diagnostic loops, not application benchmarks.
+
+ARM64 native measurements (macOS, nine-run elapsed-time medians in seconds):
+
+| Workload | Snapshot-only baseline | Attribution before | Attribution after |
+| --- | ---: | ---: | ---: |
+| Pair allocation plus C consumer | 0.22 | 0.43 | 0.25 |
+| Pair allocation plus ML projection | 0.20 | 0.21 | 0.21 |
+| Scalar C call, no loop allocation | 0.05 | 0.33 | 0.06 |
+
+The pair-plus-C workload is about 42% faster; roughly 86% of its measured
+disabled-attribution overhead relative to the baseline disappears. The
+allocation-only control is unchanged. With attribution enabled in the
+pair-plus-C workload, nine-run medians were 0.80/0.81 seconds before/after for
+the selected hot region and 0.51/0.52 seconds when selecting another region.
+The guards therefore have a small enabled-path cost in this measurement.
+`/usr/bin/time -p` has 0.01-second reporting resolution; these ratios should
+not be interpreted as precise predictions for other workloads. The complete
+ARM64 allocation-attribution test matrix passed with the guards, including
+callbacks, exception escape, both collectors and pthreads.
+
+Native Linux X64 measurements on the ThinkPad, using the same workload and
+nine-run protocol (seconds):
+
+| Workload | Snapshot-only baseline | Attribution before | Attribution after |
+| --- | ---: | ---: | ---: |
+| Pair allocation plus C consumer | 0.38 | 0.70 | 0.42 |
+| Pair allocation plus ML projection | 0.34 | 0.34 | 0.36 |
+| Scalar C call, no loop allocation | 0.05 | 0.40 | 0.06 |
+
+The pair-plus-C workload is 40% faster, removing about 88% of its measured
+disabled-attribution overhead. The allocation-only control shows no benefit
+(and a 0.02-second increase in this run); this change targets C-call wrappers,
+not allocation selection checks. Enabled-attribution medians were 1.18/1.19
+seconds for the selected hot region and 0.84/0.85 seconds for another region.
+The complete native X64 allocation-attribution matrix also passed, including
+disabled discovery runs, callbacks, exceptions, both collectors and pthreads.
+
+### Third status bit audit
+
+Bit 2 (`0x4`) is unused in the **region pointer** on the supported 64-bit
+backends: region storage is word aligned, and bits 0 and 1 currently encode
+infinite and at-bottom status. A propagated attribution-selection bit could
+replace the descriptor metadata load with `tbz` on ARM64 or a register bit
+test on X64 for a region parameter used by many allocations. This approach is
+not pursued here because it requires broader pointer-representation changes.
+
+It is not a local substitution for the current descriptor check. Both backends
+reconstruct local region pointers from stack offsets (`REG_I_ATY`) and add the
+ordinary status bits; they do not retain the allocator's returned pointer.
+These paths would need to recover selection from the descriptor, or retain a
+canonical tagged handle. Parameter passing, at-bottom/reset operations, global
+handles and every C/assembly dereference must preserve or clear the new bit as
+appropriate. The current `clearStatusBits` and native `-4` masks clear only two
+bits, so using bit 2 without that audit would offset accesses by four bytes.
+Selection being fixed at startup avoids a separate alias-invalidation problem.
+
+The similarly named fields **inside the descriptor** have different tags:
+bit 2 of `g0.fp` already participates in the GC region-type encoding (triples
+use `0x7`), while `g0.a` is used as an ordinary allocation pointer throughout
+the allocator and collectors. Neither can acquire this bit without further
+representation changes. The wrapper optimization keeps the existing pointer
+ABI; no speedup from a third-bit implementation is claimed here.

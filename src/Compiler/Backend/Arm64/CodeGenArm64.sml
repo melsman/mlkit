@@ -520,13 +520,23 @@ struct
     if not(allocationProfile()) then call code
     else
       let val site = allocationSite()
+          (* Selection is fixed at startup. Guard outside the preserving call
+           * so disabled attribution pays no register saves or helper calls. *)
+          fun whenEnabled action code =
+            let val done = localFresh()
+            in
+              (addressInto(NameLab "mlkit_rp_allocation_enabled",X 17)
+               ++ loadInto(X 17,0,X 17)
+               ++ instruction A.cbz (R(X 17),L(done)))
+                (action (Label done :: code))
+            end
       in
-        (addressInto(site,X 17)
+        (whenEnabled (addressInto(site,X 17)
          ++ internalCallInto fsz "mlkit_rp_foreign_enter"
-            [SS.PHREG_ATY(X 28),SS.PHREG_ATY(X 17),SS.REG_F_ATY(fsz-1)]
+            [SS.PHREG_ATY(X 28),SS.PHREG_ATY(X 17),SS.REG_F_ATY(fsz-1)])
          ++ call
-         ++ internalCallInto fsz "mlkit_rp_foreign_leave"
-            [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)]) code
+         ++ whenEnabled (internalCallInto fsz "mlkit_rp_foreign_leave"
+            [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)])) code
       end
   (* Mode 0 allocates at top; 1 honors the dynamic at-bottom bit; 2 resets.
    * The low infinite-region bit distinguishes descriptors from finite storage. *)

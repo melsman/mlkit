@@ -160,12 +160,20 @@ struct
     if not(allocationProfile()) then call code
     else
       let val site = (!allocationSite)()
+          (* Selection is fixed at startup. Guard outside the preserving call
+           * so disabled attribution pays no register saves or helper calls. *)
+          fun whenEnabled action code =
+            let val done = new_local_lab "allocation_foreign_disabled"
+            in
+              load_label_addr(NameLab "mlkit_rp_allocation_enabled",SS.PHREG_ATY treg0,treg0,0,
+                I.cmpq(I "0",D("0",treg0)) :: I.je done :: action (I.lab done :: code))
+            end
       in
-        load_label_addr(site,SS.PHREG_ATY treg0,treg0,0,
+        whenEnabled (fn code => load_label_addr(site,SS.PHREG_ATY treg0,treg0,0,
           rpInternal fsz "mlkit_rp_foreign_enter"
-            [SS.PHREG_ATY r14,SS.PHREG_ATY treg0,SS.REG_F_ATY(fsz-1)]
-            (call(rpInternal fsz "mlkit_rp_foreign_leave"
-               [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1)] code)))
+            [SS.PHREG_ATY r14,SS.PHREG_ATY treg0,SS.REG_F_ATY(fsz-1)] code))
+          (call(whenEnabled (rpInternal fsz "mlkit_rp_foreign_leave"
+               [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1)]) code))
       end
 
   fun inlineable C =
