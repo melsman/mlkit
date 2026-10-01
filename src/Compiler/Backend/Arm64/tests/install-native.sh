@@ -7,7 +7,7 @@ set -eu
 case "$ARM64_PREFIX" in
   *[[:space:]]*) echo 'Use a stable, space-free symlink as ARM64_PREFIX (compiler dependency paths cannot contain whitespace).' >&2; exit 1 ;;
 esac
-native_tools='mlkit reml kittester rp2ps mlkit-mllex mlkit-mlyacc'
+native_tools='mlkit reml kittester rp2ps rpview mlkit-mllex mlkit-mlyacc'
 for tool in $native_tools; do
   [ "$(lipo -archs "$ARM64_NATIVE_BIN/$tool")" = arm64 ]
 done

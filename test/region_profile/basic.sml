@@ -1,0 +1,5 @@
+fun sample () : unit = prim ("mlkit_rp_sample", ())
+fun mark (s:string) : unit = prim ("mlkit_rp_mark", s)
+fun flush () : unit = prim ("mlkit_rp_flush", ())
+fun print (s:string) : unit = prim ("printStringML", s)
+val _ = (mark "initial"; sample (); flush (); print "profile ok\n")

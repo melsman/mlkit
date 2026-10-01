@@ -1,5 +1,6 @@
 /* GC frame descriptors immediately precede their saved return PCs. */
 #include "Arm64GC.h"
+#include "RegionProfile.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,7 +35,7 @@ void mlkit_arm64_visit_roots(uintptr_t *snapshot, uintptr_t mask,
   uintptr_t pc=incoming[even(args)+1];
   uintptr_t *base=incoming+even(args)+2+even(results);
   for(;;) {
-    const uintptr_t *fd=(const uintptr_t *)pc;
+    const uintptr_t *fd=mlkit_rp_gc_map((const uintptr_t *)pc);
     size_t words=fd[-3], ret=fd[-2];
     if(words==UINTPTR_MAX) break;
     if(ret>=words) invalid("return slot outside frame");

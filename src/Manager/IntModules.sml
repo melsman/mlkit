@@ -706,6 +706,10 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     in
       fun interp(fi:bool,absprjid,intB,topdec, unitname) =
         let
+          val () = Flags.current_source_file :=
+              (if String.isPrefix "stdin-" unitname andalso not(Option.isSome(OS.Path.ext unitname)) then
+                "REPL #" ^ List.last(String.fields (fn c => c = #"-") unitname)
+              else OS.Path.mkAbsolute {path=unitname,relativeTo=OS.FileSys.getDir()})
           val _ = Execution.preHook()
           val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
           val MLB_slash_unitname =

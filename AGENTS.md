@@ -21,3 +21,8 @@ let val x = computeX ()
 in List.map (fn z => z + y) xs
 end
 ```
+
+# Test and utility scripts
+
+Do not commit Python code, including embedded Python in shell scripts. Prefer
+POSIX shell and standard command-line tools for test and benchmark orchestration.

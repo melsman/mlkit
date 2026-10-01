@@ -1,0 +1,17 @@
+{"type":"header","format":"mlkit-region-profile","version":5,"page_bytes":8192,"main_source":"/source/main.sml","gc_enabled":true}
+{"type":"sample_begin","sample":1,"time":1000000,"reason":"explicit"}
+{"type":"binding","definition":1,"unit":"unit","source":"/source/test.sml","name":"","region_type":"pair","kind":"infinite","binding":1}
+{"type":"region","sample":1,"thread":1,"worker":0,"cpu":4,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":1152921504606846977,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":1}
+{"type":"binding","definition":2,"unit":"unit","source":"/source/test.sml","name":"","region_type":"pair","kind":"infinite","binding":2}
+{"type":"region","sample":1,"thread":2,"worker":1,"cpu":5,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":1024,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":2}
+{"type":"binding","definition":3,"unit":"unit","source":"/source/test.sml","name":"","region_type":"pair","kind":"infinite","binding":3}
+{"type":"region","sample":1,"thread":1,"worker":0,"cpu":4,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":2048,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":3}
+{"type":"stack","sample":1,"thread":1,"worker":0,"cpu":4,"active_bytes":64,"finite_bytes":0,"stack_bytes":64}
+{"type":"sample_end","sample":1,"time":1000001,"frames":1,"pages_visited":3,"cache_bytes":0,"max_pages":4,"gc_collections":17}
+{"type":"sample_begin","sample":2,"time":2000000,"reason":"explicit"}
+{"type":"region","sample":2,"thread":1,"worker":0,"cpu":4,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":1152921504606846977,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":1}
+{"type":"region","sample":2,"thread":2,"worker":1,"cpu":5,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":1024,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":2}
+{"type":"region","sample":2,"thread":1,"worker":0,"cpu":4,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":2048,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":3}
+{"type":"stack","sample":2,"thread":1,"worker":0,"cpu":4,"active_bytes":64,"finite_bytes":0,"stack_bytes":64}
+{"type":"sample_end","sample":2,"time":2000001,"frames":1,"pages_visited":3,"cache_bytes":0,"max_pages":4,"gc_collections":17}
+{"type":"session_end","time":3000000,"max_pages":4,"gc_collections":17}

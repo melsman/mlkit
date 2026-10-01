@@ -10,6 +10,7 @@ AC_CONFIG_FILES([src/Runtime/Makefile
                  man/man1/kittester.1
                  src/Tools/MlbMake/Makefile
                  src/Tools/Rp2ps/Makefile
+                 src/Tools/RegionProfile/Makefile
                  src/Tools/ml-lex/Makefile
                  src/Tools/ml-yacc/Makefile
                  src/Tools/Tester/Makefile

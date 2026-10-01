@@ -15,3 +15,7 @@ src/Runtime/build/
 /stage/
 
 /js/.cache/
+
+/src/Tools/RegionProfile/build/
+/src/Tools/RegionProfile/embed
+/src/Tools/RegionProfile/Html.sml

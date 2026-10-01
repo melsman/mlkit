@@ -1,0 +1,106 @@
+structure ProfileMain =
+struct
+  fun run args =
+      let val file = ref "profile.rp"
+          val haveFile = ref false
+          val output = ref "profile.html"
+          val format = ref ""
+          val haveOutput = ref false
+          val settings = ref ([] : (string * ProfileJson.t) list)
+          fun setting k v = settings := (k,v)::List.filter (fn (key,_) => key <> k) (!settings)
+          fun choice k value choices =
+              if List.exists (fn x => x = value) choices then setting k (ProfileJson.Str value)
+              else raise Fail ("invalid " ^ k ^ ": " ^ value)
+          fun natural s =
+              if size s > 0 andalso List.all Char.isDigit (explode s) then Int.fromString s else NONE
+          fun help () =
+              (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
+                     \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
+                     \  --caption TEXT          Override the profile caption\n\
+                     \  --regions N             Largest regions to show (default 9; 0 = all)\n\
+                     \  --metric NAME           total (default), stack, pages, page_footprint,\n\
+                     \                          large_bytes, finite_bytes, descriptor_bytes\n\
+                     \  --scope VIEW            all (default), thread:N, worker:N, cpu:N\n\
+                     \                          Use -1 for unavailable worker/CPU identity\n\
+                     \  --group NAME            HTML table: aggregate, region, thread, worker\n\
+                     \  --show-base / --hide-base       Base names (default hidden)\n\
+                     \  --show-kind / --hide-kind       Region kind (default hidden)\n\
+                     \  --show-type / --hide-type       Region type (default hidden)\n\
+                     \  --show-peak / --hide-peak       Peak page capacity (default hidden)\n\
+                     \  --legend-right / --legend-below HTML legend placement and compact names\n\
+                     \                          (default right; SVG legend is always inside/right)\n";
+               OS.Process.exit OS.Process.success)
+          fun options [] = ()
+            | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
+            | options ("-o"::path::rest) = options ("--output"::path::rest)
+            | options ("--format"::value::rest) =
+              if value = "html" orelse value = "svg" orelse value = "json" then (format := value; options rest)
+              else raise Fail "format must be html, svg or json"
+            | options ("--caption"::value::rest) = (setting "caption" (ProfileJson.Str value); options rest)
+            | options ("--regions"::value::rest) =
+              (case natural value of SOME n => (setting "limit" (ProfileJson.Num(Int.toString n)); options rest)
+                                  | NONE => raise Fail "regions must be a nonnegative integer")
+            | options ("--metric"::value::rest) =
+              (choice "metric" value ["total","stack","pages","page_footprint","large_bytes","finite_bytes","descriptor_bytes"]; options rest)
+            | options ("--group"::value::rest) =
+              (choice "group" value ["aggregate","region","thread","worker"]; options rest)
+            | options ("--scope"::value::rest) =
+              let val valid = case String.fields (fn c => c = #":") value of
+                                  ["all"] => true
+                                | [field,id] => List.exists (fn f => f = field) ["thread","worker","cpu"] andalso
+                                    ((size id > 0 andalso List.all Char.isDigit (explode id)) orelse (id = "-1" andalso field <> "thread"))
+                                | _ => false
+              val canonical = if valid then
+                                    (case String.fields (fn c => c = #":") value of
+                                         [field,id] => if id = "-1" then value else field ^ ":" ^ IntInf.toString(valOf(IntInf.fromString id))
+                                       | _ => value)
+                                  else value
+              in if valid then (setting "scope" (ProfileJson.Str canonical); options rest)
+                 else raise Fail "scope must be all, thread:N, worker:N or cpu:N"
+              end
+            | options ("--legend-right"::rest) = (setting "legend-right" (ProfileJson.Bool true); options rest)
+            | options ("--legend-below"::rest) = (setting "legend-right" (ProfileJson.Bool false); options rest)
+            | options ("--help"::_) = help ()
+            | options (value::rest) =
+              if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","kind","type","peak"] then
+                (setting ("show-" ^ String.extract(value,7,NONE)) (ProfileJson.Bool(String.isPrefix "--show-" value)); options rest)
+              else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
+              else (file := value; haveFile := true; options rest)
+          val () = options args
+          val selected = if !format <> "" then !format
+                         else if String.isSuffix ".svg" (String.map Char.toLower (!output)) then "svg"
+                         else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
+                                 String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
+                         else "html"
+          val () = if !haveOutput then ()
+                   else if selected = "svg" then output := "profile.svg"
+                   else if selected = "json" then output := "-" else ()
+          val inputId = OS.FileSys.fileId (!file)
+          val same = !output <> "-" andalso ((inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false)
+          val () = if same then raise Fail "input and output must be different files" else ()
+          val records = ProfileBinary.read (!file)
+          val profile = ProfileReader.fromRecords records
+          val config = ProfileJson.Obj (!settings)
+          val () = case ProfileJson.find config "scope" of
+                       SOME (ProfileJson.Str scope) =>
+                         if scope = "all" then () else
+                           let val (field,id) = case String.fields (fn c => c = #":") scope of
+                                                    [field,id] => (field,id)
+                                                  | _ => raise Fail "invalid scope"
+                               val rows = List.concat(map (fn s => ProfileSvg.list s "regions" @ ProfileSvg.list s "stacks") (#samples profile))
+                               fun matches r = case ProfileJson.find r field of NONE => id = "-1" | _ => ProfileSvg.strField r field = id
+                           in if List.exists matches rows then () else raise Fail ("scope not present in profile: " ^ scope)
+                           end
+                     | _ => ()
+          val page = if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+                     else if selected = "svg" then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
+          val out = if !output = "-" then TextIO.stdOut else TextIO.openOut (!output)
+          val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))
+      in if !output = "-" then TextIO.flushOut out else (TextIO.closeOut out; print(!output ^ "\n"))
+      end
+end
+fun profileError message =
+    (TextIO.output(TextIO.stdErr,"rpview: " ^ message ^ "\n"); OS.Process.exit OS.Process.failure)
+val () = (ProfileMain.run (CommandLine.arguments ())
+          handle Fail message => profileError message
+               | e => profileError (General.exnMessage e))

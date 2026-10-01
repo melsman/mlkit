@@ -6,6 +6,7 @@
 #include "List.h"
 #include "Tagging.h"
 #include "Flags.h"
+#include "RegionProfile.h"
 #include "Profiling.h"
 
 #ifdef ARGOBOTS
@@ -44,6 +45,7 @@ void
 printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
+  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0] [-rp_gc_samples] [-rp_report]] [-- application arguments]\n");
   fprintf(stderr,"      [-help, -h] \n");
   fprintf(stderr,"      [-command_pipe n] \n");
   fprintf(stderr,"      [-reply_pipe n] \n");
@@ -110,6 +112,7 @@ void
 parseCmdLineArgs(int argc, char *argv[])
 {
   long match;
+  int rp_options = 0;
 
 #ifdef ARGOBOTS
   posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -125,6 +128,28 @@ parseCmdLineArgs(int argc, char *argv[])
     ++argv;    /* next parameter. */
     match = 0;
 
+    if (strcmp(argv[0], "-rp") == 0) { mlkit_rp_enabled = 1; match = 1; }
+    if (strcmp(argv[0], "-rp_paused") == 0) { mlkit_rp_initially_paused = 1; rp_options = 1; match = 1; }
+    if (strcmp(argv[0], "-rp_gc_samples") == 0) { mlkit_rp_gc_samples = 1; rp_options = 1; match = 1; }
+    if (strcmp(argv[0], "-rp_report") == 0) { mlkit_rp_report = 1; rp_options = 1; match = 1; }
+    if (strcmp(argv[0], "-rp_interval") == 0) {
+      if (--argc <= 0 || !mlkit_rp_parse_interval(*++argv)) {
+        fprintf(stderr, "-rp_interval requires an integer duration Nms, Ns, or 0\n"); exit(EXIT_FAILURE);
+      }
+      rp_options = 1;
+      app_arg_index += 2;
+      match = 1;
+      continue;
+    }
+    if (strcmp(argv[0], "-rp_file") == 0) {
+      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
+      mlkit_rp_filename = argv[0];
+      rp_options = 1;
+      app_arg_index += 2;
+      match = 1;
+      continue;
+    }
+    if (strcmp(argv[0], "--") == 0) { app_arg_index++; break; }
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
       match = 1;
@@ -329,6 +354,9 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 #endif
 
+    if (!match && strncmp(argv[0], "-rp", 3) == 0) {
+      fprintf(stderr, "unknown profiler option: %s\n", argv[0]); exit(EXIT_FAILURE);
+    }
     if (match) {
       app_arg_index++;
     }
@@ -340,6 +368,9 @@ parseCmdLineArgs(int argc, char *argv[])
   }
 #endif
 
+  if (!mlkit_rp_enabled && rp_options) {
+    fprintf(stderr, "profiler options require -rp\n"); exit(EXIT_FAILURE);
+  }
   return;
 }
 

@@ -120,6 +120,9 @@ jobs:
               -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
           fi
 
+      - name: Check region profiler
+        run: sh test/region_profile/check-ci.sh
+
       - name: Install MLKit
         run: sudo make install
 

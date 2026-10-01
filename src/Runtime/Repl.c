@@ -4,6 +4,9 @@
 
 #define _GNU_SOURCE
 
+#include "RegionProfile.h"
+#include <poll.h>
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -365,6 +368,15 @@ repl_interp(Context ctx) {
   while (1)  {
     fprintf(repllog, "{reading command}\n");
     fflush(repllog);
+    if (mlkit_rp_enabled) {
+      struct pollfd fd = {command_fd,POLLIN,0};
+      for (;;) {
+        mlkit_rp_idle(ctx);
+        int ready = poll(&fd,1,10);
+        if (ready > 0) break;
+        if (ready < 0 && errno != EINTR) die("REPL: cannot wait for command");
+      }
+    }
     char* cmd = read_str(command_fd, &buf1, &buf1_sz);
 
     if ( strcmp(cmd, "PRINT") == 0 ) {
@@ -412,9 +424,9 @@ repl_interp(Context ctx) {
 	write_str(reply_fd, "DONE;");
       }
     } else if ( strcmp(cmd, "TERMINATE") == 0 ) {
+      write_str(reply_fd, "DONE;");
       close(command_fd);
       close(reply_fd);
-      write_str(reply_fd, "DONE;");
       fclose(repllog);
       exit(0);
     } else {

@@ -9,6 +9,9 @@ signature FLAGS =
      * Manager which also resets the warnings.
      *)
 
+    (* Source unit currently being compiled, for native profiling metadata. *)
+    val current_source_file : string ref
+
     type Report
     val warn : Report -> unit
     val warn_string : string -> unit
