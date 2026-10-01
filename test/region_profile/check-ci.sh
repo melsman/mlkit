@@ -33,6 +33,7 @@ run () {
   fi
 }
 run accounting sh "$ROOT/test/region_profile/check.sh"
+run allocation sh "$ROOT/test/region_profile/check-allocation.sh"
 run extended sh "$ROOT/test/region_profile/check-extended.sh"
 run binary sh "$ROOT/test/region_profile/check-binary.sh"
 run viewer sh "$ROOT/test/region_profile/check-viewer.sh"

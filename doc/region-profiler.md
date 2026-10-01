@@ -459,3 +459,10 @@ It uses POSIX `time -p`, whose resolution is platform-dependent. Use
 Measure representative programs and thread contention before replacing page-list
 traversal with maintained per-region counts; such counts would not remove polling
 or serialization costs.
+
+## Allocation attribution
+
+See [Selected-region allocation attribution](allocation-profiler.md) for the
+opt-in `-rp -allocation_profile` compiler mode, launch-time region selection,
+flat function/site histograms, ABI changes, and measured overhead. Ordinary
+`-rp` builds continue to produce version-5 snapshot profiles.

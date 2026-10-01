@@ -18,6 +18,11 @@ struct
         | 9 => ("sample_end",["sample","time","frames","pages_visited","cache_pages","cache_bytes","max_pages","gc_collections"],[])
         | 10 => ("sample_skipped",["time"],["reason"])
         | 11 => ("mark",["time"],["label"])
+        | 12 => ("allocation_session",["enabled","depth"],["build_id","selector"])
+        | 13 => ("allocation_site",["definition","site"],["unit","function","source"])
+        | 14 => ("allocation",["thread","definition","count","bytes"],[])
+        | 15 => ("allocation_incomplete",["thread"],["reason"])
+        | 16 => ("allocation_region",["binding"],["unit","name","source"])
         | _ => raise Fail "unknown binary record tag"
   fun read path =
       let val input = BinIO.openIn path
@@ -30,8 +35,11 @@ struct
                                    else loop (i-1) (acc*256 + IntInf.fromInt(byte(p+i)))
               in loop (n-1) 0
               end
-          val () = if size >= 8 andalso Byte.bytesToString(Word8VectorSlice.vector(Word8VectorSlice.slice(data,0,SOME 8))) = magic
-                   then () else raise Fail "unsupported binary profile header (expected version 5)"
+          val () = if size >= 8 andalso
+                     Byte.bytesToString(Word8VectorSlice.vector(Word8VectorSlice.slice(data,0,SOME 6))) = "MLKRP\000"
+                     andalso (byte 6 = 5 orelse byte 6 = 6) andalso byte 7 = 0
+                   then () else raise Fail "unsupported binary profile header (expected version 5 or 6)"
+          val version = Int.toString(byte 6)
           fun record start stop =
               let val (kind,nums,strs) = schema(byte start)
                   val pos = ref (start+1)
@@ -61,7 +69,7 @@ struct
                   val fields = map numeric nums @ map text strs
                   val () = if !pos = stop then () else raise Fail "extra bytes in binary record"
                   val header = if kind = "header" then
-                      [("format",Str "mlkit-region-profile"),("version",Num "5"),("time_unit",Str "ns"),("size_unit",Str "bytes")] else []
+                      [("format",Str "mlkit-region-profile"),("version",Num version),("time_unit",Str "ns"),("size_unit",Str "bytes")] else []
               in Obj(("type",Str kind)::header @ fields)
               end
           fun loop pos acc =

@@ -58,7 +58,8 @@ CHECK(ro_mutex, offsetof(Ro, mutex) == (2 * GENERATIONS + 2 + PROFILE_WORDS) * 8
 #else
 # define PAR_WORDS 0
 #endif
-CHECK(ro_size, sizeof(Ro) == (2 * GENERATIONS + 2 + PROFILE_WORDS + PAR_WORDS) * 8);
+CHECK(ro_allocation_profile, offsetof(Ro, allocation_profile) == (2 * GENERATIONS + 2 + PROFILE_WORDS + PAR_WORDS) * 8);
+CHECK(ro_size, sizeof(Ro) == (2 * GENERATIONS + 3 + PROFILE_WORDS + PAR_WORDS) * 8);
 CHECK(context_top, offsetof(context, topregion) == 0);
 CHECK(context_exception, offsetof(context, exnptr) == 8);
 CHECK(context_uncaught, offsetof(context, uncaught_exnname) == 16);

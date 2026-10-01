@@ -34,11 +34,43 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 </div>
 <p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available.<span id="execution-stream-note"></span></p>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
+<section id="allocation-discovery" hidden><p id="allocation-build"></p>
+<details><summary>Allocation selectors for infinite regions</summary>
+<table><thead><tr><th>Region</th><th>Source</th><th>Selector</th></tr></thead><tbody id="allocation-selectors"></tbody></table>
+</details></section>
+<section id="allocation-section" hidden>
+<h2>Allocation volume</h2><p id="allocation-note"></p>
+<label>Group by <select id="allocation-group"><option value="function">Function</option><option value="site">Allocation site</option></select></label>
+<table><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
+<p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Source locations currently identify files; generated function labels and site numbers distinguish sites. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
+</section>
 <table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
 const samples=__DATA__;
 const profile=__META__;
 const el=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg';
+function allocationTable(){
+ const session=profile.allocation_session;if(!session)return;
+ el('allocation-discovery').hidden=false;el('allocation-build').textContent='Allocation build identifier: '+session.build_id;
+ el('allocation-selectors').replaceChildren();
+ const bindings=new Map();for(const sample of samples)for(const r of sample.regions)if(r.kind==='infinite')bindings.set(r.unit+':'+r.binding,r);
+ if(profile.allocation_region){const r=profile.allocation_region;bindings.set(r.unit+':'+r.binding,r);}
+ for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const value of [r.name||'Region '+r.binding,r.source,selector]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('allocation-selectors').append(tr);}
+ if(session.enabled!=='1')return;
+ el('allocation-rows').replaceChildren();
+ const bySite=el('allocation-group').value==='site';
+ el('allocation-section').hidden=false;
+ const incomplete=!profile.complete||(profile.allocation_problems||[]).length;
+ el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+' · All threads, entire run.';
+ const rows=new Map();
+ for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
+  const tr=document.createElement('tr');for(const value of [r.function+' · '+r.unit+(bySite?':'+r.site:''),r.source,String(r.count),String(r.bytes)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('allocation-rows').append(tr);
+ }
+ if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
+}
+allocationTable();
+el('allocation-group').addEventListener('change',allocationTable);
 const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 const palette=['#2563eb','#ea580c','#16a34a','#c026d3','#0891b2','#dc2626','#854d0e','#7c3aed','#65a30d','#db2777','#0d9488','#ca8a04'];
 const colorWeights=new Map();
@@ -58,7 +90,7 @@ function label(r){
  if(details.length)name+=' ('+details.join(', ')+')';
  return name;
 }
-function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+baseName(r)+(r.source?'\nSource: '+r.source:'')+'\nUnit: '+r.unit+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
+function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+baseName(r)+(r.source?'\nSource: '+r.source:'')+'\nUnit: '+r.unit+'\nAllocation selector: '+r.unit+':'+r.binding+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
 function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
 
 function model(){

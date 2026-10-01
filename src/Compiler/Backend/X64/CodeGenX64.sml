@@ -50,6 +50,8 @@ struct
 
   val ctx_exnptr_offs = "8"  (* one word offset in Context struct *)
 
+  val allocationFunction = ref "<entry>"
+  val allocationSerial = ref 0
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ Labels.pr_label l)
@@ -136,6 +138,34 @@ struct
         load_label_addr(NameLab "mlkit_rp_pending",SS.PHREG_ATY treg0,treg0,0,
           I.cmpl(I "0",D("0",treg0)) :: I.je done ::
           load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
+      end
+
+  fun allocationMetadata unitName display id =
+    let val lab = new_local_lab "allocation_metadata"
+        val display = gen_string_lab display
+    in
+      add_static_data [I.dot_data,I.dot_p2align "3",I.lab lab,
+        I.dot_quad(I.pr_lab unitName),I.dot_quad(I.pr_lab display),
+        I.dot_quad(I.pr_lab(!rpSource)),I.dot_quad(Int.toString id)]; lab
+    end
+  val () = allocationSite := (fn () =>
+    (allocationSerial := !allocationSerial+1;
+     allocationMetadata (!rpUnit) (!allocationFunction) (!allocationSerial)))
+  fun allocationBinding place =
+    allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place)
+  fun bindAllocation fsz aty metadata code =
+    load_label_addr(metadata,SS.PHREG_ATY treg0,treg0,0,
+      rpInternal fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY treg0] code)
+  fun foreignAllocation fsz call code =
+    if not(allocationProfile()) then call code
+    else
+      let val site = (!allocationSite)()
+      in
+        load_label_addr(site,SS.PHREG_ATY treg0,treg0,0,
+          rpInternal fsz "mlkit_rp_foreign_enter"
+            [SS.PHREG_ATY r14,SS.PHREG_ATY treg0,SS.REG_F_ATY(fsz-1)]
+            (call(rpInternal fsz "mlkit_rp_foreign_leave"
+               [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1)] code)))
       end
 
   fun inlineable C =
@@ -742,7 +772,8 @@ struct
                               in
                                   base_plus_offset(rsp,WORDS(fsz-offset-1),treg1,
                                     compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY treg1] @ protect,NONE,
-                                                        fsz,treg0(*not used*),C))
+                                                        fsz,treg0(*not used*),
+                                      if allocationProfile() then bindAllocation fsz (SS.REG_F_ATY offset) (allocationBinding place) C else C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
                       if region_profiling() then
@@ -1484,7 +1515,7 @@ struct
                   else
                   let
                     fun comp_c_call (all_args,res,C) =
-                      compile_c_call_prim(name, all_args, res, fsz, treg1, C)
+                      foreignAllocation fsz (fn C => compile_c_call_prim(name, all_args, res, fsz, treg1, C)) C
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()
@@ -1522,7 +1553,7 @@ struct
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)
+                                foreignAllocation fsz (fn C => compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)) C
                                 handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
                                             ; raise X)
                                )
@@ -1675,6 +1706,7 @@ struct
 
     fun CG_top_decl' gen_fn (lab,cc,lss) =
       let
+        val () = allocationFunction := Labels.pr_label lab
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
         fun pws ws = app pw ws
@@ -1777,6 +1809,7 @@ struct
         val _ = reset_label_counter()
         val () = rpNames := []
         val () = if sampledProfile() then rpSource := gen_string_lab(!Flags.current_source_file) else ()
+        val () = allocationSerial := 0
         val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
@@ -2075,17 +2108,26 @@ struct
             I.dot_globl (stublab,I.FUNC) ::
             I.lab stublab ::
             push_callersave_regs
-            (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, fsz, treg0,
+            ((if cfunction = "alloc_profiled" then
+                fn code => I.movq(D(i2s(8*(length save_regs+1)),rsp),R rcx) ::
+                  I.movq(I(if parallelism_p() andalso not(par_alloc_unprotected_p()) then "1" else "0"),R r8) :: code
+              else fn code => code)
+             (compile_c_call_prim(cfunction,
+                if cfunction = "alloc_profiled" then
+                  [SS.PHREG_ATY r14,SS.PHREG_ATY treg1,SS.PHREG_ATY treg0,
+                   SS.PHREG_ATY rcx,SS.PHREG_ATY r8]
+                else map SS.PHREG_ATY args, res, fsz, treg0,
               pop_callersave_regs
                   ( I.ret ::
                     (*
                     I.pop(R treg0) ::
                     I.jmp(R treg0) :: *)
-                   C)))
+                   C))))
           end
 
         fun allocate C = (* args in treg1 and treg0; result in treg1. *)
-          ccall_stub("__allocate", "alloc", [treg1, treg0], true, C)
+          ccall_stub("__allocate", "alloc", [treg1, treg0], true,
+            if allocationProfile() then ccall_stub("__allocate_profiled", "alloc_profiled", [], true, C) else C)
 
         fun allocate_unprotected C = (* args in treg1 and treg0; result in treg1. *)
             if parallelism_p() (*andalso par_alloc_unprotected_p()*) then
@@ -2240,7 +2282,11 @@ struct
           in
             foldl (fn ((rho,lab),C) =>
                    let val name = c_name rho
-                       val C = I.movq(R rax, L (DatLab lab)) :: C
+                       val C = I.movq(R rax, L (DatLab lab)) ::
+                         (if allocationProfile() then
+                            I.movq(R rax,R rdi) ::
+                            I.movq(I(Int.toString(case Effect.get_place_ty rho of NONE => 0 | SOME ty => Effect.ord_runType ty)),R rsi) ::
+                            I.call(NameLab "mlkit_rp_bind_global") :: C else C)
                        val sz_regdesc = BI.size_of_reg_desc()
                        val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
                                         else sz_regdesc+1
@@ -2408,6 +2454,14 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
                I.dot_globl(NameLab "mlkit_rp_main_source_slot",I.OBJ),I.lab(NameLab "mlkit_rp_main_source_slot"),I.dot_quad(I.pr_lab slot)]
           end
           else ()
+        val () = if allocationProfile() then
+          let val build = gen_string_lab(Time.toString(Time.now()))
+          in add_static_data [I.dot_data,I.dot_p2align "3",
+               I.dot_globl(NameLab "mlkit_rp_allocation_capable",I.OBJ),
+               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "1",
+               I.dot_globl(NameLab "mlkit_rp_build_id",I.OBJ),
+               I.lab(NameLab "mlkit_rp_build_id"),I.dot_quad(I.pr_lab build ^ " + 8")]
+          end else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*

@@ -12,6 +12,11 @@ struct
           val pagePeak = ref NONE
           val collections = ref NONE
           val complete = ref false
+          val allocationRegion = ref Null
+          val allocationSession = ref Null
+          val allocationSites = ref (Binarymap.mkDict IntInf.compare)
+          val allocations = ref []
+          val allocationProblems = ref []
           fun noteCollections r =
               let val n = uint r "gc_collections"
               in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
@@ -21,6 +26,8 @@ struct
               in pagePeak := SOME(case !pagePeak of NONE => n | SOME p => IntInf.max(p,n))
               end
           fun require b msg = if b then () else raise Fail msg
+          fun requireAllocation () =
+              require (!allocationSession <> Null andalso uint (!allocationSession) "enabled" = 1) "allocation record outside enabled session"
           val staticKeys = ["unit","source","name","region_type","kind","binding"]
           fun define r =
               let val id = uint r "definition"
@@ -58,12 +65,41 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (uint r "version" = 5) "unsupported profile version (expected version 5)";
+                   require (uint r "version" = 5 orelse uint r "version" = 6) "unsupported profile version";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
                   (case kind r of
-                       "binding" => define r
+                       "allocation_session" =>
+                       (require (uint h "version" = 6) "allocation records need version 6";
+                        require (!allocationSession = Null) "duplicate allocation session";
+                        require (uint r "enabled" <= 1 andalso uint r "depth" = 1) "unsupported allocation mode";
+                        app (fn k => ignore(string(get r k))) ["build_id","selector"];
+                        allocationSession := r)
+                     | "allocation_region" =>
+                       (requireAllocation(); require (!allocationRegion = Null) "duplicate allocation region";
+                        ignore(uint r "binding"); app (fn k => ignore(string(get r k))) ["unit","name","source"];
+                        allocationRegion := r)
+                     | "allocation_site" =>
+                       let val () = requireAllocation()
+                           val id = uint r "definition"
+                       in require (not(Option.isSome(Binarymap.peek(!allocationSites,id)))) "duplicate allocation site";
+                          ignore(uint r "site");
+                          app (fn k => ignore(string(get r k))) ["unit","function","source"];
+                          allocationSites := Binarymap.insert(!allocationSites,id,r)
+                       end
+                     | "allocation" =>
+                       let val () = requireAllocation()
+                           val site = case Binarymap.peek(!allocationSites,uint r "definition") of
+                                          SOME s => s | NONE => raise Fail "unknown allocation site"
+                       in app (fn k => ignore(uint r k)) ["thread","count","bytes"];
+                          allocations := Obj(fields r @ map (fn k => (k,get site k))
+                            ["site","unit","function","source"]) :: !allocations
+                       end
+                     | "allocation_incomplete" =>
+                       (requireAllocation(); ignore(uint r "thread"); ignore(string(get r "reason"));
+                        allocationProblems := r :: !allocationProblems)
+                     | "binding" => define r
                      | "sample_begin" =>
                        (require (not(Option.isSome(!pending))) "nested samples";
                         ignore(uint r "sample"); ignore(uint r "time");
@@ -110,7 +146,10 @@ struct
           val gc = case get h "gc_enabled" of
                        Bool b => Bool b
                      | _ => raise Fail "invalid GC enabled flag"
-          val metadata = Obj[("main_source",source),("gc_enabled",gc),
+          val metadata = Obj[("allocation_region",!allocationRegion),("allocation_session",!allocationSession),
+                             ("allocations",Arr(rev(!allocations))),
+                             ("allocation_problems",Arr(rev(!allocationProblems))),
+                             ("main_source",source),("gc_enabled",gc),
                              ("gc_collections",case !collections of NONE => Null | SOME n => Num(IntInf.toString n)),
                              ("complete",Bool(!complete))]
       in {samples=result,metadata=metadata}
