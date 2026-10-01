@@ -15,7 +15,7 @@ for mode in rp-only disabled selected unselected global-selected global-unselect
   [ -n "$selector" ]
   set --
   case $mode in
-    *unselected) set -- -rp -rp_interval 0 -rp_region '<global>:1';;
+    *unselected) set -- -rp -rp_interval 0 -rp_region '<global>:3';;
     *selected) set -- -rp -rp_interval 0 -rp_region "$selector";;
   esac
   [ "$#" -eq 0 ] || set -- "$@" -rp_report -rp_file "$OUT/$mode.rp"

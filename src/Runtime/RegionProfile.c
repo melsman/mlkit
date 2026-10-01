@@ -276,17 +276,22 @@ uintptr_t mlkit_rp_bind_region(Region r, const MlkitAllocationRegion *metadata) 
   }
   return 1;
 }
-uintptr_t mlkit_rp_bind_global(Region r, uintptr_t type) {
+/* Indexed by Effect.ord_runType, but identities are the compiler's region
+ * keys (Effect's toplevel region initialization), as printed by -Pcee. */
+static const MlkitAllocationRegion *global_metadata(uintptr_t type) {
   static struct { size_t tag; char data[9]; } unit = {0,"<global>"};
   static struct { size_t tag; char data[7]; } source = {0,"global"};
   static const MlkitAllocationRegion metadata[] = {
 #define GLOBAL_METADATA(n) {(String)&unit,(String)&source,(String)&source,n}
-    GLOBAL_METADATA(0),GLOBAL_METADATA(1),GLOBAL_METADATA(2),GLOBAL_METADATA(3),
-    GLOBAL_METADATA(4),GLOBAL_METADATA(5),GLOBAL_METADATA(6),GLOBAL_METADATA(7)
+    GLOBAL_METADATA(0),GLOBAL_METADATA(3),GLOBAL_METADATA(4),GLOBAL_METADATA(5),
+    GLOBAL_METADATA(6),GLOBAL_METADATA(7),GLOBAL_METADATA(1),GLOBAL_METADATA(2)
 #undef GLOBAL_METADATA
   };
   if (type >= sizeof(metadata)/sizeof(*metadata)) fail("invalid global region type");
-  return mlkit_rp_bind_region(r,&metadata[type]);
+  return &metadata[type];
+}
+uintptr_t mlkit_rp_bind_global(Region r, uintptr_t type) {
+  return mlkit_rp_bind_region(r,global_metadata(type));
 }
 void mlkit_rp_allocation(Region r, size_t words, Context ctx, const MlkitAllocationSite *site) {
   (void)r;
@@ -680,9 +685,8 @@ static int complete_chain(uintptr_t *base, const uintptr_t *map) {
   }
   fail("invalid frame chain"); return 0;
 }
-/* Preserve version-5 identities, including persistent REPL regions not listed
- * in the executable's static global table. Capable static executables use the
- * reproducible run type for their built-in globals. */
+/* Built-in globals use compiler region keys in both snapshot and attribution
+ * profiles. Other persistent regions (e.g. REPL regions) get distinct IDs. */
 typedef struct GlobalRegion {
   Region region;
   uint64_t id;
@@ -692,10 +696,10 @@ static GlobalRegion *globals;
 static uint64_t next_global_id;
 static uint64_t global_id(Region r) {
   uintptr_t type = global_type(r);
-  if (mlkit_rp_allocation_capable && type) return type;
+  if (type) return global_metadata(type)->binding;
   for (GlobalRegion *g = globals; g; g = g->next) if (g->region == r) return g->id;
   GlobalRegion *g = checked_alloc(sizeof(*g));
-  *g = (GlobalRegion){r,next_global_id+++(mlkit_rp_allocation_capable ? 8 : 0),globals};
+  *g = (GlobalRegion){r,next_global_id++ + 8,globals};
   globals = g;
   return g->id;
 }

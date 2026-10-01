@@ -28,6 +28,18 @@ int main(int argc, char **argv) {
   mlkit_rp_enabled = 1; mlkit_rp_interval_us = 0;
   mlkit_rp_region = "fixture:42"; mlkit_rp_filename = argv[1];
   mlkit_rp_init();
+  /* Global selectors use compiler keys, not the run-type enumeration. */
+  static const char *selectors[] = {
+    NULL,"<global>:3","<global>:4","<global>:5","<global>:6",
+    "<global>:7","<global>:1","<global>:2"
+  };
+  for (uintptr_t type = 1; type <= 7; type++) {
+    Ro global = {0};
+    mlkit_rp_region = selectors[type];
+    mlkit_rp_bind_global(&global,type);
+    assert(global.allocation_profile);
+  }
+  mlkit_rp_region = "fixture:42";
   mlkit_rp_bind_region(&r,&selected);
   mlkit_rp_bind_region(&ignored,&unselected);
   assert(r.allocation_profile == &selected && !ignored.allocation_profile);

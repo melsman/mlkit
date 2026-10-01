@@ -69,6 +69,14 @@ inlined ancestry. Flat attribution requires no ML stack walk and does not use
 safe-point frame maps as allocation-site unwind maps. M4 must audit allocation
 anchors separately; tail-call history is not reconstructed.
 
+Global binding IDs also use the compiler's region keys, matching MLKit's
+`-Pcee` output: top `r1`, bottom `r2` (not a materialized global), string `r3`,
+pair `r4`, array `r5`, ref `r6`, and triple `r7`. Thus the global pair region's
+attribution selector is `<global>:4`. These IDs apply to both snapshot-only
+and attribution builds. Local bindings retain their compiler IDs and unit
+qualifiers. Previously recorded profiles keep the IDs stored in their files;
+rerun the program to obtain the corrected global numbering.
+
 ML/C entry saves an origin in the logical context and ordinary return restores
 it. Nested C helpers inherit that origin. A C-to-ML callback's explicit ML hooks
 use their own sites; nested ML/C calls push their own origins. Native exception

@@ -57,4 +57,6 @@ printf '%s\n' "$OUT/graph.sml" > "$OUT/graph.mlb"
 "$OUT/graph" -rp -rp_interval 0 -rp_file "$OUT/graph.rp" > "$OUT/graph.out"
 sh "$ROOT/test/region_profile/check-records.sh" graph "$OUT/graph.rp"
 "$RPVIEW" "$OUT/graph.rp" --output "$OUT/graph.html"
+"$RPVIEW" "$OUT/graph.rp" --format json > "$OUT/graph.json"
+sh "$ROOT/test/region_profile/check-global-ids.sh" "$OUT/graph.json"
 echo 'Region profiler accounting and graph example checks passed'

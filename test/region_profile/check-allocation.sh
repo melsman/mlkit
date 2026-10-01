@@ -38,7 +38,7 @@ for name in allocation allocation-callback; do
     grep -q '"count":3,"bytes":40' "$OUT/$name.json"
     [ "$(grep -c '"type":"allocation"' "$OUT/$name.json")" -eq 2 ]
   fi
-  "$OUT/$name" -rp -rp_interval 0 -rp_region '<global>:1' -rp_file "$OUT/untracked.rp"
+  "$OUT/$name" -rp -rp_interval 0 -rp_region '<global>:3' -rp_file "$OUT/untracked.rp"
   json "$OUT/untracked.rp" "$OUT/untracked.json"
   ! grep -q '"type":"allocation"' "$OUT/untracked.json"
   "$RPVIEW" "$OUT/$name.rp" -o "$OUT/$name.html"
@@ -68,8 +68,9 @@ for collector in -gc -gengc; do
   for state in enabled disabled; do
     set --
     [ "$state" = enabled ] || set -- -disable_gc
-    "$OUT/gc" "$@" -rp -rp_interval 0 -rp_region '<global>:2' -rp_file "$OUT/gc$collector-$state.rp"
+    "$OUT/gc" "$@" -rp -rp_interval 0 -rp_region '<global>:4' -rp_file "$OUT/gc$collector-$state.rp"
     json "$OUT/gc$collector-$state.rp" "$OUT/gc$collector-$state.json"
+    sh "$ROOT/test/region_profile/check-global-ids.sh" "$OUT/gc$collector-$state.json"
     grep -q '"count":100000,"bytes":1600000' "$OUT/gc$collector-$state.json"
   done
   grep '"type":"session_end"' "$OUT/gc$collector-enabled.json" | grep -Eq '"gc_collections":[1-9][0-9]*'
