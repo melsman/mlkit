@@ -77,6 +77,11 @@ and attribution builds. Local bindings retain their compiler IDs and unit
 qualifiers. Previously recorded profiles keep the IDs stored in their files;
 rerun the program to obtain the corrected global numbering.
 
+The attribution table shows function names without appended compilation-unit
+identifiers. **Show base names** appends source file base names, consistently
+with the graph labels. Hover a function to see its full unit and source;
+identically named functions from different units remain separate rows.
+
 ML/C entry saves an origin in the logical context and ordinary return restores
 it. Nested C helpers inherit that origin. A C-to-ML callback's explicit ML hooks
 use their own sites; nested ML/C calls push their own origins. Native exception

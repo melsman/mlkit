@@ -11,6 +11,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .graph-layout.legend-right{display:grid;grid-template-columns:minmax(0,3fr) minmax(220px,1fr);gap:20px;align-items:start}.graph-layout.legend-right #legend{margin-top:18px;max-height:440px;overflow:auto}.graph-layout>*{min-width:0}
 @media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
 .axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -29,7 +30,15 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <button id="export-svg" type="button">Download SVG</button>
 <p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
 <div id="graph-layout" class="graph-layout">
+<div class="graph-column">
 <svg id="chart" viewBox="0 0 1002 668" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
+<div class="snapshot-window" role="group" aria-label="Snapshot range">
+<div class="window-label"><span id="range-caption">Snapshot range</span><button id="range-reset" type="button">Full range</button></div>
+<div class="range-slider"><div class="range-track" id="range-track"></div>
+<input id="range-start" type="range" min="0" max="0" value="0" aria-label="First snapshot" aria-describedby="range-caption">
+<input id="range-end" type="range" min="0" max="0" value="0" aria-label="Last snapshot" aria-describedby="range-caption">
+</div><div class="range-times"><span id="range-first-time"></span><span id="range-last-time"></span></div>
+</div></div>
 <div id="legend" aria-label="Region legend, top to bottom"></div>
 </div>
 <p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available.<span id="execution-stream-note"></span></p>
@@ -49,6 +58,25 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 const samples=__DATA__;
 const profile=__META__;
 const el=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg';
+let rangeStart=0,rangeEnd=null;
+function snapshotBounds(){const last=Math.max(0,samples.length-1),start=Math.min(rangeStart,last);return [start,Math.max(start,Math.min(rangeEnd??last,last))];}
+function visibleSamples(){const [start,end]=snapshotBounds();return samples.slice(start,end+1);}
+function narrowSnapshots(handle){
+ const [start,end]=snapshotBounds();
+ if(handle==='start')rangeStart=Math.max(0,Math.min(Number(el('range-start').value),end));
+ else rangeEnd=Math.min(samples.length-1,Math.max(Number(el('range-end').value),start));
+ draw();
+}
+function resetSnapshotRange(){rangeStart=0;rangeEnd=null;draw();}
+function rangeControls(){
+ const [start,end]=snapshotBounds(),last=Math.max(0,samples.length-1);
+ for(const [id,value] of [['range-start',start],['range-end',end]]){const input=el(id);input.max=last;input.value=value;input.disabled=samples.length<2;input.setAttribute('aria-valuetext',samples.length?'Snapshot '+samples[value].sample:'No snapshots');}
+ el('range-caption').textContent=samples.length?'Snapshots '+samples[start].sample+'–'+samples[end].sample+' of '+samples.length:'No completed snapshots';
+ el('range-reset').disabled=!samples.length||(start===0&&end===last);
+ el('range-track').style.background=`linear-gradient(to right,#cbd5e1 ${last?100*start/last:0}%,#2563eb ${last?100*start/last:0}%,#2563eb ${last?100*end/last:100}%,#cbd5e1 ${last?100*end/last:100}%)`;
+ const time=s=>s?(Number(s.time)/1e6).toLocaleString(undefined,{maximumFractionDigits:3})+' ms':'';
+ el('range-first-time').textContent=time(samples[start]);el('range-last-time').textContent=time(samples[end]);
+}
 function allocationTable(){
  const session=profile.allocation_session;if(!session)return;
  el('allocation-discovery').hidden=false;el('allocation-build').textContent='Allocation build identifier: '+session.build_id;
@@ -65,7 +93,8 @@ function allocationTable(){
  const rows=new Map();
  for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
-  const tr=document.createElement('tr');for(const value of [r.function+' · '+r.unit+(bySite?':'+r.site:''),r.source,String(r.count),String(r.bytes)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('allocation-rows').append(tr);
+  const name=r.function+(bySite?' · site '+r.site:'')+(el('show-base').checked?' · '+baseName(r):'');
+  const tr=document.createElement('tr');for(const value of [name,r.source,String(r.count),String(r.bytes)]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+(bySite?'\nSite: '+r.site:'');tr.append(td);}el('allocation-rows').append(tr);
  }
  if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
 }
@@ -94,6 +123,7 @@ function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase
 function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
 
 function model(){
+ const samples=visibleSamples();
  const bands=new Map();
  function entry(k,name,detail=name){if(!bands.has(k))bands.set(k,{key:k,label:name,detail,values:samples.map(()=>0n)});return bands.get(k);}
  samples.forEach((s,i)=>{for(const r of s.regions)if(selected(r)&&metricRegion(r))entry(regionKey(r),label(r),detail(r)).values[i]+=bytes(r);
@@ -138,10 +168,11 @@ function axisTicks(lo,hi){
 }
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
-
+ rangeControls();
+ const samples=visibleSamples(),[start,end]=snapshotBounds();
  el('export-svg').disabled=!samples.length;
  el('graph-layout').className='graph-layout'+(el('legend-right').checked?' legend-right':'');
- const slider=el('sample');slider.max=Math.max(0,samples.length-1);const index=Number(slider.value),s=samples[index];
+ const slider=el('sample');slider.min=start;slider.max=end;slider.value=Math.max(start,Math.min(Number(slider.value),end));slider.disabled=!samples.length;const index=Number(slider.value)-start,s=samples[index];
  el('rows').replaceChildren();el('chart').replaceChildren();el('legend').replaceChildren();
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
  const {bands,totals,hidden}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),isPages=el('metric').value==='pages';
@@ -220,7 +251,7 @@ function exportSvgDocument(){
  let top=paragraph(el('profile-title').textContent,16,34,width-32,26,'bold');
  const option=id=>el(id).selectedOptions?.[0]?.textContent||el(id).value;
  const maximumText=Array.from(el('chart').children).find(n=>n.getAttribute('data-summary')==='maximum')?.textContent||'';
- const summary='Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:'')+' · Samples: '+samples.length+' · '+maximumText;
+ const summary='Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:'')+' · Samples: '+visibleSamples().length+' · '+el('range-caption').textContent+' · '+maximumText;
  context.font='16px Arial';const summarySize=Math.min(16,16*(width-32)/context.measureText(summary).width);
  add(root,'text',{x:16,y:top+4,'font-size':summarySize},summary);top+=4+summarySize*1.4+12;
  const chart=el('chart').cloneNode(true);chart.removeAttribute('id');chart.setAttribute('x','8');chart.setAttribute('y',String(top));chart.setAttribute('width','1002');chart.setAttribute('height','668');
@@ -246,6 +277,10 @@ function downloadSvg(){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 el('export-svg').addEventListener('click',downloadSvg);
+el('range-start').addEventListener('input',()=>narrowSnapshots('start'));
+el('range-end').addEventListener('input',()=>narrowSnapshots('end'));
+el('range-reset').addEventListener('click',resetSnapshotRange);
+el('show-base').addEventListener('input',allocationTable);
 
 for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
 const mainName=profile.main_source.split(/[\\/]/).at(-1);
@@ -257,5 +292,5 @@ el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(pro
 scopes();
 const defaults=__OPTIONS__;
 for(const [id,value] of Object.entries(defaults)){if(id==='caption'){el('profile-title').textContent=value;document.title=value;}else if(typeof value==='boolean')el(id).checked=value;else el(id).value=String(value);}
-scopes();draw();
+scopes();draw();allocationTable();
 </script></html>

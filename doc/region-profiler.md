@@ -360,6 +360,14 @@ Shared and persistent/global regions follow their lifetime owner's recorded
 identity and are counted once. Unavailable identities have explicit selectors;
 each completed snapshot includes its captured threads' stack records.
 
+The two-handle snapshot-range slider directly below the graph is aligned with
+the time axis. Drag its endpoints, or focus either handle and use the arrow
+keys, to narrow the visible snapshots. The graph rescales its axes and ranks
+regions within that range; the single-snapshot slider and table stay within
+the range as well. **Full range** restores all snapshots. Downloaded SVGs use
+the narrowed range. Allocation-attribution counters remain whole-run totals:
+the current format does not record per-snapshot counter deltas.
+
 The snapshot slider, metric selection, markers, and table grouping remain
 available. Changing table grouping does not merge the region bands. Maxima are
 explicitly labelled as sampled. `rp2ps` remains unchanged.
