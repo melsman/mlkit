@@ -176,7 +176,7 @@ for policy in normal forced; do
     --no_delete_target_files -o "poll-$policy" gc-frames.sml >> integration.log 2>&1
   "./poll-$policy" > actual
   cmp gc-expected actual
-  asm="MLB/ARM64_RI_GC_Poll$policy/gc-frames.sml.s"
+  asm="MLB/ARM64_RI_GC_A1_Poll$policy/gc-frames.sml.s"
   for fun in sum build; do
     awk -v name="$fun" '
       /^\.globl _F\./ { active = index($0, "_F." name "__noinline") > 0 }
