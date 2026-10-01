@@ -102,14 +102,11 @@ build_kitlibs: mlkit_kitlibs
 # Precompile ordinary and sampled-profiler libraries for the supported release
 # configurations. Legacy -prof caches remain available through source builds.
 # REPL support must also load from a read-only installed Basis cache.
+# A submake lets -j build independent Basis caches in parallel even when native
+# compiler builds are serialized by .NOTPARALLEL above.
 .PHONY: mlkit_basislibs
 mlkit_basislibs: mlkit
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -region_profile repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par -region_profile repl.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -region_profile -Pcee -print_rho_types -Paux -log_to_file repl.mlb)
+	$(MAKE) -C basis mlkit_basislibs
 	@set -e; for flags in '-no_gc' '-no_gc -par' '-gc' \
 	  '-no_gc -region_profile' '-no_gc -par -region_profile' '-gc -region_profile'; do \
 	  (cd kitlib && SML_LIB=.. ../bin/mlkit -c $$flags region-profile.mlb); \
@@ -219,6 +216,7 @@ install_kitdemo:
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
+	$(INSTALLDATA) basis/Makefile $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p kitlib/region-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
