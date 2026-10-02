@@ -77,13 +77,23 @@ function rangeControls(){
  const time=s=>s?(Number(s.time)/1e6).toLocaleString(undefined,{maximumFractionDigits:3})+' ms':'';
  el('range-first-time').textContent=time(samples[start]);el('range-last-time').textContent=time(samples[end]);
 }
+// Strip only the generated AddressLabels MD5 suffix, preserving source names.
+function shortFunction(name){return name.replace(/_[a-vxyzA-VXYZ0-9]{22}$/,'');}
+function sourceLabels(paths){
+ const absolute=[...new Set(paths.filter(p=>/^(\/|[A-Za-z]:[\\/])/.test(p)))];
+ const parts=absolute.map(p=>p.split(/[\\/]/).slice(0,-1));
+ const common=parts.length?parts[0].slice():[];
+ for(const path of parts)while(common.length&&common.some((part,i)=>part!==path[i]))common.pop();
+ return path=>absolute.includes(path)?path.split(/[\\/]/).slice(common.length).join('/'):path;
+}
 function allocationTable(){
  const session=profile.allocation_session;if(!session)return;
  el('allocation-discovery').hidden=false;el('allocation-build').textContent='Allocation build identifier: '+session.build_id;
  el('allocation-selectors').replaceChildren();
  const bindings=new Map();for(const sample of samples)for(const r of sample.regions)if(r.kind==='infinite')bindings.set(r.unit+':'+r.binding,r);
  if(profile.allocation_region){const r=profile.allocation_region;bindings.set(r.unit+':'+r.binding,r);}
- for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const value of [r.name||'Region '+r.binding,r.source,selector]){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('allocation-selectors').append(tr);}
+ const bindingSource=sourceLabels([...bindings.values()].map(r=>r.source));
+ for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const [i,value] of [r.name||'Region '+r.binding,bindingSource(r.source),selector].entries()){const td=document.createElement('td');td.textContent=value;if(i===1)td.title=r.source;tr.append(td);}el('allocation-selectors').append(tr);}
  if(session.enabled!=='1')return;
  el('allocation-rows').replaceChildren();
  const bySite=el('allocation-group').value==='site';
@@ -91,10 +101,13 @@ function allocationTable(){
  const incomplete=!profile.complete||(profile.allocation_problems||[]).length;
  el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+' · All threads, entire run.';
  const rows=new Map();
+ const functions=new Map();
+ for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
  for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
-  const name=r.function+(bySite?' · site '+r.site:'')+(el('show-base').checked?' · '+baseName(r):'');
-  const tr=document.createElement('tr');for(const value of [name,r.source,String(r.count),String(r.bytes)]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+(bySite?'\nSite: '+r.site:'');tr.append(td);}el('allocation-rows').append(tr);
+  const short=shortFunction(r.function),name=(functions.get(short).size===1?short:r.function)+(bySite?' · site '+r.site:'')+(el('show-base').checked?' · '+baseName(r):'');
+  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),String(r.bytes)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+(bySite?'\nSite: '+r.site:'');if(i===1)td.title=r.source;tr.append(td);}el('allocation-rows').append(tr);
  }
  if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
 }

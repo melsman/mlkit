@@ -147,6 +147,17 @@ assert(el('allocation-rows').children.every(r=>r.children[0].textContent==='unio
 assert(el('allocation-rows').children[0].children[0].title.includes('unit-a'));
 el('show-base').checked=true;allocationTable();
 assert(el('allocation-rows').children.every(r=>r.children[0].textContent==='union19 · sets.sml'));
+const hashA='a'.repeat(22),hashB='b'.repeat(22);
+profile.allocations=[['map1_'+hashA,'/source/lib/a.sml','1'],['map1_'+hashA,'/source/lib/a.sml','2'],['copy2_'+hashB,'/source/app/a.sml','3']].map(([name,source,site])=>({unit:'unit-a',function:name,source,site,count:'1',bytes:'16'}));
+el('show-base').checked=false;allocationTable();
+assert.equal(el('allocation-rows').children[0].children[0].textContent,'map1');
+assert.equal(el('allocation-rows').children[0].children[1].textContent,'lib/a.sml');
+assert.equal(el('allocation-rows').children[0].children[1].title,'/source/lib/a.sml');
+assert(el('allocation-rows').children[0].children[0].title.includes(hashA));
+profile.allocations[2].function='map1_'+hashB;allocationTable();
+assert(el('allocation-rows').children.every(r=>r.children[0].textContent.startsWith('map1_')));
+assert.equal(shortFunction('user_function'),'user_function');
+assert.equal(sourceLabels(['global','/source/only.sml'])('/source/only.sml'),'only.sml');
 profile.allocation_session=allocationOriginal.session;profile.allocations=allocationOriginal.rows;
 
 samples=[samples[0]];draw();assert(el('range-start').disabled&&el('range-end').disabled);assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
