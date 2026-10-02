@@ -49,7 +49,7 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 4 6; do
+for version in 0 1 2 3 4 7; do
     sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
@@ -98,6 +98,20 @@ sed 's/same <\/script> name/\\\"\\\\\\n\\u0000é λ \\uD83D\\uDE00 <\/script> __
 run
 grep -Fq '😀' profile.html
 grep -Fq '\u0000' profile.html
+cp "$ROOT/test/region_profile/allocation-fixture.json" profile.rp
+run
+grep -q '"allocation_session"' profile.html
+grep -q '"9007199254740993"' profile.html
+cp profile.rp allocation-original.rp
+sed 's/"thread":1,"definition":1/"thread":1,"definition":999/' allocation-original.rp > profile.rp
+reject
+grep -q 'unknown allocation site' stderr
+sed 's/"depth":1/"depth":2/' allocation-original.rp > profile.rp
+reject
+grep -q 'unsupported allocation mode' stderr
+sed '/"type":"allocation_session"/d' allocation-original.rp > profile.rp
+reject
+grep -q 'allocation record outside enabled session' stderr
 echo 'Offline viewer: uint64, escaping, metadata, current format and unsupported versions, truncation, malformed input and aliases passed'
 # Definitions precede use, are immutable, and replace inline static metadata.
 sed '/"type": "binding"/d' original.rp > profile.rp

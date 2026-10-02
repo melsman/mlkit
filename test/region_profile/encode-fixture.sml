@@ -24,7 +24,7 @@ struct
                           then if key = "word_bytes" then 8 else 0
                           else raise Fail ("missing " ^ key)
           fun record r =
-              let fun tag n = if n > 11 then raise Fail "unknown fixture record"
+              let fun tag n = if n > 16 then raise Fail "unknown fixture record"
                               else if #1(ProfileBinary.schema n) = kind r then n else tag(n+1)
                   val t = tag 1
                   val (_,nums,strs) = ProfileBinary.schema t
@@ -35,7 +35,9 @@ struct
                   val payload = str(Char.chr t) ^ String.concat(map (fn k => implode(little (scalar r k) 8)) nums) ^ String.concat(map bytes strs)
               in implode(little (IntInf.fromInt(size payload)) 4) ^ payload
               end
-          val data = ProfileBinary.magic ^ String.concat(map record records)
+          val version = uint (hd records) "version"
+          val magic = if version = 6 then "MLKRP\000\006\000" else ProfileBinary.magic
+          val data = magic ^ String.concat(map record records)
           val out = BinIO.openOut output
       in BinIO.output(out,Byte.stringToBytes data); BinIO.closeOut out
       end

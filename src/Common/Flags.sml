@@ -773,6 +773,10 @@ local
 in
   val _ = app (add false)
   [
+   ("allocation_profile_global", NONE, "global allocation diversion experiment", ref false,
+    "Compare global diversion with selective diversion; requires -allocation_profile."),
+   ("allocation_profile", NONE, "flat allocation attribution", ref false,
+    "Instrument infinite allocations for selected-region attribution; requires -rp."),
    ("region_profile", SOME "rp", "sampled region profiling", ref false,
     "Emit metadata and safe-point polls for sampled region profiling."),
    ("region_profiling", SOME "prof", "region profiling", region_profiling,

@@ -1,0 +1,7 @@
+{"type":"header","format":"mlkit-region-profile","version":6,"word_bytes":8,"page_bytes":8192,"gc_enabled":false,"main_source":"fixture.sml"}
+{"type":"allocation_session","enabled":1,"depth":1,"build_id":"fixture-build","selector":"unit:42"}
+{"type":"allocation_site","definition":1,"site":7,"unit":"unit","function":"build","source":"fixture.sml"}
+{"type":"allocation","thread":0,"definition":1,"count":9007199254740993,"bytes":72057594037927944}
+{"type":"allocation","thread":1,"definition":1,"count":2,"bytes":16}
+{"type":"allocation_region","binding":42,"unit":"unit","name":"r","source":"fixture.sml"}
+{"type":"session_end","time":10,"samples":0,"max_pages":0,"gc_collections":0}

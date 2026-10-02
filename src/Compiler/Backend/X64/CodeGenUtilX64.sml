@@ -26,6 +26,8 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenUtilX64." ^ s)
 
+  val allocationProfile = Flags.is_on0 "allocation_profile"
+  val allocationSite = ref (fn () => NameLab "unused_allocation_site")
   val rem_dead_code = I.rem_dead_code
   val i2s = I.i2s
 
@@ -318,7 +320,7 @@ struct
 
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
-    fun alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
+    fun ordinary_alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
               fun post_prof C =
@@ -387,6 +389,32 @@ struct
             G.label l $                                          (*     treg1 and treg0; result     *)
             (copy(treg1,t,C)))))))                               (*     in treg1.                   *)
           end
+
+    fun alloc_kill_tmp01 (t,n,fsz,pp,C) =
+      if not(allocationProfile()) then ordinary_alloc_kill_tmp01(t,n,fsz,pp,C)
+      else
+        let val ordinary = new_local_lab "allocation_ordinary"
+            val joined = new_local_lab "allocation_join"
+            val site = (!allocationSite)()
+            val suffix = I.lab joined :: C
+        in
+          copy(t,treg1,
+          G.andd(I "-4",treg1) $
+          (if Flags.is_on "allocation_profile_global" then
+             fn code => G.lea(LA(NameLab "mlkit_rp_allocation_enabled"),treg0)
+                        (I.cmpq(I "0",D("0",treg0)) :: code)
+           else fn code => I.cmpq(I "0",D(i2s(8*(BI.size_of_reg_desc()-1)),treg1)) :: code) $
+          I.je ordinary ::
+          G.sub(I "16",rsp) $
+          G.lea(LA site,treg0) $
+          I.movq(R treg0,D("0",rsp)) ::
+          move_immed(IntInf.fromInt n,R treg0,
+          I.call(NameLab "__allocate_profiled") ::
+          G.add(I "16",rsp) $
+          copy(treg1,t,
+          G.jump joined $
+          I.lab ordinary :: G.or(I "1",treg1) $ ordinary_alloc_kill_tmp01(treg1,n,fsz,pp,copy(treg1,t,suffix)))))
+        end
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
      * then the following function is used for allocating pairs in

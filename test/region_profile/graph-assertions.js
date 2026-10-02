@@ -117,7 +117,50 @@ assert(el('chart').children.some(n=>n.textContent==='Elapsed time (ms)'));
 assert(el('chart').children.some(n=>n.textContent==='Memory (EiB)'));
 assert(el('chart').children.filter(n=>n.tag==='polygon').length===4);
 el('metric').value='large_bytes';draw();assert.deepStrictEqual(model().totals,[huge+51n,huge+51n]);
-el('metric').value='total';samples=[samples[0]];draw();assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
+// Narrowing changes graph sums, axes, snapshot selection and SVG export.
+el('metric').value='total';
+const fullRangeSamples=samples;
+samples=[0,1,2].map(i=>({...fullRangeSamples[i%2],sample:String(10+i),time:String(1000000*(i+1))}));
+resetSnapshotRange();const fullRangeTotals=model().totals.slice();
+el('sample').value=0;el('range-start').value=1;narrowSnapshots('start');
+assert.deepStrictEqual(model().totals,fullRangeTotals.slice(1));
+assert.equal(el('sample').min,1);assert.equal(el('sample').value,1);assert.equal(el('sample').max,2);
+assert.equal(el('chart').children.filter(n=>n.attrs['data-tick']==='snapshot').length,2);
+assert(el('range-caption').textContent.includes('11–12'));
+assert(el('caption').textContent.startsWith('Snapshot 11'));
+el('range-end').value=1;narrowSnapshots('end');
+assert.equal(model().totals.length,1);assert.equal(el('sample').min,el('sample').max);
+assert(exportSvgDocument().querySelectorAll('text').some(n=>n.textContent.includes('Samples: 1')));
+assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
+el('range-start').value=2;narrowSnapshots('start');assert.equal(snapshotBounds()[0],1);
+el('range-end').value=0;narrowSnapshots('end');assert.equal(snapshotBounds()[1],1);
+resetSnapshotRange();assert.deepStrictEqual(model().totals,fullRangeTotals);assert(el('range-reset').disabled);
+samples=fullRangeSamples;resetSnapshotRange();
+
+// Function labels honor Show base names without merging distinct units.
+const allocationOriginal={session:profile.allocation_session,rows:profile.allocations};
+profile.allocation_session={enabled:'1',selector:'<global>:4',build_id:'test'};
+profile.allocations=['unit-a','unit-b'].map(unit=>({unit,function:'union19',source:'/source/sets.sml',site:'1',count:'1',bytes:'16'}));
+el('allocation-group').value='function';el('show-base').checked=false;allocationTable();
+assert.equal(el('allocation-rows').children.length,2);
+assert(el('allocation-rows').children.every(r=>r.children[0].textContent==='union19'));
+assert(el('allocation-rows').children[0].children[0].title.includes('unit-a'));
+el('show-base').checked=true;allocationTable();
+assert(el('allocation-rows').children.every(r=>r.children[0].textContent==='union19 · sets.sml'));
+const hashA='a'.repeat(22),hashB='b'.repeat(22);
+profile.allocations=[['map1_'+hashA,'/source/lib/a.sml','1'],['map1_'+hashA,'/source/lib/a.sml','2'],['copy2_'+hashB,'/source/app/a.sml','3']].map(([name,source,site])=>({unit:'unit-a',function:name,source,site,count:'1',bytes:'16'}));
+el('show-base').checked=false;allocationTable();
+assert.equal(el('allocation-rows').children[0].children[0].textContent,'map1');
+assert.equal(el('allocation-rows').children[0].children[1].textContent,'lib/a.sml');
+assert.equal(el('allocation-rows').children[0].children[1].title,'/source/lib/a.sml');
+assert(el('allocation-rows').children[0].children[0].title.includes(hashA));
+profile.allocations[2].function='map1_'+hashB;allocationTable();
+assert(el('allocation-rows').children.every(r=>r.children[0].textContent.startsWith('map1_')));
+assert.equal(shortFunction('user_function'),'user_function');
+assert.equal(sourceLabels(['global','/source/only.sml'])('/source/only.sml'),'only.sml');
+profile.allocation_session=allocationOriginal.session;profile.allocations=allocationOriginal.rows;
+
+samples=[samples[0]];draw();assert(el('range-start').disabled&&el('range-end').disabled);assert(!el('chart').children.some(n=>Object.values(n.attrs).some(v=>/NaN|Infinity/.test(v))));
 const unitFixture=JSON.parse(JSON.stringify(samples[0]));
 unitFixture.stacks=[];unitFixture.regions=[unitFixture.regions[0]];
 unitFixture.regions[0].page_footprint='0';unitFixture.regions[0].finite_bytes='0';
@@ -130,5 +173,5 @@ for(const [time,unit] of [['500','ns'],['500000','µs'],['500000000','ms'],['500
  unitFixture.time=time;draw();assert(el('chart').children.some(n=>n.textContent==='Elapsed time ('+unit+') · single snapshot'));
  assert(el('caption').textContent.includes(' '+unit+' · '));
 }
-samples=[];draw();assert(el('caption').textContent.includes('No completed'));assert(el('export-svg').disabled);assert.throws(exportSvgDocument,/No completed/);
+samples=[];draw();assert(el('caption').textContent.includes('No completed'));assert(el('range-start').disabled&&el('range-end').disabled);assert(el('export-svg').disabled);assert.throws(exportSvgDocument,/No completed/);
 console.log('Stacked graph: exact sums, ordering, colors, filters/migration, units, truncation, empty/single samples passed');

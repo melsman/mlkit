@@ -97,7 +97,7 @@ structure BackendInfo : BACKEND_INFO =
       fun size_par_lock () = if parallelism_p() then 1 else 0  (* pointer to a lock *)
     in
       fun size_of_reg_desc () =
-	  size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs() + size_par_lock()
+	  size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs() + size_par_lock() + 1 (* allocation attribution binding *)
       fun region_mutex_offset_words () =
           if parallelism_p() then
             size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()

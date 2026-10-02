@@ -401,6 +401,7 @@ main(int argc, char *argv[])
   Context ctx = (Context) malloc(sizeof(context));
   ctx->topregion = NULL;
   ctx->exnptr = NULL;
+  ctx->allocation_profile = NULL;
 #endif
   top_ctx = ctx;
 

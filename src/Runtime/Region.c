@@ -598,6 +598,7 @@ allocateRegion0(Context ctx, Region r, Protect protect)
 
   CHECK_CTX("allocateRegion0");
 
+  r->allocation_profile = NULL;
   r->g0.fp = NULL;
   r->p = TOP_REGION;	                   // Push this region onto the region stack
   r->lobjs = NULL;                         // The list of large objects is empty
@@ -1076,8 +1077,21 @@ allocGen (
   return t1;
 }
 
+uintptr_t *alloc_profiled(Context ctx, Region r, size_t n,
+                          const MlkitAllocationSite *site, uintptr_t protect) {
+  r = clearStatusBits(r);
+  if (r->allocation_profile) mlkit_rp_allocation(r, n, ctx, site);
+#ifdef PARALLEL
+  return allocGen(r, &r->g0, n, protect);
+#else
+  (void)protect;
+  return allocGen(&r->g0, n);
+#endif
+}
+
 uintptr_t *alloc (Region r, size_t n) {
   r = clearStatusBits(r);
+  if (r->allocation_profile) mlkit_rp_allocation(r, n, NULL, NULL);
   return allocGen(
 #ifdef PARALLEL
 		  r, &(r->g0), n, TRUE
@@ -1090,6 +1104,7 @@ uintptr_t *alloc (Region r, size_t n) {
 #ifdef PARALLEL
 uintptr_t *alloc_unprotected (Region r, size_t n) {
   r = clearStatusBits(r);
+  if (r->allocation_profile) mlkit_rp_allocation(r, n, NULL, NULL);
   return allocGen(r, &(r->g0), n, FALSE);
 }
 #endif
@@ -1229,6 +1244,7 @@ maybeResetRegion(Region r) {
 void
 deallocateRegionsUntil(Context ctx, Region r)
 {
+  mlkit_rp_foreign_unwind(ctx, (uintptr_t)r);
   //  debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
   debug(printf("[deallocateRegionsUntil(r = %p, topr= %p)...\n", r, TOP_REGION));
@@ -1284,6 +1300,7 @@ allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
   /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
 
+  r->allocation_profile = NULL;
   callsOfAllocateRegionInf++;
   regionDescUseInf += (sizeRo-sizeRoProf);
   maxRegionDescUseInf = max(maxRegionDescUseInf,regionDescUseInf);

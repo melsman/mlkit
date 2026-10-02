@@ -199,9 +199,9 @@ jobs:
           tar -xzf "$archive" -C "$scratch"
           package=$scratch/$package_name
           if [ "$OS" = darwin ]; then
-            basis_cache=ARM64_RI_GC
+            basis_cache=ARM64_RI_GC_A1
           else
-            basis_cache=RI_GC
+            basis_cache=RI_GC_A1
           fi
           test -s "$package/lib/mlkit/basis/MLB/$basis_cache/repl.sml.d"
           installed=$scratch/installed
