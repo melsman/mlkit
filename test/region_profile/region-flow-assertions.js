@@ -35,10 +35,11 @@
  assert(outer.parentElement.querySelectorAll('summary').some(s=>s.textContent.startsWith('fun msort')));
  const summaries=host.querySelectorAll('summary');
  assert(summaries.findIndex(s=>s.textContent.startsWith('fun cp '))<summaries.indexOf(outer),'Nested calls order helpers before their enclosing caller');
- const callLines=host.querySelectorAll('button').filter(b=>b.textContent.startsWith('cp ['));
+ const callLines=host.querySelectorAll('div').filter(b=>b.className==='slice-call'&&b.textContent.startsWith('cp['));
  assert.equal(callLines.length,2);
- assert(callLines.some(b=>b.textContent==='cp [r17 := r163, r19 := r163]'));
- assert(callLines.some(b=>b.textContent==='cp [r17 := r163, ...]'));
+ assert(!host.querySelectorAll('summary').some(s=>s.textContent==='IR'),'No separate IR disclosure');
+ assert(callLines.some(b=>b.textContent==='cp[r17:=sat r163, r19:=sat r163]'));
+ assert(callLines.some(b=>b.textContent==='cp[r17:=sat r163, ...]'));
  assert.equal(host.querySelectorAll('summary').filter(s=>s.textContent==='fun cp [r17, r19]').length,1);
  profile.allocations.pop();
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);

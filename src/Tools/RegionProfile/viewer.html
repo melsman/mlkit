@@ -14,7 +14,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
 .ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
 .ir-files{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0}#ir-copy-path{border:0;background:transparent;cursor:pointer}#ir-copy-path svg{width:18px;height:18px;margin:0;border:0;background:transparent}
-#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}#allocation-flow summary,#allocation-flow .slice-call>button{font-family:ui-monospace,monospace}#allocation-flow .slice-call{margin:6px 0}#allocation-flow .slice-call>button{border:0;background:transparent;padding:2px 0;color:#1d4ed8;text-align:left}#allocation-flow .slice-call>button:hover{text-decoration:underline}#allocation-flow .slice-call>details{display:inline-block;vertical-align:top;margin:0 0 0 8px;border:0;padding:0 4px}
+#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}#allocation-flow summary,#allocation-flow .slice-call{font-family:ui-monospace,monospace}#allocation-flow .slice-call>button{font:inherit}#allocation-flow .slice-call{margin:6px 0 6px 32px}#allocation-flow .slice-call>button{border:0;background:transparent;padding:2px 0;color:#1d4ed8;text-align:left}#allocation-flow .slice-call>button:hover{text-decoration:underline}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -251,9 +251,9 @@ function allocationRegionFlow(rows){
  }
  function edgeLocation(edge,parent){
   const doc=irDocuments.get(edge.identity),spans=(doc?.spans||[]).filter(s=>String(s.mark)===String(edge.point));
-  const text=edge.mode+' · '+name(edge.caller)+' → '+name(edge.callee);
+  const text=edge.mode+' r'+nodes.get(edge.actual).region;
   if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)},callee_function:edge.callee},text));}
-  else{const note=document.createElement('span');note.textContent=text;note.title=edge.caller+' → '+edge.callee;parent.append(note);}
+  else{const note=document.createElement('span');note.textContent=text;note.title='IR location unavailable\n'+edge.caller+' → '+edge.callee;parent.append(note);}
  }
  // Definitions retain lexical nesting; calls reference them rather than expanding a tree.
  const functions=new Map(),parents=new Map(),allFormals=new Map();
@@ -280,13 +280,14 @@ function allocationRegionFlow(rows){
  for(const fn of [...functions.values()]){let key=fn.key;const seen=new Set();while(parents.has(key)&&!seen.has(key)){seen.add(key);key=parents.get(key);const [u,l]=JSON.parse(key);ensure(u,l);}}
  const roots=[];
  for(const fn of functions.values()){const parent=functions.get(parents.get(fn.key));if(parent&&parent!==fn)parent.children.push(fn);else roots.push(fn);}
- function parameters(key,chosen,render){
+ function parameterParts(key,chosen){
   const formals=(allFormals.get(key)||[]).slice().sort((a,b)=>Number(a.position)-Number(b.position));
-  if(!formals.length)return chosen.length?'['+chosen.map(render).join(', ')+']':'';
+  if(!formals.length)return chosen;
   const picked=new Map(chosen.map(n=>[n.id,n])),parts=[];let omitted=false;
-  for(const formal of formals){if(picked.has(formal.id)){if(omitted)parts.push('...');omitted=false;parts.push(render(picked.get(formal.id)));}else omitted=true;}
-  if(omitted)parts.push('...');return '['+parts.join(', ')+']';
+  for(const formal of formals){if(picked.has(formal.id)){if(omitted)parts.push(null);omitted=false;parts.push(picked.get(formal.id));}else omitted=true;}
+  if(omitted)parts.push(null);return parts;
  }
+ function parameters(key,chosen,render){const parts=parameterParts(key,chosen);return parts.length?'['+parts.map(n=>n?render(n):'...').join(', ')+']':'';}
  const anchors=new Map();
  function jump(key){const target=anchors.get(key);if(!target)return;let p=target.parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}target.focus();target.scrollIntoView({block:'nearest'});}
  function ordered(items){
@@ -316,9 +317,14 @@ function allocationRegionFlow(rows){
    const callee=functions.get(call.callee),byFormal=new Map(call.edges.map(e=>[e.formal,e]));
    const chosen=[...byFormal.keys()].map(id=>nodes.get(id));
    const line=document.createElement('div'),link=document.createElement('button');line.className='slice-call';link.type='button';
-   link.textContent=name(callee.label)+' '+parameters(callee.key,chosen,n=>'r'+n.region+' := r'+nodes.get(byFormal.get(n.id).actual).region);
+   link.textContent=name(callee.label);
    link.title=callee.label+(call.legacy?'\nSingle argument relationship (older IR metadata)':'\nGo to function definition');link.addEventListener('click',()=>jump(call.callee));line.append(link);
-   const locations=document.createElement('details'),heading=document.createElement('summary');heading.textContent='IR';locations.append(heading);for(const e of call.edges){const p=document.createElement('p');edgeLocation(e,p);locations.append(p);}line.append(locations);
+   const parts=parameterParts(callee.key,chosen);
+   if(parts.length){line.append(document.createTextNode('['));parts.forEach((n,i)=>{
+    if(i)line.append(document.createTextNode(', '));
+    if(n){line.append(document.createTextNode('r'+n.region+':='));edgeLocation(byFormal.get(n.id),line);}
+    else line.append(document.createTextNode('...'));
+   });line.append(document.createTextNode(']'));}
    const local=[...new Set(call.edges.map(e=>e.actual))].filter(id=>nodes.get(id)?.role==='local'&&containers.has(id));
    (local.length===1?containers.get(local[0]):details).append(line);
   }
