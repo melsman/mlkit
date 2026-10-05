@@ -247,11 +247,26 @@ function allocationRegionFlow(rows){
  }
  function name(s){const candidates=new Set((functionDocs.get(s)||[]).map(doc=>irFunctionName(s,doc)));return candidates.size===1?[...candidates][0]:shortFunction(s);}
  function label(id){const n=nodes.get(id);return n?(n.owner?name(n.owner)+' · ':'')+'r'+n.region+(n.role==='local'?' (local)':n.role==='global'?' (global)':''):'r'+region;}
+ const entryPositions=new WeakMap();
+ function firstSpan(spans){return Math.min(...(spans||[]).map(s=>Number(s.start)),Infinity);}
+ function callPosition(call){return Math.min(...call.edges.map(e=>firstSpan((irDocuments.get(e.identity)?.spans||[]).filter(s=>String(s.mark)===String(e.point)))),Infinity);}
+ function sortEntries(container){
+  const entries=[...container.children];
+  entries.sort((a,b)=>(entryPositions.get(a)??-Infinity)-(entryPositions.get(b)??-Infinity));
+  container.replaceChildren(...entries);
+ }
+ function localPosition(n){
+  const doc=[...irDocuments.values()].find(d=>d.unit===n.unit);if(!doc?.text)return Infinity;
+  const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end));
+  for(const match of code.matchAll(/\bregion\s+([^;]+);/g))if(new RegExp('\\br'+n.region+':').test(match[1]))return data.start+new TextEncoder().encode(code.slice(0,match.index)).length;
+  return Infinity;
+ }
  function sites(records,parent,regionNode){
   for(const r of [...records].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
    const line=document.createElement('div');line.className='slice-call';
    let annotation=regionNode?'allocation into r'+regionNode.region:name(r.function);
    const site=irSites.get(String(r.definition)),doc=irDocuments.get(site?.identity);
+   entryPositions.set(line,firstSpan(site?.spans));
    if(doc&&site?.spans?.length){try{
     const data=irData(doc),span=site.spans[0],start=Number(span.start),end=start+Number(span.length);
     if(start>=data.start&&end<=data.end&&end>start){const token=data.decode.decode(data.bytes.subarray(start,end));
@@ -334,7 +349,7 @@ function allocationRegionFlow(rows){
   summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
   const containers=new Map();
   for(const n of fn.regions){let target=details;if(n.role==='local'){
-    target=document.createElement('div');target.className='slice-region';const heading=document.createElement('div');heading.className='slice-binding';heading.textContent='LETREGION r'+n.region;target.append(heading);
+    target=document.createElement('div');target.className='slice-region';const heading=document.createElement('div');heading.className='slice-binding';heading.textContent='LETREGION r'+n.region;target.append(heading);entryPositions.set(target,localPosition(n));
    }containers.set(n.id,target);
    sites(measured.get(n.id)||[],target,n);
   }
@@ -343,6 +358,7 @@ function allocationRegionFlow(rows){
    const callee=functions.get(call.callee),byFormal=new Map(call.edges.map(e=>[e.formal,e]));
    const chosen=[...byFormal.keys()].map(id=>nodes.get(id));
    const line=document.createElement('div'),link=document.createElement('button');line.className='slice-call';link.type='button';
+   entryPositions.set(line,callPosition(call));
    link.textContent=name(callee.label);
    link.title=callee.label+(call.legacy?'\nSingle argument relationship (older IR metadata)':'\nGo to function definition');link.addEventListener('click',()=>jump(call.callee));line.append(link);
    const parts=parameterParts(callee.key,chosen);
@@ -354,7 +370,10 @@ function allocationRegionFlow(rows){
    const local=[...new Set(call.edges.map(e=>e.actual))].filter(id=>nodes.get(id)?.role==='local'&&containers.has(id));
    (local.length===1?containers.get(local[0]):details).append(line);
   }
-  for(const [id,target] of containers)if(nodes.get(id).role==='local')details.append(target);
+  for(const [id,target] of containers)if(nodes.get(id).role==='local'){sortEntries(target);details.append(target);}
+  sortEntries(details);
+  // The first relevant body entry locates a nested definition relative to its siblings.
+  entryPositions.set(details,Math.min(...[...details.children].map(child=>entryPositions.get(child)??Infinity),Infinity));
  }
  const note=document.createElement('p');note.className='note';note.textContent='Region slice: definitions and possible region instantiations for the selected binding. Ellipses omit other region parameters. Volumes are measured once per allocation site; calls have no measured totals.';host.append(note);
  if((flow.issues||[]).length){const warning=document.createElement('details'),title=document.createElement('summary'),list=document.createElement('ul');title.textContent='Incomplete region-flow metadata';for(const issue of new Set(flow.issues)){const li=document.createElement('li');li.textContent=issue;list.append(li);}warning.append(title,list);host.append(warning);}

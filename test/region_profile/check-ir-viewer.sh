@@ -34,6 +34,10 @@ for(const record of profile.allocations){
  assert(Number(record.location_kind)===1?marks[0].textContent.startsWith('$'):/^(attop|atbot|sat) /.test(marks[0].textContent),'Wrong native allocation location');
 }
 if(profile.region_flow?.available){allocationTable();assert(!el('allocation-flow').hidden);assert.equal(el('allocation-flow').querySelectorAll('button').filter(b=>b.className?.split(' ').includes('allocation-site')).length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);}
+const cp=el('allocation-flow').querySelectorAll('summary').find(s=>s.textContent==='fun cp [r17]');
+if(cp){const lines=cp.parentElement.children.map(e=>e.textContent);assert(lines.findIndex(s=>s.startsWith('cp['))<lines.findIndex(s=>s.startsWith('attop r17')),'Recursive call precedes allocation in saved IR');}
+const msort=el('allocation-flow').querySelectorAll('summary').find(s=>s.textContent==='fun msort [r139]');
+if(msort){const lines=msort.parentElement.children.map(e=>e.textContent);assert(lines.findIndex(s=>s.startsWith('LETREGION r163'))<lines.findIndex(s=>s.startsWith('merge[')),'Local binding precedes merge call in saved IR');}
 el('allocation-view').value='site';allocationTable();
 assert.equal(el('allocation-rows').querySelectorAll('button').length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);
 console.log('Native allocation sites and IR highlights: PASS');
