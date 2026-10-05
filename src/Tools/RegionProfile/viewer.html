@@ -239,14 +239,23 @@ function allocationRegionFlow(rows){
  }
  function name(s){const candidates=new Set((functionDocs.get(s)||[]).map(doc=>irFunctionName(s,doc)));return candidates.size===1?[...candidates][0]:shortFunction(s);}
  function label(id){const n=nodes.get(id);return n?(n.owner?name(n.owner)+' · ':'')+'r'+n.region+(n.role==='local'?' (local)':n.role==='global'?' (global)':''):'r'+region;}
- function sites(records,parent){
-  const groups=new Map();for(const r of records){const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();const owner=owners[0]||r.function,key=JSON.stringify([r.unit,owner]);if(!groups.has(key))groups.set(key,{owner,records:[],owners:new Set()});const group=groups.get(key);group.records.push(r);owners.forEach(n=>group.owners.add(n));}
-  for(const group of groups.values()){
-   const details=document.createElement('details'),summary=document.createElement('summary');details.open=true;
-   const count=group.records.reduce((n,r)=>n+BigInt(r.count),0n),bytes=group.records.reduce((n,r)=>n+BigInt(r.bytes),0n);
-   summary.title=group.owner+'\n'+group.records[0].unit+'\n'+group.records[0].source;summary.textContent=name(group.owner)+' · '+count+' allocations · '+bytes+' bytes';details.append(summary);
-   if(group.owners.size){const note=document.createElement('p');note.className='note';note.title=[...group.owners].join('\n');note.textContent='Closure creator'+(group.owners.size>1?'s: '+[...group.owners].map(name).join(', '):': '+name(group.owner))+'. Allocations belong to the closure body; creation does not imply invocation.';details.append(note);}
-   const list=document.createElement('ul');for(const r of group.records.sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){const item=document.createElement('li'),volume=document.createElement('span');volume.textContent=' · '+r.count+' allocations · '+r.bytes+' bytes';item.append(irButton(r,name(r.function)+(el('show-base').checked?' · '+baseName(r):'')+' · site '+r.site),volume);list.append(item);}details.append(list);parent.append(details);
+ function sites(records,parent,regionNode){
+  for(const r of [...records].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
+   const line=document.createElement('div');line.className='slice-call';
+   let annotation=regionNode?'allocation into r'+regionNode.region:name(r.function);
+   const site=irSites.get(String(r.definition)),doc=irDocuments.get(site?.identity);
+   if(doc&&site?.spans?.length){try{
+    const data=irData(doc),span=site.spans[0],start=Number(span.start),end=start+Number(span.length);
+    if(start>=data.start&&end<=data.end&&end>start){const token=data.decode.decode(data.bytes.subarray(start,end));
+     if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=token;
+    }
+   }catch(_){/* Retain the destination label when no readable span is available. */}}
+   const button=irButton(r,annotation+(el('show-base').checked?' · '+baseName(r):'')+' · site '+r.site);
+   line.append(button,document.createTextNode(' · '+r.count+' allocations · '+r.bytes+' bytes'));
+   const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();
+   if(owners.length)line.append(document.createTextNode(' · '+name(r.function)+' (closure created by '+owners.map(name).join(', ')+')'));
+   else if(regionNode&&r.function!==regionNode.owner)line.append(document.createTextNode(' · '+name(r.function)));
+   parent.append(line);
   }
  }
  function edgeLocation(edge,parent){
@@ -305,14 +314,13 @@ function allocationRegionFlow(rows){
   const formals=fn.regions.filter(n=>n.role==='formal');
   summary.textContent='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region);
   summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
-  for(const child of ordered(fn.children))renderFunction(child,details,depth+1);
   const containers=new Map();
   for(const n of fn.regions){let target=details;if(n.role==='local'){
     target=document.createElement('details');target.open=true;const heading=document.createElement('summary');heading.textContent='LETREGION r'+n.region;target.append(heading);
    }containers.set(n.id,target);
-   const records=measured.get(n.id)||[];if(records.length){const group=document.createElement('details'),heading=document.createElement('summary');
-    heading.textContent='allocations into r'+n.region+' · '+records.reduce((s,r)=>s+BigInt(r.count),0n)+' allocations · '+records.reduce((s,r)=>s+BigInt(r.bytes),0n)+' bytes';group.append(heading);sites(records,group);target.append(group);}
+   sites(measured.get(n.id)||[],target,n);
   }
+  for(const child of ordered(fn.children))renderFunction(child,details,depth+1);
   for(const call of fn.calls){
    const callee=functions.get(call.callee),byFormal=new Map(call.edges.map(e=>[e.formal,e]));
    const chosen=[...byFormal.keys()].map(id=>nodes.get(id));
