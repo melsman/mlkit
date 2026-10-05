@@ -220,7 +220,7 @@ structure ExecutionX64 : EXECUTION =
     type strexp = TopdecGrammar.strexp
     type funid = TopdecGrammar.funid
     type strid = TopdecGrammar.strid
-    type target = CodeGen.AsmPrg
+    type target = CodeGen.AsmPrg * IRLocations.document option
     type lab = NativeCompile.label
 
     val pr_lab = Labels.pr_label
@@ -251,6 +251,9 @@ structure ExecutionX64 : EXECUTION =
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
+              val irTree = if Flags.is_on "region_profile" then
+                             SOME (PhysSizeInf.layout_pgm_with_locations target)
+                           else NONE
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
               val {main_lab, code, imports, exports, safe} = target_new
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
@@ -260,13 +263,15 @@ structure ExecutionX64 : EXECUTION =
                                           unsafe=not(safe)}
               val CB = CompileBasis.mk_CompileBasis(cb,closenv)
             in
-              CodeRes(ce,CB,asm_prg,linkinfo)
+              CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
+                {unit = AddressLabels.pr_label main_lab,
+                 source = !Flags.current_source_file, tree = tree}) irTree),linkinfo)
             end
       end
 
-    val generate_link_code = SOME (fn (labs,exports) => CodeGen.generate_link_code (labs,exports))
+    val generate_link_code = SOME (fn (labs,exports) => (CodeGen.generate_link_code (labs,exports),NONE))
 
-    val generate_repl_init_code = SOME (fn () => CodeGen.generate_repl_init_code())
+    val generate_repl_init_code = SOME (fn () => (CodeGen.generate_repl_init_code(),NONE))
 
     fun delete_file f =
         let val () = if debug_linking() then print ("[Removing file: " ^ f ^ "]\n")
@@ -297,11 +302,13 @@ structure ExecutionX64 : EXECUTION =
        if delete_target_files() andalso not(gdb_support()) then delete_file file_s
        else ())
 
-    fun emit {target, filename:string} : string =
+    fun emit {target = (target,ir), filename:string} : string =
       let val filename_o = filename ^ ".o"
           val filename_s = filename ^ ".s"
       in CodeGen.emit (target, filename_s);
         assemble(filename_s, filename_o);
+        (case ir of SOME document => IRLocations.write {object = filename_o, document = document}
+                  | NONE => ());
         filename_o
       end
 
@@ -474,7 +481,7 @@ structure ExecutionX64 : EXECUTION =
         (* gcc -o sofile -shared -init name -llib1 ... -libn f1.o ... fm.o init.o *)
         let
           val {dir,file} = OS.Path.splitDirFile name
-          val target = CodeGen.generate_repl_link_code ("main",labs)
+          val target = (CodeGen.generate_repl_link_code ("main",labs),NONE)
           val filename = dir ## mlbdir() ## file
           val filenameo = emit{target=target,filename=filename}
           val libs_str = String.concat (map (fn l => "-l" ^ l ^ " ") libs)

@@ -16,3 +16,8 @@ separator directions, prefix placement and clipped whitespace, and abbreviated
 deep indentation. Across several widths and both ragged-right settings, marked
 and unmarked trees must produce identical output through the existing APIs.
 Every reported span in the layout corpus must select its original marked text.
+
+The IR-location helper checks absolute byte spans and one-based line/byte
+columns, object/content digests, missing and altered artifacts, and relocation
+of an intact object/IR pair. Compiler-level generation and cache checks live in
+`test/region_profile/check-ir.sh`.

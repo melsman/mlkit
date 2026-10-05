@@ -5,3 +5,5 @@ OUT=$(mktemp -d "${TMPDIR:-/tmp}/prettyprint-spans.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
 "${MLKIT:-$ROOT/bin/mlkit}" -gc -o "$OUT/spans" "$ROOT/test/prettyprint/spans.mlb"
 "$OUT/spans"
+"${MLKIT:-$ROOT/bin/mlkit}" -gc -o "$OUT/locations" "$ROOT/test/prettyprint/locations.mlb"
+"$OUT/locations"

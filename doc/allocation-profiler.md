@@ -267,3 +267,69 @@ use `0x7`), while `g0.a` is used as an ordinary allocation pointer throughout
 the allocator and collectors. Neither can acquire this bit without further
 representation changes. The wrapper optimization keeps the existing pointer
 ABI; no speedup from a third-bit implementation is claimed here.
+
+## IR2: saved call-explicit IR and location tables
+
+Native `-rp` builds save a companion `<object>.ir` file for every emitted ML
+object, including cached library units and separate functor-generated objects.
+The file contains the call-explicit IR with allocation specifiers marked only
+in the trailing location table, not with inline program-point numbers. The
+location-aware layout keeps explicit allocation forms and K-normal bindings:
+list and infix shorthand must not collapse distinct allocation program points.
+This is IR metadata only; attribution-site-to-program-point references and HTML
+navigation are subsequent milestones.
+
+Ordinary `-Pcee` diagnostic output is unchanged. Add `-Pcee_locations` (long
+name `-print_call_explicit_locations`) to request the location-aware IR and its
+trailing table. The flag alone does not request printing. These diagnostics go
+to the usual output/log stream; unrelated printing flags never add other passes
+to the automatic `.ir` artifact. `-Ppp` remains available for ordinary diagnostic
+program-point annotations; location-aware output keeps these numbers in its
+table instead.
+
+### Companion file format (version 1)
+
+The file starts with six newline-terminated header lines:
+
+```text
+MLKIT-IR 1
+unit<TAB><compilation-unit identity>
+source<TAB><source filename>
+object-md5<TAB><digest of the exact object bytes>
+content-md5<TAB><digest of this IR artifact>
+code-bytes<TAB><number of bytes in the following IR text>
+```
+
+Unit and source fields use Standard ML string escapes (`String.toString`, without
+surrounding quotes), so tabs and newlines in names cannot split header fields.
+The unit is the same printed main label used in sampled-profiler metadata.
+Exactly `code-bytes` bytes of IR follow, then this table:
+
+```text
+MLKIT-IR-LOCATIONS 1
+mark<TAB>start<TAB>length<TAB>line<TAB>column
+<program point><TAB><byte offset><TAB><byte count><TAB><line><TAB><column>
+...
+MLKIT-IR-LOCATIONS-END
+```
+
+A newline separates the code from the table marker. `start` is a zero-based
+absolute byte offset in the `.ir` file, and `length` is a byte count. Lines and
+byte columns are one-based. Repeated program points have separate rows; dummy
+parameter points have no rows. In diagnostic output, offsets/lines instead start
+at the first byte after `MLKIT-IR-BEGIN` and its newline, so multiple IR blocks
+can coexist in a general compiler log.
+
+The content digest covers the complete file with the 32-character `content-md5`
+value replaced by 32 zeroes. It detects changes to the code, metadata, or table;
+the object digest binds the artifact to its emitted object. These are consistency
+checks, not authentication. The writer closes a temporary companion file and
+renames it into place after the object has been assembled successfully.
+
+Cache reuse for `-rp` checks both digests. Missing, truncated, corrupt, or
+mismatched companions require recompilation; they are not regenerated from a
+potentially different IR while retaining the old object. Existing profiling
+caches predating IR2 are therefore rebuilt as needed. The Basis installer copies
+`.o.ir` files alongside objects; relocating an intact pair preserves validity.
+Validation reads the object and companion bytes at build time, adding cache-check
+I/O but no execution-time work or runtime data-layout changes.

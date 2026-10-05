@@ -451,7 +451,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun lnkFileConsistent {lnkFile} =
         let val s = readFile lnkFile
             val mc = Pickle.unpickle ModCode.pu s
-        in true
+            val files = ModCode.target_files (ModCode.dirMod (OS.Path.dir lnkFile) mc)
+        in not (Flags.is_on "region_profile") orelse List.all IRLocations.consistent files
         end handle _ => false
 
     fun writeBasisJs toJsString punit ofile B =

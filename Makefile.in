@@ -169,7 +169,7 @@ install_mlkit_basislibs:
 	    pattern='*'; test "$$dir" != kitlib || pattern='region-profile.*'; \
 	    for file in $$dir/MLB/$$cache/$$pattern; do \
 	      case "$$file" in \
-	        *.d|*.eb|*.eb1|*.lnk|*.o|*.df|*.rev) \
+	        *.d|*.eb|*.eb1|*.lnk|*.o|*.o.ir|*.df|*.rev) \
 	          set -- "$$@" "$$file" ;; \
 	      esac; \
 	    done; \

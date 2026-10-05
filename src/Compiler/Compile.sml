@@ -70,6 +70,12 @@ structure Compile: COMPILE =
           item=ref false, neg=false, desc=
           "Print Region Expression with call annotations."}
 
+    val print_call_explicit_locations = Flags.add_bool_entry
+         {long="print_call_explicit_locations", short=SOME "Pcee_locations",
+          menu=["Printing of intermediate forms","print call-explicit location table"],
+          item=ref false, neg=false, desc=
+          "Include a program-point location table in -Pcee output."}
+
     val print_region_spreaded_program = Flags.add_bool_entry
          {long="print_region_spreaded_program", short=SOME "Prsp",
           menu=["Printing of intermediate forms","print region-spreaded program"],
@@ -493,7 +499,10 @@ structure Compile: COMPILE =
          in Timing.timing_end("AppConv");
            chat "]\n";
             if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then
-              display("Program After Application Conversion", layout_pgm pgm')
+              if print_call_explicit_locations() then
+                IRLocations.output {device = fn s => TextIO.output (!Flags.log,s),
+                  tree = layout_pgm_with_locations pgm', width = !Flags.colwidth}
+              else display("Program After Application Conversion", layout_pgm pgm')
             else ();
             pgm'
          end)

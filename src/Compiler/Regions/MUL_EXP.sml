@@ -231,6 +231,12 @@ signature MUL_EXP =
                           ('b -> bool) -> (* ReML explicit variable *)
                           ('c -> StringTree option) -> ('a,'b,'c)trip -> StringTree
 
+    val layoutLambdaTripWithLocations: ('a -> StringTree option) -> ('a -> StringTree option) ->
+                          ('b -> StringTree option) ->
+                          ('b -> ('a,'b,'c)trip -> StringTree option) ->
+                          ('b -> bool) -> (* ReML explicit variable *)
+                          ('c -> StringTree option) -> ('a,'b,'c)trip -> StringTree
+
     (* Protection inference *)
     structure ProtInf : sig
       type pe
