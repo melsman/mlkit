@@ -134,14 +134,32 @@ function renderIR(){
    if(a<b){text(l.start,a,false);text(a,b,true);text(b,l.end,false);}else text(l.start,l.end,false);
    el('ir-code').append(row);
   }
+  updateIRTitle(record);
   el('ir-message').textContent=(record.region_argument?'Region argument':Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier')+' · line '+span.line+', byte column '+span.column+(full?' · Full IR':' · Showing surrounding code');
   const selected=el('ir-code').querySelector('mark');if(selected){el('ir-code').scrollTop=Math.max(0,selected.offsetTop-el('ir-code').clientHeight/2);el('ir-code').scrollLeft=Math.max(0,selected.offsetLeft-el('ir-code').clientWidth/3);}
  }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
 }
 function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
 function updateIRTitle(record){
- const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));
- el('ir-title').textContent=(record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Site '+record.site+' · '+(names.size>1?record.function:short))+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
+ const short=shortFunction(record.function);let functionName=short,annotation='';
+ if(activeIR?.record===record){
+  try{
+   const doc=irDocuments.get(activeIR.site.identity),data=irData(doc),span=activeIR.site.spans[Number(el('ir-location').value)||0];
+   const start=Number(span.start),end=start+Number(span.length);
+   if(Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start>=data.start&&end<=data.end&&end>start){
+    const token=data.decode.decode(data.bytes.subarray(start,end));
+    if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=' '+token;
+    else if(Number(record.location_kind)===1&&token.startsWith('$'))annotation=' via '+token;
+    // Use an unambiguous printed IR name; never blindly strip digits from
+    // source identifiers such as map2, or from generated anonymous labels.
+    const code=data.decode.decode(data.bytes.subarray(data.start,data.end));
+    const candidates=new Set([...code.matchAll(/\bfun\s+([^\s[(]+)/g)].map(m=>m[1]).filter(n=>short===n||(short.startsWith(n)&&/^[0-9]+$/.test(short.slice(n.length)))));
+    if(candidates.size===1)functionName=[...candidates][0];
+   }
+  }catch(_){/* Unavailable locations still get a useful function heading. */}
+ }
+ el('ir-title').textContent=(record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Allocation'+annotation+' in function '+functionName)+(el('show-base').checked?' · '+baseName(record):'');
+ el('ir-title').title=record.function+'\nSite: '+record.site;
 }
 function showIR(record,trigger){
  irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
