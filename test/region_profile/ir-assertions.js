@@ -12,12 +12,12 @@ irSites.set('702',{definition:'702',status:'missing-or-mismatched-ir',spans:[]})
 profile.allocation_session={enabled:'1',selector:'unit:42',build_id:'ir-test'};
 const irRecord={definition:'701',unit:'unit',function:'build',source:'/source/main.sml',site:'11',location_kind:'0',count:'3',bytes:'48'};
 profile.allocations=[irRecord,{...irRecord,thread:'1',count:'2',bytes:'32'},{...irRecord,definition:'702',site:'12',count:'1',bytes:'16'}];
-el('allocation-group').value='function';el('show-base').checked=false;allocationTable();
+el('show-base').checked=false;allocationTable();
 const irGroup=el('allocation-rows').children[0];
-assert.equal(irGroup.querySelectorAll('summary')[0].textContent,'build · 2 sites');
-assert.equal(irGroup.querySelectorAll('button').length,2);
-assert.equal(irGroup.children[2].textContent,'6');
-assert.equal(irGroup.querySelectorAll('li')[0].children[1].textContent,'5 allocations · 80 bytes');
+assert.equal(irGroup.querySelectorAll('button')[0].textContent,'build · site 11');
+assert.equal(irGroup.querySelectorAll('button').length,1);
+assert.equal(irGroup.children[2].textContent,'5');
+assert.equal(irGroup.children[3].textContent,'80');
 irGroup.querySelectorAll('button')[0].listeners.click();
 assert.equal(el('ir-path').value,'/build/example.sml.o.ir');assert.equal(el('ir-path-row').hidden,false);
 assert.equal(el('ir-panel').hidden,false);assert(el('ir-title').focused);
@@ -28,7 +28,7 @@ el('ir-location').value='1';el('ir-location').listeners.change();
 assert(el('ir-message').textContent.includes('line 4'));
 assert.equal(el('ir-code').querySelectorAll('mark')[0].textContent,'attop r42');
 el('ir-full').checked=true;el('ir-full').listeners.change();assert(el('ir-message').textContent.includes('Full IR'));
-el('allocation-group').value='site';allocationTable();
+allocationTable();
 assert.equal(el('allocation-rows').children.length,2);
 el('allocation-rows').children[1].querySelectorAll('button')[0].listeners.click();
 assert(el('ir-message').textContent.includes('missing, changed, or from another build'));
@@ -54,7 +54,7 @@ irSites.set('704',{identity:'long-ir',status:'available',spans:[{start:String(lo
 el('ir-full').checked=false;showIR({...irRecord,definition:'704'},null);assert.equal(el('ir-code').children.length,17);
 el('ir-full').checked=true;el('ir-full').listeners.change();assert.equal(el('ir-code').children.length,60);
 
-showIR(irRecord,{isConnected:false});el('ir-close').listeners.click();assert(el('allocation-group').focused);
+showIR(irRecord,{isConnected:false});el('ir-close').listeners.click();assert(el('allocation-title').focused);
 
 // Copy the resolved companion path; denied clipboard access leaves it selected.
 (async()=>{

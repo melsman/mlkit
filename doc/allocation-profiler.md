@@ -418,36 +418,19 @@ occurrence selection, UTF-8, HTML-looking text, context/full-code views, unavail
 and malformed mappings, and focus handling. Native allocation regressions also
 run these checks on inline and foreign-call reports on each CI backend.
 
-## IR6: static call-graph organisation
+## IR7: allocation-site view
 
-The default **Calls and closure creators** view includes static closure-creation
-relationships, labelled **creates closure** separately from **calls**. Allocations
-remain attributed to the closure body, not reassigned to its creator. Several
-creators share one representation of the closure body and its measured totals.
-Creation/call cycles form cyclic groups; this does not imply runtime recursion.
-The call-only **Static call graph** option remains available.
+The allocation section now has a single allocation-site table, ordered by
+allocated bytes. Each row shows its allocating function, site, source, count,
+and volume, aggregating threads without merging distinct units or sites.
+Select a site to open its saved IR. Older profiles still show their allocation
+volumes and explain when IR navigation is unavailable.
 
-Choose **Static call graph** in the allocation table's grouping control to see
-allocating functions together with their transitive callers from available IR.
-Each function displays its exclusive counts/bytes for the selected region and
-its clickable allocation sites. Caller-only nodes provide context and have no
-measured allocation total. Recursive components are grouped; shared callees use
-links to a single expanded representation, so totals are never duplicated.
+The Static call graph, Calls and closure creators, and separate Function views
+have been retired. Region flow will become the default once implemented, with
+Allocation sites as the only alternative. Region flow is not yet available.
 
-The compiler extracts function definitions, direct calls (including tail calls),
-and unresolved indirect calls from structured linear IR, using the same native
-function labels as allocation attribution. Version 4 `.ir` companions append a
-versioned, digest-covered `MLKIT-IR-CALLS` table after the location table. Region
-profiling cache validation rebuilds older companions. `rpview` continues to read
-version 2 and 3 companions and explains when call-graph data is unavailable.
-
-This is a static graph, not a measured call tree or region-flow analysis. It does
-not prove that a displayed call carried the selected region, and does not assign
-callee allocations to callers. Indirect calls and absent companion documents can
-hide callers. The first version uses the IR documents resolved for the recorded
-allocation sites; it does not claim to reconstruct the whole linked program.
-Closure relationships come from labelled closure records in structured IR; this
-is not closure-instance tracking or a resolution of indirect call targets.
-There is no additional runtime instrumentation. Exact call-site IR links and
-region-argument mappings are future extensions; allocation-site links work in
-this view as in the existing table.
+The compiler's call and closure-creator metadata remains in version 4 `.ir`
+companions for the upcoming region-flow work. The reader continues to accept
+versions 2 and 3. This UI change adds no runtime instrumentation and does not
+change profile or companion formats.
