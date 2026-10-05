@@ -438,18 +438,20 @@ change profile or companion formats.
 
 ## IR8–IR10: region flow
 
-**Region flow** is the default allocation view when matching metadata is available.
+**Region slice** is the default allocation view when matching metadata is available.
 **Allocation sites** is the only alternative. Older profiles or companions without
 region-flow data display the site table with an explanation.
 
 The compiler records local bindings and formal regions, per-call actual/formal
 relationships and storage modes, and program-point destination regions during
-closure conversion. Captured regions retain their lexical identity. Version 5
+closure conversion. Captured regions retain their lexical identity. Version 6
 IR companions append a digest-covered `MLKIT-IR-REGIONS` table after the calls
 table. A `region` row contains region ID, role, owner native label, and formal
 position (empty for a local binding). A `flow` row contains caller, callee,
-formal position, actual region ID, storage mode, and program point (zero when
-unavailable). A `point` row associates a positive program point with a region.
+formal position, actual region ID, storage mode, program point (zero when
+unavailable), and a per-compilation-unit call-occurrence number. All argument
+rows from one call share this number. A `function` row records native label,
+lexical parent, and whether the function is named or anonymous. A `point` row associates a positive program point with a region.
 Fields use the existing SML string escaping. Positions are zero-based.
 
 At launch, the profiler writes the linker-provided object manifest once. rpview
@@ -460,8 +462,14 @@ region IDs are scoped by compilation unit; global regions share one namespace.
 Missing or ambiguous connections remain explicit rather than being guessed.
 
 Starting at the selected binding, the viewer traverses formal-to-actual edges
-backwards and retains paths to measured allocation sites. Recursive components
-are grouped; shared components use references. Call annotations navigate to their
+backwards and retains paths to measured allocation sites. The slice shows each
+`fun` definition once, nested under its lexical parent, and each `LETREGION`
+inside its owning function. Callees precede callers where possible; recursive
+and shared calls link to definitions. Parameter lists retain positions with
+ellipses for omitted regions; complete singleton lists need no ellipses.
+Arguments are grouped only when they share a call occurrence. Older version 5
+companions remain readable and show separate argument relationships.
+Call annotations navigate to their
 IR region arguments when a corresponding marked span exists. Allocations in
 closure bodies are grouped under their creators, with the bodies and sites kept
 visible. Several creators are listed, but each site contributes its totals once.

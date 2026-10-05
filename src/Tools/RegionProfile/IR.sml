@@ -32,7 +32,7 @@ struct
         end
       fun decoded s = case String.fromString s of SOME v => v | NONE => raise Fail "invalid IR string"
       val version = line ()
-      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5") "unsupported IR version"
+      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6") "unsupported IR version"
       val identity = field "identity"
       val unit = decoded (field "unit")
       val source = decoded (field "source")
@@ -104,19 +104,27 @@ struct
                       (check (List.exists (fn m => m = mode) ["attop","atbot","sat"]) "invalid flow mode";
                        Obj [("kind",Str "flow"),("caller",Str caller),("callee",Str callee),
                             ("position",num position),("actual",num actual),("mode",Str mode),("point",num point)])
+                  | ["flow",caller,callee,position,actual,mode,point,occurrence] =>
+                      (check (List.exists (fn m => m = mode) ["attop","atbot","sat"]) "invalid flow mode";
+                       Obj [("kind",Str "flow"),("caller",Str caller),("callee",Str callee),
+                            ("position",num position),("actual",num actual),("mode",Str mode),
+                            ("point",num point),("occurrence",num occurrence)])
+                  | ["function",label,parent,flavor] =>
+                      (check (flavor = "named" orelse flavor = "anonymous") "invalid function flavor";
+                       Obj [("kind",Str "function"),("label",Str label),("parent",Str parent),("flavor",Str flavor)])
                   | ["point",point,region] =>
                       Obj [("kind",Str "point"),("point",num point),("region",num region)]
                   | _ => raise Fail "invalid region-flow row"
             in regionRows (row::acc)
             end
-      val regionData = if version = "MLKIT-IR 5" then
+      val regionData = if version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" then
             (check (line () = "MLKIT-IR-REGIONS 1") "invalid region-flow table"; regionRows [])
           else []
       val () = check (!pos = size text) "trailing IR bytes"
     in Obj [("identity",Str identity),("unit",Str unit),("source",Str source),
             ("path",Str path),("text",Str text),("code_start",number codeStart),
-            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5")),
-            ("region_data",Arr regionData),("region_flow",Bool (version = "MLKIT-IR 5"))]
+            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6")),
+            ("region_data",Arr regionData),("region_flow",Bool (version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6"))]
     end
 
   (* Resolve formal parameters by native label and ordinal, never by the numeric
@@ -146,7 +154,7 @@ struct
           let val id = ensure doc (field row "region")
               val node = Obj [("id",Str id),("unit",Str (field doc "unit")),
                 ("region",Str (field row "region")),("owner",Str (field row "owner")),
-                ("role",Str (field row "role")),("source",Str (field doc "source"))]
+                ("position",Str (field row "position")),("role",Str (field row "role")),("source",Str (field doc "source"))]
               val () = case Binarymap.peek(!nodes,id) of
                   SOME old => if field old "role" = "unknown" orelse old = node then ()
                               else warn ("Conflicting region definition: " ^ id)
@@ -176,6 +184,7 @@ struct
                   [formal] => edges := Obj [("formal",Str formal),("actual",Str actual),
                     ("caller",Str (field row "caller")),("callee",Str (field row "callee")),
                     ("identity",Str (field doc "identity")),("point",Str (field row "point")),
+                    ("position",Str (field row "position")),("occurrence",Str (field row "occurrence")),
                     ("mode",Str (field row "mode"))] :: !edges
                 | _ => warn ("Unresolved formal region: " ^ field row "callee" ^ " parameter " ^ field row "position")
               end

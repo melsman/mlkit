@@ -1263,11 +1263,14 @@ struct
       in (id,Int.toString (Int.max (0,pp)),mode)
       end
     fun flowCall caller callee actuals =
-      List.app (fn (i,a) =>
+      let val occurrence = !IRLocations.currentOccurrence
+          val () = IRLocations.currentOccurrence := occurrence + 1
+      in List.app (fn (i,a) =>
         let val (rho,point,mode) = flowAllocation a
         in flowRow ["flow",Labels.pr_label caller,Labels.pr_label callee,
-                    Int.toString i,rho,mode,point]
+                    Int.toString i,rho,mode,point,Int.toString occurrence]
         end) (ListPair.zip (List.tabulate (length actuals,fn i => i),actuals))
+      end
 
     fun convert_alloc (alloc,env) =
       (if Flags.is_on "region_profile" then ignore (flowAllocation alloc) else ();
@@ -1624,6 +1627,7 @@ struct
                  val free_vars = remove_zero_sized_region_closure_lvars env free_vars_all
 
                  val new_lab = Labels.renew lab "anon"
+                 val () = flowRow ["function",Labels.pr_label new_lab,Labels.pr_label lab,"anonymous"]
                  val lv_clos = fresh_lvar("clos")
                  val args = List.map #1 pat
                  val ress = gen_fresh_res_lvars metaType (* Result variables are not bound in env as they only exists in cc *)
@@ -1674,6 +1678,9 @@ struct
                    else
                      (env plus_decl_with CE.declareLvar)
                      (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
+
+                 val () = List.app (fn child =>
+                   flowRow ["function",Labels.pr_label child,Labels.pr_label lab,"named"]) labels
 
                  fun compile_fn (lvar,bind,formals,drops,lab) =
                    let

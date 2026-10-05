@@ -27,7 +27,7 @@ set -- MLB/*/main.sml.o.ir
 ir=$1
 # The dedicated artifact contains neither other diagnostic passes nor inline pp IDs.
 ! grep -q 'Program After\|pp[0-9]' "$ir"
-grep -q '^MLKIT-IR 5$' "$ir"
+grep -q '^MLKIT-IR 6$' "$ir"
 grep -q '^MLKIT-IR-LOCATIONS 1$' "$ir"
 grep -q '^MLKIT-IR-REGIONS 1$' "$ir"
 ! grep -q '^point[[:space:]]*~' "$ir"

@@ -10,7 +10,7 @@ val tree = PrettyPrint.HNODE {start = "\195\166 ",finish = "",childsep = PrettyP
   children = [PrettyPrint.MARKED_LEAF(7,"$foreign"),PrettyPrint.MARKED_LEAF(7,"attop r9"),
               PrettyPrint.MARKED_LEAF(7,"attop r10")]}
 val _ = IRLocations.write {object = object,
-  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,regions = [["region","9","local","caller",""],["flow","caller","imported","0","9","sat","7"],["point","7","9"]],calls = [("function","caller",""),("direct","caller","callee"),("closure","caller","lambda"),("indirect","callee","")]}}
+  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,regions = [["region","9","local","caller",""],["flow","caller","imported","0","9","sat","7","12"],["function","caller","main","named"],["point","7","9"]],calls = [("function","caller",""),("direct","caller","callee"),("closure","caller","lambda"),("indirect","callee","")]}}
 (* Relocation does not require the original object or source tree. *)
 val companion = object ^ ".o.ir"
 val _ = OS.FileSys.rename {old = object ^ ".ir",new = companion}
@@ -54,6 +54,8 @@ val edges = ProfileIR.rows flow "edges"
 val _ = assert (length edges = 1) "imported formal unresolved"
 val _ = assert (get (hd edges) "formal" = Str (encodeJson(Arr [Str "dependency",Str "42"]))) "formal identity used importer numbering"
 val _ = assert (get (hd edges) "actual" = Str (encodeJson(Arr [Str "unit",Str "9"]))) "actual region identity"
+val _ = assert (get (hd edges) "occurrence" = Str "12") "call occurrence preserved"
+val _ = assert (get (hd edges) "position" = Str "0") "call position preserved"
 val _ = assert (get flow "available" = Bool true) "region-flow availability"
 val _ = OS.FileSys.remove (dependency ^ ".ir")
 val _ = OS.FileSys.remove dependency

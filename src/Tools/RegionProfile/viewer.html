@@ -14,7 +14,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
 .ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
 .ir-files{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0}#ir-copy-path{border:0;background:transparent;cursor:pointer}#ir-copy-path svg{width:18px;height:18px;margin:0;border:0;background:transparent}
-#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}
+#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}#allocation-flow summary,#allocation-flow .slice-call>button{font-family:ui-monospace,monospace}#allocation-flow .slice-call{margin:6px 0}#allocation-flow .slice-call>button{border:0;background:transparent;padding:2px 0;color:#1d4ed8;text-align:left}#allocation-flow .slice-call>button:hover{text-decoration:underline}#allocation-flow .slice-call>details{display:inline-block;vertical-align:top;margin:0 0 0 8px;border:0;padding:0 4px}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -52,7 +52,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 </details></section>
 <section id="allocation-section" hidden>
 <h2 id="allocation-title" tabindex="-1">Allocation volume</h2><p id="allocation-note"></p>
-<label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region flow</option><option value="site">Allocation sites</option></select></label>
+<label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region slice</option><option value="site">Allocation sites</option></select></label>
 <p class="note" id="allocation-flow-note"></p>
 <div id="allocation-flow" hidden></div>
 <table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
@@ -229,14 +229,6 @@ function allocationRegionFlow(rows){
  }
  const relevant=new Set([root]),queue=[...measured.keys()];
  while(queue.length){const id=queue.pop();if(relevant.has(id)&&id!==root)continue;relevant.add(id);for(const e of incoming.get(id)||[])if(reachable.has(e.actual)&&!relevant.has(e.actual))queue.push(e.actual);}
- // Collapse recursive components, retaining references for shared subgraphs.
- const index=new Map(),low=new Map(),stack=[],onStack=new Set(),components=[];let serial=0;
- function visit(id){index.set(id,serial);low.set(id,serial++);stack.push(id);onStack.add(id);
-  for(const e of outgoing.get(id)||[]){const child=e.formal;if(!relevant.has(child))continue;if(!index.has(child)){visit(child);low.set(id,Math.min(low.get(id),low.get(child)));}else if(onStack.has(child))low.set(id,Math.min(low.get(id),index.get(child)));}
-  if(low.get(id)===index.get(id)){const members=[];let child;do{child=stack.pop();onStack.delete(child);members.push(child);}while(child!==id);components.push(members);}
- }
- for(const id of relevant)if(!index.has(id))visit(id);
- const componentOf=new Map();components.forEach((members,i)=>members.forEach(id=>componentOf.set(id,i)));
  const creators=new Map();
  for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='closure'){
   const k=JSON.stringify([doc.unit,edge.callee]);if(!creators.has(k))creators.set(k,new Set());creators.get(k).add(edge.caller);
@@ -263,21 +255,81 @@ function allocationRegionFlow(rows){
   if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)},callee_function:edge.callee},text));}
   else{const note=document.createElement('span');note.textContent=text;note.title=edge.caller+' → '+edge.callee;parent.append(note);}
  }
- const shown=new Map();
- function branch(i,parent,depth){
-  const item=document.createElement('li');parent.append(item);
-  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.title=components[i].map(id=>nodes.get(id)?.owner||'').join('\n');ref.textContent='↪ '+components[i].map(label).join(', ')+' (shared; totals shown once)';ref.addEventListener('click',()=>{let p=shown.get(i).parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}shown.get(i).focus();shown.get(i).scrollIntoView({block:'nearest'});});item.append(ref);return;}
-  const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<3;summary.tabIndex=0;
-  const members=components[i],cyclic=members.length>1||members.some(id=>(outgoing.get(id)||[]).some(e=>e.formal===id));
-  summary.textContent=(cyclic?'Recursive region group: ':'')+members.map(label).join(', ');details.append(summary);item.append(details);shown.set(i,summary);
-  for(const id of members){const n=nodes.get(id);if(n)summary.title=(summary.title||'')+(n.owner?n.owner+'\n':'')+n.unit+' · '+n.source+'\n';sites(measured.get(id)||[],details);}
-  const targets=new Map();for(const id of members)for(const e of outgoing.get(id)||[]){const j=componentOf.get(e.formal);if(j===undefined)continue;if(j===i){const internal=document.createElement('p');internal.className='note';edgeLocation(e,internal);details.append(internal);}else{if(!targets.has(j))targets.set(j,[]);targets.get(j).push(e);}}
-  if(targets.size){const list=document.createElement('ul');details.append(list);for(const [j,edges] of targets){const links=document.createElement('li');for(const e of edges){const p=document.createElement('p');edgeLocation(e,p);links.append(p);}list.append(links);branch(j,list,depth+1);}}
+ // Definitions retain lexical nesting; calls reference them rather than expanding a tree.
+ const functions=new Map(),parents=new Map(),allFormals=new Map();
+ const fkey=(unit,label)=>JSON.stringify([unit,label]);
+ for(const doc of irDocuments.values())for(const row of doc.region_data||[])if(row.kind==='function'){
+  parents.set(fkey(doc.unit,row.label),fkey(doc.unit,row.parent));
  }
- const note=document.createElement('p');note.className='note';note.textContent='Possible region flow, followed from the selected binding to formal regions. Counts are measured allocations into the selected region, shown once per site; paths have no measured totals.';host.append(note);
+ function ensure(unit,label){const key=fkey(unit,label);if(!functions.has(key))functions.set(key,{key,unit,label,regions:[],calls:[],children:[]});return functions.get(key);}
+ for(const n of nodes.values())if(n.role==='formal'){
+  const key=fkey(n.unit,n.owner);if(!allFormals.has(key))allFormals.set(key,[]);allFormals.get(key).push(n);
+ }
+ for(const id of relevant){const n=nodes.get(id);if(n?.owner)ensure(n.unit,n.owner).regions.push(n);}
+ const calls=new Map();let legacy=0;
+ for(const edge of flow.edges||[]){
+  if(!relevant.has(edge.actual)||!relevant.has(edge.formal))continue;
+  const actual=nodes.get(edge.actual),formal=nodes.get(edge.formal),doc=irDocuments.get(edge.identity);
+  const caller=ensure(doc?.unit||actual.unit,edge.caller),callee=ensure(formal.unit,edge.callee);
+  // Missing occurrence metadata must never merge two source calls.
+  const key=edge.occurrence!==undefined&&edge.occurrence!==''?JSON.stringify([edge.identity,edge.occurrence]):'legacy:'+legacy++;
+  if(!calls.has(key)){const call={callee:callee.key,edges:[],legacy:key.startsWith('legacy:')};calls.set(key,call);caller.calls.push(call);}
+  calls.get(key).edges.push(edge);
+ }
+ // Include lexical ancestors even when they have no region parameter themselves.
+ for(const fn of [...functions.values()]){let key=fn.key;const seen=new Set();while(parents.has(key)&&!seen.has(key)){seen.add(key);key=parents.get(key);const [u,l]=JSON.parse(key);ensure(u,l);}}
+ const roots=[];
+ for(const fn of functions.values()){const parent=functions.get(parents.get(fn.key));if(parent&&parent!==fn)parent.children.push(fn);else roots.push(fn);}
+ function parameters(key,chosen,render){
+  const formals=(allFormals.get(key)||[]).slice().sort((a,b)=>Number(a.position)-Number(b.position));
+  if(!formals.length)return chosen.length?'['+chosen.map(render).join(', ')+']':'';
+  const picked=new Map(chosen.map(n=>[n.id,n])),parts=[];let omitted=false;
+  for(const formal of formals){if(picked.has(formal.id)){if(omitted)parts.push('...');omitted=false;parts.push(render(picked.get(formal.id)));}else omitted=true;}
+  if(omitted)parts.push('...');return '['+parts.join(', ')+']';
+ }
+ const anchors=new Map();
+ function jump(key){const target=anchors.get(key);if(!target)return;let p=target.parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}target.focus();target.scrollIntoView({block:'nearest'});}
+ function ordered(items){
+  const allowed=new Map(items.map(f=>[f.key,f])),done=new Set(),result=[];
+  function dependencies(fn){
+   for(const c of fn.calls){let key=c.callee;const seen=new Set();while(!allowed.has(key)&&parents.has(key)&&!seen.has(key)){seen.add(key);key=parents.get(key);}if(allowed.has(key))add(allowed.get(key));}
+   for(const child of fn.children)dependencies(child);
+  }
+  function add(fn){if(done.has(fn.key))return;done.add(fn.key);dependencies(fn);result.push(fn);}
+  for(const fn of items)add(fn);return result;
+ }
+ function renderFunction(fn,parent,depth){
+  if(fn.label===fn.unit&&!fn.regions.length&&!fn.calls.length){for(const child of ordered(fn.children))renderFunction(child,parent,depth);return;}
+  const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<2;summary.tabIndex=0;
+  const formals=fn.regions.filter(n=>n.role==='formal');
+  summary.textContent='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region);
+  summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
+  for(const child of ordered(fn.children))renderFunction(child,details,depth+1);
+  const containers=new Map();
+  for(const n of fn.regions){let target=details;if(n.role==='local'){
+    target=document.createElement('details');target.open=true;const heading=document.createElement('summary');heading.textContent='LETREGION r'+n.region;target.append(heading);
+   }containers.set(n.id,target);
+   const records=measured.get(n.id)||[];if(records.length){const group=document.createElement('details'),heading=document.createElement('summary');
+    heading.textContent='allocations into r'+n.region+' · '+records.reduce((s,r)=>s+BigInt(r.count),0n)+' allocations · '+records.reduce((s,r)=>s+BigInt(r.bytes),0n)+' bytes';group.append(heading);sites(records,group);target.append(group);}
+  }
+  for(const call of fn.calls){
+   const callee=functions.get(call.callee),byFormal=new Map(call.edges.map(e=>[e.formal,e]));
+   const chosen=[...byFormal.keys()].map(id=>nodes.get(id));
+   const line=document.createElement('div'),link=document.createElement('button');line.className='slice-call';link.type='button';
+   link.textContent=name(callee.label)+' '+parameters(callee.key,chosen,n=>'r'+n.region+' := r'+nodes.get(byFormal.get(n.id).actual).region);
+   link.title=callee.label+(call.legacy?'\nSingle argument relationship (older IR metadata)':'\nGo to function definition');link.addEventListener('click',()=>jump(call.callee));line.append(link);
+   const locations=document.createElement('details'),heading=document.createElement('summary');heading.textContent='IR';locations.append(heading);for(const e of call.edges){const p=document.createElement('p');edgeLocation(e,p);locations.append(p);}line.append(locations);
+   const local=[...new Set(call.edges.map(e=>e.actual))].filter(id=>nodes.get(id)?.role==='local'&&containers.has(id));
+   (local.length===1?containers.get(local[0]):details).append(line);
+  }
+  for(const [id,target] of containers)if(nodes.get(id).role==='local')details.append(target);
+ }
+ const note=document.createElement('p');note.className='note';note.textContent='Region slice: definitions and possible region instantiations for the selected binding. Ellipses omit other region parameters. Volumes are measured once per allocation site; calls have no measured totals.';host.append(note);
  if((flow.issues||[]).length){const warning=document.createElement('details'),title=document.createElement('summary'),list=document.createElement('ul');title.textContent='Incomplete region-flow metadata';for(const issue of new Set(flow.issues)){const li=document.createElement('li');li.textContent=issue;list.append(li);}warning.append(title,list);host.append(warning);}
  if(ambiguous.length){const warning=document.createElement('p');warning.textContent='Some sites have several possible destination mappings; their totals remain in the unresolved-sites section.';host.append(warning);}
- const tree=document.createElement('ul');host.append(tree);branch(componentOf.get(root),tree,0);
+ for(const fn of ordered(roots))renderFunction(fn,host,0);
+ // Globals have no owning function; retain their measured sites explicitly.
+ for(const id of relevant)if(!nodes.get(id)?.owner)sites(measured.get(id)||[],host);
  if(unplaced.length){const section=document.createElement('details'),title=document.createElement('summary');section.open=true;title.textContent='Sites without a resolved path to the selected region';section.append(title);sites(unplaced,section);host.append(section);}
  if(!rows.size){const empty=document.createElement('p');empty.textContent='No allocations recorded.';host.append(empty);}
 }

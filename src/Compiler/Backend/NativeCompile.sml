@@ -124,6 +124,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                   raise Fail "-region_profile with GC and parallelism is not supported"
                 else ()
         val _ = RegionFlowGraphProfiling.reset_graph ()
+        val () = IRLocations.currentOccurrence := 0
         val () = IRLocations.currentRegions := []
 
 	val {main_lab,code,imports,exports,env=clos_env1} =

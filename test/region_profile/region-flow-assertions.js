@@ -15,11 +15,32 @@
  const host=el('allocation-flow');
  assert(!host.hidden&&el('allocation-table').hidden&&!el('allocation-view-control').hidden);
  assert(host.textContent.includes('r163'));assert(host.textContent.includes('r139'));assert(host.textContent.includes('r45'));assert(host.textContent.includes('r17'));
- assert(!host.textContent.includes('split'));assert(host.textContent.includes('Recursive region group'));
- assert(host.textContent.includes('shared; totals shown once'));assert(host.textContent.includes('factory2'));assert(host.textContent.includes('Sites without a resolved path'));
+ assert(!host.textContent.includes('split'));assert(host.textContent.includes('fun '));
+ assert(host.textContent.includes('LETREGION r163'));assert(host.textContent.includes('factory2'));assert(host.textContent.includes('Sites without a resolved path'));
  assert.equal(host.querySelectorAll('button').filter(b=>b.textContent.includes(' · site ')).length,3);
- const reference=host.querySelectorAll('button').find(b=>b.textContent.startsWith('↪'));reference.listeners.click();
+ const reference=host.querySelectorAll('button').find(b=>b.title?.includes('Single argument relationship'));reference.listeners.click();
  assert(host.querySelectorAll('summary').some(s=>s.focused));
+ // Two source calls with the same caller/callee must remain distinct.
+ const d=key('v',19);profile.region_flow.nodes.push(node(d,'cp'));
+ for(const n of profile.region_flow.nodes)if(n.role==='formal')n.position=n.id===d?'1':'0';
+ profile.region_flow.edges=[
+  {...edge(root,c),caller:'msort',callee:'cp',occurrence:'10',position:'0'},
+  {...edge(root,d),caller:'msort',callee:'cp',occurrence:'10',position:'1'},
+  {...edge(root,c),caller:'msort',callee:'cp',occurrence:'11',position:'0'},
+  {...edge(root,a),caller:'msort',callee:'msort',occurrence:'12',position:'0'}];
+ profile.region_flow.points.push({identity:'flow-fixture',point:'3',node:d});
+ profile.allocations.push(record('204','3','cp','1'));
+ irDocuments.get('flow-fixture').region_data=[{kind:'function',label:'msort',parent:'outer',flavor:'named'}];allocationTable();
+ const outer=host.querySelectorAll('summary').find(s=>s.textContent.startsWith('fun outer'));
+ assert(outer.parentElement.querySelectorAll('summary').some(s=>s.textContent.startsWith('fun msort')));
+ const summaries=host.querySelectorAll('summary');
+ assert(summaries.findIndex(s=>s.textContent.startsWith('fun cp '))<summaries.indexOf(outer),'Nested calls order helpers before their enclosing caller');
+ const callLines=host.querySelectorAll('button').filter(b=>b.textContent.startsWith('cp ['));
+ assert.equal(callLines.length,2);
+ assert(callLines.some(b=>b.textContent==='cp [r17 := r163, r19 := r163]'));
+ assert(callLines.some(b=>b.textContent==='cp [r17 := r163, ...]'));
+ assert.equal(host.querySelectorAll('summary').filter(s=>s.textContent==='fun cp [r17, r19]').length,1);
+ profile.allocations.pop();
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);
  assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].textContent),0n),160n);
  profile.region_flow.issues=['Missing companion'];el('allocation-view').value='flow';allocationTable();assert(host.textContent.includes('Incomplete region-flow metadata'));
