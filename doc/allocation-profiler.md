@@ -278,7 +278,7 @@ in the trailing location table, not with inline program-point numbers. The
 location-aware layout keeps explicit allocation forms and K-normal bindings:
 list and infix shorthand must not collapse distinct allocation program points.
 IR3 connects attribution sites to these program points and packages the IR in
-HTML reports. Interactive site navigation is the subsequent IR4 milestone.
+HTML reports. IR4 provides interactive site navigation in the viewer.
 
 Ordinary `-Pcee` diagnostic output is unchanged. Add `-Pcee_locations` (long
 name `-print_call_explicit_locations`) to request the location-aware IR and its
@@ -375,8 +375,8 @@ spans) and `ir_sites` (one mapping per allocation definition). Status is
 `missing-mark`. Missing, malformed, truncated, changed, or wrong-build companions
 leave allocation counts usable. Version-6 profiles have no location metadata and
 receive `legacy-profile`. The resulting HTML contains its IR and mappings and
-needs no local files or network access. IR4 will add the site-selection interface;
-IR3 does not change allocation-range filtering.
+needs no local files or network access. IR4 provides the site-selection interface described below. Allocation-range
+filtering is unchanged.
 
 There are three additional words per static allocation-site descriptor, one
 shared identity string per compilation unit, and a link-time object-path table.
@@ -384,3 +384,30 @@ This metadata is read when serializing site definitions, not on allocation-count
 updates. Attribution profiles use binary version 7, the allocation-descriptor ABI
 version is 2, and profiling caches use `_RP10`; rebuild runtime and profiling
 objects together. Old binary profile versions remain readable.
+
+## IR4: navigating allocation sites
+
+In the allocation table, expand a function to see its constituent sites, including
+allocation counts and bytes summed across threads. Alternatively, choose
+**Allocation site** in the grouping control. Select a site button to open the IR
+panel below the table. It shows the corresponding allocation specifier or
+initiating foreign-call token, highlighted with eight surrounding lines on each
+side. File line numbers are preserved, and hovering the source shows its full path.
+
+If a site has multiple printed occurrences, use **Location** to choose one.
+**Show full IR** displays the whole compilation unit while keeping the selected
+location highlighted. The panel follows the **Show base names** setting and
+preserves disambiguating function suffixes. **Close IR** returns keyboard focus
+to the originating site button when it remains in the page.
+
+Sites lacking navigable IR remain selectable: the panel explains whether the
+profile is older, the allocation is generated, or the matching file/mark was
+unavailable at report generation. No files are loaded by the browser. Byte offsets
+are applied to UTF-8 data before decoding highlighted text, and code is inserted
+as text rather than HTML. The exported report works offline with its embedded IR.
+
+`test/region_profile/check-ir-viewer.sh` runs the actual report script in a small
+DOM test harness using Node.js. It covers grouping, counts across threads,
+occurrence selection, UTF-8, HTML-looking text, context/full-code views, unavailable
+and malformed mappings, and focus handling. Native allocation regressions also
+run these checks on inline and foreign-call reports on each CI backend.

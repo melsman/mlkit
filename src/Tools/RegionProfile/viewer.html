@@ -12,6 +12,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 @media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
 .axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
 .snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
+.ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -51,7 +52,13 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <h2>Allocation volume</h2><p id="allocation-note"></p>
 <label>Group by <select id="allocation-group"><option value="function">Function</option><option value="site">Allocation site</option></select></label>
 <table><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
-<p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Source locations currently identify files; generated function labels and site numbers distinguish sites. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
+<p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Expand a function to inspect its sites, or select a site to view its saved IR. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
+<section id="ir-panel" hidden aria-labelledby="ir-title">
+<div class="ir-heading"><h3 id="ir-title" tabindex="-1">Allocation site in IR</h3><button id="ir-close" type="button">Close IR</button></div>
+<p id="ir-source" class="note"></p><p id="ir-message" role="status"></p>
+<div id="ir-controls" hidden><label>Location <select id="ir-location" aria-label="IR location occurrence"></select></label><label><input id="ir-full" type="checkbox">Show full IR</label></div>
+<pre id="ir-code" tabindex="0" aria-label="Intermediate code with highlighted allocation location"></pre>
+</section>
 </section>
 <table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
@@ -86,6 +93,73 @@ function sourceLabels(paths){
  for(const path of parts)while(common.length&&common.some((part,i)=>part!==path[i]))common.pop();
  return path=>absolute.includes(path)?path.split(/[\\/]/).slice(common.length).join('/'):path;
 }
+const irSites=new Map((profile.ir_sites||[]).map(s=>[String(s.definition),s]));
+const irDocuments=new Map((profile.ir_documents||[]).map(d=>[d.identity,d]));
+const irDecoded=new Map();
+let activeIR=null,irReturnFocus=null,irSelectedRecord=null;
+const irReasons={
+ 'legacy-profile':'This profile was recorded without IR location metadata.',
+ 'generated':'This allocation was generated without an originating IR location.',
+ 'missing-or-mismatched-ir':'The matching IR companion was missing, changed, or from another build when this report was generated.',
+ 'missing-mark':'The matching IR file does not contain this allocation location.'
+};
+function irData(doc){
+ if(irDecoded.has(doc.identity))return irDecoded.get(doc.identity);
+ const bytes=new TextEncoder().encode(doc.text),start=Number(doc.code_start),end=start+Number(doc.code_bytes);
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end>bytes.length)throw new Error('Invalid IR code bounds');
+ const lines=[];let from=start,line=1;for(let i=0;i<start;i++)if(bytes[i]===10)line++;
+ for(let i=start;i<end;i++)if(bytes[i]===10){lines.push({start:from,end:i,line:line++});from=i+1;}
+ if(from<end)lines.push({start:from,end,line});
+ const result={bytes,start,end,lines,decode:new TextDecoder('utf-8',{fatal:true})};irDecoded.set(doc.identity,result);return result;
+}
+function renderIR(){
+ const {site,record}=activeIR,doc=irDocuments.get(site.identity),index=Number(el('ir-location').value)||0,span=site.spans[index];
+ el('ir-code').replaceChildren();
+ try{
+  const data=irData(doc),start=Number(span.start),end=start+Number(span.length);
+  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<data.start||end>data.end||end<=start)throw new Error('Invalid IR span');
+  const first=data.lines.findIndex(l=>start>=l.start&&start<=l.end),last=data.lines.findIndex(l=>end-1>=l.start&&end-1<=l.end);
+  if(first<0||last<first)throw new Error('Invalid IR lines');
+  const full=el('ir-full').checked,lo=full?0:Math.max(0,first-8),hi=full?data.lines.length:Math.min(data.lines.length,last+9);
+  for(const l of data.lines.slice(lo,hi)){
+   const row=document.createElement('span');row.className='ir-line';
+   const number=document.createElement('span');number.className='ir-line-number';number.textContent=String(l.line);number.setAttribute('aria-hidden','true');row.append(number);
+   const a=Math.max(l.start,start),b=Math.min(l.end,end);
+   function text(from,to,marked){const part=document.createElement(marked?'mark':'span');part.textContent=data.decode.decode(data.bytes.subarray(from,to));if(marked)part.className='ir-highlight';row.append(part);}
+   if(a<b){text(l.start,a,false);text(a,b,true);text(b,l.end,false);}else text(l.start,l.end,false);
+   el('ir-code').append(row);
+  }
+  el('ir-message').textContent=(Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier')+' · line '+span.line+', byte column '+span.column+(full?' · Full IR':' · Showing surrounding code');
+  const selected=el('ir-code').querySelector('mark');if(selected){el('ir-code').scrollTop=Math.max(0,selected.offsetTop-el('ir-code').clientHeight/2);el('ir-code').scrollLeft=Math.max(0,selected.offsetLeft-el('ir-code').clientWidth/3);}
+ }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
+}
+function updateIRTitle(record){
+ const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));
+ el('ir-title').textContent='Site '+record.site+' · '+(names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
+}
+function showIR(record,trigger){
+ irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
+ irSelectedRecord=record;el('ir-panel').hidden=false;updateIRTitle(record);
+ el('ir-source').textContent=sourceLabels((profile.allocations||[]).map(r=>r.source))(record.source);el('ir-source').title=record.source;
+ el('ir-code').replaceChildren();el('ir-location').replaceChildren();el('ir-controls').hidden=true;
+ if(!site||site.status!=='available')el('ir-message').textContent='IR navigation unavailable. '+(irReasons[site?.status||'legacy-profile']||'No location is available for this site.');
+ else if(!irDocuments.has(site.identity)||!site.spans?.length)el('ir-message').textContent='IR navigation unavailable. The embedded IR document or location is missing.';
+ else{
+  activeIR={site,record};el('ir-controls').hidden=false;
+  site.spans.forEach((span,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=(i+1)+' of '+site.spans.length+' · line '+span.line+', column '+span.column;el('ir-location').append(option);});
+  el('ir-location').value='0';el('ir-location').disabled=site.spans.length===1;renderIR();
+ }
+ el('ir-title').focus();
+}
+function irButton(record,label){
+ const button=document.createElement('button');button.type='button';button.className='ir-site-button';button.textContent=label;
+ const site=irSites.get(String(record.definition));button.title=site?.status==='available'?'Show allocation site in IR':'Show why IR navigation is unavailable';
+ button.addEventListener('click',()=>showIR(record,button));return button;
+}
+el('ir-location').addEventListener('change',()=>{if(activeIR)renderIR();});
+el('ir-full').addEventListener('change',()=>{if(activeIR)renderIR();});
+el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR=null;irSelectedRecord=null;if(irReturnFocus?.isConnected)irReturnFocus.focus();else el('allocation-group').focus();});
+
 function allocationTable(){
  const session=profile.allocation_session;if(!session)return;
  el('allocation-discovery').hidden=false;el('allocation-build').textContent='Allocation build identifier: '+session.build_id;
@@ -103,11 +177,15 @@ function allocationTable(){
  const rows=new Map();
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
- for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n,sites:new Map()};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);const id=String(r.definition),site=p.sites.get(id)||{...r,count:0n,bytes:0n};site.count+=BigInt(r.count);site.bytes+=BigInt(r.bytes);p.sites.set(id,site);rows.set(k,p);}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
   const short=shortFunction(r.function),name=(functions.get(short).size===1?short:r.function)+(bySite?' · site '+r.site:'')+(el('show-base').checked?' · '+baseName(r):'');
-  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),String(r.bytes)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+(bySite?'\nSite: '+r.site:'');if(i===1)td.title=r.source;tr.append(td);}el('allocation-rows').append(tr);
+  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),String(r.bytes)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+(bySite?'\nSite: '+r.site:'');if(i===1)td.title=r.source;
+   if(i===0){td.replaceChildren();if(bySite)td.append(irButton(r,name));else{
+    const details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('ul');summary.textContent=name+' · '+r.sites.size+(r.sites.size===1?' site':' sites');list.className='ir-site-list';
+    for(const site of [...r.sites.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){const item=document.createElement('li'),volume=document.createElement('span');volume.className='note';volume.textContent=site.count+' allocations · '+site.bytes+' bytes';item.append(irButton(site,'Site '+site.site),volume);list.append(item);}details.append(summary,list);td.append(details);
+   }}tr.append(td);}el('allocation-rows').append(tr);
  }
  if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
 }
@@ -293,7 +371,7 @@ el('export-svg').addEventListener('click',downloadSvg);
 el('range-start').addEventListener('input',()=>narrowSnapshots('start'));
 el('range-end').addEventListener('input',()=>narrowSnapshots('end'));
 el('range-reset').addEventListener('click',resetSnapshotRange);
-el('show-base').addEventListener('input',allocationTable);
+el('show-base').addEventListener('input',()=>{allocationTable();if(irSelectedRecord)updateIRTitle(irSelectedRecord);});
 
 for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
 const mainName=profile.main_source.split(/[\\/]/).at(-1);

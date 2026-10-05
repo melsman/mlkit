@@ -113,4 +113,5 @@ json "$OUT/parallel.rp" "$OUT/parallel.json"
 [ "$(grep -c '"count":1000,"bytes":32000' "$OUT/parallel.json")" -eq 4 ]
 [ "$(grep -c '"type":"allocation_site"' "$OUT/parallel.json")" -eq 1 ]
 ! grep -q '"type":"allocation_incomplete"' "$OUT/parallel.json"
+sh "$ROOT/test/region_profile/check-ir-viewer.sh" "$OUT/allocation.rp" "$OUT/allocation-callback.rp"
 echo 'Allocation counters, native inline/C paths, reset, callbacks, exceptions, GC exclusion, pthreads and viewer checks passed'
