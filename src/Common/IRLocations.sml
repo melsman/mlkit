@@ -43,7 +43,7 @@ struct
   val zeroDigest = String.implode (List.tabulate (32,fn _ => #"0"))
 
   fun header {identity,unit,source,objectDigest,codeBytes} digest =
-    String.concat ["MLKIT-IR 3\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
+    String.concat ["MLKIT-IR 4\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
                    "object-md5\t",objectDigest,"\n", "content-md5\t",digest,"\n",
                    "code-bytes\t",Int.toString codeBytes,"\n"]
 
@@ -109,7 +109,7 @@ struct
           val prefix = header {identity = identity,unit = unit,source = source,objectDigest = objectDigest,
                                codeBytes = codeBytes} zeroDigest
         in
-          version = "MLKIT-IR 3" andalso codeBytes >= 0 andalso codeBytes <= size payload
+          version = "MLKIT-IR 4" andalso codeBytes >= 0 andalso codeBytes <= size payload
           andalso String.isPrefix "\nMLKIT-IR-LOCATIONS 1\n"
                     (String.extract (payload,codeBytes,NONE))
           andalso String.isSuffix "MLKIT-IR-CALLS-END\n" payload
@@ -129,7 +129,7 @@ struct
                          before TextIO.closeIn input)
                         handle e => (TextIO.closeIn input; raise e)
         in case lines of
-            (SOME "MLKIT-IR 3\n",SOME identity) =>
+            (SOME "MLKIT-IR 4\n",SOME identity) =>
               if String.isPrefix "identity\t" identity andalso String.isSuffix "\n" identity then
                 SOME (String.substring(identity,9,size identity-10),OS.FileSys.fullPath object)
               else NONE

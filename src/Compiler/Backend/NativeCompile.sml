@@ -156,7 +156,9 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
               fun walk caller statements = List.app (stmt caller) statements
               and stmt caller statement =
                 case statement of
-                    FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
+                    ASSIGN {bind = CLOS_RECORD {label,...},...} =>
+                      add "closure" caller (AddressLabels.pr_label label)
+                  | FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | FNCALL _ => add "indirect" caller ""
                   | FNJMP _ => add "indirect" caller ""

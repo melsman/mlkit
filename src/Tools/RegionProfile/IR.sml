@@ -32,7 +32,7 @@ struct
         end
       fun decoded s = case String.fromString s of SOME v => v | NONE => raise Fail "invalid IR string"
       val version = line ()
-      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3") "unsupported IR version"
+      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4") "unsupported IR version"
       val identity = field "identity"
       val unit = decoded (field "unit")
       val source = decoded (field "source")
@@ -81,7 +81,7 @@ struct
             "MLKIT-IR-CALLS-END" => rev acc
           | s => (case String.fields (fn c => c = #"\t") s of
               [kind,caller,callee] =>
-                (check (List.exists (fn k => k = kind) ["function","direct","indirect"])
+                (check (List.exists (fn k => k = kind) ["function","direct","indirect","closure"])
                    "invalid call kind";
                  calls (Obj [("kind",Str kind),("caller",Str (decoded caller)),
                              ("callee",Str (decoded callee))] :: acc))
@@ -91,7 +91,7 @@ struct
       val () = check (!pos = size text) "trailing IR bytes"
     in Obj [("identity",Str identity),("unit",Str unit),("source",Str source),
             ("path",Str path),("text",Str text),("code_start",number codeStart),
-            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges)]
+            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4"))]
     end
 
   fun enrich roots {samples : t list,metadata} =

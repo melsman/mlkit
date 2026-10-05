@@ -19,6 +19,17 @@
  assert(graph.querySelectorAll('summary').some(s=>s.focused&&s.scrolled));
  assert.equal(graph.querySelectorAll('button').filter(b=>b.textContent==='Site 1').length,1);
  assert(el('allocation-table').hidden);assert(!graph.hidden);
+ // Closure creators supply context without becoming measured callers.
+ const doc=irDocuments.get('graph');doc.closure_edges=true;
+ doc.calls.push(edge('function','factory'),edge('function','factory2'),edge('closure','factory','leaf'),edge('closure','factory2','leaf'));
+ allocationTable();assert(!graph.textContent.includes('factory'));
+ el('allocation-group').value='creators';allocationTable();
+ assert(graph.textContent.includes('factory'));assert(graph.textContent.includes('creates closure:'));
+ assert.equal(graph.textContent.split('112 bytes (exclusive)').length,2);
+ assert.equal(graph.querySelectorAll('button').filter(b=>b.textContent==='Site 1').length,1);
+ doc.calls.push(edge('direct','leaf','factory'));allocationTable();
+ assert(graph.textContent.includes('Cyclic group:'));assert(graph.textContent.includes('Creates closure within this group:'));
+ el('allocation-group').value='calls';allocationTable();
  // Identical function text in two units must not merge their counters.
  irDocuments.set('other',{unit:'other',source:'/other/g.sml',calls:[edge('function','leaf')]});
  profile.allocations.push({unit:'other',function:'leaf',source:'/other/g.sml',definition:'803',site:'3',count:'2',bytes:'32'});

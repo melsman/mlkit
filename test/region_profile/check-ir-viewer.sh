@@ -34,6 +34,12 @@ if((profile.ir_documents||[]).some(d=>(d.calls||[]).length)){
  const buttons=el('allocation-call-graph').querySelectorAll('button').filter(b=>b.textContent.startsWith('Site '));
  assert.equal(buttons.length,new Set(profile.allocations.map(r=>String(r.definition))).size);
  assert(el('allocation-call-graph').textContent.includes('caller context'));
+ if(profile.ir_documents.some(d=>(d.calls||[]).some(e=>e.kind==='closure'))){
+  el('allocation-group').value='creators';allocationTable();
+  const graph=el('allocation-call-graph');
+  assert.equal(graph.querySelectorAll('button').filter(b=>b.textContent.startsWith('Site ')).length,buttons.length);
+  assert(/creates closure|Creates closure within/.test(graph.textContent),'Missing closure creator relationship');
+ }
 }
 console.log('Native allocation IR highlights and call graph: PASS');
 JS

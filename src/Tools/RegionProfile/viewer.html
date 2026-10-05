@@ -52,7 +52,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 </details></section>
 <section id="allocation-section" hidden>
 <h2 id="allocation-title">Allocation volume</h2><p id="allocation-note"></p>
-<label>Group by <select id="allocation-group"><option value="function">Function</option><option value="site">Allocation site</option><option value="calls">Static call graph</option></select></label>
+<label>Group by <select id="allocation-group"><option value="creators" selected>Calls and closure creators</option><option value="function">Function</option><option value="site">Allocation site</option><option value="calls">Static call graph</option></select></label>
 <div id="allocation-call-graph" hidden></div>
 <table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
 <p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Expand a function to inspect its sites, or select a site to view its saved IR. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
@@ -171,20 +171,20 @@ el('ir-location').addEventListener('change',()=>{if(activeIR)renderIR();});
 el('ir-full').addEventListener('change',()=>{if(activeIR)renderIR();});
 el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR=null;irSelectedRecord=null;if(irReturnFocus?.isConnected)irReturnFocus.focus();else el('allocation-group').focus();});
 
-function allocationCallGraph(rows){
+function allocationCallGraph(rows,includeCreators=false){
  const host=el('allocation-call-graph');host.replaceChildren();
  const docs=[...irDocuments.values()],nodes=new Map(),labels=new Map();
  const key=(unit,name)=>JSON.stringify([unit,name]);
- function node(unit,name,source){const id=key(unit,name);if(!nodes.has(id)){nodes.set(id,{id,name,unit,source,edges:new Set(),parents:new Set(),indirect:false});const xs=labels.get(name)||[];xs.push(id);labels.set(name,xs);}return nodes.get(id);}
+ function node(unit,name,source){const id=key(unit,name);if(!nodes.has(id)){nodes.set(id,{id,name,unit,source,edges:new Set(),parents:new Set(),indirect:false,relations:new Map()});const xs=labels.get(name)||[];xs.push(id);labels.set(name,xs);}return nodes.get(id);}
  for(const doc of docs)for(const edge of doc.calls||[])node(doc.unit,edge.caller,doc.source);
  for(const record of rows.values())node(record.unit,record.function,record.source).record=record;
  if(!docs.some(d=>(d.calls||[]).length)){host.textContent='Static call graph unavailable. Recompile with a compiler that writes IR call tables and regenerate this report.';return;}
  for(const doc of docs)for(const edge of doc.calls||[]){
   const from=node(doc.unit,edge.caller,doc.source);
-  if(edge.kind==='indirect'){from.indirect=true;continue;}if(edge.kind!=='direct')continue;
+  if(edge.kind==='indirect'){from.indirect=true;continue;}if(edge.kind!=='direct'&&!(includeCreators&&edge.kind==='closure'))continue;
   const local=key(doc.unit,edge.callee),matches=labels.get(edge.callee)||[];
   const to=nodes.has(local)?local:matches.length===1?matches[0]:null;
-  if(to){from.edges.add(to);nodes.get(to).parents.add(from.id);}else from.unresolved=true;
+  if(to){from.edges.add(to);nodes.get(to).parents.add(from.id);const kinds=from.relations.get(to)||new Set();kinds.add(edge.kind);from.relations.set(to,kinds);}else from.unresolved=true;
  }
  // Keep measured functions and their transitive callers, without claiming that
  // any particular static edge carried the selected region at runtime.
@@ -194,10 +194,10 @@ function allocationCallGraph(rows){
  let serial=0;const index=new Map(),low=new Map(),stack=[],onStack=new Set(),components=[],componentOf=new Map();
  function visit(id){index.set(id,serial);low.set(id,serial++);stack.push(id);onStack.add(id);
   for(const child of nodes.get(id).edges)if(relevant.has(child)){if(!index.has(child)){visit(child);low.set(id,Math.min(low.get(id),low.get(child)));}else if(onStack.has(child))low.set(id,Math.min(low.get(id),index.get(child)));}
-  if(low.get(id)===index.get(id)){const members=[];let member;do{member=stack.pop();onStack.delete(member);componentOf.set(member,components.length);members.push(member);}while(member!==id);components.push({members,edges:new Set(),parents:new Set()});}
+  if(low.get(id)===index.get(id)){const members=[];let member;do{member=stack.pop();onStack.delete(member);componentOf.set(member,components.length);members.push(member);}while(member!==id);components.push({members,edges:new Set(),parents:new Set(),relations:new Map()});}
  }
  for(const id of relevant)if(!index.has(id))visit(id);
- for(const id of relevant)for(const child of nodes.get(id).edges)if(relevant.has(child)){const a=componentOf.get(id),b=componentOf.get(child);if(a!==b){components[a].edges.add(b);components[b].parents.add(a);}}
+ for(const id of relevant)for(const child of nodes.get(id).edges)if(relevant.has(child)){const a=componentOf.get(id),b=componentOf.get(child);if(a!==b){components[a].edges.add(b);components[b].parents.add(a);const kinds=components[a].relations.get(b)||new Set();for(const kind of nodes.get(id).relations.get(child))kinds.add(kind);components[a].relations.set(b,kinds);}}
  const sourceLabel=sourceLabels([...nodes.values()].map(n=>n.source)),shortNames=new Map();
  for(const id of relevant){const n=nodes.get(id),short=shortFunction(n.name);shortNames.set(short,(shortNames.get(short)||0)+1);}
  function name(n){const short=shortFunction(n.name);return (shortNames.get(short)>1?n.name:short)+(el('show-base').checked?' · '+n.source.split('/').pop():'');}
@@ -208,16 +208,18 @@ function allocationCallGraph(rows){
   const volume=document.createElement('span');volume.className='note';volume.textContent=n.record?' · '+n.record.count+' allocations · '+n.record.bytes+' bytes (exclusive)':' · caller context; no recorded allocations';label.append(volume);
   if(n.source){const source=document.createElement('div');source.className='note';source.textContent=sourceLabel(n.source);source.title=n.source;parent.append(source);}
   if(n.record){const sites=document.createElement('ul');sites.className='ir-site-list';for(const r of n.record.sites.values()){const li=document.createElement('li');li.append(irButton(r,'Site '+r.site));const counts=document.createElement('span');counts.className='note';counts.textContent=' · '+r.count+' allocations · '+r.bytes+' bytes';li.append(counts);sites.append(li);}parent.append(sites);}
+  if(includeCreators){const created=[...n.relations].filter(([id,kinds])=>kinds.has('closure')&&relevant.has(id)&&componentOf.get(id)===componentOf.get(n.id));if(created.length){const info=document.createElement('p');info.className='note';info.textContent='Creates closure within this group: '+created.map(([id])=>name(nodes.get(id))).join(', ');parent.append(info);}}
   if(n.indirect||n.unresolved){const note=document.createElement('p');note.className='note';note.textContent=[n.indirect?'Indirect call target unknown':'',n.unresolved?'Some direct callees have no available IR definition':''].filter(Boolean).join(' · ');parent.append(note);}
  }
- function branch(i,parent,depth){const c=components[i],recursive=c.members.length>1||nodes.get(c.members[0]).edges.has(c.members[0]);const label=recursive?'Recursive group: '+c.members.map(id=>name(nodes.get(id))).join(', '):name(nodes.get(c.members[0]));
+ function branch(i,parent,depth,relation=''){const c=components[i],recursive=c.members.length>1||nodes.get(c.members[0]).edges.has(c.members[0]);const label=recursive?(includeCreators?'Cyclic group: ':'Recursive group: ')+c.members.map(id=>name(nodes.get(id))).join(', '):name(nodes.get(c.members[0]));
   const item=document.createElement('li');parent.append(item);
-  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.className='ir-site-button';ref.textContent='↪ '+label+' (shared; totals shown once)';ref.addEventListener('click',()=>reveal(shown.get(i)));item.append(ref);return;}
-  const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent=label;summary.tabIndex=0;details.open=depth<2;details.append(summary);item.append(details);shown.set(i,summary);
+  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.className='ir-site-button';ref.textContent='↪ '+relation+label+' (shared; totals shown once)';ref.addEventListener('click',()=>reveal(shown.get(i)));item.append(ref);return;}
+  const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent=relation+label;summary.tabIndex=0;details.open=depth<2;details.append(summary);item.append(details);shown.set(i,summary);
   for(const id of c.members)member(nodes.get(id),details);
-  if(c.edges.size){const children=document.createElement('ul');details.append(children);for(const child of c.edges)branch(child,children,depth+1);}
+  if(c.edges.size){const children=document.createElement('ul');details.append(children);for(const child of c.edges)branch(child,children,depth+1,[...c.relations.get(child)].map(k=>k==='closure'?'creates closure':'calls').join(' / ')+': ');}
  }
- const note=document.createElement('p');note.className='note';note.textContent='Static calls from available IR; not observed call paths or region-argument flow. Counts are exclusive allocations into the selected region. Shared functions have one set of totals. Indirect calls may hide additional callers.';host.append(note);
+ const note=document.createElement('p');note.className='note';note.textContent=(includeCreators?'Static calls and closure creation from available IR; creating a closure does not imply invoking it. These are ':'Static calls from available IR; ')+ 'not observed call paths or region-argument flow. Counts are exclusive allocations into the selected region. Shared functions have one set of totals. Indirect calls may hide additional callers.';host.append(note);
+ if(includeCreators&&docs.some(d=>!d.closure_edges)){const warning=document.createElement('p');warning.className='note';warning.textContent='Some IR documents lack closure-creation metadata; rebuild to include their creator relationships.';host.append(warning);}
  const tree=document.createElement('ul');host.append(tree);components.forEach((c,i)=>{if(!c.parents.size)branch(i,tree,0);});
  if(!relevant.size)host.append(document.createTextNode('No recorded allocations.'));
 }
@@ -232,7 +234,7 @@ function allocationTable(){
  for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const [i,value] of [r.name||'Region '+r.binding,bindingSource(r.source),selector].entries()){const td=document.createElement('td');td.textContent=value;if(i===1)td.title=r.source;tr.append(td);}el('allocation-selectors').append(tr);}
  if(session.enabled!=='1')return;
  el('allocation-rows').replaceChildren();
- const bySite=el('allocation-group').value==='site',byCalls=el('allocation-group').value==='calls';
+ const bySite=el('allocation-group').value==='site',byCalls=['calls','creators'].includes(el('allocation-group').value);
  el('allocation-table').hidden=byCalls;el('allocation-call-graph').hidden=!byCalls;
  el('allocation-section').hidden=false;
  const regionId=profile.allocation_region?.binding??String(session.selector||'').match(/:(\d+)$/)?.[1];
@@ -243,7 +245,7 @@ function allocationTable(){
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
  for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,bySite?r.site:r.function]),p=rows.get(k)||{...r,count:0n,bytes:0n,sites:new Map()};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);const id=String(r.definition),site=p.sites.get(id)||{...r,count:0n,bytes:0n};site.count+=BigInt(r.count);site.bytes+=BigInt(r.bytes);p.sites.set(id,site);rows.set(k,p);}
- if(byCalls){allocationCallGraph(rows);return;}
+ if(byCalls){allocationCallGraph(rows,el('allocation-group').value==='creators');return;}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
   const short=shortFunction(r.function),name=(functions.get(short).size===1?short:r.function)+(bySite?' · site '+r.site:'')+(el('show-base').checked?' · '+baseName(r):'');

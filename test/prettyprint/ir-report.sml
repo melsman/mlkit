@@ -10,7 +10,7 @@ val tree = PrettyPrint.HNODE {start = "\195\166 ",finish = "",childsep = PrettyP
   children = [PrettyPrint.MARKED_LEAF(7,"$foreign"),PrettyPrint.MARKED_LEAF(7,"attop r9"),
               PrettyPrint.MARKED_LEAF(7,"attop r10")]}
 val _ = IRLocations.write {object = object,
-  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,calls = [("function","caller",""),("direct","caller","callee"),("indirect","callee","")]}}
+  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,calls = [("function","caller",""),("direct","caller","callee"),("closure","caller","lambda"),("indirect","callee","")]}}
 (* Relocation does not require the original object or source tree. *)
 val companion = object ^ ".o.ir"
 val _ = OS.FileSys.rename {old = object ^ ".ir",new = companion}
@@ -29,7 +29,8 @@ val {metadata,...} = report ()
 val locations = ProfileIR.rows metadata "ir_sites"
 val documents = ProfileIR.rows metadata "ir_documents"
 val _ = assert (length locations = 6 andalso length documents = 1) "deduplication"
-val _ = assert (length (ProfileIR.rows (hd documents) "calls") = 3) "static call table"
+val _ = assert (length (ProfileIR.rows (hd documents) "calls") = 4) "static call table"
+val _ = assert (get (hd documents) "closure_edges" = Bool true) "closure metadata version"
 fun location id = valOf (List.find (fn r => get r "definition" = Num id) locations)
 val _ = assert (length (ProfileIR.rows (location "1") "spans") = 2) "duplicated allocation locations"
 val _ = assert (length (ProfileIR.rows (location "2") "spans") = 1) "foreign-call token location"
