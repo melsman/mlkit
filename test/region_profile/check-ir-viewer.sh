@@ -33,7 +33,7 @@ for(const record of profile.allocations){
  const marks=el('ir-code').querySelectorAll('mark');assert(marks.length>0,'Missing native highlight');
  assert(Number(record.location_kind)===1?marks[0].textContent.startsWith('$'):/^(attop|atbot|sat) /.test(marks[0].textContent),'Wrong native allocation location');
 }
-if(profile.region_flow?.available){allocationTable();assert(!el('allocation-flow').hidden);assert.equal(el('allocation-flow').querySelectorAll('button').filter(b=>b.textContent.includes(' · site ')).length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);}
+if(profile.region_flow?.available){allocationTable();assert(!el('allocation-flow').hidden);assert.equal(el('allocation-flow').querySelectorAll('button').filter(b=>b.textContent.startsWith('site ')).length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);}
 el('allocation-view').value='site';allocationTable();
 assert.equal(el('allocation-rows').querySelectorAll('button').length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);
 console.log('Native allocation sites and IR highlights: PASS');

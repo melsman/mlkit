@@ -203,6 +203,13 @@ el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR
 
 // Static region relationships organize measured sites; they do not divide
 // counters among the possible paths through which a region can be passed.
+function allocationSize(value){
+ const bytes=BigInt(value),units=['bytes','KiB','MiB','GiB','TiB','PiB','EiB'];let divisor=1n,index=0;
+ while(index<units.length-1&&bytes>=divisor*1024n){divisor*=1024n;index++;}
+ if(!index)return bytes+' bytes';
+ const scaled=(bytes*100n+divisor/2n)/divisor;
+ return (scaled/100n)+'.'+String(scaled%100n).padStart(2,'0')+' '+units[index];
+}
 function allocationRegionFlow(rows){
  const host=el('allocation-flow');host.replaceChildren();
  const flow=profile.region_flow, nodes=new Map((flow.nodes||[]).map(n=>[n.id,n]));
@@ -250,8 +257,9 @@ function allocationRegionFlow(rows){
      if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=token;
     }
    }catch(_){/* Retain the destination label when no readable span is available. */}}
-   const button=irButton(r,annotation+(el('show-base').checked?' · '+baseName(r):'')+' · site '+r.site);
-   line.append(button,document.createTextNode(' · '+r.count+' allocations · '+r.bytes+' bytes'));
+   const button=irButton(r,'site '+annotation+(el('show-base').checked?' · '+baseName(r):'')+':');
+   button.title+='\nSite: '+r.site+' · '+r.bytes+' bytes';
+   line.append(button,document.createTextNode(' '+r.count+' allocations · '+allocationSize(r.bytes)));
    const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();
    if(owners.length)line.append(document.createTextNode(' · '+name(r.function)+' (closure created by '+owners.map(name).join(', ')+')'));
    else if(regionNode&&r.function!==regionNode.owner)line.append(document.createTextNode(' · '+name(r.function)));
@@ -308,11 +316,19 @@ function allocationRegionFlow(rows){
   function add(fn){if(done.has(fn.key))return;done.add(fn.key);dependencies(fn);result.push(fn);}
   for(const fn of items)add(fn);return result;
  }
+ // Aggregate only sites contained in the lexical definition, never its callees.
+ function functionVolume(fn){
+  const unique=new Map();
+  function collect(f){for(const n of f.regions)for(const r of measured.get(n.id)||[])unique.set(r.definition,r);for(const child of f.children)collect(child);}
+  collect(fn);return [...unique.values()].reduce((total,r)=>({count:total.count+BigInt(r.count),bytes:total.bytes+BigInt(r.bytes)}),{count:0n,bytes:0n});
+ }
  function renderFunction(fn,parent,depth){
   if(fn.label===fn.unit&&!fn.regions.length&&!fn.calls.length){for(const child of ordered(fn.children))renderFunction(child,parent,depth);return;}
   const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<2;summary.tabIndex=0;
   const formals=fn.regions.filter(n=>n.role==='formal');
-  summary.textContent='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region);
+  const heading='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region),volume=functionVolume(fn);
+  function updateSummary(){summary.textContent=heading+(details.open?'':' · '+volume.count+' allocations · '+allocationSize(volume.bytes));}
+  details.addEventListener('toggle',updateSummary);updateSummary();
   summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
   const containers=new Map();
   for(const n of fn.regions){let target=details;if(n.role==='local'){

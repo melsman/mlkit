@@ -1,3 +1,8 @@
+assert.equal(allocationSize('1023'),'1023 bytes');
+assert.equal(allocationSize('1024'),'1.00 KiB');
+assert.equal(allocationSize('1048576'),'1.00 MiB');
+assert.equal(allocationSize('1073741824'),'1.00 GiB');
+assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
 // Shared paths and cycles must never duplicate the measured site totals.
 {
  const saved={flow:profile.region_flow,allocations:profile.allocations,session:profile.allocation_session,region:profile.allocation_region};
@@ -17,7 +22,7 @@
  assert(host.textContent.includes('r163'));assert(host.textContent.includes('r139'));assert(host.textContent.includes('r45'));assert(host.textContent.includes('r17'));
  assert(!host.textContent.includes('split'));assert(host.textContent.includes('fun '));
  assert(host.textContent.includes('LETREGION r163'));assert(host.textContent.includes('factory2'));assert(host.textContent.includes('Sites without a resolved path'));
- assert.equal(host.querySelectorAll('button').filter(b=>b.textContent.includes(' · site ')).length,3);
+ assert.equal(host.querySelectorAll('button').filter(b=>b.textContent.startsWith('site ')).length,3);
  const reference=host.querySelectorAll('button').find(b=>b.title?.includes('Single argument relationship'));reference.listeners.click();
  assert(host.querySelectorAll('summary').some(s=>s.focused));
  // Two source calls with the same caller/callee must remain distinct.
@@ -41,6 +46,13 @@
  assert(callLines.some(b=>b.textContent==='cp[r17:=sat r163, r19:=sat r163]'));
  assert(callLines.some(b=>b.textContent==='cp[r17:=sat r163, ...]'));
  assert.equal(host.querySelectorAll('summary').filter(s=>s.textContent==='fun cp [r17, r19]').length,1);
+ const cpSummary=host.querySelectorAll('summary').find(s=>s.textContent==='fun cp [r17, r19]');
+ cpSummary.parentElement.open=false;cpSummary.parentElement.listeners.toggle();
+ assert.equal(cpSummary.textContent,'fun cp [r17, r19] · 4 allocations · 64 bytes');
+ outer.parentElement.open=false;outer.parentElement.listeners.toggle();
+ assert(outer.textContent.includes('5 allocations · 80 bytes'),'Lexical totals exclude called functions');
+ cpSummary.parentElement.open=true;cpSummary.parentElement.listeners.toggle();
+ assert.equal(cpSummary.textContent,'fun cp [r17, r19]');
  profile.allocations.pop();
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);
  assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].textContent),0n),160n);
