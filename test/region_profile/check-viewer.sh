@@ -49,7 +49,7 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 4 7; do
+for version in 0 1 2 3 4 8; do
     sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
@@ -139,3 +139,9 @@ awk '
 run
 grep '^const samples=' profile.html | grep -Fq 'later-unit'
 echo 'Binding definitions: reuse, late discovery, uint64 IDs and invalid references passed'
+
+# Version-6 allocation profiles remain usable without IR metadata.
+cp "$ROOT/test/region_profile/allocation-fixture.json" profile.rp
+run
+grep -q '"status":"legacy-profile"' profile.html
+echo 'Legacy allocation profiles: counters retained, IR navigation unavailable'

@@ -140,9 +140,9 @@ struct
     | RESET_REGIONS of {force: bool,
                         regions_for_resetting: 'aty sma list}
     | PRIM          of {name: PrimName.prim, args: 'aty list, res: 'aty list}
-    | CCALL         of {name: string, args: 'aty list,
+    | CCALL         of {name: string, origin: int, args: 'aty list,
                         rhos_for_result : 'aty list, res: 'aty list}
-    | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
+    | CCALL_AUTO    of {name: string, origin: int, args: ('aty * foreign_type) list,
                         rhos_for_result : 'aty list,
                         res: 'aty * foreign_type}
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
@@ -469,7 +469,7 @@ struct
                          childsep=RIGHT ",",
                          children=map (layout_aty pr_aty) args}
                  end
-           | CCALL{name,args,rhos_for_result,res} =>
+           | CCALL{origin,name,args,rhos_for_result,res} =>
                  let
                    val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
                  in
@@ -478,7 +478,7 @@ struct
                          childsep=RIGHT ",",
                          children=(map (layout_aty pr_aty) rhos_for_result) @ (map (layout_aty pr_aty) args)}
                  end
-           | CCALL_AUTO{name,args,rhos_for_result,res} =>
+           | CCALL_AUTO{origin,name,args,rhos_for_result,res} =>
                  let
                    fun layout_pair (aty, f) = HNODE{start="",finish="",childsep=RIGHT":",
                                                     children=[layout_aty pr_aty aty, layout_foreign_type f]}
@@ -732,14 +732,14 @@ struct
           (* We must have RESET_REGIONS return unit. *)
           RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
           maybe_assign (lvars_res, ATOM {aty=UNIT}, acc)
-         | ClosExp.CCALL{name,rhos_for_result,args} =>
+         | ClosExp.CCALL{origin,name,rhos_for_result,args} =>
            (case PrimName.lookup_prim name of
                 SOME pname => PRIM{name=pname,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
                                    res=map VAR lvars_res}::acc
-             | NONE => CCALL{name=name,args=ces_to_atoms args,
+             | NONE => CCALL{origin=origin,name=name,args=ces_to_atoms args,
                              rhos_for_result=ces_to_atoms rhos_for_result,
                              res=map VAR lvars_res}::acc)
-         | ClosExp.CCALL_AUTO{name,args,rhos_for_result,res} =>
+         | ClosExp.CCALL_AUTO{origin,name,args,rhos_for_result,res} =>
            (case PrimName.lookup_prim name of
                 SOME _ => die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
               | NONE =>
@@ -748,7 +748,7 @@ struct
                              | _ => die ("CCALL_AUTO.result mismatch (SOME) "
                                          ^ Int.toString(length lvars_res))
                 val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
-            in CCALL_AUTO{name=name, args=args,
+            in CCALL_AUTO{origin=origin,name=name, args=args,
                           rhos_for_result=ces_to_atoms rhos_for_result, res=res}::acc
             end)
          | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} =>
@@ -877,8 +877,8 @@ struct
     | get_phreg_ls (RAISE{arg,defined_atys}) = get_phreg_atom(arg,[])
     | get_phreg_ls (RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
     | get_phreg_ls (PRIM{name,args,res}) = get_phreg_atoms(args,[])
-    | get_phreg_ls (CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
-    | get_phreg_ls (CCALL_AUTO{name,args,rhos_for_result,res}) =
+    | get_phreg_ls (CCALL{origin,name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
+    | get_phreg_ls (CCALL_AUTO{origin,name,args,rhos_for_result,res}) =
       get_phreg_atoms(map #1 args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls (EXPORT{name,clos_lab,arg}) = get_phreg_atom(#1 arg,[])
     | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
@@ -1016,8 +1016,8 @@ struct
               | (RAISE{arg,defined_atys}) => get_var_atom(arg,[])
               | (RESET_REGIONS{force,regions_for_resetting}) => get_var_smas(regions_for_resetting,[])
               | (PRIM{name,args,res}) => get_var_atoms(args,[])
-              | (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
-              | (CCALL_AUTO{name,args,rhos_for_result,res}) =>
+              | (CCALL{origin,name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
+              | (CCALL_AUTO{origin,name,args,rhos_for_result,res}) =>
                 get_var_atoms(map #1 args,get_var_atoms(rhos_for_result,[]))
               | (EXPORT{name,clos_lab,arg}) => get_var_atom(#1 arg,[])
               |  _ => die "use_var_ls: statement contains statements itself."
@@ -1170,11 +1170,11 @@ struct
             RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
           | map_lss' (PRIM{name,args,res}::lss) =
             PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
-          | map_lss' (CCALL{name,args,rhos_for_result,res}::lss) =
-            CCALL{name=name,args=map_atys args,
+          | map_lss' (CCALL{origin,name,args,rhos_for_result,res}::lss) =
+            CCALL{origin=origin,name=name,args=map_atys args,
                   rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
-          | map_lss' (CCALL_AUTO{name,args,rhos_for_result,res}::lss) =
-            CCALL_AUTO{name=name,args=map_pair_atys args,rhos_for_result=map_atys rhos_for_result,
+          | map_lss' (CCALL_AUTO{origin,name,args,rhos_for_result,res}::lss) =
+            CCALL_AUTO{origin=origin,name=name,args=map_pair_atys args,rhos_for_result=map_atys rhos_for_result,
                        res=map_pair_aty res} :: map_lss' lss
           | map_lss' (EXPORT{name,clos_lab,arg=(aty,ft1,ft2)}::lss) =
           EXPORT{name=name,clos_lab=clos_lab,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss

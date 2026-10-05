@@ -4,6 +4,8 @@ $(SML_LIB)/basis/Binarymap.sml
 Json.sml
 Binary.sml
 Reader.sml
+../../Common/md5.mlb
+IR.sml
 Html.sml
 Page.sml
 Svg.sml

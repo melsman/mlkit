@@ -96,10 +96,10 @@ struct
     | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
-    | CCALL           of {name: string,
+    | CCALL           of {name: string, origin: int,
                           args: ClosExp list,
                           rhos_for_result : ClosExp list}
-    | CCALL_AUTO      of {name: string,
+    | CCALL_AUTO      of {name: string, origin: int,
                           args: (ClosExp * foreign_type) list,
                           res: foreign_type,
                           rhos_for_result : ClosExp list}   (* boxed res implies memory for the result *)
@@ -356,12 +356,12 @@ struct
                 finish="",
                 childsep=RIGHT ",",
                 children=map (fn sma => pr_sma sma) regions_for_resetting}
-      | layout_ce(CCALL{name,args,rhos_for_result}) =
+      | layout_ce(CCALL{origin,name,args,rhos_for_result}) =
           HNODE{start="ccall(\"" ^ name ^ "\", <",
                 finish=">)",
                 childsep=RIGHT ",",
                 children=(map layout_ce rhos_for_result) @ (map layout_ce args)}
-      | layout_ce(CCALL_AUTO{name,args,res,rhos_for_result}) =
+      | layout_ce(CCALL_AUTO{origin,name,args,res,rhos_for_result}) =
           HNODE{start="ccall_auto(\"" ^ name ^ "\", <",
                 finish=">)",
                 childsep=RIGHT ",",
@@ -1870,7 +1870,7 @@ struct
                  val (sma,se_a) = convert_alloc(alloc,env)
                in
                  (LET{pat=[lv1],
-                      bind=CCALL{name="__fresh_exname",
+                      bind=CCALL{origin = ~1,name="__fresh_exname",
                                  args=[],
                                  rhos_for_result=[]},
                       scope=insert_se(LET{pat=[lv2],
@@ -1897,7 +1897,7 @@ struct
                  val (sma,se_a) = convert_alloc(alloc,env)
                in
                  (LET{pat=[lv1],
-                      bind=CCALL{name="__fresh_exname",
+                      bind=CCALL{origin = ~1,name="__fresh_exname",
                                  args=[],
                                  rhos_for_result=[]},
                       scope=LET{pat=[lv2],
@@ -1955,7 +1955,7 @@ struct
                      LET{pat=[lv_s],
                          bind=STRING s,
                          scope=LET{pat=[lv_sw],
-                                   bind=CCALL{name="equalStringML",args=[ce,VAR lv_s],rhos_for_result=[]},
+                                   bind=CCALL{origin = ~1,name="equalStringML",args=[ce,VAR lv_s],rhos_for_result=[]},
                                    scope=SWITCH_I{switch=SWITCH(VAR lv_sw,[(True,ce')],
                                                                 compile_seq_switch(ce,rest,default)),
                                                   precision=BI.defaultIntPrecision()}}}
@@ -2024,7 +2024,7 @@ struct
                               scope=LET{pat=[lv_exn2],
                                         bind=SELECT(0,VAR lv_exn1),
                                         scope=LET{pat=[lv_sw],
-                                                  bind=CCALL{name="__equal_int32ub",
+                                                  bind=CCALL{origin = ~1,name="__equal_int32ub",
                                                              args=[ce,VAR lv_exn2],rhos_for_result=[]},
                                                   scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(IntInf.fromInt BI.ml_true,ce')],
                                                                                 compile_seq_switch(ce,rest,default)),
@@ -2033,7 +2033,7 @@ struct
                           LET{pat=[lv_exn1],
                               bind=insert_se(SELECT(0,ce_e),se_e),
                               scope=LET{pat=[lv_sw],
-                                        bind=CCALL{name="__equal_int32ub",
+                                        bind=CCALL{origin = ~1,name="__equal_int32ub",
                                                    args=[ce,VAR lv_exn1],rhos_for_result=[]},
                                         scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(IntInf.fromInt BI.ml_true,ce')],
                                                                       compile_seq_switch(ce,rest,default)),
@@ -2214,7 +2214,7 @@ struct
                                        ccTrip tr2 env lab cur_rv] SEMap.empty of
                          ([ce1,ce2],ses,_) => (ce1,ce2,ses)
                        | _ => die "EQUAL: error in unify."
-                 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
+                 fun eq_prim n = CCALL{origin = ~1,name=n,args=[ce1,ce2],rhos_for_result=[]}
                  val ce =
                      case RType.unCONSTYPE tau of
                       SOME(tn,_,_,_) =>
@@ -2297,6 +2297,11 @@ struct
                (* case that the C function calls resetRegion.  See also the chapter  *)
                (* `Calling C Functions' in the documentation.                        *)
                let
+                 val origin = case rhos_for_result of
+                     (AtInf.ATTOP (_,point),_)::_ => point
+                   | (AtInf.ATBOT (_,point),_)::_ => point
+                   | (AtInf.SAT (_,point),_)::_ => point
+                   | [] => ~1
                  fun add_pp_for_profiling ([], args) = (name, args)
                    | add_pp_for_profiling ((sma,i_opt)::rest,args) =
                    if region_profiling() then
@@ -2357,7 +2362,7 @@ struct
                                       of CharArray => die "CCALL_AUTO.CharArray not supported in result"
                                        | t => t
                       in (insert_ses(maybe_insert_smas(fresh_lvs,smas,
-                                                       CCALL_AUTO{name=name,
+                                                       CCALL_AUTO{origin=origin,name=name,
                                                                   args=args,
                                                                   res=res,
                                                                   rhos_for_result=map VAR fresh_lvs}),
@@ -2375,7 +2380,7 @@ struct
 
                       let fun cons_ctx ces =
                               let val lv_ctx = fresh_lvar "ctx"
-                              in ( fn e => LET{pat=[lv_ctx],bind=CCALL{name="__get_ctx",args=[],rhos_for_result=[]},
+                              in ( fn e => LET{pat=[lv_ctx],bind=CCALL{origin = ~1,name="__get_ctx",args=[],rhos_for_result=[]},
                                                scope=e}
                                  , VAR lv_ctx :: ces
                                  )
@@ -2411,7 +2416,7 @@ struct
                       in (maybe_return_unit
                           (insert_ses(maybe_insert_smas(fresh_lvs,smas,
                                                         maybe_add_context
-                                                            (CCALL{name=name,
+                                                            (CCALL{origin=origin,name=name,
                                                                    args=args,
                                                                    rhos_for_result=map VAR fresh_lvs})),
                                       ses)),

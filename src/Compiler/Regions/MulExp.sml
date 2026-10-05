@@ -1268,7 +1268,15 @@ struct
               | BLOCKF64 (a,ts) => expr "blockf64 " [a] [args ts]
               | SCRATCHMEM (bytes,a) => expr ("scratch(" ^ Int.toString bytes ^ ") ") [a] []
               | CCALL ({name,rhos_for_result,...},ts) =>
-                  expr ("$" ^ name ^ " ") (map #1 rhos_for_result) [args ts]
+                  let val token = "$" ^ name
+                      val marker = case rhos_for_result of
+                          (a,_)::_ => (case layout_alloc a of
+                              SOME (MARKED_LEAF (point,_)) => MARKED_LEAF (point,token)
+                            | _ => LEAF token)
+                        | [] => LEAF token
+                  in HNODE {start = "", finish = "", childsep = RIGHT " ", children =
+                       [marker,expr "" (map #1 rhos_for_result) [args ts]]}
+                  end
               | FN {pat,body,alloc,...} =>
                   par (n-n_lam)
                     (NODE {start = "fn ", finish = "", indent = 2, childsep = RIGHT " ",

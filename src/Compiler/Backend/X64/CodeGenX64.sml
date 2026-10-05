@@ -52,6 +52,7 @@ struct
 
   val allocationFunction = ref "<entry>"
   val allocationSerial = ref 0
+  val allocationIR = ref (NameLab "unused_ir_identity")
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ Labels.pr_label l)
@@ -140,26 +141,28 @@ struct
           load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
       end
 
-  fun allocationMetadata unitName display id =
+  fun allocationMetadata unitName display id extra =
     let val lab = new_local_lab "allocation_metadata"
         val display = gen_string_lab display
     in
-      add_static_data [I.dot_data,I.dot_p2align "3",I.lab lab,
+      add_static_data ([I.dot_data,I.dot_p2align "3",I.lab lab,
         I.dot_quad(I.pr_lab unitName),I.dot_quad(I.pr_lab display),
-        I.dot_quad(I.pr_lab(!rpSource)),I.dot_quad(Int.toString id)]; lab
+        I.dot_quad(I.pr_lab(!rpSource)),I.dot_quad(Int.toString id)] @ map I.dot_quad extra); lab
     end
-  val () = allocationSite := (fn () =>
+  val () = allocationSite := (fn (point,kind) =>
     (allocationSerial := !allocationSerial+1;
-     allocationMetadata (!rpUnit) (!allocationFunction) (!allocationSerial)))
+     allocationMetadata (!rpUnit) (!allocationFunction) (!allocationSerial)
+       [Int.toString (Int.max(0,point)),Int.toString kind,
+        I.pr_lab(!allocationIR)]))
   fun allocationBinding place =
-    allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place)
+    allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place) []
   fun bindAllocation fsz aty metadata code =
     load_label_addr(metadata,SS.PHREG_ATY treg0,treg0,0,
       rpInternal fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY treg0] code)
-  fun foreignAllocation fsz call code =
-    if not(allocationProfile()) then call code
+  fun foreignAllocation fsz origin call code =
+    if origin < 0 orelse not(allocationProfile()) then call code
     else
-      let val site = (!allocationSite)()
+      let val site = (!allocationSite)(origin,1)
           (* Selection is fixed at startup. Guard outside the preserving call
            * so disabled attribution pays no register saves or helper calls. *)
           fun whenEnabled action code =
@@ -1460,7 +1463,7 @@ struct
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
-               | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
+               | LS.CCALL{origin,name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
                  let
                    (* The call_closure C function takes one argument (an ML closure). It
                     * extracts the closure pointer and the closure environment from the argument
@@ -1497,7 +1500,7 @@ struct
                      * argument function by applying it to the second argument *)
                     compile_c_call_prim("thread_create", [SS.PHREG_ATY treg0,SS.PHREG_ATY treg1], SOME res, fsz, treg1, C))
                  end
-               | LS.CCALL{name,args,rhos_for_result,res} =>
+               | LS.CCALL{origin,name,args,rhos_for_result,res} =>
                   if sampledProfile() andalso name = "thread_get" then
                     let val lab = rpCurrentMap fsz size_ccf
                     in
@@ -1523,7 +1526,7 @@ struct
                   else
                   let
                     fun comp_c_call (all_args,res,C) =
-                      foreignAllocation fsz (fn C => compile_c_call_prim(name, all_args, res, fsz, treg1, C)) C
+                      foreignAllocation fsz origin (fn C => compile_c_call_prim(name, all_args, res, fsz, treg1, C)) C
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()
@@ -1554,14 +1557,14 @@ struct
                                 end handle X => ( print ("EXN: CCALL: " ^ pr_ls ls ^ "\n")
                                                 ; raise X))
                   end
-               | LS.CCALL_AUTO{name, args, rhos_for_result, res} =>
+               | LS.CCALL_AUTO{origin,name, args, rhos_for_result, res} =>
 
         (* With dynamicly linked functions the first argument must be the name of   *)
         (* the function. If we where to implement automatic conversion into regions *)
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                foreignAllocation fsz (fn C => compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)) C
+                                foreignAllocation fsz origin (fn C => compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)) C
                                 handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
                                             ; raise X)
                                )
@@ -1818,6 +1821,7 @@ struct
         val () = rpNames := []
         val () = if sampledProfile() then rpSource := gen_string_lab(!Flags.current_source_file) else ()
         val () = allocationSerial := 0
+        val () = if allocationProfile() then allocationIR := gen_string_lab (!IRLocations.currentIdentity) else ()
         val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
@@ -2466,7 +2470,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
           let val build = gen_string_lab(Time.toString(Time.now()))
           in add_static_data [I.dot_data,I.dot_p2align "3",
                I.dot_globl(NameLab "mlkit_rp_allocation_capable",I.OBJ),
-               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "1",
+               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "2",
                I.dot_globl(NameLab "mlkit_rp_build_id",I.OBJ),
                I.lab(NameLab "mlkit_rp_build_id"),I.dot_quad(I.pr_lab build ^ " + 8")]
           end else ()

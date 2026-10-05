@@ -263,7 +263,7 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP9` (including the
+slots and types. Profiling builds now use cache suffix `_RP10` (including the
 X64 profiler-call alignment and indirect-call frame-map fixes). Compile programs and their dependencies
 with the current compiler and runtime to obtain version-5 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
@@ -272,7 +272,7 @@ Release builds precompile the Basis (including REPL support) and Kit libraries
 together with `kitlib/region-profile.mlb`, for ordinary and sampled-profiler
 builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
-and the `_RP9` cache suffix. Legacy `-prof` libraries are no longer precompiled
+and the `_RP10` cache suffix. Legacy `-prof` libraries are no longer precompiled
 or selected for installation; they can still be compiled from source.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from

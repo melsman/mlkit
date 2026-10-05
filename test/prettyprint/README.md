@@ -21,3 +21,8 @@ The IR-location helper checks absolute byte spans and one-based line/byte
 columns, object/content digests, missing and altered artifacts, and relocation
 of an intact object/IR pair. Compiler-level generation and cache checks live in
 `test/region_profile/check-ir.sh`.
+
+The IR report suite also checks repeated allocation spans versus foreign-call
+tokens, UTF-8 byte positions, per-definition deduplication, direct companion
+lookup, explicit relocation fallback, missing/corrupt/mismatched files, malformed
+tables with valid checksums, and graceful legacy/generated-site statuses.

@@ -65,13 +65,13 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (uint r "version" = 5 orelse uint r "version" = 6) "unsupported profile version";
+                   require (uint r "version" = 5 orelse uint r "version" = 6 orelse uint r "version" = 7) "unsupported profile version";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
                   (case kind r of
                        "allocation_session" =>
-                       (require (uint h "version" = 6) "allocation records need version 6";
+                       (require (uint h "version" >= 6) "allocation records need version 6 or later";
                         require (!allocationSession = Null) "duplicate allocation session";
                         require (uint r "enabled" <= 1 andalso uint r "depth" = 1) "unsupported allocation mode";
                         app (fn k => ignore(string(get r k))) ["build_id","selector"];
@@ -86,6 +86,9 @@ struct
                        in require (not(Option.isSome(Binarymap.peek(!allocationSites,id)))) "duplicate allocation site";
                           ignore(uint r "site");
                           app (fn k => ignore(string(get r k))) ["unit","function","source"];
+                          (if uint h "version" >= 7 then
+                            (ignore(uint r "point"); require (uint r "location_kind" <= 1) "invalid IR location kind";
+                             ignore(string(get r "ir_identity")); ignore(string(get r "ir_object"))) else ());
                           allocationSites := Binarymap.insert(!allocationSites,id,r)
                        end
                      | "allocation" =>
@@ -94,7 +97,9 @@ struct
                                           SOME s => s | NONE => raise Fail "unknown allocation site"
                        in app (fn k => ignore(uint r k)) ["thread","count","bytes"];
                           allocations := Obj(fields r @ map (fn k => (k,get site k))
-                            ["site","unit","function","source"]) :: !allocations
+                            ["site","unit","function","source"] @
+                            List.filter (fn (k,_) => List.exists (fn x => x = k)
+                              ["point","location_kind","ir_identity","ir_object"]) (fields site)) :: !allocations
                        end
                      | "allocation_incomplete" =>
                        (requireAllocation(); ignore(uint r "thread"); ignore(string(get r "reason"));

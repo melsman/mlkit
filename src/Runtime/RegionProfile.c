@@ -345,16 +345,24 @@ typedef struct AllocationDefinition {
 } AllocationDefinition;
 static AllocationDefinition *allocation_definitions;
 static uint64_t allocation_definition_count;
+__attribute__((weak)) const char *const volatile mlkit_rp_ir_objects[][2] = {{NULL,NULL}};
+static const char *allocation_object(const MlkitAllocationSite *site) {
+  if (site) for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
+    if (!strcmp(mlkit_rp_ir_objects[i][0],site->ir_identity->data))
+      return mlkit_rp_ir_objects[i][1];
+  return "";
+}
 static uint64_t allocation_definition(const MlkitAllocationSite *site) {
   for (AllocationDefinition *d = allocation_definitions; d; d = d->next)
     if (d->site == site) return d->id;
   AllocationDefinition *d = checked_alloc(sizeof(*d));
   *d = (AllocationDefinition){site,++allocation_definition_count,allocation_definitions};
   allocation_definitions = d;
-  emit_record(13,NUMS(d->id,site ? site->id : 0),
+  emit_record(13,NUMS(d->id,site ? site->id : 0,site ? site->point : 0,site ? site->kind : 0),
               STRS(site ? site->unit->data : "<runtime>",
                    site ? site->function->data : "runtime/unknown",
-                   site ? site->source->data : ""));
+                   site ? site->source->data : "",
+                   site ? site->ir_identity->data : "",allocation_object(site)));
   return d->id;
 }
 /* Called only after a logical thread stops, or at process termination. */
@@ -512,6 +520,8 @@ void mlkit_rp_init(void) {
 #ifndef ENABLE_GC
   if (mlkit_rp_gc_samples) fail("-rp_gc_samples requires a GC runtime");
 #endif
+  if (mlkit_rp_allocation_capable && mlkit_rp_allocation_capable != 2)
+    fail("rebuild allocation profiling objects for the current runtime");
   if (mlkit_rp_expected_build && strcmp(mlkit_rp_expected_build,mlkit_rp_build_id))
     fail("allocation profile build identifier does not match this executable");
   if (mlkit_rp_region) {
@@ -522,7 +532,7 @@ void mlkit_rp_init(void) {
       fail("-rp_region requires UNIT:BINDING from the viewer");
     (void)strtoull(colon+1,&end,10);
     if (errno || *end) fail("invalid region binding number");
-    if (mlkit_rp_allocation_capable != 1)
+    if (mlkit_rp_allocation_capable != 2)
       fail("recompile all ML code with -rp -allocation_profile");
     mlkit_rp_allocation_enabled = 1;
   }
@@ -530,7 +540,7 @@ void mlkit_rp_init(void) {
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  const unsigned char magic[] = {'M','L','K','R','P',0,mlkit_rp_allocation_capable ? 6 : 5,0};
+  const unsigned char magic[] = {'M','L','K','R','P',0,mlkit_rp_allocation_capable ? 7 : 5,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));

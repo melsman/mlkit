@@ -147,24 +147,24 @@ struct
       | CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
       | CC_ls(LS.SWITCH_C sw,rest) = LS.SWITCH_C(CC_sw CC_lss sw)::rest
       | CC_ls(LS.SWITCH_E sw,rest) = LS.SWITCH_E(CC_sw CC_lss sw)::rest
-      | CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) =
+      | CC_ls(LS.CCALL{origin,name,args,rhos_for_result,res},rest) =
         let
           val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
               CallConv.resolve_ccall RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG
                                      {args=args,rhos_for_result=rhos_for_result,res=res}
         in
           resolve_res(assign_list_args,
-                      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
+                      LS.CCALL{origin=origin,name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
                       resolve_args(assign_list_res,rest))
         end
-      | CC_ls(LS.CCALL_AUTO{name,args,rhos_for_result,res},rest) =
+      | CC_ls(LS.CCALL_AUTO{origin,name,args,rhos_for_result,res},rest) =
         let
           val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
               CallConv.resolve_ccall_auto RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG
                                           {args=args,rhos_for_result=rhos_for_result,res=res}
         in
           resolve_res(assign_list_args,
-                      LS.CCALL_AUTO{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
+                      LS.CCALL_AUTO{origin=origin,name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
                       resolve_args(assign_list_res,rest))
         end
       | CC_ls (ls,rest) = ls::rest

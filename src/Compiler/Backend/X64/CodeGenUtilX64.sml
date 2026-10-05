@@ -27,7 +27,7 @@ struct
   fun die s  = Crash.impossible ("CodeGenUtilX64." ^ s)
 
   val allocationProfile = Flags.is_on0 "allocation_profile"
-  val allocationSite = ref (fn () => NameLab "unused_allocation_site")
+  val allocationSite = ref (fn (_ : int, _ : int) => NameLab "unused_allocation_site")
   val rem_dead_code = I.rem_dead_code
   val i2s = I.i2s
 
@@ -395,7 +395,7 @@ struct
       else
         let val ordinary = new_local_lab "allocation_ordinary"
             val joined = new_local_lab "allocation_join"
-            val site = (!allocationSite)()
+            val site = (!allocationSite)(pp,0)
             val suffix = I.lab joined :: C
         in
           copy(t,treg1,

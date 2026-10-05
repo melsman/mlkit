@@ -82,8 +82,8 @@ identifiers. **Show base names** appends source file base names, consistently
 with the graph labels. Hover a function to see its full unit and source;
 identically named functions from different units remain separate rows.
 
-ML/C entry saves an origin in the logical context and ordinary return restores
-it. Nested C helpers inherit that origin. A C-to-ML callback's explicit ML hooks
+An allocating ML/C call saves an origin in the logical context and ordinary
+return restores it. Nested C helpers inherit that origin. A C-to-ML callback's explicit ML hooks
 use their own sites; nested ML/C calls push their own origins. Native exception
 unwind removes origins belonging to discarded stack frames, including a C call
 abandoned by an exception from a callback. Anchors use downward-growing native
@@ -93,14 +93,15 @@ has not been validated by this change. GC plus parallelism remains unsupported.
 
 ## M2: recording and viewer
 
-Attribution-capable executables emit binary version 6. Ordinary snapshot builds
-continue to emit version 5; `rpview` accepts both. Existing records are unchanged.
+Attribution-capable executables emit binary version 7. Ordinary snapshot builds
+continue to emit version 5; `rpview` accepts versions 5, 6 and 7. Version 7
+extends allocation-site definitions with IR metadata; other records are unchanged.
 The new little-endian records use the existing length-prefixed framing:
 
 | Tag | Record | uint64 fields | String fields |
 | --- | --- | --- | --- |
 | 12 | allocation_session | enabled, depth | build_id, selector |
-| 13 | allocation_site | definition, site | unit, function, source |
+| 13 | allocation_site | definition, site, point, location_kind | unit, function, source, ir_identity, ir_object |
 | 14 | allocation | thread, definition, count, bytes | — |
 | 15 | allocation_incomplete | thread | reason |
 | 16 | allocation_region | binding | unit, name, source |
@@ -276,8 +277,8 @@ The file contains the call-explicit IR with allocation specifiers marked only
 in the trailing location table, not with inline program-point numbers. The
 location-aware layout keeps explicit allocation forms and K-normal bindings:
 list and infix shorthand must not collapse distinct allocation program points.
-This is IR metadata only; attribution-site-to-program-point references and HTML
-navigation are subsequent milestones.
+IR3 connects attribution sites to these program points and packages the IR in
+HTML reports. Interactive site navigation is the subsequent IR4 milestone.
 
 Ordinary `-Pcee` diagnostic output is unchanged. Add `-Pcee_locations` (long
 name `-print_call_explicit_locations`) to request the location-aware IR and its
@@ -287,12 +288,13 @@ to the automatic `.ir` artifact. `-Ppp` remains available for ordinary diagnosti
 program-point annotations; location-aware output keeps these numbers in its
 table instead.
 
-### Companion file format (version 1)
+### Companion file format (version 2)
 
-The file starts with six newline-terminated header lines:
+The file starts with seven newline-terminated header lines:
 
 ```text
-MLKIT-IR 1
+MLKIT-IR 2
+identity<TAB><identity minted for this compilation>
 unit<TAB><compilation-unit identity>
 source<TAB><source filename>
 object-md5<TAB><digest of the exact object bytes>
@@ -332,4 +334,53 @@ potentially different IR while retaining the old object. Existing profiling
 caches predating IR2 are therefore rebuilt as needed. The Basis installer copies
 `.o.ir` files alongside objects; relocating an intact pair preserves validity.
 Validation reads the object and companion bytes at build time, adding cache-check
-I/O but no execution-time work or runtime data-layout changes.
+I/O. IR3 additionally extends the static allocation-site descriptor as described
+below; it does not add work to allocation-counter updates.
+
+## IR3: site references and standalone report data
+
+Both native backends retain the existing program point in each static allocation
+site descriptor. A `point` of zero explicitly means no originating location.
+`location_kind` is zero for allocation specifiers and one for initiating foreign
+calls. Duplicated backend sites can share a program point; repeated occurrences
+in the IR retain all matching spans. The marked layout includes the `$name` token
+of allocating foreign calls so their origin is distinct from allocation of their
+result storage, even though both use the same program point.
+
+Foreign-call origins are compiler metadata, never extra arguments to C functions.
+Closure conversion captures the existing result-region program point before it
+lowers region arguments. Calls without result regions carry no origin and omit
+the attribution wrapper and descriptor. ML callbacks use their own allocation
+sites; allocating foreign calls nested inside callbacks establish their own C
+origins. Generated allocations lacking a program point remain explicitly
+unavailable for navigation.
+
+Each compiled unit has an IR identity shared by its `.o.ir` header and static site
+descriptors. At link time, a small generated object records the actual absolute
+paths of the linked ML objects, including installed library objects. Profile-site
+definitions carry the matching object path. `rpview` opens `<ir_object>.ir`
+directly, reads each needed file once, validates the complete content digest,
+unit/compilation identity, table bounds and line/byte columns, and caches the
+mark-to-span mapping. It does not infer object paths from source filenames.
+The object itself need not be present when generating a report: matching profile
+identity and validated companion contents suffice.
+
+If files have moved after linking, `rpview --ir-dir DIR` optionally searches that
+directory recursively for missing companions; the option is repeatable. These
+fallbacks must pass the same identity checks. Normal use requires no search path.
+
+HTML metadata includes `ir_documents` (the complete IR text and file-relative
+spans) and `ir_sites` (one mapping per allocation definition). Status is
+`available`, `generated`, `legacy-profile`, `missing-or-mismatched-ir`, or
+`missing-mark`. Missing, malformed, truncated, changed, or wrong-build companions
+leave allocation counts usable. Version-6 profiles have no location metadata and
+receive `legacy-profile`. The resulting HTML contains its IR and mappings and
+needs no local files or network access. IR4 will add the site-selection interface;
+IR3 does not change allocation-range filtering.
+
+There are three additional words per static allocation-site descriptor, one
+shared identity string per compilation unit, and a link-time object-path table.
+This metadata is read when serializing site definitions, not on allocation-counter
+updates. Attribution profiles use binary version 7, the allocation-descriptor ABI
+version is 2, and profiling caches use `_RP10`; rebuild runtime and profiling
+objects together. Old binary profile versions remain readable.

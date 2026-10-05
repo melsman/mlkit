@@ -3,6 +3,7 @@ struct
   fun run args =
       let val file = ref "profile.rp"
           val haveFile = ref false
+          val irRoots = ref []
           val output = ref "profile.html"
           val format = ref ""
           val haveOutput = ref false
@@ -16,6 +17,7 @@ struct
           fun help () =
               (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
+                     \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --regions N             Largest regions to show (default 9; 0 = all)\n\
                      \  --metric NAME           total (default), stack, pages, page_footprint,\n\
@@ -31,6 +33,7 @@ struct
                      \                          (default right; SVG legend is always inside/right)\n";
                OS.Process.exit OS.Process.success)
           fun options [] = ()
+            | options ("--ir-dir"::path::rest) = (irRoots := path :: !irRoots; options rest)
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
@@ -80,6 +83,7 @@ struct
           val () = if same then raise Fail "input and output must be different files" else ()
           val records = ProfileBinary.read (!file)
           val profile = ProfileReader.fromRecords records
+          val profile = if selected = "html" then ProfileIR.enrich (!irRoots) profile else profile
           val config = ProfileJson.Obj (!settings)
           val () = case ProfileJson.find config "scope" of
                        SOME (ProfileJson.Str scope) =>

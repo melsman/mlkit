@@ -27,7 +27,7 @@ set -- MLB/*/main.sml.o.ir
 ir=$1
 # The dedicated artifact contains neither other diagnostic passes nor inline pp IDs.
 ! grep -q 'Program After\|pp[0-9]' "$ir"
-grep -q '^MLKIT-IR 1$' "$ir"
+grep -q '^MLKIT-IR 2$' "$ir"
 grep -q '^MLKIT-IR-LOCATIONS 1$' "$ir"
 # Independently verify absolute byte offsets, one-based line/byte columns,
 # and that every span selects a complete allocation specifier.
@@ -39,7 +39,7 @@ LC_ALL=C awk '
     if (!n) exit 1;
     for (i=1;i<=n;i++) {
       s=substr(full,start[i]+1,len[i]);
-      if (s !~ /^(attop|atbot|sat) / || s!=substr(lines[row[i]],col[i],len[i])) exit 2;
+      if ((s !~ /^(attop|atbot|sat) / && s !~ /^\$/ ) || s!=substr(lines[row[i]],col[i],len[i])) exit 2;
     }
   }' "$ir"
 cp "$ir" saved.ir

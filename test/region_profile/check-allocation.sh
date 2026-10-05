@@ -23,7 +23,7 @@ for name in allocation allocation-callback; do
   printf '%s\n' "$name.sml" > "$OUT/$name.mlb"
   $CC -iquote "$ROOT/src/Runtime" -c "$ROOT/test/region_profile/$name.c" -o "$OUT/$name.o"
   ar rcs "$OUT/libfixture.a" "$OUT/$name.o"
-  "$REML" -no_par -rp -allocation_profile -libdirs "$OUT" -libs fixture -o "$OUT/$name" "$OUT/$name.mlb" > "$OUT/$name.build" 2>&1
+  "$REML" -no_par -rp -allocation_profile -no_delete_target_files -libdirs "$OUT" -libs fixture -o "$OUT/$name" "$OUT/$name.mlb" > "$OUT/$name.build" 2>&1
   "$OUT/$name" -rp -rp_interval 0 -rp_file "$OUT/discovery.rp"
   json "$OUT/discovery.rp" "$OUT/discovery.json"
   selected=$(selector "$OUT/discovery.json")
@@ -43,6 +43,32 @@ for name in allocation allocation-callback; do
   ! grep -q '"type":"allocation"' "$OUT/untracked.json"
   "$RPVIEW" "$OUT/$name.rp" -o "$OUT/$name.html"
   grep -q 'allocation-section' "$OUT/$name.html"
+  grep -q '"status":"available"' "$OUT/$name.html"
+  grep -q '"ir_documents":\[{' "$OUT/$name.html"
+  ! grep -Eq '"status":"(missing-mark|missing-or-mismatched-ir|generated)"' "$OUT/$name.html"
+  if [ "$name" = allocation-callback ]; then
+    grep -q '"location_kind":1' "$OUT/$name.json"
+  else
+    # Calls without result regions need neither an origin descriptor nor a wrapper.
+    set -- "$OUT"/MLB/*/allocation.sml.s
+    [ -f "$1" ]
+    ! grep -q 'mlkit_rp_foreign_enter' "$1"
+    # Normal discovery uses the recorded object path. An explicit fallback is
+    # useful only after the matching companion has moved.
+    set -- "$OUT"/MLB/*/allocation.sml.o.ir
+    companion=$1
+    mkdir "$OUT/moved"
+    mv "$companion" "$OUT/moved/allocation.sml.o.ir"
+    "$RPVIEW" "$OUT/$name.rp" -o "$OUT/missing-ir.html"
+    grep -q '"status":"missing-or-mismatched-ir"' "$OUT/missing-ir.html"
+    "$RPVIEW" "$OUT/$name.rp" --ir-dir "$OUT/moved" -o "$OUT/moved-ir.html"
+    grep -q '"status":"available"' "$OUT/moved-ir.html"
+    cp "$OUT/moved/allocation.sml.o.ir" "$companion"
+    printf '\ncorrupt\n' >> "$companion"
+    "$RPVIEW" "$OUT/$name.rp" -o "$OUT/corrupt-ir.html"
+    grep -q '"status":"missing-or-mismatched-ir"' "$OUT/corrupt-ir.html"
+    mv "$OUT/moved/allocation.sml.o.ir" "$companion"
+  fi
   for depth in 2 4 8; do
     if "$OUT/$name" -rp -rp_alloc_depth "$depth" > "$OUT/invalid.log" 2>&1; then exit 1; fi
     grep -q 'only allocation depth 1' "$OUT/invalid.log"

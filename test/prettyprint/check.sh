@@ -7,3 +7,5 @@ trap 'rm -rf "$OUT"' EXIT HUP INT TERM
 "$OUT/spans"
 "${MLKIT:-$ROOT/bin/mlkit}" -gc -o "$OUT/locations" "$ROOT/test/prettyprint/locations.mlb"
 "$OUT/locations"
+"${MLKIT:-$ROOT/bin/mlkit}" -gc -o "$OUT/ir-report" "$ROOT/test/prettyprint/ir-report.mlb"
+"$OUT/ir-report"

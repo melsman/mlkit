@@ -96,10 +96,10 @@ signature CLOS_EXP =
     | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
-    | CCALL           of {name: string,
+    | CCALL           of {name: string, origin: int,
                           args: ClosExp list,
                           rhos_for_result : ClosExp list}
-    | CCALL_AUTO      of {name: string,
+    | CCALL_AUTO      of {name: string, origin: int,
                           args: (ClosExp * foreign_type) list,
                           res: foreign_type,
                           rhos_for_result : ClosExp list}   (* boxed res implies memory for the result *)

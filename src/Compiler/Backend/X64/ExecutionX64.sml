@@ -256,6 +256,8 @@ structure ExecutionX64 : EXECUTION =
                            else NONE
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
               val {main_lab, code, imports, exports, safe} = target_new
+              val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
+              val () = IRLocations.currentIdentity := identity
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
               val linkinfo = mk_linkinfo {code_label=main_lab,
                                           imports=imports, (* (MLFunLab, DatLab) *)
@@ -264,7 +266,7 @@ structure ExecutionX64 : EXECUTION =
               val CB = CompileBasis.mk_CompileBasis(cb,closenv)
             in
               CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
-                {unit = AddressLabels.pr_label main_lab,
+                {identity = identity, unit = AddressLabels.pr_label main_lab,
                  source = !Flags.current_source_file, tree = tree}) irTree),linkinfo)
             end
       end
@@ -326,6 +328,16 @@ structure ExecutionX64 : EXECUTION =
         end
 
     fun link_files_with_runtime_system0 path_to_runtime files run =
+      let val mapFile = run ^ ".ir-map.c"
+          val mapObject = run ^ ".ir-map.o"
+          val hasMap = Flags.is_on "allocation_profile"
+          fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
+          val () = if hasMap then
+            (writeFile mapFile (IRLocations.linkMap files);
+             execute_command (link_exe() ^ " -c " ^ quote mapFile ^ " -o " ^ quote mapObject);
+             delete_file mapFile) else ()
+          val files = if hasMap then mapObject :: files else files
+      in
         if objs_p()
         then let val files =
                      path_to_runtime() :: files
@@ -353,8 +365,10 @@ structure ExecutionX64 : EXECUTION =
             execute_command shell_cmd;
             strip run;
             message(fn () => "[wrote executable file:\t" ^ run ^ "]\n");
-            report_dangle_stat()
+            report_dangle_stat();
+            if hasMap then delete_file mapObject else ()
           end
+      end
 
     val op ## = OS.Path.concat infix ##
 
@@ -435,7 +449,7 @@ structure ExecutionX64 : EXECUTION =
               val subdir = subdir ^ "_A1" (* common region/context ABI *)
               val subdir = if Flags.is_on "allocation_profile_global" then subdir ^ "_APG1" else subdir
               val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP9" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP10" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

@@ -6,7 +6,7 @@
 #include <string.h>
 
 const volatile uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
-const volatile uintptr_t mlkit_rp_allocation_capable = 1;
+const volatile uintptr_t mlkit_rp_allocation_capable = 2;
 Rp *global_freelist;
 Context top_ctx;
 static struct { size_t tag; char data[8]; } unit = {0,"fixture"};
@@ -17,9 +17,9 @@ static struct { size_t tag; char data[8]; } inner = {0,"inner"};
 static const MlkitAllocationRegion selected = {(String)&unit,(String)&ml,(String)&unit,42};
 static const MlkitAllocationRegion unselected = {(String)&other,(String)&ml,(String)&unit,42};
 static const MlkitAllocationSite sites[] = {
-  {(String)&unit,(String)&ml,(String)&unit,1},
-  {(String)&unit,(String)&outer,(String)&unit,2},
-  {(String)&unit,(String)&inner,(String)&unit,3}
+  {(String)&unit,(String)&ml,(String)&unit,1,0,0,(String)&unit},
+  {(String)&unit,(String)&outer,(String)&unit,2,0,0,(String)&unit},
+  {(String)&unit,(String)&inner,(String)&unit,3,0,0,(String)&unit}
 };
 int main(int argc, char **argv) {
   assert(argc == 2);

@@ -15,7 +15,7 @@ embed: Embed.sml embed.mlb
 Html.sml: viewer.html embed
 	./embed viewer.html $@
 
-$(OUT): Json.sml Binary.sml Reader.sml Html.sml Page.sml Svg.sml Main.sml rpview.mlb
+$(OUT): Json.sml Binary.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Main.sml rpview.mlb
 	mkdir -p $(dir $(OUT))
 	$(MLKIT_ENV) $(MLKIT) $(MLKIT_FLAGS) -gc -o $(OUT) rpview.mlb
 

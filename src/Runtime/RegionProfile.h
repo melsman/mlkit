@@ -57,7 +57,8 @@ static inline const uintptr_t *mlkit_rp_gc_map(const uintptr_t *fd) {
  * Neither pointer values nor dynamic definition numbers are wire identities. */
 typedef struct MlkitAllocationSite {
   struct stringDesc *unit, *function, *source;
-  uint64_t id;
+  uint64_t id, point, kind;
+  struct stringDesc *ir_identity;
 } MlkitAllocationSite;
 typedef struct MlkitAllocationRegion {
   struct stringDesc *unit, *name, *source;
