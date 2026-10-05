@@ -393,7 +393,9 @@ function allocationTable(){
  if(byFlow){allocationRegionFlow(rows);return;}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
-  const short=shortFunction(r.function),name=(functions.get(short).size===1?short:r.function)+(' · site '+r.site)+(el('show-base').checked?' · '+baseName(r):'');
+  const short=shortFunction(r.function),doc=irDocuments.get(irSites.get(String(r.definition))?.identity||r.ir_identity);
+  const functionName=doc?irFunctionName(r.function,doc):(functions.get(short).size===1?short:r.function);
+  const name=functionName+' · site '+r.site+(el('show-base').checked?' · '+baseName(r):'');
   const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),String(r.bytes)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+('\nSite: '+r.site);if(i===1)td.title=r.source;
    if(i===0){td.replaceChildren();td.append(irButton(r,name));}tr.append(td);}el('allocation-rows').append(tr);
  }
