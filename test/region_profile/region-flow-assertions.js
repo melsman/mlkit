@@ -55,7 +55,7 @@ assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
  assert.equal(cpSummary.textContent,'fun cp [r17, r19]');
  profile.allocations.pop();
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);
- assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].textContent),0n),160n);
+ assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].title.split(' ')[0]),0n),160n);
  profile.region_flow.issues=['Missing companion'];el('allocation-view').value='flow';allocationTable();assert(host.textContent.includes('Incomplete region-flow metadata'));
  profile.region_flow.available=false;allocationTable();assert(host.hidden&&el('allocation-view-control').hidden);assert(el('allocation-flow-note').textContent.includes('Showing allocation sites'));
  Object.assign(profile,{region_flow:saved.flow,allocations:saved.allocations,allocation_session:saved.session,allocation_region:saved.region});irDocuments.delete('flow-fixture');

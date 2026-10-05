@@ -56,7 +56,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region slice</option><option value="site">Allocation sites</option></select></label>
 <p class="note" id="allocation-flow-note"></p>
 <div id="allocation-flow" hidden></div>
-<table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
+<table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Memory</th></tr></thead><tbody id="allocation-rows"></tbody></table>
 <p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Select a site to view its saved IR. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
 <section id="ir-panel" hidden aria-labelledby="ir-title">
 <div class="ir-heading"><h3 id="ir-title" tabindex="-1">Allocation site in IR</h3><button id="ir-close" type="button">Close IR</button></div>
@@ -204,8 +204,8 @@ el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR
 
 // Static region relationships organize measured sites; they do not divide
 // counters among the possible paths through which a region can be passed.
-function allocationSize(value){
- const bytes=BigInt(value),units=['bytes','KiB','MiB','GiB','TiB','PiB','EiB'];let divisor=1n,index=0;
+function allocationSize(value,minimumKiB=false){
+ const bytes=BigInt(value),units=['bytes','KiB','MiB','GiB','TiB','PiB','EiB'];let divisor=minimumKiB?1024n:1n,index=minimumKiB?1:0;
  while(index<units.length-1&&bytes>=divisor*1024n){divisor*=1024n;index++;}
  if(!index)return bytes+' bytes';
  const scaled=(bytes*100n+divisor/2n)/divisor;
@@ -396,7 +396,7 @@ function allocationTable(){
   const short=shortFunction(r.function),doc=irDocuments.get(irSites.get(String(r.definition))?.identity||r.ir_identity);
   const functionName=doc?irFunctionName(r.function,doc):(functions.get(short).size===1?short:r.function);
   const name=functionName+' · site '+r.site+(el('show-base').checked?' · '+baseName(r):'');
-  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),String(r.bytes)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+('\nSite: '+r.site);if(i===1)td.title=r.source;
+  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),allocationSize(r.bytes,true)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+('\nSite: '+r.site);if(i===1)td.title=r.source;if(i===3)td.title=r.bytes+' bytes';
    if(i===0){td.replaceChildren();td.append(irButton(r,name));}tr.append(td);}el('allocation-rows').append(tr);
  }
  if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';

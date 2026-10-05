@@ -17,7 +17,7 @@ const irGroup=el('allocation-rows').children[0];
 assert.equal(irGroup.querySelectorAll('button')[0].textContent,'build · site 11');
 assert.equal(irGroup.querySelectorAll('button').length,1);
 assert.equal(irGroup.children[2].textContent,'5');
-assert.equal(irGroup.children[3].textContent,'80');
+assert.equal(irGroup.children[3].textContent,'0.08 KiB');
 irGroup.querySelectorAll('button')[0].listeners.click();
 assert.equal(el('ir-path').value,'/build/example.sml.o.ir');assert.equal(el('ir-path-row').hidden,false);
 assert.equal(el('ir-panel').hidden,false);assert(el('ir-title').focused);
