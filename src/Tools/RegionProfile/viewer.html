@@ -15,6 +15,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
 .ir-files{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0}#ir-copy-path{border:0;background:transparent;cursor:pointer}#ir-copy-path svg{width:18px;height:18px;margin:0;border:0;background:transparent}
 #allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}#allocation-flow summary,#allocation-flow .slice-call{font-family:ui-monospace,monospace}#allocation-flow .slice-call>button{font:inherit}#allocation-flow .slice-call{margin:6px 0 6px 32px}#allocation-flow .slice-call>button{border:0;background:transparent;padding:2px 0;color:#1d4ed8;text-align:left}#allocation-flow .slice-call>button:hover{text-decoration:underline}
+#allocation-flow .slice-region{margin:6px 0 6px 32px}#allocation-flow .slice-binding{font-family:ui-monospace,monospace}#allocation-flow .slice-region>.slice-call{margin-left:16px}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -332,7 +333,7 @@ function allocationRegionFlow(rows){
   summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
   const containers=new Map();
   for(const n of fn.regions){let target=details;if(n.role==='local'){
-    target=document.createElement('details');target.open=true;const heading=document.createElement('summary');heading.textContent='LETREGION r'+n.region;target.append(heading);
+    target=document.createElement('div');target.className='slice-region';const heading=document.createElement('div');heading.className='slice-binding';heading.textContent='LETREGION r'+n.region;target.append(heading);
    }containers.set(n.id,target);
    sites(measured.get(n.id)||[],target,n);
   }
