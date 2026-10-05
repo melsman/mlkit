@@ -140,6 +140,19 @@ function renderIR(){
  }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
 }
 function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
+const irFunctionNames=new Map();
+function irFunctionName(label,doc){
+ const short=shortFunction(label);if(!doc)return short;
+ const key=JSON.stringify([doc.identity,label]);if(irFunctionNames.has(key))return irFunctionNames.get(key);
+ let name=short;
+ try{
+  const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end));
+  // Match printed names without stripping digits from source identifiers.
+  const candidates=new Set([...code.matchAll(/\bfun\s+([^\s[(]+)/g)].map(m=>m[1]).filter(n=>short===n||(short.startsWith(n)&&/^[0-9]+$/.test(short.slice(n.length)))));
+  if(candidates.size===1)name=[...candidates][0];
+ }catch(_){/* Retain the generated name when no IR name can be resolved. */}
+ irFunctionNames.set(key,name);return name;
+}
 function updateIRTitle(record){
  const short=shortFunction(record.function);let functionName=short,annotation='';
  if(activeIR?.record===record){
@@ -150,11 +163,7 @@ function updateIRTitle(record){
     const token=data.decode.decode(data.bytes.subarray(start,end));
     if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=' '+token;
     else if(Number(record.location_kind)===1&&token.startsWith('$'))annotation=' via '+token;
-    // Use an unambiguous printed IR name; never blindly strip digits from
-    // source identifiers such as map2, or from generated anonymous labels.
-    const code=data.decode.decode(data.bytes.subarray(data.start,data.end));
-    const candidates=new Set([...code.matchAll(/\bfun\s+([^\s[(]+)/g)].map(m=>m[1]).filter(n=>short===n||(short.startsWith(n)&&/^[0-9]+$/.test(short.slice(n.length)))));
-    if(candidates.size===1)functionName=[...candidates][0];
+    functionName=irFunctionName(record.function,doc);
    }
   }catch(_){/* Unavailable locations still get a useful function heading. */}
  }
@@ -180,6 +189,7 @@ function showIR(record,trigger){
 function irButton(record,label){
  const button=document.createElement('button');button.type='button';button.className='ir-site-button';button.textContent=label;
  const site=irSites.get(String(record.definition));button.title=site?.status==='available'?(record.region_argument?'Show region argument in IR':'Show allocation site in IR'):'Show why IR navigation is unavailable';
+ button.title+='\n'+record.function+(record.callee_function?' → '+record.callee_function:'')+'\n'+record.unit+'\n'+record.source;
  button.addEventListener('click',()=>showIR(record,button));return button;
 }
 el('ir-copy-path').addEventListener('click',async()=>{
@@ -231,33 +241,36 @@ function allocationRegionFlow(rows){
  for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='closure'){
   const k=JSON.stringify([doc.unit,edge.callee]);if(!creators.has(k))creators.set(k,new Set());creators.get(k).add(edge.caller);
  }
- const labels=new Map();for(const n of nodes.values())if(n.owner){const short=shortFunction(n.owner);if(!labels.has(short))labels.set(short,new Set());labels.get(short).add(n.owner);}
- function name(s){return labels.get(shortFunction(s))?.size>1?s:shortFunction(s);}
+ const functionDocs=new Map();
+ for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='function'){
+  if(!functionDocs.has(edge.caller))functionDocs.set(edge.caller,[]);functionDocs.get(edge.caller).push(doc);
+ }
+ function name(s){const candidates=new Set((functionDocs.get(s)||[]).map(doc=>irFunctionName(s,doc)));return candidates.size===1?[...candidates][0]:shortFunction(s);}
  function label(id){const n=nodes.get(id);return n?(n.owner?name(n.owner)+' · ':'')+'r'+n.region+(n.role==='local'?' (local)':n.role==='global'?' (global)':''):'r'+region;}
  function sites(records,parent){
   const groups=new Map();for(const r of records){const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();const owner=owners[0]||r.function,key=JSON.stringify([r.unit,owner]);if(!groups.has(key))groups.set(key,{owner,records:[],owners:new Set()});const group=groups.get(key);group.records.push(r);owners.forEach(n=>group.owners.add(n));}
   for(const group of groups.values()){
    const details=document.createElement('details'),summary=document.createElement('summary');details.open=true;
    const count=group.records.reduce((n,r)=>n+BigInt(r.count),0n),bytes=group.records.reduce((n,r)=>n+BigInt(r.bytes),0n);
-   summary.textContent=name(group.owner)+' · '+count+' allocations · '+bytes+' bytes';details.append(summary);
-   if(group.owners.size){const note=document.createElement('p');note.className='note';note.textContent='Closure creator'+(group.owners.size>1?'s: '+[...group.owners].map(name).join(', '):': '+name(group.owner))+'. Allocations belong to the closure body; creation does not imply invocation.';details.append(note);}
-   const list=document.createElement('ul');for(const r of group.records.sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){const item=document.createElement('li'),volume=document.createElement('span');volume.textContent=' · '+r.count+' allocations · '+r.bytes+' bytes';item.append(irButton(r,irName(r)+' · site '+r.site),volume);list.append(item);}details.append(list);parent.append(details);
+   summary.title=group.owner+'\n'+group.records[0].unit+'\n'+group.records[0].source;summary.textContent=name(group.owner)+' · '+count+' allocations · '+bytes+' bytes';details.append(summary);
+   if(group.owners.size){const note=document.createElement('p');note.className='note';note.title=[...group.owners].join('\n');note.textContent='Closure creator'+(group.owners.size>1?'s: '+[...group.owners].map(name).join(', '):': '+name(group.owner))+'. Allocations belong to the closure body; creation does not imply invocation.';details.append(note);}
+   const list=document.createElement('ul');for(const r of group.records.sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){const item=document.createElement('li'),volume=document.createElement('span');volume.textContent=' · '+r.count+' allocations · '+r.bytes+' bytes';item.append(irButton(r,name(r.function)+(el('show-base').checked?' · '+baseName(r):'')+' · site '+r.site),volume);list.append(item);}details.append(list);parent.append(details);
   }
  }
  function edgeLocation(edge,parent){
   const doc=irDocuments.get(edge.identity),spans=(doc?.spans||[]).filter(s=>String(s.mark)===String(edge.point));
   const text=edge.mode+' · '+name(edge.caller)+' → '+name(edge.callee);
-  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)}},text));}
-  else{const note=document.createElement('span');note.textContent=text;parent.append(note);}
+  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)},callee_function:edge.callee},text));}
+  else{const note=document.createElement('span');note.textContent=text;note.title=edge.caller+' → '+edge.callee;parent.append(note);}
  }
  const shown=new Map();
  function branch(i,parent,depth){
   const item=document.createElement('li');parent.append(item);
-  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.textContent='↪ '+components[i].map(label).join(', ')+' (shared; totals shown once)';ref.addEventListener('click',()=>{let p=shown.get(i).parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}shown.get(i).focus();shown.get(i).scrollIntoView({block:'nearest'});});item.append(ref);return;}
+  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.title=components[i].map(id=>nodes.get(id)?.owner||'').join('\n');ref.textContent='↪ '+components[i].map(label).join(', ')+' (shared; totals shown once)';ref.addEventListener('click',()=>{let p=shown.get(i).parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}shown.get(i).focus();shown.get(i).scrollIntoView({block:'nearest'});});item.append(ref);return;}
   const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<3;summary.tabIndex=0;
   const members=components[i],cyclic=members.length>1||members.some(id=>(outgoing.get(id)||[]).some(e=>e.formal===id));
   summary.textContent=(cyclic?'Recursive region group: ':'')+members.map(label).join(', ');details.append(summary);item.append(details);shown.set(i,summary);
-  for(const id of members){const n=nodes.get(id);if(n)summary.title=(summary.title||'')+n.unit+' · '+n.source+'\n';sites(measured.get(id)||[],details);}
+  for(const id of members){const n=nodes.get(id);if(n)summary.title=(summary.title||'')+(n.owner?n.owner+'\n':'')+n.unit+' · '+n.source+'\n';sites(measured.get(id)||[],details);}
   const targets=new Map();for(const id of members)for(const e of outgoing.get(id)||[]){const j=componentOf.get(e.formal);if(j===undefined)continue;if(j===i){const internal=document.createElement('p');internal.className='note';edgeLocation(e,internal);details.append(internal);}else{if(!targets.has(j))targets.set(j,[]);targets.get(j).push(e);}}
   if(targets.size){const list=document.createElement('ul');details.append(list);for(const [j,edges] of targets){const links=document.createElement('li');for(const e of edges){const p=document.createElement('p');edgeLocation(e,p);links.append(p);}list.append(links);branch(j,list,depth+1);}}
  }
