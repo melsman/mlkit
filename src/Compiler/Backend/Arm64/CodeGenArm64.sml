@@ -411,7 +411,7 @@ struct
           {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = false,
            loadArgument = fn (i,extra) => readInto (fsz+extra) (List.nth(args,i)) (X 16)} code
     else foreignCallInto fsz name args (fn _ => fn code => code) code
-  fun autoCallInto fsz {origin,name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
+  fun autoCallInto fsz {point,name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
     let
       fun convert (i,r) code =
         case #2(List.nth(args,i)) of
@@ -519,10 +519,10 @@ struct
   fun bindAllocationInto fsz aty metadata code =
     (addressInto(metadata,X 17)
      ++ internalCallInto fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY(X 17)]) code
-  fun foreignAllocationInto fsz origin call code =
-    if origin < 0 orelse not(allocationProfile()) then call code
+  fun foreignAllocationInto fsz point call code =
+    if point < 0 orelse not(allocationProfile()) then call code
     else
-      let val site = allocationSite(origin,1)
+      let val site = allocationSite(point,1)
           (* Selection is fixed at startup. Guard outside the preserving call
            * so disabled attribution pays no register saves or helper calls. *)
           fun whenEnabled action code =
@@ -2009,7 +2009,7 @@ struct
            ++ writeInto fsz aty (X 16)) code
     | LS.PRIM p =>
         primitiveInto fsz p code
-    | LS.CCALL {origin, name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
+    | LS.CCALL {point, name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
           val () = if parallel() then () else unsupported "spawnone without -par"
           val entry = localFresh()
@@ -2049,7 +2049,7 @@ struct
            ++ stackInto(false,16)
            ++ writeInto fsz res (X 0)) code
         end
-    | LS.CCALL {origin,name,args,rhos_for_result,res} =>
+    | LS.CCALL {point,name,args,rhos_for_result,res} =>
         if sampledProfile() andalso name = "thread_get" then
           let val lab = rpCurrentMap()
           in
@@ -2072,10 +2072,10 @@ struct
              ++ resultsInto fsz res) code
           end
         else if length res > 1 then unsupported "multiple C results"
-        else foreignAllocationInto fsz origin
+        else foreignAllocationInto fsz point
           (runtimeCallInto fsz name (rhos_for_result @ args) ++ resultsInto fsz res) code
     | LS.CCALL_AUTO c =>
-        foreignAllocationInto fsz (#origin c) (autoCallInto fsz c) code
+        foreignAllocationInto fsz (#point c) (autoCallInto fsz c) code
     | LS.EXPORT{name,clos_lab,arg = (aty,ft1,ft2)} =>
         let
           val () = if ft1 = LS.Int andalso ft2 = LS.Int then () else unsupported "export other than int -> int"

@@ -272,10 +272,10 @@ struct
             LS.RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting} :: SS_lss(lss,ATYmap,RHOmap)
           | SS_lss'(LS.PRIM{name,args,res}::lss) =
             LS.PRIM{name=name,args=atoms_to_atys args,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
-          | SS_lss'(LS.CCALL{origin,name,args,rhos_for_result,res}::lss) =
-            LS.CCALL{origin=origin,name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
-          | SS_lss'(LS.CCALL_AUTO{origin,name,args,rhos_for_result,res}::lss) =
-            LS.CCALL_AUTO{origin=origin,name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
+          | SS_lss'(LS.CCALL{point,name,args,rhos_for_result,res}::lss) =
+            LS.CCALL{point=point,name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
+          | SS_lss'(LS.CCALL_AUTO{point,name,args,rhos_for_result,res}::lss) =
+            LS.CCALL_AUTO{point=point,name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
                           rhos_for_result=atoms_to_atys rhos_for_result,
                           res=case res of (a,ft) => (atom_to_aty' a,ft)} ::
             SS_lss(lss,ATYmap,RHOmap)

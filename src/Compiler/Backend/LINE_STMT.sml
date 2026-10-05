@@ -138,9 +138,9 @@ signature LINE_STMT =
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
     | RESET_REGIONS of {force: bool, regions_for_resetting: 'aty sma list}
     | PRIM          of {name: PrimName.prim, args: 'aty list, res: 'aty list}
-    | CCALL         of {name: string, origin: int, args: 'aty list,
+    | CCALL         of {name: string, point: int, args: 'aty list,
 			rhos_for_result : 'aty list, res: 'aty list}
-    | CCALL_AUTO    of {name: string, origin: int, args: ('aty * foreign_type) list,
+    | CCALL_AUTO    of {name: string, point: int, args: ('aty * foreign_type) list,
 			rhos_for_result : 'aty list,
                         res: 'aty * foreign_type}
     | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}

@@ -920,7 +920,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
         fun restore () = List.app (fn (flag,value) => flag := value) settings
         fun layout () =
           (Flags.turn_on "print_regions";
-           Flags.turn_off "print_control_abbrev_layout";
+           Flags.turn_on "print_control_abbrev_layout";
            layoutLambdaTripWithLocations layout_at_with_location layout_at_with_location
              (SOME o layout_placeXphsize) layout_placeXphsize_smart
              (fn (e,_) => Option.isSome (E.getRegVar e)) layout_unit expression)

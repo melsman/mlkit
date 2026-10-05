@@ -277,6 +277,9 @@ The file contains the call-explicit IR with allocation specifiers marked only
 in the trailing location table, not with inline program-point numbers. The
 location-aware layout keeps explicit allocation forms and K-normal bindings:
 list and infix shorthand must not collapse distinct allocation program points.
+It otherwise uses the compact `-abbrev` layout, omitting redundant call labels,
+empty region argument lists, and unnecessary zero-size region bindings. Unlike
+ordinary abbreviation, it retains allocation specifiers needed for navigation.
 IR3 connects attribution sites to these program points and packages the IR in
 HTML reports. IR4 provides interactive site navigation in the viewer.
 
@@ -396,7 +399,10 @@ side. File line numbers are preserved, and hovering the source shows its full pa
 
 If a site has multiple printed occurrences, use **Location** to choose one.
 **Show full IR** displays the whole compilation unit while keeping the selected
-location highlighted. The panel follows the **Show base names** setting and
+location highlighted. The IR filename has a copy icon beside it; hover over the filename to see the
+full companion-file path, or use the icon to copy that path for an editor such as
+Emacs. The path refers to the file found when the report was generated.
+The panel follows the **Show base names** setting and
 preserves disambiguating function suffixes. **Close IR** returns keyboard focus
 to the originating site button when it remains in the page.
 
@@ -411,3 +417,28 @@ DOM test harness using Node.js. It covers grouping, counts across threads,
 occurrence selection, UTF-8, HTML-looking text, context/full-code views, unavailable
 and malformed mappings, and focus handling. Native allocation regressions also
 run these checks on inline and foreign-call reports on each CI backend.
+
+## IR6: static call-graph organisation
+
+Choose **Static call graph** in the allocation table's grouping control to see
+allocating functions together with their transitive callers from available IR.
+Each function displays its exclusive counts/bytes for the selected region and
+its clickable allocation sites. Caller-only nodes provide context and have no
+measured allocation total. Recursive components are grouped; shared callees use
+links to a single expanded representation, so totals are never duplicated.
+
+The compiler extracts function definitions, direct calls (including tail calls),
+and unresolved indirect calls from structured linear IR, using the same native
+function labels as allocation attribution. Version 3 `.ir` companions append a
+versioned, digest-covered `MLKIT-IR-CALLS` table after the location table. Region
+profiling cache validation rebuilds older companions. `rpview` continues to read
+version 2 companions and explains when call-graph data is unavailable.
+
+This is a static graph, not a measured call tree or region-flow analysis. It does
+not prove that a displayed call carried the selected region, and does not assign
+callee allocations to callers. Indirect calls and absent companion documents can
+hide callers. The first version uses the IR documents resolved for the recorded
+allocation sites; it does not claim to reconstruct the whole linked program.
+There is no additional runtime instrumentation. Exact call-site IR links and
+region-argument mappings are future extensions; allocation-site links work in
+this view as in the existing table.

@@ -267,7 +267,7 @@ structure ExecutionX64 : EXECUTION =
             in
               CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
                 {identity = identity, unit = AddressLabels.pr_label main_lab,
-                 source = !Flags.current_source_file, tree = tree}) irTree),linkinfo)
+                 source = !Flags.current_source_file, tree = tree, calls = !IRLocations.currentCalls}) irTree),linkinfo)
             end
       end
 

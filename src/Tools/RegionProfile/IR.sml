@@ -31,7 +31,8 @@ struct
            String.extract(s,size prefix,NONE)
         end
       fun decoded s = case String.fromString s of SOME v => v | NONE => raise Fail "invalid IR string"
-      val () = check (line () = "MLKIT-IR 2") "unsupported IR version"
+      val version = line ()
+      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3") "unsupported IR version"
       val identity = field "identity"
       val unit = decoded (field "unit")
       val source = decoded (field "source")
@@ -56,7 +57,7 @@ struct
         else advance (p+1,row,col+1) target
       fun table position acc =
         case line () of
-          "MLKIT-IR-LOCATIONS-END" => (check (!pos = size text) "trailing IR bytes"; rev acc)
+          "MLKIT-IR-LOCATIONS-END" => rev acc
         | s =>
           (case map natural (String.fields (fn c => c = #"\t") s) of
             [mark,start,len,row,col] =>
@@ -75,9 +76,22 @@ struct
               end
           | _ => raise Fail "invalid IR table row")
       val spans = table (codeStart,8,1) []
+      fun calls acc =
+        case line () of
+            "MLKIT-IR-CALLS-END" => rev acc
+          | s => (case String.fields (fn c => c = #"\t") s of
+              [kind,caller,callee] =>
+                (check (List.exists (fn k => k = kind) ["function","direct","indirect"])
+                   "invalid call kind";
+                 calls (Obj [("kind",Str kind),("caller",Str (decoded caller)),
+                             ("callee",Str (decoded callee))] :: acc))
+            | _ => raise Fail "invalid IR call row")
+      val edges = if version = "MLKIT-IR 2" then []
+                  else (check (line () = "MLKIT-IR-CALLS 1") "invalid IR calls"; calls [])
+      val () = check (!pos = size text) "trailing IR bytes"
     in Obj [("identity",Str identity),("unit",Str unit),("source",Str source),
             ("path",Str path),("text",Str text),("code_start",number codeStart),
-            ("code_bytes",number codeBytes),("spans",Arr spans)]
+            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges)]
     end
 
   fun enrich roots {samples : t list,metadata} =

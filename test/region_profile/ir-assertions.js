@@ -6,7 +6,7 @@ const irText='header\n'+irCode,irEncoder=new TextEncoder(),irStart=irEncoder.enc
 const irBytes=irEncoder.encode(irText),irNeedle=irEncoder.encode('attop r42');
 const irOffsets=[irText.indexOf('attop r42'),irText.lastIndexOf('attop r42')].map(i=>irEncoder.encode(irText.slice(0,i)).length);
 const irSpans=irOffsets.map((start,i)=>({start:String(start),length:String(irNeedle.length),line:String(i+3),column:'19'}));
-irDocuments.set('fixture-ir',{identity:'fixture-ir',text:irText,code_start:String(irStart),code_bytes:String(irEncoder.encode(irCode).length)});
+irDocuments.set('fixture-ir',{identity:'fixture-ir',path:'/build/example.sml.o.ir',text:irText,code_start:String(irStart),code_bytes:String(irEncoder.encode(irCode).length)});
 irSites.set('701',{definition:'701',identity:'fixture-ir',status:'available',spans:irSpans});
 irSites.set('702',{definition:'702',status:'missing-or-mismatched-ir',spans:[]});
 profile.allocation_session={enabled:'1',selector:'unit:42',build_id:'ir-test'};
@@ -19,6 +19,7 @@ assert.equal(irGroup.querySelectorAll('button').length,2);
 assert.equal(irGroup.children[2].textContent,'6');
 assert.equal(irGroup.querySelectorAll('li')[0].children[1].textContent,'5 allocations · 80 bytes');
 irGroup.querySelectorAll('button')[0].listeners.click();
+assert.equal(el('ir-path').value,'/build/example.sml.o.ir');assert.equal(el('ir-path-row').hidden,false);
 assert.equal(el('ir-panel').hidden,false);assert(el('ir-title').focused);
 assert.equal(el('ir-code').querySelectorAll('mark')[0].textContent,'attop r42');
 assert.equal(el('ir-location').children.length,2);
@@ -31,6 +32,7 @@ el('allocation-group').value='site';allocationTable();
 assert.equal(el('allocation-rows').children.length,2);
 el('allocation-rows').children[1].querySelectorAll('button')[0].listeners.click();
 assert(el('ir-message').textContent.includes('missing, changed, or from another build'));
+assert.equal(el('ir-path-row').hidden,true);assert.equal(el('ir-path').value,'');
 assert.equal(el('ir-code').children.length,0);assert.equal(el('ir-controls').hidden,true);
 for(const [status,reason] of [['generated','generated'],['legacy-profile','without IR location'],['missing-mark','does not contain']]){
  irSites.set('702',{status});showIR({...irRecord,definition:'702'},null);assert(el('ir-message').textContent.includes(reason));
@@ -53,3 +55,16 @@ el('ir-full').checked=false;showIR({...irRecord,definition:'704'},null);assert.e
 el('ir-full').checked=true;el('ir-full').listeners.change();assert.equal(el('ir-code').children.length,60);
 
 showIR(irRecord,{isConnected:false});el('ir-close').listeners.click();assert(el('allocation-group').focused);
+
+// Copy the resolved companion path; denied clipboard access leaves it selected.
+(async()=>{
+ showIR(irRecord,null);
+ let copied='';
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>{copied=text;}}}});
+ await el('ir-copy-path').listeners.click();
+ assert.equal(copied,'/build/example.sml.o.ir');assert.equal(el('ir-copy-status').textContent,'Copied');
+ navigator.clipboard.writeText=async()=>{throw new Error('Clipboard denied');};
+ let selected=false;el('ir-path').select=()=>{selected=true;};
+ await el('ir-copy-path').listeners.click();
+ assert(selected);assert(el('ir-path').focused);assert(el('ir-copy-status').textContent.includes('Command+C'));
+})().catch(error=>{console.error(error);process.exitCode=1;});

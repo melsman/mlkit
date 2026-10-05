@@ -143,6 +143,43 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
 								 code=code,imports=imports,
 								 exports=exports}
+        (* Collect static ML edges while labels still agree with generated functions.
+         * An empty callee denotes an unresolved closure call, never an edge to C. *)
+        val () = if not (Flags.is_on "region_profile") then IRLocations.currentCalls := []
+          else
+            let
+              open LineStmt
+              val edges = ref []
+              fun add kind caller callee = edges := (kind,caller,callee) :: !edges
+              fun branches visit (SWITCH (_,cases,default)) =
+                (List.app (fn (_,body) => visit body) cases; visit default)
+              fun walk caller statements = List.app (stmt caller) statements
+              and stmt caller statement =
+                case statement of
+                    FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
+                  | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
+                  | FNCALL _ => add "indirect" caller ""
+                  | FNJMP _ => add "indirect" caller ""
+                  | LETREGION {body,...} => walk caller body
+                  | SCOPE {scope,...} => walk caller scope
+                  | HANDLE {default,handl = (h,_),handl_return = (r,_,_),...} =>
+                      (walk caller default; walk caller h; walk caller r)
+                  | SWITCH_I {switch,...} => branches (walk caller) switch
+                  | SWITCH_W {switch,...} => branches (walk caller) switch
+                  | SWITCH_S switch => branches (walk caller) switch
+                  | SWITCH_C switch => branches (walk caller) switch
+                  | SWITCH_E switch => branches (walk caller) switch
+                  | _ => ()
+              fun function (FUN (label,_,body)) = bodyOf label body
+                | function (FN (label,_,body)) = bodyOf label body
+              and bodyOf label body =
+                let val caller = AddressLabels.pr_label label
+                in add "function" caller ""; walk caller body
+                end
+            in List.app function (#code all_line_stmt);
+               IRLocations.currentCalls := rev (!edges)
+            end
+
 	val all_reg_alloc = Timing.timing "RegAlloc"
 	  (if Flags.is_on "register_allocation" then RegAlloc.ra
 	   else RegAlloc.ra_dummy) all_line_stmt

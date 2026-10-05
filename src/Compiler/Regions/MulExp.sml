@@ -1263,7 +1263,12 @@ struct
                        (case alloc of NONE => [] | SOME a => [a]) [layTrip (t,n_inf)]
               | EXCON (excon,SOME (a,t)) =>
                   expr (Excon.pr_excon excon ^ " ") [a] [layTrip (t,n_inf)]
-              | RECORD (SOME a,ts) => expr "record " [a] [args ts]
+              | RECORD (SOME a,ts) =>
+                  NODE {start = "", finish = "", indent = 0, childsep = RIGHT " ",
+                        children = NODE {start = "(", finish = ")", indent = 1,
+                                         childsep = RIGHT ", ",
+                                         children = map (fn t => layTrip (t,0)) ts}
+                                   :: get_opt [layout_alloc a]}
               | REF (a,t) => expr "ref " [a] [layTrip (t,n_inf)]
               | BLOCKF64 (a,ts) => expr "blockf64 " [a] [args ts]
               | SCRATCHMEM (bytes,a) => expr ("scratch(" ^ Int.toString bytes ^ ") ") [a] []
@@ -1364,7 +1369,7 @@ struct
                                      children = [PP.LEAF("deexcon_" ^ Excon.pr_excon excon), layTrip(tr,n_inf)]})
             | RECORD(NONE, []) => PP.LEAF "()"
             | RECORD(SOME alloc, args) =>
-              let val alloc_s = alloc_string alloc
+              let val alloc_s = maybe_prefix_space (alloc_string alloc)
               in PP.NODE{start = "(", finish = ")" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
                          children = map (fn trip => layTrip(trip,0)) args}
               end
@@ -1703,7 +1708,7 @@ struct
                           val _ = inInfo := "(* fix *)"
                           val st_alloc = layout_alloc shared_clos
                           val st_alloc =
-                              if print_control_abbrev_layout() then
+                              if print_control_abbrev_layout() andalso not preserve_allocations then
                                 case st_alloc  of
                                     NONE => st_alloc
                                   | SOME st => case PP.flatten1 st of
