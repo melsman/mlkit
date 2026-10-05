@@ -22,7 +22,7 @@ assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
  assert(host.textContent.includes('r163'));assert(host.textContent.includes('r139'));assert(host.textContent.includes('r45'));assert(host.textContent.includes('r17'));
  assert(!host.textContent.includes('split'));assert(host.textContent.includes('fun '));
  assert(host.textContent.includes('LETREGION r163'));assert(host.textContent.includes('factory2'));assert(host.textContent.includes('Sites without a resolved path'));
- assert.equal(host.querySelectorAll('button').filter(b=>b.textContent.startsWith('site ')).length,3);
+ assert.equal(host.querySelectorAll('button').filter(b=>b.className?.split(' ').includes('allocation-site')).length,3);
  const reference=host.querySelectorAll('button').find(b=>b.title?.includes('Single argument relationship'));reference.listeners.click();
  assert(host.querySelectorAll('summary').some(s=>s.focused));
  // Two source calls with the same caller/callee must remain distinct.

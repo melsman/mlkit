@@ -258,7 +258,8 @@ function allocationRegionFlow(rows){
      if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=token;
     }
    }catch(_){/* Retain the destination label when no readable span is available. */}}
-   const button=irButton(r,'site '+annotation+(el('show-base').checked?' · '+baseName(r):'')+':');
+   const button=irButton(r,annotation+(el('show-base').checked?' · '+baseName(r):'')+':');
+   button.className+=' allocation-site';
    button.title+='\nSite: '+r.site+' · '+r.bytes+' bytes';
    line.append(button,document.createTextNode(' '+r.count+' allocations · '+allocationSize(r.bytes)));
    const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();
