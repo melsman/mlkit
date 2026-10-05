@@ -32,7 +32,7 @@ struct
         end
       fun decoded s = case String.fromString s of SOME v => v | NONE => raise Fail "invalid IR string"
       val version = line ()
-      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6") "unsupported IR version"
+      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" orelse version = "MLKIT-IR 7") "unsupported IR version"
       val identity = field "identity"
       val unit = decoded (field "unit")
       val source = decoded (field "source")
@@ -117,14 +117,14 @@ struct
                   | _ => raise Fail "invalid region-flow row"
             in regionRows (row::acc)
             end
-      val regionData = if version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" then
+      val regionData = if version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" orelse version = "MLKIT-IR 7" then
             (check (line () = "MLKIT-IR-REGIONS 1") "invalid region-flow table"; regionRows [])
           else []
       val () = check (!pos = size text) "trailing IR bytes"
     in Obj [("identity",Str identity),("unit",Str unit),("source",Str source),
             ("path",Str path),("text",Str text),("code_start",number codeStart),
-            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6")),
-            ("region_data",Arr regionData),("region_flow",Bool (version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6"))]
+            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" orelse version = "MLKIT-IR 7")),
+            ("region_data",Arr regionData),("region_flow",Bool (version = "MLKIT-IR 5" orelse version = "MLKIT-IR 6" orelse version = "MLKIT-IR 7"))]
     end
 
   (* Resolve formal parameters by native label and ordinal, never by the numeric

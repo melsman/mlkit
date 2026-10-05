@@ -444,7 +444,7 @@ region-flow data display the site table with an explanation.
 
 The compiler records local bindings and formal regions, per-call actual/formal
 relationships and storage modes, and program-point destination regions during
-closure conversion. Captured regions retain their lexical identity. Version 6
+closure conversion. Captured regions retain their lexical identity. Version 7
 IR companions append a digest-covered `MLKIT-IR-REGIONS` table after the calls
 table. A `region` row contains region ID, role, owner native label, and formal
 position (empty for a local binding). A `flow` row contains caller, callee,
@@ -482,3 +482,11 @@ a startup manifest record per linked IR artifact, and report generation/size.
 The HTML remains standalone. Rebuild profiling objects and runtime together;
 older companions trigger cache recompilation, while old saved profiles remain
 readable. Snapshot-range allocation filtering is unchanged.
+
+Saved IR uses an 80-column layout target and literal indentation spaces, including
+deeply nested code. Version 7 invalidates older cached companions so byte spans
+are regenerated for this layout; rpview still accepts earlier formats.
+Non-allocating primitive calls use the ordinary expression printer, including
+infix notation and precedence. Calls with result regions retain their marked
+call tokens until the location protocol can identify them independently of
+printed spelling.

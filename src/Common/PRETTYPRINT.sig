@@ -123,7 +123,7 @@ device each time a line is to be output; Thus device is supposed to output the
 line (without inserting leading or trailing newline).
 
 [outputTree' p (device,t,width)] as outputTree but with a function p for
-pretty-printing n blanks (a multiply of 64) shortly.
+rendering n blanks (a multiple of 64). The default outputTree uses real spaces.
 
 [MARKED_LEAF (mark,text)] prints exactly like LEAF text. Existing operations
 ignore the marker. Markers need not be unique.

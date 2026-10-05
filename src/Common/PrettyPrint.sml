@@ -421,9 +421,9 @@ structure PrettyPrint: PRETTYPRINT =
     fun outputTree' blanks args = ignore (outputMarked blanks false args)
 
     fun outputTreeWithSpans {device,tree,width} =
-        outputMarked (fn n => "b" ^ Int.toString n) true (device,tree,width)
+        outputMarked blanks true (device,tree,width)
 
-    fun outputTree a = outputTree' (fn n => "b" ^ Int.toString n) a
+    fun outputTree a = outputTree' blanks a
 
     fun printTree t = outputTree (TextIO.print, t, !colwidth)
 

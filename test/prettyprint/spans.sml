@@ -58,10 +58,10 @@ val _ = expect "prefix cannot overwrite content" 3
   [{mark = 4, start = 6, length = 1}]
 val _ = expect "prefix overwrites all marked whitespace" 3
   (node "long" "" 0 NOSEP [MARKED_LEAF (4," ")]) "\nlong" []
-val _ = expect "deep indentation abbreviation" 3
+val _ = expect "deep indentation spaces" 3
   (node "" "" 64 NOSEP [MARKED_LEAF (1,"abcd"),MARKED_LEAF (2,"efgh")])
-  ("\n" ^ StringCvt.padLeft #" " 64 "" ^ "abcd" ^ "\nb64efgh")
-  [{mark = 1, start = 65, length = 4},{mark = 2, start = 73, length = 4}]
+  ("\n" ^ StringCvt.padLeft #" " 64 "" ^ "abcd\n" ^ StringCvt.padLeft #" " 64 "" ^ "efgh")
+  [{mark = 1, start = 65, length = 4},{mark = 2, start = 134, length = 4}]
 
 (* Exercise both layouts, separator placement, nested flattening and legacy
  * APIs. Each nonempty marker's text is unique in this corpus. *)
@@ -100,4 +100,12 @@ val _ = List.app (fn ragged =>
   (raggedRight := ragged;
    List.app (fn width => (colwidth := width; List.app (check width) corpus))
             [3,4,7,12,40,100])) [false,true]
+val _ = raggedRight := true
+val _ = colwidth := 10
+val (deepText,deepSpans) = render 10 (node "" "" 130 NOSEP leaves)
+val _ = assert "deep indentation uses real spaces"
+  (String.isSubstring (String.implode (List.tabulate (130,fn _ => #" ")) ^ "@two@") deepText)
+val _ = List.app (fn {mark,start,length} =>
+  assert "deep indentation span" (String.substring (deepText,start,length) =
+    List.nth (["@one@","@two@","@three@"],mark-1))) deepSpans
 val _ = print "PrettyPrint spans: PASS\n"

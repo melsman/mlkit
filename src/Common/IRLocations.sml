@@ -45,7 +45,7 @@ struct
   val zeroDigest = String.implode (List.tabulate (32,fn _ => #"0"))
 
   fun header {identity,unit,source,objectDigest,codeBytes} digest =
-    String.concat ["MLKIT-IR 6\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
+    String.concat ["MLKIT-IR 7\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
                    "object-md5\t",objectDigest,"\n", "content-md5\t",digest,"\n",
                    "code-bytes\t",Int.toString codeBytes,"\n"]
 
@@ -57,8 +57,8 @@ struct
       fun restore () = (PrettyPrint.raggedRight := oldRagged;
                         PrettyPrint.colwidth := oldWidth)
       val rendered =
-        (PrettyPrint.raggedRight := true; PrettyPrint.colwidth := 100;
-         (render tree 100 before restore ()) handle exn => (restore (); raise exn))
+        (PrettyPrint.raggedRight := true; PrettyPrint.colwidth := 80;
+         (render tree 80 before restore ()) handle exn => (restore (); raise exn))
       val {text,spans} = rendered
       val info = {identity = identity, unit = String.toString unit, source = String.toString source,
                   objectDigest = MD5.fromFile object, codeBytes = size text}
@@ -114,7 +114,7 @@ struct
           val prefix = header {identity = identity,unit = unit,source = source,objectDigest = objectDigest,
                                codeBytes = codeBytes} zeroDigest
         in
-          version = "MLKIT-IR 6" andalso codeBytes >= 0 andalso codeBytes <= size payload
+          version = "MLKIT-IR 7" andalso codeBytes >= 0 andalso codeBytes <= size payload
           andalso String.isPrefix "\nMLKIT-IR-LOCATIONS 1\n"
                     (String.extract (payload,codeBytes,NONE))
           andalso String.isSuffix "MLKIT-IR-REGIONS-END\n" payload
@@ -134,7 +134,7 @@ struct
                          before TextIO.closeIn input)
                         handle e => (TextIO.closeIn input; raise e)
         in case lines of
-            (SOME "MLKIT-IR 6\n",SOME identity) =>
+            (SOME "MLKIT-IR 7\n",SOME identity) =>
               if String.isPrefix "identity\t" identity andalso String.isSuffix "\n" identity then
                 SOME (String.substring(identity,9,size identity-10),OS.FileSys.fullPath object)
               else NONE

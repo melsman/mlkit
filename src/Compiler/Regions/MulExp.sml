@@ -1272,6 +1272,9 @@ struct
               | REF (a,t) => expr "ref " [a] [layTrip (t,n_inf)]
               | BLOCKF64 (a,ts) => expr "blockf64 " [a] [args ts]
               | SCRATCHMEM (bytes,a) => expr ("scratch(" ^ Int.toString bytes ^ ") ") [a] []
+              (* No allocation locator is needed: retain the shared primitive
+               * names, infix precedence, and argument layout. *)
+              | CCALL ({rhos_for_result = [],...},_) => layExpDefault (lamb,n)
               | CCALL ({name,rhos_for_result,...},ts) =>
                   let val token = "$" ^ name
                       val marker = case rhos_for_result of
