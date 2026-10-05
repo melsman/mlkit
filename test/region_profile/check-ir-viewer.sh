@@ -10,6 +10,7 @@ sh "$ROOT/test/region_profile/encode-fixture.sh" "$ROOT/test/region_profile/grap
  cat "$ROOT/test/region_profile/graph-prelude.js"
  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d;s/^const samples=/let samples=/'
  cat "$ROOT/test/region_profile/graph-assertions.js"
+ cat "$ROOT/test/region_profile/region-flow-assertions.js"
  cat "$ROOT/test/region_profile/ir-assertions.js"
  printf '%s\n' 'console.log("Graph and IR navigation: PASS");'
 } > "$OUT/check.js"
@@ -32,7 +33,8 @@ for(const record of profile.allocations){
  const marks=el('ir-code').querySelectorAll('mark');assert(marks.length>0,'Missing native highlight');
  assert(Number(record.location_kind)===1?marks[0].textContent.startsWith('$'):/^(attop|atbot|sat) /.test(marks[0].textContent),'Wrong native allocation location');
 }
-allocationTable();
+if(profile.region_flow?.available){allocationTable();assert(!el('allocation-flow').hidden);assert.equal(el('allocation-flow').querySelectorAll('button').filter(b=>b.textContent.includes(' · site ')).length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);}
+el('allocation-view').value='site';allocationTable();
 assert.equal(el('allocation-rows').querySelectorAll('button').length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);
 console.log('Native allocation sites and IR highlights: PASS');
 JS

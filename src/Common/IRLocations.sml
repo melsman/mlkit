@@ -39,15 +39,16 @@ struct
   val currentIdentity = ref ""
   fun newIdentity unit = MD5.fromString (unit ^ IntInf.toString (Time.toNanoseconds (Time.now ())))
   val currentCalls = ref ([] : (string * string * string) list)
-  type document = {calls : (string * string * string) list, identity : string, unit : string, source : string, tree : PrettyPrint.StringTree}
+  val currentRegions = ref ([] : string list list)
+  type document = {regions : string list list, calls : (string * string * string) list, identity : string, unit : string, source : string, tree : PrettyPrint.StringTree}
   val zeroDigest = String.implode (List.tabulate (32,fn _ => #"0"))
 
   fun header {identity,unit,source,objectDigest,codeBytes} digest =
-    String.concat ["MLKIT-IR 4\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
+    String.concat ["MLKIT-IR 5\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
                    "object-md5\t",objectDigest,"\n", "content-md5\t",digest,"\n",
                    "code-bytes\t",Int.toString codeBytes,"\n"]
 
-  fun write {object,document = {identity,unit,source,tree,calls} : document} =
+  fun write {object,document = {identity,unit,source,tree,calls,regions} : document} =
     let
       (* Fixed layout settings make the artifact independent of diagnostic flags. *)
       val oldRagged = !PrettyPrint.raggedRight
@@ -65,7 +66,10 @@ struct
         String.concat (map (fn (kind,caller,callee) =>
           String.concatWith "\t" [kind,String.toString caller,String.toString callee] ^ "\n") calls) ^
         "MLKIT-IR-CALLS-END\n"
-      val payload = text ^ tableAt {offset = size prefix, firstLine = 8} text spans ^ callTable
+      val regionTable = "MLKIT-IR-REGIONS 1\n" ^
+        String.concat (map (fn fields => String.concatWith "\t" (map String.toString fields) ^ "\n") regions) ^
+        "MLKIT-IR-REGIONS-END\n"
+      val payload = text ^ tableAt {offset = size prefix, firstLine = 8} text spans ^ callTable ^ regionTable
       val digest = MD5.fromString (prefix ^ payload)
       val file = object ^ ".ir"
       val temporary = file ^ ".tmp"
@@ -109,10 +113,10 @@ struct
           val prefix = header {identity = identity,unit = unit,source = source,objectDigest = objectDigest,
                                codeBytes = codeBytes} zeroDigest
         in
-          version = "MLKIT-IR 4" andalso codeBytes >= 0 andalso codeBytes <= size payload
+          version = "MLKIT-IR 5" andalso codeBytes >= 0 andalso codeBytes <= size payload
           andalso String.isPrefix "\nMLKIT-IR-LOCATIONS 1\n"
                     (String.extract (payload,codeBytes,NONE))
-          andalso String.isSuffix "MLKIT-IR-CALLS-END\n" payload
+          andalso String.isSuffix "MLKIT-IR-REGIONS-END\n" payload
           andalso MD5.fromString (prefix ^ payload) = digest
           andalso MD5.fromFile object = objectDigest
         end
@@ -129,7 +133,7 @@ struct
                          before TextIO.closeIn input)
                         handle e => (TextIO.closeIn input; raise e)
         in case lines of
-            (SOME "MLKIT-IR 4\n",SOME identity) =>
+            (SOME "MLKIT-IR 5\n",SOME identity) =>
               if String.isPrefix "identity\t" identity andalso String.isSuffix "\n" identity then
                 SOME (String.substring(identity,9,size identity-10),OS.FileSys.fullPath object)
               else NONE

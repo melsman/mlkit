@@ -14,6 +14,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
 .ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
 .ir-files{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0}#ir-copy-path{border:0;background:transparent;cursor:pointer}#ir-copy-path svg{width:18px;height:18px;margin:0;border:0;background:transparent}
+#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}
 </style><h1 id="profile-title">MLKit region profile</h1>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -51,6 +52,9 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 </details></section>
 <section id="allocation-section" hidden>
 <h2 id="allocation-title" tabindex="-1">Allocation volume</h2><p id="allocation-note"></p>
+<label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region flow</option><option value="site">Allocation sites</option></select></label>
+<p class="note" id="allocation-flow-note"></p>
+<div id="allocation-flow" hidden></div>
 <table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Bytes</th></tr></thead><tbody id="allocation-rows"></tbody></table>
 <p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Select a site to view its saved IR. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
 <section id="ir-panel" hidden aria-labelledby="ir-title">
@@ -130,13 +134,14 @@ function renderIR(){
    if(a<b){text(l.start,a,false);text(a,b,true);text(b,l.end,false);}else text(l.start,l.end,false);
    el('ir-code').append(row);
   }
-  el('ir-message').textContent=(Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier')+' · line '+span.line+', byte column '+span.column+(full?' · Full IR':' · Showing surrounding code');
+  el('ir-message').textContent=(record.region_argument?'Region argument':Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier')+' · line '+span.line+', byte column '+span.column+(full?' · Full IR':' · Showing surrounding code');
   const selected=el('ir-code').querySelector('mark');if(selected){el('ir-code').scrollTop=Math.max(0,selected.offsetTop-el('ir-code').clientHeight/2);el('ir-code').scrollLeft=Math.max(0,selected.offsetLeft-el('ir-code').clientWidth/3);}
  }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
 }
+function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
 function updateIRTitle(record){
  const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));
- el('ir-title').textContent='Site '+record.site+' · '+(names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
+ el('ir-title').textContent=(record.region_argument?'Region argument ':'Site ')+record.site+' · '+(names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
 }
 function showIR(record,trigger){
  irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
@@ -156,7 +161,7 @@ function showIR(record,trigger){
 }
 function irButton(record,label){
  const button=document.createElement('button');button.type='button';button.className='ir-site-button';button.textContent=label;
- const site=irSites.get(String(record.definition));button.title=site?.status==='available'?'Show allocation site in IR':'Show why IR navigation is unavailable';
+ const site=irSites.get(String(record.definition));button.title=site?.status==='available'?(record.region_argument?'Show region argument in IR':'Show allocation site in IR'):'Show why IR navigation is unavailable';
  button.addEventListener('click',()=>showIR(record,button));return button;
 }
 el('ir-copy-path').addEventListener('click',async()=>{
@@ -167,6 +172,84 @@ el('ir-copy-path').addEventListener('click',async()=>{
 el('ir-location').addEventListener('change',()=>{if(activeIR)renderIR();});
 el('ir-full').addEventListener('change',()=>{if(activeIR)renderIR();});
 el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR=null;irSelectedRecord=null;if(irReturnFocus?.isConnected)irReturnFocus.focus();else el('allocation-title').focus();});
+
+// Static region relationships organize measured sites; they do not divide
+// counters among the possible paths through which a region can be passed.
+function allocationRegionFlow(rows){
+ const host=el('allocation-flow');host.replaceChildren();
+ const flow=profile.region_flow, nodes=new Map((flow.nodes||[]).map(n=>[n.id,n]));
+ const selected=profile.allocation_region;
+ const selector=String(profile.allocation_session?.selector||''),colon=selector.lastIndexOf(':');
+ const unit=selected?.unit??selector.slice(0,colon),region=String(selected?.binding??selector.slice(colon+1));
+ const root=JSON.stringify([Number(region)>=1&&Number(region)<=7?'<global>':unit,region]);
+ const outgoing=new Map(),incoming=new Map();
+ for(const edge of flow.edges||[]){
+  if(!nodes.has(edge.actual)||!nodes.has(edge.formal))continue;
+  if(!outgoing.has(edge.actual))outgoing.set(edge.actual,[]);outgoing.get(edge.actual).push(edge);
+  if(!incoming.has(edge.formal))incoming.set(edge.formal,[]);incoming.get(edge.formal).push(edge);
+ }
+ const reachable=new Set(),todo=[root];
+ while(todo.length){const id=todo.pop();if(reachable.has(id))continue;reachable.add(id);for(const e of outgoing.get(id)||[])todo.push(e.formal);}
+ const destinations=new Map();
+ for(const p of flow.points||[]){const key=JSON.stringify([p.identity,String(p.point)]);if(!destinations.has(key))destinations.set(key,new Set());destinations.get(key).add(p.node);}
+ const measured=new Map(),unplaced=[],ambiguous=[];
+ for(const r of rows.values()){
+  const options=[...(destinations.get(JSON.stringify([r.ir_identity,String(r.point)]))||[])].filter(id=>reachable.has(id)).sort();
+  if(!options.length){unplaced.push(r);continue;}
+  if(options.length>1){ambiguous.push(r);unplaced.push(r);continue;}
+  const id=options[0];if(!measured.has(id))measured.set(id,[]);measured.get(id).push(r);
+ }
+ const relevant=new Set([root]),queue=[...measured.keys()];
+ while(queue.length){const id=queue.pop();if(relevant.has(id)&&id!==root)continue;relevant.add(id);for(const e of incoming.get(id)||[])if(reachable.has(e.actual)&&!relevant.has(e.actual))queue.push(e.actual);}
+ // Collapse recursive components, retaining references for shared subgraphs.
+ const index=new Map(),low=new Map(),stack=[],onStack=new Set(),components=[];let serial=0;
+ function visit(id){index.set(id,serial);low.set(id,serial++);stack.push(id);onStack.add(id);
+  for(const e of outgoing.get(id)||[]){const child=e.formal;if(!relevant.has(child))continue;if(!index.has(child)){visit(child);low.set(id,Math.min(low.get(id),low.get(child)));}else if(onStack.has(child))low.set(id,Math.min(low.get(id),index.get(child)));}
+  if(low.get(id)===index.get(id)){const members=[];let child;do{child=stack.pop();onStack.delete(child);members.push(child);}while(child!==id);components.push(members);}
+ }
+ for(const id of relevant)if(!index.has(id))visit(id);
+ const componentOf=new Map();components.forEach((members,i)=>members.forEach(id=>componentOf.set(id,i)));
+ const creators=new Map();
+ for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='closure'){
+  const k=JSON.stringify([doc.unit,edge.callee]);if(!creators.has(k))creators.set(k,new Set());creators.get(k).add(edge.caller);
+ }
+ const labels=new Map();for(const n of nodes.values())if(n.owner){const short=shortFunction(n.owner);if(!labels.has(short))labels.set(short,new Set());labels.get(short).add(n.owner);}
+ function name(s){return labels.get(shortFunction(s))?.size>1?s:shortFunction(s);}
+ function label(id){const n=nodes.get(id);return n?(n.owner?name(n.owner)+' · ':'')+'r'+n.region+(n.role==='local'?' (local)':n.role==='global'?' (global)':''):'r'+region;}
+ function sites(records,parent){
+  const groups=new Map();for(const r of records){const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();const owner=owners[0]||r.function,key=JSON.stringify([r.unit,owner]);if(!groups.has(key))groups.set(key,{owner,records:[],owners:new Set()});const group=groups.get(key);group.records.push(r);owners.forEach(n=>group.owners.add(n));}
+  for(const group of groups.values()){
+   const details=document.createElement('details'),summary=document.createElement('summary');details.open=true;
+   const count=group.records.reduce((n,r)=>n+BigInt(r.count),0n),bytes=group.records.reduce((n,r)=>n+BigInt(r.bytes),0n);
+   summary.textContent=name(group.owner)+' · '+count+' allocations · '+bytes+' bytes';details.append(summary);
+   if(group.owners.size){const note=document.createElement('p');note.className='note';note.textContent='Closure creator'+(group.owners.size>1?'s: '+[...group.owners].map(name).join(', '):': '+name(group.owner))+'. Allocations belong to the closure body; creation does not imply invocation.';details.append(note);}
+   const list=document.createElement('ul');for(const r of group.records.sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){const item=document.createElement('li'),volume=document.createElement('span');volume.textContent=' · '+r.count+' allocations · '+r.bytes+' bytes';item.append(irButton(r,irName(r)+' · site '+r.site),volume);list.append(item);}details.append(list);parent.append(details);
+  }
+ }
+ function edgeLocation(edge,parent){
+  const doc=irDocuments.get(edge.identity),spans=(doc?.spans||[]).filter(s=>String(s.mark)===String(edge.point));
+  const text=edge.mode+' · '+name(edge.caller)+' → '+name(edge.callee);
+  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:true},text));}
+  else{const note=document.createElement('span');note.textContent=text;parent.append(note);}
+ }
+ const shown=new Map();
+ function branch(i,parent,depth){
+  const item=document.createElement('li');parent.append(item);
+  if(shown.has(i)){const ref=document.createElement('button');ref.type='button';ref.textContent='↪ '+components[i].map(label).join(', ')+' (shared; totals shown once)';ref.addEventListener('click',()=>{let p=shown.get(i).parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}shown.get(i).focus();shown.get(i).scrollIntoView({block:'nearest'});});item.append(ref);return;}
+  const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<3;summary.tabIndex=0;
+  const members=components[i],cyclic=members.length>1||members.some(id=>(outgoing.get(id)||[]).some(e=>e.formal===id));
+  summary.textContent=(cyclic?'Recursive region group: ':'')+members.map(label).join(', ');details.append(summary);item.append(details);shown.set(i,summary);
+  for(const id of members){const n=nodes.get(id);if(n)summary.title=(summary.title||'')+n.unit+' · '+n.source+'\n';sites(measured.get(id)||[],details);}
+  const targets=new Map();for(const id of members)for(const e of outgoing.get(id)||[]){const j=componentOf.get(e.formal);if(j===undefined)continue;if(j===i){const internal=document.createElement('p');internal.className='note';edgeLocation(e,internal);details.append(internal);}else{if(!targets.has(j))targets.set(j,[]);targets.get(j).push(e);}}
+  if(targets.size){const list=document.createElement('ul');details.append(list);for(const [j,edges] of targets){const links=document.createElement('li');for(const e of edges){const p=document.createElement('p');edgeLocation(e,p);links.append(p);}list.append(links);branch(j,list,depth+1);}}
+ }
+ const note=document.createElement('p');note.className='note';note.textContent='Possible region flow, followed from the selected binding to formal regions. Counts are measured allocations into the selected region, shown once per site; paths have no measured totals.';host.append(note);
+ if((flow.issues||[]).length){const warning=document.createElement('details'),title=document.createElement('summary'),list=document.createElement('ul');title.textContent='Incomplete region-flow metadata';for(const issue of new Set(flow.issues)){const li=document.createElement('li');li.textContent=issue;list.append(li);}warning.append(title,list);host.append(warning);}
+ if(ambiguous.length){const warning=document.createElement('p');warning.textContent='Some sites have several possible destination mappings; their totals remain in the unresolved-sites section.';host.append(warning);}
+ const tree=document.createElement('ul');host.append(tree);branch(componentOf.get(root),tree,0);
+ if(unplaced.length){const section=document.createElement('details'),title=document.createElement('summary');section.open=true;title.textContent='Sites without a resolved path to the selected region';section.append(title);sites(unplaced,section);host.append(section);}
+ if(!rows.size){const empty=document.createElement('p');empty.textContent='No allocations recorded.';host.append(empty);}
+}
 
 function allocationTable(){
  const session=profile.allocation_session;if(!session)return;
@@ -187,6 +270,12 @@ function allocationTable(){
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
  for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,r.site]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ const hasFlow=profile.region_flow?.available===true;
+ el('allocation-view-control').hidden=!hasFlow;
+ const byFlow=hasFlow&&el('allocation-view').value!=='site';
+ el('allocation-flow').hidden=!byFlow;el('allocation-table').hidden=byFlow;
+ el('allocation-flow-note').textContent=hasFlow?'':'Region-flow metadata is unavailable. Showing allocation sites.';
+ if(byFlow){allocationRegionFlow(rows);return;}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
   const short=shortFunction(r.function),name=(functions.get(short).size===1?short:r.function)+(' · site '+r.site)+(el('show-base').checked?' · '+baseName(r):'');
@@ -196,6 +285,7 @@ function allocationTable(){
  if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
 }
 allocationTable();
+el('allocation-view').addEventListener('change',allocationTable);
 const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 const palette=['#2563eb','#ea580c','#16a34a','#c026d3','#0891b2','#dc2626','#854d0e','#7c3aed','#65a30d','#db2777','#0d9488','#ca8a04'];
 const colorWeights=new Map();

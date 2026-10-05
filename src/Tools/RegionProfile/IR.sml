@@ -32,7 +32,7 @@ struct
         end
       fun decoded s = case String.fromString s of SOME v => v | NONE => raise Fail "invalid IR string"
       val version = line ()
-      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4") "unsupported IR version"
+      val () = check (version = "MLKIT-IR 2" orelse version = "MLKIT-IR 3" orelse version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5") "unsupported IR version"
       val identity = field "identity"
       val unit = decoded (field "unit")
       val source = decoded (field "source")
@@ -88,10 +88,107 @@ struct
             | _ => raise Fail "invalid IR call row")
       val edges = if version = "MLKIT-IR 2" then []
                   else (check (line () = "MLKIT-IR-CALLS 1") "invalid IR calls"; calls [])
+      fun regionRows acc =
+        case line () of
+            "MLKIT-IR-REGIONS-END" => rev acc
+          | s =>
+            let val fields = map decoded (String.fields (fn c => c = #"\t") s)
+                fun num n = (ignore (natural n); Str n)
+                val row = case fields of
+                    ["region",id,role,owner,position] =>
+                      (check (role = "formal" orelse role = "local") "invalid region role";
+                       if role = "formal" then ignore(natural position) else check (position = "") "invalid local position";
+                       Obj [("kind",Str "region"),("region",num id),("role",Str role),
+                            ("owner",Str owner),("position",Str position)])
+                  | ["flow",caller,callee,position,actual,mode,point] =>
+                      (check (List.exists (fn m => m = mode) ["attop","atbot","sat"]) "invalid flow mode";
+                       Obj [("kind",Str "flow"),("caller",Str caller),("callee",Str callee),
+                            ("position",num position),("actual",num actual),("mode",Str mode),("point",num point)])
+                  | ["point",point,region] =>
+                      Obj [("kind",Str "point"),("point",num point),("region",num region)]
+                  | _ => raise Fail "invalid region-flow row"
+            in regionRows (row::acc)
+            end
+      val regionData = if version = "MLKIT-IR 5" then
+            (check (line () = "MLKIT-IR-REGIONS 1") "invalid region-flow table"; regionRows [])
+          else []
       val () = check (!pos = size text) "trailing IR bytes"
     in Obj [("identity",Str identity),("unit",Str unit),("source",Str source),
             ("path",Str path),("text",Str text),("code_start",number codeStart),
-            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4"))]
+            ("code_bytes",number codeBytes),("spans",Arr spans),("calls",Arr edges),("closure_edges",Bool (version = "MLKIT-IR 4" orelse version = "MLKIT-IR 5")),
+            ("region_data",Arr regionData),("region_flow",Bool (version = "MLKIT-IR 5"))]
+    end
+
+  (* Resolve formal parameters by native label and ordinal, never by the numeric
+   * region identity observed in the importing compilation unit. *)
+  fun assemble documents manifest needed =
+    let
+      val nodes = ref (Binarymap.mkDict String.compare)
+      val formals = ref (Binarymap.mkDict String.compare)
+      val issues = ref ([] : string list)
+      fun warn s = issues := s :: !issues
+      fun field r k = stringField r k
+      fun global r = case Int.fromString r of SOME n => n >= 1 andalso n <= 7 | NONE => false
+      fun key unit r = encodeJson (Arr [Str (if global r then "<global>" else unit),Str r])
+      fun ensure doc r =
+        let val unit = field doc "unit"
+            val id = key unit r
+        in if Option.isSome(Binarymap.peek(!nodes,id)) then ()
+           else nodes := Binarymap.insert(!nodes,id,Obj [("id",Str id),("unit",Str (if global r then "<global>" else unit)),
+                  ("region",Str r),("owner",Str ""),("role",Str (if global r then "global" else "unknown")),
+                  ("source",Str (field doc "source"))]);
+           id
+        end
+      fun formalKey owner position = encodeJson (Arr [Str owner,Str position])
+      fun declare doc row =
+        if field row "kind" <> "region" then ()
+        else
+          let val id = ensure doc (field row "region")
+              val node = Obj [("id",Str id),("unit",Str (field doc "unit")),
+                ("region",Str (field row "region")),("owner",Str (field row "owner")),
+                ("role",Str (field row "role")),("source",Str (field doc "source"))]
+              val () = case Binarymap.peek(!nodes,id) of
+                  SOME old => if field old "role" = "unknown" orelse old = node then ()
+                              else warn ("Conflicting region definition: " ^ id)
+                | NONE => ()
+              val () = nodes := Binarymap.insert(!nodes,id,node)
+          in if field row "role" <> "formal" then ()
+             else let val k = formalKey (field row "owner") (field row "position")
+                      val prior = case Binarymap.peek(!formals,k) of SOME xs => xs | NONE => []
+                  in formals := Binarymap.insert(!formals,k,if List.exists (fn n => n = id) prior then prior else id::prior)
+                  end
+          end
+      val () = app (fn doc => app (declare doc) (rows doc "region_data")) documents
+      val edges = ref []
+      val points = ref []
+      fun connect doc row =
+        case field row "kind" of
+            "point" => points := Obj [("identity",Str (field doc "identity")),("point",Str (field row "point")),
+                          ("node",Str (ensure doc (field row "region")))] :: !points
+          | "flow" =>
+              let val actual = ensure doc (field row "actual")
+                  val k = formalKey (field row "callee") (field row "position")
+                  val choices = case Binarymap.peek(!formals,k) of SOME xs => xs | NONE => []
+                  val localChoices = List.filter (fn id => case Binarymap.peek(!nodes,id) of
+                      SOME n => field n "unit" = field doc "unit" | NONE => false) choices
+                  val choices = if null localChoices then choices else localChoices
+              in case choices of
+                  [formal] => edges := Obj [("formal",Str formal),("actual",Str actual),
+                    ("caller",Str (field row "caller")),("callee",Str (field row "callee")),
+                    ("identity",Str (field doc "identity")),("point",Str (field row "point")),
+                    ("mode",Str (field row "mode"))] :: !edges
+                | _ => warn ("Unresolved formal region: " ^ field row "callee" ^ " parameter " ^ field row "position")
+              end
+          | _ => ()
+      val () = app (fn doc => app (connect doc) (rows doc "region_data")) documents
+      val () = if null manifest then warn "No linked-object manifest; connecting compilation units may be missing." else ()
+      val () = app (fn entry => if List.exists (fn d => field entry "ir_identity" = field d "identity") documents then ()
+                 else warn ("Missing or mismatched IR: " ^ field entry "ir_object")) needed
+      val () = app (fn d => if find d "region_flow" = SOME (Bool true) then ()
+                 else warn ("No region-flow metadata: " ^ field d "unit")) documents
+    in Obj [("available",Bool (List.exists (fn d => find d "region_flow" = SOME (Bool true)) documents)),
+            ("nodes",Arr (map #2 (Binarymap.listItems (!nodes)))),("edges",Arr (rev (!edges))),
+            ("points",Arr (rev (!points))),("issues",Arr (map Str (rev (!issues))))]
     end
 
   fun enrich roots {samples : t list,metadata} =
@@ -102,8 +199,10 @@ struct
         in map #2 (Binarymap.listItems (foldl add (Binarymap.mkDict String.compare) xs))
         end
       val sites = unique (fn r => encodeJson (get r "definition")) allocations
-      val needed = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
+      val manifest = rows metadata "ir_objects"
+      val neededSites = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
                                  find r "point" <> SOME (Num "0")) sites
+      val needed = neededSites @ manifest
       val paths = unique (fn s => s)
         (List.mapPartial (fn r => case stringField r "ir_object" of
             "" => NONE | path => SOME (path ^ ".ir")) needed)
@@ -118,7 +217,7 @@ struct
         end
       val candidates = List.mapPartial candidate paths
       fun matches site doc = stringField site "ir_identity" = stringField doc "identity" andalso
-                             stringField site "unit" = stringField doc "unit"
+                             (stringField site "unit" = "" orelse stringField site "unit" = stringField doc "unit")
       val missing = List.filter (fn site => not(List.exists (matches site) candidates)) needed
       val found = ref candidates
       val visited = ref (Binarymap.mkDict String.compare)
@@ -141,7 +240,8 @@ struct
                else ())
           end) handle OS.SysErr _ => ())
       val () = if null missing then () else app visit roots
-      val documents = unique (fn r => stringField r "identity") (!found)
+      val documents = unique (fn r => stringField r "identity")
+        (List.filter (fn doc => List.exists (fn entry => matches entry doc) needed) (!found))
       fun spanKey mark kind = encodeJson mark ^ ":" ^ encodeJson kind
       fun index doc =
         let fun add (span,dict) =
@@ -153,7 +253,6 @@ struct
         end
       val indexed = foldl (fn (doc,dict) => Binarymap.insert(dict,stringField doc "identity",index doc))
                           (Binarymap.mkDict String.compare) documents
-      val used = ref (Binarymap.mkDict String.compare)
       fun locate site =
         let val identity = stringField site "ir_identity"
             val point = find site "point"
@@ -172,14 +271,13 @@ struct
                           SOME xs => xs | NONE => []
                 in if stringField doc "unit" <> stringField site "unit" then unavailable "missing-or-mismatched-ir"
                    else if null spans then unavailable "missing-mark"
-                   else (used := Binarymap.insert(!used,identity,doc);
-                         Obj(base @ [("status",Str "available"),("identity",Str identity),
+                   else (Obj(base @ [("status",Str "available"),("identity",Str identity),
                                      ("spans",Arr spans)]))
                 end)
         end
       val locations = map locate sites
       val fields = case metadata of Obj fs => fs | _ => raise Fail "invalid profile metadata"
     in {samples = samples, metadata = Obj(fields @
-         [("ir_sites",Arr locations),("ir_documents",Arr(map #2 (Binarymap.listItems (!used))))])}
+         [("ir_sites",Arr locations),("ir_documents",Arr documents),("region_flow",assemble documents manifest needed)])}
     end
 end

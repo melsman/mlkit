@@ -10,7 +10,7 @@ val tree = PrettyPrint.HNODE {start = "\195\166 ",finish = "",childsep = PrettyP
   children = [PrettyPrint.MARKED_LEAF(7,"$foreign"),PrettyPrint.MARKED_LEAF(7,"attop r9"),
               PrettyPrint.MARKED_LEAF(7,"attop r10")]}
 val _ = IRLocations.write {object = object,
-  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,calls = [("function","caller",""),("direct","caller","callee"),("closure","caller","lambda"),("indirect","callee","")]}}
+  document = {identity = "matching-build",unit = "unit",source = "/unavailable/source.sml",tree = tree,regions = [["region","9","local","caller",""],["flow","caller","imported","0","9","sat","7"],["point","7","9"]],calls = [("function","caller",""),("direct","caller","callee"),("closure","caller","lambda"),("indirect","callee","")]}}
 (* Relocation does not require the original object or source tree. *)
 val companion = object ^ ".o.ir"
 val _ = OS.FileSys.rename {old = object ^ ".ir",new = companion}
@@ -37,6 +37,30 @@ val _ = assert (length (ProfileIR.rows (location "2") "spans") = 1) "foreign-cal
 val _ = app (fn (id,status) => assert (get (location id) "status" = Str status) status)
   [("1","available"),("2","available"),("3","generated"),("4","missing-mark"),
    ("5","missing-or-mismatched-ir"),("6","legacy-profile")]
+(* A manifest-only compilation unit must participate even without measured sites.
+ * Its formal number intentionally differs from the importing unit's numbers. *)
+val dependency = OS.FileSys.tmpName ()
+val _ = write dependency "dependency object"
+val _ = IRLocations.write {object = dependency,
+  document = {identity = "dependency-build",unit = "dependency",source = "/library.sml",
+    tree = PrettyPrint.LEAF "library",calls = [("function","imported","")],
+    regions = [["region","42","formal","imported","0"]]}}
+val manifest = Obj [("ir_identity",Str "dependency-build"),("ir_object",Str dependency)]
+val linked = #metadata(ProfileIR.enrich [] {samples = [],metadata = Obj
+  [("allocations",Arr sites),("ir_objects",Arr [manifest])]})
+val _ = assert (length(ProfileIR.rows linked "ir_documents") = 2) "manifest-only document omitted"
+val flow = get linked "region_flow"
+val edges = ProfileIR.rows flow "edges"
+val _ = assert (length edges = 1) "imported formal unresolved"
+val _ = assert (get (hd edges) "formal" = Str (encodeJson(Arr [Str "dependency",Str "42"]))) "formal identity used importer numbering"
+val _ = assert (get (hd edges) "actual" = Str (encodeJson(Arr [Str "unit",Str "9"]))) "actual region identity"
+val _ = assert (get flow "available" = Bool true) "region-flow availability"
+val _ = OS.FileSys.remove (dependency ^ ".ir")
+val _ = OS.FileSys.remove dependency
+val missingDependency = get (#metadata(ProfileIR.enrich [] {samples = [],metadata = Obj
+  [("allocations",Arr sites),("ir_objects",Arr [manifest])]})) "region_flow"
+val _ = assert (null(ProfileIR.rows missingDependency "edges") andalso
+  not(null(ProfileIR.rows missingDependency "issues"))) "missing dependency silently resolved"
 val moved = object ^ "-moved.o.ir"
 val _ = OS.FileSys.rename {old = companion,new = moved}
 val _ = assert (null (ProfileIR.rows (#metadata(report ())) "ir_documents")) "implicit path search"

@@ -540,11 +540,14 @@ void mlkit_rp_init(void) {
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  const unsigned char magic[] = {'M','L','K','R','P',0,mlkit_rp_allocation_capable ? 7 : 5,0};
+  const unsigned char magic[] = {'M','L','K','R','P',0,mlkit_rp_allocation_capable ? 8 : 5,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
   if (mlkit_rp_allocation_capable) emit_record(12,NUMS(mlkit_rp_allocation_enabled,1),STRS(mlkit_rp_build_id,mlkit_rp_region ? mlkit_rp_region : ""));
+  if (mlkit_rp_allocation_enabled)
+    for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
+      emit_record(17,NUMS(),STRS(mlkit_rp_ir_objects[i][0],mlkit_rp_ir_objects[i][1]));
   if (fflush(output)) fail("cannot write profile header");
   if (mlkit_rp_interval_us) {
     struct sigaction previous_alarm;

@@ -21,7 +21,7 @@ fun readFile file =
   in TextIO.inputAll stream before TextIO.closeIn stream
   end
 val _ = writeFile object "object\000bytes"
-val document = {identity = "test-identity",unit = "unit",source = "/source/a file\n.sml",tree = tree,calls = [("function","caller",""),("direct","caller","callee"),("indirect","callee","")]}
+val document = {identity = "test-identity",unit = "unit",source = "/source/a file\n.sml",tree = tree,regions = [],calls = [("function","caller",""),("direct","caller","callee"),("indirect","callee","")]}
 val _ = IRLocations.write {object = object, document = document}
 val ir = readFile (object ^ ".ir")
 val _ = check (IRLocations.consistent object)

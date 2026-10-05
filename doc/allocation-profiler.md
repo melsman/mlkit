@@ -93,9 +93,10 @@ has not been validated by this change. GC plus parallelism remains unsupported.
 
 ## M2: recording and viewer
 
-Attribution-capable executables emit binary version 7. Ordinary snapshot builds
-continue to emit version 5; `rpview` accepts versions 5, 6 and 7. Version 7
-extends allocation-site definitions with IR metadata; other records are unchanged.
+Attribution-capable executables emit binary version 8. Ordinary snapshot builds
+continue to emit version 5; `rpview` accepts versions 5–8. Version 7 added
+IR site references; version 8 adds the linked-object manifest written once at
+startup when attribution is enabled.
 The new little-endian records use the existing length-prefixed framing:
 
 | Tag | Record | uint64 fields | String fields |
@@ -105,6 +106,7 @@ The new little-endian records use the existing length-prefixed framing:
 | 14 | allocation | thread, definition, count, bytes | — |
 | 15 | allocation_incomplete | thread | reason |
 | 16 | allocation_region | binding | unit, name, source |
+| 17 | ir_object | — | ir_identity, ir_object |
 
 Each logical thread owns its counter hash table. Allocation updates take no
 shared-counter lock. A worker serializes its final counters before retirement;
@@ -384,15 +386,14 @@ filtering is unchanged.
 There are three additional words per static allocation-site descriptor, one
 shared identity string per compilation unit, and a link-time object-path table.
 This metadata is read when serializing site definitions, not on allocation-counter
-updates. Attribution profiles use binary version 7, the allocation-descriptor ABI
+updates. Attribution profiles use binary version 8, the allocation-descriptor ABI
 version is 2, and profiling caches use `_RP10`; rebuild runtime and profiling
 objects together. Old binary profile versions remain readable.
 
 ## IR4: navigating allocation sites
 
-In the allocation table, expand a function to see its constituent sites, including
-allocation counts and bytes summed across threads. Alternatively, choose
-**Allocation site** in the grouping control. Select a site button to open the IR
+The Allocation sites table shows allocation counts and bytes summed across
+threads. Select a site button to open the IR
 panel below the table. It shows the corresponding allocation specifier or
 initiating foreign-call token, highlighted with eight surrounding lines on each
 side. File line numbers are preserved, and hovering the source shows its full path.
@@ -427,10 +428,49 @@ Select a site to open its saved IR. Older profiles still show their allocation
 volumes and explain when IR navigation is unavailable.
 
 The Static call graph, Calls and closure creators, and separate Function views
-have been retired. Region flow will become the default once implemented, with
-Allocation sites as the only alternative. Region flow is not yet available.
+have been retired. IR8–IR10 below add Region flow as the default, with Allocation sites as the only
+alternative.
 
-The compiler's call and closure-creator metadata remains in version 4 `.ir`
+The compiler's call and closure-creator metadata remains in `.ir`
 companions for the upcoming region-flow work. The reader continues to accept
 versions 2 and 3. This UI change adds no runtime instrumentation and does not
 change profile or companion formats.
+
+## IR8–IR10: region flow
+
+**Region flow** is the default allocation view when matching metadata is available.
+**Allocation sites** is the only alternative. Older profiles or companions without
+region-flow data display the site table with an explanation.
+
+The compiler records local bindings and formal regions, per-call actual/formal
+relationships and storage modes, and program-point destination regions during
+closure conversion. Captured regions retain their lexical identity. Version 5
+IR companions append a digest-covered `MLKIT-IR-REGIONS` table after the calls
+table. A `region` row contains region ID, role, owner native label, and formal
+position (empty for a local binding). A `flow` row contains caller, callee,
+formal position, actual region ID, storage mode, and program point (zero when
+unavailable). A `point` row associates a positive program point with a region.
+Fields use the existing SML string escaping. Positions are zero-based.
+
+At launch, the profiler writes the linker-provided object manifest once. rpview
+validates adjacent companions by identity and digest, including compilation units
+with no measured allocation sites; `--ir-dir` remains a relocation fallback.
+Imported formals resolve by native function label and parameter position. Local
+region IDs are scoped by compilation unit; global regions share one namespace.
+Missing or ambiguous connections remain explicit rather than being guessed.
+
+Starting at the selected binding, the viewer traverses formal-to-actual edges
+backwards and retains paths to measured allocation sites. Recursive components
+are grouped; shared components use references. Call annotations navigate to their
+IR region arguments when a corresponding marked span exists. Allocations in
+closure bodies are grouped under their creators, with the bodies and sites kept
+visible. Several creators are listed, but each site contributes its totals once.
+Unresolved or ambiguous site destinations remain visible separately.
+
+Edges describe possible static region flow, not measured execution paths. Volume
+is never divided among possible paths or counted again at shared references.
+There is no extra work on the allocation hot path. The costs are compiler metadata,
+a startup manifest record per linked IR artifact, and report generation/size.
+The HTML remains standalone. Rebuild profiling objects and runtime together;
+older companions trigger cache recompilation, while old saved profiles remain
+readable. Snapshot-range allocation filtering is unchanged.

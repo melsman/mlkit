@@ -1246,7 +1246,31 @@ struct
           | SOME _ => die ("lookup_rho: rho bound to FIX. " ^ f())
           | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound. " ^ f())
 
+    (* Preserve region identities before closure conversion lowers them to loads.
+     * Imported formals are referred to by native function label and position. *)
+    fun flowRow fields =
+      if Flags.is_on "region_profile" then
+        IRLocations.currentRegions := fields :: !IRLocations.currentRegions
+      else ()
+    fun flowRegion rho = Int.toString (Effect.key_of_eps_or_rho rho)
+    fun flowAllocation alloc =
+      let val (rho,pp,mode) = case alloc of
+              AtInf.ATTOP (r,p) => (r,p,"attop")
+            | AtInf.ATBOT (r,p) => (r,p,"atbot")
+            | AtInf.SAT (r,p) => (r,p,"sat")
+          val id = flowRegion rho
+          val () = if pp <= 0 then () else flowRow ["point",Int.toString pp,id]
+      in (id,Int.toString (Int.max (0,pp)),mode)
+      end
+    fun flowCall caller callee actuals =
+      List.app (fn (i,a) =>
+        let val (rho,point,mode) = flowAllocation a
+        in flowRow ["flow",Labels.pr_label caller,Labels.pr_label callee,
+                    Int.toString i,rho,mode,point]
+        end) (ListPair.zip (List.tabulate (length actuals,fn i => i),actuals))
+
     fun convert_alloc (alloc,env) =
+      (if Flags.is_on "region_profile" then ignore (flowAllocation alloc) else ();
         case alloc of
             AtInf.ATBOT(rho,pp) =>
             let val (ce,se) = lookup_rho env rho (fn () => "convert_alloc1")
@@ -1259,7 +1283,7 @@ struct
           | AtInf.ATTOP(rho,pp) =>
             let val (ce,se) = lookup_rho env rho (fn () => "convert_alloc3")
             in (convert_sma(AtInf.ATTOP(rho,pp),CE.lookupRhoKind env rho,ce),se)
-            end
+            end)
 
     fun mult ("f",PhysSizeInf.INF) = CE.FI
       | mult ("f",PhysSizeInf.WORDS n) = CE.FF
@@ -1653,6 +1677,9 @@ struct
 
                  fun compile_fn (lvar,bind,formals,drops,lab) =
                    let
+                     val () = List.app (fn (i,(rho,_)) =>
+                       flowRow ["region",flowRegion rho,"formal",Labels.pr_label lab,Int.toString i])
+                       (ListPair.zip (List.tabulate (length formals,fn i => i),formals))
                      val (args,body,metaType) = case bind of
                        MulExp.TR(MulExp.FN{pat,body,...},metaType,_,_) => (List.map #1 pat, body,metaType)
                      | _ => die "compile_fn: bind is not a FN"
@@ -1732,6 +1759,7 @@ struct
                    | _ => [ccTrip tr2 env lab cur_rv]
 
                  val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
+                 val () = if Flags.is_on "region_profile" then flowCall lab lab_f rhos_actuals else ()
                in
                    let val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
                        val (smas,ses_sma,_) = unify_sma_se smas_regvec_and_ses SEMap.empty
@@ -1782,6 +1810,7 @@ struct
                    | _ => [ccTrip tr2 env lab cur_rv]
 
                  val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
+                 val () = if Flags.is_on "region_profile" then flowCall lab lab_f rhos_actuals else ()
                  val (smas,ses_sma) =
                    let val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
                        val (smas,ses_sma,_) = unify_sma_se smas_regvec_and_ses SEMap.empty
@@ -1833,6 +1862,8 @@ struct
 
            | MulExp.LETREGION{B,rhos=ref bound_regvars,body} =>
                let
+                 val () = List.app (fn (rho,_) =>
+                   flowRow ["region",flowRegion rho,"local",Labels.pr_label lab,""]) bound_regvars
                  (* Insert letregion nodes in the RegionFlowGraph. *)
                  val _ =
                    if region_profiling() then

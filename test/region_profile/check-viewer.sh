@@ -49,7 +49,7 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 4 8; do
+for version in 0 1 2 3 4 9; do
     sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
@@ -145,3 +145,19 @@ cp "$ROOT/test/region_profile/allocation-fixture.json" profile.rp
 run
 grep -q '"status":"legacy-profile"' profile.html
 echo 'Legacy allocation profiles: counters retained, IR navigation unavailable'
+
+# Version 8 carries a startup object manifest, including units without sites.
+cat > profile.rp <<'DATA'
+{"type":"header","format":"mlkit-region-profile","version":8,"page_bytes":8192,"main_source":"test.sml","gc_enabled":false}
+{"type":"allocation_session","enabled":1,"depth":1,"build_id":"manifest-test","selector":"unit:9"}
+{"type":"ir_object","ir_identity":"missing-build","ir_object":"/missing/library.o"}
+{"type":"session_end","gc_collections":0,"max_pages":0}
+DATA
+run
+grep -q '"ir_objects":\[{"type":"ir_object"' profile.html
+grep -q 'Missing or mismatched IR: /missing/library.o' profile.html
+sed 's/"version":8/"version":7/' profile.rp > old.rp
+mv old.rp profile.rp
+reject
+grep -q 'IR manifest requires version 8' stderr
+echo 'Version 8 object manifest and legacy rejection passed'

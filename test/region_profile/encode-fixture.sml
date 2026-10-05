@@ -26,7 +26,7 @@ struct
                           then if key = "word_bytes" then 8 else 0
                           else raise Fail ("missing " ^ key)
           fun record r =
-              let fun tag n = if n > 16 then raise Fail "unknown fixture record"
+              let fun tag n = if n > (if version >= 8 then 17 else 16) then raise Fail "unknown fixture record"
                               else if #1(ProfileBinary.schema versionString n) = kind r then n else tag(n+1)
                   val t = tag 1
                   val (_,nums,strs) = ProfileBinary.schema versionString t

@@ -17,6 +17,7 @@ struct
           val allocationSites = ref (Binarymap.mkDict IntInf.compare)
           val allocations = ref []
           val allocationProblems = ref []
+          val irObjects = ref []
           fun noteCollections r =
               let val n = uint r "gc_collections"
               in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
@@ -65,7 +66,7 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (uint r "version" = 5 orelse uint r "version" = 6 orelse uint r "version" = 7) "unsupported profile version";
+                   require (uint r "version" = 5 orelse uint r "version" = 6 orelse uint r "version" = 7 orelse uint r "version" = 8) "unsupported profile version";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
@@ -76,6 +77,10 @@ struct
                         require (uint r "enabled" <= 1 andalso uint r "depth" = 1) "unsupported allocation mode";
                         app (fn k => ignore(string(get r k))) ["build_id","selector"];
                         allocationSession := r)
+                     | "ir_object" =>
+                       (requireAllocation(); require (uint h "version" >= 8) "IR manifest requires version 8";
+                        app (fn k => ignore(string(get r k))) ["ir_identity","ir_object"];
+                        irObjects := r :: !irObjects)
                      | "allocation_region" =>
                        (requireAllocation(); require (!allocationRegion = Null) "duplicate allocation region";
                         ignore(uint r "binding"); app (fn k => ignore(string(get r k))) ["unit","name","source"];
@@ -151,7 +156,7 @@ struct
           val gc = case get h "gc_enabled" of
                        Bool b => Bool b
                      | _ => raise Fail "invalid GC enabled flag"
-          val metadata = Obj[("allocation_region",!allocationRegion),("allocation_session",!allocationSession),
+          val metadata = Obj[("ir_objects",Arr(rev(!irObjects))),("allocation_region",!allocationRegion),("allocation_session",!allocationSession),
                              ("allocations",Arr(rev(!allocations))),
                              ("allocation_problems",Arr(rev(!allocationProblems))),
                              ("main_source",source),("gc_enabled",gc),

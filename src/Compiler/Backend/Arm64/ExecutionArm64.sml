@@ -246,7 +246,7 @@ structure ExecutionArm64 : EXECUTION =
             in
               CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
                 {identity = identity, unit = AddressLabels.pr_label main_lab,
-                 source = !Flags.current_source_file, tree = tree, calls = !IRLocations.currentCalls}) irTree),linkinfo)
+                 source = !Flags.current_source_file, tree = tree, calls = !IRLocations.currentCalls, regions = rev (!IRLocations.currentRegions)}) irTree),linkinfo)
             end
       end
 
