@@ -141,7 +141,7 @@ function renderIR(){
 function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
 function updateIRTitle(record){
  const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));
- el('ir-title').textContent=(record.region_argument?'Region argument ':'Site ')+record.site+' · '+(names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
+ el('ir-title').textContent=(record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Site '+record.site+' · '+(names.size>1?record.function:short))+(el('show-base').checked?' · '+baseName(record):'');el('ir-title').title=record.function;
 }
 function showIR(record,trigger){
  irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
@@ -229,7 +229,7 @@ function allocationRegionFlow(rows){
  function edgeLocation(edge,parent){
   const doc=irDocuments.get(edge.identity),spans=(doc?.spans||[]).filter(s=>String(s.mark)===String(edge.point));
   const text=edge.mode+' · '+name(edge.caller)+' → '+name(edge.callee);
-  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:true},text));}
+  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)}},text));}
   else{const note=document.createElement('span');note.textContent=text;parent.append(note);}
  }
  const shown=new Map();
