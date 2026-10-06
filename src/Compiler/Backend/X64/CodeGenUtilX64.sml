@@ -26,7 +26,7 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenUtilX64." ^ s)
 
-  val allocationProfile = Flags.is_on0 "allocation_profile"
+  val allocationProfile = Flags.is_on0 "region_profile"
   val allocationSite = ref (fn (_ : int, _ : int) => NameLab "unused_allocation_site")
   val rem_dead_code = I.rem_dead_code
   val i2s = I.i2s

@@ -17,7 +17,7 @@ run() {
 }
 # Reject options that have no matching runtime before compiling source.
 printf 'val x = 1\n' > "$scratch/guard.sml"
-for options in '-argo' '-par0' '-par -prof' '-par --tag_values' '-par -gc' '-par -gengc'; do
+for options in '-argo' '-par0' '-par -rp' '-par --tag_values' '-par -gc' '-par -gengc'; do
   if "$MLKIT_ARM64" --no_basislib $options -o "$scratch/rejected" \
        "$scratch/guard.sml" > "$scratch/guard.log" 2>&1; then
     echo "Unsupported options accepted: $options" >&2; exit 1

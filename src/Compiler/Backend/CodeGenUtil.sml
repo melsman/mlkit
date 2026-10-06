@@ -140,7 +140,7 @@ struct
    * Dynamic Flags
    * ----------------------- *)
 
-  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
+  val region_profiling : unit -> bool = Flags.is_on0 "region_profile"
   fun parallelism_p () : bool = Flags.is_on "parallelism"
   fun par_alloc_unprotected_p () : bool = Flags.is_on "parallelism_alloc_unprotected"
 

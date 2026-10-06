@@ -866,7 +866,7 @@ fun repl (rt_exe, stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.st
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "safeLinkTimeElimination", "repository", "strip", "tag_pairs",
-    "tag_values", "unbox_reals", "warn_spurious", "region_profiling", "region_profile", "allocation_profile",
+    "tag_values", "unbox_reals", "warn_spurious", "region_profile",
     "recompile_basislib", "print_K_normal_forms",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",

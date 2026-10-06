@@ -77,7 +77,7 @@ structure CompileDec: COMPILE_DEC =
     fun pr (s : string) : unit = TextIO.output(TextIO.stdOut, s)
     fun pr_st st = (PrettyPrint.outputTree(print,st,100); print "\n")
 
-    val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    val region_profiling = Flags.lookup_flag_entry "region_profile"
 
     val line = Report.line
     val // = Report.//

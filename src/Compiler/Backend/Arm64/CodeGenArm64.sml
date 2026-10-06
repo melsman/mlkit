@@ -52,8 +52,8 @@ struct
   val gc = Flags.is_on0 "garbage_collection"
   val gengc = Flags.is_on0 "generational_garbage_collection"
   val tagged = BackendInfo.tag_values
-  val profiling = Flags.is_on0 "region_profiling"
-  val allocationProfile = Flags.is_on0 "allocation_profile"
+  val profiling = Flags.is_on0 "region_profile"
+  val allocationProfile = Flags.is_on0 "region_profile"
   val allocationFunction = ref "<entry>"
   val allocationSites = ref ([] : (int * lab) list)
   val allocationIR = ref (NameLab "unused_ir_identity")

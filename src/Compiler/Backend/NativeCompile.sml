@@ -110,8 +110,6 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 		       safe:bool}  =
       let
 
-        val _ = if Flags.is_on "allocation_profile" andalso not(Flags.is_on "region_profile") then
-                  raise Fail "-allocation_profile requires -rp" else ()
         val _ = if Flags.is_on "region_profile" andalso Flags.is_on "parallelism"
                    andalso Flags.is_on "garbage_collection" then
                   raise Fail "-region_profile with GC and parallelism is not supported"

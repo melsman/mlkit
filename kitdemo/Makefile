@@ -29,10 +29,10 @@ mylibtest: libmylib.a
 	SML_LIB=.. $(MLKIT) -no_gc -o mylibtest -libdirs "." -libs "m,c,dl,mylib" mylib.mlb
 
 mylibtest-p: libmylib-p.a
-	SML_LIB=.. $(MLKIT) -no_gc -prof -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
+	SML_LIB=.. $(MLKIT) -no_gc -rp -o mylibtest-p -libdirs "." -libs "m,c,dl,mylib-p" mylib.mlb
 
 mylibtest-pt: libmylib-pt.a
-	SML_LIB=.. $(MLKIT) -prof -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
+	SML_LIB=.. $(MLKIT) -rp -o mylibtest-pt -libdirs "." -libs "m,c,dl,mylib-pt" mylib.mlb
 
 mylibtest-t: libmylib-t.a
 	SML_LIB=.. $(MLKIT) -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
@@ -45,7 +45,7 @@ clean:
 pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf scan_stream.pdf scan_stream_nogc.pdf scan_rev1_1.pdf scan_rev1_2.pdf scan_rev2_1.pdf
 
 life.exe: life.sml Makefile
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 life.rp: life.exe
 	./$< -file $@ -microsec 280 > life.out
@@ -54,7 +54,7 @@ life%.ps: life.rp
 	../bin/rp2ps -name "Game of life - $* snapshots" -source $< -region $@ -sampleMax $*
 
 msort.exe: msort.mlb Makefile msortrun.sml msort.sml upto.sml
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msort.rp: msort.exe
 	./$< -file $@ -notimer 8000 > msort.out
@@ -66,7 +66,7 @@ msortstack.ps: msort.rp
 	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 500
 
 length.exe: length.sml Makefile
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 length.rp: length.exe
 	./$< -file $@ -microsec 1000 > length.out
@@ -75,7 +75,7 @@ length_region.ps: length.rp
 	../bin/rp2ps -name "List length functions" -source $< -region $@ -sampleMax 200
 
 msortreset2.exe: msortreset2.mlb Makefile msortreset2.sml upto.sml
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msortreset2.rp: msortreset2.exe
 	./$< -file $@ -microsec 1000 > msortreset2.out
@@ -84,7 +84,7 @@ msortreset2.ps: msortreset2.rp
 	../bin/rp2ps -name "Improved mergesort" -source $< -region $@ -sampleMax 200
 
 scan.exe: scan.mlb Makefile scan.sml lib.sml
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan.rp: scan.exe
 	cat scanfiles | ./$< -file $@ -notimer 1000 > scan.out
@@ -93,7 +93,7 @@ scan.ps: scan.rp
 	../bin/rp2ps -name "Scanning text files" -source $< -region $@ -sampleMax 200
 
 scan_stream.exe: scan_stream.mlb Makefile scan_stream.sml lib_stream.sml
-	SML_LIB=.. $(MLKIT) -output $@ -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -rp $<
 
 scan_stream.rp: scan_stream.exe
 	cat scanfiles | ./$< -file $@ -notimer 5000 > scan_stream.out
@@ -108,7 +108,7 @@ scan_stream_nogc.ps: scan_stream_nogc.rp
 	../bin/rp2ps -name "Scanning text files with stream IO (garbage collection disabled)" -source $< -region $@ -sampleMax 200
 
 scan_rev1.exe: scan_rev1.mlb Makefile scan_rev1.sml lib.sml
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof -Prfg -Ppp -Pcee -log_to_file $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp -Prfg -Ppp -Pcee -log_to_file $<
 
 scan_rev1.rp: scan_rev1.exe
 	echo life.sml | ./$< -file $@ -notimer 723 > scan_rev1.out
@@ -120,7 +120,7 @@ scan_rev1_2.ps: scan_rev1.rp
 	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 331112 $@ -sampleMax 200
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
-	SML_LIB=.. $(MLKIT) -output $@ -no_gc -prof $<
+	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan_rev2.rp: scan_rev2.exe
 	echo life.sml | ./$< -file $@ -notimer 723 > scan_rev2.out

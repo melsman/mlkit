@@ -27,7 +27,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val op ## = OS.Path.concat infix ##
 
-    val region_profiling = Flags.is_on0 "region_profiling"
+    val region_profiling = Flags.is_on0 "region_profile"
 
     val print_export_bases =
         Flags.add_bool_entry

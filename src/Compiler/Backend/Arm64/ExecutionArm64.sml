@@ -214,7 +214,7 @@ structure ExecutionArm64 : EXECUTION =
     fun preHook () = (checkTarget();
       if Flags.is_on0 "generational_garbage_collection" () andalso Flags.is_on0 "tag_pairs" () then
         reject "Generational GC does not support -tag_pairs" else ();
-      if Flags.is_on "tag_values" andalso Flags.is_on "region_profiling" andalso not(Flags.is_on "garbage_collection") then
+      if Flags.is_on "tag_values" andalso Flags.is_on "region_profile" andalso not(Flags.is_on "garbage_collection") then
         reject "Tagged profiling requires GC: no tagged no-GC profiling runtime is available" else (); Compile.preHook())
 
     (* Hook to be run after all compilations (for one compilation unit) *)
@@ -309,7 +309,7 @@ structure ExecutionArm64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.c"
           val mapObject = run ^ ".ir-map.o"
-          val hasMap = Flags.is_on "allocation_profile"
+          val hasMap = Flags.is_on "region_profile"
           fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap files);
@@ -353,7 +353,7 @@ structure ExecutionArm64 : EXECUTION =
     val op ## = OS.Path.concat infix ##
 
     local
-          val region_profiling = Flags.lookup_flag_entry "region_profiling"
+          val region_profiling = Flags.lookup_flag_entry "region_profile"
           val tag_values = Flags.is_on0 "tag_values"
           val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
@@ -394,7 +394,7 @@ structure ExecutionArm64 : EXECUTION =
     end
 
     local
-      val region_profiling = Flags.is_on0 "region_profiling"
+      val region_profiling = Flags.is_on0 "region_profile"
       val recompile_basislib = Flags.is_on0 "recompile_basislib"
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
       val gc_p = Flags.is_on0 "garbage_collection"
@@ -429,7 +429,7 @@ structure ExecutionArm64 : EXECUTION =
                            else subdir
               val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
               val subdir = if region_profiling() then subdir ^ "_OD2" else subdir
-              val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_AP1" else subdir
               val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP14" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir

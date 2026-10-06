@@ -1294,7 +1294,7 @@ struct
        | LETREGION{rhos,body} =>
              (* if region_profiling is disabled, then only infinite regions execute code *)
              (* if region_profiling is enabled, then all non zero regions execute code   *)
-             (case (if Flags.is_on "region_profiling" then remove_zero_rhos else remove_finite_rhos) rhos of
+             (case (if Flags.is_on "region_profile" then remove_zero_rhos else remove_finite_rhos) rhos of
                 [] => FV_CalcSets_lss(body,(OKset,notOKset,prev_use_lv))
               | _ =>
                   let

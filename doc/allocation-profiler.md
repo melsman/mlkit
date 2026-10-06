@@ -1,8 +1,7 @@
 # Sampled site occupancy in rpview
 
 Compile every ML unit with `-rp`, then use rpview as the profiler interface.
-`-prof` and `-allocation_profile` are compatibility aliases for the same mode;
-there is no separate allocation-volume instrumentation mode or rp2ps stream.
+There is no separate allocation-volume instrumentation mode or rp2ps stream.
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb

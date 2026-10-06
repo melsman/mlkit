@@ -18,7 +18,7 @@ struct
 
   fun die s  = Crash.impossible ("ClosExp." ^ s)
 
-  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
+  val region_profiling : unit -> bool = Flags.is_on0 "region_profile"
 
   val print_normalized_program_p = Flags.add_bool_entry
       {long="print_normalized_program", short=NONE,

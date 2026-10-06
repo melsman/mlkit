@@ -330,7 +330,7 @@ structure ExecutionX64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.c"
           val mapObject = run ^ ".ir-map.o"
-          val hasMap = Flags.is_on "allocation_profile"
+          val hasMap = Flags.is_on "region_profile"
           fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap files);
@@ -373,7 +373,7 @@ structure ExecutionX64 : EXECUTION =
     val op ## = OS.Path.concat infix ##
 
     local
-          val region_profiling = Flags.lookup_flag_entry "region_profiling"
+          val region_profiling = Flags.lookup_flag_entry "region_profile"
           val tag_values = Flags.is_on0 "tag_values"
           val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
@@ -414,7 +414,7 @@ structure ExecutionX64 : EXECUTION =
     end
 
     local
-      val region_profiling = Flags.is_on0 "region_profiling"
+      val region_profiling = Flags.is_on0 "region_profile"
       val recompile_basislib = Flags.is_on0 "recompile_basislib"
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
       val gc_p = Flags.is_on0 "garbage_collection"
@@ -447,7 +447,7 @@ structure ExecutionX64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if region_profiling() then subdir ^ "_OD2" else subdir
-              val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_AP1" else subdir
               val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP14" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir

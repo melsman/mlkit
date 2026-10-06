@@ -38,7 +38,7 @@ for fixture in pair-ffi pair-ml ffi; do
     set -- -rp
     case $mode in
       before) set -- "$@" -allocation_profile ;;
-      after) compiler=$new; set -- "$@" -allocation_profile ;;
+      after) compiler=$new ;;
     esac
     "$compiler" -no_par "$@" -mlb-subdir "$cache$mode" \
       -libdirs "$OUT" -libs fixture --no_delete_target_files \

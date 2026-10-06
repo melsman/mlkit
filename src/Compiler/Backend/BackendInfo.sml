@@ -76,7 +76,7 @@ structure BackendInfo : BACKEND_INFO =
     val atbot_bit         = 2   (* We add 2 to an address to set the atbot bit. *)
 
     val tag_values        = Flags.is_on0 "tag_values"
-    val region_profiling  = Flags.is_on0 "region_profiling"
+    val region_profiling  = Flags.is_on0 "region_profile"
     val gengc_p           = Flags.is_on0 "generational_garbage_collection"
     fun parallelism_p ()  = Flags.is_on "parallelism"
 

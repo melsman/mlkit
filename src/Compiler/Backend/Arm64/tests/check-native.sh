@@ -123,12 +123,12 @@ printf 'OK\n' > gc-expected
 for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
   extra_gc=-extra_gc_checks
   [ "$compiler" != "$REML_ARM64" ] || extra_gc=""
-  for flags in '' '--tag_values' '-prof' '-gc' '-gc -tag_pairs' '-gengc' '-gc -prof' '-gc -tag_pairs -prof' '-gengc -prof'; do
+  for flags in '' '--tag_values' '-rp' '-gc' '-gc -tag_pairs' '-gengc' '-gc -rp' '-gc -tag_pairs -rp' '-gengc -rp'; do
     if [ "$compiler" = "$REML_ARM64" ]; then
-      case "$flags" in ''|'-prof') ;; *) continue;; esac
+      case "$flags" in ''|'-rp') ;; *) continue;; esac
     fi
     "$compiler" --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
-    case "$flags" in *-prof*) profile_flags="-notimer 17 -file integration.rp";; *) profile_flags="";; esac
+    case "$flags" in *-rp*) profile_flags="-notimer 17 -file integration.rp";; *) profile_flags="";; esac
     case "$flags" in *gc*) report_flags="-report_gc";; *) report_flags="";; esac
     ./gc-roots $profile_flags $report_flags > actual 2> gc-report.log
     cmp gc-expected actual

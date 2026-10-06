@@ -12,7 +12,7 @@ signature REGION_FLOW_GRAPH_PROFILING =
        directs the generation of the region flow graph
        and whether it is exported or not.
 
-	 "region_profiling"
+	 "region_profile"
 	 "generate_lambda_code_with_program_points"
 	 "generate_vcg_graph"
     *)

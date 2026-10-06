@@ -23,7 +23,7 @@ structure Compile: COMPILE =
 
     val print_regions = Flags.is_on0 "print_regions"
 
-    val region_profiling_p = Flags.is_on0 "region_profiling"
+    val region_profiling_p = Flags.is_on0 "region_profile"
 
     val rse_0 = Flags.add_bool_entry
         {long="print_region_static_env0", short=SOME "Prse0",

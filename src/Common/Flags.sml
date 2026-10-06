@@ -773,12 +773,8 @@ local
 in
   val _ = app (add false)
   [
-   ("allocation_profile", NONE, "site occupancy (alias for -rp)", region_profiling,
-    "Compatibility alias for -rp; site descriptors are always included."),
    ("region_profile", SOME "rp", "sampled region profiling", region_profiling,
     "Emit packed object descriptors, IR metadata and safe-point polls for rpview."),
-   ("region_profiling", SOME "prof", "region profiling", region_profiling,
-    "Compatibility alias for -rp; write snapshots for rpview."),
     ("print_region_flow_graph", SOME "Prfg", "print region flow graph", print_region_flow_graph,
      "Print a region flow graph for the program fragment\n\
      \and generate a .vcg-file, which can be viewed using\n\

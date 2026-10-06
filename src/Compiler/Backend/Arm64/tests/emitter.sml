@@ -337,7 +337,7 @@ local
       expect(flag ^ " loop",branches loop assembly)
     end
 in
-  val () = List.app conservative ["extra_gc_checks","region_profiling"]
+  val () = List.app conservative ["extra_gc_checks","region_profile"]
 end
 
 (* Region calls have compile-time save sets. Substitute hostile helpers that
@@ -460,7 +460,7 @@ local
   fun probeMode (suffix,gc,gen) =
     let
       val () = List.app Flags.turn_off
-        ["garbage_collection","generational_garbage_collection","tag_values","region_profiling"]
+        ["garbage_collection","generational_garbage_collection","tag_values","region_profile"]
       val () = if gc then List.app Flags.turn_on ["garbage_collection","tag_values"] else ()
       val () = if gen then Flags.turn_on "generational_garbage_collection" else ()
       val main = AddressLabels.new_named "allocation_paths"

@@ -6,8 +6,7 @@ with `-rp` to start recording. In an interactive session, either spelling enable
 both metadata generation and profiling of the session runtime.
 
 Compile the executable and its ML dependencies with `-rp` (or `-region_profile`). Enable a
-session with the executable's `-rp` option. This is the unified object-and-region profiler. `-prof` is a compatibility
-alias; rpview is the sole interface. See [site occupancy](allocation-profiler.md).
+session with the executable's `-rp` option. This is the unified object-and-region profiler; rpview is the sole interface. See [site occupancy](allocation-profiler.md).
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb

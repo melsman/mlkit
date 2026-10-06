@@ -100,7 +100,7 @@ build_basislibs: mlkit_basislibs
 build_kitlibs: mlkit_kitlibs
 
 # Precompile ordinary and sampled-profiler libraries for the supported release
-# configurations. The -prof alias uses the same profiling cache as -rp.
+# configurations, including the unified -rp profiling mode.
 # REPL support must also load from a read-only installed Basis cache.
 # A submake lets -j build independent Basis caches in parallel even when native
 # compiler builds are serialized by .NOTPARALLEL above.
