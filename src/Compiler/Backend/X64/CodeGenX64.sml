@@ -1428,7 +1428,7 @@ struct
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
-               | LS.CCALL{point,name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
+               | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
                  let
                    (* The call_closure C function takes one argument (an ML closure). It
                     * extracts the closure pointer and the closure environment from the argument
@@ -1465,7 +1465,7 @@ struct
                      * argument function by applying it to the second argument *)
                     compile_c_call_prim("thread_create", [SS.PHREG_ATY treg0,SS.PHREG_ATY treg1], SOME res, fsz, treg1, C))
                  end
-               | LS.CCALL{point,name,args,rhos_for_result,res} =>
+               | LS.CCALL{name,args,rhos_for_result,res} =>
                   if sampledProfile() andalso name = "thread_get" then
                     let val lab = rpCurrentMap fsz size_ccf
                     in
@@ -1491,10 +1491,8 @@ struct
                   else
                   let
                     fun comp_c_call (all_args,res,C) =
-                      let val site = if region_profiling() andalso point >= 0
-                                     then SOME ((!allocationSite)(point,1)) else NONE
-                      in compile_c_call_site site (name, all_args, res, fsz, treg1, C)
-                      end
+                      compile_c_call_site (fn point => (!allocationSite)(point,1))
+                        (name, all_args, res, fsz, treg1, C)
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()

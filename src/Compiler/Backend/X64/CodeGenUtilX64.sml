@@ -139,34 +139,32 @@ struct
 
     in
 
-    fun compile_c_call_site site (name:string, args:SS.Aty list, opt_ret:SS.Aty option, fsz:int, tmp:reg, C) =
-        let fun load (aty,isSite,r,fsz,C) =
-                  case (isSite,site) of
-                      (true,SOME label) => G.lea(LA label,r) $
+    fun compile_c_call_site resolveSite (name:string, args:SS.Aty list, opt_ret:SS.Aty option, fsz:int, tmp:reg, C) =
+        let fun load (aty,r,fsz,C) =
+                  case aty of
+                      SS.SITE_TOKEN_ATY point => G.lea(LA (resolveSite point),r) $
                         I.shrq(I "3",R r) :: C
                     | _ => load_aty(aty,r,fsz,C)
-            val last = length args - 1
-            val args = ListPair.zip(args,List.tabulate(length args,fn i => i = last andalso Option.isSome site))
-            fun push_arg ((aty,isSite),fsz,C) =
-                  if isSite then load(aty,true,tmp,fsz,G.push_ea (R tmp) C)
-                  else push_aty(aty,tmp,fsz,C)
+            fun push_arg (aty,fsz,C) =
+                  case aty of
+                      SS.SITE_TOKEN_ATY _ => load(aty,tmp,fsz,G.push_ea (R tmp) C)
+                    | _ => push_aty(aty,tmp,fsz,C)
             val nargs = List.length args
             val args_stack = drop (List.length RI.args_reg_ccall) args
             val args = ListPair.zip (args, RI.args_reg_ccall)
-            val args = map (fn ((x,isSite),y) => (x,isSite,y)) args
+            val args = map (fn (x,y) => (x,(),y)) args
             fun store_ret (SOME d,C) = move_reg_into_aty(rax,d,fsz,C)
               | store_ret (NONE,C) = C
-            (* val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
-            (* With dynamic linking there must be at least one argument (the name to be bound). *)
             val dynlinklab = "localResolveLibFnManual"
-            fun mv (aty,isSite,r,sz_ff,C) = load(aty,isSite,r,sz_ff,C)
+            fun mv (aty,(),r,sz_ff,C) = load(aty,r,sz_ff,C)
         in shuffle_args fsz mv args
             (with_stack_args push_arg fsz args_stack
               (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
               (store_ret(opt_ret,C)))
         end
 
-    fun compile_c_call_prim args = compile_c_call_site NONE args
+    fun compile_c_call_prim args =
+      compile_c_call_site (fn _ => die "site token in runtime primitive call") args
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. *)

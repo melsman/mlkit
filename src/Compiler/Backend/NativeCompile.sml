@@ -175,7 +175,9 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                     ASSIGN {bind = bind as CLOS_RECORD {label,...},...} =>
                       (allocation caller bind; add "closure" caller (AddressLabels.pr_label label))
                   | ASSIGN {bind,...} => allocation caller bind
-                  | CCALL {point,...} => IRLocations.noteSite(point,caller,1)
+                  | CCALL {args,...} =>
+                      List.app (fn SITE_TOKEN point => IRLocations.noteSite(point,caller,1)
+                                 | _ => ()) args
                   | CCALL_AUTO {point,...} => IRLocations.noteSite(point,caller,1)
                   | FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)

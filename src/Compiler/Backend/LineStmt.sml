@@ -72,6 +72,7 @@ struct
     | DROPPED_RVAR  of place
     | PHREG         of lvar
     | INTEGER       of {value: IntInf.int, precision: int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD          of {value: IntInf.int, precision: int}
     | UNIT
 
@@ -140,7 +141,7 @@ struct
     | RESET_REGIONS of {force: bool,
                         regions_for_resetting: 'aty sma list}
     | PRIM          of {name: PrimName.prim, args: 'aty list, res: 'aty list}
-    | CCALL         of {name: string, point: int, args: 'aty list,
+    | CCALL         of {name: string, args: 'aty list,
                         rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, point: int, args: ('aty * foreign_type) list,
                         rhos_for_result : 'aty list,
@@ -162,6 +163,7 @@ struct
         | RVAR _ => false
         | DROPPED_RVAR _ => false
         | PHREG lv => Lvars.get_ubf64 lv
+        | SITE_TOKEN _ => false
         | INTEGER _ => false
         | WORD _ => false
         | UNIT => false
@@ -189,6 +191,7 @@ struct
     | pr_atom (DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom (PHREG phreg) = pr_phreg phreg
     | pr_atom (INTEGER {value,precision}) = IntInf.toString value
+    | pr_atom(SITE_TOKEN point) = "site-token(" ^ Int.toString point ^ ")"
     | pr_atom (WORD {value,precision}) = "0x" ^ IntInf.fmt StringCvt.HEX value
     | pr_atom (UNIT) = "()"
 
@@ -469,7 +472,7 @@ struct
                          childsep=RIGHT ",",
                          children=map (layout_aty pr_aty) args}
                  end
-           | CCALL{point,name,args,rhos_for_result,res} =>
+           | CCALL{name,args,rhos_for_result,res} =>
                  let
                    val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
                  in
@@ -573,6 +576,7 @@ struct
       | ce_to_atom (ClosExp.RVAR {rho=place}) = RVAR place
       | ce_to_atom (ClosExp.DROPPED_RVAR {rho=place}) = DROPPED_RVAR place
       | ce_to_atom (ClosExp.INTEGER i) = INTEGER i
+      | ce_to_atom (ClosExp.SITE_TOKEN point) = SITE_TOKEN point
       | ce_to_atom (ClosExp.WORD i) = WORD i
       | ce_to_atom (ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag,maybeuntag}) = UNIT
       | ce_to_atom (ClosExp.BLOCKF64{elems=[],alloc=ClosExp.IGNORE,tag}) = UNIT
@@ -634,6 +638,7 @@ struct
          | ClosExp.FETCH lab => maybe_assign (lvars_res, LOAD lab, acc)
          | ClosExp.STORE(ce,lab) => ASSIGN{pat=UNIT,bind=STORE(ce_to_atom ce,lab)}::acc
          | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM {aty=INTEGER i}, acc)
+         | ClosExp.SITE_TOKEN _ => die "SITE_TOKEN outside foreign-call arguments"
          | ClosExp.WORD i => maybe_assign (lvars_res, ATOM {aty=WORD i}, acc)
          | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
          | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
@@ -732,11 +737,11 @@ struct
           (* We must have RESET_REGIONS return unit. *)
           RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
           maybe_assign (lvars_res, ATOM {aty=UNIT}, acc)
-         | ClosExp.CCALL{point,name,rhos_for_result,args} =>
+         | ClosExp.CCALL{name,rhos_for_result,args} =>
            (case PrimName.lookup_prim name of
                 SOME pname => PRIM{name=pname,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
                                    res=map VAR lvars_res}::acc
-             | NONE => CCALL{point=point,name=name,args=ces_to_atoms args,
+             | NONE => CCALL{name=name,args=ces_to_atoms args,
                              rhos_for_result=ces_to_atoms rhos_for_result,
                              res=map VAR lvars_res}::acc)
          | ClosExp.CCALL_AUTO{point,name,args,rhos_for_result,res} =>
@@ -877,7 +882,7 @@ struct
     | get_phreg_ls (RAISE{arg,defined_atys}) = get_phreg_atom(arg,[])
     | get_phreg_ls (RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
     | get_phreg_ls (PRIM{name,args,res}) = get_phreg_atoms(args,[])
-    | get_phreg_ls (CCALL{point,name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
+    | get_phreg_ls (CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls (CCALL_AUTO{point,name,args,rhos_for_result,res}) =
       get_phreg_atoms(map #1 args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls (EXPORT{name,clos_lab,arg}) = get_phreg_atom(#1 arg,[])
@@ -1016,7 +1021,7 @@ struct
               | (RAISE{arg,defined_atys}) => get_var_atom(arg,[])
               | (RESET_REGIONS{force,regions_for_resetting}) => get_var_smas(regions_for_resetting,[])
               | (PRIM{name,args,res}) => get_var_atoms(args,[])
-              | (CCALL{point,name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
+              | (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
               | (CCALL_AUTO{point,name,args,rhos_for_result,res}) =>
                 get_var_atoms(map #1 args,get_var_atoms(rhos_for_result,[]))
               | (EXPORT{name,clos_lab,arg}) => get_var_atom(#1 arg,[])
@@ -1170,8 +1175,8 @@ struct
             RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
           | map_lss' (PRIM{name,args,res}::lss) =
             PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
-          | map_lss' (CCALL{point,name,args,rhos_for_result,res}::lss) =
-            CCALL{point=point,name=name,args=map_atys args,
+          | map_lss' (CCALL{name,args,rhos_for_result,res}::lss) =
+            CCALL{name=name,args=map_atys args,
                   rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
           | map_lss' (CCALL_AUTO{point,name,args,rhos_for_result,res}::lss) =
             CCALL_AUTO{point=point,name=name,args=map_pair_atys args,rhos_for_result=map_atys rhos_for_result,

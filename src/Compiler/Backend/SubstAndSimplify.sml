@@ -68,6 +68,7 @@ struct
     | DROPPED_RVAR_ATY
     | PHREG_ATY        of reg
     | INTEGER_ATY      of {value: IntInf.int, precision: int}
+      | SITE_TOKEN_ATY of int
     | WORD_ATY         of {value: IntInf.int, precision: int}
     | UNIT_ATY
 
@@ -81,6 +82,7 @@ struct
     | pr_aty(DROPPED_RVAR_ATY) = "DROPPED_RVAR"
     | pr_aty(PHREG_ATY phreg) = pr_phreg phreg
     | pr_aty(INTEGER_ATY {value, precision}) = IntInf.toString value
+    | pr_aty(SITE_TOKEN_ATY point) = "site-token(" ^ Int.toString point ^ ")"
     | pr_aty(WORD_ATY {value, precision}) = "0w" ^ IntInf.toString value
     | pr_aty(UNIT_ATY) = "(.)"
 
@@ -90,6 +92,7 @@ struct
     | eq_aty(DROPPED_RVAR_ATY,DROPPED_RVAR_ATY) = true
     | eq_aty(PHREG_ATY phreg1,PHREG_ATY phreg2) = phreg1 = phreg2
     | eq_aty(INTEGER_ATY i1,INTEGER_ATY i2) = i1 = i2
+    | eq_aty(SITE_TOKEN_ATY p1,SITE_TOKEN_ATY p2) = p1 = p2
     | eq_aty(WORD_ATY i1,WORD_ATY i2) = i1 = i2
     | eq_aty(UNIT_ATY,UNIT_ATY) = true
     | eq_aty _ = false
@@ -136,6 +139,7 @@ struct
       | atom_to_aty(LS.DROPPED_RVAR place,ATYmap,RHOmap) = DROPPED_RVAR_ATY
       | atom_to_aty(LS.PHREG phreg,ATYmap,RHOmap) = PHREG_ATY (RI.lv_to_reg phreg)
       | atom_to_aty(LS.INTEGER i,ATYmap,RHOmap) = INTEGER_ATY i
+      | atom_to_aty(LS.SITE_TOKEN point,ATYmap,RHOmap) = SITE_TOKEN_ATY point
       | atom_to_aty(LS.WORD i,ATYmap,RHOmap) = WORD_ATY i
       | atom_to_aty(LS.UNIT,ATYmap,RHOmap) = UNIT_ATY
       | atom_to_aty(LS.FLOW_VAR lv,ATYmap,RHOmap) = FLOW_VAR_ATY lv
@@ -272,8 +276,8 @@ struct
             LS.RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting} :: SS_lss(lss,ATYmap,RHOmap)
           | SS_lss'(LS.PRIM{name,args,res}::lss) =
             LS.PRIM{name=name,args=atoms_to_atys args,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
-          | SS_lss'(LS.CCALL{point,name,args,rhos_for_result,res}::lss) =
-            LS.CCALL{point=point,name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
+          | SS_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) =
+            LS.CCALL{name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
           | SS_lss'(LS.CCALL_AUTO{point,name,args,rhos_for_result,res}::lss) =
             LS.CCALL_AUTO{point=point,name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
                           rhos_for_result=atoms_to_atys rhos_for_result,

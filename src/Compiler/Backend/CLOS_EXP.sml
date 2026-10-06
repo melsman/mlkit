@@ -59,6 +59,7 @@ signature CLOS_EXP =
     | FETCH           of label
     | STORE           of ClosExp * label
     | INTEGER         of {value: IntInf.int, precision: int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD            of {value: IntInf.int, precision: int}
     | STRING          of string
     | REAL            of string
@@ -96,7 +97,7 @@ signature CLOS_EXP =
     | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
-    | CCALL           of {name: string, point: int,
+    | CCALL           of {name: string,
                           args: ClosExp list,
                           rhos_for_result : ClosExp list}
     | CCALL_AUTO      of {name: string, point: int,

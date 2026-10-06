@@ -283,6 +283,7 @@ struct
         | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
         | SS.UNIT_ATY => move_unit (R dst_reg, C)
         | SS.FLOW_VAR_ATY _ => die "load_aty: FLOW_VAR_ATY cannot be moved"
+        | SS.SITE_TOKEN_ATY _ => die "load_aty: site token outside foreign-call arguments"
 
   (* dst_aty = src_reg *)
   fun move_reg_into_aty (src_reg:reg,dst_aty,fsz,C) =

@@ -146,14 +146,19 @@ struct
       | CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
       | CC_ls(LS.SWITCH_C sw,rest) = LS.SWITCH_C(CC_sw CC_lss sw)::rest
       | CC_ls(LS.SWITCH_E sw,rest) = LS.SWITCH_E(CC_sw CC_lss sw)::rest
-      | CC_ls(LS.CCALL{point,name,args,rhos_for_result,res},rest) =
+      | CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) =
         let
-          val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
+          val ({args=args',rhos_for_result,res},assign_list_args,assign_list_res) =
               CallConv.resolve_ccall RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG
                                      {args=args,rhos_for_result=rhos_for_result,res=res}
+          (* Resolve site tokens at the C ABI boundary, after register allocation. *)
+          val args = ListPair.map (fn (token as LS.SITE_TOKEN _,_) => token
+                                    | (_,arg) => arg) (args,args')
+          val assign_list_args = List.filter (fn (LS.SITE_TOKEN _,_) => false
+                                               | _ => true) assign_list_args
         in
           resolve_res(assign_list_args,
-                      LS.CCALL{point=point,name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
+                      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
                       resolve_args(assign_list_res,rest))
         end
       | CC_ls(LS.CCALL_AUTO{point,name,args,rhos_for_result,res},rest) =

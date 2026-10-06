@@ -58,6 +58,24 @@ test -n "$selected"
 "$OUT/callback" +RTS -rp -rp_interval 0 -rp_region "$selected" -rp_file "$OUT/callback.rp"
 "$RPVIEW" "$OUT/callback.rp" --format json > "$OUT/callback.json"
 node "$ROOT/test/region_profile/occupancy-assertions.js" "$OUT/callback.json" callback
+# Foreign-call tokens must preserve their IR locations through lowering,
+# including a token passed on the stack and forwarded through nested C calls.
+"$RPVIEW" "$OUT/callback.rp" -o "$OUT/callback.html"
+{
+  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/callback.html" | sed '1d;$d'
+  cat <<'JS'
+assert(profile.allocations.length > 0);
+for (const row of profile.allocations) {
+  const location = irSites.get(String(row.definition));
+  assert(location && location.status === 'available', 'Foreign allocation lost its IR location');
+  assert(location.spans.length > 0);
+  assert(location.spans.every(span => String(span.mark) === String(row.site)));
+}
+console.log('Foreign-call site tokens retain navigable IR locations');
+JS
+} > "$OUT/callback-viewer.js"
+node "$OUT/callback-viewer.js"
 sh "$ROOT/test/region_profile/check-site-svg.sh" "$OUT"
 
 cp "$ROOT/test/region_profile/allocation-parallel.sml" "$OUT/parallel.sml"

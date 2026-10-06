@@ -528,18 +528,16 @@ struct
      ++ internalCallInto fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY(X 17)]) code
   (* ClosExp appends the program point through the REG_POLY convention.
    * Resolve it to a unit-qualified, packed-descriptor token at the ABI boundary. *)
-  fun foreignSiteCallInto fsz point name args code =
-    if profiling() andalso point >= 0 then
-      let val site = allocationSite(point,1)
-          val last = length args - 1
-      in scalarCallInto
-           {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = gc(),
-            loadArgument = fn (i,extra) =>
-              if i = last then addressInto(site,X 16)
-                ++ instruction A.lsr (R(X 16),R(X 16),I(3))
-              else readInto (fsz+extra) (List.nth(args,i)) (X 16)} code
-      end
-    else runtimeCallInto fsz name args code
+  fun foreignSiteCallInto fsz name args code =
+    if not (List.exists (fn SS.SITE_TOKEN_ATY _ => true | _ => false) args) then
+      runtimeCallInto fsz name args code
+    else scalarCallInto
+      {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = gc(),
+       loadArgument = fn (i,extra) =>
+         case List.nth(args,i) of
+             SS.SITE_TOKEN_ATY point => addressInto(allocationSite(point,1),X 16)
+               ++ instruction A.lsr (R(X 16),R(X 16),I(3))
+           | aty => readInto (fsz+extra) aty (X 16)} code
 
   (* Mode 0 allocates at top; 1 honors the dynamic at-bottom bit; 2 resets.
    * The low infinite-region bit distinguishes descriptors from finite storage. *)
@@ -1986,7 +1984,7 @@ struct
            ++ writeInto fsz aty (X 16)) code
     | LS.PRIM p =>
         primitiveInto fsz p code
-    | LS.CCALL {point, name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
+    | LS.CCALL {name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
           val () = if parallel() then () else unsupported "spawnone without -par"
           val entry = localFresh()
@@ -2026,7 +2024,7 @@ struct
            ++ stackInto(false,16)
            ++ writeInto fsz res (X 0)) code
         end
-    | LS.CCALL {point,name,args,rhos_for_result,res} =>
+    | LS.CCALL {name,args,rhos_for_result,res} =>
         if sampledProfile() andalso name = "thread_get" then
           let val lab = rpCurrentMap()
           in
@@ -2049,7 +2047,7 @@ struct
              ++ resultsInto fsz res) code
           end
         else if length res > 1 then unsupported "multiple C results"
-        else (foreignSiteCallInto fsz point name (rhos_for_result @ args) ++ resultsInto fsz res) code
+        else (foreignSiteCallInto fsz name (rhos_for_result @ args) ++ resultsInto fsz res) code
     | LS.CCALL_AUTO c =>
         autoCallInto fsz c code
     | LS.EXPORT{name,clos_lab,arg = (aty,ft1,ft2)} =>

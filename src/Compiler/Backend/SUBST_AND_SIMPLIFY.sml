@@ -28,6 +28,7 @@ signature SUBST_AND_SIMPLIFY =
       | DROPPED_RVAR_ATY
       | PHREG_ATY        of reg
       | INTEGER_ATY      of {value: IntInf.int, precision: int}
+      | SITE_TOKEN_ATY of int
       | WORD_ATY         of {value: IntInf.int, precision: int}
       | UNIT_ATY
 
