@@ -48,7 +48,7 @@ printUsage(void)
   fprintf(stderr," [-rp_gc_samples]");
 #endif
   fprintf(stderr," [-rp_report]]\n");
-  fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID] [-rp_alloc_depth 1]]\n");
+  fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID]]\n");
 #endif
   fprintf(stderr,"      [-- application arguments]\n");
   fprintf(stderr,"      [-help, -h] \n");
@@ -129,10 +129,6 @@ parseCmdLineArgs(int argc, char *argv[])
     if (strcmp(argv[0], "-rp_region") == 0) {
       if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
       mlkit_rp_region = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
-    }
-    if (strcmp(argv[0], "-rp_alloc_depth") == 0) {
-      if (--argc <= 0 || strcmp(*++argv,"1")) { fprintf(stderr, "only allocation depth 1 is implemented\n"); exit(EXIT_FAILURE); }
-      rp_options = 1; app_arg_index += 2; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_file") == 0) {
       if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
