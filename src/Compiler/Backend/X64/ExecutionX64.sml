@@ -447,7 +447,6 @@ structure ExecutionX64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if region_profiling() then subdir ^ "_OD2" else subdir
-              val subdir = subdir ^ "_A1" (* common region/context ABI *)
               val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir
               val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP14" else subdir
               val subdir = case mlb_subdir() of
