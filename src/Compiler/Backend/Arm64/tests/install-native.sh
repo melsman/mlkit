@@ -7,7 +7,7 @@ set -eu
 case "$ARM64_PREFIX" in
   *[[:space:]]*) echo 'Use a stable, space-free symlink as ARM64_PREFIX (compiler dependency paths cannot contain whitespace).' >&2; exit 1 ;;
 esac
-native_tools='mlkit reml kittester rp2ps rpview mlkit-mllex mlkit-mlyacc'
+native_tools='mlkit reml kittester rpview mlkit-mllex mlkit-mlyacc'
 for tool in $native_tools; do
   [ "$(lipo -archs "$ARM64_NATIVE_BIN/$tool")" = arm64 ]
 done
@@ -41,7 +41,7 @@ trap 'rm -rf "$scratch"' EXIT
 printf 'val () = print "native installation passed\\n"\n' > "$scratch/probe.sml"
 printf '$(SML_LIB)/basis/basis.mlb\nprobe.sml\n' > "$scratch/probe.mlb"
 printf 'native installation passed\n' > "$scratch/expected"
-for flags in '-no_gc' '-gc' '-gengc' '-gc -prof' '-no_gc -prof' '-no_gc -par'; do
+for flags in '-no_gc' '-gc' '-gengc' '-gc -rp' '-no_gc -rp' '-no_gc -par'; do
   printf 'Checking installed configuration: %s\n' "$flags"
   (cd "$ARM64_PREFIX/basis" && SML_LIB="$ARM64_PREFIX" \
     "$ARM64_PREFIX/bin/mlkit" $flags -c basis.mlb)
@@ -49,19 +49,9 @@ for flags in '-no_gc' '-gc' '-gengc' '-gc -prof' '-no_gc -prof' '-no_gc -par'; d
     $flags -o probe probe.mlb)
   [ "$(lipo -archs "$scratch/probe")" = arm64 ]
   case "$flags" in
-    *-prof*)
-      (cd "$scratch" && ./probe -notimer 1 > actual &&
-        "$ARM64_PREFIX/bin/rp2ps" -source profile.rp -name installation-check -region region.ps -stack stack.ps)
-      for graph in region stack; do
-        (cd "$scratch" && "$ARM64_PREFIX/bin/rp2ps" -source profile.rp -name installation-check "-$graph" single.ps)
-        # Ignore the creation time, which is also printed inside the graph.
-        for file in "$graph.ps" single.ps; do
-          sed '/^%%CreationDate:/d; /^([A-Z][a-z][a-z] [A-Z][a-z][a-z] /d' \
-            "$scratch/$file" > "$scratch/$file.normalized"
-        done
-        grep -q '^%!PS' "$scratch/$graph.ps"
-        cmp "$scratch/$graph.ps.normalized" "$scratch/single.ps.normalized"
-      done ;;
+    *-rp*)
+      (cd "$scratch" && ./probe -rp -rp_interval 0 > actual &&
+        "$ARM64_PREFIX/bin/rpview" profile.rp -o profile.html) ;;
     *) (cd "$scratch" && ./probe > actual) ;;
   esac
   cmp "$scratch/expected" "$scratch/actual"

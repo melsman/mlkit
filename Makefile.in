@@ -100,7 +100,7 @@ build_basislibs: mlkit_basislibs
 build_kitlibs: mlkit_kitlibs
 
 # Precompile ordinary and sampled-profiler libraries for the supported release
-# configurations. Legacy -prof caches remain available through source builds.
+# configurations. The -prof alias uses the same profiling cache as -rp.
 # REPL support must also load from a read-only installed Basis cache.
 # A submake lets -j build independent Basis caches in parallel even when native
 # compiler builds are serialized by .NOTPARALLEL above.
@@ -154,9 +154,9 @@ install_smltojs_basislibs:
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js,df} $(LIBDIR)/basis/MLB/Js
 
 ifeq ($(DARWIN_NATIVE),1)
-BASIS_CACHES = ARM64_RI_A1 ARM64_RI_PAR_A1 ARM64_RI_GC_A1 ARM64_RI_GC_A1_RP10 ARM64_RI_PAR_A1_RP10 ARM64_RI_A1_RP10
+BASIS_CACHES = ARM64_RI_A1 ARM64_RI_PAR_A1 ARM64_RI_GC_A1 ARM64_RI_GC_PROF_OD2_A1_AP1_RP12 ARM64_RI_PROF_PAR_OD2_A1_AP1_RP12 ARM64_RI_PROF_OD2_A1_AP1_RP12
 else
-BASIS_CACHES = RI_A1 RI_PAR_A1 RI_GC_A1 RI_GC_A1_RP10 RI_PAR_A1_RP10 RI_A1_RP10
+BASIS_CACHES = RI_A1 RI_PAR_A1 RI_GC_A1 RI_GC_PROF_OD2_A1_AP1_RP12 RI_PROF_PAR_OD2_A1_AP1_RP12 RI_PROF_OD2_A1_AP1_RP12
 endif
 
 .PHONY: install_mlkit_basislibs
@@ -274,7 +274,6 @@ install0:
 	$(INSTALL) bin/reml $(BINDIR)
 	$(INSTALL) bin/mlkit-mllex $(BINDIR)
 	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
-	$(INSTALL) bin/rp2ps $(BINDIR)
 	$(INSTALL) bin/rpview $(BINDIR)
 	$(INSTALL) bin/kittester $(BINDIR)
 	$(MKDIR) $(LIBDIR)
@@ -288,7 +287,6 @@ install0:
 	$(INSTALLDATA) man/man1/reml.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/rp2ps.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/kittester.1 $(MANDIR)/man1
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
@@ -360,7 +358,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X64
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Arm64/tests
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/tests $(INSTDIR)/src/Runtime/tests
-	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps $(INSTDIR)/src/Tools/RegionProfile
+	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/RegionProfile
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/Tools/ml-lex $(INSTDIR)/src/Tools/ml-yacc/src
 	$(MKDIR) $(INSTDIR)/src/Tools/ml-yacc/lib $(INSTDIR)/src/Tools/ml-yacc/examples/calc
@@ -389,7 +387,6 @@ install_src:
 	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
 	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,sig,mlb,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALLDATA) src/Tools/RegionProfile/*.{sml,mlb,html,in} src/Tools/RegionProfile/Makefile $(INSTDIR)/src/Tools/RegionProfile
-	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h,in} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
 	$(INSTALLDATA) src/Tools/ml-lex/*.{sml,mlb,in} $(INSTDIR)/src/Tools/ml-lex
@@ -405,7 +402,7 @@ bootstrap0: install_test install_src
 bootstrap_first:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{mlkit,rp2ps,rpview} $(BINDIR)
+	$(INSTALL) bin/{mlkit,rpview} $(BINDIR)
 	$(MAKE) bootstrap0
 
 MLKIT_FLAGS ?=
@@ -428,7 +425,7 @@ bootstrap_next_build:
 bootstrap_next_install:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{rp2ps,rpview,kittester} $(BINDIR)
+	$(INSTALL) bin/{rpview,kittester} $(BINDIR)
 	$(INSTALL) src/Compiler/run $(BINDIR)/mlkit
 	$(MAKE) install_test
 	$(MAKE) install_src

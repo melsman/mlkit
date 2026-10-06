@@ -6,10 +6,8 @@ AC_CONFIG_FILES([src/Runtime/Makefile
                  Makefile
                  man/man1/mlkit-mllex.1
                  man/man1/mlkit-mlyacc.1
-                 man/man1/rp2ps.1
                  man/man1/kittester.1
                  src/Tools/MlbMake/Makefile
-                 src/Tools/Rp2ps/Makefile
                  src/Tools/RegionProfile/Makefile
                  src/Tools/ml-lex/Makefile
                  src/Tools/ml-yacc/Makefile

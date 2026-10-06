@@ -49,7 +49,7 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 4 9; do
+for version in 0 1 2 3 4 10; do
     sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr

@@ -25,19 +25,11 @@ The runtime representation of a region depends on
   (a) whether the region is finite or infinite;
   (b) whether profiling is turned on or not.
 
-We describe each of the four possibilities in turn.
+Finite regions use the same representation with and without profiling.
 
-(a) Finite region of size n bytes (n%4==0) -- meaning that
-    every object that may be stored in the region has size
-    at most n bytes:
-    (i)  without profiling, the region is n/4 words on the
-         runtime stack;
-    (ii) with profiling, the region is represented by first
-         pushing a region descriptor (see below) on the stack,
-         then pushing an object descriptor (see below) on the stack and
-         then reserving space for the object; the region descriptors
-         of finite regions are linked together which the profiler
-         can traverse.
+(a) A finite region occupies its payload, required GC tags and alignment
+    on the runtime stack. It has no profiling descriptor or linked-list
+    entry; all of this space is accounted for as stack usage.
 (b) Infinite region -- meaning that the region can contain objects
     of different sizes.
     (i)  without profiling, the region is represented by a
@@ -243,11 +235,7 @@ typedef struct ro {
   struct ro * p;       // Pointer to previous region descriptor.
 
   /* here are the extra fields that are used when profiling is turned on: */
-  #ifdef PROFILING
-  size_t allocNow;     /* Words allocated in region (excl. profiling data). */
-  size_t allocProfNow; /* Words allocated in region for profiling data. */
-  size_t regionId;     /* Id on region. */
-  #endif
+
 
   Lobjs *lobjs;        // large objects: a list of malloced memory in each region
 
@@ -263,7 +251,7 @@ typedef Ro* Region;
 
 #ifdef PROFILING
 #define sizeRo (sizeof(Ro)/(sizeof(long*))) /* size of region descriptor in words */
-#define sizeRoProf (3)        /* We use three words extra when profiling. */
+#define sizeRoProf (0)        /* We use three words extra when profiling. */
 #endif
 
 #ifdef ENABLE_GEN_GC
@@ -486,28 +474,13 @@ size_t NoOfPagesInGen(Gen* gen);
 #define notPP 0 /* Also used by GC */
 #ifdef PROFILING
 
-/*
-Here is the type of region descriptors for finite regions when
-profiling is enabled (see item (a)(ii) at the beginning of the file):
-*/
-
-typedef struct finiteRegionDesc {
-  struct finiteRegionDesc * p;  /* Has to be in the bottom of the descriptor
-                                   for deallocation. */
-  size_t regionId;                 /* If msb. set then infinite region. (? - mads)*/
-} FiniteRegionDesc;
-#define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(long*))
-
-
 // ## Object descriptors
 //
-// When profiling is turned on, every object is prefixed by an object
+// When profiling is turned on, every infinite-region object is prefixed by an object
 // descriptor, containing the information that is needed in order to
 // traverse objects in regions and identify allocation points in the
-// source program. A {\em program point} is an integer which
-// identifies the point in the source program where a value is created
-// - the user turns on a flag in the compiler to make it print
-// programs annotated with their program points.
+// source program. The site token references resident compiler metadata; rpview
+// resolves its unit-local site and IR location from the profile stream.
 //
 // Every object is stored taking up a multiple of words (not bytes).
 // This applies irrespective of whether profiling is turned on or not.
@@ -515,7 +488,8 @@ typedef struct finiteRegionDesc {
 /* Low 16 bits: payload words. Upper bits: allocation point. The all-ones
  * size is reserved for large objects, whose full size lives in Lobjs. Keep
  * this encoding in sync with both native backends. Zero remains a page-end
- * sentinel; real allocation points start at 2 (1 means uninitialised finite).
+ * sentinel; token 1 denotes an unknown runtime origin. Other tokens are
+ * aligned resident site addresses divided by eight.
  */
 #define OBJECT_DESC_SIZE_BITS 16
 #define OBJECT_DESC_SIZE_MASK ((uintptr_t)0xffff)
@@ -563,42 +537,9 @@ static inline void objectDescInit(ObjectDesc *obj, size_t n, size_t point)
  * Extern declarations, mostly of global variables that store profiling *
  * information. See Hallenberg's report for details.
  * ---------------------------------------------------------------------*/
-extern unsigned long callsOfDeallocateRegionInf,
-                    callsOfDeallocateRegionFin,
-                    callsOfAlloc,
-                    callsOfResetRegion,
-                    callsOfDeallocateRegionsUntil,
-                    callsOfAllocateRegionInf,
-                    callsOfAllocateRegionFin,
-                    callsOfSbrk,
-                    maxNoOfPages,
-                    noOfPages,
-                    allocNowInf,
-                    maxAllocInf,
-                    allocNowFin,
-                    maxAllocFin,
-                    allocProfNowInf,
-                    maxAllocProfInf,
-                    allocProfNowFin,
-                    maxAllocProfFin,
-                    maxAlloc,
-                    regionDescUseInf,
-                    maxRegionDescUseInf,
-                    regionDescUseProfInf,
-                    maxRegionDescUseProfInf,
-                    regionDescUseProfFin,
-                    maxRegionDescUseProfFin,
-                    maxProfStack,
-                    allocatedLobjs;
-
-extern FiniteRegionDesc * topFiniteRegion;
-
 /* Profiling functions. */
 Region allocRegionInfiniteProfiling(Context ctx, Region roAddr, size_t regionId);
 Region allocRegionInfiniteProfilingMaybeUnTag(Context ctx, Region roAddr, size_t regionId);
-void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
-void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
-void deallocRegionFiniteProfiling(void);
 uintptr_t *allocProfiling(Region r,size_t n, size_t pPoint);  // used by Table.c
 uintptr_t *allocGenProfiling(Gen *gen, size_t n, size_t pPoint);  // used by Table.c
 #endif /*Profiling*/

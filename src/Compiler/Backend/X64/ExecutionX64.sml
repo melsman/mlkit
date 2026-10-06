@@ -387,10 +387,10 @@ structure ExecutionX64 : EXECUTION =
                          die "parallelism enabled - turn off value tagging"
                        else if gc_p() then
                          die "parallelism enabled - turn off gc"
-                       else if !region_profiling then
-                         die "parallelism enabled - turn off prof"
                        else if tag_pairs_p() then
                          die "parallelism enabled - turn off pair tagging"
+                       else if !region_profiling then
+                         (if argobots_p() then "runtimeSystemArParProf.a" else "runtimeSystemParProf.a")
                        else if argobots_p() then "runtimeSystemArPar.a"
                        else "runtimeSystemPar.a")
                     else
@@ -446,11 +446,10 @@ structure ExecutionX64 : EXECUTION =
                                subdir ^ "_PAR0"
                              else subdir ^ "_PAR"
                            else subdir
-              val subdir = if region_profiling() then subdir ^ "_OD1" else subdir
+              val subdir = if region_profiling() then subdir ^ "_OD2" else subdir
               val subdir = subdir ^ "_A1" (* common region/context ABI *)
-              val subdir = if Flags.is_on "allocation_profile_global" then subdir ^ "_APG1" else subdir
               val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP10" else subdir
+              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP12" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

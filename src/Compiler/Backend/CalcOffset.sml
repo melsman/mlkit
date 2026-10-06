@@ -28,7 +28,6 @@ struct
      menu=["Printing of intermediate forms", "print bit vectors when garbage collection is enabled (LineStmt)"],
      desc=""}
 
-  val region_profiling = Flags.is_on0 "region_profiling"
 
   type place = Effect.place
   type excon = Excon.excon
@@ -136,24 +135,13 @@ struct
 		     val ann_offset = offset + size - 1
 		 in (f ann_offset, (offset ++ size) "inf")
 		 end
-		| PhysSizeInf.WORDS 0 =>
-		 let val ann_offset = offset - 1
-		 in (f ann_offset, offset)                              (*          X86, profiling           *)
-		 end							(*                                   *)
- 		| PhysSizeInf.WORDS obj_size =>				(*       |       | <- sp+size_ff     *)
-       	       	 if region_profiling() then				(*       +-------+                   *)
-		   let val size = (obj_size + BI.objectDescSizeP 	(*       :       :                   *)
-				   + BI.finiteRegionDescSizeP)	        (*       +-------+                   *)
-		       val ann_offset = offset + obj_size - 1		(*      /|       | <- sp+size_ff     *)
-		   in (f ann_offset, (offset ++ size) "fin")            (* s   / |  obj  |     - offset      *)
-		   end							(* i _/  |       | <- sp+size_ff     *)
-		 else 							(* z  \  +-------+     - ann_offset  *)
-		   let val ann_offset = offset + obj_size - 1		(* e   \ |objDesc|                   *)
-		   in (f ann_offset, (offset ++ obj_size) "fin")	(*      \|regDesc|            | s    *)
-		   end							(*       +-------+            | t    *)
-	  end                                                           (*       :       :            | a    *)
-      in                                                                (*       |       | <- sp      | c    *)
-	foldr assign_binder ([],offset) binders                         (*       +-------+            V k    *)
+                | PhysSizeInf.WORDS obj_size =>
+                   let val ann_offset = offset + obj_size - 1
+                   in (f ann_offset, (offset ++ obj_size) "fin")
+                   end
+          end
+      in
+        foldr assign_binder ([],offset) binders
       end
 
     fun assign_stys (stys,LVmap,PHmap,offset) =

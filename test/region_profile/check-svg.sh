@@ -27,6 +27,7 @@ svg() {
 count() { [ "$(grep -c '<polygon ' "$OUT/lines")" -eq "$1" ]; }
 contains() { grep -Fq "$1" "$OUT/lines"; }
 reject() { if run "$@"; then echo 'Unexpected success' >&2; exit 1; fi; }
+reject --sites
 svg
 [ "$(grep -c 'data-tick="snapshot"' "$OUT/lines")" -eq 2 ]
 grep 'data-tick="snapshot"' "$OUT/lines" | grep -q 'stroke="#2563eb"'

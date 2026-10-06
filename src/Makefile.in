@@ -32,7 +32,7 @@ REQUEST_PROFILING=
 mlkit: mlkit_tools mlkit_runtime mlkit_kit
 
 .PHONY: mlkit_tools
-mlkit_tools: basics rp2ps tester kitbench mlbmake mllex-yacc
+mlkit_tools: basics tester kitbench mlbmake mllex-yacc
 
 .PHONY: mlkit_runtime
 mlkit_runtime:
@@ -73,9 +73,6 @@ barry: basics mlbmake mllex-yacc
 .PHONY: basics
 basics: mlkit-mllex mlkit-mlyacc
 
-.PHONY: rp2ps
-rp2ps:
-	$(MAKE) -C Tools/Rp2ps
 
 .PHONY: tester
 tester:
@@ -118,7 +115,6 @@ clean:
 	cd Runtime && $(MAKE) clean
 	cd Tools/MspComp && $(MAKE) clean
 	cd Tools/Tester && $(MAKE) clean
-	cd Tools/Rp2ps && $(MAKE) clean
 	cd Tools/MlbMake && $(MAKE) clean
 	cd Tools/Benchmark && $(MAKE) clean
 	$(MAKE) -C Tools/ml-lex clean

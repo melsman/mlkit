@@ -378,46 +378,13 @@ static void mk_from_space(Context ctx)
 {
   Ro *r;
 
-#ifdef PROFILING
-  int j;
-#endif
 
   from_space_begin = NULL;
   from_space_end = last_rp_of_gen(&(TOP_REGION->g0)); // Points at last region page
 
   for( r = TOP_REGION ; r ; r = r->p )
     {
-     #ifdef PROFILING
-      // Similar to resetRegion in Region.c
-     #ifdef ENABLE_GEN_GC
-      if ( is_major_p )
-	{
-     #endif // ENABLE_GEN_GC
-	  j = NoOfPagesInRegion(r);
-	  noOfPages -= j;
-	  profTabDecrNoOfPages(r->regionId, j);
-	  allocNowInf -= r->allocNow;
-	  profTabDecrAllocNow(r->regionId, r->allocNow, "mk_from_space");
-	  allocProfNowInf -= r->allocProfNow;
-	  r->allocNow = 0;
-	  r->allocProfNow = 0;
-     #ifdef ENABLE_GEN_GC
-	} else {
-	  // We only reset generation g0
-	  long allocNowG0 = 0;
-	  long allocProfNowG0 = 0;
-	  j = NoOfPagesInGen(&(r->g0));
-	  noOfPages -= j;
-	  profTabDecrNoOfPages(r->regionId, j);
-	  calcAllocInGen(&(r->g0),&allocNowG0, &allocProfNowG0);
-	  allocNowInf -= allocNowG0;
-	  profTabDecrAllocNow(r->regionId, allocNowG0, "mk_from_space");
-	  allocProfNowInf -= allocProfNowG0;
-	  r->allocNow -= allocNowG0;
-	  r->allocProfNow -= allocProfNowG0;
-	}
-      #endif // ENABLE_GEN_GC
-    #endif // PROFILING
+
 
     mk_from_space_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC

@@ -124,52 +124,6 @@ long rp_used = 0;
 #endif /* ENABLE_GC */
 long rp_total = 0;
 
-#ifdef PROFILING
-
-extern long* stackBot;
-
-FiniteRegionDesc * topFiniteRegion = NULL;
-
-unsigned long callsOfDeallocateRegionInf=0,
-  callsOfDeallocateRegionFin=0,
-  callsOfAlloc=0,
-  callsOfResetRegion=0,
-  callsOfDeallocateRegionsUntil=0,
-  callsOfAllocateRegionInf=0,
-  callsOfAllocateRegionFin=0,
-  callsOfSbrk=0,
-  maxNoOfPages=0,
-  noOfPages=0,
-  allocNowInf=0,             // Allocated in inf. regions now.
-  maxAllocInf=0,             // Max. allocatated data in inf. regions.
-  allocNowFin=0,             // Allocated in fin. regions now.
-  maxAllocFin=0,             // Max. allocated in fin. regions.
-  allocProfNowInf=0,         // Words used on object descriptors in inf. regions.
-  maxAllocProfInf=0,         // At time maxAllocInf how much were
-                             //   used on object descriptors.
-  allocProfNowFin=0,         // Words used on object descriptors in fin. regions.
-  maxAllocProfFin=0,         // At time maxAllocFin how much were used on object descriptors.
-  maxAlloc=0,                // Max. allocated data in both inf. and fin. regions.
-                             //  - not nessesarily equal to maxAllocInf+maxAllocFin!!!
-  maxMem=0,                  // Max. allocated data on stack and in regions (finite and infinite)
-  regionDescUseInf=0,        // Words used on non profiling information in inf. region descriptors.
-  maxRegionDescUseInf=0,     // Max. words used on non profiling information in inf. region descriptors.
-  regionDescUseProfInf=0,    // Words used on profiling information in inf. region descriptors.
-  maxRegionDescUseProfInf=0, // Max. words used on profiling information in inf. region descriptors.
-  regionDescUseProfFin=0,    // Words used on profiling information in fin. region descriptors.
-  maxRegionDescUseProfFin=0, // At time maxAllocFin, how much were used on finite region descriptors.
-  maxProfStack=0,            // At time of max. stack size, how much is due to profiling.
-                             // - updated by inline assembler code (see CodeGenX86.sml)
-  allocatedLobjs=0;          // Total number of allocated large objects allocated with malloc
-
-inline static unsigned int
-max(unsigned int a, unsigned int b)
-{
-  return (a<b)?b:a;
-}
-
-#endif /*PROFILING*/
-
 
 /*------------------------------------------------------*
  * If an error occurs, then print the error and stop.   *
@@ -341,7 +295,6 @@ size_t get_Free_List_Size () {
 }
 
 
-
 /* Get the size of the local free list, if PARALLEL is set, else get the size
    of the global free list */
 size_t get_Thread_Free_List_Size () {
@@ -459,15 +412,6 @@ alloc_new_page(Gen *gen)
   Rp* np;
   debug(printf("[alloc_new_page: gen: %p", gen);)
 
-#ifdef PROFILING
-  Ro *r = get_ro_from_gen(*gen);
-#endif /* PROFILING */
-
-#ifdef PROFILING
-  profTabIncrNoOfPages(r->regionId, 1);
-  profTabMaybeIncrMaxNoOfPages(r->regionId);
-  maxNoOfPages = max(++noOfPages, maxNoOfPages);
-#endif
 
   #ifdef ENABLE_GC
   rp_used++;
@@ -719,17 +663,6 @@ void deallocateRegion(Context ctx) {
 
   CHECK_CTX("deallocateRegion");
 
-#ifdef PROFILING
-  callsOfDeallocateRegionInf++;
-  regionDescUseInf -= (sizeRo-sizeRoProf);
-  regionDescUseProfInf -= sizeRoProf;
-  int i = NoOfPagesInRegion(TOP_REGION);
-  noOfPages -= i;
-  allocNowInf -= TOP_REGION->allocNow;
-  allocProfNowInf -= TOP_REGION->allocProfNow;
-  profTabDecrNoOfPages(TOP_REGION->regionId, i);
-  profTabDecrAllocNow(TOP_REGION->regionId, TOP_REGION->allocNow, "deallocateRegion");
-#endif
 
 #ifdef PARALLEL
   if ( TOP_REGION->mutex ) {
@@ -803,9 +736,6 @@ alloc_lobjs(int n) {
  *----------------------------------------------------------------------*/
 void callSbrk() {
 
-#ifdef PROFILING
-  callsOfSbrk++;
-#endif
 
   /* We must manually insure double alignment. Some operating systems (like *
    * HP UX) does not return a double aligned address...                     */
@@ -886,31 +816,6 @@ allocGen (
   debug(printf("[allocGen... generation: %p, n:%zu ", gen,n));
   debug(fflush(stdout));
 
-#ifdef PROFILING
-  r = get_ro_from_gen(*gen);
-  allocNowInf += n-sizeObjectDesc; /* When profiling we also allocate an object descriptor. */
-  maxAlloc = max(maxAlloc, allocNowInf+allocNowFin);
-  r->allocNow += n-sizeObjectDesc;
-  /*  checkProfTab("profTabIncrAllocNow.entering.alloc");  */
-  profTabIncrAllocNow(r->regionId, n-sizeObjectDesc);
-
-  callsOfAlloc++;
-  maxAllocInf = max(allocNowInf, maxAllocInf);
-  allocProfNowInf += sizeObjectDesc;
-  if (maxAllocInf == allocNowInf) maxAllocProfInf = allocProfNowInf;
-  r->allocProfNow += sizeObjectDesc;
-
-  uintptr_t stackTop;
-#if defined(__aarch64__) || defined(__arm64__)
-  __asm__ volatile ("mov %0, sp" : "=r" (stackTop));
-#elif defined(__x86_64__)
-  __asm__ volatile ("movq %%rsp, %0" : "=r" (stackTop));
-#else
-#error Unsupported runtime stack pointer architecture
-#endif
-
-  maxMem = max(maxMem, ((long)stackBot) - ((long)stackTop) + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin));
-#endif /* PROFILING */
 
   // see if the size of requested memory exceeds
   // the size of a region page
@@ -935,7 +840,6 @@ allocGen (
       r->lobjs = lobjs;
     #ifdef PROFILING
       lobjs->profSize = n - sizeObjectDesc;
-      allocatedLobjs++;
     #endif
 #ifdef ENABLE_GC
       lobjs_current += sizeof(void*)*n;
@@ -1078,21 +982,8 @@ allocGen (
   return t1;
 }
 
-uintptr_t *alloc_profiled(Context ctx, Region r, size_t n,
-                          const MlkitAllocationSite *site, uintptr_t protect) {
-  r = clearStatusBits(r);
-  if (r->allocation_profile) mlkit_rp_allocation(r, n, ctx, site);
-#ifdef PARALLEL
-  return allocGen(r, &r->g0, n, protect);
-#else
-  (void)protect;
-  return allocGen(&r->g0, n);
-#endif
-}
-
 uintptr_t *alloc (Region r, size_t n) {
   r = clearStatusBits(r);
-  if (r->allocation_profile) mlkit_rp_allocation(r, n, NULL, NULL);
   return allocGen(
 #ifdef PARALLEL
 		  r, &(r->g0), n, TRUE
@@ -1105,7 +996,6 @@ uintptr_t *alloc (Region r, size_t n) {
 #ifdef PARALLEL
 uintptr_t *alloc_unprotected (Region r, size_t n) {
   r = clearStatusBits(r);
-  if (r->allocation_profile) mlkit_rp_allocation(r, n, NULL, NULL);
   return allocGen(r, &(r->g0), n, FALSE);
 }
 #endif
@@ -1149,16 +1039,10 @@ resetRegion(Region rAdr)
   Ro* r = clearStatusBits(rAdr);
 
 #ifdef PROFILING
-  callsOfResetRegion++;
-  int j = NoOfPagesInRegion(r);
 
   /* There is always at-least one page in a generation. */
-  noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION;
-  profTabDecrNoOfPages(r->regionId, j-MIN_NO_OF_PAGES_IN_REGION);
 
-  allocNowInf -= r->allocNow;
-  profTabDecrAllocNow(r->regionId, r->allocNow, "resetRegion");
-  allocProfNowInf -= r->allocProfNow;
+
 #endif
 
   resetGen(&(r->g0));
@@ -1169,10 +1053,6 @@ resetRegion(Region rAdr)
   free_lobjs(r->lobjs);
   r->lobjs = NULL;
 
-#ifdef PROFILING
-  r->allocNow = 0;
-  r->allocProfNow = 0;
-#endif
 
   debug(printf("]\n"));
   return rAdr; /* We preserve rAdr and the status bits. */
@@ -1185,25 +1065,16 @@ resetRegionProf(Region rAdr, size_t pPoint)
 {
   Ro *r;
 
-#ifdef PROFILING
-  int j;
-#endif
 
   debug(printf("[resetRegions..."));
 
   r = clearStatusBits(rAdr);
 
 #ifdef PROFILING
-  callsOfResetRegion++;
-  j = NoOfPagesInRegion(r);
 
   /* There is always at-least one page in a generation. */
-  noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION;
-  profTabDecrNoOfPages(r->regionId, j-MIN_NO_OF_PAGES_IN_REGION);
 
-  allocNowInf -= r->allocNow;
-  profTabDecrAllocNow(r->regionId, r->allocNow, "resetRegion");
-  allocProfNowInf -= r->allocProfNow;
+
 #endif
 
   resetGen(&(r->g0));
@@ -1215,10 +1086,6 @@ resetRegionProf(Region rAdr, size_t pPoint)
 
   r->lobjs = NULL;
 
-#ifdef PROFILING
-  r->allocNow = 0;
-  r->allocProfNow = 0;
-#endif
 	debug(printf("]\n"));
 
 	return rAdr; /* We preserve rAdr and the status bits. */
@@ -1246,22 +1113,11 @@ void
 deallocateRegionsUntil(Context ctx, Region r)
 {
   mlkit_rp_foreign_unwind(ctx, (uintptr_t)r);
-  //  debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
   debug(printf("[deallocateRegionsUntil(r = %p, topr= %p)...\n", r, TOP_REGION));
 
   r = clearStatusBits(r);
 
-#ifdef PROFILING
-  callsOfDeallocateRegionsUntil++;
-
-  /* Don't call deallocRegionFiniteProfiling if no finite
-   * regions are allocated. mael 2001-03-20 */
-  while ( topFiniteRegion && (FiniteRegionDesc *)r >= topFiniteRegion)
-    {
-      deallocRegionFiniteProfiling();
-    }
-#endif
 
   while (TOP_REGION && r >= TOP_REGION)
     {
@@ -1283,8 +1139,6 @@ deallocateRegionsUntil(Context ctx, Region r)
  *     Changed runtime operations for making profiling possible.           *
  *                                                                         *
  * allocRegionInfiniteProfiling(roAddr, regionId)                          *
- * allocRegionFiniteProfiling(rdAddr, regionId, size)                      *
- * deallocRegionFiniteProfiling(void)                                      *
  * allocProfiling(rAddr, n, pPoint)                                        *
  ***************************************************************************/
 
@@ -1299,39 +1153,8 @@ deallocateRegionsUntil(Context ctx, Region r)
 Region
 allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
-  /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
-
-  r->allocation_profile = NULL;
-  callsOfAllocateRegionInf++;
-  regionDescUseInf += (sizeRo-sizeRoProf);
-  maxRegionDescUseInf = max(maxRegionDescUseInf,regionDescUseInf);
-  regionDescUseProfInf += sizeRoProf;
-  maxRegionDescUseProfInf = max(maxRegionDescUseProfInf,regionDescUseProfInf);
-
-  r->p = TOP_REGION;	         // Push this region onto the region stack
-  r->allocNow = 0;               // No allocation yet
-  r->allocProfNow = 0;           // No allocation yet
-  r->regionId = regionId;        // Put name of region in region descriptor
-
-  r->lobjs = NULL;               // The list of large objects is empty
-
-  r->g0.fp = NULL;
-  (&(r->g0))->a = alloc_new_page(&(r->g0));     // Allocate the first region page in g0
-
-#ifdef ENABLE_GEN_GC
-  r->g1.fp = NULL;
-  set_gen_1(r->g1);              // Mark generation
-  (&(r->g1))->a = alloc_new_page(&(r->g1));     // Allocate the first region page in g1
-
-#endif /* ENABLE_GEN_GC */
-
-  TOP_REGION = r;
-
-  r = (Region)setInfiniteBit((uintptr_t)r);
-
-  debug(printf("exiting]\n"));
-
-  return r;
+  (void)regionId;
+  return allocateRegion(ctx,r,1);
 }
 
 /* In CodeGenX64, we use a generic function to compile a C-call. The regionId */
@@ -1439,98 +1262,6 @@ allocTripleRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regio
 }
 #endif /*ENABLE_GC*/
 
-/*-------------------------------------------------------------------------------*
- * allocRegionFiniteProfiling:                                                   *
- * Program point 0 is used as indication no object at all in the runtime system. *
- * Program point 1 is used when a finite region is allocated but the correct     *
- * program point is not known.                                                   *
- * The first correct program point is 2.                                         *
- * There has to be room on the stack for the finite region descriptor and the    *
- * object descriptor. rdAddr points at the region descriptor when called.        *
- *-------------------------------------------------------------------------------*/
-#define notPrgPoint 1
-void
-allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
-{
-  ObjectDesc *objPtr;
-
-/*
-  printf("[Entering allocRegionFiniteProfiling, rdAddr=%p, regionId=%ld, size=%ld ...\n", rdAddr, regionId, size);
-*/
-  allocNowFin += size;                                  /* necessary for graph drawing */
-  maxAlloc = max(maxAlloc, allocNowFin+allocNowInf);    /* necessary for graph drawing */
-
-  callsOfAllocateRegionFin++;
-  maxAllocFin = max(allocNowFin, maxAllocFin);
-  allocProfNowFin += sizeObjectDesc;
-  regionDescUseProfFin += sizeFiniteRegionDesc;
-
-  // if (allocProfNowFin != regionDescUseProfFin) {
-  //   printf("allocFin: %ld differs from %ld\n", allocProfNowFin, regionDescUseProfFin);
-  // }
-
-  if (allocNowFin == maxAllocFin) {
-    maxAllocProfFin = allocProfNowFin;
-    maxRegionDescUseProfFin = regionDescUseProfFin;
-  }
-  /*  checkProfTab("profTabIncrAllocNow.entering.allocRegionFiniteProfiling"); */
-  profTabIncrAllocNow(regionId, size);
-
-  rdAddr->p = topFiniteRegion;   /* link to previous region description on stack */
-  rdAddr->regionId = regionId;   /* put name on region in descriptor. */
-  topFiniteRegion = rdAddr;      /* pointer to topmost region description on stack */
-
-  objPtr = (ObjectDesc *)(rdAddr + 1); /* We also put the object descriptor onto the stack. */
-  if (size >= OBJECT_DESC_SIZE_MASK) die("finite profiling object exceeds packed size limit");
-  objectDescInit(objPtr, size, notPrgPoint);
-
-  debug(printf("exiting, topFiniteRegion = %p, topFiniteRegion->p = %p, &topFiniteRegion = %p]\n",
-  	       topFiniteRegion, topFiniteRegion->p, &topFiniteRegion));
-
-  return;
-}
-
-/* In CodeGenX64, we use a generic function to compile a C-call. The regionId */
-/* and size may therefore be tagged, which this stub-function takes care of.  */
-void
-allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
-{
-  allocRegionFiniteProfiling(rdAddr, convertIntToC(regionId), convertIntToC(size));
-  return;
-}
-
-/*-----------------------------------------------------------------*
- * deallocRegionFiniteProfiling:                                   *
- * topFiniteRegion has to point at the bottom address of the       *
- * finite region descriptor, which will be the new stack address.  *
- *-----------------------------------------------------------------*/
-void
-deallocRegionFiniteProfiling(void)
-{
-  long size;
-
-  /*
-  printf("[Entering deallocRegionFiniteProfiling regionId=%ld (topFiniteRegion = %p)...\n",
-	 topFiniteRegion->regionId, topFiniteRegion);
-  */
-  size = objectDescSize((ObjectDesc *) (topFiniteRegion + 1));
-  allocNowFin -= size;                                    /* necessary for graph drawing */
-
-  callsOfDeallocateRegionFin++;
-  profTabDecrAllocNow(topFiniteRegion->regionId, size, "deallocRegionFiniteProfiling");
-  allocProfNowFin -= sizeObjectDesc;
-  regionDescUseProfFin -= sizeFiniteRegionDesc;
-
-  // if (allocProfNowFin != regionDescUseProfFin) {
-  //   printf("deallocFin: %ld differs from %ld\n", allocProfNowFin, regionDescUseProfFin);
-  // }
-
-  topFiniteRegion = topFiniteRegion->p;                   /* pop ptr. to prev. region desc. */
-
-  debug(printf("exiting, topFiniteRegion = %p]\n", topFiniteRegion));
-}
-
-
 /*-----------------------------------------------------------------*
  * allocProfiling:                                                 *
  * Same as alloc, except that an object descriptor is created.     *
@@ -1547,7 +1278,15 @@ allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 
   debug(printf("[Entering allocProfiling... gen:%p, n:%zu, pp:%zu.", gen, n, pPoint));
 
-  res = allocGen(gen, n+sizeObjectDesc);       // allocate object descriptor and object
+  res = allocGen(
+#ifdef PARALLEL
+      get_ro_from_gen(*gen),
+#endif
+      gen, n+sizeObjectDesc
+#ifdef PARALLEL
+      , TRUE
+#endif
+      );       // allocate object descriptor and object
 
   objectDescInit((ObjectDesc *)res, n, pPoint);
 
@@ -1561,6 +1300,7 @@ uintptr_t *
 allocProfiling(Region r, size_t n, size_t pPoint)
 {
   r = clearStatusBits(r);
-  return allocGenProfiling(&(r->g0),n,pPoint);
+  (void)pPoint;
+  return allocGenProfiling(&(r->g0),n,mlkit_rp_origin_token(NULL));
 }
 #endif /*PROFILING*/

@@ -25,7 +25,6 @@ struct
       \enabled, programs run somewhat slower--but they run and\n\
       \you save about 15 percent on compile time."}
 
-  val region_profiling = Flags.is_on0 "region_profiling"
 
   type place = Effect.place
   type excon = Excon.excon
@@ -1056,8 +1055,7 @@ struct
             let
               val L' = ig_lss(body,L)
 
-              (* Infinite letregions involve C calls and so do
-               * finite regions when profiling is enabled. C calls
+              (* Only infinite letregions involve C calls. C calls
                * are involved both at entrance to the body and at
                * exit of the body, thus, we mark both members of L
                * and L' as crossing C calls. The live range status
@@ -1068,8 +1066,7 @@ struct
 
               (* Update live range status for live variables, if C
                * calls are involved. *)
-              val _ = if List.null rhos orelse ( not(region_profiling())
-                                                 andalso List.null (remove_finite_rhos rhos) ) then ()
+              val _ = if List.null (remove_finite_rhos rhos) then ()
                       else (lvarset_app (set_lrs_status c_call) L ;
                             lvarset_app (set_lrs_status c_call) L')
             in L'

@@ -52,12 +52,12 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <table><thead><tr><th>Region</th><th>Source</th><th>Selector</th></tr></thead><tbody id="allocation-selectors"></tbody></table>
 </details></section>
 <section id="allocation-section" hidden>
-<h2 id="allocation-title" tabindex="-1">Allocation volume</h2><p id="allocation-note"></p>
+<h2 id="allocation-title" tabindex="-1">Site occupancy</h2><p id="allocation-note"></p>
 <label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region slice</option><option value="site">Allocation sites</option></select></label>
 <p class="note" id="allocation-flow-note"></p>
 <div id="allocation-flow" hidden></div>
-<table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th>Allocations</th><th>Memory</th></tr></thead><tbody id="allocation-rows"></tbody></table>
-<p class="note">Cumulative requested object storage, including ordinary headers; excludes page slack, profiler metadata and GC copying. Resets and collection do not subtract allocations. Depth 1 records the allocating function or initiating ML call into C. Select a site to view its saved IR. Snapshot time and thread filters do not filter this final aggregate histogram.</p>
+<table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th id="allocation-count-label">Objects</th><th>Memory</th></tr></thead><tbody id="allocation-rows"></tbody></table>
+<p class="note">Object payload currently occupying the selected region, grouped by allocation site. Includes ordinary object headers; excludes profiling descriptors and page slack. Narrow the snapshot range to inspect one snapshot or the snapshot with the largest total payload in that range. Without GC, unreachable objects remain included until their region is reset or deallocated. Select a site to view its IR.</p>
 <section id="ir-panel" hidden aria-labelledby="ir-title">
 <div class="ir-heading"><h3 id="ir-title" tabindex="-1">Allocation site in IR</h3><button id="ir-close" type="button">Close IR</button></div>
 <div class="ir-files"><span id="ir-source" class="note"></span><span id="ir-path-row" hidden><span id="ir-filename"></span> <button id="ir-copy-path" type="button" aria-label="Copy IR path" title="Copy full IR file path" style="display:inline-flex;vertical-align:middle;padding:4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button> <span id="ir-copy-status" role="status"></span><input id="ir-path" type="text" readonly hidden style="width:100%;box-sizing:border-box" aria-label="IR file path"></span></div><p id="ir-message" role="status"></p>
@@ -276,7 +276,7 @@ function allocationRegionFlow(rows){
    const button=irButton(r,annotation+(el('show-base').checked?' · '+baseName(r):'')+':');
    button.className+=' allocation-site';
    button.title+='\nSite: '+r.site+' · '+r.bytes+' bytes';
-   line.append(button,document.createTextNode(' '+r.count+' allocations · '+allocationSize(r.bytes)));
+   line.append(button,document.createTextNode(' '+r.count+' objects · '+allocationSize(r.bytes)));
    const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();
    if(owners.length)line.append(document.createTextNode(' · '+name(r.function)+' (closure created by '+owners.map(name).join(', ')+')'));
    else if(regionNode&&r.function!==regionNode.owner)line.append(document.createTextNode(' · '+name(r.function)));
@@ -344,7 +344,7 @@ function allocationRegionFlow(rows){
   const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<2;summary.tabIndex=0;
   const formals=fn.regions.filter(n=>n.role==='formal');
   const heading='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region),volume=functionVolume(fn);
-  function updateSummary(){summary.textContent=heading+(details.open?'':' · '+volume.count+' allocations · '+allocationSize(volume.bytes));}
+  function updateSummary(){summary.textContent=heading+(details.open?'':' · '+volume.count+' objects · '+allocationSize(volume.bytes));}
   details.addEventListener('toggle',updateSummary);updateSummary();
   summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
   const containers=new Map();
@@ -382,7 +382,7 @@ function allocationRegionFlow(rows){
  // Globals have no owning function; retain their measured sites explicitly.
  for(const id of relevant)if(!nodes.get(id)?.owner)sites(measured.get(id)||[],host);
  if(unplaced.length){const section=document.createElement('details'),title=document.createElement('summary');section.open=true;title.textContent='Sites without a resolved path to the selected region';section.append(title);sites(unplaced,section);host.append(section);}
- if(!rows.size){const empty=document.createElement('p');empty.textContent='No allocations recorded.';host.append(empty);}
+ if(!rows.size){const empty=document.createElement('p');empty.textContent='No objects observed in the selected snapshots.';host.append(empty);}
 }
 
 function allocationTable(){
@@ -393,17 +393,30 @@ function allocationTable(){
  if(profile.allocation_region){const r=profile.allocation_region;bindings.set(r.unit+':'+r.binding,r);}
  const bindingSource=sourceLabels([...bindings.values()].map(r=>r.source));
  for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const [i,value] of [r.name||'Region '+r.binding,bindingSource(r.source),selector].entries()){const td=document.createElement('td');td.textContent=value;if(i===1)td.title=r.source;tr.append(td);}el('allocation-selectors').append(tr);}
- if(session.enabled!=='1')return;
+ if(session.enabled!=='1'||!session.selector)return;
  el('allocation-rows').replaceChildren();
  el('allocation-section').hidden=false;
  const regionId=profile.allocation_region?.binding??String(session.selector||'').match(/:(\d+)$/)?.[1];
- el('allocation-title').textContent='Allocation volume'+(regionId!==undefined?' for r'+regionId:'');
+ const legacy=Number(profile.version||8)<9;
+ el('allocation-count-label').textContent=legacy?'Allocations':'Objects';
+ el('allocation-title').textContent=(legacy?'Allocation volume':'Site occupancy')+(regionId!==undefined?' for r'+regionId:'');
  const incomplete=!profile.complete||(profile.allocation_problems||[]).length;
- el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+' · All threads, entire run.';
+ el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+(legacy?' · Legacy cumulative allocation totals; snapshot filtering is unavailable.':' · Occupancy in the selected snapshot range.');
  const rows=new Map();
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
- for(const r of profile.allocations||[]){const k=JSON.stringify([r.unit,r.site]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ const visible=new Set(visibleSamples().map(s=>String(s.sample)));
+ const candidates=(profile.allocations||[]).filter(r=>r.sample===undefined||(visible.has(String(r.sample))&&selected(r)));
+ const summaries=(profile.occupancy_summaries||[]).filter(r=>visible.has(String(r.sample))&&selected(r));
+ const totals=new Map();for(const r of summaries)totals.set(String(r.sample),0n);for(const r of candidates)totals.set(String(r.sample),(totals.get(String(r.sample))||0n)+BigInt(r.bytes));
+ let peakSample=null,peakBytes=-1n;for(const [sample,bytes] of totals)if(bytes>peakBytes){peakSample=sample;peakBytes=bytes;}
+ for(const r of candidates.filter(r=>r.sample===undefined||String(r.sample)===peakSample)){const k=JSON.stringify([r.unit,r.site]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ if(peakSample!==null&&peakSample!=='undefined'){
+  el('allocation-note').textContent+=' Showing snapshot '+peakSample+' (largest selected payload in range).';
+  const totals=summaries.filter(r=>String(r.sample)===peakSample).reduce((a,r)=>({descriptors:a.descriptors+BigInt(r.object_overhead),slack:a.slack+BigInt(r.slack)}),{descriptors:0n,slack:0n});
+  el('allocation-note').textContent+=' Descriptor overhead: '+allocationSize(totals.descriptors)+'; unused page space: '+allocationSize(totals.slack)+'.';
+ }
+
  const hasFlow=profile.region_flow?.available===true;
  el('allocation-view-control').hidden=!hasFlow;
  const byFlow=hasFlow&&el('allocation-view').value!=='site';
@@ -418,7 +431,7 @@ function allocationTable(){
   const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),allocationSize(r.bytes,true)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+('\nSite: '+r.site);if(i===1)td.title=r.source;if(i===3)td.title=r.bytes+' bytes';
    if(i===0){td.replaceChildren();td.append(irButton(r,name));}tr.append(td);}el('allocation-rows').append(tr);
  }
- if(!rows.size)el('allocation-note').textContent+=' No allocations recorded.';
+ if(!rows.size)el('allocation-note').textContent+=' No objects observed in the selected snapshots.';
 }
 allocationTable();
 el('allocation-view').addEventListener('change',allocationTable);
@@ -491,6 +504,7 @@ function axisTicks(lo,hi){
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
  rangeControls();
+ allocationTable();
  const samples=visibleSamples(),[start,end]=snapshotBounds();
  el('export-svg').disabled=!samples.length;
  el('graph-layout').className='graph-layout'+(el('legend-right').checked?' legend-right':'');

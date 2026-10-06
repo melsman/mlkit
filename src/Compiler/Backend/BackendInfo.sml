@@ -93,7 +93,7 @@ structure BackendInfo : BACKEND_INFO =
       fun size_g0 () = size_gen
       fun size_prev_ptr () = 1
       fun size_g1 () = if gengc_p() then size_gen else 0
-      fun size_prof () = if region_profiling() then 3 else 0
+      fun size_prof () = 0
       fun size_par_lock () = if parallelism_p() then 1 else 0  (* pointer to a lock *)
     in
       fun size_of_reg_desc () =
@@ -104,7 +104,6 @@ structure BackendInfo : BACKEND_INFO =
           else die "region_mutex_offset_words"
     end
 
-    val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
     (* Shared with Runtime/Region.h: 16 size bits, 48 program-point bits.
      * Size 65535 is the large-object escape; its full size is stored separately. *)
     fun packObjectDesc (words,point) : IntInf.int =

@@ -36,33 +36,33 @@ f["type"]=="region" {
         need(f["region_type"]!="unavailable","region type missing")
         need(f["unit"]=="<global>" ? f["source"]=="global" : f["source"] ~ /\/regions.sml$/,"source filename")
         if (n==8 && f["unit"]!="<global>" && f["kind"]=="infinite") {
-            locals++; need(f["pages"]==2 && f["page_footprint"]==13016,"local page capacity")
+            locals++; need(f["pages"]==2 && f["page_footprint"]==13024,"local page capacity")
         }
     }
 }
 f["type"]=="stack" {
     need(equal(f["active_bytes"],add(f["stack_bytes"],f["finite_bytes"])),"stack accounting")
     stackFinite=add(stackFinite,f["finite_bytes"]); stackCount++
-    if(mode=="runtime") need(f["active_bytes"]==(n==1 ? 1056 : 512) && f["stack_bytes"]==(n==1 ? 1008 : 488),"runtime stack span")
+    if(mode=="runtime") need(f["active_bytes"]==(n==1 ? 1056 : 512) && f["stack_bytes"]==(n==1 ? 1056 : 512),"runtime stack span")
     if(mode=="graph" && n<=24) { need(n==1 || f["active_bytes"]+0>previousStack+0,"recursive stack growth"); previousStack=f["active_bytes"] }
 }
 f["type"]=="sample_end" {
     need(active && f["sample"]==n,"snapshot end"); active=0; completed++
-    need(stackCount>0 && equal(finite,stackFinite),"finite reservations / stack subtraction")
+    need(stackCount>0 && equal(finite,stackFinite),"finite storage excluded from region records")
     lastEnd=f["time"]; maxCollections=f["gc_collections"]+0>maxCollections+0 ? f["gc_collections"] : maxCollections
     ownersCount=0; for(k in owners) ownersCount++; if(ownersCount>2 || (mode=="argobots" && ownersCount>1)) multiOwner=1
     if(mode=="runtime") {
         need(f["max_pages"]==2,"snapshot page maximum")
-        need(footprint==(n==1 ? 8264 : 16) && large==(n==1 ? 4096 : 0) && finite==(n==1 ? 48 : 24),"runtime totals")
+        need(footprint==(n==1 ? 8264 : 16) && large==(n==1 ? 4096 : 0) && finite==0,"runtime totals")
         if(n==1) need(f["frames"]==2 && f["pages_visited"]==2,"runtime traversal")
     }
     if(mode=="regions") {
-        split("32 16 16 16 0 48 32", expected," "); if(n<=7) need(finite==expected[n],"finite totals")
-        need(large==(n<=2 ? 24008 : 0),"large objects")
-        split("112 112 112 144 96",expected," "); if(n<=5) need(footprint==expected[n],"page footprint")
+        need(finite==0,"finite storage is stack storage")
+        need(large==(n<=2 ? 24016 : 0),"large objects")
+        split("112 112 112 152 96",expected," "); if(n<=5) need(footprint==expected[n],"page footprint")
         if(n==1 || n==9) need(f["frames"]>=3,"frame span")
         if(n==6) need(f["frames"]>=4,"recursive frames")
-        if(n==9) need(finite==112,"spilled result reservation")
+        if(n==9) need(finite==0,"spilled result is stack storage")
     }
 }
 f["type"]=="thread_start" { starts[f["thread"]]++; startCount++ }

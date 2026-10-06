@@ -171,7 +171,7 @@ safestrcat3(char* s1, char* s2, char* s3, char** pbuf, size_t* pbuf_sz) {
 }
 
 void
-REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
+pretty_ML_Print(Context ctx, String s, uintptr_t exn) {
   // side-effecting toplevel buffer pretty_topbuf
   size_t sz = get_string_size(s->size);
   maybe_resize_buf("topbuf", &pretty_topbuf, &pretty_topbuf_sz, sz+2);

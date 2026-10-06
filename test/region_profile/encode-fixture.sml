@@ -26,9 +26,9 @@ struct
                           then if key = "word_bytes" then 8 else 0
                           else raise Fail ("missing " ^ key)
           fun record r =
-              let fun tag n = if n > (if version >= 8 then 17 else 16) then raise Fail "unknown fixture record"
+              let fun tag n = if n > (if version >= 9 then 19 else if version >= 8 then 17 else 16) then raise Fail "unknown fixture record"
                               else if #1(ProfileBinary.schema versionString n) = kind r then n else tag(n+1)
-                  val t = tag 1
+                  val t = if kind r = "allocation" andalso Option.isSome(find r "sample") then 18 else tag 1
                   val (_,nums,strs) = ProfileBinary.schema versionString t
                   fun bytes key =
                       let val s = case find r key of SOME v => string v | NONE => ""

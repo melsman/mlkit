@@ -19,13 +19,15 @@ struct
         | 10 => ("sample_skipped",["time"],["reason"])
         | 11 => ("mark",["time"],["label"])
         | 12 => ("allocation_session",["enabled","depth"],["build_id","selector"])
-        | 13 => if version = "7" orelse version = "8" then
+        | 13 => if version = "7" orelse version = "8" orelse version = "9" then
             ("allocation_site",["definition","site","point","location_kind"],["unit","function","source","ir_identity","ir_object"])
             else ("allocation_site",["definition","site"],["unit","function","source"])
+        | 18 => ("allocation",["sample","instance","region_definition","thread","definition","count","bytes","worker","cpu"],[])
+        | 19 => ("occupancy_summary",["sample","instance","region_definition","payload","objects","object_overhead","slack"],[])
         | 14 => ("allocation",["thread","definition","count","bytes"],[])
         | 15 => ("allocation_incomplete",["thread"],["reason"])
         | 16 => ("allocation_region",["binding"],["unit","name","source"])
-        | 17 => if version = "8" then ("ir_object",[],["ir_identity","ir_object"])
+        | 17 => if version = "8" orelse version = "9" then ("ir_object",[],["ir_identity","ir_object"])
                 else raise Fail "IR manifest requires version 8"
         | _ => raise Fail "unknown binary record tag"
   fun read path =
@@ -41,8 +43,8 @@ struct
               end
           val () = if size >= 8 andalso
                      Byte.bytesToString(Word8VectorSlice.vector(Word8VectorSlice.slice(data,0,SOME 6))) = "MLKRP\000"
-                     andalso (byte 6 = 5 orelse byte 6 = 6 orelse byte 6 = 7 orelse byte 6 = 8) andalso byte 7 = 0
-                   then () else raise Fail "unsupported binary profile header (expected version 5, 6, 7 or 8)"
+                     andalso (byte 6 = 5 orelse byte 6 = 6 orelse byte 6 = 7 orelse byte 6 = 8 orelse byte 6 = 9) andalso byte 7 = 0
+                   then () else raise Fail "unsupported binary profile header (expected version 5, 6, 7, 8 or 9)"
           val version = Int.toString(byte 6)
           fun record start stop =
               let val (kind,nums,strs) = schema version (byte start)

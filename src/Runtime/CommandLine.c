@@ -14,10 +14,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef PROFILING
-#include <signal.h>      /* Used by signal. */
-#include <sys/time.h>    /* Used by setitimer. */
-#endif
 
 int commandline_argc;     // Kam-backend (Interp.c) needs access to update these variables
 char **commandline_argv;  // when discharging object file arguments.
@@ -57,12 +53,6 @@ printUsage(void)
   fprintf(stderr,"      [-only_major_gc] \n");
 #endif // ENABLE_GEN_GC
 #endif /*ENABLE_GC*/
-#ifdef PROFILING
-  fprintf(stderr,"      [-notimer n | -realtime | -virtualtime | -profiletime] \n");
-  fprintf(stderr,"      [-microsec n | -sec n] \n");
-  fprintf(stderr,"      [-file outFileName] [-noDatafile] [-showStat] \n");
-  fprintf(stderr,"      [-profTab] [-verbose] \n");
-#endif /*PROFILING*/
 #if (PARALLEL && ARGOBOTS)
   fprintf(stderr,"      [-p n] [-verbose_par, -vp] \n");
 #endif
@@ -85,27 +75,6 @@ printUsage(void)
   fprintf(stderr,"      -p n                     Number of execution streams.\n");
   fprintf(stderr,"      -verbose_par, -vp        Show info about parallel streams.\n\n");
 #endif
-#ifdef PROFILING
-  fprintf(stderr,"      -notimer n               Profile every n'th function call.\n");
-  fprintf(stderr,"      -realtime                Profile with the real timer.\n");
-  fprintf(stderr,"      -virtualtime             Profile with the virtual timer.\n");
-  fprintf(stderr,"      -profiletime             Profile with the profile timer.\n\n");
-  fprintf(stderr,"      -microsec n              If a timer is chosen, then profile\n");
-  fprintf(stderr,"                                  every n'th microsecond.\n");
-  fprintf(stderr,"      -sec n                   If a timer is chosen, then profile\n");
-  fprintf(stderr,"                                   every n'th second.\n\n");
-  fprintf(stderr,"      -file outFileName        Use outFileName as profile datafile, \n");
-  fprintf(stderr,"                                  default is %s\n\n", logName);
-  fprintf(stderr,"      -profTab                 Print profiling table.\n");
-  fprintf(stderr,"      -verbose                 Verbose mode.\n");
-  fprintf(stderr,"      -noDatafile              The profile datafile is not exported,\n");
-  fprintf(stderr,"                                  default is to export the datafile.\n");
-  fprintf(stderr,"      -showStat                Statistics are shown after execution.\n\n");
-  fprintf(stderr,"  This program is compiled using the ML Kit with profiling\n");
-  fprintf(stderr,"  enabled. When executed, the program generates a profile\n");
-  fprintf(stderr,"  datafile, which can be passed to the program `rp2ps' to\n");
-  fprintf(stderr,"  create PostScript profile graphs.\n\n");
-#endif /*PROFILING*/
   exit(0);
 }
 
@@ -239,107 +208,6 @@ parseCmdLineArgs(int argc, char *argv[])
       match = 1;
     }
 #endif /*ENABLE_GC*/
-#ifdef PROFILING
-    if (strcmp((char *)argv[0],"-notimer")==0) {
-      profType = noTimer;
-      match = 1;
-      app_arg_index++; /* this is an two-word option */
-      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
-	if ((profNo = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Something wrong with the number no in switch -notimer no.\n");
-	  printUsage();
-	}
-      } else {
-	fprintf(stderr,"No number after the switch -notimer.\n");
-	printUsage();
-      }
-    }
-
-    if (strcmp((char *)argv[0],"-realtime")==0) {
-      profType = ITIMER_REAL;
-      signalType = SIGALRM;
-      match = 1;
-    }
-
-    if (strcmp((char *)argv[0],"-virtualtime")==0) {
-      profType = ITIMER_VIRTUAL;
-      signalType = SIGVTALRM;
-      match = 1;
-    }
-
-    if (strcmp((char *)argv[0],"-profiletime")==0) {
-      profType = ITIMER_PROF;
-      signalType = SIGPROF;
-      match = 1;
-    }
-
-    if (strcmp((char *)argv[0],"-profTab")==0) {
-      printProfileTab = 1;
-      match = 1;
-    }
-
-    if (strcmp((char *)argv[0],"-microsec")==0) {
-      match = 1;
-      app_arg_index++; /* this is an two-word option */
-      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
-	if ((microsec = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Something wrong with the number no in switch -microsec no.\n");
-	  printUsage();
-	}
-	sec = 0;
-      } else {
-	fprintf(stderr,"No number after the switch -microsec.\n");
-	printUsage();
-      }
-    }
-
-    if (strcmp((char *)argv[0],"-sec")==0) {
-      match = 1;
-      app_arg_index++; /* this is an two-word option */
-      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
-	if ((sec = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Something wrong with the number no in switch -sec no.\n");
-	  printUsage();
-	}
-	microsec = 0;
-      } else {
-	fprintf(stderr,"No number after the switch -sec.\n");
-	printUsage();
-      }
-    }
-
-    if (strcmp((char *)argv[0],"-file")==0) {
-      match = 1;
-      app_arg_index++; /* this is an two-word option */
-      if ((argc-1)>0 && (*(argv+1))[0] != '-') {
-	--argc;
-	++argv;
-	strcpy(logName, (char *)argv[0]);
-      } else {
-	fprintf(stderr,"No filename after the -file switch.\n");
-	printUsage();
-      }
-      fprintf(stderr,"Using output file %s.\n", logName);
-    }
-
-    if ((strcmp((char *)argv[0], "-v")==0) ||
-	(strcmp((char *)argv[0], "-verbose")==0)) {
-      match = 1;
-      verboseProfileTick = 1;
-    }
-
-    if ((strcmp((char *)argv[0], "-noDatafile")==0) ||
-	(strcmp((char *)argv[0], "-noProfileDatafile")==0)) {
-      match = 1;
-      exportProfileDatafile = 0;
-    }
-
-    if ((strcmp((char *)argv[0], "-showStat")==0) ||
-	(strcmp((char *)argv[0], "-showStatistics")==0)) {
-      match = 1;
-      showStat = 1;
-    }
-#endif /*PROFILING*/
 
 #ifdef ARGOBOTS
     if (strcmp((char *)argv[0],"-p")==0) {

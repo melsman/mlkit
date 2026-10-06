@@ -1,12 +1,11 @@
-/* Exercises counter identities and origin nesting independently of generated
- * code. Generated-code tests cover the native ABIs and real allocators. */
+/* Foreign-origin nesting, cleanup on exceptions, and global binding keys. */
 #include "RegionProfile.h"
 #include "String.h"
 #include <assert.h>
 #include <string.h>
 
 const volatile uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
-const volatile uintptr_t mlkit_rp_allocation_capable = 2;
+const volatile uintptr_t mlkit_rp_allocation_capable = 3;
 Rp *global_freelist;
 Context top_ctx;
 static struct { size_t tag; char data[8]; } unit = {0,"fixture"};
@@ -43,20 +42,20 @@ int main(int argc, char **argv) {
   mlkit_rp_bind_region(&r,&selected);
   mlkit_rp_bind_region(&ignored,&unselected);
   assert(r.allocation_profile == &selected && !ignored.allocation_profile);
-  mlkit_rp_allocation(&r,2,&ctx,&sites[0]);
+  assert(mlkit_rp_origin_token(&ctx) == (1));
   mlkit_rp_foreign_enter(&ctx,&sites[1],2000);
-  mlkit_rp_allocation(&r,3,NULL,NULL);
+  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
   mlkit_rp_foreign_enter(&ctx,&sites[2],1000);
-  mlkit_rp_allocation(&r,4,NULL,NULL);
-  /* A callback allocates at its own ML site, not its C caller's origin. */
-  mlkit_rp_allocation(&r,5,&ctx,&sites[0]);
+  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[2] >> 3));
+  /* ML allocations carry their own token; the enclosing C origin is unchanged. */
+  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[2] >> 3));
   mlkit_rp_foreign_leave(&ctx,1000);
-  mlkit_rp_allocation(&r,6,NULL,NULL);
+  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
   mlkit_rp_foreign_enter(&ctx,&sites[2],900);
   mlkit_rp_foreign_unwind(&ctx,1500);
-  mlkit_rp_allocation(&r,7,NULL,NULL);
+  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
   mlkit_rp_foreign_unwind(&ctx,3000);
-  mlkit_rp_allocation(&r,8,NULL,NULL);
+  assert(mlkit_rp_origin_token(&ctx) == (1));
   mlkit_rp_close();
   return 0;
 }

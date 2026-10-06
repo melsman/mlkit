@@ -582,7 +582,7 @@ struct
    * scratch register and call it without entering a linker-generated stub. *)
   fun privateCallInto target =
     addressInto (target,X 30) ++ instruction A.blr (R(X 30))
-  fun allocSlowInto words untag pp code =
+  fun allocSlowInto words untag site code =
     let
       val target = if untag then untaggedAllocStub else allocStub
       val code = if profiling() then stackInto (false,16) code else code
@@ -590,7 +590,9 @@ struct
          ++ privateCallInto target) code
     in
       if profiling() then (stackInto (true,16)
-         ++ constantInto (BackendInfo.packObjectDesc(words,pp),X 17)
+         ++ addressInto(site,X 17)
+         ++ instruction A.lsl (R(X 17),R(X 17),I(13))
+         ++ adjustInto A.add (X 17) (Int.min(words,65535))
          ++ storeInto (X 17,SP,0)) code
       else code
     end
@@ -654,33 +656,23 @@ struct
       val (a,mode) = regionArg sma
       val kind = regionKind sma
       val pp = programPoint sma
+      val site = if profiling() then allocationSite(pp,0) else NameLab "unused_site"
       val done = localFresh()
       val finite = localFresh()
-      fun finiteCode code =
-        (instruction A.and_ (R(X 16),R(X 16),I(~4))
-         ++ (if profiling() then
-               let
-                 fun part shift = IntInf.mod(IntInf.div(IntInf.fromInt pp,shift),65536)
-               in loadInto (X 16,~8,X 17)
-                  ++ instruction A.movk (R(X 17),I(part 1),ShiftImm(LSL,16))
-                  ++ instruction A.movk (R(X 17),I(part 65536),ShiftImm(LSL,32))
-                  ++ instruction A.movk (R(X 17),I(part 4294967296),ShiftImm(LSL,48))
-                  ++ storeInto (X 17,X 16,~8)
-               end
-             else fn code => code)) code
+      fun finiteCode code = instruction A.and_ (R(X 16),R(X 16),I(~4)) code
       fun ordinaryInfiniteCode code =
-        if profiling() orelse (parallel() andalso not(unprotected())) orelse
-           words > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
-          allocSlowInto words untag pp code
+        if (parallel() andalso not(unprotected())) orelse
+           words + (if profiling() then 1 else 0) > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
+          allocSlowInto words untag site code
         else
           let
             val slow = localFresh()
             val joined = localFresh()
-            val bytes = 8*words
+            val bytes = 8*(words + (if profiling() then 1 else 0))
             val () = addStatic
               (Directive(Text) :: Directive(Align 2) :: Label slow ::
                A.orr (R(X 16),R(X 16),I(1)) ::
-               allocSlowInto words untag pp [A.b (L(joined))])
+               allocSlowInto words untag site [A.b (L(joined))])
             val code = Label joined :: code
             val code = if gc() then (addressInto (NameLab "alloc_period",X 17)
                ++ loadInto (X 17,0,X 30)
@@ -697,34 +689,17 @@ struct
              ++ instruction A.add (R(X 17),R(X 17),I(1))
              ++ storeInto (X 17,X 16,0)
              ++ moveInto (X 17,X 16)
-             ++ adjustInto A.sub (X 16) (bytes+(if untag then 8 else 0))) code
+             ++ adjustInto A.sub (X 16) bytes
+             ++ (if profiling() then
+                   addressInto(site,X 17)
+                   ++ instruction A.lsl (R(X 17),R(X 17),I(13))
+                   ++ adjustInto A.add (X 17) words
+                   ++ storeInto(X 17,X 16,0)
+                   ++ adjustInto A.add (X 16) 8
+                 else fn c => c)
+             ++ (if untag then adjustInto A.sub (X 16) 8 else fn c => c)) code
           end
-      fun infiniteCode code =
-        if not(allocationProfile()) then ordinaryInfiniteCode code
-        else
-          let val ordinary = localFresh()
-              val joined = localFresh()
-              val site = allocationSite(pp,0)
-          in
-            (instruction A.and_ (R(X 30),R(X 16),I(~4))
-             ++ (if Flags.is_on "allocation_profile_global" then
-                  addressInto(NameLab "mlkit_rp_allocation_enabled",X 17) ++ loadInto(X 17,0,X 17)
-                 else loadInto(X 30,8*(BackendInfo.size_of_reg_desc()-1),X 17))
-             ++ instruction A.cbz (R(X 17),L(ordinary))
-             ++ stackInto(true,16)
-             ++ storeInto(X 16,SP,0)
-             ++ addressInto(site,X 17)
-             ++ storeInto(X 17,SP,8)
-             ++ internalCallInto (fsz+2) "alloc_profiled"
-                [SS.PHREG_ATY(X 28),SS.STACK_ATY(fsz+1),integer words,
-                 SS.STACK_ATY fsz,integer(if parallel() andalso not(unprotected()) then 1 else 0)]
-             ++ stackInto(false,16)
-             ++ (if untag then adjustInto A.sub (X 16) 8 else fn c => c)
-             ++ instruction A.b (L(joined))
-             ++ one (Label ordinary)
-             ++ ordinaryInfiniteCode
-             ++ one (Label joined)) code
-          end
+      fun infiniteCode code = ordinaryInfiniteCode code
       val code = if kind = 0 then finiteCode code
         else if kind = 1 then (resetLoadedInto mode
            ++ infiniteCode) code
@@ -1812,9 +1787,7 @@ struct
           fun release (((_,sz),_),code) =
             case sz of
               LS.INF => regionCallInto live fsz "deallocateRegion" [SS.PHREG_ATY(X 28)] code
-            | LS.WORDS n =>
-                if n = 0 orelse not(profiling()) then code
-                else regionCallInto live fsz "deallocRegionFiniteProfiling" [] code
+            | LS.WORDS _ => code
           val code = foldr release code (rev rhos)
           val previousRegions = !rpRegions
           val () = rpRegions := rhos @ previousRegions
@@ -1825,11 +1798,7 @@ struct
               LS.INF => regionCallInto entryLive fsz (regionAllocator place)
                 [SS.PHREG_ATY(X 28),SS.REG_F_ATY off,integer(regionPolicy false place)]
                 (if allocationProfile() then bindAllocationInto fsz (SS.REG_F_ATY off) (allocationBinding place) code else code)
-            | LS.WORDS n =>
-                if n = 0 orelse not(profiling()) then code
-                else regionCallInto entryLive fsz "allocRegionFiniteProfiling"
-                  [SS.REG_F_ATY(off+BackendInfo.objectDescSizeP+BackendInfo.finiteRegionDescSizeP),
-                   integer(Effect.key_of_eps_or_rho place),integer n] code
+            | LS.WORDS _ => code
         in
           (foldr enter code rhos,entryLive)
         end
@@ -2548,7 +2517,7 @@ struct
                   | SS.REG_F_ATY _ => frameOperand := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
-      val optimiseFrame = not(profiling()) andalso not(extra_gc_checks())
+      val optimiseFrame = not(extra_gc_checks())
       val wrapper = if optimiseFrame andalso not(sampledProfile()) andalso tail_wrappers() then identityTail cc body else NONE
       val recursive = ref false
       val loop = if optimiseFrame andalso self_loops() andalso (not(gc()) orelse fsz = 0) andalso ac = 0
@@ -2560,9 +2529,7 @@ struct
       val code = (stmtsInto fsz results body
          ++ epilogueInto fsz) code
       val code = rpPollInto fsz code
-      val code = if profiling() then internalCallInto fsz "mlkit_arm64_profile_entry"
-                   [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)] code
-                 else code
+
     in
       case wrapper of
         SOME target => (functionInto (MLFunLab l)
@@ -2693,7 +2660,7 @@ struct
         end
         else ()
       val () = if allocationProfile() then
-        (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["2"] []);
+        (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["3"] []);
          addStatic(datum (NameLab "mlkit_rp_build_id")
            [pr_lab(stringData(Time.toString(Time.now()))) ^ " + 8"] [])) else ()
       fun init (place,l) code =
@@ -2763,11 +2730,6 @@ struct
           (datum (NameLab "data_begin_addr") [pr_lab linkBegin]
             ++ datum (NameLab "data_end_addr") [pr_lab linkEnd]) code
 
-      fun profileStack () code =
-        foldr (fn (name,code) => (addressInto (NameLab name,X 16)
-           ++ moveInto (SP,X 17)
-           ++ storeInto (X 17,X 16,0)) code)
-          code ["stackBot","maxStack","maxStackP"]
       fun initGlobals () code = foldr (fn (g,code) => init g code) code globals
       val code = gcData []
       val code =
@@ -2829,14 +2791,6 @@ struct
               moveInto(X 28,X 0) ++ moveInto(X 19,X 1)
               ++ instruction A.bl (L(NameLab "mlkit_rp_foreign_unwind"))
              else fn c => c)) code
-      val code = if profiling() then
-          (loadInto(X 0,~8,X 5)
-           ++ instruction A.and_ (R(X 5),R(X 5),I(65535))
-           ++ instruction A.and_ (R(X 4),R(X 4),I(~65536))
-           ++ instruction A.orr (R(X 5),R(X 5),R(X 4))
-           ++ storeInto(X 5,X 0,~8)) code
-        else
-          code
       val code =
         (constantInto(0,X 0)
          ++ instruction A.b (L(NameLab "terminateML"))
@@ -2885,10 +2839,7 @@ struct
       val code =
         (initGlobals ()
          ++ gcInit) code
-      val code = if profiling() then
-          profileStack () code
-        else
-          code
+
     in
       (functionInto(NameLab "code")
        ++ moveInto(X 0,X 28)) code

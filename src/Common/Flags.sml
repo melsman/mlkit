@@ -773,20 +773,12 @@ local
 in
   val _ = app (add false)
   [
-   ("allocation_profile_global", NONE, "global allocation diversion experiment", ref false,
-    "Compare global diversion with selective diversion; requires -allocation_profile."),
-   ("allocation_profile", NONE, "flat allocation attribution", ref false,
-    "Instrument infinite allocations for selected-region attribution; requires -rp."),
-   ("region_profile", SOME "rp", "sampled region profiling", ref false,
-    "Emit metadata and safe-point polls for sampled region profiling."),
+   ("allocation_profile", NONE, "site occupancy (alias for -rp)", region_profiling,
+    "Compatibility alias for -rp; site descriptors are always included."),
+   ("region_profile", SOME "rp", "sampled region profiling", region_profiling,
+    "Emit packed object descriptors, IR metadata and safe-point polls for rpview."),
    ("region_profiling", SOME "prof", "region profiling", region_profiling,
-    "Enable region profiling. Object code stemming\n\
-     \from compiling a program with region profiling enabled\n\
-     \is instrumented with profiling information. When a program\n\
-     \compiled with region profiling enabled is run, the program\n\
-     \produces a profile file run.rp, which can then be read\n\
-     \by the profiling tool rp2ps that comes with the MLKit to\n\
-     \produce profiling graphs of various forms."),
+    "Compatibility alias for -rp; write snapshots for rpview."),
     ("print_region_flow_graph", SOME "Prfg", "print region flow graph", print_region_flow_graph,
      "Print a region flow graph for the program fragment\n\
      \and generate a .vcg-file, which can be viewed using\n\

@@ -321,31 +321,28 @@ struct
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
     fun ordinary_alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
-        if region_profiling() then
-          let val n = n0 + BI.objectDescSizeP
-              fun post_prof C =
-                  (* treg1 now points at the object descriptor; initialize it *)
-                  move_immed(BI.packObjectDesc(n0,pp), R treg0,
+        if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
+          let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
+              val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"
+              fun descriptor C = if not(region_profiling()) then C else
+                  G.lea(LA site,treg0) $
+                  I.salq(I "13",R treg0) ::
+                  I.orq(I(i2s(Int.min(n0,65535))),R treg0) ::
                   I.movq(R treg0,D("0",treg1)) ::
-                  G.lea(D (i2s (8*BI.objectDescSizeP), treg1), treg1) $
-                  C)                                                   (* make treg1 point at object *)
+                  G.lea(D("8",treg1),treg1) $ C
           in copy(t,treg1,
-             move_immed(IntInf.fromInt n, R treg0,
-             I.call (NameLab "__allocate") :: (* assumes args in treg1 and treg0; result in treg1 *)
-             post_prof
-             (copy(treg1,t,C))))
-          end
-        else if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
-          let val n = n0 (* size in words *)
-          in
-            copy(t,treg1,
-            move_immed(IntInf.fromInt n, R treg0,     (*   treg0 = n                     *)
-            I.call (NameLab "allocinreg") ::          (*   call allocinreg with args in     *)
-            copy(treg1,t,C)))                         (*     treg1 and treg0; result  *)
-                                                      (*     in treg1.                   *)
+             move_immed(IntInf.fromInt n,R treg0,
+             I.call (NameLab (if region_profiling() then "__allocate" else "allocinreg")) :: descriptor(copy(treg1,t,C))))
           end
         else
-          let val n = n0
+          let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
+              val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"
+              fun descriptor C = if not(region_profiling()) then C else
+                  G.lea(LA site,treg0) $
+                  I.salq(I "13",R treg0) ::
+                  I.orq(I(i2s(Int.min(n0,65535))),R treg0) ::
+                  I.movq(R treg0,D("0",treg1)) ::
+                  G.lea(D("8",treg1),treg1) $ C
               val l = new_local_lab "ret_alloc"
               val l_expand = new_local_lab "expand"
               val allocate_lab =
@@ -387,34 +384,10 @@ struct
             G.lea(D(i2s(~8*n),treg0),treg1) $                    (*   treg1 = treg0 - 8n            *)
             maybe_update_alloc_period n (
             G.label l $                                          (*     treg1 and treg0; result     *)
-            (copy(treg1,t,C)))))))                               (*     in treg1.                   *)
+            descriptor(copy(treg1,t,C)))))))                               (*     in treg1.                   *)
           end
 
-    fun alloc_kill_tmp01 (t,n,fsz,pp,C) =
-      if not(allocationProfile()) then ordinary_alloc_kill_tmp01(t,n,fsz,pp,C)
-      else
-        let val ordinary = new_local_lab "allocation_ordinary"
-            val joined = new_local_lab "allocation_join"
-            val site = (!allocationSite)(pp,0)
-            val suffix = I.lab joined :: C
-        in
-          copy(t,treg1,
-          G.andd(I "-4",treg1) $
-          (if Flags.is_on "allocation_profile_global" then
-             fn code => G.lea(LA(NameLab "mlkit_rp_allocation_enabled"),treg0)
-                        (I.cmpq(I "0",D("0",treg0)) :: code)
-           else fn code => I.cmpq(I "0",D(i2s(8*(BI.size_of_reg_desc()-1)),treg1)) :: code) $
-          I.je ordinary ::
-          G.sub(I "16",rsp) $
-          G.lea(LA site,treg0) $
-          I.movq(R treg0,D("0",rsp)) ::
-          move_immed(IntInf.fromInt n,R treg0,
-          I.call(NameLab "__allocate_profiled") ::
-          G.add(I "16",rsp) $
-          copy(treg1,t,
-          G.jump joined $
-          I.lab ordinary :: G.or(I "1",treg1) $ ordinary_alloc_kill_tmp01(treg1,n,fsz,pp,copy(treg1,t,suffix)))))
-        end
+    fun alloc_kill_tmp01 (t,n,fsz,pp,C) = ordinary_alloc_kill_tmp01(t,n,fsz,pp,C)
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
      * then the following function is used for allocating pairs in
@@ -447,19 +420,6 @@ struct
          | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
          | _ => die "load_aty_ap: ATY cannot be used to allocate memory"
 
-    fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
-      if region_profiling() then
-        if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else
-          let val tmp = if obj_ptr = treg0 then treg1 else treg0
-          in I.push(R tmp) ::
-             move_immed(BI.packObjectDesc(0,pp), R tmp,
-             I.andq(I "65535",D("-8",obj_ptr)) ::
-             I.orq(R tmp,D("-8",obj_ptr)) ::
-             I.pop(R tmp) :: C)
-          end
-      else C
-
     fun alloc_ap_kill_tmp01 (sma, dst_reg:reg, n, fsz, C) =
       case sma
         of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
@@ -474,9 +434,9 @@ struct
          | LS.ATTOP_LI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_kill_tmp01(dst_reg,n,fsz,pp,C))
          | LS.ATTOP_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
-                                   store_pp_prof(dst_reg,pp,C))
+                                   C)
          | LS.ATBOT_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp,C))
+                                   C)
          | LS.ATTOP_FI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_kill_tmp01(dst_reg,n,fsz,pp,C))
          | LS.ATTOP_FF(aty,pp) =>
@@ -528,9 +488,9 @@ struct
          | LS.ATTOP_LI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C))
          | LS.ATTOP_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
-                                   store_pp_prof(dst_reg,pp, C))
+                                   C)
          | LS.ATBOT_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp, C))
+                                   C)
          | LS.ATTOP_FI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C))
          | LS.ATTOP_FF(aty,pp) =>

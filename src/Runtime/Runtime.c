@@ -25,9 +25,6 @@
 #include "GC.h"
 #endif
 
-#ifdef PROFILING
-#include "Profiling.h"
-#endif
 
 #ifdef PARALLEL
 #include "Spawn.h"
@@ -113,10 +110,6 @@ terminateML (long status)
   thread_finalize();
 #endif
 
-#ifdef PROFILING
-  outputProfilePost();
-  Statistics();
-#endif
 
 #ifdef ENABLE_GC
   if ( report_gc || verbose_gc )
@@ -210,10 +203,6 @@ uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
   fprintf(stderr, "\n");
   fflush(stderr);
 
-#ifdef PROFILING
-  outputProfilePost();
-  Statistics();
-#endif
 
   if (!command_pipe) {
     exit (-1);            // exit unless it is the REPL.
@@ -341,12 +330,6 @@ sig_handler_segv(int sig, siginfo_t *info, void *extra)
 /*   } */
 /* #endif /\* ENABLE_GC *\/ */
 
-/* #ifdef PROFILING */
-/*   if ( doing_prof ) { */
-/*     raised_exn_interupt_prof=1; */
-/*     return; */
-/*   } */
-/* #endif /\* PROFILING *\/ */
 
 /*   raise_exn((uintptr_t)&exn_INTERRUPT); */
 /*   return; /\* never comes here *\/ */
@@ -364,12 +347,6 @@ sig_handler_segv(int sig, siginfo_t *info, void *extra)
 /*   } */
 /* #endif /\* ENABLE_GC *\/ */
 
-/* #ifdef PROFILING */
-/*   if ( doing_prof ) { */
-/*     raised_exn_overflow_prof=1; */
-/*     return; */
-/*   } */
-/* #endif /\* PROFILING *\/ */
 
 /*   raise_exn((uintptr_t)&exn_OVERFLOW); */
 /*   return; /\* never comes here *\/ */
@@ -409,9 +386,6 @@ main(int argc, char *argv[])
 rpMap = regionPageMapNew();
 #endif /* REGION_PAGE_STAT */
 
-#ifdef PROFILING
-  resetProfiler();
-#endif
 
   /* setup handlers */
   /*
