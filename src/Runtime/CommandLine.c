@@ -17,7 +17,6 @@
 
 int commandline_argc;     // Kam-backend (Interp.c) needs access to update these variables
 char **commandline_argv;  // when discharging object file arguments.
-static int app_arg_index = 1; /* index for first argument to application. Set by parseArgs */
 // static char exeName[100];
 
 char * command_pipe = NULL;  // Named command pipe for REPL
@@ -40,7 +39,7 @@ long only_major_gc = 0;
 void
 printUsage(void)
 {
-  fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
+  fprintf(stderr,"Usage: %s [application arguments] [+RTS runtime options -RTS]\n", commandline_argv[0]);
 
 #ifdef PROFILING
   fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0]");
@@ -50,7 +49,8 @@ printUsage(void)
   fprintf(stderr," [-rp_report]]\n");
   fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID]]\n");
 #endif
-  fprintf(stderr,"      [-- application arguments]\n");
+  fprintf(stderr,"      -RTS ends a runtime block; --RTS ends runtime parsing.\n");
+  fprintf(stderr,"      -- ends runtime parsing and is passed to the application.\n");
   fprintf(stderr,"      [-help, -h] \n");
   fprintf(stderr,"      [-command_pipe n] \n");
   fprintf(stderr,"      [-reply_pipe n] \n");
@@ -86,10 +86,25 @@ printUsage(void)
   exit(0);
 }
 
+/* Delimiters cannot be consumed as option values. */
+static int rtsDelimiter(const char *arg) {
+  return !strcmp(arg,"+RTS") || !strcmp(arg,"-RTS") ||
+         !strcmp(arg,"--RTS") || !strcmp(arg,"--");
+}
+static char *rtsValue(int *argc, char ***argv) {
+  if (*argc <= 1 || rtsDelimiter((*argv)[1])) {
+    fprintf(stderr,"Missing argument to runtime option %s\n", (*argv)[0]);
+    exit(EXIT_FAILURE);
+  }
+  --*argc;
+  return *++*argv;
+}
+
 void
 parseCmdLineArgs(int argc, char *argv[])
 {
   long match;
+  int in_rts = 0, finished = 0;
 #ifdef PROFILING
   int rp_options = 0;
 #endif
@@ -100,12 +115,23 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif
 
   /* initialize global variables to hold command line arguments */
-  commandline_argc = argc;
-  commandline_argv = argv;
+  commandline_argv = malloc(((size_t)argc + 1) * sizeof(char *));
+  if (!commandline_argv) { perror("runtime arguments"); exit(EXIT_FAILURE); }
+  commandline_argv[0] = argv[0];
+  commandline_argc = 1;
 
-  match = 1;
-  while ((--argc > 0) && match) {
-    ++argv;    /* next parameter. */
+  while (--argc > 0) {
+    ++argv;
+    if (!finished) {
+      if (!strcmp(argv[0],"--RTS")) { finished = 1; continue; }
+      if (!strcmp(argv[0],"--")) { finished = 1; in_rts = 0; }
+      else if (!strcmp(argv[0],"+RTS")) { in_rts = 1; continue; }
+      else if (!strcmp(argv[0],"-RTS")) { in_rts = 0; continue; }
+    }
+    if (finished || !in_rts) {
+      commandline_argv[commandline_argc++] = argv[0];
+      continue;
+    }
     match = 0;
 
 #ifdef PROFILING
@@ -114,32 +140,29 @@ parseCmdLineArgs(int argc, char *argv[])
     if (strcmp(argv[0], "-rp_gc_samples") == 0) { mlkit_rp_gc_samples = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_report") == 0) { mlkit_rp_report = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_interval") == 0) {
-      if (--argc <= 0 || !mlkit_rp_parse_interval(*++argv)) {
+      if (!mlkit_rp_parse_interval(rtsValue(&argc,&argv))) {
         fprintf(stderr, "-rp_interval requires an integer duration Nms, Ns, or 0\n"); exit(EXIT_FAILURE);
       }
       rp_options = 1;
-      app_arg_index += 2;
       match = 1;
       continue;
     }
     if (strcmp(argv[0], "-rp_build") == 0) {
-      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_build requires an identifier\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_expected_build = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
+      if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_build requires an identifier\n"); exit(EXIT_FAILURE); }
+      mlkit_rp_expected_build = argv[0]; rp_options = 1; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_region") == 0) {
-      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_region = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
+      if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
+      mlkit_rp_region = argv[0]; rp_options = 1; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_file") == 0) {
-      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
+      if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
       mlkit_rp_filename = argv[0];
       rp_options = 1;
-      app_arg_index += 2;
       match = 1;
       continue;
     }
 #endif
-    if (strcmp(argv[0], "--") == 0) { app_arg_index++; break; }
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
       match = 1;
@@ -147,93 +170,88 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 
     if (strcmp((char *)argv[0],"-command_pipe")==0) {
-      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
 	command_pipe = (char *)argv[0];
       } else {
 	fprintf(stderr,"Missing argument to -command_pipe switch.\n");
-	printUsage();
+	exit(EXIT_FAILURE);
       }
-      app_arg_index++; /* two-word option */
-      match = 1;
+      continue;
     }
 
     if (strcmp((char *)argv[0],"-reply_pipe")==0) {
-      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
 	reply_pipe = (char *)argv[0];
       } else {
 	fprintf(stderr,"Missing argument to -reply_pipe switch.\n");
-	printUsage();
+	exit(EXIT_FAILURE);
       }
-      app_arg_index++; /* two-word option */
-      match = 1;
+      continue;
     }
 
     if (strcmp((char *)argv[0],"-repl_logfile")==0) {
-      if (--argc > 0 && (*++argv)[0]) { /* Is there an argument? */
+      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
 	repl_logfile = (char *)argv[0];
       } else {
 	fprintf(stderr,"Missing argument to -repl_logfile switch.\n");
-	printUsage();
+	exit(EXIT_FAILURE);
       }
-      app_arg_index++; /* two-word option */
-      match = 1;
+      continue;
     }
 
 #ifdef ENABLE_GC
     if (strcmp((char *)argv[0],"-disable_gc")==0) {
       disable_gc = 1;
-      match = 1;
+      continue;
     }
 
     if (strcmp((char *)argv[0],"-verbose_gc")==0) {
       verbose_gc = 1;
-      match = 1;
+      continue;
     }
 
     if (strcmp((char *)argv[0],"-report_gc")==0) {
       report_gc = 1;
-      match = 1;
+      continue;
     }
 
 #ifdef ENABLE_GEN_GC
     if (strcmp((char *)argv[0],"-only_major_gc")==0) {
       only_major_gc = 1;
-      match = 1;
+      continue;
     }
 #endif // ENABLE_GEN_GC
 
     if (strcmp((char *)argv[0],"-heap_to_live_ratio")==0) {
-      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
+      if (rtsValue(&argc,&argv)[0]) { /* Is there a number. */
 	if ((heap_to_live_ratio = atof((char *)argv[0])) == 0) {
 	  fprintf(stderr,"Something wrong with the double in switch -heap_to_live_ratio.\n");
-	  printUsage();
+	  exit(EXIT_FAILURE);
 	}
       } else {
 	fprintf(stderr,"No double after the switch heap_to_live_ratio.\n");
-	printUsage();
+	exit(EXIT_FAILURE);
       }
-      app_arg_index++; /* this is an two-word option */
-      match = 1;
+      continue;
     }
 #endif /*ENABLE_GC*/
 
 #ifdef ARGOBOTS
     if (strcmp((char *)argv[0],"-p")==0) {
-      if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
+      if (rtsValue(&argc,&argv)[0]) { /* Is there a number. */
 	if ((posixThreads = atoi((char *)argv[0])) == 0) {
 	  fprintf(stderr,"Expecting integer argument to the option -p.\n");
-	  printUsage();
+	  exit(EXIT_FAILURE);
 	}
 	if (posixThreads < 1) {
 	  fprintf(stderr,"Expecting positive integer after option -p.\n");
-	  printUsage();
+	  exit(EXIT_FAILURE);
 	}
       } else {
 	fprintf(stderr,"Expecting integer after the option -p.\n");
-	printUsage();
+	exit(EXIT_FAILURE);
       }
-      app_arg_index++; /* this is an two-word option */
-      match = 1;
+      continue;
     }
 
     if ((strcmp((char *)argv[0], "-vp")==0) ||
@@ -251,10 +269,13 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif
       exit(EXIT_FAILURE);
     }
-    if (match) {
-      app_arg_index++;
+    if (!match) {
+      fprintf(stderr,"unknown runtime option: %s\n", argv[0]);
+      exit(EXIT_FAILURE);
     }
   }
+
+  commandline_argv[commandline_argc] = NULL;
 
 #if (PARALLEL && ARGOBOTS)
   if (verbosePar) {
@@ -283,7 +304,7 @@ REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho)
   String mlStr;
   int counter = commandline_argc;
   makeNIL(resList);
-  while ( counter > app_arg_index )
+  while ( counter > 1 )
     {
       mlStr = REG_POLY_CALL(convertStringToML, strRho, commandline_argv[--counter]);
       REG_POLY_CALL(allocPairML, pairRho, pairPtr);

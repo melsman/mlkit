@@ -50,7 +50,7 @@ for flags in '-no_gc' '-gc' '-gengc' '-gc -rp' '-no_gc -rp' '-no_gc -par'; do
   [ "$(lipo -archs "$scratch/probe")" = arm64 ]
   case "$flags" in
     *-rp*)
-      (cd "$scratch" && ./probe -rp -rp_interval 0 > actual &&
+      (cd "$scratch" && ./probe +RTS -rp -rp_interval 0 > actual &&
         "$ARM64_PREFIX/bin/rpview" profile.rp -o profile.html) ;;
     *) (cd "$scratch" && ./probe > actual) ;;
   esac

@@ -1,8 +1,11 @@
 # Sampled region profiler
 
+Runtime options below belong inside `+RTS ... -RTS`; see
+[runtime arguments](runtime-arguments.md) for delimiters and application arguments.
+
 The compiler flag `-rp` is an alias for `-region_profile` in both MLKit and ReML.
 For batch compilation it emits profiling metadata; run the resulting executable
-with `-rp` to start recording. In an interactive session, either spelling enables
+with `+RTS -rp -RTS` to start recording. In an interactive session, either spelling enables
 both metadata generation and profiling of the session runtime.
 
 Compile the executable and its ML dependencies with `-rp` (or `-region_profile`). Enable a
@@ -10,7 +13,7 @@ session with the executable's `-rp` option. This is the unified object-and-regio
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb
-./app -rp -rp_interval 10ms -rp_file profile.rp -rp_report
+./app +RTS -rp -rp_interval 10ms -rp_file profile.rp -rp_report -RTS
 rpview profile.rp --output profile.html
 ```
 
@@ -34,7 +37,9 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
-| `--` | End runtime options and preserve subsequent application arguments verbatim. |
+| `-RTS` | End the runtime block; application arguments follow. |
+| `--RTS` | End all runtime parsing; discard this marker. |
+| `--` | End all runtime parsing; preserve this marker and following arguments. |
 
 Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
 `RegionProfile.start`, `pause`, `sample`, `mark`, and `flush`. Start and pause
@@ -377,7 +382,7 @@ phases and a growing recursive stack:
 ```sh
 printf '%s\n' "$PWD/test/region_profile/graph.sml" > /tmp/region-graph.mlb
 reml -no_par -region_profile -o /tmp/region-graph /tmp/region-graph.mlb
-/tmp/region-graph -rp -rp_interval 0 -rp_file /tmp/region-graph.rp
+/tmp/region-graph +RTS -rp -rp_interval 0 -rp_file /tmp/region-graph.rp -RTS
 rpview /tmp/region-graph.rp --output graph.html
 ```
 

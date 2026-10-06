@@ -15,7 +15,7 @@ for variant in plain gc gengc tagged-pairs; do
     tagged-pairs) flags='-gc -tag_pairs';;
   esac
   "$MLKIT" $flags -rp -mlb-subdir unified -o "$OUT/program" test/profiling/finite-stack.mlb > "$OUT/build.log" 2>&1 || { cat "$OUT/build.log"; exit 1; }
-  "$OUT/program" -rp -rp_interval 0 -rp_file "$OUT/profile.rp" > "$OUT/output"
+  "$OUT/program" +RTS -rp -rp_interval 0 -rp_file "$OUT/profile.rp" > "$OUT/output"
   printf 'finite stack: OK\n' > "$OUT/expected"
   cmp "$OUT/expected" "$OUT/output"
   "$RPVIEW" "$OUT/profile.rp" --format json > "$OUT/profile.json"

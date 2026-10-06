@@ -1,5 +1,9 @@
 # UF and DLX production fixes
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`; historical measurements below retain
+their original command descriptions.
+
 This implements the [UF/DLX investigation](arm64-uf-dlx-investigation.md).
 The ARM code generator now recognizes the audited `__mod_word63` and
 `__mod_word31` runtime helpers as nonallocating calls without callbacks.

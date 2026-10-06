@@ -1,16 +1,19 @@
 # Sampled site occupancy in rpview
 
+Runtime options below belong inside `+RTS ... -RTS`; see
+[runtime arguments](runtime-arguments.md) for delimiters and application arguments.
+
 Compile every ML unit with `-rp`, then use rpview as the profiler interface.
 There is no separate allocation-volume instrumentation mode or rp2ps stream.
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb
-./app -rp -rp_interval 10ms -rp_file discovery.rp
+./app +RTS -rp -rp_interval 10ms -rp_file discovery.rp -RTS
 rpview discovery.rp -o discovery.html
 # Copy UNIT:BINDING for the infinite region of interest from rpview.
-./app -rp -rp_interval 10ms -rp_region 'UNIT:BINDING' -rp_file sites.rp
+./app +RTS -rp -rp_interval 10ms -rp_region 'UNIT:BINDING' -rp_file sites.rp -RTS
 # Or record site occupancy for every infinite region:
-./app -rp -rp_interval 10ms -rp_region all -rp_file all-sites.rp
+./app +RTS -rp -rp_interval 10ms -rp_region all -rp_file all-sites.rp -RTS
 rpview sites.rp -o sites.html
 ```
 

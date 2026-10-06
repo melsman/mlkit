@@ -989,31 +989,14 @@ The option \lstinline{-rp} enables region profiling and the option
 MLKit has compiled the program \inline{life.sml}, the executable life program
 is available as \inline{kitdemo/run}.
 
-Next, you may execute \lstinline{run}, as follows:
+Next, run the executable with a runtime argument block:
 \begin{scriptcode}[mathescape=false]
-  $ ./run -microsec 500
+  $ ./run +RTS -rp -rp_interval 1ms -RTS
+  $ rpview profile.rp -o profile.html
 \end{scriptcode}
-This command will make a profiling snapshot every 500 microseconds (i.e., every
-half millisecond). If you are satisfied with less fine-grained information,
-choose a larger number; it will speed up execution. If you just type
-\begin{scriptcode}
-  ./run
-\end{scriptcode}
-there will be one snapshot per second.
-
-Finally, you create a Postscript file and convert it into a pdf-file as
-follows:\footnote{The program \boxml{rp2ps} can be found in the
-\boxml{kit/bin} directory.}
-%
-\index{rp2ps@\texttt{rp2ps}}%
-%
-\begin{scriptcode}
-  $ rp2ps -region -name 'Game of life - 100 snapshots' \
-          -sampleMax 100
-  $ ps2pdf region.ps region.pdf
-\end{scriptcode}
-The option \lstinline!-sampleMax $N$! instructs \lstinline{rp2ps} to show at
-most $N$ snapshots (evenly distributed over the duration of the computation).
+This requests snapshots every millisecond, captured at safe points. A larger
+interval reduces sampling overhead. Without runtime \lstinline{-rp}, recording
+is disabled. The default interval when recording is 10 milliseconds.
 
 %--------------------------------------------------
 \chapter{Making Regions Concrete}
@@ -6661,29 +6644,33 @@ reference-tracing garbage collector periodically cleans up the global regions
 
 
 \section{Instrumenting the Executable}
-Executables produced by the MLKit with garbage collection enabled can be
-instrumented by use of command-line options. For instance, if the MLKit has
-produced a file \kw{run}, one can pass the option \kw{-verbose\_gc} to \kw{run}
-to enable the printing of garbage collection information at runtime. An overview
-of available command-line options is shown by passing the option \kw{-help} to
-the generated executable: {\small
+All runtime options belong inside \kw{+RTS ... -RTS} blocks. For example:
 \begin{scriptcode}
-  Usage: ./run
-        [-help, -h]
-        [-disable_gc | -verbose_gc] [-heap_to_live_ratio d]
-    where
-        -help, -h                Print this help screen and exit.
-
-        -disable_gc              Disable garbage collector.
-        -verbose_gc              Show info after each collection.
-        -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
+  ./run +RTS -verbose_gc -RTS input.txt
+  ./run +RTS -help
 \end{scriptcode}
-}
+The application receives only \kw{input.txt} in the first example. Blocks can
+appear anywhere and may be repeated. The final \kw{-RTS} can be omitted if the
+block extends to the end of the command line. Outside blocks, all ordinary
+arguments, including \kw{-help}, belong to the application.
+
+The marker \kw{--RTS} ends all runtime parsing and is removed. The marker
+\kw{--} also ends parsing but is retained in the application's arguments.
+Everything following either marker is passed literally, including \kw{+RTS}.
+Unknown options and missing option values inside a runtime block are errors.
+
+GC runtimes support \kw{-disable\_gc}, \kw{-verbose\_gc}, \kw{-report\_gc}, and
+\kw{-heap\_to\_live\_ratio}; generational GC also supports \kw{-only\_major\_gc}.
+Runtime help lists only options supported by the linked runtime. The compiler's
+\kw{-rp} remains a compiler option; a runtime block on the compiler command
+line instead configures the runtime executing the compiler itself.
 
 \part{System Reference}
 
 %---------------------------------------------------------
 \chapter{Region Profiling}
+\noindent Historical examples below use the retired rp2ps profiler. Current
+runtime options require \kw{+RTS ... -RTS}; the current interface is rpview.
 \label{useOfProf.sec}
 %---------------------------------------------------------
 We have already seen several examples of the use of the profiler. We shall now
@@ -7169,87 +7156,21 @@ edge to scc node (id 33) containing region variable \kw{r331990}.
 
 %----------------------------------
 \section{Runtime Profiling Strategy}
-%----------------------------------
-When the source program has been compiled and linked, you have an executable
-file, \kw{run}. Typing \kw{./run} at the command prompt will execute the program
-with a predefined
-%
-\index{profile strategy!runtime}%
-%
-runtime profiling strategy, which is displayed when the program is run with the
-\kw{-verbose} option:
+Compile with \kw{-rp}, then enable recording through a runtime block:
 \begin{scriptcode}
-  ---------------------Profiling-Enabled---------------------
-   The profile timer (unix virtual timer) is turned on.
-   A profile tick occurs every 1th second.
-   Profiling data is exported to file profile.rp.
-  -----------------------------------------------------------
+  ./run +RTS -rp -rp_interval 10ms -rp_file profile.rp -RTS
+  ./run +RTS -rp -rp_region all -rp_gc_samples -RTS input.txt
+  rpview profile.rp -o profile.html
 \end{scriptcode}
-You can change the
-%
-\index{profile strategy!options}
-%
-profiling strategy by passing command line arguments directly to the executable.
-The second line says that a virtual timer is used. There are three possible
-timers, each of which can be enabled using one of the following
-options:\footnote{A complete description can be found in the manual page for
-\boxml{getitimer}.}
+The second example requires a GC runtime. Periodic requests use wall-clock
+time and capture at safe points; \kw{-rp\_interval 0} disables periodic
+requests. The options \kw{-rp\_paused} and \kw{-rp\_report} control initial
+pausing and the final profiling report. Use \kw{+RTS -help} for runtime help.
 
-\vspace{2mm}
-{\def\arraystretch{1.4}
-\begin{tabular}{lp{8cm}}
-{\tt -realtime} & Real time.
-  \index{realtime@\texttt{-realtime} option}%
-  \index{timer!real} \\
-{\tt -virtualtime} & The execution time for the process. %
-  \index{virtualtime@\texttt{-virtualtime} option}%
-  \index{timer!virtual} \\
-{\tt -profiletime} & The execution time for the process together with the time used in
-the operating system on behalf of the process. %
-\index{profiletime@\texttt{-profiletime} option}%
-  \index{timer!prof}
-\end{tabular}}
-\vspace{2mm}
-
-The third line says that a
-%
-\index{profile tick}%
-%
-{\em profile tick\/} occurs every 1 second.  A profile tick is when the program
-stops normal execution, and memory is traversed to collect profile data. The
-more often a profile tick occurs the more detailed you profile (and the slower
-the program will run). The
-%
-\index{profiling!time slot}%
-%
-{\em time slot\/} (i.e., the time between to succeeding profile ticks) to use
-is specified by the
-%
-\index{sec@\texttt{-sec} option}%
-%
-\kw{-sec n} and
-%
-\index{microsec@\texttt{-microsec} option}%
-%
-\kw{-microsec n} options. A time slot of half a second is specified by
-\kw{-microsec 500000} and not by \kw{-sec 0.5}.\footnote{The lowest possible
-time slot to use is system dependent.  }
-
-The fourth line says that the collected profile data is exported to the file
-\kw{profile.rp}. The default file name setting can be changed with the
-%
-\index{file@\texttt{-file} option}%
-%
-\kw{-file name} option.
-
-There are several other possible command-line options; use the \kw{-h} option or
-the
-%
-\index{help@\texttt{-help} option}%
-%
-\kw{-help} option for details. When garbage collection is enabled, options for
-controlling garbage collection are also available as command-line options (see
-Section~\ref{gc.chap}).
+The older examples and statistics in this chapter describe the historical
+profiler and rp2ps. Its \kw{-notimer}, \kw{-microsec}, and \kw{-showStat}
+options are not supported by the current runtime. Current profiles are viewed
+with rpview; see \texttt{doc/region-profiler.md} for the current interface.
 
 %----------------------------------
 \section{Regions Statistics}
@@ -9666,7 +9587,7 @@ Options:
      from compiling a program with region profiling enabled
      is instrumented with profiling information. When a program
      compiled with region profiling enabled is run, the program
-     records snapshots when run with -rp. Use rpview to
+     records snapshots when run with +RTS -rp -RTS. Use rpview to
      view the resulting profile.
 
 --regionvar N                                             (~1)

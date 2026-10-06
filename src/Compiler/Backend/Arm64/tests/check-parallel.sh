@@ -43,7 +43,7 @@ for mode in pthread argobots; do
       "$SML_LIB/src/Runtime/tests/$test.c" "$SML_LIB/lib/darwin-arm64/$runtime" \
       $libraries -Wl,-dead_strip -lm -pthread -o "$scratch/$mode-$test"
     for streams in 1 4; do
-      run "$mode-$test-$streams" "$scratch/$mode-$test" -p "$streams"
+      run "$mode-$test-$streams" "$scratch/$mode-$test" +RTS -p "$streams" -RTS
     done
   done
   for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
@@ -66,7 +66,7 @@ for mode in pthread argobots; do
       printf 'parallel ML passed\n' > expected
       [ "$policy" = private ] || printf 'parallel callback passed\n' >> expected
       for streams in 1 4; do
-        run "$name-$streams" ./program -p "$streams"
+        run "$name-$streams" ./program +RTS -p "$streams" -RTS
         cmp expected "$scratch/$name-$streams.log"
       done
       if [ "$policy" = private ]; then

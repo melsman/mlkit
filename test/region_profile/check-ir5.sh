@@ -9,7 +9,7 @@ echo "IR5 checks: $OUT"
 cp "$ROOT/test/region_profile/ir5-duplicates.sml" "$OUT/main.sml"
 printf '%s\n' "$SML_LIB/basis/basis.mlb" main.sml > "$OUT/main.mlb"
 "$MLKIT" -no_gc -rp -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
-"$OUT/program" -rp -rp_interval 0 -rp_region '<global>:1' -rp_file "$OUT/profile.rp"
+"$OUT/program" +RTS -rp -rp_interval 0 -rp_region '<global>:1' -rp_file "$OUT/profile.rp"
 "$RPVIEW" "$OUT/profile.rp" --format json -o "$OUT/profile.json"
 "$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html"
 {

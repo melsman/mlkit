@@ -115,7 +115,7 @@ structure Benchmark =
                                               out_file=fn i => t ^ ".out." ^ Int.toString i ^ ".txt",
                                               execute=execute,
                                               cmd="./" ^ t,
-                                              args=["-report_gc"]})
+                                              args=["+RTS", "-report_gc", "-RTS"]})
 	      handle _ => NONE
             (* Added 2002-06-16, nh *)
             (*val res = if files_equal(p^".out.ok",out) then res else NONE  Many files miss ok-files *)

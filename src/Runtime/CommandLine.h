@@ -11,18 +11,11 @@
 
 /*
 
-The executable run may take command line arguments to either the
-runtime system or the application. Command line arguments for the
-application are accessed through the basis library using the
-sml_commandline_name and sml_commandline_args primitives. The
-variables commandline_argv and commandline_argc are initialized to
-point at the first argument for the application. We assume arguments
-for the runtime system are first. For instance, in
-
-  run -tags_only -arg1
-
-the first commandline argument for the application is -arg1 because
--tags_only is recognized as a Kit command line argument.
+Runtime arguments are enclosed in +RTS ... -RTS blocks. The markers and
+runtime options are removed from commandline_argv, which contains the executable
+name followed by application arguments in their original order. --RTS ends
+runtime parsing and is removed; -- ends parsing and is retained. The Basis
+primitives below expose this filtered argument vector.
 
 */
 

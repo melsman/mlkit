@@ -25,7 +25,7 @@ if [ -n "${MLKIT:-}" ]; then
     esac
     "$MLKIT" $flags -rp -mlb-subdir packed -o "$OUT/program" test/profiling/packed.mlb > "$OUT/build.log" 2>&1 || { cat "$OUT/build.log"; exit 1; }
     if [ "$variant" = plain ]; then gcopts=''; else gcopts='-report_gc'; fi
-    "$OUT/program" -rp -rp_interval 0 -rp_file "$OUT/profile.rp" $gcopts > "$OUT/output" 2> "$OUT/runtime.log" || { cat "$OUT/runtime.log"; exit 1; }
+    "$OUT/program" +RTS -rp -rp_interval 0 -rp_file "$OUT/profile.rp" $gcopts > "$OUT/output" 2> "$OUT/runtime.log" || { cat "$OUT/runtime.log"; exit 1; }
     if [ "$variant" != plain ]; then
       cat "$OUT/runtime.log"
       grep -Eq '[1-9][0-9]* collections' "$OUT/runtime.log"

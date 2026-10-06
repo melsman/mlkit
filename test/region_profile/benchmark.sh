@@ -16,7 +16,7 @@ for mode in plain instrumented-disabled paused 1ms 10ms 100ms; do
         paused) set -- -rp -rp_paused ;;
         *) set -- -rp -rp_interval "$mode" ;;
     esac
-    [ "$#" -eq 0 ] || set -- "$@" -rp_file "$OUT/profile.rp" -rp_report
+    [ "$#" -eq 0 ] || set -- +RTS "$@" -rp_file "$OUT/profile.rp" -rp_report -RTS
     rm -f "$OUT/profile.rp"
     : > "$OUT/times"
     i=0

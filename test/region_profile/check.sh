@@ -18,23 +18,23 @@ ar rcs "$OUT/librpfixture.a" "$OUT/fixture.o"
 # Copy sources so each run compiles fresh metadata without clearing user caches.
 cp "$ROOT/test/region_profile/regions.sml" "$ROOT/test/region_profile/regions.mlb" "$OUT/"
 "$REML" -no_par -rp -libdirs "$OUT" -libs rpfixture -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
-"$OUT/regions" -rp -rp_file "$OUT/regions.rp"
+"$OUT/regions" +RTS -rp -rp_file "$OUT/regions.rp"
 sh "$ROOT/test/region_profile/check-records.sh" regions "$OUT/regions.rp"
 cp "$ROOT/test/region_profile/basic.sml" "$ROOT/test/region_profile/basic.mlb" "$OUT/"
 "$MLKIT" -no_gc -o "$OUT/plain" "$OUT/basic.mlb" > "$OUT/plain.build" 2>&1
 "$OUT/plain" > "$OUT/plain.out"
-"$OUT/plain" -help > "$OUT/plain.help" 2>&1
+"$OUT/plain" +RTS -help > "$OUT/plain.help" 2>&1
 if grep -Fq -- '[-rp' "$OUT/plain.help"; then
   echo 'Ordinary runtime advertises profiling options' >&2; exit 1
 fi
-"$OUT/regions" -help > "$OUT/profile.help" 2>&1
+"$OUT/regions" +RTS -help > "$OUT/profile.help" 2>&1
 grep -q -- '-rp_region' "$OUT/profile.help"
-if "$OUT/plain" -rp > "$OUT/no-metadata.out" 2>&1; then
+if "$OUT/plain" +RTS -rp > "$OUT/no-metadata.out" 2>&1; then
   echo 'Executable without metadata accepted -rp' >&2; exit 1
 fi
 grep -q 'compiled with -rp' "$OUT/no-metadata.out"
 for args in '-rp_file' '-rp_file profile.rp' '-rp_paused' '-rp_interval 10ms'; do
-  if "$OUT/plain" $args > "$OUT/invalid.out" 2>&1; then
+  if "$OUT/plain" +RTS $args > "$OUT/invalid.out" 2>&1; then
     echo "Invalid profiler options accepted: $args" >&2; exit 1
   fi
 done
@@ -45,7 +45,7 @@ cp "$ROOT/test/region_profile/callback.sml" "$OUT/"
 printf '%s\n' "$OUT/callback.sml" > "$OUT/callback.mlb"
 "$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs rpcallback -o "$OUT/callback" "$OUT/callback.mlb" > "$OUT/callback.build" 2>&1
 "$OUT/callback"
-if "$OUT/callback" -rp -rp_file "$OUT/callback.rp" > "$OUT/callback.out" 2>&1; then
+if "$OUT/callback" +RTS -rp -rp_file "$OUT/callback.rp" > "$OUT/callback.out" 2>&1; then
   echo 'Sampling across a C callback unexpectedly succeeded' >&2; exit 1
 fi
 grep -q 'cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
@@ -53,17 +53,17 @@ grep -q 'cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
 cp "$ROOT/test/region_profile/api.sml" "$OUT/"
 printf '%s\n' '$(SML_LIB)/kitlib/region-profile.mlb' '$(SML_LIB)/basis/basis.mlb' "$OUT/api.sml" > "$OUT/api.mlb"
 "$MLKIT" -no_gc -o "$OUT/api-plain" "$OUT/api.mlb" > "$OUT/api-plain.build" 2>&1
-(cd "$OUT" && ./api-plain -- disabled -rp > api-plain.out && test ! -e profile.rp)
+(cd "$OUT" && ./api-plain --RTS disabled -rp > api-plain.out && test ! -e profile.rp)
 grep -qx 'disabled:-rp' "$OUT/api-plain.out"
 "$MLKIT" -no_gc -rp -o "$OUT/api" "$OUT/api.mlb" > "$OUT/api.build" 2>&1
-"$OUT/api" -rp -rp_paused -rp_file "$OUT/api.rp" -- first -rp application > "$OUT/api.out"
+"$OUT/api" +RTS -rp -rp_paused -rp_file "$OUT/api.rp" -RTS first -rp application > "$OUT/api.out"
 grep -qx 'first:-rp:application' "$OUT/api.out"
 sh "$ROOT/test/region_profile/check-records.sh" api "$OUT/api.rp"
-(cd "$OUT" && ./api -- disabled > disabled.out && test ! -e profile.rp)
+(cd "$OUT" && ./api --RTS disabled > disabled.out && test ! -e profile.rp)
 cp "$ROOT/test/region_profile/graph.sml" "$OUT/"
 printf '%s\n' "$OUT/graph.sml" > "$OUT/graph.mlb"
 "$REML" -no_par -region_profile -o "$OUT/graph" "$OUT/graph.mlb" > "$OUT/graph.build" 2>&1
-"$OUT/graph" -rp -rp_interval 0 -rp_file "$OUT/graph.rp" > "$OUT/graph.out"
+"$OUT/graph" +RTS -rp -rp_interval 0 -rp_file "$OUT/graph.rp" > "$OUT/graph.out"
 sh "$ROOT/test/region_profile/check-records.sh" graph "$OUT/graph.rp"
 "$RPVIEW" "$OUT/graph.rp" --output "$OUT/graph.html"
 "$RPVIEW" "$OUT/graph.rp" --format json > "$OUT/graph.json"

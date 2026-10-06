@@ -32,6 +32,7 @@ run () {
     exit 1
   fi
 }
+run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
 run ir sh "$ROOT/test/region_profile/check-ir.sh"
 run accounting sh "$ROOT/test/region_profile/check.sh"
 run ir5 sh "$ROOT/test/region_profile/check-ir5.sh"

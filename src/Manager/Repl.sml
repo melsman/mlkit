@@ -648,10 +648,10 @@ fun process_cmd rt_exe stepno state (rp:rp) (cmd:string) libs_acc deps =
           case Posix.Process.fork() of
               SOME pid => pid
             | NONE =>
-              ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe,
+              ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe, "+RTS",
                                               "-command_pipe", command_pipe_name,
                                               "-reply_pipe", reply_pipe_name,
-                                              "-repl_logfile", repl_logfile] @ rpArguments())
+                                              "-repl_logfile", repl_logfile] @ rpArguments() @ ["-RTS"])
               ; OS.Process.exit OS.Process.failure (* never gets here *)
               )
       val () = debug "created fifos"
