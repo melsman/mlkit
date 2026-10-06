@@ -642,7 +642,7 @@ pp_finite_region (FiniteRegionDesc *frd)
   ObjectDesc *obj;
   obj = (ObjectDesc *) (frd+1);
   fprintf(stderr,"FRDid: %zu, next: %zu, objectId: %lu, objSize: %zu\n",
-	 frd->regionId, (size_t) frd, obj->atId, obj->size);
+	 frd->regionId, (size_t) frd, objectDescPoint(obj), objectDescSize(obj));
   return;
 }
 
@@ -661,10 +661,10 @@ pp_infinite_region_gen (Gen *gen)
     {
       fObj = (ObjectDesc *) (((long *)rp)+HEADER_WORDS_IN_REGION_PAGE);
       while ( ((long *)fObj < ((long *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
-	      && (fObj->atId!=notPP) )
+	      && (objectDescPoint(fObj)!=notPP) )
 	{
-	  fprintf(stderr,"ObjAtId %zu, Size: %zu\n", fObj->atId, fObj->size);
-	  fObj=(ObjectDesc *)(((size_t *)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
+	  fprintf(stderr,"ObjAtId %zu, Size: %zu\n", objectDescPoint(fObj), objectDescSize(fObj));
+	  fObj=(ObjectDesc *)(((size_t *)fObj)+((objectDescSize(fObj))+sizeObjectDesc)); /* Find next object. */
 	}
     }
   return;
@@ -810,25 +810,25 @@ static inline void
 profileObj(ObjectDesc *fObj, ObjectList *newObj, RegionList *newRegion,
 	   long *infiniteObjectUse, long *infiniteObjectDescUse)
 {
-  if ( lookupObjectListTable(fObj->atId) == NULL )
+  if ( lookupObjectListTable(objectDescPoint(fObj)) == NULL )
     {
       // Allocate new object
       newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
-      newObj->atId = fObj->atId;
-      newObj->size = fObj->size;
+      newObj->atId = objectDescPoint(fObj);
+      newObj->size = objectDescSize(fObj);
       newObj->nObj = newRegion->fObj;
       newRegion->fObj = newObj;
-      newRegion->used += fObj->size;
+      newRegion->used += objectDescSize(fObj);
       newRegion->noObj++;
-      insertObjectListTable(fObj->atId, newObj);
+      insertObjectListTable(objectDescPoint(fObj), newObj);
     }
   else
     {
-      newObj = lookupObjectListTable(fObj->atId);
-      newObj->size += fObj->size;
-      newRegion->used += fObj->size;
+      newObj = lookupObjectListTable(objectDescPoint(fObj));
+      newObj->size += objectDescSize(fObj);
+      newRegion->used += objectDescSize(fObj);
     }
-  *infiniteObjectUse += fObj->size;
+  *infiniteObjectUse += objectDescSize(fObj);
   *infiniteObjectDescUse += sizeObjectDesc;
 }
 
@@ -848,10 +848,10 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
       fObj = (ObjectDesc *) (((long *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Rp
       // notPP = 0 means no object allocated
       while ( ((long *)fObj < ((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
-	      && (fObj->atId!=notPP) )
+	      && (objectDescPoint(fObj)!=notPP) )
 	{
 	  profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
-	  fObj=(ObjectDesc *)(((long*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
+	  fObj=(ObjectDesc *)(((long*)fObj)+((objectDescSize(fObj))+sizeObjectDesc)); // Find next object
 	}
       newRegion->waste +=
 	(long)((((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((long *)fObj));
@@ -866,7 +866,7 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
   while ( (uintptr_t *)fObj < gen->a )
     {
       profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
-      fObj=(ObjectDesc *)(((size_t *)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
+      fObj=(ObjectDesc *)(((size_t *)fObj)+((objectDescSize(fObj))+sizeObjectDesc)); /* Find next object. */
     }
   newRegion->waste +=
     (size_t)((((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((size_t *)fObj));
@@ -975,27 +975,27 @@ profileTick(Context ctx, long *stackTop)
       fObj = (ObjectDesc *) (frd+1);
 
       //printf("FiniteRegionInfo: regionId: %ld, pPoint: %ld, size: %ld, stackuse: %ld, stacksize: %ld\n",
-      //       frd->regionId, fObj->atId, fObj->size, newTick->stackUse,
+      //       frd->regionId, objectDescPoint(fObj), objectDescSize(fObj), newTick->stackUse,
       //       stackBot - stackTop); // 2001-05-11, Niels
 
-      if ( fObj->size >= ALLOCATABLE_WORDS_IN_REGION_PAGE )
+      if ( objectDescSize(fObj) >= ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	{
 	  sprintf(errorStr, "ERROR - PROFILE_TICK -- Size quite big, pp: %zu with size: %zu, fObj-1: %zu, fObj: %zu in finite region: %lu\n",
-		  fObj->atId, fObj->size, *(((size_t*)fObj)-1), (size_t)fObj, frd->regionId);
+		  objectDescPoint(fObj), objectDescSize(fObj), *(((size_t*)fObj)-1), (size_t)fObj, frd->regionId);
 	  profileERROR(errorStr);
 	}
 
-      newTick->stackUse -= fObj->size;
+      newTick->stackUse -= objectDescSize(fObj);
 
       //fprintf(stderr,"NOTE PROFILE_TICK -- stackUse: %ld, after object with size %zu, stackBot: %p, stackTop: %p\n",
-      //        newTick->stackUse, fObj->size, stackBot, stackTop);
+      //        newTick->stackUse, objectDescSize(fObj), stackBot, stackTop);
 
-      finiteObjectUse += fObj->size;
+      finiteObjectUse += objectDescSize(fObj);
       if ( newTick->stackUse < 0 )
 	{
 	  fprintf(stderr,"ERROR3 - PROFILE_TICK -- stackUse in profileTick less than \
              zero %ld, after object with size %zu and pp %zu, stackBot: %p, stackTop: %p\n",
-		  newTick->stackUse, fObj->size, fObj->atId, stackBot, stackTop);
+		  newTick->stackUse, objectDescSize(fObj), objectDescPoint(fObj), stackBot, stackTop);
 	  profileERROR(errorStr);
 	}
 
@@ -1003,7 +1003,7 @@ profileTick(Context ctx, long *stackTop)
 	{
 	  newRegion = (RegionList *)allocMemProfiling_xx(sizeof(RegionList));
 	  newRegion->regionId = frd->regionId;
-	  newRegion->used = fObj->size;
+	  newRegion->used = objectDescSize(fObj);
 	  newRegion->waste = 0;
 	  newRegion->noObj = 1;
 	  newRegion->infinite = 0;
@@ -1011,8 +1011,8 @@ profileTick(Context ctx, long *stackTop)
 	  newTick->fRegion = newRegion;;
 	  newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
 	  newRegion->fObj = newObj;
-	  newObj->atId = fObj->atId;
-	  newObj->size = fObj->size;
+	  newObj->atId = objectDescPoint(fObj);
+	  newObj->size = objectDescSize(fObj);
 	  newObj->nObj = NULL;
 	  insertRegionListTable(frd->regionId, newRegion);
 	}
@@ -1026,13 +1026,13 @@ profileTick(Context ctx, long *stackTop)
 		      newRegion->regionId);
 	      profileERROR(errorStr);
 	    }
-	  newRegion->used += fObj->size;
+	  newRegion->used += objectDescSize(fObj);
 
 	  /* See if object is already allocated. */
 	  newObj = NULL;
 	  for ( tempObj = newRegion->fObj ; tempObj && newObj == NULL ; tempObj = tempObj->nObj )
 	    {
-	      if (tempObj->atId == fObj->atId)
+	      if (tempObj->atId == objectDescPoint(fObj))
 		newObj = tempObj;
 	    }
 
@@ -1040,15 +1040,15 @@ profileTick(Context ctx, long *stackTop)
 	    {
 	      // Allocate new object
 	      newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
-	      newObj->atId = fObj->atId;
-	      newObj->size = fObj->size;
+	      newObj->atId = objectDescPoint(fObj);
+	      newObj->size = objectDescSize(fObj);
 	      newObj->nObj = newRegion->fObj;
 	      newRegion->fObj = newObj;
 	      newRegion->noObj++;
 	    }
 	  else
 	    {
-	      newObj->size += fObj->size;
+	      newObj->size += objectDescSize(fObj);
 	    }
 	}
     }
@@ -1355,11 +1355,11 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
       // notPP = 0 means no object allocated
 
       while ( ((size_t *)fObj < ((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
-	      && (fObj->atId!=notPP) )
+	      && (objectDescPoint(fObj)!=notPP) )
 	{
-	  *alloc += fObj->size;
+	  *alloc += objectDescSize(fObj);
 	  *allocProf += sizeObjectDesc;
-	  fObj=(ObjectDesc *)(((size_t*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
+	  fObj=(ObjectDesc *)(((size_t*)fObj)+((objectDescSize(fObj))+sizeObjectDesc)); // Find next object
 	}
       /* No more objects in current region page. */
     }
@@ -1369,9 +1369,9 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
   fObj = (ObjectDesc *) (((size_t *)crp)+HEADER_WORDS_IN_REGION_PAGE);
   while ( (uintptr_t *)fObj < gen->a )
     {
-      *alloc += fObj->size;
+      *alloc += objectDescSize(fObj);
       *allocProf += sizeObjectDesc;
-      fObj=(ObjectDesc *)(((long*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
+      fObj=(ObjectDesc *)(((long*)fObj)+((objectDescSize(fObj))+sizeObjectDesc)); /* Find next object. */
     }
   /* No more objects in the last region page. */
   return;

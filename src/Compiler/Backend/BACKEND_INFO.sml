@@ -52,6 +52,7 @@ signature BACKEND_INFO =
 					 * descriptor when profiling is used. *)
     val objectDescSizeP       : int     (* Number of words in an object descriptor
 					 * when profiling is used. *)
+    val packObjectDesc : int * int -> IntInf.int (* payload words, program point *)
     val defaultIntPrecision : unit -> int
     val defaultWordPrecision : unit -> int
 

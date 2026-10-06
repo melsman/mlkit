@@ -428,6 +428,7 @@ structure ExecutionArm64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
+              val subdir = if region_profiling() then subdir ^ "_OD1" else subdir
               val subdir = subdir ^ "_A1" (* common region/context ABI *)
               val subdir = if Flags.is_on "allocation_profile_global" then subdir ^ "_APG1" else subdir
               val subdir = if Flags.is_on "allocation_profile" then subdir ^ "_AP1" else subdir

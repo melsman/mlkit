@@ -5,6 +5,8 @@
 #define REGION_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include "Flags.h"
 #include "Locks.h"
 
@@ -175,6 +177,9 @@ typedef struct lobjs {
   struct lobjs* next;     // pointer to next large object or NULL
 #ifdef ENABLE_GC
   void* orig;             // pointer to memory allocated by malloc - for freeing
+#endif
+#ifdef PROFILING
+  size_t profSize;        /* Full payload size in words, excluding ObjectDesc. */
 #endif
   uintptr_t value;        // a large object; inlined to avoid pointer-indirection
 } Lobjs;
@@ -507,11 +512,40 @@ typedef struct finiteRegionDesc {
 // Every object is stored taking up a multiple of words (not bytes).
 // This applies irrespective of whether profiling is turned on or not.
 
+/* Low 16 bits: payload words. Upper bits: allocation point. The all-ones
+ * size is reserved for large objects, whose full size lives in Lobjs. Keep
+ * this encoding in sync with both native backends. Zero remains a page-end
+ * sentinel; real allocation points start at 2 (1 means uninitialised finite).
+ */
+#define OBJECT_DESC_SIZE_BITS 16
+#define OBJECT_DESC_SIZE_MASK ((uintptr_t)0xffff)
+#define OBJECT_DESC_MAX_POINT (UINTPTR_MAX >> OBJECT_DESC_SIZE_BITS)
 typedef struct objectDesc {
-  size_t atId;               /* Allocation point. */
-  size_t size;               /* Size of object in words. */
+  uintptr_t packed;
 } ObjectDesc;
-#define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(long*)))
+#define sizeObjectDesc (sizeof(ObjectDesc)/sizeof(uintptr_t))
+
+static inline size_t objectDescPoint(const ObjectDesc *obj)
+{
+  return obj->packed >> OBJECT_DESC_SIZE_BITS;
+}
+
+static inline size_t objectDescSize(const ObjectDesc *obj)
+{
+  size_t n = obj->packed & OBJECT_DESC_SIZE_MASK;
+  if (n == OBJECT_DESC_SIZE_MASK) {
+    const Lobjs *large = (const Lobjs *)((const char *)obj - offsetof(Lobjs, value));
+    return large->profSize;
+  }
+  return n;
+}
+
+static inline void objectDescInit(ObjectDesc *obj, size_t n, size_t point)
+{
+  if (point > OBJECT_DESC_MAX_POINT) abort();
+  obj->packed = ((uintptr_t)point << OBJECT_DESC_SIZE_BITS)
+    | (n < OBJECT_DESC_SIZE_MASK ? n : OBJECT_DESC_SIZE_MASK);
+}
 
 
 // Profiling is done by scanning the store at regular intervals.

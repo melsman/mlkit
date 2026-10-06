@@ -934,6 +934,7 @@ allocGen (
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
     #ifdef PROFILING
+      lobjs->profSize = n - sizeObjectDesc;
       allocatedLobjs++;
     #endif
 #ifdef ENABLE_GC
@@ -1480,8 +1481,8 @@ allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t siz
   topFiniteRegion = rdAddr;      /* pointer to topmost region description on stack */
 
   objPtr = (ObjectDesc *)(rdAddr + 1); /* We also put the object descriptor onto the stack. */
-  objPtr->atId = notPrgPoint;
-  objPtr->size = size;
+  if (size >= OBJECT_DESC_SIZE_MASK) die("finite profiling object exceeds packed size limit");
+  objectDescInit(objPtr, size, notPrgPoint);
 
   debug(printf("exiting, topFiniteRegion = %p, topFiniteRegion->p = %p, &topFiniteRegion = %p]\n",
   	       topFiniteRegion, topFiniteRegion->p, &topFiniteRegion));
@@ -1512,7 +1513,7 @@ deallocRegionFiniteProfiling(void)
   printf("[Entering deallocRegionFiniteProfiling regionId=%ld (topFiniteRegion = %p)...\n",
 	 topFiniteRegion->regionId, topFiniteRegion);
   */
-  size = ((ObjectDesc *) (topFiniteRegion + 1))->size;
+  size = objectDescSize((ObjectDesc *) (topFiniteRegion + 1));
   allocNowFin -= size;                                    /* necessary for graph drawing */
 
   callsOfDeallocateRegionFin++;
@@ -1548,8 +1549,7 @@ allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 
   res = allocGen(gen, n+sizeObjectDesc);       // allocate object descriptor and object
 
-  ((ObjectDesc *)res)->atId = pPoint;     // initialize object descriptor
-  ((ObjectDesc *)res)->size = n;
+  objectDescInit((ObjectDesc *)res, n, pPoint);
 
   res = (uintptr_t *)(((ObjectDesc *)res) + 1); // return pointer to user data
 

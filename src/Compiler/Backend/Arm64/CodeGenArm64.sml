@@ -576,7 +576,7 @@ struct
   val resetStub = NameLab "mlkit_arm64_reset_preserving"
   (* Private helper ABI: x16 is the region/result, x17 the word count.
    * x16/x17/x30 are scratch; all allocatable ML registers survive a slow call.
-   * Profiling passes its program point in an aligned caller stack slot. *)
+   * Profiling passes a statically packed object descriptor in an aligned stack slot. *)
   (* Mach-O symbol stubs may overwrite x16/x17. These private helpers take
    * arguments in those registers, so resolve the GOT entry into the saved LR
    * scratch register and call it without entering a linker-generated stub. *)
@@ -590,7 +590,7 @@ struct
          ++ privateCallInto target) code
     in
       if profiling() then (stackInto (true,16)
-         ++ countInto (X 17) pp
+         ++ constantInto (BackendInfo.packObjectDesc(words,pp),X 17)
          ++ storeInto (X 17,SP,0)) code
       else code
     end
@@ -658,7 +658,15 @@ struct
       val finite = localFresh()
       fun finiteCode code =
         (instruction A.and_ (R(X 16),R(X 16),I(~4))
-         ++ (if profiling() then countInto (X 17) pp ++ storeInto (X 17,X 16,~16)
+         ++ (if profiling() then
+               let
+                 fun part shift = IntInf.mod(IntInf.div(IntInf.fromInt pp,shift),65536)
+               in loadInto (X 16,~8,X 17)
+                  ++ instruction A.movk (R(X 17),I(part 1),ShiftImm(LSL,16))
+                  ++ instruction A.movk (R(X 17),I(part 65536),ShiftImm(LSL,32))
+                  ++ instruction A.movk (R(X 17),I(part 4294967296),ShiftImm(LSL,48))
+                  ++ storeInto (X 17,X 16,~8)
+               end
              else fn code => code)) code
       fun ordinaryInfiniteCode code =
         if profiling() orelse (parallel() andalso not(unprotected())) orelse
@@ -2822,7 +2830,11 @@ struct
               ++ instruction A.bl (L(NameLab "mlkit_rp_foreign_unwind"))
              else fn c => c)) code
       val code = if profiling() then
-          storeInto(X 4,X 0,~16) code
+          (loadInto(X 0,~8,X 5)
+           ++ instruction A.and_ (R(X 5),R(X 5),I(65535))
+           ++ instruction A.and_ (R(X 4),R(X 4),I(~65536))
+           ++ instruction A.orr (R(X 5),R(X 5),R(X 4))
+           ++ storeInto(X 5,X 0,~8)) code
         else
           code
       val code =
@@ -2851,7 +2863,10 @@ struct
          ++ moveInto(X 19,X 0)
          ++ moveInto(X 20,X 1)
          ++ moveInto(X 22,X 2)
-         ++ instruction A.bl (if profiling() then L(NameLab "allocProfiling") else if parallel() andalso unprotected() then L(NameLab "alloc_unprotected") else L(NameLab "alloc"))
+         ++ (if profiling() then instruction A.add (R(X 1),R(X 1),I(1)) else fn c => c)
+         ++ instruction A.bl (if parallel() andalso unprotected() then L(NameLab "alloc_unprotected") else L(NameLab "alloc"))
+         ++ (if profiling() then storeInto(X 22,X 0,0)
+               ++ instruction A.add (R(X 0),R(X 0),I(8)) else fn c => c)
          ++ instruction A.sub (R(X 0),R(X 0),Shifted(X 21,LSL,3))
          ++ loadInto(SP,32,X 22)
          ++ loadInto(SP,24,X 21)

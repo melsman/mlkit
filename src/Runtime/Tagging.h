@@ -121,8 +121,7 @@
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
   realPtr = (uintptr_t *) alloc(realRho, 2+sizeObjectDesc);\
-  ((ObjectDesc *) realPtr)->atId = pPoint; \
-  ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
+  objectDescInit((ObjectDesc *) realPtr, 2, pPoint); \
   realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
 #else
@@ -136,8 +135,7 @@
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
   realPtr = (uintptr_t *) alloc(realRho, 1+sizeObjectDesc);\
-  ((ObjectDesc *) realPtr)->atId = pPoint; \
-  ((ObjectDesc *) realPtr)->size = 1; /* Size is one word. */ \
+  objectDescInit((ObjectDesc *) realPtr, 1, pPoint); \
   realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
 #else
@@ -191,36 +189,31 @@
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, ssize+1+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = ssize+1; \
+   objectDescInit((ObjectDesc *) recAddr, ssize+1, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
    mkTagRecordML(recAddr, ssize); \
 }
 #ifdef TAG_FREE_PAIRS
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 2+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 2; \
+   objectDescInit((ObjectDesc *) recAddr, 2, pPoint); \
    recAddr = ((uintptr_t *)(((ObjectDesc *)recAddr)+1)) - 1; \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 3+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 3; \
+   objectDescInit((ObjectDesc *) recAddr, 3, pPoint); \
    recAddr = ((uintptr_t *)(((ObjectDesc *)recAddr)+1)) - 1; \
 }
 #else
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 3+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 3; \
+   objectDescInit((ObjectDesc *) recAddr, 3, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
    mkTagRecordML(recAddr, 2); \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 4+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 4; \
+   objectDescInit((ObjectDesc *) recAddr, 4, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
    mkTagRecordML(recAddr, 3); \
 }
@@ -244,20 +237,17 @@
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, ssize+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = ssize; \
+   objectDescInit((ObjectDesc *) recAddr, ssize, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
 }
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 2+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 2; \
+   objectDescInit((ObjectDesc *) recAddr, 2, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
    recAddr = (uintptr_t *) alloc(rAddr, 3+sizeObjectDesc); \
-   ((ObjectDesc *) recAddr)->atId = pPoint; \
-   ((ObjectDesc *) recAddr)->size = 3; \
+   objectDescInit((ObjectDesc *) recAddr, 3, pPoint); \
    recAddr = (uintptr_t *)(((ObjectDesc *)recAddr)+1); \
 }
 #endif /*PROFILING*/

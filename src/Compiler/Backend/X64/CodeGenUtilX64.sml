@@ -325,10 +325,10 @@ struct
           let val n = n0 + BI.objectDescSizeP
               fun post_prof C =
                   (* treg1 now points at the object descriptor; initialize it *)
-                  G.move_num(i2s pp, D("0",treg1)) $                (* first word is pp *)
-                  G.move_num(i2s n0, D("8",treg1)) $                (* second word is object size *)
+                  move_immed(BI.packObjectDesc(n0,pp), R treg0,
+                  I.movq(R treg0,D("0",treg1)) ::
                   G.lea(D (i2s (8*BI.objectDescSizeP), treg1), treg1) $
-                  C                                                    (* make treg1 point at object *)
+                  C)                                                   (* make treg1 point at object *)
           in copy(t,treg1,
              move_immed(IntInf.fromInt n, R treg0,
              I.call (NameLab "__allocate") :: (* assumes args in treg1 and treg0; result in treg1 *)
@@ -450,7 +450,14 @@ struct
     fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
       if region_profiling() then
         if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else G.move_num(i2s pp, D("-16", obj_ptr)) C  (* two words offset *)
+        else
+          let val tmp = if obj_ptr = treg0 then treg1 else treg0
+          in I.push(R tmp) ::
+             move_immed(BI.packObjectDesc(0,pp), R tmp,
+             I.andq(I "65535",D("-8",obj_ptr)) ::
+             I.orq(R tmp,D("-8",obj_ptr)) ::
+             I.pop(R tmp) :: C)
+          end
       else C
 
     fun alloc_ap_kill_tmp01 (sma, dst_reg:reg, n, fsz, C) =

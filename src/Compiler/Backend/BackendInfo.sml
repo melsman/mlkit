@@ -105,7 +105,14 @@ structure BackendInfo : BACKEND_INFO =
     end
 
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
-    val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
+    (* Shared with Runtime/Region.h: 16 size bits, 48 program-point bits.
+     * Size 65535 is the large-object escape; its full size is stored separately. *)
+    fun packObjectDesc (words,point) : IntInf.int =
+      if words < 0 orelse point < 0 orelse IntInf.fromInt point > 281474976710655
+      then die "packed object descriptor out of range"
+      else IntInf.fromInt point * 65536 + IntInf.fromInt(Int.min(words,65535))
+
+    val objectDescSizeP = 1       (* Number of words in an object descriptor when profiling is used. *)
 
     fun defaultIntPrecision () = if tag_values() then 63 else 64
     fun defaultWordPrecision () = if tag_values() then 63 else 64

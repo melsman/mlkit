@@ -829,7 +829,7 @@ acopy(Gen *gen, uintptr_t *obj_ptr)
 #endif // CHECK_GC
 
 #ifdef PROFILING
-  pPoint = (((ObjectDesc *)(obj_ptr))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr))-1);
   new_obj_ptr = allocGenProfiling(gen,size,pPoint);
 #else
   new_obj_ptr = allocGen(gen,size);
@@ -846,7 +846,7 @@ acopy_pair(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,2,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,2) - 1;
@@ -863,7 +863,7 @@ acopy_ref(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,1,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,1) - 1;
@@ -879,7 +879,7 @@ acopy_triple(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,3,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,3) - 1;
