@@ -7,7 +7,6 @@
 #include "Tagging.h"
 #include "Flags.h"
 #include "RegionProfile.h"
-#include "Profiling.h"
 
 #ifdef ARGOBOTS
 #include "Spawn.h"

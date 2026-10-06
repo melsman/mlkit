@@ -1,7 +1,4 @@
 structure KitProfile : KIT_PROFILE =
   struct
-    fun tellTime(s: string) : unit = prim("queueMark", s)
-      
-     (* queueMark is a no-op; queueMarkProf does stuff *)
-      
+    fun tellTime (s: string) : unit = prim ("mlkit_rp_mark", s)
   end

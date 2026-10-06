@@ -60,6 +60,15 @@ grep -qx 'disabled:-rp' "$OUT/api-plain.out"
 grep -qx 'first:-rp:application' "$OUT/api.out"
 sh "$ROOT/test/region_profile/check-records.sh" api "$OUT/api.rp"
 (cd "$OUT" && ./api --RTS disabled > disabled.out && test ! -e profile.rp)
+# The older KitProfile API shares the marker primitive; it needs no legacy runtime.
+printf '%s\n' 'val () = KitProfile.tellTime "kitprofile marker"' > "$OUT/kitprofile.sml"
+printf '%s\n' '$(SML_LIB)/kitlib/kitprofile.mlb' "$OUT/kitprofile.sml" > "$OUT/kitprofile.mlb"
+"$MLKIT" -no_gc -o "$OUT/kitprofile-plain" "$OUT/kitprofile.mlb" > "$OUT/kitprofile-plain.build" 2>&1
+(cd "$OUT" && ./kitprofile-plain && test ! -e profile.rp)
+"$MLKIT" -no_gc -rp -o "$OUT/kitprofile" "$OUT/kitprofile.mlb" > "$OUT/kitprofile.build" 2>&1
+"$OUT/kitprofile" +RTS -rp -rp_file "$OUT/kitprofile.rp" -RTS
+"$RPVIEW" "$OUT/kitprofile.rp" --format json > "$OUT/kitprofile.json"
+grep -q '"type":"mark".*"label":"kitprofile marker"' "$OUT/kitprofile.json"
 cp "$ROOT/test/region_profile/graph.sml" "$OUT/"
 printf '%s\n' "$OUT/graph.sml" > "$OUT/graph.mlb"
 "$REML" -no_par -region_profile -o "$OUT/graph" "$OUT/graph.mlb" > "$OUT/graph.build" 2>&1

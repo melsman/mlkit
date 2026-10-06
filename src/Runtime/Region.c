@@ -6,7 +6,6 @@
 #include "Flags.h"
 #include "Region.h"
 #include "Math.h"
-#include "Profiling.h"
 #include "GC.h"
 #include "CommandLine.h"
 #include "Locks.h"

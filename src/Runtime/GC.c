@@ -21,7 +21,6 @@
 #include "CommandLine.h"
 #include "Table.h"
 #include "Exception.h"
-#include "Profiling.h"
 #include "Runtime.h"
 #include "GC.h"
 

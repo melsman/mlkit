@@ -23,7 +23,7 @@ ifneq ($(RUNTIME_TARGET),@RUNTIME_TARGET@)
 $(error RUNTIME_TARGET is selected by configure)
 endif
 
-SOURCES=Runtime IO String Math Region Icp Table Time Profiling CommandLine \
+SOURCES=Runtime IO String Math Region Icp Table Time CommandLine \
         Posix Dlsym Export Socket Repl Layout Arm64GC StaticGC RegionProfile
 COMMON=$(addsuffix .c,$(SOURCES)) ../CUtils/hashmap.c ../CUtils/hashmap_typed.c
 VARIANTS=plain tag prof gc gcprof gengc gengcprof gctp gctpprof par parprof
