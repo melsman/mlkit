@@ -64,6 +64,14 @@ allocation volume, and short-lived objects may never appear in a snapshot.
 
 ## Viewer
 
+For reports recorded with `-rp_region`, choose **Metric → Site contributions for
+rN** to split the graph into allocation-site payload bands. The snapshot window,
+thread/worker/CPU filters, top-site limit and Other band apply to this graph.
+Colours remain stable when filtering. Click a band or legend entry to open its IR;
+**Download SVG** exports the displayed site graph. Descriptors and unused page
+space are excluded from site payloads. The snapshot table shows memory and object
+counts instead of region-page statistics.
+
 The snapshot slider filters site occupancy as well as the graph. With one
 snapshot selected, the table shows that snapshot. With a range selected, it
 shows the snapshot with the largest selected payload in that range, explicitly

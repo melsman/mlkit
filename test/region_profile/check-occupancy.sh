@@ -32,6 +32,7 @@ done
   cat "$ROOT/test/region_profile/graph-prelude.js"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/reset.html" | sed '1d;$d'
   cat "$ROOT/test/region_profile/occupancy-viewer-assertions.js"
+  cat "$ROOT/test/region_profile/site-graph-assertions.js"
 } > "$OUT/viewer.js"
 node "$OUT/viewer.js"
 sh "$ROOT/test/region_profile/check-occupancy-reader.sh" "$OUT"
