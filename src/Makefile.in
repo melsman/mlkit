@@ -36,16 +36,7 @@ mlkit_tools: basics tester kitbench mlbmake mllex-yacc
 
 .PHONY: mlkit_runtime
 mlkit_runtime:
-	$(MAKE) -C Runtime runtimeSystem.a
-	$(MAKE) -C Runtime runtimeSystemProf.a
-	$(MAKE) -C Runtime runtimeSystemGC.a
-	$(MAKE) -C Runtime runtimeSystemGCProf.a
-	$(MAKE) -C Runtime runtimeSystemGenGC.a
-	$(MAKE) -C Runtime runtimeSystemGenGCProf.a
-	$(MAKE) -C Runtime runtimeSystemPar.a
-#	$(MAKE) -C Runtime runtimeSystemGCTP.a
-#	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
-#	$(MAKE) -C Runtime runtimeSystemTag.a
+	$(MAKE) -C Runtime all
 
 .PHONY: mlkit_kit
 mlkit_kit:
