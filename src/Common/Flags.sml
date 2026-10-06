@@ -46,19 +46,9 @@ structure Flags : FLAGS =
 
     (* Region inference *)
     val print_types  = ref false
-    val region_inference = ref true
 
     (* Printing of intermediate forms *)
     val print_opt_lambda_expression = ref false
-
-    val enhanced_atbot_analysis = ref false
-
-    (* Flags for region profiling. *)
-    val region_profiling = ref false
-    val print_region_flow_graph = ref false
-    val print_all_program_points = ref false
-    val program_points = (ref []): int list ref
-    val region_paths = (ref[]): (int*int) list ref
 
     (* Flags for Lambda Backend *)
     val log_to_file = ref false
@@ -710,8 +700,7 @@ end
 local
   fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["General Control",s],
                                                             item=r, neg=neg, desc=desc}; ())
-  fun addRA neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
-                                                              item=r, neg=neg, desc=desc}; ())
+
 in
   val _ = app (add false)
   [
@@ -735,11 +724,6 @@ in
       \in your projects, this option should be turned on, unless\n\
       \you wish to import the Basis Library manually in your\n\
       \projects.")
-  val _ = addRA true
-     ("region_inference", SOME "ri", "region_inference", region_inference,
-      "With this flag disabled, all values are allocated in\n\
-       \global regions.")
-
   val _ = add true
      ("repository", SOME "rep", "repository", ref true,
       "Use in-memory repository to avoid unnecessary\n\
@@ -764,25 +748,6 @@ val _ = add_string_entry
        \runtime system you can update this setting and the\n\
        \system will try to link to a runtime system found in\n\
        \the specified install directory."}
-
-  (*5. Profiling menu*)
-
-local
-  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Control Region Analyses",s],
-                                                     item=r, neg=neg, desc=desc}; ())
-in
-  val _ = app (add false)
-  [
-   ("region_profile", SOME "rp", "sampled region profiling", region_profiling,
-    "Emit packed object descriptors, IR metadata and safe-point polls for rpview."),
-    ("print_region_flow_graph", SOME "Prfg", "print region flow graph", print_region_flow_graph,
-     "Print a region flow graph for the program fragment\n\
-     \and generate a .vcg-file, which can be viewed using\n\
-     \the xvcg program."),
-     ("print_all_program_points", SOME "Ppp", "print all program points", print_all_program_points,
-      "Print all program points when printing physical size\n\
-       \inference expressions.")]
-end
 
   (*6. Debug Kit*)
 
@@ -824,7 +789,6 @@ end
 
   (*Entries not included in command-line options, but in lookup functions*)
 
-  val _ = add_bool_entry0 ("enhanced_atbot_analysis", enhanced_atbot_analysis)
   val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
 
   val _ = add_bool_entry

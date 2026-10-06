@@ -53,18 +53,12 @@ type opaq_env = MO.opaq_env
 
 (* Runtime profiler flags configure the child session, never the compiler's
  * own execution. Block changes once that child has been launched. *)
-fun rpBool name = Flags.add_bool_entry
-    {long = name, short = NONE, neg = false, item = ref false,
-     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
-fun rpString (name,value) = Flags.add_string_entry
-    {long = name, short = NONE, item = ref value,
-     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
-val rpEnabled = Flags.is_on0 "region_profile"
-val rpPaused = rpBool "rp_paused"
-val rpReport = rpBool "rp_report"
-val rpGC = rpBool "rp_gc_samples"
-val rpFile = rpString ("rp_file","profile.rp")
-val rpInterval = rpString ("rp_interval","10ms")
+fun rpEnabled () = !RegionProfiling.enabled
+fun rpPaused () = !RegionProfiling.paused
+fun rpReport () = !RegionProfiling.report
+fun rpGC () = !RegionProfiling.gcSamples
+fun rpFile () = !RegionProfiling.file
+fun rpInterval () = !RegionProfiling.interval
 fun rpArguments () =
     (if rpEnabled() then ["-rp"] else []) @
          (if rpEnabled() orelse rpFile() <> "profile.rp"

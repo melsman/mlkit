@@ -23,8 +23,6 @@ structure Compile: COMPILE =
 
     val print_regions = Flags.is_on0 "print_regions"
 
-    val region_profiling_p = Flags.is_on0 "region_profile"
-
     val rse_0 = Flags.add_bool_entry
         {long="print_region_static_env0", short=SOME "Prse0",
          menu=["Printing of environments",
@@ -264,15 +262,6 @@ structure Compile: COMPILE =
                                  export_datbinds = datbinds, (*unchanged*)
                                  export_basis= new_layer  (* list of region variables and arrow effects *)}
 
-        (* call of normPgm no longer commented out; mads *)
-(*
-        val _ = if region_profiling_p() then ()
-                else
-                  ((*print "RegInf.Normalising program ...\n";*)
-                   reset_effect_count();      (* inserted; mads *)
-                   RegionExp.normPgm(pgm',effect_counter)
-                   )
-*)
 (*      val _ = print "RegInf.Computing rse' ...\n"  *)
         val rse' =
           case spread_lamb_exp

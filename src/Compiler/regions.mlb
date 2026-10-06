@@ -11,6 +11,7 @@ local
   basis Compiler = bas compiler.mlb end
   open BasLib (* Compiler *)
 in
+  local open Tools in Backend/NativeFlags.sml end
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml
   local open Pickle in Regions/DROP_REGIONS.sml end

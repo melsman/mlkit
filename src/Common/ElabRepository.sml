@@ -17,7 +17,7 @@ structure RepositoryFinMap: MONO_FINMAP =
 								    f = f' andalso bs_lt (bs,bs')))
 				    end)
 
-	  val prof_p : unit->bool = Flags.is_on0 "region_profile"
+	  val prof_p : unit->bool = fn () => !RegionProfiling.enabled
 	  val gengc_p : unit->bool = Flags.is_on0 "generational_garbage_collection"
 	  val gc_p : unit->bool = Flags.is_on0 "garbage_collection"
 	  val scratch : unit->bool = Flags.is_on0 "recompile_basislib"

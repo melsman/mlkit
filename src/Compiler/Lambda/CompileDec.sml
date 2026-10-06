@@ -77,8 +77,6 @@ structure CompileDec: COMPILE_DEC =
     fun pr (s : string) : unit = TextIO.output(TextIO.stdOut, s)
     fun pr_st st = (PrettyPrint.outputTree(print,st,100); print "\n")
 
-    val region_profiling = Flags.lookup_flag_entry "region_profile"
-
     val line = Report.line
     val // = Report.//
     infix //
@@ -3043,7 +3041,7 @@ the 12 lines above are very similar to the code below
            ATEXPexp (_, SCONatexp (_, SCon.STRING s1)), SOME (EXPROW (_, _,
            ATEXPexp (_, SCONatexp (_, SCon.STRING s2)), SOME (EXPROW (_, _,
            exp3, NONE)))))))) =
-          ((*if !region_profiling then s2 else*) s1, decompose_prim_args exp3)
+          (s1, decompose_prim_args exp3)
       | decompose_prim_call _ =
           die ("\n\nRemember to give two function names in quotes in the declaration of \
                \a prim.\nMaybe you forgot the profiling function name.")

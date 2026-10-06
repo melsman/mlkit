@@ -1,6 +1,7 @@
 
 structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
   struct
+    val region_paths : (int * int) list ref = ref []
     structure PP = PrettyPrint
     type place = Effect.place
     type 'a at = 'a AtInf.at
@@ -116,7 +117,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
       let
 	val g = get_graph()
 	val sccGraph = DiGraphScc.genSccGraph g
-	val nodeIdList = !Flags.region_paths
+	val nodeIdList = !region_paths
 
 	fun findPath id1 id2 =
 	  let
@@ -158,7 +159,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
       let
 	val g = get_graph()
 	val sccGraph = DiGraphScc.genSccGraph g
-	val nodeIdList = !Flags.region_paths
+	val nodeIdList = !region_paths
 
 	(* Returns a list with each element being a list of nodes (a path). *)
 	(* [ [n1, ..., nN],...,[n1, ..., nM] ] *)
