@@ -11,6 +11,7 @@ structure ExecutionArm64 : EXECUTION =
     structure CodeGen = BackendArm64.CodeGen
 
     val message = CodeGen.message
+    val region_profile = Flags.is_on0 "region_profile"
 
     fun die s = Crash.impossible("ExecutionArm64." ^ s)
 
@@ -214,7 +215,7 @@ structure ExecutionArm64 : EXECUTION =
     fun preHook () = (checkTarget();
       if Flags.is_on0 "generational_garbage_collection" () andalso Flags.is_on0 "tag_pairs" () then
         reject "Generational GC does not support -tag_pairs" else ();
-      if Flags.is_on "tag_values" andalso Flags.is_on "region_profile" andalso not(Flags.is_on "garbage_collection") then
+      if Flags.is_on "tag_values" andalso region_profile() andalso not(Flags.is_on "garbage_collection") then
         reject "Tagged profiling requires GC: no tagged no-GC profiling runtime is available" else (); Compile.preHook())
 
     (* Hook to be run after all compilations (for one compilation unit) *)
@@ -230,7 +231,7 @@ structure ExecutionArm64 : EXECUTION =
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val irTree = if Flags.is_on "region_profile" then
+              val irTree = if region_profile() then
                              SOME (PhysSizeInf.layout_pgm_with_locations target)
                            else NONE
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
@@ -309,7 +310,7 @@ structure ExecutionArm64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.c"
           val mapObject = run ^ ".ir-map.o"
-          val hasMap = Flags.is_on "region_profile"
+          val hasMap = region_profile()
           fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap files);
@@ -353,7 +354,6 @@ structure ExecutionArm64 : EXECUTION =
     val op ## = OS.Path.concat infix ##
 
     local
-          val region_profiling = Flags.lookup_flag_entry "region_profile"
           val tag_values = Flags.is_on0 "tag_values"
           val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
@@ -369,15 +369,15 @@ structure ExecutionArm64 : EXECUTION =
                          die "parallelism enabled - turn off gc"
                        else if tag_pairs_p() then
                          die "parallelism enabled - turn off pair tagging"
-                       else if !region_profiling then
+                       else if region_profile() then
                          (if argobots_p() then "runtimeSystemArParProf.a" else "runtimeSystemParProf.a")
                        else if argobots_p() then "runtimeSystemArPar.a"
                        else "runtimeSystemPar.a")
                     else
-                      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
-                      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
-                      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
-                      if !region_profiling                                      then "runtimeSystemProf.a"      else
+                      if region_profile() andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
+                      if region_profile() andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
+                      if region_profile() andalso gc_p()                       then "runtimeSystemGCProf.a"    else
+                      if region_profile()                                      then "runtimeSystemProf.a"      else
                       if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
                       if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
                       if                           gc_p()                       then "runtimeSystemGC.a"        else
@@ -394,7 +394,6 @@ structure ExecutionArm64 : EXECUTION =
     end
 
     local
-      val region_profiling = Flags.is_on0 "region_profile"
       val recompile_basislib = Flags.is_on0 "recompile_basislib"
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
       val gc_p = Flags.is_on0 "garbage_collection"
@@ -410,7 +409,7 @@ structure ExecutionArm64 : EXECUTION =
           let val subdir =
               if recompile_basislib() then "Scratch"   (* avoid overwriting other files *)
               else
-                  case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p()) of
+                  case (gengc_p(),gc_p(), region_profile(), tag_pairs_p()) of
                       (false,     true,   true,               false) => maybe_prefix_RI "GC_PROF"
                     | (false,     true,   false,              false) => maybe_prefix_RI "GC"
                     | (false,     true,   true,               true)  => maybe_prefix_RI "GC_TP_PROF"
@@ -428,9 +427,6 @@ structure ExecutionArm64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
-              val subdir = if region_profiling() then subdir ^ "_OD2" else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_AP1" else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP14" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

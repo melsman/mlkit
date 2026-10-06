@@ -156,7 +156,7 @@ Stream version 10 removes the site-to-program-point field: a site's ID directly
 indexes the IR location table. The internal region-analysis `pp` type and the
 pretty-printer's generic `mark` name remain, but are no longer separate allocation
 identities. Older profiles must be regenerated; rpview accepts version 10 only.
-The site metadata ABI changes (capability 4, cache suffix `_RP14`), so rebuild
+The site metadata ABI changes (capability 4), so rebuild
 compiled ML units and the runtime together. Object descriptor packing and the
 allocation fast path are unchanged.
 
@@ -275,7 +275,9 @@ filtering is unchanged.
 Static site descriptors contain the unit, function, source, site ID, location kind
 and IR identity. The linker supplies an object-path table. This metadata is read
 when serializing site definitions, rather than on each allocation. The current
-format is version 10, site-metadata capability 4, and profiling cache `_RP14`.
+format is version 10 and site-metadata capability 4. Profiling cache directories
+use the normal mode names, such as `RI_PROF` or `ARM64_RI_GC_PROF`,
+without ABI-version suffixes.
 Rebuild runtime and profiling objects together; older profiles must be regenerated.
 
 ## IR4: navigating allocation sites
