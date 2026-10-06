@@ -23,7 +23,7 @@ val () = if unboxed = 42 andalso List.last results = Int64.fromInt 10 then print
          else raise Fail "foreign result"
 SML
 printf '%s\n' '$(SML_LIB)/basis/basis.mlb' main.sml > "$OUT/main.mlb"
-"$MLKIT" -gc -rp -libdirs "$OUT" -libs foreign -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
+"$MLKIT" -gc -rp -libdirs "$OUT" -libs foreign,m,c,dl -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
 "$OUT/program" +RTS -rp -rp_interval 0 -rp_region all -rp_file "$OUT/profile.rp" -RTS
 "$RPVIEW" "$OUT/profile.rp" --format json > "$OUT/profile.json"
 node - "$OUT/profile.json" <<'JS'

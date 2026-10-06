@@ -12,7 +12,7 @@ $CC -c "$ROOT/test/region_profile/allocation.c" -o "$OUT/fixture.o"
 ar rcs "$OUT/libfixture.a" "$OUT/fixture.o"
 cp "$ROOT/test/region_profile/all-regions.sml" "$OUT/main.sml"
 printf '%s\n' main.sml > "$OUT/main.mlb"
-"$REML" -no_par -rp -libdirs "$OUT" -libs fixture -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
+"$REML" -no_par -rp -libdirs "$OUT" -libs fixture,m,c,dl -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
 "$OUT/program" +RTS -rp -rp_interval 0 -rp_region all -rp_file "$OUT/all.rp"
 "$RPVIEW" "$OUT/all.rp" --format json -o "$OUT/all.json"
 "$RPVIEW" "$OUT/all.rp" -o "$OUT/all.html"

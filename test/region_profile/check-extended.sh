@@ -11,7 +11,7 @@ $CC -c "$ROOT/test/region_profile/periodic.c" -o "$OUT/periodic.o"
 ar rcs "$OUT/libperiodic.a" "$OUT/periodic.o"
 cp "$ROOT/test/region_profile/periodic.sml" "$OUT/"
 printf '%s\n' "$OUT/periodic.sml" > "$OUT/periodic.mlb"
-"$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs periodic -o "$OUT/periodic" "$OUT/periodic.mlb" > "$OUT/periodic.build" 2>&1
+"$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs periodic,m,c,dl -o "$OUT/periodic" "$OUT/periodic.mlb" > "$OUT/periodic.build" 2>&1
 "$OUT/periodic" +RTS -rp -rp_interval 1ms -rp_report -rp_file "$OUT/periodic.rp" > "$OUT/periodic.out" 2> "$OUT/periodic.report"
 grep -q 'periodic ok' "$OUT/periodic.out"
 sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/periodic.rp"
@@ -29,7 +29,7 @@ for mode in gc gengc parallel argobots; do
   parallel) source=parallel; flags='-no_gc -par'; runtime=; libs= ;;
   argobots)
    if [ -z "${ARGOBOTS_ROOT:-}" ]; then echo 'Argobots skipped: set ARGOBOTS_ROOT'; continue; fi
-   source=parallel; flags='-no_gc -par -argo'; runtime='-p 2'; libs="-libdirs $ARGOBOTS_ROOT/src/.libs -libs abt" ;;
+   source=parallel; flags='-no_gc -par -argo'; runtime='-p 2'; libs="-libdirs $ARGOBOTS_ROOT/src/.libs -libs abt,m,c,dl" ;;
  esac
  cp "$ROOT/test/region_profile/$source.sml" "$OUT/$mode.sml"
   printf '%s\n' '$(SML_LIB)/kitlib/region-profile.mlb' '$(SML_LIB)/basis/basis.mlb' > "$OUT/$mode.mlb"

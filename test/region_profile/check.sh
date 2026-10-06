@@ -17,7 +17,7 @@ $CC -c "$ROOT/test/region_profile/fixture.c" -o "$OUT/fixture.o"
 ar rcs "$OUT/librpfixture.a" "$OUT/fixture.o"
 # Copy sources so each run compiles fresh metadata without clearing user caches.
 cp "$ROOT/test/region_profile/regions.sml" "$ROOT/test/region_profile/regions.mlb" "$OUT/"
-"$REML" -no_par -rp -libdirs "$OUT" -libs rpfixture -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
+"$REML" -no_par -rp -libdirs "$OUT" -libs rpfixture,m,c,dl -o "$OUT/regions" "$OUT/regions.mlb" > "$OUT/regions.build" 2>&1
 "$OUT/regions" +RTS -rp -rp_file "$OUT/regions.rp"
 sh "$ROOT/test/region_profile/check-records.sh" regions "$OUT/regions.rp"
 cp "$ROOT/test/region_profile/basic.sml" "$ROOT/test/region_profile/basic.mlb" "$OUT/"
@@ -43,7 +43,7 @@ $CC -c "$ROOT/test/region_profile/callback.c" -o "$OUT/callback.o"
 ar rcs "$OUT/librpcallback.a" "$OUT/callback.o"
 cp "$ROOT/test/region_profile/callback.sml" "$OUT/"
 printf '%s\n' "$OUT/callback.sml" > "$OUT/callback.mlb"
-"$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs rpcallback -o "$OUT/callback" "$OUT/callback.mlb" > "$OUT/callback.build" 2>&1
+"$MLKIT" -no_gc -region_profile -libdirs "$OUT" -libs rpcallback,m,c,dl -o "$OUT/callback" "$OUT/callback.mlb" > "$OUT/callback.build" 2>&1
 "$OUT/callback"
 if "$OUT/callback" +RTS -rp -rp_file "$OUT/callback.rp" > "$OUT/callback.out" 2>&1; then
   echo 'Sampling across a C callback unexpectedly succeeded' >&2; exit 1

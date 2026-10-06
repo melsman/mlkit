@@ -41,7 +41,7 @@ for fixture in pair-ffi pair-ml ffi; do
       after) compiler=$new ;;
     esac
     "$compiler" -no_par "$@" -mlb-subdir "$cache$mode" \
-      -libdirs "$OUT" -libs fixture --no_delete_target_files \
+      -libdirs "$OUT" -libs fixture,m,c,dl --no_delete_target_files \
       -o "$OUT/$fixture-$mode" "$OUT/$fixture.mlb" > "$OUT/$fixture-$mode.build" 2>&1
   done
 done

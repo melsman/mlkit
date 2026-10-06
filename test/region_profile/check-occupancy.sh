@@ -18,7 +18,7 @@ for kind in reset large; do
   case "$kind" in reset) file=allocation;; large) file=allocation-string;; esac
   cp "$ROOT/test/region_profile/$file.sml" "$OUT/$kind.sml"
   printf '%s\n' "$kind.sml" > "$OUT/$kind.mlb"
-  "$REML" -no_par -rp -libdirs "$OUT" -libs fixture -o "$OUT/$kind" "$OUT/$kind.mlb" > "$OUT/$kind.build" 2>&1
+  "$REML" -no_par -rp -libdirs "$OUT" -libs fixture,m,c,dl -o "$OUT/$kind" "$OUT/$kind.mlb" > "$OUT/$kind.build" 2>&1
   "$OUT/$kind" +RTS -rp -rp_interval 0 -rp_file "$OUT/discovery.rp"
   "$RPVIEW" "$OUT/discovery.rp" --format json > "$OUT/discovery.json"
   selected=$(selector "$OUT/discovery.json")
@@ -50,7 +50,7 @@ $CC -DPROFILING -iquote "$ROOT/src/Runtime" -c "$ROOT/test/region_profile/alloca
 ar rcs "$OUT/libcallback.a" "$OUT/callback.o"
 cp "$ROOT/test/region_profile/allocation-callback.sml" "$OUT/callback.sml"
 printf '%s\n' callback.sml > "$OUT/callback.mlb"
-"$REML" -no_par -rp -libdirs "$OUT" -libs callback -o "$OUT/callback" "$OUT/callback.mlb" > "$OUT/callback.build" 2>&1
+"$REML" -no_par -rp -libdirs "$OUT" -libs callback,m,c,dl -o "$OUT/callback" "$OUT/callback.mlb" > "$OUT/callback.build" 2>&1
 "$OUT/callback" +RTS -rp -rp_interval 0 -rp_file "$OUT/discovery.rp"
 "$RPVIEW" "$OUT/discovery.rp" --format json > "$OUT/discovery.json"
 selected=$(selector "$OUT/discovery.json")
