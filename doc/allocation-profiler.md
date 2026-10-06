@@ -380,3 +380,37 @@ Non-allocating primitive calls use the ordinary expression printer, including
 infix notation and precedence. Calls with result regions retain their marked
 call tokens until the location protocol can identify them independently of
 printed spelling.
+
+## IR11: validating region slices and occupancy
+
+Run `sh test/region_profile/check-ir11-examples.sh` with a matching compiler,
+Basis and runtime to build fresh msort and kkb_eq reports without GC and an
+mlyacc report with GC (processing `src/Parsing/Topdec.grm`). The script records
+all infinite regions at 1ms intervals and retains its artifacts in the printed
+temporary directory. Override `MLKIT`, `RPVIEW` and `SML_LIB` when validating a
+separate backend build. Snapshot counts and sampled peaks depend on timing;
+the check compares each report with its own recording, not a historical total.
+
+To validate existing all-region recordings, run:
+
+```sh
+sh test/region_profile/check-ir11.sh msort.rp kkb_eq.rp mlyacc.rp
+```
+
+The checks reconcile per-instance objects, payload, descriptor overhead and
+unused page space; compare the table and slice with the selected peak snapshot
+for each binding, thread/worker scope and first/last/full range; and exercise
+native site highlights and copyable IR paths. The HTML must expose only Region
+slice and Allocation sites, with the slice selected by default and a clear
+all-regions fallback. Its embedded script is tested in an environment without
+filesystem or network APIs. msort's recursive result-region chain is derived
+from the matching metadata rather than fixed region numbers.
+
+The small all-region CI fixture runs the same checks without relying on a timer.
+The existing graph/IR tests additionally cover captured regions, multiple
+closure creators, recursion, lexical nesting, distinct call occurrences,
+unresolved sites and metadata fallback. `test/prettyprint/check.sh` covers
+cross-unit resolution (including manifest-only connecting units), relocation,
+and missing/corrupt/mismatched companions; `check-site-svg.sh` checks exact SVG
+site values and scope filters. This is validation of sampled occupancy, not
+cumulative allocation counts or exact maximum residency.

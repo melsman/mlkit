@@ -431,11 +431,15 @@ function allocationTable(){
   el('allocation-note').textContent+=' Descriptor overhead: '+allocationSize(totals.descriptors)+'; unused page space: '+allocationSize(totals.slack)+'.';
  }
 
- const hasFlow=profile.region_flow?.available===true&&attributionSelector()!=='all';
+ const flowRegion=attributionRegion(),flowSelector=attributionSelector(),flowColon=flowSelector.lastIndexOf(':');
+ const flowBinding=String(flowRegion?.binding??flowSelector.slice(flowColon+1));
+ const flowUnit=Number(flowBinding)>=1&&Number(flowBinding)<=7?'<global>':flowRegion?.unit??flowSelector.slice(0,flowColon);
+ const flowRoot=JSON.stringify([flowUnit,flowBinding]);
+ const hasFlow=profile.region_flow?.available===true&&flowSelector!=='all'&&(profile.region_flow.nodes||[]).some(n=>n.id===flowRoot);
  el('allocation-view-control').hidden=!hasFlow;
  const byFlow=hasFlow&&el('allocation-view').value!=='site';
  el('allocation-flow').hidden=!byFlow;el('allocation-table').hidden=byFlow;
- el('allocation-flow-note').textContent=hasFlow?'':attributionSelector()==='all'?'Choose a region above to view its region slice.':'Region-flow metadata is unavailable. Showing allocation sites.';
+ el('allocation-flow-note').textContent=hasFlow?'':attributionSelector()==='all'?'Choose a region above to view its region slice.':'Region-flow metadata for this binding is unavailable. Showing allocation sites.';
  if(byFlow){allocationRegionFlow(rows);return;}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){

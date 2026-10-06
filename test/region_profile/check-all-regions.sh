@@ -25,6 +25,7 @@ node "$ROOT/test/region_profile/all-regions-assertions.js" "$OUT/all.json"
  cat "$ROOT/test/region_profile/all-regions-viewer-assertions.js"
 } > "$OUT/viewer.js"
 node "$OUT/viewer.js"
+sh "$ROOT/test/region_profile/check-ir11.sh" "$OUT/all.rp"
 # Check every recorded infinite region, including empty globals and GC generations.
 cp "$ROOT/test/region_profile/allocation-gc.sml" "$OUT/gc.sml"
 printf '%s\n' gc.sml > "$OUT/gc.mlb"

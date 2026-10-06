@@ -57,6 +57,27 @@ assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);
  assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].title.split(' ')[0]),0n),160n);
  profile.region_flow.issues=['Missing companion'];el('allocation-view').value='flow';allocationTable();assert(host.textContent.includes('Incomplete region-flow metadata'));
+ // Captured allocations retain the lexical region, even without a call edge
+ // to the closure body. Multiple creation sites must not duplicate occupancy.
+ profile.region_flow.points=[{identity:'flow-fixture',point:'1',node:root}];
+ profile.allocations=[record('201','1','anon','3')];
+ profile.region_flow.edges=[];
+ allocationTable();
+ assert(host.textContent.includes('LETREGION r163'));
+ assert(host.textContent.includes('factory') && host.textContent.includes('factory2'));
+ assert(!host.textContent.includes('Sites without a resolved path'));
+ assert.equal(host.querySelectorAll('button').filter(b=>b.className?.split(' ').includes('allocation-site')).length,1);
+ // Global identities are shared across units, unlike local/formal identities.
+ const global=key('<global>',3);
+ profile.allocation_region={unit:'<global>',binding:'3'};
+ profile.allocation_session.selector='<global>:3';
+ profile.region_flow.nodes.push({...node(global,''),role:'global'});
+ profile.region_flow.points=[{identity:'flow-fixture',point:'1',node:global}];
+ allocationTable();
+ assert(!host.textContent.includes('Sites without a resolved path'));
+ assert.equal(host.querySelectorAll('button').filter(b=>b.className?.split(' ').includes('allocation-site')).length,1);
+ profile.region_flow.nodes=profile.region_flow.nodes.filter(n=>n.id!==global);
+ allocationTable();assert(host.hidden&&el('allocation-view-control').hidden);assert(el('allocation-flow-note').textContent.includes('for this binding'));
  profile.region_flow.available=false;allocationTable();assert(host.hidden&&el('allocation-view-control').hidden);assert(el('allocation-flow-note').textContent.includes('Showing allocation sites'));
  Object.assign(profile,{region_flow:saved.flow,allocations:saved.allocations,allocation_session:saved.session,allocation_region:saved.region});irDocuments.delete('flow-fixture');
 }
