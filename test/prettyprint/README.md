@@ -8,7 +8,9 @@ SML_LIB="$PWD" sh test/prettyprint/check.sh
 
 `MLKIT` can select another compiler; `SML_LIB` must select its matching libraries.
 The test uses a minimal Report adapter to isolate PrettyPrint from unrelated
-compiler and pickling dependencies. CI runs it on the native compiler.
+compiler and pickling dependencies. Its `PrettyPrintTests` cache suffix keeps
+that adapter separate from the real compiler types in shared sources. CI runs
+it on the native compiler.
 
 The checks cover byte offsets and lengths, repeated and empty markers, UTF-8,
 embedded newlines, omitted text, failed flat layouts, horizontal nodes, both
