@@ -120,11 +120,10 @@ jobs:
               -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
           fi
 
-      - name: Check pretty-printer spans
-        run: SML_LIB="$PWD" sh test/prettyprint/check.sh
-
-      - name: Check region profiler
-        run: sh test/region_profile/check-ci.sh
+      - name: Check pretty-printer spans and region profiler
+        run: |
+          SML_LIB="$PWD" sh test/prettyprint/check.sh
+          sh test/region_profile/check-ci.sh
 
       - name: Install MLKit
         run: sudo make install
@@ -202,9 +201,9 @@ jobs:
           tar -xzf "$archive" -C "$scratch"
           package=$scratch/$package_name
           if [ "$OS" = darwin ]; then
-            basis_cache=ARM64_RI_GC_A1
+            basis_cache=ARM64_RI_GC
           else
-            basis_cache=RI_GC_A1
+            basis_cache=RI_GC
           fi
           test -s "$package/lib/mlkit/basis/MLB/$basis_cache/repl.sml.d"
           installed=$scratch/installed
