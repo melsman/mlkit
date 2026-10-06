@@ -14,6 +14,9 @@ printf '%s\n' '$(SML_LIB)/basis/basis.mlb' main.sml > "$OUT/main.mlb"
 check () {
   expected=$1; shift
   printf '%s\n' "$expected" > "$OUT/expected"
+  printf 'Runtime argument case:'
+  printf ' <%s>' "$@"
+  printf '\n'
   "$@" > "$OUT/actual"
   cmp "$OUT/expected" "$OUT/actual"
 }
