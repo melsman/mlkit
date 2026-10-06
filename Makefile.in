@@ -258,6 +258,7 @@ ifeq ($(DARWIN_NATIVE),0)
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemPar.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemParProf.a $(LIBDIR)/lib
 
 endif
 
