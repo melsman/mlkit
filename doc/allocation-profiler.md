@@ -10,6 +10,8 @@ mlkit -no_gc -rp -o app app.mlb
 rpview discovery.rp -o discovery.html
 # Copy UNIT:BINDING for the infinite region of interest from rpview.
 ./app -rp -rp_interval 10ms -rp_region 'UNIT:BINDING' -rp_file sites.rp
+# Or record site occupancy for every infinite region:
+./app -rp -rp_interval 10ms -rp_region all -rp_file all-sites.rp
 rpview sites.rp -o sites.html
 ```
 
@@ -64,6 +66,18 @@ allocation volume, and short-lived objects may never appear in a snapshot.
 
 ## Viewer
 
+With `-rp_region all`, **Site occupancy for** selects a recorded region binding
+or **All regions**. The selection controls both the site graph and the allocation
+table; choosing one binding also enables its region slice. The aggregate counts
+each recorded object once, even when the same site allocates into several regions.
+`--sites` SVG output for an all-regions profile aggregates sites across all regions;
+the HTML **Download SVG** exports the current region selection.
+
+All-region recording uses the same compiled object descriptors and allocation
+path. It scans every recorded infinite-region instance at each snapshot, increasing
+snapshot pauses, temporary aggregation memory and output volume. Finite regions
+remain part of the stack; no per-site finite-region accounting is added.
+
 For reports recorded with `-rp_region`, choose **Metric → Site contributions for
 rN** to split the graph into allocation-site payload bands. The snapshot window,
 thread/worker/CPU filters, top-site limit and Other band apply to this graph.
@@ -87,7 +101,8 @@ rpview sites.rp --sites -o region-sites.svg
 rpview sites.rp --sites --regions 0 --scope thread:0 -o thread-sites.svg
 ```
 
-`--sites` uses the region selected when recording with `-rp_region`. Each band
+`--sites` uses the region selected when recording with `-rp_region`, or all
+regions when recorded with `-rp_region all`. Each band
 shows one site's payload occupancy at each snapshot, summed across selected
 region instances. `--regions N` limits the largest site bands (default nine);
 remaining sites form Other. Colours remain stable across thread/worker filters.

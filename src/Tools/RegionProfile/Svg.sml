@@ -29,7 +29,7 @@ struct
         val session = case find metadata "allocation_session" of SOME r => r | NONE => Null
         val selector = case session of Obj _ => strField session "selector" | _ => ""
         val () = if siteMode andalso (number metadata "version" <> 10 orelse selector = "") then
-                   raise Fail "--sites requires a version-10 profile recorded with -rp_region UNIT:BINDING" else ()
+                   raise Fail "--sites requires a version-10 profile recorded with -rp_region all or UNIT:BINDING" else ()
         val regionKey = key
         fun key r = if siteMode then encode false (Arr [get r "unit",Str(strField r "site")]) else regionKey r
         val allocations = list metadata "allocations"
@@ -132,7 +132,7 @@ struct
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
         val regionId = List.last (String.fields (fn c => c = #":") selector)
-        val caption = opt "caption" ((if siteMode then "Site contributions for r" ^ regionId ^ " in " else "Region profile for ") ^ main ^ " (GC " ^ gc ^ ")")
+        val caption = opt "caption" ((if siteMode then (if selector = "all" then "Site contributions across all regions in " else "Site contributions for r" ^ regionId ^ " in ") else "Region profile for ") ^ main ^ " (GC " ^ gc ^ ")")
         val metricName = if siteMode then "Object payload (site occupancy)" else case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"
         val scopeName = case String.fields (fn c => c = #":") scope of
                             ["thread",n] => "Thread " ^ n | ["worker",n] => "Execution stream " ^ n | ["cpu",n] => "CPU (logical core) " ^ n | _ => "All threads"

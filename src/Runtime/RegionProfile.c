@@ -223,12 +223,14 @@ __attribute__((weak)) const char *mlkit_rp_build_id = "unknown";
 uintptr_t mlkit_rp_allocation_enabled;
 const char *mlkit_rp_region;
 const char *mlkit_rp_expected_build;
+static int all_regions(void) { return mlkit_rp_region && !strcmp(mlkit_rp_region,"all"); }
 static const MlkitAllocationRegion *selected_region;
 static const char *selected_unit, *selected_name, *selected_source;
 static uint64_t selected_binding_id;
 uintptr_t mlkit_rp_bind_region(Region r, const MlkitAllocationRegion *metadata) {
   r = clearStatusBits(r);
   if (!mlkit_rp_allocation_enabled || !mlkit_rp_region) return 1;
+  if (all_regions()) { r->allocation_profile = metadata; return 1; }
   const char *colon = strrchr(mlkit_rp_region, ':');
   size_t n = (size_t)(colon-mlkit_rp_region);
   if (strlen(metadata->unit->data) == n &&
@@ -371,7 +373,7 @@ void mlkit_rp_close(void) {
             traversal_ns, serialization_ns, wait_ns, cpu_ns, max_delay_ns, peak_bytes, atomic_load(&maximum_pages));
   for (Participant *p = participants; p; p = p->next)
     emit_record(3,NUMS(p->id,timestamp()),STRS("process_exit"));
-  if (mlkit_rp_allocation_enabled) {
+  if (mlkit_rp_allocation_enabled && !all_regions()) {
     if (selected_unit)
       emit_record(16,NUMS(selected_binding_id),STRS(selected_unit,selected_name,selected_source));
     else if (selected_region)
@@ -401,13 +403,15 @@ void mlkit_rp_init(void) {
   if (mlkit_rp_expected_build && strcmp(mlkit_rp_expected_build,mlkit_rp_build_id))
     fail("allocation profile build identifier does not match this executable");
   if (mlkit_rp_region) {
-    const char *colon = strrchr(mlkit_rp_region, ':');
-    char *end;
-    errno = 0;
-    if (!colon || colon == mlkit_rp_region || colon[1] < '0' || colon[1] > '9')
-      fail("-rp_region requires UNIT:BINDING from the viewer");
-    (void)strtoull(colon+1,&end,10);
-    if (errno || *end) fail("invalid region binding number");
+    if (!all_regions()) {
+      const char *colon = strrchr(mlkit_rp_region, ':');
+      char *end;
+      errno = 0;
+      if (!colon || colon == mlkit_rp_region || colon[1] < '0' || colon[1] > '9')
+        fail("-rp_region requires all or UNIT:BINDING from the viewer");
+      (void)strtoull(colon+1,&end,10);
+      if (errno || *end) fail("invalid region binding number");
+    }
     if (mlkit_rp_allocation_capable != 4)
       fail("recompile all ML code with -rp");
     mlkit_rp_allocation_enabled = 1;
@@ -522,6 +526,7 @@ static void scan_generation(Gen *g, size_t instance) {
   }
 }
 static int selected_binding(const char *unit, uint64_t id) {
+  if (all_regions()) return 1;
   if (!mlkit_rp_region) return 0;
   const char *colon = strrchr(mlkit_rp_region,':');
   size_t n = (size_t)(colon-mlkit_rp_region);

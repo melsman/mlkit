@@ -24,6 +24,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="stack">ML stack + finite regions</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Infinite-region descriptors</option></select></label>
 <label><span id="limit-label">Regions shown</span><input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
+<p id="attribution-region-control" hidden><label>Site occupancy for <select id="attribution-region"><option value="all">All regions</option></select></label></p>
 <div class="display-options" aria-label="Graph display options">
 <label><input id="show-base" type="checkbox">Show base names</label>
 <label><input id="show-kind" type="checkbox">Show region kind</label>
@@ -211,11 +212,25 @@ function allocationSize(value,minimumKiB=false){
  const scaled=(bytes*100n+divisor/2n)/divisor;
  return (scaled/100n)+'.'+String(scaled%100n).padStart(2,'0')+' '+units[index];
 }
+// Region identities come from the snapshot's region definition, not the
+// allocation site's unit: a callee can allocate into a caller's region.
+const attributionBindings=new Map(),attributionDefinitions=new Map();
+for(const sample of samples)for(const r of sample.regions){
+ attributionBindings.set(r.unit+':'+r.binding,r);attributionDefinitions.set(String(r.definition),r);
+}
+function attributionSelector(){return profile.allocation_session?.selector==='all'?(el('attribution-region').value||'all'):String(profile.allocation_session?.selector||'');}
+function attributionSelected(r){
+ if(profile.allocation_session?.selector!=='all'||attributionSelector()==='all')return true;
+ const region=attributionDefinitions.get(String(r.region_definition));
+ return region&&region.unit+':'+region.binding===attributionSelector();
+}
+function attributionRegion(){return profile.allocation_session?.selector==='all'?attributionBindings.get(attributionSelector()):profile.allocation_region;}
+function siteMetricName(){const selector=attributionSelector();return selector==='all'?'Site contributions — all regions':'Site contributions for r'+(attributionRegion()?.binding??selector.split(':').at(-1));}
 function allocationRegionFlow(rows){
  const host=el('allocation-flow');host.replaceChildren();
  const flow=profile.region_flow, nodes=new Map((flow.nodes||[]).map(n=>[n.id,n]));
- const selected=profile.allocation_region;
- const selector=String(profile.allocation_session?.selector||''),colon=selector.lastIndexOf(':');
+ const selected=attributionRegion();
+ const selector=attributionSelector(),colon=selector.lastIndexOf(':');
  const unit=selected?.unit??selector.slice(0,colon),region=String(selected?.binding??selector.slice(colon+1));
  const root=JSON.stringify([Number(region)>=1&&Number(region)<=7?'<global>':unit,region]);
  const outgoing=new Map(),incoming=new Map();
@@ -396,17 +411,17 @@ function allocationTable(){
  if(session.enabled!=='1'||!session.selector)return;
  el('allocation-rows').replaceChildren();
  el('allocation-section').hidden=false;
- const regionId=profile.allocation_region?.binding??String(session.selector||'').match(/:(\d+)$/)?.[1];
+ const regionId=attributionRegion()?.binding??attributionSelector().match(/:(\d+)$/)?.[1];
  el('allocation-count-label').textContent='Objects';
- el('allocation-title').textContent='Site occupancy'+(regionId!==undefined?' for r'+regionId:'');
+ el('allocation-title').textContent='Site occupancy'+(attributionSelector()==='all'?' across all regions':regionId!==undefined?' for r'+regionId:'');
  const incomplete=!profile.complete;
- el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+' · Occupancy in the selected snapshot range.';
+ el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+(attributionSelector()==='all'?'All infinite regions':'Region '+attributionSelector())+' · Build '+session.build_id+' · Occupancy in the selected snapshot range.';
  const rows=new Map();
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
  const visible=new Set(visibleSamples().map(s=>String(s.sample)));
- const candidates=(profile.allocations||[]).filter(r=>r.sample===undefined||(visible.has(String(r.sample))&&selected(r)));
- const summaries=(profile.occupancy_summaries||[]).filter(r=>visible.has(String(r.sample))&&selected(r));
+ const candidates=(profile.allocations||[]).filter(r=>r.sample===undefined||(visible.has(String(r.sample))&&selected(r)&&attributionSelected(r)));
+ const summaries=(profile.occupancy_summaries||[]).filter(r=>visible.has(String(r.sample))&&selected(r)&&attributionSelected(r));
  const totals=new Map();for(const r of summaries)totals.set(String(r.sample),0n);for(const r of candidates)totals.set(String(r.sample),(totals.get(String(r.sample))||0n)+BigInt(r.bytes));
  let peakSample=null,peakBytes=-1n;for(const [sample,bytes] of totals)if(bytes>peakBytes){peakSample=sample;peakBytes=bytes;}
  for(const r of candidates.filter(r=>r.sample===undefined||String(r.sample)===peakSample)){const k=JSON.stringify([r.unit,r.site]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
@@ -416,11 +431,11 @@ function allocationTable(){
   el('allocation-note').textContent+=' Descriptor overhead: '+allocationSize(totals.descriptors)+'; unused page space: '+allocationSize(totals.slack)+'.';
  }
 
- const hasFlow=profile.region_flow?.available===true;
+ const hasFlow=profile.region_flow?.available===true&&attributionSelector()!=='all';
  el('allocation-view-control').hidden=!hasFlow;
  const byFlow=hasFlow&&el('allocation-view').value!=='site';
  el('allocation-flow').hidden=!byFlow;el('allocation-table').hidden=byFlow;
- el('allocation-flow-note').textContent=hasFlow?'':'Region-flow metadata is unavailable. Showing allocation sites.';
+ el('allocation-flow-note').textContent=hasFlow?'':attributionSelector()==='all'?'Choose a region above to view its region slice.':'Region-flow metadata is unavailable. Showing allocation sites.';
  if(byFlow){allocationRegionFlow(rows);return;}
  const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
  for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
@@ -469,7 +484,7 @@ function model(){
  function entry(k,name,detail=name){if(!bands.has(k))bands.set(k,{key:k,label:name,detail,values:samples.map(()=>0n)});return bands.get(k);}
  if(siteGraph()){
   const indices=new Map(samples.map((s,i)=>[String(s.sample),i]));
-  for(const r of profile.allocations||[]){const i=indices.get(String(r.sample));if(i===undefined||!selected(r))continue;
+  for(const r of profile.allocations||[]){const i=indices.get(String(r.sample));if(i===undefined||!selected(r)||!attributionSelected(r))continue;
    const b=entry(siteKey(r),graphSiteName(r),'Function: '+r.function+'\nSite: '+r.site+'\nUnit: '+r.unit+'\nSource: '+r.source);
    b.record=r;b.values[i]+=BigInt(r.bytes);
    if(!b.counts)b.counts=samples.map(()=>0n);b.counts[i]+=BigInt(r.count);
@@ -651,7 +666,16 @@ document.title=el('profile-title').textContent;
 el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(profile.gc_collections===null?'unavailable':BigInt(profile.gc_collections).toLocaleString())+(profile.complete?'':' (recorded so far)'):'';
 scopes();
 if(profile.allocation_session?.enabled==='1'&&profile.allocation_session.selector){
- const option=document.createElement('option');option.value='sites';option.textContent='Site contributions for r'+(profile.allocation_region?.binding??profile.allocation_session.selector.split(':').at(-1));el('metric').append(option);
+ const option=document.createElement('option');option.value='sites';option.id='site-metric-option';option.textContent=siteMetricName();el('metric').append(option);
+}
+if(profile.allocation_session?.selector==='all'){
+ el('attribution-region-control').hidden=false;
+ const names=sourceLabels([...attributionBindings.values()].map(r=>r.source));
+ for(const [value,r] of [...attributionBindings].sort((a,b)=>BigInt(a[1].binding)<BigInt(b[1].binding)?-1:BigInt(a[1].binding)>BigInt(b[1].binding)?1:a[0].localeCompare(b[0]))){
+  if(r.kind!=='infinite')continue;
+  const option=document.createElement('option');option.value=value;option.textContent='r'+r.binding+' · '+names(r.source);option.title=value;el('attribution-region').append(option);
+ }
+ el('attribution-region').addEventListener('input',()=>{el('site-metric-option').textContent=siteMetricName();draw();});
 }
 const defaults=__OPTIONS__;
 for(const [id,value] of Object.entries(defaults)){if(id==='caption'){el('profile-title').textContent=value;document.title=value;}else if(typeof value==='boolean')el(id).checked=value;else el(id).value=String(value);}

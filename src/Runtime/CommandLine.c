@@ -42,7 +42,7 @@ printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0] [-rp_gc_samples] [-rp_report]] [-- application arguments]\n");
-  fprintf(stderr,"      [-rp_region UNIT:BINDING [-rp_build ID] [-rp_alloc_depth 1]]\n");
+  fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID] [-rp_alloc_depth 1]]\n");
   fprintf(stderr,"      [-help, -h] \n");
   fprintf(stderr,"      [-command_pipe n] \n");
   fprintf(stderr,"      [-reply_pipe n] \n");
@@ -116,7 +116,7 @@ parseCmdLineArgs(int argc, char *argv[])
       mlkit_rp_expected_build = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_region") == 0) {
-      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_region requires UNIT:BINDING\n"); exit(EXIT_FAILURE); }
+      if (--argc <= 0 || !(*++argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
       mlkit_rp_region = argv[0]; rp_options = 1; app_arg_index += 2; match = 1; continue;
     }
     if (strcmp(argv[0], "-rp_alloc_depth") == 0) {
