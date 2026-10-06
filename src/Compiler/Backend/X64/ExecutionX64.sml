@@ -245,7 +245,7 @@ structure ExecutionX64 : EXECUTION =
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 
-    fun compile fe (ce, CB, strdecs, vcg_file) =
+    fun compile fe (ce, CB, strdecs) =
       let val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
         case Compile.compile fe (ce, cb, strdecs)
@@ -255,7 +255,7 @@ structure ExecutionX64 : EXECUTION =
               val irTree = if region_profile() then
                              SOME (PhysSizeInf.layout_pgm_with_locations target)
                            else NONE
-              val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
+              val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
               val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
               val () = IRLocations.currentIdentity := identity

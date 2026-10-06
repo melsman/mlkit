@@ -7,7 +7,6 @@ signature CLOS_CONV_ENV =
     type con
     type excon
     type offset = int
-    type phsize
     type label
 
     datatype con_kind =     (* the integer is the index in the datatype 0,... *)
@@ -31,7 +30,6 @@ signature CLOS_CONV_ENV =
       | LABEL of label                          (* Global declared variable                  *)
       | FIX of label * access_type option * int (* Label is code pointer, access_type is the *)
                                                 (* shared closure and int is size of closure *)
-                 * (place * phsize) list        (* for region profiling graph *)
 
     datatype rho_kind =
         FF (* Rho is formal and finite *)

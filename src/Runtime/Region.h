@@ -251,7 +251,6 @@ typedef Ro* Region;
 
 #ifdef PROFILING
 #define sizeRo (sizeof(Ro)/(sizeof(long*))) /* size of region descriptor in words */
-#define sizeRoProf (0)        /* We use three words extra when profiling. */
 #endif
 
 #ifdef ENABLE_GEN_GC

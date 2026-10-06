@@ -34,7 +34,7 @@ signature NATIVE_COMPILE =
     type StoreTypeCO
     type Aty
 
-    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) ->
+    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool ->
       BackendEnv * {main_lab:label,
 		    code:(StoreTypeCO,offset,Aty) LinePrg,
 		    imports:label list * label list,
@@ -83,7 +83,6 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
     type Aty = SubstAndSimplify.Aty
 
     val gc_p = Flags.is_on0 "garbage_collection"
-    val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
 
     fun fast_pr stringtree =
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
@@ -102,7 +101,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 
     (* the boolean `safe' is true if the fragment has no side-effects;
      * for dead code elimination. *)
-    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool, vcg_file:string)
+    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool)
       : ClosExp.env * {main_lab: label,
 		       code: (StoreTypeCO,offset,Aty) LinePrg,
 		       imports: label list * label list,
@@ -114,25 +113,12 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                    andalso Flags.is_on "garbage_collection" then
                   raise Fail "-region_profile with GC and parallelism is not supported"
                 else ()
-        val _ = RegionFlowGraphProfiling.reset_graph ()
         val () = IRLocations.currentOccurrence := 0
         val () = IRLocations.currentRegions := []
         val () = IRLocations.currentSites := []
 
 	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
-
-	(* Show region flow graph and generate .vcg file *)
-	val _ =
-	  if print_region_flow_graph() then
-	    (display("Region Flow Graph",
-		     RegionFlowGraphProfiling.layout_graph());
-	     let val outStreamVCG = TextIO.openOut vcg_file
-	     in RegionFlowGraphProfiling.export_graph outStreamVCG;
-	       TextIO.closeOut(outStreamVCG);
-	       chat ("[Wrote region flow graph for profiling to file " ^ vcg_file ^ "]")
-	     end)
-	  else ()
 
 	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
 								 code=code,imports=imports,
