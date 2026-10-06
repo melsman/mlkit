@@ -8,7 +8,7 @@ CC=${CC:-cc}
 export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-occupancy.XXXXXX")
 echo "Occupancy checks: $OUT"
-$CC -O2 -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
+$CC -O2 -std=gnu99 -Wall -Wextra -Werror -DPROFILING -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/allocation-profile.c" -o "$OUT/bindings"
 "$OUT/bindings" "$OUT/bindings.rp"
 selector () { sed -n 's/.*"binding":\([0-9]*\),"unit":"\([^"]*\)","name":"`r".*/\2:\1/p' "$1" | head -1; }

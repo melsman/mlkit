@@ -41,15 +41,23 @@ void
 printUsage(void)
 {
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
-  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0] [-rp_gc_samples] [-rp_report]] [-- application arguments]\n");
+
+#ifdef PROFILING
+  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0]");
+#ifdef ENABLE_GC
+  fprintf(stderr," [-rp_gc_samples]");
+#endif
+  fprintf(stderr," [-rp_report]]\n");
   fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID] [-rp_alloc_depth 1]]\n");
+#endif
+  fprintf(stderr,"      [-- application arguments]\n");
   fprintf(stderr,"      [-help, -h] \n");
   fprintf(stderr,"      [-command_pipe n] \n");
   fprintf(stderr,"      [-reply_pipe n] \n");
   fprintf(stderr,"      [-repl_logfile n] \n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
-#ifdef ENABLE_GENGC
+#ifdef ENABLE_GEN_GC
   fprintf(stderr,"      [-only_major_gc] \n");
 #endif // ENABLE_GEN_GC
 #endif /*ENABLE_GC*/
@@ -82,7 +90,9 @@ void
 parseCmdLineArgs(int argc, char *argv[])
 {
   long match;
+#ifdef PROFILING
   int rp_options = 0;
+#endif
 
 #ifdef ARGOBOTS
   posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -98,6 +108,7 @@ parseCmdLineArgs(int argc, char *argv[])
     ++argv;    /* next parameter. */
     match = 0;
 
+#ifdef PROFILING
     if (strcmp(argv[0], "-rp") == 0) { mlkit_rp_enabled = 1; match = 1; }
     if (strcmp(argv[0], "-rp_paused") == 0) { mlkit_rp_initially_paused = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_gc_samples") == 0) { mlkit_rp_gc_samples = 1; rp_options = 1; match = 1; }
@@ -131,6 +142,7 @@ parseCmdLineArgs(int argc, char *argv[])
       match = 1;
       continue;
     }
+#endif
     if (strcmp(argv[0], "--") == 0) { app_arg_index++; break; }
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
@@ -236,7 +248,12 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif
 
     if (!match && strncmp(argv[0], "-rp", 3) == 0) {
-      fprintf(stderr, "unknown profiler option: %s\n", argv[0]); exit(EXIT_FAILURE);
+#ifdef PROFILING
+      fprintf(stderr, "unknown profiler option: %s\n", argv[0]);
+#else
+      fprintf(stderr, "profiler option %s requires an executable compiled with -rp\n", argv[0]);
+#endif
+      exit(EXIT_FAILURE);
     }
     if (match) {
       app_arg_index++;
@@ -249,9 +266,11 @@ parseCmdLineArgs(int argc, char *argv[])
   }
 #endif
 
+#ifdef PROFILING
   if (!mlkit_rp_enabled && rp_options) {
     fprintf(stderr, "profiler options require -rp\n"); exit(EXIT_FAILURE);
   }
+#endif
   return;
 }
 

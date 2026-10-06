@@ -4,6 +4,7 @@
 /* Cooperative region snapshots with selected-region object occupancy. */
 #include "RegionProfile.h"
 #include "String.h"
+#ifdef PROFILING
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -901,3 +902,12 @@ void mlkit_rp_idle(Context ctx) {
   uintptr_t base = 0;
   mlkit_rp_poll(ctx,&base,end+2);
 }
+
+#else
+/* Keep the Basis API linkable without the profiling engine. */
+uintptr_t mlkit_rp_start(void) { return 1; }
+uintptr_t mlkit_rp_pause(void) { return 1; }
+uintptr_t mlkit_rp_sample(void) { return 1; }
+uintptr_t mlkit_rp_flush(void) { return 1; }
+uintptr_t mlkit_rp_mark(String label) { (void)label; return 1; }
+#endif

@@ -30,7 +30,7 @@ run "link-$arch" gcc -arch "$arch" -std=gnu99 -iquote src/Runtime \
   src/Runtime/tests/allocation.c lib/darwin-$arch/runtimeSystem.a \
   -Wl,-dead_strip -lm -o "$logs/smoke-$arch"
 run "smoke-$arch" "$logs/smoke-$arch"
-run "link-profiling-$arch" gcc -arch "$arch" -std=gnu99 -iquote src/Runtime \
+run "link-profiling-$arch" gcc -arch "$arch" -std=gnu99 -DPROFILING -iquote src/Runtime \
   src/Runtime/RegionProfile.c src/Runtime/tests/region-profile.c \
   -o "$logs/profiling-$arch"
 run "profiling-$arch" "$logs/profiling-$arch" "$logs/profile.rp"

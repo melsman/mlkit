@@ -167,7 +167,9 @@ thread_init_all(void) {
   ti->retval = NULL;
   ti->joined = 0;
   THREAD_KEY_CREATE(&threadinfo_key);
+#ifdef PROFILING
   mlkit_rp_thread_create(ctx, 0);
+#endif
   thread_init(ti);
   if (MUTEX_INIT(&freelist_mutex) != 0) {
     printf("ERROR: thread_init_all: freelist_mutex init has failed\n");
@@ -185,7 +187,9 @@ ThreadInfo*
 thread_init(ThreadInfo* ti) {
   //tdebug1("[Entering thread_init - tid = %d]\n", ti->tid);
   THREAD_SETSPECIFIC(threadinfo_key, ti);
+#ifdef PROFILING
   mlkit_rp_thread_enter(&ti->ctx);
+#endif
   //tdebug1("[Exiting thread_init - tid = %d]\n", ti->tid);
   return ti;
 }
@@ -377,7 +381,9 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
     printf("ERROR: thread_create: mutex init has failed\n");
     exit(-1);
   }
+#ifdef PROFILING
   mlkit_rp_thread_create(&ti->ctx, ti->tid);
+#endif
   thread_new(f,ti);
   tdebug1("[Exiting thread_create - tid = %d]\n", ti->tid);
   return ti;
@@ -431,7 +437,9 @@ thread_finalize(void) {
 
 void // no return
 thread_exit(void *retval) {
+#ifdef PROFILING
   mlkit_rp_thread_exit(&thread_info()->ctx);
+#endif
   tdebug("[thread_exit...");
 #ifdef ARGOBOTS
   ThreadInfo* ti = thread_info();

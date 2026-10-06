@@ -476,7 +476,9 @@ alloc_new_page(Gen *gen)
 #endif
   }
 
+#ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_page_alloc();
+#endif
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
 #ifdef ENABLE_GEN_GC
@@ -642,7 +644,9 @@ void free_lobjs(Lobjs* lobjs)
       lobjs_current -= size_lobj(tag);
 #endif
       lobjsTmp = clear_lobj_bit(lobjs->next);
+#ifdef PROFILING
       mlkit_rp_large_free(lobjs);
+#endif
 #ifdef ENABLE_GC
       free(lobjs->orig);
 #else
@@ -680,11 +684,15 @@ void deallocateRegion(Context ctx) {
 
   /* Insert the region pages in the freelist; there is always
    * at least one page in a generation. */
+#ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(TOP_REGION->g0.fp));
+#endif
   last_rp_of_gen(&(TOP_REGION->g0))->n = FREELIST;  // Free pages in generation 0
   FREELIST = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
+#ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(TOP_REGION->g1.fp));
+#endif
   last_rp_of_gen(&(TOP_REGION->g1))->n = FREELIST;  // Free pages in generation 1
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
@@ -834,7 +842,9 @@ allocGen (
       // fprintf(stderr,"Allocating large object (of type %lu) of %zu words\n", rtype(*gen), n);
       //#endif
       lobjs = alloc_lobjs(n);
+#ifdef PROFILING
       mlkit_rp_large_alloc(lobjs, n);
+#endif
       //fprintf(stderr,"Allocated large object of %d words (address: %p) ; header at %p\n", n, &(lobjs->value), lobjs);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
@@ -1018,7 +1028,9 @@ void resetGen(Gen *gen)
 #endif /* ENABLE_GC */
 
     MAYBE_DEFINE_CONTEXT;
+#ifdef PROFILING
     if (mlkit_rp_enabled) mlkit_rp_pages_free(clear_fp(gen->fp)->n);
+#endif
     (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
     (clear_fp(gen->fp))->n = NULL;

@@ -7,9 +7,9 @@ CC=${CC:-cc}
 RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp.XXXXXX")
 echo "Region profiler test artifacts: $OUT"
-export SML_LIB="$ROOT"
+export SML_LIB=${SML_LIB:-$ROOT}
 # CC may include a target flag, e.g. 'gcc -arch x86_64'.
-$CC -O2 -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
+$CC -O2 -std=gnu99 -Wall -Wextra -Werror -DPROFILING -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/region-profile.c" -o "$OUT/runtime"
 "$OUT/runtime" "$OUT/runtime.rp"
 sh "$ROOT/test/region_profile/check-records.sh" runtime "$OUT/runtime.rp"
@@ -23,10 +23,16 @@ sh "$ROOT/test/region_profile/check-records.sh" regions "$OUT/regions.rp"
 cp "$ROOT/test/region_profile/basic.sml" "$ROOT/test/region_profile/basic.mlb" "$OUT/"
 "$MLKIT" -no_gc -o "$OUT/plain" "$OUT/basic.mlb" > "$OUT/plain.build" 2>&1
 "$OUT/plain" > "$OUT/plain.out"
+"$OUT/plain" -help > "$OUT/plain.help" 2>&1
+if grep -Fq -- '[-rp' "$OUT/plain.help"; then
+  echo 'Ordinary runtime advertises profiling options' >&2; exit 1
+fi
+"$OUT/regions" -help > "$OUT/profile.help" 2>&1
+grep -q -- '-rp_region' "$OUT/profile.help"
 if "$OUT/plain" -rp > "$OUT/no-metadata.out" 2>&1; then
   echo 'Executable without metadata accepted -rp' >&2; exit 1
 fi
-grep -q 'recompile' "$OUT/no-metadata.out"
+grep -q 'compiled with -rp' "$OUT/no-metadata.out"
 for args in '-rp_file' '-rp_file profile.rp' '-rp_paused' '-rp_interval 10ms'; do
   if "$OUT/plain" $args > "$OUT/invalid.out" 2>&1; then
     echo "Invalid profiler options accepted: $args" >&2; exit 1
@@ -45,7 +51,10 @@ fi
 grep -q 'cannot sample across a C-to-ML callback boundary' "$OUT/callback.out"
 # Public API and a fully instrumented Basis use a separate cache variant.
 cp "$ROOT/test/region_profile/api.sml" "$OUT/"
-printf '%s\n' "$ROOT/kitlib/region-profile.mlb" "$ROOT/basis/basis.mlb" "$OUT/api.sml" > "$OUT/api.mlb"
+printf '%s\n' '$(SML_LIB)/kitlib/region-profile.mlb' '$(SML_LIB)/basis/basis.mlb' "$OUT/api.sml" > "$OUT/api.mlb"
+"$MLKIT" -no_gc -o "$OUT/api-plain" "$OUT/api.mlb" > "$OUT/api-plain.build" 2>&1
+(cd "$OUT" && ./api-plain -- disabled -rp > api-plain.out && test ! -e profile.rp)
+grep -qx 'disabled:-rp' "$OUT/api-plain.out"
 "$MLKIT" -no_gc -rp -o "$OUT/api" "$OUT/api.mlb" > "$OUT/api.build" 2>&1
 "$OUT/api" -rp -rp_paused -rp_file "$OUT/api.rp" -- first -rp application > "$OUT/api.out"
 grep -qx 'first:-rp:application' "$OUT/api.out"

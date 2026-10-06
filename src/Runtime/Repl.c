@@ -368,6 +368,7 @@ repl_interp(Context ctx) {
   while (1)  {
     fprintf(repllog, "{reading command}\n");
     fflush(repllog);
+#ifdef PROFILING
     if (mlkit_rp_enabled) {
       struct pollfd fd = {command_fd,POLLIN,0};
       for (;;) {
@@ -377,6 +378,7 @@ repl_interp(Context ctx) {
         if (ready < 0 && errno != EINTR) die("REPL: cannot wait for command");
       }
     }
+#endif
     char* cmd = read_str(command_fd, &buf1, &buf1_sz);
 
     if ( strcmp(cmd, "PRINT") == 0 ) {

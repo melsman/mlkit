@@ -370,7 +370,9 @@ main(int argc, char *argv[])
   setStackSizeUnlimited();
 
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
+#ifdef PROFILING
   mlkit_rp_init();
+#endif
 
 #ifdef PARALLEL
   Context ctx = thread_init_all();

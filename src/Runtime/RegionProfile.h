@@ -48,10 +48,14 @@ uintptr_t mlkit_rp_mark(struct stringDesc *);
 /* A combined continuation keeps the collector bitmap before the profiler map.
  * Entry/callback sentinels have no bindings or collector bitmap. */
 static inline const uintptr_t *mlkit_rp_gc_map(const uintptr_t *fd) {
+#ifdef PROFILING
   static const uintptr_t end[] = {UINTPTR_MAX,0,0};
   if (fd[-1] != MLKIT_RP_MAGIC) return fd;
   if (fd[-2] >= UINTPTR_MAX-1) return end+3;
   return fd-6-5*fd[-4];
+#else
+  return fd;
+#endif
 }
 /* Static descriptors contain ML strings, retained with the generated code.
  * Neither pointer values nor dynamic definition numbers are wire identities. */
