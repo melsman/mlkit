@@ -254,6 +254,8 @@
 
 #endif /*NO TAG_VALUES*/
 
+/* Under -rp, pPoint is the unit-qualified site metadata address shifted
+ * right by three, ready for the packed object descriptor. Forward it unchanged. */
 #ifdef PROFILING
 #define REG_POLY_FUN_HDR(name, ...)  name ## Prof(__VA_ARGS__, size_t pPoint)
 #define REG_POLY_CALL(name, ...)     name ## Prof(__VA_ARGS__, pPoint)

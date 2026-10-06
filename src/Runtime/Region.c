@@ -1112,7 +1112,6 @@ maybeResetRegion(Region r) {
 void
 deallocateRegionsUntil(Context ctx, Region r)
 {
-  mlkit_rp_foreign_unwind(ctx, (uintptr_t)r);
 
   debug(printf("[deallocateRegionsUntil(r = %p, topr= %p)...\n", r, TOP_REGION));
 
@@ -1300,7 +1299,6 @@ uintptr_t *
 allocProfiling(Region r, size_t n, size_t pPoint)
 {
   r = clearStatusBits(r);
-  (void)pPoint;
-  return allocGenProfiling(&(r->g0),n,mlkit_rp_origin_token(NULL));
+  return allocGenProfiling(&(r->g0),n,pPoint);
 }
 #endif /*PROFILING*/

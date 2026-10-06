@@ -57,7 +57,7 @@ static inline const uintptr_t *mlkit_rp_gc_map(const uintptr_t *fd) {
  * Neither pointer values nor dynamic definition numbers are wire identities. */
 typedef struct MlkitAllocationSite {
   struct stringDesc *unit, *function, *source;
-  uint64_t id, point, kind;
+  uint64_t id, kind;
   struct stringDesc *ir_identity;
 } MlkitAllocationSite;
 typedef struct MlkitAllocationRegion {
@@ -70,8 +70,4 @@ extern const char *mlkit_rp_region;
 extern const char *mlkit_rp_expected_build;
 uintptr_t mlkit_rp_bind_global(Region, uintptr_t);
 uintptr_t mlkit_rp_bind_region(Region, const MlkitAllocationRegion *);
-uintptr_t mlkit_rp_origin_token(Context);
-uintptr_t mlkit_rp_foreign_enter(Context, const MlkitAllocationSite *, uintptr_t);
-uintptr_t mlkit_rp_foreign_leave(Context, uintptr_t);
-uintptr_t mlkit_rp_foreign_unwind(Context, uintptr_t);
 #endif

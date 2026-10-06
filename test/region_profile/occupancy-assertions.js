@@ -2,7 +2,8 @@
 const fs = require('fs');
 const assert = require('assert');
 const records = fs.readFileSync(process.argv[2], 'utf8').trim().split('\n').map(JSON.parse);
-assert.equal(records[0].version, 9);
+assert.equal(records[0].version, 10);
+assert(records.filter(r => r.type === "allocation_site").every(r => !("point" in r)), "IR5 has no site-to-point mapping");
 const sites = new Map(records.filter(r => r.type === 'allocation_site').map(r => [r.definition, r]));
 const rows = records.filter(r => r.type === 'allocation');
 const summaries = records.filter(r => r.type === 'occupancy_summary');

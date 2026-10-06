@@ -2340,16 +2340,16 @@ struct
                    | (AtInf.ATBOT (_,point),_)::_ => point
                    | (AtInf.SAT (_,point),_)::_ => point
                    | [] => ~1
-                 fun add_pp_for_profiling ([], args) = (name, args)
+                 fun add_pp_for_profiling ([], args) = (name, args, ~1)
                    | add_pp_for_profiling ((sma,i_opt)::rest,args) =
                    if region_profiling() then
                        (case i_opt of
                           SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
                         | SOME i => add_pp_for_profiling(rest,args)
                         | NONE   => (name ^ "Prof", args @ [INTEGER {value=IntInf.fromInt(get_pp sma),
-                                                                     precision=BI.defaultIntPrecision()}]))
+                                                                     precision=BI.defaultIntPrecision()}],point))
                                             (*get any arbitrary pp (they are the same):*)
-                   else (name, args)
+                   else (name, args, ~1)
 
                  fun comp_region_args_sma [] = []
                    | comp_region_args_sma ((sma, i_opt)::rest) =
@@ -2450,7 +2450,7 @@ struct
                                 | "__mod_int64ub" => cons_ctx ces
                                 | "__mod_int64b" => cons_ctx ces
                                 | _ => (fn x => x, ces)
-                          val (name, args) = add_pp_for_profiling(rhos_for_result',ces)
+                          val (name, args, point) = add_pp_for_profiling(rhos_for_result',ces)
                       in (maybe_return_unit
                           (insert_ses(maybe_insert_smas(fresh_lvs,smas,
                                                         maybe_add_context

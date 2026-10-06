@@ -3,7 +3,7 @@ fun op = (a:int,b:int) : bool = prim ("=", (a,b))
 fun print (s:string) : unit = prim ("printStringML", s)
 fun sample () : unit = prim ("mlkit_rp_sample", ())
 fun array `r n : int array`r = prim ("word_table0", n)
-fun foreign `r n : int array`r = prim ("ap_foreign", n)
+fun foreign `r n : int array`r = prim ("ap_foreign_wide", (n,n,n,n,n,n,n,n,n))
 exception Escape
 fun callback n = (array 3; if n = 0 then raise Escape else n)
 val _ = _export ("ap_callback", callback)

@@ -203,6 +203,8 @@ struct
   fun enrich roots {samples : t list,metadata} =
     let
       val allocations = rows metadata "allocations"
+      fun siteMark site =
+        if find site "location_kind" = SOME (Num "2") then SOME (Num "0") else find site "site"
       fun unique key xs =
         let fun add (x,dict) = Binarymap.insert(dict,key x,x)
         in map #2 (Binarymap.listItems (foldl add (Binarymap.mkDict String.compare) xs))
@@ -210,7 +212,7 @@ struct
       val sites = unique (fn r => encodeJson (get r "definition")) allocations
       val manifest = rows metadata "ir_objects"
       val neededSites = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
-                                 find r "point" <> SOME (Num "0")) sites
+                                 siteMark r <> SOME (Num "0")) sites
       val needed = neededSites @ manifest
       val paths = unique (fn s => s)
         (List.mapPartial (fn r => case stringField r "ir_object" of
@@ -264,12 +266,12 @@ struct
                           (Binarymap.mkDict String.compare) documents
       fun locate site =
         let val identity = stringField site "ir_identity"
-            val point = find site "point"
+            val point = siteMark site
             val base = [("definition",get site "definition"),("site",get site "site"),
                         ("unit",get site "unit")]
             fun unavailable reason = Obj(base @ [("status",Str reason),("spans",Arr [])])
         in case point of
-            NONE => unavailable "legacy-profile"
+            NONE => unavailable "missing-location"
           | SOME (Num "0") => unavailable "generated"
           | SOME mark =>
               (case Binarymap.peek(indexed,identity) of

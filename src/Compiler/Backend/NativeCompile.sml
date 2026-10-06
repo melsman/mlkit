@@ -119,6 +119,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
         val _ = RegionFlowGraphProfiling.reset_graph ()
         val () = IRLocations.currentOccurrence := 0
         val () = IRLocations.currentRegions := []
+        val () = IRLocations.currentSites := []
 
 	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
@@ -148,11 +149,36 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
               fun add kind caller callee = edges := (kind,caller,callee) :: !edges
               fun branches visit (SWITCH (_,cases,default)) =
                 (List.app (fn (_,body) => visit body) cases; visit default)
+              fun site caller sma =
+                let val id = case sma of
+                        ATTOP_LI (_,p) => p | ATTOP_LF (_,p) => p
+                      | ATTOP_FI (_,p) => p | ATTOP_FF (_,p) => p
+                      | ATBOT_LI (_,p) => p | ATBOT_LF (_,p) => p
+                      | SAT_FI (_,p) => p | SAT_FF (_,p) => p | IGNORE => 0
+                in IRLocations.noteSite(id,caller,0)
+                end
+              fun allocation caller exp =
+                case exp of
+                    CLOS_RECORD {alloc,...} => site caller alloc
+                  | SCLOS_RECORD {alloc,...} => site caller alloc
+                  | RECORD {alloc,...} => site caller alloc
+                  | BLOCKF64 {alloc,...} => site caller alloc
+                  | SCRATCHMEM {alloc,...} => site caller alloc
+                  | CON0 {alloc,aux_regions,...} => (site caller alloc; List.app (site caller) aux_regions)
+                  | CON1 {alloc,...} => site caller alloc
+                  | REF (alloc,_) => site caller alloc
+                  | ASSIGNREF (alloc,_,_) => site caller alloc
+                  | PASS_PTR_TO_MEM (alloc,_,_) => site caller alloc
+                  | PASS_PTR_TO_RHO {sma} => site caller sma
+                  | _ => ()
               fun walk caller statements = List.app (stmt caller) statements
               and stmt caller statement =
                 case statement of
-                    ASSIGN {bind = CLOS_RECORD {label,...},...} =>
-                      add "closure" caller (AddressLabels.pr_label label)
+                    ASSIGN {bind = bind as CLOS_RECORD {label,...},...} =>
+                      (allocation caller bind; add "closure" caller (AddressLabels.pr_label label))
+                  | ASSIGN {bind,...} => allocation caller bind
+                  | CCALL {point,...} => IRLocations.noteSite(point,caller,1)
+                  | CCALL_AUTO {point,...} => IRLocations.noteSite(point,caller,1)
                   | FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | FNCALL _ => add "indirect" caller ""

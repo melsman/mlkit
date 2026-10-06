@@ -34,7 +34,7 @@ el('allocation-rows').children[1].querySelectorAll('button')[0].listeners.click(
 assert(el('ir-message').textContent.includes('missing, changed, or from another build'));
 assert.equal(el('ir-path-row').hidden,true);assert.equal(el('ir-path').value,'');
 assert.equal(el('ir-code').children.length,0);assert.equal(el('ir-controls').hidden,true);
-for(const [status,reason] of [['generated','generated'],['legacy-profile','without IR location'],['missing-mark','does not contain']]){
+for(const [status,reason] of [['generated','generated'],['missing-location','without IR location'],['missing-mark','does not contain']]){
  irSites.set('702',{status});showIR({...irRecord,definition:'702'},null);assert(el('ir-message').textContent.includes(reason));
 }
 showIR({...irRecord,definition:'unknown'},null);assert(el('ir-message').textContent.includes('without IR location'));

@@ -51,7 +51,7 @@ struct
   val ctx_exnptr_offs = "8"  (* one word offset in Context struct *)
 
   val allocationFunction = ref "<entry>"
-  val allocationSerial = ref 0
+  val allocationSites = ref ([] : (int * lab) list)
   val allocationIR = ref (NameLab "unused_ir_identity")
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
@@ -150,34 +150,22 @@ struct
         I.dot_quad(I.pr_lab(!rpSource)),I.dot_quad(Int.toString id)] @ map I.dot_quad extra); lab
     end
   val () = allocationSite := (fn (point,kind) =>
-    (allocationSerial := !allocationSerial+1;
-     allocationMetadata (!rpUnit) (!allocationFunction) (!allocationSerial)
-       [Int.toString (Int.max(0,point)),Int.toString kind,
-        I.pr_lab(!allocationIR)]))
+    case if point > 0 then List.find (fn (id,_) => id = point) (!allocationSites) else NONE of
+        SOME (_,label) => label
+      | NONE =>
+        let val id = if point > 0 then point else IRLocations.freshSite ()
+            val (owner,kind) = if point > 0 then IRLocations.siteOrigin(point,!allocationFunction,kind)
+                               else (!allocationFunction,2)
+            val label = allocationMetadata (!rpUnit) owner id
+              [Int.toString kind,I.pr_lab(!allocationIR)]
+        in if point > 0 then allocationSites := (point,label) :: !allocationSites else ();
+           label
+        end)
   fun allocationBinding place =
     allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place) []
   fun bindAllocation fsz aty metadata code =
     load_label_addr(metadata,SS.PHREG_ATY treg0,treg0,0,
       rpInternal fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY treg0] code)
-  fun foreignAllocation fsz point call code =
-    if point < 0 orelse not(allocationProfile()) then call code
-    else
-      let val site = (!allocationSite)(point,1)
-          (* Selection is fixed at startup. Guard outside the preserving call
-           * so disabled attribution pays no register saves or helper calls. *)
-          fun whenEnabled action code =
-            let val done = new_local_lab "allocation_foreign_disabled"
-            in
-              load_label_addr(NameLab "mlkit_rp_allocation_enabled",SS.PHREG_ATY treg0,treg0,0,
-                I.cmpq(I "0",D("0",treg0)) :: I.je done :: action (I.lab done :: code))
-            end
-      in
-        whenEnabled (fn code => load_label_addr(site,SS.PHREG_ATY treg0,treg0,0,
-          rpInternal fsz "mlkit_rp_foreign_enter"
-            [SS.PHREG_ATY r14,SS.PHREG_ATY treg0,SS.REG_F_ATY(fsz-1)] code))
-          (call(whenEnabled (rpInternal fsz "mlkit_rp_foreign_leave"
-               [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1)]) code))
-      end
 
   fun inlineable C =
       case C of
@@ -1503,7 +1491,10 @@ struct
                   else
                   let
                     fun comp_c_call (all_args,res,C) =
-                      foreignAllocation fsz point (fn C => compile_c_call_prim(name, all_args, res, fsz, treg1, C)) C
+                      let val site = if region_profiling() andalso point >= 0
+                                     then SOME ((!allocationSite)(point,1)) else NONE
+                      in compile_c_call_site site (name, all_args, res, fsz, treg1, C)
+                      end
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()
@@ -1541,7 +1532,7 @@ struct
         (* this must be taken care of, like in the non-automatic case               *)
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
-                                foreignAllocation fsz point (fn C => compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)) C
+                                compile_c_call_auto(name,args,rhos_for_result,res,fsz,treg1,C)
                                 handle X => ( print ("EXN: CCALL_AUTO: " ^ pr_ls ls ^ "\n")
                                             ; raise X)
                                )
@@ -1743,7 +1734,7 @@ struct
         val _ = reset_label_counter()
         val () = rpNames := []
         val () = if sampledProfile() then rpSource := gen_string_lab(!Flags.current_source_file) else ()
-        val () = allocationSerial := 0
+        val () = allocationSites := []
         val () = if allocationProfile() then allocationIR := gen_string_lab (!IRLocations.currentIdentity) else ()
         val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
@@ -2370,7 +2361,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
           let val build = gen_string_lab(Time.toString(Time.now()))
           in add_static_data [I.dot_data,I.dot_p2align "3",
                I.dot_globl(NameLab "mlkit_rp_allocation_capable",I.OBJ),
-               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "3",
+               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "4",
                I.dot_globl(NameLab "mlkit_rp_build_id",I.OBJ),
                I.lab(NameLab "mlkit_rp_build_id"),I.dot_quad(I.pr_lab build ^ " + 8")]
           end else ()

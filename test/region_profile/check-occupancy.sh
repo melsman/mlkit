@@ -9,8 +9,8 @@ export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-occupancy.XXXXXX")
 echo "Occupancy checks: $OUT"
 $CC -O2 -std=gnu99 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" \
-  "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/allocation-profile.c" -o "$OUT/origins"
-"$OUT/origins" "$OUT/origins.rp"
+  "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/allocation-profile.c" -o "$OUT/bindings"
+"$OUT/bindings" "$OUT/bindings.rp"
 selector () { sed -n 's/.*"binding":\([0-9]*\),"unit":"\([^"]*\)","name":"`r".*/\2:\1/p' "$1" | head -1; }
 $CC -c "$ROOT/test/region_profile/allocation.c" -o "$OUT/allocation.o"
 ar rcs "$OUT/libfixture.a" "$OUT/allocation.o"
@@ -60,7 +60,7 @@ node "$ROOT/test/region_profile/occupancy-assertions.js" "$OUT/callback.json" ca
 sh "$ROOT/test/region_profile/check-site-svg.sh" "$OUT"
 
 cp "$ROOT/test/region_profile/allocation-parallel.sml" "$OUT/parallel.sml"
-printf '%s\n' "$ROOT/basis/basis.mlb" "$ROOT/basis/par.mlb" parallel.sml > "$OUT/parallel.mlb"
+printf '%s\n' "$SML_LIB/basis/basis.mlb" "$SML_LIB/basis/par.mlb" parallel.sml > "$OUT/parallel.mlb"
 "$MLKIT" -no_gc -par -rp -o "$OUT/parallel" "$OUT/parallel.mlb" > "$OUT/parallel.build" 2>&1
 "$OUT/parallel" -rp -rp_interval 0 -rp_region '<global>:5' -rp_file "$OUT/parallel.rp"
 "$RPVIEW" "$OUT/parallel.rp" --format json > "$OUT/parallel.json"

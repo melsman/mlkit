@@ -34,9 +34,9 @@ unit and its local site number, function, source and IR identity.
 Small ML allocations use an inline pointer bump, boundary test and descriptor
 store. Page overflow, large allocations and runtime-sized values use runtime
 helpers. GC preserves the descriptor's site token, including for untagged pairs,
-references and triples. Allocating foreign calls establish a context-local ML
-origin; nonallocating foreign calls need no origin wrapper. Callbacks and
-exception unwinding restore the origin stack.
+references and triples. Allocating foreign calls receive an explicit site token
+as their last argument through the existing profiling macros. C helpers forward
+it unchanged; nonallocating calls need no extra argument or wrapper.
 
 There are no per-allocation statistics-table updates or unconditional
 function-entry profiler calls. Entry polls test the pending-snapshot flag before
@@ -85,7 +85,7 @@ region instances. `--regions N` limits the largest site bands (default nine);
 remaining sites form Other. Colours remain stable across thread/worker filters.
 IR function names are used when matching companions are available. Descriptors,
 page headers, unused space and stack storage are excluded and labelled as such.
-This option requires SVG output and version-9 occupancy data; ordinary region
+This option requires SVG output and version-10 occupancy data; ordinary region
 SVG export is unchanged.
 
 Region and stack maxima are observed snapshot maxima. The separate process-wide
@@ -112,6 +112,28 @@ navigation. Read-only installed libraries were checked with MLKit and ReML,
 including pthread and GC variants. Argobots was not exercised in this validation.
 
 The IR milestones below describe the retained metadata/navigation facilities.
+
+## IR5: one identity from IR to objects
+
+Physical-size inference assigns each allocation site an ID, using the existing
+program-point counter location. Subsequent transformations retain that ID.
+Within a compilation unit, both native backends reuse one resident metadata
+record for all allocations from that site. Duplicated allocations therefore
+aggregate during the snapshot scan, while the IR table can retain several spans
+for the same site.
+
+Allocating foreign calls and their argument-storage allocations share the
+initiating call's site and location kind. Generated allocations without an
+origin receive fresh IDs from the same counter and explicit generated metadata
+(kind 2); runtime/unknown uses site 0. Generated sites do not link to IR spans.
+
+Stream version 10 removes the site-to-program-point field: a site's ID directly
+indexes the IR location table. The internal region-analysis `pp` type and the
+pretty-printer's generic `mark` name remain, but are no longer separate allocation
+identities. Older profiles must be regenerated; rpview accepts version 10 only.
+The site metadata ABI changes (capability 4, cache suffix `_RP14`), so rebuild
+compiled ML units and the runtime together. Object descriptor packing and the
+allocation fast path are unchanged.
 
 ## IR2: saved call-explicit IR and location tables
 
@@ -186,21 +208,22 @@ below; it does not add work to allocation-counter updates.
 
 ## IR3: site references and standalone report data
 
-Both native backends retain the existing program point in each static allocation
-site descriptor. A `point` of zero explicitly means no originating location.
-`location_kind` is zero for allocation specifiers and one for initiating foreign
-calls. Duplicated backend sites can share a program point; repeated occurrences
-in the IR retain all matching spans. The marked layout includes the `$name` token
-of allocating foreign calls so their origin is distinct from allocation of their
-result storage, even though both use the same program point.
+Both native backends use the originating program point as the site ID, qualified
+by compilation unit. Duplicated allocations share that site and retain all its IR
+spans. `location_kind` is zero for allocation specifiers, one for initiating
+foreign calls, and two for generated allocations without an IR location.
 
-Foreign-call origins are compiler metadata, never extra arguments to C functions.
-Closure conversion captures the existing result-region program point before it
-lowers region arguments. Calls without result regions carry no origin and omit
-the attribution wrapper and descriptor. ML callbacks use their own allocation
-sites; allocating foreign calls nested inside callbacks establish their own C
-origins. Generated allocations lacking a program point remain explicitly
-unavailable for navigation.
+Allocating foreign calls use the existing `REG_POLY_FUN_HDR` / `REG_POLY_CALL`
+macros: the `Prof` variant receives a final `pPoint` argument and forwards it
+unchanged through C helpers to `allocProfiling` or the allocation macros. This
+argument is now the site metadata address shifted right by three, ready for the
+packed descriptor, rather than a bare numerical program point. The backends
+materialize it directly when placing C arguments, including stack arguments.
+Calls without infinite result regions receive no extra argument. Automatically
+converted C calls retain their C signatures; their ML result storage is allocated
+by the compiler with its own descriptor. ML callbacks use their own sites, while
+C allocations before and after callbacks retain the explicitly passed token.
+There is no foreign-origin stack or enter/leave/unwind bookkeeping.
 
 Each compiled unit has an IR identity shared by its `.o.ir` header and static site
 descriptors. At link time, a small generated object records the actual absolute
@@ -218,19 +241,17 @@ fallbacks must pass the same identity checks. Normal use requires no search path
 
 HTML metadata includes `ir_documents` (the complete IR text and file-relative
 spans) and `ir_sites` (one mapping per allocation definition). Status is
-`available`, `generated`, `legacy-profile`, `missing-or-mismatched-ir`, or
+`available`, `generated`, `missing-location`, `missing-or-mismatched-ir`, or
 `missing-mark`. Missing, malformed, truncated, changed, or wrong-build companions
-leave allocation counts usable. Version-6 profiles have no location metadata and
-receive `legacy-profile`. The resulting HTML contains its IR and mappings and
+leave object counts usable. The resulting HTML contains its IR and mappings and
 needs no local files or network access. IR4 provides the site-selection interface described below. Allocation-range
 filtering is unchanged.
 
-There are three additional words per static allocation-site descriptor, one
-shared identity string per compilation unit, and a link-time object-path table.
-This metadata is read when serializing site definitions, not on allocation-counter
-updates. Attribution profiles use binary version 8, the allocation-descriptor ABI
-version is 2, and profiling caches use `_RP10`; rebuild runtime and profiling
-objects together. Old binary profile versions remain readable.
+Static site descriptors contain the unit, function, source, site ID, location kind
+and IR identity. The linker supplies an object-path table. This metadata is read
+when serializing site definitions, rather than on each allocation. The current
+format is version 10, site-metadata capability 4, and profiling cache `_RP14`.
+Rebuild runtime and profiling objects together; older profiles must be regenerated.
 
 ## IR4: navigating allocation sites
 

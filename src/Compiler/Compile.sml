@@ -156,17 +156,9 @@ structure Compile: COMPILE =
 
     type arity = int
 
-    (* --------------------------------------------
-     * Program point counter
-     * -------------------------------------------- *)
-
-    local
-      val pp_init = 1   (* ~1 and 0 are reserved *)
-      val pp_count = ref (pp_init)
-    in
-      fun pp_counter() = (pp_count := !pp_count + 1; !pp_count)
-      fun reset_pp_count() = pp_count := pp_init
-    end
+    (* Physical-size inference assigns the persistent allocation-site IDs.
+     * The internal pp type is retained by the region-analysis IR. *)
+    val site_counter = IRLocations.freshSite
 
     (* ---------------------------------------------------------------------- *)
     (*   Spread the optimised lambda code                                     *)
@@ -456,7 +448,7 @@ structure Compile: COMPILE =
         : ((place*pp)at,place*phsize,unit)LambdaPgm * env =
         (chat "[Physical Size Inference...";
          Timing.timing_begin();
-         let val (pgm',env') = psi(pp_counter, env, pgm)
+         let val (pgm',env') = psi(site_counter, env, pgm)
          in Timing.timing_end("PSI");
            chat "]\n";
             if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then

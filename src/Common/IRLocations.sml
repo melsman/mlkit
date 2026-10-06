@@ -36,6 +36,24 @@ struct
       device text;
       device (table text spans)
     end
+  (* Site IDs are assigned during physical-size inference and survive lowering.
+   * Zero is reserved for unknown runtime origins. Generated allocations draw
+   * from the same counter, but have no source span (location kind 2). *)
+  val siteCounter = ref 1
+  fun freshSite () = (siteCounter := !siteCounter + 1; !siteCounter)
+  val currentSites = ref ([] : (int * (string * int)) list)
+  fun noteSite (site,owner,kind) =
+    if site <= 0 then ()
+    else (siteCounter := Int.max(!siteCounter,site);
+      case List.find (fn (id,_) => id = site) (!currentSites) of
+        SOME (_,(_,1)) => ()
+      | SOME _ => if kind <> 1 then () else
+          currentSites := (site,(owner,kind)) :: List.filter (fn (id,_) => id <> site) (!currentSites)
+      | NONE => currentSites := (site,(owner,kind)) :: !currentSites)
+  fun siteOrigin (site,owner,kind) =
+    case List.find (fn (id,_) => id = site) (!currentSites) of
+        SOME (_,origin) => origin
+      | NONE => (owner,kind)
   val currentIdentity = ref ""
   fun newIdentity unit = MD5.fromString (unit ^ IntInf.toString (Time.toNanoseconds (Time.now ())))
   val currentCalls = ref ([] : (string * string * string) list)

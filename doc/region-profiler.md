@@ -134,8 +134,7 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is a compact version-9 binary stream. `rpview` also reads earlier
-sampled-profiler streams (versions 5–8), but not rp2ps files or JSON input. Each captured thread has a `stack` record with
+Output is a compact version-10 binary stream. `rpview` accepts only this format; older profiles must be regenerated. Each captured thread has a `stack` record with
 `active_bytes`, `finite_bytes = 0`, and `stack_bytes = active_bytes`. Finite-region
 storage is included in the stack, not split into separate bands.
 The active span runs from the innermost captured ML frame through the outermost
@@ -159,8 +158,8 @@ to obtain site occupancy; native compiler frame maps are unchanged.
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
-The file starts with eight bytes: `4d 4c 4b 52 50 00 09 00` (`MLKRP`, NUL,
-version 9, NUL). Each record starts with a little-endian 32-bit payload length,
+The file starts with eight bytes: `4d 4c 4b 52 50 00 0a 00` (`MLKRP`, NUL,
+version 10, NUL). Each record starts with a little-endian 32-bit payload length,
 followed by a one-byte tag and its fixed-order fields. Numeric fields are
 little-endian 64-bit integers; worker/CPU `-1` uses the all-ones representation.
 Strings are byte sequences with a little-endian 32-bit length, preserving
@@ -263,16 +262,16 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP12` (including the
+slots and types. Profiling builds now use cache suffix `_RP14` (including the
 X64 profiler-call alignment and indirect-call frame-map fixes). Compile programs and their dependencies
-with the current compiler and runtime to obtain version-9 profiles. No object scans or
+with the current compiler and runtime to obtain version-10 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 Release builds precompile the Basis (including REPL support) and Kit libraries
 together with `kitlib/region-profile.mlb`, for ordinary and sampled-profiler
 builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
-and the `_RP12` cache suffix. Legacy `-prof` libraries are no longer precompiled
+and the `_RP14` cache suffix. Legacy `-prof` libraries are no longer precompiled
 or selected for installation; they can still be compiled from source.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from
@@ -472,7 +471,7 @@ or serialization costs.
 
 See [Selected-region site occupancy](allocation-profiler.md) for the unified
 `-rp` compiler mode, launch-time region selection, per-snapshot function/site
-histograms, packed descriptors, and IR navigation. All new profiles use version 9.
+histograms, packed descriptors, and IR navigation. All new profiles use version 10.
 
 For site contributions within the recorded selected region, use
 `rpview sites.rp --sites -o sites.svg`; see [site occupancy](allocation-profiler.md).

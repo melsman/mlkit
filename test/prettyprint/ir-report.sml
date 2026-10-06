@@ -15,20 +15,19 @@ val _ = IRLocations.write {object = object,
 val companion = object ^ ".o.ir"
 val _ = OS.FileSys.rename {old = object ^ ".ir",new = companion}
 val _ = OS.FileSys.remove object
-fun site id point kind identity = Obj
-  ([("definition",Num id),("site",Num id),("unit",Str "unit"),
-    ("source",Str "/unavailable/source.sml")] @
-   (if identity = "legacy" then [] else
-     [("point",Num point),("location_kind",Num kind),("ir_identity",Str identity),("ir_object",Str (object ^ ".o"))]))
+fun site id origin kind identity = Obj
+  [("definition",Num id),("site",Num origin),("unit",Str "unit"),
+   ("source",Str "/unavailable/source.sml"),("location_kind",Num kind),
+   ("ir_identity",Str identity),("ir_object",Str (object ^ ".o"))]
 val sites = [site "1" "7" "0" "matching-build", site "2" "7" "1" "matching-build",
-             site "3" "0" "0" "matching-build", site "4" "8" "0" "matching-build",
-             site "5" "7" "0" "other-build", site "6" "7" "0" "legacy"]
+             site "3" "7" "2" "matching-build", site "4" "8" "0" "matching-build",
+             site "5" "7" "0" "other-build"]
 fun report () = ProfileIR.enrich []
   {samples = [],metadata = Obj [("allocations",Arr (sites @ [hd sites]))]}
 val {metadata,...} = report ()
 val locations = ProfileIR.rows metadata "ir_sites"
 val documents = ProfileIR.rows metadata "ir_documents"
-val _ = assert (length locations = 6 andalso length documents = 1) "deduplication"
+val _ = assert (length locations = 5 andalso length documents = 1) "deduplication"
 val _ = assert (length (ProfileIR.rows (hd documents) "calls") = 4) "static call table"
 val _ = assert (get (hd documents) "closure_edges" = Bool true) "closure metadata version"
 fun location id = valOf (List.find (fn r => get r "definition" = Num id) locations)
@@ -36,7 +35,7 @@ val _ = assert (length (ProfileIR.rows (location "1") "spans") = 2) "duplicated 
 val _ = assert (length (ProfileIR.rows (location "2") "spans") = 1) "foreign-call token location"
 val _ = app (fn (id,status) => assert (get (location id) "status" = Str status) status)
   [("1","available"),("2","available"),("3","generated"),("4","missing-mark"),
-   ("5","missing-or-mismatched-ir"),("6","legacy-profile")]
+   ("5","missing-or-mismatched-ir")]
 (* A manifest-only compilation unit must participate even without measured sites.
  * Its formal number intentionally differs from the importing unit's numbers. *)
 val dependency = OS.FileSys.tmpName ()

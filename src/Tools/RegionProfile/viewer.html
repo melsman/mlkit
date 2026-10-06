@@ -104,7 +104,7 @@ const irDocuments=new Map((profile.ir_documents||[]).map(d=>[d.identity,d]));
 const irDecoded=new Map();
 let activeIR=null,irReturnFocus=null,irSelectedRecord=null;
 const irReasons={
- 'legacy-profile':'This profile was recorded without IR location metadata.',
+ 'missing-location':'This profile was recorded without IR location metadata.',
  'generated':'This allocation was generated without an originating IR location.',
  'missing-or-mismatched-ir':'The matching IR companion was missing, changed, or from another build when this report was generated.',
  'missing-mark':'The matching IR file does not contain this allocation location.'
@@ -177,7 +177,7 @@ function showIR(record,trigger){
  el('ir-source').textContent=sourceLabels((profile.allocations||[]).map(r=>r.source))(record.source);el('ir-source').title=record.source;
  el('ir-code').replaceChildren();el('ir-location').replaceChildren();el('ir-controls').hidden=true;
  el('ir-path-row').hidden=true;el('ir-path').hidden=true;el('ir-path').value='';el('ir-filename').textContent='';el('ir-filename').title='';el('ir-copy-status').textContent='';
- if(!site||site.status!=='available')el('ir-message').textContent='IR navigation unavailable. '+(irReasons[site?.status||'legacy-profile']||'No location is available for this site.');
+ if(!site||site.status!=='available')el('ir-message').textContent='IR navigation unavailable. '+(irReasons[site?.status||'missing-location']||'No location is available for this site.');
  else if(!irDocuments.has(site.identity)||!site.spans?.length)el('ir-message').textContent='IR navigation unavailable. The embedded IR document or location is missing.';
  else{
   activeIR={site,record};el('ir-controls').hidden=false;
@@ -230,7 +230,7 @@ function allocationRegionFlow(rows){
  for(const p of flow.points||[]){const key=JSON.stringify([p.identity,String(p.point)]);if(!destinations.has(key))destinations.set(key,new Set());destinations.get(key).add(p.node);}
  const measured=new Map(),unplaced=[],ambiguous=[];
  for(const r of rows.values()){
-  const options=[...(destinations.get(JSON.stringify([r.ir_identity,String(r.point)]))||[])].filter(id=>reachable.has(id)).sort();
+  const options=[...(destinations.get(JSON.stringify([r.ir_identity,String(r.site)]))||[])].filter(id=>reachable.has(id)).sort();
   if(!options.length){unplaced.push(r);continue;}
   if(options.length>1){ambiguous.push(r);unplaced.push(r);continue;}
   const id=options[0];if(!measured.has(id))measured.set(id,[]);measured.get(id).push(r);
@@ -397,11 +397,10 @@ function allocationTable(){
  el('allocation-rows').replaceChildren();
  el('allocation-section').hidden=false;
  const regionId=profile.allocation_region?.binding??String(session.selector||'').match(/:(\d+)$/)?.[1];
- const legacy=Number(profile.version||8)<9;
- el('allocation-count-label').textContent=legacy?'Allocations':'Objects';
- el('allocation-title').textContent=(legacy?'Allocation volume':'Site occupancy')+(regionId!==undefined?' for r'+regionId:'');
- const incomplete=!profile.complete||(profile.allocation_problems||[]).length;
- el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+(legacy?' · Legacy cumulative allocation totals; snapshot filtering is unavailable.':' · Occupancy in the selected snapshot range.');
+ el('allocation-count-label').textContent='Objects';
+ el('allocation-title').textContent='Site occupancy'+(regionId!==undefined?' for r'+regionId:'');
+ const incomplete=!profile.complete;
+ el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+'Region '+session.selector+' · Build '+session.build_id+' · Occupancy in the selected snapshot range.';
  const rows=new Map();
  const functions=new Map();
  for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}

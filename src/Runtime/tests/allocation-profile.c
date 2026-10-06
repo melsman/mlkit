@@ -1,25 +1,19 @@
-/* Foreign-origin nesting, cleanup on exceptions, and global binding keys. */
+/* Global binding keys and selection. FFI token forwarding is tested by
+ * the allocation-callback integration fixture. */
 #include "RegionProfile.h"
 #include "String.h"
 #include <assert.h>
 #include <string.h>
 
 const volatile uintptr_t mlkit_rp_capable = MLKIT_RP_MAGIC;
-const volatile uintptr_t mlkit_rp_allocation_capable = 3;
+const volatile uintptr_t mlkit_rp_allocation_capable = 4;
 Rp *global_freelist;
 Context top_ctx;
 static struct { size_t tag; char data[8]; } unit = {0,"fixture"};
 static struct { size_t tag; char data[8]; } other = {0,"other"};
 static struct { size_t tag; char data[8]; } ml = {0,"ML"};
-static struct { size_t tag; char data[8]; } outer = {0,"outer"};
-static struct { size_t tag; char data[8]; } inner = {0,"inner"};
 static const MlkitAllocationRegion selected = {(String)&unit,(String)&ml,(String)&unit,42};
 static const MlkitAllocationRegion unselected = {(String)&other,(String)&ml,(String)&unit,42};
-static const MlkitAllocationSite sites[] = {
-  {(String)&unit,(String)&ml,(String)&unit,1,0,0,(String)&unit},
-  {(String)&unit,(String)&outer,(String)&unit,2,0,0,(String)&unit},
-  {(String)&unit,(String)&inner,(String)&unit,3,0,0,(String)&unit}
-};
 int main(int argc, char **argv) {
   assert(argc == 2);
   context ctx = {0}; top_ctx = &ctx;
@@ -42,20 +36,6 @@ int main(int argc, char **argv) {
   mlkit_rp_bind_region(&r,&selected);
   mlkit_rp_bind_region(&ignored,&unselected);
   assert(r.allocation_profile == &selected && !ignored.allocation_profile);
-  assert(mlkit_rp_origin_token(&ctx) == (1));
-  mlkit_rp_foreign_enter(&ctx,&sites[1],2000);
-  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
-  mlkit_rp_foreign_enter(&ctx,&sites[2],1000);
-  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[2] >> 3));
-  /* ML allocations carry their own token; the enclosing C origin is unchanged. */
-  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[2] >> 3));
-  mlkit_rp_foreign_leave(&ctx,1000);
-  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
-  mlkit_rp_foreign_enter(&ctx,&sites[2],900);
-  mlkit_rp_foreign_unwind(&ctx,1500);
-  assert(mlkit_rp_origin_token(&ctx) == ((uintptr_t)&sites[1] >> 3));
-  mlkit_rp_foreign_unwind(&ctx,3000);
-  assert(mlkit_rp_origin_token(&ctx) == (1));
   mlkit_rp_close();
   return 0;
 }

@@ -13,7 +13,7 @@ assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
  profile.region_flow={available:true,nodes:[node(root,'msort'),node(a,'msort'),node(b,'merge'),node(c,'cp'),node(unrelated,'split')],
   edges:[edge(root,a),edge(a,b),edge(a,c),edge(b,c),edge(c,c),edge(unrelated,b)],
   points:[{identity:'flow-fixture',point:'1',node:c},{identity:'flow-fixture',point:'2',node:a}],issues:[]};
- const record=(site,point,fn,count)=>({unit:'u',function:fn,source:'/source/test.sml',site,definition:site,point,ir_identity:'flow-fixture',count,bytes:String(Number(count)*16)});
+ const record=(site,point,fn,count)=>({unit:'u',function:fn,source:'/source/test.sml',site:point,definition:site,ir_identity:'flow-fixture',count,bytes:String(Number(count)*16)});
  profile.allocations=[record('201','1','anon','3'),record('202','2','msort','5'),record('203','99','generated','2')];
  irDocuments.set('flow-fixture',{identity:'flow-fixture',unit:'u',source:'/source/test.sml',calls:[{kind:'closure',caller:'factory',callee:'anon'},{kind:'closure',caller:'factory2',callee:'anon'}]});
  el('allocation-view').value='flow';allocationTable();

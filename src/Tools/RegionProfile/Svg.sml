@@ -28,8 +28,8 @@ struct
         val () = if siteMode andalso metric <> "total" then raise Fail "--sites shows payload memory; omit --metric" else ()
         val session = case find metadata "allocation_session" of SOME r => r | NONE => Null
         val selector = case session of Obj _ => strField session "selector" | _ => ""
-        val () = if siteMode andalso (number metadata "version" < 9 orelse selector = "") then
-                   raise Fail "--sites requires a version-9 profile recorded with -rp_region UNIT:BINDING" else ()
+        val () = if siteMode andalso (number metadata "version" <> 10 orelse selector = "") then
+                   raise Fail "--sites requires a version-10 profile recorded with -rp_region UNIT:BINDING" else ()
         val regionKey = key
         fun key r = if siteMode then encode false (Arr [get r "unit",Str(strField r "site")]) else regionKey r
         val allocations = list metadata "allocations"

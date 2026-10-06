@@ -34,6 +34,7 @@ run () {
 }
 run ir sh "$ROOT/test/region_profile/check-ir.sh"
 run accounting sh "$ROOT/test/region_profile/check.sh"
+run ir5 sh "$ROOT/test/region_profile/check-ir5.sh"
 run allocation sh "$ROOT/test/region_profile/check-allocation.sh"
 run extended sh "$ROOT/test/region_profile/check-extended.sh"
 run binary sh "$ROOT/test/region_profile/check-binary.sh"

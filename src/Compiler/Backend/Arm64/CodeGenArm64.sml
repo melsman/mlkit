@@ -55,7 +55,7 @@ struct
   val profiling = Flags.is_on0 "region_profiling"
   val allocationProfile = Flags.is_on0 "allocation_profile"
   val allocationFunction = ref "<entry>"
-  val allocationSerial = ref 0
+  val allocationSites = ref ([] : (int * lab) list)
   val allocationIR = ref (NameLab "unused_ir_identity")
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
@@ -510,37 +510,37 @@ struct
     static [Directive(Quad ([pr_lab unitName,pr_lab(stringData display),
                             pr_lab(!rpSource),Int.toString id] @ extra))]
   fun allocationSite (point,kind) =
-    (allocationSerial := !allocationSerial+1;
-     allocationMetadata (!rpUnit) (!allocationFunction) (!allocationSerial)
-       [Int.toString (Int.max(0,point)),Int.toString kind,
-        pr_lab(!allocationIR)])
+    case if point > 0 then List.find (fn (id,_) => id = point) (!allocationSites) else NONE of
+        SOME (_,label) => label
+      | NONE =>
+        let val id = if point > 0 then point else IRLocations.freshSite ()
+            val (owner,kind) = if point > 0 then IRLocations.siteOrigin(point,!allocationFunction,kind)
+                               else (!allocationFunction,2)
+            val label = allocationMetadata (!rpUnit) owner id
+              [Int.toString kind,pr_lab(!allocationIR)]
+        in if point > 0 then allocationSites := (point,label) :: !allocationSites else ();
+           label
+        end
   fun allocationBinding place =
     allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place) []
   fun bindAllocationInto fsz aty metadata code =
     (addressInto(metadata,X 17)
      ++ internalCallInto fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY(X 17)]) code
-  fun foreignAllocationInto fsz point call code =
-    if point < 0 orelse not(allocationProfile()) then call code
-    else
+  (* ClosExp appends the program point through the REG_POLY convention.
+   * Resolve it to a unit-qualified, packed-descriptor token at the ABI boundary. *)
+  fun foreignSiteCallInto fsz point name args code =
+    if profiling() andalso point >= 0 then
       let val site = allocationSite(point,1)
-          (* Selection is fixed at startup. Guard outside the preserving call
-           * so disabled attribution pays no register saves or helper calls. *)
-          fun whenEnabled action code =
-            let val done = localFresh()
-            in
-              (addressInto(NameLab "mlkit_rp_allocation_enabled",X 17)
-               ++ loadInto(X 17,0,X 17)
-               ++ instruction A.cbz (R(X 17),L(done)))
-                (action (Label done :: code))
-            end
-      in
-        (whenEnabled (addressInto(site,X 17)
-         ++ internalCallInto fsz "mlkit_rp_foreign_enter"
-            [SS.PHREG_ATY(X 28),SS.PHREG_ATY(X 17),SS.REG_F_ATY(fsz-1)])
-         ++ call
-         ++ whenEnabled (internalCallInto fsz "mlkit_rp_foreign_leave"
-            [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1)])) code
+          val last = length args - 1
+      in scalarCallInto
+           {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = gc(),
+            loadArgument = fn (i,extra) =>
+              if i = last then addressInto(site,X 16)
+                ++ instruction A.lsr (R(X 16),R(X 16),I(3))
+              else readInto (fsz+extra) (List.nth(args,i)) (X 16)} code
       end
+    else runtimeCallInto fsz name args code
+
   (* Mode 0 allocates at top; 1 honors the dynamic at-bottom bit; 2 resets.
    * The low infinite-region bit distinguishes descriptors from finite storage. *)
   fun regionArg sma =
@@ -2049,10 +2049,9 @@ struct
              ++ resultsInto fsz res) code
           end
         else if length res > 1 then unsupported "multiple C results"
-        else foreignAllocationInto fsz point
-          (runtimeCallInto fsz name (rhos_for_result @ args) ++ resultsInto fsz res) code
+        else (foreignSiteCallInto fsz point name (rhos_for_result @ args) ++ resultsInto fsz res) code
     | LS.CCALL_AUTO c =>
-        foreignAllocationInto fsz (#point c) (autoCallInto fsz c) code
+        autoCallInto fsz c code
     | LS.EXPORT{name,clos_lab,arg = (aty,ft1,ft2)} =>
         let
           val () = if ft1 = LS.Int andalso ft2 = LS.Int then () else unsupported "export other than int -> int"
@@ -2551,7 +2550,7 @@ struct
       val () = rpNames := []
       val () = rpName := stringData
       val () = if sampledProfile() then rpSource := stringData(!Flags.current_source_file) else ()
-      val () = allocationSerial := 0
+      val () = allocationSites := []
       val () = if allocationProfile() then allocationIR := stringData (!IRLocations.currentIdentity) else ()
       val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
       val () = if sampledProfile() then
@@ -2660,7 +2659,7 @@ struct
         end
         else ()
       val () = if allocationProfile() then
-        (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["3"] []);
+        (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["4"] []);
          addStatic(datum (NameLab "mlkit_rp_build_id")
            [pr_lab(stringData(Time.toString(Time.now()))) ^ " + 8"] [])) else ()
       fun init (place,l) code =
@@ -2786,11 +2785,7 @@ struct
          ++ moveInto(X 0,X 28)
          ++ moveInto(X 1,X 27)
          ++ loadInto(X 28,8,X 19)
-         ++ instruction A.cbz (R(X 19),L(uncaught))
-         ++ (if allocationProfile() then
-              moveInto(X 28,X 0) ++ moveInto(X 19,X 1)
-              ++ instruction A.bl (L(NameLab "mlkit_rp_foreign_unwind"))
-             else fn c => c)) code
+         ++ instruction A.cbz (R(X 19),L(uncaught))) code
       val code =
         (constantInto(0,X 0)
          ++ instruction A.b (L(NameLab "terminateML"))

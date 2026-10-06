@@ -385,7 +385,6 @@ typedef struct {
   Rp *freelist;                   // local freelist of pages
   thread_mutex_list_t *mutex_freelist; // local freelist of region locks
 #endif
-  void *allocation_profile; /* logical-thread counters and foreign origins */
 } context;
 
 typedef context* Context;
