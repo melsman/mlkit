@@ -266,9 +266,19 @@ typedef struct AllocationDefinition {
 } AllocationDefinition;
 static AllocationDefinition *allocation_definitions;
 static uint64_t allocation_definition_count;
+/* These arrays are supplied by the linker and have variable length. A
+ * one-element weak definition here lets GCC infer an incorrect array bound
+ * and optimize away continuation past the first entry, even with volatile.
+ * Undefined weak symbols are null when no metadata was linked. */
+#ifdef __APPLE__
+/* Mach-O requires a definition for optional data in executables. Clang
+ * preserves interposition of these weak definitions. */
 __attribute__((weak)) const char *const volatile mlkit_rp_ir_objects[][2] = {{NULL,NULL}};
+#else
+extern const char *const volatile mlkit_rp_ir_objects[][2] __attribute__((weak));
+#endif
 static const char *allocation_object(const MlkitAllocationSite *site) {
-  if (site) for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
+  if (site && mlkit_rp_ir_objects) for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
     if (!strcmp(mlkit_rp_ir_objects[i][0],site->ir_identity->data))
       return mlkit_rp_ir_objects[i][1];
   return "";
@@ -427,7 +437,7 @@ void mlkit_rp_init(void) {
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
   if (mlkit_rp_allocation_capable) emit_record(12,NUMS(mlkit_rp_allocation_enabled,1),STRS(mlkit_rp_build_id,mlkit_rp_region ? mlkit_rp_region : ""));
-  if (mlkit_rp_allocation_enabled)
+  if (mlkit_rp_allocation_enabled && mlkit_rp_ir_objects)
     for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
       emit_record(17,NUMS(),STRS(mlkit_rp_ir_objects[i][0],mlkit_rp_ir_objects[i][1]));
   if (fflush(output)) fail("cannot write profile header");
@@ -626,9 +636,13 @@ static const char *run_type_name(uintptr_t type) {
 }
 /* Linker metadata maps global region pointer slots to their inferred types. */
 typedef struct { Region *slot; uintptr_t type; } GlobalType;
+#ifdef __APPLE__
 __attribute__((weak)) const volatile GlobalType mlkit_rp_globals[] = {{NULL,0}};
+#else
+extern const volatile GlobalType mlkit_rp_globals[] __attribute__((weak));
+#endif
 static uintptr_t global_type(Region r) {
-  for (const volatile GlobalType *g = mlkit_rp_globals; g->slot; g++)
+  for (const volatile GlobalType *g = mlkit_rp_globals; g && g->slot; g++)
     if (clearStatusBits(*g->slot) == r) return g->type;
   return 0;
 }
