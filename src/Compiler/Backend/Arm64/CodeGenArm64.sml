@@ -411,7 +411,7 @@ struct
           {name = name,fixed = map (fn _ => AbiArm64.I64) args,variadic = [],protectGC = false,
            loadArgument = fn (i,extra) => readInto (fsz+extra) (List.nth(args,i)) (X 16)} code
     else foreignCallInto fsz name args (fn _ => fn code => code) code
-  fun autoCallInto fsz {point,name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
+  fun autoCallInto fsz {name,args:(SS.Aty*LS.foreign_type) list,rhos_for_result,res = (dst,ft)} code =
     let
       fun convert (i,r) code =
         case #2(List.nth(args,i)) of

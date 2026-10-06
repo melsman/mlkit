@@ -23,6 +23,7 @@ in
   Regions/MUL_INF.sml
   Regions/REGINF.sig
   local open Pickle SyntaxObjects in Regions/REGION_STAT_ENV.sml end
+  Regions/REGION_FLOW_GRAPH_PROFILING.sml
   Regions/REG_FLOW.sml
   local open Pickle in Regions/RTYPE.sig end
   local open CompilerObjects
@@ -63,6 +64,7 @@ in
         end
         local open Pickle
         in Regions/PhysSizeInf.sml
+           Regions/RegionFlowGraphProfiling.sml
         end
      end
 (*

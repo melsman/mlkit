@@ -82,6 +82,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
     type StoreTypeCO = SubstAndSimplify.StoreTypeCO
     type Aty = SubstAndSimplify.Aty
 
+    val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
     val gc_p = Flags.is_on0 "garbage_collection"
 
     fun fast_pr stringtree =
@@ -113,12 +114,17 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                    andalso Flags.is_on "garbage_collection" then
                   raise Fail "-region_profile with GC and parallelism is not supported"
                 else ()
+        val () = if print_region_flow_graph() then RegionFlowGraphProfiling.reset_graph () else ()
         val () = IRLocations.currentOccurrence := 0
         val () = IRLocations.currentRegions := []
         val () = IRLocations.currentSites := []
 
 	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
+
+        val () = if print_region_flow_graph() then
+          display ("Region Flow Graph", RegionFlowGraphProfiling.layout_graph())
+          else ()
 
 	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
 								 code=code,imports=imports,
@@ -133,14 +139,15 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
               fun add kind caller callee = edges := (kind,caller,callee) :: !edges
               fun branches visit (SWITCH (_,cases,default)) =
                 (List.app (fn (_,body) => visit body) cases; visit default)
-              fun site caller sma =
+              fun siteKind kind caller sma =
                 let val id = case sma of
                         ATTOP_LI (_,p) => p | ATTOP_LF (_,p) => p
                       | ATTOP_FI (_,p) => p | ATTOP_FF (_,p) => p
                       | ATBOT_LI (_,p) => p | ATBOT_LF (_,p) => p
                       | SAT_FI (_,p) => p | SAT_FF (_,p) => p | IGNORE => 0
-                in IRLocations.noteSite(id,caller,0)
+                in IRLocations.noteSite(id,caller,kind)
                 end
+              val site = siteKind 0
               fun allocation caller exp =
                 case exp of
                     CLOS_RECORD {alloc,...} => site caller alloc
@@ -152,7 +159,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                   | CON1 {alloc,...} => site caller alloc
                   | REF (alloc,_) => site caller alloc
                   | ASSIGNREF (alloc,_,_) => site caller alloc
-                  | PASS_PTR_TO_MEM (alloc,_,_) => site caller alloc
+                  | PASS_PTR_TO_MEM (alloc,_,_) => siteKind 1 caller alloc
                   | PASS_PTR_TO_RHO {sma} => site caller sma
                   | _ => ()
               fun walk caller statements = List.app (stmt caller) statements
@@ -164,7 +171,6 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                   | CCALL {args,...} =>
                       List.app (fn SITE_TOKEN point => IRLocations.noteSite(point,caller,1)
                                  | _ => ()) args
-                  | CCALL_AUTO {point,...} => IRLocations.noteSite(point,caller,1)
                   | FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
                   | FNCALL _ => add "indirect" caller ""

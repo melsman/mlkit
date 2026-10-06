@@ -6671,8 +6671,8 @@ line instead configures the runtime executing the compiler itself.
 \chapter{Region Profiling}
 \noindent Historical examples below use the retired rp2ps profiler. Current
 runtime options require \kw{+RTS ... -RTS}; the current interface is rpview.
-The historical \kw{-Prfg} option and VCG export have been removed; use
-rpview for region-flow views.
+The \kw{-Prfg} option still prints a textual region flow graph. VCG export
+has been removed; use rpview for interactive region-flow views.
 \label{useOfProf.sec}
 %---------------------------------------------------------
 We have already seen several examples of the use of the profiler. We shall now
@@ -9510,6 +9510,9 @@ Options:
 
 --print_region_spreaded_program, -Prsp                   (off)
      Print region-spreaded program.
+
+--print_region_flow_graph, -Prfg                         (off)
+     Print the region flow graph as text.
 
 --print_region_static_env0, -Prse0                       (off)
      Print imported region static environment prior to

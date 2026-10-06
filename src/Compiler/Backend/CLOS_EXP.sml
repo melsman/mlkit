@@ -100,7 +100,7 @@ signature CLOS_EXP =
     | CCALL           of {name: string,
                           args: ClosExp list,
                           rhos_for_result : ClosExp list}
-    | CCALL_AUTO      of {name: string, point: int,
+    | CCALL_AUTO      of {name: string,
                           args: (ClosExp * foreign_type) list,
                           res: foreign_type,
                           rhos_for_result : ClosExp list}   (* boxed res implies memory for the result *)

@@ -218,7 +218,7 @@ struct
        | LS.SWITCH_C sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.SWITCH_E sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set)
-       | LS.CCALL_AUTO{point,name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set)
+       | LS.CCALL_AUTO{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set)
        | _ =>
 	   let
 	     val (def,use) = LS.def_use_lvar_ls ls
@@ -307,11 +307,11 @@ struct
 	    let val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
 	    in LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
-	  | IFF_lss'(LS.CCALL_AUTO{point,name,args,rhos_for_result,res}::lss) =
+	  | IFF_lss'(LS.CCALL_AUTO{name,args,rhos_for_result,res}::lss) =
 	    let val flushed_lvars =
 	          case res
 		    of (a,ft) => if atom_in_F(a,F) then [a] else nil
-	    in LS.CCALL_AUTO{point=point,name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
+	    in LS.CCALL_AUTO{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
 	  | IFF_lss'(LS.EXPORT{name,clos_lab,arg}::lss) =
 	    LS.EXPORT{name=name,clos_lab=clos_lab,arg=arg} :: IFF_lss' lss
@@ -411,7 +411,7 @@ struct
 	  | IF_lss'(LS.SWITCH_E sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_E,sw,U_set,lss)
 	  | IF_lss'((ls as LS.CCALL{name,args,rhos_for_result,res})::lss,U_set) =
 	  do_non_tail_call_if(ls,C_set,IF_lss'(lss,U_set)) (* Note, we use C_set and not F_set *)
-	  | IF_lss'((ls as LS.CCALL_AUTO{point,name,args,rhos_for_result,res})::lss,U_set) =
+	  | IF_lss'((ls as LS.CCALL_AUTO{name,args,rhos_for_result,res})::lss,U_set) =
 	  do_non_tail_call_if(ls,C_set,IF_lss'(lss,U_set)) (* Note, we use C_set and not F_set *)
 	  | IF_lss'(ls::lss,U_set) =
 	  let

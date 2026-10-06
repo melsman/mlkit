@@ -1523,7 +1523,7 @@ struct
                                 end handle X => ( print ("EXN: CCALL: " ^ pr_ls ls ^ "\n")
                                                 ; raise X))
                   end
-               | LS.CCALL_AUTO{point,name, args, rhos_for_result, res} =>
+               | LS.CCALL_AUTO{name, args, rhos_for_result, res} =>
 
         (* With dynamicly linked functions the first argument must be the name of   *)
         (* the function. If we where to implement automatic conversion into regions *)

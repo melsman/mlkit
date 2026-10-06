@@ -34,6 +34,8 @@ run () {
 }
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
 run ir sh "$ROOT/test/region_profile/check-ir.sh"
+run text-flow sh "$ROOT/test/region_profile/check-text-flow.sh"
+run auto-call sh "$ROOT/test/region_profile/check-auto-call.sh"
 run accounting sh "$ROOT/test/region_profile/check.sh"
 run ir5 sh "$ROOT/test/region_profile/check-ir5.sh"
 run all-regions sh "$ROOT/test/region_profile/check-all-regions.sh"
