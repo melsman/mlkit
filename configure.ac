@@ -6,6 +6,7 @@ AC_CONFIG_FILES([src/Runtime/Makefile
                  Makefile
                  man/man1/mlkit-mllex.1
                  man/man1/mlkit-mlyacc.1
+                 man/man1/rpview.1
                  man/man1/kittester.1
                  src/Tools/MlbMake/Makefile
                  src/Tools/RegionProfile/Makefile
