@@ -18,12 +18,31 @@ struct
             | insert x (y::ys) = if less(x,y) then x::y::ys else y::insert x ys
       in foldl (fn (x,acc) => insert x acc) [] xs
       end
-  fun unique xs = foldl (fn (x,acc) => if List.exists (fn y => x = y) acc then acc else x::acc) [] xs
   fun render options {samples,metadata} =
       let
         fun opt k d = case find options k of SOME (Str s) => s | SOME (Num s) => s | _ => d
         fun flag k d = case find options k of SOME (Bool b) => b | _ => d
+        val siteMode = flag "sites" false
         val metric = opt "metric" "total"
+        val () = if siteMode andalso metric <> "total" then raise Fail "--sites shows payload memory; omit --metric" else ()
+        val session = case find metadata "allocation_session" of SOME r => r | NONE => Null
+        val selector = case session of Obj _ => strField session "selector" | _ => ""
+        val () = if siteMode andalso (number metadata "version" <> 10 orelse selector = "") then
+                   raise Fail "--sites requires a version-10 profile recorded with -rp_region all or UNIT:BINDING" else ()
+        val regionKey = key
+        fun key r = if siteMode then encode false (Arr [get r "unit",Str(strField r "site")]) else regionKey r
+        val allocations = list metadata "allocations"
+        (* Each site's values revisit every sample. Index once instead of
+         * scanning the entire recording for every site/sample pair. *)
+        val allocationsBySample = foldl (fn (r,index) =>
+            let val sample = number r "sample"
+                val rows = case Binarymap.peek(index,sample) of SOME rows => rows | NONE => []
+            in Binarymap.insert(index,sample,r::rows)
+            end) (Binarymap.mkDict IntInf.compare) (if siteMode then rev allocations else [])
+        fun records s = if siteMode then
+                          (case Binarymap.peek(allocationsBySample,number s "sample") of
+                             SOME rows => rows | NONE => [])
+                        else list s "regions"
         val scope = opt "scope" "all"
         val limit = valOf(Int.fromString(opt "limit" "9"))
         val compact = flag "legend-right" true
@@ -31,13 +50,19 @@ struct
                             ["all"] => true
                           | [field,value] => (case find r field of NONE => value = "-1" | _ => strField r field = value)
                           | _ => false
-        fun bytes r = if metric = "total" then number r "page_footprint" + number r "large_bytes" + number r "finite_bytes"
+        fun bytes r = if siteMode then number r "bytes" else if metric = "total" then number r "page_footprint" + number r "large_bytes" + number r "finite_bytes"
                       else if metric = "stack" then number r "finite_bytes"
                       else if metric = "pages" then number r "page_footprint" + number r "unused_tail"
                       else number r metric
-        val allRegions = List.concat(map (fn s => list s "regions") samples)
-        val keys = sort (op <) (unique(map key allRegions))
-        fun weight k = foldl (fn (r,n) => if key r = k then n + number r "page_footprint" + number r "large_bytes" + number r "finite_bytes" else n) 0 allRegions
+        val allRegions = List.concat(map records samples)
+        val recordsByKey = foldl (fn (r,index) =>
+            let val k = key r
+                val rows = case Binarymap.peek(index,k) of SOME rows => rows | NONE => []
+            in Binarymap.insert(index,k,r::rows)
+            end) (Binarymap.mkDict String.compare) (rev allRegions)
+        val keys = map #1 (Binarymap.listItems recordsByKey)
+        fun keyedRecords k = valOf(Binarymap.peek(recordsByKey,k))
+        fun weight k = foldl (fn (r,n) => n + (if siteMode then number r "bytes" else number r "page_footprint" + number r "large_bytes" + number r "finite_bytes")) 0 (keyedRecords k)
         val weights = map (fn k => (k,weight k)) keys
         val colorKeys = map #1 (sort (fn ((a,w),(b,v)) => w > v orelse (w = v andalso a < b)) weights)
         fun color k =
@@ -47,7 +72,43 @@ struct
                     | index (x::xs) i = if x = k then i else index xs (i+1)
               in List.nth(palette,index colorKeys 0 mod length palette)
               end
-        fun label r =
+        fun shortFunction name =
+            if size name > 23 andalso String.sub(name,size name-23) = #"_" andalso
+               List.all Char.isAlphaNum (explode(String.extract(name,size name-22,NONE)))
+            then String.substring(name,0,size name-23) else name
+        val functionOwners = foldl (fn (r,index) =>
+            let val name = shortFunction(strField r "function")
+                val owner = (strField r "unit",strField r "function")
+                val owners = case Binarymap.peek(index,name) of SOME owners => owners | NONE => []
+            in if List.exists (fn old => old = owner) owners then index
+               else Binarymap.insert(index,name,owner::owners)
+            end) (Binarymap.mkDict String.compare) (if siteMode then allRegions else [])
+        val printedNames = map (fn doc =>
+            let val text = strField doc "text"
+                val code = String.substring(text,IntInf.toInt(number doc "code_start"),IntInf.toInt(number doc "code_bytes"))
+                fun names ("fun"::name::rest) = name :: names rest
+                  | names (_::rest) = names rest
+                  | names [] = []
+            in (strField doc "identity",names(String.tokens (fn c => Char.isSpace c orelse c = #"[" orelse c = #"(") code))
+            end) (list metadata "ir_documents")
+        fun irName r =
+            let val short = shortFunction(strField r "function")
+                val names = case List.find (fn (id,_) => id = strField r "ir_identity") printedNames of
+                                SOME (_,ns) => ns | NONE => []
+                fun matches name = short = name orelse
+                    (String.isPrefix name short andalso List.all Char.isDigit (explode(String.extract(short,size name,NONE))))
+            in foldl (fn (name,best) => if size name > size best then name else best) ""
+                     (List.filter matches names)
+            end
+        fun siteLabel r =
+            let val short = shortFunction(strField r "function")
+                val printed = irName r
+                val name = if printed = "" then short else printed
+                val owners = case Binarymap.peek(functionOwners,short) of SOME owners => owners | NONE => []
+            in (if length owners > 1 then strField r "function" else name) ^ " · site " ^ strField r "site" ^
+               (if flag "show-base" false then " · " ^ base(strField r "source") else "")
+            end
+        fun label r = if siteMode then siteLabel r else
             let val name = strField r "name"
                 val source = strField r "source"
                 val unit = strField r "unit"
@@ -60,11 +121,19 @@ struct
                (if flag "show-base" false then " · " ^ basename else "") ^
                (if null details then "" else " (" ^ String.concatWith ", " details ^ ")")
             end
-        fun values k = map (fn s => foldl (fn (r,n) => if selected r andalso key r = k then n + bytes r else n) 0 (list s "regions")) samples
+        fun values k =
+            let val totals = foldl (fn (r,index) =>
+                    if not(selected r) then index else
+                      let val sample = number r "sample"
+                          val total = case Binarymap.peek(index,sample) of SOME n => n | NONE => 0
+                      in Binarymap.insert(index,sample,total + bytes r)
+                      end) (Binarymap.mkDict IntInf.compare) (keyedRecords k)
+            in map (fn s => case Binarymap.peek(totals,number s "sample") of SOME n => n | NONE => 0) samples
+            end
         fun sum xs = foldl (op +) (0:IntInf.int) xs
-        val regionKeys = List.filter (fn k => List.exists (fn r => selected r andalso key r = k andalso (metric <> "stack" orelse get r "kind" = Str "finite")) allRegions) keys
-        val regions = map (fn k => (k,label(valOf(List.find (fn r => key r = k) allRegions)),values k)) regionKeys
-        val stack = if metric = "total" orelse metric = "stack"
+        val regionKeys = List.filter (fn k => List.exists (fn r => selected r andalso (metric <> "stack" orelse get r "kind" = Str "finite")) (keyedRecords k)) keys
+        val regions = map (fn k => (k,label(hd(keyedRecords k)),values k)) regionKeys
+        val stack = if not siteMode andalso (metric = "total" orelse metric = "stack")
                     then [("stack","ML stack",map (fn s => sum(map (fn r => number r "stack_bytes") (List.filter selected (list s "stacks")))) samples)] else []
         fun less ((k,_,v),(k',_,v')) = sum v < sum v' orelse (sum v = sum v' andalso k < k')
         val ordered = sort less (regions @ stack)
@@ -73,14 +142,14 @@ struct
         fun omitted k = List.exists (fn (k',_,_) => k = k') hidden
         val zero = map (fn _ => 0:IntInf.int) samples
         fun plus (a,b) = ListPair.mapEq (op +) (a,b)
-        val bands = (if null hidden then [] else [("other","Other (" ^ Int.toString(length hidden) ^ " regions)",foldl (fn ((_,_,v),a) => plus(v,a)) zero hidden)]) @
+        val bands = (if null hidden then [] else [("other","Other (" ^ Int.toString(length hidden) ^ (if siteMode then " sites)" else " regions)"),foldl (fn ((_,_,v),a) => plus(v,a)) zero hidden)]) @
                     List.filter (fn (k,_,_) => not(omitted k)) ordered
         val totals = foldl (fn ((_,_,v),a) => plus(v,a)) zero bands
         val peak = foldl IntInf.max 0 totals
         val firstSample = case samples of [] => raise Fail "no completed snapshots to export" | s::_ => s
         val first = number firstSample "time"
         val last = number (List.last samples) "time"
-        val pagePeak = if flag "show-peak" false andalso scope = "all" andalso List.exists (fn m => metric = m) ["total","pages","page_footprint"]
+        val pagePeak = if not siteMode andalso flag "show-peak" false andalso scope = "all" andalso List.exists (fn m => metric = m) ["total","pages","page_footprint"]
                        then Option.map (fn n => integer n * number firstSample "page_bytes") (find firstSample "max_pages") else NONE
         val maximum = IntInf.max(1,case pagePeak of SOME n => IntInf.max(n,peak) | NONE => peak)
         fun memUnit factor [] = (factor,"EiB")
@@ -90,8 +159,9 @@ struct
         fun memory n = fmt(real n / real factor) ^ " " ^ unit
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
-        val caption = opt "caption" ("Region profile for " ^ main ^ " (GC " ^ gc ^ ")")
-        val metricName = case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"
+        val regionId = List.last (String.fields (fn c => c = #":") selector)
+        val caption = opt "caption" ((if siteMode then (if selector = "all" then "Site contributions across all regions in " else "Site contributions for r" ^ regionId ^ " in ") else "Region profile for ") ^ main ^ " (GC " ^ gc ^ ")")
+        val metricName = if siteMode then "Object payload (site occupancy)" else case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"
         val scopeName = case String.fields (fn c => c = #":") scope of
                             ["thread",n] => "Thread " ^ n | ["worker",n] => "Execution stream " ^ n | ["cpu",n] => "CPU (logical core) " ^ n | _ => "All threads"
         (* Conservative character widths keep labels within the vector canvas,
@@ -203,12 +273,15 @@ struct
         val () = case pagePeak of NONE => () | SOME n =>
                    (emit("<line x1=\"88\" x2=\"968\" y1=\"" ^ fmt(y n) ^ "\" y2=\"" ^ fmt(y n) ^ "\" stroke=\"#b91c1c\" stroke-width=\"2\" stroke-dasharray=\"8 4\"/>");
                     text 968.0 (top+43.0) 16.0 "end" ("Peak page capacity: " ^ memory n))
-        val legendY = paragraph "Regions" 1026.0 (top+32.0) legendWidth 18.0 + 12.0
+        val legendY = paragraph (if siteMode then "Allocation sites" else "Regions") 1026.0 (top+32.0) legendWidth 18.0 + 12.0
         val legendY = foldl (fn ((k,name,_),yy) =>
                         (emit("<rect x=\"1026\" y=\"" ^ fmt(yy-11.0) ^ "\" width=\"12\" height=\"12\" rx=\"2\" fill=\"" ^ color k ^ "\"/>");
                          paragraph name 1048.0 yy (legendWidth-22.0) 16.0+12.0)) legendY (rev bands)
         val foot = Real.max(top+668.0,legendY)+12.0
         val foot = case pagePeak of NONE => foot | SOME _ => paragraph "Peak page capacity excludes cached pages, large objects and stack storage; it includes allocations between snapshots and GC from/to-space overlap." 16.0 foot (canvasWidth-32.0) 16.0+12.0
+        val foot = if siteMode then paragraph
+            "Snapshot occupancy, not cumulative allocation volume. Profiling descriptors, page headers, unused space and the ML stack are excluded."
+            16.0 foot (canvasWidth-32.0) 16.0+12.0 else foot
         val height = foot+12.0
       in "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" ^ fmt canvasWidth ^ "\" height=\"" ^ fmt height ^ "\" viewBox=\"0 0 " ^ fmt canvasWidth ^ " " ^ fmt height ^ "\" font-family=\"Arial, sans-serif\" font-size=\"16\" fill=\"#182c39\" role=\"img\"><title>" ^ escape caption ^ "</title><rect width=\"100%\" height=\"100%\" fill=\"white\"/>" ^ String.concat(rev(!output)) ^ "</svg>\n"
       end

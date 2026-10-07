@@ -1,0 +1,193 @@
+.TH RPVIEW 1 "October 6, 2026" "MLKit @PACKAGE_VERSION@" "MLKit tools"
+.SH NAME
+rpview \- display MLKit region profiles and allocation-site occupancy
+.SH SYNOPSIS
+.B rpview
+.RI [ profile.rp ]
+.RB [ \-o " output" ]
+.RI [ options ]
+.SH DESCRIPTION
+.B rpview
+reads a binary region profile produced by an MLKit program compiled with
+.B \-rp
+and generates a standalone interactive HTML report, an SVG graph, or
+newline-delimited JSON records.
+The default input is
+.B profile.rp
+and the default output is
+.BR profile.html .
+.PP
+The HTML report includes region and stack graphs, snapshot-range selection,
+thread and worker filters, and allocation-site occupancy when recorded.
+For a selected region with matching compiler metadata, Region slice shows
+function definitions, region bindings and region instantiations.
+Allocation sites provides a flat table and is the fallback when a slice
+is unavailable. Static region relationships describe possible flow, not
+observed call paths.
+.PP
+Occupancy describes objects present at a snapshot, not cumulative allocation
+volume. For a range of snapshots, the allocation table uses the snapshot
+with the largest selected payload and identifies it explicitly.
+Finite-region storage is included in stack usage.
+.SH OPTIONS
+.TP
+.B \-\-help
+Print usage information and exit.
+.TP
+.BI "\-o " file
+.TQ
+.BI "\-\-output " file
+Write to
+.IR file .
+Use
+.B \-
+for standard output. The input file cannot also be the output file.
+.TP
+.BI "\-\-format " format
+Select
+.BR html ,
+.BR svg ,
+or
+.BR json .
+Otherwise the format is inferred from the output suffix:
+.B .svg
+selects SVG,
+.B .json
+or
+.B .jsonl
+selects JSON, and other suffixes select HTML.
+Without an output filename, SVG goes to
+.B profile.svg
+and JSON goes to standard output.
+JSON output contains one profile record per line.
+.TP
+.BI "\-\-ir\-dir " directory
+Add a fallback search location for moved IR companions. May be repeated.
+Normally companions are found beside the object paths recorded in the profile.
+Matching build identity and integrity checks are required.
+.TP
+.BI "\-\-caption " text
+Override the report or graph caption.
+.TP
+.B \-\-sites
+Generate an SVG graph of object payload occupancy split by allocation site.
+Requires SVG output and a recording made with
+.B \-rp_region
+set to a binding or
+.BR all .
+With all-region recordings, contributions are combined across regions.
+Profiling descriptors, page headers, unused space and stack storage
+are excluded.
+Do not combine this option with a metric other than
+.BR total .
+HTML reports expose recorded site occupancy without this option.
+.TP
+.BI "\-\-regions " n
+Show the largest
+.I n
+region bands (or site bands with
+.BR \-\-sites ),
+combining the remainder as Other. Default: 9. Use 0 for all bands.
+.TP
+.BI "\-\-metric " name
+Choose
+.B total
+(the default: regions and ML stack),
+.B stack
+(ML stack, including finite regions),
+.B pages
+(region-page capacity),
+.B page_footprint
+(page capacity minus unused tails),
+.B large_bytes
+(large-object storage),
+.B finite_bytes
+(the legacy finite-reservation field, zero in current profiles), or
+.B descriptor_bytes
+(infinite-region descriptors).
+.TP
+.BI "\-\-scope " view
+Choose
+.B all
+(the default),
+.BI thread: n ,
+.BI worker: n ,
+or
+.BI cpu: n .
+Use \-1 for an unavailable worker or CPU identity.
+The requested scope must be present in the recording.
+.TP
+.BI "\-\-group " name
+Set the initial HTML region-table grouping to
+.B aggregate
+(the default),
+.BR region ,
+.BR thread ,
+or
+.BR worker .
+.TP
+.BR \-\-show\-base " / " \-\-hide\-base
+Show or hide source base names. Default: hidden.
+.TP
+.BR \-\-show\-kind " / " \-\-hide\-kind
+Show or hide region kinds. Default: hidden.
+.TP
+.BR \-\-show\-type " / " \-\-hide\-type
+Show or hide region types. Default: hidden.
+.TP
+.BR \-\-show\-peak " / " \-\-hide\-peak
+Show or hide the process-wide peak page-capacity reference line.
+Default: hidden.
+This is not an exact maximum of combined region and stack usage.
+.TP
+.BR \-\-legend\-right " / " \-\-legend\-below
+Choose the initial HTML legend placement and compact naming style.
+Default: right. The SVG legend always appears inside the graph on the right.
+.SH RECORDING A PROFILE
+Compile with
+.B \-rp
+and pass runtime profiling options inside
+.B +RTS
+and
+.B \-RTS
+blocks. For example:
+.PP
+.nf
+mlkit \-rp \-o program program.mlb
+\&./program +RTS \-rp \-rp_region all \-rp_interval 10ms \-RTS
+rpview profile.rp \-o profile.html
+.fi
+.PP
+For an individual binding, replace
+.B all
+with the unit-and-region identifier reported by rpview, such as
+.BR UNIT:163 .
+Runtime profiling options belong to the executable, not to rpview.
+.SH EXAMPLES
+.nf
+rpview profile.rp \-o regions.svg \-\-regions 12
+rpview profile.rp \-\-sites \-o sites.svg
+rpview profile.rp \-\-sites \-\-scope thread:0 \-o thread.svg
+rpview profile.rp \-\-format json > records.jsonl
+rpview profile.rp \-\-ir\-dir /moved/build \-o report.html
+.fi
+.SH FILES
+.TP
+.B profile.rp
+Default binary input profile. Current profiles use format version 10;
+unsupported older formats must be regenerated.
+.TP
+.IB object .ir
+Compiler-generated IR companion (normally ending in
+.BR .o.ir ).
+The HTML report embeds matching IR and site locations and can then be viewed
+offline without the original files. Missing or mismatched companions leave
+profile measurements usable, with navigation unavailable for affected sites.
+.SH EXIT STATUS
+Zero indicates success. A nonzero status indicates an invalid option,
+unreadable or invalid input, or an output error.
+.SH SEE ALSO
+.BR mlkit (1),
+.BR reml (1)
+.PP
+MLKit documentation: https://elsman.com/mlkit/

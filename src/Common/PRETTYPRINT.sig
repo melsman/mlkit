@@ -11,7 +11,7 @@ formatted string by calling `flatten'. (I strongly recommend using `outputTree',
 which is much more efficient than `formal' and `flatten'; the latter are only
 provided for backwards compatability.)
 
-A StringTree can be one of three things:
+A StringTree can be one of four things:
 
  (1) a LEAF, containing a string which will not be decomposed or split over
      lines.
@@ -22,6 +22,9 @@ A StringTree can be one of three things:
 
  (3) a HNODE, (H for "horizontal") which is similar to a NODE, but has no indent
      field.
+
+ (4) a MARKED_LEAF, containing an integer marker and a string. It has the same
+     layout as a LEAF; outputTreeWithSpans also reports its emitted location.
 
 A StringTree of kind NODE will be printed on one line, if possible. Otherwise,
 it will be printed by putting the children vertically between the `start' string
@@ -61,6 +64,7 @@ signature PRETTYPRINT =
   sig
     datatype childsep = NOSEP | LEFT of string | RIGHT of string
     datatype StringTree = LEAF of string
+                        | MARKED_LEAF of int * string
                         | NODE of {start : string, finish: string, indent: int,
                                    children: StringTree list,
                                    childsep: childsep}
@@ -89,6 +93,10 @@ signature PRETTYPRINT =
     val outputTree        : (string -> unit) * StringTree * int -> unit
     val outputTree'       : (int -> string) -> (string -> unit) * StringTree * int -> unit
 
+    type span = {mark : int, start : int, length : int}
+    val outputTreeWithSpans :
+      {device : string -> unit, tree : StringTree, width : int} -> span list
+
     type Report
     val reportStringTree  : StringTree -> Report
     val reportStringTree' : int -> StringTree -> Report
@@ -115,7 +123,21 @@ device each time a line is to be output; Thus device is supposed to output the
 line (without inserting leading or trailing newline).
 
 [outputTree' p (device,t,width)] as outputTree but with a function p for
-pretty-printing n blanks (a multiply of 64) shortly.
+rendering n blanks (a multiple of 64). The default outputTree uses real spaces.
+
+[MARKED_LEAF (mark,text)] prints exactly like LEAF text. Existing operations
+ignore the marker. Markers need not be unique.
+
+[outputTreeWithSpans {device,tree,width}] emits the same text as outputTree
+and returns marked-leaf spans in output order. start is a zero-based byte
+offset from the beginning of this invocation's output (including newlines
+and indentation); length is a byte count. For UTF-8 text these are UTF-8 byte
+positions, not character indices. The device must write the strings unchanged
+for offsets to match its destination. No spans are returned for elided text;
+if leading marked whitespace is overwritten by a prefix, only the surviving
+part is included. Empty marked leaves have zero-length spans. Repeated marks
+produce separate entries. Only final output, not trial layouts, contributes
+spans. Line/column conversion and file-header offsets belong to the caller.
 
 [layout_opt p] returns a pretty printer for values of type `t option` given a
 pretty printer `p` for values of type `t`.

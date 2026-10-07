@@ -18,7 +18,8 @@ struct
 
   fun die s  = Crash.impossible ("ClosExp." ^ s)
 
-  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
+  val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
+  val region_profiling : unit -> bool = Flags.is_on0 "region_profile"
 
   val print_normalized_program_p = Flags.add_bool_entry
       {long="print_normalized_program", short=NONE,
@@ -59,6 +60,7 @@ struct
     | FETCH           of label
     | STORE           of ClosExp * label
     | INTEGER         of {value: IntInf.int, precision: int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD            of {value: IntInf.int, precision: int}
     | STRING          of string
     | REAL            of string
@@ -186,6 +188,7 @@ struct
       | layout_ce(FETCH lab)          = LEAF("fetch(" ^ Labels.pr_label lab ^ ")")
       | layout_ce(STORE(ce,lab))      = LEAF("store(" ^ flatten1(layout_ce ce) ^ "," ^ Labels.pr_label lab ^ ")")
       | layout_ce(INTEGER {value,precision}) = LEAF(IntInf.toString value)
+      | layout_ce(SITE_TOKEN point) = LEAF("site-token(" ^ Int.toString point ^ ")")
       | layout_ce(WORD {value,precision}) = LEAF("0x" ^ IntInf.fmt StringCvt.HEX value)
       | layout_ce(STRING s)           = LEAF("\"" ^ String.toString s ^ "\"")
       | layout_ce(REAL s)             = LEAF(s)
@@ -1246,7 +1249,34 @@ struct
           | SOME _ => die ("lookup_rho: rho bound to FIX. " ^ f())
           | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound. " ^ f())
 
+    (* Preserve region identities before closure conversion lowers them to loads.
+     * Imported formals are referred to by native function label and position. *)
+    fun flowRow fields =
+      if Flags.is_on "region_profile" then
+        IRLocations.currentRegions := fields :: !IRLocations.currentRegions
+      else ()
+    fun flowRegion rho = Int.toString (Effect.key_of_eps_or_rho rho)
+    fun flowAllocation alloc =
+      let val (rho,pp,mode) = case alloc of
+              AtInf.ATTOP (r,p) => (r,p,"attop")
+            | AtInf.ATBOT (r,p) => (r,p,"atbot")
+            | AtInf.SAT (r,p) => (r,p,"sat")
+          val id = flowRegion rho
+          val () = if pp <= 0 then () else flowRow ["point",Int.toString pp,id]
+      in (id,Int.toString (Int.max (0,pp)),mode)
+      end
+    fun flowCall caller callee actuals =
+      let val occurrence = !IRLocations.currentOccurrence
+          val () = IRLocations.currentOccurrence := occurrence + 1
+      in List.app (fn (i,a) =>
+        let val (rho,point,mode) = flowAllocation a
+        in flowRow ["flow",Labels.pr_label caller,Labels.pr_label callee,
+                    Int.toString i,rho,mode,point,Int.toString occurrence]
+        end) (ListPair.zip (List.tabulate (length actuals,fn i => i),actuals))
+      end
+
     fun convert_alloc (alloc,env) =
+      (if Flags.is_on "region_profile" then ignore (flowAllocation alloc) else ();
         case alloc of
             AtInf.ATBOT(rho,pp) =>
             let val (ce,se) = lookup_rho env rho (fn () => "convert_alloc1")
@@ -1259,7 +1289,7 @@ struct
           | AtInf.ATTOP(rho,pp) =>
             let val (ce,se) = lookup_rho env rho (fn () => "convert_alloc3")
             in (convert_sma(AtInf.ATTOP(rho,pp),CE.lookupRhoKind env rho,ce),se)
-            end
+            end)
 
     fun mult ("f",PhysSizeInf.INF) = CE.FI
       | mult ("f",PhysSizeInf.WORDS n) = CE.FF
@@ -1600,6 +1630,7 @@ struct
                  val free_vars = remove_zero_sized_region_closure_lvars env free_vars_all
 
                  val new_lab = Labels.renew lab "anon"
+                 val () = flowRow ["function",Labels.pr_label new_lab,Labels.pr_label lab,"anonymous"]
                  val lv_clos = fresh_lvar("clos")
                  val args = List.map #1 pat
                  val ress = gen_fresh_res_lvars metaType (* Result variables are not bound in env as they only exists in cc *)
@@ -1651,8 +1682,14 @@ struct
                      (env plus_decl_with CE.declareLvar)
                      (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
 
+                 val () = List.app (fn child =>
+                   flowRow ["function",Labels.pr_label child,Labels.pr_label lab,"named"]) labels
+
                  fun compile_fn (lvar,bind,formals,drops,lab) =
                    let
+                     val () = List.app (fn (i,(rho,_)) =>
+                       flowRow ["region",flowRegion rho,"formal",Labels.pr_label lab,Int.toString i])
+                       (ListPair.zip (List.tabulate (length formals,fn i => i),formals))
                      val (args,body,metaType) = case bind of
                        MulExp.TR(MulExp.FN{pat,body,...},metaType,_,_) => (List.map #1 pat, body,metaType)
                      | _ => die "compile_fn: bind is not a FN"
@@ -1720,7 +1757,7 @@ struct
                 * can be reused. *)
                let
                  val _ =
-                   if region_profiling() then
+                   if print_region_flow_graph() then
                      let val rhos_formals = lookup_fix_profiling env lvar
                      in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
                      end
@@ -1732,6 +1769,7 @@ struct
                    | _ => [ccTrip tr2 env lab cur_rv]
 
                  val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
+                 val () = if Flags.is_on "region_profile" then flowCall lab lab_f rhos_actuals else ()
                in
                    let val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
                        val (smas,ses_sma,_) = unify_sma_se smas_regvec_and_ses SEMap.empty
@@ -1758,7 +1796,7 @@ struct
                let
                  (* Insert edges in the Region Flow Graph for Profiling. *)
                  val _ =
-                   if region_profiling() then
+                   if print_region_flow_graph() then
                      let val rhos_formals = lookup_fix_profiling env lvar
                      in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
                      end
@@ -1782,6 +1820,7 @@ struct
                    | _ => [ccTrip tr2 env lab cur_rv]
 
                  val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
+                 val () = if Flags.is_on "region_profile" then flowCall lab lab_f rhos_actuals else ()
                  val (smas,ses_sma) =
                    let val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
                        val (smas,ses_sma,_) = unify_sma_se smas_regvec_and_ses SEMap.empty
@@ -1833,9 +1872,11 @@ struct
 
            | MulExp.LETREGION{B,rhos=ref bound_regvars,body} =>
                let
+                 val () = List.app (fn (rho,_) =>
+                   flowRow ["region",flowRegion rho,"local",Labels.pr_label lab,""]) bound_regvars
                  (* Insert letregion nodes in the RegionFlowGraph. *)
                  val _ =
-                   if region_profiling() then
+                   if print_region_flow_graph() then
                      RegionFlowGraphProfiling.add_nodes (bound_regvars,"LETREGION")
                    else ()
 
@@ -2303,8 +2344,7 @@ struct
                        (case i_opt of
                           SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
                         | SOME i => add_pp_for_profiling(rest,args)
-                        | NONE   => (name ^ "Prof", args @ [INTEGER {value=IntInf.fromInt(get_pp sma),
-                                                                     precision=BI.defaultIntPrecision()}]))
+                        | NONE   => (name ^ "Prof", args @ [SITE_TOKEN (get_pp sma)]))
                                             (*get any arbitrary pp (they are the same):*)
                    else (name, args)
 

@@ -34,7 +34,7 @@ signature NATIVE_COMPILE =
     type StoreTypeCO
     type Aty
 
-    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) ->
+    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool ->
       BackendEnv * {main_lab:label,
 		    code:(StoreTypeCO,offset,Aty) LinePrg,
 		    imports:label list * label list,
@@ -82,8 +82,8 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
     type StoreTypeCO = SubstAndSimplify.StoreTypeCO
     type Aty = SubstAndSimplify.Aty
 
-    val gc_p = Flags.is_on0 "garbage_collection"
     val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
+    val gc_p = Flags.is_on0 "garbage_collection"
 
     fun fast_pr stringtree =
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
@@ -102,7 +102,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 
     (* the boolean `safe' is true if the fragment has no side-effects;
      * for dead code elimination. *)
-    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool, vcg_file:string)
+    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool)
       : ClosExp.env * {main_lab: label,
 		       code: (StoreTypeCO,offset,Aty) LinePrg,
 		       imports: label list * label list,
@@ -110,35 +110,91 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
 		       safe:bool}  =
       let
 
-	val _ = if Flags.is_on "region_profile" then
-          app (fn flag => if Flags.is_on flag then
-                 raise Fail ("-region_profile does not support " ^ flag)
-               else ()) ["region_profiling"]
-          else ()
         val _ = if Flags.is_on "region_profile" andalso Flags.is_on "parallelism"
                    andalso Flags.is_on "garbage_collection" then
                   raise Fail "-region_profile with GC and parallelism is not supported"
                 else ()
-        val _ = RegionFlowGraphProfiling.reset_graph ()
+        val () = if print_region_flow_graph() then RegionFlowGraphProfiling.reset_graph () else ()
+        val () = IRLocations.currentOccurrence := 0
+        val () = IRLocations.currentRegions := []
+        val () = IRLocations.currentSites := []
 
 	val {main_lab,code,imports,exports,env=clos_env1} =
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
 
-	(* Show region flow graph and generate .vcg file *)
-	val _ =
-	  if print_region_flow_graph() then
-	    (display("Region Flow Graph",
-		     RegionFlowGraphProfiling.layout_graph());
-	     let val outStreamVCG = TextIO.openOut vcg_file
-	     in RegionFlowGraphProfiling.export_graph outStreamVCG;
-	       TextIO.closeOut(outStreamVCG);
-	       chat ("[Wrote region flow graph for profiling to file " ^ vcg_file ^ "]")
-	     end)
-	  else ()
+        val () = if print_region_flow_graph() then
+          display ("Region Flow Graph", RegionFlowGraphProfiling.layout_graph())
+          else ()
 
 	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
 								 code=code,imports=imports,
 								 exports=exports}
+        (* Collect static ML edges while labels still agree with generated functions.
+         * An empty callee denotes an unresolved closure call, never an edge to C. *)
+        val () = if not (Flags.is_on "region_profile") then IRLocations.currentCalls := []
+          else
+            let
+              open LineStmt
+              val edges = ref []
+              fun add kind caller callee = edges := (kind,caller,callee) :: !edges
+              fun branches visit (SWITCH (_,cases,default)) =
+                (List.app (fn (_,body) => visit body) cases; visit default)
+              fun siteKind kind caller sma =
+                let val id = case sma of
+                        ATTOP_LI (_,p) => p | ATTOP_LF (_,p) => p
+                      | ATTOP_FI (_,p) => p | ATTOP_FF (_,p) => p
+                      | ATBOT_LI (_,p) => p | ATBOT_LF (_,p) => p
+                      | SAT_FI (_,p) => p | SAT_FF (_,p) => p | IGNORE => 0
+                in IRLocations.noteSite(id,caller,kind)
+                end
+              val site = siteKind 0
+              fun allocation caller exp =
+                case exp of
+                    CLOS_RECORD {alloc,...} => site caller alloc
+                  | SCLOS_RECORD {alloc,...} => site caller alloc
+                  | RECORD {alloc,...} => site caller alloc
+                  | BLOCKF64 {alloc,...} => site caller alloc
+                  | SCRATCHMEM {alloc,...} => site caller alloc
+                  | CON0 {alloc,aux_regions,...} => (site caller alloc; List.app (site caller) aux_regions)
+                  | CON1 {alloc,...} => site caller alloc
+                  | REF (alloc,_) => site caller alloc
+                  | ASSIGNREF (alloc,_,_) => site caller alloc
+                  | PASS_PTR_TO_MEM (alloc,_,_) => siteKind 1 caller alloc
+                  | PASS_PTR_TO_RHO {sma} => site caller sma
+                  | _ => ()
+              fun walk caller statements = List.app (stmt caller) statements
+              and stmt caller statement =
+                case statement of
+                    ASSIGN {bind = bind as CLOS_RECORD {label,...},...} =>
+                      (allocation caller bind; add "closure" caller (AddressLabels.pr_label label))
+                  | ASSIGN {bind,...} => allocation caller bind
+                  | CCALL {args,...} =>
+                      List.app (fn SITE_TOKEN point => IRLocations.noteSite(point,caller,1)
+                                 | _ => ()) args
+                  | FUNCALL {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
+                  | JMP {opr,...} => add "direct" caller (AddressLabels.pr_label opr)
+                  | FNCALL _ => add "indirect" caller ""
+                  | FNJMP _ => add "indirect" caller ""
+                  | LETREGION {body,...} => walk caller body
+                  | SCOPE {scope,...} => walk caller scope
+                  | HANDLE {default,handl = (h,_),handl_return = (r,_,_),...} =>
+                      (walk caller default; walk caller h; walk caller r)
+                  | SWITCH_I {switch,...} => branches (walk caller) switch
+                  | SWITCH_W {switch,...} => branches (walk caller) switch
+                  | SWITCH_S switch => branches (walk caller) switch
+                  | SWITCH_C switch => branches (walk caller) switch
+                  | SWITCH_E switch => branches (walk caller) switch
+                  | _ => ()
+              fun function (FUN (label,_,body)) = bodyOf label body
+                | function (FN (label,_,body)) = bodyOf label body
+              and bodyOf label body =
+                let val caller = AddressLabels.pr_label label
+                in add "function" caller ""; walk caller body
+                end
+            in List.app function (#code all_line_stmt);
+               IRLocations.currentCalls := rev (!edges)
+            end
+
 	val all_reg_alloc = Timing.timing "RegAlloc"
 	  (if Flags.is_on "register_allocation" then RegAlloc.ra
 	   else RegAlloc.ra_dummy) all_line_stmt

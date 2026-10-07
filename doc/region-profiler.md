@@ -1,17 +1,19 @@
 # Sampled region profiler
 
+Runtime options below belong inside `+RTS ... -RTS`; see
+[runtime arguments](runtime-arguments.md) for delimiters and application arguments.
+
 The compiler flag `-rp` is an alias for `-region_profile` in both MLKit and ReML.
 For batch compilation it emits profiling metadata; run the resulting executable
-with `-rp` to start recording. In an interactive session, either spelling enables
+with `+RTS -rp -RTS` to start recording. In an interactive session, either spelling enables
 both metadata generation and profiling of the session runtime.
 
 Compile the executable and its ML dependencies with `-rp` (or `-region_profile`). Enable a
-session with the executable's `-rp` option. This profiler is independent of the
-old `-prof` object profiler; the two cannot be combined.
+session with the executable's `-rp` option. This is the unified object-and-region profiler; rpview is the sole interface. See [site occupancy](allocation-profiler.md).
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb
-./app -rp -rp_interval 10ms -rp_file profile.rp -rp_report
+./app +RTS -rp -rp_interval 10ms -rp_file profile.rp -rp_report -RTS
 rpview profile.rp --output profile.html
 ```
 
@@ -30,11 +32,14 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | --- | --- |
 | `-rp` | Enable a process-wide session. Otherwise the API and runtime bookkeeping are disabled. |
 | `-rp_file PATH` | Output path; defaults to `profile.rp`. |
+| `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in rpview. |
 | `-rp_interval Nms`, `Ns`, or `0` | Integral wall-clock interval; defaults to `10ms`. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
-| `--` | End runtime options and preserve subsequent application arguments verbatim. |
+| `-RTS` | End the runtime block; application arguments follow. |
+| `--RTS` | End all runtime parsing; discard this marker. |
+| `--` | End all runtime parsing; preserve this marker and following arguments. |
 
 Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
 `RegionProfile.start`, `pause`, `sample`, `mark`, and `flush`. Start and pause
@@ -59,13 +64,12 @@ end-of-ML-stack anchor.
 
 ## Accounting and metadata
 
-* Finite bindings contribute their reserved stack storage, including storage
-  reserved for results that have not been initialized. Zero-sized bindings add
-  zero bytes.
+* Finite bindings contribute only to ML stack storage, including uninitialized
+  reservations; they have no object descriptors or separate region bands.
 * Infinite bindings are measured by following page links and subtracting the
   unused tail of the last page. Page headers and slack in earlier pages remain
-  included. No object or page payload is scanned; **no per-region page count is
-  maintained**. A process-wide atomic live count and high-water mark track page
+  included. Selected regions additionally scan packed object descriptors for site occupancy.
+  **No per-region page count is maintained**. A process-wide atomic live count and high-water mark track page
   allocation, reset, release and GC reclamation while `-rp` is enabled, even
   when sampling is paused. Released chains are counted by following their links.
   The maximum excludes cached free pages and includes simultaneous GC from-space
@@ -74,7 +78,7 @@ end-of-ML-stack anchor.
   Large-object allocation sizes are recorded separately and removed on region
   reset/release and GC reclamation.
 * Descriptors and free-page caches are reported separately. The displayed region
-  footprint sums page footprint, large-object bytes and finite reservations;
+  footprint sums page footprint and large-object bytes;
   it excludes descriptors and caches.
 * Shared infinite regions are deduplicated by descriptor address. Thread
   attribution follows the owner of the binding's lifetime, not the thread that
@@ -135,9 +139,9 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is a compact version-5 binary stream; `rpview` accepts only this current format and
-rejects JSON input and other version numbers. Each captured thread has a `stack` record with
-`active_bytes`, `finite_bytes`, and `stack_bytes = active_bytes - finite_bytes`.
+Output is a compact version-10 binary stream. `rpview` accepts only this format; older profiles must be regenerated. Each captured thread has a `stack` record with
+`active_bytes`, `finite_bytes = 0`, and `stack_bytes = active_bytes`. Finite-region
+storage is included in the stack, not split into separate bands.
 The active span runs from the innermost captured ML frame through the outermost
 ML return slot, including alignment and spilled-result reservations. It excludes
 the sampler's C frames, foreign-call frames, and unused OS stack capacity.
@@ -153,14 +157,14 @@ worker/CPU identities, and changing storage counters. Different metadata for the
 same source binding receives a separate definition; source binding identities
 still control graph grouping. `rpview` resolves references and rejects undefined
 IDs and duplicate definitions. Static metadata has no slot in measurement records.
-Only the current format is supported. Relink profiled executables with the
-current runtime and regenerate data files; native compiler frame maps are unchanged.
+Relink profiled executables with the current runtime and regenerate data files
+to obtain site occupancy; native compiler frame maps are unchanged.
 
 Records include binding definitions, thread lifecycle events, markers, samples,
 skipped requests, and normal session termination. A sample is committed by
 `sample_end`; readers ignore an incomplete final record or unfinished sample.
-The file starts with eight bytes: `4d 4c 4b 52 50 00 05 00` (`MLKRP`, NUL,
-version 5, NUL). Each record starts with a little-endian 32-bit payload length,
+The file starts with eight bytes: `4d 4c 4b 52 50 00 0a 00` (`MLKRP`, NUL,
+version 10, NUL). Each record starts with a little-endian 32-bit payload length,
 followed by a one-byte tag and its fixed-order fields. Numeric fields are
 little-endian 64-bit integers; worker/CPU `-1` uses the all-ones representation.
 Strings are byte sequences with a little-endian 32-bit length, preserving
@@ -229,13 +233,13 @@ snapshots or filters. Axes choose elapsed-time units (ns, µs, ms or s) from the
 time and memory units (bytes, KiB, MiB, GiB, etc.) from the displayed range.
 Captions, markers and peak annotations use the same units. Band tooltips also
 include exact byte counts, and tables retain exact byte counters.
-Finite reservations belong to their region bands, so the stack band subtracts
-them. Infinite-region descriptors stored in active ML stack frames are already
-part of that span; global and persistent descriptors outside it are excluded.
-Descriptors and free-page caches are not added again. The **ML stack + finite
-regions** metric (`--metric stack`) shows the ML stack band plus finite-region
-reservations, excluding infinite-region pages and large objects. The runtime report's `sampled_peak_bytes`
-remains a region-only peak; the default graph's sampled maximum includes stack.
+Finite reservations are part of the ML stack band. Infinite-region descriptors
+stored in active ML stack frames are already part of that span; global and
+persistent descriptors outside it are excluded. Descriptors and free-page caches
+are not added again. The **ML stack + finite regions** metric (`--metric stack`)
+shows the active stack, excluding region pages and large objects. The runtime
+report's `sampled_peak_bytes` remains a region-only peak; the default graph's
+sampled maximum includes stack.
 
 Only **Legend on the right** is checked by default; base names, kind, type and
 peak capacity start hidden. **Show base names** includes the
@@ -243,9 +247,9 @@ source filename in region labels, such as `life.sml` (global regions use
 `global`, and interactive code uses `REPL #N`). Full source paths and internal
 unit identifiers appear in hover details. The internal unit identifier remains
 the aggregation key, so matching filenames do not merge distinct regions.
-**Show region kind** adds `finite` or `infinite` from the recorded kind, including
-zero-sized finite regions. Finite regions reserve ML stack space; infinite regions
-use pages and may hold large objects. **Show region type** adds the compiler's
+**Show region kind** adds the recorded kind. New profiles contain only infinite
+regions; finite storage appears in the stack. Infinite regions use pages and may
+hold large objects. **Show region type** adds the compiler's
 inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
 from finite/infinite kind. The `region_type` field in binding definitions carries this information;
 an unavailable inferred type is displayed as `type unavailable`.
@@ -263,17 +267,16 @@ source path, base name, type and kind, regardless of the label-display checkboxe
 Region types come from native frame-map version 4 (magic `0x52504d34`), which
 includes a source-name reference per frame and one type word per binding,
 plus a linker-generated table of global region
-slots and types. Profiling builds now use cache suffix `_RP9` (including the
-X64 profiler-call alignment and indirect-call frame-map fixes). Compile programs and their dependencies
-with the current compiler and runtime to obtain version-5 profiles. No object scans or
+slots and types. Compile programs and their dependencies
+with the current compiler and runtime to obtain version-10 profiles. No object scans or
 allocation bookkeeping are needed to obtain region types.
 
 Release builds precompile the Basis (including REPL support) and Kit libraries
 together with `kitlib/region-profile.mlb`, for ordinary and sampled-profiler
 builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
-and the `_RP9` cache suffix. Legacy `-prof` libraries are no longer precompiled
-or selected for installation; they can still be compiled from source.
+and mode-specific caches such as `RI_PROF`, `RI_GC_PROF`, and `RI_PROF_PAR`
+(with an `ARM64_` prefix on ARM64), without ABI-version suffixes.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from
 a read-only installation. `test/region_profile/check-installed-api.sh` checks
@@ -360,9 +363,17 @@ Shared and persistent/global regions follow their lifetime owner's recorded
 identity and are counted once. Unavailable identities have explicit selectors;
 each completed snapshot includes its captured threads' stack records.
 
+The two-handle snapshot-range slider directly below the graph is aligned with
+the time axis. Drag its endpoints, or focus either handle and use the arrow
+keys, to narrow the visible snapshots. The graph rescales its axes and ranks
+regions within that range; the single-snapshot slider and table stay within
+the range as well. **Full range** restores all snapshots. Downloaded SVGs use
+the narrowed range. Allocation-attribution counters remain whole-run totals:
+the current format does not record per-snapshot counter deltas.
+
 The snapshot slider, metric selection, markers, and table grouping remain
 available. Changing table grouping does not merge the region bands. Maxima are
-explicitly labelled as sampled. `rp2ps` remains unchanged.
+explicitly labelled as sampled. rp2ps is retired; use rpview.
 
 A reproducible ReML example uses three named regions with different growth/reset
 phases and a growing recursive stack:
@@ -370,7 +381,7 @@ phases and a growing recursive stack:
 ```sh
 printf '%s\n' "$PWD/test/region_profile/graph.sml" > /tmp/region-graph.mlb
 reml -no_par -region_profile -o /tmp/region-graph /tmp/region-graph.mlb
-/tmp/region-graph -rp -rp_interval 0 -rp_file /tmp/region-graph.rp
+/tmp/region-graph +RTS -rp -rp_interval 0 -rp_file /tmp/region-graph.rp -RTS
 rpview /tmp/region-graph.rp --output graph.html
 ```
 
@@ -433,7 +444,7 @@ ARM64 checks cover controlled finite/page/large-object totals, reset and release
 recursion, spilled results, exceptions, periodic tail loops, paused operation,
 invalid intervals, repeated snapshots, shared allocations, joins and thread
 exit, blocked foreign calls, GC/genGC, retained REPL values/closures and clean shutdown.
-M7 checks cover exact frame spans and finite subtraction, recursive stack growth,
+M7 checks cover exact frame spans including finite storage, recursive stack growth,
 colored band sums/order, thread/worker/CPU filters (including synthetic CPU
 migration), axis units, truncated/single-sample streams, and counters above
 2^53. The direct SML SVG suite covers filters, aggregation, palette stability,
@@ -459,3 +470,12 @@ It uses POSIX `time -p`, whose resolution is platform-dependent. Use
 Measure representative programs and thread contention before replacing page-list
 traversal with maintained per-region counts; such counts would not remove polling
 or serialization costs.
+
+## Allocation attribution
+
+See [Selected-region site occupancy](allocation-profiler.md) for the unified
+`-rp` compiler mode, launch-time region selection, per-snapshot function/site
+histograms, packed descriptors, and IR navigation. All new profiles use version 10.
+
+For site contributions within the recorded selected region, use
+`rpview sites.rp --sites -o sites.svg`; see [site occupancy](allocation-profiler.md).

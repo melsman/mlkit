@@ -3,6 +3,7 @@ struct
   fun run args =
       let val file = ref "profile.rp"
           val haveFile = ref false
+          val irRoots = ref []
           val output = ref "profile.html"
           val format = ref ""
           val haveOutput = ref false
@@ -16,8 +17,10 @@ struct
           fun help () =
               (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
+                     \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --caption TEXT          Override the profile caption\n\
-                     \  --regions N             Largest regions to show (default 9; 0 = all)\n\
+                     \  --sites                 SVG: selected region split by allocation site\n\
+                     \  --regions N             Largest regions/sites to show (default 9; 0 = all)\n\
                      \  --metric NAME           total (default), stack, pages, page_footprint,\n\
                      \                          large_bytes, finite_bytes, descriptor_bytes\n\
                      \  --scope VIEW            all (default), thread:N, worker:N, cpu:N\n\
@@ -31,6 +34,8 @@ struct
                      \                          (default right; SVG legend is always inside/right)\n";
                OS.Process.exit OS.Process.success)
           fun options [] = ()
+            | options ("--sites"::rest) = (setting "sites" (ProfileJson.Bool true); options rest)
+            | options ("--ir-dir"::path::rest) = (irRoots := path :: !irRoots; options rest)
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
@@ -72,6 +77,8 @@ struct
                          else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
                                  String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
                          else "html"
+          val sites = List.exists (fn (k,v) => k = "sites" andalso v = ProfileJson.Bool true) (!settings)
+          val () = if sites andalso selected <> "svg" then raise Fail "--sites requires SVG output (-o sites.svg or --format svg)" else ()
           val () = if !haveOutput then ()
                    else if selected = "svg" then output := "profile.svg"
                    else if selected = "json" then output := "-" else ()
@@ -80,6 +87,7 @@ struct
           val () = if same then raise Fail "input and output must be different files" else ()
           val records = ProfileBinary.read (!file)
           val profile = ProfileReader.fromRecords records
+          val profile = if selected = "html" orelse sites then ProfileIR.enrich (!irRoots) profile else profile
           val config = ProfileJson.Obj (!settings)
           val () = case ProfileJson.find config "scope" of
                        SOME (ProfileJson.Str scope) =>

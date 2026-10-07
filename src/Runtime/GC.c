@@ -21,7 +21,6 @@
 #include "CommandLine.h"
 #include "Table.h"
 #include "Exception.h"
-#include "Profiling.h"
 #include "Runtime.h"
 #include "GC.h"
 
@@ -378,46 +377,13 @@ static void mk_from_space(Context ctx)
 {
   Ro *r;
 
-#ifdef PROFILING
-  int j;
-#endif
 
   from_space_begin = NULL;
   from_space_end = last_rp_of_gen(&(TOP_REGION->g0)); // Points at last region page
 
   for( r = TOP_REGION ; r ; r = r->p )
     {
-     #ifdef PROFILING
-      // Similar to resetRegion in Region.c
-     #ifdef ENABLE_GEN_GC
-      if ( is_major_p )
-	{
-     #endif // ENABLE_GEN_GC
-	  j = NoOfPagesInRegion(r);
-	  noOfPages -= j;
-	  profTabDecrNoOfPages(r->regionId, j);
-	  allocNowInf -= r->allocNow;
-	  profTabDecrAllocNow(r->regionId, r->allocNow, "mk_from_space");
-	  allocProfNowInf -= r->allocProfNow;
-	  r->allocNow = 0;
-	  r->allocProfNow = 0;
-     #ifdef ENABLE_GEN_GC
-	} else {
-	  // We only reset generation g0
-	  long allocNowG0 = 0;
-	  long allocProfNowG0 = 0;
-	  j = NoOfPagesInGen(&(r->g0));
-	  noOfPages -= j;
-	  profTabDecrNoOfPages(r->regionId, j);
-	  calcAllocInGen(&(r->g0),&allocNowG0, &allocProfNowG0);
-	  allocNowInf -= allocNowG0;
-	  profTabDecrAllocNow(r->regionId, allocNowG0, "mk_from_space");
-	  allocProfNowInf -= allocProfNowG0;
-	  r->allocNow -= allocNowG0;
-	  r->allocProfNow -= allocProfNowG0;
-	}
-      #endif // ENABLE_GEN_GC
-    #endif // PROFILING
+
 
     mk_from_space_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
@@ -829,7 +795,7 @@ acopy(Gen *gen, uintptr_t *obj_ptr)
 #endif // CHECK_GC
 
 #ifdef PROFILING
-  pPoint = (((ObjectDesc *)(obj_ptr))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr))-1);
   new_obj_ptr = allocGenProfiling(gen,size,pPoint);
 #else
   new_obj_ptr = allocGen(gen,size);
@@ -846,7 +812,7 @@ acopy_pair(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,2,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,2) - 1;
@@ -863,7 +829,7 @@ acopy_ref(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,1,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,1) - 1;
@@ -879,7 +845,7 @@ acopy_triple(Gen *gen, uintptr_t *obj_ptr)
 
 #ifdef PROFILING
   long pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+  pPoint = objectDescPoint(((ObjectDesc *)(obj_ptr+1))-1);
   new_obj_ptr = allocGenProfiling(gen,3,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,3) - 1;
@@ -1379,6 +1345,7 @@ region_utilize(long pages, long bytes)
 // GC ALGORITHM
 // --------------------
 
+#ifdef PROFILING
 static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
   if (!mlkit_rp_enabled || !mlkit_rp_gc_samples) return;
   uintptr_t *image = (uintptr_t *)sp;
@@ -1396,6 +1363,8 @@ static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
   mlkit_rp_capture(ctx, base, map, op);
   mlkit_rp_gc_major = -1;
 }
+
+#endif
 
 void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
@@ -1433,12 +1402,14 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
   // Mutex on the garbage collector; used by alloc_new_page in
   // Region.c for determining whether the tospace-bit should be set on
   // new allocated pages.
+#ifdef PROFILING
 #ifdef ENABLE_GEN_GC
   int profile_major = only_major_gc || major_p;
 #else
   int profile_major = 1;
 #endif
   rp_gc_sample(ctx, sp, 4, profile_major);
+#endif
   doing_gc = 1;
 
 #ifdef CHECK_GC
@@ -1740,7 +1711,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
 
   // We Are Done And Can Now Insert from-space Into The FreeList
+#ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_pages_free(from_space_begin);
+#endif
   from_space_end->n = global_freelist;
   global_freelist = from_space_begin;
 
@@ -1789,7 +1762,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 		char* orig;
 		lobjs_current -= size_lobj(*tag_ptr);
 		orig = lobjs->orig;
+#ifdef PROFILING
                 mlkit_rp_large_free(lobjs);
+#endif
 		lobjs = clear_lobj_bit(lobjs->next);
 		free(orig);            // deallocate object
 	      }
@@ -1995,8 +1970,10 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 
   time_to_gc = 0;
   doing_gc = 0; // Mutex on the garbage collector
+#ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_gc_completed();
   rp_gc_sample(ctx, sp, 5, profile_major);
+#endif
 
   if (raised_exn_interupt)
     raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);

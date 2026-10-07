@@ -10,15 +10,21 @@ svg{background:white;border:1px solid #bdcbd3;width:100%;height:auto;margin:18px
 input[type=range]{width:100%}table{border-collapse:collapse;width:100%;background:white}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left;overflow-wrap:anywhere}p{line-height:1.5}.note{color:#4d626f}#status{min-height:24px}
 .graph-layout.legend-right{display:grid;grid-template-columns:minmax(0,3fr) minmax(220px,1fr);gap:20px;align-items:start}.graph-layout.legend-right #legend{margin-top:18px;max-height:440px;overflow:auto}.graph-layout>*{min-width:0}
 @media(max-width:850px){.graph-layout.legend-right{display:block}.graph-layout.legend-right #legend{max-height:none}}
-.axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.axis{font:13px system-ui,sans-serif;fill:#334155}#legend{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 26px}.legend-item{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px;padding:5px 0;border-bottom:1px solid #e2e8f0}.legend-item>span:last-child{overflow-wrap:anywhere;line-height:1.5}.legend-item .ir-site-button{font:inherit;min-width:0;overflow-wrap:anywhere}.swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.snapshot-window{margin:0 4.19% 18px 7.984%;font-size:13px}.window-label{display:flex;align-items:center;justify-content:space-between;gap:12px}.window-label button{padding:4px 8px;font-size:12px}.range-slider{position:relative;height:32px;margin:4px -8px}.range-track{position:absolute;left:8px;right:8px;top:14px;height:4px;border-radius:2px;background:linear-gradient(to right,#cbd5e1 var(--range-start,0%),#2563eb var(--range-start,0%),#2563eb var(--range-end,100%),#cbd5e1 var(--range-end,100%))}.range-slider input[type=range]{position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;appearance:none;pointer-events:none}.range-slider input::-webkit-slider-runnable-track{height:4px;background:transparent}.range-slider input::-moz-range-track{height:4px;background:transparent}.range-slider input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 0 0 1px #2563eb;pointer-events:auto;cursor:ew-resize}.range-slider input:focus-visible{outline:2px solid #182c39;outline-offset:3px;border-radius:5px}.range-slider input:disabled{opacity:.4}.range-times{display:flex;justify-content:space-between;color:#4d626f}
+.ir-site-button{border:0;background:transparent;color:#1657a6;padding:3px 0;text-align:left;text-decoration:underline;cursor:pointer}.ir-site-list{padding-left:20px;font-size:14px}.ir-site-list li{margin:6px 0}.ir-site-list .note{margin-left:12px}#ir-panel{margin:20px 0;padding:18px;border:1px solid #bdcbd3;border-radius:8px;background:white}.ir-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}.ir-heading h3{margin:0;font-size:18px;overflow-wrap:anywhere}#ir-controls{display:flex;align-items:center;flex-wrap:wrap;gap:20px}#ir-controls[hidden]{display:none}#ir-source{overflow-wrap:anywhere}#ir-code{position:relative;max-height:440px;overflow:auto;background:#f2f5f7;padding:12px 0;font:13px/1.6 ui-monospace,monospace;tab-size:8}#ir-code:empty{display:none}.ir-line{display:block;min-height:1.6em}.ir-line-number{display:inline-block;width:5ch;padding:0 14px 0 8px;color:#667785;text-align:right;user-select:none}.ir-highlight{background:#ffe08a;color:#182c39;outline:1px solid #b77900}button:focus-visible,summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
+.ir-files{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0}#ir-copy-path{border:0;background:transparent;cursor:pointer}#ir-copy-path svg{width:18px;height:18px;margin:0;border:0;background:transparent}
+#allocation-flow ul{list-style:none;padding-left:20px}#allocation-flow details{border-left:2px solid #cbd5e1;padding:6px 12px;margin:6px 0}#allocation-flow summary{cursor:pointer;overflow-wrap:anywhere}#allocation-flow p{margin:6px 0}#allocation-flow summary,#allocation-flow .slice-call{font-family:ui-monospace,monospace}#allocation-flow .slice-call>button{font:inherit}#allocation-flow .slice-call{margin:6px 0 6px 32px}#allocation-flow .slice-call>button{border:0;background:transparent;padding:2px 0;color:#1d4ed8;text-align:left}#allocation-flow .slice-call>button:hover{text-decoration:underline}
+#allocation-flow .slice-region{margin:6px 0 6px 32px}#allocation-flow .slice-binding{font-family:ui-monospace,monospace}#allocation-flow .slice-region>.slice-call{margin-left:16px}
 </style><h1 id="profile-title">MLKit region profile</h1>
-<p class="note">Allocated region footprint, including page headers and earlier-page slack; finite regions show reserved stack space. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
+<p class="note">Allocated region footprint, including page headers and earlier-page slack. Finite-region storage is included in the ML stack. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
 <label>View <select id="scope"><option value="all">All threads</option></select></label>
 <label>Table grouping <select id="group"><option value="aggregate">Aggregate</option><option value="region">Region binding</option><option value="thread">Lifetime owner</option></select></label>
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="stack">ML stack + finite regions</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Infinite-region descriptors</option></select></label>
-<label>Regions shown <input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
+<label><span id="limit-label">Regions shown</span><input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
 </div>
+<p id="attribution-region-control" hidden><label>Site occupancy for <select id="attribution-region"><option value="all">All regions</option></select></label></p>
 <div class="display-options" aria-label="Graph display options">
 <label><input id="show-base" type="checkbox">Show base names</label>
 <label><input id="show-kind" type="checkbox">Show region kind</label>
@@ -29,22 +35,437 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <button id="export-svg" type="button">Download SVG</button>
 <p class="note">Finite regions reserve space on the ML stack; infinite regions use region pages and may contain large objects.</p>
 <div id="graph-layout" class="graph-layout">
+<div class="graph-column">
 <svg id="chart" viewBox="0 0 1002 668" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
+<div class="snapshot-window" role="group" aria-label="Snapshot range">
+<div class="window-label"><span id="range-caption">Snapshot range</span><button id="range-reset" type="button">Full range</button></div>
+<div class="range-slider"><div class="range-track" id="range-track"></div>
+<input id="range-start" type="range" min="0" max="0" value="0" aria-label="First snapshot" aria-describedby="range-caption">
+<input id="range-end" type="range" min="0" max="0" value="0" aria-label="Last snapshot" aria-describedby="range-caption">
+</div><div class="range-times"><span id="range-first-time"></span><span id="range-last-time"></span></div>
+</div></div>
 <div id="legend" aria-label="Region legend, top to bottom"></div>
 </div>
-<p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available.<span id="execution-stream-note"></span></p>
+<p class="note" id="gc-note"></p><p class="note" id="peak-note"></p><p class="note" id="stack-note"></p><p class="note"><span id="band-note">The largest regions by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colors identify bindings. Shared and persistent/global regions follow lifetime ownership in filtered views. CPU means OS logical processor at the safe point, where available.</span><span id="execution-stream-note"></span></p>
 <label>Snapshot <input id="sample" type="range" min="0" max="0" value="0"></label><p id="caption"></p><p id="marks"></p>
-<table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th>Pages</th><th>Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
+<section id="allocation-discovery" hidden><p id="allocation-build"></p>
+<details><summary>Allocation selectors for infinite regions</summary>
+<table><thead><tr><th>Region</th><th>Source</th><th>Selector</th></tr></thead><tbody id="allocation-selectors"></tbody></table>
+</details></section>
+<section id="allocation-section" hidden>
+<h2 id="allocation-title" tabindex="-1">Site occupancy</h2><p id="allocation-note"></p>
+<label id="allocation-view-control" hidden>View <select id="allocation-view"><option value="flow" selected>Region slice</option><option value="site">Allocation sites</option></select></label>
+<p class="note" id="allocation-flow-note"></p>
+<div id="allocation-flow" hidden></div>
+<table id="allocation-table"><thead><tr><th>Function / allocation site</th><th>Source</th><th id="allocation-count-label">Objects</th><th>Memory</th></tr></thead><tbody id="allocation-rows"></tbody></table>
+<p class="note">Object payload currently occupying the selected region, grouped by allocation site. Includes ordinary object headers; excludes profiling descriptors and page slack. Narrow the snapshot range to inspect one snapshot or the snapshot with the largest total payload in that range. Without GC, unreachable objects remain included until their region is reset or deallocated. Select a site to view its IR.</p>
+<section id="ir-panel" hidden aria-labelledby="ir-title">
+<div class="ir-heading"><h3 id="ir-title" tabindex="-1">Allocation site in IR</h3><button id="ir-close" type="button">Close IR</button></div>
+<div class="ir-files"><span id="ir-source" class="note"></span><span id="ir-path-row" hidden><span id="ir-filename"></span> <button id="ir-copy-path" type="button" aria-label="Copy IR path" title="Copy full IR file path" style="display:inline-flex;vertical-align:middle;padding:4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button> <span id="ir-copy-status" role="status"></span><input id="ir-path" type="text" readonly hidden style="width:100%;box-sizing:border-box" aria-label="IR file path"></span></div><p id="ir-message" role="status"></p>
+<div id="ir-controls" hidden><label>Location <select id="ir-location" aria-label="IR location occurrence"></select></label><label><input id="ir-full" type="checkbox">Show full IR</label></div>
+
+<pre id="ir-code" tabindex="0" aria-label="Intermediate code with highlighted allocation location"></pre>
+</section>
+</section>
+<table><thead><tr><th>Group</th><th id="value-unit">Bytes</th><th id="quantity-label">Pages</th><th id="tail-label">Unused last-page tails</th></tr></thead><tbody id="rows"></tbody></table>
 <script>
 const samples=__DATA__;
 const profile=__META__;
 const el=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg';
+let rangeStart=0,rangeEnd=null;
+function snapshotBounds(){const last=Math.max(0,samples.length-1),start=Math.min(rangeStart,last);return [start,Math.max(start,Math.min(rangeEnd??last,last))];}
+function visibleSamples(){const [start,end]=snapshotBounds();return samples.slice(start,end+1);}
+function narrowSnapshots(handle){
+ const [start,end]=snapshotBounds();
+ if(handle==='start')rangeStart=Math.max(0,Math.min(Number(el('range-start').value),end));
+ else rangeEnd=Math.min(samples.length-1,Math.max(Number(el('range-end').value),start));
+ draw();
+}
+function resetSnapshotRange(){rangeStart=0;rangeEnd=null;draw();}
+function rangeControls(){
+ const [start,end]=snapshotBounds(),last=Math.max(0,samples.length-1);
+ for(const [id,value] of [['range-start',start],['range-end',end]]){const input=el(id);input.max=last;input.value=value;input.disabled=samples.length<2;input.setAttribute('aria-valuetext',samples.length?'Snapshot '+samples[value].sample:'No snapshots');}
+ el('range-caption').textContent=samples.length?'Snapshots '+samples[start].sample+'–'+samples[end].sample+' of '+samples.length:'No completed snapshots';
+ el('range-reset').disabled=!samples.length||(start===0&&end===last);
+ el('range-track').style.background=`linear-gradient(to right,#cbd5e1 ${last?100*start/last:0}%,#2563eb ${last?100*start/last:0}%,#2563eb ${last?100*end/last:100}%,#cbd5e1 ${last?100*end/last:100}%)`;
+ const time=s=>s?(Number(s.time)/1e6).toLocaleString(undefined,{maximumFractionDigits:3})+' ms':'';
+ el('range-first-time').textContent=time(samples[start]);el('range-last-time').textContent=time(samples[end]);
+}
+// Strip only the generated AddressLabels MD5 suffix, preserving source names.
+function shortFunction(name){return name.replace(/_[a-vxyzA-VXYZ0-9]{22}$/,'');}
+function sourceLabels(paths){
+ const absolute=[...new Set(paths.filter(p=>/^(\/|[A-Za-z]:[\\/])/.test(p)))];
+ const parts=absolute.map(p=>p.split(/[\\/]/).slice(0,-1));
+ const common=parts.length?parts[0].slice():[];
+ for(const path of parts)while(common.length&&common.some((part,i)=>part!==path[i]))common.pop();
+ return path=>absolute.includes(path)?path.split(/[\\/]/).slice(common.length).join('/'):path;
+}
+const irSites=new Map((profile.ir_sites||[]).map(s=>[String(s.definition),s]));
+const irDocuments=new Map((profile.ir_documents||[]).map(d=>[d.identity,d]));
+const irDecoded=new Map();
+let activeIR=null,irReturnFocus=null,irSelectedRecord=null;
+const irReasons={
+ 'missing-location':'This profile was recorded without IR location metadata.',
+ 'generated':'This allocation was generated without an originating IR location.',
+ 'missing-or-mismatched-ir':'The matching IR companion was missing, changed, or from another build when this report was generated.',
+ 'missing-mark':'The matching IR file does not contain this allocation location.'
+};
+function irData(doc){
+ if(irDecoded.has(doc.identity))return irDecoded.get(doc.identity);
+ const bytes=new TextEncoder().encode(doc.text),start=Number(doc.code_start),end=start+Number(doc.code_bytes);
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end>bytes.length)throw new Error('Invalid IR code bounds');
+ const lines=[];let from=start,line=1;for(let i=0;i<start;i++)if(bytes[i]===10)line++;
+ for(let i=start;i<end;i++)if(bytes[i]===10){lines.push({start:from,end:i,line:line++});from=i+1;}
+ if(from<end)lines.push({start:from,end,line});
+ const result={bytes,start,end,lines,decode:new TextDecoder('utf-8',{fatal:true})};irDecoded.set(doc.identity,result);return result;
+}
+function renderIR(){
+ const {site,record}=activeIR,doc=irDocuments.get(site.identity),index=Number(el('ir-location').value)||0,span=site.spans[index];
+ el('ir-code').replaceChildren();
+ try{
+  const data=irData(doc),start=Number(span.start),end=start+Number(span.length);
+  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<data.start||end>data.end||end<=start)throw new Error('Invalid IR span');
+  const first=data.lines.findIndex(l=>start>=l.start&&start<=l.end),last=data.lines.findIndex(l=>end-1>=l.start&&end-1<=l.end);
+  if(first<0||last<first)throw new Error('Invalid IR lines');
+  const full=el('ir-full').checked,lo=full?0:Math.max(0,first-8),hi=full?data.lines.length:Math.min(data.lines.length,last+9);
+  for(const l of data.lines.slice(lo,hi)){
+   const row=document.createElement('span');row.className='ir-line';
+   const number=document.createElement('span');number.className='ir-line-number';number.textContent=String(l.line);number.setAttribute('aria-hidden','true');row.append(number);
+   const a=Math.max(l.start,start),b=Math.min(l.end,end);
+   function text(from,to,marked){const part=document.createElement(marked?'mark':'span');part.textContent=data.decode.decode(data.bytes.subarray(from,to));if(marked)part.className='ir-highlight';row.append(part);}
+   if(a<b){text(l.start,a,false);text(a,b,true);text(b,l.end,false);}else text(l.start,l.end,false);
+   el('ir-code').append(row);
+  }
+  updateIRTitle(record);
+  el('ir-message').textContent=(record.region_argument?'Region argument':Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier')+' · line '+span.line+', byte column '+span.column+(full?' · Full IR':' · Showing surrounding code');
+  const selected=el('ir-code').querySelector('mark');if(selected){el('ir-code').scrollTop=Math.max(0,selected.offsetTop-el('ir-code').clientHeight/2);el('ir-code').scrollLeft=Math.max(0,selected.offsetLeft-el('ir-code').clientWidth/3);}
+ }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
+}
+function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
+const irFunctionNames=new Map();
+function irFunctionName(label,doc){
+ const short=shortFunction(label);if(!doc)return short;
+ const key=JSON.stringify([doc.identity,label]);if(irFunctionNames.has(key))return irFunctionNames.get(key);
+ let name=short;
+ try{
+  const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end));
+  // Match printed names without stripping digits from source identifiers.
+  const candidates=new Set([...code.matchAll(/\bfun\s+([^\s[(]+)/g)].map(m=>m[1]).filter(n=>short===n||(short.startsWith(n)&&/^[0-9]+$/.test(short.slice(n.length)))));
+  if(candidates.size===1)name=[...candidates][0];
+ }catch(_){/* Retain the generated name when no IR name can be resolved. */}
+ irFunctionNames.set(key,name);return name;
+}
+function updateIRTitle(record){
+ const short=shortFunction(record.function);let functionName=short,annotation='';
+ if(activeIR?.record===record){
+  try{
+   const doc=irDocuments.get(activeIR.site.identity),data=irData(doc),span=activeIR.site.spans[Number(el('ir-location').value)||0];
+   const start=Number(span.start),end=start+Number(span.length);
+   if(Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start>=data.start&&end<=data.end&&end>start){
+    const token=data.decode.decode(data.bytes.subarray(start,end));
+    if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=' '+token;
+    else if(Number(record.location_kind)===1&&token.startsWith('$'))annotation=' via '+token;
+    functionName=irFunctionName(record.function,doc);
+   }
+  }catch(_){/* Unavailable locations still get a useful function heading. */}
+ }
+ el('ir-title').textContent=(record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Allocation'+annotation+' in function '+functionName)+(el('show-base').checked?' · '+baseName(record):'');
+ el('ir-title').title=record.function+'\nSite: '+record.site;
+}
+function showIR(record,trigger){
+ irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
+ irSelectedRecord=record;el('ir-panel').hidden=false;updateIRTitle(record);
+ el('ir-source').textContent=sourceLabels((profile.allocations||[]).map(r=>r.source))(record.source);el('ir-source').title=record.source;
+ el('ir-code').replaceChildren();el('ir-location').replaceChildren();el('ir-controls').hidden=true;
+ el('ir-path-row').hidden=true;el('ir-path').hidden=true;el('ir-path').value='';el('ir-filename').textContent='';el('ir-filename').title='';el('ir-copy-status').textContent='';
+ if(!site||site.status!=='available')el('ir-message').textContent='IR navigation unavailable. '+(irReasons[site?.status||'missing-location']||'No location is available for this site.');
+ else if(!irDocuments.has(site.identity)||!site.spans?.length)el('ir-message').textContent='IR navigation unavailable. The embedded IR document or location is missing.';
+ else{
+  activeIR={site,record};el('ir-controls').hidden=false;
+  const path=irDocuments.get(site.identity).path||'';el('ir-path').value=path;el('ir-filename').textContent=path.split(/[\\/]/).pop();el('ir-filename').title=path;el('ir-path-row').hidden=!path;
+  site.spans.forEach((span,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=(i+1)+' of '+site.spans.length+' · line '+span.line+', column '+span.column;el('ir-location').append(option);});
+  el('ir-location').value='0';el('ir-location').disabled=site.spans.length===1;renderIR();
+ }
+ el('ir-title').focus();
+}
+function irButton(record,label){
+ const button=document.createElement('button');button.type='button';button.className='ir-site-button';button.textContent=label;
+ const site=irSites.get(String(record.definition));button.title=site?.status==='available'?(record.region_argument?'Show region argument in IR':'Show allocation site in IR'):'Show why IR navigation is unavailable';
+ button.title+='\n'+record.function+(record.callee_function?' → '+record.callee_function:'')+'\n'+record.unit+'\n'+record.source;
+ button.addEventListener('click',()=>showIR(record,button));return button;
+}
+el('ir-copy-path').addEventListener('click',async()=>{
+ const path=el('ir-path').value;if(!path)return;
+ try{await navigator.clipboard.writeText(path);el('ir-copy-status').textContent='Copied';}
+ catch(error){el('ir-path').hidden=false;el('ir-path').focus();el('ir-path').select();el('ir-copy-status').textContent='Press Ctrl+C or Command+C to copy the selected path.';}
+});
+el('ir-location').addEventListener('change',()=>{if(activeIR)renderIR();});
+el('ir-full').addEventListener('change',()=>{if(activeIR)renderIR();});
+el('ir-close').addEventListener('click',()=>{el('ir-panel').hidden=true;activeIR=null;irSelectedRecord=null;if(irReturnFocus?.isConnected)irReturnFocus.focus();else el('allocation-title').focus();});
+
+// Static region relationships organize measured sites; they do not divide
+// counters among the possible paths through which a region can be passed.
+function allocationSize(value,minimumKiB=false){
+ const bytes=BigInt(value),units=['bytes','KiB','MiB','GiB','TiB','PiB','EiB'];let divisor=minimumKiB?1024n:1n,index=minimumKiB?1:0;
+ while(index<units.length-1&&bytes>=divisor*1024n){divisor*=1024n;index++;}
+ if(!index)return bytes+' bytes';
+ const scaled=(bytes*100n+divisor/2n)/divisor;
+ return (scaled/100n)+'.'+String(scaled%100n).padStart(2,'0')+' '+units[index];
+}
+// Region identities come from the snapshot's region definition, not the
+// allocation site's unit: a callee can allocate into a caller's region.
+const attributionBindings=new Map(),attributionDefinitions=new Map();
+for(const sample of samples)for(const r of sample.regions){
+ attributionBindings.set(r.unit+':'+r.binding,r);attributionDefinitions.set(String(r.definition),r);
+}
+function attributionSelector(){return profile.allocation_session?.selector==='all'?(el('attribution-region').value||'all'):String(profile.allocation_session?.selector||'');}
+function attributionSelected(r){
+ if(profile.allocation_session?.selector!=='all'||attributionSelector()==='all')return true;
+ const region=attributionDefinitions.get(String(r.region_definition));
+ return region&&region.unit+':'+region.binding===attributionSelector();
+}
+function attributionRegion(){return profile.allocation_session?.selector==='all'?attributionBindings.get(attributionSelector()):profile.allocation_region;}
+function siteMetricName(){const selector=attributionSelector();return selector==='all'?'Site contributions — all regions':'Site contributions for r'+(attributionRegion()?.binding??selector.split(':').at(-1));}
+function allocationRegionFlow(rows){
+ const host=el('allocation-flow');host.replaceChildren();
+ const flow=profile.region_flow, nodes=new Map((flow.nodes||[]).map(n=>[n.id,n]));
+ const selected=attributionRegion();
+ const selector=attributionSelector(),colon=selector.lastIndexOf(':');
+ const unit=selected?.unit??selector.slice(0,colon),region=String(selected?.binding??selector.slice(colon+1));
+ const root=JSON.stringify([Number(region)>=1&&Number(region)<=7?'<global>':unit,region]);
+ const outgoing=new Map(),incoming=new Map();
+ for(const edge of flow.edges||[]){
+  if(!nodes.has(edge.actual)||!nodes.has(edge.formal))continue;
+  if(!outgoing.has(edge.actual))outgoing.set(edge.actual,[]);outgoing.get(edge.actual).push(edge);
+  if(!incoming.has(edge.formal))incoming.set(edge.formal,[]);incoming.get(edge.formal).push(edge);
+ }
+ const reachable=new Set(),todo=[root];
+ while(todo.length){const id=todo.pop();if(reachable.has(id))continue;reachable.add(id);for(const e of outgoing.get(id)||[])todo.push(e.formal);}
+ const destinations=new Map();
+ for(const p of flow.points||[]){const key=JSON.stringify([p.identity,String(p.point)]);if(!destinations.has(key))destinations.set(key,new Set());destinations.get(key).add(p.node);}
+ const measured=new Map(),unplaced=[],ambiguous=[];
+ for(const r of rows.values()){
+  const options=[...(destinations.get(JSON.stringify([r.ir_identity,String(r.site)]))||[])].filter(id=>reachable.has(id)).sort();
+  if(!options.length){unplaced.push(r);continue;}
+  if(options.length>1){ambiguous.push(r);unplaced.push(r);continue;}
+  const id=options[0];if(!measured.has(id))measured.set(id,[]);measured.get(id).push(r);
+ }
+ const relevant=new Set([root]),queue=[...measured.keys()];
+ while(queue.length){const id=queue.pop();if(relevant.has(id)&&id!==root)continue;relevant.add(id);for(const e of incoming.get(id)||[])if(reachable.has(e.actual)&&!relevant.has(e.actual))queue.push(e.actual);}
+ const creators=new Map();
+ for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='closure'){
+  const k=JSON.stringify([doc.unit,edge.callee]);if(!creators.has(k))creators.set(k,new Set());creators.get(k).add(edge.caller);
+ }
+ const functionDocs=new Map();
+ for(const doc of irDocuments.values())for(const edge of doc.calls||[])if(edge.kind==='function'){
+  if(!functionDocs.has(edge.caller))functionDocs.set(edge.caller,[]);functionDocs.get(edge.caller).push(doc);
+ }
+ function name(s){const candidates=new Set((functionDocs.get(s)||[]).map(doc=>irFunctionName(s,doc)));return candidates.size===1?[...candidates][0]:shortFunction(s);}
+ function label(id){const n=nodes.get(id);return n?(n.owner?name(n.owner)+' · ':'')+'r'+n.region+(n.role==='local'?' (local)':n.role==='global'?' (global)':''):'r'+region;}
+ const entryPositions=new WeakMap();
+ function firstSpan(spans){return Math.min(...(spans||[]).map(s=>Number(s.start)),Infinity);}
+ function callPosition(call){return Math.min(...call.edges.map(e=>firstSpan((irDocuments.get(e.identity)?.spans||[]).filter(s=>String(s.mark)===String(e.point)))),Infinity);}
+ function sortEntries(container){
+  const entries=[...container.children];
+  entries.sort((a,b)=>(entryPositions.get(a)??-Infinity)-(entryPositions.get(b)??-Infinity));
+  container.replaceChildren(...entries);
+ }
+ function localPosition(n){
+  const doc=[...irDocuments.values()].find(d=>d.unit===n.unit);if(!doc?.text)return Infinity;
+  const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end));
+  for(const match of code.matchAll(/\bregion\s+([^;]+);/g))if(new RegExp('\\br'+n.region+':').test(match[1]))return data.start+new TextEncoder().encode(code.slice(0,match.index)).length;
+  return Infinity;
+ }
+ function sites(records,parent,regionNode){
+  for(const r of [...records].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
+   const line=document.createElement('div');line.className='slice-call';
+   let annotation=regionNode?'allocation into r'+regionNode.region:name(r.function);
+   const site=irSites.get(String(r.definition)),doc=irDocuments.get(site?.identity);
+   entryPositions.set(line,firstSpan(site?.spans));
+   if(doc&&site?.spans?.length){try{
+    const data=irData(doc),span=site.spans[0],start=Number(span.start),end=start+Number(span.length);
+    if(start>=data.start&&end<=data.end&&end>start){const token=data.decode.decode(data.bytes.subarray(start,end));
+     if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=token;
+    }
+   }catch(_){/* Retain the destination label when no readable span is available. */}}
+   const button=irButton(r,annotation+(el('show-base').checked?' · '+baseName(r):'')+':');
+   button.className+=' allocation-site';
+   button.title+='\nSite: '+r.site+' · '+r.bytes+' bytes';
+   line.append(button,document.createTextNode(' '+r.count+' objects · '+allocationSize(r.bytes)));
+   const owners=[...(creators.get(JSON.stringify([r.unit,r.function]))||[])].sort();
+   if(owners.length)line.append(document.createTextNode(' · '+name(r.function)+' (closure created by '+owners.map(name).join(', ')+')'));
+   else if(regionNode&&r.function!==regionNode.owner)line.append(document.createTextNode(' · '+name(r.function)));
+   parent.append(line);
+  }
+ }
+ function edgeLocation(edge,parent){
+  const doc=irDocuments.get(edge.identity),spans=(doc?.spans||[]).filter(s=>String(s.mark)===String(edge.point));
+  const text=edge.mode+' r'+nodes.get(edge.actual).region;
+  if(spans.length){const definition='flow:'+edge.identity+':'+edge.point;irSites.set(definition,{status:'available',identity:edge.identity,spans});parent.append(irButton({definition,function:edge.caller,unit:doc.unit,source:doc.source,site:edge.point,location_kind:'0',region_argument:{region:nodes.get(edge.actual).region,callee:name(edge.callee)},callee_function:edge.callee},text));}
+  else{const note=document.createElement('span');note.textContent=text;note.title='IR location unavailable\n'+edge.caller+' → '+edge.callee;parent.append(note);}
+ }
+ // Definitions retain lexical nesting; calls reference them rather than expanding a tree.
+ const functions=new Map(),parents=new Map(),allFormals=new Map();
+ const fkey=(unit,label)=>JSON.stringify([unit,label]);
+ for(const doc of irDocuments.values())for(const row of doc.region_data||[])if(row.kind==='function'){
+  parents.set(fkey(doc.unit,row.label),fkey(doc.unit,row.parent));
+ }
+ function ensure(unit,label){const key=fkey(unit,label);if(!functions.has(key))functions.set(key,{key,unit,label,regions:[],calls:[],children:[]});return functions.get(key);}
+ for(const n of nodes.values())if(n.role==='formal'){
+  const key=fkey(n.unit,n.owner);if(!allFormals.has(key))allFormals.set(key,[]);allFormals.get(key).push(n);
+ }
+ for(const id of relevant){const n=nodes.get(id);if(n?.owner)ensure(n.unit,n.owner).regions.push(n);}
+ const calls=new Map();let legacy=0;
+ for(const edge of flow.edges||[]){
+  if(!relevant.has(edge.actual)||!relevant.has(edge.formal))continue;
+  const actual=nodes.get(edge.actual),formal=nodes.get(edge.formal),doc=irDocuments.get(edge.identity);
+  const caller=ensure(doc?.unit||actual.unit,edge.caller),callee=ensure(formal.unit,edge.callee);
+  // Missing occurrence metadata must never merge two source calls.
+  const key=edge.occurrence!==undefined&&edge.occurrence!==''?JSON.stringify([edge.identity,edge.occurrence]):'legacy:'+legacy++;
+  if(!calls.has(key)){const call={callee:callee.key,edges:[],legacy:key.startsWith('legacy:')};calls.set(key,call);caller.calls.push(call);}
+  calls.get(key).edges.push(edge);
+ }
+ // Include lexical ancestors even when they have no region parameter themselves.
+ for(const fn of [...functions.values()]){let key=fn.key;const seen=new Set();while(parents.has(key)&&!seen.has(key)){seen.add(key);key=parents.get(key);const [u,l]=JSON.parse(key);ensure(u,l);}}
+ const roots=[];
+ for(const fn of functions.values()){const parent=functions.get(parents.get(fn.key));if(parent&&parent!==fn)parent.children.push(fn);else roots.push(fn);}
+ function parameterParts(key,chosen){
+  const formals=(allFormals.get(key)||[]).slice().sort((a,b)=>Number(a.position)-Number(b.position));
+  if(!formals.length)return chosen;
+  const picked=new Map(chosen.map(n=>[n.id,n])),parts=[];let omitted=false;
+  for(const formal of formals){if(picked.has(formal.id)){if(omitted)parts.push(null);omitted=false;parts.push(picked.get(formal.id));}else omitted=true;}
+  if(omitted)parts.push(null);return parts;
+ }
+ function parameters(key,chosen,render){const parts=parameterParts(key,chosen);return parts.length?'['+parts.map(n=>n?render(n):'...').join(', ')+']':'';}
+ const anchors=new Map();
+ function jump(key){const target=anchors.get(key);if(!target)return;let p=target.parentElement;while(p){if(p.tagName==='DETAILS')p.open=true;p=p.parentElement;}target.focus();target.scrollIntoView({block:'nearest'});}
+ function ordered(items){
+  const allowed=new Map(items.map(f=>[f.key,f])),done=new Set(),result=[];
+  function dependencies(fn){
+   for(const c of fn.calls){let key=c.callee;const seen=new Set();while(!allowed.has(key)&&parents.has(key)&&!seen.has(key)){seen.add(key);key=parents.get(key);}if(allowed.has(key))add(allowed.get(key));}
+   for(const child of fn.children)dependencies(child);
+  }
+  function add(fn){if(done.has(fn.key))return;done.add(fn.key);dependencies(fn);result.push(fn);}
+  for(const fn of items)add(fn);return result;
+ }
+ // Aggregate only sites contained in the lexical definition, never its callees.
+ function functionVolume(fn){
+  const unique=new Map();
+  function collect(f){for(const n of f.regions)for(const r of measured.get(n.id)||[])unique.set(r.definition,r);for(const child of f.children)collect(child);}
+  collect(fn);return [...unique.values()].reduce((total,r)=>({count:total.count+BigInt(r.count),bytes:total.bytes+BigInt(r.bytes)}),{count:0n,bytes:0n});
+ }
+ function renderFunction(fn,parent,depth){
+  if(fn.label===fn.unit&&!fn.regions.length&&!fn.calls.length){for(const child of ordered(fn.children))renderFunction(child,parent,depth);return;}
+  const details=document.createElement('details'),summary=document.createElement('summary');details.open=depth<2;summary.tabIndex=0;
+  const formals=fn.regions.filter(n=>n.role==='formal');
+  const heading='fun '+name(fn.label)+' '+parameters(fn.key,formals,n=>'r'+n.region),volume=functionVolume(fn);
+  function updateSummary(){summary.textContent=heading+(details.open?'':' · '+volume.count+' objects · '+allocationSize(volume.bytes));}
+  details.addEventListener('toggle',updateSummary);updateSummary();
+  summary.title=fn.label+'\n'+fn.unit;details.append(summary);parent.append(details);anchors.set(fn.key,summary);
+  const containers=new Map();
+  for(const n of fn.regions){let target=details;if(n.role==='local'){
+    target=document.createElement('div');target.className='slice-region';const heading=document.createElement('div');heading.className='slice-binding';heading.textContent='LETREGION r'+n.region;target.append(heading);entryPositions.set(target,localPosition(n));
+   }containers.set(n.id,target);
+   sites(measured.get(n.id)||[],target,n);
+  }
+  for(const child of ordered(fn.children))renderFunction(child,details,depth+1);
+  for(const call of fn.calls){
+   const callee=functions.get(call.callee),byFormal=new Map(call.edges.map(e=>[e.formal,e]));
+   const chosen=[...byFormal.keys()].map(id=>nodes.get(id));
+   const line=document.createElement('div'),link=document.createElement('button');line.className='slice-call';link.type='button';
+   entryPositions.set(line,callPosition(call));
+   link.textContent=name(callee.label);
+   link.title=callee.label+(call.legacy?'\nSingle argument relationship (older IR metadata)':'\nGo to function definition');link.addEventListener('click',()=>jump(call.callee));line.append(link);
+   const parts=parameterParts(callee.key,chosen);
+   if(parts.length){line.append(document.createTextNode('['));parts.forEach((n,i)=>{
+    if(i)line.append(document.createTextNode(', '));
+    if(n){line.append(document.createTextNode('r'+n.region+':='));edgeLocation(byFormal.get(n.id),line);}
+    else line.append(document.createTextNode('...'));
+   });line.append(document.createTextNode(']'));}
+   const local=[...new Set(call.edges.map(e=>e.actual))].filter(id=>nodes.get(id)?.role==='local'&&containers.has(id));
+   (local.length===1?containers.get(local[0]):details).append(line);
+  }
+  for(const [id,target] of containers)if(nodes.get(id).role==='local'){sortEntries(target);details.append(target);}
+  sortEntries(details);
+  // The first relevant body entry locates a nested definition relative to its siblings.
+  entryPositions.set(details,Math.min(...[...details.children].map(child=>entryPositions.get(child)??Infinity),Infinity));
+ }
+ const note=document.createElement('p');note.className='note';note.textContent='Region slice: definitions and possible region instantiations for the selected binding. Ellipses omit other region parameters. Volumes are measured once per allocation site; calls have no measured totals.';host.append(note);
+ if((flow.issues||[]).length){const warning=document.createElement('details'),title=document.createElement('summary'),list=document.createElement('ul');title.textContent='Incomplete region-flow metadata';for(const issue of new Set(flow.issues)){const li=document.createElement('li');li.textContent=issue;list.append(li);}warning.append(title,list);host.append(warning);}
+ if(ambiguous.length){const warning=document.createElement('p');warning.textContent='Some sites have several possible destination mappings; their totals remain in the unresolved-sites section.';host.append(warning);}
+ for(const fn of ordered(roots))renderFunction(fn,host,0);
+ // Globals have no owning function; retain their measured sites explicitly.
+ for(const id of relevant)if(!nodes.get(id)?.owner)sites(measured.get(id)||[],host);
+ if(unplaced.length){const section=document.createElement('details'),title=document.createElement('summary');section.open=true;title.textContent='Sites without a resolved path to the selected region';section.append(title);sites(unplaced,section);host.append(section);}
+ if(!rows.size){const empty=document.createElement('p');empty.textContent='No objects observed in the selected snapshots.';host.append(empty);}
+}
+
+function allocationTable(){
+ const session=profile.allocation_session;if(!session)return;
+ el('allocation-discovery').hidden=false;el('allocation-build').textContent='Allocation build identifier: '+session.build_id;
+ el('allocation-selectors').replaceChildren();
+ const bindings=new Map();for(const sample of samples)for(const r of sample.regions)if(r.kind==='infinite')bindings.set(r.unit+':'+r.binding,r);
+ if(profile.allocation_region){const r=profile.allocation_region;bindings.set(r.unit+':'+r.binding,r);}
+ const bindingSource=sourceLabels([...bindings.values()].map(r=>r.source));
+ for(const [selector,r] of bindings){const tr=document.createElement('tr');for(const [i,value] of [r.name||'Region '+r.binding,bindingSource(r.source),selector].entries()){const td=document.createElement('td');td.textContent=value;if(i===1)td.title=r.source;tr.append(td);}el('allocation-selectors').append(tr);}
+ if(session.enabled!=='1'||!session.selector)return;
+ el('allocation-rows').replaceChildren();
+ el('allocation-section').hidden=false;
+ const regionId=attributionRegion()?.binding??attributionSelector().match(/:(\d+)$/)?.[1];
+ el('allocation-count-label').textContent='Objects';
+ el('allocation-title').textContent='Site occupancy'+(attributionSelector()==='all'?' across all regions':regionId!==undefined?' for r'+regionId:'');
+ const incomplete=!profile.complete;
+ el('allocation-note').textContent=(incomplete?'INCOMPLETE allocation profile. ':'')+(attributionSelector()==='all'?'All infinite regions':'Region '+attributionSelector())+' · Build '+session.build_id+' · Occupancy in the selected snapshot range.';
+ const rows=new Map();
+ const functions=new Map();
+ for(const r of profile.allocations||[]){const name=shortFunction(r.function),ids=functions.get(name)||new Set();ids.add(JSON.stringify([r.unit,r.function]));functions.set(name,ids);}
+ const visible=new Set(visibleSamples().map(s=>String(s.sample)));
+ const candidates=(profile.allocations||[]).filter(r=>r.sample===undefined||(visible.has(String(r.sample))&&selected(r)&&attributionSelected(r)));
+ const summaries=(profile.occupancy_summaries||[]).filter(r=>visible.has(String(r.sample))&&selected(r)&&attributionSelected(r));
+ const totals=new Map();for(const r of summaries)totals.set(String(r.sample),0n);for(const r of candidates)totals.set(String(r.sample),(totals.get(String(r.sample))||0n)+BigInt(r.bytes));
+ let peakSample=null,peakBytes=-1n;for(const [sample,bytes] of totals)if(bytes>peakBytes){peakSample=sample;peakBytes=bytes;}
+ for(const r of candidates.filter(r=>r.sample===undefined||String(r.sample)===peakSample)){const k=JSON.stringify([r.unit,r.site]),p=rows.get(k)||{...r,count:0n,bytes:0n};p.count+=BigInt(r.count);p.bytes+=BigInt(r.bytes);rows.set(k,p);}
+ if(peakSample!==null&&peakSample!=='undefined'){
+  el('allocation-note').textContent+=' Showing snapshot '+peakSample+' (largest selected payload in range).';
+  const totals=summaries.filter(r=>String(r.sample)===peakSample).reduce((a,r)=>({descriptors:a.descriptors+BigInt(r.object_overhead),slack:a.slack+BigInt(r.slack)}),{descriptors:0n,slack:0n});
+  el('allocation-note').textContent+=' Descriptor overhead: '+allocationSize(totals.descriptors)+'; unused page space: '+allocationSize(totals.slack)+'.';
+ }
+
+ const flowRegion=attributionRegion(),flowSelector=attributionSelector(),flowColon=flowSelector.lastIndexOf(':');
+ const flowBinding=String(flowRegion?.binding??flowSelector.slice(flowColon+1));
+ const flowUnit=Number(flowBinding)>=1&&Number(flowBinding)<=7?'<global>':flowRegion?.unit??flowSelector.slice(0,flowColon);
+ const flowRoot=JSON.stringify([flowUnit,flowBinding]);
+ const hasFlow=profile.region_flow?.available===true&&flowSelector!=='all'&&(profile.region_flow.nodes||[]).some(n=>n.id===flowRoot);
+ el('allocation-view-control').hidden=!hasFlow;
+ const byFlow=hasFlow&&el('allocation-view').value!=='site';
+ el('allocation-flow').hidden=!byFlow;el('allocation-table').hidden=byFlow;
+ el('allocation-flow-note').textContent=hasFlow?'':attributionSelector()==='all'?'Choose a region above to view its region slice.':'Region-flow metadata for this binding is unavailable. Showing allocation sites.';
+ if(byFlow){allocationRegionFlow(rows);return;}
+ const allocationSource=sourceLabels([...rows.values()].map(r=>r.source));
+ for(const r of [...rows.values()].sort((a,b)=>a.bytes===b.bytes?0:a.bytes>b.bytes?-1:1)){
+  const short=shortFunction(r.function),doc=irDocuments.get(irSites.get(String(r.definition))?.identity||r.ir_identity);
+  const functionName=doc?irFunctionName(r.function,doc):(functions.get(short).size===1?short:r.function);
+  const name=functionName+' · site '+r.site+(el('show-base').checked?' · '+baseName(r):'');
+  const tr=document.createElement('tr');for(const [i,value] of [name,allocationSource(r.source),String(r.count),allocationSize(r.bytes,true)].entries()){const td=document.createElement('td');td.textContent=value;if(i===0)td.title='Function: '+r.function+'\nUnit: '+r.unit+'\nSource: '+r.source+('\nSite: '+r.site);if(i===1)td.title=r.source;if(i===3)td.title=r.bytes+' bytes';
+   if(i===0){td.replaceChildren();td.append(irButton(r,name));}tr.append(td);}el('allocation-rows').append(tr);
+ }
+ if(!rows.size)el('allocation-note').textContent+=' No objects observed in the selected snapshots.';
+}
+allocationTable();
+el('allocation-view').addEventListener('change',allocationTable);
 const regionKey=r=>JSON.stringify([r.unit,String(r.binding)]);
 const palette=['#2563eb','#ea580c','#16a34a','#c026d3','#0891b2','#dc2626','#854d0e','#7c3aed','#65a30d','#db2777','#0d9488','#ca8a04'];
 const colorWeights=new Map();
 for(const s of samples)for(const r of s.regions){const k=regionKey(r);colorWeights.set(k,(colorWeights.get(k)||0n)+['page_footprint','large_bytes','finite_bytes'].reduce((n,f)=>n+BigInt(r[f]),0n));}
 const colorKeys=[...colorWeights.keys()].sort((a,b)=>colorWeights.get(a)===colorWeights.get(b)?(a<b?-1:a>b?1:0):colorWeights.get(a)>colorWeights.get(b)?-1:1);
-function bandColor(key){if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';return palette[colorKeys.indexOf(key)%palette.length];}
+const siteKey=r=>'site:'+JSON.stringify([r.unit,String(r.site)]);
+const siteColorKeys=[...new Set((profile.allocations||[]).map(siteKey))].sort();
+function siteGraph(){return el('metric').value==='sites';}
+function graphSiteName(r){
+ const doc=irDocuments.get(irSites.get(String(r.definition))?.identity||r.ir_identity);
+ return (doc?irFunctionName(r.function,doc):shortFunction(r.function))+' · site '+r.site+(el('show-base').checked?' · '+baseName(r):'');
+}
+function bandColor(key){if(key.startsWith('site:'))return palette[Math.max(0,siteColorKeys.indexOf(key))%palette.length];if(key==='other')return '#a8a29e';if(key==='stack')return '#64748b';return palette[colorKeys.indexOf(key)%palette.length];}
 function selected(r){const [field,value]=el('scope').value.split(':');return field==='all'||String(r[field]??-1)===value;}
 function metricRegion(r){return el('metric').value!=='stack'||r.kind==='finite';}
 function bytes(r){if(el('metric').value==='stack')return BigInt(r.finite_bytes);if(el('metric').value==='pages')return BigInt(r.page_footprint)+BigInt(r.unused_tail);return el('metric').value==='total'?['page_footprint','large_bytes','finite_bytes'].reduce((a,k)=>a+BigInt(r[k]),0n):BigInt(r[el('metric').value]);}
@@ -58,20 +479,28 @@ function label(r){
  if(details.length)name+=' ('+details.join(', ')+')';
  return name;
 }
-function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+baseName(r)+(r.source?'\nSource: '+r.source:'')+'\nUnit: '+r.unit+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
+function detail(r){return (r.name?r.name+' · ':'')+'Region #'+r.binding+'\nBase name: '+baseName(r)+(r.source?'\nSource: '+r.source:'')+'\nUnit: '+r.unit+'\nAllocation selector: '+r.unit+':'+r.binding+'\nRegion type: '+(r.region_type||'unavailable')+'\nRegion kind: '+(r.kind||'unavailable');}
 function key(r){switch(el('group').value){case 'region':return regionKey(r);case 'thread':return 'Thread '+r.thread;case 'worker':return r.worker===undefined||r.worker==='-1'?'Execution stream unavailable':'Execution stream '+r.worker;default:return 'All regions';}}
 
 function model(){
+ const samples=visibleSamples();
  const bands=new Map();
  function entry(k,name,detail=name){if(!bands.has(k))bands.set(k,{key:k,label:name,detail,values:samples.map(()=>0n)});return bands.get(k);}
- samples.forEach((s,i)=>{for(const r of s.regions)if(selected(r)&&metricRegion(r))entry(regionKey(r),label(r),detail(r)).values[i]+=bytes(r);
+ if(siteGraph()){
+  const indices=new Map(samples.map((s,i)=>[String(s.sample),i]));
+  for(const r of profile.allocations||[]){const i=indices.get(String(r.sample));if(i===undefined||!selected(r)||!attributionSelected(r))continue;
+   const b=entry(siteKey(r),graphSiteName(r),'Function: '+r.function+'\nSite: '+r.site+'\nUnit: '+r.unit+'\nSource: '+r.source);
+   b.record=r;b.values[i]+=BigInt(r.bytes);
+   if(!b.counts)b.counts=samples.map(()=>0n);b.counts[i]+=BigInt(r.count);
+  }
+ }else samples.forEach((s,i)=>{for(const r of s.regions)if(selected(r)&&metricRegion(r))entry(regionKey(r),label(r),detail(r)).values[i]+=bytes(r);
   if(['total','stack'].includes(el('metric').value))entry('stack','ML stack').values[i]=s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n);
  });
  let ordered=[...bands.values()];for(const b of ordered)b.sum=b.values.reduce((a,v)=>a+v,0n);
  ordered.sort((a,b)=>a.sum===b.sum?(a.key<b.key?-1:a.key>b.key?1:0):a.sum<b.sum?-1:1);
  const limit=Math.max(0,Math.floor(Number(el('limit').value)||0)), regions=ordered.filter(b=>b.key!=='stack');
  const hidden=new Set(limit?regions.slice(0,Math.max(0,regions.length-limit)).map(b=>b.key):[]);
- if(hidden.size){const omitted=ordered.filter(b=>hidden.has(b.key));ordered=ordered.filter(b=>!hidden.has(b.key));ordered.unshift({key:'other',label:'Other ('+hidden.size+' regions)',values:samples.map((s,i)=>omitted.reduce((a,b)=>a+b.values[i],0n))});}
+ if(hidden.size){const omitted=ordered.filter(b=>hidden.has(b.key));ordered=ordered.filter(b=>!hidden.has(b.key));ordered.unshift({key:'other',label:'Other ('+hidden.size+(siteGraph()?' sites)':' regions)'),counts:samples.map((s,i)=>omitted.reduce((a,b)=>a+(b.counts?.[i]||0n),0n)),values:samples.map((s,i)=>omitted.reduce((a,b)=>a+b.values[i],0n))});}
  return {hidden,bands:ordered,totals:samples.map((s,i)=>ordered.reduce((a,b)=>a+b.values[i],0n))};
 }
 function scopes(){
@@ -106,17 +535,27 @@ function axisTicks(lo,hi){
 }
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
-
+ rangeControls();
+ const sites=siteGraph();
+ el('group').disabled=sites;
+ el('limit-label').textContent=sites?'Sites shown':'Regions shown';
+ el('limit-help').textContent=sites?'Largest sites; 0 shows all. Remaining sites form Other.':'Largest regions; 0 shows all. Remaining regions form Other.';
+ el('band-note').textContent='The largest '+(sites?'sites':'regions')+' by summed sampled size are retained; Other combines the rest. Bands run from smallest to largest, bottom to top, with Other at the bottom. The legend follows the graph from top to bottom. Colours identify '+(sites?'sites':'bindings')+'. Thread and execution-stream filters use ownership at the snapshot.';
+ el('quantity-label').textContent=sites?'Objects':'Pages';el('tail-label').hidden=sites;
+ el('legend').setAttribute('aria-label',sites?'Allocation-site legend, top to bottom':'Region legend, top to bottom');
+ el('chart').setAttribute('aria-label',sites?'Selected-region payload by allocation site over elapsed time':'Stacked region and ML stack footprint over elapsed time');
+ allocationTable();
+ const samples=visibleSamples(),[start,end]=snapshotBounds();
  el('export-svg').disabled=!samples.length;
  el('graph-layout').className='graph-layout'+(el('legend-right').checked?' legend-right':'');
- const slider=el('sample');slider.max=Math.max(0,samples.length-1);const index=Number(slider.value),s=samples[index];
+ const slider=el('sample');slider.min=start;slider.max=end;slider.value=Math.max(start,Math.min(Number(slider.value),end));slider.disabled=!samples.length;const index=Number(slider.value)-start,s=samples[index];
  el('rows').replaceChildren();el('chart').replaceChildren();el('legend').replaceChildren();
  if(!s){el('caption').textContent='No completed snapshots yet.';return;}
  const {bands,totals,hidden}=model(),peak=totals.reduce((a,b)=>a>b?a:b,0n),isPages=el('metric').value==='pages';
  const peakMetric=['pages','total','page_footprint'].includes(el('metric').value);
  const recordedPeak=el('show-peak').checked&&peakMetric&&el('scope').value==='all'?BigInt(s.max_pages)*BigInt(s.page_bytes):null;
  const max=(recordedPeak!==null&&recordedPeak>peak?recordedPeak:peak)||1n,valueUnit='bytes';
- el('value-unit').textContent='Bytes';
+ el('value-unit').textContent=sites?'Memory':'Bytes';
  const first=BigInt(samples[0].time),last=BigInt(samples.at(-1).time),span=last-first||1n;
  let factor=1n,unit=valueUnit;for(const u of ['KiB','MiB','GiB','TiB','PiB','EiB']){if(max<factor*1024n)break;factor*=1024n;unit=u;}
  const timeUnit=last>=1000000000n?'s':last>=1000000n?'ms':last>=1000n?'µs':'ns';
@@ -127,10 +566,13 @@ function draw(){
  let bottom=samples.map(()=>0n);
  for(const b of bands){const top=bottom.map((v,i)=>v+b.values[i]);let points=top.map((v,i)=>`${x(i)},${y(v)}`).concat(bottom.map((v,i)=>`${x(i)},${y(v)}`).reverse()).join(' ');
   if(samples.length===1)points=`80,${y(top[0])} 960,${y(top[0])} 960,${y(bottom[0])} 80,${y(bottom[0])}`;
-  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=(b.detail||b.label)+' · selected snapshot: '+memoryText(b.values[index])+' ('+b.values[index].toLocaleString()+' bytes)';area.append(title);bottom=top;
+  const area=svg('polygon',{points,fill:bandColor(b.key),'data-band':b.key});const title=document.createElementNS(ns,'title');title.textContent=(b.detail||b.label)+' · selected snapshot: '+memoryText(b.values[index])+' ('+b.values[index].toLocaleString()+' bytes)';area.append(title);
+  if(b.record){area.style.cursor='pointer';area.setAttribute('tabindex','0');area.setAttribute('role','button');area.setAttribute('aria-label','Show IR for '+b.label);
+   const activate=()=>showIR(b.record,area);area.addEventListener('click',activate);area.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activate();}});}
+  bottom=top;
  }
  for(const b of [...bands].reverse()){
-  const item=document.createElement('div');item.className='legend-item';item.title=b.detail||b.label;const swatch=document.createElement('span');swatch.className='swatch';swatch.style.background=bandColor(b.key);const name=document.createElement('span');name.textContent=b.label;item.append(swatch,name);el('legend').append(item);
+  const item=document.createElement('div');item.className='legend-item';item.title=b.detail||b.label;const swatch=document.createElement('span');swatch.className='swatch';swatch.style.background=bandColor(b.key);const name=b.record?irButton(b.record,b.label):document.createElement('span');name.textContent=b.label;item.append(swatch,name);el('legend').append(item);
  }
  svg('path',{d:'M80 65 V593 H960',fill:'none',stroke:'#334155'});
  for(const v of axisTicks(0,Number(max)/Number(factor))){const yy=y(v*Number(factor));svg('line',{x1:74,x2:80,y1:yy,y2:yy,stroke:'#334155','data-tick':'memory'});svg('text',{x:70,y:yy+4,'text-anchor':'end',class:'axis'},tickLabel(v));}
@@ -151,13 +593,13 @@ function draw(){
  svg('text',{x:960,y:22,'text-anchor':'end',class:'axis','data-summary':'maximum'},'Sampled maximum: '+memoryText(peak));
  if(recordedPeak!==null){svg('line',{x1:80,x2:960,y1:y(recordedPeak),y2:y(recordedPeak),stroke:'#b91c1c','stroke-width':2,'stroke-dasharray':'8 4','data-peak':'pages'});svg('text',{x:960,y:43,'text-anchor':'end',class:'axis'},'Peak page capacity: '+memoryText(recordedPeak)+' ('+BigInt(s.max_pages).toLocaleString()+' pages)');}
  svg('line',{x1:x(index),x2:x(index),y1:65,y2:593,stroke:'#0f172a','stroke-dasharray':'4 3','pointer-events':'none'});
- const groups=new Map(),groupLabels=new Map(),groupDetails=new Map();for(const r of s.regions.filter(r=>selected(r)&&metricRegion(r))){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);if(el('group').value==='region'&&k!=='Other')groupDetails.set(k,detail(r));groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
+ const groups=new Map(),groupLabels=new Map(),groupDetails=new Map();if(sites){for(const b of bands){groups.set(b.key,[b.values[index],b.counts?.[index]||0n]);groupLabels.set(b.key,b.label);groupDetails.set(b.key,b.detail||b.label);}}else for(const r of s.regions.filter(r=>selected(r)&&metricRegion(r))){const k=el('group').value==='region'&&hidden.has(regionKey(r))?'Other':key(r),v=groups.get(k)||[0n,0n,0n];v[0]+=bytes(r);v[1]+=BigInt(r.pages);v[2]+=BigInt(r.unused_tail);groups.set(k,v);if(el('group').value==='region'&&k!=='Other')groupDetails.set(k,detail(r));groupLabels.set(k,el('group').value==='region'&&k!=='Other'?label(r):k);}
  if(['total','stack'].includes(el('metric').value))groups.set('ML stack',[s.stacks.filter(selected).reduce((a,r)=>a+BigInt(r.stack_bytes),0n),0n,0n]);
- for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [groupLabels.get(k)||k,...v.map(n=>n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length&&groupDetails.has(k))td.title=groupDetails.get(k);tr.append(td);}el('rows').append(tr);}
+ for(const [k,v] of [...groups].sort((a,b)=>a[1][0]===b[1][0]?0:a[1][0]>b[1][0]?-1:1)){const tr=document.createElement('tr');for(const value of [groupLabels.get(k)||k,...v.map((n,i)=>sites&&i===0?allocationSize(n,true):n.toLocaleString())]){const td=document.createElement('td');td.textContent=value;if(!tr.children.length&&groupDetails.has(k))td.title=groupDetails.get(k);tr.append(td);}el('rows').append(tr);}
  el('marks').textContent=(s.marks||[]).map(m=>'Marker '+timeText(m.time)+': '+m.label).join(' · ');
  el('caption').textContent='Snapshot '+s.sample+' · '+timeText(s.time)+' · '+s.reason+' · selected total '+memoryText(totals[index])+' · process-wide cached pages '+memoryText(BigInt(s.cache_bytes||0))+' (excluded)';
  el('peak-note').textContent=!el('show-peak').checked||!peakMetric?'':el('scope').value!=='all'?'The process-wide peak page capacity line is shown only in All threads.':'The dashed red line is peak allocated region-page capacity, excluding cached pages, large objects and stack storage. It includes allocations between snapshots and GC from/to-space overlap, even while sampling is paused. It is a reference for page capacity, not a maximum of the combined region-and-stack total.';
- el('stack-note').textContent=isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':!['total','stack'].includes(el('metric').value)?'':'The ML stack band excludes finite regions, whose reserved space is shown in the region bands. It includes active ML frame storage, including infinite-region descriptors stored on the stack. Global and persistent descriptors outside the active stack are excluded.';
+ el('stack-note').textContent=sites?'Payload occupying the selected region, split by allocation site. Profiling descriptors and page slack are excluded. Colours identify sites; click a band or legend entry to view its IR.':isPages?'Pages shows the full allocated region-page capacity in memory units, including unused tails.':el('metric').value==='page_footprint'?'Page footprint subtracts unused last-page tails from allocated page capacity.':!['total','stack'].includes(el('metric').value)?'':'The ML stack band includes finite-region storage and infinite-region descriptors in active ML frames. Global and persistent descriptors outside the active stack are excluded.';
 }
 // Export only SVG elements: no HTML, scripts, external styles or font assets.
 function exportSvgDocument(){
@@ -188,7 +630,7 @@ function exportSvgDocument(){
  let top=paragraph(el('profile-title').textContent,16,34,width-32,26,'bold');
  const option=id=>el(id).selectedOptions?.[0]?.textContent||el(id).value;
  const maximumText=Array.from(el('chart').children).find(n=>n.getAttribute('data-summary')==='maximum')?.textContent||'';
- const summary='Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:'')+' · Samples: '+samples.length+' · '+maximumText;
+ const summary='Metric: '+option('metric')+' · View: '+option('scope')+(el('gc-note').textContent?' · '+el('gc-note').textContent:'')+' · Samples: '+visibleSamples().length+' · '+el('range-caption').textContent+' · '+maximumText;
  context.font='16px Arial';const summarySize=Math.min(16,16*(width-32)/context.measureText(summary).width);
  add(root,'text',{x:16,y:top+4,'font-size':summarySize},summary);top+=4+summarySize*1.4+12;
  const chart=el('chart').cloneNode(true);chart.removeAttribute('id');chart.setAttribute('x','8');chart.setAttribute('y',String(top));chart.setAttribute('width','1002');chart.setAttribute('height','668');
@@ -214,6 +656,10 @@ function downloadSvg(){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 el('export-svg').addEventListener('click',downloadSvg);
+el('range-start').addEventListener('input',()=>narrowSnapshots('start'));
+el('range-end').addEventListener('input',()=>narrowSnapshots('end'));
+el('range-reset').addEventListener('click',resetSnapshotRange);
+el('show-base').addEventListener('input',()=>{allocationTable();if(irSelectedRecord)updateIRTitle(irSelectedRecord);});
 
 for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
 const mainName=profile.main_source.split(/[\\/]/).at(-1);
@@ -223,7 +669,19 @@ el('profile-title').title=profile.main_source||'';
 document.title=el('profile-title').textContent;
 el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(profile.gc_collections===null?'unavailable':BigInt(profile.gc_collections).toLocaleString())+(profile.complete?'':' (recorded so far)'):'';
 scopes();
+if(profile.allocation_session?.enabled==='1'&&profile.allocation_session.selector){
+ const option=document.createElement('option');option.value='sites';option.id='site-metric-option';option.textContent=siteMetricName();el('metric').append(option);
+}
+if(profile.allocation_session?.selector==='all'){
+ el('attribution-region-control').hidden=false;
+ const names=sourceLabels([...attributionBindings.values()].map(r=>r.source));
+ for(const [value,r] of [...attributionBindings].sort((a,b)=>BigInt(a[1].binding)<BigInt(b[1].binding)?-1:BigInt(a[1].binding)>BigInt(b[1].binding)?1:a[0].localeCompare(b[0]))){
+  if(r.kind!=='infinite')continue;
+  const option=document.createElement('option');option.value=value;option.textContent='r'+r.binding+' · '+names(r.source);option.title=value;el('attribution-region').append(option);
+ }
+ el('attribution-region').addEventListener('input',()=>{el('site-metric-option').textContent=siteMetricName();draw();});
+}
 const defaults=__OPTIONS__;
 for(const [id,value] of Object.entries(defaults)){if(id==='caption'){el('profile-title').textContent=value;document.title=value;}else if(typeof value==='boolean')el(id).checked=value;else el(id).value=String(value);}
-scopes();draw();
+scopes();draw();allocationTable();
 </script></html>

@@ -12,6 +12,8 @@ struct
             | complete (s::ss) = parse s :: complete ss
           val records = complete lines
           val _ = ProfileReader.fromRecords records
+          val version = uint (hd records) "version"
+          val versionString = IntInf.toString version
           fun little n count =
               if count = 0 then []
               else Char.chr(IntInf.toInt(n mod 256)) :: little (n div 256) (count-1)
@@ -24,10 +26,11 @@ struct
                           then if key = "word_bytes" then 8 else 0
                           else raise Fail ("missing " ^ key)
           fun record r =
-              let fun tag n = if n > 11 then raise Fail "unknown fixture record"
-                              else if #1(ProfileBinary.schema n) = kind r then n else tag(n+1)
-                  val t = tag 1
-                  val (_,nums,strs) = ProfileBinary.schema t
+              let fun tag n = if n > (if version >= 9 then 19 else if version >= 8 then 17 else 16) then raise Fail "unknown fixture record"
+                              else if n = 14 orelse n = 15 then tag(n+1)
+                              else if #1(ProfileBinary.schema versionString n) = kind r then n else tag(n+1)
+                  val t = if kind r = "allocation" andalso Option.isSome(find r "sample") then 18 else tag 1
+                  val (_,nums,strs) = ProfileBinary.schema versionString t
                   fun bytes key =
                       let val s = case find r key of SOME v => string v | NONE => ""
                       in implode(little (IntInf.fromInt(size s)) 4) ^ s
@@ -35,7 +38,8 @@ struct
                   val payload = str(Char.chr t) ^ String.concat(map (fn k => implode(little (scalar r k) 8)) nums) ^ String.concat(map bytes strs)
               in implode(little (IntInf.fromInt(size payload)) 4) ^ payload
               end
-          val data = ProfileBinary.magic ^ String.concat(map record records)
+          val magic = "MLKRP\000" ^ str(Char.chr(IntInf.toInt version)) ^ "\000"
+          val data = magic ^ String.concat(map record records)
           val out = BinIO.openOut output
       in BinIO.output(out,Byte.stringToBytes data); BinIO.closeOut out
       end

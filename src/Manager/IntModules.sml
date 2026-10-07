@@ -293,8 +293,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                                       in ("code" ^ i, fn() => Name.baseSet name)
                                       end
 
-	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
-          val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs,vcg_filename)
+          val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs)
           val _ = resetName()
           val _ = if Execution.be_rigid then cleanBucket() else ()
       in case res

@@ -25,7 +25,6 @@ struct
       \enabled, programs run somewhat slower--but they run and\n\
       \you save about 15 percent on compile time."}
 
-  val region_profiling = Flags.is_on0 "region_profiling"
 
   type place = Effect.place
   type excon = Excon.excon
@@ -149,9 +148,14 @@ struct
       | CC_ls(LS.SWITCH_E sw,rest) = LS.SWITCH_E(CC_sw CC_lss sw)::rest
       | CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) =
         let
-          val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
+          val ({args=args',rhos_for_result,res},assign_list_args,assign_list_res) =
               CallConv.resolve_ccall RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG
                                      {args=args,rhos_for_result=rhos_for_result,res=res}
+          (* Resolve site tokens at the C ABI boundary, after register allocation. *)
+          val args = ListPair.map (fn (token as LS.SITE_TOKEN _,_) => token
+                                    | (_,arg) => arg) (args,args')
+          val assign_list_args = List.filter (fn (LS.SITE_TOKEN _,_) => false
+                                               | _ => true) assign_list_args
         in
           resolve_res(assign_list_args,
                       LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
@@ -1056,8 +1060,7 @@ struct
             let
               val L' = ig_lss(body,L)
 
-              (* Infinite letregions involve C calls and so do
-               * finite regions when profiling is enabled. C calls
+              (* Only infinite letregions involve C calls. C calls
                * are involved both at entrance to the body and at
                * exit of the body, thus, we mark both members of L
                * and L' as crossing C calls. The live range status
@@ -1068,8 +1071,7 @@ struct
 
               (* Update live range status for live variables, if C
                * calls are involved. *)
-              val _ = if List.null rhos orelse ( not(region_profiling())
-                                                 andalso List.null (remove_finite_rhos rhos) ) then ()
+              val _ = if List.null (remove_finite_rhos rhos) then ()
                       else (lvarset_app (set_lrs_status c_call) L ;
                             lvarset_app (set_lrs_status c_call) L')
             in L'

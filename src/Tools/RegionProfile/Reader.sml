@@ -12,6 +12,15 @@ struct
           val pagePeak = ref NONE
           val collections = ref NONE
           val complete = ref false
+          val allocationRegion = ref Null
+          val allocationSession = ref Null
+          val allocationSites = ref (Binarymap.mkDict IntInf.compare)
+          val allocations = ref []
+          val occupancySummaries = ref []
+          val sampleOccupancy = ref []
+          val sampleSummaries = ref []
+          val sampleAllocations = ref []
+          val irObjects = ref []
           fun noteCollections r =
               let val n = uint r "gc_collections"
               in collections := SOME(case !collections of NONE => n | SOME p => IntInf.max(p,n))
@@ -21,6 +30,8 @@ struct
               in pagePeak := SOME(case !pagePeak of NONE => n | SOME p => IntInf.max(p,n))
               end
           fun require b msg = if b then () else raise Fail msg
+          fun requireAllocation () =
+              require (!allocationSession <> Null andalso uint (!allocationSession) "enabled" = 1) "allocation record outside enabled session"
           val staticKeys = ["unit","source","name","region_type","kind","binding"]
           fun define r =
               let val id = uint r "definition"
@@ -58,16 +69,76 @@ struct
               case !header of
                   NONE =>
                   (require (kind r = "header" andalso string(get r "format") = "mlkit-region-profile") "expected profile header";
-                   require (uint r "version" = 5) "unsupported profile version (expected version 5)";
+                   require (uint r "version" = 10) "unsupported profile version; regenerate with the current compiler";
                    require (uint r "page_bytes" > 0) "invalid page size";
                    header := SOME r)
                 | SOME h =>
                   (case kind r of
-                       "binding" => define r
+                       "allocation_session" =>
+                       (
+                        require (!allocationSession = Null) "duplicate allocation session";
+                        require (uint r "enabled" <= 1 andalso uint r "depth" = 1) "unsupported allocation mode";
+                        app (fn k => ignore(string(get r k))) ["build_id","selector"];
+                        allocationSession := r)
+                     | "ir_object" =>
+                       (requireAllocation();
+                        app (fn k => ignore(string(get r k))) ["ir_identity","ir_object"];
+                        irObjects := r :: !irObjects)
+                     | "allocation_region" =>
+                       (requireAllocation(); require (!allocationRegion = Null) "duplicate allocation region";
+                        ignore(uint r "binding"); app (fn k => ignore(string(get r k))) ["unit","name","source"];
+                        allocationRegion := r)
+                     | "allocation_site" =>
+                       let val () = requireAllocation()
+                           val id = uint r "definition"
+                       in require (not(Option.isSome(Binarymap.peek(!allocationSites,id)))) "duplicate allocation site";
+                          ignore(uint r "site");
+                          app (fn k => ignore(string(get r k))) ["unit","function","source"];
+                          require (uint r "location_kind" <= 2) "invalid IR location kind";
+                          ignore(string(get r "ir_identity")); ignore(string(get r "ir_object"));
+                          allocationSites := Binarymap.insert(!allocationSites,id,r)
+                       end
+                     | "allocation" =>
+                       let val () = requireAllocation()
+                           val site = case Binarymap.peek(!allocationSites,uint r "definition") of
+                                          SOME s => s | NONE => raise Fail "unknown allocation site"
+                       in app (fn k => ignore(uint r k)) ["thread","count","bytes"];
+                          (let val begin = case !pending of SOME s => s | NONE => raise Fail "occupancy outside sample"
+                            in require (uint r "sample" = uint begin "sample") "occupancy sample mismatch";
+                               ignore(uint r "instance");
+                               require (Option.isSome(Binarymap.peek(!definitions,uint r "region_definition"))) "unknown occupancy region";
+                               sampleOccupancy := r :: !sampleOccupancy
+                            end);
+                          let val target = sampleAllocations
+                          in target := Obj(fields r @ map (fn k => (k,get site k))
+                            ["site","unit","function","source"] @
+                            List.filter (fn (k,_) => List.exists (fn x => x = k)
+                              ["location_kind","ir_identity","ir_object"]) (fields site)) :: !target
+                          end
+                       end
+                     | "occupancy_summary" =>
+                       (requireAllocation();
+                        app (fn k => ignore(uint r k)) ["sample","instance","region_definition","payload","objects","object_overhead","slack"];
+                        let val begin = case !pending of SOME s => s | NONE => raise Fail "occupancy summary outside sample"
+                            val rows = List.filter (fn x => uint x "instance" = uint r "instance") (!sampleOccupancy)
+                            val instance = uint r "instance"
+                            val () = require (instance < IntInf.fromInt(length(!regions))) "unknown occupancy instance"
+                            val region = List.nth(rev(!regions),IntInf.toInt instance)
+                            val () = require (uint r "region_definition" = uint region "definition") "occupancy region mismatch"
+                            val () = require (not(List.exists (fn x => uint x "instance" = instance) (!sampleSummaries))) "duplicate occupancy summary"
+                            val () = app (fn x => require (uint x "region_definition" = uint r "region_definition" andalso
+                                                uint x "thread" = uint region "thread") "occupancy owner mismatch") rows
+                            fun total key = foldl (fn (x,n) => n + uint x key) 0 rows
+                        in require (uint r "sample" = uint begin "sample") "occupancy summary sample mismatch";
+                           require (total "count" = uint r "objects" andalso total "bytes" = uint r "payload") "site occupancy totals do not match region";
+                           require (uint r "object_overhead" = uint r "objects" * uint h "word_bytes") "invalid object descriptor accounting";
+                           sampleSummaries := Obj(fields r @ map (fn k => (k,get region k)) ["thread","worker","cpu"]) :: !sampleSummaries
+                        end)
+                     | "binding" => define r
                      | "sample_begin" =>
                        (require (not(Option.isSome(!pending))) "nested samples";
                         ignore(uint r "sample"); ignore(uint r "time");
-                        pending := SOME r; regions := []; stacks := [])
+                        pending := SOME r; regions := []; stacks := []; sampleOccupancy := []; sampleSummaries := []; sampleAllocations := [])
                      | "session_end" => (notePeak r; noteCollections r; complete := true)
                      | "mark" => (ignore(uint r "time"); marks := r :: !marks)
                      | k =>
@@ -86,7 +157,12 @@ struct
                                                ("pages_visited",get r "pages_visited"),("cache_bytes",get r "cache_bytes"),
                                                ("page_bytes",get h "page_bytes"),("regions",Arr(rev(!regions))),("stacks",Arr(rev(!stacks)))]
                                   val fields = List.filter (fn (k,_) => not(List.exists (fn (n,_) => n = k) extra)) (fields begin)
-                              in samples := Obj(fields @ extra) :: !samples; pending := NONE end
+                                  val () = app (fn x => require (List.exists (fn summary => uint summary "instance" = uint x "instance") (!sampleSummaries)) "missing occupancy summary") (!sampleOccupancy)
+                              in samples := Obj(fields @ extra) :: !samples;
+                                 allocations := !sampleAllocations @ !allocations;
+                                 occupancySummaries := !sampleSummaries @ !occupancySummaries;
+                                 pending := NONE
+                              end
                          end
                        else require (List.exists (fn t => t = k)
                               ["thread_start","thread_end","session_end","sample_skipped"]) ("unknown record: " ^ k))
@@ -110,7 +186,9 @@ struct
           val gc = case get h "gc_enabled" of
                        Bool b => Bool b
                      | _ => raise Fail "invalid GC enabled flag"
-          val metadata = Obj[("main_source",source),("gc_enabled",gc),
+          val metadata = Obj[("version",get (valOf(!header)) "version"),("ir_objects",Arr(rev(!irObjects))),("allocation_region",!allocationRegion),("allocation_session",!allocationSession),
+                             ("occupancy_summaries",Arr(rev(!occupancySummaries))),("allocations",Arr(rev(!allocations))),
+                             ("main_source",source),("gc_enabled",gc),
                              ("gc_collections",case !collections of NONE => Null | SOME n => Num(IntInf.toString n)),
                              ("complete",Bool(!complete))]
       in {samples=result,metadata=metadata}

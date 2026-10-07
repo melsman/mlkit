@@ -48,10 +48,9 @@ signature BACKEND_INFO =
     val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
     val region_mutex_offset_words : unit -> int
 
-    val finiteRegionDescSizeP : int     (* Number of words in a finite region
-					 * descriptor when profiling is used. *)
     val objectDescSizeP       : int     (* Number of words in an object descriptor
 					 * when profiling is used. *)
+    val packObjectDesc : int * int -> IntInf.int (* payload words, program point *)
     val defaultIntPrecision : unit -> int
     val defaultWordPrecision : unit -> int
 

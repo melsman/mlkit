@@ -73,7 +73,6 @@ struct
        desc="Print program with instructions for activation\n\
 	\record fetching and flushing."}
 
-    val region_profiling = Flags.is_on0 "region_profiling"
 
     fun lvset_difference(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.delete(set,lv)) lv_set lv_list
     fun lvset_add(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.add(set,lv)) lv_set lv_list
@@ -116,9 +115,7 @@ struct
       | only_finite_rhos (((_,LS.WORDS _),_)::rest) = only_finite_rhos rest
       | only_finite_rhos _ = false
 
-    fun only_null_rhos nil = true
-      | only_null_rhos (((_,LS.WORDS 0),_)::rest) = only_null_rhos rest
-      | only_null_rhos _ = false
+
 
     (***************************************)
     (* Calculate Set of Variables to Flush *)
@@ -169,8 +166,7 @@ struct
        | LS.FUNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
        | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set)
        | LS.LETREGION{rhos,body} =>
-	   if only_null_rhos rhos
-	     orelse ( not(region_profiling()) andalso only_finite_rhos rhos ) then
+	   if only_finite_rhos rhos then
 	     F_lss(body,L_set,F_set,C_set)
 	   else
 	     let
@@ -362,21 +358,19 @@ struct
 	  | IF_lss'((ls as LS.FUNCALL cc)::lss,U_set) = do_non_tail_call_if(ls,F_set,IF_lss'(lss,U_set))
 	  | IF_lss'(LS.LETREGION{rhos,body}::lss,U_set) =
 	  (* If we have any infinite regions, then we perform a C-call at entry (allocRegion) and at
-	   * exit (deallocateRegion). We must then fetch caller save registers! When profiling is enabled,
-	   * we perform C calls at entry and exit also for finite regions. *)
+	   * exit (deallocateRegion). We must then fetch caller save registers. *)
 	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
-	    val ccalls_in_and_out : bool =
-	      only_null_rhos rhos orelse ( not(region_profiling())
-					  andalso only_finite_rhos rhos )
+	    val no_region_calls : bool =
+	      only_finite_rhos rhos
 	    val lv_fetch2 =
-	      if ccalls_in_and_out then	Lvarset.empty
+	      if no_region_calls then	Lvarset.empty
 	      else Lvarset.intersection(C_set,U_set_acc)
 
 	    val (body,U_set_body) = IF_lss'(body,Lvarset.difference(U_set_acc,lv_fetch2))
 
 	    val lv_fetch1 =
-	      if ccalls_in_and_out then Lvarset.empty
+	      if no_region_calls then Lvarset.empty
 	      else Lvarset.intersection(C_set,U_set_body)
 	  in
 	    (LS.LETREGION{rhos=rhos,body=insert_fetch_if(Lvarset.members lv_fetch1,body)}::

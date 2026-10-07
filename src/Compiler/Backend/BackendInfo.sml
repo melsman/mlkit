@@ -76,7 +76,7 @@ structure BackendInfo : BACKEND_INFO =
     val atbot_bit         = 2   (* We add 2 to an address to set the atbot bit. *)
 
     val tag_values        = Flags.is_on0 "tag_values"
-    val region_profiling  = Flags.is_on0 "region_profiling"
+    val region_profiling  = Flags.is_on0 "region_profile"
     val gengc_p           = Flags.is_on0 "generational_garbage_collection"
     fun parallelism_p ()  = Flags.is_on "parallelism"
 
@@ -93,19 +93,25 @@ structure BackendInfo : BACKEND_INFO =
       fun size_g0 () = size_gen
       fun size_prev_ptr () = 1
       fun size_g1 () = if gengc_p() then size_gen else 0
-      fun size_prof () = if region_profiling() then 3 else 0
+      fun size_prof () = 0
       fun size_par_lock () = if parallelism_p() then 1 else 0  (* pointer to a lock *)
     in
       fun size_of_reg_desc () =
-	  size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs() + size_par_lock()
+	  size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs() + size_par_lock() + 1 (* allocation attribution binding *)
       fun region_mutex_offset_words () =
           if parallelism_p() then
             size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()
           else die "region_mutex_offset_words"
     end
 
-    val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
-    val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
+    (* Shared with Runtime/Region.h: 16 size bits, 48 program-point bits.
+     * Size 65535 is the large-object escape; its full size is stored separately. *)
+    fun packObjectDesc (words,point) : IntInf.int =
+      if words < 0 orelse point < 0 orelse IntInf.fromInt point > 281474976710655
+      then die "packed object descriptor out of range"
+      else IntInf.fromInt point * 65536 + IntInf.fromInt(Int.min(words,65535))
+
+    val objectDescSizeP = 1       (* Number of words in an object descriptor when profiling is used. *)
 
     fun defaultIntPrecision () = if tag_values() then 63 else 64
     fun defaultWordPrecision () = if tag_values() then 63 else 64

@@ -50,6 +50,9 @@ struct
 
   val ctx_exnptr_offs = "8"  (* one word offset in Context struct *)
 
+  val allocationFunction = ref "<entry>"
+  val allocationSites = ref ([] : (int * lab) list)
+  val allocationIR = ref (NameLab "unused_ir_identity")
   val sampledProfile = Flags.is_on0 "region_profile"
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ Labels.pr_label l)
@@ -137,6 +140,32 @@ struct
           I.cmpl(I "0",D("0",treg0)) :: I.je done ::
           load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
       end
+
+  fun allocationMetadata unitName display id extra =
+    let val lab = new_local_lab "allocation_metadata"
+        val display = gen_string_lab display
+    in
+      add_static_data ([I.dot_data,I.dot_p2align "3",I.lab lab,
+        I.dot_quad(I.pr_lab unitName),I.dot_quad(I.pr_lab display),
+        I.dot_quad(I.pr_lab(!rpSource)),I.dot_quad(Int.toString id)] @ map I.dot_quad extra); lab
+    end
+  val () = allocationSite := (fn (point,kind) =>
+    case if point > 0 then List.find (fn (id,_) => id = point) (!allocationSites) else NONE of
+        SOME (_,label) => label
+      | NONE =>
+        let val id = if point > 0 then point else IRLocations.freshSite ()
+            val (owner,kind) = if point > 0 then IRLocations.siteOrigin(point,!allocationFunction,kind)
+                               else (!allocationFunction,2)
+            val label = allocationMetadata (!rpUnit) owner id
+              [Int.toString kind,I.pr_lab(!allocationIR)]
+        in if point > 0 then allocationSites := (point,label) :: !allocationSites else ();
+           label
+        end)
+  fun allocationBinding place =
+    allocationMetadata (!rpUnit) (Effect.pp_eff place) (Effect.key_of_eps_or_rho place) []
+  fun bindAllocation fsz aty metadata code =
+    load_label_addr(metadata,SS.PHREG_ATY treg0,treg0,0,
+      rpInternal fsz "mlkit_rp_bind_region" [aty,SS.PHREG_ATY treg0] code)
 
   fun inlineable C =
       case C of
@@ -684,22 +713,7 @@ struct
                       if region_profiling() then
                         case phsize
                           of LineStmt.WORDS 0 => C (* zero-sized finite region *)
-                           | LineStmt.WORDS i =>   (* finite region *)
-                            let (* The offset points at the object - not the region descriptor,
-                                 * nor the object descriptor; allocRegionFiniteProfiling expects
-                                 * a pointer to the region descriptor. See CalcOffset.sml for a
-                                 * picture. The size i of the region does not include the sizes
-                                 * of the object descriptor and the region descriptor. *)
-                              val reg_offset = offset + BI.objectDescSizeP + BI.finiteRegionDescSizeP
-                            in
-                              base_plus_offset(rsp,WORDS(fsz-reg_offset-1),treg1,
-                               compile_c_call_prim("allocRegionFiniteProfilingMaybeUnTag",
-                                                   [SS.PHREG_ATY treg1,
-                                                    key place,
-                                                    mkIntAty i], NONE,
-                                                   fsz,treg0(*not used*),
-                                maybe_store_tag (place,offset,C)))
-                            end
+                           | LineStmt.WORDS _ => maybe_store_tag (place,offset,C)
                            | LineStmt.INF =>
                             let val name =
                                 if regions_holding_values_of_the_same_type_only place then
@@ -742,22 +756,15 @@ struct
                               in
                                   base_plus_offset(rsp,WORDS(fsz-offset-1),treg1,
                                     compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY treg1] @ protect,NONE,
-                                                        fsz,treg0(*not used*),C))
+                                                        fsz,treg0(*not used*),
+                                      if allocationProfile() then bindAllocation fsz (SS.REG_F_ATY offset) (allocationBinding place) C else C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
-                      if region_profiling() then
-                        case phsize
-                          of LineStmt.WORDS 0 => C
-                           | LineStmt.WORDS i =>
-                            compile_c_call_prim("deallocRegionFiniteProfiling",[],NONE,
-                                                fsz,treg0(*not used*),C)
-                           | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
-                      else
-                        case phsize
-                          of LineStmt.WORDS i => C
-                           | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
+                      case phsize of
+                        LineStmt.WORDS _ => C
+                      | LineStmt.INF =>
+                          compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,fsz,treg0(*not used*),C)
+
                   in
                     let
                       val previous = !rpRegions
@@ -1484,7 +1491,8 @@ struct
                   else
                   let
                     fun comp_c_call (all_args,res,C) =
-                      compile_c_call_prim(name, all_args, res, fsz, treg1, C)
+                      compile_c_call_site (fn point => (!allocationSite)(point,1))
+                        (name, all_args, res, fsz, treg1, C)
                     val _ =
                         case (explode name, rhos_for_result) of
                             (_, nil) => ()
@@ -1617,64 +1625,11 @@ struct
              end
          else C
 
-     fun do_prof C =
-       if region_profiling() then
-         let val labStack = new_local_lab "profStack"
-           val labCont = new_local_lab "profCont"
-           val labCont1 = new_local_lab "profCont1-"
-           val labCont2 = new_local_lab "profCont2-"
-           val maxStackLab = NameLab "maxStack"
-           val timeToProfLab = NameLab "timeToProfile"
-
-           (* some intelligent operations *)
-           fun bin (tmp:I.reg) (inst:ea*ea->I.inst) (ea1:ea,ea2:ea,C:I.inst list) : I.inst list =
-               case ea1 of
-                   L (NameLab n) => I.movq(LA (NameLab n), R tmp) :: inst(D("",tmp),ea2) :: C
-                 | _ => case ea2 of
-                            L (NameLab n) => I.movq(LA (NameLab n), R tmp) :: inst(ea1, D("",tmp)) :: C
-                          | _ => inst(ea1,ea2) :: C
-           fun imov a = bin treg1 I.movq a
-           fun iadd a = bin treg1 I.addq a
-           fun isub a = bin treg1 I.subq a
-         in
-           imov(L maxStackLab, R treg0,     (* The stack grows downwards!! *)
-           I.cmpq(R rsp, R treg0) ::
-           I.jl labCont ::                                                 (* if ( rsp < *maxStack ) {     *)
-           imov(R rsp, L maxStackLab,                                      (*    *maxStack = rsp ;         *)   (* bytes *)
-           imov(L (NameLab "regionDescUseProfInf"), R treg0,               (*    maxProfStack =            *)   (* words *)
-           iadd(L (NameLab "regionDescUseProfFin"), R treg0,               (*       regionDescUseProfInf   *)
-           iadd(L (NameLab "allocProfNowFin"), R treg0,                    (*     + regionDescUseProfFin   *)
-           imov(R treg0, L (NameLab "maxProfStack"),                       (*     + allocProfNowFin ;      *)
-           I.lab labCont ::                                                (* }                            *)
-                                                                           (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
-                                                                           (* if ( reg0 > maxMem ) maxMem = reg0; *)
-           imov(L (NameLab "allocNowInf"), R treg0,
-           isub(L (NameLab "regionDescUseProfInf"), R treg0,
-           isub(L (NameLab "regionDescUseProfFin"), R treg0,
-           isub(L (NameLab "allocProfNowFin"), R treg0,
-           G.mul(I "8", treg0) $
-           iadd(L (NameLab "stackBot"), R treg0,
-           G.sub(R rsp, treg0) $
-           imov(L (NameLab "maxMem"), R treg1,                             (* we can store in treg1 even with imov *)  (* bytes *)
-           I.cmpq(R treg1, R treg0) ::
-           I.jl labCont1 ::
-           imov(R treg0, L (NameLab "maxMem"),
-
-           I.lab labCont1 ::
-           imov(L timeToProfLab, R treg0,                                  (* if ( timeToProfile )         *)
-           I.cmpq(I "0", R treg0) ::                                       (*    call __proftick(rsp);     *)
-           I.je labCont2 ::
-           I.movq (R rsp, R treg1) ::              (* proftick assumes argument in treg1 *)
-           I.push (LA labCont2) ::                    (* push return address *)
-           I.jmp (L(NameLab "__proftick")) ::
-
-           I.lab labCont2 ::
-           C))))))))))))))
-         end
-       else C
+     fun do_prof C = C
 
     fun CG_top_decl' gen_fn (lab,cc,lss) =
       let
+        val () = allocationFunction := Labels.pr_label lab
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
         fun pws ws = app pw ws
@@ -1777,6 +1732,8 @@ struct
         val _ = reset_label_counter()
         val () = rpNames := []
         val () = if sampledProfile() then rpSource := gen_string_lab(!Flags.current_source_file) else ()
+        val () = allocationSites := []
+        val () = if allocationProfile() then allocationIR := gen_string_lab (!IRLocations.currentIdentity) else ()
         val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
@@ -2076,12 +2033,7 @@ struct
             I.lab stublab ::
             push_callersave_regs
             (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, fsz, treg0,
-              pop_callersave_regs
-                  ( I.ret ::
-                    (*
-                    I.pop(R treg0) ::
-                    I.jmp(R treg0) :: *)
-                   C)))
+              pop_callersave_regs (I.ret :: C)))
           end
 
         fun allocate C = (* args in treg1 and treg0; result in treg1. *)
@@ -2095,10 +2047,7 @@ struct
         fun resetregion C =
           ccall_stub("__reset_region", "resetRegion", [treg1], true, C)
 
-        fun proftick C =
-          if region_profiling() then
-            ccall_stub("__proftick", "profileTick", [r14,treg1], false, C)   (* first argument is the evaluation context *)
-          else C
+        fun proftick C = C
 
         fun overflow_stub C =
           let val stublab = [(NameLab "__raise_overflow",BI.exn_OVERFLOW_lab),
@@ -2240,7 +2189,11 @@ struct
           in
             foldl (fn ((rho,lab),C) =>
                    let val name = c_name rho
-                       val C = I.movq(R rax, L (DatLab lab)) :: C
+                       val C = I.movq(R rax, L (DatLab lab)) ::
+                         (if allocationProfile() then
+                            I.movq(R rax,R rdi) ::
+                            I.movq(I(Int.toString(case Effect.get_place_ty rho of NONE => 0 | SOME ty => Effect.ord_runType ty)),R rsi) ::
+                            I.call(NameLab "mlkit_rp_bind_global") :: C else C)
                        val sz_regdesc = BI.size_of_reg_desc()
                        val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
                                         else sz_regdesc+1
@@ -2337,13 +2290,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
               end
           else C
 
-        fun init_prof C =
-          if region_profiling() then  (* stack_bot_gc[0] = rsp *)
-            I.movq(R rsp, L (NameLab "stackBot")) ::
-            I.movq(R rsp, L (NameLab "maxStack")) ::
-            I.movq(R rsp, L (NameLab "maxStackP")) ::
-            C
-          else C
+        fun init_prof C = C
 
         fun data_begin C =
             if gc_p() then
@@ -2408,6 +2355,14 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
                I.dot_globl(NameLab "mlkit_rp_main_source_slot",I.OBJ),I.lab(NameLab "mlkit_rp_main_source_slot"),I.dot_quad(I.pr_lab slot)]
           end
           else ()
+        val () = if allocationProfile() then
+          let val build = gen_string_lab(Time.toString(Time.now()))
+          in add_static_data [I.dot_data,I.dot_p2align "3",
+               I.dot_globl(NameLab "mlkit_rp_allocation_capable",I.OBJ),
+               I.lab(NameLab "mlkit_rp_allocation_capable"),I.dot_quad "4",
+               I.dot_globl(NameLab "mlkit_rp_build_id",I.OBJ),
+               I.lab(NameLab "mlkit_rp_build_id"),I.dot_quad(I.pr_lab build ^ " + 8")]
+          end else ()
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*

@@ -107,6 +107,10 @@ jobs:
           if [ "$MLCOMP_HOST" = mlton ]; then
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
+          elif [ "$OS" = linux ]; then
+            # The seed and newly built compiler use different Basis objects.
+            # Do not let native tools reuse seed-built shared source caches.
+            ./configure CC="$THECC" --with-compiler='mlkit --mlb-subdir Bootstrap'
           else
             ./configure CC="$THECC" --with-compiler=mlkit
           fi
@@ -120,8 +124,10 @@ jobs:
               -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
           fi
 
-      - name: Check region profiler
-        run: sh test/region_profile/check-ci.sh
+      - name: Check pretty-printer spans and region profiler
+        run: |
+          SML_LIB="$PWD" sh test/prettyprint/check.sh
+          sh test/region_profile/check-ci.sh
 
       - name: Install MLKit
         run: sudo make install

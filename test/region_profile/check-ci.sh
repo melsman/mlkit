@@ -32,13 +32,23 @@ run () {
     exit 1
   fi
 }
+run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
+
+run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
+run ir sh "$ROOT/test/region_profile/check-ir.sh"
+run text-flow sh "$ROOT/test/region_profile/check-text-flow.sh"
+run auto-call sh "$ROOT/test/region_profile/check-auto-call.sh"
 run accounting sh "$ROOT/test/region_profile/check.sh"
+run ir5 sh "$ROOT/test/region_profile/check-ir5.sh"
+run all-regions sh "$ROOT/test/region_profile/check-all-regions.sh"
+run allocation sh "$ROOT/test/region_profile/check-allocation.sh"
 run extended sh "$ROOT/test/region_profile/check-extended.sh"
 run binary sh "$ROOT/test/region_profile/check-binary.sh"
 run viewer sh "$ROOT/test/region_profile/check-viewer.sh"
+run ir-viewer sh "$ROOT/test/region_profile/check-ir-viewer.sh"
 run svg sh "$ROOT/test/region_profile/check-svg.sh"
-# The viewer checks validate HTML generation. Browser graph assertions are a
-# separate manual/browser-runner test, not claimed as executed by this script.
+# Viewer checks cover HTML generation and graph/IR behavior in a Node DOM
+# harness. Visual layout in a real browser remains a separate manual check.
 run install make -C "$ROOT" install_runtime install_basis install_mlkit_basislibs LIBDIR="$OUT/installed"
 chmod -R a-w "$OUT/installed"
 run installed-api env SML_LIB="$OUT/installed" sh "$ROOT/test/region_profile/check-installed-api.sh"

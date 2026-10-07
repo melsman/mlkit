@@ -20,9 +20,9 @@ run "build-$arch" make runtime -j4
 count=0
 for archive in lib/darwin-$arch/runtimeSystem*.a; do
   [ "$(lipo -archs "$archive")" = "$arch" ]
-  case "$archive" in *runtimeSystemArPar.a) ;; *) count=$((count + 1));; esac
+  case "$archive" in *runtimeSystemArPar.a|*runtimeSystemArParProf.a) ;; *) count=$((count + 1));; esac
 done
-[ "$count" = 10 ]
+[ "$count" = 11 ]
 for object in src/Runtime/build/darwin-$arch/*/*.o; do
   [ "$(lipo -archs "$object")" = "$arch" ]
 done
@@ -31,9 +31,9 @@ run "link-$arch" gcc -arch "$arch" -std=gnu99 -iquote src/Runtime \
   -Wl,-dead_strip -lm -o "$logs/smoke-$arch"
 run "smoke-$arch" "$logs/smoke-$arch"
 run "link-profiling-$arch" gcc -arch "$arch" -std=gnu99 -DPROFILING -iquote src/Runtime \
-  src/Runtime/tests/profiling-stream.c lib/darwin-$arch/runtimeSystemProf.a \
-  -Wl,-dead_strip -lm -o "$logs/profiling-$arch"
-(cd "$logs" && run "profiling-$arch" "$logs/profiling-$arch")
+  src/Runtime/RegionProfile.c src/Runtime/tests/region-profile.c \
+  -o "$logs/profiling-$arch"
+run "profiling-$arch" "$logs/profiling-$arch" "$logs/profile.rp"
 run "link-par-$arch" gcc -arch "$arch" -std=gnu99 -DPARALLEL -iquote src/Runtime \
   src/Runtime/tests/parallel-allocation.c lib/darwin-$arch/runtimeSystemPar.a \
   -Wl,-dead_strip -lm -pthread -o "$logs/parallel-$arch"
@@ -59,4 +59,4 @@ fi
 if DARWIN_NATIVE=0 ./configure CC=gcc > "$logs/unsupported-x64.log" 2>&1; then
   echo 'Darwin X64 configuration should have been rejected' >&2; exit 1
 fi
-printf 'ARM64 runtime checks passed: 10 variants, allocation, installation, and target guards.\n'
+printf 'ARM64 runtime checks passed: 11 variants, allocation, installation, and target guards.\n'

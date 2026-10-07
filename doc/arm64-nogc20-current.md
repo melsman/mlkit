@@ -1,5 +1,9 @@
 # ARM64 vs X64: 20 benchmarks with `-no_gc`
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`; historical measurements below retain
+their original command descriptions.
+
 Measured September 23, 2026 on Apple M2 Max (32 GiB RAM), macOS 26.5.1.
 Source revision: `e9b80cc722e2b206888a9a27b48ea2327f53c0f4`. ARM64 programs run natively;
 X64 programs run through Rosetta 2 on the same machine.

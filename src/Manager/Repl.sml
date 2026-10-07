@@ -53,18 +53,12 @@ type opaq_env = MO.opaq_env
 
 (* Runtime profiler flags configure the child session, never the compiler's
  * own execution. Block changes once that child has been launched. *)
-fun rpBool name = Flags.add_bool_entry
-    {long = name, short = NONE, neg = false, item = ref false,
-     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
-fun rpString (name,value) = Flags.add_string_entry
-    {long = name, short = NONE, item = ref value,
-     menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
-val rpEnabled = Flags.is_on0 "region_profile"
-val rpPaused = rpBool "rp_paused"
-val rpReport = rpBool "rp_report"
-val rpGC = rpBool "rp_gc_samples"
-val rpFile = rpString ("rp_file","profile.rp")
-val rpInterval = rpString ("rp_interval","10ms")
+fun rpEnabled () = !RegionProfiling.enabled
+fun rpPaused () = !RegionProfiling.paused
+fun rpReport () = !RegionProfiling.report
+fun rpGC () = !RegionProfiling.gcSamples
+fun rpFile () = !RegionProfiling.file
+fun rpInterval () = !RegionProfiling.interval
 fun rpArguments () =
     (if rpEnabled() then ["-rp"] else []) @
          (if rpEnabled() orelse rpFile() <> "profile.rp"
@@ -648,10 +642,10 @@ fun process_cmd rt_exe stepno state (rp:rp) (cmd:string) libs_acc deps =
           case Posix.Process.fork() of
               SOME pid => pid
             | NONE =>
-              ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe,
+              ( Posix.Process.execp (rt_exe, [OS.Path.file rt_exe, "+RTS",
                                               "-command_pipe", command_pipe_name,
                                               "-reply_pipe", reply_pipe_name,
-                                              "-repl_logfile", repl_logfile] @ rpArguments())
+                                              "-repl_logfile", repl_logfile] @ rpArguments() @ ["-RTS"])
               ; OS.Process.exit OS.Process.failure (* never gets here *)
               )
       val () = debug "created fifos"
@@ -866,7 +860,7 @@ fun repl (rt_exe, stepno, state, rp:rp, libs_acc, deps:dep list) : OS.Process.st
 
 val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "safeLinkTimeElimination", "repository", "strip", "tag_pairs",
-    "tag_values", "unbox_reals", "warn_spurious", "region_profiling", "region_profile",
+    "tag_values", "unbox_reals", "warn_spurious", "region_profile",
     "recompile_basislib", "print_K_normal_forms",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",

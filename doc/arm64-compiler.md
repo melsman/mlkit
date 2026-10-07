@@ -1,5 +1,8 @@
 # Darwin ARM64 compiler
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`.
+
 The ARM64 backend for #223 supports native MLKit and ReML, the Basis Library,
 REPL, tools, and a separate staged installation on Apple Silicon. Native
 MLKit reaches a bootstrap fixed point. Use MLKit with `-gc` for compiler builds
@@ -171,7 +174,7 @@ pointer and FP arguments, captured handler roots, references updated across
 collections, static data, and per-image global roots. MLKit runs plain,
 tagged no-GC, profiling, GC, tagged-pair GC, and generational GC, including all
 three GC/profiling combinations. Collection is forced at every ML function
-entry; profiling samples are forced with `-notimer`. ReML runs the applicable
+entry; profiling samples are requested with `+RTS -rp -rp_interval 1ms -RTS`. ReML runs the applicable
 plain/profiling cases. A portable optimized C walker test checks relocated
 register/stack/global slots, checks inline descriptors without image
 registration, and rejects reserved registers in the root mask.

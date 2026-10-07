@@ -46,7 +46,7 @@ structure ExecutionJS : EXECUTION =
 
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
-    fun compile fe (ce,CB,strdecs,vcg_file) =
+    fun compile fe (ce,CB,strdecs) =
       let val (cb,()) = CompileBasis.de_CompileBasis CB
       in
 	case Compile.compile fe (ce, cb, strdecs)

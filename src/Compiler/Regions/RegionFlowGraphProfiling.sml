@@ -1,6 +1,7 @@
 
 structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
   struct
+    val region_paths : (int * int) list ref = ref []
     structure PP = PrettyPrint
     type place = Effect.place
     type 'a at = 'a AtInf.at
@@ -9,9 +10,6 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
     type StringTree = PP.StringTree
 
     fun die errmsg   = Crash.impossible ("RegionFlowGraphProfiling." ^ errmsg)
-
-    fun member a [] = false
-      | member a (x::xs) = a=x orelse member a xs
 
     val line = Report.line
     val // = Report.//
@@ -116,7 +114,7 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
       let
 	val g = get_graph()
 	val sccGraph = DiGraphScc.genSccGraph g
-	val nodeIdList = !Flags.region_paths
+	val nodeIdList = !region_paths
 
 	fun findPath id1 id2 =
 	  let
@@ -154,110 +152,4 @@ structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
 		childsep=PP.NOSEP}
       end
 
-    fun export_graph stream =
-      let
-	val g = get_graph()
-	val sccGraph = DiGraphScc.genSccGraph g
-	val nodeIdList = !Flags.region_paths
-
-	(* Returns a list with each element being a list of nodes (a path). *)
-	(* [ [n1, ..., nN],...,[n1, ..., nM] ] *)
-	fun findPath id1 id2 : DiGraphScc.node list list=
-	  let
-	    val node1 = DiGraphScc.findNodeOpt id1 g
-	    val node2 = DiGraphScc.findNodeOpt id2 g
-	  in
-	    case (node1, node2) of
-	      (NONE, _) =>
-		(warn (line ("Can't generate path between " ^ Int.toString id1
-			     ^ " and " ^ Int.toString id2 ^ ".")
-		       // line "The first node does not exist.");
-		 [])
-	    | (_, NONE) =>
-		(warn (line ("Can't generate path between " ^ Int.toString id1
-			     ^ " and " ^ Int.toString id2 ^ ".")
-		       // line "The second node does not exist.");
-		[])
-	    | (SOME n1, SOME n2) =>
-		let
-		  val sccNodess = DiGraphScc.pathsBetweenTwoNodes n1 n2 sccGraph
-		in
-		  List.map
-  		  (foldr (fn (sccNode, acc) => (DiGraphScc.convertSccNodeToNodes sccNode) @ acc) [])
-		  sccNodess
-		end
-	  end
-
-	(* Returns a list of paths numbered from two each with a path name.               *)
-	(* [ [pathNo1, pathName1, nodesInPath], ..., [pathNoN, pathNameN, nodesInPathN] ] *)
-	val pathsList : (int * string * DiGraphScc.node list) list =
-	  let
-	    fun paths no [] = []
-	      | paths no ((id1, id2)::rest) =
-	      let
-		val (no',p) =
-		  foldr
-		   (fn (nodes, (no, acc)) =>
-		     (no+1, (no, "Path" ^ Int.toString no ^ "(r" ^ Int.toString id1 ^ ",r" ^ Int.toString id2 ^ ")", nodes) :: acc))
-		  (no, [])
-		  (findPath id1 id2)
-	      in
-		p @ (paths no' rest)
-	      end
-	  in
-	    paths 2 nodeIdList
-	  end
-
-	(* Returns a list of classes numbered from two each with a class name.                  *)
-	(* Each class contains a list of nodepairs representing an edge in the the path         *)
-	(* that the class represents.                                                           *)
-	(* [ [classNo1, className1, edgesInClass], ..., [classNoN, classNameN, edgesInClassN] ] *)
-	val classList : (int * string * (DiGraphScc.node * DiGraphScc.node) list) list =
-	  let
-	    fun genEdgeList nodes =
-	      foldr
-	      (fn (node, acc) =>
- 	        (foldr
-		 (fn (node', acc) =>
-		   (if member node' nodes then
-		      (node, node') :: acc
-		    else
-		      acc))
-		 acc
-		 (DiGraphScc.succNodes node)))
-	      []
-	      nodes
-	  in
-	    List.map
-	    (fn (classNo, className, nodes) => (classNo, className, genEdgeList nodes))
-	    pathsList
-	  end
-
-	fun exportClassNames (classNo, className, nodePairs) =
-	  TextIO.output(stream, "classname " ^ (Int.toString classNo) ^ ":\"" ^ className ^ "\"\n")
-
-	val beginGraph = "graph: {\n"
-	val attrGraph = "title: \"RegionFlowGraph and SCCgraph\"\n" ^
-	  "layoutalgorithm: dfs\n" ^
-	  "splines: yes\n" ^
-	  "finetuning: no\n" ^
-	  "orientation: left_to_right\n" ^
-	  "ignore_singles: no\n" ^
-	  "display_edge_labels: yes\n" ^
-	  "classname 1:\"Graph\"\n"
-	val endGraph = "}\n"
-
-      in
-	(TextIO.output(stream, beginGraph ^ attrGraph);
-	 map exportClassNames classList;
-	 DiGraphScc.exportGraphVCG
-         "Region flow graph"
-	 (fn (id,str,size) => str^"[r"^(Int.toString id)^":"^size^"]")
-	 (fn edgeInfo => " "^(show_atkind edgeInfo)) (*06/03/1996, Niels*)
-	 (fn id => "r"^(Int.toString id))
-	 classList
-	 g stream;
-	 DiGraphScc.exportSccVCG "SCC graph" (fn id => "r"^(Int.toString id)) sccGraph stream;
-	 TextIO.output(stream, endGraph))
-      end
-  end (*struct*)
+  end

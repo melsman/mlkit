@@ -38,7 +38,7 @@ check: all emitter
 # native build publishes them under the usual bin names through `build`.
 ARM64_COMPILER ?= $(MLKIT_BOOTSTRAP)
 ARM64_NATIVE_BIN ?= $(CURDIR)/bin/darwin-arm64
-ARM64_BUILD ?= $(CURDIR)/src/Tools/Rp2ps/build/darwin-arm64
+ARM64_BUILD ?= $(CURDIR)/build/darwin-arm64
 ARM64_PREFIX ?= $(SML_LIB)/stage/darwin-arm64
 
 .PHONY: native native-tools bootstrap native-install regressions
@@ -51,9 +51,7 @@ native-tools: configuration
 	$(BOOTSTRAP_ENV) "$(ARM64_COMPILER)" $(MLKIT_BOOTSTRAP_FLAGS) -o "$(ARM64_NATIVE_BIN)/kittester" src/Tools/Tester/KitTester.mlb
 	$(BOOTSTRAP_ENV) "$(ARM64_COMPILER)" $(MLKIT_BOOTSTRAP_FLAGS) -o "$(ARM64_NATIVE_BIN)/mlkit-mllex" src/Tools/ml-lex/ml-lex.mlb
 	$(BOOTSTRAP_ENV) "$(ARM64_COMPILER)" $(MLKIT_BOOTSTRAP_FLAGS) -o "$(ARM64_NATIVE_BIN)/mlkit-mlyacc" src/Tools/ml-yacc/src/ml-yacc.mlb
-	gcc -arch arm64 -O2 -Wall -std=gnu99 src/Tools/Rp2ps/*.c -lm -o "$(ARM64_BUILD)/rp2ps"
-	cp "$(ARM64_BUILD)/rp2ps" "$(ARM64_NATIVE_BIN)/rp2ps"
-	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(ARM64_COMPILER)" OUT="$(ARM64_NATIVE_BIN)/rpview" MLKIT_FLAGS="$(MLKIT_BOOTSTRAP_FLAGS)"
+	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(ARM64_COMPILER)" MLKIT_ENV='$(BOOTSTRAP_ENV)' OUT="$(ARM64_NATIVE_BIN)/rpview" MLKIT_FLAGS="$(MLKIT_BOOTSTRAP_FLAGS)"
 bootstrap:
 	SML_LIB="$(SML_LIB)" BOOTSTRAP_COMPILER="$(ARM64_NATIVE_BIN)/mlkit" sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
 native-install:
@@ -67,6 +65,6 @@ regressions:
 .PHONY: build
 build:
 	$(MAKE) -f Makefile.arm64 native native-tools
-	@set -e; for tool in mlkit reml kittester mlkit-mllex mlkit-mlyacc rp2ps rpview; do \
+	@set -e; for tool in mlkit reml kittester mlkit-mllex mlkit-mlyacc rpview; do \
 	  ln -sf "$(abspath $(ARM64_NATIVE_BIN))/$$tool" "bin/$$tool"; \
 	done

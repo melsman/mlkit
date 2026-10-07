@@ -17,7 +17,7 @@ run() {
 }
 # Reject options that have no matching runtime before compiling source.
 printf 'val x = 1\n' > "$scratch/guard.sml"
-for options in '-argo' '-par0' '-par -prof' '-par --tag_values' '-par -gc' '-par -gengc'; do
+for options in '-argo' '-par0' '-par --tag_values' '-par -gc' '-par -gengc'; do
   if "$MLKIT_ARM64" --no_basislib $options -o "$scratch/rejected" \
        "$scratch/guard.sml" > "$scratch/guard.log" 2>&1; then
     echo "Unsupported options accepted: $options" >&2; exit 1
@@ -36,14 +36,19 @@ for mode in pthread argobots; do
     libraries="$ARGOBOTS_ROOT/src/.libs/libabt.a"
     runtime=runtimeSystemArPar.a
   fi
+  # Execution-stream counts are an Argobots runtime option, not a pthread option.
+  stream_counts=1
+  [ "$mode" != argobots ] || stream_counts="1 4"
   for test in parallel-allocation parallel-publication; do
     # Argobots paths must not contain spaces (the runtime build has this limit).
     run "$mode-$test-link" gcc -arch arm64 -O2 -Wall -Wextra -Werror \
       -DPARALLEL $includes -iquote "$SML_LIB/src/Runtime" \
       "$SML_LIB/src/Runtime/tests/$test.c" "$SML_LIB/lib/darwin-arm64/$runtime" \
       $libraries -Wl,-dead_strip -lm -pthread -o "$scratch/$mode-$test"
-    for streams in 1 4; do
-      run "$mode-$test-$streams" "$scratch/$mode-$test" -p "$streams"
+    for streams in $stream_counts; do
+      set --
+      [ "$mode" != argobots ] || set -- +RTS -p "$streams" -RTS
+      run "$mode-$test-$streams" "$scratch/$mode-$test" "$@"
     done
   done
   for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
@@ -65,8 +70,10 @@ for mode in pthread argobots; do
         -par $flags $extra -ldexe "gcc -arch arm64 $callback $libraries" -o program main.mlb
       printf 'parallel ML passed\n' > expected
       [ "$policy" = private ] || printf 'parallel callback passed\n' >> expected
-      for streams in 1 4; do
-        run "$name-$streams" ./program -p "$streams"
+      for streams in $stream_counts; do
+        set --
+        [ "$mode" != argobots ] || set -- +RTS -p "$streams" -RTS
+        run "$name-$streams" ./program "$@"
         cmp expected "$scratch/$name-$streams.log"
       done
       if [ "$policy" = private ]; then

@@ -48,9 +48,30 @@ uintptr_t mlkit_rp_mark(struct stringDesc *);
 /* A combined continuation keeps the collector bitmap before the profiler map.
  * Entry/callback sentinels have no bindings or collector bitmap. */
 static inline const uintptr_t *mlkit_rp_gc_map(const uintptr_t *fd) {
+#ifdef PROFILING
   static const uintptr_t end[] = {UINTPTR_MAX,0,0};
   if (fd[-1] != MLKIT_RP_MAGIC) return fd;
   if (fd[-2] >= UINTPTR_MAX-1) return end+3;
   return fd-6-5*fd[-4];
+#else
+  return fd;
+#endif
 }
+/* Static descriptors contain ML strings, retained with the generated code.
+ * Neither pointer values nor dynamic definition numbers are wire identities. */
+typedef struct MlkitAllocationSite {
+  struct stringDesc *unit, *function, *source;
+  uint64_t id, kind;
+  struct stringDesc *ir_identity;
+} MlkitAllocationSite;
+typedef struct MlkitAllocationRegion {
+  struct stringDesc *unit, *name, *source;
+  uint64_t binding;
+} MlkitAllocationRegion;
+extern uintptr_t mlkit_rp_allocation_enabled;
+extern const volatile uintptr_t mlkit_rp_allocation_capable;
+extern const char *mlkit_rp_region;
+extern const char *mlkit_rp_expected_build;
+uintptr_t mlkit_rp_bind_global(Region, uintptr_t);
+uintptr_t mlkit_rp_bind_region(Region, const MlkitAllocationRegion *);
 #endif

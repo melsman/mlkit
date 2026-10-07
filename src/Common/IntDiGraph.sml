@@ -113,12 +113,7 @@ signature DIGRAPH2 =
 
     val layoutNode : (info -> string) -> node -> StringTree
     val layoutGraph : (info -> string) -> (edgeInfo -> string) -> (nodeId -> string) -> node list -> StringTree
-    val exportGraphVCG : string ->
-                         (info -> string) ->
-			 (edgeInfo -> string) ->
-			 (nodeId -> string) ->
-                         (int * string * (node * node) list) list ->
-			 graph -> TextIO.outstream -> unit
+
   end
 
 signature DIGRAPH_ALL =
@@ -194,7 +189,6 @@ signature DIGRAPH_SCC =
     val convertSccNodeToNodes : sccNode -> node list
     val layoutPaths: (nodeId -> string) -> sccNode list list -> StringTree
     val layoutScc : (nodeId -> string) -> sccGraph -> StringTree
-    val exportSccVCG : string -> (nodeId -> string) -> sccGraph -> TextIO.outstream -> unit
   end
 
 
@@ -540,86 +534,7 @@ functor DiGraphAll(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_ALL =
 		childsep = PP.NOSEP}
       end
 
-    fun exportGraphVCG title
-                       (layoutInfo : info -> string)
-		       (layoutEdgeInfo : edgeInfo -> string)
-		       (layoutId : nodeId -> string)
-		       (classes : (int * string * (node * node) list) list)
-                       (g : graph)
-		       (out : TextIO.outstream) =
-      let
-	val newLine = "\n"
 
-	fun exportNode node =
-	  let
-	    val beginNode = "node: {"
-	    val titleNode = "title: \"" ^ (layoutId (getNodeId node)) ^ "\" "
-	    val labelNode = "label: \"" ^ (layoutInfo (!(getInfoNode node))) ^ "\" "
-	    val endNode = "}" ^ newLine
-	  in
-	    TextIO.output(out, beginNode ^ titleNode ^ labelNode ^ endNode)
-	  end
-
-	fun exportEdge node =
-	  let
-	    val beginEdge = "edge: {"
-	    val sourcename = "sourcename: \"" ^ (layoutId (getNodeId node)) ^ "\" "
-	    val targetname = "targetname: \""
-            val label = "label: \" "
-            val class = "class: "
-	    val endEdge = "}" ^ newLine
-
-	    fun addEdge (node',edgeInfo') =
-	      TextIO.output(out, beginEdge ^ sourcename ^ (targetname ^ (layoutId (getNodeId node')) ^ "\" ") ^
-		     class ^ "1 " ^ label ^ layoutEdgeInfo(edgeInfo') ^ "\"" ^ endEdge)
-	  in
-            map addEdge (!(getOutSet node))
-	  end
-
-       fun exportClass (classNo, className, nodePairs) =
-         let
-  	   val beginEdge = "edge: {"
-	   val sourcename = "sourcename: \""
-           val targetname = "targetname: \""
-           fun label (node1, node2) =
-	     let
-	       val edgeInfo = findEdge node1 node2
-	     in
-		"label: \"" ^ className ^ "(" ^ layoutEdgeInfo(edgeInfo) ^ ")\""
-	     end
-           val class = "class: " ^ (Int.toString classNo) ^ " "
-	   val endEdge = "}" ^ newLine
-	 in
-	   List.app
-	    (fn (node1, node2) =>
-	     TextIO.output(out, beginEdge ^ (sourcename ^ (layoutId (getNodeId node1)) ^ "\" ") ^
-		      (targetname ^ (layoutId (getNodeId node2)) ^ "\" ") ^
-		      class ^ (label(node1, node2)) ^ endEdge))
-	    nodePairs
-	 end
-
-       fun exportClassNames (classNo, className, nodePairs) =
-	 TextIO.output(out, "classname " ^ (Int.toString classNo) ^ ":\"" ^ className ^ "\"" ^ newLine)
-
-	val beginGraph = "graph: {" ^ newLine
-	val attrGraph = "title: \"" ^ title ^ "\"" ^ newLine ^
-			"splines: yes" ^ newLine ^
-			"finetuning: no" ^ newLine ^
-			"folding: 1" ^ newLine ^
-                        "orientation: left_to_right" ^ newLine ^
-			"ignore_singles: yes" ^ newLine
-	val endGraph = "}" ^ newLine
-
-	val range_g = rangeGraph g
-      in
-	(TextIO.output(out, beginGraph);
-	 TextIO.output(out, attrGraph);
-	 map exportClassNames classes;
-	 map exportNode range_g;
-	 map exportEdge range_g;
-	 map exportClass classes;
-	 TextIO.output(out, endGraph))
-      end
   end
 
 functor DiGraph2(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH2 =
@@ -768,9 +683,6 @@ functor DiGraphScc(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_SCC =
 
     fun layoutScc layoutId sccG =
 	SccDiGraph.layoutGraph (layoutComponent layoutId) layoutEdge layoutSccNo (SccDiGraph.rootNodes sccG)
-
-    fun exportSccVCG title layoutId sccG stream =
-      SccDiGraph.exportGraphVCG title (layoutComponent layoutId) layoutEdge layoutSccNo [] sccG stream
 
     fun pathsBetweenTwoNodes node1 node2 sccG =
       let

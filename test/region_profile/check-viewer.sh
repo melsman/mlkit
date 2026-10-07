@@ -49,8 +49,8 @@ reject
 sed '/"type": "sample_end", "sample": 2/,$d' original.rp > profile.rp
 run
 ! grep '^const samples=' profile.html | grep -Fq '"sample":"2"'
-for version in 0 1 2 3 4 6; do
-    sed -e "s/\"version\": 5/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
+for version in 0 1 2 3 4 5 6 7 8 9 11; do
+    sed -e "s/\"version\": 10/\"version\": $version/" -e '/"type": "stack"/d' original.rp > profile.rp
     reject
     grep -q 'unsupported profile version' stderr
 done
@@ -59,7 +59,7 @@ for invalid in '{"type":"header","type":"header"}' '{"type":"header","format":"m
     reject
 done
 cat > profile.rp <<'DATA'
-{"type":"header","format":"mlkit-region-profile","version":5,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
+{"type":"header","format":"mlkit-region-profile","version":10,"page_bytes":8192,"main_source":"/tmp/__DATA__ __META__ </script>.sml","gc_enabled":true}
 {"type":"session_end","gc_collections":1152921504606846979,"max_pages":0}
 DATA
 run
@@ -125,3 +125,19 @@ awk '
 run
 grep '^const samples=' profile.html | grep -Fq 'later-unit'
 echo 'Binding definitions: reuse, late discovery, uint64 IDs and invalid references passed'
+
+# The current format carries a startup object manifest.
+cat > profile.rp <<'DATA'
+{"type":"header","format":"mlkit-region-profile","version":10,"page_bytes":8192,"main_source":"test.sml","gc_enabled":false}
+{"type":"allocation_session","enabled":1,"depth":1,"build_id":"manifest-test","selector":"unit:9"}
+{"type":"ir_object","ir_identity":"missing-build","ir_object":"/missing/library.o"}
+{"type":"session_end","gc_collections":0,"max_pages":0}
+DATA
+run
+grep -q '"ir_objects":\[{"type":"ir_object"' profile.html
+grep -q 'Missing or mismatched IR: /missing/library.o' profile.html
+sed 's/"version":10/"version":9/' profile.rp > old.rp
+mv old.rp profile.rp
+reject
+grep -q 'unsupported profile version' stderr
+echo 'Current object manifest and old-format rejection passed'

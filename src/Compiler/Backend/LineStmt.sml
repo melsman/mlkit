@@ -72,6 +72,7 @@ struct
     | DROPPED_RVAR  of place
     | PHREG         of lvar
     | INTEGER       of {value: IntInf.int, precision: int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD          of {value: IntInf.int, precision: int}
     | UNIT
 
@@ -162,6 +163,7 @@ struct
         | RVAR _ => false
         | DROPPED_RVAR _ => false
         | PHREG lv => Lvars.get_ubf64 lv
+        | SITE_TOKEN _ => false
         | INTEGER _ => false
         | WORD _ => false
         | UNIT => false
@@ -189,6 +191,7 @@ struct
     | pr_atom (DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom (PHREG phreg) = pr_phreg phreg
     | pr_atom (INTEGER {value,precision}) = IntInf.toString value
+    | pr_atom(SITE_TOKEN point) = "site-token(" ^ Int.toString point ^ ")"
     | pr_atom (WORD {value,precision}) = "0x" ^ IntInf.fmt StringCvt.HEX value
     | pr_atom (UNIT) = "()"
 
@@ -573,6 +576,7 @@ struct
       | ce_to_atom (ClosExp.RVAR {rho=place}) = RVAR place
       | ce_to_atom (ClosExp.DROPPED_RVAR {rho=place}) = DROPPED_RVAR place
       | ce_to_atom (ClosExp.INTEGER i) = INTEGER i
+      | ce_to_atom (ClosExp.SITE_TOKEN point) = SITE_TOKEN point
       | ce_to_atom (ClosExp.WORD i) = WORD i
       | ce_to_atom (ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag,maybeuntag}) = UNIT
       | ce_to_atom (ClosExp.BLOCKF64{elems=[],alloc=ClosExp.IGNORE,tag}) = UNIT
@@ -634,6 +638,7 @@ struct
          | ClosExp.FETCH lab => maybe_assign (lvars_res, LOAD lab, acc)
          | ClosExp.STORE(ce,lab) => ASSIGN{pat=UNIT,bind=STORE(ce_to_atom ce,lab)}::acc
          | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM {aty=INTEGER i}, acc)
+         | ClosExp.SITE_TOKEN _ => die "SITE_TOKEN outside foreign-call arguments"
          | ClosExp.WORD i => maybe_assign (lvars_res, ATOM {aty=WORD i}, acc)
          | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
          | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
@@ -1294,7 +1299,7 @@ struct
        | LETREGION{rhos,body} =>
              (* if region_profiling is disabled, then only infinite regions execute code *)
              (* if region_profiling is enabled, then all non zero regions execute code   *)
-             (case (if Flags.is_on "region_profiling" then remove_zero_rhos else remove_finite_rhos) rhos of
+             (case (if Flags.is_on "region_profile" then remove_zero_rhos else remove_finite_rhos) rhos of
                 [] => FV_CalcSets_lss(body,(OKset,notOKset,prev_use_lv))
               | _ =>
                   let

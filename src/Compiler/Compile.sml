@@ -23,8 +23,6 @@ structure Compile: COMPILE =
 
     val print_regions = Flags.is_on0 "print_regions"
 
-    val region_profiling_p = Flags.is_on0 "region_profiling"
-
     val rse_0 = Flags.add_bool_entry
         {long="print_region_static_env0", short=SOME "Prse0",
          menu=["Printing of environments",
@@ -69,6 +67,12 @@ structure Compile: COMPILE =
           menu=["Printing of intermediate forms","print call-explicit expression"],
           item=ref false, neg=false, desc=
           "Print Region Expression with call annotations."}
+
+    val print_call_explicit_locations = Flags.add_bool_entry
+         {long="print_call_explicit_locations", short=SOME "Pcee_locations",
+          menu=["Printing of intermediate forms","print call-explicit location table"],
+          item=ref false, neg=false, desc=
+          "Include a program-point location table in -Pcee output."}
 
     val print_region_spreaded_program = Flags.add_bool_entry
          {long="print_region_spreaded_program", short=SOME "Prsp",
@@ -150,17 +154,9 @@ structure Compile: COMPILE =
 
     type arity = int
 
-    (* --------------------------------------------
-     * Program point counter
-     * -------------------------------------------- *)
-
-    local
-      val pp_init = 1   (* ~1 and 0 are reserved *)
-      val pp_count = ref (pp_init)
-    in
-      fun pp_counter() = (pp_count := !pp_count + 1; !pp_count)
-      fun reset_pp_count() = pp_count := pp_init
-    end
+    (* Physical-size inference assigns the persistent allocation-site IDs.
+     * The internal pp type is retained by the region-analysis IR. *)
+    val site_counter = IRLocations.freshSite
 
     (* ---------------------------------------------------------------------- *)
     (*   Spread the optimised lambda code                                     *)
@@ -266,15 +262,6 @@ structure Compile: COMPILE =
                                  export_datbinds = datbinds, (*unchanged*)
                                  export_basis= new_layer  (* list of region variables and arrow effects *)}
 
-        (* call of normPgm no longer commented out; mads *)
-(*
-        val _ = if region_profiling_p() then ()
-                else
-                  ((*print "RegInf.Normalising program ...\n";*)
-                   reset_effect_count();      (* inserted; mads *)
-                   RegionExp.normPgm(pgm',effect_counter)
-                   )
-*)
 (*      val _ = print "RegInf.Computing rse' ...\n"  *)
         val rse' =
           case spread_lamb_exp
@@ -450,7 +437,7 @@ structure Compile: COMPILE =
         : ((place*pp)at,place*phsize,unit)LambdaPgm * env =
         (chat "[Physical Size Inference...";
          Timing.timing_begin();
-         let val (pgm',env') = psi(pp_counter, env, pgm)
+         let val (pgm',env') = psi(site_counter, env, pgm)
          in Timing.timing_end("PSI");
            chat "]\n";
             if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then
@@ -493,7 +480,10 @@ structure Compile: COMPILE =
          in Timing.timing_end("AppConv");
            chat "]\n";
             if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then
-              display("Program After Application Conversion", layout_pgm pgm')
+              if print_call_explicit_locations() then
+                IRLocations.output {device = fn s => TextIO.output (!Flags.log,s),
+                  tree = layout_pgm_with_locations pgm', width = !Flags.colwidth}
+              else display("Program After Application Conversion", layout_pgm pgm')
             else ();
             pgm'
          end)

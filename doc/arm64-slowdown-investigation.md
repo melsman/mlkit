@@ -1,5 +1,9 @@
 # ARM64 slowdown investigation
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`; historical measurements below retain
+their original command descriptions.
+
 The static-pointer classifier in the ARM64 GC runtime explains the entire
 nucleic slowdown, approximately half of the mlyacc gap, and a small part of
 the professor gap in this experiment. The remaining mlyacc and professor

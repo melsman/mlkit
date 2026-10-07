@@ -1,4 +1,4 @@
-{"type": "header", "format": "mlkit-region-profile", "version": 5, "page_bytes": 8192, "main_source": "/project/program.sml", "gc_enabled": true}
+{"type": "header", "format": "mlkit-region-profile", "version": 10, "page_bytes": 8192, "main_source": "/project/program.sml", "gc_enabled": true}
 {"type": "sample_begin", "sample": 1, "time": 1000000, "reason": "explicit"}
 {"type": "binding", "definition": 1, "unit": "A", "source": "A", "name": "same </script> name", "region_type": "unavailable", "kind": "infinite", "binding": 1}
 {"type": "region", "sample": 1, "thread": 1, "worker": 0, "cpu": 4, "pages": 0, "unused_tail": 0, "page_footprint": 0, "large_bytes": 1152921504606846977, "finite_bytes": 0, "descriptor_bytes": 0, "g0_pages": 0, "g1_pages": 0, "g0_unused_tail": 0, "g1_unused_tail": 0, "definition": 1}

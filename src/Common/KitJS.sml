@@ -7,8 +7,7 @@ let structure KC = KitCompiler(ExecutionJS)
                       ["garbage_collection",
                        "generational_garbage_collection",
                        "values_64bit", "unbox_reals", "unbox_real_funargs", "tag_values", "tag_pairs",
-                       "repository", "reml", "region_profiling", "region_inference",
-                       "print_region_flow_graph", "print_all_program_points",
+                       "repository", "reml",
                        "preserve_tail_calls", "dangling_pointers", "equalelim_opt_unboxed"
                       ]
 in KitMain(KC)

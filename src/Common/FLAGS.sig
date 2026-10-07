@@ -71,16 +71,6 @@ signature FLAGS =
 							  timings (`KITtimings')
 						       *)
 
-    (* Program Points. *)
-    val print_all_program_points : bool ref    (* if true then print all program points,
-						  otherwise print program_points in the
-						  list below.
-					       *)
-    val program_points: int list ref           (* contains the program points that
-						  should be included in program listing
-					       *)
-    val region_paths : (int*int) list ref
-
     (* Generic system to document options and let them appear on command
      * lines. *)
 

@@ -171,7 +171,7 @@ safestrcat3(char* s1, char* s2, char* s3, char** pbuf, size_t* pbuf_sz) {
 }
 
 void
-REG_POLY_FUN_HDR(pretty_ML_Print, Context ctx, String s, uintptr_t exn) {
+pretty_ML_Print(Context ctx, String s, uintptr_t exn) {
   // side-effecting toplevel buffer pretty_topbuf
   size_t sz = get_string_size(s->size);
   maybe_resize_buf("topbuf", &pretty_topbuf, &pretty_topbuf_sz, sz+2);
@@ -368,6 +368,7 @@ repl_interp(Context ctx) {
   while (1)  {
     fprintf(repllog, "{reading command}\n");
     fflush(repllog);
+#ifdef PROFILING
     if (mlkit_rp_enabled) {
       struct pollfd fd = {command_fd,POLLIN,0};
       for (;;) {
@@ -377,6 +378,7 @@ repl_interp(Context ctx) {
         if (ready < 0 && errno != EINTR) die("REPL: cannot wait for command");
       }
     }
+#endif
     char* cmd = read_str(command_fd, &buf1, &buf1_sz);
 
     if ( strcmp(cmd, "PRINT") == 0 ) {

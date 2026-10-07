@@ -1,5 +1,9 @@
 # Current ARM64 vs X64: 20 GC benchmarks
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`; historical measurements below retain
+their original command descriptions.
+
 Measured September 23, 2026 on the same Apple M2 Max (32 GiB RAM), macOS
 26.5.1. Compiler source revision: `36f68fd`. Both target compilers are built
 with MLKit `-gc`, and every benchmark is compiled with `-gc`. The compiler

@@ -57,7 +57,7 @@ EOF
     *)
       case "$suite" in
         plain) flags=-no_gc ;; gc) flags=-gc ;; gengc) flags=-gengc ;;
-        prof) flags='-no_gc -prof' ;; gcprof) flags='-gc -prof' ;;
+        prof) flags='-no_gc -rp' ;; gcprof) flags='-gc -rp' ;;
         par) flags='-no_gc -par' ;;
         *) echo "Unknown suite: $suite" >&2; exit 1 ;;
       esac

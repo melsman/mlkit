@@ -990,7 +990,7 @@ struct
   fun get_opt l = foldr (fn (opt, acc) =>
                          case opt of SOME t => t::acc | NONE => acc) [] l
 
-  fun mkLay (omit_region_info: bool) (layout_alloc: 'a -> StringTree option)
+  fun mkLay preserve_allocations (omit_region_info: bool) (layout_alloc: 'a -> StringTree option)
                                      (layout_alloc_short: 'a -> StringTree option)
                                      (layout_bind: 'b -> StringTree option)
                                      (layout_rbind: 'b -> ('a,'b,'c)trip -> StringTree option)
@@ -1237,7 +1237,63 @@ struct
                        children = [layTrip(t1,n_bop), layTrip(t2,n_bop+1)]})
           end
 
+      (* The navigable form retains each allocation annotation as a tree.
+       * In particular, list/infix sugar must not merge distinct program points. *)
       and layExp (lamb:('a, 'b, 'c)LambdaExp, n:int): StringTree =
+        if not preserve_allocations then layExpDefault (lamb,n)
+        else
+          let
+            fun expr prefix allocs args =
+              par (n-n_fun)
+                (NODE {start = prefix, finish = "", indent = 2, childsep = RIGHT " ",
+                       children = get_opt (map layout_alloc allocs) @ args})
+            fun atom text alloc = expr text (case alloc of NONE => [] | SOME a => [a]) []
+            fun args ts = layList (fn t => layTrip (t,0)) ts
+          in
+            case lamb of
+                INTEGER (i,_,a) => atom (IntInf.toString i) a
+              | WORD (w,_,a) => atom ("0x" ^ IntInf.fmt StringCvt.HEX w) a
+              | STRING (s,a) => atom (quote s) (SOME a)
+              | REAL (r,a) => atom r (SOME a)
+              | CON0 {con,alloc,aux_regions,...} =>
+                  expr (Con.pr_con con ^ " ")
+                       ((case alloc of NONE => [] | SOME a => [a]) @ aux_regions) []
+              | CON1 ({con,alloc,...},t) =>
+                  expr (Con.pr_con con ^ " ")
+                       (case alloc of NONE => [] | SOME a => [a]) [layTrip (t,n_inf)]
+              | EXCON (excon,SOME (a,t)) =>
+                  expr (Excon.pr_excon excon ^ " ") [a] [layTrip (t,n_inf)]
+              | RECORD (SOME a,ts) =>
+                  NODE {start = "", finish = "", indent = 0, childsep = RIGHT " ",
+                        children = NODE {start = "(", finish = ")", indent = 1,
+                                         childsep = RIGHT ", ",
+                                         children = map (fn t => layTrip (t,0)) ts}
+                                   :: get_opt [layout_alloc a]}
+              | REF (a,t) => expr "ref " [a] [layTrip (t,n_inf)]
+              | BLOCKF64 (a,ts) => expr "blockf64 " [a] [args ts]
+              | SCRATCHMEM (bytes,a) => expr ("scratch(" ^ Int.toString bytes ^ ") ") [a] []
+              (* No allocation locator is needed: retain the shared primitive
+               * names, infix precedence, and argument layout. *)
+              | CCALL ({rhos_for_result = [],...},_) => layExpDefault (lamb,n)
+              | CCALL ({name,rhos_for_result,...},ts) =>
+                  let val token = "$" ^ name
+                      val marker = case rhos_for_result of
+                          (a,_)::_ => (case layout_alloc a of
+                              SOME (MARKED_LEAF (point,_)) => MARKED_LEAF (point,token)
+                            | _ => LEAF token)
+                        | [] => LEAF token
+                  in HNODE {start = "", finish = "", childsep = RIGHT " ", children =
+                       [marker,expr "" (map #1 rhos_for_result) [args ts]]}
+                  end
+              | FN {pat,body,alloc,...} =>
+                  par (n-n_lam)
+                    (NODE {start = "fn ", finish = "", indent = 2, childsep = RIGHT " ",
+                           children = get_opt [layout_alloc alloc] @
+                                      [layPatFn pat,layTrip (body,n_lam)]})
+              | _ => layExpDefault (lamb,n)
+          end
+
+      and layExpDefault (lamb:('a, 'b, 'c)LambdaExp, n:int): StringTree =
           case lamb of
               VAR{lvar,il,fix_bound=false,rhos_actuals=ref[],plain_arreffs,other} =>  (* fix-bound variables and prims *)
               (case R.un_il(il) of                                                    (* are treated below (APP) *)
@@ -1316,7 +1372,7 @@ struct
                                      children = [PP.LEAF("deexcon_" ^ Excon.pr_excon excon), layTrip(tr,n_inf)]})
             | RECORD(NONE, []) => PP.LEAF "()"
             | RECORD(SOME alloc, args) =>
-              let val alloc_s = alloc_string alloc
+              let val alloc_s = maybe_prefix_space (alloc_string alloc)
               in PP.NODE{start = "(", finish = ")" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
                          children = map (fn trip => layTrip(trip,0)) args}
               end
@@ -1655,7 +1711,7 @@ struct
                           val _ = inInfo := "(* fix *)"
                           val st_alloc = layout_alloc shared_clos
                           val st_alloc =
-                              if print_control_abbrev_layout() then
+                              if print_control_abbrev_layout() andalso not preserve_allocations then
                                 case st_alloc  of
                                     NONE => st_alloc
                                   | SOME st => case PP.flatten1 st of
@@ -1727,7 +1783,10 @@ struct
                          indent=4, children=[LEAF(Excon.pr_excon excon), layMu mu] }
           | SOME t => NODE{start = "exception ",finish="",childsep=RIGHT " ",
                            indent=4, children=[LEAF(Excon.pr_excon excon), LEAF ":", layMu mu,
-                                               LEAF("(* exn value or name " ^ PP.flatten1 t ^ " *)")]}
+                                               (if preserve_allocations then
+                                                  HNODE {start = "(* exn value or name ", finish = " *)",
+                                                         childsep = NOSEP, children = [t]}
+                                                else LEAF("(* exn value or name " ^ PP.flatten1 t ^ " *)"))]}
         )
 
       and mk_mutual_binding (opt_alloc, functions) =
@@ -1830,7 +1889,7 @@ struct
                       (explicit_bind : 'b -> bool)
                       (layout_other : 'c -> StringTree option)
                       (e : ('a, 'b, 'c)LambdaExp) : StringTree =
-      #1(mkLay(not(print_regions()))
+      #1(mkLay false (not(print_regions()))
               layout_alloc layout_alloc_short layout_bind layout_rbind explicit_bind layout_other) e
 
   exception Lookup
@@ -1924,12 +1983,17 @@ struct
                        (explicit_bind : 'b -> bool)
                        (layout_other : 'c -> StringTree option)
                        (t: ('a, 'b, 'c)trip) : StringTree =
-      #2(mkLay(not(print_regions()))
+      #2(mkLay false (not(print_regions()))
               layout_alloc layout_alloc_short layout_bind layout_rbind explicit_bind
               layout_other)
         (if print_K_normal_forms() then t else eval [] t)
 
 
+
+  fun layoutLambdaTripWithLocations layout_alloc layout_alloc_short layout_bind
+                                   layout_rbind explicit_bind layout_other t =
+      #2 (mkLay true false layout_alloc layout_alloc_short layout_bind
+                    layout_rbind explicit_bind layout_other) t
 
   fun layoutLambdaPgm (layout_alloc : 'a -> StringTree option)
                       (layout_alloc_short : 'a -> StringTree option)
@@ -1946,7 +2010,7 @@ struct
       let
         val layout_sigma = R.mk_lay_sigma  (not(print_regions()))
         val (layExp,layTrip,layMus,layMeta) =
-            mkLay(not(print_regions()))
+            mkLay false (not(print_regions()))
                  layout_alloc layout_alloc_short layout_bind layout_rbind explicit_bind layout_other
         val layoutcb =
           map (fn (con,_,sigma) =>PP.NODE{start="",finish="",indent=0,

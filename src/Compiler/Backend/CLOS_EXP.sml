@@ -59,6 +59,7 @@ signature CLOS_EXP =
     | FETCH           of label
     | STORE           of ClosExp * label
     | INTEGER         of {value: IntInf.int, precision: int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD            of {value: IntInf.int, precision: int}
     | STRING          of string
     | REAL            of string

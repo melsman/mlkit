@@ -18,28 +18,71 @@ structure PrettyPrint: PRETTYPRINT =
                   children: StringTree list, childsep: childsep
                 }
       | LEAF of string
+      | MARKED_LEAF of int * string
+
+    type span = {mark : int, start : int, length : int}
+
+    (* Layout manipulates text with relative byte spans. No locations are
+     * published until the final minipage is emitted. *)
+    structure Text =
+    struct
+      type t = {text : string, spans : span list}
+      fun plain s : t = {text = s, spans = []}
+      fun marked (mark, s) : t =
+        {text = s, spans = [{mark = mark, start = 0, length = size s}]}
+      fun string ({text,...} : t) = text
+      fun size t = String.size (string t)
+      fun shift n ({mark,start,length} : span) =
+        {mark = mark, start = start+n, length = length}
+      fun concat ts : t =
+        let
+          fun loop ([], _, acc) = rev acc
+            | loop (({text,spans} : t)::rest, offset, acc) =
+                loop (rest, offset + String.size text,
+                      foldl (fn (span, a) => shift offset span :: a) acc spans)
+        in
+          {text = String.concat (map string ts), spans = loop (ts, 0, [])}
+        end
+      fun append (a,b) = concat [a,b]
+
+      (* smash may replace leading whitespace, including whitespace inside a
+       * marked leaf. Keep only the surviving part of each nonempty span. *)
+      fun drop n ({text,spans} : t) : t =
+        let
+          fun clip ({mark,start,length} : span) =
+            let val first = Int.max (n,start)
+                val last = start+length
+            in
+              if last > first orelse (length = 0 andalso start >= n) then
+                SOME {mark = mark, start = first-n, length = last-first}
+              else NONE
+            end
+        in
+          {text = String.extract (text,n,NONE), spans = List.mapPartial clip spans}
+        end
+    end
 
     (* mk_lines textwidth texts: break texts into lines, each of width textwidth
        (or a bit more) *)
 
-    fun mk_lines textwidth (texts: string list) : string list list =
-        let fun loop (w:int ,l: string list ,acc:string list list, []: string list): string list list =
+    fun mk_lines textwidth (texts: Text.t list) : Text.t list list =
+        let fun loop (w:int ,l: Text.t list ,acc:Text.t list list, []: Text.t list): Text.t list list =
                 (case rev l of [] => rev acc | l' => rev (l'::acc))
               | loop (w, l, acc, s::ss) =
                 if w <= 0 then (* no space left on line; break it*)
                   loop(textwidth, [], rev l:: acc, s::ss)
                 else
-                  loop(w-size s, s::l, acc, ss)
+                  loop(w-Text.size s, s::l, acc, ss)
         in loop(textwidth, [], [], texts)
         end
 
     (* intersperce b s l: put the string s between every two strings in l b is
        true iff separator s is to be right adjusted *)
 
-    fun intersperce _ (s: string) ([]: string list) : string list = []
+    fun intersperce _ (s: string) ([]: Text.t list) : Text.t list = []
       | intersperce b s [x] = [x]
-      | intersperce true s (x:: rest) = x ^ s :: intersperce true s rest
-      | intersperce false s (x :: x' ::rest) = x :: intersperce false s (s ^ x' :: rest)
+      | intersperce true s (x:: rest) = Text.append (x,Text.plain s) :: intersperce true s rest
+      | intersperce false s (x :: x' ::rest) = x :: intersperce false s (Text.append (Text.plain s,x') :: rest)
 
     fun intersperceSep NOSEP l = l
       | intersperceSep (RIGHT s) l = intersperce true s l
@@ -67,18 +110,19 @@ structure PrettyPrint: PRETTYPRINT =
               indent = indent, finish = ""}
 
     exception FlatString
-    fun consIfEnoughRoom (s,(acc:string list, width:int)) =
-        let val n = size s
+    fun consIfEnoughRoom (s,(acc:Text.t list, width:int)) =
+        let val n = Text.size s
         in if n <= width then ((s::acc), width-n) else raise FlatString
         end
 
     local
 
-      fun fold f (LEAF s, acc) = f(s, acc)
+      fun fold f (LEAF s, acc) = f(Text.plain s, acc)
+        | fold f (MARKED_LEAF m, acc) = f(Text.marked m, acc)
         | fold f (NODE{start, finish, indent, children, childsep}, acc) =
-            f(finish, foldChildren f (children, childsep, f(start, acc)))
+            f(Text.plain finish, foldChildren f (children, childsep, f(Text.plain start, acc)))
         | fold f (HNODE{start, finish, children, childsep}, acc) =
-            f(finish, foldChildren f (children, childsep, f(start, acc)))
+            f(Text.plain finish, foldChildren f (children, childsep, f(Text.plain start, acc)))
 
       and foldChildren f (nil, childsep, acc) = acc
         | foldChildren f ([t], _, acc) = fold f (t, acc)
@@ -87,19 +131,20 @@ structure PrettyPrint: PRETTYPRINT =
             foldChildren f (rest, NOSEP, fold f (child, acc))
 
         | foldChildren f (child :: rest, RIGHT s, acc) =
-            foldChildren f (rest, RIGHT s, f(s, fold f (child, acc)))
+            foldChildren f (rest, RIGHT s, f(Text.plain s, fold f (child, acc)))
 
         | foldChildren f (child::rest, LEFT s, acc) =
-            foldChildren f (rest, LEFT s, f(s, fold f (child, acc)))
+            foldChildren f (rest, LEFT s, f(Text.plain s, fold f (child, acc)))
     in
-      val flatten: StringTree -> string list = fn t => rev(fold (op ::) (t, nil))
-      val flatten1: StringTree -> string = concat o flatten
-      fun flattenOrRaiseFlatString (t,width) = concat(rev(#1(fold consIfEnoughRoom (t, (nil,width)))))
+      val flatten: StringTree -> Text.t list = fn t => rev(fold (op ::) (t, nil))
+      val flattenText = Text.concat o flatten
+      val flatten1: StringTree -> string = Text.string o flattenText
+      fun flattenOrRaiseFlatString (t,width) = Text.concat(rev(#1(fold consIfEnoughRoom (t, (nil,width)))))
     end
 
     fun oneLiner (f: 'a -> StringTree) (x: 'a) = flatten1(f x)
 
-    datatype minipage = LINES of string list
+    datatype minipage = LINES of Text.t list
                       | INDENT of int * minipage
                       | PILE of minipage * minipage
 
@@ -114,9 +159,9 @@ structure PrettyPrint: PRETTYPRINT =
     fun blanks n =
         if n <= 0 then "" else " " ^ blanks(n-1)
 
-    fun indent_line (ind:int) (text:string) : string = blanks ind ^ text
+    fun indent_line (ind:int) text = Text.append (Text.plain (blanks ind), text)
 
-    fun get_first_line (m:minipage) : (string * minipage) option =
+    fun get_first_line (m:minipage) : (Text.t * minipage) option =
         let fun loop (ind,m) =
                 case m of
                     LINES [] => NONE
@@ -129,7 +174,7 @@ structure PrettyPrint: PRETTYPRINT =
         in loop(0,m)
         end
 
-    fun get_last_line (m:minipage) : (string * minipage) option =
+    fun get_last_line (m:minipage) : (Text.t * minipage) option =
         let fun loop (ind,m) =
                 case m of
                     LINES list =>
@@ -150,15 +195,16 @@ structure PrettyPrint: PRETTYPRINT =
       prefix. If successful, returns a list of the new line :: rest. If not,
       returns prefix :: line :: rest. *)
 
-    fun smash (prefix, line:string, rest:minipage) : minipage =
-        let exception No
-            fun try (p :: pRest, #" " :: lRest) = p :: try(pRest, lRest)
-              | try (nil, lRest) = lRest
-              | try (pRest, nil) = pRest
-              | try (_, _) = raise No
-        in PILE(LINES[implode(try(explode prefix, explode line))], rest)
-           handle No => PILE(LINES[prefix, line], rest)
-      end
+    fun smash (prefix, line:Text.t, rest:minipage) : minipage =
+        let
+          val replaced = Int.min (size prefix,Text.size line)
+          fun fits i = i = replaced orelse
+            (String.sub (Text.string line,i) = #" " andalso fits (i+1))
+        in
+          if fits 0 then
+            PILE(LINES[Text.append (Text.plain prefix,Text.drop replaced line)], rest)
+          else PILE(LINES[Text.plain prefix, line], rest)
+        end
 
     fun topLeftConcat (s: string) (m: minipage): minipage =
         case get_first_line m of
@@ -168,7 +214,7 @@ structure PrettyPrint: PRETTYPRINT =
     fun botRightConcat (s: string) (m:minipage): minipage =
         case get_last_line m of
             NONE => LINES[]
-          | SOME(lastline, rest) => PILE(rest, LINES[lastline ^ s])
+          | SOME(lastline, rest) => PILE(rest, LINES[Text.append (lastline,Text.plain s)])
 
    (* strip() - remove leading spaces from a string. The StringTree might well
       have leading spaces in separators and finish tokens, which is all
@@ -183,37 +229,41 @@ structure PrettyPrint: PRETTYPRINT =
         end
 
     fun print (width: int) (LEAF s): minipage = (* width >= 3 *)
-          if size s <= width orelse !raggedRight then LINES[s] else LINES["..."]
+          if size s <= width orelse !raggedRight then LINES[Text.plain s] else LINES[Text.plain "..."]
+      | print width (MARKED_LEAF (mark,s)) =
+          if size s <= width orelse !raggedRight then
+            LINES[Text.marked (mark,s)]
+          else LINES[Text.plain "..."]
       | print width (t as HNODE{start, finish,  children, childsep}) =
            (* print children, as many as possible on each line *)
            let val width' = if !raggedRight then !colwidth else width
            in if width'-size start>= 0 then
                 botRightConcat finish
-                let  val stringLists: string list =
-                         intersperceSep childsep (map flatten1 children)
+                let  val stringLists: Text.t list =
+                         intersperceSep childsep (map flattenText children)
                      val stringLists' = (* put "start" at the top left of block *)
                           case (start, mk_lines (width'-size start) stringLists) of
                             ("", lines)  => lines
-                          | (_, []) => [[start]]
-                          | (_, line::lines) => (start::line)::
+                          | (_, []) => [[Text.plain start]]
+                          | (_, line::lines) => (Text.plain start::line)::
                                     let val ind = blanks(size start)
-                                    in map (fn line=> ind:: line) lines
+                                    in map (fn line => Text.plain ind:: line) lines
                                     end
-                in  LINES(map concat stringLists')
+                in  LINES(map Text.concat stringLists')
                 end
-              else LINES["..."]
+              else LINES[Text.plain "..."]
            end
       | print (width: int)
               (t as NODE{start, finish, indent, children, childsep}) =
           let                           (* Try to make it go into just one line *)
             val width' = if !raggedRight then !colwidth else width
-            val flatString: string = flattenOrRaiseFlatString(t,width')
+            val flatString: Text.t = flattenOrRaiseFlatString(t,width')
           in
             LINES[flatString]
           end handle FlatString => (* one line does not hold the whole tree *)
               let
-                val startLines = if start = "" then LINES nil else LINES [start]
-                val finishLines = if finish = "" then LINES nil else LINES[strip finish]
+                val startLines = if start = "" then LINES nil else LINES [Text.plain start]
+                val finishLines = if finish = "" then LINES nil else LINES[Text.plain (strip finish)]
               in
                 if        size start <= width andalso size finish <= width
                    orelse !raggedRight
@@ -243,9 +293,9 @@ structure PrettyPrint: PRETTYPRINT =
                                              printing of the children *)
                     case children
                       of nil => PILE(startLines, finishLines)
-                       | _ => PILE(startLines,PILE(LINES["..."], finishLines))
+                       | _ => PILE(startLines,PILE(LINES[Text.plain "..."], finishLines))
                 else                    (* start or finish to big: *)
-                  LINES["..."]
+                  LINES[Text.plain "..."]
               end
 
 
@@ -272,7 +322,7 @@ structure PrettyPrint: PRETTYPRINT =
             val firstWidth: int = if !raggedRight then width else width - ind
             val restWidth = if !raggedRight then width else width - ind - size s
         in if restWidth < 3 andalso not(!raggedRight) then
-             indent ind (LINES["..."])
+             indent ind (LINES[Text.plain "..."])
            else
              let val restPages = map ((indent ind) o (print restWidth)) rest
                  val restPages' = map (topLeftConcat s) restPages
@@ -287,7 +337,7 @@ structure PrettyPrint: PRETTYPRINT =
                           else width - ind (* - size s *)
                                            (* We ignore the right sep's width. *)
         in if myWidth < 3 andalso not(!raggedRight)
-           then indent ind (LINES["..."])
+           then indent ind (LINES[Text.plain "..."])
            else case rev children of
                     last::firstN_rev =>
                     let val firstNPages = map (print myWidth) (rev firstN_rev)
@@ -302,7 +352,7 @@ structure PrettyPrint: PRETTYPRINT =
       | prSep(LEFT s) = "LEFT \"" ^ s ^ "\""
       | prSep(RIGHT s) = "RIGHT \"" ^ s ^ "\""
 
-    fun interpret (indent,m:minipage,acc:string list) =
+    fun interpret (indent,m:minipage,acc:Text.t list) =
         case m of
             INDENT(n,m') => interpret(indent+n, m',acc)
           | LINES lines => foldr (fn (t,a) => indent_line indent t :: a) acc lines
@@ -313,7 +363,7 @@ structure PrettyPrint: PRETTYPRINT =
       else LINES(interpret(0,print width t,[]))
 
     (* result with newlines  *)
-    fun flatten (LINES strings) : string = String.concatWith "\n" strings
+    fun flatten (LINES strings) : string = String.concatWith "\n" (map Text.string strings)
       | flatten _ = die "flatten"
 
    (* The string constants below are used for outputting long strings of blanks
@@ -329,25 +379,33 @@ structure PrettyPrint: PRETTYPRINT =
     val s64= "                                                                "
     val s128="                                                                                                                                "
 
-    fun outputTree' (blanks: int -> string) (device: string -> unit, t: StringTree, width) : unit =
-        let val jump = 64  (* maximal number of leading blanks on a line *)
+    fun outputMarked (blanks: int -> string) collect
+                     (device: string -> unit, t: StringTree, width) : span list =
+        let val offset = ref 0
+            val spans = ref []
+            fun emit s = (device s; if collect then offset := !offset + size s else ())
+            val jump = 64  (* maximal number of leading blanks on a line *)
             fun output_line indent text =
                 let fun loop n =
                         if n>=jump then
                           let val (q,r) = (n div jump, n mod jump)
-                          in device(blanks(q*jump));
+                          in emit(blanks(q*jump));
                              loop r
                           end
-                        else if n>=32 then (device(s32); loop(n-32))
-                        else if n>=16 then (device(s16); loop(n-16))
-                        else if n>= 8 then (device(s8); loop(n-8))
-                        else if n>= 4 then (device(s4); loop(n-4))
-                        else if n>= 2 then (device(s2); loop(n-2))
-                        else if n=1 then device(" ")
+                        else if n>=32 then (emit(s32); loop(n-32))
+                        else if n>=16 then (emit(s16); loop(n-16))
+                        else if n>= 8 then (emit(s8); loop(n-8))
+                        else if n>= 4 then (emit(s4); loop(n-4))
+                        else if n>= 2 then (emit(s2); loop(n-2))
+                        else if n=1 then emit(" ")
                         else ()
-                in device("\n");
+                in emit("\n");
                    loop indent;
-                   device(text)
+                   (if collect then
+                      spans := foldl (fn (span, acc) => Text.shift (!offset) span :: acc)
+                                     (!spans) (#spans text)
+                    else ();
+                    emit (Text.string text))
                 end
 
             fun output_minipage (indent:int, m: minipage) =
@@ -357,10 +415,15 @@ structure PrettyPrint: PRETTYPRINT =
                   | PILE(m1,m2) => (output_minipage(indent,m1);
                                     output_minipage(indent,m2))
             val minipage = print width t
-        in output_minipage(0,minipage)
+        in output_minipage(0,minipage); rev (!spans)
         end
 
-    fun outputTree a = outputTree' (fn n => "b" ^ Int.toString n) a
+    fun outputTree' blanks args = ignore (outputMarked blanks false args)
+
+    fun outputTreeWithSpans {device,tree,width} =
+        outputMarked blanks true (device,tree,width)
+
+    fun outputTree a = outputTree' blanks a
 
     fun printTree t = outputTree (TextIO.print, t, !colwidth)
 
@@ -369,7 +432,7 @@ structure PrettyPrint: PRETTYPRINT =
     fun reportStringTree' width tree =
         case format(width, tree) of
             LINES page =>
-            let val lines = map Report.line page
+            let val lines = map (Report.line o Text.string) page
             in Report.flatten lines
             end
           | _ => die "reportStringTree'"

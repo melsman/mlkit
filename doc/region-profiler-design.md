@@ -1,5 +1,8 @@
 # A sampled region profiler
 
+Runtime options below belong inside `+RTS ... -RTS`; see
+[runtime arguments](runtime-arguments.md) for delimiters and application arguments.
+
 Design for [issue #237](https://github.com/melsman/mlkit/issues/237).
 This document specifies the overall design. M1–M7 are implemented.
 See [usage, validation, and measurements](region-profiler.md).
@@ -201,17 +204,17 @@ by all threads, and retain request/capture timing sufficient to report delay.
 Examples:
 
 ```sh
-./program -rp
-./program -rp -rp_interval 50ms -rp_file experiment.rp
-./program -rp -rp_interval 0 -rp_gc_samples
-./program -rp -rp_paused -rp_report
-./program -rp -rp_interval 20ms -- application-arguments
+./program +RTS -rp -RTS
+./program +RTS -rp -rp_interval 50ms -rp_file experiment.rp -RTS
+./program +RTS -rp -rp_interval 0 -rp_gc_samples -RTS
+./program +RTS -rp -rp_paused -rp_report -RTS
+./program +RTS -rp -rp_interval 20ms -RTS application-arguments
 ```
 
-Add explicit `--` support to the runtime argument parser and remove that
-separator along with runtime options from `CommandLine.arguments`. Application
-arguments after it must be passed through unchanged. Preserve the existing
-first-unrecognized-argument behavior for invocations without the separator.
+Use GHC-style `+RTS ... -RTS` blocks. Remove blocks from
+`CommandLine.arguments`; all other arguments retain their order. `--RTS`
+ends runtime parsing and is removed; `--` ends parsing but is retained.
+Without a block, flags belong to the application.
 
 The report should include completed and coalesced requests, frames and pages
 visited, sampling CPU time, and wall time spent waiting for threads separately

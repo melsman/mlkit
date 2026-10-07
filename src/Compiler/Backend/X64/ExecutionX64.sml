@@ -12,6 +12,7 @@ structure ExecutionX64 : EXECUTION =
                                    structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
     val message = CodeGen.message
+    val region_profile = Flags.is_on0 "region_profile"
 
     fun die s = Crash.impossible("ExecutionX64." ^ s)
 
@@ -220,7 +221,7 @@ structure ExecutionX64 : EXECUTION =
     type strexp = TopdecGrammar.strexp
     type funid = TopdecGrammar.funid
     type strid = TopdecGrammar.strid
-    type target = CodeGen.AsmPrg
+    type target = CodeGen.AsmPrg * IRLocations.document option
     type lab = NativeCompile.label
 
     val pr_lab = Labels.pr_label
@@ -244,15 +245,20 @@ structure ExecutionX64 : EXECUTION =
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 
-    fun compile fe (ce, CB, strdecs, vcg_file) =
+    fun compile fe (ce, CB, strdecs) =
       let val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
         case Compile.compile fe (ce, cb, strdecs)
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
+              val irTree = if region_profile() then
+                             SOME (PhysSizeInf.layout_pgm_with_locations target)
+                           else NONE
+              val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
+              val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
+              val () = IRLocations.currentIdentity := identity
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
               val linkinfo = mk_linkinfo {code_label=main_lab,
                                           imports=imports, (* (MLFunLab, DatLab) *)
@@ -260,13 +266,15 @@ structure ExecutionX64 : EXECUTION =
                                           unsafe=not(safe)}
               val CB = CompileBasis.mk_CompileBasis(cb,closenv)
             in
-              CodeRes(ce,CB,asm_prg,linkinfo)
+              CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
+                {identity = identity, unit = AddressLabels.pr_label main_lab,
+                 source = !Flags.current_source_file, tree = tree, calls = !IRLocations.currentCalls, regions = rev (!IRLocations.currentRegions)}) irTree),linkinfo)
             end
       end
 
-    val generate_link_code = SOME (fn (labs,exports) => CodeGen.generate_link_code (labs,exports))
+    val generate_link_code = SOME (fn (labs,exports) => (CodeGen.generate_link_code (labs,exports),NONE))
 
-    val generate_repl_init_code = SOME (fn () => CodeGen.generate_repl_init_code())
+    val generate_repl_init_code = SOME (fn () => (CodeGen.generate_repl_init_code(),NONE))
 
     fun delete_file f =
         let val () = if debug_linking() then print ("[Removing file: " ^ f ^ "]\n")
@@ -297,11 +305,13 @@ structure ExecutionX64 : EXECUTION =
        if delete_target_files() andalso not(gdb_support()) then delete_file file_s
        else ())
 
-    fun emit {target, filename:string} : string =
+    fun emit {target = (target,ir), filename:string} : string =
       let val filename_o = filename ^ ".o"
           val filename_s = filename ^ ".s"
       in CodeGen.emit (target, filename_s);
         assemble(filename_s, filename_o);
+        (case ir of SOME document => IRLocations.write {object = filename_o, document = document}
+                  | NONE => ());
         filename_o
       end
 
@@ -319,6 +329,16 @@ structure ExecutionX64 : EXECUTION =
         end
 
     fun link_files_with_runtime_system0 path_to_runtime files run =
+      let val mapFile = run ^ ".ir-map.c"
+          val mapObject = run ^ ".ir-map.o"
+          val hasMap = region_profile()
+          fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
+          val () = if hasMap then
+            (writeFile mapFile (IRLocations.linkMap files);
+             execute_command (link_exe() ^ " -c " ^ quote mapFile ^ " -o " ^ quote mapObject);
+             delete_file mapFile) else ()
+          val files = if hasMap then mapObject :: files else files
+      in
         if objs_p()
         then let val files =
                      path_to_runtime() :: files
@@ -346,13 +366,14 @@ structure ExecutionX64 : EXECUTION =
             execute_command shell_cmd;
             strip run;
             message(fn () => "[wrote executable file:\t" ^ run ^ "]\n");
-            report_dangle_stat()
+            report_dangle_stat();
+            if hasMap then delete_file mapObject else ()
           end
+      end
 
     val op ## = OS.Path.concat infix ##
 
     local
-          val region_profiling = Flags.lookup_flag_entry "region_profiling"
           val tag_values = Flags.is_on0 "tag_values"
           val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
@@ -366,17 +387,17 @@ structure ExecutionX64 : EXECUTION =
                          die "parallelism enabled - turn off value tagging"
                        else if gc_p() then
                          die "parallelism enabled - turn off gc"
-                       else if !region_profiling then
-                         die "parallelism enabled - turn off prof"
                        else if tag_pairs_p() then
                          die "parallelism enabled - turn off pair tagging"
+                       else if region_profile() then
+                         (if argobots_p() then "runtimeSystemArParProf.a" else "runtimeSystemParProf.a")
                        else if argobots_p() then "runtimeSystemArPar.a"
                        else "runtimeSystemPar.a")
                     else
-                      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
-                      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
-                      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
-                      if !region_profiling                                      then "runtimeSystemProf.a"      else
+                      if region_profile() andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
+                      if region_profile() andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
+                      if region_profile() andalso gc_p()                       then "runtimeSystemGCProf.a"    else
+                      if region_profile()                                      then "runtimeSystemProf.a"      else
                       if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
                       if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
                       if                           gc_p()                       then "runtimeSystemGC.a"        else
@@ -393,7 +414,6 @@ structure ExecutionX64 : EXECUTION =
     end
 
     local
-      val region_profiling = Flags.is_on0 "region_profiling"
       val recompile_basislib = Flags.is_on0 "recompile_basislib"
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
       val gc_p = Flags.is_on0 "garbage_collection"
@@ -409,7 +429,7 @@ structure ExecutionX64 : EXECUTION =
           let val subdir =
               if recompile_basislib() then "Scratch"   (* avoid overwriting other files *)
               else
-                  case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p()) of
+                  case (gengc_p(),gc_p(), region_profile(), tag_pairs_p()) of
                       (false,     true,   true,               false) => maybe_prefix_RI "GC_PROF"
                     | (false,     true,   false,              false) => maybe_prefix_RI "GC"
                     | (false,     true,   true,               true)  => maybe_prefix_RI "GC_TP_PROF"
@@ -425,7 +445,6 @@ structure ExecutionX64 : EXECUTION =
                                subdir ^ "_PAR0"
                              else subdir ^ "_PAR"
                            else subdir
-              val subdir = if Flags.is_on "region_profile" then subdir ^ "_RP9" else subdir
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
@@ -471,7 +490,7 @@ structure ExecutionX64 : EXECUTION =
         (* gcc -o sofile -shared -init name -llib1 ... -libn f1.o ... fm.o init.o *)
         let
           val {dir,file} = OS.Path.splitDirFile name
-          val target = CodeGen.generate_repl_link_code ("main",labs)
+          val target = (CodeGen.generate_repl_link_code ("main",labs),NONE)
           val filename = dir ## mlbdir() ## file
           val filenameo = emit{target=target,filename=filename}
           val libs_str = String.concat (map (fn l => "-l" ^ l ^ " ") libs)

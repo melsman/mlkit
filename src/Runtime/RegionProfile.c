@@ -1,9 +1,10 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-/* Cooperative sampled region snapshots. Never scan object/page contents. */
+/* Cooperative region snapshots with selected-region object occupancy. */
 #include "RegionProfile.h"
 #include "String.h"
+#ifdef PROFILING
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -216,6 +217,85 @@ static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
 #define STRS(...) (const char *const[]){__VA_ARGS__}, sizeof((const char *const[]){__VA_ARGS__})/sizeof(char *), NULL
 #define NO_STRINGS NULL, 0, NULL
 
+/* Occupancy is counted only during snapshots. C allocations carry their
+ * site tokens explicitly through REG_POLY_FUN_HDR / REG_POLY_CALL. */
+__attribute__((weak)) const volatile uintptr_t mlkit_rp_allocation_capable = 0;
+__attribute__((weak)) const char *mlkit_rp_build_id = "unknown";
+uintptr_t mlkit_rp_allocation_enabled;
+const char *mlkit_rp_region;
+const char *mlkit_rp_expected_build;
+static int all_regions(void) { return mlkit_rp_region && !strcmp(mlkit_rp_region,"all"); }
+static const MlkitAllocationRegion *selected_region;
+static const char *selected_unit, *selected_name, *selected_source;
+static uint64_t selected_binding_id;
+uintptr_t mlkit_rp_bind_region(Region r, const MlkitAllocationRegion *metadata) {
+  r = clearStatusBits(r);
+  if (!mlkit_rp_allocation_enabled || !mlkit_rp_region) return 1;
+  if (all_regions()) { r->allocation_profile = metadata; return 1; }
+  const char *colon = strrchr(mlkit_rp_region, ':');
+  size_t n = (size_t)(colon-mlkit_rp_region);
+  if (strlen(metadata->unit->data) == n &&
+      !memcmp(metadata->unit->data,mlkit_rp_region,n) &&
+      metadata->binding == strtoull(colon+1,NULL,10)) {
+    r->allocation_profile = metadata;
+    LOCK(); selected_region = metadata; UNLOCK();
+  }
+  return 1;
+}
+/* Indexed by Effect.ord_runType, but identities are the compiler's region
+ * keys (Effect's toplevel region initialization), as printed by -Pcee. */
+static const MlkitAllocationRegion *global_metadata(uintptr_t type) {
+  static struct { size_t tag; char data[9]; } unit = {0,"<global>"};
+  static struct { size_t tag; char data[7]; } source = {0,"global"};
+  static const MlkitAllocationRegion metadata[] = {
+#define GLOBAL_METADATA(n) {(String)&unit,(String)&source,(String)&source,n}
+    GLOBAL_METADATA(0),GLOBAL_METADATA(3),GLOBAL_METADATA(4),GLOBAL_METADATA(5),
+    GLOBAL_METADATA(6),GLOBAL_METADATA(7),GLOBAL_METADATA(1),GLOBAL_METADATA(2)
+#undef GLOBAL_METADATA
+  };
+  if (type >= sizeof(metadata)/sizeof(*metadata)) fail("invalid global region type");
+  return &metadata[type];
+}
+uintptr_t mlkit_rp_bind_global(Region r, uintptr_t type) {
+  return mlkit_rp_bind_region(r,global_metadata(type));
+}
+typedef struct AllocationDefinition {
+  const MlkitAllocationSite *site;
+  uint64_t id;
+  struct AllocationDefinition *next;
+} AllocationDefinition;
+static AllocationDefinition *allocation_definitions;
+static uint64_t allocation_definition_count;
+/* These arrays are supplied by the linker and have variable length. A
+ * one-element weak definition here lets GCC infer an incorrect array bound
+ * and optimize away continuation past the first entry, even with volatile.
+ * Undefined weak symbols are null when no metadata was linked. */
+#ifdef __APPLE__
+/* Mach-O requires a definition for optional data in executables. Clang
+ * preserves interposition of these weak definitions. */
+__attribute__((weak)) const char *const volatile mlkit_rp_ir_objects[][2] = {{NULL,NULL}};
+#else
+extern const char *const volatile mlkit_rp_ir_objects[][2] __attribute__((weak));
+#endif
+static const char *allocation_object(const MlkitAllocationSite *site) {
+  if (site && mlkit_rp_ir_objects) for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
+    if (!strcmp(mlkit_rp_ir_objects[i][0],site->ir_identity->data))
+      return mlkit_rp_ir_objects[i][1];
+  return "";
+}
+static __attribute__((unused)) uint64_t allocation_definition(const MlkitAllocationSite *site) {
+  for (AllocationDefinition *d = allocation_definitions; d; d = d->next)
+    if (d->site == site) return d->id;
+  AllocationDefinition *d = checked_alloc(sizeof(*d));
+  *d = (AllocationDefinition){site,++allocation_definition_count,allocation_definitions};
+  allocation_definitions = d;
+  emit_record(13,NUMS(d->id,site ? site->id : 0,site ? site->kind : 2),
+              STRS(site ? site->unit->data : "<runtime>",
+                   site ? site->function->data : "runtime/unknown",
+                   site ? site->source->data : "",
+                   site ? site->ir_identity->data : "",allocation_object(site)));
+  return d->id;
+}
 void mlkit_rp_thread_create(Context ctx, int id) {
   if (!mlkit_rp_enabled) return;
   LOCK();
@@ -304,6 +384,14 @@ void mlkit_rp_close(void) {
             traversal_ns, serialization_ns, wait_ns, cpu_ns, max_delay_ns, peak_bytes, atomic_load(&maximum_pages));
   for (Participant *p = participants; p; p = p->next)
     emit_record(3,NUMS(p->id,timestamp()),STRS("process_exit"));
+  if (mlkit_rp_allocation_enabled && !all_regions()) {
+    if (selected_unit)
+      emit_record(16,NUMS(selected_binding_id),STRS(selected_unit,selected_name,selected_source));
+    else if (selected_region)
+      emit_record(16,NUMS(selected_region->binding),STRS(selected_region->unit->data,
+                  selected_region->name->data,selected_region->source->data));
+
+  }
   emit_record(4,NUMS(timestamp(),sequence,atomic_load(&maximum_pages),gc_collections),NO_STRINGS);
   FILE *f = output;
   output = NULL;
@@ -315,22 +403,43 @@ void mlkit_rp_init(void) {
 #if defined(PARALLEL) && defined(ENABLE_GC)
   fail("GC plus parallel profiling is not supported");
 #endif
-#if defined(PROFILING)
-  fail("cannot combine sampled profiling with the old -prof runtime");
-#endif
+
   if (mlkit_rp_capable != MLKIT_RP_MAGIC)
     fail("recompile the executable and its ML libraries with -region_profile");
 #ifndef ENABLE_GC
   if (mlkit_rp_gc_samples) fail("-rp_gc_samples requires a GC runtime");
 #endif
+  if (mlkit_rp_allocation_capable && mlkit_rp_allocation_capable != 4)
+    fail("rebuild allocation profiling objects for the current runtime");
+  if (mlkit_rp_expected_build && strcmp(mlkit_rp_expected_build,mlkit_rp_build_id))
+    fail("allocation profile build identifier does not match this executable");
+  if (mlkit_rp_region) {
+    if (!all_regions()) {
+      const char *colon = strrchr(mlkit_rp_region, ':');
+      char *end;
+      errno = 0;
+      if (!colon || colon == mlkit_rp_region || colon[1] < '0' || colon[1] > '9')
+        fail("-rp_region requires all or UNIT:BINDING from the viewer");
+      (void)strtoull(colon+1,&end,10);
+      if (errno || *end) fail("invalid region binding number");
+    }
+    if (mlkit_rp_allocation_capable != 4)
+      fail("recompile all ML code with -rp");
+    mlkit_rp_allocation_enabled = 1;
+  }
+  mlkit_rp_allocation_enabled = mlkit_rp_allocation_capable != 0;
   output = fopen(mlkit_rp_filename, "wb");
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !mlkit_rp_initially_paused;
-  static const unsigned char magic[] = {'M','L','K','R','P',0,5,0};
+  const unsigned char magic[] = {'M','L','K','R','P',0,10,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
+  if (mlkit_rp_allocation_capable) emit_record(12,NUMS(mlkit_rp_allocation_enabled,1),STRS(mlkit_rp_build_id,mlkit_rp_region ? mlkit_rp_region : ""));
+  if (mlkit_rp_allocation_enabled && mlkit_rp_ir_objects)
+    for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
+      emit_record(17,NUMS(),STRS(mlkit_rp_ir_objects[i][0],mlkit_rp_ir_objects[i][1]));
   if (fflush(output)) fail("cannot write profile header");
   if (mlkit_rp_interval_us) {
     struct sigaction previous_alarm;
@@ -370,6 +479,7 @@ typedef struct Record {
   uintptr_t run_type;
   uint64_t g0_pages, g0_tail, g1_pages, g1_tail;
   uint64_t definition;
+  uint64_t payload, objects, object_overhead, slack, detailed;
 } Record;
 static Record *records;
 static size_t record_count, record_capacity;
@@ -382,8 +492,61 @@ static void save_record(Record r) {
   }
   records[record_count++] = r;
 }
+#ifdef PROFILING
+
+/* Snapshot-owned values. Addresses are decoded only while participants are
+ * parked; no heap pointers survive into serialization. */
+typedef struct Occupancy {
+  size_t instance;
+  const MlkitAllocationSite *site;
+  uint64_t count, bytes;
+  struct Occupancy *next, *hash_next;
+} Occupancy;
+static Occupancy *occupancy, *occupancy_hash[257];
+static uint64_t occupied_payload, occupied_objects, occupied_slack;
+static void count_object(size_t instance, const ObjectDesc *obj) {
+  uintptr_t token = objectDescPoint(obj);
+  const MlkitAllocationSite *site = token <= 1 ? NULL : (const MlkitAllocationSite *)(token << 3);
+  size_t h = token % 257;
+  Occupancy *o;
+  for (o = occupancy_hash[h]; o && o->site != site; o = o->hash_next) {}
+  if (!o) {
+    o = checked_alloc(sizeof(*o));
+    *o = (Occupancy){instance,site,0,0,occupancy,occupancy_hash[h]};
+    occupancy = o; occupancy_hash[h] = o;
+  }
+  uint64_t bytes = objectDescSize(obj)*sizeof(uintptr_t);
+  o->count++; o->bytes += bytes;
+  occupied_objects++; occupied_payload += bytes;
+}
+static void scan_generation(Gen *g, size_t instance) {
+  for (Rp *p = clear_fp(g->fp); p; p = clear_tospace_bit(p->n)) {
+    uintptr_t *start = (uintptr_t *)p+HEADER_WORDS_IN_REGION_PAGE;
+    uintptr_t *end = (uintptr_t *)p+HEADER_WORDS_IN_REGION_PAGE+ALLOCATABLE_WORDS_IN_REGION_PAGE;
+    uintptr_t *limit = clear_tospace_bit(p->n) ? end : g->a;
+    while (start < limit) {
+      const ObjectDesc *obj = (const ObjectDesc *)start;
+      if (!obj->packed) break;
+      size_t size = obj->packed & OBJECT_DESC_SIZE_MASK;
+      if (size == OBJECT_DESC_SIZE_MASK || size+sizeObjectDesc > (size_t)(limit-start))
+        fail("invalid object descriptor in selected region");
+      count_object(instance,obj);
+      start += size+sizeObjectDesc;
+    }
+    occupied_slack += (uint64_t)(end-start)*sizeof(uintptr_t);
+  }
+}
+static int selected_binding(const char *unit, uint64_t id) {
+  if (all_regions()) return 1;
+  if (!mlkit_rp_region) return 0;
+  const char *colon = strrchr(mlkit_rp_region,':');
+  size_t n = (size_t)(colon-mlkit_rp_region);
+  return strlen(unit) == n && !memcmp(unit,mlkit_rp_region,n) && id == strtoull(colon+1,NULL,10);
+}
+#endif
 static void region_record(const char *unit, const char *name, const char *source, uint64_t id, uintptr_t *storage,
                           uintptr_t words, uintptr_t run_type, uint64_t *pages_visited) {
+  if (words != UINTPTR_MAX) return; /* finite storage is stack storage */
   uint64_t pages = 0, tail = 0, big = 0, finite = 0, desc = 0;
   uint64_t g0_pages = 0, g0_tail = 0;
   if (words == UINTPTR_MAX) {
@@ -401,7 +564,28 @@ static void region_record(const char *unit, const char *name, const char *source
   } else finite = (uint64_t)words*sizeof(uintptr_t);
   *pages_visited += pages;
   save_record((Record){unit,name,source,id,record_thread,pages,tail,big,finite,desc,
-                       record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail,0});
+                       record_worker,words == UINTPTR_MAX,record_cpu,run_type,g0_pages,g0_tail,pages-g0_pages,tail-g0_tail,0,0,0,0,0,0});
+#ifdef PROFILING
+  if (selected_binding(unit,id)) {
+    selected_unit = unit; selected_name = name; selected_source = source; selected_binding_id = id;
+    memset(occupancy_hash,0,sizeof(occupancy_hash));
+    occupied_payload = occupied_objects = occupied_slack = 0;
+    size_t instance = record_count-1;
+    Region r = (Region)storage;
+    scan_generation(&r->g0,instance);
+#ifdef ENABLE_GEN_GC
+    scan_generation(&r->g1,instance);
+#endif
+    for (Lobjs *p = clear_lobj_bit(r->lobjs); p; p = clear_lobj_bit(p->next))
+      count_object(instance,(ObjectDesc *)&p->value);
+    records[instance].payload = occupied_payload;
+    records[instance].objects = occupied_objects;
+    records[instance].object_overhead = occupied_objects*sizeof(ObjectDesc);
+    records[instance].slack = occupied_slack;
+    records[instance].detailed = 1;
+  }
+#endif
+
 }
 /* Binding definitions are emitted once on first observation. The native unit
  * strings live in resident code images, including retained REPL libraries. */
@@ -452,9 +636,13 @@ static const char *run_type_name(uintptr_t type) {
 }
 /* Linker metadata maps global region pointer slots to their inferred types. */
 typedef struct { Region *slot; uintptr_t type; } GlobalType;
+#ifdef __APPLE__
 __attribute__((weak)) const volatile GlobalType mlkit_rp_globals[] = {{NULL,0}};
+#else
+extern const volatile GlobalType mlkit_rp_globals[] __attribute__((weak));
+#endif
 static uintptr_t global_type(Region r) {
-  for (const volatile GlobalType *g = mlkit_rp_globals; g->slot; g++)
+  for (const volatile GlobalType *g = mlkit_rp_globals; g && g->slot; g++)
     if (clearStatusBits(*g->slot) == r) return g->type;
   return 0;
 }
@@ -481,6 +669,8 @@ static int complete_chain(uintptr_t *base, const uintptr_t *map) {
   }
   fail("invalid frame chain"); return 0;
 }
+/* Built-in globals use compiler region keys in both snapshot and attribution
+ * profiles. Other persistent regions (e.g. REPL regions) get distinct IDs. */
 typedef struct GlobalRegion {
   Region region;
   uint64_t id;
@@ -489,9 +679,12 @@ typedef struct GlobalRegion {
 static GlobalRegion *globals;
 static uint64_t next_global_id;
 static uint64_t global_id(Region r) {
+  uintptr_t type = global_type(r);
+  if (type) return global_metadata(type)->binding;
   for (GlobalRegion *g = globals; g; g = g->next) if (g->region == r) return g->id;
   GlobalRegion *g = checked_alloc(sizeof(*g));
-  *g = (GlobalRegion){r,next_global_id++,globals}; globals = g;
+  *g = (GlobalRegion){r,next_global_id++ + 8,globals};
+  globals = g;
   return g->id;
 }
 typedef struct StackRecord {
@@ -508,7 +701,7 @@ static void save_stack(uint64_t active, uint64_t finite) {
     if (!p) fail("out of memory");
     stacks = p;
   }
-  stacks[stack_count++] = (StackRecord){record_thread,active,finite,record_worker,record_cpu};
+  stacks[stack_count++] = (StackRecord){record_thread,active,0,record_worker,record_cpu};
 }
 static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
                  uint64_t *frames, uint64_t *pages) {
@@ -591,6 +784,20 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
               STRS(mlkit_rp_gc_major < 0 ? "none" : mlkit_rp_gc_major ? "major" : "minor",
                    op == 0 ? "start" : op == 1 ? "pause" : op == 3 ? "periodic" : op == 4 ? "before_gc" : op == 5 ? "after_gc" : "explicit"));
   for (size_t i = 0; i < record_count; i++) write_record(&records[i]);
+#ifdef PROFILING
+  while (occupancy) {
+    Occupancy *o = occupancy;
+    Record *r = &records[o->instance];
+    uint64_t site = allocation_definition(o->site);
+    emit_record(18,NUMS(sequence,o->instance,r->definition,r->thread,site,o->count,o->bytes,(uint64_t)(int64_t)r->worker,(uint64_t)(int64_t)r->cpu),NO_STRINGS);
+    occupancy = o->next; free(o);
+  }
+  for (size_t i = 0; i < record_count; i++) if (records[i].detailed) {
+    Record *r = &records[i];
+    emit_record(19,NUMS(sequence,i,r->definition,r->payload,r->objects,r->object_overhead,r->slack),NO_STRINGS);
+  }
+#endif
+
   for (size_t i = 0; i < stack_count; i++) {
     const StackRecord *r = &stacks[i];
     emit_record(8,NUMS(sequence,r->thread,(uint64_t)(int64_t)r->worker,(uint64_t)(int64_t)r->cpu,
@@ -709,3 +916,12 @@ void mlkit_rp_idle(Context ctx) {
   uintptr_t base = 0;
   mlkit_rp_poll(ctx,&base,end+2);
 }
+
+#else
+/* Keep the Basis API linkable without the profiling engine. */
+uintptr_t mlkit_rp_start(void) { return 1; }
+uintptr_t mlkit_rp_pause(void) { return 1; }
+uintptr_t mlkit_rp_sample(void) { return 1; }
+uintptr_t mlkit_rp_flush(void) { return 1; }
+uintptr_t mlkit_rp_mark(String label) { (void)label; return 1; }
+#endif

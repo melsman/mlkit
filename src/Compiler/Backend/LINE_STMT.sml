@@ -71,6 +71,7 @@ signature LINE_STMT =
     | DROPPED_RVAR  of place
     | PHREG         of lvar
     | INTEGER       of {value:IntInf.int, precision:int}
+    | SITE_TOKEN      of int (* Descriptor token for an allocating foreign call. *)
     | WORD          of {value:IntInf.int, precision:int}
     | UNIT
 

@@ -19,7 +19,7 @@ trap 'exit 1' HUP INT TERM
 cd "$OUT"
 # Magic, 37-byte header: word=8, page=8192, GC=false, source=test.sml.
 {
- printf 'MLKRP\000\005\000\045\000\000\000\001'
+ printf 'MLKRP\000\012\000\045\000\000\000\001'
  printf '\010\000\000\000\000\000\000\000'
  printf '\000\040\000\000\000\000\000\000'
  printf '\000\000\000\000\000\000\000\000'

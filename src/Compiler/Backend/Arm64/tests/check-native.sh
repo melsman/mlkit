@@ -123,37 +123,37 @@ printf 'OK\n' > gc-expected
 for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
   extra_gc=-extra_gc_checks
   [ "$compiler" != "$REML_ARM64" ] || extra_gc=""
-  for flags in '' '--tag_values' '-prof' '-gc' '-gc -tag_pairs' '-gengc' '-gc -prof' '-gc -tag_pairs -prof' '-gengc -prof'; do
+  for flags in '' '--tag_values' '-rp' '-gc' '-gc -tag_pairs' '-gengc' '-gc -rp' '-gc -tag_pairs -rp' '-gengc -rp'; do
     if [ "$compiler" = "$REML_ARM64" ]; then
-      case "$flags" in ''|'-prof') ;; *) continue;; esac
+      case "$flags" in ''|'-rp') ;; *) continue;; esac
     fi
     "$compiler" --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
-    case "$flags" in *-prof*) profile_flags="-notimer 17 -file integration.rp";; *) profile_flags="";; esac
+    case "$flags" in *-rp*) profile_flags="-rp -rp_interval 1ms -rp_file integration.rp";; *) profile_flags="";; esac
     case "$flags" in *gc*) report_flags="-report_gc";; *) report_flags="";; esac
-    ./gc-roots $profile_flags $report_flags > actual 2> gc-report.log
+    ./gc-roots +RTS $profile_flags $report_flags > actual 2> gc-report.log
     cmp gc-expected actual
     if [ -n "$report_flags" ]; then grep -Eq "[1-9][0-9]* collections" gc-report.log; fi
     "$compiler" --no_basislib --no_delete_target_files $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
-    ./gc-frames $profile_flags > actual
+    ./gc-frames +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o switches switches.sml >> integration.log 2>&1
-    ./switches $profile_flags > actual
+    ./switches +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
-    ./instruction-selection $profile_flags > actual
+    ./instruction-selection +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags -o loop-spills loop-spills.sml >> integration.log 2>&1
-    ./loop-spills $profile_flags > actual
+    ./loop-spills +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o word-arithmetic word-arithmetic.sml >> integration.log 2>&1
-    ./word-arithmetic $profile_flags > actual
+    ./word-arithmetic +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
-    ./gc-constructors $profile_flags > actual
+    ./gc-constructors +RTS $profile_flags > actual
     cmp gc-expected actual
     "$compiler" --no_basislib $flags $extra_gc -ldexe 'gcc -arch arm64 callback.o foreign.o' \
       -o foreign foreign.sml >> integration.log 2>&1
-    ./foreign $profile_flags > actual
+    ./foreign +RTS $profile_flags > actual
     cmp foreign-expected actual
   done
   for flags in '' '-gc' '-gc -tag_pairs' '-gengc'; do

@@ -11,6 +11,7 @@ local
   basis Compiler = bas compiler.mlb end
   open BasLib (* Compiler *)
 in
+  local open Tools in Backend/NativeFlags.sml end
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml
   local open Pickle in Regions/DROP_REGIONS.sml end
@@ -22,6 +23,7 @@ in
   Regions/MUL_INF.sml
   Regions/REGINF.sig
   local open Pickle SyntaxObjects in Regions/REGION_STAT_ENV.sml end
+  Regions/REGION_FLOW_GRAPH_PROFILING.sml
   Regions/REG_FLOW.sml
   local open Pickle in Regions/RTYPE.sig end
   local open CompilerObjects
@@ -31,7 +33,6 @@ in
   local open Pickle
   in Regions/PHYS_SIZE_INF.sml
   end
-  Regions/REGION_FLOW_GRAPH_PROFILING.sml
 
   local open Tools
   in

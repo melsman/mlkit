@@ -35,7 +35,7 @@ run () {
   (cd "$OUT"
    "$compiler" "$@" -o client client.mlb > "build-$n.log" 2>&1
    case " $* " in
-     *' -rp '*) ./client -rp -rp_interval 0 -rp_file "profile-$n.rp" > actual
+     *' -rp '*) ./client +RTS -rp -rp_interval 0 -rp_file "profile-$n.rp" > actual
        "$RPVIEW" "profile-$n.rp" --format json > "profile-$n.json"
        grep -q 'sample_begin' "profile-$n.json" ;;
      *) ./client > actual ;;

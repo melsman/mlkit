@@ -23,10 +23,10 @@ ifneq ($(RUNTIME_TARGET),@RUNTIME_TARGET@)
 $(error RUNTIME_TARGET is selected by configure)
 endif
 
-SOURCES=Runtime IO String Math Region Icp Table Time Profiling CommandLine \
+SOURCES=Runtime IO String Math Region Icp Table Time CommandLine \
         Posix Dlsym Export Socket Repl Layout Arm64GC StaticGC RegionProfile
 COMMON=$(addsuffix .c,$(SOURCES)) ../CUtils/hashmap.c ../CUtils/hashmap_typed.c
-VARIANTS=plain tag prof gc gcprof gengc gengcprof gctp gctpprof par
+VARIANTS=plain tag prof gc gcprof gengc gengcprof gctp gctpprof par parprof
 ALL_OBJECTS=
 ARCHIVES=
 
@@ -64,6 +64,7 @@ $(eval $(call variant,gengcprof,runtimeSystemGenGCProf.a,$(COMMON) GC.c,-DTAG_VA
 $(eval $(call variant,gctp,runtimeSystemGCTP.a,$(COMMON) GC.c,-DTAG_VALUES -DENABLE_GC))
 $(eval $(call variant,gctpprof,runtimeSystemGCTPProf.a,$(COMMON) GC.c,-DTAG_VALUES -DENABLE_GC -DPROFILING))
 $(eval $(call variant,par,runtimeSystemPar.a,$(COMMON) Spawn.c,-DPARALLEL))
+$(eval $(call variant,parprof,runtimeSystemParProf.a,$(COMMON) Spawn.c,-DPARALLEL -DPROFILING))
 DEFAULT_ARCHIVES:=$(ARCHIVES)
 $(eval $(call variant,arpar,runtimeSystemArPar.a,$(COMMON) Spawn.c,-DARGOBOTS -DPARALLEL -I$(ARGOBOTS_ROOT)/src/include))
 
@@ -82,3 +83,5 @@ clean:
 	rm -rf $(BUILD)
 
 -include $(ALL_OBJECTS:.o=.d)
+
+$(eval $(call variant,arparprof,runtimeSystemArParProf.a,$(COMMON) Spawn.c,-DARGOBOTS -DPARALLEL -DPROFILING -I$(ARGOBOTS_ROOT)/src/include))

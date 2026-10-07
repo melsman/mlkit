@@ -1,5 +1,9 @@
 # Static-data bounds, GC polling and list tests
 
+For current runtime invocation syntax, see [runtime arguments](runtime-arguments.md).
+Runtime flags go inside `+RTS ... -RTS`; historical measurements below retain
+their original command descriptions.
+
 This implements the follow-up to the
 [slowdown investigation](arm64-slowdown-investigation.md).
 

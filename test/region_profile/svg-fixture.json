@@ -1,4 +1,4 @@
-{"type":"header","format":"mlkit-region-profile","version":5,"page_bytes":8192,"main_source":"/source/main.sml","gc_enabled":true}
+{"type":"header","format":"mlkit-region-profile","version":10,"page_bytes":8192,"main_source":"/source/main.sml","gc_enabled":true}
 {"type":"sample_begin","sample":1,"time":1000000,"reason":"explicit"}
 {"type":"binding","definition":1,"unit":"unit","source":"/source/test.sml","name":"","region_type":"pair","kind":"infinite","binding":1}
 {"type":"region","sample":1,"thread":1,"worker":0,"cpu":4,"pages":1,"unused_tail":4096,"page_footprint":4096,"large_bytes":1152921504606846977,"finite_bytes":0,"descriptor_bytes":64,"g0_pages":1,"g1_pages":0,"g0_unused_tail":4096,"g1_unused_tail":0,"definition":1}

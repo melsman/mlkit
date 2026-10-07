@@ -26,6 +26,8 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenUtilX64." ^ s)
 
+  val allocationProfile = Flags.is_on0 "region_profile"
+  val allocationSite = ref (fn (_ : int, _ : int) => NameLab "unused_allocation_site")
   val rem_dead_code = I.rem_dead_code
   val i2s = I.i2s
 
@@ -137,23 +139,32 @@ struct
 
     in
 
-    fun compile_c_call_prim (name:string, args:SS.Aty list, opt_ret:SS.Aty option, fsz:int, tmp:reg, C) =
-        let fun push_arg (aty,fsz,C) = push_aty(aty,tmp,fsz,C)
+    fun compile_c_call_site resolveSite (name:string, args:SS.Aty list, opt_ret:SS.Aty option, fsz:int, tmp:reg, C) =
+        let fun load (aty,r,fsz,C) =
+                  case aty of
+                      SS.SITE_TOKEN_ATY point => G.lea(LA (resolveSite point),r) $
+                        I.shrq(I "3",R r) :: C
+                    | _ => load_aty(aty,r,fsz,C)
+            fun push_arg (aty,fsz,C) =
+                  case aty of
+                      SS.SITE_TOKEN_ATY _ => load(aty,tmp,fsz,G.push_ea (R tmp) C)
+                    | _ => push_aty(aty,tmp,fsz,C)
             val nargs = List.length args
             val args_stack = drop (List.length RI.args_reg_ccall) args
             val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = map (fn (x,y) => (x,(),y)) args
             fun store_ret (SOME d,C) = move_reg_into_aty(rax,d,fsz,C)
               | store_ret (NONE,C) = C
-            (* val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
-            (* With dynamic linking there must be at least one argument (the name to be bound). *)
             val dynlinklab = "localResolveLibFnManual"
-            fun mv (aty,_,r,sz_ff,C) = load_aty(aty,r,sz_ff,C)
+            fun mv (aty,(),r,sz_ff,C) = load(aty,r,sz_ff,C)
         in shuffle_args fsz mv args
             (with_stack_args push_arg fsz args_stack
               (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
               (store_ret(opt_ret,C)))
         end
+
+    fun compile_c_call_prim args =
+      compile_c_call_site (fn _ => die "site token in runtime primitive call") args
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. *)
@@ -318,32 +329,29 @@ struct
 
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
-    fun alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
-        if region_profiling() then
-          let val n = n0 + BI.objectDescSizeP
-              fun post_prof C =
-                  (* treg1 now points at the object descriptor; initialize it *)
-                  G.move_num(i2s pp, D("0",treg1)) $                (* first word is pp *)
-                  G.move_num(i2s n0, D("8",treg1)) $                (* second word is object size *)
-                  G.lea(D (i2s (8*BI.objectDescSizeP), treg1), treg1) $
-                  C                                                    (* make treg1 point at object *)
+    fun ordinary_alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
+        if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
+          let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
+              val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"
+              fun descriptor C = if not(region_profiling()) then C else
+                  G.lea(LA site,treg0) $
+                  I.salq(I "13",R treg0) ::
+                  I.orq(I(i2s(Int.min(n0,65535))),R treg0) ::
+                  I.movq(R treg0,D("0",treg1)) ::
+                  G.lea(D("8",treg1),treg1) $ C
           in copy(t,treg1,
-             move_immed(IntInf.fromInt n, R treg0,
-             I.call (NameLab "__allocate") :: (* assumes args in treg1 and treg0; result in treg1 *)
-             post_prof
-             (copy(treg1,t,C))))
-          end
-        else if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
-          let val n = n0 (* size in words *)
-          in
-            copy(t,treg1,
-            move_immed(IntInf.fromInt n, R treg0,     (*   treg0 = n                     *)
-            I.call (NameLab "allocinreg") ::          (*   call allocinreg with args in     *)
-            copy(treg1,t,C)))                         (*     treg1 and treg0; result  *)
-                                                      (*     in treg1.                   *)
+             move_immed(IntInf.fromInt n,R treg0,
+             I.call (NameLab (if region_profiling() then "__allocate" else "allocinreg")) :: descriptor(copy(treg1,t,C))))
           end
         else
-          let val n = n0
+          let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
+              val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"
+              fun descriptor C = if not(region_profiling()) then C else
+                  G.lea(LA site,treg0) $
+                  I.salq(I "13",R treg0) ::
+                  I.orq(I(i2s(Int.min(n0,65535))),R treg0) ::
+                  I.movq(R treg0,D("0",treg1)) ::
+                  G.lea(D("8",treg1),treg1) $ C
               val l = new_local_lab "ret_alloc"
               val l_expand = new_local_lab "expand"
               val allocate_lab =
@@ -385,8 +393,10 @@ struct
             G.lea(D(i2s(~8*n),treg0),treg1) $                    (*   treg1 = treg0 - 8n            *)
             maybe_update_alloc_period n (
             G.label l $                                          (*     treg1 and treg0; result     *)
-            (copy(treg1,t,C)))))))                               (*     in treg1.                   *)
+            descriptor(copy(treg1,t,C)))))))                               (*     in treg1.                   *)
           end
+
+    fun alloc_kill_tmp01 (t,n,fsz,pp,C) = ordinary_alloc_kill_tmp01(t,n,fsz,pp,C)
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
      * then the following function is used for allocating pairs in
@@ -419,12 +429,6 @@ struct
          | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
          | _ => die "load_aty_ap: ATY cannot be used to allocate memory"
 
-    fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
-      if region_profiling() then
-        if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else G.move_num(i2s pp, D("-16", obj_ptr)) C  (* two words offset *)
-      else C
-
     fun alloc_ap_kill_tmp01 (sma, dst_reg:reg, n, fsz, C) =
       case sma
         of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
@@ -439,9 +443,9 @@ struct
          | LS.ATTOP_LI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_kill_tmp01(dst_reg,n,fsz,pp,C))
          | LS.ATTOP_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
-                                   store_pp_prof(dst_reg,pp,C))
+                                   C)
          | LS.ATBOT_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp,C))
+                                   C)
          | LS.ATTOP_FI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_kill_tmp01(dst_reg,n,fsz,pp,C))
          | LS.ATTOP_FF(aty,pp) =>
@@ -493,9 +497,9 @@ struct
          | LS.ATTOP_LI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C))
          | LS.ATTOP_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
-                                   store_pp_prof(dst_reg,pp, C))
+                                   C)
          | LS.ATBOT_LF(aty,pp) => load_aty_ap(aty,dst_reg,fsz,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp, C))
+                                   C)
          | LS.ATTOP_FI(aty,pp) => load_aty_ap(aty,dst_reg,fsz,
                                    alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,fsz,pp,C))
          | LS.ATTOP_FF(aty,pp) =>

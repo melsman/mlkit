@@ -41,12 +41,9 @@ CHECK(ro_g1, offsetof(Ro, g1) == 16);
 # define GENERATIONS 1
 #endif
 #ifdef PROFILING
-# define PROFILE_WORDS 3
-CHECK(ro_alloc, offsetof(Ro, allocNow) == (2 * GENERATIONS + 1) * 8);
-CHECK(ro_alloc_prof, offsetof(Ro, allocProfNow) == (2 * GENERATIONS + 2) * 8);
-CHECK(ro_id, offsetof(Ro, regionId) == (2 * GENERATIONS + 3) * 8);
-WORDS(FiniteRegionDesc, 2);
-WORDS(ObjectDesc, 2);
+# define PROFILE_WORDS 0
+WORDS(ObjectDesc, 1);
+CHECK(object_size_capacity, ALLOCATABLE_WORDS_IN_REGION_PAGE < OBJECT_DESC_SIZE_MASK);
 #else
 # define PROFILE_WORDS 0
 #endif
@@ -58,7 +55,8 @@ CHECK(ro_mutex, offsetof(Ro, mutex) == (2 * GENERATIONS + 2 + PROFILE_WORDS) * 8
 #else
 # define PAR_WORDS 0
 #endif
-CHECK(ro_size, sizeof(Ro) == (2 * GENERATIONS + 2 + PROFILE_WORDS + PAR_WORDS) * 8);
+CHECK(ro_allocation_profile, offsetof(Ro, allocation_profile) == (2 * GENERATIONS + 2 + PROFILE_WORDS + PAR_WORDS) * 8);
+CHECK(ro_size, sizeof(Ro) == (2 * GENERATIONS + 3 + PROFILE_WORDS + PAR_WORDS) * 8);
 CHECK(context_top, offsetof(context, topregion) == 0);
 CHECK(context_exception, offsetof(context, exnptr) == 8);
 CHECK(context_uncaught, offsetof(context, uncaught_exnname) == 16);

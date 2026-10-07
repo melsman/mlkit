@@ -27,7 +27,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val op ## = OS.Path.concat infix ##
 
-    val region_profiling = Flags.is_on0 "region_profiling"
+    val region_profiling = fn () => !RegionProfiling.enabled
 
     val print_export_bases =
         Flags.add_bool_entry
@@ -451,7 +451,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun lnkFileConsistent {lnkFile} =
         let val s = readFile lnkFile
             val mc = Pickle.unpickle ModCode.pu s
-        in true
+            val files = ModCode.target_files (ModCode.dirMod (OS.Path.dir lnkFile) mc)
+        in not (!RegionProfiling.enabled) orelse List.all IRLocations.consistent files
         end handle _ => false
 
     fun writeBasisJs toJsString punit ofile B =

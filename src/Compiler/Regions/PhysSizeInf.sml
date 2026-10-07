@@ -899,6 +899,34 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
     fun layout_pgm (PGM{expression,...}) = layout_trip expression
 
+    (* Keep marks on complete allocation specifiers; dummy parameter points
+     * are printed but do not receive a location-table entry. *)
+    fun layout_at_with_location at =
+      let
+        val (keyword,(place,point)) =
+          case at of AtInf.ATTOP p => ("attop",p)
+                   | AtInf.ATBOT p => ("atbot",p)
+                   | AtInf.SAT p => ("sat",p)
+        val text = keyword ^ " " ^ PP.flatten1 (E.layout_effect place)
+      in SOME (if point < 0 then PP.LEAF text else PP.MARKED_LEAF (point,text))
+      end
+
+    fun layout_pgm_with_locations (PGM {expression,...}) =
+      let
+        val settings = map (fn name =>
+          let val flag = Flags.lookup_flag_entry name
+          in (flag,!flag)
+          end) ["print_regions","print_control_abbrev_layout"]
+        fun restore () = List.app (fn (flag,value) => flag := value) settings
+        fun layout () =
+          (Flags.turn_on "print_regions";
+           Flags.turn_on "print_control_abbrev_layout";
+           layoutLambdaTripWithLocations layout_at_with_location layout_at_with_location
+             (SOME o layout_placeXphsize) layout_placeXphsize_smart
+             (fn (e,_) => Option.isSome (E.getRegVar e)) layout_unit expression)
+      in (layout () before restore ()) handle exn => (restore (); raise exn)
+      end
+
     val pu_phsize =
         let fun toInt INF = 0
               | toInt (WORDS _) = 1
