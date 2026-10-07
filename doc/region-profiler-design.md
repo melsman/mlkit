@@ -186,7 +186,7 @@ Runtime options use the existing single-dash, underscore convention, with an
 | --- | --- | --- |
 | `-rp` | Off | Enable a session before program initialization and start sampling. |
 | `-rp_file PATH` | `profile.rp` | Choose the output file. |
-| `-rp_interval DURATION` | `10ms` | Request periodic wall-clock samples; accept explicit `ms` and `s` units. |
+| `-rp_interval DURATION` | `10ms` | Request periodic wall-clock samples; accept explicit `us`, `ms`, and `s` units. |
 | `-rp_gc_samples` | Off | Add before/after-GC samples; requires a GC runtime. |
 | `-rp_paused` | Off | Enable the session but start with automatic sampling paused. |
 | `-rp_report` | Off | Print profiling statistics to stderr at normal exit. |

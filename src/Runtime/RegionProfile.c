@@ -349,7 +349,7 @@ int mlkit_rp_parse_interval(const char *s) {
   errno = 0;
   char *end;
   unsigned long long n = strtoull(s, &end, 10);
-  uint64_t scale = !strcmp(end, "ms") ? 1000 : !strcmp(end, "s") ? 1000000 : 0;
+  uint64_t scale = !strcmp(end, "us") ? 1 : !strcmp(end, "ms") ? 1000 : !strcmp(end, "s") ? 1000000 : 0;
   if (errno || !scale || n > (uint64_t)INT_MAX*1000000/scale) return 0;
   mlkit_rp_interval_us = n*scale;
   return 1;

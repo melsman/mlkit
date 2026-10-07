@@ -997,6 +997,9 @@ Next, run the executable with a runtime argument block:
 This requests snapshots every millisecond, captured at safe points. A larger
 interval reduces sampling overhead. Without runtime \lstinline{-rp}, recording
 is disabled. The default interval when recording is 10 milliseconds.
+Intervals accept integer values with \texttt{us}, \texttt{ms}, or \texttt{s}
+units; for example, \lstinline{-rp_interval 400us} requests snapshots every
+400 microseconds. Actual capture times depend on timer delivery and safe points.
 
 %--------------------------------------------------
 \chapter{Making Regions Concrete}

@@ -33,7 +33,7 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | `-rp` | Enable a process-wide session. Otherwise the API and runtime bookkeeping are disabled. |
 | `-rp_file PATH` | Output path; defaults to `profile.rp`. |
 | `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in rpview. |
-| `-rp_interval Nms`, `Ns`, or `0` | Integral wall-clock interval; defaults to `10ms`. Zero disables automatic periodic snapshots. |
+| `-rp_interval Nus`, `Nms`, `Ns`, or `0` | Integral wall-clock interval (e.g. `400us`); defaults to `10ms`. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |

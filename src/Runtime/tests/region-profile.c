@@ -28,6 +28,14 @@ int main(int argc, char **argv) {
   assert(!mlkit_rp_parse_interval("-1ms"));
   assert(!mlkit_rp_parse_interval("10"));
   assert(!mlkit_rp_parse_interval("999999999999999999999999s"));
+  assert(mlkit_rp_parse_interval("1us") && mlkit_rp_interval_us==1);
+  assert(mlkit_rp_parse_interval("400us") && mlkit_rp_interval_us==400);
+  assert(mlkit_rp_parse_interval("1000001us") && mlkit_rp_interval_us==1000001);
+  assert(!mlkit_rp_parse_interval("400.5us"));
+  assert(!mlkit_rp_parse_interval("-1us"));
+  assert(!mlkit_rp_parse_interval("400usjunk"));
+  assert(!mlkit_rp_parse_interval("2147483647000001us"));
+  assert(mlkit_rp_parse_interval("0us") && mlkit_rp_interval_us==0);
   assert(mlkit_rp_parse_interval("10ms") && mlkit_rp_interval_us==10000);
   assert(mlkit_rp_parse_interval("2s") && mlkit_rp_interval_us==2000000);
   assert(mlkit_rp_parse_interval("0"));

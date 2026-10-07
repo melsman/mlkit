@@ -15,10 +15,13 @@ printf '%s\n' "$OUT/periodic.sml" > "$OUT/periodic.mlb"
 "$OUT/periodic" +RTS -rp -rp_interval 1ms -rp_report -rp_file "$OUT/periodic.rp" > "$OUT/periodic.out" 2> "$OUT/periodic.report"
 grep -q 'periodic ok' "$OUT/periodic.out"
 sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/periodic.rp"
+"$OUT/periodic" +RTS -rp -rp_interval 400us -rp_file "$OUT/microseconds.rp" > "$OUT/microseconds.out"
+grep -q 'periodic ok' "$OUT/microseconds.out"
+sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/microseconds.rp"
 "$OUT/periodic" +RTS -rp -rp_paused -rp_file "$OUT/paused.rp" > /dev/null
 "$RPVIEW" "$OUT/paused.rp" --format json > "$OUT/paused.json"
 ! grep -q '"type":"sample_begin"' "$OUT/paused.json"
-for duration in -1 1 1.5ms 1us 999999999999999999999s; do
+for duration in -1 1 1.5ms 0.5us 1ns 999999999999999999999s; do
  if "$OUT/periodic" +RTS -rp -rp_interval "$duration" > "$OUT/invalid.out" 2>&1; then
   echo "Accepted invalid duration: $duration" >&2; exit 1
  fi

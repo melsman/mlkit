@@ -41,7 +41,7 @@ printUsage(void)
   fprintf(stderr,"Usage: %s [application arguments] [+RTS runtime options -RTS]\n", commandline_argv[0]);
 
 #ifdef PROFILING
-  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nms|Ns|0]");
+  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nus|Nms|Ns|0]");
 #ifdef ENABLE_GC
   fprintf(stderr," [-rp_gc_samples]");
 #endif
@@ -140,7 +140,7 @@ parseCmdLineArgs(int argc, char *argv[])
     if (strcmp(argv[0], "-rp_report") == 0) { mlkit_rp_report = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_interval") == 0) {
       if (!mlkit_rp_parse_interval(rtsValue(&argc,&argv))) {
-        fprintf(stderr, "-rp_interval requires an integer duration Nms, Ns, or 0\n"); exit(EXIT_FAILURE);
+        fprintf(stderr, "-rp_interval requires an integer duration Nus, Nms, Ns, or 0\n"); exit(EXIT_FAILURE);
       }
       rp_options = 1;
       match = 1;
