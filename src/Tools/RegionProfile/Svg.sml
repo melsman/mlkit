@@ -30,6 +30,26 @@ struct
         val () = if siteMode andalso (number metadata "version" <> 10 orelse selector = "") then
                    raise Fail "--sites requires a version-10 profile recorded with -rp_region all or UNIT:BINDING" else ()
         val regionKey = key
+        val requestedRegion = opt "region" ""
+        val recordedRegions = if requestedRegion = "" then [] else List.concat(map (fn s => list s "regions") samples)
+        val bindings = foldl (fn (r,index) => Binarymap.insert(index,regionKey r,r))
+                             (Binarymap.mkDict String.compare) recordedRegions
+        val chosenRegion = if requestedRegion = "" then NONE else
+            let val n = valOf(IntInf.fromString(String.extract(requestedRegion,1,NONE)))
+            in case List.filter (fn (_,r) => number r "binding" = n) (Binarymap.listItems bindings) of
+                   [(_,r)] => SOME r
+                 | [] => raise Fail ("region not present in profile: " ^ requestedRegion)
+                 | _ => raise Fail ("region number is ambiguous in this profile: " ^ requestedRegion)
+            end
+        val chosenDefinitions = foldl (fn (r,index) =>
+            if case chosenRegion of SOME chosen => regionKey r = regionKey chosen | NONE => false
+            then Binarymap.insert(index,number r "definition",()) else index)
+            (Binarymap.mkDict IntInf.compare) recordedRegions
+        fun chosenAllocation r = not(Option.isSome chosenRegion) orelse
+                                 Option.isSome(Binarymap.peek(chosenDefinitions,number r "region_definition"))
+        val () = if Option.isSome chosenRegion andalso
+                    not(List.exists chosenAllocation (list metadata "occupancy_summaries"))
+                 then raise Fail ("site occupancy was not recorded for region " ^ requestedRegion) else ()
         fun key r = if siteMode then encode false (Arr [get r "unit",Str(strField r "site")]) else regionKey r
         val allocations = list metadata "allocations"
         (* Each site's values revisit every sample. Index once instead of
@@ -46,10 +66,10 @@ struct
         val scope = opt "scope" "all"
         val limit = valOf(Int.fromString(opt "limit" "9"))
         val compact = flag "legend-right" true
-        fun selected r = case String.fields (fn c => c = #":") scope of
+        fun selected r = (not siteMode orelse chosenAllocation r) andalso (case String.fields (fn c => c = #":") scope of
                             ["all"] => true
                           | [field,value] => (case find r field of NONE => value = "-1" | _ => strField r field = value)
-                          | _ => false
+                          | _ => false)
         fun bytes r = if siteMode then number r "bytes" else if metric = "total" then number r "page_footprint" + number r "large_bytes" + number r "finite_bytes"
                       else if metric = "stack" then number r "finite_bytes"
                       else if metric = "pages" then number r "page_footprint" + number r "unused_tail"
@@ -158,6 +178,7 @@ struct
         fun memory n = fmt(real n / real factor) ^ " " ^ unit
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
+        val selector = case chosenRegion of SOME r => strField r "unit" ^ ":" ^ strField r "binding" | NONE => selector
         val regionId = List.last (String.fields (fn c => c = #":") selector)
         val caption = opt "caption" ((if siteMode then (if selector = "all" then "Site contributions across all regions in " else "Site contributions for r" ^ regionId ^ " in ") else "Region profile for ") ^ main ^ " (GC " ^ gc ^ ")")
         val metricName = if siteMode then "Object payload (site occupancy)" else case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"

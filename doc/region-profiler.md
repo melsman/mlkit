@@ -492,4 +492,6 @@ See [Selected-region site occupancy](allocation-profiler.md) for the unified
 histograms, packed descriptors, and IR navigation. All new profiles use version 10.
 
 For site contributions within the recorded selected region, use
-`rpview sites.rp --sites -o sites.svg`; see [site occupancy](allocation-profiler.md).
+`rpview sites.rp --sites -o sites.svg`. For an all-regions recording, select one
+region with `rpview sites.rp --region r163 -o r163-sites.svg`;
+see [site occupancy](allocation-profiler.md).

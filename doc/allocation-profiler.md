@@ -72,7 +72,8 @@ With `-rp_region all`, **Site occupancy for** selects a recorded region binding
 or **All regions**. The selection controls both the site graph and the allocation
 table; choosing one binding also enables its region slice. The aggregate counts
 each recorded object once, even when the same site allocates into several regions.
-`--sites` SVG output for an all-regions profile aggregates sites across all regions;
+`--region r163` restricts SVG site contributions to region `r163`.
+Without `--region`, SVG output aggregates sites across all recorded regions;
 the HTML **Download SVG** exports the current region selection.
 
 All-region recording uses the same compiled object descriptors and allocation
@@ -100,10 +101,16 @@ For a standalone stacked SVG of site contributions over time:
 
 ```sh
 rpview sites.rp --sites -o region-sites.svg
+rpview all-sites.rp --region r163 -o r163-sites.svg
 rpview sites.rp --sites --regions 0 --scope thread:0 -o thread-sites.svg
 ```
 
-`--sites` uses the region selected when recording with `-rp_region`, or all
+`--region rN` selects a recorded binding by its region number and implies
+`--sites`; there is no need to supply both options. Without an output path or
+format, it writes `profile.svg`. Unknown or ambiguous region numbers are rejected. Empty recorded
+regions produce an empty graph. The filter combines with `--scope`.
+
+Without `--region`, `--sites` uses the region selected when recording with `-rp_region`, or all
 regions when recorded with `-rp_region all`. Each band
 shows one site's payload occupancy at each snapshot, summed across selected
 region instances. `--regions N` limits the largest site bands (default nine);

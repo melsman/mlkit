@@ -75,12 +75,27 @@ Requires SVG output and a recording made with
 .B \-rp_region
 set to a binding or
 .BR all .
-With all-region recordings, contributions are combined across regions.
+With all-region recordings, contributions are combined across regions unless
+.B \-\-region
+is specified.
 Profiling descriptors, page headers, unused space and stack storage
 are excluded.
 Do not combine this option with a metric other than
 .BR total .
 HTML reports expose recorded site occupancy without this option.
+.TP
+.BI "\-\-region " rN
+Show site contributions only for the recorded region numbered N.
+For example,
+.BR "\-\-region r163" .
+Implies
+.BR \-\-sites ;
+there is no need to specify both options. Without an output path or format,
+writes
+.BR profile.svg .
+Unknown or ambiguous numbers are rejected. Empty recorded regions produce
+an empty graph. May be combined with
+.BR \-\-scope .
 .TP
 .BI "\-\-regions " n
 Show the largest

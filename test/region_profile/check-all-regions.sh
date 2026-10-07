@@ -19,6 +19,7 @@ printf '%s\n' main.sml > "$OUT/main.mlb"
 "$RPVIEW" "$OUT/all.rp" --sites -o "$OUT/all.svg"
 grep -q 'Site contributions across all regions' "$OUT/all.svg"
 node "$ROOT/test/region_profile/all-regions-assertions.js" "$OUT/all.json"
+node "$ROOT/test/region_profile/region-svg-assertions.js" "$RPVIEW" "$OUT"
 {
  cat "$ROOT/test/region_profile/graph-prelude.js"
  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/all.html" | sed '1d;$d'
