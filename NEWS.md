@@ -1,5 +1,19 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.24 is released
+
+* mael 2026-10-07: Add new efficient region profiler with support for
+  interactive viewing through rpview, which replaces rp2ps (the old region
+  profiler is retired). The program rpview may also be used as a command-line
+  tool. PR #238, PR #240
+
+* mael 2026-10-07: Runtime flags to programs compiled with GC and profiling can
+  now be passed using the +RTS ... -RTS syntax (similarly as for GHC); fixes
+  issue #139.
+
+* mael 2026-10-07: ReML now supports explicit storage mode annotations (PR
+  #236).
+
 ### MLKit version 4.7.23 is released
 
 * mael 2026-09-24: Arm64 Native backend (PR #224, PR #227).

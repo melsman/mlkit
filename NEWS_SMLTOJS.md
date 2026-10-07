@@ -1,5 +1,10 @@
 ## SMLtoJs NEWS
 
+### SMLtoJs version 4.7.24 is released
+
+* mael 2026-10-07: The [SMLtoJs online IDE](https://diku-dk.github.io/sml-ide/)
+  now loads must faster due to bundling of the used Dojo packages (PR #229).
+
 * mael 2026-01-11: Fix problem with -jslibs not working with mlb-files (issue
   #172).
 
