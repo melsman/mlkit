@@ -19,7 +19,12 @@ val box = ref pairs
 val _ = print (Int.toString (length (!box)) ^ "\n")
 SML
 cd "$OUT"
-"$MLKIT" -no_gc -rp -Pcee -Pcee_locations -Ppp -Pole -log_to_file -o program main.sml > build.log 2>&1
+"$MLKIT" -no_gc -rp --no_delete_target_files -debug_linking -Pcee -Pcee_locations -Ppp -Pole -log_to_file -o program main.sml > build.log 2>&1
+# Profiling metadata uses the assembler, never a C compile through -ldexe.
+[ -s program.ir-map.s ]
+[ ! -e program.ir-map.c ]
+grep -q 'mlkit_rp_ir_objects:' program.ir-map.s
+! grep -q 'linker.*input unused' build.log
 ./program > result
 [ "$(cat result)" = 20 ]
 set -- MLB/*/main.sml.o.ir

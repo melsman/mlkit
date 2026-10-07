@@ -144,7 +144,7 @@ struct
     end handle _ => false
   (* The linker sees the actual object paths, including installed/cached units.
    * Record them here instead of trying to reconstruct them from source names. *)
-  fun linkMap files =
+  fun linkMap {darwin} files =
     let
       fun entry object =
         let val input = TextIO.openIn (object ^ ".ir")
@@ -158,9 +158,25 @@ struct
               else NONE
           | _ => NONE
         end handle IO.Io _ => NONE | OS.SysErr _ => NONE
-      fun quoted s = "\"" ^ String.toCString s ^ "\""
-      fun row (identity,path) = "{" ^ quoted identity ^ "," ^ quoted path ^ "},\n"
-    in "const char *const volatile mlkit_rp_ir_objects[][2] = {\n" ^
-       String.concat (map row (List.mapPartial entry files)) ^ "{0,0}};\n"
+      val entries = List.mapPartial entry files
+      val symbol = (if darwin then "_" else "") ^ "mlkit_rp_ir_objects"
+      fun label n suffix = (if darwin then "L" else ".L") ^ "rp_ir_" ^ Int.toString n ^ suffix
+      (* Numeric bytes preserve arbitrary path bytes without C/assembler escape
+       * differences (including quotes, backslashes and UTF-8). *)
+      fun bytes s = "\t.byte " ^ String.concatWith "," (map (Int.toString o Char.ord) (String.explode s) @ ["0"]) ^ "\n"
+      fun rows [] _ = "\t.quad 0,0\n"
+        | rows (_::rest) n = "\t.quad " ^ label n "_id" ^ "," ^ label n "_path" ^ "\n" ^ rows rest (n+1)
+      fun strings [] _ = ""
+        | strings ((identity,path)::rest) n =
+            label n "_id" ^ ":\n" ^ bytes identity ^
+            label n "_path" ^ ":\n" ^ bytes path ^ strings rest (n+1)
+    in (if darwin then "\t.section __DATA,__const\n" else "\t.section .data.rel.ro,\"aw\",@progbits\n") ^
+       "\t.p2align 3\n\t.globl " ^ symbol ^ "\n" ^
+       (if darwin then "" else "\t.type " ^ symbol ^ ",@object\n") ^
+       symbol ^ ":\n" ^ rows entries 0 ^
+       (if darwin then "\t.section __TEXT,__const\n"
+        else "\t.size " ^ symbol ^ ",.-" ^ symbol ^ "\n\t.section .rodata\n") ^
+       strings entries 0 ^
+       (if darwin then "" else "\t.section .note.GNU-stack,\"\",@progbits\n")
     end
 end

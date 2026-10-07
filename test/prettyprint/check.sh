@@ -10,3 +10,5 @@ trap 'rm -rf "$OUT"' EXIT HUP INT TERM
 "$OUT/locations"
 "${MLKIT:-$ROOT/bin/mlkit}" -mlb-subdir PrettyPrintTests -gc -o "$OUT/ir-report" "$ROOT/test/prettyprint/ir-report.mlb"
 "$OUT/ir-report"
+
+sh "$ROOT/test/prettyprint/check-link-map.sh"
