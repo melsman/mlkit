@@ -26,7 +26,7 @@ check '[-help]
 [two words]' "$OUT/plain" -help -rp '' 'two words'
 check '[before]
 [middle]
-[after]' "$OUT/plain" before +RTS -command_pipe first -RTS middle +RTS -reply_pipe second -RTS after
+[after]' "$OUT/profile" before +RTS -rp -rp_interval 0 -RTS middle +RTS -rp_file "$OUT/multiple.rp" -RTS after
 check '[--]
 [+RTS]
 [-help]' "$OUT/plain" -- +RTS -help
@@ -34,7 +34,7 @@ check '[+RTS]
 [-help]' "$OUT/plain" +RTS --RTS +RTS -help
 check '[--]
 [-rp]' "$OUT/plain" +RTS -- -rp
-check '[one]' "$OUT/plain" one +RTS -repl_logfile log
+check '[one]' "$OUT/profile" one +RTS -rp -rp_interval 0 -rp_file "$OUT/implicit-end.rp"
 check '[input]
 [-rp]' "$OUT/profile" input +RTS -rp -rp_interval 0 -rp_file "$OUT/test.rp" -RTS -rp
 [ -s "$OUT/test.rp" ]
@@ -54,3 +54,44 @@ if "$OUT/profile" +RTS -rp_file > "$OUT/error" 2>&1; then exit 1; fi
 if "$OUT/plain" +RTS -rp > "$OUT/error" 2>&1; then exit 1; fi
 grep -q 'compiled with -rp' "$OUT/error"
 echo 'Runtime argument blocks passed'
+
+# REPL-only options are neither advertised nor accepted by ordinary programs.
+for executable in plain profile; do
+  for option in -command_pipe -reply_pipe -repl_logfile; do
+    ! grep -q -- "$option" "$OUT/$executable.help"
+    if "$OUT/$executable" +RTS "$option" unused > "$OUT/error" 2>&1; then exit 1; fi
+    grep -q 'unknown runtime option' "$OUT/error"
+  done
+  if nm "$OUT/$executable" | grep -q 'repl_interp'; then
+    echo 'Ordinary executable linked the REPL interpreter' >&2; exit 1
+  fi
+done
+check '[-command_pipe]
+[application-path]' "$OUT/plain" -command_pipe application-path
+# Ordinary programs still terminate on an uncaught exception.
+printf '%s\n' 'val () = raise Fail "ordinary failure"' > "$OUT/failure.sml"
+"$MLKIT" -no_gc -o "$OUT/failure" "$OUT/failure.sml" > "$OUT/failure.build" 2>&1
+if "$OUT/failure" > "$OUT/failure.out" 2>&1; then exit 1; fi
+grep -q 'uncaught exception' "$OUT/failure.out"
+# A real REPL must keep working after an uncaught exception.
+cat > "$OUT/input" <<'SML'
+(raise Fail "expected REPL failure") : unit;
+print "REPL recovered\n";
+:quit;
+SML
+(cd "$OUT" && "$MLKIT" -no_gc < input > repl.out 2>&1)
+grep -q 'REPL recovered' "$OUT/repl.out"
+grep -q 'uncaught exception' "$OUT/repl.out"
+set -- "$OUT"/MLB/*/runtime.exe
+[ "$#" -eq 1 ]
+(cd "$OUT" && "$1" +RTS -help) > "$OUT/repl.help" 2>&1
+for option in -command_pipe -reply_pipe -repl_logfile; do
+  grep -q -- "$option PATH" "$OUT/repl.help"
+  if (cd "$OUT" && "$1" +RTS "$option") > "$OUT/error" 2>&1; then exit 1; fi
+  grep -q 'Missing' "$OUT/error"
+  for value in '' +RTS -RTS --RTS --; do
+    if (cd "$OUT" && "$1" +RTS "$option" "$value") > "$OUT/error" 2>&1; then exit 1; fi
+    grep -q 'Missing' "$OUT/error"
+  done
+done
+echo 'REPL options are confined to REPL executables'

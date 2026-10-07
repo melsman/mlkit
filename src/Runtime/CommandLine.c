@@ -18,9 +18,10 @@ int commandline_argc;     // Kam-backend (Interp.c) needs access to update these
 char **commandline_argv;  // when discharging object file arguments.
 // static char exeName[100];
 
-char * command_pipe = NULL;  // Named command pipe for REPL
-char * reply_pipe = NULL;    // Named reply pipe for REPL
-char * repl_logfile = NULL;  // Name of REPL log file
+const RuntimeOptionExtension *runtime_options = NULL;
+int mlkit_repl_mode = 0;
+/* The REPL module supplies the override; normal executables need no Repl.o. */
+__attribute__((weak)) void mlkit_init_runtime_options(void) {}
 
 /*----------------------------------------*
  * Flags recognized by the runtime system *
@@ -51,9 +52,6 @@ printUsage(void)
   fprintf(stderr,"      -RTS ends a runtime block; --RTS ends runtime parsing.\n");
   fprintf(stderr,"      -- ends runtime parsing and is passed to the application.\n");
   fprintf(stderr,"      [-help, -h] \n");
-  fprintf(stderr,"      [-command_pipe n] \n");
-  fprintf(stderr,"      [-reply_pipe n] \n");
-  fprintf(stderr,"      [-repl_logfile n] \n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
 #ifdef ENABLE_GEN_GC
@@ -65,9 +63,6 @@ printUsage(void)
 #endif
   fprintf(stderr,"  where\n");
   fprintf(stderr,"      -help, -h                Print this help screen and exit.\n\n");
-  fprintf(stderr,"      -command_pipe n          Named pipe for REPL commands.\n\n");
-  fprintf(stderr,"      -reply_pipe n            Named pipe for REPL replies.\n\n");
-  fprintf(stderr,"      -repl_logfile n          Name of REPL log file.\n\n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      -disable_gc              Disable garbage collector.\n");
   fprintf(stderr,"      -verbose_gc              Show info after each garbage collection.\n");
@@ -82,6 +77,7 @@ printUsage(void)
   fprintf(stderr,"      -p n                     Number of execution streams.\n");
   fprintf(stderr,"      -verbose_par, -vp        Show info about parallel streams.\n\n");
 #endif
+  if (runtime_options) runtime_options->usage();
   exit(0);
 }
 
@@ -90,7 +86,7 @@ static int rtsDelimiter(const char *arg) {
   return !strcmp(arg,"+RTS") || !strcmp(arg,"-RTS") ||
          !strcmp(arg,"--RTS") || !strcmp(arg,"--");
 }
-static char *rtsValue(int *argc, char ***argv) {
+char *rtsValue(int *argc, char ***argv) {
   if (*argc <= 1 || rtsDelimiter((*argv)[1])) {
     fprintf(stderr,"Missing argument to runtime option %s\n", (*argv)[0]);
     exit(EXIT_FAILURE);
@@ -102,6 +98,7 @@ static char *rtsValue(int *argc, char ***argv) {
 void
 parseCmdLineArgs(int argc, char *argv[])
 {
+  mlkit_init_runtime_options();
   long match;
   int in_rts = 0, finished = 0;
 #ifdef PROFILING
@@ -168,35 +165,7 @@ parseCmdLineArgs(int argc, char *argv[])
       printUsage();  /* exits */
     }
 
-    if (strcmp((char *)argv[0],"-command_pipe")==0) {
-      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
-	command_pipe = (char *)argv[0];
-      } else {
-	fprintf(stderr,"Missing argument to -command_pipe switch.\n");
-	exit(EXIT_FAILURE);
-      }
-      continue;
-    }
-
-    if (strcmp((char *)argv[0],"-reply_pipe")==0) {
-      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
-	reply_pipe = (char *)argv[0];
-      } else {
-	fprintf(stderr,"Missing argument to -reply_pipe switch.\n");
-	exit(EXIT_FAILURE);
-      }
-      continue;
-    }
-
-    if (strcmp((char *)argv[0],"-repl_logfile")==0) {
-      if (rtsValue(&argc,&argv)[0]) { /* Is there an argument? */
-	repl_logfile = (char *)argv[0];
-      } else {
-	fprintf(stderr,"Missing argument to -repl_logfile switch.\n");
-	exit(EXIT_FAILURE);
-      }
-      continue;
-    }
+    if (runtime_options && runtime_options->parse(&argc,&argv)) continue;
 
 #ifdef ENABLE_GC
     if (strcmp((char *)argv[0],"-disable_gc")==0) {

@@ -204,7 +204,7 @@ uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
   fflush(stderr);
 
 
-  if (!command_pipe) {
+  if (!mlkit_repl_mode) {
     exit (-1);            // exit unless it is the REPL.
   }
   uncaught_exn_raised = 1;  // for REPL - see Repl.c
