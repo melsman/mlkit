@@ -336,3 +336,8 @@ and isolated peephole, scheduling and frame/preservation experiments.
 The [typed-instruction refactor](arm64-typed-instructions.md) replaces string
 mnemonics and operands with datatypes and records a nucleic compilation-time
 comparison.
+
+The native ARM64 compiler enables garbage collection by default, matching X64.
+Use `-no_gc` to compile without GC. Default and explicit `-gc` executables expose
+`+RTS -disable_gc -RTS` and the other GC runtime options; `-no_gc` executables
+omit them. This also applies to builds with `-rp`.

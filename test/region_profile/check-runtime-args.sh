@@ -11,6 +11,28 @@ SML
 printf '%s\n' '$(SML_LIB)/basis/basis.mlb' main.sml > "$OUT/main.mlb"
 "$MLKIT" -no_gc -o "$OUT/plain" "$OUT/main.mlb" > "$OUT/plain.build" 2>&1
 "$MLKIT" -no_gc -rp -o "$OUT/profile" "$OUT/main.mlb" > "$OUT/profile.build" 2>&1
+# The default native compiler enables GC, just like explicit -gc. -no_gc
+# must select a runtime that neither advertises nor accepts GC options.
+for mode in default explicit disabled; do
+  case "$mode" in default) gc_flags= ;; explicit) gc_flags=-gc ;; disabled) gc_flags=-no_gc ;; esac
+  for profile in plain profile; do
+    profile_flags=
+    [ "$profile" != profile ] || profile_flags=-rp
+    exe="$OUT/$mode-$profile"
+    "$MLKIT" $gc_flags $profile_flags -o "$exe" "$OUT/main.mlb" > "$exe.build" 2>&1
+    "$exe" +RTS -help > "$exe.help" 2>&1
+    if [ "$mode" = disabled ]; then
+      ! grep -q -- '-disable_gc' "$exe.help"
+      if "$exe" +RTS -disable_gc -RTS > "$exe.out" 2>&1; then
+        echo 'Non-GC runtime accepted -disable_gc' >&2; exit 1
+      fi
+    else
+      grep -q -- '-disable_gc' "$exe.help"
+      "$exe" +RTS -disable_gc -RTS test > "$exe.out"
+      grep -qx '\[test\]' "$exe.out"
+    fi
+  done
+done
 check () {
   expected=$1; shift
   printf '%s\n' "$expected" > "$OUT/expected"
