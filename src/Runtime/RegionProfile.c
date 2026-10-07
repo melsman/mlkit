@@ -662,7 +662,9 @@ static void write_record(const Record *r) {
 /* Validate all continuation chains before recording any bytes. A callback is
  * deliberately not a quiescent foreign boundary; timer requests remain pending. */
 static int complete_chain(uintptr_t *base, const uintptr_t *map) {
-  for (size_t frames = 0; frames < 1000000; frames++) {
+  /* Strictly increasing frame bases reject cycles without imposing a limit
+   * on legitimate recursion depth. */
+  for (;;) {
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing or incompatible ML frame metadata");
     if (map[-2] == UINTPTR_MAX) return 1;
     if (map[-2] == UINTPTR_MAX-1) return 0;
@@ -675,7 +677,6 @@ static int complete_chain(uintptr_t *base, const uintptr_t *map) {
     if (parent <= base) fail("non-increasing ML frame chain");
     base = parent;
   }
-  fail("invalid frame chain"); return 0;
 }
 /* Built-in globals use compiler region keys in both snapshot and attribution
  * profiles. Other persistent regions (e.g. REPL regions) get distinct IDs. */
@@ -719,7 +720,8 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing or incompatible ML frame metadata");
     if (map[-2] == UINTPTR_MAX) break;
     if (map[-2] == UINTPTR_MAX-1) fail("cannot sample across a C-to-ML callback boundary");
-    if (++*frames > 1000000 || map[-4] > 1000000) fail("invalid frame metadata");
+    if (map[-4] > 1000000) fail("invalid frame metadata");
+    ++*frames;
     const char *unit = ((String)((uintptr_t)(map-5)+map[-5]))->data;
     const char *source = ((String)((uintptr_t)(map-6)+map[-6]))->data;
     for (uintptr_t i = 0; i < map[-4]; i++) {

@@ -8,6 +8,7 @@ RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp.XXXXXX")
 echo "Region profiler test artifacts: $OUT"
 export SML_LIB=${SML_LIB:-$ROOT}
+CC="$CC" RPVIEW="$RPVIEW" sh "$ROOT/test/region_profile/check-deep.sh"
 # CC may include a target flag, e.g. 'gcc -arch x86_64'.
 $CC -O2 -std=gnu99 -Wall -Wextra -Werror -DPROFILING -iquote "$ROOT/src/Runtime" \
   "$ROOT/src/Runtime/RegionProfile.c" "$ROOT/src/Runtime/tests/region-profile.c" -o "$OUT/runtime"
