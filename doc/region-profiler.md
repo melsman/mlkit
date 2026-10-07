@@ -241,17 +241,15 @@ shows the active stack, excluding region pages and large objects. The runtime
 report's `sampled_peak_bytes` remains a region-only peak; the default graph's
 sampled maximum includes stack.
 
-Only **Legend on the right** is checked by default; base names, kind, type and
+Only **Legend on the right** is checked by default; base names, type and
 peak capacity start hidden. **Show base names** includes the
 source filename in region labels, such as `life.sml` (global regions use
 `global`, and interactive code uses `REPL #N`). Full source paths and internal
 unit identifiers appear in hover details. The internal unit identifier remains
 the aggregation key, so matching filenames do not merge distinct regions.
-**Show region kind** adds the recorded kind. New profiles contain only infinite
-regions; finite storage appears in the stack. Infinite regions use pages and may
-hold large objects. **Show region type** adds the compiler's
-inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
-from finite/infinite kind. The `region_type` field in binding definitions carries this information;
+Profiles contain only infinite regions; finite storage appears in the stack.
+Infinite regions use pages and may hold large objects. **Show region type** adds the compiler's
+inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type. The `region_type` field in binding definitions carries this information;
 an unavailable inferred type is displayed as `type unavailable`.
 These label options apply to the legend,
 band tooltips and region-grouped table without merging distinct bindings.
@@ -314,7 +312,7 @@ legend width. Open the SVG in a vector editor or convert it to PDF when needed.
 rpview profile.rp -o profile.svg
 rpview profile.rp -o pages.svg --metric pages --regions 9 --show-peak
 rpview profile.rp -o thread.svg --scope thread:2 --caption 'Thread 2 allocations'
-rpview profile.rp -o profile.html --show-base --show-kind --show-type
+rpview profile.rp -o profile.html --show-base --show-type
 ```
 
 The output extension selects SVG or HTML; `--format svg|html` overrides it.
@@ -322,7 +320,7 @@ Without an output path, the default is `profile.html` (or `profile.svg` with
 `--format svg`). Both outputs accept `--caption TEXT`, `--regions N` (0 = all),
 `--metric total|stack|pages|page_footprint|large_bytes|finite_bytes|descriptor_bytes`,
 and `--scope all|thread:N|worker:N|cpu:N`. Worker/CPU identity `-1` selects
-unavailable identities. `--show-base`, `--show-kind`, `--show-type`, and
+unavailable identities. `--show-base`, `--show-type`, and
 `--show-peak` enable the corresponding settings; `--hide-*` disables them.
 `--legend-right` (default) selects compact region names and a right-hand HTML
 legend; `--legend-below` selects longer names and a legend below the HTML graph.

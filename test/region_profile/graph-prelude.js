@@ -25,4 +25,4 @@ const elements=new Map();
 const document={getElementById:id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createTextNode:text=>{const n=new Element();n.textContent=text;return n;},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelectorAll:()=>[]};
 for(const [id,value] of [['metric','total'],['scope','all'],['group','aggregate'],['sample','0']])document.getElementById(id).value=value;
 document.getElementById('chart').tag='svg';document.getElementById('chart').setAttribute('viewBox','0 0 1002 668');
-for(const id of ['show-base','show-kind','show-peak'])document.getElementById(id).checked=true;
+for(const id of ['show-base','show-peak'])document.getElementById(id).checked=true;

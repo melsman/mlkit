@@ -129,9 +129,6 @@ or
 .BR \-\-show\-base " / " \-\-hide\-base
 Show or hide source base names. Default: hidden.
 .TP
-.BR \-\-show\-kind " / " \-\-hide\-kind
-Show or hide region kinds. Default: hidden.
-.TP
 .BR \-\-show\-type " / " \-\-hide\-type
 Show or hide region types. Default: hidden.
 .TP

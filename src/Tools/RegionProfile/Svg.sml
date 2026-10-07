@@ -114,8 +114,7 @@ struct
                 val unit = strField r "unit"
                 val basename = if unit = "<global>" then "global" else base source
                 fun info field fallback = case strField r field of "" => fallback | s => s
-                val details = (if flag "show-kind" false then [info "kind" "kind unavailable"] else []) @
-                              (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
+                val details = (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
             in (if compact then (if name = "" then "" else name ^ " · ") ^ "r" ^ strField r "binding"
                 else (if name = "" then "Region" else name) ^ " #" ^ strField r "binding") ^
                (if flag "show-base" false then " · " ^ basename else "") ^

@@ -27,7 +27,6 @@ struct
                      \                          Use -1 for unavailable worker/CPU identity\n\
                      \  --group NAME            HTML table: aggregate, region, thread, worker\n\
                      \  --show-base / --hide-base       Base names (default hidden)\n\
-                     \  --show-kind / --hide-kind       Region kind (default hidden)\n\
                      \  --show-type / --hide-type       Region type (default hidden)\n\
                      \  --show-peak / --hide-peak       Peak page capacity (default hidden)\n\
                      \  --legend-right / --legend-below HTML legend placement and compact names\n\
@@ -67,7 +66,7 @@ struct
             | options ("--legend-below"::rest) = (setting "legend-right" (ProfileJson.Bool false); options rest)
             | options ("--help"::_) = help ()
             | options (value::rest) =
-              if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","kind","type","peak"] then
+              if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","type","peak"] then
                 (setting ("show-" ^ String.extract(value,7,NONE)) (ProfileJson.Bool(String.isPrefix "--show-" value)); options rest)
               else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
               else (file := value; haveFile := true; options rest)

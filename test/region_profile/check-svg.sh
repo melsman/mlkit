@@ -63,11 +63,10 @@ for scope in thread:1 worker:0 cpu:4; do
     grep '<polygon ' "$OUT/lines" | sed 's/ points=.*//' > "$OUT/filtered"
     [ "$(grep -Fxf "$OUT/colors" "$OUT/filtered" | wc -l | tr -d ' ')" -eq 3 ]
 done
-svg --regions 1 --show-base --show-kind --show-type
+svg --regions 1 --show-base --show-type
 count 3
 contains 'Other (2 regions)'
 contains 'test.sml'
-contains 'infinite'
 contains 'pair'
 for metric in pages page_footprint large_bytes finite_bytes descriptor_bytes; do svg --metric "$metric" --regions 0; count 3; done
 svg --metric pages --show-peak
@@ -78,8 +77,8 @@ svg --metric page_footprint --show-peak --scope thread:1
 caption='Custom </script> <&> "caption" __DATA__ __META__ __OPTIONS__'
 svg --caption "$caption"
 contains '<title>Custom &lt;/script&gt; &lt;&amp;&gt; &quot;caption&quot; __DATA__ __META__ __OPTIONS__</title>'
-run --format html --caption "$caption" --regions 2 --show-base --hide-kind --show-type --show-peak --legend-below --metric pages --group region --scope thread:1
-for setting in '"limit":2' '"show-base":true' '"show-kind":false' '"show-type":true' '"show-peak":true' '"legend-right":false' '"metric":"pages"' '"group":"region"' '"scope":"thread:1"' '__OPTIONS__'; do
+run --format html --caption "$caption" --regions 2 --show-base --show-type --show-peak --legend-below --metric pages --group region --scope thread:1
+for setting in '"limit":2' '"show-base":true' '"show-type":true' '"show-peak":true' '"legend-right":false' '"metric":"pages"' '"group":"region"' '"scope":"thread:1"' '__OPTIONS__'; do
     grep '^const defaults=' "$OUT/graph.svg" | grep -Fq "$setting"
 done
 reject --regions -1
