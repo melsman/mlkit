@@ -380,6 +380,9 @@ main(int argc, char *argv[])
   Context ctx = (Context) malloc(sizeof(context));
   ctx->topregion = NULL;
   ctx->exnptr = NULL;
+#ifdef PROFILING
+  ctx->rp_entries_left = mlkit_rp_enabled ? mlkit_rp_interval_entries : 0;
+#endif
 #endif
   top_ctx = ctx;
 

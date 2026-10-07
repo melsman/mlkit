@@ -115,8 +115,8 @@ SVG export is unchanged.
 
 Region and stack maxima are observed snapshot maxima. The separate process-wide
 peak page-capacity counter is not a true maximum of live payload or ML stack.
-A possible later `-rp_every N` entry-count sampling mode is not implemented.
-Even sampling every instrumented entry would not guarantee true maxima.
+`-rp_interval Ni` samples every N compiled ML entries per thread; `1i` samples
+every entry. Even this does not guarantee true maxima between entries.
 
 ## Implementation milestones
 

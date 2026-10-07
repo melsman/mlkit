@@ -309,9 +309,10 @@ static int replOption(int *argc, char ***argv) {
   return 1;
 }
 static void replUsage(void) {
-  fprintf(stderr,"      -command_pipe PATH       Named pipe for REPL commands.\n");
-  fprintf(stderr,"      -reply_pipe PATH         Named pipe for REPL replies.\n");
-  fprintf(stderr,"      -repl_logfile PATH       REPL log file.\n");
+  fprintf(stderr,"\nREPL communication:\n");
+  fprintf(stderr,"  -command_pipe PATH       Named pipe for REPL commands.\n");
+  fprintf(stderr,"  -reply_pipe PATH         Named pipe for REPL replies.\n");
+  fprintf(stderr,"  -repl_logfile PATH         REPL log file.\n");
 }
 static const RuntimeOptionExtension repl_options = {replOption,replUsage};
 void mlkit_init_runtime_options(void) {

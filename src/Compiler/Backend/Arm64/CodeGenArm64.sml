@@ -374,16 +374,27 @@ struct
       stackInto (true,8*words) code
     end
   fun internalCallInto fsz name args = internalCallLiveInto savedRegs fsz name args
+  (* Context.rp_entries_left is at byte 24, checked in Runtime/Layout.c.
+   * Always retain the pending check for parallel snapshot rendezvous. *)
   fun rpPollInto fsz code =
     if not(sampledProfile()) then code
     else
       let
         val done = localFresh()
         val map = rpCurrentMap()
+        val pending = localFresh()
+        val sample = localFresh()
       in
-        (addressInto(NameLab "mlkit_rp_pending",X 16)
+        (instruction A.ldr (R(X 16),M(X 28,24))
+         ++ instruction A.cbz (R(X 16),L(pending))
+         ++ instruction A.sub (R(X 16),R(X 16),I(1))
+         ++ instruction A.str (R(X 16),M(X 28,24))
+         ++ instruction A.cbz (R(X 16),L(sample))
+         ++ one (Label pending)
+         ++ addressInto(NameLab "mlkit_rp_pending",X 16)
          ++ instruction A.ldr (R(W 16),M(X 16,0))
          ++ instruction A.cbz (R(W 16),L(done))
+         ++ one (Label sample)
          ++ addressInto(map,X 17)
          ++ internalCallInto fsz "mlkit_rp_poll"
               [SS.PHREG_ATY(X 28),SS.REG_F_ATY(fsz-1),SS.PHREG_ATY(X 17)]

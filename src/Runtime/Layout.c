@@ -60,6 +60,9 @@ CHECK(ro_size, sizeof(Ro) == (2 * GENERATIONS + 3 + PROFILE_WORDS + PAR_WORDS) *
 CHECK(context_top, offsetof(context, topregion) == 0);
 CHECK(context_exception, offsetof(context, exnptr) == 8);
 CHECK(context_uncaught, offsetof(context, uncaught_exnname) == 16);
+#ifdef PROFILING
+CHECK(context_rp_entries, offsetof(context, rp_entries_left) == 24);
+#endif
 WORDS(Exception, 2);
 CHECK(exception_string, offsetof(Exception, string) == 8);
 

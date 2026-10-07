@@ -38,7 +38,16 @@ int main(int argc, char **argv) {
   assert(mlkit_rp_parse_interval("0us") && mlkit_rp_interval_us==0);
   assert(mlkit_rp_parse_interval("10ms") && mlkit_rp_interval_us==10000);
   assert(mlkit_rp_parse_interval("2s") && mlkit_rp_interval_us==2000000);
-  assert(mlkit_rp_parse_interval("0"));
+  assert(mlkit_rp_parse_interval("8000i") && mlkit_rp_interval_entries==8000 && mlkit_rp_interval_us==0);
+  assert(mlkit_rp_parse_interval("1i") && mlkit_rp_interval_entries==1);
+  assert(!mlkit_rp_parse_interval("0i"));
+  assert(!mlkit_rp_parse_interval("-1i"));
+  assert(!mlkit_rp_parse_interval("1.5i"));
+  assert(!mlkit_rp_parse_interval("8000ijunk"));
+  assert(!mlkit_rp_parse_interval("18446744073709551616i"));
+  assert(mlkit_rp_parse_interval("400us") && !mlkit_rp_interval_entries);
+  assert(mlkit_rp_parse_interval("1i"));
+  assert(mlkit_rp_parse_interval("0") && !mlkit_rp_interval_entries);
   mlkit_rp_init();
   uintptr_t stack[192]={0}, map1[32], map2[32];
   Ro *r=(Ro *)(stack+8);

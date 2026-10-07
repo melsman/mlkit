@@ -126,19 +126,26 @@ struct
     in
       if pad = 0 then call else G.sub(I "8",rsp) call
     end
+  (* Context.rp_entries_left is at byte 24, checked in Runtime/Layout.c.
+   * Always retain the pending check for parallel snapshot rendezvous. *)
   fun rpPoll fsz ac code =
     if not(sampledProfile()) then code
     else
       let
         val done = new_local_lab "rp_poll_done"
         val lab = rpCurrentMap fsz ac
+        val pending = new_local_lab "rp_pending"
+        val sample = new_local_lab "rp_sample"
         val call = rpInternal fsz "mlkit_rp_poll"
                      [SS.PHREG_ATY r14,SS.REG_F_ATY(fsz-1),SS.PHREG_ATY treg1]
                      (I.lab done :: code)
       in
+        I.cmpq(I "0",D("24",r14)) :: I.je pending ::
+        I.subq(I "1",D("24",r14)) :: I.je sample ::
+        I.lab pending ::
         load_label_addr(NameLab "mlkit_rp_pending",SS.PHREG_ATY treg0,treg0,0,
           I.cmpl(I "0",D("0",treg0)) :: I.je done ::
-          load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
+          I.lab sample :: load_label_addr(lab,SS.PHREG_ATY treg1,treg1,0,call))
       end
 
   fun allocationMetadata unitName display id extra =

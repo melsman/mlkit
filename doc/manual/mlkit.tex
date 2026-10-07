@@ -1000,6 +1000,11 @@ is disabled. The default interval when recording is 10 milliseconds.
 Intervals accept integer values with \texttt{us}, \texttt{ms}, or \texttt{s}
 units; for example, \lstinline{-rp_interval 400us} requests snapshots every
 400 microseconds. Actual capture times depend on timer delivery and safe points.
+Alternatively, \lstinline{-rp_interval 8000i} samples every 8000 compiled ML
+function entries per thread, without a timer. Tail calls count; inlined calls
+and C calls do not. Timestamps remain wall-clock times. Counting continues while
+paused, but snapshots are suppressed. Use \texttt{1i} for every entry; \texttt{0i}
+is invalid, while plain \texttt{0} disables periodic snapshots.
 
 %--------------------------------------------------
 \chapter{Making Regions Concrete}

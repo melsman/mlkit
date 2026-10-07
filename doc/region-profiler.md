@@ -33,13 +33,29 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | `-rp` | Enable a process-wide session. Otherwise the API and runtime bookkeeping are disabled. |
 | `-rp_file PATH` | Output path; defaults to `profile.rp`. |
 | `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in rpview. |
-| `-rp_interval Nus`, `Nms`, `Ns`, or `0` | Integral wall-clock interval (e.g. `400us`); defaults to `10ms`. Zero disables automatic periodic snapshots. |
+| `-rp_interval Nus`, `Nms`, `Ns`, `Ni`, or `0` | Integral wall-clock interval (e.g. `400us`); defaults to `10ms`. `Ni` samples every N compiled ML function entries per thread. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
 | `-RTS` | End the runtime block; application arguments follow. |
 | `--RTS` | End all runtime parsing; discard this marker. |
 | `--` | End all runtime parsing; preserve this marker and following arguments. |
+
+### Sampling by function entries
+
+`./run +RTS -rp -rp_interval 8000i -RTS` requests a snapshot every 8000
+compiled ML function entries in each thread. `1i` samples at every entry;
+`0i` is invalid (use plain `0` to disable periodic sampling). Each thread has
+its own countdown; a parallel snapshot still includes all participating threads.
+Tail calls and optimized self-recursive loops count. Inlined calls and C calls
+are not separate entries. Counting continues while paused, but produces no
+snapshots until recording resumes. Explicit and GC snapshots remain available.
+
+This mode installs no timer or signal handler. Snapshot timestamps remain
+wall-clock times, so blocking I/O can still leave gaps in the graph. It adds a
+counter decrement to entry checks; small counts can produce substantial overhead
+and large profiles. Recompile ML code with the updated compiler to obtain the
+entry counters.
 
 Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
 `RegionProfile.start`, `pause`, `sample`, `mark`, and `flush`. Start and pause

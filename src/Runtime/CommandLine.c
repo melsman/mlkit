@@ -40,42 +40,43 @@ void
 printUsage(void)
 {
   fprintf(stderr,"Usage: %s [application arguments] [+RTS runtime options -RTS]\n", commandline_argv[0]);
-
+  fprintf(stderr,"\nRuntime options:\n");
+  fprintf(stderr,"  -help, -h                Show this help and exit.\n");
+  fprintf(stderr,"\nArgument delimiters:\n");
+  fprintf(stderr,"  +RTS                     Begin runtime options.\n");
+  fprintf(stderr,"  -RTS                     Resume application arguments.\n");
+  fprintf(stderr,"  --RTS                    End runtime parsing permanently.\n");
+  fprintf(stderr,"  --                       End runtime parsing; pass -- to the application.\n");
 #ifdef PROFILING
-  fprintf(stderr,"      [-rp [-rp_file PATH] [-rp_paused] [-rp_interval Nus|Nms|Ns|0]");
+  fprintf(stderr,"\nRegion profiling:\n");
+  fprintf(stderr,"  -rp                      Enable recording.\n");
+  fprintf(stderr,"  -rp_file PATH            Output file (default: profile.rp).\n");
+  fprintf(stderr,"  -rp_interval INTERVAL     Snapshot interval (default: 10ms):\n");
+  fprintf(stderr,"                             Nus, Nms, Ns   wall-clock duration\n");
+  fprintf(stderr,"                             Ni            every N ML entries per thread\n");
+  fprintf(stderr,"                             0             disable periodic snapshots\n");
+  fprintf(stderr,"  -rp_paused               Start with recording paused.\n");
+  fprintf(stderr,"  -rp_region REGION        Site occupancy: all or UNIT:BINDING.\n");
+  fprintf(stderr,"  -rp_build ID             Require a matching profile build identifier.\n");
 #ifdef ENABLE_GC
-  fprintf(stderr," [-rp_gc_samples]");
+  fprintf(stderr,"  -rp_gc_samples           Record snapshots before and after GC.\n");
 #endif
-  fprintf(stderr," [-rp_report]]\n");
-  fprintf(stderr,"      [-rp_region all|UNIT:BINDING [-rp_build ID]]\n");
+  fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
 #endif
-  fprintf(stderr,"      -RTS ends a runtime block; --RTS ends runtime parsing.\n");
-  fprintf(stderr,"      -- ends runtime parsing and is passed to the application.\n");
-  fprintf(stderr,"      [-help, -h] \n");
 #ifdef ENABLE_GC
-  fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
+  fprintf(stderr,"\nGarbage collection:\n");
+  fprintf(stderr,"  -disable_gc              Disable garbage collection.\n");
+  fprintf(stderr,"  -verbose_gc              Report each collection.\n");
+  fprintf(stderr,"  -report_gc               Report GC statistics at exit.\n");
+  fprintf(stderr,"  -heap_to_live_ratio N     Heap/live ratio (default: %g).\n", heap_to_live_ratio);
 #ifdef ENABLE_GEN_GC
-  fprintf(stderr,"      [-only_major_gc] \n");
-#endif // ENABLE_GEN_GC
-#endif /*ENABLE_GC*/
-#if (PARALLEL && ARGOBOTS)
-  fprintf(stderr,"      [-p n] [-verbose_par, -vp] \n");
+  fprintf(stderr,"  -only_major_gc           Use only major collections.\n");
 #endif
-  fprintf(stderr,"  where\n");
-  fprintf(stderr,"      -help, -h                Print this help screen and exit.\n\n");
-#ifdef ENABLE_GC
-  fprintf(stderr,"      -disable_gc              Disable garbage collector.\n");
-  fprintf(stderr,"      -verbose_gc              Show info after each garbage collection.\n");
-  fprintf(stderr,"      -report_gc               Show info when program terminates.\n");
-  fprintf(stderr,"      -heap_to_live_ratio d    Use heap to live ratio d (default: %f).\n", heap_to_live_ratio);
-#ifdef ENABLE_GEN_GC
-  fprintf(stderr,"      -only_major_gc           Use only major collections.\n");
-#endif // ENABLE_GEN_GC
-  fprintf(stderr, "\n");
-#endif /*ENABLE_GC*/
+#endif
 #ifdef ARGOBOTS
-  fprintf(stderr,"      -p n                     Number of execution streams.\n");
-  fprintf(stderr,"      -verbose_par, -vp        Show info about parallel streams.\n\n");
+  fprintf(stderr,"\nParallel execution:\n");
+  fprintf(stderr,"  -p N                     Number of execution streams.\n");
+  fprintf(stderr,"  -verbose_par, -vp        Report execution stream information.\n");
 #endif
   if (runtime_options) runtime_options->usage();
   exit(0);
@@ -137,7 +138,7 @@ parseCmdLineArgs(int argc, char *argv[])
     if (strcmp(argv[0], "-rp_report") == 0) { mlkit_rp_report = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_interval") == 0) {
       if (!mlkit_rp_parse_interval(rtsValue(&argc,&argv))) {
-        fprintf(stderr, "-rp_interval requires an integer duration Nus, Nms, Ns, or 0\n"); exit(EXIT_FAILURE);
+        fprintf(stderr, "-rp_interval requires Nus, Nms, Ns, positive Ni, or 0\n"); exit(EXIT_FAILURE);
       }
       rp_options = 1;
       match = 1;

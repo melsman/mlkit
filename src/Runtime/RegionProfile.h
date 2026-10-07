@@ -18,6 +18,7 @@ extern const volatile uintptr_t mlkit_rp_capable;
 extern int mlkit_rp_enabled;
 extern _Atomic int mlkit_rp_pending;
 extern uint64_t mlkit_rp_interval_us;
+extern uint64_t mlkit_rp_interval_entries;
 extern int mlkit_rp_report;
 extern int mlkit_rp_gc_samples;
 extern int mlkit_rp_gc_major;
