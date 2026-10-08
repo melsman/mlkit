@@ -218,11 +218,12 @@ needs no template files. There is no HTTP server, live polling, or network acces
 in the tool or generated page. Open the output directly in a browser and
 regenerate it to include new samples.
 
-The normal build/install includes `bin/rpview`. To build it separately with an
-existing native compiler:
+The normal build/install includes `bin/rpview`. Both the viewer and its HTML
+embedding tool use the seed compiler selected by `./configure --with-compiler`.
+To build the viewer separately:
 
 ```sh
-make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
+make rpview
 bin/rpview profile.rp --output profile.html
 ```
 
@@ -432,7 +433,7 @@ It retains logs and reports failure details, and excludes optional Argobots
 experiments, timing benchmarks, and browser-executed graph assertions.
 
 ```sh
-make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
+make rpview
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
 sh test/region_profile/check-binary.sh

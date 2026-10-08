@@ -66,7 +66,7 @@ CLEAN=rm -rf MLB *~ .\#*
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit reml
-	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit" MLKIT_FLAGS="--mlb-subdir Native"
+	$(MAKE) -C src/Tools/RegionProfile
 	$(MAKE) man_mlkit
 
 ifeq ($(DARWIN_NATIVE),1)
@@ -605,4 +605,4 @@ test:
 
 .PHONY: rpview
 rpview:
-	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit"
+	$(MAKE) -C src/Tools/RegionProfile

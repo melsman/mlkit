@@ -19,6 +19,8 @@ cat > "$OUT/seed" <<'SH'
 #!/bin/sh
 set -eu
 if [ "${1:-}" = --version ]; then echo 'test compiler'; exit; fi
+# Stand in for the generated HTML embedding tool.
+if [ "${1:-}" = viewer.html ]; then echo '(* embedded HTML *)' > "$2"; exit; fi
 printf '%s|%s|%s\n' "$0" "${SML_LIB:-unset}" "$*" >> "$BUILD_CHECK_LOG"
 while [ "$#" -gt 0 ]; do
   case "$1" in -output|-o) shift; output=$1 ;; esac
@@ -51,6 +53,12 @@ MAKE
     Darwin:mlkit) grep -q -- '-ldexe gcc -arch arm64' "$BUILD_CHECK_LOG" ;;
     Darwin:mlton) grep -q -- '-link-opt -Wl,-stack_size' "$BUILD_CHECK_LOG" ;;
   esac
+  # The viewer and its embedding helper must use the same configured seed.
+  cp "$ROOT"/src/Tools/RegionProfile/*.sml "$ROOT"/src/Tools/RegionProfile/*.mlb \
+    "$ROOT/src/Tools/RegionProfile/viewer.html" "$dir/src/Tools/RegionProfile/"
+  (cd "$dir" && SML_LIB=must-not-leak make -s rpview > rpview.log 2>&1)
+  grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output embed embed.mlb'
+  grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/rpview rpview.mlb'
   # Both seed selections use the same backend/stage chain. The architecture
   # check and strip are bypassed only because the stand-in outputs are scripts.
   for verbose in 0 1; do

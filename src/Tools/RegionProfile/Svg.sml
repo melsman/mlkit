@@ -125,8 +125,8 @@ struct
                 val printed = irName r
                 val name = if printed = "" then short else printed
                 val owners = case Binarymap.peek(functionOwners,short) of SOME owners => owners | NONE => []
-            in (if length owners > 1 then strField r "function" else name) ^ " · site " ^ strField r "site" ^
-               (if flag "show-base" false then " · " ^ base(strField r "source") else "")
+            in (if length owners > 1 then strField r "function" else name) ^ " \194\183 site " ^ strField r "site" ^
+               (if flag "show-base" false then " \194\183 " ^ base(strField r "source") else "")
             end
         fun label r = if siteMode then siteLabel r else
             let val name = strField r "name"
@@ -135,9 +135,9 @@ struct
                 val basename = if unit = "<global>" then "global" else base source
                 fun info field fallback = case strField r field of "" => fallback | s => s
                 val details = (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
-            in (if compact then (if name = "" then "" else name ^ " · ") ^ "r" ^ strField r "binding"
+            in (if compact then (if name = "" then "" else name ^ " \194\183 ") ^ "r" ^ strField r "binding"
                 else (if name = "" then "Region" else name) ^ " #" ^ strField r "binding") ^
-               (if flag "show-base" false then " · " ^ basename else "") ^
+               (if flag "show-base" false then " \194\183 " ^ basename else "") ^
                (if null details then "" else " (" ^ String.concatWith ", " details ^ ")")
             end
         fun values k =
@@ -174,7 +174,7 @@ struct
         fun memUnit factor [] = (factor,"EiB")
           | memUnit factor (u::us) = if maximum < factor*1024 orelse null us then (factor,u) else memUnit (factor*1024) us
         val (factor,unit) = memUnit 1 ["bytes","KiB","MiB","GiB","TiB","PiB","EiB"]
-        val (timeFactor,timeUnit) = if last >= 1000000000 then (1.0E9,"s") else if last >= 1000000 then (1.0E6,"ms") else if last >= 1000 then (1.0E3,"µs") else (1.0,"ns")
+        val (timeFactor,timeUnit) = if last >= 1000000000 then (1.0E9,"s") else if last >= 1000000 then (1.0E6,"ms") else if last >= 1000 then (1.0E3,"\194\181s") else (1.0,"ns")
         fun memory n = fmt(real n / real factor) ^ " " ^ unit
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
@@ -210,11 +210,11 @@ struct
             end
         fun paragraph s x y available size = foldl (fn (line,y) => (text x y size "start" line; y+size*1.4)) y (wrap size available s)
         val gcSummary = if gc = "enabled" then
-                            " · Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
+                            " \194\183 Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
                             (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")
                         else ""
         val top = paragraph caption 16.0 34.0 (canvasWidth-32.0) 26.0
-        val summary = "Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary ^ " · Samples: " ^ Int.toString(length samples) ^ " · Sampled maximum: " ^ memory peak
+        val summary = "Metric: " ^ metricName ^ " \194\183 View: " ^ scopeName ^ gcSummary ^ " \194\183 Samples: " ^ Int.toString(length samples) ^ " \194\183 Sampled maximum: " ^ memory peak
         val summarySize = Real.min(16.0,(canvasWidth-32.0)/width 1.0 summary)
         val () = text 16.0 (top+4.0) summarySize "start" summary
         val top = top+4.0+summarySize*1.4+12.0
@@ -289,7 +289,7 @@ struct
             else gcBars pending rest
         val () = gcBars NONE samples
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
-        val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
+        val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " \194\183 single snapshot" else ""))
         val () = case pagePeak of NONE => () | SOME n =>
                    (emit("<line x1=\"88\" x2=\"968\" y1=\"" ^ fmt(y n) ^ "\" y2=\"" ^ fmt(y n) ^ "\" stroke=\"#b91c1c\" stroke-width=\"2\" stroke-dasharray=\"8 4\"/>");
                     text 968.0 (top+43.0) 16.0 "end" ("Peak page capacity: " ^ memory n))
