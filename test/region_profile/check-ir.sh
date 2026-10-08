@@ -64,18 +64,19 @@ printf 'log.sml\n' > log.mlb
 "$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1
 cache=$(dirname "$ir")
 log=$cache/log.sml.log
-rm "$log"
-"$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1
-[ -s "$log" ]
-grep -q 'reading source file:.*log.sml' build.log
-"$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1
+cp "$log" saved.log
+cksum "$cache/log.sml.o" "$cache/log.sml.o.eb" "$cache/log.sml.o.ir" > cache-before
+# Printing settings never invalidate a reusable object, even in writable caches.
+"$MLKIT" -no_gc -rp -c -Pcee -Ppp -Prfg -Ptypes -Pregions -Peffects -Paux -log_to_file log.mlb > build.log 2>&1
 ! grep -q 'reading source file:.*log.sml' build.log
-# Changing the requested diagnostics refreshes a writable cache.
-"$MLKIT" -no_gc -rp -c -Pcee -Ppp -Prfg -log_to_file log.mlb > build.log 2>&1
-grep -q 'reading source file:.*log.sml' build.log
-grep -q 'Begin layout of region flow graph' "$log"
-# Read-only installed caches must remain usable with different or missing logs.
+cmp "$log" saved.log
+cksum "$cache/log.sml.o" "$cache/log.sml.o.eb" "$cache/log.sml.o.ir" > cache-after
+cmp cache-before cache-after
 rm "$log"
+"$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1
+[ ! -e "$log" ]
+! grep -q 'reading source file:.*log.sml' build.log
+# Read-only installed caches must also remain usable with missing logs.
 chmod a-w "$cache"
 if [ ! -w "$cache" ]; then
   "$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1

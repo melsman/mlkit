@@ -119,8 +119,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
-    (* Printing options are not part of the object-cache key. Record them in
-     * profiling logs so a cached object cannot hide missing diagnostics. *)
+    (* Record how a log was produced, without making diagnostic settings
+     * part of object-cache validity. *)
     fun log_settings () =
       "MLKit log settings: " ^
       String.concatWith ";" (List.mapPartial
@@ -477,20 +477,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             val mc = Pickle.unpickle ModCode.pu s
             val files = ModCode.target_files (ModCode.dirMod (OS.Path.dir lnkFile) mc)
         in not (!RegionProfiling.enabled) orelse
-           (List.all IRLocations.consistent files andalso
-            (not (!log_to_file) orelse
-             (* Diagnostic output must not invalidate installed, read-only
-              * libraries. Their logs are supplied by the release build. *)
-             not (OS.FileSys.access (OS.Path.dir lnkFile, [OS.FileSys.A_WRITE])
-                  andalso OS.FileSys.access (lnkFile, [OS.FileSys.A_WRITE])) orelse
-             let val path = OS.Path.joinBaseExt
-                   {base = OS.Path.base (OS.Path.base lnkFile), ext = SOME "log"}
-                 val input = TextIO.openIn path
-                 val header = TextIO.inputLine input
-                   handle e => (TextIO.closeIn input; raise e)
-                 val _ = TextIO.closeIn input
-             in header = SOME (log_settings())
-             end))
+           List.all IRLocations.consistent files
         end handle _ => false
 
     fun writeBasisJs toJsString punit ofile B =

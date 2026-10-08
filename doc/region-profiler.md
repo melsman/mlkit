@@ -309,10 +309,12 @@ and call-explicit code. These logs are installed alongside the IR files in each
 variant's cache directory (for example,
 `basis/MLB/ARM64_RI_GC_PROF/List.sml.log`). Use the logs for inspecting compiled
 library code; the `.ir` files provide metadata for rpview. Profiling compilations
-with `-log_to_file` also use this layout for application sources. In writable caches, missing logs or changed printing options trigger
-regeneration when logging is requested. Read-only installed libraries reuse
-their compiled objects regardless of the requested diagnostic output; their
-logs are supplied at installation time.
+with `-log_to_file` also use this layout for application sources. Printing
+options and missing diagnostic logs never force recompilation of cached code,
+whether the cache is writable or read-only. Logs reflect the settings used
+when a unit was last compiled. To obtain different diagnostics, explicitly
+rebuild the relevant sources in a writable checkout; installed library logs
+are supplied at installation time.
 
 Small blue ticks above the time axis mark every completed snapshot. Thin red
 bars below it show GC intervals, from the end of a `before_gc` snapshot to the

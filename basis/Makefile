@@ -7,9 +7,7 @@ MLKIT ?= ../bin/mlkit -j 2
 REML ?= ../bin/reml -j 2
 
 MLKIT_BASIS_VARIANTS = ri par gc gc_rp par_rp ri_rp
-# ReML enables auxiliary-reset printing by default. Match it in MLKit so
-# diagnostic settings do not invalidate their shared profiling Basis caches.
-PROFILE_LOG_FLAGS = -log_to_file -Prfg -Ppp -Pcee -Paux
+PROFILE_LOG_FLAGS = -log_to_file -Prfg -Ppp -Pcee
 MLKIT_BASIS_TARGETS = $(addprefix mlkit_basislib_,$(MLKIT_BASIS_VARIANTS))
 MLKIT_KIT_TARGETS = $(addprefix mlkit_kitlib_,$(MLKIT_BASIS_VARIANTS))
 
