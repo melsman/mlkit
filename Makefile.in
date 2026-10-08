@@ -70,7 +70,6 @@ mlkit:
 	$(MAKE) man_mlkit
 
 ifeq ($(DARWIN_NATIVE),1)
-barry: mlkit
 # Direct diagnostic tests expect the Basis signatures to be cached.
 test: mlkit_basislibs
 endif
@@ -155,11 +154,7 @@ install_mlkit_basislibs:
 .PHONY: barry
 barry:
 	$(MKDIR) bin
-ifeq ($(DARWIN_NATIVE),1)
-	SML_LIB="$(CWD)" bin/mlkit --mlb-subdir Native -o bin/barry src/Compiler/barry.mlb
-else
 	$(MAKE) -C src barry
-endif
 	$(MAKE) man_barry
 
 .PHONY: clean
