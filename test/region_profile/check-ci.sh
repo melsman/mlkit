@@ -37,6 +37,7 @@ run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
 run ir sh "$ROOT/test/region_profile/check-ir.sh"
+run ir-primitives sh "$ROOT/test/region_profile/check-ir-primitives.sh"
 run text-flow sh "$ROOT/test/region_profile/check-text-flow.sh"
 run auto-call sh "$ROOT/test/region_profile/check-auto-call.sh"
 run accounting sh "$ROOT/test/region_profile/check.sh"

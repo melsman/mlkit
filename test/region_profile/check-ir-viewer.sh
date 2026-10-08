@@ -31,7 +31,7 @@ for(const record of profile.allocations){
  assert.equal(irSites.get(String(record.definition)).status,'available');
  showIR(record,null);
  const marks=el('ir-code').querySelectorAll('mark');assert(marks.length>0,'Missing native highlight');
- assert(Number(record.location_kind)===1?marks[0].textContent.startsWith('$'):/^(attop|atbot|sat) /.test(marks[0].textContent),'Wrong native allocation location');
+ assert(Number(record.location_kind)===1?/^\S+$/.test(marks[0].textContent):/^(attop|atbot|sat) /.test(marks[0].textContent),'Wrong native allocation location');
 }
 if(profile.region_flow?.available){allocationTable();assert(!el('allocation-flow').hidden);assert.equal(el('allocation-flow').querySelectorAll('button').filter(b=>b.className?.split(' ').includes('allocation-site')).length,new Set(profile.allocations.map(r=>JSON.stringify([r.unit,r.site]))).size);}
 const cp=el('allocation-flow').querySelectorAll('summary').find(s=>s.textContent==='fun cp [r17]');

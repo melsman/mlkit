@@ -40,7 +40,7 @@ grep -q '^MLKIT-IR-LOCATIONS 1$' "$ir"
 grep -q '^MLKIT-IR-REGIONS 1$' "$ir"
 ! grep -q '^point[[:space:]]*~' "$ir"
 # Independently verify absolute byte offsets, one-based line/byte columns,
-# and that every span selects a complete allocation specifier.
+# and that every span selects an allocation specifier or a call token.
 LC_ALL=C awk '
   { lines[NR]=$0; full=full $0 "\n" }
   /^MLKIT-IR-LOCATIONS 1$/ { table=1; next }
@@ -49,7 +49,7 @@ LC_ALL=C awk '
     if (!n) exit 1;
     for (i=1;i<=n;i++) {
       s=substr(full,start[i]+1,len[i]);
-      if ((s !~ /^(attop|atbot|sat) / && s !~ /^\$/ ) || s!=substr(lines[row[i]],col[i],len[i])) exit 2;
+      if ((s !~ /^(attop|atbot|sat) / && (s == "" || s ~ /[[:space:]]/) ) || s!=substr(lines[row[i]],col[i],len[i])) exit 2;
     }
   }' "$ir"
 # Profiling logs are stored beside IR artifacts, separately for each variant.

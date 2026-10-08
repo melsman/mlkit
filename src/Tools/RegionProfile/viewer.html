@@ -163,7 +163,7 @@ function updateIRTitle(record){
    if(Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start>=data.start&&end<=data.end&&end>start){
     const token=data.decode.decode(data.bytes.subarray(start,end));
     if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=' '+token;
-    else if(Number(record.location_kind)===1&&token.startsWith('$'))annotation=' via '+token;
+    else if(Number(record.location_kind)===1)annotation=' via '+token;
     functionName=irFunctionName(record.function,doc);
    }
   }catch(_){/* Unavailable locations still get a useful function heading. */}
