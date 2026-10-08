@@ -32,6 +32,7 @@ run () {
     exit 1
   fi
 }
+run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"

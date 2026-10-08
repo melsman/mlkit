@@ -25,26 +25,29 @@ structure Time :> TIME =
         end
 
     val million = 1000000
-    val millionL = IntInf.fromInt million
+    (* Defer conversion so unused Time code remains link-time eliminable. *)
+    fun millionL () = IntInf.fromInt million
 
     (* Conversion to and from a number of microseconds; a time that does
        not fit the representation raises Time. *)
     fun fromMicro (us : IntInf.int) : time =
-        {sec = LargeInt.toInt (IntInf.div (us, millionL)),
-         usec = LargeInt.toInt (IntInf.mod (us, millionL))}
+        let val divisor = millionL ()
+        in {sec = LargeInt.toInt (IntInf.div (us, divisor)),
+            usec = LargeInt.toInt (IntInf.mod (us, divisor))}
+        end
         handle Overflow => raise Time
 
     fun toMicro ({sec, usec} : time) : IntInf.int =
-        IntInf.+ (IntInf.* (LargeInt.fromInt sec, millionL), LargeInt.fromInt usec)
+        IntInf.+ (IntInf.* (LargeInt.fromInt sec, millionL ()), LargeInt.fromInt usec)
 
-    fun fromSeconds s = fromMicro (IntInf.* (s, millionL))
+    fun fromSeconds s = fromMicro (IntInf.* (s, millionL ()))
     fun fromMilliseconds ms = fromMicro (IntInf.* (ms, IntInf.fromInt 1000))
     fun fromMicroseconds us = fromMicro us
     fun fromNanoseconds ns = fromMicro (IntInf.quot (ns, IntInf.fromInt 1000))
 
     (* "fractions of the time unit are dropped, i.e., the values are
        rounded towards 0" *)
-    fun toSeconds t = IntInf.quot (toMicro t, millionL)
+    fun toSeconds t = IntInf.quot (toMicro t, millionL ())
     fun toMilliseconds t = IntInf.quot (toMicro t, IntInf.fromInt 1000)
     fun toMicroseconds t = toMicro t
     fun toNanoseconds t = IntInf.* (toMicro t, IntInf.fromInt 1000)
@@ -126,7 +129,7 @@ structure Time :> TIME =
                 val fp7 = if size fp >= 7 then String.substring (fp, 0, 7)
                           else StringCvt.padRight #"0" 7 fp
                 val micro = IntInf.div (IntInf.+ (value fp7, IntInf.fromInt 5), IntInf.fromInt 10)
-                val us = IntInf.+ (IntInf.* (value ip, millionL), micro)
+                val us = IntInf.+ (IntInf.* (value ip, millionL ()), micro)
             in SOME (fromMicro (if neg then IntInf.~ us else us), src3)
             end
         end

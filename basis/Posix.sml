@@ -1079,23 +1079,11 @@ struct
       type pid = Process.pid
       type file_desc = ProcEnv.file_desc
 
-      fun getT i = prim("@sml_getTty", i : int) : word
-      fun getTi i = prim("@sml_getTty", i : int) : int
+      (* These platform constants are initialized once by Initial. *)
 
       structure V =
         struct
-          val eof = getTi 0
-          val eol = getTi 1
-          val erase = getTi 2
-          val intr = getTi 3
-          val kill = getTi 4
-          val min = getTi 5
-          val quit = getTi 6
-          val susp = getTi 7
-          val time = getTi 8
-          val start = getTi 9
-          val stop = getTi 10
-          val nccs = getTi 70
+          open Initial.Posix_Values.Tty.V
           type cc = CharVector.vector
           fun cc updates =
               List.foldl (fn ((i,c),v) => CharVector.update(v, i, c))
@@ -1109,60 +1097,28 @@ struct
 
       structure I =
         struct
-          val brkint = getT 11
-          val icrnl = getT 12
-          val ignbrk = getT 13
-          val igncr = getT 14
-          val ignpar = getT 15
-          val inlcr = getT 16
-          val inpck = getT 17
-          val istrip = getT 18
-          val ixoff = getT 19
-          val ixon = getT 20
-          val parmrk = getT 21
-          val all = getT 44
+          open Initial.Posix_Values.Tty.I
           structure A = BitFlags(struct val all = all end)
           open A
         end
 
       structure O =
         struct
-          val opost = getT 22
-          val all = opost
+          open Initial.Posix_Values.Tty.O
           structure A = BitFlags(struct val all = all end)
           open A
         end
 
       structure C =
         struct
-          val clocal = getT 23
-          val cread = getT 24
-          val cs5 = getT 25
-          val cs6 = getT 26
-          val cs7 = getT 27
-          val cs8 = getT 28
-          val csize = getT 29
-          val cstopb = getT 30
-          val hupcl = getT 31
-          val parenb = getT 32
-          val parodd = getT 33
-          val all = getT 45
+          open Initial.Posix_Values.Tty.C
           structure A = BitFlags(struct val all = all end)
           open A
         end
 
       structure L =
         struct
-          val echo = getT 34
-          val echoe = getT 35
-          val echok = getT 36
-          val echonl = getT 37
-          val icanon = getT 38
-          val iexten = getT 39
-          val isig = getT 40
-          val noflsh = getT 41
-          val tostop = getT 42
-          val all = getT 46
+          open Initial.Posix_Values.Tty.L
           structure A = BitFlags(struct val all = all end)
           open A
         end
@@ -1173,22 +1129,22 @@ struct
       fun wordToSpeed w = SPEED (SysWord.toIntX w)
       fun speedToInt (SPEED s) = s
 
-      val b0 = SPEED (getTi 48)
-      val b50 = SPEED (getTi 49)
-      val b75 = SPEED (getTi 50)
-      val b110 = SPEED (getTi 51)
-      val b134 = SPEED (getTi 52)
-      val b150 = SPEED (getTi 53)
-      val b200 = SPEED (getTi 54)
-      val b300 = SPEED (getTi 55)
-      val b600 = SPEED (getTi 56)
-      val b1200 = SPEED (getTi 57)
-      val b1800 = SPEED (getTi 58)
-      val b2400 = SPEED (getTi 59)
-      val b4800 = SPEED (getTi 60)
-      val b9600 = SPEED (getTi 61)
-      val b19200 = SPEED (getTi 62)
-      val b38400 = SPEED (getTi 63)
+      val b0 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b0)
+      val b50 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b50)
+      val b75 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b75)
+      val b110 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b110)
+      val b134 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b134)
+      val b150 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b150)
+      val b200 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b200)
+      val b300 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b300)
+      val b600 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b600)
+      val b1200 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b1200)
+      val b1800 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b1800)
+      val b2400 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b2400)
+      val b4800 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b4800)
+      val b9600 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b9600)
+      val b19200 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b19200)
+      val b38400 = SPEED (SysWord.toIntX Initial.Posix_Values.Tty.Speed.b38400)
 
       type termios =
            { iflag : I.flags,
