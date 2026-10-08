@@ -208,6 +208,12 @@ make bootstrap
 make check-native-install CHECK_INSTALL_PREFIX=/tmp/mlkit-install
 ```
 
+`make check-compiler` runs the `test_dev` ordinary and profiling suites with
+six parallel jobs by default. Use `TEST_JOBS=N` to change that limit, for
+example `make check-compiler TEST_JOBS=2 VERBOSE=1`. Other suites retain their
+existing scheduling. On ARM64, the regression script retains detailed output
+in the suite logs under the directory it prints at startup.
+
 `make bootstrap` uses the newly built `bin/mlkit` to compile three successive
 MLKit stages, each with a fresh cache namespace. The same Makefile-hosted
 stage chain is used on X64. It compares stripped copies of stages two and

@@ -428,6 +428,9 @@ bootstrap-compare: bootstrap-stage3
 	$(INSTALL) "$(BOOTSTRAP_DIR)/stage3/mlkit" bin/mlkit
 	@echo "$(BACKEND) bootstrap fixed point passed."
 
+# Only test_dev has isolated compiler/linker scratch directories.
+TEST_JOBS ?= 6
+
 .PHONY: check-build check-profiling check-compiler check-arm64 emitter check-native-install
 check-build:
 	sh test/build/check.sh
@@ -446,15 +449,15 @@ check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 check-compiler: check-arm64
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
-	  KITTESTER="$(CWD)/bin/kittester" sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
+	  KITTESTER="$(CWD)/bin/kittester" TEST_JOBS="$(TEST_JOBS)" VERBOSE="$(VERBOSE)" \
+	  sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
 CHECK_INSTALL_PREFIX ?= $(CWD)/stage/$(RUNTIME_TARGET)
 check-native-install:
 	SML_LIB="$(CWD)" ARM64_NATIVE_BIN="$(CWD)/bin" ARM64_PREFIX="$(CHECK_INSTALL_PREFIX)" \
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
-	$(MAKE) -C test_dev test
-	$(MAKE) -C test_dev test_prof
+	$(MAKE) -C test_dev -j $(TEST_JOBS) test test_prof
 	$(MAKE) -C test test_mlkit
 	$(MAKE) -C test test_mlkit_no_gc
 	$(MAKE) -C test test_c_call_alignment
