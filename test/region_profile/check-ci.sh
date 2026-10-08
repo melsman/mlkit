@@ -52,6 +52,9 @@ run ir-viewer sh "$ROOT/test/region_profile/check-ir-viewer.sh"
 run svg sh "$ROOT/test/region_profile/check-svg.sh"
 # Viewer checks cover HTML generation and graph/IR behavior in a Node DOM
 # harness. Visual layout in a real browser remains a separate manual check.
+# Tests can rebuild shared Basis units with different diagnostic settings.
+# Refresh dependent ReML/API caches before freezing a release installation.
+run install-libraries make -C "$ROOT/basis" mlkit_basislibs
 run install make -C "$ROOT" install_runtime install_basis install_mlkit_basislibs LIBDIR="$OUT/installed"
 chmod -R a-w "$OUT/installed"
 run installed-api env SML_LIB="$OUT/installed" sh "$ROOT/test/region_profile/check-installed-api.sh"
