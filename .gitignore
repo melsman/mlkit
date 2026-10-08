@@ -21,3 +21,5 @@ src/Runtime/build/
 /src/Tools/RegionProfile/Html.sml
 
 /test_dev/.test-build/
+
+/test/prettyprint/build/

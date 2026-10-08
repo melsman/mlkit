@@ -208,6 +208,12 @@ make bootstrap
 make check-native-install CHECK_INSTALL_PREFIX=/tmp/mlkit-install
 ```
 
+Test helpers (including the ARM64 emitter driver, pretty-printer/IR unit tests,
+and profiling fixture encoder) use the configured seed compiler. Programs used
+to test code generation or runtime behaviour, and the bootstrap stages, use the
+compiler under test. Pretty-printer test sources are staged separately because
+their `Report` adapter changes the types of shared modules.
+
 `make check-compiler` runs the `test_dev` ordinary and profiling suites with
 six parallel jobs by default. Use `TEST_JOBS=N` to change that limit, for
 example `make check-compiler TEST_JOBS=2 VERBOSE=1`. Other suites retain their

@@ -63,6 +63,18 @@ MAKE
   grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output embed embed.mlb'
   grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/rpview rpview.mlb'
   grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/rpfixture encode-fixture.mlb'
+  mkdir -p "$dir/test/prettyprint" "$dir/src/Common"
+  cp "$ROOT"/test/prettyprint/*.sml "$ROOT"/test/prettyprint/*.mlb "$dir/test/prettyprint/"
+  cp "$ROOT/src/Common/PRETTYPRINT.sig" "$ROOT/src/Common/PrettyPrint.sml" \
+    "$ROOT/src/Common/MD5.sml" "$ROOT/src/Common/IRLocations.sml" "$dir/src/Common/"
+  (cd "$dir" && SML_LIB=must-not-leak make -s prettyprint-tools > prettyprint.log 2>&1)
+  for helper in spans locations ir-report link-map; do
+    grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- "/$helper $helper.mlb"
+  done
+  if [ "$(uname -s)" = Darwin ]; then
+    (cd "$dir" && SML_LIB=must-not-leak make -s emitter > emitter.log 2>&1)
+    grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output bin/arm64-emitter-test'
+  fi
   # Both seed selections use the same backend/stage chain. The architecture
   # check and strip are bypassed only because the stand-in outputs are scripts.
   for verbose in 0 1; do

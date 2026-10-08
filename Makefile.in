@@ -441,7 +441,7 @@ check-profiling:
 
 ifeq ($(DARWIN_NATIVE),1)
 emitter:
-	SML_LIB="$(CWD)" bin/mlkit --mlb-subdir Native -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+	$(MLCOMP) -output bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
 check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
 	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-native.sh
@@ -616,3 +616,18 @@ bin/rpfixture: test/region_profile/encode-fixture.sml test/region_profile/encode
               src/Tools/RegionProfile/Reader.sml src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml
 	$(MKDIR) bin
 	cd test/region_profile && $(MLCOMP) -output "$(CWD)/bin/rpfixture" encode-fixture.mlb
+
+# Unit-test drivers exercise library code, so build them with the seed too.
+# Their Report adapter changes shared types: stage sources in a private tree.
+PRETTYPRINT_BUILD ?= $(CWD)/test/prettyprint/build
+PRETTYPRINT_TESTS ?= spans locations ir-report link-map
+.PHONY: prettyprint-tools
+prettyprint-tools:
+	$(MKDIR) "$(PRETTYPRINT_BUILD)/test/prettyprint" "$(PRETTYPRINT_BUILD)/src/Common" "$(PRETTYPRINT_BUILD)/src/Kitlib" "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile"
+	cp -p test/prettyprint/*.sml test/prettyprint/*.mlb "$(PRETTYPRINT_BUILD)/test/prettyprint/"
+	cp -p src/Common/PRETTYPRINT.sig src/Common/PrettyPrint.sml src/Common/MD5.sml src/Common/IRLocations.sml "$(PRETTYPRINT_BUILD)/src/Common/"
+	cp -p src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml "$(PRETTYPRINT_BUILD)/src/Kitlib/"
+	cp -p src/Tools/RegionProfile/Json.sml src/Tools/RegionProfile/Binary.sml src/Tools/RegionProfile/Reader.sml src/Tools/RegionProfile/IR.sml "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile/"
+	set -e; cd "$(PRETTYPRINT_BUILD)/test/prettyprint"; for name in $(PRETTYPRINT_TESTS); do \
+	  $(MLCOMP) -output "$(PRETTYPRINT_BUILD)/$$name" "$$name.mlb"; \
+	done

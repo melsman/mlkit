@@ -3,9 +3,11 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/ir-link-map.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
-"${MLKIT:-$ROOT/bin/mlkit}" -mlb-subdir PrettyPrintTests -gc \
-  -o "$OUT/generate" "$ROOT/test/prettyprint/link-map.mlb"
-"$OUT/generate" "$OUT"
+if [ -z "${PRETTYPRINT_TOOLS:-}" ]; then
+  make -C "$ROOT" prettyprint-tools PRETTYPRINT_BUILD="$OUT" PRETTYPRINT_TESTS=link-map
+  PRETTYPRINT_TOOLS=$OUT
+fi
+"$PRETTYPRINT_TOOLS/link-map" "$OUT"
 cat > "$OUT/check.c" <<'C'
 #include <assert.h>
 #include <stddef.h>
