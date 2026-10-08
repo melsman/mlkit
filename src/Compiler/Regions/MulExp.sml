@@ -1989,8 +1989,11 @@ struct
 
   fun layoutLambdaTripWithLocations layout_alloc layout_alloc_short layout_bind
                                    layout_rbind explicit_bind layout_other t =
+      (* Reuse the ordinary printer's elimination of K-normal temporaries.
+       * Substitution retains the original allocation annotations (and hence
+       * their site IDs); locations are measured only after final layout. *)
       #2 (mkLay true false layout_alloc layout_alloc_short layout_bind
-                    layout_rbind explicit_bind layout_other) t
+                    layout_rbind explicit_bind layout_other) (eval [] t)
 
   fun layoutLambdaPgm (layout_alloc : 'a -> StringTree option)
                       (layout_alloc_short : 'a -> StringTree option)

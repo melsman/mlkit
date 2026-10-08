@@ -18,6 +18,10 @@ cd "$OUT"
 set -- MLB/*/main.sml.o.ir
 ir=$1
 log=${ir%.o.ir}.log
+# The nested arithmetic/argument expressions must be printed directly, not
+# through the compiler-generated single-value K-normal temporary bindings.
+! grep -Eq 'val k[0-9]+ =' "$ir"
+grep -Eq 'R64.fromF64 .*\(f[0-9]+ \+ 1.0f64\)' "$ir"
 for file in "$ir" "$log"; do
   grep -q 'R64.fromF64' "$file"
   ! grep -q '\$__f64_to_real\|\$concatStringML' "$file"
