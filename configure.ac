@@ -32,9 +32,13 @@ AS_CASE([`uname -s`],
   ],
   [
     AS_IF([test "$DARWIN_NATIVE" = 1], [AC_MSG_ERROR([DARWIN_NATIVE=1 requires macOS])])
+    MLKIT_ARCH=x64
     RUNTIME_TARGET=`uname -s | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'`-`uname -m`
   ])
 AC_SUBST([RUNTIME_TARGET])
+AC_SUBST([MLKIT_ARCH])
+AS_IF([test "$MLKIT_ARCH" = arm64], [BACKEND_SUFFIX=arm64], [BACKEND_SUFFIX=64])
+AC_SUBST([BACKEND_SUFFIX])
 AC_DEFINE_UNQUOTED([DARWIN_NATIVE], [$DARWIN_NATIVE], [Build the native macOS arm64 runtime])
 AC_PROG_CC
 AC_MSG_CHECKING([whether the compiler target agrees with DARWIN_NATIVE])
@@ -67,6 +71,28 @@ AC_ARG_WITH(
      AC_SUBST(mlcomp,${with_compiler})
      ,
      )
+
+# Seed compiler choice is independent of the backend selected above.
+AS_IF([test -z "$mlcomp"], [mlcomp='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten'])
+AC_ARG_WITH([compiler-kind],
+  [AS_HELP_STRING([--with-compiler-kind=mlkit|mlton|generic], [seed command type (normally inferred; useful for wrappers)])],
+  [SEED_KIND=$withval],
+  [AS_CASE([$mlcomp], [*mlton*], [SEED_KIND=mlton], [*mlkit*], [SEED_KIND=mlkit], [SEED_KIND=generic])])
+AS_CASE([$SEED_KIND], [mlkit|mlton|generic], [], [AC_MSG_ERROR([unsupported compiler kind])])
+AC_ARG_WITH([compiler-lib],
+  [AS_HELP_STRING([--with-compiler-lib=DIR], [Basis/runtime installation for an MLKit seed])],
+  [SEED_LIB=$withval], [SEED_LIB=])
+AC_ARG_VAR([SEED_FLAGS], [extra seed compiler flags (defaults include the macOS bootstrap stack setting)])
+AS_IF([test "${SEED_FLAGS+set}" != set], [
+  SEED_FLAGS=
+  AS_IF([test "$DARWIN_NATIVE" = 1], [
+    AS_CASE([$SEED_KIND],
+      [mlkit], [SEED_FLAGS="-ldexe 'gcc -arch arm64 -Wl,-stack_size,0x20000000'"],
+      [mlton], [SEED_FLAGS="-link-opt -Wl,-stack_size,0x20000000"])
+  ])
+])
+AC_SUBST([SEED_LIB])
+AC_SUBST([SEED_FLAGS])
 
 AC_ARG_WITH(
      argobots,

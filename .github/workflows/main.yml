@@ -95,7 +95,7 @@ jobs:
           tar -xzf "$RUNNER_TEMP/seed.tgz" -C "$RUNNER_TEMP/seed"
           seed="$RUNNER_TEMP/seed/mlkit-bin-dist-$OS"
           echo "$seed/bin" >> "$GITHUB_PATH"
-          echo "MLKIT_BOOTSTRAP_SML_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
+          echo "SEED_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.mlkit"
           echo "SML_LIB $seed/lib/mlkit" > "$HOME/.mlkit/mlb-path-map"
           SML_LIB="$seed/lib/mlkit" "$seed/bin/mlkit" --version
@@ -107,53 +107,25 @@ jobs:
           if [ "$MLCOMP_HOST" = mlton ]; then
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
-          elif [ "$OS" = linux ]; then
-            # The seed and newly built compiler use different Basis objects.
-            # Do not let native tools reuse seed-built shared source caches.
-            ./configure CC="$THECC" --with-compiler='mlkit --mlb-subdir Bootstrap'
           else
-            ./configure CC="$THECC" --with-compiler=mlkit
+            ./configure CC="$THECC" --with-compiler=mlkit --with-compiler-lib="$SEED_LIB"
           fi
+
+      - name: Check configured build and bootstrap targets
+        run: make check-build
 
       - name: Build MLKit, ReML, tools, and Basis libraries
         timeout-minutes: 240
-        run: |
-          make mlkit_basislibs VERBOSE=1
-          if [ "$OS" = darwin ]; then
-            SML_LIB="$PWD" bin/mlkit --mlb-subdir Native \
-              -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
-          fi
+        run: make -j6 mlkit_basislibs VERBOSE=1
 
       - name: Check pretty-printer spans and region profiler
-        run: |
-          SML_LIB="$PWD" sh test/prettyprint/check.sh
-          sh test/region_profile/check-ci.sh
+        run: make check-profiling
 
       - name: Install MLKit
         run: sudo make install
 
       - name: Run compiler and runtime regression tests
-        run: |
-          if [ "$OS" = darwin ]; then
-            export SML_LIB="$PWD"
-            export MLKIT_ARM64="$PWD/bin/mlkit" REML_ARM64="$PWD/bin/reml"
-            export ARM64_EMITTER="$PWD/bin/arm64-emitter-test" KITTESTER="$PWD/bin/kittester"
-            tests=src/Compiler/Backend/Arm64/tests
-            sh "$tests/check-native.sh"
-            sh "$tests/check-parallel.sh"
-            sh "$tests/check-regressions.sh"
-          else
-            make -C test_dev test
-            make -C test_dev test_prof
-            make -C test test_mlkit
-            make -C test test_mlkit_no_gc
-            make -C test test_c_call_alignment
-            make -C test/explicit_regions all
-            make -C test/repl all
-            make -C test/repl test_gc CC="$THECC"
-            make -C test/parallelism all
-            make -C test/region_info all
-          fi
+        run: make check-compiler CC="$THECC"
 
       - name: Check explicit storage modes
         run: make -C test/explicit_regions test_storage_modes
@@ -177,19 +149,11 @@ jobs:
           make -C test/barry all
 
       - name: Test bootstrap fixed point
-        run: |
-          if [ "$OS" = darwin ]; then
-            SML_LIB="$PWD" BOOTSTRAP_COMPILER="$PWD/bin/mlkit" \
-              sh src/Compiler/Backend/Arm64/tests/check-bootstrap.sh
-          else
-            make bootstrap
-          fi
+        run: make bootstrap
 
       - name: Test native installation across runtime modes
         if: matrix.os == 'darwin'
-        run: |
-          SML_LIB="$PWD" ARM64_NATIVE_BIN="$PWD/bin" ARM64_PREFIX="$RUNNER_TEMP/install" \
-            sh src/Compiler/Backend/Arm64/tests/install-native.sh
+        run: make check-native-install CHECK_INSTALL_PREFIX="$RUNNER_TEMP/install"
 
       - name: Build binary distribution
         run: make mlkit_bin_dist

@@ -7,14 +7,10 @@ RUNTIME_TARGET=@RUNTIME_TARGET@
 ifneq ($(DARWIN_NATIVE),@DARWIN_NATIVE@)
 $(error Set DARWIN_NATIVE when running configure, not make)
 endif
-# Native compiler builds share caches; keep their build steps ordered even with -j.
-ifeq ($(DARWIN_NATIVE),1)
+# Compiler builds share caches. Library variants use a parallel submake.
 .NOTPARALLEL:
-endif
-
-.PHONY: arm64_compilers
-arm64_compilers:
-	$(MAKE) -f Makefile.arm64
+BACKEND=@MLKIT_ARCH@
+BACKEND_SUFFIX=@BACKEND_SUFFIX@
 
 .PHONY: runtime
 runtime:
@@ -42,9 +38,10 @@ INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 LN=@LN_S@
 STRIP=strip
-DIFF=diff
-MLCOMP=@mlcomp@
-MLKIT_BOOTSTRAP ?= $(if $(strip @mlcomp@),@mlcomp@,mlkit)
+# The configured seed command can contain arguments or environment assignments.
+# Never let an application's SML_LIB select libraries for the seed compiler.
+SEED_LIB=@SEED_LIB@
+MLCOMP=env -u SML_LIB $(if $(strip $(SEED_LIB)),SML_LIB="$(SEED_LIB)") @mlcomp@ @SEED_FLAGS@
 
 CWD=$(shell pwd)
 
@@ -67,15 +64,9 @@ CLEAN=rm -rf MLB *~ .\#*
 
 .PHONY: mlkit
 mlkit:
-ifeq ($(DARWIN_NATIVE),1)
-	$(MAKE) runtime
-	$(MAKE) -f Makefile.arm64 build SML_LIB="$(CWD)" MLKIT_BOOTSTRAP="$(MLKIT_BOOTSTRAP)"
-else
 	$(MKDIR) bin
-	$(MAKE) -C src mlkit
-	$(MAKE) -C src reml
-	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit"
-endif
+	$(MAKE) -C src mlkit reml
+	$(MAKE) -C src/Tools/RegionProfile MLKIT="$(CWD)/bin/mlkit" MLKIT_FLAGS="--mlb-subdir Native"
 	$(MAKE) man_mlkit
 
 ifeq ($(DARWIN_NATIVE),1)
@@ -87,11 +78,7 @@ endif
 .PHONY: smltojs
 smltojs:
 	$(MKDIR) bin
-ifeq ($(DARWIN_NATIVE),1)
-	$(MAKE) -f Makefile.arm64 smltojs MLKIT_BOOTSTRAP="$(MLKIT_BOOTSTRAP)"
-else
 	$(MAKE) -C src smltojs
-endif
 	$(MAKE) man_smltojs
 
 .PHONY: all build_basislibs build_kitlibs
@@ -226,7 +213,7 @@ install_license:
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
-	$(INSTALLDATA) Makefile Makefile.in Makefile.arm64 $(INSTDIR)
+	$(INSTALLDATA) Makefile Makefile.in $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
 	$(INSTALL) mkinstalldirs configure $(INSTDIR)
 	$(MAKE) install_basis
@@ -383,65 +370,103 @@ install_src:
 	$(INSTALLDATA) src/Tools/ml-yacc/lib/*.{sml,sig,mlb} $(INSTDIR)/src/Tools/ml-yacc/lib
 	$(INSTALLDATA) src/Tools/ml-yacc/examples/calc/*.{lex,grm} $(INSTDIR)/src/Tools/ml-yacc/examples/calc
 
-.PHONY: bootstrap0
-bootstrap0: install_test install_src
-	$(INSTALL) bin/kittester $(BINDIR)
-
-.PHONY: bootstrap_first
-bootstrap_first:
-	$(MAKE) install_top
-	$(MAKE) install_runtime
-	$(INSTALL) bin/{mlkit,rpview} $(BINDIR)
-	$(MAKE) bootstrap0
-
-MLKIT_FLAGS ?=
+# Self-hosting stages use the compiler produced by the configured seed build.
+# Per-stage caches prevent a previous stage from supplying compiled ML units.
+BOOTSTRAP_COMPILER ?= $(CWD)/bin/mlkit
+BOOTSTRAP_JOBS ?= 1
+BOOTSTRAP_STRIP ?= $(STRIP)
+BOOTSTRAP_COMPARE ?= cmp
 ifeq ($(DARWIN_NATIVE),1)
-BOOTSTRAP_SOURCE = mlkitarm64.mlb
-MLKIT_BUILD_LOG ?= mlkitarm64.log
-BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS) -ldexe 'gcc -arch arm64 -Wl,-stack_size,0x10000000'
+BOOTSTRAP_LINKER ?= gcc -arch arm64 -Wl,-stack_size,0x20000000
 else
-BOOTSTRAP_SOURCE = mlkit64.mlb
-MLKIT_BUILD_LOG ?= mlkit64.log
-BOOTSTRAP_MLKIT_FLAGS = $(MLKIT_FLAGS)
+BOOTSTRAP_LINKER ?= gcc
 endif
 
-.PHONY: bootstrap_next_build
-bootstrap_next_build:
-	cd src/Compiler && SML_LIB=$(CWD) $(TIMECMD) ../../bin/mlkit $(MLKIT_FLAGS) -gc $(BOOTSTRAP_SOURCE) \
-             2>&1 | tee $(MLKIT_BUILD_LOG)
-
-.PHONY: bootstrap_next_install
-bootstrap_next_install:
-	$(MAKE) install_top
-	$(MAKE) install_runtime
-	$(INSTALL) bin/{rpview,kittester} $(BINDIR)
-	$(INSTALL) src/Compiler/run $(BINDIR)/mlkit
-	$(MAKE) install_test
-	$(MAKE) install_src
-
-.PHONY: bootstrap_next
-bootstrap_next:
-	$(MAKE) bootstrap_next_build
-	$(MAKE) bootstrap_next_install
-
-.PHONY: bootstrap
+# Each invocation gets a fresh directory and cache namespace. The recursive
+# make owns one dependency chain, so no stage can run ahead of its compiler.
+BOOTSTRAP_CACHE = $(subst -,,$(subst .,,$(notdir $(BOOTSTRAP_DIR))))
+.PHONY: bootstrap bootstrap-init bootstrap-stage1 bootstrap-stage2 bootstrap-stage3 bootstrap-compare
 bootstrap:
-	$(MKDIR) bootstrap
-	$(CLEAN) bootstrap/mlkit-v1
-	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1 DATADIR=bootstrap/mlkit-v1 LIBDIR=bootstrap/mlkit-v1 \
-	                        MANDIR=bootstrap/mlkit-v1/man BINDIR=bootstrap/mlkit-v1/bin
-	$(CLEAN) bootstrap/mlkit-v2
-	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2 DATADIR=../mlkit-v2 LIBDIR=../mlkit-v2 \
-	                        MANDIR=../mlkit-v2/man BINDIR=../mlkit-v2/bin \
-	                        MLKIT_FLAGS="$(BOOTSTRAP_MLKIT_FLAGS)"
-	$(CLEAN) bootstrap/mlkit-v3
-	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3 DATADIR=../mlkit-v3 LIBDIR=../mlkit-v3 \
-	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin \
-	                        MLKIT_FLAGS="$(BOOTSTRAP_MLKIT_FLAGS)"
-	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
-	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
-	if $(DIFF) -s bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit ; then true; else false; fi
-	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit bin/mlkit
+	@set -e; output=$$(mktemp -d "$${TMPDIR:-/tmp}/mlkit-bootstrap.XXXXXX"); \
+	  echo "Bootstrap outputs: $$output"; \
+	  $(MAKE) bootstrap-compare BOOTSTRAP_DIR="$$output"
+
+bootstrap-init:
+	@test -n "$(BOOTSTRAP_DIR)" || { echo 'Run make bootstrap to create fresh stage directories' >&2; exit 1; }
+
+# Compile with the preceding MLKit stage, regardless of which SML compiler
+# produced the initial seed. Preserve logs and executable outputs for inspection.
+define bootstrap_compile
+	mkdir -p "$(BOOTSTRAP_DIR)/stage$(1)"
+	@SML_LIB="$(CWD)" "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
+	  -ldexe '$(BOOTSTRAP_LINKER)' --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
+	  -o "$(BOOTSTRAP_DIR)/stage$(1)/mlkit" src/Compiler/mlkit$(BACKEND_SUFFIX).mlb \
+	  > "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1 || \
+	  { tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2; exit 1; }
+	$(call bootstrap_check,$(BOOTSTRAP_DIR)/stage$(1)/mlkit)
+	"$(BOOTSTRAP_DIR)/stage$(1)/mlkit" --version
+endef
+ifeq ($(DARWIN_NATIVE),1)
+bootstrap_check = test "$$(lipo -archs "$(1)")" = arm64
+else
+bootstrap_check = readelf -h "$(1)" | grep -q 'Machine:.*X86-64'
+endif
+
+bootstrap-stage1: bootstrap-init
+	$(call bootstrap_compile,1,$(BOOTSTRAP_COMPILER))
+bootstrap-stage2: bootstrap-stage1
+	$(call bootstrap_compile,2,$(BOOTSTRAP_DIR)/stage1/mlkit)
+bootstrap-stage3: bootstrap-stage2
+	$(call bootstrap_compile,3,$(BOOTSTRAP_DIR)/stage2/mlkit)
+
+bootstrap-compare: bootstrap-stage3
+	mkdir -p "$(BOOTSTRAP_DIR)/compare2" "$(BOOTSTRAP_DIR)/compare3"
+	cp "$(BOOTSTRAP_DIR)/stage2/mlkit" "$(BOOTSTRAP_DIR)/compare2/mlkit"
+	cp "$(BOOTSTRAP_DIR)/stage3/mlkit" "$(BOOTSTRAP_DIR)/compare3/mlkit"
+# Identical basenames also give Apple strip identical ad-hoc signature IDs.
+	$(BOOTSTRAP_STRIP) "$(BOOTSTRAP_DIR)/compare2/mlkit" "$(BOOTSTRAP_DIR)/compare3/mlkit"
+	$(BOOTSTRAP_COMPARE) "$(BOOTSTRAP_DIR)/compare2/mlkit" "$(BOOTSTRAP_DIR)/compare3/mlkit"
+	$(INSTALL) "$(BOOTSTRAP_DIR)/stage3/mlkit" bin/mlkit
+	@echo "$(BACKEND) bootstrap fixed point passed."
+
+.PHONY: check-build check-profiling check-compiler check-arm64 emitter check-native-install
+check-build:
+	sh test/build/check.sh
+
+check-profiling:
+	SML_LIB="$(CWD)" sh test/prettyprint/check.sh
+	sh test/region_profile/check-ci.sh
+
+ifeq ($(DARWIN_NATIVE),1)
+emitter:
+	SML_LIB="$(CWD)" bin/mlkit --mlb-subdir Native -o bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
+check-arm64: emitter
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
+	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-native.sh
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
+check-compiler: check-arm64
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
+	  KITTESTER="$(CWD)/bin/kittester" sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
+CHECK_INSTALL_PREFIX ?= $(CWD)/stage/$(RUNTIME_TARGET)
+check-native-install:
+	SML_LIB="$(CWD)" ARM64_NATIVE_BIN="$(CWD)/bin" ARM64_PREFIX="$(CHECK_INSTALL_PREFIX)" \
+	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
+else
+check-compiler:
+	$(MAKE) -C test_dev test
+	$(MAKE) -C test_dev test_prof
+	$(MAKE) -C test test_mlkit
+	$(MAKE) -C test test_mlkit_no_gc
+	$(MAKE) -C test test_c_call_alignment
+	$(MAKE) -C test/explicit_regions all
+	$(MAKE) -C test/repl all
+	$(MAKE) -C test/repl test_gc
+	$(MAKE) -C test/parallelism all
+	$(MAKE) -C test/region_info all
+emitter check-arm64 check-native-install:
+	@echo 'This check requires the configured ARM64 backend' >&2; exit 1
+endif
 
 .PHONY: man_mlkit
 man_mlkit:

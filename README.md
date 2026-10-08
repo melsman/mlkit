@@ -195,8 +195,8 @@ The Makefile links the generated executables with a
 `gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
 
 The native executables are available at the usual `bin/mlkit`, `bin/reml`,
-`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rp2ps` paths
-(linked to `bin/darwin-arm64`). Verify and run MLKit with:
+`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rpview` paths.
+Verify and run MLKit with:
 
 ```bash
 lipo -archs bin/mlkit   # should print arm64
@@ -207,10 +207,12 @@ bin/mlkit             # start the REPL
 Keep `SML_LIB` pointing at the checkout when using these build outputs. The
 bootstrap step selects its installed library separately, so this setting
 does not force the installed compiler to use the checkout's runtime.
-To select a different bootstrap executable, pass
-`MLKIT_BOOTSTRAP=/path/to/mlkit` to `make`. For an unpacked
-seed whose library is not configured in an installed `mlb-path-map`, also
-pass `MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`.
+Select the seed compiler with `./configure --with-compiler=/path/to/mlkit`
+or `./configure --with-compiler=mlton`. For an unpacked MLKit seed whose
+library is not configured in an installed `mlb-path-map`, also pass
+`--with-compiler-lib=/path/to/seed/lib/mlkit` to configure. Both backends
+share the build rules and the Makefile-hosted `make bootstrap` stages;
+see [the build details](doc/arm64-compiler.md) for comparison settings.
 
 The standard targets work for both backends: `make mlkit` (also the default),
 `make build_basislibs` (an alias for `mlkit_basislibs`), `make mlkit_libs`,

@@ -23,56 +23,52 @@ lipo -archs bin/mlkit   # arm64
 bin/mlkit --version
 ```
 
-The bootstrap recipes use the installed MLKit's own Basis library, cached
-objects, and matching runtime. They ignore the checkout's `SML_LIB` for that
-step; subsequent ARM64 compilation uses it normally. Keep `SML_LIB`
-pointing at the checkout when running the resulting native compiler.
+The configured build uses the same Makefile targets on ARM64 and X64. Select
+the seed compiler through `./configure --with-compiler=...`; for example:
 
-Use `MLKIT_BOOTSTRAP=/path/to/mlkit` to select another host compiler. If that
-compiler's library is not configured in its installed `mlb-path-map`, also set
-`MLKIT_BOOTSTRAP_SML_LIB=/path/to/seed/lib/mlkit`. This is useful for an unpacked
-release. The seed needs a prepared GC Basis cache when its installation is
-read-only. Do not add a cache suffix to the bootstrap flags in that case.
+```sh
+./configure --with-compiler=mlkit
+# Or an MLB-capable MLton seed (independent of the selected backend):
+./configure --with-compiler='mlton -drop-pass deepFlatten -drop-pass refFlatten'
+make -j6 all
+```
 
-Compiler builds use the seed's default GC mode. On macOS,
-`MLKIT_BOOTSTRAP_FLAGS` selects ARM64 linking and a 512 MiB stack for the
-generated executables, avoiding stack exhaustion during self-compilation.
-It can be overridden explicitly.
-The low-level `Makefile.arm64` targets `mlkit`, `reml`, and `emitter` produce
-native ARM64 executables at `bin/mlkit-arm64`, `bin/reml-arm64`, and
-`bin/arm64-emitter-test`. `native` builds
-MLKit and ReML directly with the installed native seed in `bin/darwin-arm64`;
-`native-tools` builds the tools with that same seed. `make arm64_compilers`
-remains a shortcut for the low-level MLKit/ReML builds.
+The seed uses its own Basis and runtime; the build clears an inherited
+`SML_LIB` before invoking it. For an unpacked MLKit release, configure
+`--with-compiler-lib=/path/to/seed/lib/mlkit`. Environment assignments and
+arguments may also be included in `--with-compiler`. Seed commands wrapped
+under another name can specify `--with-compiler-kind=mlkit` or `mlton` so that
+configure chooses the correct platform flags. Set `SEED_FLAGS` when running
+configure to override those flags. On macOS, the defaults reserve a 512 MiB
+stack using the selected seed compiler's linker-option syntax.
 
-With `DARWIN_NATIVE=1`, the normal Makefile delegates compiler/tool builds to
-`Makefile.arm64` and publishes the native executables at the standard `bin/*`
-paths. Use `make build_basislibs`, `make mlkit_libs`, `make test`,
-`make bootstrap`, and `make install` as with X64. Configure `--prefix` to
-choose the installation directory; `make install` supports `DESTDIR` and
-installs the ARM64 Basis caches under `lib/mlkit/basis/MLB`. Precompile the
-Basis before installing. `make all` includes native-hosted SMLtoJs and its
-JavaScript libraries. The low-level targets below remain useful for backend
-development and the separate staged-installation checks.
+`make mlkit` builds MLKit, ReML, and their tools at the standard `bin/*` paths.
+`make smltojs` uses the same configured seed. `make build_basislibs`,
+`make mlkit_libs`, `make test`, `make bootstrap`, and `make install` work on
+both backends. Configure `--prefix` to choose the installation directory;
+`make install` supports `DESTDIR` and installs ARM64 Basis caches under
+`lib/mlkit/basis/MLB`. Precompile the Basis before installing. `make -j6 all`
+includes SMLtoJs and its JavaScript libraries and builds independent Basis
+variants in parallel.
 
 The existing driver writes unquoted Basis paths for direct `.sml` inputs,
 REPL startup, and dependency processing. Use a stable, space-free symlink to
 the checkout or installed prefix for `SML_LIB` and `ARM64_PREFIX`. Keep the alias stable
-to retain incremental compilation caches. Rerun `native-install` when changing
+to retain incremental compilation caches. Rerun `make check-native-install` when changing
 the prefix: it invalidates Basis caches recorded at a different location.
 
 For example, compile the included two-unit smoke program with:
 
 ```sh
-SML_LIB=/absolute/path/to/mlkit bin/mlkit-arm64 --no_basislib \
+SML_LIB=/absolute/path/to/mlkit bin/mlkit -no_gc --no_basislib \
   -o /tmp/native-arm64 src/Compiler/Backend/Arm64/tests/native.mlb
 printf '@' | /tmp/native-arm64
 # A
 ```
 
-The same command works with `bin/reml-arm64`. Both start in untagged,
-non-parallel, no-GC mode. ReML's existing blocked-option policy means that
-an explicit `-no_gc` flag is unnecessary and rejected; omit it.
+The same command works with `bin/reml` when `-no_gc` is omitted. ReML's
+existing blocked-option policy means that an explicit `-no_gc` flag is
+unnecessary and rejected.
 
 ## Current implementation
 
@@ -154,8 +150,8 @@ all combinations of zero through seven spilled arguments and results.
 
 The suite checks exact output, ARM64 executable/object architecture, X64
 cache isolation, and rejection of unsupported parallel GC combinations. It requires Apple Silicon.
-`make -f Makefile.arm64 check` builds the compilers and emitter harness using
-MLKit with `-gc`. To run the shell test directly, set `SML_LIB`, `MLKIT_ARM64`,
+`make mlkit` builds the compilers with the configured seed;
+`make check-arm64` builds the emitter harness and runs the backend checks. To run the shell test directly, set `SML_LIB`, `MLKIT_ARM64`,
 `REML_ARM64`, and `ARM64_EMITTER` to absolute paths.
 
 The source-built compiler limitation in [#225](https://github.com/melsman/mlkit/issues/225)
@@ -196,35 +192,35 @@ non-profiling runtime configurations. `-argo` and `-par0` require `-par`.
 allocations cannot target the same region. See [arm64-runtime.md](arm64-runtime.md)
 for the synchronization design, Argobots setup, and validation coverage.
 
-`make -f Makefile.arm64 check` also runs `tests/check-parallel.sh`; set
+`make check-arm64` also runs `tests/check-parallel.sh`; set
 `ARGOBOTS_ROOT` to include its optional Argobots cases. The fixtures include
 the production `THREAD.sig`/`Thread.sml` wrapper with a minimal prelude, so these
 checks do not depend on full Basis compilation.
 
 ## Native compilers, tools, and installation
 
-The full Basis and native compiler builds use the same ARM backend. Build the
-native MLKit, ReML, and their tools into a separate directory:
+The normal build and test targets also cover native ARM64 development:
 
 ```sh
-make -f Makefile.arm64 native native-tools
-make -f Makefile.arm64 regressions
-make -f Makefile.arm64 bootstrap
-make -f Makefile.arm64 native-install
+make mlkit
+make check-compiler
+make bootstrap
+make check-native-install CHECK_INSTALL_PREFIX=/tmp/mlkit-install
 ```
 
-The build targets default to `MLKIT_BOOTSTRAP` as the native seed; set
-`ARM64_COMPILER` to override it, and `MLKIT_BOOTSTRAP_SML_LIB` to select its
-matching installed libraries when needed. The seed directly builds both
-compilers and the SML tools, using its default GC mode and prepared Basis
-cache. The separate `bootstrap` target starts from the resulting
-`bin/darwin-arm64/mlkit` and retains the three-stage fixed-point check.
-`ARM64_NATIVE_BIN` defaults to
-`bin/darwin-arm64`, and `ARM64_PREFIX` to `stage/darwin-arm64`. The installation
-copies only verified ARM binaries and runtime archives and rebuilds Basis
-caches using the installed compiler. Set `SML_LIB` to the installed prefix when
-using its compiler. X64 binaries, runtime archives, and caches remain separate.
-The native tools are `kittester`, `rp2ps`, `mlkit-mllex`, and `mlkit-mlyacc`.
+`make bootstrap` uses the newly built `bin/mlkit` to compile three successive
+MLKit stages, each with a fresh cache namespace. The same Makefile-hosted
+stage chain is used on X64. It compares stripped copies of stages two and
+three, using identical basenames for Apple's ad-hoc signatures, and installs
+the successful third-stage executable into `bin/mlkit`. Stage binaries and
+logs remain in the temporary directory printed at startup. `BOOTSTRAP_JOBS`,
+`BOOTSTRAP_LINKER`, `BOOTSTRAP_STRIP`, and `BOOTSTRAP_COMPARE` parameterise the
+self-hosting and comparison steps; they do not select the initial SML seed.
+
+The installation check defaults to `stage/darwin-arm64`. It copies verified
+ARM binaries and runtime archives and rebuilds Basis caches using the installed
+compiler. Set `SML_LIB` to the installed prefix when using that compiler.
+The tools include `kittester`, `rpview`, `mlkit-mllex`, and `mlkit-mlyacc`.
 Installation checks generate, compile, and run a calculator parser with the
 installed generators and parser library. `install_src` also packages the
 backend, generator sources, and regression fixtures.
@@ -243,8 +239,8 @@ parallel suite against the static Argobots library as well.
 
 The bootstrap check uses three stages, each with a fresh cache, verifies each
 compiler's architecture and execution, and compares stripped stage-two and
-stage-three binaries. This check targets ARM64; Linux X64 continues to use
-its normal `make bootstrap` target. Comparison copies retain the same basename
+stage-three binaries. ARM64 and Linux X64 both use this `make bootstrap`
+target. Comparison copies retain the same basename
 because Apple `strip` uses it in the ARM ad-hoc signature. Set
 `BOOTSTRAP_JOBS` to increase MLKit's compilation parallelism (the default is 1),
 or `BOOTSTRAP_LINKER` to test another linker explicitly.

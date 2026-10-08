@@ -74,11 +74,11 @@ To compile SMLtoJs from the sources (see above), simply type
 If compilation succeeds, an executable file bin/smltojs should now be
 available.
 
-On macOS ARM64, `make smltojs` uses the native MLKit seed directly; it
+On both backends, `make smltojs` uses the configured SML seed directly; it
 does not first build MLKit or the checkout's native runtime. Select the
 seed with `./configure --with-compiler=/path/to/mlkit` or
-`make smltojs MLKIT_BOOTSTRAP=/path/to/mlkit`. For an unpacked seed, set
-`MLKIT_BOOTSTRAP_SML_LIB` to its `lib/mlkit` directory so its matching
+`./configure --with-compiler=mlton`. For an unpacked MLKit seed, pass
+`--with-compiler-lib=/path/to/seed/lib/mlkit` to configure so its matching
 Basis library and runtime are used.
 
 ## Building the online IDE

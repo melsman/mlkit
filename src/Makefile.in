@@ -7,11 +7,10 @@ DARWIN_NATIVE=@DARWIN_NATIVE@
 ifneq ($(DARWIN_NATIVE),@DARWIN_NATIVE@)
 $(error Set DARWIN_NATIVE when running configure, not make)
 endif
-ifeq ($(DARWIN_NATIVE),1)
-ifneq ($(filter-out mlkit_runtime clean,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),mlkit)),)
-$(error Use the top-level Makefile for native ARM64 builds)
-endif
-endif
+# MLKit compiler invocations share caches; keep them ordered. Runtime submakes
+# may still use the outer jobserver for independent C compilation.
+.NOTPARALLEL:
+BACKEND_SUFFIX=@BACKEND_SUFFIX@
 
 # Some commands
 MKDIR=@top_srcdir@/mkinstalldirs
@@ -40,7 +39,7 @@ mlkit_runtime:
 
 .PHONY: mlkit_kit
 mlkit_kit:
-	$(MLCOMP) -output mlkit Compiler/mlkit64.mlb
+	$(MLCOMP) -output mlkit Compiler/mlkit$(BACKEND_SUFFIX).mlb
 	$(INSTALL) -p mlkit $(BINDIR)
 
 .PHONY: smltojs
@@ -50,7 +49,7 @@ smltojs: basics mlbmake mllex-yacc
 
 .PHONY: reml
 reml: mlkit_tools mlkit_runtime
-	$(MLCOMP) -output reml Compiler/reml64.mlb
+	$(MLCOMP) -output reml Compiler/reml$(BACKEND_SUFFIX).mlb
 	$(INSTALL) -p reml $(BINDIR)
 
 .PHONY: mllex-yacc
