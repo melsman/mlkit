@@ -11,7 +11,7 @@ export SML_LIB
 for suite in $REGRESSION_SUITES; do
   root=$scratch/$suite
   mkdir -p "$root"
-  (cd "$SML_LIB" && tar -cf - --exclude=MLB --exclude='*.exe' \
+  (cd "$SML_LIB" && tar -cf - --exclude=MLB --exclude=.test-build --exclude='*.exe' \
     --exclude='*.res' --exclude='*.mlbres' --exclude='*.log' --exclude='*.out' \
     --exclude='*.o' --exclude='*.rp' --exclude='*.ps' --exclude=run \
     --exclude=runexe --exclude=TESTmessages --exclude=test_report.html test test_dev) |

@@ -593,8 +593,8 @@ mlkit_bin_dist:
 
 .PHONY: test
 test:
-# Test setup, compiler caches, and linker scratch files are shared.
-	$(MAKE) -j1 -C test_dev test
+# test_dev isolates each job; the remaining suites still share scratch files.
+	$(MAKE) -C test_dev test
 	$(MAKE) -j1 -C test test_mlkit
 	$(MAKE) -j1 -C test test_mlkit_no_gc
 	$(MAKE) -j1 -C test/explicit_regions all
