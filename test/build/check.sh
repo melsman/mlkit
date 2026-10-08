@@ -24,6 +24,8 @@ while [ "$#" -gt 0 ]; do
   case "$1" in -output|-o) shift; output=$1 ;; esac
   shift
 done
+echo "building $output"
+echo "compiler diagnostic" >&2
 case "$output" in *"${FAIL_STAGE:-never-match}"*) exit 37 ;; esac
 cp "$0" "$output"
 chmod +x "$output"
@@ -51,23 +53,38 @@ MAKE
   esac
   # Both seed selections use the same backend/stage chain. The architecture
   # check and strip are bypassed only because the stand-in outputs are scripts.
-  (cd "$dir" && TMPDIR="$dir" make -s -j6 bootstrap \
-    BOOTSTRAP_COMPILER="$dir/bin/probe" bootstrap_check=true BOOTSTRAP_STRIP=true)
-  grep -q 'stage1/mlkit.*Stage2' "$BUILD_CHECK_LOG"
-  grep -q 'stage2/mlkit.*Stage3' "$BUILD_CHECK_LOG"
-  printf 'previous compiler must survive a failed bootstrap\n' > "$dir/bin/mlkit"
-  cp "$dir/bin/mlkit" "$dir/success"
-  # Failure of compilation or comparison must not publish a new compiler.
-  for failure in compile compare; do
-    if [ "$failure" = compile ]; then fail_stage=stage2; compare=cmp
-    else fail_stage=never-match; compare=false
+  for verbose in 0 1; do
+    (cd "$dir" && TMPDIR="$dir" make -s -j6 bootstrap VERBOSE=$verbose \
+      BOOTSTRAP_COMPILER="$dir/bin/probe" bootstrap_check=true BOOTSTRAP_STRIP=true > success.log 2>&1)
+    grep -q 'stage1/mlkit.*-j 2.*Stage2' "$BUILD_CHECK_LOG"
+    grep -q 'stage2/mlkit.*-j 2.*Stage3' "$BUILD_CHECK_LOG"
+    output=$(sed -n 's/^Bootstrap outputs: //p' "$dir/success.log")
+    for stage in 1 2 3; do
+      grep -q 'building ' "$output/stage$stage.log"
+      grep -q 'compiler diagnostic' "$output/stage$stage.log"
+    done
+    if [ "$verbose" = 1 ]; then
+      grep -q 'building ' "$dir/success.log"
+      grep -q 'compiler diagnostic' "$dir/success.log"
+    else
+      if grep -Eq 'building |compiler diagnostic' "$dir/success.log"; then
+        echo 'Quiet bootstrap leaked compiler output' >&2; exit 1
+      fi
     fi
-    if (cd "$dir" && TMPDIR="$dir" FAIL_STAGE=$fail_stage make -s bootstrap \
-      BOOTSTRAP_COMPILER="$dir/bin/probe" bootstrap_check=true \
-      BOOTSTRAP_STRIP=true BOOTSTRAP_COMPARE=$compare > failure.log 2>&1); then
-      echo "Accepted bootstrap $failure failure" >&2; exit 1
-    fi
-    cmp "$dir/success" "$dir/bin/mlkit"
+    printf 'previous compiler must survive a failed bootstrap\n' > "$dir/bin/mlkit"
+    cp "$dir/bin/mlkit" "$dir/success"
+    # In particular, tee must not hide a failed compiler in verbose mode.
+    for failure in compile compare; do
+      if [ "$failure" = compile ]; then fail_stage=stage2; compare=cmp
+      else fail_stage=never-match; compare=false
+      fi
+      if (cd "$dir" && TMPDIR="$dir" FAIL_STAGE=$fail_stage make -s bootstrap VERBOSE=$verbose \
+        BOOTSTRAP_COMPILER="$dir/bin/probe" bootstrap_check=true \
+        BOOTSTRAP_STRIP=true BOOTSTRAP_COMPARE=$compare > failure.log 2>&1); then
+        echo "Accepted bootstrap $failure failure (VERBOSE=$verbose)" >&2; exit 1
+      fi
+      cmp "$dir/success" "$dir/bin/mlkit"
+    done
   done
 done
 # An explicit seed library must override an application's inherited SML_LIB.

@@ -368,7 +368,8 @@ install_src:
 # Self-hosting stages use the compiler produced by the configured seed build.
 # Per-stage caches prevent a previous stage from supplying compiled ML units.
 BOOTSTRAP_COMPILER ?= $(CWD)/bin/mlkit
-BOOTSTRAP_JOBS ?= 1
+BOOTSTRAP_JOBS ?= 2
+VERBOSE ?= 0
 BOOTSTRAP_STRIP ?= $(STRIP)
 BOOTSTRAP_COMPARE ?= cmp
 ifeq ($(DARWIN_NATIVE),1)
@@ -389,15 +390,18 @@ bootstrap:
 bootstrap-init:
 	@test -n "$(BOOTSTRAP_DIR)" || { echo 'Run make bootstrap to create fresh stage directories' >&2; exit 1; }
 
+# Bash pipefail keeps a failed compiler from being hidden by tee in verbose mode.
+bootstrap-stage1 bootstrap-stage2 bootstrap-stage3: SHELL := /bin/bash
+
 # Compile with the preceding MLKit stage, regardless of which SML compiler
 # produced the initial seed. Preserve logs and executable outputs for inspection.
 define bootstrap_compile
 	mkdir -p "$(BOOTSTRAP_DIR)/stage$(1)"
-	@SML_LIB="$(CWD)" "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
+	@set -o pipefail; SML_LIB="$(CWD)" "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
 	  -ldexe '$(BOOTSTRAP_LINKER)' --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
 	  -o "$(BOOTSTRAP_DIR)/stage$(1)/mlkit" src/Compiler/mlkit$(BACKEND_SUFFIX).mlb \
-	  > "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1 || \
-	  { tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2; exit 1; }
+	  $(if $(filter 1,$(VERBOSE)),2>&1 | tee "$(BOOTSTRAP_DIR)/stage$(1).log",> "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1) || \
+	  { $(if $(filter 1,$(VERBOSE)),:,tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2); exit 1; }
 	$(call bootstrap_check,$(BOOTSTRAP_DIR)/stage$(1)/mlkit)
 	"$(BOOTSTRAP_DIR)/stage$(1)/mlkit" --version
 endef

@@ -213,7 +213,9 @@ MLKit stages, each with a fresh cache namespace. The same Makefile-hosted
 stage chain is used on X64. It compares stripped copies of stages two and
 three, using identical basenames for Apple's ad-hoc signatures, and installs
 the successful third-stage executable into `bin/mlkit`. Stage binaries and
-logs remain in the temporary directory printed at startup. `BOOTSTRAP_JOBS`,
+logs remain in the temporary directory printed at startup. Use
+`make bootstrap VERBOSE=1` to stream compiler output while retaining those logs.
+`BOOTSTRAP_JOBS`,
 `BOOTSTRAP_LINKER`, `BOOTSTRAP_STRIP`, and `BOOTSTRAP_COMPARE` parameterise the
 self-hosting and comparison steps; they do not select the initial SML seed.
 
@@ -242,7 +244,7 @@ compiler's architecture and execution, and compares stripped stage-two and
 stage-three binaries. ARM64 and Linux X64 both use this `make bootstrap`
 target. Comparison copies retain the same basename
 because Apple `strip` uses it in the ARM ad-hoc signature. Set
-`BOOTSTRAP_JOBS` to increase MLKit's compilation parallelism (the default is 1),
+`BOOTSTRAP_JOBS` to increase MLKit's compilation parallelism (the default is 2),
 or `BOOTSTRAP_LINKER` to test another linker explicitly.
 
 The backend reserves context/exception registers in both allocator palettes,

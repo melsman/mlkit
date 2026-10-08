@@ -108,7 +108,7 @@ jobs:
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
           else
-            ./configure CC="$THECC" --with-compiler=mlkit --with-compiler-lib="$SEED_LIB"
+            ./configure CC="$THECC" --with-compiler='mlkit -j 2' --with-compiler-lib="$SEED_LIB"
           fi
 
       - name: Check configured build and bootstrap targets
@@ -133,7 +133,7 @@ jobs:
       - name: Build SMLtoJs
         run: |
           if [ "$MLCOMP_HOST" = mlton ]; then
-            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit"
+            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit -j 2"
           fi
           make smltojs_basislibs
 
