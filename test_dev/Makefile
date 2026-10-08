@@ -48,18 +48,23 @@ PROF_FLAGS=$(RI_FLAGS) -rp
 GC_PROF_FLAGS=$(GC_FLAGS) -rp
 
 MLKIT=../bin/mlkit
+VERBOSE ?= 0
+# Keep compiler failures visible when verbose output is piped through tee.
+%.exe %.mlbexe: SHELL := /bin/bash
 # Resolve a relative compiler path before entering each test's working directory.
 COMPILER=$(if $(findstring /,$(firstword $(MLKIT))),$(abspath $(firstword $(MLKIT))),$(firstword $(MLKIT))) $(wordlist 2,999,$(MLKIT))
 TEST_INPUTS=$(wildcard *.sml) $(filter-out %.auto.mlb,$(wildcard *.mlb))
 
 # Each executable owns compiler scratch files, caches, and runtime outputs.
-# Compiler stdout and stderr go to one log per executable.
+# Compiler stdout and stderr go to one log per executable; VERBOSE=1 also
+# streams them to the terminal.
 define compile_test
 	@mkdir -p .test-build/$@
 	@cp -p $(TEST_INPUTS) .test-build/$@/
-	@{ printf '\n%s\n' '$(COMPILER) $(1) -o $@ $<'; \
-	  cd .test-build/$@ && SML_LIB="$(abspath ..)" $(COMPILER) $(1) -o "$(abspath $@)" "$<"; \
-	} > $@.log 2>&1 || { cat $@.log >&2; exit 1; }
+	@set -o pipefail; { printf '\n%s\n' '$(COMPILER) $(1) -o $@ $<'; \
+	  (cd .test-build/$@ && SML_LIB="$(abspath ..)" $(COMPILER) $(1) -o "$(abspath $@)" "$<"); \
+	} $(if $(filter 1,$(VERBOSE)),2>&1 | tee $@.log,> $@.log 2>&1) || \
+	  { $(if $(filter 1,$(VERBOSE)),:,cat $@.log >&2); exit 1; }
 endef
 
 # A joint invocation assembles the log only once, after both suites finish.
