@@ -299,8 +299,16 @@ parallelism against such an installation. `basis/reml.mlb` (the `Region`
 structure) is also precompiled with ReML for those four non-GC configurations
 and installed in the matching Basis caches. The check exercises both APIs,
 including an explicit region parameter.
-The non-GC sampled Basis build writes per-file logs containing region-annotated
-code and region types, without region-flow graphs or program-point listings.
+All three sampled Basis builds use `-log_to_file -Prfg -Ppp -Pcee` to
+write per-source diagnostic logs, including region-flow graphs, program points,
+and call-explicit code. These logs are installed alongside the IR files in each
+variant's cache directory (for example,
+`basis/MLB/ARM64_RI_GC_PROF/List.sml.log`). Use the logs for inspecting compiled
+library code; the `.ir` files provide metadata for rpview. Profiling compilations
+with `-log_to_file` also use this layout for application sources. In writable caches, missing logs or changed printing options trigger
+regeneration when logging is requested. Read-only installed libraries reuse
+their compiled objects regardless of the requested diagnostic output; their
+logs are supplied at installation time.
 
 Small blue ticks above the time axis mark every completed snapshot. Thin red
 bars below it show GC intervals, from the end of a `before_gc` snapshot to the

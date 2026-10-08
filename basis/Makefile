@@ -6,6 +6,8 @@ clean:
 MLKIT ?= ../bin/mlkit -j 2
 
 MLKIT_BASIS_VARIANTS = ri par gc gc_rp par_rp ri_rp
+PROFILE_LOG_FLAGS = -log_to_file -Prfg -Ppp -Pcee
+
 MLKIT_BASIS_TARGETS = $(addprefix mlkit_basislib_,$(MLKIT_BASIS_VARIANTS))
 
 .PHONY: mlkit_basislibs mlkit_basislibs_dirs $(MLKIT_BASIS_TARGETS)
@@ -28,10 +30,10 @@ mlkit_basislib_gc:
 	SML_LIB=.. $(MLKIT) -c -gc repl.mlb
 
 mlkit_basislib_gc_rp:
-	SML_LIB=.. $(MLKIT) -c -gc -region_profile repl.mlb
+	SML_LIB=.. $(MLKIT) -c -gc -region_profile $(PROFILE_LOG_FLAGS) repl.mlb
 
 mlkit_basislib_par_rp:
-	SML_LIB=.. $(MLKIT) -c -no_gc -par -region_profile repl.mlb
+	SML_LIB=.. $(MLKIT) -c -no_gc -par -region_profile $(PROFILE_LOG_FLAGS) repl.mlb
 
 mlkit_basislib_ri_rp:
-	SML_LIB=.. $(MLKIT) -c -no_gc -region_profile -Pcee -print_rho_types -Paux -log_to_file repl.mlb
+	SML_LIB=.. $(MLKIT) -c -no_gc -region_profile $(PROFILE_LOG_FLAGS) repl.mlb

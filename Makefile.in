@@ -108,10 +108,14 @@ build_kitlibs: mlkit_kitlibs
 mlkit_basislibs: mlkit
 	$(MAKE) -C basis mlkit_basislibs
 	@set -e; for flags in '-no_gc' '-no_gc -par' '-gc' \
-	  '-no_gc -region_profile' '-no_gc -par -region_profile' '-gc -region_profile'; do \
+	  '-no_gc -region_profile -log_to_file -Prfg -Ppp -Pcee' \
+	  '-no_gc -par -region_profile -log_to_file -Prfg -Ppp -Pcee' \
+	  '-gc -region_profile -log_to_file -Prfg -Ppp -Pcee'; do \
 	  (cd kitlib && SML_LIB=.. ../bin/mlkit -c $$flags region-profile.mlb); \
 	done
-	@set -e; for flags in '-no_par' '-par' '-no_par -rp' '-par -rp'; do \
+	@set -e; for flags in '-no_par' '-par' \
+	  '-no_par -rp -log_to_file -Prfg -Ppp -Pcee' \
+	  '-par -rp -log_to_file -Prfg -Ppp -Pcee'; do \
 	  (cd basis && SML_LIB=.. ../bin/reml -c $$flags reml.mlb); \
 	done
 
@@ -120,9 +124,9 @@ mlkit_kitlibs: mlkit
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc kitlib.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -region_profile kitlib.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par -region_profile kitlib.mlb)
-	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -region_profile kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -region_profile -log_to_file -Prfg -Ppp -Pcee kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -par -region_profile -log_to_file -Prfg -Ppp -Pcee kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -region_profile -log_to_file -Prfg -Ppp -Pcee kitlib.mlb)
 
 .PHONY: mlkit_cleanlibs
 mlkit_cleanlibs:
@@ -169,7 +173,7 @@ install_mlkit_basislibs:
 	    pattern='*'; test "$$dir" != kitlib || pattern='region-profile.*'; \
 	    for file in $$dir/MLB/$$cache/$$pattern; do \
 	      case "$$file" in \
-	        *.d|*.eb|*.eb1|*.lnk|*.o|*.o.ir|*.df|*.rev) \
+	        *.d|*.eb|*.eb1|*.lnk|*.o|*.o.ir|*.log|*.df|*.rev) \
 	          set -- "$$@" "$$file" ;; \
 	      esac; \
 	    done; \
