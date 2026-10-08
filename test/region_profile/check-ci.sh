@@ -14,8 +14,9 @@ OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-profiler-ci.XXXXXX")
 mkdir "$OUT/tmp"
 TMPDIR=$OUT/tmp
 export TMPDIR
-# Always build the fixture encoder with this job's compiler, not a cached tool.
-RPENCODER=$OUT/rpfixture
+# Build test data tools with the configured seed, not the compiler under test.
+make -C "$ROOT" rpfixture
+RPENCODER=${RPENCODER:-$ROOT/bin/rpfixture}
 export RPENCODER
 echo "Profiler CI artifacts: $OUT"
 run () {

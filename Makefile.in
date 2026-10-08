@@ -606,3 +606,13 @@ test:
 .PHONY: rpview
 rpview:
 	$(MAKE) -C src/Tools/RegionProfile
+
+# Test data encoder; use the same seed compiler and Basis as rpview.
+.PHONY: rpfixture
+rpfixture: bin/rpfixture
+
+bin/rpfixture: test/region_profile/encode-fixture.sml test/region_profile/encode-fixture.mlb \
+              src/Tools/RegionProfile/Json.sml src/Tools/RegionProfile/Binary.sml \
+              src/Tools/RegionProfile/Reader.sml src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml
+	$(MKDIR) bin
+	cd test/region_profile && $(MLCOMP) -output "$(CWD)/bin/rpfixture" encode-fixture.mlb

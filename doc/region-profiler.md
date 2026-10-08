@@ -432,8 +432,11 @@ generation, and both region APIs against a staged read-only installation.
 It retains logs and reports failure details, and excludes optional Argobots
 experiments, timing benchmarks, and browser-executed graph assertions.
 
+The fixture encoder is a test-only tool built with the configured seed compiler.
+Build it before running these checks individually; the CI script builds it automatically.
+
 ```sh
-make rpview
+make rpview rpfixture
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
 sh test/region_profile/check-binary.sh
