@@ -291,6 +291,10 @@ builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
 and mode-specific caches such as `RI_PROF`, `RI_GC_PROF`, and `RI_PROF_PAR`
 (with an `ARM64_` prefix on ARM64), without ABI-version suffixes.
+Use `make -j6 all` (or `make -j6 mlkit_basislibs`) to build the six independent
+library variants concurrently. Each variant builds its Basis, profiler API, and
+supported ReML libraries in sequence to avoid competing writes to the same cache.
+`make -j6 mlkit_kitlibs` also builds the full Kit libraries after these prerequisites.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from
 a read-only installation. `test/region_profile/check-installed-api.sh` checks

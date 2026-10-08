@@ -36,6 +36,7 @@ run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
+run library-builds sh "$ROOT/test/region_profile/check-library-builds.sh"
 run ir sh "$ROOT/test/region_profile/check-ir.sh"
 run ir-primitives sh "$ROOT/test/region_profile/check-ir-primitives.sh"
 run text-flow sh "$ROOT/test/region_profile/check-text-flow.sh"
