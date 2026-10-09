@@ -18,11 +18,11 @@ for profile do
  node "$ROOT/test/region_profile/all-regions-assertions.js" "$OUT/profile.json" general
  "$RPVIEW" "$profile" -o "$OUT/profile.html" > /dev/null
  "$RPVIEW" "$profile" --sites --regions 12 -o "$OUT/profile.svg" > /dev/null
- # Check the actual HTML controls; the minimal DOM harness does not parse HTML.
+ # Check the actual HTML controls; also verify the report remains standalone.
  node - "$OUT/profile.html" "$OUT/profile.svg" <<'JS'
 const fs=require('fs'),assert=require('assert');
 const html=fs.readFileSync(process.argv[2],'utf8'),svg=fs.readFileSync(process.argv[3],'utf8');
-const choices=html.match(/<select id="allocation-view">(.*?)<\/select>/)[1];
+const choices=html.match(/<select id="allocation-view"[^>]*>(.*?)<\/select>/)[1];
 assert.deepStrictEqual([...choices.matchAll(/<option[^>]*>(.*?)<\/option>/g)].map(m=>m[1]),['Region slice','Allocation sites']);
 assert(choices.includes('value="flow" selected'));
 assert(!/<(?:script|link)[^>]*(?:src|href)=/.test(html),'Report must not load external resources');
@@ -30,7 +30,7 @@ assert(svg.includes('Site contributions across all regions'));
 assert(!/NaN|Infinity/.test(svg));
 JS
  {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d'
   cat "$ROOT/test/region_profile/ir11-assertions.js"
  } > "$OUT/check.js"

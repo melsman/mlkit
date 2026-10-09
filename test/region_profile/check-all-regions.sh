@@ -21,7 +21,7 @@ grep -q 'Site contributions across all regions' "$OUT/all.svg"
 node "$ROOT/test/region_profile/all-regions-assertions.js" "$OUT/all.json"
 node "$ROOT/test/region_profile/region-svg-assertions.js" "$RPVIEW" "$OUT"
 {
- cat "$ROOT/test/region_profile/graph-prelude.js"
+ sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/all.html"
  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/all.html" | sed '1d;$d'
  cat "$ROOT/test/region_profile/all-regions-viewer-assertions.js"
 } > "$OUT/viewer.js"

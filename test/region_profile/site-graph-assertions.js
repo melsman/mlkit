@@ -5,6 +5,8 @@
  const row=(sample,site,thread,bytes,count)=>({...first,sample,site,thread,worker:thread,cpu:thread,bytes,count});
  profile.allocations=[row(ids[0],first.site,'0','16','1'),row(ids[0],first.site,'1','32','2'),
   row(ids[0],'999999','0','8','1'),row(ids[1],first.site,'0','64','4')];
+ // These synthetic allocations introduce owners absent from the snapshot fixture.
+ const extraScopes=[];for(const value of ['thread:0','worker:1','cpu:1','thread:999'])if(!el('scope').options.some(o=>o.value===value)){const option=document.createElement('option');option.value=value;option.textContent=value;el('scope').append(option);extraScopes.push(option);}
  rangeStart=0;rangeEnd=1;el('metric').value='sites';el('scope').value='all';el('limit').value='0';draw();
  assert.deepStrictEqual(model().totals,[56n,64n]);
  assert.equal(model().bands.length,2);
@@ -23,6 +25,7 @@
  assert(el('legend').querySelectorAll('button').length>0);
  const exported=exportSvgDocument();assert(exported.querySelectorAll('polygon').length>0);
  el('scope').value='thread:999';draw();assert.deepStrictEqual(model().totals,[0n]);assert.equal(model().bands.length,0);
+ for(const option of extraScopes)option.remove();
  profile.allocations=saved;rangeStart=0;rangeEnd=samples.length-1;el('metric').value='total';el('scope').value='all';draw();
  assert(!el('group').disabled);assert(!el('tail-label').hidden);
  console.log('Interactive site graph: exact occupancy, Other, scopes, windows, IR links and SVG passed');

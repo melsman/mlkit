@@ -13,7 +13,7 @@ printf '%s\n' "$SML_LIB/basis/basis.mlb" main.sml > "$OUT/main.mlb"
 "$RPVIEW" "$OUT/profile.rp" --format json -o "$OUT/profile.json"
 "$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html"
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d'
   cat <<'JS'
 assert.equal(profile.version,'10');
@@ -41,7 +41,7 @@ JS
 sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/generated.json" "$OUT/generated.rp"
 "$RPVIEW" "$OUT/generated.rp" -o "$OUT/generated.html" > /dev/null
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/generated.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/generated.html" | sed '1d;$d'
   printf '%s\n' "assert(profile.ir_sites.length>0);assert(profile.ir_sites.every(s=>s.status==='generated'&&s.spans.length===0));console.log('IR5: generated sites have no misleading IR location');"
 } > "$OUT/generated.js"

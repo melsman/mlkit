@@ -27,7 +27,7 @@ done
 sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/truncated.json" "$OUT/truncated.rp"
 "$RPVIEW" "$OUT/truncated.rp" -o "$OUT/truncated.html" > /dev/null
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/truncated.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/truncated.html" | sed '1d;$d'
   printf '%s\n' "assert.equal(samples.length,1);assert(profile.allocations.every(r=>r.sample==='1'));assert(profile.occupancy_summaries.every(r=>r.sample==='1'));console.log('Occupancy validation and incomplete snapshots: PASS');"
 } > "$OUT/truncated.js"
