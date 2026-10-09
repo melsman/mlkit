@@ -133,11 +133,14 @@ scan_rev2.rp: scan_rev2.exe
 scan_rev2.svg: scan_rev2.rp
 	../bin/rpview $< --caption "Scanning life.sml 50 times with no space leak" -o $@
 
+life.rp: life.exe
+	./$< +RTS -rp -rp_file $@ -rp_interval 400us -rp_region all > life.out
+
 life_ex2.svg: life.rp
-	../bin/rpview $< --caption life --region r338955 -o $@
+	../bin/rpview $< --region r339819 -o $@
 
 life_ex3.svg: life.rp
-	../bin/rpview $< --caption life --metric stack -o $@
+	../bin/rpview $< --metric stack -o $@
 
 LENGTH_N ?= 10000000
 .PHONY: length_timings
