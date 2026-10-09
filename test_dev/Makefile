@@ -263,7 +263,7 @@ prof: kitlife35u_no_basislib.pdf
 	SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $*-prof.exe $<
 
 %.rp: %-prof.exe
-	./$< +RTS -rp -rp-interval 1ms -rp-file $@
+	./$< +RTS -rp -rp_interval 1ms -rp_file $@
 
 %.svg: %.rp
 	../bin/rpview $< -o $@
