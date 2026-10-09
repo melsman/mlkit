@@ -263,13 +263,13 @@ prof: kitlife35u_no_basislib.pdf
 	SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $*-prof.exe $<
 
 %.rp: %-prof.exe
-	./$< -microsec 1000 -verbose -file $@
+	./$< +RTS -rp -rp_interval 1ms -rp_file $@
 
-%.ps: %.rp
-	../bin/rp2ps -source $< -region $@
+%.svg: %.rp
+	../bin/rpview $< -o $@
 
-%.pdf: %.ps
-	ps2pdf $< $@
+%.pdf: %.svg
+	inkscape -D -o $@ $<
 
 # avoid deletion of exe-files and out-files
 dummy1: $(TESTFILES:%.sml=%-ri.exe) $(TESTFILES:%.sml=%-gc.exe) $(TESTFILES:%.sml=%-p.exe) $(TESTFILES:%.sml=%-gcp.exe)

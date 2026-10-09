@@ -7,8 +7,9 @@ trap 'rm -rf "$OUT"' EXIT HUP INT TERM
 sh "$ROOT/test/region_profile/encode-fixture.sh" "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.rp"
 "${RPVIEW:-$ROOT/bin/rpview}" "$OUT/profile.rp" -o "$OUT/profile.html" > /dev/null
 {
- cat "$ROOT/test/region_profile/graph-prelude.js"
+ sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d;s/^const samples=/let samples=/'
+ cat "$ROOT/test/region_profile/hint-assertions.js"
  cat "$ROOT/test/region_profile/graph-assertions.js"
  cat "$ROOT/test/region_profile/region-flow-assertions.js"
  cat "$ROOT/test/region_profile/ir-assertions.js"
@@ -23,7 +24,7 @@ node "$OUT/check.js"
 for profile in "$@"; do
  "${RPVIEW:-$ROOT/bin/rpview}" "$profile" -o "$OUT/native.html" > /dev/null
  {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/native.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/native.html" | sed '1d;$d'
   cat <<'JS'
 assert((profile.allocations||[]).length>0,'Native fixture must contain allocations');

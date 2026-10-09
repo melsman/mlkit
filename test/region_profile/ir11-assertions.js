@@ -5,8 +5,9 @@ assert(samples.length >= 2, 'Need multiple snapshots to exercise range selection
 assert(profile.allocations.length > 0, 'Need measured occupancy');
 assert(profile.region_flow.available, 'Fresh examples need region metadata');
 assert.equal(profile.region_flow.issues.length, 0);
-const scopes = ['all', ...new Set(profile.allocations.flatMap(r => ['thread:'+r.thread, 'worker:'+r.worker]))];
-const bindings = [...attributionBindings.keys()];
+// Exercise selectable filters; unavailable workers and finite regions are not UI choices.
+const scopes = el('scope').options.map(o=>o.value).filter(v=>v==='all'||/^(thread|worker):/.test(v));
+const bindings = el('attribution-region').options.map(o=>o.value).filter(v=>v!=='all');
 let checks = 0;
 for (const selector of ['all', ...bindings]) {
  el('attribution-region').value = selector;
@@ -29,8 +30,10 @@ for (const selector of ['all', ...bindings]) {
    el('allocation-view').value = 'site'; allocationTable();
    const displayed = el('allocation-rows').children;
    assert.equal(displayed.length, sites.size);
-   assert.equal(displayed.reduce((n,r) => n+BigInt(r.children[2].textContent),0n),expected.reduce((n,r) => n+BigInt(r.count),0n));
-   assert.equal(displayed.reduce((n,r) => n+BigInt(r.children[3].title.split(' ')[0]),0n),bytes < 0n ? 0n : bytes);
+   el('allocation-value').value='count';allocationTable();
+   assert.equal(el('allocation-rows').children.reduce((n,r) => n+BigInt(r.children[1].title.split(' ')[0]),0n),expected.reduce((n,r) => n+BigInt(r.count),0n));
+   el('allocation-value').value='bytes';allocationTable();
+   assert.equal(displayed.reduce((n,r) => n+BigInt(r.children[1].title.split(' ')[0]),0n),bytes < 0n ? 0n : bytes);
    if (peak !== null) {
     assert(el('allocation-note').textContent.includes('Showing snapshot '+peak+' '));
     for (const [key,label] of [['object_overhead','Descriptor overhead: '],['slack','unused page space: ']]) {

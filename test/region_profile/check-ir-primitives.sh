@@ -43,7 +43,7 @@ LC_ALL=C awk '
 [ "$(cat result)" = '2.0xx' ]
 "$RPVIEW" profile.rp -o profile.html > /dev/null
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" profile.html
   sed -n '/^<script>$/,/^<\/script>/p' profile.html | sed '1d;$d'
   cat <<'JS'
 const tokens = new Set();

@@ -30,8 +30,7 @@ struct
                      \  --show-base / --hide-base       Base names (default hidden)\n\
                      \  --show-type / --hide-type       Region type (default hidden)\n\
                      \  --show-peak / --hide-peak       Peak page capacity (default hidden)\n\
-                     \  --legend-right / --legend-below HTML legend placement and compact names\n\
-                     \                          (default right; SVG legend is always inside/right)\n";
+                     \  The legend always appears on the right\n";
                OS.Process.exit OS.Process.success)
           fun options [] = ()
             | options ("--sites"::rest) = (setting "sites" (ProfileJson.Bool true); options rest)
@@ -67,8 +66,6 @@ struct
               in if valid then (setting "scope" (ProfileJson.Str canonical); options rest)
                  else raise Fail "scope must be all, thread:N, worker:N or cpu:N"
               end
-            | options ("--legend-right"::rest) = (setting "legend-right" (ProfileJson.Bool true); options rest)
-            | options ("--legend-below"::rest) = (setting "legend-right" (ProfileJson.Bool false); options rest)
             | options ("--help"::_) = help ()
             | options (value::rest) =
               if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","type","peak"] then

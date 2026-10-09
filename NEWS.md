@@ -1,5 +1,11 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.25 is released
+
+* mael 2026-10-09: Manual updates.
+
+* mael 2026-10-09: Cleanup and improvement of rpview.
+
 ### MLKit version 4.7.24 is released
 
 * mael 2026-10-07: Add new efficient region profiler with support for

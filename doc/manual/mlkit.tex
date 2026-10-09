@@ -6,7 +6,7 @@
 %\usepackage{times}                % times font
 \usepackage{type1cm}               % traditional font - quite thin for screen reading
 \renewcommand{\ttdefault}{cmtt}    % smaller tt-font
-\newcommand{\docversion}{4.7.22}
+\newcommand{\docversion}{4.7.25}
 \usepackage{alltt}
 \makeindex
 \input{genericmac}
@@ -18,7 +18,7 @@
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
-\date{October 8, 2026 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
+\date{October 9, 2026 \\[3cm] \includegraphics[width=.7\textwidth]{mlkit-logo}}
 \raggedbottom
 
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
@@ -940,10 +940,10 @@ Life, but if we were writing control software for the ABS brakes of a car,
 having control over all costs, including memory management, would be crucial!
 
 % left lower right upper
-\newcommand{\includerp}[1]{\includegraphics[trim=12mm 25mm 37mm 37mm, clip, width=\textwidth]{#1}}
+%\newcommand{\includerp}[1]{\includegraphics[trim=12mm 25mm 37mm 37mm, clip, width=\textwidth]{#1}}
 \newcommand{\includerpv}[1]{\includegraphics[trim=10mm 10mm 15mm 30mm, clip, width=\textwidth]{#1}}
 \newcommand{\includerpvv}[1]{\includegraphics[trim=10mm 10mm 5mm 30mm, clip, width=\textwidth]{#1}}
-\newcommand{\includerpvvv}[1]{\includegraphics[trim=10mm 25mm 25mm 30mm, clip, width=\textwidth]{#1}}
+\newcommand{\includerpvvv}[1]{\includegraphics[trim=10mm 25mm 20mm 30mm, clip, width=\textwidth]{#1}}
 %\newcommand{\includerp}[1]{\includegraphics[trim=16mm 27mm 41mm 41mm, clip, width=\textwidth]{#1}}
 
 \begin{figure}
@@ -972,8 +972,8 @@ profile.
 \end{figure}
 
 Figure~\ref{lifeprof2000.fig} is a profile of the same program with profiling
-snapshots occuring only every 2ms. In the figures, we can see that the largest
-region is \lstinline{r339977}. To find out what this region contains, however,
+snapshots occurring only every 2ms. In the figures, we can see that the largest
+region is \lstinline{r339819}. To find out what this region contains, however,
 one needs to know about the methods described in Part~\ref{understanding.sec}.
 
 \section{Try it!}
@@ -6651,8 +6651,8 @@ reference-tracing garbage collector periodically cleans up the global regions
 \section{Instrumenting the Executable}
 All runtime options belong inside \kw{+RTS ... -RTS} blocks. For example:
 \begin{scriptcode}
-  ./run +RTS -verbose_gc -RTS input.txt
-  ./run +RTS -help
+  $ ./run +RTS -verbose_gc -RTS input.txt
+  $ ./run +RTS -help
 \end{scriptcode}
 The application receives only \kw{input.txt} in the first example. Blocks can
 appear anywhere and may be repeated. The final \kw{-RTS} can be omitted if the
@@ -6674,6 +6674,7 @@ line instead configures the runtime executing the compiler itself.
 
 %---------------------------------------------------------
 \chapter{Region Profiling}
+\label{useOfProf.sec}
 
 We have already seen many examples of using region profiling. Because region
 profiling incurs a runtime cost, the programmer needs to enable it actively by
@@ -6684,7 +6685,7 @@ either by a timer or by the number of applied function calls. Profile snapshots
 run only on function entries. Second, the generated code will use a region page
 layout where all objects inside region pages are prefixed with a word that tells
 the size of the object and the allocation site (program point) that allocated
-the object. Third, it will link agains a profile-supporting runtime system as
+the object. Third, it will link against a profile-supporting runtime system as
 well as \inline{-rp}-compiled libraries.
 
 Once an executable with profiling support has been built, it can be executed and
@@ -6692,7 +6693,7 @@ runtime options can be passed to the executable using runtime option blocks on
 the form \kw{+RTS ... -RTS}. Options allow for specifying the sampling interval
 and for specifying in which rp-file to store the region profile data. Given an
 rp-file, the programmer may now use the interactive \inline{rpview} program or
-use \inline{rpview}'s commandline interface to generate region profile graphs of
+use \inline{rpview}'s command-line interface to generate region profile graphs of
 various kinds.
 
 We shall now explain in more detail how to profile programs. For example, we
@@ -6718,10 +6719,10 @@ be created:
   variables that label bands are always global or \lstinline{region}-bound, never
   formal region parameters.
 \item A
-  \index{region attribution profile}%
-  \index{profile!region attribution}%
+  \index{site attribution profile}%
+  \index{profile!site attribution}%
   %
-  \emph{region attribution profile} (or \emph{object profile}) is a graph that,
+  \emph{site attribution profile} (or \emph{object profile}) is a graph that,
   for a particular region, shows which allocation site (also called program
   point) contributes to the allocations in the region, with one colored band for
   each allocation site in the region-annotated program\footnote{Every occurrence
@@ -6739,11 +6740,11 @@ be created:
   \kw{-Pcee}, say.\footnote{Program points are
   annotated during physical size inference.}
 
-  If one has an object profile showing that program point \kw{pp42}, say,
+  If one has a site attribution profile showing that program point \kw{pp42}, say,
   contributes with allocation, one can search for \kw{pp42} in the
   region-annotated program and find the construct that caused the
   allocation. The interactive version of \inline{rpview} generates an
-  interactive html-file that allows the programmer to inspect allocation sites
+  interactive HTML-file that allows the programmer to inspect allocation sites
   interactively.
 
   We note here that site attributions are not stored in region profile files by
@@ -6780,7 +6781,7 @@ version of \inline{rpview} here but encourage the reader to try it out.
 
 The following example clarifies the use of a region flow graph.  Suppose the
 region profile shows that \kw{r5} is responsible for most of the memory usage.
-Further, suppose an object profile of \kw{r5} shows that program point
+Further, suppose a site attribution profile of \kw{r5} shows that program point
 \kw{pp345} is responsible for most of the allocation.  Searching for \kw{pp345}
 in the region-annotated program, one may find that the allocation at \kw{pp345}
 is into some other region variable, \kw{r34}, say.  Here \kw{r34} will be a
@@ -6801,7 +6802,7 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
 \put(2,6){\picbox{Choose runtime \\ profiling strategy \\ and execute}}
 \put(2,12){\picbox{Choose compile-time \\ profiling strategy \\ and compile}}
 \put(11,0){\dashbox{.5}(7,4){\parbox{38mm}{\begin{center}
-        Region profile, object profile, or stack profile \end{center}}}}
+        Region profile, site attribution profile, or stack profile \end{center}}}}
 \put(11,6){\dashbox{.5}(5,3){\parbox{20mm}{\begin{center} data file {\tt profile.rp} \end{center}}}}
 \put(11,11){\dashbox{.5}(7,2){\parbox{38mm}{\begin{center}
         Region flow graph \end{center}}}}
@@ -6903,7 +6904,7 @@ Figure~\ref{scan_rev1.fig}.
 \begin{figure}
   \includerpv{scan_rev1.pdf}
 \caption{Memory is accumulated in the top two bands. The global regions \kw{r1}
-  and \kw{r338853} hold the largest amount of memory. The graph was generated by
+  and \kw{r338955} hold the largest amount of memory. The graph was generated by
   first compiling the \inline{kitdemo/scan_rev1.mlb} file with profiling enabled
   (option \kw{-rp}). We also add the compiler options \inline{-log_to_file},
   \kw{-Ppp}, \kw{-Prfg}, and \kw{-Pcee} for enabling printing of region flow
@@ -6917,75 +6918,77 @@ Figure~\ref{scan_rev1.fig}.
 \medskip\hrule
 \end{figure}
 
-The graph shows that region \kw{r338853} accumulates more memory for each time
+The graph shows that region \kw{r338955} accumulates more memory for each time
 it scans the file \kw{life.sml}.
 
-To see what happens in region \kw{r338853}, we make an region attribution
+To see what happens in region \kw{r338955}, we make a region attribution
 profile of that region, see Figure \ref{scan_rev1_r.fig}.
 \begin{figure}
   \includerpvvv{scan_rev1_r.pdf}
 \caption{There seems to be a space leak at allocation site 118 (i.e., program point \kw{pp118}). The graph
   was generated by typing
   %
-  \inline{rpview scan_rev1.rp --region r338853 --show-base -o scan_rev1_r.svg}.}
+  \inline{rpview scan_rev1.rp --region r338955 --show-base -o scan_rev1_r.svg}.}
 \label{scan_rev1_r.fig}
 \medskip\hrule
 \end{figure}
-The object profile shows that site (program point) \kw{pp118} continually
+The site attribution profile shows that site 118 (i.e., program point \kw{pp118}) continually
 allocates memory that is first freed when the program terminates and that the
 allocation happens in a function named \inline{conv} in the source file
 \inline{Int.sml}. We now look in the log file
-\kw{\$(SML\_LIB)/basis/Int.sml.log}, where we find the following code for the
+\kw{\$}\lstinline{(SML_LIB)/basis/Int.sml.log}, where we find the following code for the
 \inline{conv} function:
 \begin{smlcode}
-  fun conv attop r1T pp65 [r58078s:inf] (rad, radix, i) =
+  fun conv attop r1 pp68 [r59700:inf] (rad, radix, i) =
     case ... of ...
     | _ =>
       let ...
-      in  String.implode [sat r58078s pp115] chars
+      in String.implode [sat r59700 pp118] chars
       end
 \end{smlcode}
 We also see that this function is called directly by the function
-\kw{Int.toString} and that the formal region parameter \kw{r59522} is passed
+\kw{Int.toString} and that the formal region parameter \kw{r61144} is passed
 directly as a parameter in the call to \kw{conv}:
 \begin{smlcode}
-  fun toString attop r1T pp775 [r59522s:inf] i =
-    let val v1738 = DEC
-    in jmp conv[sat r59522s pp776] (v1738, 10, i)
+  fun toString attop r1 pp778 [r61144:inf] i =
+    let val v1778 = DEC
+    in jmp conv[sat r61144 pp779] (v1778, 10, i)
     end
 \end{smlcode}
 So the space leak is caused by the \kw{String.implode} primitive function being
-called with region \kw{r338853} instantiated for the formal region variable
-\kw{r59522}.
+called with region \kw{r338955} instantiated for the formal region variable
+\kw{r61144}.
 
-We now search for \kw{r338853} in file \kw{scan\_rev1.sml.log} and find the
+We now search for \kw{r338955} in file
+\kw{kitdemo/MLB/ARM64\_RI\_PROF/scan\_rev1.sml.log}\footnote{With the x86-64 native
+compiler, the path is \kw{kitdemo/MLB/X64\_RI\_PROF/scan\_rev1.sml.log}.} and find the
 following fragment of the region flow graph:
 \begin{small}
 \begin{scriptcode}
-  LETREGION[r331112:inf]
-  readWord[r330770:inf]   --r330770 atbot-->   [*r331112*] ;
-  toString[r59522:inf]   --r59522 attop-->   [*r331112*] ;
+  LETREGION[r338955:inf]
+  readWord[r338613:inf]   --r338613 atbot-->   [*r338955*] ;
+  toString[r61144:inf]   --r61144 attop-->   [*r338955*] ;
 \end{scriptcode}
 \end{small}
-The fragment is read as follows. The formal region variable \kw{r59522} is
-instantiated to the \lstinline{region}-bound region variable \kw{r331112} in a
-call to \kw{toString}. Moreover, also the formal region variable \kw{r330770}
-(of function \kw{readWord}) is instantiated to \kw{r331112}. (The asterisks
-(\kw{*}) denote that the node has been displayed before.)
+The fragment is read as follows. The formal region variable \kw{r61144} is
+instantiated to the \lstinline{region}-bound region variable \kw{r338955} in a
+call to \kw{toString}. Moreover, also the formal region variable \kw{r338613}
+(of function \kw{readWord}) is instantiated to \kw{r338955}. (The asterisks
+(\kw{*}) denote that a node has been displayed before.)
 
 Region flow graphs are local to each program fragment in a program. A call to a
 non-local region-polymorphic function introduces an edge in the region flow
 graph, but the graph says nothing about in which module the called function is
-located. Thus, it may be necessary to look in several log files to find the path
+located. Thus, it may be necessary to look in several log files to find the complete path
 from a formal region variable to an actual region variable. By inspecting the
-call-explicit programs found in \kw{basis/Int.sml.log} and
-\kw{kitdemo/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
+call-explicit programs found in the two log files \lstinline{basis/MLB/ARM64_RI_PROF/Int.sml.log} and
+\lstinline{kitdemo/MLB/ARM64_RI_PROF/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
 eventually call \kw{implode}. However, \kw{readWord} is called only initially,
 thus, we conclude that the space leak is caused by function \kw{Int.toString}
-being called with region \kw{r331112} instantiated for the formal region
-variable \kw{r59522}. Indeed, by inspecting the calls to \kw{toString} in the
-call-explicit program found in \kw{scan\_rev1.sml.log}, we see that
-\kw{toString} is called with actual region \kw{r331112}.
+being called with region \kw{r338955} instantiated for the formal region
+variable \kw{r61144}. Indeed, by inspecting the calls to \kw{toString} in the
+call-explicit program found in \lstinline{scan_rev1.sml.log}, we see that
+\kw{toString} is called with actual region \kw{r338955}.
 
 The \kw{concat} function from the initial basis catenates a list of strings. But
 all the strings in the argument list to \kw{concat} are required to be in the
@@ -7077,7 +7080,7 @@ Before compiling a program for the purpose of profiling, one must decide on a
 %
 \index{profile strategy!compile-time}%
 %
-{\em compile-time profiling strategy}; see Figure~\ref{profStrategy.fig}.  The
+\emph{compile-time profiling strategy}; see Figure~\ref{profStrategy.fig}.  The
 compile-time profiling strategy directs the embedding of profiling instructions
 in the generated code and instructs the compiler whether to report a region flow
 graph.
@@ -7086,7 +7089,7 @@ Region profiling is enabled by passing the option
 %
 \index{region profiling@\texttt{-region\_profile}}%
 %
-\kw{-region\_profile} (or simply \kw{-rp}) to the MLKit
+\lstinline{-region_profile} (or simply \kw{-rp}) to the MLKit
 compiler. If you want the MLKit to report region-annotated programs
 with program points, you should pass the option
 %
@@ -7119,27 +7122,27 @@ the options \kw{-rp}, \kw{-Ppp}, \kw{-Prfg}, and \kw{-Pcee} are passed to the
 MLKit compiler.
 
 By also passing the option \kw{-log\_to\_file} to the MLKit compiler, the MLKit
-generates several files, of which we have \kw{life.sml.log} (containing, among
+generates several files, of which we have \lstinline{MLB/ARM64_RI_PROF/life.sml.log} (containing, among
 other things, the call-explicit region-annotated program with program points and
 the region flow graph in text layout) and the executable file \kw{run}.
 
 %-------------------------------------------------
 \section{The Log File}
 %-------------------------------------------------
-In the file \kw{life.sml.log} you find the call-explicit region-annotated
+In the file \lstinline{MLB/ARM64_RI_PROF/life.sml.log} you find the call-explicit region-annotated
 program with program points and the region flow graph in text layout for the
 \kw{life.sml} source file.  The region flow graph is found by searching for the
-string \kw{REGION FLOW GRAPH FOR PROFILING}. The graph contains the following
+string \kw{Region Flow Graph}. The graph contains the following
 fragment (modified slightly to fit here):\label{reg_flow_graph.ex}
 {\small
 \begin{verbatim}
-  cp_list[r330702:inf]
-    --r330702 sat--> nthgen[r332514:inf]
-                       --r332514 atbot--> LETREGION[r332640:inf] ;
-                       --r332514 sat--> [*r332514*] ;
-    --r330702 atbot--> LETREGION[r332002:inf] ;
-    --r330702 sat--> [*r330754*] ;
-    --r330702 sat--> [*r330702*] ;
+  cp_list[r338539:inf]
+     --r338539 sat--> nthgen[r340351:inf]
+                         --r340351 atbot--> LETREGION[r340477:inf] ;
+                         --r340351 sat--> [*r340351*] ;
+     --r338539 atbot--> LETREGION[r339839:inf] ;
+     --r338539 sat--> [*r338591*] ;
+     --r338539 sat--> [*r338539*] ;
 \end{verbatim}
 }
 The region flow graph is almost equivalent to the graph used by the storage mode
@@ -7151,24 +7154,23 @@ leaf nodes.
 
 Nodes in the graph are written in square brackets, which are labeled with the
 token \kw{LETREGION} or the name of the function for which the region variable
-is a formal parameter. For example, the notation \kw{cp\_list[r330702:inf]}
-identifies the node \kw{r330702}, which is a formal region parameter of the
+is a formal parameter. For example, the notation \kw{cp\_list[r338539:inf]}
+identifies the node \kw{r338539}, which is a formal region parameter of the
 function \kw{cp\_list}.  An asterisk inside a square bracket means that the node
 has been written earlier.  Only the node identifier (i.e., the region variable)
 will then be printed. The size of the region is printed after the region
-variable; we use \kw{inf} for infinite regions and {\em size\/} for finite
-regions of size {\em size\/} words.
+variable; we use \kw{inf} for infinite regions and \emph{size} for finite
+regions of size \emph{size} words.
 
-Edges are written with the {\em from node\/} identifier annotated on them. The
-edge points to the \emph{to node}. The fragment
-{\small
+Edges are written with the \emph{from node} identifier annotated on them. The
+edge points to the \emph{to node}. The fragment {\small
 \begin{verbatim}
-  cp_list[r330702:inf]
-     --r330702 sat-->    [*r330754*] ;
+  cp_list[r338539:inf]
+     --r338539 sat--> [*r338591*] ;
 \end{verbatim}
 }
-is read: there is an edge from node \kw{r330702} to node \kw{r330754} and node
-\kw{r330754} has been written earlier. From the cycle in the graph, one can
+is read: there is an edge from node \kw{r338539} to node \kw{r338591} and node
+\kw{r338591} has been written earlier. From the cycle in the graph, one can
 conclude that \kw{cp\_list} calls itself recursively; if you look in file
 \kw{life.sml}, you will find something like
 \begin{smlcode}
@@ -7185,217 +7187,94 @@ you may find help in the
 %
 \index{strongly connected component}%
 %
-{\em strongly connected component\/} (scc) version of the graph.  The scc graph
+\emph{strongly connected component} (scc) version of the graph.  The scc graph
 is found by searching for \kw{[sccNo} in the log file.  Each scc is identified
-  by a unique {\em scc number}. The region variables contained in each scc is
+  by a unique \emph{scc number}. The region variables contained in each scc is
   annotated on the scc node.
 
 Consider, for example, the following fragment of the scc version of
 the region flow graph for the \kw{life} program:
 {\small
 \begin{verbatim}
-  [sccNo 94: r2768,]   --sccNo 94-->   [sccNo 33: r331990,];
+  [sccNo 94: r2768,]   --sccNo 94-->   [sccNo 33: r339827,];
 \end{verbatim}
 }
 Here, we have a scc node (id 94) containing region variable \kw{r2768} and an
-edge to scc node (id 33) containing region variable \kw{r331990}.
+edge to scc node (id 33) containing region variable \kw{r339827}.
 
 %----------------------------------
 \section{Runtime Profiling Strategy}
 Compile with \kw{-rp}, then enable recording through a runtime block:
 \begin{scriptcode}
-  ./run +RTS -rp -rp_interval 10ms -rp_file profile.rp -RTS
-  ./run +RTS -rp -rp_region all -rp_gc_samples -RTS input.txt
-  rpview profile.rp -o profile.html
+  $ ./run +RTS -rp -rp_interval 10ms -rp_file profile.rp -RTS
+  $ ./run +RTS -rp -rp_region all -rp_gc_samples -RTS input.txt
+  $ rpview profile.rp -o profile.html
 \end{scriptcode}
 The second example requires a GC runtime. Periodic requests use wall-clock
 time and capture at safe points; \kw{-rp\_interval 0} disables periodic
 requests. The options \kw{-rp\_paused} and \kw{-rp\_report} control initial
 pausing and the final profiling report. Use \kw{+RTS -help} for runtime help.
 
-The older examples and statistics in this chapter describe the historical
-profiler and rp2ps. Its \kw{-notimer}, \kw{-microsec}, and \kw{-showStat}
-options are not supported by the current runtime. Current profiles are viewed
-with rpview; see \texttt{doc/region-profiler.md} for the current interface.
-
-%----------------------------------
-\section{Regions Statistics}
-%----------------------------------
-If the executable file \kw{run} is executed with the option \kw{-showStat} then
-%
-\index{region statistics}%
-%
-{\em region statistics\/} is printed just before the program terminates. Region
-statistics includes information about the use of regions and does not depend on
-the specifics of the runtime profiling strategy; in fact, region statistics
-includes only exact, non-sampled values for the program. Assuming that \kw{run}
-is the executable file generated by compiling the program \kw{life} with
-profiling enabled, executing \kw{./run -showStat} yields---just before the
-program terminates---the region statistics shown in
-Figure~\ref{region_statistics.fig}.
-\begin{figure}
-\hrule \medskip
-\begin{scriptcode}
-MALLOC
-  Number of calls to malloc for regions: 1
-  Alloc. in each malloc call: 819200 bytes
-  Total allocation by malloc: 819200 bytes (0.8Mb)
-
-REGION PAGES
-  Size of one page: 8176 bytes
-  Max number of allocated pages: 44
-  Number of allocated pages now: 6
-  Max space for region pages: 359744 bytes (0.3Mb)
-
-INFINITE REGIONS
-  Size of infinite region descriptor: 32 bytes
-  Number of calls to allocateRegionInf: 81050
-  Number of calls to deallocateRegionInf: 81044
-  Number of calls to alloc: 1060622
-  Number of calls to resetRegion: 85882
-  Number of calls to deallocateRegionsUntil: 0
-
-ALLOCATION
-  Max alloc. space in pages: 121936 bytes (0.1Mb)
-    incl. prof. info: 243888 bytes (0.2Mb)
-  Infinite regions utilisation (243888/359744): 68%
-  Number of allocated large objects: 0
-
-STACK
-  Number of calls to allocateRegionFin: 358935
-  Number of calls to deallocateRegionFin: 358935
-  Max space for finite regions: 144 bytes (0.0Mb)
-  Max space for region descs: 1280 bytes (0.0Mb)
-  Max size of stack: 19792 bytes (0.0Mb)
-    incl. prof. info (stackBot - maxStack): 20232 bytes (0.0Mb)
-    prof. info: 440 bytes (0.0Mb)
-    in profile tick: 0 bytes (0.0Mb)
-\end{scriptcode}
-\caption{Region statistics for the {\tt life} program.}
-\label{region_statistics.fig}
-\medskip\hrule
-\end{figure}
-
-The \kw{MALLOC} part of Figure~\ref{region_statistics.fig} shows how memory is
-allocated from the operating system.
-
-Each infinite region form a linked list of one or more
-%
-\index{region pages}%
-%
-{\em region pages\/} whose size is found in the \kw{REGION PAGES} part. The
-value
-\begin{scriptcode}
-  Max number of allocated pages: 44
-\end{scriptcode}
-multiplied by
-\begin{scriptcode}
-  Size of one page: 8176 bytes
-\end{scriptcode}
-gives
-\begin{scriptcode}
-  Max space for region pages: 359744 bytes (0.3Mb)
-\end{scriptcode}
-
-In the \kw{INFINITE REGIONS} part, we see the number of calls to infinite region
-operations such as \kw{allocateRegionInf} and \kw{alloc}. The program allocates
-81050 infinite regions and deallocates 81044; the six global regions are not
-deallocated before the region statistics is printed and the program terminates.
-The program allocates 1060622 objects in infinite regions. Infinite regions have
-been reset 85882 times. The \kw{deallocateRegionsUntil} operation is called
-whenever an exception is raised, thus, we see that no exceptions were raised by
-the program.
-
-Because objects allocated in infinite regions are not split across different
-region pages, it is not always possible to fill out a region page entirely. In
-the \kw{ALLOCATION} part, the value
-\begin{scriptcode}
-  Infinite regions utilisation (243888/359744): 68%
-\end{scriptcode}
-shows memory utilisation for infinite regions at the moment where the program
-has allocated the largest amount of memory in infinite regions. We also see that
-the maximum allocated space in region pages is 121936 bytes.
-
-In the \kw{STACK} part, we see that the program allocates and deallocates the
-same number of finite regions. We also see that the space used for finite
-regions is 144 bytes and that the total use of stack space is 19792 bytes
-(excluding space used to hold profiling information). The stack size values
-\begin{scriptcode}
-    prof. info: 440 bytes (0.0Mb)
-    in profile tick: 0 bytes (0.0Mb)
-\end{scriptcode}
-can be used to see if it is necessary to profile with a smaller time slot, which
-will often lower the difference between the two values.
-
-
 %--------------------------------------------
 \section{Processing the Profile Data File}
 %--------------------------------------------
 The profile data-file \kw{profile.rp} can be processed by the
 %
-\index{rp2ps@\texttt{rp2ps} options|(}%
+\index{rpview@\texttt{rpview} options|(}%
 %
-graph generator \kw{rp2ps} (read: RegionProfile2Postscript) found in the
-\kw{bin} directory.\footnote{The \boxml{rp2ps} program is based on a Haskell
-profiler written by Colin Runciman, David Wakeling and Niklas R\"{o}jemo.} The
-graph generator is controlled by command line options.
+graph generator \kw{rpview} (read: Region-profile-viewer) found in the \kw{bin}
+directory.\footnote{The \boxml{rpview} program is inspired by the retired tool
+\texttt{rp2ps}, which was based on a Haskell profiler written by Colin Runciman,
+David Wakeling and Niklas R\"{o}jemo.} The graph generator is controlled by
+command line options.
 
 A
 %
 \index{region profile}%
-\index{region@\texttt{-region} option}%
 %
 region profile is produced by typing
 \begin{scriptcode}
-  $ rp2ps -region
+  $ rpview -o region.svg
 \end{scriptcode}
-at the command prompt. The program produces a Postscript file \kw{region.ps} by
+at the command prompt. The program produces an svg-file \kw{region.svg} by
 reading profile information from the
 %
 \index{profile data file}%
 %
 profile data file \kw{profile.rp}, see Figure~\ref{profStrategy.fig}.  A region
-profile for the \kw{life} program is shown in Figure~\ref{lifeprof50.fig} on
-page~\pageref{lifeprof50.fig}. The region that occupies the largest area is at
+profile for the \kw{life} program is shown in Figure~\ref{lifeprof2000.fig} on
+page~\pageref{lifeprof2000.fig}. The region that occupies the largest area is at
 the top. If there are more regions than can be shown in different colors, then
 the smallest regions are collected in an OTHER band at the bottom.
 
 Each region is identified with a number that matches a \fw{region}-bound region
-variable in the region-annotated program.  Infinite regions end with \kw{inf}
-and finite regions end with \kw{fin}. There are also a band named \kw{rDesc} and
-a band named \kw{stack}. The \kw{rDesc} band shows the memory used on region
-descriptors of infinite regions on the stack. The stack band shows stack usage
-excluding finite regions and region descriptors for infinite regions.
+variable in the region-annotated program.  Only infinite regions have their own
+dedicated bands in the graph. Finite regions and region descriptors are grouped
+together in an ML stack band.
 
-The vertical line marked ``Maximum allocated bytes...'' in
-Figure~\ref{lifeprof50.fig} is called the {\em maximum allocation line}; it
-shows the maximum number of bytes allocated in regions and on the stack when the
-program was executed. Notice that this maximum is often lower than the sum of
-the maximum allocated bytes in regions and the maximum allocated bytes on the
-stack. The space between the maximum allocation line and the top band shows the
-inaccuracy of the profiling strategy. To decrease the gap, it often helps to use
-a smaller time slot.
-
-The largest region shown in Figure~\ref{lifeprof50.fig} is \kw{r332640}. An
+The largest region shown in Figure~\ref{lifeprof2000.fig} is \kw{r339819}.
 %
-\index{object profile}%
-\index{object@\texttt{-object} option}%
+Provided \lstinline{-rp_region all} was passed to \kw{./run},
+a
 %
-object profile of region \kw{r332640} is produced by typing
+\index{site attribution profile}%
+\index{site@\texttt{--region} option}%
+%
+site attribution profile of region \kw{r339819} is produced by typing
 \begin{scriptcode}
-  $ rp2ps -object 332640
+  $ rpview --region r339819 -o life_ex2.svg
 \end{scriptcode}
-at the command prompt. We obtain the object profile shown in
+at the command prompt. We obtain the site attribution profile shown in
 Figure~\ref{prof_eks2.fig}.
 \begin{figure}
-\includerp{life_ex2.pdf}
-\caption{The object profile shows all allocation points allocating into region
-  \kw{r332640}.}
+\includerpvvv{life_ex2.pdf}
+\caption{The site attribution profile shows all allocation points allocating into region
+  \kw{r339819}.}
 \label{prof_eks2.fig}
 \medskip\hrule
 \end{figure}
 
-We see that allocation point \kw{pp11} is responsible for the largest amount of
+We see that allocation point \kw{pp86} (site 86) is responsible for the largest amount of
 allocations in the program. The allocation point may be found in the
 region-annotated program resulting from compiling the \kw{life} program
 (remember to enable printing of program points). In general, program points may
@@ -7410,84 +7289,18 @@ stack, excluding space used by finite regions. A
 %
 stack profile is generated by typing
 \begin{scriptcode}
-  $ rp2ps -stack
+  $ rpview --metric stack -o life_ex3.svg
 \end{scriptcode}
 at the command prompt.
 
 \begin{figure}
-\includerp{life_ex3.pdf}
-\caption{Memory usage on the stack excluding space for finite regions.}
+\includerpvv{life_ex3.pdf}
+\caption{Memory usage on the stack including space for finite regions and region
+  descriptors for infinite regions.}
 \label{prof_eks3.fig}
 \medskip\hrule
 \end{figure}
 
-%-------------------------------------------------------
-\section{Advanced Graphs with \texttt{rp2ps}}
-%-------------------------------------------------------
-This section gives a quick overview of the more advanced options that can be
-passed to \kw{rp2ps}. First of all, it is possible to name the profiles with the
-%
-\index{name@\texttt{-name} option}%
-%
-\kw{-name} option. Comments are inserted on the x-axis with the
-%
-\index{comment@\texttt{-comment} option}%
-%
-\kw{-comment} option.
-
-The profile data file may contain a large number of \emph{samples} (the data
-collected by a profile tick is called a sample). By default, \kw{rp2ps} uses
-only 64 samples. You can alter the setting with the
-%
-\index{sampleMax@\texttt{-sampleMax} option}%
-%
-\kw{-sampleMax} option. The following two possibilities are used to sort out
-samples:
-
-\vspace{2mm}
-{
-\def\arraystretch{1.4}
-\begin{tabular}{lp{8cm}}
-\kw{-sortBySize} & The $n$ (specified by \kw{-sampleMax}) largest samples are
-shown. %
-\index{sortBySize@\texttt{-sortBySize} option} \\
-\kw{-sortByTime} & The $n$ samples shown are equally distributed over time (default). %
-\index{sortByTime@\texttt{-sortByTime} option}
-\end{tabular}
-}
-\vspace{2mm}
-
-The \kw{-sortBySize} option is useful if your profiles have a large gap between
-the top band and the maximum allocation line.  If there is a large gap when
-using option \kw{-sortBySize}, then it may help to profile with a smaller time
-slot. You can use the
-%
-\index{stat@\texttt{-stat} option}%
-%
-\kw{-stat} option to see the number of samples in the profile data file. It is
-printed as \kw{Number of ticks:}.
-
-Figure~\ref{prof_eks4.fig} shows the profile for the following command line:
-\begin{scriptcode}
-  $ rp2ps -region -sampleMax 100 -name life \
-          -comment 0.03 "A comment at time 0.03" -sortBySize
-\end{scriptcode}
-
-\begin{figure}
-  \includerp{life_ex4.pdf}
-\caption{It is possible to insert comments in profile graphs.}
-\label{prof_eks4.fig}
-\medskip\hrule
-\end{figure}
-
-The graph generator recognises several options that are not mentioned
-here. Help on these options is obtained by typing \kw{rp2ps -h} or
-%
-\index{help@\texttt{-help} option}%
-%
-\kw{rp2ps -help} at the command prompt.
-%
-\index{rp2ps@\texttt{rp2ps} options|)}%
 
 %---------------------------------------------------------
 \chapter{Controlling MLKit Compilation}
@@ -9064,7 +8877,7 @@ uses the
 x64 native backend or the arm64 native backend.
 
 \begin{scriptcode}
-MLKit v4.7.16 ( - ) [X64 Backend]
+MLKit v4.7.25 (...) [Arm64 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
@@ -9097,23 +8910,24 @@ Options:
      turns off this option.
 
 --alloc_protect_always                                   (off)
-     Always protect allocation when parallelism is enabled. That
-     is, disregard the result of protection inference.
+     Always protect parallel allocation.
 
 --argobots, -argo                                        (off)
      When enabled, executables link with the Argobots
      lightweight thread library.
 
---assembler S, -as S                                   (as -q)
-     This option specifies the assembler used.
-     On Linux the default is 'as --64'. On macOS,
-     the default is 'as -q'.
+--arm64_self_loops                                        (on)
+     Reuse frames in eligible self-tail recursion.
+
+--arm64_tail_wrappers                                     (on)
+     Omit frames in identity tail wrappers.
+
+--assembler S, -as S                      (gcc -arch arm64 -c)
+     Command for assembling Darwin ARM64 code; overrides
+     must retain the ARM64 target.
 
 --chat, -verbose                                         (off)
      Print a message for each compilation step in the compiler.
-
---comments_in_asmcode                                    (off)
-     Insert comments in assembler code.
 
 --compile_only, -c                                       (off)
      Compile only. Suppresses generation of executable
@@ -9200,6 +9014,9 @@ Options:
      result in dangling pointers. This flag is relevant only when
      garbage collection is enabled.
 
+--drop_unused_funargs, -dufa                              (on)
+     Drop function arguments that are unused.
+
 --eliminate_explicit_records                              (on)
      Eliminate bindings of explicit records only used for
      selections. Transform
@@ -9209,8 +9026,7 @@ Options:
      (Lambda Expression Optimiser).
 
 --extra_gc_checks                                        (off)
-     Insert check for GC even in functions that do not
-     allocate.
+     Collect at every ARM64 function entry.
 
 --fix_floating                                            (on)
      Float fix-bindings into immediate let-bindings when
@@ -9291,17 +9107,11 @@ Options:
      Link-files to be linked together to form an
      executable.
 
---link_exe S, -ldexe S (gcc -Wl,-ld_classic,-stack_size,0x10000000)
-     This option specifies the command used for linking
-     an executable. The standard is to use 'gcc' for
-     linking. When linking with c++ libraries, 'g++' is
-     the linker you want. On Linux the default is 'gcc',
-     whereas on newer macOS systems (Darwin > 23.1), the default
-     is 'gcc -Wl,-ld_classic,-stack_size,0x10000000' and on
-     older macOS systems, the default is
-     'gcc -Wl,-stack_size,0x10000000'.
+--link_exe S, -ldexe S (gcc -arch arm64 -Wl,-stack_size,0x10000000)
+     Command for linking Darwin ARM64 executables; overrides
+     must retain the ARM64 target.
 
---link_shared S, -ldshared S                             (gcc)
+--link_shared S, -ldshared S                 (gcc -arch arm64)
      This option specifies the command used for linking
      a shared object file. The standard is to use 'gcc' for
      linking.
@@ -9364,6 +9174,12 @@ Options:
 --no_aggressive_opt, -no_aopt
      Opposite of --aggressive_opt, -aopt.
 
+--no_arm64_self_loops
+     Opposite of --arm64_self_loops.
+
+--no_arm64_tail_wrappers
+     Opposite of --arm64_tail_wrappers.
+
 --no_constant_folding, -no_cfold
      Opposite of --constant_folding, -cfold.
 
@@ -9378,6 +9194,9 @@ Options:
 
 --no_delete_target_files
      Opposite of --delete_target_files.
+
+--no_drop_unused_funargs, -no_dufa
+     Opposite of --drop_unused_funargs, -dufa.
 
 --no_eliminate_explicit_records
      Opposite of --eliminate_explicit_records.
@@ -9409,8 +9228,14 @@ Options:
 --no_optimiser, -no_opt
      Opposite of --optimiser, -opt.
 
+--no_parallelism, -no_par
+     Opposite of --parallelism, -par.
+
 --no_preserve_tail_calls, -no_ptc
      Opposite of --preserve_tail_calls, -ptc.
+
+--no_print_aux_reset, -no_Paux
+     Opposite of --print_aux_reset, -Paux.
 
 --no_print_control_abbrev_layout, -no_abbrev
      Opposite of --print_control_abbrev_layout, -abbrev.
@@ -9502,12 +9327,20 @@ Options:
      Print all program points when printing physical size
      inference expressions.
 
+--print_aux_reset, -Paux                                 (off)
+     Print resetting of auxiliary regions associated with
+     construction of nullary constructor values. This flag
+     affects the MulExp pretty printer.
+
 --print_bit_vectors                                      (off)
 
 --print_calc_offset_program                              (off)
 
 --print_call_explicit_expression, -Pcee                  (off)
      Print Region Expression with call annotations.
+
+--print_call_explicit_locations, -Pcee_locations         (off)
+     Include a program-point location table in -Pcee output.
 
 --print_clos_conv_program, -Pccp                         (off)
      Print Region Expression after closure conversion.
@@ -9577,14 +9410,14 @@ Options:
 --print_post_elab_ast, -Ppeast                           (off)
      Print ast after elaboration.
 
+--print_region_flow_graph, -Prfg                         (off)
+     Print the region flow graph as text.
+
 --print_region_inferred_program, -Prip                   (off)
      Print region-inferred program.
 
 --print_region_spreaded_program, -Prsp                   (off)
      Print region-spreaded program.
-
---print_region_flow_graph, -Prfg                         (off)
-     Print the region flow graph as text.
 
 --print_region_static_env0, -Prse0                       (off)
      Print imported region static environment prior to
@@ -9655,12 +9488,8 @@ Options:
      global regions.
 
 --region_profile, -rp                                    (off)
-     Enable region profiling. Object code stemming
-     from compiling a program with region profiling enabled
-     is instrumented with profiling information. When a program
-     compiled with region profiling enabled is run, the program
-     records snapshots when run with +RTS -rp -RTS. Use rpview to
-     view the resulting profile.
+     Emit packed object descriptors, IR metadata and safe-point
+     polls for rpview.
 
 --regionvar N                                             (~1)
      Uses the provided number as the id of the first
@@ -9697,6 +9526,21 @@ Options:
      recompilation. This flag should be disabled when
      compiling mlb-files, which make use of the file system
      as a repository.
+
+--rp_file S                                       (profile.rp)
+     Forward profiler option to the REPL runtime.
+
+--rp_gc_samples                                          (off)
+     Forward profiler option to the REPL runtime.
+
+--rp_interval S                                         (10ms)
+     Forward profiler option to the REPL runtime.
+
+--rp_paused                                              (off)
+     Forward profiler option to the REPL runtime.
+
+--rp_report                                              (off)
+     Forward profiler option to the REPL runtime.
 
 --safeLinkTimeElimination                                (off)
      Treat this module as a library in the sense that

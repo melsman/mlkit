@@ -77,10 +77,12 @@ svg --metric page_footprint --show-peak --scope thread:1
 caption='Custom </script> <&> "caption" __DATA__ __META__ __OPTIONS__'
 svg --caption "$caption"
 contains '<title>Custom &lt;/script&gt; &lt;&amp;&gt; &quot;caption&quot; __DATA__ __META__ __OPTIONS__</title>'
-run --format html --caption "$caption" --regions 2 --show-base --show-type --show-peak --legend-below --metric pages --group region --scope thread:1
-for setting in '"limit":2' '"show-base":true' '"show-type":true' '"show-peak":true' '"legend-right":false' '"metric":"pages"' '"group":"region"' '"scope":"thread:1"' '__OPTIONS__'; do
+run --format html --caption "$caption" --regions 2 --show-base --show-type --show-peak --metric pages --group region --scope thread:1
+for setting in '"limit":2' '"show-base":true' '"show-type":true' '"show-peak":true' '"metric":"pages"' '"group":"region"' '"scope":"thread:1"' '__OPTIONS__'; do
     grep '^const defaults=' "$OUT/graph.svg" | grep -Fq "$setting"
 done
+reject --legend-below
+reject --legend-right
 reject --regions -1
 reject --metric bad
 reject --scope core:1

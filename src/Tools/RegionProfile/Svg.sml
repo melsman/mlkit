@@ -65,7 +65,6 @@ struct
                         else list s "regions"
         val scope = opt "scope" "all"
         val limit = valOf(Int.fromString(opt "limit" "9"))
-        val compact = flag "legend-right" true
         fun selected r = (not siteMode orelse chosenAllocation r) andalso (case String.fields (fn c => c = #":") scope of
                             ["all"] => true
                           | [field,value] => (case find r field of NONE => value = "-1" | _ => strField r field = value)
@@ -135,8 +134,7 @@ struct
                 val basename = if unit = "<global>" then "global" else base source
                 fun info field fallback = case strField r field of "" => fallback | s => s
                 val details = (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
-            in (if compact then (if name = "" then "" else name ^ " \194\183 ") ^ "r" ^ strField r "binding"
-                else (if name = "" then "Region" else name) ^ " #" ^ strField r "binding") ^
+            in ((if name = "" then "" else name ^ " \194\183 ") ^ "r" ^ strField r "binding") ^
                (if flag "show-base" false then " \194\183 " ^ basename else "") ^
                (if null details then "" else " (" ^ String.concatWith ", " details ^ ")")
             end

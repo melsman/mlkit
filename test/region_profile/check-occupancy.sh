@@ -29,7 +29,7 @@ for kind in reset large; do
   "$RPVIEW" "$OUT/$kind.rp" -o "$OUT/$kind.html"
 done
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/reset.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/reset.html" | sed '1d;$d'
   cat "$ROOT/test/region_profile/occupancy-viewer-assertions.js"
   cat "$ROOT/test/region_profile/site-graph-assertions.js"
@@ -62,7 +62,7 @@ node "$ROOT/test/region_profile/occupancy-assertions.js" "$OUT/callback.json" ca
 # including a token passed on the stack and forwarded through nested C calls.
 "$RPVIEW" "$OUT/callback.rp" -o "$OUT/callback.html"
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/callback.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/callback.html" | sed '1d;$d'
   cat <<'JS'
 assert(profile.allocations.length > 0);

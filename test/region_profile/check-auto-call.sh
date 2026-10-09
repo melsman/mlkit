@@ -37,7 +37,7 @@ console.log('Automatic foreign-call result attribution passed');
 JS
 "$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html" > /dev/null
 {
-  cat "$ROOT/test/region_profile/graph-prelude.js"
+  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d'
   cat <<'JS'
 for (const row of profile.allocations.filter(r => r.function.includes('foreign__noinline'))) {

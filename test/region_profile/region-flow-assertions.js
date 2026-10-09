@@ -55,7 +55,7 @@ assert.equal(allocationSize('9007199254740993'),'8.00 PiB');
  assert.equal(cpSummary.textContent,'fun cp [r17, r19]');
  profile.allocations.pop();
  el('allocation-view').value='site';allocationTable();assert(host.hidden&&!el('allocation-table').hidden);assert.equal(el('allocation-rows').children.length,3);
- assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[3].title.split(' ')[0]),0n),160n);
+ assert.equal(el('allocation-rows').children.reduce((sum,row)=>sum+BigInt(row.children[1].title.split(' ')[0]),0n),160n);
  profile.region_flow.issues=['Missing companion'];el('allocation-view').value='flow';allocationTable();assert(host.textContent.includes('Incomplete region-flow metadata'));
  // Captured allocations retain the lexical region, even without a call edge
  // to the closure body. Multiple creation sites must not duplicate occupancy.
