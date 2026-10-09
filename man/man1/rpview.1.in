@@ -19,6 +19,10 @@ and the default output is
 .PP
 The HTML report includes region and stack graphs, snapshot-range selection,
 thread and worker filters, and allocation-site occupancy when recorded.
+The navigation bar above the graph names the metric. Click a region name
+in the right-hand legend or region-binding table to show its recorded
+site contributions for the current snapshot range and thread filter.
+Click the metric in the navigation bar to return to the region graph.
 For a selected region with matching compiler metadata, Region slice shows
 function definitions, region bindings and region instantiations.
 Allocation sites provides a flat table and is the fallback when a slice
@@ -151,10 +155,6 @@ Show or hide region types. Default: hidden.
 Show or hide the process-wide peak page-capacity reference line.
 Default: hidden.
 This is not an exact maximum of combined region and stack usage.
-.TP
-.BR \-\-legend\-right " / " \-\-legend\-below
-Choose the initial HTML legend placement and compact naming style.
-Default: right. The SVG legend always appears inside the graph on the right.
 .SH RECORDING A PROFILE
 Compile with
 .B \-rp
