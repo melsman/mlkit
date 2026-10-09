@@ -33,13 +33,29 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | `-rp` | Enable a process-wide session. Otherwise the API and runtime bookkeeping are disabled. |
 | `-rp_file PATH` | Output path; defaults to `profile.rp`. |
 | `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in rpview. |
-| `-rp_interval Nms`, `Ns`, or `0` | Integral wall-clock interval; defaults to `10ms`. Zero disables automatic periodic snapshots. |
+| `-rp_interval Nus`, `Nms`, `Ns`, `Ni`, or `0` | Integral wall-clock interval (e.g. `400us`); defaults to `10ms`. `Ni` samples every N compiled ML function entries per thread. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
 | `-rp_report` | Report completed samples, frames/pages traversed, timing, skipped requests, the sampled peak, and maximum allocated page count. |
 | `-RTS` | End the runtime block; application arguments follow. |
 | `--RTS` | End all runtime parsing; discard this marker. |
 | `--` | End all runtime parsing; preserve this marker and following arguments. |
+
+### Sampling by function entries
+
+`./run +RTS -rp -rp_interval 8000i -RTS` requests a snapshot every 8000
+compiled ML function entries in each thread. `1i` samples at every entry;
+`0i` is invalid (use plain `0` to disable periodic sampling). Each thread has
+its own countdown; a parallel snapshot still includes all participating threads.
+Tail calls and optimized self-recursive loops count. Inlined calls and C calls
+are not separate entries. Counting continues while paused, but produces no
+snapshots until recording resumes. Explicit and GC snapshots remain available.
+
+This mode installs no timer or signal handler. Snapshot timestamps remain
+wall-clock times, so blocking I/O can still leave gaps in the graph. It adds a
+counter decrement to entry checks; small counts can produce substantial overhead
+and large profiles. Recompile ML code with the updated compiler to obtain the
+entry counters.
 
 Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
 `RegionProfile.start`, `pause`, `sample`, `mark`, and `flush`. Start and pause
@@ -202,11 +218,12 @@ needs no template files. There is no HTTP server, live polling, or network acces
 in the tool or generated page. Open the output directly in a browser and
 regenerate it to include new samples.
 
-The normal build/install includes `bin/rpview`. To build it separately with an
-existing native compiler:
+The normal build/install includes `bin/rpview`. Both the viewer and its HTML
+embedding tool use the seed compiler selected by `./configure --with-compiler`.
+To build the viewer separately:
 
 ```sh
-make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
+make rpview
 bin/rpview profile.rp --output profile.html
 ```
 
@@ -241,17 +258,15 @@ shows the active stack, excluding region pages and large objects. The runtime
 report's `sampled_peak_bytes` remains a region-only peak; the default graph's
 sampled maximum includes stack.
 
-Only **Legend on the right** is checked by default; base names, kind, type and
+Only **Legend on the right** is checked by default; base names, type and
 peak capacity start hidden. **Show base names** includes the
 source filename in region labels, such as `life.sml` (global regions use
 `global`, and interactive code uses `REPL #N`). Full source paths and internal
 unit identifiers appear in hover details. The internal unit identifier remains
 the aggregation key, so matching filenames do not merge distinct regions.
-**Show region kind** adds the recorded kind. New profiles contain only infinite
-regions; finite storage appears in the stack. Infinite regions use pages and may
-hold large objects. **Show region type** adds the compiler's
-inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type, separately
-from finite/infinite kind. The `region_type` field in binding definitions carries this information;
+Profiles contain only infinite regions; finite storage appears in the stack.
+Infinite regions use pages and may hold large objects. **Show region type** adds the compiler's
+inferred `top`, `bot`, `pair`, `triple`, `string`, `array`, or `ref` type. The `region_type` field in binding definitions carries this information;
 an unavailable inferred type is displayed as `type unavailable`.
 These label options apply to the legend,
 band tooltips and region-grouped table without merging distinct bindings.
@@ -277,6 +292,10 @@ builds in three configurations: non-GC,
 non-GC with pthread parallelism, and GC. The sampled variants use `-region_profile`
 and mode-specific caches such as `RI_PROF`, `RI_GC_PROF`, and `RI_PROF_PAR`
 (with an `ARM64_` prefix on ARM64), without ABI-version suffixes.
+Use `make -j6 all` (or `make -j6 mlkit_basislibs`) to build the six independent
+library variants concurrently. Each variant builds its Basis, profiler API, and
+supported ReML libraries in sequence to avoid competing writes to the same cache.
+`make -j6 mlkit_kitlibs` also builds the full Kit libraries after these prerequisites.
 The profiler API sources and their matching caches are installed under
 `$(SML_LIB)/kitlib`, allowing MLKit and ReML clients to import the API from
 a read-only installation. `test/region_profile/check-installed-api.sh` checks
@@ -285,8 +304,18 @@ parallelism against such an installation. `basis/reml.mlb` (the `Region`
 structure) is also precompiled with ReML for those four non-GC configurations
 and installed in the matching Basis caches. The check exercises both APIs,
 including an explicit region parameter.
-The non-GC sampled Basis build writes per-file logs containing region-annotated
-code and region types, without region-flow graphs or program-point listings.
+All three sampled Basis builds use `-log_to_file -Prfg -Ppp -Pcee` to
+write per-source diagnostic logs, including region-flow graphs, program points,
+and call-explicit code. These logs are installed alongside the IR files in each
+variant's cache directory (for example,
+`basis/MLB/ARM64_RI_GC_PROF/List.sml.log`). Use the logs for inspecting compiled
+library code; the `.ir` files provide metadata for rpview. Profiling compilations
+with `-log_to_file` also use this layout for application sources. Printing
+options and missing diagnostic logs never force recompilation of cached code,
+whether the cache is writable or read-only. Logs reflect the settings used
+when a unit was last compiled. To obtain different diagnostics, explicitly
+rebuild the relevant sources in a writable checkout; installed library logs
+are supplied at installation time.
 
 Small blue ticks above the time axis mark every completed snapshot. Thin red
 bars below it show GC intervals, from the end of a `before_gc` snapshot to the
@@ -314,7 +343,7 @@ legend width. Open the SVG in a vector editor or convert it to PDF when needed.
 rpview profile.rp -o profile.svg
 rpview profile.rp -o pages.svg --metric pages --regions 9 --show-peak
 rpview profile.rp -o thread.svg --scope thread:2 --caption 'Thread 2 allocations'
-rpview profile.rp -o profile.html --show-base --show-kind --show-type
+rpview profile.rp -o profile.html --show-base --show-type
 ```
 
 The output extension selects SVG or HTML; `--format svg|html` overrides it.
@@ -322,7 +351,7 @@ Without an output path, the default is `profile.html` (or `profile.svg` with
 `--format svg`). Both outputs accept `--caption TEXT`, `--regions N` (0 = all),
 `--metric total|stack|pages|page_footprint|large_bytes|finite_bytes|descriptor_bytes`,
 and `--scope all|thread:N|worker:N|cpu:N`. Worker/CPU identity `-1` selects
-unavailable identities. `--show-base`, `--show-kind`, `--show-type`, and
+unavailable identities. `--show-base`, `--show-type`, and
 `--show-peak` enable the corresponding settings; `--hide-*` disables them.
 `--legend-right` (default) selects compact region names and a right-hand HTML
 legend; `--legend-below` selects longer names and a legend below the HTML graph.
@@ -403,8 +432,11 @@ generation, and both region APIs against a staged read-only installation.
 It retains logs and reports failure details, and excludes optional Argobots
 experiments, timing benchmarks, and browser-executed graph assertions.
 
+The fixture encoder is a test-only tool built with the configured seed compiler.
+Build it before running these checks individually; the CI script builds it automatically.
+
 ```sh
-make -C src/Tools/RegionProfile MLKIT=/absolute/path/to/mlkit
+make rpview rpfixture
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
 sh test/region_profile/check-binary.sh
@@ -478,4 +510,6 @@ See [Selected-region site occupancy](allocation-profiler.md) for the unified
 histograms, packed descriptors, and IR navigation. All new profiles use version 10.
 
 For site contributions within the recorded selected region, use
-`rpview sites.rp --sites -o sites.svg`; see [site occupancy](allocation-profiler.md).
+`rpview sites.rp --sites -o sites.svg`. For an all-regions recording, select one
+region with `rpview sites.rp --region r163 -o r163-sites.svg`;
+see [site occupancy](allocation-profiler.md).

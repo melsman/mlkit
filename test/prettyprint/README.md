@@ -28,3 +28,8 @@ The IR report suite also checks repeated allocation spans versus foreign-call
 tokens, UTF-8 byte positions, per-definition deduplication, direct companion
 lookup, explicit relocation fallback, missing/corrupt/mismatched files, malformed
 tables with valid checksums, and graceful legacy/generated-site statuses.
+
+The IR link-map check assembles and links the generated metadata, then verifies
+its pointer pairs, exact path bytes (including quotes, backslashes and UTF-8),
+missing-companion handling and null terminator. It also checks an empty map.
+It selects Mach-O or ELF assembly for the host; `CC` may include target flags.

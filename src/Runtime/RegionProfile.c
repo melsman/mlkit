@@ -51,6 +51,7 @@ void mlkit_rp_pages_free(Rp *p) {
 
 _Atomic int mlkit_rp_pending;
 uint64_t mlkit_rp_interval_us = 10000;
+uint64_t mlkit_rp_interval_entries;
 int mlkit_rp_report;
 int mlkit_rp_gc_samples;
 int mlkit_rp_gc_major = -1;
@@ -297,6 +298,7 @@ static __attribute__((unused)) uint64_t allocation_definition(const MlkitAllocat
   return d->id;
 }
 void mlkit_rp_thread_create(Context ctx, int id) {
+  ctx->rp_entries_left = mlkit_rp_enabled ? mlkit_rp_interval_entries : 0;
   if (!mlkit_rp_enabled) return;
   LOCK();
   Participant *p = checked_alloc(sizeof(*p));
@@ -344,17 +346,25 @@ uintptr_t mlkit_rp_wait_leave(Context ctx) {
 /* The handler only requests work. It never touches an ML stack or stdio. */
 static void request_sample(int sig) { (void)sig; mlkit_rp_pending = 1; }
 int mlkit_rp_parse_interval(const char *s) {
-  if (!strcmp(s, "0")) { mlkit_rp_interval_us = 0; return 1; }
+  if (!strcmp(s, "0")) { mlkit_rp_interval_us = mlkit_rp_interval_entries = 0; return 1; }
   if (*s < '0' || *s > '9') return 0;
   errno = 0;
   char *end;
   unsigned long long n = strtoull(s, &end, 10);
-  uint64_t scale = !strcmp(end, "ms") ? 1000 : !strcmp(end, "s") ? 1000000 : 0;
+  if (!errno && !strcmp(end, "i") && n && n <= UINT64_MAX) {
+    mlkit_rp_interval_entries = n;
+    mlkit_rp_interval_us = 0;
+    return 1;
+  }
+  uint64_t scale = !strcmp(end, "us") ? 1 : !strcmp(end, "ms") ? 1000 : !strcmp(end, "s") ? 1000000 : 0;
   if (errno || !scale || n > (uint64_t)INT_MAX*1000000/scale) return 0;
+  mlkit_rp_interval_entries = 0;
   mlkit_rp_interval_us = n*scale;
   return 1;
 }
 static void timer_state(int running) {
+  mlkit_rp_pending = 0;
+  next_due_ns = mlkit_rp_interval_us ? timestamp()+mlkit_rp_interval_us*1000 : 0;
   if (!timer_installed) return;
   struct itimerval timer = {0};
   if (running) {
@@ -364,8 +374,6 @@ static void timer_state(int running) {
     timer.it_interval = timer.it_value;
   }
   if (setitimer(ITIMER_REAL, &timer, NULL)) fail("cannot set sampling timer");
-  mlkit_rp_pending = 0;
-  next_due_ns = timestamp()+mlkit_rp_interval_us*1000;
 }
 void mlkit_rp_close(void) {
   LOCK();
@@ -654,7 +662,9 @@ static void write_record(const Record *r) {
 /* Validate all continuation chains before recording any bytes. A callback is
  * deliberately not a quiescent foreign boundary; timer requests remain pending. */
 static int complete_chain(uintptr_t *base, const uintptr_t *map) {
-  for (size_t frames = 0; frames < 1000000; frames++) {
+  /* Strictly increasing frame bases reject cycles without imposing a limit
+   * on legitimate recursion depth. */
+  for (;;) {
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing or incompatible ML frame metadata");
     if (map[-2] == UINTPTR_MAX) return 1;
     if (map[-2] == UINTPTR_MAX-1) return 0;
@@ -667,7 +677,6 @@ static int complete_chain(uintptr_t *base, const uintptr_t *map) {
     if (parent <= base) fail("non-increasing ML frame chain");
     base = parent;
   }
-  fail("invalid frame chain"); return 0;
 }
 /* Built-in globals use compiler region keys in both snapshot and attribution
  * profiles. Other persistent regions (e.g. REPL regions) get distinct IDs. */
@@ -711,7 +720,8 @@ static void walk(Context ctx, uintptr_t *base, const uintptr_t *map,
     if (map[-1] != MLKIT_RP_MAGIC) fail("missing or incompatible ML frame metadata");
     if (map[-2] == UINTPTR_MAX) break;
     if (map[-2] == UINTPTR_MAX-1) fail("cannot sample across a C-to-ML callback boundary");
-    if (++*frames > 1000000 || map[-4] > 1000000) fail("invalid frame metadata");
+    if (map[-4] > 1000000) fail("invalid frame metadata");
+    ++*frames;
     const char *unit = ((String)((uintptr_t)(map-5)+map[-5]))->data;
     const char *source = ((String)((uintptr_t)(map-6)+map[-6]))->data;
     for (uintptr_t i = 0; i < map[-4]; i++) {
@@ -751,7 +761,7 @@ static uintptr_t capture(Context ctx, uintptr_t *base, const uintptr_t *map, uin
   if (op == 0 && active) return 1;
   if (op == 1 && !active) return 1;
   uint64_t start = timestamp(), frames = 0, pages = 0;
-  uint64_t delay = op == 3 && start > next_due_ns ? start-next_due_ns : 0;
+  uint64_t delay = op == 3 && mlkit_rp_interval_us && start > next_due_ns ? start-next_due_ns : 0;
   if (delay > max_delay_ns) max_delay_ns = delay;
   /* Coalesce requests, including ticks received while serializing this sample. */
   mlkit_rp_pending = 0;
@@ -824,8 +834,14 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
   if (!mlkit_rp_enabled) return 1;
   LOCK();
   if (!output) { mlkit_rp_pending = 0; UNLOCK(); return 1; }
+  /* Generated entry checks decrement only their own context counter.
+   * Rendezvous polls must not reset a counter that has not expired. */
+  if (op == 3 && mlkit_rp_interval_entries && !ctx->rp_entries_left) {
+    ctx->rp_entries_left = mlkit_rp_interval_entries;
+    if (active) mlkit_rp_pending = 1;
+  }
   if (!rendezvous && ((op == 0 && active) || (op == 1 && !active) ||
-      (op >= 4 && !active) || (op == 3 && (!active || !mlkit_rp_pending || !mlkit_rp_interval_us)))) {
+      (op >= 4 && !active) || (op == 3 && (!active || !mlkit_rp_pending || (!mlkit_rp_interval_us && !mlkit_rp_interval_entries))))) {
     if (op == 3) mlkit_rp_pending = 0;
     UNLOCK(); return 1;
   }
@@ -862,7 +878,7 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
   }
   sample_wait = timestamp()-requested;
   wait_ns += sample_wait;
-  request_time = op == 3 && next_due_ns < requested ? next_due_ns : requested;
+  request_time = op == 3 && mlkit_rp_interval_us && next_due_ns < requested ? next_due_ns : requested;
   int complete = 1;
   if (participants) {
     for (Participant *p = participants; p; p = p->next)

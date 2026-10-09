@@ -300,8 +300,10 @@ structure ExecutionX64 : EXECUTION =
                    else assembler() ^ " --gstabs"
                  else assembler()
 
+    fun shellQuote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
+
     fun assemble (file_s, file_o) =
-      (execute_command (gas() ^ " -o " ^ file_o ^ " " ^ file_s);
+      (execute_command (gas() ^ " -o " ^ shellQuote file_o ^ " " ^ shellQuote file_s);
        if delete_target_files() andalso not(gdb_support()) then delete_file file_s
        else ())
 
@@ -329,14 +331,12 @@ structure ExecutionX64 : EXECUTION =
         end
 
     fun link_files_with_runtime_system0 path_to_runtime files run =
-      let val mapFile = run ^ ".ir-map.c"
+      let val mapFile = run ^ ".ir-map.s"
           val mapObject = run ^ ".ir-map.o"
           val hasMap = region_profile()
-          fun quote s = "'" ^ String.concatWith "'\"'\"'" (String.fields (fn c => c = #"'") s) ^ "'"
           val () = if hasMap then
-            (writeFile mapFile (IRLocations.linkMap files);
-             execute_command (link_exe() ^ " -c " ^ quote mapFile ^ " -o " ^ quote mapObject);
-             delete_file mapFile) else ()
+            (writeFile mapFile (IRLocations.linkMap {darwin = onmac_p()} files);
+             assemble (mapFile,mapObject)) else ()
           val files = if hasMap then mapObject :: files else files
       in
         if objs_p()

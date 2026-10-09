@@ -38,6 +38,9 @@ order, empty arguments, and arguments containing spaces are preserved.
 Unknown or unavailable options inside a block are errors. A delimiter cannot
 serve as the value of a runtime option. Profiling options require an executable
 compiled with `-rp`; runtime help lists only options supported by its runtime.
+The internal `-command_pipe PATH`, `-reply_pipe PATH`, and `-repl_logfile PATH`
+options are accepted only by REPL executables. Ordinary executables neither
+advertise nor accept them inside runtime blocks.
 Use `-RTS` or `--RTS`, rather than `--`, when the separator must not reach the
 application.
 

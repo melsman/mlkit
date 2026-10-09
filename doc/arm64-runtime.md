@@ -50,7 +50,7 @@ make install_runtime LIBDIR=/tmp/mlkit-runtime-stage
 
 The ARM backend selects the ARM archive directory and a separate
 `MLB/ARM64_<variant>` cache namespace. With `DARWIN_NATIVE=1`, the ordinary
-compiler/tool targets delegate to `Makefile.arm64` and publish native tools
+shared compiler/tool targets publish native tools
 at the standard `bin/*` paths. Basis builds, tests, bootstrap, and installation
 use the configured backend; see [arm64-compiler.md](arm64-compiler.md).
 
@@ -99,7 +99,7 @@ four runtime threads sharing a protected region, verifying 32,768 allocations
 across page rollover. It is not an ML ABI
 or GC test. The native compiler suite separately validates generated ARM GC
 and profiling paths. Generated parallel allocation is covered by the compiler parallel suite;
-native bootstrap validation uses the separate `Makefile.arm64 bootstrap` target.
+bootstrap validation uses the shared `make bootstrap` stage chain.
 
 Historical validation on 2026-09-21 used Apple Clang 21 via `gcc`, SDK 26.5, macOS arm64,
 and Rosetta 2 for X64 execution. All ten standard archive variants built for both
@@ -158,10 +158,10 @@ and be joined again; this milestone does not change that lifetime policy.
 For optional Argobots, build an ARM64 copy of Argobots first, then run:
 
 ```sh
-DARWIN_NATIVE=1 ./configure CC=gcc --with-argobots=/absolute/path/to/argobots
+DARWIN_NATIVE=1 ./configure CC=gcc --with-compiler=/usr/local/bin/mlkit --with-argobots=/absolute/path/to/argobots
 make -C src/Runtime runtimeSystemArPar.a
 ARGOBOTS_ROOT=/absolute/path/to/argobots \
-  make -f Makefile.arm64 check MLKIT_BOOTSTRAP=/usr/local/bin/mlkit
+  make check-arm64
 ```
 
 `ARGOBOTS_ROOT` is a configured source build containing `src/include/abt.h` and

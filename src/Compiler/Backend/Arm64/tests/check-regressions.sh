@@ -4,6 +4,8 @@ set -eu
 : "${SML_LIB:?Set SML_LIB to the source checkout}"
 : "${MLKIT_ARM64:?Set MLKIT_ARM64}"
 : "${KITTESTER:?Set KITTESTER to the native test driver}"
+TEST_JOBS=${TEST_JOBS:-6}
+VERBOSE=${VERBOSE:-0}
 REGRESSION_SUITES=${REGRESSION_SUITES:-'dev plain gc gengc prof gcprof par explicit parallel repl replgc repltagged replgengc'}
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-regressions.XXXXXX")
 echo "Regression outputs: $scratch"
@@ -11,8 +13,9 @@ export SML_LIB
 for suite in $REGRESSION_SUITES; do
   root=$scratch/$suite
   mkdir -p "$root"
-  (cd "$SML_LIB" && tar -cf - --exclude=MLB --exclude='*.exe' \
+  (cd "$SML_LIB" && tar -cf - --exclude=MLB --exclude=.test-build --exclude='*.exe' \
     --exclude='*.res' --exclude='*.mlbres' --exclude='*.log' --exclude='*.out' \
+    --exclude='*.mlbexe' --exclude='*.mlbout' \
     --exclude='*.o' --exclude='*.rp' --exclude='*.ps' --exclude=run \
     --exclude=runexe --exclude=TESTmessages --exclude=test_report.html test test_dev) |
     (cd "$root" && tar -xf -)
@@ -31,7 +34,7 @@ EOF
   chmod +x "$root/compiler"
   echo "Running $suite"
   case "$suite" in
-    dev) (cd "$root/test_dev" && make test MLKIT="$root/compiler") ;;
+    dev) (cd "$root/test_dev" && make -j "$TEST_JOBS" test test_prof MLKIT="$root/compiler" VERBOSE="$VERBOSE") ;;
     explicit)
       REGRESSION_COMPILER=${REML_ARM64:?Set REML_ARM64 for explicit regions}
       export REGRESSION_COMPILER

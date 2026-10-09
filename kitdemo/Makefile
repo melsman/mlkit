@@ -1,3 +1,5 @@
+## Assumes installation of inkscape for converting svg-files to pdf-files
+
 TARGETS=libmylib.a libmylib-p.a libmylib-pt.a libmylib-t.a
 
 MLKIT ?= ../bin/mlkit
@@ -42,100 +44,109 @@ clean:
 	(cd utils; rm -rf *~ MLB)
 
 .PHONY: pdfs
-pdfs: life50.pdf life100.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf scan_stream.pdf scan_stream_nogc.pdf scan_rev1_1.pdf scan_rev1_2.pdf scan_rev2_1.pdf
+pdfs: life400.pdf life2000.pdf msortregion.pdf msortstack.pdf length_region.pdf msortreset2.pdf scan.pdf scan_stream.pdf scan_stream_nogc.pdf scan_rev1.pdf scan_rev1_r.pdf scan_rev2.pdf
 
 life.exe: life.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
-life.rp: life.exe
-	./$< -file $@ -microsec 280 > life.out
+life%.rp: life.exe
+	./$< +RTS -rp -rp_file $@ -rp_interval $*us > life.out
 
-life%.ps: life.rp
-	../bin/rp2ps -name "Game of life - $* snapshots" -source $< -region $@ -sampleMax $*
+life%.svg: life%.rp
+	../bin/rpview $< --caption "Game of life - sampled every $*us" -o $@
+
+%.pdf: %.svg
+	inkscape -D -o $@ $<
 
 msort.exe: msort.mlb Makefile msortrun.sml msort.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msort.rp: msort.exe
-	./$< -file $@ -notimer 8000 > msort.out
+	./$< +RTS -rp -rp_file $@ -rp_interval 50000i > msort.out
 
-msortregion.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -region $@ -sampleMax 500
+msortregion.svg: msort.rp
+	../bin/rpview $< --caption "Mergesort" -o $@
 
-msortstack.ps: msort.rp
-	../bin/rp2ps -name "Mergesort" -source $< -stack $@ -sampleMax 500
+msortstack.svg: msort.rp
+	../bin/rpview $< --caption "Mergesort" --metric stack -o $@
 
 length.exe: length.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 length.rp: length.exe
-	./$< -file $@ -microsec 1000 > length.out
+	./$< +RTS -rp -rp_file $@ -rp_interval 2ms > length.out
 
-length_region.ps: length.rp
-	../bin/rp2ps -name "List length functions" -source $< -region $@ -sampleMax 200
+length_region.svg: length.rp
+	../bin/rpview $< --caption "List length functions" -o $@
 
 msortreset2.exe: msortreset2.mlb Makefile msortreset2.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msortreset2.rp: msortreset2.exe
-	./$< -file $@ -microsec 1000 > msortreset2.out
+	./$< +RTS -rp -rp_file $@ -rp_interval 1ms > msortreset2.out
 
-msortreset2.ps: msortreset2.rp
-	../bin/rp2ps -name "Improved mergesort" -source $< -region $@ -sampleMax 200
+msortreset2.svg: msortreset2.rp
+	../bin/rpview $< --caption "Improved mergesort" -o $@
 
 scan.exe: scan.mlb Makefile scan.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan.rp: scan.exe
-	cat scanfiles | ./$< -file $@ -notimer 1000 > scan.out
+	cat scanfiles | ./$< +RTS -rp -rp_file $@ -rp_interval 1000i > scan.out
 
-scan.ps: scan.rp
-	../bin/rp2ps -name "Scanning text files" -source $< -region $@ -sampleMax 200
+scan.svg: scan.rp
+	../bin/rpview $< --caption "Scanning text files" -o $@
 
 scan_stream.exe: scan_stream.mlb Makefile scan_stream.sml lib_stream.sml
 	SML_LIB=.. $(MLKIT) -output $@ -rp $<
 
 scan_stream.rp: scan_stream.exe
-	cat scanfiles | ./$< -file $@ -notimer 5000 > scan_stream.out
+	cat scanfiles | ./$< +RTS -rp -rp_file $@ -rp_interval 20000i > scan_stream.out
 
-scan_stream.ps: scan_stream.rp
-	../bin/rp2ps -name "Scanning text files with stream IO (garbage collection enabled)" -source $< -region $@ -sampleMax 200
+scan_stream.svg: scan_stream.rp
+	../bin/rpview $< --caption "Scanning text files with stream IO (garbage collection enabled)" -o $@
 
 scan_stream_nogc.rp: scan_stream.exe
-	cat scanfiles | ./$< -disable_gc -file $@ -notimer 5000 > scan_stream_nogc.out
+	cat scanfiles | ./$< +RTS -disable_gc -rp -rp_file $@ -rp_interval 20000i > scan_stream_nogc.out
 
-scan_stream_nogc.ps: scan_stream_nogc.rp
-	../bin/rp2ps -name "Scanning text files with stream IO (garbage collection disabled)" -source $< -region $@ -sampleMax 200
+scan_stream_nogc.svg: scan_stream_nogc.rp
+	../bin/rpview $< --caption "Scanning text files with stream IO (garbage collection disabled)" -o $@
 
 scan_rev1.exe: scan_rev1.mlb Makefile scan_rev1.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp -Prfg -Ppp -Pcee -log_to_file $<
 
 scan_rev1.rp: scan_rev1.exe
-	echo life.sml | ./$< -file $@ -notimer 723 > scan_rev1.out
+	echo life.sml | ./$< +RTS -rp -rp_file $@ -rp_interval 5000i -rp_region all > scan_rev1.out
 
-scan_rev1_1.ps: scan_rev1.rp
-	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -region $@ -sampleMax 200
+scan_rev1.svg: scan_rev1.rp
+	../bin/rpview $< --caption "Scanning life.sml 50 times" -o $@
 
-scan_rev1_2.ps: scan_rev1.rp
-	../bin/rp2ps -name "Scanning life.sml 50 times" -source $< -object 331112 $@ -sampleMax 200
+scan_rev1_r.svg: scan_rev1.rp
+	../bin/rpview $< --caption "Scanning life.sml 50 times" --show-base --region r338853 -o $@
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan_rev2.rp: scan_rev2.exe
-	echo life.sml | ./$< -file $@ -notimer 723 > scan_rev2.out
+	echo life.sml | ./$< +RTS -rp -rp_file $@ -rp_interval 2000i > scan_rev2.out
 
-scan_rev2_1.ps: scan_rev2.rp
-	../bin/rp2ps -name "Scanning life.sml 50 times with no space leak" -source $< -region $@ -sampleMax 200
+scan_rev2.svg: scan_rev2.rp
+	../bin/rpview $< --caption "Scanning life.sml 50 times with no space leak" -o $@
 
-life_ex4.ps: life.rp
-	../bin/rp2ps -source $< -region $@ -sampleMax 100 -name life -comment 0.03 "A comment at time 0.03" -sortBySize
+life_ex2.svg: life.rp
+	../bin/rpview $< --caption life --region r338853 -o $@
 
-life_ex2.ps: life.rp
-	../bin/rp2ps -source $< -name life -object 332640 $@
+life_ex3.svg: life.rp
+	../bin/rpview $< --caption life --metric stack -o $@
 
-life_ex3.ps: life.rp
-	../bin/rp2ps -source $< -name life -sampleMax 200 -stack $@
-
-%.pdf: %.ps
-	ps2pdf $< $@
+LENGTH_N ?= 10000000
+.PHONY: length_timings
+length_timings: length-cmd.sml
+	SML_LIB=.. $(MLKIT) -no_gc -o length-cmd.exe $<
+	@./length-cmd.exe -n $(LENGTH_N) -f upto
+	@./length-cmd.exe -n $(LENGTH_N) -f nlength
+	@./length-cmd.exe -n $(LENGTH_N) -f tlength
+	@./length-cmd.exe -n $(LENGTH_N) -f klength
+	@./length-cmd.exe -n $(LENGTH_N) -f llength
+	@./length-cmd.exe -n $(LENGTH_N) -f glength
+	@./length-cmd.exe -n $(LENGTH_N) -f all

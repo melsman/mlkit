@@ -25,7 +25,7 @@ integration suite passes with the new switch fixture in no-GC, tagged, GC,
 generational-GC, and profiling configurations, including forced collection.
 Calls, exceptions, callbacks, long branches, and REPL recovery also pass.
 
-`check-switches.sh`, now included in `make -f Makefile.arm64 check`, checks:
+`check-switches.sh`, now included in `make check-arm64`, checks:
 
 - Dense groups, holes, sparse search, small linear switches, and defaults
   below, within, and above selection ranges.

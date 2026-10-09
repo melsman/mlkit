@@ -18,21 +18,46 @@ structure Tester : TESTER =
       end handle _ => false
 
     (* Assembly progress depends on the backend and cache layout. Keep
-     * diagnostic/signature comparisons exact, excluding only these notices. *)
-    fun equal_to_okfile s =
+     * diagnostic/signature comparisons exact, excluding these notices and
+     * profiling log settings. *)
+    fun equal_to_okfile (s, expected) =
       let fun readLog file =
             let val input = TextIO.openIn file
                 fun lines () = case TextIO.inputLine input of
                     NONE => []
                   | SOME line =>
                       if String.isPrefix "[wrote X64 code file:" line orelse
-                         String.isPrefix "[wrote ARM64 code file:" line
+                         String.isPrefix "[wrote ARM64 code file:" line orelse
+                         String.isPrefix "MLKit log settings: " line
                       then lines () else line :: lines ()
             in lines () before TextIO.closeIn input
             end
-      in readLog s = readLog(s ^ ".ok")
+      in readLog s = readLog expected
       end handle _ => false
 
+
+    (* Profiling logs live beside the IR files, under the selected MLB
+     * directory. Do not assume a backend name or a cache suffix. *)
+    fun compiler_log file =
+      let val name = file ^ ".log"
+          fun search dir =
+            let val stream = OS.FileSys.openDir dir
+                fun entries () =
+                  case OS.FileSys.readDir stream of
+                      NONE => []
+                    | SOME entry =>
+                        let val path = OS.Path.concat (dir,entry)
+                            val found = if OS.FileSys.isDir path then search path
+                                        else if entry = name then [path] else []
+                        in found @ entries ()
+                        end
+            in entries () before OS.FileSys.closeDir stream
+            end
+      in if OS.FileSys.access (name,[]) then name
+         else case (search "MLB" handle OS.SysErr _ => []) of
+                  [path] => path
+                | _ => name
+      end
 
     local
       val all_test_counts = ref 0
@@ -103,6 +128,8 @@ structure Tester : TESTER =
 	       ^ concatWith " " flags
 
 	val compile_command = compile_command_base ^ file
+        (* A previous run must not supply the diagnostic log. *)
+        val _ = OS.FileSys.remove (file ^ ".log") handle OS.SysErr _ => ()
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
@@ -114,7 +141,7 @@ structure Tester : TESTER =
 		  else (msgErr ("unexpected compile time failure for " ^ file) ; false)
 	  in
 	    if opt "ccl" (*Compare Compiler Logs*) then
-	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
+	      let val match = if equal_to_okfile (compiler_log file, file ^ ".log.ok") then (msgOk "log equal to log.ok"; true)
 			      else (msgErr ("compile log " ^ file ^ ".log not equal to " ^ file ^ ".log.ok"); false)
 	      in TestReport.add_compout_line {name=filepath, match=SOME match,
 					      success_as_expected=success_as_expected()}

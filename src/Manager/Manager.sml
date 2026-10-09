@@ -108,11 +108,27 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                                       (* so that we correctly distinguish *)
                                       (* unit names and file names. *)
 
-    fun unitname_to_logfile unitname = unitname ^ ".log"
+    fun unitname_to_logfile unitname =
+      if region_profiling() then
+        let val {dir,file} = OS.Path.splitDirFile unitname
+        in dir ## MO.mlbdir() ## (file ^ ".log")
+        end
+      else unitname ^ ".log"
     fun unitname_to_sourcefile unitname = MO.mk_filename unitname (*mads ^ ".sml"*)
     fun filename_to_unitname (f:filename) : string = MO.filename_to_string f
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
+
+    (* Record how a log was produced, without making diagnostic settings
+     * part of object-cache validity. *)
+    fun log_settings () =
+      "MLKit log settings: " ^
+      String.concatWith ";" (List.mapPartial
+        (fn {long = [name],default,...} =>
+              if String.isPrefix "print_" name then
+                SOME (name ^ "=" ^ (case default of SOME s => s | NONE => ""))
+              else NONE
+          | _ => NONE) (Flags.getOptions_noneg())) ^ "\n"
 
     fun modTime (f:string) : Time.time option =
         SOME (OS.FileSys.modTime f)
@@ -127,13 +143,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
           val log_file = unitname_to_logfile unitname
           val source_file = unitname_to_sourcefile unitname
       in if !log_to_file then
-           let val log_stream = TextIO.openOut log_file
+           let val _ = if region_profiling() then
+                         MO.SystemTools.maybe_create_mlbdir {prepath = OS.Path.dir unitname}
+                       else ()
+               val log_stream = TextIO.openOut log_file
                      handle IO.Io {name=msg,...} =>
                        die ("Cannot open log file\n\
                             \(non-exsisting directory or write-\
                             \protected existing log file?)\n" ^ msg)
                fun log_init() = (Flags.log := log_stream;
-                                 TextIO.output (log_stream, "\n\n********** "
+                                 TextIO.output (log_stream,
+                                   (if region_profiling() then log_settings() else "") ^
+                                   "\n\n********** "
                                          ^ MO.filename_to_string source_file ^ " *************\n\n"))
                fun log_cleanup() = (Flags.log := old_log_stream; TextIO.closeOut log_stream;
                                     TextIO.output (TextIO.stdOut, "[wrote log file:\t" ^ log_file ^ "]\n"))
@@ -141,7 +162,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
               log_cleanup
            end
          else
-           let val log_stream = TextIO.stdOut
+           let val _ = if region_profiling() then
+                         (OS.FileSys.remove log_file handle _ => ())
+                       else ()
+               val log_stream = TextIO.stdOut
                fun log_init() = Flags.log := log_stream
                fun log_cleanup() = Flags.log := old_log_stream
            in log_init();
@@ -452,7 +476,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val s = readFile lnkFile
             val mc = Pickle.unpickle ModCode.pu s
             val files = ModCode.target_files (ModCode.dirMod (OS.Path.dir lnkFile) mc)
-        in not (!RegionProfiling.enabled) orelse List.all IRLocations.consistent files
+        in not (!RegionProfiling.enabled) orelse
+           List.all IRLocations.consistent files
         end handle _ => false
 
     fun writeBasisJs toJsString punit ofile B =

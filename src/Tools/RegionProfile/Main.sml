@@ -20,6 +20,7 @@ struct
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --sites                 SVG: selected region split by allocation site\n\
+                     \  --region rN              SVG: site contributions to region rN\n\
                      \  --regions N             Largest regions/sites to show (default 9; 0 = all)\n\
                      \  --metric NAME           total (default), stack, pages, page_footprint,\n\
                      \                          large_bytes, finite_bytes, descriptor_bytes\n\
@@ -27,7 +28,6 @@ struct
                      \                          Use -1 for unavailable worker/CPU identity\n\
                      \  --group NAME            HTML table: aggregate, region, thread, worker\n\
                      \  --show-base / --hide-base       Base names (default hidden)\n\
-                     \  --show-kind / --hide-kind       Region kind (default hidden)\n\
                      \  --show-type / --hide-type       Region type (default hidden)\n\
                      \  --show-peak / --hide-peak       Peak page capacity (default hidden)\n\
                      \  --legend-right / --legend-below HTML legend placement and compact names\n\
@@ -35,6 +35,10 @@ struct
                OS.Process.exit OS.Process.success)
           fun options [] = ()
             | options ("--sites"::rest) = (setting "sites" (ProfileJson.Bool true); options rest)
+            | options ("--region"::value::rest) = (if String.isPrefix "r" value andalso size value > 1 andalso
+                  List.all Char.isDigit (explode(String.extract(value,1,NONE))) then
+                 (setting "region" (ProfileJson.Str value); setting "sites" (ProfileJson.Bool true); options rest)
+               else raise Fail "region must be rN (for example, r163)")
             | options ("--ir-dir"::path::rest) = (irRoots := path :: !irRoots; options rest)
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
@@ -67,7 +71,7 @@ struct
             | options ("--legend-below"::rest) = (setting "legend-right" (ProfileJson.Bool false); options rest)
             | options ("--help"::_) = help ()
             | options (value::rest) =
-              if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","kind","type","peak"] then
+              if List.exists (fn v => value = "--show-" ^ v orelse value = "--hide-" ^ v) ["base","type","peak"] then
                 (setting ("show-" ^ String.extract(value,7,NONE)) (ProfileJson.Bool(String.isPrefix "--show-" value)); options rest)
               else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
               else (file := value; haveFile := true; options rest)
@@ -76,6 +80,7 @@ struct
                          else if String.isSuffix ".svg" (String.map Char.toLower (!output)) then "svg"
                          else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
                                  String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
+                         else if not(!haveOutput) andalso List.exists (fn (k,_) => k = "region") (!settings) then "svg"
                          else "html"
           val sites = List.exists (fn (k,v) => k = "sites" andalso v = ProfileJson.Bool true) (!settings)
           val () = if sites andalso selected <> "svg" then raise Fail "--sites requires SVG output (-o sites.svg or --format svg)" else ()

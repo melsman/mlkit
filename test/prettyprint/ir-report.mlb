@@ -1,6 +1,6 @@
 $(SML_LIB)/basis/basis.mlb
-$(SML_LIB)/basis/BINARYMAP.sig
-$(SML_LIB)/basis/Binarymap.sml
+../../src/Kitlib/BINARYMAP.sig
+../../src/Kitlib/Binarymap.sml
 report.sml
 ../../src/Common/PRETTYPRINT.sig
 ../../src/Common/PrettyPrint.sml

@@ -1202,12 +1202,18 @@ struct
               (false, ([],[],[])) => LEAF (Lvars.pr_lvar lvar)
             | _ => lay_il(Lvars.pr_lvar lvar, il, rhos_actuals)
 
-      fun wrap s opr = s ^ opr ^ s
-
       (* precedence levels: lam, case, branches : 1
                             + - etc : 2
                             app   : 3 *)
       (* n is precedence of parent - or 0 if no parens around lamb are needed *)
+
+      fun primitive_leaf aopt name =
+        case (preserve_allocations,aopt) of
+            (true,SOME a) =>
+              (case layout_alloc a of
+                   SOME (MARKED_LEAF (point,_)) => MARKED_LEAF (point,name)
+                 | _ => LEAF name)
+          | _ => LEAF name
 
       fun layBin (bop:string, n, t1, t2, aopt) =
           let
@@ -1224,17 +1230,18 @@ struct
                           | "=" => n_cmp
                           | ":=" => n_assign
                           | _ => 0
-            val bop =
-                  case aopt of
-                      SOME a => (case alloc_string a of
-                                     "" => bop
-                                   | alloc_s => (* assume allocation string is short and single *)
-                                     bop ^ "[" ^ alloc_s ^ "]")
-                    | NONE => bop
-              val bop = wrap " " bop
+            val operator = HNODE
+              {start = "", finish = "", childsep = NOSEP,
+               children = primitive_leaf aopt bop ::
+                 (case aopt of
+                      SOME a => (case layout_alloc a of
+                          SOME tree => [HNODE {start = "[", finish = "]",
+                                             childsep = NOSEP, children = [tree]}]
+                        | NONE => [])
+                    | NONE => [])}
           in par (n-n_bop)
-                 (NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT bop,
-                       children = [layTrip(t1,n_bop), layTrip(t2,n_bop+1)]})
+                 (NODE {start = "", finish = "", indent = 0, childsep = RIGHT " ",
+                        children = [layTrip(t1,n_bop),operator,layTrip(t2,n_bop+1)]})
           end
 
       (* The navigable form retains each allocation annotation as a tree.
@@ -1272,19 +1279,7 @@ struct
               | REF (a,t) => expr "ref " [a] [layTrip (t,n_inf)]
               | BLOCKF64 (a,ts) => expr "blockf64 " [a] [args ts]
               | SCRATCHMEM (bytes,a) => expr ("scratch(" ^ Int.toString bytes ^ ") ") [a] []
-              (* No allocation locator is needed: retain the shared primitive
-               * names, infix precedence, and argument layout. *)
-              | CCALL ({rhos_for_result = [],...},_) => layExpDefault (lamb,n)
-              | CCALL ({name,rhos_for_result,...},ts) =>
-                  let val token = "$" ^ name
-                      val marker = case rhos_for_result of
-                          (a,_)::_ => (case layout_alloc a of
-                              SOME (MARKED_LEAF (point,_)) => MARKED_LEAF (point,token)
-                            | _ => LEAF token)
-                        | [] => LEAF token
-                  in HNODE {start = "", finish = "", childsep = RIGHT " ", children =
-                       [marker,expr "" (map #1 rhos_for_result) [args ts]]}
-                  end
+              | CCALL _ => layExpDefault (lamb,n)
               | FN {pat,body,alloc,...} =>
                   par (n-n_lam)
                     (NODE {start = "fn ", finish = "", indent = 2, childsep = RIGHT " ",
@@ -1455,9 +1450,9 @@ struct
             | EQUAL({mu_of_arg1,mu_of_arg2}, arg1, arg2) => layBin("=", n, arg1, arg2, NONE)
             | CCALL ({name="id", rhos_for_result=nil, mu_result}, [t]) => layTrip(t,n)
             | CCALL ({name, rhos_for_result, mu_result}, args) =>
-              let val rhos_for_result_ss = if print_regions()
-                                           then map (alloc_string o #1) rhos_for_result
-                                           else []
+              let val rhos_for_result_trees = if print_regions()
+                                              then get_opt (map (layout_alloc o #1) rhos_for_result)
+                                              else []
                   fun drop__ n =
                       if size n > 2 andalso String.sub(n,0) = #"_" andalso String.sub(n,1) = #"_"
                       then SOME(String.extract(n,2,NONE))
@@ -1606,9 +1601,9 @@ struct
                                        SOME (m,opr) => m ^ "." ^ opr
                                      | NONE => "$" ^ name)
                               val rhos =
-                                  case rhos_for_result_ss of
+                                  case rhos_for_result_trees of
                                       nil => nil
-                                    | _ => [layHlist PP.LEAF rhos_for_result_ss]
+                                    | trees => [layHlist (fn tree => tree) trees]
                               val ty = if !Flags.print_types then ":" ^ PP.flatten1(layMu mu_result)
                                        else ""
                               val (p,s,f) = if length args = 1 then (n_inf,"","")
@@ -1617,10 +1612,12 @@ struct
                                                   indent=0, childsep=PP.RIGHT ", ",
                                                   children=map (fn t => layTrip(t,p)) args}
                           in par (n-n_fun)
-                                 (PP.NODE {start = start ^ " ",
-                                           finish = ty,
+                                 (PP.NODE {start = "", finish = ty,
                                            indent = 2, childsep = PP.RIGHT " ",
-                                           children = rhos @ [args]})
+                                           children = primitive_leaf
+                                             (case rhos_for_result of
+                                                  (a,_)::_ => SOME a
+                                                | [] => NONE) start :: rhos @ [args]})
                           end
               end
             | EXPORT ({name, mu_arg, mu_res}, arg) =>
@@ -1992,8 +1989,11 @@ struct
 
   fun layoutLambdaTripWithLocations layout_alloc layout_alloc_short layout_bind
                                    layout_rbind explicit_bind layout_other t =
+      (* Reuse the ordinary printer's elimination of K-normal temporaries.
+       * Substitution retains the original allocation annotations (and hence
+       * their site IDs); locations are measured only after final layout. *)
       #2 (mkLay true false layout_alloc layout_alloc_short layout_bind
-                    layout_rbind explicit_bind layout_other) t
+                    layout_rbind explicit_bind layout_other) (eval [] t)
 
   fun layoutLambdaPgm (layout_alloc : 'a -> StringTree option)
                       (layout_alloc_short : 'a -> StringTree option)

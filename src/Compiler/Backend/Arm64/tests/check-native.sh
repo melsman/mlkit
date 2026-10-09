@@ -33,21 +33,24 @@ printf 'A\n' > expected
 check_compiler () {
   compiler=$1
   prefix=$2
-  "$compiler" --no_basislib --no_delete_target_files -o "$prefix-native" native.mlb > "$prefix.log" 2>&1
+  # These minimal fixtures use the untagged, non-GC primitive ABI.
+  default_gc=-no_gc
+  [ "$compiler" != "$REML_ARM64" ] || default_gc=""
+  "$compiler" $default_gc --no_basislib --no_delete_target_files -o "$prefix-native" native.mlb > "$prefix.log" 2>&1
   printf '@' | "./$prefix-native" > actual
   cmp expected actual
   file "$prefix-native" | grep -q 'Mach-O 64-bit executable arm64'
-  "$compiler" --no_basislib --no_delete_target_files -o "$prefix-calls" calls.sml >> "$prefix.log" 2>&1
+  "$compiler" $default_gc --no_basislib --no_delete_target_files -o "$prefix-calls" calls.sml >> "$prefix.log" 2>&1
   printf '@' | "./$prefix-calls" > actual
   cmp expected actual
-  "$compiler" --no_basislib --no_delete_target_files -o "$prefix-branch" branch.sml >> "$prefix.log" 2>&1
+  "$compiler" $default_gc --no_basislib --no_delete_target_files -o "$prefix-branch" branch.sml >> "$prefix.log" 2>&1
   printf '@' | "./$prefix-branch" > actual
   cmp expected actual
   printf 'B\n' > other
   printf 'A' | "./$prefix-branch" > actual
   cmp other actual
   for sample in stack closure float exn unwind overflow list spills nan immediates large; do
-    "$compiler" --no_basislib --no_delete_target_files -ldexe 'gcc -arch arm64 probe.o' \
+    "$compiler" $default_gc --no_basislib --no_delete_target_files -ldexe 'gcc -arch arm64 probe.o' \
       -o "$prefix-$sample" "$sample.sml" >> "$prefix.log" 2>&1
     printf '@@' | "./$prefix-$sample" > actual
     cmp expected actual
@@ -121,44 +124,46 @@ gcc -arch arm64 -O2 -Wall -Wextra -Werror -c foreign.c -o foreign.o
 printf 'OK\nOK\nOK\nOK\nOK\nOK\n' > foreign-expected
 printf 'OK\n' > gc-expected
 for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
+  default_gc=-no_gc
+  [ "$compiler" != "$REML_ARM64" ] || default_gc=""
   extra_gc=-extra_gc_checks
   [ "$compiler" != "$REML_ARM64" ] || extra_gc=""
   for flags in '' '--tag_values' '-rp' '-gc' '-gc -tag_pairs' '-gengc' '-gc -rp' '-gc -tag_pairs -rp' '-gengc -rp'; do
     if [ "$compiler" = "$REML_ARM64" ]; then
       case "$flags" in ''|'-rp') ;; *) continue;; esac
     fi
-    "$compiler" --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
     case "$flags" in *-rp*) profile_flags="-rp -rp_interval 1ms -rp_file integration.rp";; *) profile_flags="";; esac
     case "$flags" in *gc*) report_flags="-report_gc";; *) report_flags="";; esac
     ./gc-roots +RTS $profile_flags $report_flags > actual 2> gc-report.log
     cmp gc-expected actual
     if [ -n "$report_flags" ]; then grep -Eq "[1-9][0-9]* collections" gc-report.log; fi
-    "$compiler" --no_basislib --no_delete_target_files $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib --no_delete_target_files $flags $extra_gc -o gc-frames gc-frames.sml >> integration.log 2>&1
     ./gc-frames +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags $extra_gc -o switches switches.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -o switches switches.sml >> integration.log 2>&1
     ./switches +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -o instruction-selection instruction-selection.sml >> integration.log 2>&1
     ./instruction-selection +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags -o loop-spills loop-spills.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags -o loop-spills loop-spills.sml >> integration.log 2>&1
     ./loop-spills +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags $extra_gc -o word-arithmetic word-arithmetic.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -o word-arithmetic word-arithmetic.sml >> integration.log 2>&1
     ./word-arithmetic +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -o gc-constructors gc-constructors.sml >> integration.log 2>&1
     ./gc-constructors +RTS $profile_flags > actual
     cmp gc-expected actual
-    "$compiler" --no_basislib $flags $extra_gc -ldexe 'gcc -arch arm64 callback.o foreign.o' \
+    "$compiler" $default_gc --no_basislib $flags $extra_gc -ldexe 'gcc -arch arm64 callback.o foreign.o' \
       -o foreign foreign.sml >> integration.log 2>&1
     ./foreign +RTS $profile_flags > actual
     cmp foreign-expected actual
   done
   for flags in '' '-gc' '-gc -tag_pairs' '-gengc'; do
     [ "$compiler" != "$REML_ARM64" ] || [ -z "$flags" ] || continue
-    "$compiler" --no_basislib $flags $extra_gc < repl-input.txt > repl.log 2>&1
+    "$compiler" $default_gc --no_basislib $flags $extra_gc < repl-input.txt > repl.log 2>&1
     grep -q 'REPL GC OK' repl.log
     grep -q 'uncaught exception Overflow' repl.log
     grep -q 'REPL RECOVERED' repl.log

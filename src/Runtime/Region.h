@@ -380,6 +380,9 @@ typedef struct {
   Region topregion;             // toplevel region
   void *exnptr;                 // pointer to toplevel handler
   long int uncaught_exnname;    // > 0 implies uncaught exception
+#ifdef PROFILING
+  uint64_t rp_entries_left;    // owned by this ML thread; zero disables counting
+#endif
 #if (PARALLEL && !ARGOBOTS)
   Rp *freelist;                   // local freelist of pages
   thread_mutex_list_t *mutex_freelist; // local freelist of region locks

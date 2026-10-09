@@ -29,8 +29,16 @@ extern long report_gc;
 extern long only_major_gc;
 #endif
 extern double heap_to_live_ratio;
-extern char * command_pipe;  // Named command pipe for REPL
-extern char * reply_pipe;    // Named reply pipe for REPL
+/* Optional executable-specific runtime options. Repl.o overrides the weak
+ * initialization hook only when the generated REPL launcher pulls it in. */
+typedef struct {
+  int (*parse)(int *argc, char ***argv);
+  void (*usage)(void);
+} RuntimeOptionExtension;
+extern const RuntimeOptionExtension *runtime_options;
+extern int mlkit_repl_mode;
+void mlkit_init_runtime_options(void);
+char *rtsValue(int *argc, char ***argv);
 
 /*----------------------------------------*
  * Prototypes                             *

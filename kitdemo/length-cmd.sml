@@ -55,22 +55,43 @@ val () =
                     (case Int.fromString n_str of
                          SOME n => n
                        | NONE => die "expecting integer after -n")
-                  | NONE => 5000000
+                  | NONE => 10000000
         fun all n = nlength(upto n) +
                     tlength(upto n) +
                     klength(upto n) +
                     llength(upto n) +
                     glength(upto n)
-        val f : int -> int =
+
+        val fname =
             case findNext "-f" args of
-                SOME "nlength" => nlength o upto
-              | SOME "tlength" => tlength o upto
-              | SOME "klength" => klength o upto
-              | SOME "llength" => llength o upto
-              | SOME "glength" => glength o upto
-              | SOME "upto" => (fn n => (upto n; n))
-              | SOME "all" => all
-              | SOME _ => die "non-supported argument to -f"
-              | NONE => all
-    in print ("Result: " ^ Int.toString (f n) ^ "\n")
+                SOME name => name
+              | NONE => "all"
+        fun repeat f n 0 (SOME r,sum,N) = (r,IntInf.div(sum,Int.toLarge N))
+          | repeat f n N (r,sum,Na) =
+            let val t0 = Time.now()
+                val r' = f n
+                val dt = Time.toMilliseconds(Time.-(Time.now(),t0))
+                val r =
+                    case r of
+                        SOME r => if r = r' then SOME r else die "error"
+                      | NONE => SOME r'
+            in repeat f n (N-1) (r,sum+dt,Na+1)
+            end
+        val f : int -> int =
+            case fname of
+                "nlength" => nlength o upto
+             |  "tlength" => tlength o upto
+             |  "klength" => klength o upto
+             |  "llength" => llength o upto
+             |  "glength" => glength o upto
+             |  "upto" => (fn n => (upto n; n))
+             |  "all" => all
+             | _ => die "non-supported argument to -f"
+        val N = 10
+        fun timeit f n =
+            let val (r,dt) = repeat f n N (NONE,0,0)
+            in fname ^ "(" ^ Int.toString n ^ ") = "
+               ^ Int.toString r ^ " - " ^ Int.toString N ^ " runs : " ^ IntInf.toString dt ^ "ms\n"
+            end
+    in print (timeit f n)
     end

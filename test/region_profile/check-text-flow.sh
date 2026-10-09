@@ -13,8 +13,12 @@ for mode in plain prof; do
     prof) set -- -rp -print_region_flow_graph ;;
   esac
   "$REML" -no_par "$@" -log_to_file -o "$OUT/$mode" "$OUT/$mode.mlb" > "$OUT/$mode.build" 2>&1
-  grep -q 'Begin layout of region flow graph' "$OUT/$mode.sml.log"
-  grep -q 'LETREGION' "$OUT/$mode.sml.log"
+  case "$mode" in
+    plain) log="$OUT/$mode.sml.log" ;;
+    prof) set -- "$OUT"/MLB/*/"$mode.sml.log"; log=$1 ;;
+  esac
+  grep -q 'Begin layout of region flow graph' "$log"
+  grep -q 'LETREGION' "$log"
   test -z "$(find "$OUT" -name '*.vcg' -print)"
 done
 echo 'Both region-flow options print text without VCG output, with and without profiling'

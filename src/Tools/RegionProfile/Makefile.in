@@ -1,23 +1,21 @@
 # Offline SML viewer. No Python, server, or runtime template files are needed.
 ROOT := $(abspath ../../..)
-MLKIT ?= $(ROOT)/bin/mlkit
 OUT ?= $(ROOT)/bin/rpview
-MLKIT_FLAGS ?=
-# A bootstrap compiler must use its own matching Basis and runtime.
-MLKIT_ENV ?= env SML_LIB="$(ROOT)"
+# Inherit the configured seed compiler, just like the other compiler tools.
+include $(ROOT)/Makefiledefault
 
 .PHONY: all clean
 all: $(OUT)
 
 embed: Embed.sml embed.mlb
-	$(MLKIT_ENV) $(MLKIT) $(MLKIT_FLAGS) -gc -o $@ embed.mlb
+	$(MLCOMP) -output $@ embed.mlb
 
 Html.sml: viewer.html embed
 	./embed viewer.html $@
 
 $(OUT): Json.sml Binary.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Main.sml rpview.mlb
 	mkdir -p $(dir $(OUT))
-	$(MLKIT_ENV) $(MLKIT) $(MLKIT_FLAGS) -gc -o $(OUT) rpview.mlb
+	$(MLCOMP) -output $(OUT) rpview.mlb
 
 clean:
 	rm -rf build embed Html.sml MLB

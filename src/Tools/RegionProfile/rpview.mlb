@@ -1,6 +1,8 @@
 $(SML_LIB)/basis/basis.mlb
-$(SML_LIB)/basis/BINARYMAP.sig
-$(SML_LIB)/basis/Binarymap.sml
+(* These extra modules must compile in the writable source tree, not the
+ * bootstrap compiler's potentially read-only installation. *)
+../../Kitlib/BINARYMAP.sig
+../../Kitlib/Binarymap.sml
 Json.sml
 Binary.sml
 Reader.sml

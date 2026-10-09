@@ -48,6 +48,34 @@ PROF_FLAGS=$(RI_FLAGS) -rp
 GC_PROF_FLAGS=$(GC_FLAGS) -rp
 
 MLKIT=../bin/mlkit
+VERBOSE ?= 0
+# Keep compiler failures visible when verbose output is piped through tee.
+%.exe %.mlbexe: SHELL := /bin/bash
+# Resolve a relative compiler path before entering each test's working directory.
+COMPILER=$(if $(findstring /,$(firstword $(MLKIT))),$(abspath $(firstword $(MLKIT))),$(firstword $(MLKIT))) $(wordlist 2,999,$(MLKIT))
+TEST_INPUTS=$(wildcard *.sml) $(filter-out %.auto.mlb,$(wildcard *.mlb))
+
+# Each executable owns compiler scratch files, caches, and runtime outputs.
+# Compiler stdout and stderr go to one log per executable; VERBOSE=1 also
+# streams them to the terminal.
+define compile_test
+	@mkdir -p .test-build/$@
+	@cp -p $(TEST_INPUTS) .test-build/$@/
+	@set -o pipefail; { printf '\n%s\n' '$(COMPILER) $(1) -o $@ $<'; \
+	  (cd .test-build/$@ && SML_LIB="$(abspath ..)" $(COMPILER) $(1) -o "$(abspath $@)" "$<"); \
+	} $(if $(filter 1,$(VERBOSE)),2>&1 | tee $@.log,> $@.log 2>&1) || \
+	  { $(if $(filter 1,$(VERBOSE)),:,cat $@.log >&2); exit 1; }
+endef
+
+# A joint invocation assembles the log only once, after both suites finish.
+ifneq ($(filter test_prof,$(MAKECMDGOALS)),)
+LOG_RESULTS=$(RESFILES_PROF)
+ifneq ($(filter test all,$(MAKECMDGOALS)),)
+LOG_RESULTS+=$(RESFILES_ALL)
+endif
+else
+LOG_RESULTS=$(RESFILES_ALL)
+endif
 
 .PHONY: tst
 tst:
@@ -61,43 +89,35 @@ runtime:
 	make -C ../src/Runtime clean
 	make -C ../src/Runtime runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a runtimeSystem.a
 
-%-ri.exe: %.sml
-	@echo "\nSML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $< >> complog.txt
+%-ri.exe: %.sml Makefile
+	$(call compile_test,$(RI_FLAGS))
 
-%-ri.mlbexe: %.mlb
-	@echo "\nSML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $< >> complog.txt
+%-ri.mlbexe: %.mlb Makefile
+	$(call compile_test,$(RI_FLAGS))
 
-%-gc.exe: %.sml
-	@echo "\nSML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
+%-gc.exe: %.sml Makefile
+	$(call compile_test,$(GC_FLAGS))
 
-%-gc.mlbexe: %.mlb
-	@echo "\nSML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
+%-gc.mlbexe: %.mlb Makefile
+	$(call compile_test,$(GC_FLAGS))
 
-%-p.exe: %.sml
-	@echo "\nSML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $< >> complog.txt
+%-p.exe: %.sml Makefile
+	$(call compile_test,$(PROF_FLAGS))
 
-%-p.mlbexe: %.mlb
-	@echo "\nSML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $< >> complog.txt
+%-p.mlbexe: %.mlb Makefile
+	$(call compile_test,$(PROF_FLAGS))
 
-%-gcp.exe: %.sml
-	@echo "\nSML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $< >> complog.txt
+%-gcp.exe: %.sml Makefile
+	$(call compile_test,$(GC_PROF_FLAGS))
 
-%-gcp.mlbexe: %.mlb
-	@echo "\nSML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $<" >> complog.txt
-	@SML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $< >> complog.txt
+%-gcp.mlbexe: %.mlb Makefile
+	$(call compile_test,$(GC_PROF_FLAGS))
 
 %.mlbout: %.mlbexe
-	@(./$< $(EXEFLAGS) > $@ 2>&1; echo "done" >> /dev/null)
+	@(cd .test-build/$< && "$(abspath $<)" $(EXEFLAGS) > "$(abspath $@)" 2>&1; :)
 
 %.out: %.exe
-	@(./$< $(EXEFLAGS) > $@ 2>&1; echo "done" >> /dev/null)
+	@(cd .test-build/$< && "$(abspath $<)" $(EXEFLAGS) > "$(abspath $@)" 2>&1; :)
 
 %-ri.res: %-ri.out
 	@(diff -aq $< $*.out.ok > /dev/null 2>&1; \
@@ -111,7 +131,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-ri.mlbres: %-ri.mlbout
 	@(diff -aq $< $*.mlbout.ok > /dev/null 2>&1; \
@@ -125,7 +144,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-gc.res: %-gc.out
 	@(diff -aq $< $*.out.ok > /dev/null 2>&1; \
@@ -139,7 +157,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-gc.mlbres: %-gc.mlbout
 	@(diff -aq $< $*.mlbout.ok > /dev/null 2>&1; \
@@ -153,7 +170,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-p.res: %-p.out
 	@(diff -aq $< $*.out.ok > /dev/null 2>&1; \
@@ -167,7 +183,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-p.mlbres: %-p.mlbout
 	@(diff -aq $< $*.mlbout.ok > /dev/null 2>&1; \
@@ -181,7 +196,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-gcp.res: %-gcp.out
 	@(diff -aq $< $*.out.ok > /dev/null 2>&1; \
@@ -195,7 +209,6 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 %-gcp.mlbres: %-gcp.mlbout
 	@(diff -aq $< $*.mlbout.ok > /dev/null 2>&1; \
@@ -209,10 +222,9 @@ runtime:
              ; fi \
          ; fi)
 	@cat $@
-	@cat $@ >> complog.txt
 
 .PHONY: test
-test: $(RESFILES_ALL)
+test: $(RESFILES_ALL) complog.txt
 	@cat $(RESFILES_ALL)
 	@echo "-------T E S T --- R E P O R T-------"
 	@echo "Tests succeeded:   `grep "OK" $(RESFILES_ALL) | wc -l` /`grep "Test" $(RESFILES_ALL) | wc -l`"
@@ -222,7 +234,7 @@ test: $(RESFILES_ALL)
 	@exit `grep "ERR" $(RESFILES_ALL) | wc -l`
 
 .PHONY: test_prof
-test_prof: $(RESFILES_PROF)
+test_prof: $(RESFILES_PROF) complog.txt
 	@cat $(RESFILES_PROF)
 	@echo "------- T E S T --- R E P O R T ----- P R O F I L I N G ------"
 	@echo "Tests succeeded:   `grep "OK" $(RESFILES_PROF) | wc -l` /`grep "Test" $(RESFILES_PROF) | wc -l`"
@@ -231,9 +243,18 @@ test_prof: $(RESFILES_PROF)
 	@echo "--------------------------------------------------------------"
 	@exit `grep "ERR" $(RESFILES_PROF) | wc -l`
 
+.PHONY: complog.txt
+complog.txt: $(LOG_RESULTS)
+	@{ for result in $(LOG_RESULTS); do \
+	  case "$$result" in *.mlbres) log=$${result%.mlbres}.mlbexe.log ;; \
+	    *) log=$${result%.res}.exe.log ;; esac; \
+	  cat "$$log" "$$result" || exit 1; \
+	done; } > $@.tmp
+	@mv $@.tmp $@
+
 .PHONY: clean
 clean:
-	rm -rf MLB *~ *.exe *.res *.out *.mlbexe *.mlbout *.mlbres run *.pdf *.ps *.rp complog.txt
+	rm -rf MLB *~ *.exe *.res *.out *.mlbexe *.mlbout *.mlbres run *.pdf *.ps *.rp *.exe.log *.mlbexe.log complog.txt complog.txt.tmp .test-build
 
 .PHONY: prof
 prof: kitlife35u_no_basislib.pdf

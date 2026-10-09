@@ -27,7 +27,6 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <p id="attribution-region-control" hidden><label>Site occupancy for <select id="attribution-region"><option value="all">All regions</option></select></label></p>
 <div class="display-options" aria-label="Graph display options">
 <label><input id="show-base" type="checkbox">Show base names</label>
-<label><input id="show-kind" type="checkbox">Show region kind</label>
 <label><input id="show-type" type="checkbox">Show region type</label>
 <label><input id="legend-right" type="checkbox" checked>Legend on the right</label>
 <label><input id="show-peak" type="checkbox">Show Peak page capacity</label>
@@ -164,7 +163,7 @@ function updateIRTitle(record){
    if(Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start>=data.start&&end<=data.end&&end>start){
     const token=data.decode.decode(data.bytes.subarray(start,end));
     if(/^(attop|atbot|sat)\s+r[0-9]+$/.test(token))annotation=' '+token;
-    else if(Number(record.location_kind)===1&&token.startsWith('$'))annotation=' via '+token;
+    else if(Number(record.location_kind)===1)annotation=' via '+token;
     functionName=irFunctionName(record.function,doc);
    }
   }catch(_){/* Unavailable locations still get a useful function heading. */}
@@ -474,7 +473,6 @@ function label(r){
  let name=el('legend-right').checked?(r.name?r.name+' · ':'')+'r'+r.binding:(r.name?r.name:'Region')+' #'+r.binding;
  if(el('show-base').checked)name+=' · '+baseName(r);
  const details=[];
- if(el('show-kind').checked)details.push(['finite','infinite'].includes(r.kind)?r.kind:'kind unavailable');
  if(el('show-type').checked)details.push(r.region_type&&r.region_type!=='unavailable'?r.region_type:'type unavailable');
  if(details.length)name+=' ('+details.join(', ')+')';
  return name;
@@ -661,7 +659,7 @@ el('range-end').addEventListener('input',()=>narrowSnapshots('end'));
 el('range-reset').addEventListener('click',resetSnapshotRange);
 el('show-base').addEventListener('input',()=>{allocationTable();if(irSelectedRecord)updateIRTitle(irSelectedRecord);});
 
-for(const id of ['sample','metric','group','scope','limit','show-base','show-kind','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
+for(const id of ['sample','metric','group','scope','limit','show-base','show-type','show-peak','legend-right'])el(id).addEventListener('input',draw);
 const mainName=profile.main_source.split(/[\\/]/).at(-1);
 const gcState=profile.gc_enabled?'enabled':'disabled';
 el('profile-title').textContent='Region profile for '+mainName+' (GC '+gcState+')';

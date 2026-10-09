@@ -30,6 +30,26 @@ struct
         val () = if siteMode andalso (number metadata "version" <> 10 orelse selector = "") then
                    raise Fail "--sites requires a version-10 profile recorded with -rp_region all or UNIT:BINDING" else ()
         val regionKey = key
+        val requestedRegion = opt "region" ""
+        val recordedRegions = if requestedRegion = "" then [] else List.concat(map (fn s => list s "regions") samples)
+        val bindings = foldl (fn (r,index) => Binarymap.insert(index,regionKey r,r))
+                             (Binarymap.mkDict String.compare) recordedRegions
+        val chosenRegion = if requestedRegion = "" then NONE else
+            let val n = valOf(IntInf.fromString(String.extract(requestedRegion,1,NONE)))
+            in case List.filter (fn (_,r) => number r "binding" = n) (Binarymap.listItems bindings) of
+                   [(_,r)] => SOME r
+                 | [] => raise Fail ("region not present in profile: " ^ requestedRegion)
+                 | _ => raise Fail ("region number is ambiguous in this profile: " ^ requestedRegion)
+            end
+        val chosenDefinitions = foldl (fn (r,index) =>
+            if case chosenRegion of SOME chosen => regionKey r = regionKey chosen | NONE => false
+            then Binarymap.insert(index,number r "definition",()) else index)
+            (Binarymap.mkDict IntInf.compare) recordedRegions
+        fun chosenAllocation r = not(Option.isSome chosenRegion) orelse
+                                 Option.isSome(Binarymap.peek(chosenDefinitions,number r "region_definition"))
+        val () = if Option.isSome chosenRegion andalso
+                    not(List.exists chosenAllocation (list metadata "occupancy_summaries"))
+                 then raise Fail ("site occupancy was not recorded for region " ^ requestedRegion) else ()
         fun key r = if siteMode then encode false (Arr [get r "unit",Str(strField r "site")]) else regionKey r
         val allocations = list metadata "allocations"
         (* Each site's values revisit every sample. Index once instead of
@@ -46,10 +66,10 @@ struct
         val scope = opt "scope" "all"
         val limit = valOf(Int.fromString(opt "limit" "9"))
         val compact = flag "legend-right" true
-        fun selected r = case String.fields (fn c => c = #":") scope of
+        fun selected r = (not siteMode orelse chosenAllocation r) andalso (case String.fields (fn c => c = #":") scope of
                             ["all"] => true
                           | [field,value] => (case find r field of NONE => value = "-1" | _ => strField r field = value)
-                          | _ => false
+                          | _ => false)
         fun bytes r = if siteMode then number r "bytes" else if metric = "total" then number r "page_footprint" + number r "large_bytes" + number r "finite_bytes"
                       else if metric = "stack" then number r "finite_bytes"
                       else if metric = "pages" then number r "page_footprint" + number r "unused_tail"
@@ -105,8 +125,8 @@ struct
                 val printed = irName r
                 val name = if printed = "" then short else printed
                 val owners = case Binarymap.peek(functionOwners,short) of SOME owners => owners | NONE => []
-            in (if length owners > 1 then strField r "function" else name) ^ " · site " ^ strField r "site" ^
-               (if flag "show-base" false then " · " ^ base(strField r "source") else "")
+            in (if length owners > 1 then strField r "function" else name) ^ " \194\183 site " ^ strField r "site" ^
+               (if flag "show-base" false then " \194\183 " ^ base(strField r "source") else "")
             end
         fun label r = if siteMode then siteLabel r else
             let val name = strField r "name"
@@ -114,11 +134,10 @@ struct
                 val unit = strField r "unit"
                 val basename = if unit = "<global>" then "global" else base source
                 fun info field fallback = case strField r field of "" => fallback | s => s
-                val details = (if flag "show-kind" false then [info "kind" "kind unavailable"] else []) @
-                              (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
-            in (if compact then (if name = "" then "" else name ^ " · ") ^ "r" ^ strField r "binding"
+                val details = (if flag "show-type" false then [info "region_type" "type unavailable"] else [])
+            in (if compact then (if name = "" then "" else name ^ " \194\183 ") ^ "r" ^ strField r "binding"
                 else (if name = "" then "Region" else name) ^ " #" ^ strField r "binding") ^
-               (if flag "show-base" false then " · " ^ basename else "") ^
+               (if flag "show-base" false then " \194\183 " ^ basename else "") ^
                (if null details then "" else " (" ^ String.concatWith ", " details ^ ")")
             end
         fun values k =
@@ -155,10 +174,11 @@ struct
         fun memUnit factor [] = (factor,"EiB")
           | memUnit factor (u::us) = if maximum < factor*1024 orelse null us then (factor,u) else memUnit (factor*1024) us
         val (factor,unit) = memUnit 1 ["bytes","KiB","MiB","GiB","TiB","PiB","EiB"]
-        val (timeFactor,timeUnit) = if last >= 1000000000 then (1.0E9,"s") else if last >= 1000000 then (1.0E6,"ms") else if last >= 1000 then (1.0E3,"µs") else (1.0,"ns")
+        val (timeFactor,timeUnit) = if last >= 1000000000 then (1.0E9,"s") else if last >= 1000000 then (1.0E6,"ms") else if last >= 1000 then (1.0E3,"\194\181s") else (1.0,"ns")
         fun memory n = fmt(real n / real factor) ^ " " ^ unit
         val main = base(string(get metadata "main_source"))
         val gc = if get metadata "gc_enabled" = Bool true then "enabled" else "disabled"
+        val selector = case chosenRegion of SOME r => strField r "unit" ^ ":" ^ strField r "binding" | NONE => selector
         val regionId = List.last (String.fields (fn c => c = #":") selector)
         val caption = opt "caption" ((if siteMode then (if selector = "all" then "Site contributions across all regions in " else "Site contributions for r" ^ regionId ^ " in ") else "Region profile for ") ^ main ^ " (GC " ^ gc ^ ")")
         val metricName = if siteMode then "Object payload (site occupancy)" else case metric of "total" => "Regions + ML stack" | "stack" => "ML stack + finite regions" | "pages" => "Pages" | "page_footprint" => "Page footprint" | "large_bytes" => "Large objects" | "finite_bytes" => "Finite reservations" | _ => "Infinite-region descriptors"
@@ -190,11 +210,11 @@ struct
             end
         fun paragraph s x y available size = foldl (fn (line,y) => (text x y size "start" line; y+size*1.4)) y (wrap size available s)
         val gcSummary = if gc = "enabled" then
-                            " · Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
+                            " \194\183 Garbage collections: " ^ (case find metadata "gc_collections" of SOME (Num n) => n | _ => "unavailable") ^
                             (case find metadata "complete" of SOME (Bool true) => "" | _ => " (recorded so far)")
                         else ""
         val top = paragraph caption 16.0 34.0 (canvasWidth-32.0) 26.0
-        val summary = "Metric: " ^ metricName ^ " · View: " ^ scopeName ^ gcSummary ^ " · Samples: " ^ Int.toString(length samples) ^ " · Sampled maximum: " ^ memory peak
+        val summary = "Metric: " ^ metricName ^ " \194\183 View: " ^ scopeName ^ gcSummary ^ " \194\183 Samples: " ^ Int.toString(length samples) ^ " \194\183 Sampled maximum: " ^ memory peak
         val summarySize = Real.min(16.0,(canvasWidth-32.0)/width 1.0 summary)
         val () = text 16.0 (top+4.0) summarySize "start" summary
         val top = top+4.0+summarySize*1.4+12.0
@@ -269,7 +289,7 @@ struct
             else gcBars pending rest
         val () = gcBars NONE samples
         val () = text 88.0 (top+43.0) 16.0 "start" ("Memory (" ^ unit ^ ")")
-        val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " · single snapshot" else ""))
+        val () = text 528.0 (top+648.0) 16.0 "middle" ("Elapsed time (" ^ timeUnit ^ ")" ^ (if length samples = 1 then " \194\183 single snapshot" else ""))
         val () = case pagePeak of NONE => () | SOME n =>
                    (emit("<line x1=\"88\" x2=\"968\" y1=\"" ^ fmt(y n) ^ "\" y2=\"" ^ fmt(y n) ^ "\" stroke=\"#b91c1c\" stroke-width=\"2\" stroke-dasharray=\"8 4\"/>");
                     text 968.0 (top+43.0) 16.0 "end" ("Peak page capacity: " ^ memory n))

@@ -67,9 +67,14 @@ struct
                   val next as (_,r,c) = advance position start
                   val () = check (row = r andalso col = c) "IR line/column mismatch"
                   val token = String.substring(text,start,len)
-                  val kind = if String.isPrefix "$" token then 1 else 0
-                  val () = check (kind = 1 orelse List.exists (fn prefix => String.isPrefix prefix token)
-                                      ["attop ","atbot ","sat "]) "invalid allocation span"
+                  val isAllocation = List.exists (fn prefix => String.isPrefix prefix token)
+                                       ["attop ","atbot ","sat "]
+                  (* Foreign calls can use a friendly primitive name or infix
+                   * operator. Their marks still identify the call token. *)
+                  val kind = if isAllocation then 0 else 1
+                  val () = check (isAllocation orelse
+                    (size token > 0 andalso not (List.exists Char.isSpace (String.explode token))))
+                    "invalid allocation span"
               in table next (Obj [("mark",number mark),("start",number start),
                     ("length",number len),("line",number row),("column",number col),
                     ("location_kind",number kind)] :: acc)

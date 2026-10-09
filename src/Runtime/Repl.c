@@ -20,6 +20,7 @@
 #include <limits.h>
 
 #include "Runtime.h"
+#include "CommandLine.h"
 #include "Flags.h"
 #include "Tagging.h"
 #include "String.h"
@@ -288,9 +289,36 @@ write_str(int fd, char* s) {
   }
 }
 
-extern const char* command_pipe;
-extern const char* reply_pipe;
-extern const char* repl_logfile;
+static const char *command_pipe;
+static const char *reply_pipe;
+static const char *repl_logfile;
+
+static int replOption(int *argc, char ***argv) {
+  const char **slot;
+  if (!strcmp((*argv)[0], "-command_pipe")) slot = &command_pipe;
+  else if (!strcmp((*argv)[0], "-reply_pipe")) slot = &reply_pipe;
+  else if (!strcmp((*argv)[0], "-repl_logfile")) slot = &repl_logfile;
+  else return 0;
+  const char *option = (*argv)[0];
+  const char *value = rtsValue(argc,argv);
+  if (!value[0]) {
+    fprintf(stderr,"Missing path to runtime option %s\n",option);
+    exit(EXIT_FAILURE);
+  }
+  *slot = value;
+  return 1;
+}
+static void replUsage(void) {
+  fprintf(stderr,"\nREPL communication:\n");
+  fprintf(stderr,"  -command_pipe PATH       Named pipe for REPL commands.\n");
+  fprintf(stderr,"  -reply_pipe PATH         Named pipe for REPL replies.\n");
+  fprintf(stderr,"  -repl_logfile PATH         REPL log file.\n");
+}
+static const RuntimeOptionExtension repl_options = {replOption,replUsage};
+void mlkit_init_runtime_options(void) {
+  mlkit_repl_mode = 1;
+  runtime_options = &repl_options;
+}
 
 void
 repl_interp(Context ctx) {

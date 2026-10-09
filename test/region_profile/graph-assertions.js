@@ -57,9 +57,9 @@ assert.deepStrictEqual(el('legend').children.map(n=>n.children[1].textContent),m
 el('limit').value='0';draw();
 el('show-type').checked=true;
 assert(label(samples[0].regions[0]).includes('type unavailable'));
-for(const type of ['top','bot','pair','triple','string','array','ref'])assert(label({...samples[0].regions[0],region_type:type}).endsWith('(infinite, '+type+')'));
-el('show-kind').checked=false;assert(label({...samples[0].regions[0],region_type:'pair'}).endsWith('(pair)'));
-el('show-kind').checked=true;el('show-type').checked=false;
+for(const type of ['top','bot','pair','triple','string','array','ref'])assert(label({...samples[0].regions[0],region_type:type}).endsWith('('+type+')'));
+assert(label({...samples[0].regions[0],region_type:'pair'}).endsWith('(pair)'));
+el('show-type').checked=false;
 el('legend-right').checked=true;draw();assert.equal(el('graph-layout').className,'graph-layout legend-right');
 assert(label({...samples[0].regions[0],name:'',binding:'5'}).startsWith('r5 · '));
 el('legend-right').checked=false;draw();assert.equal(el('graph-layout').className,'graph-layout');
@@ -86,11 +86,11 @@ assert(exported.querySelectorAll('text').every(n=>Number(n.attrs.y)<Number(expor
 const originalName=samples[0].regions[0].name;samples[0].regions[0].name='Very long region '.repeat(100);
 const tall=exportSvgDocument();assert(Number(tall.attrs.height)>Number(exported.attrs.height));samples[0].regions[0].name=originalName;draw();
 const beforeLabels=model().totals.slice(),beforeKeys=model().bands.map(b=>b.key);
-assert(label(samples[0].regions[2]).endsWith('(finite)'));
-assert(label({...samples[0].regions[2],finite_bytes:'0'}).endsWith('(finite)'));
-assert(label(samples[0].regions[0]).endsWith('(infinite)'));
+assert(!label(samples[0].regions[2]).includes('(finite)'));
+assert(!label({...samples[0].regions[2],finite_bytes:'0'}).includes('(finite)'));
+assert(!label(samples[0].regions[0]).includes('(infinite)'));
 assert(label(samples[0].regions[3]).includes(' · global'));
-el('show-base').checked=false;el('show-kind').checked=false;el('group').value='region';draw();
+el('show-base').checked=false;el('group').value='region';draw();
 assert(!label(samples[0].regions[3]).includes('global'));
 assert(!label(samples[0].regions[0]).includes('(infinite)'));
 assert(el('legend').children.some(n=>n.title.includes('Base name: global')&&n.title.includes('Region kind: infinite')));
@@ -102,7 +102,7 @@ assert.equal(el('rows').children.length,4); // distinct bindings still have dist
 assert.deepStrictEqual(model().totals,beforeLabels);assert.deepStrictEqual(model().bands.map(b=>b.key),beforeKeys);
 el('show-peak').checked=false;draw();assert(!el('chart').children.some(n=>n.attrs['data-peak']));assert.equal(el('peak-note').textContent,'');
 el('show-peak').checked=true;draw();assert(el('chart').children.some(n=>n.attrs['data-peak']));
-el('show-base').checked=true;el('show-kind').checked=true;el('group').value='aggregate';draw();
+el('show-base').checked=true;el('group').value='aggregate';draw();
 const huge=2n**60n+1n;
 assert.deepStrictEqual(model().totals,[huge+155n,huge+155n]);
 assert.equal(model().bands.length,4); // A, B, global, stack; duplicate names not merged

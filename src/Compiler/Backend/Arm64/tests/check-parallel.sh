@@ -52,6 +52,8 @@ for mode in pthread argobots; do
     done
   done
   for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
+    default_gc=-no_gc
+    [ "$compiler" != "$REML_ARM64" ] || default_gc=""
     for policy in inferred always private; do
       name="$mode-$(basename "$compiler")-$policy"
       mkdir "$scratch/$name"
@@ -66,7 +68,7 @@ for mode in pthread argobots; do
       printf 'parallel-prelude.sml\nTHREAD.sig\nThread.sml\n%s.sml\n' "$sample" > main.mlb
       run "$name-callback" gcc -arch arm64 -DPARALLEL $includes \
         -iquote "$SML_LIB/src/Runtime" -c "$fixtures/parallel-callback.c" -o callback.o
-      run "$name-compile" "$compiler" --no_basislib --no_delete_target_files \
+      run "$name-compile" "$compiler" $default_gc --no_basislib --no_delete_target_files \
         -par $flags $extra -ldexe "gcc -arch arm64 $callback $libraries" -o program main.mlb
       printf 'parallel ML passed\n' > expected
       [ "$policy" = private ] || printf 'parallel callback passed\n' >> expected

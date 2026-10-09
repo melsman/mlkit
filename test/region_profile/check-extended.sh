@@ -7,6 +7,7 @@ RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp-extended.XXXXXX")
 echo "Extended profiler artifacts: $OUT"
 export SML_LIB=${SML_LIB:-$ROOT}
+MLKIT="$MLKIT" RPVIEW="$RPVIEW" CC="$CC" sh "$ROOT/test/region_profile/check-invocations.sh"
 $CC -c "$ROOT/test/region_profile/periodic.c" -o "$OUT/periodic.o"
 ar rcs "$OUT/libperiodic.a" "$OUT/periodic.o"
 cp "$ROOT/test/region_profile/periodic.sml" "$OUT/"
@@ -15,10 +16,13 @@ printf '%s\n' "$OUT/periodic.sml" > "$OUT/periodic.mlb"
 "$OUT/periodic" +RTS -rp -rp_interval 1ms -rp_report -rp_file "$OUT/periodic.rp" > "$OUT/periodic.out" 2> "$OUT/periodic.report"
 grep -q 'periodic ok' "$OUT/periodic.out"
 sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/periodic.rp"
+"$OUT/periodic" +RTS -rp -rp_interval 400us -rp_file "$OUT/microseconds.rp" > "$OUT/microseconds.out"
+grep -q 'periodic ok' "$OUT/microseconds.out"
+sh "$ROOT/test/region_profile/check-records.sh" periodic "$OUT/microseconds.rp"
 "$OUT/periodic" +RTS -rp -rp_paused -rp_file "$OUT/paused.rp" > /dev/null
 "$RPVIEW" "$OUT/paused.rp" --format json > "$OUT/paused.json"
 ! grep -q '"type":"sample_begin"' "$OUT/paused.json"
-for duration in -1 1 1.5ms 1us 999999999999999999999s; do
+for duration in -1 1 1.5ms 0.5us 1ns 999999999999999999999s; do
  if "$OUT/periodic" +RTS -rp -rp_interval "$duration" > "$OUT/invalid.out" 2>&1; then
   echo "Accepted invalid duration: $duration" >&2; exit 1
  fi
@@ -38,6 +42,10 @@ for mode in gc gengc parallel argobots; do
  "$MLKIT" $flags -region_profile $libs -o "$OUT/$mode" "$OUT/$mode.mlb" > "$OUT/$mode.build" 2>&1
  "$OUT/$mode" +RTS -rp -rp_interval 1ms -rp_report -rp_file "$OUT/$mode.rp" $runtime > "$OUT/$mode.out" 2> "$OUT/$mode.report"
  sh "$ROOT/test/region_profile/check-records.sh" "$mode" "$OUT/$mode.rp"
+ entry_interval=8000i
+ case "$mode" in gc|gengc) entry_interval=1000000i ;; esac
+ "$OUT/$mode" +RTS -rp -rp_interval "$entry_interval" -rp_file "$OUT/$mode-entries.rp" $runtime > "$OUT/$mode-entries.out"
+ sh "$ROOT/test/region_profile/check-records.sh" "$mode" "$OUT/$mode-entries.rp"
 done
 "$OUT/gengc" +RTS -rp -rp_interval 0 -rp_gc_samples -only_major_gc -rp_file "$OUT/gengc-major.rp" > "$OUT/gengc-major.out"
 sh "$ROOT/test/region_profile/check-records.sh" gengc "$OUT/gengc-major.rp"

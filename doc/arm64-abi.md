@@ -290,7 +290,8 @@ assembly probes from C and a C callback from assembly to independently check
 Apple's packed-stack, variadic, register-extension, and frame-record rules.
 The probes validate the ABI assumptions, not generated ML code.
 
-Both compiler entry points build with MLKit through `Makefile.arm64`. The
+Both compiler entry points use the shared Makefile pipeline and the seed
+selected with `./configure --with-compiler=...`. The
 GC-enabled X64 compiler built with MLKit passes all 130 default `test_dev`
 checks (65 without GC and 65 with generational GC). Native ARM64 execution
 checks and the separate native bootstrap fixed-point validation are described
