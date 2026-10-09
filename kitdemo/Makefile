@@ -122,7 +122,7 @@ scan_rev1.svg: scan_rev1.rp
 	../bin/rpview $< --caption "Scanning life.sml 50 times" -o $@
 
 scan_rev1_r.svg: scan_rev1.rp
-	../bin/rpview $< --caption "Scanning life.sml 50 times" --show-base --region r338853 -o $@
+	../bin/rpview $< --caption "Scanning life.sml 50 times" --show-base --region r338955 -o $@
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
@@ -134,7 +134,7 @@ scan_rev2.svg: scan_rev2.rp
 	../bin/rpview $< --caption "Scanning life.sml 50 times with no space leak" -o $@
 
 life_ex2.svg: life.rp
-	../bin/rpview $< --caption life --region r338853 -o $@
+	../bin/rpview $< --caption life --region r338955 -o $@
 
 life_ex3.svg: life.rp
 	../bin/rpview $< --caption life --metric stack -o $@
