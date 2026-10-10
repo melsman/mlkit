@@ -168,7 +168,7 @@ On macOS ARM64, new recordings also retain function code ranges and the
 executable's UUID/load address for offline interrupted-PC resolution. See
 [T2 function metadata](time-profiler/t2-function-metadata.md) for the metadata
 extension, `rpview --resolve-pc`, supported static-code scope, and unknown-PC
-handling. This metadata does not yet enable time sampling.
+handling. Experimental time sampling records raw PCs alongside this metadata.
 Binding definitions carry a session-local `definition` ID and the static
 `unit`, `binding`, `source`, `name`, `kind`, and `region_type` fields. Definitions
 are emitted once, immediately before the first snapshot that uses them; no
