@@ -22,3 +22,5 @@ for mode in gc no_gc; do
 done
 node "$ROOT/test/time_profile/attribution-assertions.js" "$OUT"
 echo 'Nested C origins, ML callbacks, caught exceptions, restoration and GC attribution passed'
+
+sh "$ROOT/test/time_profile/check-viewer.sh" "$OUT/gc.rp" "$OUT/no_gc.rp"

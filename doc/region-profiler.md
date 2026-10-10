@@ -522,3 +522,5 @@ see [site occupancy](allocation-profiler.md).
 Experimental time recording: [T3 recorder and runtime API](time-profiler/t3-recording.md).
 
 C/GC attribution: [T4 boundary state and interpretation](time-profiler/t4-attribution.md).
+
+Offline time reporting: [T5 report, estimates and time filtering](time-profiler/t5-report.md).

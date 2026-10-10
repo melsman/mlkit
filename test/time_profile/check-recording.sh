@@ -49,3 +49,5 @@ wait "$reader"
 "$RPVIEW" "$OUT/slow.rp" --format json -o "$OUT/slow.json" > /dev/null
 node "$ROOT/test/time_profile/recording-assertions.js" "$OUT" "$RPVIEW"
 echo 'Time recorder lifecycle, overflow, shared timer and argument checks passed'
+
+sh "$ROOT/test/time_profile/check-viewer.sh" "$OUT/gc-combined.rp" "$OUT/no_gc-combined.rp"
