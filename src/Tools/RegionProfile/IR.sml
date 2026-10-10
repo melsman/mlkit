@@ -218,7 +218,7 @@ struct
       val manifest = rows metadata "ir_objects"
       val neededSites = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
                                  siteMark r <> SOME (Num "0")) sites
-      val needed = neededSites @ manifest
+      val needed = neededSites @ manifest @ rows metadata "code_functions"
       val paths = unique (fn s => s)
         (List.mapPartial (fn r => case stringField r "ir_object" of
             "" => NONE | path => SOME (path ^ ".ir")) needed)

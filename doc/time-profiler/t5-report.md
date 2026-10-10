@@ -31,3 +31,12 @@ Validation: rebuild `rpview`, run `test/region_profile/check-viewer.sh`, and run
 `test/time_profile/check-viewer.sh TIME_ONLY.rp COMBINED.rp`. The latter uses the
 actual generated markup/script with the existing dependency-free DOM harness and
 checks categories, percentage denominators, time filtering and empty intervals.
+
+The Metric menu offers **Time profile** when a time session is present. Switching
+between time and memory preserves the double-slider interval. Time-only reports
+select it initially. Supporting clock/loss/attribution text lives in the time
+heading's info popover. Function labels reuse allocation-view naming and Show
+base names. Matching IR functions are clickable in the shared code viewer;
+unavailable code remains a plain name with an explanation on hover. Supply
+`--ir-dir DIR` to discover matching `.o.ir` companions for time-only profiles
+without a linked-object manifest. Both IR identity and compilation unit must match.

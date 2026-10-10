@@ -28,13 +28,14 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .ir-location-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:13px}#ir-controls{gap:12px;flex:1}#ir-location{font:inherit;padding:4px 6px;max-width:100%}.ir-mode{display:flex;align-items:center;gap:12px;margin-left:auto}.ir-mode label{display:flex;align-items:center;gap:5px;white-space:nowrap}.ir-mode input{accent-color:#2563eb}
 .ir-keyword{color:#1d4ed8;font-weight:600}.ir-region-keyword{color:#7e22ce;font-weight:600}.ir-string{color:#166534}.ir-comment{color:#667785;font-style:italic}
 .allocation-source{display:block;color:#4d626f;font-size:12px;overflow-wrap:anywhere;line-height:1.5}#allocation-table td:last-child{white-space:nowrap;vertical-align:top}
-.time-only .controls,.time-only .graph-column,.time-only .legend-column,.time-only .graph-actions,.time-only .snapshot-panel,.time-only .table-controls,.time-only #graph-heading{display:none}.time-only #graph-layout{display:block}.time-only .snapshot-window{margin:24px 0}.time-only #region-table{display:none}
+.time-view .graph-column,.time-view .legend-column,.time-view .graph-actions,.time-view .snapshot-panel,.time-view .table-controls,.time-view #graph-heading{display:none}.time-view #graph-layout{display:block}.time-view .snapshot-window{margin:24px 0}.time-view #region-table,.time-view #allocation-section,.time-view #show-type,.time-view #show-peak{display:none}.time-view .graph-column,.time-view .legend-column{display:none}
 </style><div class="concept-heading" id="profile-heading"><h1 id="profile-title">MLKit region profile</h1></div>
 <section id="time-section" hidden>
-<h2>Sampled time contributions</h2>
-<p id="time-note"></p><p id="time-status" class="note"></p>
+<div class="concept-heading" id="time-heading"><h2>Sampled time contributions</h2></div>
+<p id="time-summary"></p><p id="time-note"></p><p id="time-status" class="note"></p>
 <label>Execution stream <select id="time-stream"><option value="all">All recorded streams</option></select></label>
-<table><thead><tr><th>Function / category</th><th>Share of recorded samples</th><th>Samples</th><th>Estimated sampled wall time</th></tr></thead><tbody id="time-rows"></tbody></table>
+<table><thead><tr><th>Function</th><th>Share of recorded samples</th><th>Samples</th><th>Estimated sampled wall time</th></tr></thead><tbody id="time-rows"></tbody></table>
+<div id="time-code"></div>
 </section>
 <p class="note">Allocated region footprint, including page headers and earlier-page slack. Finite-region storage is included in the ML stack. This is neither RSS nor reachable data. Thread attribution follows lifetime ownership.</p>
 <div class="controls" aria-label="Profile controls">
@@ -118,6 +119,7 @@ function controlHint(id,title,contents){
 }
 function setupHints(){
  const notes=[...document.querySelectorAll('p.note')].filter(p=>!p.id);
+ if(hasTime)infoHint(el('time-heading'),'Sampled time',[el('time-note'),el('time-status'),'Select a function to inspect matching IR when available. Categories such as GC and unresolved samples have no function code.']);
  infoHint(el('profile-heading'),'Region profile',[notes[0],el('gc-note')]);
  controlHint('scope','View',['Filter the graph and tables by lifetime owner, execution stream, or CPU (OS logical processor at the safe point). Shared and persistent regions follow lifetime ownership.',el('execution-stream-note')]);
  controlHint('metric','Metric',[notes[1],el('stack-note')]);
@@ -137,14 +139,14 @@ function setupHints(){
 const timeSession=profile.time_session;
 const timeSamples=profile.time_samples||[];
 const hasTime=!!timeSession;
-if(hasTime&&!samples.length)document.body.className+=' time-only';
+if(hasTime){const option=document.createElement('option');option.value='time';option.textContent='Time profile';el('metric').append(option);if(!samples.length)el('metric').value='time';}
 let timeStart=0,timeEnd=10000;
 const timeLast=[...timeSamples,...samples,profile.time_status||{}].reduce((last,s)=>BigInt(s.time||0)>last?BigInt(s.time||0):last,0n);
 function timeBounds(){return [timeLast*BigInt(timeStart)/10000n,timeLast*BigInt(timeEnd)/10000n];}
 function inTime(s){const [a,b]=timeBounds(),t=BigInt(s.time);return t>=a&&t<=b;}
 function timeText(ns){return (Number(ns)/1e6).toLocaleString(undefined,{maximumFractionDigits:3})+' ms';}
 function timeReport(){
- el('time-section').hidden=!hasTime;if(!hasTime)return;
+ const timeView=hasTime&&el('metric').value==='time';el('time-section').hidden=!timeView;if(!timeView)return;
  const selected=timeSamples.filter(s=>inTime(s)&&(el('time-stream').value==='all'||el('time-stream').value===s.thread+':'+s.stream));
  const groups=new Map();
  for(const s of selected){const a=s.attribution||{status:'metadata-unavailable'},key=a.status==='function'?JSON.stringify([a.unit,a.function]):a.status;
@@ -152,20 +154,22 @@ function timeReport(){
  const labels={'gc':'Garbage collection','recorder':'Recorder drain','unknown-pc':'Unresolved PC / runtime','metadata-unavailable':'Code metadata unavailable','build-mismatch':'Image build mismatch'};
  el('time-rows').replaceChildren();
  for(const {a,count} of [...groups.values()].sort((a,b)=>b.count-a.count)){
-  const row=document.createElement('tr'),label=document.createElement('td');label.textContent=a.status==='function'?shortFunction(a.function)+' · '+a.source:labels[a.status]||a.status;
+  const row=document.createElement('tr'),label=document.createElement('td');if(a.status==='function'){const location=functionLocation(a);if(location){const button=document.createElement('button');button.className='ir-site-button';button.textContent=irName(a);button.title='Show function in IR';button.addEventListener('click',()=>{el('time-code').append(el('ir-panel'));showIR({...a,time_function:true},button);});label.append(button);}else{label.textContent=irName(a);label.title='Matching function IR is unavailable for this build.';}}else label.textContent=labels[a.status]||a.status;
   if(a.status==='function')label.title='Unit: '+a.unit+' · IR: '+a.ir_identity;row.append(label);
   const share=document.createElement('td'),bar=document.createElement('div'),percent=100*count/selected.length;
   bar.style.width=percent+'%';bar.style.height='12px';bar.style.background='#2563eb';bar.style.minWidth='1px';share.append(bar,percent.toFixed(2)+'%');row.append(share);
   for(const value of [count.toLocaleString(),timeText(BigInt(count)*BigInt(timeSession.interval_ns))]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}el('time-rows').append(row);
  }
  const [a,b]=timeBounds();
- el('time-note').textContent=selected.length.toLocaleString()+' recorded samples in '+timeText(a)+'–'+timeText(b)+'. Wall clock: monotonic elapsed time, excluding machine sleep; includes blocking. Estimates = sample count × requested interval ('+timeText(BigInt(timeSession.interval_ns))+'). Percentages include GC, recorder and unresolved samples in the selected stream and time window. C-primitive samples are charged to their initiating ML function; recognized callback ML PCs take precedence. These are sampled estimates, not measured CPU time.';
+ el('time-summary').textContent=selected.length.toLocaleString()+' samples · '+timeText(a)+'–'+timeText(b);
+ el('time-note').textContent='Wall clock: monotonic elapsed time, excluding machine sleep; includes blocking. Estimates = sample count × requested interval ('+timeText(BigInt(timeSession.interval_ns))+'). Percentages include GC, recorder and unresolved samples in the selected stream and time window. C-primitive samples are charged to their initiating ML function; recognized callback ML PCs take precedence. These are sampled estimates, not measured CPU time.';
  if(!selected.length)el('time-rows').textContent='No recorded time samples in this window.';
  const status=profile.time_status;
  el('time-status').textContent='Session-wide loss: '+(status?status.dropped+' buffer drops; '+status.routing_dropped+' routing drops.':'No loss status available. ')+ 'Timer coalescing is unobservable; percentages describe recorded samples only. '+(profile.complete&&String(status?.final)==='1'?'Recording complete.':'Recording incomplete or final status unavailable.');
 }
 for(const key of [...new Set(timeSamples.map(s=>s.thread+':'+s.stream))]){const option=document.createElement('option');option.value=key;option.textContent='Thread / stream '+key;el('time-stream').append(option);}
 el('time-stream').addEventListener('change',()=>timeReport());
+el('graph-layout').before(el('time-section'));
 let rangeStart=0,rangeEnd=null;
 function snapshotBounds(){if(hasTime){const indices=samples.map((s,i)=>inTime(s)?i:-1).filter(i=>i>=0);return indices.length?[indices[0],indices.at(-1)]:[0,-1];}const last=Math.max(0,samples.length-1),start=Math.min(rangeStart,last);return [start,Math.max(start,Math.min(rangeEnd??last,last))];}
 function visibleSamples(){const [start,end]=snapshotBounds();return samples.slice(start,end+1);}
@@ -265,11 +269,11 @@ function renderIR(){
    el('ir-code').append(row);
   }
   updateIRTitle(record);
-  el('ir-message').textContent=(record.region_binding?'LETREGION binding':record.region_argument?'Region argument':Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier');
+  el('ir-message').textContent=(record.time_function?'Function declaration':record.region_binding?'LETREGION binding':record.region_argument?'Region argument':Number(record.location_kind)===1?'Initiating foreign call':'Allocation specifier');
   const selected=el('ir-code').querySelector('mark');if(selected){el('ir-code').scrollTop=Math.max(0,selected.offsetTop-el('ir-code').clientHeight/2);el('ir-code').scrollLeft=Math.max(0,selected.offsetLeft-el('ir-code').clientWidth/3);}
  }catch(error){el('ir-code').replaceChildren();el('ir-message').textContent='IR navigation is unavailable: the embedded location data is invalid.';}
 }
-function irName(record){const short=shortFunction(record.function),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
+function irName(record){const short=irFunctionName(record.function,irDocuments.get(record.ir_identity)),names=new Set((profile.allocations||[]).filter(r=>shortFunction(r.function)===short).map(r=>JSON.stringify([r.unit,r.function])));return (names.size>1?record.function:short)+(el('show-base').checked?' · '+baseName(record):'');}
 const irFunctionNames=new Map();
 function irFunctionName(label,doc){
  const short=shortFunction(label);if(!doc)return short;
@@ -297,11 +301,22 @@ function updateIRTitle(record){
    }
   }catch(_){/* Unavailable locations still get a useful function heading. */}
  }
- el('ir-title').textContent=(record.region_binding?'LETREGION r'+record.region_binding+' in function '+functionName:record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Allocation'+annotation+' in function '+functionName)+(el('show-base').checked?' · '+baseName(record):'');
+ el('ir-title').textContent=(record.time_function?'Function '+functionName:record.region_binding?'LETREGION r'+record.region_binding+' in function '+functionName:record.region_argument?'Region r'+record.region_argument.region+' passed to '+record.region_argument.callee:'Allocation'+annotation+' in function '+functionName)+(el('show-base').checked?' · '+baseName(record):'');
  el('ir-title').title=record.function+'\nSite: '+record.site;
 }
+// Use the exact embedded build identity and unit before finding a printed declaration.
+function functionLocation(record){
+ const doc=irDocuments.get(record.ir_identity);if(!doc||doc.unit!==record.unit)return null;
+ try{const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end)),name=irFunctionName(record.function,doc);
+  const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const matches=[...code.matchAll(new RegExp('\\bfun\\s+('+escaped+')(?=[\\s\\[(])','g'))];if(matches.length!==1)return null;
+  const match=matches[0],offset=match.index+match[0].indexOf(match[1]),encoder=new TextEncoder(),start=data.start+encoder.encode(code.slice(0,offset)).length,length=encoder.encode(match[1]).length;
+  const line=data.lines.find(l=>start>=l.start&&start<=l.end);
+  return {status:'available',identity:doc.identity,spans:[{start,length,line:line?.line||1,column:1}]};
+ }catch(_){return null;}
+}
 function showIR(record,trigger){
- irReturnFocus=trigger;const site=irSites.get(String(record.definition));activeIR=null;
+ irReturnFocus=trigger;const site=record.time_function?functionLocation(record):irSites.get(String(record.definition));activeIR=null;
  irSelectedRecord=record;el('ir-panel').hidden=false;updateIRTitle(record);
  el('ir-source').textContent=sourceLabels((profile.allocations||[]).map(r=>r.source))(record.source);el('ir-source').title=record.source;
  el('ir-code').replaceChildren();el('ir-location').replaceChildren();el('ir-controls').hidden=true;
@@ -735,7 +750,10 @@ function axisTicks(lo,hi){
 }
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
+ const timeView=hasTime&&el('metric').value==='time';document.body.className=timeView?'time-view':'';for(const id of ['scope','group','limit','show-type','show-peak']){el(id).disabled=timeView;el(id).closest('label').hidden=timeView;}
+ if(!timeView&&el('ir-panel').parentElement===el('time-code')){document.querySelector('.ir-column').append(el('ir-panel'));el('ir-panel').hidden=true;}
  rangeControls();timeReport();graphNavigation();
+ if(timeView){el('export-svg').disabled=true;return;}
  const sites=siteGraph();
  el('group').disabled=sites;
  el('limit-label').textContent=sites?'Sites shown':'Regions shown';
