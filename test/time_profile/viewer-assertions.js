@@ -42,3 +42,11 @@ const record={function:'f',ir_identity:doc.identity,unit:'u',source:'s'};
 assert(functionLocation(record));assert.equal(functionLocation({...record,unit:'other'}),null);
 showIR({...record,time_function:true},el('time-heading'));
 assert(!el('ir-panel').hidden);assert(el('ir-title').textContent.includes('Function f'));
+
+const repeated={identity:'repeated',unit:'u',text:'fun exists(x) = x\nfun exists(y) = y\n',code_start:0,code_bytes:36,
+ region_data:[{kind:'function',flavor:'named',label:'exists10'},{kind:'function',flavor:'named',label:'exists11'}]};
+irDocuments.set(repeated.identity,repeated);
+const first=functionLocation({function:'exists10',unit:'u',ir_identity:'repeated'});
+const second=functionLocation({function:'exists11',unit:'u',ir_identity:'repeated'});
+assert(first&&second);assert(first.spans[0].start<second.spans[0].start);
+repeated.region_data[1].label='other11';assert.equal(functionLocation({function:'exists10',unit:'u',ir_identity:'repeated'}),null);

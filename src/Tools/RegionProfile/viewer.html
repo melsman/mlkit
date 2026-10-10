@@ -311,7 +311,17 @@ function functionLocation(record){
  const doc=irDocuments.get(record.ir_identity);if(!doc||doc.unit!==record.unit)return null;
  try{const data=irData(doc),code=data.decode.decode(data.bytes.subarray(data.start,data.end)),name=irFunctionName(record.function,doc);
   const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const matches=[...code.matchAll(new RegExp('\\bfun\\s+('+escaped+')(?=[\\s\\[(])','g'))];if(matches.length!==1)return null;
+  let matches=[...code.matchAll(new RegExp('\\bfun\\s+('+escaped+')(?=[\\s\\[(])','g'))];
+  if(matches.length!==1){
+   // The compiler's named-function rows preserve declaration order. Accept
+   // an ordinal correspondence only if the entire document agrees, not
+   // just the repeated name requested by this row.
+   const declarations=[...code.matchAll(/\bfun\s+([^\s[(]+)/g)];
+   const functions=(doc.region_data||[]).filter(r=>r.kind==='function'&&r.flavor==='named');
+   if(declarations.length!==functions.length||!functions.every((f,i)=>{const label=shortFunction(f.label),printed=declarations[i][1];return label===printed||(label.startsWith(printed)&&/^[0-9]+$/.test(label.slice(printed.length)));}))return null;
+   const indices=functions.map((f,i)=>f.label===record.function?i:-1).filter(i=>i>=0);if(indices.length!==1)return null;
+   matches=[declarations[indices[0]]];
+  }
   const match=matches[0],offset=match.index+match[0].indexOf(match[1]),encoder=new TextEncoder(),start=data.start+encoder.encode(code.slice(0,offset)).length,length=encoder.encode(match[1]).length;
   const line=data.lines.find(l=>start>=l.start&&start<=l.end);
   return {status:'available',identity:doc.identity,spans:[{start,length,line:line?.line||1,column:1}]};

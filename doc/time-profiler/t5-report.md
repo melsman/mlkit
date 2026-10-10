@@ -40,3 +40,10 @@ base names. Matching IR functions are clickable in the shared code viewer;
 unavailable code remains a plain name with an explanation on hover. Supply
 `--ir-dir DIR` to discover matching `.o.ir` companions for time-only profiles
 without a linked-object manifest. Both IR identity and compilation unit must match.
+
+Repeated printed function names can use the IR's named-function identity rows.
+This fallback requires equal declaration counts and agreement of every printed
+name with its corresponding compiler label; inconsistent or incomplete mappings
+remain unavailable. Life's seven specialized `exists` functions are checked to
+navigate to seven distinct declaration offsets. The example also searches Basis
+IR companions, allowing the separate `List.exists` to link.
