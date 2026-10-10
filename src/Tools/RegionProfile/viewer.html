@@ -126,7 +126,7 @@ function setupHints(){
  controlHint('metric','Metric',[hasTime?'Time profile shows sampled function contributions. Memory metrics show recorded region snapshots. Switching views preserves the selected time window.':'Choose the region memory metric to display.',notes[1],el('stack-note')]);
  controlHint('attribution-region','Site occupancy',['Choose the region whose recorded object payload is shown in the site-contribution graph and occupancy table.']);
  controlHint('limit','Regions and sites shown',[el('limit-help')]);
- controlHint('show-base','Base names',['Include the source file base name in region and allocation-site labels.']);
+ controlHint('show-base','Base names',['Include the source file base name in function, region and allocation-site labels.']);
  controlHint('show-type','Region type',['Include the compiler’s region type in region labels, when available.']);
  controlHint('show-peak','Peak page capacity',['Show the process-wide peak allocated region-page capacity, excluding cached pages, large objects and ML stack storage. It includes activity between snapshots and GC overlap. Available for All threads with Regions + ML stack, Pages, or Page footprint.',el('peak-note')]);
  infoHint(el('graph-heading'),'Graph and legend',[el('band-note').parentElement,'Click a region name to inspect its recorded site contributions for the current window. The copy icon beside each infinite region copies its UNIT:BINDING selector for the runtime -rp_region option; hover over it to see the selector. Click the metric breadcrumb to return. In a site graph, click a band or site name to view its IR.']);
