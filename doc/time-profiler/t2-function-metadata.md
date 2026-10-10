@@ -74,8 +74,8 @@ range. A sorted vector provides binary search outside signal context.
 Compile an executable with `-rp` and record its metadata with
 `+RTS -rp -rp_interval 0 -rp_file profile.rp`. This disables periodic region
 snapshots while retaining initialization metadata. Obtain the interrupted PC and
-image UUID from the **same sampled executable**. The T1 helper does this for the
-regression test; production time-sample records are not implemented yet.
+image UUID from the **same sampled executable**. The T3 recorder stores these PCs
+in production time-sample records; the T1 helper remains a feasibility aid.
 
 ```sh
 bin/rpview profile.rp --format json -o records.json
