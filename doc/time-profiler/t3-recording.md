@@ -58,7 +58,8 @@ Three additive version-1 time records extend the region profile v10 stream:
   and stream (both reserved zero), clock, semantics, and time coordinate.
 * Tag 24, `time_sample`: contiguous sequence, timestamp, raw PC, thread, stream,
   state and origin PC. State 0 is unclassified raw-PC capture; state 1 means
-  recorder draining. Origin PC is reserved zero. GC/C origin tracking is T4.
+  recorder draining. Origin PC is reserved zero in version 1. [T4](t4-attribution.md) extends
+  the session to version 2 with C origins and GC state.
 * Tag 25, `time_status`: timestamp, cumulative serialized count, cumulative buffer
   overflow drops, rejected-stack delivery count, active flag, final flag, and
   timer loss visibility (`unobservable`).
@@ -68,7 +69,8 @@ UINT64_MAX. Routing drops count rejected signal deliveries while time recording
 is active. Neither counter measures coalesced or otherwise undelivered timer
 expirations: that loss is unobservable. Paused periods do not generate samples.
 Unknown PCs remain raw observations and can be resolved with T2 metadata;
-C/GC PCs remain outside ML function ranges until later attribution work.
+C/GC raw PCs remain outside ML function ranges; version-2 T4 records add
+origin/category information.
 
 `rpview --format json` exports these records. The reader validates lifecycle,
 sequence, timestamps, identities, counts and loss counters. A completed stream

@@ -26,7 +26,8 @@ units**, including separately compiled Basis/library units. References retain
 these tables together with their code. Function identities reuse the allocation
 profiler's `(unit, function)` pair; assembly symbols add the `F.` prefix.
 
-Profiled ARM64 compilation caches now have a `_CODE1` suffix. This prevents old
+T2 introduced a `_CODE1` suffix for profiled ARM64 compilation caches;
+[T4](t4-attribution.md) advances it to `_CODE1_TP1` for boundary-state instrumentation. This prevents old
 cached objects without the new unit-table symbols from being reused. External
 precompiled ML libraries must likewise be rebuilt with the new compiler and
 `-rp`. Ordinary, unprofiled compilation keeps its cache namespace and code path.

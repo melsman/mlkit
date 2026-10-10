@@ -45,8 +45,8 @@ const sample = records.find(r => r.tag === 24);
 const statuses = records.filter(r => r.tag === 25);
 const session = records.find(r => r.tag === 23);
 for (const [name, record, field, value] of [
-  ['sequence', sample, 0, 2n], ['state', sample, 5, 2n],
-  ['version', session, 0, 2n], ['capacity', session, 2, 1n],
+  ['origin', sample, 6, 1n], ['sequence', sample, 0, 2n], ['state', sample, 5, 4n],
+  ['version', session, 0, 3n], ['capacity', session, 2, 1n],
   ['final', statuses.at(-1), 5, 0n], ['count', statuses.at(-1), 1, 0n]
 ]) {
   const bytes = Buffer.from(original);
@@ -56,3 +56,13 @@ for (const [name, record, field, value] of [
   const result = cp.spawnSync(process.argv[3], [path, '--format', 'json'], {encoding:'utf8'});
   assert.notEqual(result.status, 0, `accepted invalid ${name}`);
 }
+
+// Version-1 raw-PC recordings remain readable.
+const legacy = Buffer.from(original);
+legacy.writeBigUInt64LE(1n, session.offset+5);
+for (const record of records.filter(r => r.tag === 24)) {
+  legacy.writeBigUInt64LE(0n, record.offset+5+5*8);
+  legacy.writeBigUInt64LE(0n, record.offset+5+6*8);
+}
+fs.writeFileSync(`${dir}/legacy.rp`, legacy);
+assert.equal(cp.spawnSync(process.argv[3], [`${dir}/legacy.rp`, '--format', 'json']).status, 0);

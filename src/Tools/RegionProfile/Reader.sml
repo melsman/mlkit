@@ -88,7 +88,7 @@ struct
                   (case kind r of
                        "time_session" =>
                        (require (!timeSession = Null) "duplicate time session";
-                        require (uint r "time_version" = 1) "unsupported time recording version";
+                        require ((uint r "time_version" = 1 orelse uint r "time_version" = 2)) "unsupported time recording version";
                         require (string(get r "clock") = "wall") "unsupported sampling clock";
                         require (uint r "interval_ns" > 0 andalso uint r "interval_ns" <= 1000000000) "invalid time interval";
                         require (uint r "buffer_capacity" >= 2 andalso uint r "buffer_capacity" <= 1048576) "invalid time buffer capacity";
@@ -102,7 +102,12 @@ struct
                         require (uint r "thread" = uint (!timeSession) "thread" andalso
                                  uint r "stream" = uint (!timeSession) "stream") "time execution identity mismatch";
                         ignore(uint r "pc");
-                        require (uint r "state" <= 1 andalso uint r "origin_pc" = 0) "unsupported attribution state";
+                        require (if uint (!timeSession) "time_version" = 1
+                                 then uint r "state" <= 1 andalso uint r "origin_pc" = 0
+                                 else uint r "state" <= 3 andalso
+                                      (if uint r "state" = 2 then uint r "origin_pc" > 0 andalso
+                                           IntInf.mod(uint r "origin_pc",4) = 0
+                                       else uint r "origin_pc" = 0)) "unsupported attribution state";
                         timeCount := !timeCount+1; lastTime := uint r "time";
                         timeSamples := r :: !timeSamples)
                      | "time_status" =>

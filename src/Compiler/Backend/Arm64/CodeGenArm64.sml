@@ -1971,6 +1971,14 @@ struct
            ++ loadInto (X 28,8,X 16)
            ++ storeInto (X 16,SP,off+16)
            ++ moveInto (SP,X 16)
+           (* The saved SP is 16-aligned. Preserve the GC-deferral policy
+            * in bit zero for nonlocal exits across protected C calls. *)
+           ++ (if timeProfile() andalso gc() then
+                 addressInto(NameLab "disable_gc",X 17)
+                 ++ loadInto(X 17,0,X 17)
+                 ++ instruction A.and_ (R(X 17),R(X 17),I(1))
+                 ++ instruction A.orr (R(X 16),R(X 16),R(X 17))
+               else fn c => c)
            ++ storeInto (X 16,SP,off+24)
            ++ storeInto (X 29,SP,off+32)
            ++ loadInto (X 28,0,X 16)
@@ -2091,6 +2099,8 @@ struct
                          ++ one (Directive(Quad ["0x52504d34"])) else fn code => code)
                    ++ one (Label returnLab)
                    ++ resumeGCInto()
+                   ++ timeRestoreInto 0
+                   ++ (if timeProfile() then stackInto(false,16) else fn c => c)
                    ++ restoreCInto()) code
                 val code = if parallel() then
                     (moveInto(X 0,X 19)
@@ -2108,6 +2118,8 @@ struct
                  ++ one (Directive(Quad ["0"]))
                  ++ functionInto(NameLab name)
                  ++ saveCInto()
+                 ++ (if timeProfile() then stackInto(true,16) else fn c => c)
+                 ++ timeSaveInto 0 NONE
                  ++ deferGCInto()) code
               end)
         in
@@ -2581,7 +2593,7 @@ struct
       val () = if sampledProfile() then
         addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpCodeUnit main_lab)),
                    Label(rpCodeUnit main_lab),
-                   Directive(Quad ("1" :: Int.toString(length(!codeRanges)) ::
+                   Directive(Quad ("2" :: Int.toString(length(!codeRanges)) ::
                                    List.concat(!codeRanges)))]
         else ()
       fun data (l,code) =
@@ -2689,7 +2701,8 @@ struct
          addStatic(datum (NameLab "mlkit_rp_build_id")
            [pr_lab(stringData(Time.toString(Time.now()))) ^ " + 8"] [])) else ()
       val () = if sampledProfile() then
-        (addStatic(datum (NameLab "mlkit_rp_code_scope") [if repl then "2" else "1"] []);
+        (addStatic(datum (NameLab "mlkit_tp_attribution_capable") ["2"] []);
+         addStatic(datum (NameLab "mlkit_rp_code_scope") [if repl then "2" else "1"] []);
          addStatic(datum (NameLab "mlkit_rp_code_units")
            ((if repl then [] else map (pr_lab o rpCodeUnit) labs) @ ["0"]) []))
         else ()
@@ -2765,7 +2778,15 @@ struct
       val code =
         (loadInto(X 19,16,X 16)
          ++ storeInto(X 16,X 28,8)
+         ++ (if timeProfile() andalso gc() then
+               addressInto(NameLab "disable_gc",X 17)
+               ++ loadInto(X 19,24,X 16)
+               ++ instruction A.and_ (R(X 16),R(X 16),I(1))
+               ++ storeInto(X 16,X 17,0)
+             else fn c => c)
          ++ loadInto(X 19,24,X 16)
+         ++ (if timeProfile() andalso gc() then
+               instruction A.and_ (R(X 16),R(X 16),I(~2)) else fn c => c)
          ++ moveInto(X 16,SP)
          ++ loadInto(X 19,32,X 29)
          ++ loadInto(X 19,0,X 30)
@@ -2815,6 +2836,12 @@ struct
          ++ functionInto raising
          ++ moveInto(X 0,X 28)
          ++ moveInto(X 1,X 27)
+         (* Nonlocal exception transfer abandons C-call save slots. A caught
+          * exception resumes ML; callback bridges restore their outer token. *)
+         ++ (if timeProfile() then
+               addressInto(NameLab "mlkit_tp_context",X 16)
+               ++ constantInto(0,X 17) ++ storeInto(X 17,X 16,0)
+             else fn c => c)
          ++ loadInto(X 28,8,X 19)
          ++ instruction A.cbz (R(X 19),L(uncaught))) code
       val code =

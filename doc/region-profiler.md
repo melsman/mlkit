@@ -520,3 +520,5 @@ region with `rpview sites.rp --region r163 -o r163-sites.svg`;
 see [site occupancy](allocation-profiler.md).
 
 Experimental time recording: [T3 recorder and runtime API](time-profiler/t3-recording.md).
+
+C/GC attribution: [T4 boundary state and interpretation](time-profiler/t4-attribution.md).

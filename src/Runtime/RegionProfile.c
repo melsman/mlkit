@@ -284,7 +284,7 @@ static void emit_code_metadata(void) {
       uint64_t function_count = 0;
       for (size_t i = 0; mlkit_rp_code_units[i]; i++) {
         const MlkitProfileCodeUnit *unit = mlkit_rp_code_units[i];
-        if (unit->version != 1) fail("unsupported function metadata; rebuild ML libraries");
+        if (unit->version != 1 && unit->version != 2) fail("unsupported function metadata; rebuild ML libraries");
         if (unit->count > UINT64_MAX-function_count) fail("function metadata count overflow");
         function_count += unit->count;
       }
@@ -1046,6 +1046,9 @@ uintptr_t mlkit_rp_start(void) { return 1; }
 uintptr_t mlkit_rp_pause(void) { return 1; }
 uintptr_t mlkit_rp_sample(void) { return 1; }
 uintptr_t mlkit_rp_flush(void) { return 1; }
+_Atomic uintptr_t mlkit_tp_context;
+uintptr_t mlkit_tp_gc_enter(void) { return 0; }
+void mlkit_tp_gc_leave(uintptr_t saved) { (void)saved; }
 uintptr_t mlkit_tp_start(void) { return 1; }
 uintptr_t mlkit_tp_pause(void) { return 1; }
 uintptr_t mlkit_tp_flush(void) { return 1; }

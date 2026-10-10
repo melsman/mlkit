@@ -27,6 +27,9 @@ extern int mlkit_rp_gc_major;
 extern int mlkit_tp_enabled, mlkit_tp_initially_paused;
 extern uint64_t mlkit_tp_interval_us;
 extern size_t mlkit_tp_capacity;
+extern _Atomic uintptr_t mlkit_tp_context;
+uintptr_t mlkit_tp_gc_enter(void);
+void mlkit_tp_gc_leave(uintptr_t);
 int mlkit_tp_parse_interval(const char *);
 uintptr_t mlkit_tp_start(void);
 uintptr_t mlkit_tp_pause(void);
@@ -62,6 +65,7 @@ typedef struct MlkitProfileFunction {
   uintptr_t begin, end;
   struct stringDesc *unit, *function, *source, *ir_identity;
 } MlkitProfileFunction;
+/* Native version 2 also guarantees T4 boundary and exception instrumentation. */
 typedef struct MlkitProfileCodeUnit {
   uintptr_t version, count;
   MlkitProfileFunction functions[];

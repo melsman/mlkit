@@ -420,7 +420,7 @@ structure ExecutionArm64 : EXECUTION =
                                                                         else "NOGC"
               (* Code-range tables add linker symbols to every profiled unit.
                * Keep older cached objects out of this metadata ABI. *)
-              val subdir = if region_profile() then subdir ^ "_CODE1" else subdir
+              val subdir = if region_profile() then subdir ^ "_CODE1_TP1" else subdir
               val subdir = if Flags.is_on "tag_values" andalso not(gc_p()) then subdir ^ "_TAG" else subdir
               val subdir = if parallelism_p() then
                              if par_alloc_unprotected_p() then

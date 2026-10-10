@@ -1410,6 +1410,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
   rp_gc_sample(ctx, sp, 4, profile_major);
 #endif
+#ifdef PROFILING
+  uintptr_t tp_saved = mlkit_tp_gc_enter();
+#endif
   doing_gc = 1;
 
 #ifdef CHECK_GC
@@ -1969,6 +1972,9 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
     }
 
   time_to_gc = 0;
+#ifdef PROFILING
+  mlkit_tp_gc_leave(tp_saved);
+#endif
   doing_gc = 0; // Mutex on the garbage collector
 #ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_gc_completed();
