@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width"><title>MLKit region profile</title>
 <style>
+[hidden]{display:none!important}
 body{font:16px system-ui,sans-serif;margin:32px auto;max-width:1100px;padding:0 20px;color:#182c39;background:#f7f9fa}
 h1{font-size:28px}button,select,input{font:inherit}button,select,input[type=number]{padding:9px 10px;border:1px solid #bdcbd3;border-radius:6px;background:white;color:inherit;box-sizing:border-box}
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) 170px;gap:16px;padding:18px;background:#eaf0f3;border-radius:10px;align-items:start}.controls label{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:600;min-width:0}.controls select{width:100%;min-width:0}.controls input{width:100%}.controls small{font-size:12px;font-weight:400;color:#4d626f;line-height:1.4}
@@ -43,7 +44,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <label>Metric <select id="metric"><option value="total">Regions + ML stack</option><option value="stack">ML stack + finite regions</option><option value="pages">Pages</option><option value="page_footprint">Page footprint</option><option value="large_bytes">Large objects</option><option value="finite_bytes">Finite reservations</option><option value="descriptor_bytes">Infinite-region descriptors</option></select></label>
 <label id="attribution-region-control" hidden>Site occupancy <select id="attribution-region"><option value="all">All regions</option></select></label>
 <label><span id="limit-label">Regions shown</span><input id="limit" type="number" min="0" step="1" value="9" aria-describedby="limit-help"><small id="limit-help">Largest regions; 0 shows all.<br>Remaining regions form Other.</small></label>
-<div class="display-options" aria-label="Graph display options">
+<div id="display-options" class="display-options" aria-label="Graph display options">
 <label><input id="show-base" type="checkbox">Show base names</label>
 <label><input id="show-type" type="checkbox">Show region type</label>
 <label><input id="show-peak" type="checkbox">Show Peak page capacity</label>
@@ -112,7 +113,7 @@ function infoHint(anchor,title,contents){
  anchor.append(button);return button;
 }
 function controlHint(id,title,contents){
- const control=el(id),label=control.closest('label'),heading=document.createElement('span');heading.className='control-heading';
+ const control=el(id),label=control.closest('label'),heading=document.createElement('span');heading.className='control-heading';if(['scope','limit','show-type','show-peak','attribution-region','allocation-view','group'].includes(id))heading.className+=' region-only';
  // Keep checkbox controls and their captions together.
  if(control.type==='checkbox'){label.before(heading);heading.append(label);}else{const caption=label.firstChild;if(caption===control){label.append(heading);}else{heading.append(caption);label.prepend(heading);}}
  return infoHint(heading,title,contents);
@@ -120,9 +121,9 @@ function controlHint(id,title,contents){
 function setupHints(){
  const notes=[...document.querySelectorAll('p.note')].filter(p=>!p.id);
  if(hasTime)infoHint(el('time-heading'),'Sampled time',[el('time-note'),el('time-status'),'Select a function to inspect matching IR when available. Categories such as GC and unresolved samples have no function code.']);
- infoHint(el('profile-heading'),'Region profile',[notes[0],el('gc-note')]);
+ infoHint(el('profile-heading'),'Region profile',[notes[0],el('gc-note')]).className+=' region-only';
  controlHint('scope','View',['Filter the graph and tables by lifetime owner, execution stream, or CPU (OS logical processor at the safe point). Shared and persistent regions follow lifetime ownership.',el('execution-stream-note')]);
- controlHint('metric','Metric',[notes[1],el('stack-note')]);
+ controlHint('metric','Metric',[hasTime?'Time profile shows sampled function contributions. Memory metrics show recorded region snapshots. Switching views preserves the selected time window.':'Choose the region memory metric to display.',notes[1],el('stack-note')]);
  controlHint('attribution-region','Site occupancy',['Choose the region whose recorded object payload is shown in the site-contribution graph and occupancy table.']);
  controlHint('limit','Regions and sites shown',[el('limit-help')]);
  controlHint('show-base','Base names',['Include the source file base name in region and allocation-site labels.']);
@@ -139,6 +140,7 @@ function setupHints(){
 const timeSession=profile.time_session;
 const timeSamples=profile.time_samples||[];
 const hasTime=!!timeSession;
+if(hasTime&&!samples.length)el('metric').replaceChildren();
 if(hasTime){const option=document.createElement('option');option.value='time';option.textContent='Time profile';el('metric').append(option);if(!samples.length)el('metric').value='time';}
 let timeStart=0,timeEnd=10000;
 const timeLast=[...timeSamples,...samples,profile.time_status||{}].reduce((last,s)=>BigInt(s.time||0)>last?BigInt(s.time||0):last,0n);
@@ -750,7 +752,7 @@ function axisTicks(lo,hi){
 }
 function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:12,maximumSignificantDigits:12});}
 function draw(){
- const timeView=hasTime&&el('metric').value==='time';document.body.className=timeView?'time-view':'';for(const id of ['scope','group','limit','show-type','show-peak']){el(id).disabled=timeView;el(id).closest('label').hidden=timeView;}
+ const timeView=hasTime&&el('metric').value==='time';document.body.className=timeView?'time-view':'';for(const node of document.querySelectorAll('.region-only'))node.hidden=timeView;for(const id of ['scope','group','limit','show-type','show-peak']){el(id).disabled=timeView;el(id).closest('label').hidden=timeView;}
  if(!timeView&&el('ir-panel').parentElement===el('time-code')){document.querySelector('.ir-column').append(el('ir-panel'));el('ir-panel').hidden=true;}
  rangeControls();timeReport();graphNavigation();
  if(timeView){el('export-svg').disabled=true;return;}
@@ -882,12 +884,12 @@ el('metric').addEventListener('input',()=>{graphParent=null;});
 for(const id of ['sample','metric','group','scope','limit','show-base','show-type','show-peak'])el(id).addEventListener('input',draw);
 const mainName=profile.main_source.split(/[\\/]/).at(-1);
 const gcState=profile.gc_enabled?'enabled':'disabled';
-el('profile-title').textContent=(hasTime?'Time and region profile for ':'Region profile for ')+mainName+' (GC '+gcState+')';
+el('profile-title').textContent=(hasTime?(samples.length?'Time and region profile for ':'Time profile for '):'Region profile for ')+mainName+' (GC '+gcState+')';
 el('profile-title').title=profile.main_source||'';
 document.title=el('profile-title').textContent;
 el('gc-note').textContent=profile.gc_enabled===true?'Garbage collections: '+(profile.gc_collections===null?'unavailable':BigInt(profile.gc_collections).toLocaleString())+(profile.complete?'':' (recorded so far)'):'';
 scopes();
-if(profile.allocation_session?.enabled==='1'&&profile.allocation_session.selector){
+if(samples.length&&profile.allocation_session?.enabled==='1'&&profile.allocation_session.selector){
  const option=document.createElement('option');option.value='sites';option.id='site-metric-option';option.textContent='Site contributions';el('metric').append(option);
 }
 if(profile.allocation_session?.selector==='all'){
@@ -902,5 +904,6 @@ if(profile.allocation_session?.selector==='all'){
 setupHints();
 const defaults=__OPTIONS__;
 for(const [id,value] of Object.entries(defaults)){if(id==='caption'){el('profile-title').textContent=value;document.title=value;}else if(typeof value==='boolean')el(id).checked=value;else el(id).value=String(value);}
+if(hasTime&&!samples.length)el('metric').value='time';
 scopes();draw();allocationTable();
 </script></html>

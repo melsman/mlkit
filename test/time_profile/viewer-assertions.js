@@ -28,8 +28,12 @@ resetSnapshotRange();assert.equal(timeEnd,10000);
 console.log('PASS: time report categories, denominator, independent interval filtering and empty windows');
 
 timeStart=2500;timeEnd=7500;
-el('metric').value='total';draw();assert(el('time-section').hidden);
+if(samples.length){el('metric').value='total';draw();assert(el('time-section').hidden);}
 el('metric').value='time';draw();assert(!el('time-section').hidden);
+assert(document.querySelectorAll('.region-only').every(n=>n.hidden));
+assert(el('show-type').closest('.control-heading').hidden);
+assert(el('show-peak').closest('.control-heading').hidden);
+if(!samples.length)assert.deepStrictEqual(el('metric').options.map(o=>o.value),['time']);
 assert.equal(timeStart,2500);assert.equal(timeEnd,7500);
 // Function navigation must reject a different unit, even with an identity match.
 const doc={identity:'test-function',unit:'u',text:'fun f(x) = x\n',code_start:0,code_bytes:13,source:'s'};
