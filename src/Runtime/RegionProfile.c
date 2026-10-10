@@ -13,6 +13,16 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <mach-o/loader.h>
+#endif
+#if defined(__APPLE__) && defined(__aarch64__) && !defined(PARALLEL)
+#include <mach/mach_time.h>
+#include <pthread.h>
+#define MLKIT_TP_NATIVE 1
+static uint64_t tp_timestamp(void);
+#endif
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -141,6 +151,9 @@ static uint64_t large_size(void *p) {
   return 0;
 }
 static uint64_t timestamp(void) {
+#ifdef MLKIT_TP_NATIVE
+  if (mlkit_tp_enabled) return tp_timestamp();
+#endif
   struct timespec now;
   if (clock_gettime(CLOCK_MONOTONIC, &now)) fail("cannot read clock");
   int64_t ns = (int64_t)(now.tv_sec-origin.tv_sec)*INT64_C(1000000000)
@@ -217,6 +230,84 @@ static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
 #define NUMS(...) (const uint64_t[]){__VA_ARGS__}, sizeof((const uint64_t[]){__VA_ARGS__})/sizeof(uint64_t)
 #define STRS(...) (const char *const[]){__VA_ARGS__}, sizeof((const char *const[]){__VA_ARGS__})/sizeof(char *), NULL
 #define NO_STRINGS NULL, 0, NULL
+
+/* Private recorder shares this translation unit's encoder and output stream.
+ * Standalone runtime tests continue to link RegionProfile.c alone. */
+#include "TimeProfile.inc"
+
+__attribute__((weak)) const volatile uintptr_t mlkit_rp_code_scope = 0;
+#ifdef __APPLE__
+__attribute__((weak)) const MlkitProfileCodeUnit * const volatile mlkit_rp_code_units[] = {NULL};
+#else
+extern const MlkitProfileCodeUnit * const volatile mlkit_rp_code_units[] __attribute__((weak));
+#endif
+/* This runs before sampling is armed. The first implementation deliberately
+ * supports the static executable only; runtime/C PCs outside these ML ranges
+ * remain unknown. UUID and load base identify the image independently of ASLR. */
+static void emit_code_metadata(void) {
+  const char *scope = mlkit_rp_code_scope == 2 ? "unsupported-repl" : "unavailable";
+#if defined(__APPLE__) && defined(__aarch64__)
+  if (mlkit_rp_code_scope == 1) {
+    const struct mach_header_64 *header = (const struct mach_header_64 *)_dyld_get_image_header(0);
+    if (!header || header->magic != MH_MAGIC_64) fail("invalid executable image");
+    const unsigned char *command = (const unsigned char *)(header+1);
+    const unsigned char *limit = command + header->sizeofcmds;
+    uintptr_t text_begin = 0, text_end = 0;
+    char uuid[33] = {0};
+    for (uint32_t i = 0; i < header->ncmds; i++) {
+      if ((size_t)(limit-command) < sizeof(struct load_command)) fail("short image command");
+      const struct load_command *lc = (const struct load_command *)command;
+      if (lc->cmdsize < sizeof(*lc) || lc->cmdsize > (size_t)(limit-command))
+        fail("invalid image command");
+      if (lc->cmd == LC_UUID) {
+        if (lc->cmdsize < sizeof(struct uuid_command)) fail("short image UUID");
+        const struct uuid_command *id = (const struct uuid_command *)lc;
+        for (size_t j = 0; j < 16; j++) sprintf(uuid+2*j,"%02x",id->uuid[j]);
+      }
+      if (lc->cmd == LC_SEGMENT_64) {
+        if (lc->cmdsize < sizeof(struct segment_command_64)) fail("short image segment");
+        const struct segment_command_64 *segment = (const struct segment_command_64 *)lc;
+        if (segment->nsects > (lc->cmdsize-sizeof(*segment))/sizeof(struct section_64))
+          fail("short image sections");
+        const struct section_64 *sections = (const struct section_64 *)(segment+1);
+        for (uint32_t j = 0; j < segment->nsects; j++)
+          if (!strncmp(sections[j].segname,"__TEXT",16) && !strncmp(sections[j].sectname,"__text",16)) {
+            text_begin = sections[j].addr + _dyld_get_image_vmaddr_slide(0);
+            text_end = text_begin + sections[j].size;
+          }
+      }
+      command += lc->cmdsize;
+    }
+    if (!uuid[0]) scope = "missing-image-id";
+    else {
+      uintptr_t base = (uintptr_t)header;
+      uint64_t function_count = 0;
+      for (size_t i = 0; mlkit_rp_code_units[i]; i++) {
+        const MlkitProfileCodeUnit *unit = mlkit_rp_code_units[i];
+        if (unit->version != 1) fail("unsupported function metadata; rebuild ML libraries");
+        if (unit->count > UINT64_MAX-function_count) fail("function metadata count overflow");
+        function_count += unit->count;
+      }
+      emit_record(20,NUMS(1,function_count),STRS("static-executable"));
+      emit_record(21,NUMS(1,base),STRS(uuid,_dyld_get_image_name(0)));
+      for (size_t i = 0; mlkit_rp_code_units[i]; i++) {
+        const MlkitProfileCodeUnit *unit = mlkit_rp_code_units[i];
+        for (uintptr_t j = 0; j < unit->count; j++) {
+          const MlkitProfileFunction *f = &unit->functions[j];
+          if (f->begin < text_begin || f->end > text_end || f->begin >= f->end)
+            fail("function range outside static executable text");
+          emit_record(22,NUMS(1,f->begin-base,f->end-base),
+                      STRS(f->unit->data,f->function->data,f->source->data,f->ir_identity->data));
+        }
+      }
+      return;
+    }
+  }
+#else
+  if (mlkit_rp_code_scope == 1) scope = "unsupported-platform";
+#endif
+  emit_record(20,NUMS(1,0),STRS(scope));
+}
 
 /* Occupancy is counted only during snapshots. C allocations carry their
  * site tokens explicitly through REG_POLY_FUN_HDR / REG_POLY_CALL. */
@@ -363,6 +454,7 @@ int mlkit_rp_parse_interval(const char *s) {
   return 1;
 }
 static void timer_state(int running) {
+  if (mlkit_tp_enabled) { tp_set_region(running); return; }
   mlkit_rp_pending = 0;
   next_due_ns = mlkit_rp_interval_us ? timestamp()+mlkit_rp_interval_us*1000 : 0;
   if (!timer_installed) return;
@@ -380,6 +472,7 @@ void mlkit_rp_close(void) {
   await_output();
   if (!output) { UNLOCK(); return; }
   timer_state(0);
+  tp_shutdown();
   /* Keep the harmless handler until process exit: another OS thread may
    * still have an already-delivered SIGALRM queued after timer disarm. */
   timer_installed = 0;
@@ -407,7 +500,13 @@ void mlkit_rp_close(void) {
   UNLOCK();
 }
 void mlkit_rp_init(void) {
-  if (!mlkit_rp_enabled) return;
+  if (!mlkit_rp_enabled && !mlkit_tp_enabled) return;
+  int time_only = mlkit_tp_enabled && !mlkit_rp_enabled;
+  if (time_only) {
+    mlkit_rp_enabled = 1; /* Retain safe-point polls and the main identity. */
+    mlkit_rp_interval_us = mlkit_rp_interval_entries = 0;
+  }
+  if (mlkit_tp_enabled) tp_prepare();
 #if defined(PARALLEL) && defined(ENABLE_GC)
   fail("GC plus parallel profiling is not supported");
 #endif
@@ -435,21 +534,23 @@ void mlkit_rp_init(void) {
       fail("recompile all ML code with -rp");
     mlkit_rp_allocation_enabled = 1;
   }
-  mlkit_rp_allocation_enabled = mlkit_rp_allocation_capable != 0;
+  mlkit_rp_allocation_enabled = !time_only && mlkit_rp_allocation_capable != 0;
   output = fopen(mlkit_rp_filename, "wb");
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
-  active = !mlkit_rp_initially_paused;
+  active = !time_only && !mlkit_rp_initially_paused;
   const unsigned char magic[] = {'M','L','K','R','P',0,10,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
+  emit_code_metadata();
+  tp_begin();
   if (mlkit_rp_allocation_capable) emit_record(12,NUMS(mlkit_rp_allocation_enabled,1),STRS(mlkit_rp_build_id,mlkit_rp_region ? mlkit_rp_region : ""));
   if (mlkit_rp_allocation_enabled && mlkit_rp_ir_objects)
     for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
       emit_record(17,NUMS(),STRS(mlkit_rp_ir_objects[i][0],mlkit_rp_ir_objects[i][1]));
   if (fflush(output)) fail("cannot write profile header");
-  if (mlkit_rp_interval_us) {
+  if (mlkit_rp_interval_us || mlkit_tp_enabled) {
     struct sigaction previous_alarm;
     struct itimerval old;
     if (getitimer(ITIMER_REAL, &old) || sigaction(SIGALRM, NULL, &previous_alarm))
@@ -457,8 +558,9 @@ void mlkit_rp_init(void) {
     if (old.it_value.tv_sec || old.it_value.tv_usec || previous_alarm.sa_handler != SIG_DFL)
       fail("SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
     struct sigaction action = {0};
-    action.sa_handler = request_sample;
-    action.sa_flags = SA_RESTART;
+    if (mlkit_tp_enabled) tp_install_handler(&action);
+    else action.sa_handler = request_sample;
+    action.sa_flags |= SA_RESTART;
     sigemptyset(&action.sa_mask);
     if (sigaction(SIGALRM, &action, NULL)) fail("cannot install sampling timer");
     timer_installed = 1;
@@ -902,6 +1004,10 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
   return result;
 }
 uintptr_t mlkit_rp_poll(Context ctx, uintptr_t *base, const uintptr_t *map) {
+  if (mlkit_tp_enabled) {
+    tp_drain();
+    if (!tp_region_request(ctx)) return 1;
+  }
   return mlkit_rp_capture(ctx, base, map, 3);
 }
 /* Non-instrumented compilation remains usable with profiling disabled. */
@@ -909,6 +1015,7 @@ uintptr_t mlkit_rp_start(void) { if (mlkit_rp_enabled) fail("start called from c
 uintptr_t mlkit_rp_pause(void) { if (mlkit_rp_enabled) fail("pause called from code without profiling metadata"); return 1; }
 uintptr_t mlkit_rp_sample(void) { if (mlkit_rp_enabled) fail("sample called from code without profiling metadata"); return 1; }
 uintptr_t mlkit_rp_flush(void) {
+  tp_drain();
   LOCK();
   await_output();
   if (output && fflush(output)) fail("cannot flush profile output");
@@ -939,5 +1046,8 @@ uintptr_t mlkit_rp_start(void) { return 1; }
 uintptr_t mlkit_rp_pause(void) { return 1; }
 uintptr_t mlkit_rp_sample(void) { return 1; }
 uintptr_t mlkit_rp_flush(void) { return 1; }
+uintptr_t mlkit_tp_start(void) { return 1; }
+uintptr_t mlkit_tp_pause(void) { return 1; }
+uintptr_t mlkit_tp_flush(void) { return 1; }
 uintptr_t mlkit_rp_mark(String label) { (void)label; return 1; }
 #endif

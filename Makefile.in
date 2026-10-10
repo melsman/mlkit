@@ -127,7 +127,7 @@ install_smltojs_basislibs:
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js,df} $(LIBDIR)/basis/MLB/Js
 
 ifeq ($(DARWIN_NATIVE),1)
-BASIS_CACHES = ARM64_RI ARM64_RI_PAR ARM64_RI_GC ARM64_RI_GC_PROF ARM64_RI_PROF_PAR ARM64_RI_PROF
+BASIS_CACHES = ARM64_RI ARM64_RI_PAR ARM64_RI_GC ARM64_RI_GC_PROF_CODE1 ARM64_RI_PROF_CODE1_PAR ARM64_RI_PROF_CODE1
 else
 BASIS_CACHES = RI RI_PAR RI_GC RI_GC_PROF RI_PROF_PAR RI_PROF
 endif
@@ -139,7 +139,7 @@ install_mlkit_basislibs:
 	    test -d "$$dir/MLB/$$cache" || { echo "Run make build_basislibs before installing" >&2; exit 1; }; \
 	    $(MKDIR) "$(LIBDIR)/$$dir/MLB/$$cache"; \
 	    set --; \
-	    pattern='*'; test "$$dir" != kitlib || pattern='region-profile.*'; \
+	    pattern='*'; test "$$dir" != kitlib || pattern='*-profile.*'; \
 	    for file in $$dir/MLB/$$cache/$$pattern; do \
 	      case "$$file" in \
 	        *.d|*.eb|*.eb1|*.lnk|*.o|*.o.ir|*.log|*.df|*.rev) \
@@ -188,6 +188,7 @@ install_basis:
 	$(INSTALLDATA) basis/Makefile $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p kitlib/region-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
+	$(INSTALLDATA) -p kitlib/time-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 	@set -e; for file in basis/*.log; do if test -f "$$file"; then $(INSTALLDATA) -p "$$file" $(LIBDIR)/basis; fi; done

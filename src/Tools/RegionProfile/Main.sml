@@ -7,6 +7,8 @@ struct
           val output = ref "profile.html"
           val format = ref ""
           val haveOutput = ref false
+          val resolvePC = ref (NONE : IntInf.int option)
+          val imageBuild = ref (NONE : string option)
           val settings = ref ([] : (string * ProfileJson.t) list)
           fun setting k v = settings := (k,v)::List.filter (fn (key,_) => key <> k) (!settings)
           fun choice k value choices =
@@ -14,10 +16,23 @@ struct
               else raise Fail ("invalid " ^ k ^ ": " ^ value)
           fun natural s =
               if size s > 0 andalso List.all Char.isDigit (explode s) then Int.fromString s else NONE
+          fun address s =
+              let val hex = String.isPrefix "0x" s orelse String.isPrefix "0X" s
+                  val digits = if hex then String.extract(s,2,NONE) else s
+                  val valid = size digits > 0 andalso List.all
+                    (if hex then Char.isHexDigit else Char.isDigit) (explode digits)
+                  val parsed = if valid then StringCvt.scanString
+                    (IntInf.scan (if hex then StringCvt.HEX else StringCvt.DEC)) digits else NONE
+              in case parsed of SOME n => if n < ProfileCode.addressLimit then n
+                                          else raise Fail "PC exceeds 64 bits"
+                              | NONE => raise Fail "PC must be decimal or 0x hexadecimal"
+              end
           fun help () =
               (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
+                     \  --resolve-pc ADDRESS    Resolve a recorded absolute PC; output JSON\n\
+                     \  --image-build UUID      Require matching image identity for PC resolution\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --sites                 SVG: selected region split by allocation site\n\
                      \  --region rN              SVG: site contributions to region rN\n\
@@ -39,6 +54,8 @@ struct
                  (setting "region" (ProfileJson.Str value); setting "sites" (ProfileJson.Bool true); options rest)
                else raise Fail "region must be rN (for example, r163)")
             | options ("--ir-dir"::path::rest) = (irRoots := path :: !irRoots; options rest)
+            | options ("--resolve-pc"::value::rest) = (resolvePC := SOME(address value); options rest)
+            | options ("--image-build"::value::rest) = (imageBuild := SOME value; options rest)
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
@@ -73,7 +90,12 @@ struct
               else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
               else (file := value; haveFile := true; options rest)
           val () = options args
-          val selected = if !format <> "" then !format
+          val () = if Option.isSome(!imageBuild) andalso not(Option.isSome(!resolvePC))
+                   then raise Fail "--image-build requires --resolve-pc" else ()
+          val () = if Option.isSome(!resolvePC) andalso not(Option.isSome(!imageBuild))
+                   then raise Fail "--resolve-pc requires --image-build from the sampled executable" else ()
+          val selected = if Option.isSome(!resolvePC) then "json"
+                         else if !format <> "" then !format
                          else if String.isSuffix ".svg" (String.map Char.toLower (!output)) then "svg"
                          else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
                                  String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
@@ -102,7 +124,10 @@ struct
                            in if List.exists matches rows then () else raise Fail ("scope not present in profile: " ^ scope)
                            end
                      | _ => ()
-          val page = if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+          val page = case !resolvePC of
+                         SOME pc => ProfileJson.encodeJson
+                           (ProfileCode.resolver (#metadata profile) {pc = pc,buildId = !imageBuild}) ^ "\n"
+                       | NONE => if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
                      else if selected = "svg" then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
           val out = if !output = "-" then TextIO.stdOut else TextIO.openOut (!output)
           val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))

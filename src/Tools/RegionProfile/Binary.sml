@@ -24,6 +24,12 @@ struct
         | 19 => ("occupancy_summary",["sample","instance","region_definition","payload","objects","object_overhead","slack"],[])
         | 16 => ("allocation_region",["binding"],["unit","name","source"])
         | 17 => ("ir_object",[],["ir_identity","ir_object"])
+        | 20 => ("code_metadata",["metadata_version","function_count"],["scope"])
+        | 21 => ("code_image",["image","load_address"],["build_id","path"])
+        | 22 => ("code_function",["image","start","end"],["unit","function","source","ir_identity"])
+        | 23 => ("time_session",["time_version","interval_ns","buffer_capacity","thread","stream"],["clock","semantics","coordinate"])
+        | 24 => ("time_sample",["sequence","time","pc","thread","stream","state","origin_pc"],[])
+        | 25 => ("time_status",["time","recorded","dropped","routing_dropped","active","final"],["timer_loss"])
         | _ => raise Fail "unknown binary record tag"
   fun read path =
       let val input = BinIO.openIn path

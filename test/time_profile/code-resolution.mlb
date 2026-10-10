@@ -2,7 +2,5 @@ $(SML_LIB)/basis/basis.mlb
 ../../src/Kitlib/BINARYMAP.sig
 ../../src/Kitlib/Binarymap.sml
 ../../src/Tools/RegionProfile/Json.sml
-../../src/Tools/RegionProfile/Binary.sml
 ../../src/Tools/RegionProfile/Code.sml
-../../src/Tools/RegionProfile/Reader.sml
-encode-fixture.sml
+code-resolution.sml

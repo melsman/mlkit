@@ -22,6 +22,15 @@ extern uint64_t mlkit_rp_interval_entries;
 extern int mlkit_rp_report;
 extern int mlkit_rp_gc_samples;
 extern int mlkit_rp_gc_major;
+/* T3 wall-time recording uses the profiled runtime and existing safe-point
+ * polls, independently of whether region snapshots were enabled at startup. */
+extern int mlkit_tp_enabled, mlkit_tp_initially_paused;
+extern uint64_t mlkit_tp_interval_us;
+extern size_t mlkit_tp_capacity;
+int mlkit_tp_parse_interval(const char *);
+uintptr_t mlkit_tp_start(void);
+uintptr_t mlkit_tp_pause(void);
+uintptr_t mlkit_tp_flush(void);
 int mlkit_rp_parse_interval(const char *);
 uintptr_t mlkit_rp_poll(Context, uintptr_t *, const uintptr_t *);
 extern int mlkit_rp_initially_paused;
@@ -45,6 +54,21 @@ uintptr_t mlkit_rp_pause(void);
 uintptr_t mlkit_rp_sample(void);
 uintptr_t mlkit_rp_flush(void);
 struct stringDesc;
+/* Native code metadata version 1. Half-open ranges include prologues,
+ * epilogues and inline continuations, but exclude alignment before the next
+ * function. The linker retains one unit table per linked ML compilation unit.
+ * These native pointers are relocated by the loader, never wire identities. */
+typedef struct MlkitProfileFunction {
+  uintptr_t begin, end;
+  struct stringDesc *unit, *function, *source, *ir_identity;
+} MlkitProfileFunction;
+typedef struct MlkitProfileCodeUnit {
+  uintptr_t version, count;
+  MlkitProfileFunction functions[];
+} MlkitProfileCodeUnit;
+extern const MlkitProfileCodeUnit * const volatile mlkit_rp_code_units[];
+/* 0: unavailable, 1: statically linked executable, 2: unsupported REPL. */
+extern const volatile uintptr_t mlkit_rp_code_scope;
 uintptr_t mlkit_rp_mark(struct stringDesc *);
 /* A combined continuation keeps the collector bitmap before the profiler map.
  * Entry/callback sentinels have no bindings or collector bitmap. */

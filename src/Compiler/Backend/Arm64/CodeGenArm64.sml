@@ -62,6 +62,10 @@ struct
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ AddressLabels.pr_label l)
   val rpSource = ref (NameLab "unused_rp_source")
   val rpUnit = ref (NameLab "unused_rp_unit")
+  (* Linked unit tables retain every emitted function, including library code.
+   * End labels follow the complete body and survive instruction relaxation. *)
+  val codeRanges = ref ([] : string list list)
+  fun rpCodeUnit l = NameLab("mlkit_rp_code_" ^ AddressLabels.pr_label l)
   val rpName = ref (fn (_:string) => NameLab "unused_rp_name")
   val rpFrame = ref 0
   val rpArgs = ref 0
@@ -2501,7 +2505,13 @@ struct
     end
   fun topInto (l,cc,body) code =
     let
-      val suffix = code
+      val finish = if sampledProfile() then localFresh() else NameLab "unused_rp_function_end"
+      val suffix = if sampledProfile() then Label finish :: code else code
+      val () = if sampledProfile() then
+        codeRanges := [pr_lab(MLFunLab l),pr_lab finish,pr_lab(!rpUnit),
+                       pr_lab(!rpName(AddressLabels.pr_label l)),pr_lab(!rpSource),
+                       pr_lab(!allocationIR)] :: !codeRanges
+        else ()
       val () = allocationFunction := AddressLabels.pr_label l
       val ac = CallConv.get_ccf_size cc
       val () = currentArgs := ac
@@ -2535,7 +2545,7 @@ struct
       val () = currentLoop := Option.map (fn loop => (l,loop)) loop
       val body = if not(gc()) andalso fsz > 0 andalso !spillSafe andalso Option.isSome loop then sinkLoopSpills fsz body else body
       val code = (stmtsInto fsz results body
-         ++ epilogueInto fsz) code
+         ++ epilogueInto fsz) suffix
       val code = rpPollInto fsz code
 
     in
@@ -2560,6 +2570,7 @@ struct
       val () = rpName := stringData
       val () = if sampledProfile() then rpSource := stringData(!Flags.current_source_file) else ()
       val () = allocationSites := []
+      val () = codeRanges := []
       val () = if allocationProfile() then allocationIR := stringData (!IRLocations.currentIdentity) else ()
       val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
       val () = if sampledProfile() then
@@ -2567,6 +2578,12 @@ struct
                    Label(rpSourceSlot main_lab),Directive(Quad [pr_lab(!rpSource) ^ " + 8"])] else ()
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
+      val () = if sampledProfile() then
+        addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpCodeUnit main_lab)),
+                   Label(rpCodeUnit main_lab),
+                   Directive(Quad ("1" :: Int.toString(length(!codeRanges)) ::
+                                   List.concat(!codeRanges)))]
+        else ()
       fun data (l,code) =
         (one (Directive(Data))
            ++ one (Directive(Align 3))
@@ -2671,6 +2688,11 @@ struct
         (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["4"] []);
          addStatic(datum (NameLab "mlkit_rp_build_id")
            [pr_lab(stringData(Time.toString(Time.now()))) ^ " + 8"] [])) else ()
+      val () = if sampledProfile() then
+        (addStatic(datum (NameLab "mlkit_rp_code_scope") [if repl then "2" else "1"] []);
+         addStatic(datum (NameLab "mlkit_rp_code_units")
+           ((if repl then [] else map (pr_lab o rpCodeUnit) labs) @ ["0"]) []))
+        else ()
       fun init (place,l) code =
         (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
           ++ moveInto(X 28,X 0)
