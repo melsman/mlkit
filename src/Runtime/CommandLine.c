@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "CommandLine.h"
 #include "String.h"
@@ -62,6 +63,13 @@ printUsage(void)
   fprintf(stderr,"  -rp_gc_samples           Record snapshots before and after GC.\n");
 #endif
   fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
+  fprintf(stderr,"\nExperimental time profiling (single-thread macOS ARM64):\n");
+  fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
+  fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
+  fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
+  fprintf(stderr,"  -tp_buffer N             Records per buffer, 2..1048576 (default: 4096).\n");
+  fprintf(stderr,"  -tp_file PATH            Shared profile output (default: profile.rp).\n");
+  fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
 #endif
 #ifdef ENABLE_GC
   fprintf(stderr,"\nGarbage collection:\n");
@@ -104,6 +112,7 @@ parseCmdLineArgs(int argc, char *argv[])
   int in_rts = 0, finished = 0;
 #ifdef PROFILING
   int rp_options = 0;
+  int tp_options = 0;
 #endif
 
 #ifdef ARGOBOTS
@@ -132,6 +141,35 @@ parseCmdLineArgs(int argc, char *argv[])
     match = 0;
 
 #ifdef PROFILING
+    if (!strcmp(argv[0],"-tp")) { mlkit_tp_enabled = 1; match = 1; }
+    if (!strcmp(argv[0],"-tp_paused")) { mlkit_tp_initially_paused = 1; tp_options = 1; match = 1; }
+    if (!strcmp(argv[0],"-tp_interval")) {
+      if (!mlkit_tp_parse_interval(rtsValue(&argc,&argv))) {
+        fprintf(stderr,"-tp_interval requires a duration from 1us to 1s\n"); exit(EXIT_FAILURE);
+      }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_clock")) {
+      if (strcmp(rtsValue(&argc,&argv),"wall")) {
+        fprintf(stderr,"time sampling supports only wall; CPU timers failed T1 calibration\n"); exit(EXIT_FAILURE);
+      }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_buffer")) {
+      const char *s = rtsValue(&argc,&argv);
+      char *end;
+      errno = 0;
+      unsigned long n = strtoul(s,&end,10);
+      if (*s < '0' || *s > '9' || errno || *end || n < 2 || n > 1048576) {
+        fprintf(stderr,"-tp_buffer requires 2..1048576 records\n"); exit(EXIT_FAILURE);
+      }
+      mlkit_tp_capacity = n; tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_file")) {
+      const char *s = rtsValue(&argc,&argv);
+      if (!*s) { fprintf(stderr,"-tp_file requires a path\n"); exit(EXIT_FAILURE); }
+      mlkit_rp_filename = s; tp_options = 1; match = 1; continue;
+    }
     if (strcmp(argv[0], "-rp") == 0) { mlkit_rp_enabled = 1; match = 1; }
     if (strcmp(argv[0], "-rp_paused") == 0) { mlkit_rp_initially_paused = 1; rp_options = 1; match = 1; }
     if (strcmp(argv[0], "-rp_gc_samples") == 0) { mlkit_rp_gc_samples = 1; rp_options = 1; match = 1; }
@@ -230,7 +268,7 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 #endif
 
-    if (!match && strncmp(argv[0], "-rp", 3) == 0) {
+    if (!match && (!strncmp(argv[0], "-rp", 3) || !strncmp(argv[0], "-tp", 3))) {
 #ifdef PROFILING
       fprintf(stderr, "unknown profiler option: %s\n", argv[0]);
 #else
@@ -253,6 +291,9 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif
 
 #ifdef PROFILING
+  if (!mlkit_tp_enabled && tp_options) {
+    fprintf(stderr,"time profiler options require -tp\n"); exit(EXIT_FAILURE);
+  }
   if (!mlkit_rp_enabled && rp_options) {
     fprintf(stderr, "profiler options require -rp\n"); exit(EXIT_FAILURE);
   }

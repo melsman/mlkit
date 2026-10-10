@@ -36,6 +36,8 @@ define variant
 OBJECTS_$(1)=$$(addprefix $$(BUILD)/$(1)/,$$(notdir $$(patsubst %.c,%.o,$(3))))
 ALL_OBJECTS+=$$(OBJECTS_$(1))
 ARCHIVES+=$(2)
+$$(BUILD)/$(1)/RegionProfile.o: TimeProfile.inc RegionProfile.h
+
 $$(BUILD)/$(1)/%.o: %.c Makefile Target.h config.h | $$(BUILD)/SysErrTable.h
 	@mkdir -p $$(@D)
 	$$(CC) $$(OPT) $(4) -MMD -MP -c $$< -o $$@

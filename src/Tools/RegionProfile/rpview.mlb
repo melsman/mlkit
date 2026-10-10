@@ -5,6 +5,7 @@ $(SML_LIB)/basis/basis.mlb
 ../../Kitlib/Binarymap.sml
 Json.sml
 Binary.sml
+Code.sml
 Reader.sml
 ../../Common/md5.mlb
 IR.sml

@@ -1,0 +1,72 @@
+standalone phase=busy mode=wall interval_us=100 samples=2991 dropped=0 wall=0.300012 user=0.281983 system=0.016844 min_gap=0.000011 max_gap=0.000289 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=wall interval_us=100 samples=3015 dropped=0 wall=0.302137 user=0.002437 system=0.016369 min_gap=0.000011 max_gap=0.000310 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=wall interval_us=100 samples=3010 dropped=0 wall=0.301214 user=0.001534 system=0.013915 min_gap=0.000058 max_gap=0.000218 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=wall interval_us=100 samples=2 dropped=0 wall=0.300026 user=0.291107 system=0.008471 min_gap=0.000004 max_gap=0.000004 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=wall interval_us=100 samples=2996 dropped=0 wall=0.300004 user=0.207381 system=0.092042 min_gap=0.000014 max_gap=0.000297 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=wall interval_us=1000 samples=299 dropped=0 wall=0.300023 user=0.291113 system=0.008529 min_gap=0.000842 max_gap=0.001080 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=wall interval_us=1000 samples=300 dropped=0 wall=0.300472 user=0.000402 system=0.003782 min_gap=0.000836 max_gap=0.001118 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=wall interval_us=1000 samples=302 dropped=0 wall=0.302598 user=0.000494 system=0.005022 min_gap=0.000809 max_gap=0.001122 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=wall interval_us=1000 samples=1 dropped=0 wall=0.300048 user=0.290868 system=0.008947 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=wall interval_us=1000 samples=299 dropped=0 wall=0.300005 user=0.210820 system=0.088320 min_gap=0.000818 max_gap=0.001109 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=wall interval_us=10000 samples=29 dropped=0 wall=0.300009 user=0.291577 system=0.008237 min_gap=0.008334 max_gap=0.011016 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=wall interval_us=10000 samples=30 dropped=0 wall=0.300752 user=0.000078 system=0.000781 min_gap=0.008419 max_gap=0.010752 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=wall interval_us=10000 samples=30 dropped=0 wall=0.302459 user=0.000160 system=0.001552 min_gap=0.008417 max_gap=0.010821 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=wall interval_us=10000 samples=1 dropped=0 wall=0.300040 user=0.289293 system=0.010607 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=wall interval_us=10000 samples=29 dropped=0 wall=0.300008 user=0.213402 system=0.086389 min_gap=0.009288 max_gap=0.010715 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=ml
+0
+mode=wall interval_us=1000 samples=574 dropped=0 wall=0.574338 user=0.556364 system=0.017724 min_gap=0.000819 max_gap=0.001120 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=gc
+mode=wall interval_us=1000 samples=342 dropped=0 wall=0.342158 user=0.327908 system=0.014149 min_gap=0.000822 max_gap=0.001084 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=c
+mode=wall interval_us=1000 samples=299 dropped=0 wall=0.300025 user=0.290677 system=0.009242 min_gap=0.000830 max_gap=0.001082 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=sleep
+mode=wall interval_us=1000 samples=300 dropped=0 wall=0.300423 user=0.000342 system=0.003143 min_gap=0.000843 max_gap=0.001119 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=user interval_us=100 samples=629 dropped=0 wall=0.300005 user=0.291753 system=0.008104 min_gap=0.000104 max_gap=0.008059 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=user interval_us=100 samples=0 dropped=0 wall=0.304267 user=0.000008 system=0.000020 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=user interval_us=100 samples=1 dropped=0 wall=0.302673 user=0.000171 system=0.000508 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=user interval_us=100 samples=1 dropped=0 wall=0.300040 user=0.291363 system=0.008427 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=user interval_us=100 samples=0 dropped=0 wall=0.300004 user=0.173692 system=0.126228 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=user interval_us=1000 samples=188 dropped=0 wall=0.300013 user=0.290889 system=0.008967 min_gap=0.001030 max_gap=0.005148 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=user interval_us=1000 samples=0 dropped=0 wall=0.305038 user=0.000008 system=0.000015 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=user interval_us=1000 samples=0 dropped=0 wall=0.302285 user=0.000072 system=0.000404 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=user interval_us=1000 samples=1 dropped=0 wall=0.300040 user=0.291029 system=0.008849 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=user interval_us=1000 samples=0 dropped=0 wall=0.300004 user=0.173617 system=0.126320 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=user interval_us=10000 samples=27 dropped=0 wall=0.300017 user=0.292271 system=0.007681 min_gap=0.010293 max_gap=0.015517 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=user interval_us=10000 samples=0 dropped=0 wall=0.305050 user=0.000008 system=0.000020 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=user interval_us=10000 samples=0 dropped=0 wall=0.302708 user=0.000204 system=0.000459 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=user interval_us=10000 samples=1 dropped=0 wall=0.300033 user=0.291143 system=0.008735 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=user interval_us=10000 samples=0 dropped=0 wall=0.300004 user=0.173102 system=0.126810 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=ml
+0
+mode=user interval_us=1000 samples=315 dropped=0 wall=0.548842 user=0.533158 system=0.015551 min_gap=0.001026 max_gap=0.008553 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=gc
+mode=user interval_us=1000 samples=240 dropped=0 wall=0.347504 user=0.331931 system=0.015167 min_gap=0.001014 max_gap=0.004328 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=c
+mode=user interval_us=1000 samples=177 dropped=0 wall=0.300012 user=0.291703 system=0.008186 min_gap=0.001013 max_gap=0.006155 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=sleep
+mode=user interval_us=1000 samples=0 dropped=0 wall=0.305083 user=0.000015 system=0.000039 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=cpu interval_us=100 samples=687 dropped=0 wall=0.300020 user=0.289600 system=0.010289 min_gap=0.000078 max_gap=0.006649 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=cpu interval_us=100 samples=0 dropped=0 wall=0.305014 user=0.000003 system=0.000013 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=cpu interval_us=100 samples=2 dropped=0 wall=0.301982 user=0.000042 system=0.000251 min_gap=0.301860 max_gap=0.301860 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=cpu interval_us=100 samples=1 dropped=0 wall=0.300025 user=0.291092 system=0.008885 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=cpu interval_us=100 samples=2902 dropped=0 wall=0.300008 user=0.168019 system=0.131931 min_gap=0.000083 max_gap=0.000120 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=cpu interval_us=1000 samples=196 dropped=0 wall=0.300020 user=0.290863 system=0.009035 min_gap=0.000993 max_gap=0.008365 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=cpu interval_us=1000 samples=0 dropped=0 wall=0.304206 user=0.000005 system=0.000013 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=cpu interval_us=1000 samples=0 dropped=0 wall=0.302379 user=0.000060 system=0.000320 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=cpu interval_us=1000 samples=1 dropped=0 wall=0.300049 user=0.292195 system=0.007487 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=cpu interval_us=1000 samples=291 dropped=0 wall=0.300003 user=0.170284 system=0.129673 min_gap=0.001015 max_gap=0.001097 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=busy mode=cpu interval_us=10000 samples=28 dropped=0 wall=0.300019 user=0.291364 system=0.008528 min_gap=0.010021 max_gap=0.012564 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=sleep mode=cpu interval_us=10000 samples=0 dropped=0 wall=0.305026 user=0.000007 system=0.000014 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=read mode=cpu interval_us=10000 samples=0 dropped=0 wall=0.302833 user=0.000071 system=0.000374 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=blocked mode=cpu interval_us=10000 samples=1 dropped=0 wall=0.300040 user=0.290686 system=0.009184 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0
+standalone phase=system mode=cpu interval_us=10000 samples=29 dropped=0 wall=0.300003 user=0.171320 system=0.128559 min_gap=0.010275 max_gap=0.010396 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=ml
+0
+mode=cpu interval_us=1000 samples=343 dropped=0 wall=0.553820 user=0.538293 system=0.015149 min_gap=0.000992 max_gap=0.006799 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=gc
+mode=cpu interval_us=1000 samples=244 dropped=0 wall=0.344564 user=0.329002 system=0.015434 min_gap=0.000996 max_gap=0.006229 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=c
+mode=cpu interval_us=1000 samples=191 dropped=0 wall=0.300012 user=0.291528 system=0.008378 min_gap=0.000994 max_gap=0.006701 wrong_thread=0 zero_pc=0 backwards=0
+mlkit phase=sleep
+mode=cpu interval_us=1000 samples=0 dropped=0 wall=0.305037 user=0.000010 system=0.000015 min_gap=0.000000 max_gap=0.000000 wrong_thread=0 zero_pc=0 backwards=0

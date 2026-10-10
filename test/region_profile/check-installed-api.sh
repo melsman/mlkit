@@ -15,10 +15,14 @@ echo "Installed profiler API artifacts: $OUT"
 find "$SML_LIB/basis" "$SML_LIB/kitlib" -type f -exec cksum {} + | sort > "$OUT/before"
 cat > "$OUT/client.mlb" <<'MLB'
 $(SML_LIB)/kitlib/region-profile.mlb
+$(SML_LIB)/kitlib/time-profile.mlb
 $(SML_LIB)/basis/basis.mlb
 client.sml
 MLB
 cat > "$OUT/client.sml" <<'SML'
+val () = TimeProfile.start ()
+val () = TimeProfile.pause ()
+val () = TimeProfile.flush ()
 val () = RegionProfile.start ()
 val () = RegionProfile.mark "installed API"
 val () = RegionProfile.sample ()

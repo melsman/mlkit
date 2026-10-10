@@ -113,9 +113,26 @@ structure CodeGenUtilArm64 = struct
   fun function l = functionInto l []
   (* loadArgument(i,extraWords) puts argument i's raw bits in x16.
    * All inputs are staged before any ABI register is overwritten. *)
+  (* One aligned native-word store publishes origin and state together.
+   * Low two bits: 0 ML/runtime, 2 foreign origin, 3 GC. PCs are 4-aligned. *)
+  fun timeProfile () = Flags.is_on "region_profile" andalso not(Flags.is_on "parallelism")
+  fun timeRestoreInto offset code =
+    if not(timeProfile()) then code
+    else loadInto (SP,offset,X 17)
+      (addressInto (NameLab "mlkit_tp_context",X 16) (storeInto (X 17,X 16,0) code))
+  fun timeSaveInto offset origin code =
+    if not(timeProfile()) then code
+    else
+      addressInto (NameLab "mlkit_tp_context",X 16)
+        (loadInto (X 16,0,X 17) (storeInto (X 17,SP,offset)
+          (case origin of
+             NONE => constantInto (0,X 17) (storeInto (X 17,X 16,0) code)
+           | SOME pc => addressInto (pc,X 17)
+               (A.orr (R(X 17),R(X 17),I(2)) :: storeInto (X 17,X 16,0) code))))
   fun scalarCallInto {name,fixed,variadic,loadArgument,protectGC} code =
     let
       val {arguments,stackBytes} = AbiArm64.arguments{fixed = fixed,variadic = variadic}
+      val pc = LocalLab(AddressLabels.new_named "arm64_c_origin")
       val n = length arguments
       val bytes = stackBytes+16*((n+1) div 2)+16
       fun promoted (i,{source,passed,...}:AbiArm64.argument,code) =
@@ -141,11 +158,13 @@ structure CodeGenUtilArm64 = struct
         | AbiArm64.Stack{offset,bytes} =>
             loadInto (SP,stackBytes+8*i,X 16) (addOffsetInto (SP,offset,X 17)
               ((case bytes of 1 => A.strb | 2 => A.strh | _ => A.str) (if bytes<8 then R(W 16) else R(X 16),M(X 17,0)) :: code))
-      val code = stackInto (false,bytes) code
+      val code = timeRestoreInto (bytes-8) (stackInto (false,bytes) code)
       val code = if protectGC then loadInto (SP,bytes-16,X 17)
                    (addressInto (NameLab "disable_gc",X 16) (storeInto (X 17,X 16,0) code))
                  else code
-      val code = foldri place (A.bl (L(NameLab name)) :: code) arguments
+      val code = timeSaveInto (bytes-8) (SOME pc)
+        (Label pc :: A.bl (L(NameLab name)) :: code)
+      val code = foldri place code arguments
       val code = if protectGC then addressInto (NameLab "disable_gc",X 16)
                    (loadInto (X 16,0,X 17) (storeInto (X 17,SP,bytes-16)
                      (constantInto (1,X 17) (storeInto (X 17,X 16,0) code))))

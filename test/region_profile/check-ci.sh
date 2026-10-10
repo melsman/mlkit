@@ -35,6 +35,11 @@ run () {
 }
 run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
+if [ "$(uname -sm)" = 'Darwin arm64' ]; then
+  run time-attribution sh "$ROOT/test/time_profile/check-attribution.sh"
+  run time-recording sh "$ROOT/test/time_profile/check-recording.sh"
+  run code-metadata sh "$ROOT/test/time_profile/check-code-metadata.sh"
+fi
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
 run library-builds sh "$ROOT/test/region_profile/check-library-builds.sh"

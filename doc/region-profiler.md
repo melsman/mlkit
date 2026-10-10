@@ -164,6 +164,11 @@ the sampler's C frames, foreign-call frames, and unused OS stack capacity.
 The reader validates stack arithmetic, generation/page accounting and the
 required current metadata: source names, region kinds/types, page maxima, cache
 bytes and GC counts. Native frame maps use version 4.
+On macOS ARM64, new recordings also retain function code ranges and the
+executable's UUID/load address for offline interrupted-PC resolution. See
+[T2 function metadata](time-profiler/t2-function-metadata.md) for the metadata
+extension, `rpview --resolve-pc`, supported static-code scope, and unknown-PC
+handling. Experimental time sampling records raw PCs alongside this metadata.
 Binding definitions carry a session-local `definition` ID and the static
 `unit`, `binding`, `source`, `name`, `kind`, and `region_type` fields. Definitions
 are emitted once, immediately before the first snapshot that uses them; no
@@ -513,3 +518,9 @@ For site contributions within the recorded selected region, use
 `rpview sites.rp --sites -o sites.svg`. For an all-regions recording, select one
 region with `rpview sites.rp --region r163 -o r163-sites.svg`;
 see [site occupancy](allocation-profiler.md).
+
+Experimental time recording: [T3 recorder and runtime API](time-profiler/t3-recording.md).
+
+C/GC attribution: [T4 boundary state and interpretation](time-profiler/t4-attribution.md).
+
+Offline time reporting: [T5 report, estimates and time filtering](time-profiler/t5-report.md).
