@@ -50,3 +50,9 @@ const first=functionLocation({function:'exists10',unit:'u',ir_identity:'repeated
 const second=functionLocation({function:'exists11',unit:'u',ir_identity:'repeated'});
 assert(first&&second);assert(first.spans[0].start<second.spans[0].start);
 repeated.region_data[1].label='other11';assert.equal(functionLocation({function:'exists10',unit:'u',ir_identity:'repeated'}),null);
+
+timeSamples.splice(0,timeSamples.length,{time:timeLast/2n,thread:'0',stream:'0',attribution:{status:'function',...record}});
+timeStart=0;timeEnd=10000;timeReport();
+const functionLink=el('time-rows').querySelector('button');assert(functionLink);
+assert(functionLink.title.includes('Function: f'));assert(functionLink.title.includes('Source: s'));
+assert(functionLink.title.includes('Unit: u'));assert(functionLink.title.includes('IR identity: test-function'));
