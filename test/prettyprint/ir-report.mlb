@@ -8,6 +8,7 @@ report.sml
 ../../src/Common/IRLocations.sml
 ../../src/Tools/RegionProfile/Json.sml
 ../../src/Tools/RegionProfile/Binary.sml
+../../src/Tools/RegionProfile/Code.sml
 ../../src/Tools/RegionProfile/Reader.sml
 ../../src/Tools/RegionProfile/IR.sml
 ir-report.sml

@@ -556,7 +556,8 @@ void mlkit_rp_init(void) {
     if (getitimer(ITIMER_REAL, &old) || sigaction(SIGALRM, NULL, &previous_alarm))
       fail("cannot inspect sampling timer");
     if (old.it_value.tv_sec || old.it_value.tv_usec || previous_alarm.sa_handler != SIG_DFL)
-      fail("SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
+      fail(mlkit_tp_enabled ? "SIGALRM/ITIMER_REAL already in use; disable -tp or release the conflicting timer/handler"
+                           : "SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
     struct sigaction action = {0};
     if (mlkit_tp_enabled) tp_install_handler(&action);
     else action.sa_handler = request_sample;

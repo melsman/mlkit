@@ -524,3 +524,6 @@ Experimental time recording: [T3 recorder and runtime API](time-profiler/t3-reco
 C/GC attribution: [T4 boundary state and interpretation](time-profiler/t4-attribution.md).
 
 Offline time reporting: [T5 report, estimates and time filtering](time-profiler/t5-report.md).
+
+Single-thread measurements, uncertainty and timer ownership:
+[T6 measurement and hardening](time-profiler/t6-measurement.md).
