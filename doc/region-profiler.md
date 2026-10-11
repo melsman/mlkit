@@ -529,3 +529,5 @@ Single-thread measurements, uncertainty and timer ownership:
 [T6 measurement and hardening](time-profiler/t6-measurement.md).
 
 Ordinary-build sampling: [T6a runtime, buffers and passive attribution](time-profiler/t6a-ordinary-builds.md).
+
+Ordinary-build costs and accuracy: [T6b measurements](time-profiler/t6b-ordinary-measurement.md).

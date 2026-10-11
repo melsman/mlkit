@@ -62,7 +62,7 @@ that ML function. GC helper functions outside the shared GC bridge/main GC
 function receive their own C rows in ordinary builds.
 
 Profiled builds retain their existing optional C-origin/GC state recording.
-That instrumentation is not required for ordinary sampling. T6b will measure
+That instrumentation is not required for ordinary sampling. [T6b measures](t6b-ordinary-measurement.md)
 this simpler design, and T6c will evaluate optional detailed attribution.
 
 ## Validation

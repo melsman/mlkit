@@ -1,5 +1,9 @@
 # T6: single-thread measurement and hardening
 
+These measurements describe the earlier profiled-build, double-buffer prototype.
+T6a supersedes that recorder/build design; see the
+[T6b ordinary-build measurements](t6b-ordinary-measurement.md) for current costs.
+
 This milestone evaluates the experimental static, single-thread macOS ARM64 wall
 sampler. It does not add CPU timers, parallel delivery or dynamic REPL images.
 
