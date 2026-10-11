@@ -1043,6 +1043,9 @@ void resetGen(Gen *gen)
   return;
 }
 
+/* Passive time-profile identity, retained when optional symbols are stripped. */
+const volatile uintptr_t mlkit_tp_reset_address = (uintptr_t)resetRegion;
+
 Region
 resetRegion(Region rAdr)
 {

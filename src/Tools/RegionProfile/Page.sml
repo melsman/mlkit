@@ -13,9 +13,19 @@ struct
                 val state = ProfileJson.uint r "state"
                 fun category name = ProfileJson.Obj[("status",ProfileJson.Str name)]
                 val raw = resolve {pc=ProfileJson.uint r "pc",buildId=NONE}
+                val runtime = ProfileJson.find raw "source" = SOME(ProfileJson.Str "<runtime>")
+                val function = case ProfileJson.find raw "function" of
+                                 SOME(ProfileJson.Str name) => name | _ => ""
+                val shared = if String.isPrefix "<gc-stub>" function orelse runtime andalso function = "gc" then SOME "gc"
+                             else if runtime andalso List.exists (fn name => name = function)
+                               ["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_alloc"] then SOME "allocation"
+                             else if runtime andalso List.exists (fn name => name = function)
+                               ["mlkit_arm64_reset_preserving","mlkit_arm64_reset","resetRegion","resetRegionProf"] then SOME "reset"
+                             else NONE
                 val attribution =
                     if state = 1 then category "recorder"
                     else if state = 3 then category "gc"
+                    else if Option.isSome shared then category(valOf shared)
                     else if ProfileJson.find raw "status" = SOME(ProfileJson.Str "function") then raw
                     else if state = 2 then resolve {pc=ProfileJson.uint r "origin_pc",buildId=NONE}
                     else raw

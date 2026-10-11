@@ -1366,6 +1366,9 @@ static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
 
 #endif
 
+/* Passive entry identity; no sampling bookkeeping in ordinary GC code. */
+const volatile uintptr_t mlkit_tp_gc_address = (uintptr_t)gc;
+
 void
 gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {

@@ -1,6 +1,7 @@
-/* T3: single-thread macOS ARM64 recorder. Included after the wire encoder.
+/* Single-thread macOS ARM64 recorder. Included after the wire encoder.
  * Only tp_signal executes asynchronously. No metadata lookup, allocation,
- * locks, stack walking or I/O occurs there. All signal-visible mutable objects
+ * locks, stack walking or I/O occurs there. Explicit drains block delivery
+ * while reusing the single buffer. All signal-visible mutable objects
  * are always-lock-free atomics. Buffers remain allocated until process exit. */
 __attribute__((weak)) const volatile uintptr_t mlkit_tp_attribution_capable = 0;
 _Atomic uintptr_t mlkit_tp_context;
@@ -8,7 +9,7 @@ uintptr_t mlkit_tp_gc_enter(void) { return atomic_exchange_explicit(&mlkit_tp_co
 void mlkit_tp_gc_leave(uintptr_t saved) { atomic_store_explicit(&mlkit_tp_context,saved,memory_order_relaxed); }
 int mlkit_tp_enabled, mlkit_tp_initially_paused;
 uint64_t mlkit_tp_interval_us = 1000;
-size_t mlkit_tp_capacity = 4096;
+size_t mlkit_tp_capacity = 65536;
 int mlkit_tp_parse_interval(const char *s) {
   if (*s < '0' || *s > '9') return 0;
   errno = 0;
@@ -28,8 +29,8 @@ typedef struct TimeRecord {
   _Atomic unsigned state;
   _Atomic uintptr_t origin_pc;
 } TimeRecord;
-static TimeRecord *tp_buffers[2];
-static _Atomic unsigned tp_count[2], tp_buffer, tp_active, tp_recorder;
+static TimeRecord *tp_buffer_records;
+static _Atomic unsigned tp_count, tp_active, tp_recorder;
 static _Atomic unsigned tp_region_active, tp_region_pending;
 static _Atomic uint64_t tp_due, tp_region_due, tp_dropped, tp_routing_dropped;
 static uint64_t tp_origin, tp_interval_ticks, tp_region_ticks, tp_written, tp_alarm_us;
@@ -76,10 +77,9 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
       now >= atomic_load_explicit(&tp_due,memory_order_relaxed)) {
     uint64_t due = atomic_load_explicit(&tp_due,memory_order_relaxed);
     atomic_store_explicit(&tp_due,due+((now-due)/tp_interval_ticks+1)*tp_interval_ticks,memory_order_relaxed);
-    unsigned b = atomic_load_explicit(&tp_buffer,memory_order_relaxed);
-    unsigned n = atomic_load_explicit(&tp_count[b],memory_order_relaxed);
+    unsigned n = atomic_load_explicit(&tp_count,memory_order_relaxed);
     if (n < mlkit_tp_capacity) {
-      TimeRecord *record = &tp_buffers[b][n];
+      TimeRecord *record = &tp_buffer_records[n];
       atomic_store_explicit(&record->pc,
         (uintptr_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss),memory_order_relaxed);
       atomic_store_explicit(&record->tick,now,memory_order_relaxed);
@@ -87,9 +87,8 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
       unsigned state = atomic_load_explicit(&tp_recorder,memory_order_relaxed) ? 1 : attribution & 3;
       atomic_store_explicit(&record->state,state,memory_order_relaxed);
       atomic_store_explicit(&record->origin_pc,state == 2 ? attribution & ~(uintptr_t)3 : 0,memory_order_relaxed);
-      atomic_store_explicit(&tp_count[b],n+1,memory_order_release);
+      atomic_store_explicit(&tp_count,n+1,memory_order_release);
     } else tp_loss(&tp_dropped);
-    if (n+1 >= mlkit_tp_capacity/2) atomic_store_explicit(&mlkit_rp_pending,1,memory_order_relaxed);
   }
   if (atomic_load_explicit(&tp_region_pending,memory_order_relaxed))
     atomic_store_explicit(&mlkit_rp_pending,1,memory_order_relaxed);
@@ -113,10 +112,7 @@ static void tp_alarm(void) {
   tp_alarm_us = interval;
 }
 static void tp_prepare(void) {
-  if (mlkit_tp_attribution_capable != 2) fail("recompile time profiling code with the T4 compiler");
-  if (mlkit_rp_code_scope != 1) fail("time sampling requires a static executable with T2 metadata");
-  for (size_t i = 0; mlkit_rp_code_units[i]; i++)
-    if (mlkit_rp_code_units[i]->version != 2) fail("rebuild all ML libraries for time attribution");
+  if (mlkit_rp_code_scope != 1) fail("time sampling requires a static executable with function metadata");
   if (mlkit_tp_capacity < 2 || mlkit_tp_capacity > 1048576) fail("time buffer capacity must be 2..1048576");
   sigemptyset(&tp_mask); sigaddset(&tp_mask,SIGALRM);
   sigset_t current;
@@ -129,15 +125,15 @@ static void tp_prepare(void) {
   tp_region_ticks = tp_ticks(mlkit_rp_interval_us);
   tp_stack_high = (uintptr_t)pthread_get_stackaddr_np(pthread_self());
   tp_stack_low = tp_stack_high-pthread_get_stacksize_np(pthread_self());
-  for (unsigned b = 0; b < 2; b++) {
-    tp_buffers[b] = calloc(mlkit_tp_capacity,sizeof(TimeRecord));
-    if (!tp_buffers[b]) fail("cannot allocate time sample buffer");
+  {
+    tp_buffer_records = calloc(mlkit_tp_capacity,sizeof(TimeRecord));
+    if (!tp_buffer_records) fail("cannot allocate time sample buffer");
     /* Touch every page and initialize atomics outside signal context. */
     for (size_t i = 0; i < mlkit_tp_capacity; i++) {
-      atomic_init(&tp_buffers[b][i].pc,0);
-      atomic_init(&tp_buffers[b][i].tick,0);
-      atomic_init(&tp_buffers[b][i].state,0);
-      atomic_init(&tp_buffers[b][i].origin_pc,0);
+      atomic_init(&tp_buffer_records[i].pc,0);
+      atomic_init(&tp_buffer_records[i].tick,0);
+      atomic_init(&tp_buffer_records[i].state,0);
+      atomic_init(&tp_buffer_records[i].origin_pc,0);
     }
   }
 }
@@ -154,6 +150,7 @@ static void tp_install_handler(struct sigaction *action) {
   action->sa_sigaction = tp_signal;
   action->sa_flags = SA_SIGINFO | SA_RESTART;
 }
+#ifdef PROFILING
 static void tp_set_region(int running) {
   if (!mlkit_tp_enabled) return;
   sigset_t previous;
@@ -166,26 +163,26 @@ static void tp_set_region(int running) {
   tp_alarm();
   tp_unblock(&previous);
 }
+#endif
 static void tp_drain(void) {
   if (!mlkit_tp_enabled || !output || tp_draining) return;
   tp_draining = 1;
-  atomic_store(&tp_recorder,1);
   sigset_t previous;
   tp_block(&previous);
-  unsigned b = atomic_load(&tp_buffer);
-  unsigned count = atomic_load_explicit(&tp_count[b],memory_order_acquire);
-  atomic_store(&tp_count[b^1],0);
-  atomic_store(&tp_buffer,b^1);
-  tp_unblock(&previous);
+  atomic_store(&tp_recorder,1);
+  unsigned count = atomic_load_explicit(&tp_count,memory_order_acquire);
   for (unsigned i = 0; i < count; i++) {
-    TimeRecord *r = &tp_buffers[b][i];
+    TimeRecord *r = &tp_buffer_records[i];
     emit_record(24,NUMS(++tp_written,tp_ns(atomic_load(&r->tick)),atomic_load(&r->pc),
                         0,0,atomic_load(&r->state),atomic_load(&r->origin_pc)),NO_STRINGS);
   }
-  if (count) tp_status(0);
+  atomic_store(&tp_count,0);
   atomic_store(&tp_recorder,0);
+  tp_unblock(&previous);
+  if (count) tp_status(0);
   tp_draining = 0;
 }
+#ifdef PROFILING
 static int tp_region_request(Context ctx) {
   sigset_t previous;
   tp_block(&previous);
@@ -195,6 +192,7 @@ static int tp_region_request(Context ctx) {
   tp_unblock(&previous);
   return requested;
 }
+#endif
 static void tp_shutdown(void) {
   if (!mlkit_tp_enabled || tp_closed) return;
   sigset_t previous;
@@ -229,11 +227,13 @@ uintptr_t mlkit_tp_flush(void) {
 static void tp_prepare(void) { fail("time sampling supports only single-thread macOS ARM64"); }
 static void tp_begin(void) {}
 static void tp_install_handler(struct sigaction *action) { (void)action; }
+#ifdef PROFILING
 static void tp_set_region(int running) { (void)running; }
-static void tp_drain(void) {}
 static int tp_region_request(Context ctx) { (void)ctx; return 0; }
+#endif
+static void tp_drain(void) {}
 static void tp_shutdown(void) {}
 uintptr_t mlkit_tp_start(void) { return 1; }
 uintptr_t mlkit_tp_pause(void) { return 1; }
-uintptr_t mlkit_tp_flush(void) { return 1; }
+uintptr_t mlkit_tp_flush(void) { tp_drain(); return 1; }
 #endif

@@ -1,5 +1,8 @@
 # T4: C origins and GC state
 
+This instrumentation remains specific to region-profiled builds. Ordinary-build
+sampling uses [T6a passive ranges and runtime self-time](t6a-ordinary-builds.md).
+
 The macOS ARM64 profiler publishes attribution at ML/C boundaries rather than
 at every ML function entry. Profiled single-thread code saves the previous
 attribution word in its C-call workspace and publishes the address of its C-call

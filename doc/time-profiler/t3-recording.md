@@ -1,5 +1,8 @@
 # T3: buffered interrupted-PC recording
 
+This documents the T3 prototype. [T6a](t6a-ordinary-builds.md) supersedes its
+profiled-build requirement, double buffers and automatic safe-point draining.
+
 Issue [#241](https://github.com/melsman/mlkit/issues/241). This experimental
 recorder supports static, single-thread macOS ARM64 executables. Compile with
 `mlkit -no_par -rp`; run with `+RTS -tp`. Add runtime `-rp` to also collect region

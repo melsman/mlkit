@@ -30,8 +30,8 @@ for (const mode of ['gc', 'no_gc']) {
 }
 
 const slow = fs.readFileSync(`${dir}/slow.json`, 'utf8').trim().split('\n').map(JSON.parse);
-assert(slow.some(r => r.type === 'time_sample' && r.state === 1), 'no samples during drain');
-assert(slow.filter(r => r.type === 'time_status').at(-1).dropped > 0, 'slow output loss invisible');
+assert(slow.some(r => r.type === 'time_sample'), 'slow output lost buffered samples');
+assert(!slow.some(r => r.type === 'time_sample' && r.state === 1), 'delivery was not masked during drain');
 // Mutate independently parsed wire fields; malformed lifecycle must be rejected.
 const cp = require('child_process');
 const original = fs.readFileSync(`${dir}/gc-normal.rp`);

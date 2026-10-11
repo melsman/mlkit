@@ -16,7 +16,8 @@ function metadata(name) {
   assert(functions.some(f => f.source.endsWith('workload.sml')));
   assert(functions.some(f => f.source.endsWith('Initial.sml')), 'linked Basis metadata missing');
   assert(functions.some(f => f.source.endsWith('List.sml')), 'linked List metadata missing');
-  assert(functions.every(f => f.ir_identity.length > 0 && f.unit.length > 0));
+  assert(functions.every(f => f.unit.length > 0));
+  assert(functions.filter(f => f.source !== "<runtime>").every(f => f.ir_identity.length > 0));
   return {image, functions};
 }
 for (const mode of ['gc', 'no_gc']) {
@@ -54,7 +55,7 @@ for (const mode of ['gc', 'no_gc']) {
   const cPCs = fs.readFileSync(`${out}/${mode}-c.pcs`, 'utf8').trim().split('\n').map(line => line.split(' '));
   const cPC = cPCs.find(parts => parts[4] === 'tp_busy');
   assert(cPC, 'no foreign-C sample');
-  assert.equal(resolve(`${mode}-c`, BigInt(cPC[1]), c.image.build_id).status, 'unknown-pc');
+  assert.equal(resolve(`${mode}-c`, BigInt(cPC[1]), c.image.build_id).function, 'tp_busy');
   const other = metadata(`${mode}-other`);
   assert.notEqual(other.image.build_id, a.image.build_id);
   assert.equal(resolve(`${mode}-first`, BigInt(a.image.load_address)+BigInt(loop.start),
@@ -64,7 +65,7 @@ const gc = metadata('gc-allocation');
 const gcPCs = fs.readFileSync(`${out}/gc-allocation.pcs`, 'utf8').trim().split('\n').map(line => line.split(' '));
 const gcPC = gcPCs.find(parts => ['gc', 'evacuate', 'allocGen'].includes(parts[4]));
 assert(gcPC, 'no interrupted GC PC');
-assert.equal(resolve('gc-allocation', BigInt(gcPC[1]), gc.image.build_id).status, 'unknown-pc');
+assert.equal(resolve('gc-allocation', BigInt(gcPC[1]), gc.image.build_id).function, gcPC[4]);
 const repl = rows('repl');
 assert.equal(repl.find(r => r.type === 'code_metadata').scope, 'unsupported-repl');
 assert(!repl.some(r => r.type === 'code_image' || r.type === 'code_function'));
@@ -72,4 +73,4 @@ assert.equal(resolve('repl', 0n, gc.image.build_id).status, 'metadata-unavailabl
 const unbound = cp.spawnSync(viewer, [`${out}/gc-first.rp`, '--resolve-pc', '0'], {encoding: 'utf8'});
 assert.notEqual(unbound.status, 0);
 assert.match(unbound.stderr, /requires --image-build/);
-console.log('Native/Basis ranges, tail recursion, captured PCs, ASLR, C/GC unknowns, REPL and build mismatches passed');
+console.log('Native/Basis ranges, tail recursion, captured PCs, ASLR, named C/GC ranges, REPL and build mismatches passed');

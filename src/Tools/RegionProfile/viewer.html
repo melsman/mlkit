@@ -120,7 +120,7 @@ function controlHint(id,title,contents){
 }
 function setupHints(){
  const notes=[...document.querySelectorAll('p.note')].filter(p=>!p.id);
- if(hasTime)infoHint(el('time-heading'),'Sampled time',[el('time-note'),el('time-status'),'Select a function to inspect matching IR when available. Categories such as GC and unresolved samples have no function code.']);
+ if(hasTime)infoHint(el('time-heading'),'Sampled time',[el('time-note'),el('time-status'),'Select a function to inspect matching IR when available. Named runtime/C functions show self-time. Shared GC, Allocation and Reset categories have no function IR. Inline allocation/reset code stays with its ML function. Explicit buffer draining blocks sample delivery; slow output increases this observation gap.']);
  infoHint(el('profile-heading'),'Region profile',[notes[0],el('gc-note')]).className+=' region-only';
  controlHint('scope','View',['Filter the graph and tables by lifetime owner, execution stream, or CPU (OS logical processor at the safe point). Shared and persistent regions follow lifetime ownership.',el('execution-stream-note')]);
  controlHint('metric','Metric',[hasTime?'Time profile shows sampled function contributions. Memory metrics show recorded region snapshots. Switching views preserves the selected time window.':'Choose the region memory metric to display.',notes[1],el('stack-note')]);
@@ -153,11 +153,11 @@ function timeReport(){
  const groups=new Map();
  for(const s of selected){const a=s.attribution||{status:'metadata-unavailable'},key=a.status==='function'?JSON.stringify([a.unit,a.function]):a.status;
   if(!groups.has(key))groups.set(key,{a,count:0});groups.get(key).count++;}
- const labels={'gc':'Garbage collection','recorder':'Recorder drain','unknown-pc':'Unresolved PC / runtime','metadata-unavailable':'Code metadata unavailable','build-mismatch':'Image build mismatch'};
+ const labels={'gc':'GC','allocation':'Allocation','reset':'Reset','recorder':'Recorder drain','unknown-pc':'Unresolved PC / runtime','metadata-unavailable':'Code metadata unavailable','build-mismatch':'Image build mismatch'};
  el('time-rows').replaceChildren();
  for(const {a,count} of [...groups.values()].sort((a,b)=>b.count-a.count)){
-  const row=document.createElement('tr'),label=document.createElement('td');if(a.status==='function'){const location=functionLocation(a);if(location){const button=document.createElement('button');button.className='ir-site-button';button.textContent=irName(a);button.title='Show function in IR\nFunction: '+a.function+'\nSource: '+a.source+'\nUnit: '+a.unit+'\nIR identity: '+a.ir_identity;button.addEventListener('click',()=>{el('time-code').append(el('ir-panel'));showIR({...a,time_function:true},button);});label.append(button);}else{label.textContent=irName(a);label.title='Matching function IR is unavailable for this build.';}}else label.textContent=labels[a.status]||a.status;
-  if(a.status==='function')label.title='Unit: '+a.unit+' · IR: '+a.ir_identity;row.append(label);
+  const row=document.createElement('tr'),label=document.createElement('td');if(a.status==='function'){const location=functionLocation(a);if(location){const button=document.createElement('button');button.className='ir-site-button';button.textContent=irName(a);button.title='Show function in IR\nFunction: '+a.function+'\nSource: '+a.source+'\nUnit: '+a.unit+'\nIR identity: '+a.ir_identity;button.addEventListener('click',()=>{el('time-code').append(el('ir-panel'));showIR({...a,time_function:true},button);});label.append(button);}else{label.textContent=a.source==='<runtime>'?a.function:irName(a);label.title='Function: '+a.function+'\nSource: '+a.source+'\nUnit: '+a.unit+'\nMatching function IR is unavailable for this build.';}}else{label.textContent=labels[a.status]||a.status;label.title={gc:'Samples inside shared GC code.',allocation:'Samples inside shared allocation code; inline allocation stays with its ML function.',reset:'Samples inside shared reset code; inline reset stays with its ML function.'}[a.status]||'';}
+  if(a.status==='function')label.title='Function: '+a.function+'\nSource: '+a.source+'\nUnit: '+a.unit+' · IR: '+a.ir_identity;row.append(label);
   const share=document.createElement('td'),bar=document.createElement('div'),percent=100*count/selected.length;
   bar.style.width=percent+'%';bar.style.height='12px';bar.style.background='#2563eb';bar.style.minWidth='1px';share.append(bar,percent.toFixed(2)+'%');row.append(share);
   for(const value of [count.toLocaleString(),timeText(BigInt(count)*BigInt(timeSession.interval_ns))]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}el('time-rows').append(row);

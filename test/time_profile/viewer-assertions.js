@@ -19,7 +19,7 @@ assert.equal(el('time-rows').children.length,3);
 assert(el('time-rows').textContent.includes('33.33%'));
 timeStart=4000;timeEnd=6000;draw();
 assert.equal(el('time-rows').children.length,1);
-assert(el('time-rows').textContent.includes('Garbage collection'));
+assert(el('time-rows').textContent.includes('GC'));
 assert(el('time-rows').textContent.includes('100.00%'));
 assert(visibleSamples().every(inTime));
 timeStart=9000;timeEnd=9500;draw();
@@ -56,3 +56,10 @@ timeStart=0;timeEnd=10000;timeReport();
 const functionLink=el('time-rows').querySelector('button');assert(functionLink);
 assert(functionLink.title.includes('Function: f'));assert(functionLink.title.includes('Source: s'));
 assert(functionLink.title.includes('Unit: u'));assert(functionLink.title.includes('IR identity: test-function'));
+
+// Shared runtime categories and named C functions retain distinct rows/tooltips.
+timeSamples.splice(0,timeSamples.length,...['allocation','reset'].map(status=>({time:timeLast/2n,thread:'0',stream:'0',attribution:{status}})),
+ {time:timeLast/2n,thread:'0',stream:'0',attribution:{status:'function',unit:'<runtime/C>@100',function:'reset_helper',source:'<runtime>',ir_identity:''}});
+timeReport();assert(el('time-rows').textContent.includes('Allocation'));assert(el('time-rows').textContent.includes('Reset'));assert(el('time-rows').textContent.includes('reset_helper'));
+assert(el('time-rows').children[0].children[0].title.includes('inline allocation'));
+assert(el('time-rows').children[2].children[0].title.includes('Function: reset_helper'));

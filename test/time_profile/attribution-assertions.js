@@ -18,7 +18,12 @@ for (const mode of ['gc', 'no_gc']) {
   const callbackML = samples.filter(s => resolve(s.pc)?.function.includes('compute__noinline') &&
     s.time > outer[0].time && s.time < outer.at(-1).time);
   assert(callbackML.length > 0, 'no ML samples inside callback extent');
-  assert(callbackML.every(s => s.state === 0), 'callback ML retained enclosing C state');
+  // A signal can interrupt the ML continuation before it restores the token
+  // following its own C helper call. That token must belong to this callback,
+  // rather than the enclosing outer C call. Raw ML resolution wins there.
+  assert(callbackML.every(s => s.state === 0 ||
+    (s.state === 2 && resolve(s.origin_pc)?.function.includes('compute__noinline'))),
+    'callback ML retained enclosing C state');
   assert(samples.filter(s => s.state !== 2).every(s => s.origin_pc === 0));
   if (mode === 'gc') assert(samples.some(s => s.state === 3), 'no GC samples');
   else assert(!samples.some(s => s.state === 3), 'GC samples in non-GC runtime');

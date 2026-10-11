@@ -22,8 +22,8 @@ extern uint64_t mlkit_rp_interval_entries;
 extern int mlkit_rp_report;
 extern int mlkit_rp_gc_samples;
 extern int mlkit_rp_gc_major;
-/* T3 wall-time recording uses the profiled runtime and existing safe-point
- * polls, independently of whether region snapshots were enabled at startup. */
+/* Dormant time recording is available in existing runtime variants. Buffers
+ * drain at explicit flush/lifecycle operations and normal process shutdown. */
 extern int mlkit_tp_enabled, mlkit_tp_initially_paused;
 extern uint64_t mlkit_tp_interval_us;
 extern size_t mlkit_tp_capacity;

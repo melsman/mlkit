@@ -231,9 +231,7 @@ structure ExecutionArm64 : EXECUTION =
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val irTree = if region_profile() then
-                             SOME (PhysSizeInf.layout_pgm_with_locations target)
-                           else NONE
+              val irTree = SOME (PhysSizeInf.layout_pgm_with_locations target)
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
               val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
@@ -310,7 +308,7 @@ structure ExecutionArm64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.s"
           val mapObject = run ^ ".ir-map.o"
-          val hasMap = region_profile()
+          val hasMap = true
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap {darwin = onmac_p()} files);
              assemble (mapFile,mapObject)) else ()

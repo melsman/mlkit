@@ -32,14 +32,14 @@ for mode in gc no_gc; do
     fi
   done
 done
-for config in plain parallel; do
+for config in parallel; do
   case $config in plain) set -- -no_par;; parallel) set -- -par -rp;; esac
   "$MLKIT" -no_gc "$@" -libdirs "$OUT" -libs recording,m,c,dl -o "$OUT/$config" "$OUT/recording.mlb" > "$OUT/$config-build.log" 2>&1
   if "$OUT/$config" +RTS -tp > "$OUT/$config-rejected.log" 2>&1; then
     echo "Time sampling unexpectedly accepted $config" >&2; exit 1
   fi
 done
-# A slow consumer forces signals during serialization; handler writes the other buffer.
+# A slow consumer verifies that explicit single-buffer draining masks delivery.
 ${CC:-cc} -O2 -Wall -Wextra -Werror -DTP_SLOW_READER "$ROOT/test/time_profile/recording.c" -o "$OUT/slow-reader"
 mkfifo "$OUT/pipe"
 "$OUT/slow-reader" < "$OUT/pipe" > "$OUT/slow.rp" &

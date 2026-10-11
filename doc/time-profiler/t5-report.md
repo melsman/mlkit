@@ -1,5 +1,8 @@
 # T5: offline sampled-time report
 
+[T6a](t6a-ordinary-builds.md) adds ordinary-build reports, named runtime/C
+self-time and shared Allocation/Reset categories alongside GC.
+
 `rpview recording.rp -o report.html` embeds all code metadata, resolved sample
 attribution and report logic in one standalone HTML file. No server or external
 resources are required. Time-only recordings are supported.

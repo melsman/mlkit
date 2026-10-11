@@ -527,3 +527,5 @@ Offline time reporting: [T5 report, estimates and time filtering](time-profiler/
 
 Single-thread measurements, uncertainty and timer ownership:
 [T6 measurement and hardening](time-profiler/t6-measurement.md).
+
+Ordinary-build sampling: [T6a runtime, buffers and passive attribution](time-profiler/t6a-ordinary-builds.md).
