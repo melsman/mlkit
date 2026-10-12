@@ -784,8 +784,13 @@ function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:1
 function draw(){
  const timeView=hasTime&&el('metric').value==='time';document.body.className=timeView?'time-view':'';for(const node of document.querySelectorAll('.region-only'))node.hidden=timeView;for(const id of ['scope','group','limit','show-type','show-peak']){el(id).disabled=timeView;el(id).closest('label').hidden=timeView;}
  if(!timeView&&el('ir-panel').parentElement===el('time-code')){document.querySelector('.ir-column').append(el('ir-panel'));el('ir-panel').hidden=true;}
- if(timeView)el('time-table-scroll').after(el('profile-range'));
- else document.querySelector('.graph-actions').before(el('profile-range'));
+ // Moving a native range input during its input event interrupts dragging.
+ // Relocate the shared slider only when switching between view containers.
+ const rangeParent=timeView?el('time-section'):el('graph-layout');
+ if(el('profile-range').parentElement!==rangeParent){
+  if(timeView)el('time-table-scroll').after(el('profile-range'));
+  else document.querySelector('.graph-actions').before(el('profile-range'));
+ }
  rangeControls();timeReport();graphNavigation();
  if(timeView){el('export-svg').disabled=true;return;}
  const sites=siteGraph();

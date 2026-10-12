@@ -1,5 +1,12 @@
 assert(hasTime);
 el('metric').value='time';draw();
+// Redrawing during native range input must not detach the active slider.
+const tableScroll=el('time-table-scroll'),originalAfter=tableScroll.after;
+let sliderMoves=0;tableScroll.after=function(...nodes){sliderMoves++;return originalAfter.apply(this,nodes);};
+el('range-start').value=1000;narrowSnapshots('start');
+el('range-start').value=2000;narrowSnapshots('start');
+assert.equal(sliderMoves,0);assert.equal(timeStart,2000);
+tableScroll.after=originalAfter;resetSnapshotRange();
 for(const sample of timeSamples){
  assert(sample.attribution,'Offline attribution is embedded');
  if(String(sample.state)==='1')assert.equal(sample.attribution.status,'recorder');
