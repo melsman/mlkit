@@ -16,12 +16,12 @@ if(scenario!=='overflow'){for(const group of [starts.slice(1,5),starts.slice(5)]
 console.log('PASS: registered lifetimes, targeted worker delivery, per-stream chronology, counts and loss');
 // Version-3 streams cannot silently accept unknown IDs or ended/duplicate lifetimes.
 if(scenario==='normal') {
- const cp=require('child_process'),rpview=process.env.RPVIEW||require('path').resolve(__dirname,'../../bin/rpview');
+ const cp=require('child_process'),pview=process.env.PVIEW||require('path').resolve(__dirname,'../../bin/pview');
  const file=process.argv[2].replace(/\.json$/,'.rp'),original=fs.readFileSync(file),frames=[];
  for(let offset=8;offset<original.length;){const size=original.readUInt32LE(offset);frames.push({offset,size,tag:original[offset+4]});offset+=size+4;}
  const sample=frames.find(f=>f.tag===24),start=frames.find(f=>f.tag===26),end=frames.filter(f=>f.tag===26).at(-1);
  for(const [name,frame,field,value] of [['thread',sample,3,999n],['stream',sample,4,99n],['timestamp',sample,1,0n],['state',sample,5,3n],['end-count',end,3,0n],['start-count',start,3,1n]]) {
-  const bytes=Buffer.from(original);bytes.writeBigUInt64LE(value,frame.offset+5+field*8);const mutated=file+'-'+name;fs.writeFileSync(mutated,bytes);assert.notEqual(cp.spawnSync(rpview,[mutated,'--format','json'],{stdio:'ignore'}).status,0,name);
+  const bytes=Buffer.from(original);bytes.writeBigUInt64LE(value,frame.offset+5+field*8);const mutated=file+'-'+name;fs.writeFileSync(mutated,bytes);assert.notEqual(cp.spawnSync(pview,[mutated,'--format','json'],{stdio:'ignore'}).status,0,name);
  }
  console.log('PASS: malformed parallel identities, chronology, attribution and lifecycle rejected');
 }

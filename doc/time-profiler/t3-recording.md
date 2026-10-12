@@ -19,7 +19,7 @@ Runtime options:
 | `-tp_interval 1ms` | Requested interval, integer `us`, `ms`, or `s`, 1us–1s |
 | `-tp_buffer 4096` | Capacity of each of two buffers, 2–1048576 records |
 | `-tp_paused` | Start paused |
-| `-tp_file PATH` | Shared time/region output file, default `profile.rp` |
+| `-p_file PATH` | Shared time/region output file, default `profile.prof` |
 
 Import `$(SML_LIB)/kitlib/time-profile.mlb` for `TimeProfile.start`, `pause`, and
 `flush`, each `unit -> unit`. These operations are harmless when time recording
@@ -75,7 +75,7 @@ Unknown PCs remain raw observations and can be resolved with T2 metadata;
 C/GC raw PCs remain outside ML function ranges; version-2 T4 records add
 origin/category information.
 
-`rpview --format json` exports these records. The reader validates lifecycle,
+`pview --format json` exports these records. The reader validates lifecycle,
 sequence, timestamps, identities, counts and loss counters. A completed stream
 requires a final inactive status. Existing readers without these additive tags
 must be upgraded. Time report UI and aggregation remain T5 work.

@@ -234,7 +234,7 @@ self-hosting and comparison steps; they do not select the initial SML seed.
 The installation check defaults to `stage/darwin-arm64`. It copies verified
 ARM binaries and runtime archives and rebuilds Basis caches using the installed
 compiler. Set `SML_LIB` to the installed prefix when using that compiler.
-The tools include `kittester`, `rpview`, `mlkit-mllex`, and `mlkit-mlyacc`.
+The tools include `kittester`, `pview`, `mlkit-mllex`, and `mlkit-mlyacc`.
 Installation checks generate, compile, and run a calculator parser with the
 installed generators and parser library. `install_src` also packages the
 backend, generator sources, and regression fixtures.

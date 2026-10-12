@@ -73,7 +73,7 @@ static uint64_t capture_ns, total_pages, max_delay_ns, next_due_ns;
 static uint64_t traversal_ns, serialization_ns, wait_ns, cpu_ns, total_frames, coalesced, skipped, peak_bytes;
 static int timer_installed;
 int mlkit_rp_initially_paused;
-const char *mlkit_rp_filename = "profile.rp";
+const char *mlkit_p_filename = "profile.prof";
 static FILE *output;
 static int active;
 static uint64_t sequence, request_time, sample_wait;
@@ -427,7 +427,7 @@ void mlkit_rp_init(void) {
     mlkit_rp_allocation_enabled = 1;
   }
   mlkit_rp_allocation_enabled = !time_only && mlkit_rp_allocation_capable != 0;
-  output = fopen(mlkit_rp_filename, "wb");
+  output = fopen(mlkit_p_filename, "wb");
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
   active = !time_only && !mlkit_rp_initially_paused;

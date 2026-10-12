@@ -6,7 +6,7 @@ OUT=${OUT:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-recording.XXXXXX")}
 mkdir -p "$OUT"
 echo "Time recording artifacts: $OUT"
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 export SML_LIB=${SML_LIB:-$ROOT}
 ${CC:-cc} -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/recording.c" -o "$OUT/recording.o"
 ar rcs "$OUT/librecording.a" "$OUT/recording.o"
@@ -26,8 +26,8 @@ for mode in gc no_gc; do
       passive-overflow) set -- -tp_attribution passive -tp_buffer 4;;
       passive-combined) set -- -tp_attribution passive -rp -rp_interval 20ms;;
     esac
-    "$OUT/$mode" +RTS -tp -tp_paused -tp_file "$OUT/$mode-$scenario.rp" "$@" > "$OUT/$mode-$scenario.log" 2>&1
-    "$RPVIEW" "$OUT/$mode-$scenario.rp" --format json -o "$OUT/$mode-$scenario.json" > /dev/null
+    "$OUT/$mode" +RTS -tp -tp_paused -p_file "$OUT/$mode-$scenario.rp" "$@" > "$OUT/$mode-$scenario.log" 2>&1
+    "$PVIEW" "$OUT/$mode-$scenario.rp" --format json -o "$OUT/$mode-$scenario.json" > /dev/null
   done
   for args in '-tp_clock cpu -tp' '-tp_buffer 1 -tp' '-tp_interval 0ms -tp' '-tp_interval 2s -tp' '-tp_buffer 4'; do
     if "$OUT/$mode" +RTS $args > "$OUT/rejected.log" 2>&1; then
@@ -47,10 +47,10 @@ ${CC:-cc} -O2 -Wall -Wextra -Werror -DTP_SLOW_READER "$ROOT/test/time_profile/re
 mkfifo "$OUT/pipe"
 "$OUT/slow-reader" < "$OUT/pipe" > "$OUT/slow.rp" &
 reader=$!
-"$OUT/gc" slow +RTS -tp -tp_interval 1ms -tp_buffer 1024 -tp_file "$OUT/pipe" > "$OUT/slow.log" 2>&1
+"$OUT/gc" slow +RTS -tp -tp_interval 1ms -tp_buffer 1024 -p_file "$OUT/pipe" > "$OUT/slow.log" 2>&1
 wait "$reader"
-"$RPVIEW" "$OUT/slow.rp" --format json -o "$OUT/slow.json" > /dev/null
-node "$ROOT/test/time_profile/recording-assertions.js" "$OUT" "$RPVIEW"
+"$PVIEW" "$OUT/slow.rp" --format json -o "$OUT/slow.json" > /dev/null
+node "$ROOT/test/time_profile/recording-assertions.js" "$OUT" "$PVIEW"
 echo 'Time recorder lifecycle, overflow, shared timer and argument checks passed'
 
 sh "$ROOT/test/time_profile/check-viewer.sh" "$OUT/gc-combined.rp" "$OUT/no_gc-combined.rp"

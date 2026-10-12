@@ -11,7 +11,18 @@ struct
      "With this flag disabled, all values are allocated in global regions.")
   val regionProfile = regionOption
     ("region_profile",SOME "rp",RegionProfiling.enabled,false,
-     "Emit packed object descriptors, IR metadata and safe-point polls for rpview.")
+     "Emit packed object descriptors, IR metadata and safe-point polls for pview.")
+  val timeProfile = regionOption
+    ("time_profile",SOME "tp",RegionProfiling.timeEnabled,false,
+     "Ensure time profiling metadata (already emitted by ordinary ARM64 builds).")
+  val profile = Flags.add_bool_action_entry
+    {long = "profile", short = SOME "p", item = RegionProfiling.allEnabled,
+     menu = ["Control Region Analyses","profile"],
+     on = fn () => (RegionProfiling.allEnabled := true;
+                     RegionProfiling.enabled := true; RegionProfiling.timeEnabled := true),
+     off = fn () => (RegionProfiling.allEnabled := false;
+                      RegionProfiling.enabled := false; RegionProfiling.timeEnabled := false),
+     desc = "Enable region and time profiling support (equivalent to -rp -tp)."}
   val printRegionFlowGraph = regionOption
     ("print_region_flow_graph",SOME "Prfg",ref false,false,
      "Print the region flow graph as text.")
@@ -27,9 +38,10 @@ struct
     Flags.add_string_entry
       {long = name, short = NONE, item = item,
        menu = ["REPL",name], desc = "Forward profiler option to the REPL runtime."}
+  val _ = runtimeBool ("p_paused",RegionProfiling.allPaused)
   val _ = runtimeBool ("rp_paused",RegionProfiling.paused)
   val _ = runtimeBool ("rp_report",RegionProfiling.report)
   val _ = runtimeBool ("rp_gc_samples",RegionProfiling.gcSamples)
-  val _ = runtimeString ("rp_file",RegionProfiling.file)
+  val _ = runtimeString ("p_file",RegionProfiling.file)
   val _ = runtimeString ("rp_interval",RegionProfiling.interval)
 end

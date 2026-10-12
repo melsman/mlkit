@@ -9,8 +9,8 @@ runtime archive or library-cache directory is introduced. On macOS ARM64,
 compile an ordinary static executable with `-no_par`, then run:
 
 ```
-./run +RTS -tp -tp_interval 1ms -tp_buffer 65536 -tp_file run.rp
-bin/rpview run.rp --ir-dir path/to/MLB -o run.html
+./run +RTS -tp -tp_interval 1ms -tp_buffer 65536 -p_file run.rp
+bin/pview run.rp --ir-dir path/to/MLB -o run.html
 ```
 
 GC, GenGC and no-GC configurations use their usual archives and caches.

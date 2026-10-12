@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
   assert(argc == 2);
   mlkit_rp_enabled=1;
   mlkit_rp_initially_paused=1;
-  mlkit_rp_filename=argv[1];
+  mlkit_p_filename=argv[1];
   assert(!mlkit_rp_parse_interval("-1ms"));
   assert(!mlkit_rp_parse_interval("10"));
   assert(!mlkit_rp_parse_interval("999999999999999999999999s"));

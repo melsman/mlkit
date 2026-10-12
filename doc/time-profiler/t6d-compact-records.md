@@ -21,7 +21,7 @@ at 100us about 13 seconds. This is capacity between drains, not a guarantee of
 signal delivery. Explicit flush/lifecycle operations and normal shutdown drain
 with delivery masked. Overflow retains early records and counts later drops.
 
-The `.rp` wire format and rpview reader stay compatible: drains expand passive
+The `.rp` wire format and pview reader stay compatible: drains expand passive
 records to the existing time-sample fields with state/origin both zero.
 Serialized samples still cost 61 bytes. The existing time-session semantics
 text describes the selected in-memory layout; its capacity is the actual

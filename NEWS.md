@@ -1,5 +1,11 @@
 ## MLKit NEWS
 
+* 2026-10-12: Unify profiling names: `pview` (Profile Viewer), `-p_file`,
+  `profile.prof`, and compiler/runtime `-p` for `-rp -tp`. Shared `-p_paused`
+  pauses enabled profilers at startup. The old viewer and file-option names
+  are removed without aliases; existing `.rp` files remain readable.
+  Argobots execution-stream count moves to `-par_threads N`.
+
 ### MLKit version 4.7.25 is released
 
 * mael 2026-10-09: Manual updates.

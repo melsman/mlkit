@@ -1,4 +1,4 @@
-(* Test-only encoder: keep editable JSON fixtures out of rpview's input API. *)
+(* Test-only encoder: keep editable JSON fixtures out of pview's input API. *)
 structure Fixture =
 struct
   open ProfileJson

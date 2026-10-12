@@ -2,7 +2,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 CC=${CC:-cc}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-rp-metadata.XXXXXX")
 echo "Linker metadata test artifacts: $OUT"
 for mode in absent linked; do
@@ -13,7 +13,7 @@ for mode in absent linked; do
     -iquote "$ROOT/src/Runtime" "$ROOT/src/Runtime/RegionProfile.c" \
     "$ROOT/src/Runtime/tests/region-profile-metadata.c" -o "$OUT/$mode"
   "$OUT/$mode" "$OUT/$mode.rp"
-  "$RPVIEW" "$OUT/$mode.rp" --format json -o "$OUT/$mode.json"
+  "$PVIEW" "$OUT/$mode.rp" --format json -o "$OUT/$mode.json"
 done
 node - "$OUT" <<'JS'
 const fs = require('fs'), assert = require('assert');

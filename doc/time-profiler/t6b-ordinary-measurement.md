@@ -4,7 +4,7 @@ This batch predates T6d compact records and uses 65,536 32-byte records.
 See [T6c/T6d measurements](t6c-optional-attribution.md) for current layouts and defaults.
 
 Run `sh test/time_profile/measure-ordinary.sh` on macOS ARM64. `OUT`, `MLKIT`,
-`RPVIEW` and `REPEATS` can be overridden; five repetitions are the default and
+`PVIEW` and `REPEATS` can be overridden; five repetitions are the default and
 three are the minimum. Builds and measurements run serially. Raw executables,
 build logs, stdout/stderr, binary profiles and decoded records remain in `OUT`.
 The controller warms each workload and deterministically shuffles settings
@@ -32,7 +32,7 @@ Separate region-profiled executables run with both profilers off, region-only
 at 10ms, and combined region/time at 10ms/100us. Every enabled region run must
 contain snapshots; every enabled time run must have a final status and a
 recorded count equal to the decoded samples. Initially paused runs must contain
-zero time samples. Combined runs use the same `.rp` wire format and rpview
+zero time samples. Combined runs use the same `.rp` wire format and pview
 reader. These comparisons retain the cost of the region build's instrumentation
 and do not isolate the shared timer's contribution.
 
@@ -210,10 +210,12 @@ contained region snapshots and time samples, with final count consistency,
 output parity and zero visible buffer/routing drops. All paused runs recorded
 zero samples. No routing drops occurred anywhere in this batch.
 
-Generated time-only and combined reports passed rpview's DOM checks for
+Generated time-only and combined reports passed pview's DOM checks for
 categories, denominators, shared time filtering, view switching and empty
 intervals; combined profiles were checked for all three GC configurations.
 Browser visual layout remains unverified. No runtime/compiler behavior changes
 were needed for T6b. Keep 1ms as the starting interval for opt-in investigation;
 use finer intervals with attention to startup cost, loss counters and capacity.
 T6c's optional detailed C attribution remains separate work.
+
+Command examples use current T8 names (`pview`, `-p_file`). Archived measurement JSON retains the historical command names used when those measurements were collected; no measurements were rerun for this rename.

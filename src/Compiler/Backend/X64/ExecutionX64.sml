@@ -246,7 +246,10 @@ structure ExecutionX64 : EXECUTION =
                  | CEnvOnlyRes of CEnv
 
     fun compile fe (ce, CB, strdecs) =
-      let val (cb,closenv) = CompileBasis.de_CompileBasis CB
+      let val () = if !RegionProfiling.timeEnabled then
+                     raise Fail "time profiling support requires the ARM64 backend"
+                   else ()
+          val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
         case Compile.compile fe (ce, cb, strdecs)
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce

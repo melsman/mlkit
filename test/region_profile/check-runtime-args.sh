@@ -48,7 +48,7 @@ check '[-help]
 [two words]' "$OUT/plain" -help -rp '' 'two words'
 check '[before]
 [middle]
-[after]' "$OUT/profile" before +RTS -rp -rp_interval 0 -RTS middle +RTS -rp_file "$OUT/multiple.rp" -RTS after
+[after]' "$OUT/profile" before +RTS -rp -rp_interval 0 -RTS middle +RTS -p_file "$OUT/multiple.rp" -RTS after
 check '[--]
 [+RTS]
 [-help]' "$OUT/plain" -- +RTS -help
@@ -56,9 +56,9 @@ check '[+RTS]
 [-help]' "$OUT/plain" +RTS --RTS +RTS -help
 check '[--]
 [-rp]' "$OUT/plain" +RTS -- -rp
-check '[one]' "$OUT/profile" one +RTS -rp -rp_interval 0 -rp_file "$OUT/implicit-end.rp"
+check '[one]' "$OUT/profile" one +RTS -rp -rp_interval 0 -p_file "$OUT/implicit-end.rp"
 check '[input]
-[-rp]' "$OUT/profile" input +RTS -rp -rp_interval 0 -rp_file "$OUT/test.rp" -RTS -rp
+[-rp]' "$OUT/profile" input +RTS -rp -rp_interval 0 -p_file "$OUT/test.rp" -RTS -rp
 [ -s "$OUT/test.rp" ]
 "$OUT/plain" +RTS -help > "$OUT/plain.help" 2>&1
 "$OUT/profile" +RTS -help > "$OUT/profile.help" 2>&1
@@ -69,10 +69,10 @@ for option in -unknown -rp_alloc_depth; do
  grep -q 'unknown .*option' "$OUT/error"
 done
 for delimiter in +RTS -RTS --RTS --; do
- if "$OUT/profile" +RTS -rp_file "$delimiter" > "$OUT/error" 2>&1; then exit 1; fi
+ if "$OUT/profile" +RTS -p_file "$delimiter" > "$OUT/error" 2>&1; then exit 1; fi
  grep -q 'Missing argument' "$OUT/error"
 done
-if "$OUT/profile" +RTS -rp_file > "$OUT/error" 2>&1; then exit 1; fi
+if "$OUT/profile" +RTS -p_file > "$OUT/error" 2>&1; then exit 1; fi
 if "$OUT/plain" +RTS -rp > "$OUT/error" 2>&1; then exit 1; fi
 grep -q 'compiled with -rp' "$OUT/error"
 echo 'Runtime argument blocks passed'

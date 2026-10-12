@@ -34,12 +34,12 @@ nm -n "$OUT/workload" > "$OUT/symbols.txt"
 "$MLKIT" -no_par -gc -region_profile -libdirs "$OUT" -libs tptime,m,c,dl \
   -o "$OUT/with-region" "$OUT/workload.mlb" > "$OUT/region-build.log" 2>&1
 if TP_MODE=wall "$OUT/with-region" c +RTS -rp -rp_interval 1ms \
-    -rp_file "$OUT/conflict.rp" > "$OUT/conflict.log" 2>&1; then
+    -p_file "$OUT/conflict.rp" > "$OUT/conflict.log" 2>&1; then
   echo 'Wall timer unexpectedly replaced region timer' >&2; exit 1
 fi
 rg -q 'timer/signal already owned' "$OUT/conflict.log"
 TP_MODE=cpu "$OUT/with-region" c +RTS -rp -rp_interval 1ms \
-  -rp_file "$OUT/coexist.rp" > "$OUT/coexist.log" 2>&1
+  -p_file "$OUT/coexist.rp" > "$OUT/coexist.log" 2>&1
 # Check qualitative behavior, without imposing exact statistical sample counts.
 awk '
 /standalone/ {

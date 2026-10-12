@@ -168,7 +168,7 @@ ARGOBOTS_ROOT=/absolute/path/to/argobots \
 `src/.libs/libabt.a`, in a path without spaces. For application builds use
 `-par -argo` and supply the matching Argobots library to the linker, for example
 `-ldexe 'gcc -arch arm64 /absolute/path/to/argobots/src/.libs/libabt.a'`.
-Argobots caches have an additional `_ARGO` suffix. Programs accept `+RTS -p N -RTS` to
+Argobots caches have an additional `_ARGO` suffix. Programs accept `+RTS -par_threads N -RTS` to
 select the number of execution streams. See [runtime arguments](runtime-arguments.md).
 
 The permanent parallel suite tests MLKit and ReML, inferred/forced protection,

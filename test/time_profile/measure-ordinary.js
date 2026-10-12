@@ -1,7 +1,7 @@
 // T6b/T6c/T6d: opt-in serial measurements; timing observations are not CI thresholds.
 const fs = require('fs'), path = require('path'), cp = require('child_process');
 const os = require('os'), crypto = require('crypto'), assert = require('assert');
-const [out, rpview, repetitions = '5'] = process.argv.slice(2);
+const [out, pview, repetitions = '5'] = process.argv.slice(2);
 const repeats = Number(repetitions);
 assert(Number.isInteger(repeats) && repeats >= 3);
 const results = [], checksums = new Map();
@@ -42,8 +42,8 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
  for (let repeat = 0; repeat < repeats; ++repeat) for (const setting of shuffle(settings.filter(s => (!s.phasesOnly || workload==='phases') && !(s.paused && workload==='phases')))) {
   const stem = path.join(out,`${workload}-${config}-${setting.name}-${repeat}`), profile = stem+'.rp';
   const options = [];
-  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,...(!attributionStudy || setting.capacity ? ['-tp_buffer',String(setting.capacity || 65536)] : []),'-tp_file',profile,...(setting.attribution ? ['-tp_attribution',setting.attribution] : []),...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
-  if (setting.region) options.push('-rp','-rp_interval','10ms','-rp_file',profile);
+  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,...(!attributionStudy || setting.capacity ? ['-tp_buffer',String(setting.capacity || 65536)] : []),'-p_file',profile,...(setting.attribution ? ['-tp_attribution',setting.attribution] : []),...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
+  if (setting.region) options.push('-rp','-rp_interval','10ms','-p_file',profile);
   const begin = process.hrtime.bigint();
   const run = cp.spawnSync('/usr/bin/time',['-l','-p',executable(setting.instrumented),...args,...(options.length?['+RTS',...options]:[])],{encoding:'utf8',maxBuffer:32*1024*1024});
   const elapsed = Number(process.hrtime.bigint()-begin)/1e9;
@@ -58,7 +58,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
   assert(Number(run.stderr.match(/(\d+)\s+maximum resident set size/)?.[1]) > 0, 'Missing peak RSS: '+stem);
   const row = {workload,config,setting:setting.name,repeat,elapsed_s:elapsed,...time,rss_bytes:Number(run.stderr.match(/(\d+)\s+maximum resident set size/)?.[1]),executable_bytes:fs.statSync(executable(setting.instrumented)).size};
   if (options.length) {
-   const decoded = cp.spawnSync(rpview,[profile,'--format','json','-o',stem+'.json'],{encoding:'utf8',maxBuffer:1024*1024});
+   const decoded = cp.spawnSync(pview,[profile,'--format','json','-o',stem+'.json'],{encoding:'utf8',maxBuffer:1024*1024});
    assert.equal(decoded.status,0,decoded.stderr);
    const records = fs.readFileSync(stem+'.json','utf8').trim().split('\n').map(JSON.parse);
    const samples = records.filter(r=>r.type==='time_sample'), statuses=records.filter(r=>r.type==='time_status'), status=statuses.at(-1);

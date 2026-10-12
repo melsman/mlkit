@@ -195,7 +195,7 @@ The Makefile links the generated executables with a
 `gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
 
 The native executables are available at the usual `bin/mlkit`, `bin/reml`,
-`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/rpview` paths.
+`bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/pview` paths.
 Verify and run MLKit with:
 
 ```bash

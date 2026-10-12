@@ -47,4 +47,4 @@ for config in gc no_gc; do
  ar rcs "$OUT/libcallbacks.a" "$OUT/callbacks.o"
  "$MLKIT" -no_par -"$config" -rp -libdirs "$OUT" -libs callbacks,m,c,dl -o "$OUT/callbacks-$config-instrumented" "$OUT/callbacks.mlb" > "$OUT/callbacks-$config-build.log" 2>&1
 done
-node "$ROOT/test/time_profile/measure.js" "$OUT" "${RPVIEW:-$ROOT/bin/rpview}" "${REPEATS:-5}"
+node "$ROOT/test/time_profile/measure.js" "$OUT" "${PVIEW:-$ROOT/bin/pview}" "${REPEATS:-5}"

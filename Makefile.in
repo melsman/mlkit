@@ -245,7 +245,7 @@ install0:
 	$(INSTALL) bin/reml $(BINDIR)
 	$(INSTALL) bin/mlkit-mllex $(BINDIR)
 	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
-	$(INSTALL) bin/rpview $(BINDIR)
+	$(INSTALL) bin/pview $(BINDIR)
 	$(INSTALL) bin/kittester $(BINDIR)
 	$(MKDIR) $(LIBDIR)
 	$(MKDIR) $(LIBDIR)/mlkit
@@ -259,7 +259,7 @@ install0:
 	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/kittester.1 $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/rpview.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/pview.1 $(MANDIR)/man1
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
@@ -604,11 +604,11 @@ test:
 	$(MAKE) -j1 -C test/explicit_regions all
 	$(MAKE) -j1 -C test/parallelism all
 
-.PHONY: rpview
-rpview:
+.PHONY: pview
+pview:
 	$(MAKE) -C src/Tools/RegionProfile
 
-# Test data encoder; use the same seed compiler and Basis as rpview.
+# Test data encoder; use the same seed compiler and Basis as pview.
 .PHONY: rpfixture
 rpfixture: bin/rpfixture
 

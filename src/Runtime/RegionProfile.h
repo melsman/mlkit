@@ -41,7 +41,7 @@ void mlkit_tp_thread_exit(int);
 int mlkit_rp_parse_interval(const char *);
 uintptr_t mlkit_rp_poll(Context, uintptr_t *, const uintptr_t *);
 extern int mlkit_rp_initially_paused;
-extern const char *mlkit_rp_filename;
+extern const char *mlkit_p_filename;
 void mlkit_rp_init(void);
 void mlkit_rp_thread_create(Context, int);
 void mlkit_rp_thread_enter(Context);

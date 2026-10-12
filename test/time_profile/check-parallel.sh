@@ -13,19 +13,19 @@ for mode in ordinary profiled; do
  "${MLKIT:-$ROOT/bin/mlkit}" -no_gc -par $flags -o "$OUT/$mode" "$OUT/parallel.mlb" > "$OUT/$mode-build.log" 2>&1
  "$OUT/$mode" > "$OUT/$mode-off.log"
  if [ "$mode" = profiled ]; then
-  "$OUT/$mode" +RTS -rp -rp_interval 0 -rp_file "$OUT/region-only.rp" > "$OUT/region-only.log"
+  "$OUT/$mode" +RTS -rp -rp_interval 0 -p_file "$OUT/region-only.rp" > "$OUT/region-only.log"
   cmp "$OUT/$mode-off.log" "$OUT/region-only.log"
-  "${RPVIEW:-$ROOT/bin/rpview}" "$OUT/region-only.rp" --format json -o "$OUT/region-only.json" >/dev/null
+  "${PVIEW:-$ROOT/bin/pview}" "$OUT/region-only.rp" --format json -o "$OUT/region-only.json" >/dev/null
   if grep -q '"type":"time_session"' "$OUT/region-only.json"; then echo 'Region-only execution started time sampling' >&2; exit 1; fi
  fi
  for scenario in normal overflow combined; do
   if [ "$mode" = ordinary ] && [ "$scenario" = combined ]; then continue; fi
   case $scenario in normal) set --;; overflow) set -- -tp_buffer 4;; combined) set -- -rp -rp_interval 20ms;; esac
   stem="$OUT/$mode-$scenario"
-  "$OUT/$mode" +RTS -tp -tp_file "$stem.rp" "$@" > "$stem.log" 2>&1
+  "$OUT/$mode" +RTS -tp -p_file "$stem.rp" "$@" > "$stem.log" 2>&1
   cmp "$OUT/$mode-off.log" "$stem.log"
-  "${RPVIEW:-$ROOT/bin/rpview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
-  "${RPVIEW:-$ROOT/bin/rpview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
+  "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
+  "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
   node "$ROOT/test/time_profile/parallel-assertions.js" "$stem.json" "$scenario"
   {
    sh "$ROOT/test/region_profile/viewer-prelude.sh" "$stem.html"

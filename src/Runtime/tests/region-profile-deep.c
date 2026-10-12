@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   context ctx = {0};
   mlkit_rp_enabled = 1;
   mlkit_rp_interval_us = 0;
-  mlkit_rp_filename = argv[1];
+  mlkit_p_filename = argv[1];
   mlkit_rp_init();
   mlkit_rp_capture(&ctx,stack,map+6,2);
   mlkit_rp_close();

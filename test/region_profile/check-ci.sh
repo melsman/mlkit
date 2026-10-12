@@ -4,9 +4,9 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
 REML=${REML:-$ROOT/bin/reml}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 CC=${CC:-${THECC:-cc}}
-export MLKIT REML RPVIEW CC
+export MLKIT REML PVIEW CC
 export SML_LIB="$ROOT"
 # Optional scheduler experiments and timing benchmarks are not release CI gates.
 unset ARGOBOTS_ROOT
@@ -36,6 +36,7 @@ run () {
 run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
 if [ "$(uname -sm)" = 'Darwin arm64' ]; then
+  run unified-options sh "$ROOT/test/time_profile/check-unified-options.sh"
   run time-parallel-blocking sh "$ROOT/test/time_profile/check-parallel-blocking.sh"
   run time-parallel-conflicts sh "$ROOT/test/time_profile/check-parallel-conflicts.sh"
   run time-parallel sh "$ROOT/test/time_profile/check-parallel.sh"

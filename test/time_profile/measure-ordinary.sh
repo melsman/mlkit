@@ -40,4 +40,4 @@ for config in gc gengc no_gc; do
  done
 done
 if [ "${BUILD_ONLY:-0}" = 1 ]; then exit 0; fi
-node "$ROOT/test/time_profile/measure-ordinary.js" "$OUT" "${RPVIEW:-$ROOT/bin/rpview}" "${REPEATS:-5}"
+node "$ROOT/test/time_profile/measure-ordinary.js" "$OUT" "${PVIEW:-$ROOT/bin/pview}" "${REPEATS:-5}"

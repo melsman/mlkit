@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   const uintptr_t end[] = {UINTPTR_MAX,MLKIT_RP_MAGIC};
   uintptr_t base = 0;
   mlkit_rp_enabled = 1; mlkit_rp_interval_us = 0; mlkit_rp_report = 1;
-  mlkit_rp_filename = argv[2];
+  mlkit_p_filename = argv[2];
   mlkit_rp_init();
   for (int i = 0; i < 1000; i++) mlkit_rp_capture(&ctx,&base,end+2,2);
   mlkit_rp_close();

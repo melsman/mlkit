@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   assert(argc == 2);
   mlkit_rp_enabled = 1;
   mlkit_rp_interval_us = 0;
-  mlkit_rp_filename = argv[1];
+  mlkit_p_filename = argv[1];
   mlkit_rp_init();
   Rp *pages[2];
   for (size_t i = 0; i < 2; i++) {

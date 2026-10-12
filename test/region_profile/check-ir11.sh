@@ -2,7 +2,7 @@
 # Validate fresh all-region recordings; pass one or more .rp files.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 [ "$#" -gt 0 ] || { echo 'Usage: check-ir11.sh PROFILE.rp ...' >&2; exit 1; }
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-ir11.XXXXXX")
 cleanup () {
@@ -14,10 +14,10 @@ cleanup () {
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 for profile do
- "$RPVIEW" "$profile" --format json -o "$OUT/profile.json" > /dev/null
+ "$PVIEW" "$profile" --format json -o "$OUT/profile.json" > /dev/null
  node "$ROOT/test/region_profile/all-regions-assertions.js" "$OUT/profile.json" general
- "$RPVIEW" "$profile" -o "$OUT/profile.html" > /dev/null
- "$RPVIEW" "$profile" --sites --regions 12 -o "$OUT/profile.svg" > /dev/null
+ "$PVIEW" "$profile" -o "$OUT/profile.html" > /dev/null
+ "$PVIEW" "$profile" --sites --regions 12 -o "$OUT/profile.svg" > /dev/null
  # Check the actual HTML controls; also verify the report remains standalone.
  node - "$OUT/profile.html" "$OUT/profile.svg" <<'JS'
 const fs=require('fs'),assert=require('assert');

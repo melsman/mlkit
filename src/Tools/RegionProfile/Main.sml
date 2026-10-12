@@ -1,7 +1,7 @@
 structure ProfileMain =
 struct
   fun run args =
-      let val file = ref "profile.rp"
+      let val file = ref "profile.prof"
           val haveFile = ref false
           val irRoots = ref []
           val output = ref "profile.html"
@@ -28,7 +28,7 @@ struct
                               | NONE => raise Fail "PC must be decimal or 0x hexadecimal"
               end
           fun help () =
-              (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
+              (print "Usage: pview [profile.prof] [-o output.html|output.svg|output.json] [options]\n\
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --resolve-pc ADDRESS    Resolve a recorded absolute PC; output JSON\n\
@@ -135,7 +135,7 @@ struct
       end
 end
 fun profileError message =
-    (TextIO.output(TextIO.stdErr,"rpview: " ^ message ^ "\n"); OS.Process.exit OS.Process.failure)
+    (TextIO.output(TextIO.stdErr,"pview: " ^ message ^ "\n"); OS.Process.exit OS.Process.failure)
 val () = (ProfileMain.run (CommandLine.arguments ())
           handle Fail message => profileError message
                | e => profileError (General.exnMessage e))

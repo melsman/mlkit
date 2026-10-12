@@ -6,7 +6,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 : "${SML_LIB:?Set SML_LIB to a read-only installation}"
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 REML=${REML:-$ROOT/bin/reml-arm64}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 [ ! -w "$SML_LIB/basis" ] && [ ! -w "$SML_LIB/kitlib" ] || {
   echo 'Basis and kitlib must be read-only for this check' >&2; exit 1;
 }
@@ -39,8 +39,8 @@ run () {
   (cd "$OUT"
    "$compiler" "$@" -o client client.mlb > "build-$n.log" 2>&1
    case " $* " in
-     *' -rp '*) ./client +RTS -rp -rp_interval 0 -rp_file "profile-$n.rp" > actual
-       "$RPVIEW" "profile-$n.rp" --format json > "profile-$n.json"
+     *' -rp '*) ./client +RTS -rp -rp_interval 0 -p_file "profile-$n.rp" > actual
+       "$PVIEW" "profile-$n.rp" --format json > "profile-$n.json"
        grep -q 'sample_begin' "profile-$n.json" ;;
      *) ./client > actual ;;
    esac

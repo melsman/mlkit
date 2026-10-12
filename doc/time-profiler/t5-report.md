@@ -3,7 +3,7 @@
 [T6a](t6a-ordinary-builds.md) adds ordinary-build reports, named runtime/C
 self-time and shared Allocation/Reset categories alongside GC.
 
-`rpview recording.rp -o report.html` embeds all code metadata, resolved sample
+`pview recording.rp -o report.html` embeds all code metadata, resolved sample
 attribution and report logic in one standalone HTML file. No server or external
 resources are required. Time-only recordings are supported.
 
@@ -30,7 +30,7 @@ sleep. Buffer and routing loss counters are session-wide because the input reade
 retains only the latest cumulative status. Timer coalescing remains unobservable.
 Incomplete recordings and missing final status are marked.
 
-Validation: rebuild `rpview`, run `test/region_profile/check-viewer.sh`, and run
+Validation: rebuild `pview`, run `test/region_profile/check-viewer.sh`, and run
 `test/time_profile/check-viewer.sh TIME_ONLY.rp COMBINED.rp`. The latter uses the
 actual generated markup/script with the existing dependency-free DOM harness and
 checks categories, percentage denominators, time filtering and empty intervals.

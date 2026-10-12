@@ -29,9 +29,9 @@ for config in gc gengc no_gc; do
    if [ "$build" = ordinary ] && [ "$mode" != passive ]; then continue; fi
    case $mode in combined-passive) attribution=passive; set -- -rp -rp_interval 10ms;; *) attribution=$mode; set --;; esac
    stem="$exe-$mode"
-   "$exe" +RTS -tp -tp_paused -tp_attribution "$attribution" -tp_file "$stem.rp" "$@" > "$stem.log" 2>&1
-   "${RPVIEW:-$ROOT/bin/rpview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
-   "${RPVIEW:-$ROOT/bin/rpview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
+   "$exe" +RTS -tp -tp_paused -tp_attribution "$attribution" -p_file "$stem.rp" "$@" > "$stem.log" 2>&1
+   "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
+   "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
    node "$ROOT/test/time_profile/attribution-modes-assertions.js" "$stem.json" "$mode"
    {
     sh "$ROOT/test/region_profile/viewer-prelude.sh" "$stem.html"

@@ -19,7 +19,7 @@
 int mlkit_rp_enabled;
 _Atomic int mlkit_rp_pending;
 uint64_t mlkit_rp_interval_us, mlkit_rp_interval_entries;
-const char *mlkit_rp_filename = "profile.rp";
+const char *mlkit_p_filename = "profile.prof";
 static FILE *output;
 static int timer_installed;
 static void fail(const char *s) {
@@ -54,7 +54,7 @@ void mlkit_rp_init(void) {
     fail("SIGALRM/ITIMER_REAL already in use; disable -tp or release the conflicting timer/handler");
 
 #endif
-  output = fopen(mlkit_rp_filename,"wb");
+  output = fopen(mlkit_p_filename,"wb");
   if (!output) fail("cannot open profile output");
   const unsigned char magic[] = {'M','L','K','R','P',0,10,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");

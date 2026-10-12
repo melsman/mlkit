@@ -3,7 +3,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=$1
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 node - "$OUT" <<'JS'
 const fs=require('fs'),out=process.argv[2];
 const records=fs.readFileSync(out+'/reset.json','utf8').trim().split('\n').map(JSON.parse);
@@ -20,12 +20,12 @@ for kind in duplicate wrong-instance missing-summary; do
     grep -Eq "duplicate occupancy summary|unknown occupancy instance|missing occupancy summary" "$OUT/rejected.out"
     continue
   fi
-  if "$RPVIEW" "$OUT/$kind.rp" -o "$OUT/rejected.html" > "$OUT/rejected.out" 2>&1; then
+  if "$PVIEW" "$OUT/$kind.rp" -o "$OUT/rejected.html" > "$OUT/rejected.out" 2>&1; then
     echo "Invalid occupancy accepted: $kind" >&2; exit 1
   fi
 done
 sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/truncated.json" "$OUT/truncated.rp"
-"$RPVIEW" "$OUT/truncated.rp" -o "$OUT/truncated.html" > /dev/null
+"$PVIEW" "$OUT/truncated.rp" -o "$OUT/truncated.html" > /dev/null
 {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/truncated.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/truncated.html" | sed '1d;$d'

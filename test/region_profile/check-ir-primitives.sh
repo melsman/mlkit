@@ -3,7 +3,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-ir-primitives.XXXXXX")
 echo "Primitive IR artifacts: $OUT"
@@ -39,9 +39,9 @@ LC_ALL=C awk '
     if(!conversion || !concat) exit 1;
     for(mark in calls) if(!regions[mark]) exit 2;
   }' "$ir"
-./program +RTS -rp -rp_interval 1i -rp_region all -rp_file profile.rp -RTS > result
+./program +RTS -rp -rp_interval 1i -rp_region all -p_file profile.prof -RTS > result
 [ "$(cat result)" = '2.0xx' ]
-"$RPVIEW" profile.rp -o profile.html > /dev/null
+"$PVIEW" profile.prof -o profile.html > /dev/null
 {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" profile.html
   sed -n '/^<script>$/,/^<\/script>/p' profile.html | sed '1d;$d'

@@ -9,7 +9,7 @@ ar rcs "$OUT/libconflict.a" "$OUT/conflict.o"
 printf 'val x:int = prim("tp_parallel_probe",1)\n' > "$OUT/main.sml"
 "${MLKIT:-$ROOT/bin/mlkit}" -no_gc -par -libdirs "$OUT" -libs conflict,m,c,dl -o "$OUT/test" "$OUT/main.sml" > "$OUT/build.log" 2>&1
 for mode in handler mask; do
- if MLKIT_TP_PAR_CONFLICT=$mode "$OUT/test" +RTS -tp -tp_file "$OUT/test.rp" > "$OUT/$mode.log" 2>&1; then echo 'Accepted conflicting SIGUSR2 ownership' >&2; exit 1; fi
+ if MLKIT_TP_PAR_CONFLICT=$mode "$OUT/test" +RTS -tp -p_file "$OUT/test.rp" > "$OUT/$mode.log" 2>&1; then echo 'Accepted conflicting SIGUSR2 ownership' >&2; exit 1; fi
  case $mode in handler) expected='SIGUSR2 already in use';; mask) expected='unblocked SIGUSR2';; esac
  grep -q "$expected" "$OUT/$mode.log"
 done

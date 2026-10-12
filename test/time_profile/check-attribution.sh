@@ -6,7 +6,7 @@ OUT=${OUT:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-attribution.XXXXXX")}
 mkdir -p "$OUT"
 echo "Attribution artifacts: $OUT"
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 export SML_LIB=${SML_LIB:-$ROOT}
 ${CC:-cc} -O2 -Wall -Wextra -Werror -iquote "$ROOT/src/Runtime" -c "$ROOT/test/time_profile/attribution.c" -o "$OUT/attribution.o"
 ar rcs "$OUT/libattribution.a" "$OUT/attribution.o"
@@ -17,8 +17,8 @@ for mode in gc no_gc; do
   ${CC:-cc} -O2 -Wall -Wextra -Werror $gcflag -iquote "$ROOT/src/Runtime" -c "$ROOT/test/time_profile/attribution.c" -o "$OUT/attribution.o"
   ar rcs "$OUT/libattribution.a" "$OUT/attribution.o"
   "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs attribution,m,c,dl -o "$OUT/$mode" "$OUT/attribution.mlb" > "$OUT/$mode-build.log" 2>&1
-  "$OUT/$mode" +RTS -tp -tp_file "$OUT/$mode.rp" > "$OUT/$mode.log" 2>&1
-  "$RPVIEW" "$OUT/$mode.rp" --format json -o "$OUT/$mode.json" > /dev/null
+  "$OUT/$mode" +RTS -tp -p_file "$OUT/$mode.rp" > "$OUT/$mode.log" 2>&1
+  "$PVIEW" "$OUT/$mode.rp" --format json -o "$OUT/$mode.json" > /dev/null
 done
 node "$ROOT/test/time_profile/attribution-assertions.js" "$OUT"
 echo 'Nested C origins, ML callbacks, caught exceptions, restoration and GC attribution passed'

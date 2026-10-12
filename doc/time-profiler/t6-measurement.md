@@ -9,7 +9,7 @@ sampler. It does not add CPU timers, parallel delivery or dynamic REPL images.
 
 ## Reproduction
 
-Run `sh test/time_profile/measure.sh` on macOS ARM64. `OUT`, `MLKIT`, `RPVIEW`
+Run `sh test/time_profile/measure.sh` on macOS ARM64. `OUT`, `MLKIT`, `PVIEW`
 and `REPEATS` may be overridden; at least three repetitions are required, with
 five the default. The harness builds GC/non-GC plain and profiled executables,
 uses fresh ML-Yacc library sources to avoid unrelated local caches, warms each
@@ -205,3 +205,5 @@ drain. Capture deficits, especially with larger buffers, cannot be assigned
 entirely to timer coalescing. Recorder-state shares observe only drains performed
 while sampling is active. These boundaries are reproducible but are not an
 independent measurement of handler or shutdown-drain cost.
+
+Command examples use current T8 names (`pview`, `-p_file`). Archived measurement JSON retains the historical command names used when those measurements were collected; no measurements were rerun for this rename.

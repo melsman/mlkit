@@ -12,8 +12,8 @@ printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/kitlib/time-profile.mlb\nmeasure.
 for config in gc no_gc; do
  "${MLKIT:-$ROOT/bin/mlkit}" -no_par -"$config" -rp -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/test" "$OUT/measure.mlb" > "$OUT/build.log" 2>&1
  for interval in 1ms 100us; do
-  "$OUT/test" +RTS -tp -tp_paused -tp_interval "$interval" -tp_file "$OUT/phase.rp" > "$OUT/run.log" 2>&1
-  "${RPVIEW:-$ROOT/bin/rpview}" "$OUT/phase.rp" --format json -o "$OUT/phase.json" >/dev/null
+  "$OUT/test" +RTS -tp -tp_paused -tp_interval "$interval" -p_file "$OUT/phase.rp" > "$OUT/run.log" 2>&1
+  "${PVIEW:-$ROOT/bin/pview}" "$OUT/phase.rp" --format json -o "$OUT/phase.json" >/dev/null
   node "$ROOT/test/time_profile/phase-assertions.js" "$OUT/phase.json" "$config"
  done
 done

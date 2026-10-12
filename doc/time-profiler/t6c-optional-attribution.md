@@ -8,13 +8,13 @@ Time recording has two independently selectable attribution modes:
 
 ```
 # Ordinary build: interrupted-PC self-time with compact records.
-./ordinary +RTS -tp -tp_attribution passive -tp_file passive.rp
+./ordinary +RTS -tp -tp_attribution passive -p_file passive.rp
 
 # Code compiled with -rp, but no region snapshots requested.
-./instrumented +RTS -tp -tp_attribution detailed -tp_file detailed.rp
+./instrumented +RTS -tp -tp_attribution detailed -p_file detailed.rp
 
 # The same instrumented executable: compact self-time plus region snapshots.
-./instrumented +RTS -tp -tp_attribution passive -rp -tp_file combined.rp
+./instrumented +RTS -tp -tp_attribution passive -rp -p_file combined.rp
 ```
 
 Without the option, ordinary code chooses passive and instrumented single-thread
@@ -27,7 +27,7 @@ Passive records contain PC/tick only. Detailed records also retain state and
 initiating C-call PC. The default buffer uses 2 MiB in either mode: 131,072
 passive records or 65,536 detailed. Mode selection is fixed for the session.
 Explicit `-tp_buffer N` means records, not bytes. See [T6d](t6d-compact-records.md).
-The wire format remains shared with region profiling and compatible with rpview;
+The wire format remains shared with region profiling and compatible with pview;
 passive drains serialize zero state/origin into the existing fields.
 
 ## Attribution and instrumentation decision
@@ -57,7 +57,7 @@ would add another compiler configuration; these measurements do not isolate
 its prospective cost or establish a need for that extra configuration.
 
 IR documents and function ranges are emitted in ordinary ARM64 builds. Both
-recording modes can navigate a sampled ML function in rpview with matching IR,
+recording modes can navigate a sampled ML function in pview with matching IR,
 without region snapshots or allocation-site records. Runtime/C rows have no ML
 IR document. They remain time rows and are excluded from ML companion searches.
 That exclusion also fixes the linked macOS CI failure: runtime/C ranges were
@@ -65,7 +65,7 @@ incorrectly reported as hundreds of missing region-flow IR companions.
 
 ## Reproduction and interpretation
 
-Run `sh test/time_profile/measure-attribution.sh`. `OUT`, `MLKIT`, `RPVIEW` and
+Run `sh test/time_profile/measure-attribution.sh`. `OUT`, `MLKIT`, `PVIEW` and
 `REPEATS` may be overridden (five repeats by default; minimum three). The harness
 reuses the serial ordinary benchmark builder and runs GC/GenGC/no-GC phases,
 `kkb_eq` and twenty Topdec ML-Yacc generations. Settings include ordinary off,
@@ -229,3 +229,5 @@ companion search and corrected; local all-regions and IR11 passed with the runti
 The new explicit-mode checks run in macOS ARM64 profiler CI. Cloud checks for
 these commits and browser visual layout remain unverified. Detailed recording
 continues to reuse existing runtimes/caches; T7 parallel sampling is pending.
+
+Command examples use current T8 names (`pview`, `-p_file`). Archived measurement JSON retains the historical command names used when those measurements were collected; no measurements were rerun for this rename.

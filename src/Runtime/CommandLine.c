@@ -48,10 +48,13 @@ printUsage(void)
   fprintf(stderr,"  -RTS                     Resume application arguments.\n");
   fprintf(stderr,"  --RTS                    End runtime parsing permanently.\n");
   fprintf(stderr,"  --                       End runtime parsing; pass -- to the application.\n");
+  fprintf(stderr,"\nProfiling:\n");
+  fprintf(stderr,"  -p                       Record region snapshots and time samples.\n");
+  fprintf(stderr,"  -p_file PATH             Shared output file (default: profile.prof).\n");
+  fprintf(stderr,"  -p_paused                Start enabled profilers paused.\n");
 #ifdef PROFILING
   fprintf(stderr,"\nRegion profiling:\n");
   fprintf(stderr,"  -rp                      Enable recording.\n");
-  fprintf(stderr,"  -rp_file PATH            Output file (default: profile.rp).\n");
   fprintf(stderr,"  -rp_interval INTERVAL     Snapshot interval (default: 10ms):\n");
   fprintf(stderr,"                             Nus, Nms, Ns   wall-clock duration\n");
   fprintf(stderr,"                             Ni            every N ML entries per thread\n");
@@ -70,7 +73,6 @@ printUsage(void)
   fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
   fprintf(stderr,"  -tp_attribution MODE     passive or detailed (default: available build instrumentation).\n");
   fprintf(stderr,"  -tp_buffer N             Records per thread, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
-  fprintf(stderr,"  -tp_file PATH            Shared profile output (default: profile.rp).\n");
   fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
 #ifdef ENABLE_GC
   fprintf(stderr,"\nGarbage collection:\n");
@@ -84,7 +86,7 @@ printUsage(void)
 #endif
 #ifdef ARGOBOTS
   fprintf(stderr,"\nParallel execution:\n");
-  fprintf(stderr,"  -p N                     Number of execution streams.\n");
+  fprintf(stderr,"  -par_threads N           Number of execution streams.\n");
   fprintf(stderr,"  -verbose_par, -vp        Report execution stream information.\n");
 #endif
   if (runtime_options) runtime_options->usage();
@@ -115,6 +117,7 @@ parseCmdLineArgs(int argc, char *argv[])
   int rp_options = 0;
 #endif
   int tp_options = 0;
+  int p_options = 0;
 
 #ifdef ARGOBOTS
   posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -141,6 +144,21 @@ parseCmdLineArgs(int argc, char *argv[])
     }
     match = 0;
 
+    if (!strcmp(argv[0],"-p")) {
+#ifdef PROFILING
+      mlkit_rp_enabled = 1; mlkit_tp_enabled = 1; match = 1;
+#else
+      fprintf(stderr,"-p requires region profiling support; compile with -rp or -p\n");
+      exit(EXIT_FAILURE);
+#endif
+    }
+    if (!strcmp(argv[0],"-p_paused")) {
+      mlkit_tp_initially_paused = 1;
+#ifdef PROFILING
+      mlkit_rp_initially_paused = 1;
+#endif
+      p_options = 1; match = 1;
+    }
     if (!strcmp(argv[0],"-tp")) { mlkit_tp_enabled = 1; match = 1; }
     if (!strcmp(argv[0],"-tp_paused")) { mlkit_tp_initially_paused = 1; tp_options = 1; match = 1; }
     if (!strcmp(argv[0],"-tp_interval")) {
@@ -172,10 +190,10 @@ parseCmdLineArgs(int argc, char *argv[])
       }
       mlkit_tp_capacity = n; tp_options = 1; match = 1; continue;
     }
-    if (!strcmp(argv[0],"-tp_file")) {
+    if (!strcmp(argv[0],"-p_file")) {
       const char *s = rtsValue(&argc,&argv);
-      if (!*s) { fprintf(stderr,"-tp_file requires a path\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_filename = s; tp_options = 1; match = 1; continue;
+      if (!*s) { fprintf(stderr,"-p_file requires a path\n"); exit(EXIT_FAILURE); }
+      mlkit_p_filename = s; p_options = 1; match = 1; continue;
     }
 #ifdef PROFILING
     if (strcmp(argv[0], "-rp") == 0) { mlkit_rp_enabled = 1; match = 1; }
@@ -198,13 +216,7 @@ parseCmdLineArgs(int argc, char *argv[])
       if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
       mlkit_rp_region = argv[0]; rp_options = 1; match = 1; continue;
     }
-    if (strcmp(argv[0], "-rp_file") == 0) {
-      if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_filename = argv[0];
-      rp_options = 1;
-      match = 1;
-      continue;
-    }
+
 #endif
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
@@ -252,18 +264,18 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif /*ENABLE_GC*/
 
 #ifdef ARGOBOTS
-    if (strcmp((char *)argv[0],"-p")==0) {
+    if (strcmp((char *)argv[0],"-par_threads")==0) {
       if (rtsValue(&argc,&argv)[0]) { /* Is there a number. */
 	if ((posixThreads = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Expecting integer argument to the option -p.\n");
+	  fprintf(stderr,"Expecting integer argument to the option -par_threads.\n");
 	  exit(EXIT_FAILURE);
 	}
 	if (posixThreads < 1) {
-	  fprintf(stderr,"Expecting positive integer after option -p.\n");
+	  fprintf(stderr,"Expecting positive integer after option -par_threads.\n");
 	  exit(EXIT_FAILURE);
 	}
       } else {
-	fprintf(stderr,"Expecting integer after the option -p.\n");
+	fprintf(stderr,"Expecting integer after the option -par_threads.\n");
 	exit(EXIT_FAILURE);
       }
       continue;
@@ -298,6 +310,13 @@ parseCmdLineArgs(int argc, char *argv[])
   }
 #endif
 
+  if (p_options && !mlkit_tp_enabled
+#ifdef PROFILING
+      && !mlkit_rp_enabled
+#endif
+     ) {
+    fprintf(stderr,"common profiler options require -rp, -tp or -p\n"); exit(EXIT_FAILURE);
+  }
   if (!mlkit_tp_enabled && tp_options) {
     fprintf(stderr,"time profiler options require -tp\n"); exit(EXIT_FAILURE);
   }

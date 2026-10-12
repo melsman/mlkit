@@ -71,7 +71,7 @@ region snapshots. They preserve real timing gaps, rather than infer time from
 sample counts. Versions 1/2 remain readable; older readers reject parallel
 version 3 clearly and should be rebuilt before viewing these profiles.
 
-rpview retains the shared elapsed-time slider and function histogram. The
+pview retains the shared elapsed-time slider and function histogram. The
 execution selector includes declared streams even when a thread has no samples.
 A thread-details table shows start/end times, samples in the window, recorded
 totals, session-wide buffer drops and measured lifetime CPU totals. Clicking a thread selects its function

@@ -1,20 +1,20 @@
-# Sampled site occupancy in rpview
+# Sampled site occupancy in pview
 
 Runtime options below belong inside `+RTS ... -RTS`; see
 [runtime arguments](runtime-arguments.md) for delimiters and application arguments.
 
-Compile every ML unit with `-rp`, then use rpview as the profiler interface.
+Compile every ML unit with `-rp`, then use pview as the profiler interface.
 There is no separate allocation-volume instrumentation mode or rp2ps stream.
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb
-./app +RTS -rp -rp_interval 10ms -rp_file discovery.rp -RTS
-rpview discovery.rp -o discovery.html
-# Copy UNIT:BINDING for the infinite region of interest from rpview.
-./app +RTS -rp -rp_interval 10ms -rp_region 'UNIT:BINDING' -rp_file sites.rp -RTS
+./app +RTS -rp -rp_interval 10ms -p_file discovery.rp -RTS
+pview discovery.rp -o discovery.html
+# Copy UNIT:BINDING for the infinite region of interest from pview.
+./app +RTS -rp -rp_interval 10ms -rp_region 'UNIT:BINDING' -p_file sites.rp -RTS
 # Or record site occupancy for every infinite region:
-./app +RTS -rp -rp_interval 10ms -rp_region all -rp_file all-sites.rp -RTS
-rpview sites.rp -o sites.html
+./app +RTS -rp -rp_interval 10ms -rp_region all -p_file all-sites.rp -RTS
+pview sites.rp -o sites.html
 ```
 
 An explicit `RegionProfile.sample()` works with `-rp_interval 0`. Zero disables
@@ -100,9 +100,9 @@ use the same site metadata as before.
 For a standalone stacked SVG of site contributions over time:
 
 ```sh
-rpview sites.rp --sites -o region-sites.svg
-rpview all-sites.rp --region r163 -o r163-sites.svg
-rpview sites.rp --sites --regions 0 --scope thread:0 -o thread-sites.svg
+pview sites.rp --sites -o region-sites.svg
+pview all-sites.rp --region r163 -o r163-sites.svg
+pview sites.rp --sites --regions 0 --scope thread:0 -o thread-sites.svg
 ```
 
 `--region rN` selects a recorded binding by its region number and implies
@@ -132,7 +132,7 @@ every entry. Even this does not guarantee true maxima between entries.
 * U2: descriptor-aware inline allocation and pending-flag polling on ARM64/X64;
   finite storage is stack storage and legacy counters are removed.
 * U3: version-9 occupancy records and reconciled per-instance summaries.
-* U4: snapshot/thread filtering, region slices and IR navigation in rpview.
+* U4: snapshot/thread filtering, region slices and IR navigation in pview.
 * U5: descriptor, reset, large-object, GC, exception and backend validation;
   the old profiler stream and rp2ps build/install paths are retired.
 
@@ -162,7 +162,7 @@ origin receive fresh IDs from the same counter and explicit generated metadata
 Stream version 10 removes the site-to-program-point field: a site's ID directly
 indexes the IR location table. The internal region-analysis `pp` type and the
 pretty-printer's generic `mark` name remain, but are no longer separate allocation
-identities. Older profiles must be regenerated; rpview accepts version 10 only.
+identities. Older profiles must be regenerated; pview accepts version 10 only.
 The site metadata ABI changes (capability 4), so rebuild
 compiled ML units and the runtime together. Object descriptor packing and the
 allocation fast path are unchanged.
@@ -260,14 +260,14 @@ There is no foreign-origin stack or enter/leave/unwind bookkeeping.
 Each compiled unit has an IR identity shared by its `.o.ir` header and static site
 descriptors. At link time, a small generated object records the actual absolute
 paths of the linked ML objects, including installed library objects. Profile-site
-definitions carry the matching object path. `rpview` opens `<ir_object>.ir`
+definitions carry the matching object path. `pview` opens `<ir_object>.ir`
 directly, reads each needed file once, validates the complete content digest,
 unit/compilation identity, table bounds and line/byte columns, and caches the
 mark-to-span mapping. It does not infer object paths from source filenames.
 The object itself need not be present when generating a report: matching profile
 identity and validated companion contents suffice.
 
-If files have moved after linking, `rpview --ir-dir DIR` optionally searches that
+If files have moved after linking, `pview --ir-dir DIR` optionally searches that
 directory recursively for missing companions; the option is repeatable. These
 fallbacks must pass the same identity checks. Normal use requires no search path.
 
@@ -351,7 +351,7 @@ rows from one call share this number. A `function` row records native label,
 lexical parent, and whether the function is named or anonymous. A `point` row associates a positive program point with a region.
 Fields use the existing SML string escaping. Positions are zero-based.
 
-At launch, the profiler writes the linker-provided object manifest once. rpview
+At launch, the profiler writes the linker-provided object manifest once. pview
 validates adjacent companions by identity and digest, including compilation units
 with no measured allocation sites; `--ir-dir` remains a relocation fallback.
 Imported formals resolve by native function label and parameter position. Local
@@ -382,7 +382,7 @@ readable. Snapshot-range allocation filtering is unchanged.
 
 Saved IR uses an 80-column layout target and literal indentation spaces, including
 deeply nested code. Version 7 invalidates older cached companions so byte spans
-are regenerated for this layout; rpview still accepts earlier formats.
+are regenerated for this layout; pview still accepts earlier formats.
 Non-allocating primitive calls use the ordinary expression printer, including
 infix notation and precedence. Calls with result regions retain their marked
 call tokens until the location protocol can identify them independently of
@@ -394,7 +394,7 @@ Run `sh test/region_profile/check-ir11-examples.sh` with a matching compiler,
 Basis and runtime to build fresh msort and kkb_eq reports without GC and an
 mlyacc report with GC (processing `src/Parsing/Topdec.grm`). The script records
 all infinite regions at 1ms intervals and retains its artifacts in the printed
-temporary directory. Override `MLKIT`, `RPVIEW` and `SML_LIB` when validating a
+temporary directory. Override `MLKIT`, `PVIEW` and `SML_LIB` when validating a
 separate backend build. Snapshot counts and sampled peaks depend on timing;
 the check compares each report with its own recording, not a historical total.
 

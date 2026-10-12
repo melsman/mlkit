@@ -2,16 +2,16 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-ir5.XXXXXX")
 echo "IR5 checks: $OUT"
 cp "$ROOT/test/region_profile/ir5-duplicates.sml" "$OUT/main.sml"
 printf '%s\n' "$SML_LIB/basis/basis.mlb" main.sml > "$OUT/main.mlb"
 "$MLKIT" -no_gc -rp -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
-"$OUT/program" +RTS -rp -rp_interval 0 -rp_region '<global>:1' -rp_file "$OUT/profile.rp"
-"$RPVIEW" "$OUT/profile.rp" --format json -o "$OUT/profile.json"
-"$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html"
+"$OUT/program" +RTS -rp -rp_interval 0 -rp_region '<global>:1' -p_file "$OUT/profile.prof"
+"$PVIEW" "$OUT/profile.prof" --format json -o "$OUT/profile.json"
+"$PVIEW" "$OUT/profile.prof" -o "$OUT/profile.html"
 {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d'
@@ -39,7 +39,7 @@ const rows=fs.readFileSync(dir+'/profile.json','utf8').trim().split('\n').map(JS
 fs.writeFileSync(dir+'/generated.json',rows.map(r=>JSON.stringify(r.type==='allocation_site'?{...r,location_kind:2}:r)).join('\n')+'\n');
 JS
 sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/generated.json" "$OUT/generated.rp"
-"$RPVIEW" "$OUT/generated.rp" -o "$OUT/generated.html" > /dev/null
+"$PVIEW" "$OUT/generated.rp" -o "$OUT/generated.html" > /dev/null
 {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/generated.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/generated.html" | sed '1d;$d'

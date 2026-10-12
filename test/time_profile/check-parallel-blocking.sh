@@ -14,8 +14,8 @@ val () = Thread.spawn (fn () => sleep 0) (fn unmasked =>
 SML
 printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/basis/par.mlb\nmain.sml\n' > "$OUT/main.mlb"
 "${MLKIT:-$ROOT/bin/mlkit}" -no_gc -par -libdirs "$OUT" -libs blocking,m,c,dl -o "$OUT/test" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
-"$OUT/test" +RTS -tp -tp_file "$OUT/test.rp" > "$OUT/run.log"
-"${RPVIEW:-$ROOT/bin/rpview}" "$OUT/test.rp" --format json -o "$OUT/test.json" >/dev/null
+"$OUT/test" +RTS -tp -p_file "$OUT/test.rp" > "$OUT/run.log"
+"${PVIEW:-$ROOT/bin/pview}" "$OUT/test.rp" --format json -o "$OUT/test.json" >/dev/null
 node - "$OUT/test.json" <<'JS'
 const fs=require('fs'),a=require('assert'),r=fs.readFileSync(process.argv[2],'utf8').trim().split('\n').map(JSON.parse),s=r.filter(x=>x.type==='time_sample'),events=r.filter(x=>x.type==='time_thread'),final=r.filter(x=>x.type==='time_status').at(-1);
 const counts=[1,2].map(id=>s.filter(x=>x.thread===id).length);
