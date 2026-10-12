@@ -69,7 +69,7 @@ printUsage(void)
 #endif
   fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
 #endif
-  fprintf(stderr,"\nExperimental time profiling (macOS ARM64 / Linux X64; parallel pthreads use passive mode):\n");
+  fprintf(stderr,"\nTime profiling:\n");
   fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
   fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
   fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU sampling unavailable.\n");
