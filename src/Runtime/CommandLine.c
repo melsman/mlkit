@@ -68,7 +68,7 @@ printUsage(void)
   fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
   fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
   fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
-  fprintf(stderr,"  -tp_buffer N             Buffer records, 2..1048576 (default: 65536).\n");
+  fprintf(stderr,"  -tp_buffer N             Buffer records, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
   fprintf(stderr,"  -tp_file PATH            Shared profile output (default: profile.rp).\n");
   fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
 #ifdef ENABLE_GC

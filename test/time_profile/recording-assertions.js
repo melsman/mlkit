@@ -9,6 +9,8 @@ for (const mode of ['gc', 'no_gc']) {
       time_status: rows.filter(r => r.type === 'time_status')};
     const snapshots = rows.filter(r => r.type === 'sample_begin');
     assert(m.time_session, 'time session missing');
+    assert(m.time_session.semantics.includes('detailed 32-byte'));
+    assert.equal(m.time_session.buffer_capacity,scenario==='combined'?65536:scenario==='overflow'?4:4096);
     assert(m.time_samples.length > 0, 'no time samples');
     const final = m.time_status.at(-1);
     assert.equal(final.final, 1);

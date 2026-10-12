@@ -9,7 +9,8 @@ uintptr_t mlkit_tp_gc_enter(void) { return atomic_exchange_explicit(&mlkit_tp_co
 void mlkit_tp_gc_leave(uintptr_t saved) { atomic_store_explicit(&mlkit_tp_context,saved,memory_order_relaxed); }
 int mlkit_tp_enabled, mlkit_tp_initially_paused;
 uint64_t mlkit_tp_interval_us = 1000;
-size_t mlkit_tp_capacity = 65536;
+/* Zero selects the default 2 MiB budget after choosing the record layout. */
+size_t mlkit_tp_capacity;
 int mlkit_tp_parse_interval(const char *s) {
   if (*s < '0' || *s > '9') return 0;
   errno = 0;
@@ -26,10 +27,18 @@ _Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_LONG_LOCK_FREE == 2 && ATOMIC
 typedef struct TimeRecord {
   _Atomic uintptr_t pc;
   _Atomic uint64_t tick;
+} TimeRecord;
+typedef struct DetailedTimeRecord {
+  TimeRecord sample;
   _Atomic unsigned state;
   _Atomic uintptr_t origin_pc;
-} TimeRecord;
+} DetailedTimeRecord;
+_Static_assert(sizeof(TimeRecord) == 16, "passive time record must be 16 bytes");
+_Static_assert(sizeof(DetailedTimeRecord) == 32, "detailed time record must be 32 bytes");
 static TimeRecord *tp_buffer_records;
+static DetailedTimeRecord *tp_detailed_records;
+/* Selected before installing the handler and immutable during recording. */
+static int tp_detailed;
 static _Atomic unsigned tp_count, tp_active, tp_recorder;
 static _Atomic unsigned tp_region_active, tp_region_pending;
 static _Atomic uint64_t tp_due, tp_region_due, tp_dropped, tp_routing_dropped;
@@ -79,14 +88,17 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
     atomic_store_explicit(&tp_due,due+((now-due)/tp_interval_ticks+1)*tp_interval_ticks,memory_order_relaxed);
     unsigned n = atomic_load_explicit(&tp_count,memory_order_relaxed);
     if (n < mlkit_tp_capacity) {
-      TimeRecord *record = &tp_buffer_records[n];
+      TimeRecord *record = tp_detailed ? &tp_detailed_records[n].sample : &tp_buffer_records[n];
       atomic_store_explicit(&record->pc,
         (uintptr_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss),memory_order_relaxed);
       atomic_store_explicit(&record->tick,now,memory_order_relaxed);
-      uintptr_t attribution = atomic_load_explicit(&mlkit_tp_context,memory_order_relaxed);
-      unsigned state = atomic_load_explicit(&tp_recorder,memory_order_relaxed) ? 1 : attribution & 3;
-      atomic_store_explicit(&record->state,state,memory_order_relaxed);
-      atomic_store_explicit(&record->origin_pc,state == 2 ? attribution & ~(uintptr_t)3 : 0,memory_order_relaxed);
+      if (tp_detailed) {
+        DetailedTimeRecord *detail = &tp_detailed_records[n];
+        uintptr_t attribution = atomic_load_explicit(&mlkit_tp_context,memory_order_relaxed);
+        unsigned state = atomic_load_explicit(&tp_recorder,memory_order_relaxed) ? 1 : attribution & 3;
+        atomic_store_explicit(&detail->state,state,memory_order_relaxed);
+        atomic_store_explicit(&detail->origin_pc,state == 2 ? attribution & ~(uintptr_t)3 : 0,memory_order_relaxed);
+      }
       atomic_store_explicit(&tp_count,n+1,memory_order_release);
     } else tp_loss(&tp_dropped);
   }
@@ -113,6 +125,8 @@ static void tp_alarm(void) {
 }
 static void tp_prepare(void) {
   if (mlkit_rp_code_scope != 1) fail("time sampling requires a static executable with function metadata");
+  tp_detailed = mlkit_tp_attribution_capable == 2;
+  if (!mlkit_tp_capacity) mlkit_tp_capacity = tp_detailed ? 65536 : 131072;
   if (mlkit_tp_capacity < 2 || mlkit_tp_capacity > 1048576) fail("time buffer capacity must be 2..1048576");
   sigemptyset(&tp_mask); sigaddset(&tp_mask,SIGALRM);
   sigset_t current;
@@ -126,14 +140,19 @@ static void tp_prepare(void) {
   tp_stack_high = (uintptr_t)pthread_get_stackaddr_np(pthread_self());
   tp_stack_low = tp_stack_high-pthread_get_stacksize_np(pthread_self());
   {
-    tp_buffer_records = calloc(mlkit_tp_capacity,sizeof(TimeRecord));
-    if (!tp_buffer_records) fail("cannot allocate time sample buffer");
+    if (tp_detailed) tp_detailed_records = calloc(mlkit_tp_capacity,sizeof(DetailedTimeRecord));
+    else tp_buffer_records = calloc(mlkit_tp_capacity,sizeof(TimeRecord));
+    if (!(tp_detailed ? (void *)tp_detailed_records : (void *)tp_buffer_records))
+      fail("cannot allocate time sample buffer");
     /* Touch every page and initialize atomics outside signal context. */
     for (size_t i = 0; i < mlkit_tp_capacity; i++) {
-      atomic_init(&tp_buffer_records[i].pc,0);
-      atomic_init(&tp_buffer_records[i].tick,0);
-      atomic_init(&tp_buffer_records[i].state,0);
-      atomic_init(&tp_buffer_records[i].origin_pc,0);
+      TimeRecord *record = tp_detailed ? &tp_detailed_records[i].sample : &tp_buffer_records[i];
+      atomic_init(&record->pc,0);
+      atomic_init(&record->tick,0);
+      if (tp_detailed) {
+        atomic_init(&tp_detailed_records[i].state,0);
+        atomic_init(&tp_detailed_records[i].origin_pc,0);
+      }
     }
   }
 }
@@ -142,7 +161,9 @@ static void tp_begin(void) {
   atomic_store(&tp_active,!mlkit_tp_initially_paused);
   atomic_store(&tp_due,mach_absolute_time()+tp_interval_ticks);
   emit_record(23,NUMS(2,mlkit_tp_interval_us*1000,mlkit_tp_capacity,0,0),
-              STRS("wall","elapsed delivery samples; blocked locations observed, missed expirations not reconstructed",
+              STRS("wall",tp_detailed ?
+                   "detailed 32-byte buffer records; elapsed delivery samples; blocked locations observed, missed expirations not reconstructed" :
+                   "passive 16-byte buffer records; elapsed delivery samples; blocked locations observed, missed expirations not reconstructed",
                    "mach-uptime-ns (excludes machine sleep)"));
   tp_status(0);
 }
@@ -172,9 +193,11 @@ static void tp_drain(void) {
   atomic_store(&tp_recorder,1);
   unsigned count = atomic_load_explicit(&tp_count,memory_order_acquire);
   for (unsigned i = 0; i < count; i++) {
-    TimeRecord *r = &tp_buffer_records[i];
+    TimeRecord *r = tp_detailed ? &tp_detailed_records[i].sample : &tp_buffer_records[i];
+    unsigned state = tp_detailed ? atomic_load(&tp_detailed_records[i].state) : 0;
+    uintptr_t origin = tp_detailed ? atomic_load(&tp_detailed_records[i].origin_pc) : 0;
     emit_record(24,NUMS(++tp_written,tp_ns(atomic_load(&r->tick)),atomic_load(&r->pc),
-                        0,0,atomic_load(&r->state),atomic_load(&r->origin_pc)),NO_STRINGS);
+                        0,0,state,origin),NO_STRINGS);
   }
   atomic_store(&tp_count,0);
   atomic_store(&tp_recorder,0);
