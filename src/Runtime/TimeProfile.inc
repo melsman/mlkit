@@ -4,6 +4,7 @@
  * while reusing the single buffer. All signal-visible mutable objects
  * are always-lock-free atomics. Buffers remain allocated until process exit. */
 __attribute__((weak)) const volatile uintptr_t mlkit_tp_attribution_capable = 0;
+extern const volatile uintptr_t mlkit_tp_gc_address;
 _Atomic uintptr_t mlkit_tp_context;
 uintptr_t mlkit_tp_gc_enter(void) { return atomic_exchange_explicit(&mlkit_tp_context,3,memory_order_relaxed); }
 void mlkit_tp_gc_leave(uintptr_t saved) { atomic_store_explicit(&mlkit_tp_context,saved,memory_order_relaxed); }
@@ -42,6 +43,9 @@ typedef struct DetailedTimeRecord {
 _Static_assert(sizeof(TimeRecord) == 16, "passive time record must be 16 bytes");
 _Static_assert(sizeof(DetailedTimeRecord) == 32, "detailed time record must be 32 bytes");
 static TimeRecord *tp_buffer_records;
+#ifdef ENABLE_GC
+extern _Atomic ssize_t doing_gc;
+#endif
 static DetailedTimeRecord *tp_detailed_records;
 /* Selected before installing the handler and immutable during recording. */
 static int tp_detailed;
@@ -95,13 +99,19 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
     unsigned n = atomic_load_explicit(&tp_count,memory_order_relaxed);
     if (n < mlkit_tp_capacity) {
       TimeRecord *record = tp_detailed ? &tp_detailed_records[n].sample : &tp_buffer_records[n];
-      atomic_store_explicit(&record->pc,
-        tp_context_pc(uc),memory_order_relaxed);
+#ifdef ENABLE_GC
+      unsigned in_gc = atomic_load_explicit(&doing_gc,memory_order_relaxed) != 0;
+#else
+      unsigned in_gc = 0;
+#endif
+      /* Passive profiles aggregate the entire GC extent, including helpers. */
+      uintptr_t pc = !tp_detailed && in_gc ? mlkit_tp_gc_address : tp_context_pc(uc);
+      atomic_store_explicit(&record->pc,pc,memory_order_relaxed);
       atomic_store_explicit(&record->tick,now,memory_order_relaxed);
       if (tp_detailed) {
         DetailedTimeRecord *detail = &tp_detailed_records[n];
         uintptr_t attribution = atomic_load_explicit(&mlkit_tp_context,memory_order_relaxed);
-        unsigned state = atomic_load_explicit(&tp_recorder,memory_order_relaxed) ? 1 : attribution & 3;
+        unsigned state = atomic_load_explicit(&tp_recorder,memory_order_relaxed) ? 1 : in_gc ? 3 : attribution & 3;
         atomic_store_explicit(&detail->state,state,memory_order_relaxed);
         atomic_store_explicit(&detail->origin_pc,state == 2 ? attribution & ~(uintptr_t)3 : 0,memory_order_relaxed);
       }

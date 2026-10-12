@@ -28,7 +28,10 @@ initiating C-call PC. The default buffer uses 2 MiB in either mode: 131,072
 passive records or 65,536 detailed. Mode selection is fixed for the session.
 Explicit `-tp_buffer N` means records, not bytes. See [T6d](t6d-compact-records.md).
 The wire format remains shared with region profiling and compatible with pview;
-passive drains serialize zero state/origin into the existing fields.
+passive drains serialize zero state/origin. The sampler observes the atomic
+`doing_gc` flag and substitutes the address of `gc` for all GC work, including
+while executing shared allocation helpers. Detailed mode keeps the actual PC
+and records GC state.
 
 ## Attribution and instrumentation decision
 

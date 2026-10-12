@@ -58,7 +58,7 @@ ssize_t num_gc = 0;                       // number of garbage collections
 #ifdef ENABLE_GEN_GC
 ssize_t num_gc_major = 0;                 // number of major garbage collections
 #endif
-ssize_t doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
+_Atomic ssize_t doing_gc = 0;             // set to 1 when GC'ing; otherwise 0
 ssize_t raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
 ssize_t raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
@@ -1423,7 +1423,7 @@ MLKIT_TP_GC_SECTION gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #ifdef PROFILING
   uintptr_t tp_saved = mlkit_tp_gc_enter();
 #endif
-  doing_gc = 1;
+  atomic_store_explicit(&doing_gc,1,memory_order_relaxed);
 
 #ifdef CHECK_GC
   ////printf("entering gc\n");
@@ -1985,7 +1985,7 @@ MLKIT_TP_GC_SECTION gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #ifdef PROFILING
   mlkit_tp_gc_leave(tp_saved);
 #endif
-  doing_gc = 0; // Mutex on the garbage collector
+  atomic_store_explicit(&doing_gc,0,memory_order_relaxed); // Mutex on the garbage collector
 #ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_gc_completed();
   rp_gc_sample(ctx, sp, 5, profile_major);

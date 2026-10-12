@@ -16,6 +16,7 @@ assert(samples.every(s=>s.origin_pc===0&&s.state===0),'ordinary code has no per-
 const html=fs.readFileSync(process.argv[3],'utf8');
 const profile=JSON.parse(html.match(/const profile=(.*?);\n/s)[1]);
 assert(profile.time_samples.some(s=>s.attribution.source==='<runtime>'),'named C samples');
+assert(!profile.time_samples.some(s=>s.attribution.function==='evacuate'),'GC helper samples must contribute to GC');
 assert(profile.ir_documents.some(d=>d.source.endsWith('measure.sml')),'ordinary matching IR missing');
 assert(profile.ir_documents.some(d=>d.source.endsWith('measure.sml')&&d.region_data.some(r=>r.kind==='function'&&r.flavor==='named')),'ordinary function labels missing');
 assert(profile.time_samples.some(s=>s.attribution.status==='function'&&s.attribution.source!=='<runtime>'),'ML samples');

@@ -8,7 +8,11 @@ Passive sampling buffers only a 64-bit interrupted PC and 64-bit Mach timestamp.
 The record is 16 bytes. Detailed sampling retains state and initiating C-origin
 PC in a 32-byte record. Static assertions verify both sizes on the supported ABI.
 The layout is selected before handler installation and stays fixed for the
-session. The passive handler never reads or stores attribution state/origin.
+session. Passive sampling does not read C-origin instrumentation. In GC builds,
+it reads the lock-free atomic `doing_gc` flag and substitutes the address of
+`gc` while GC is active, including inside helpers and shared allocation routines.
+This aggregates GC work without adding fields or reducing buffer capacity.
+Detailed sampling retains the actual helper PC and records GC state instead.
 
 The default memory budget remains **2 MiB**: 131,072 passive records or 65,536
 detailed records. `-tp_buffer N` still means an explicit record count, with the
@@ -23,9 +27,10 @@ with delivery masked. Overflow retains early records and counts later drops.
 
 The `.rp` wire format and pview reader stay compatible: drains expand passive
 records to the existing time-sample fields with state/origin both zero.
+The substituted GC address resolves to the GC category in pview.
 Serialized samples still cost 61 bytes. The existing time-session semantics
 text describes the selected in-memory layout; its capacity is the actual
-record capacity. Full PCs and exact clock ticks are retained without narrowing,
+record capacity. Full PCs outside GC and exact clock ticks are retained without narrowing,
 packing, timestamp wraparound or code-range encoding in the handler.
 
 Ordinary builds automatically use compact records. Existing instrumented
