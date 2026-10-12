@@ -30,12 +30,13 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 .ir-keyword{color:#1d4ed8;font-weight:600}.ir-region-keyword{color:#7e22ce;font-weight:600}.ir-string{color:#166534}.ir-comment{color:#667785;font-style:italic}
 .allocation-source{display:block;color:#4d626f;font-size:12px;overflow-wrap:anywhere;line-height:1.5}#allocation-table td:last-child{white-space:nowrap;vertical-align:top}
 .time-view .graph-column,.time-view .legend-column,.time-view .graph-actions,.time-view .snapshot-panel,.time-view .table-controls,.time-view #graph-heading{display:none}.time-view #graph-layout{display:block}.time-view .snapshot-window{margin:24px 0}.time-view #region-table,.time-view #allocation-section,.time-view #show-type,.time-view #show-peak{display:none}.time-view .graph-column,.time-view .legend-column{display:none}
+#time-table-scroll{max-height:min(480px,65vh);overflow:auto;scrollbar-gutter:stable;margin-top:12px;border:1px solid #bdcbd3;border-radius:6px;background:white}#time-table-scroll:focus-visible{outline:2px solid #2563eb;outline-offset:3px}#time-table-scroll table{font-size:14px;line-height:1.35}#time-table-scroll td,#time-table-scroll th{padding:4px 8px}#time-table-scroll th{position:sticky;top:0;z-index:1;background:#edf2f5;box-shadow:0 1px #bdcbd3}#time-table-scroll .ir-site-button{font:inherit;line-height:inherit;padding:0}#time-table-scroll td:not(:first-child){white-space:nowrap}
 </style><div class="concept-heading" id="profile-heading"><h1 id="profile-title">MLKit Profile Viewer</h1></div>
 <section id="time-section" hidden>
 <div class="concept-heading" id="time-heading"><h2>Sampled time contributions</h2></div>
 <p id="time-summary"></p><p id="time-note"></p><p id="time-status" class="note"></p>
 <label>Execution stream <select id="time-stream"><option value="all">All recorded streams</option></select></label>
-<table><thead><tr><th>Function</th><th>Share of samples</th><th>Samples</th><th id="time-estimate-heading">Estimated wall time</th></tr></thead><tbody id="time-rows"></tbody></table>
+<div id="time-table-scroll" tabindex="0" role="region" aria-label="Sampled time contributions"><table><thead><tr><th>Function</th><th>Share of samples</th><th>Samples</th><th id="time-estimate-heading">Estimated wall time</th></tr></thead><tbody id="time-rows"></tbody></table></div>
 <details id="time-thread-section" hidden><summary id="time-thread-heading">Thread lifetimes and samples</summary><table><thead><tr><th>Thread</th><th>Lifetime</th><th>Samples in window</th><th>Recorded total</th><th>Buffer drops</th><th>Thread CPU time</th></tr></thead><tbody id="time-thread-rows"></tbody></table></details>
 <div id="time-code"></div>
 </section>
