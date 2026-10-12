@@ -39,6 +39,7 @@ if [ "$(uname -sm)" = 'Darwin arm64' ]; then
   run time-ordinary sh "$ROOT/test/time_profile/check-ordinary.sh"
   run time-phases sh "$ROOT/test/time_profile/check-phases.sh"
   run time-conflicts sh "$ROOT/test/time_profile/check-conflicts.sh"
+  run time-attribution-modes sh "$ROOT/test/time_profile/check-attribution-modes.sh"
   run time-attribution sh "$ROOT/test/time_profile/check-attribution.sh"
   run time-recording sh "$ROOT/test/time_profile/check-recording.sh"
   run code-metadata sh "$ROOT/test/time_profile/check-code-metadata.sh"

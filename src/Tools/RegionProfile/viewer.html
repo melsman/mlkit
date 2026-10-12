@@ -164,7 +164,7 @@ function timeReport(){
  }
  const [a,b]=timeBounds();
  el('time-summary').textContent=selected.length.toLocaleString()+' samples · '+timeText(a)+'–'+timeText(b);
- el('time-note').textContent='Wall clock: monotonic elapsed time, excluding machine sleep; includes blocking. Estimates = sample count × requested interval ('+timeText(BigInt(timeSession.interval_ns))+'). Percentages include GC, recorder and unresolved samples in the selected stream and time window. C-primitive samples are charged to their initiating ML function; recognized callback ML PCs take precedence. These are sampled estimates, not measured CPU time.';
+ el('time-note').textContent='Wall clock: monotonic elapsed time, excluding machine sleep; includes blocking. Estimates = sample count × requested interval ('+timeText(BigInt(timeSession.interval_ns))+'). Percentages include GC, recorder and unresolved samples in the selected stream and time window. Named C functions receive their own self-time rows. With detailed attribution, unresolved C locations fall back to their initiating ML function; recognized callback ML PCs take precedence. These are sampled estimates, not measured CPU time.';
  if(!selected.length)el('time-rows').textContent='No recorded time samples in this window.';
  const status=profile.time_status;
  el('time-status').textContent='Session-wide loss: '+(status?status.dropped+' buffer drops; '+status.routing_dropped+' routing drops.':'No loss status available. ')+ 'Timer coalescing is unobservable; percentages describe recorded samples only. '+(profile.complete&&String(status?.final)==='1'?'Recording complete.':'Recording incomplete or final status unavailable.');

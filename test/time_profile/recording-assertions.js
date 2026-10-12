@@ -2,28 +2,30 @@ const fs = require('fs');
 const assert = require('assert');
 const dir = process.argv[2];
 for (const mode of ['gc', 'no_gc']) {
-  for (const scenario of ['normal', 'overflow', 'combined']) {
+  for (const scenario of ['normal', 'overflow', 'combined', 'passive', 'passive-overflow', 'passive-combined']) {
     const rows = fs.readFileSync(`${dir}/${mode}-${scenario}.json`, 'utf8').trim().split('\n').map(JSON.parse);
     const m = {time_session: rows.find(r => r.type === 'time_session'),
       time_samples: rows.filter(r => r.type === 'time_sample'),
       time_status: rows.filter(r => r.type === 'time_status')};
     const snapshots = rows.filter(r => r.type === 'sample_begin');
     assert(m.time_session, 'time session missing');
-    assert(m.time_session.semantics.includes('detailed 32-byte'));
-    assert.equal(m.time_session.buffer_capacity,scenario==='combined'?65536:scenario==='overflow'?4:4096);
+    const passive=scenario.startsWith('passive'),combined=scenario.includes('combined'),overflow=scenario.includes('overflow');
+    assert(m.time_session.semantics.includes(passive?'passive 16-byte':'detailed 32-byte'));
+    assert.equal(m.time_session.buffer_capacity,combined?(passive?131072:65536):overflow?4:4096);
+    if(passive) assert(m.time_samples.every(s=>s.state===0 && s.origin_pc===0));
     assert(m.time_samples.length > 0, 'no time samples');
     const final = m.time_status.at(-1);
     assert.equal(final.final, 1);
     assert.equal(final.active, 0);
     assert.equal(Number(final.recorded), m.time_samples.length);
-    if (scenario === 'overflow') assert(Number(final.dropped) > 0, 'overflow invisible');
+    if (overflow) assert(Number(final.dropped) > 0, 'overflow invisible');
     else assert.equal(Number(final.dropped), 0, 'unexpected overflow');
-    if (scenario !== 'combined') assert.equal(snapshots.length, 0, 'time-only region snapshots');
+    if (!combined) assert.equal(snapshots.length, 0, 'time-only region snapshots');
     else {
       assert(snapshots.length > 0, 'shared region timer inactive');
       assert(m.time_samples.length > snapshots.length, 'time frequency coupled to region snapshots');
     }
-    if (scenario !== 'combined') {
+    if (!combined) {
       assert(rows.filter(r => r.type === 'allocation_session').every(r => r.enabled === 0));
       assert(!rows.some(r => r.type === 'allocation' || r.type === 'ir_object'));
     }

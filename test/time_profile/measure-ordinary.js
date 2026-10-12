@@ -1,11 +1,22 @@
-// T6b: opt-in serial measurements; timing observations are not CI thresholds.
+// T6b/T6c/T6d: opt-in serial measurements; timing observations are not CI thresholds.
 const fs = require('fs'), path = require('path'), cp = require('child_process');
 const os = require('os'), crypto = require('crypto'), assert = require('assert');
 const [out, rpview, repetitions = '5'] = process.argv.slice(2);
 const repeats = Number(repetitions);
 assert(Number.isInteger(repeats) && repeats >= 3);
 const results = [], checksums = new Map();
-const settings = [
+const attributionStudy = process.argv.includes("--attribution");
+const settings = attributionStudy ? [
+ {name:'off'}, {name:'profiled-off', instrumented:true},
+ {name:'1ms', interval:'1ms', phasesOnly:true},
+ {name:'100us', interval:'100us'},
+ {name:'10us', interval:'10us', phasesOnly:true},
+ {name:'100us-65536', interval:'100us', capacity:65536, phasesOnly:true},
+ {name:'profiled-passive', instrumented:true, interval:'100us', attribution:'passive'},
+ {name:'profiled-detailed', instrumented:true, interval:'100us', attribution:'detailed'},
+ {name:'combined-passive', instrumented:true, region:true, interval:'100us', attribution:'passive'},
+ {name:'combined-detailed', instrumented:true, region:true, interval:'100us', attribution:'detailed'}
+] : [
  {name:'off'}, {name:'paused', interval:'1ms', paused:true},
  ...['1ms','100us','10us'].map(interval => ({name:interval, interval})),
  {name:'100us-small', interval:'100us', capacity:64, phasesOnly:true},
@@ -31,7 +42,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
  for (let repeat = 0; repeat < repeats; ++repeat) for (const setting of shuffle(settings.filter(s => (!s.phasesOnly || workload==='phases') && !(s.paused && workload==='phases')))) {
   const stem = path.join(out,`${workload}-${config}-${setting.name}-${repeat}`), profile = stem+'.rp';
   const options = [];
-  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,'-tp_buffer',String(setting.capacity || 65536),'-tp_file',profile,...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
+  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,...(!attributionStudy || setting.capacity ? ['-tp_buffer',String(setting.capacity || 65536)] : []),'-tp_file',profile,...(setting.attribution ? ['-tp_attribution',setting.attribution] : []),...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
   if (setting.region) options.push('-rp','-rp_interval','10ms','-rp_file',profile);
   const begin = process.hrtime.bigint();
   const run = cp.spawnSync('/usr/bin/time',['-l','-p',executable(setting.instrumented),...args,...(options.length?['+RTS',...options]:[])],{encoding:'utf8',maxBuffer:32*1024*1024});
@@ -57,7 +68,15 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
    else assert.equal(row.region_snapshots,0);
    if (setting.interval) {
     assert.equal(status.final,1); assert.equal(status.recorded,samples.length);
-    Object.assign(row,{capacity:setting.capacity || 65536,samples:samples.length,buffer_drops:status.dropped,routing_drops:status.routing_dropped});
+    const session = records.find(r=>r.type==='time_session');
+    const detailed = session.semantics.includes('detailed 32-byte');
+    Object.assign(row,{capacity:session.buffer_capacity,record_bytes:detailed?32:16,samples:samples.length,buffer_drops:status.dropped,routing_drops:status.routing_dropped});
+    if(attributionStudy) {
+     assert.equal(session.buffer_capacity,setting.capacity || (detailed?65536:131072));
+     assert.equal(detailed,!!setting.instrumented && setting.attribution!=='passive');
+     if(!detailed) assert(samples.every(s=>s.state===0 && s.origin_pc===0));
+     else assert(samples.some(s=>s.state===2 && s.origin_pc>0));
+    }
     if (setting.paused) assert.equal(samples.length,0);
     else assert(samples.length>0);
     const image=records.find(r=>r.type==='code_image'), base=BigInt(image.load_address);
@@ -66,6 +85,8 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
     const counts={ml:0,c:0,unknown:0};
     for(const sample of samples){const f=resolve(sample.pc);counts[f?(f.source==='<runtime>'?'c':'ml'):'unknown']++;}
     row.raw_pc_counts=counts;
+    row.state_counts=[0,1,2,3].map(state=>samples.filter(s=>s.state===state).length);
+    row.c_origin_fallback_samples=samples.filter(s=>s.state===2 && !resolve(s.pc) && resolve(s.origin_pc)).length;
     if(workload==='phases') {
      const intervalNs={'1ms':1000000,'100us':100000,'10us':10000}[setting.interval];
      const phases=[];let start=null;
@@ -74,7 +95,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
       else if(end.active===0 && start) {
        const selected=samples.filter(s=>s.sequence>start.recorded && s.sequence<=end.recorded);
        const duration=end.time-start.time, name=['compute','allocate','c','sleep'][phases.length];
-       phases.push({name,duration_ns:duration,samples:selected.length,dropped:end.dropped-start.dropped,capture_ratio:selected.length*intervalNs/duration,busy_c_samples:selected.filter(s=>resolve(s.pc)?.function==='tp_measure_busy').length});start=null;
+       phases.push({name,duration_ns:duration,samples:selected.length,origin_fallback_samples:selected.filter(s=>s.state===2 && !resolve(s.pc) && resolve(s.origin_pc)).length,dropped:end.dropped-start.dropped,capture_ratio:selected.length*intervalNs/duration,busy_c_samples:selected.filter(s=>resolve(s.pc)?.function==='tp_measure_busy').length});start=null;
       }
      }
      assert.equal(phases.length,4);row.phases=phases;
@@ -82,7 +103,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
    }
   }
   results.push(row);
-  fs.writeFileSync(path.join(out,'measurements.json'),JSON.stringify({host:{platform:process.platform,controller_arch:process.arch,benchmark_arch:'arm64',release:os.release(),cpu:os.cpus()[0]?.model},repeats,settings,results},null,2)+'\n');
+  fs.writeFileSync(path.join(out,'measurements.json'),JSON.stringify({host:{platform:process.platform,controller_arch:process.arch,benchmark_arch:'arm64',release:os.release(),cpu:os.cpus()[0]?.model},repeats,attributionStudy,settings,results},null,2)+'\n');
   console.log(`${workload} ${config} ${setting.name} #${repeat}: ${time.real}s, ${row.samples ?? '-'} samples, ${row.buffer_drops ?? 0} drops`);
  }
 }
@@ -95,3 +116,23 @@ for(const config of ['gc','gengc','no_gc']) for(const workload of ['phases','kkb
 }
 fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2)+'\n');
 console.table(summary);
+
+// Logical file sizes from fresh isolated ML-Yacc caches; exclude shared Basis caches.
+if (attributionStudy) {
+ function cacheSize(directory) {
+  const result={files:0,bytes:0,object_bytes:0,ir_bytes:0};
+  for(const entry of fs.readdirSync(directory,{withFileTypes:true})) {
+   const file=path.join(directory,entry.name);
+   if(entry.isDirectory()) {const child=cacheSize(file);for(const key of Object.keys(result))result[key]+=child[key];}
+   else if(entry.isFile()) {const bytes=fs.statSync(file).size;result.files++;result.bytes+=bytes;if(file.endsWith('.o'))result.object_bytes+=bytes;if(file.endsWith('.ir'))result.ir_bytes+=bytes;}
+  }
+  return result;
+ }
+ const caches=[];
+ for(const [config,ordinary,instrumented] of [['gc','ARM64_RI_GC','ARM64_RI_GC_PROF_CODE1_TP1'],['gengc','ARM64_RI_GENGC','ARM64_RI_GENGC_PROF_CODE1_TP1'],['no_gc','ARM64_RI','ARM64_RI_PROF_CODE1_TP1']])for(const [mode,folder] of [['ordinary',ordinary],['instrumented',instrumented]]) {
+  const size={files:0,bytes:0,object_bytes:0,ir_bytes:0};
+  for(const root of ['src','lib']) {const child=cacheSize(path.join(out,'yacc-source',root,'MLB',folder));for(const key of Object.keys(size))size[key]+=child[key];}
+  caches.push({config,mode,folder,...size});
+ }
+ fs.writeFileSync(path.join(out,'cache-sizes.json'),JSON.stringify({scope:'fresh isolated ML-Yacc src/lib caches; logical bytes; excludes shared Basis and main-driver caches',caches},null,2)+'\n');
+}

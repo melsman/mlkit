@@ -17,11 +17,14 @@ for mode in gc no_gc; do
   ${CC:-cc} -O2 -Wall -Wextra -Werror $tagged -c "$ROOT/test/time_profile/recording.c" -o "$OUT/recording.o"
   ar rcs "$OUT/librecording.a" "$OUT/recording.o"
   "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs recording,m,c,dl -o "$OUT/$mode" "$OUT/recording.mlb" > "$OUT/$mode-build.log" 2>&1
-  for scenario in normal overflow combined; do
+  for scenario in normal overflow combined passive passive-overflow passive-combined; do
     case $scenario in
       normal) set -- -tp_buffer 4096;;
       overflow) set -- -tp_buffer 4;;
       combined) set -- -rp -rp_interval 20ms;;
+      passive) set -- -tp_attribution passive -tp_buffer 4096;;
+      passive-overflow) set -- -tp_attribution passive -tp_buffer 4;;
+      passive-combined) set -- -tp_attribution passive -rp -rp_interval 20ms;;
     esac
     "$OUT/$mode" +RTS -tp -tp_paused -tp_file "$OUT/$mode-$scenario.rp" "$@" > "$OUT/$mode-$scenario.log" 2>&1
     "$RPVIEW" "$OUT/$mode-$scenario.rp" --format json -o "$OUT/$mode-$scenario.json" > /dev/null

@@ -8,6 +8,7 @@ _Atomic uintptr_t mlkit_tp_context;
 uintptr_t mlkit_tp_gc_enter(void) { return atomic_exchange_explicit(&mlkit_tp_context,3,memory_order_relaxed); }
 void mlkit_tp_gc_leave(uintptr_t saved) { atomic_store_explicit(&mlkit_tp_context,saved,memory_order_relaxed); }
 int mlkit_tp_enabled, mlkit_tp_initially_paused;
+int mlkit_tp_attribution = MLKIT_TP_AUTO;
 uint64_t mlkit_tp_interval_us = 1000;
 /* Zero selects the default 2 MiB budget after choosing the record layout. */
 size_t mlkit_tp_capacity;
@@ -125,7 +126,9 @@ static void tp_alarm(void) {
 }
 static void tp_prepare(void) {
   if (mlkit_rp_code_scope != 1) fail("time sampling requires a static executable with function metadata");
-  tp_detailed = mlkit_tp_attribution_capable == 2;
+  if (mlkit_tp_attribution == MLKIT_TP_DETAILED && mlkit_tp_attribution_capable != 2)
+    fail("detailed C attribution requires single-thread code compiled with -rp; use passive attribution for ordinary builds");
+  tp_detailed = mlkit_tp_attribution != MLKIT_TP_PASSIVE && mlkit_tp_attribution_capable == 2;
   if (!mlkit_tp_capacity) mlkit_tp_capacity = tp_detailed ? 65536 : 131072;
   if (mlkit_tp_capacity < 2 || mlkit_tp_capacity > 1048576) fail("time buffer capacity must be 2..1048576");
   sigemptyset(&tp_mask); sigaddset(&tp_mask,SIGALRM);

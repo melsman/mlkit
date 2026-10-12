@@ -1,0 +1,59 @@
+{
+  "scope": "fresh isolated ML-Yacc src/lib caches; logical bytes; excludes shared Basis and main-driver caches",
+  "caches": [
+    {
+      "config": "gc",
+      "mode": "ordinary",
+      "folder": "ARM64_RI_GC",
+      "files": 231,
+      "bytes": 6003514,
+      "object_bytes": 1792064,
+      "ir_bytes": 1576005
+    },
+    {
+      "config": "gc",
+      "mode": "instrumented",
+      "folder": "ARM64_RI_GC_PROF_CODE1_TP1",
+      "files": 258,
+      "bytes": 9862198,
+      "object_bytes": 4670904,
+      "ir_bytes": 2522939
+    },
+    {
+      "config": "gengc",
+      "mode": "ordinary",
+      "folder": "ARM64_RI_GENGC",
+      "files": 231,
+      "bytes": 6083369,
+      "object_bytes": 1871736,
+      "ir_bytes": 1576005
+    },
+    {
+      "config": "gengc",
+      "mode": "instrumented",
+      "folder": "ARM64_RI_GENGC_PROF_CODE1_TP1",
+      "files": 258,
+      "bytes": 9868597,
+      "object_bytes": 4677216,
+      "ir_bytes": 2522939
+    },
+    {
+      "config": "no_gc",
+      "mode": "ordinary",
+      "folder": "ARM64_RI",
+      "files": 231,
+      "bytes": 5608967,
+      "object_bytes": 1345096,
+      "ir_bytes": 1712717
+    },
+    {
+      "config": "no_gc",
+      "mode": "instrumented",
+      "folder": "ARM64_RI_PROF_CODE1_TP1",
+      "files": 258,
+      "bytes": 9468091,
+      "object_bytes": 4224264,
+      "ir_bytes": 2661224
+    }
+  ]
+}

@@ -16,11 +16,13 @@ snapshots still require region-profile compilation and runtime `-rp`.
 
 ## Recording and draining
 
-One preallocated buffer holds 65,536 records by default (2 MiB on ARM64).
-`-tp_buffer` selects 2..1,048,576 records (at most 32 MiB). Each record is 32
-bytes; metadata and serialization storage are additional. At the nominal
-1 ms rate, the default covers about 65 seconds between drains; at 100 us,
-about 6.5 seconds. Actual delivery can be lower.
+One preallocated buffer keeps a 2 MiB default budget: 131,072 passive records
+(16 bytes each) or 65,536 detailed records (32 bytes each). `-tp_buffer` selects
+2..1,048,576 records explicitly (at most 16 MiB passive or 32 MiB detailed);
+metadata and serialization storage are additional. At the nominal 1 ms rate,
+the passive default covers about 131 seconds between drains; at 100 us,
+about 13 seconds. Detailed capacity is half that; actual delivery can be lower.
+See [T6d compact records](t6d-compact-records.md).
 
 No compiler polls drain time samples. The buffer drains at normal shutdown,
 explicit `TimeProfile.flush()`, and start/pause lifecycle operations. Delivery
@@ -63,7 +65,8 @@ function receive their own C rows in ordinary builds.
 
 Profiled builds retain their existing optional C-origin/GC state recording.
 That instrumentation is not required for ordinary sampling. [T6b measures](t6b-ordinary-measurement.md)
-this simpler design, and T6c will evaluate optional detailed attribution.
+this simpler design. [T6c](t6c-optional-attribution.md) evaluates optional detailed
+attribution and provides explicit `-tp_attribution passive|detailed` selection.
 
 ## Validation
 

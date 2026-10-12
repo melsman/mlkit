@@ -25,6 +25,8 @@ extern int mlkit_rp_gc_major;
 /* Dormant time recording is available in existing runtime variants. Buffers
  * drain at explicit flush/lifecycle operations and normal process shutdown. */
 extern int mlkit_tp_enabled, mlkit_tp_initially_paused;
+enum { MLKIT_TP_AUTO, MLKIT_TP_PASSIVE, MLKIT_TP_DETAILED };
+extern int mlkit_tp_attribution;
 extern uint64_t mlkit_tp_interval_us;
 extern size_t mlkit_tp_capacity;
 extern _Atomic uintptr_t mlkit_tp_context;

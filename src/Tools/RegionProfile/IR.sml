@@ -218,7 +218,11 @@ struct
       val manifest = rows metadata "ir_objects"
       val neededSites = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
                                  siteMark r <> SOME (Num "0")) sites
-      val needed = neededSites @ manifest @ rows metadata "code_functions"
+      (* Runtime/C ranges have no ML IR companion. Keep them in the time
+       * catalogue, but do not turn them into missing region-flow documents. *)
+      val neededFunctions = List.filter (fn r => stringField r "ir_identity" <> "")
+                                       (rows metadata "code_functions")
+      val needed = neededSites @ manifest @ neededFunctions
       val paths = unique (fn s => s)
         (List.mapPartial (fn r => case stringField r "ir_object" of
             "" => NONE | path => SOME (path ^ ".ir")) needed)

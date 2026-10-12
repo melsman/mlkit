@@ -68,6 +68,7 @@ printUsage(void)
   fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
   fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
   fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
+  fprintf(stderr,"  -tp_attribution MODE     passive or detailed (default: available build instrumentation).\n");
   fprintf(stderr,"  -tp_buffer N             Buffer records, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
   fprintf(stderr,"  -tp_file PATH            Shared profile output (default: profile.rp).\n");
   fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
@@ -152,6 +153,13 @@ parseCmdLineArgs(int argc, char *argv[])
       if (strcmp(rtsValue(&argc,&argv),"wall")) {
         fprintf(stderr,"time sampling supports only wall; CPU timers failed T1 calibration\n"); exit(EXIT_FAILURE);
       }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_attribution")) {
+      const char *mode = rtsValue(&argc,&argv);
+      if (!strcmp(mode,"passive")) mlkit_tp_attribution = MLKIT_TP_PASSIVE;
+      else if (!strcmp(mode,"detailed")) mlkit_tp_attribution = MLKIT_TP_DETAILED;
+      else { fprintf(stderr,"-tp_attribution requires passive or detailed\n"); exit(EXIT_FAILURE); }
       tp_options = 1; match = 1; continue;
     }
     if (!strcmp(argv[0],"-tp_buffer")) {

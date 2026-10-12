@@ -39,4 +39,5 @@ for config in gc gengc no_gc; do
   "$MLKIT" -no_par -"$config" $flags -o "$OUT/mlyacc-$config-$mode" "$OUT/mlyacc.mlb" > "$OUT/mlyacc-$config-$mode-build.log" 2>&1
  done
 done
+if [ "${BUILD_ONLY:-0}" = 1 ]; then exit 0; fi
 node "$ROOT/test/time_profile/measure-ordinary.js" "$OUT" "${RPVIEW:-$ROOT/bin/rpview}" "${REPEATS:-5}"

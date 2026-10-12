@@ -1,5 +1,8 @@
 # T6b: ordinary-build measurement
 
+This batch predates T6d compact records and uses 65,536 32-byte records.
+See [T6c/T6d measurements](t6c-optional-attribution.md) for current layouts and defaults.
+
 Run `sh test/time_profile/measure-ordinary.sh` on macOS ARM64. `OUT`, `MLKIT`,
 `RPVIEW` and `REPEATS` can be overridden; five repetitions are the default and
 three are the minimum. Builds and measurements run serially. Raw executables,
