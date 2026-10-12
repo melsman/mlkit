@@ -259,7 +259,25 @@ struct
                   | NONE => ())
                else ())
           end) handle OS.SysErr _ => ())
-      val () = if null missing then () else app visit roots
+      (* Ordinary executables retain source paths and IR identities, but no
+       * linked-object manifest. Search MLB caches beside sources and their
+       * enclosing projects; matches still require the recorded identity. *)
+      fun sourceRoots entry =
+        case stringField entry "source" of
+            "" => []
+          | source => if String.isPrefix "<" source then []
+                      else
+                        let
+                          val source = OS.Path.mkAbsolute {path = source,relativeTo = OS.FileSys.getDir()}
+                          fun parents dir =
+                            let val parent = OS.Path.dir dir
+                            in OS.Path.concat(dir,"MLB") ::
+                               (if parent = dir orelse parent = "" then [] else parents parent)
+                            end
+                        in parents (OS.Path.dir source)
+                        end
+      val automaticRoots = unique (fn s => s) (List.concat(map sourceRoots missing))
+      val () = if null missing then () else app visit (roots @ automaticRoots)
       val documents = unique (fn r => stringField r "identity")
         (List.filter (fn doc => List.exists (fn entry => matches entry doc) needed) (!found))
       fun spanKey mark kind = encodeJson mark ^ ":" ^ encodeJson kind

@@ -74,6 +74,8 @@ JSON output contains one profile record per line.
 .BI "\-\-ir\-dir " directory
 Add a fallback search location for moved IR companions. May be repeated.
 Normally companions are found beside the object paths recorded in the profile.
+For ordinary builds without recorded object paths, MLB directories beside
+recorded source files and in their enclosing directories are searched automatically.
 Matching build identity and integrity checks are required.
 .TP
 .BI "\-\-caption " text

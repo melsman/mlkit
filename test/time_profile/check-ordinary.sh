@@ -18,7 +18,7 @@ for config in gc no_gc gengc; do
  sed '/^c /d' "$OUT/$config-on.log" > "$OUT/on-stable.log"
  cmp "$OUT/off-stable.log" "$OUT/on-stable.log"
  "${PVIEW:-$ROOT/bin/pview}" "$OUT/$config.rp" --format json -o "$OUT/$config.json" >/dev/null
- "${PVIEW:-$ROOT/bin/pview}" "$OUT/$config.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$OUT/$config.html" >/dev/null
+ "${PVIEW:-$ROOT/bin/pview}" "$OUT/$config.rp" -o "$OUT/$config.html" >/dev/null
  node "$ROOT/test/time_profile/ordinary-assertions.js" "$OUT/$config.json" "$OUT/$config.html" "${PVIEW:-$ROOT/bin/pview}" "${RPENCODER:-$ROOT/bin/rpfixture}"
 done
 # No explicit API calls: overflow persists until normal-shutdown draining.
