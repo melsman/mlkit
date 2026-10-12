@@ -56,6 +56,11 @@ if "$OUT/ordinary" +RTS -p > "$OUT/error" 2>&1; then exit 1; fi
 grep -q 'requires region profiling support' "$OUT/error"
 "$MLKIT" -help > "$OUT/compiler-help" 2>&1
 "$OUT/combined" +RTS -help > "$OUT/runtime-help" 2>&1
+"$OUT/ordinary" +RTS -help > "$OUT/ordinary-runtime-help" 2>&1
+grep -q '^  -p ' "$OUT/runtime-help"
+if grep -q '^  -p ' "$OUT/ordinary-runtime-help"; then
+ echo 'Ordinary runtime help advertises unavailable combined profiling' >&2; exit 1
+fi
 "$PVIEW" --help > "$OUT/viewer-help" 2>&1
 grep -q -- '-p_file' "$OUT/runtime-help"
 grep -q 'Usage: pview' "$OUT/viewer-help"

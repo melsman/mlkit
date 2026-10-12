@@ -49,7 +49,9 @@ printUsage(void)
   fprintf(stderr,"  --RTS                    End runtime parsing permanently.\n");
   fprintf(stderr,"  --                       End runtime parsing; pass -- to the application.\n");
   fprintf(stderr,"\nProfiling:\n");
+#ifdef PROFILING
   fprintf(stderr,"  -p                       Record region snapshots and time samples.\n");
+#endif
   fprintf(stderr,"  -p_file PATH             Shared output file (default: profile.prof).\n");
   fprintf(stderr,"  -p_paused                Start enabled profilers paused.\n");
 #ifdef PROFILING
