@@ -59,7 +59,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <svg id="chart" viewBox="0 0 1002 668" role="img" aria-label="Stacked region and ML stack footprint over elapsed time"></svg>
 </div>
 <div class="legend-column"><div id="legend" aria-label="Region legend, top to bottom"></div></div>
-<div class="snapshot-window" role="group" aria-label="Snapshot range">
+<div id="profile-range" class="snapshot-window" role="group" aria-label="Snapshot range">
 <div class="window-label"><span id="range-caption">Snapshot range</span><button id="range-reset" type="button">Full range</button></div>
 <div class="range-slider"><div class="range-track" id="range-track"></div>
 <input id="range-start" type="range" min="0" max="0" value="0" aria-label="First snapshot" aria-describedby="range-caption">
@@ -784,6 +784,8 @@ function tickLabel(v){return v.toLocaleString(undefined,{maximumFractionDigits:1
 function draw(){
  const timeView=hasTime&&el('metric').value==='time';document.body.className=timeView?'time-view':'';for(const node of document.querySelectorAll('.region-only'))node.hidden=timeView;for(const id of ['scope','group','limit','show-type','show-peak']){el(id).disabled=timeView;el(id).closest('label').hidden=timeView;}
  if(!timeView&&el('ir-panel').parentElement===el('time-code')){document.querySelector('.ir-column').append(el('ir-panel'));el('ir-panel').hidden=true;}
+ if(timeView)el('time-table-scroll').after(el('profile-range'));
+ else document.querySelector('.graph-actions').before(el('profile-range'));
  rangeControls();timeReport();graphNavigation();
  if(timeView){el('export-svg').disabled=true;return;}
  const sites=siteGraph();
