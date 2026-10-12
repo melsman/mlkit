@@ -35,8 +35,8 @@ resetSnapshotRange();assert.equal(timeEnd,10000);
 console.log('PASS: time report categories, denominator, independent interval filtering and empty windows');
 
 timeStart=2500;timeEnd=7500;
-if(samples.length){el('metric').value='total';draw();assert(el('time-section').hidden);}
-el('metric').value='time';draw();assert(!el('time-section').hidden);
+if(samples.length){el('metric').value='total';draw();assert(el('time-section').hidden);assert.equal(el('profile-range').parentElement,el('graph-layout'));}
+el('metric').value='time';draw();assert(!el('time-section').hidden);assert.equal(el('profile-range').parentElement,el('time-section'));
 assert(document.querySelectorAll('.region-only').every(n=>n.hidden));
 assert(el('show-type').closest('.control-heading').hidden);
 assert(el('show-peak').closest('.control-heading').hidden);
