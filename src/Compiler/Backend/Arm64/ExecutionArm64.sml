@@ -234,7 +234,9 @@ structure ExecutionArm64 : EXECUTION =
               val irTree = SOME (PhysSizeInf.layout_pgm_with_locations target)
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
-              val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
+              val identity = IRLocations.contentIdentity
+                {unit = AddressLabels.pr_label main_lab, source = !Flags.current_source_file,
+                 tree = valOf irTree}
               val () = IRLocations.currentIdentity := identity
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
               val linkinfo = mk_linkinfo {code_label = main_lab,
@@ -308,7 +310,9 @@ structure ExecutionArm64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.s"
           val mapObject = run ^ ".ir-map.o"
-          val hasMap = true
+          (* Ordinary time metadata carries content identities; object/cache
+           * paths are unnecessary and would break bootstrap reproducibility. *)
+          val hasMap = region_profile()
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap {darwin = onmac_p()} files);
              assemble (mapFile,mapObject)) else ()

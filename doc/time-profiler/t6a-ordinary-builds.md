@@ -1,5 +1,9 @@
 # T6a: ordinary-build wall sampling
 
+[T7](t7-parallel-sampling.md) adds static macOS ARM64 no-GC pthread sampling,
+per-thread compact buffers and thread/stream views. Earlier parallel rejection
+statements below describe the pre-T7 implementation.
+
 Time sampling is dormant in the existing runtime variants. No time-specific
 runtime archive or library-cache directory is introduced. On macOS ARM64,
 compile an ordinary static executable with `-no_par`, then run:

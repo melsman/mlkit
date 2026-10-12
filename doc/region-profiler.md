@@ -535,3 +535,5 @@ Ordinary-build costs and accuracy: [T6b measurements](time-profiler/t6b-ordinary
 Compact time records: [T6d buffer layout and capacity](time-profiler/t6d-compact-records.md).
 
 Optional detailed C attribution: [T6c selection, costs and IR navigation](time-profiler/t6c-optional-attribution.md).
+
+Parallel time sampling and thread details: [T7 targeted pthread delivery](time-profiler/t7-parallel-sampling.md).

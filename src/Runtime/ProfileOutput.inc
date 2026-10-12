@@ -1,6 +1,10 @@
 /* Portable wire format: magic/version, then LE uint32 payload length, byte tag,
  * fixed-order LE uint64 counters, and LE uint32-length-prefixed byte strings.
  * Never serialize native structs. One buffered stdio write per record. */
+#ifdef PARALLEL
+#include <pthread.h>
+static pthread_mutex_t wire_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 static unsigned char *wire;
 static size_t wire_capacity;
 static void little_endian(unsigned char *p, uint64_t n, size_t bytes) {
@@ -8,6 +12,9 @@ static void little_endian(unsigned char *p, uint64_t n, size_t bytes) {
 }
 static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
                         const char *const *strings, size_t nstrings, const size_t *lengths) {
+#ifdef PARALLEL
+  pthread_mutex_lock(&wire_lock);
+#endif
   size_t size = 1 + count*8;
   for (size_t i = 0; i < nstrings; i++) {
     size_t n = lengths ? lengths[i] : strlen(strings[i]);
@@ -29,6 +36,9 @@ static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
     memcpy(wire+offset,strings[i],n); offset += n;
   }
   if (fwrite(wire,1,size+4,output) != size+4) fail("cannot write profile record");
+#ifdef PARALLEL
+  pthread_mutex_unlock(&wire_lock);
+#endif
 }
 #define NUMS(...) (const uint64_t[]){__VA_ARGS__}, sizeof((const uint64_t[]){__VA_ARGS__})/sizeof(uint64_t)
 #define STRS(...) (const char *const[]){__VA_ARGS__}, sizeof((const char *const[]){__VA_ARGS__})/sizeof(char *), NULL

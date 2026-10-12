@@ -35,7 +35,7 @@
 extern int posixThreads;                       // The number of execution streams
 extern Rp **freelists;                         // Array of N=posixThreads region page freelists
 extern thread_mutex_list_t **mutex_freelists;  // Array of N=posixThreads mutex freelists
-typedef ABT_thread thread_t;
+typedef ABT_thread mlkit_thread_t;
 typedef ABT_key thread_key_t;
 /* A join may yield the ULT. Do not block its execution stream with a
  * pthread mutex held across ABT_thread_join. */
@@ -57,7 +57,7 @@ typedef ABT_mutex thread_join_mutex_t;
 int execution_stream_rank(void);
 
 #else
-typedef pthread_t thread_t;
+typedef pthread_t mlkit_thread_t;
 typedef pthread_key_t thread_key_t;
 typedef pthread_mutex_t thread_join_mutex_t;
 #define JOIN_MUTEX_INIT(m) pthread_mutex_init(m,NULL)
@@ -82,7 +82,7 @@ typedef struct ti {
   void *arg;           // position in struct used by code generator
   context ctx;
   int tid;
-  thread_t thread;
+  mlkit_thread_t thread;
   thread_join_mutex_t mutex;
   void* retval;
   int joined;

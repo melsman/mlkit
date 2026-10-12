@@ -1,5 +1,9 @@
 # T6c: optional detailed C attribution
 
+[T7](t7-parallel-sampling.md) adds static macOS ARM64 no-GC pthread sampling,
+per-thread compact buffers and thread/stream views. Earlier parallel rejection
+statements below describe the pre-T7 implementation.
+
 Time recording has two independently selectable attribution modes:
 
 ```

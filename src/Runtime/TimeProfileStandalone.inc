@@ -10,9 +10,10 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #endif
-#if defined(__APPLE__) && defined(__aarch64__) && !defined(PARALLEL)
+#if defined(__APPLE__) && defined(__aarch64__) && !defined(ARGOBOTS)
 #include <mach/mach_time.h>
 #include <pthread.h>
+#include <sched.h>
 #define MLKIT_TP_NATIVE 1
 #endif
 int mlkit_rp_enabled;
@@ -43,12 +44,16 @@ void mlkit_rp_close(void) {
 void mlkit_rp_init(void) {
   if (!mlkit_tp_enabled) return;
   tp_prepare();
+
+#ifndef PARALLEL
   struct sigaction previous, action = {0};
   struct itimerval old;
   if (getitimer(ITIMER_REAL,&old) || sigaction(SIGALRM,NULL,&previous))
     fail("cannot inspect sampling timer");
   if (old.it_value.tv_sec || old.it_value.tv_usec || previous.sa_handler != SIG_DFL)
     fail("SIGALRM/ITIMER_REAL already in use; disable -tp or release the conflicting timer/handler");
+
+#endif
   output = fopen(mlkit_rp_filename,"wb");
   if (!output) fail("cannot open profile output");
   const unsigned char magic[] = {'M','L','K','R','P',0,10,0};
@@ -62,12 +67,16 @@ void mlkit_rp_init(void) {
   emit_code_metadata();
   tp_begin();
   if (fflush(output)) fail("cannot write profile header");
+
+#ifndef PARALLEL
   tp_install_handler(&action);
   sigemptyset(&action.sa_mask);
   if (sigaction(SIGALRM,&action,NULL)) fail("cannot install sampling handler");
   timer_installed = 1;
 #ifdef MLKIT_TP_NATIVE
   tp_alarm();
+#endif
+
 #endif
   if (atexit(mlkit_rp_close)) fail("cannot register output cleanup");
 }

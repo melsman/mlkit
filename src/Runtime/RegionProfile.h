@@ -36,6 +36,8 @@ int mlkit_tp_parse_interval(const char *);
 uintptr_t mlkit_tp_start(void);
 uintptr_t mlkit_tp_pause(void);
 uintptr_t mlkit_tp_flush(void);
+void mlkit_tp_thread_enter(int);
+void mlkit_tp_thread_exit(int);
 int mlkit_rp_parse_interval(const char *);
 uintptr_t mlkit_rp_poll(Context, uintptr_t *, const uintptr_t *);
 extern int mlkit_rp_initially_paused;

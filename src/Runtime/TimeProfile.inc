@@ -22,6 +22,11 @@ int mlkit_tp_parse_interval(const char *s) {
   mlkit_tp_interval_us = n*scale;
   return 1;
 }
+#if defined(MLKIT_TP_NATIVE) && defined(PARALLEL)
+#include "TimeProfileParallel.inc"
+#else
+void mlkit_tp_thread_enter(int id) { (void)id; }
+void mlkit_tp_thread_exit(int id) { (void)id; }
 #ifdef MLKIT_TP_NATIVE
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_LONG_LOCK_FREE == 2 && ATOMIC_LLONG_LOCK_FREE == 2,
                "time recorder requires always-lock-free native integer atomics");
@@ -250,7 +255,7 @@ uintptr_t mlkit_tp_flush(void) {
   return 1;
 }
 #else
-static void tp_prepare(void) { fail("time sampling supports only single-thread macOS ARM64"); }
+static void tp_prepare(void) { fail("time sampling supports static macOS ARM64 native threads; Argobots and other platforms are unsupported"); }
 static void tp_begin(void) {}
 static void tp_install_handler(struct sigaction *action) { (void)action; }
 #ifdef PROFILING
@@ -263,3 +268,5 @@ uintptr_t mlkit_tp_start(void) { return 1; }
 uintptr_t mlkit_tp_pause(void) { return 1; }
 uintptr_t mlkit_tp_flush(void) { tp_drain(); return 1; }
 #endif
+
+#endif /* parallel / single-thread implementation */

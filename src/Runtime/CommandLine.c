@@ -64,12 +64,12 @@ printUsage(void)
 #endif
   fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
 #endif
-  fprintf(stderr,"\nExperimental time profiling (single-thread macOS ARM64):\n");
+  fprintf(stderr,"\nExperimental time profiling (macOS ARM64; parallel pthreads use passive mode):\n");
   fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
   fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
   fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
   fprintf(stderr,"  -tp_attribution MODE     passive or detailed (default: available build instrumentation).\n");
-  fprintf(stderr,"  -tp_buffer N             Buffer records, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
+  fprintf(stderr,"  -tp_buffer N             Records per thread, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
   fprintf(stderr,"  -tp_file PATH            Shared profile output (default: profile.rp).\n");
   fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
 #ifdef ENABLE_GC

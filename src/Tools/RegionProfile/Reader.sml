@@ -29,6 +29,9 @@ struct
           val timeStatus = ref Null
           val timeCount = ref (0 : IntInf.int)
           val lastTime = ref (0 : IntInf.int)
+          val timeThreads = ref []
+          val timeStreams = ref (Binarymap.mkDict String.compare)
+          fun streamKey r = IntInf.toString(uint r "thread") ^ ":" ^ IntInf.toString(uint r "stream")
           fun requireTime () =
               if !timeSession = Null then raise Fail "time record outside session"
               else if !timeStatus <> Null andalso uint (!timeStatus) "final" = 1
@@ -88,19 +91,52 @@ struct
                   (case kind r of
                        "time_session" =>
                        (require (!timeSession = Null) "duplicate time session";
-                        require ((uint r "time_version" = 1 orelse uint r "time_version" = 2)) "unsupported time recording version";
+                        require ((uint r "time_version" = 1 orelse uint r "time_version" = 2 orelse uint r "time_version" = 3)) "unsupported time recording version";
                         require (string(get r "clock") = "wall") "unsupported sampling clock";
                         require (uint r "interval_ns" > 0 andalso uint r "interval_ns" <= 1000000000) "invalid time interval";
                         require (uint r "buffer_capacity" >= 2 andalso uint r "buffer_capacity" <= 1048576) "invalid time buffer capacity";
                         app (fn k => ignore(string(get r k))) ["semantics","coordinate"];
                         require (uint r "thread" = 0 andalso uint r "stream" = 0) "unsupported time execution identity";
                         timeSession := r)
+                     | "time_thread" =>
+                       (requireTime();
+                        require (uint (!timeSession) "time_version" = 3) "thread event outside parallel time session";
+                        require (uint r "stream" = uint r "thread") "pthread stream identity mismatch";
+                        ignore(uint r "cpu_ns");
+                        let
+                          val key = streamKey r
+                          val event = string(get r "event")
+                          val t = uint r "time"
+                        in
+                          if event = "start" then
+                            (require (not(Option.isSome(Binarymap.peek(!timeStreams,key)))) "duplicate time thread";
+                             require (uint r "recorded" = 0 andalso uint r "dropped" = 0 andalso uint r "cpu_ns" = 0) "nonzero initial thread counters";
+                             timeStreams := Binarymap.insert(!timeStreams,key,(t,0 : IntInf.int,false)))
+                          else if event = "end" then
+                            (case Binarymap.peek(!timeStreams,key) of
+                               SOME (last,count,false) =>
+                               (require (t >= last andalso uint r "recorded" = count) "invalid time thread end";
+                                ignore(uint r "dropped");
+                                timeStreams := Binarymap.insert(!timeStreams,key,(t,count,true)))
+                             | _ => raise Fail "end of unknown or ended time thread")
+                          else raise Fail "unknown time thread event";
+                          lastTime := IntInf.max(!lastTime,t);
+                          timeThreads := r :: !timeThreads
+                        end)
                      | "time_sample" =>
                        (requireTime();
                         require (uint r "sequence" = !timeCount+1) "noncontiguous time sample sequence";
-                        require (uint r "time" >= !lastTime) "nonmonotonic time samples";
-                        require (uint r "thread" = uint (!timeSession) "thread" andalso
-                                 uint r "stream" = uint (!timeSession) "stream") "time execution identity mismatch";
+                        if uint (!timeSession) "time_version" = 3 then
+                          (case Binarymap.peek(!timeStreams,streamKey r) of
+                             SOME (last,count,false) =>
+                             (require (uint r "time" >= last) "nonmonotonic time stream";
+                              require (uint r "state" = 0 andalso uint r "origin_pc" = 0) "parallel samples require passive attribution";
+                              timeStreams := Binarymap.insert(!timeStreams,streamKey r,(uint r "time",count+1,false)))
+                           | _ => raise Fail "sample outside a live time thread")
+                        else
+                          (require (uint r "time" >= !lastTime) "nonmonotonic time samples";
+                           require (uint r "thread" = uint (!timeSession) "thread" andalso
+                                    uint r "stream" = uint (!timeSession) "stream") "time execution identity mismatch");
                         ignore(uint r "pc");
                         require (if uint (!timeSession) "time_version" = 1
                                  then uint r "state" <= 1 andalso uint r "origin_pc" = 0
@@ -108,7 +144,7 @@ struct
                                       (if uint r "state" = 2 then uint r "origin_pc" > 0 andalso
                                            IntInf.mod(uint r "origin_pc",4) = 0
                                        else uint r "origin_pc" = 0)) "unsupported attribution state";
-                        timeCount := !timeCount+1; lastTime := uint r "time";
+                        timeCount := !timeCount+1; lastTime := IntInf.max(!lastTime,uint r "time");
                         timeSamples := r :: !timeSamples)
                      | "time_status" =>
                        (requireTime();
@@ -119,6 +155,12 @@ struct
                         require (string(get r "timer_loss") = "unobservable") "unsupported timer loss accounting";
                         app (fn k => require (!timeStatus = Null orelse uint r k >= uint (!timeStatus) k)
                                        "nonmonotonic time loss counters") ["dropped","routing_dropped"];
+                        if uint (!timeSession) "time_version" = 3 andalso uint r "final" = 1 then
+                          (require (List.all (fn (_,(_,_,ended)) => ended) (Binarymap.listItems(!timeStreams))) "final status has live time threads";
+                           require (uint r "dropped" = IntInf.min(18446744073709551615,
+                             foldl (fn (event,total) => if string(get event "event") = "end" then total+uint event "dropped" else total) 0 (!timeThreads)))
+                             "parallel thread loss counters do not reconcile")
+                        else ();
                         timeStatus := r)
                      | "code_metadata" =>
                        (require (!codeMetadata = Null) "duplicate code metadata session";
@@ -226,6 +268,9 @@ struct
           val () = require (!timeSession = Null orelse not(!complete) orelse
                             (!timeStatus <> Null andalso uint (!timeStatus) "final" = 1))
                             "missing final time status"
+          val () = require (!timeSession = Null orelse uint (!timeSession) "time_version" <> 3 orelse
+                            not(!complete) orelse List.all (fn (_,(_,_,ended)) => ended) (Binarymap.listItems(!timeStreams)))
+                            "missing time thread end"
           fun partition _ [] acc = (rev acc,[])
             | partition time (m::ms) acc = if uint m "time" <= time then partition time ms (m::acc)
                                           else (rev acc,m::ms)
@@ -248,7 +293,7 @@ struct
                              ("code_metadata",!codeMetadata),("code_images",Arr(rev(!codeImages))),
                              ("code_functions",Arr(rev(!codeFunctions))),
                              ("time_session",!timeSession),("time_samples",Arr(rev(!timeSamples))),
-                             ("time_status",!timeStatus),
+                             ("time_status",!timeStatus),("time_threads",Arr(rev(!timeThreads))),
                              ("occupancy_summaries",Arr(rev(!occupancySummaries))),("allocations",Arr(rev(!allocations))),
                              ("main_source",source),("gc_enabled",gc),
                              ("gc_collections",case !collections of NONE => Null | SOME n => Num(IntInf.toString n)),

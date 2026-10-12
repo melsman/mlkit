@@ -29,6 +29,7 @@ struct
         | 22 => ("code_function",["image","start","end"],["unit","function","source","ir_identity"])
         | 23 => ("time_session",["time_version","interval_ns","buffer_capacity","thread","stream"],["clock","semantics","coordinate"])
         | 24 => ("time_sample",["sequence","time","pc","thread","stream","state","origin_pc"],[])
+        | 26 => ("time_thread",["thread","stream","time","recorded","dropped","cpu_ns"],["event"])
         | 25 => ("time_status",["time","recorded","dropped","routing_dropped","active","final"],["timer_loss"])
         | _ => raise Fail "unknown binary record tag"
   fun read path =

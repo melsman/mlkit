@@ -38,7 +38,7 @@ done
 for config in parallel; do
   case $config in plain) set -- -no_par;; parallel) set -- -par -rp;; esac
   "$MLKIT" -no_gc "$@" -libdirs "$OUT" -libs recording,m,c,dl -o "$OUT/$config" "$OUT/recording.mlb" > "$OUT/$config-build.log" 2>&1
-  if "$OUT/$config" +RTS -tp > "$OUT/$config-rejected.log" 2>&1; then
+  if "$OUT/$config" +RTS -tp -tp_attribution detailed > "$OUT/$config-rejected.log" 2>&1; then
     echo "Time sampling unexpectedly accepted $config" >&2; exit 1
   fi
 done

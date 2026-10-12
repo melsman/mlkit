@@ -163,7 +163,7 @@ thread_init_all(void) {
   ctx->freelist = NULL;
   ctx->mutex_freelist = NULL;
 #endif
-  ti->thread = (thread_t)NULL;
+  ti->thread = (mlkit_thread_t)NULL;
   ti->retval = NULL;
   ti->joined = 0;
   THREAD_KEY_CREATE(&threadinfo_key);
@@ -187,6 +187,7 @@ ThreadInfo*
 thread_init(ThreadInfo* ti) {
   //tdebug1("[Entering thread_init - tid = %d]\n", ti->tid);
   THREAD_SETSPECIFIC(threadinfo_key, ti);
+  mlkit_tp_thread_enter(ti->tid);
 #ifdef PROFILING
   mlkit_rp_thread_enter(&ti->ctx);
 #endif
@@ -329,7 +330,7 @@ thread_get(ThreadInfo *ti)
 #ifdef ARGOBOTS
     ABT_thread_free(&ti->thread);
 #endif
-    ti->thread = (thread_t)NULL;
+    ti->thread = (mlkit_thread_t)NULL;
 
 #ifndef ARGOBOTS
     if ((ti->ctx).freelist) {
@@ -437,6 +438,7 @@ thread_finalize(void) {
 
 void // no return
 thread_exit(void *retval) {
+  mlkit_tp_thread_exit(thread_info()->tid);
 #ifdef PROFILING
   mlkit_rp_thread_exit(&thread_info()->ctx);
 #endif

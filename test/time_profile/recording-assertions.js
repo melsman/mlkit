@@ -50,7 +50,7 @@ const statuses = records.filter(r => r.tag === 25);
 const session = records.find(r => r.tag === 23);
 for (const [name, record, field, value] of [
   ['origin', sample, 6, 1n], ['sequence', sample, 0, 2n], ['state', sample, 5, 4n],
-  ['version', session, 0, 3n], ['capacity', session, 2, 1n],
+  ['version', session, 0, 4n], ['capacity', session, 2, 1n],
   ['final', statuses.at(-1), 5, 0n], ['count', statuses.at(-1), 1, 0n]
 ]) {
   const bytes = Buffer.from(original);

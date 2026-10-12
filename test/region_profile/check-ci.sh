@@ -36,6 +36,9 @@ run () {
 run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
 if [ "$(uname -sm)" = 'Darwin arm64' ]; then
+  run time-parallel-blocking sh "$ROOT/test/time_profile/check-parallel-blocking.sh"
+  run time-parallel-conflicts sh "$ROOT/test/time_profile/check-parallel-conflicts.sh"
+  run time-parallel sh "$ROOT/test/time_profile/check-parallel.sh"
   run time-ordinary sh "$ROOT/test/time_profile/check-ordinary.sh"
   run time-phases sh "$ROOT/test/time_profile/check-phases.sh"
   run time-conflicts sh "$ROOT/test/time_profile/check-conflicts.sh"

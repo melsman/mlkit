@@ -54,3 +54,16 @@ val _ = OS.FileSys.remove (object ^ ".ir")
 val _ = check (not (IRLocations.consistent object))
 val _ = OS.FileSys.remove object
 val _ = print "IR artifact identity: PASS\n"
+
+val stableTree = LEAF "deterministic IR"
+val firstIdentity = IRLocations.contentIdentity {unit = "unit",source = "source.sml",tree = stableTree}
+val _ = raggedRight := true
+val _ = colwidth := 17
+val secondIdentity = IRLocations.contentIdentity {unit = "unit",source = "source.sml",tree = stableTree}
+val _ = check (firstIdentity = secondIdentity)
+val _ = check (firstIdentity <> IRLocations.contentIdentity {unit = "unit",source = "source.sml",tree = LEAF "changed IR"})
+val _ = check (firstIdentity <> IRLocations.contentIdentity {unit = "unit",source = "other.sml",tree = stableTree})
+val _ = print "Content-derived IR identities: PASS\n"
+val markedOne = IRLocations.contentIdentity {unit = "unit",source = "source.sml",tree = MARKED_LEAF (1,"same IR")}
+val markedTwo = IRLocations.contentIdentity {unit = "unit",source = "source.sml",tree = MARKED_LEAF (2,"same IR")}
+val _ = check (markedOne <> markedTwo)

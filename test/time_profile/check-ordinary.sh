@@ -35,14 +35,11 @@ echo 'PASS: ordinary GC/GenGC/noGC sampling, output parity, passive ranges and s
 "${RPVIEW:-$ROOT/bin/rpview}" "$OUT/stripped.rp" --format json -o "$OUT/stripped.json" >/dev/null
 node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse),a=require("assert"),f=r.filter(x=>x.type==="code_function");a(f.some(x=>x.function.includes("spin__noinline")));for(const n of ["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_reset_preserving","resetRegion","gc"])a(f.some(x=>x.function===n),n);' "$OUT/stripped.json"
 echo 'PASS: stripped executable retains passive ML/shared runtime metadata'
-# Ordinary parallel runtimes recognize the option and reject activation clearly.
+# Parallel detailed attribution remains unsupported; passive mode is tested separately.
 printf 'val x = 1\n' > "$OUT/parallel.sml"
 "${MLKIT:-$ROOT/bin/mlkit}" -no_gc -par -o "$OUT/parallel" "$OUT/parallel.sml" > "$OUT/parallel-build.log" 2>&1
-"$OUT/parallel"
-if "$OUT/parallel" +RTS -tp > "$OUT/parallel-rejected.log" 2>&1; then
- echo 'Unexpectedly accepted ordinary parallel time sampling' >&2; exit 1
+if "$OUT/parallel" +RTS -tp -tp_attribution detailed > "$OUT/parallel-rejected.log" 2>&1; then
+ echo 'Unexpectedly accepted parallel detailed attribution' >&2; exit 1
 fi
-if [ -z "$(sed -n '/single-thread macOS ARM64/p' "$OUT/parallel-rejected.log")" ]; then
- cat "$OUT/parallel-rejected.log" >&2; exit 1
-fi
-echo 'PASS: ordinary parallel option recognized and unsupported activation rejected'
+grep -q 'passive attribution only' "$OUT/parallel-rejected.log"
+echo 'PASS: parallel detailed attribution rejected explicitly'
