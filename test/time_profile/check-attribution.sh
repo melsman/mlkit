@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-case $(uname -sm) in 'Darwin arm64') ;; *) echo 'Requires macOS ARM64' >&2; exit 1;; esac
+case $(uname -sm) in 'Darwin arm64'|'Linux x86_64') ;; *) echo 'Requires macOS ARM64 or Linux X64' >&2; exit 1;; esac
 OUT=${OUT:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-attribution.XXXXXX")}
 mkdir -p "$OUT"
 echo "Attribution artifacts: $OUT"

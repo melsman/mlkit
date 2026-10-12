@@ -1,4 +1,4 @@
-/* Pthread wall sampling on macOS ARM64. A coordinator targets every registered
+/* Pthread wall sampling on macOS ARM64 and Linux X64. A coordinator targets every registered
  * ML pthread with SIGUSR2. The handler performs only a bounded stack-range scan,
  * clock/errno access and lock-free atomics. It never uses TLS or pthread APIs.
  * Slots are immutable and retained for the session; exited buffers are freed.
@@ -22,21 +22,25 @@ static ParallelTimeThread tp_threads[TP_THREAD_LIMIT];
 static _Atomic unsigned tp_thread_count, tp_active;
 static _Atomic uint64_t tp_routing_dropped;
 static uint64_t tp_origin, tp_interval_ticks, tp_written;
-static mach_timebase_info_data_t tp_scale;
+static TpTimeScale tp_scale;
 static pthread_mutex_t tp_lock = PTHREAD_MUTEX_INITIALIZER;
+#ifdef __linux__
+static pthread_cond_t tp_changed;
+#else
 static pthread_cond_t tp_changed = PTHREAD_COND_INITIALIZER;
+#endif
 static pthread_t tp_coordinator;
 static int tp_stopping, tp_closed;
 static uint64_t tp_ns(uint64_t tick) {
   uint64_t n = tick-tp_origin;
   return n/tp_scale.denom*tp_scale.numer+n%tp_scale.denom*tp_scale.numer/tp_scale.denom;
 }
-static uint64_t tp_timestamp(void) { return tp_ns(mach_absolute_time()); }
+static uint64_t tp_timestamp(void) { return tp_ns(tp_clock_tick()); }
 static void tp_parallel_signal(int sig, siginfo_t *info, void *context) {
   int saved_errno = errno;
   (void)sig; (void)info;
   ucontext_t *uc = context;
-  uintptr_t sp = (uintptr_t)__darwin_arm_thread_state64_get_sp(uc->uc_mcontext->__ss);
+  uintptr_t sp = tp_context_sp(uc);
   unsigned limit = atomic_load_explicit(&tp_thread_count,memory_order_acquire);
   for (unsigned i = 0; i < limit; i++) {
     ParallelTimeThread *p = &tp_threads[i];
@@ -45,8 +49,8 @@ static void tp_parallel_signal(int sig, siginfo_t *info, void *context) {
     if (atomic_compare_exchange_strong_explicit(&p->gate,&expected,3,memory_order_acquire,memory_order_relaxed)) {
       unsigned n = atomic_load_explicit(&p->count,memory_order_relaxed);
       if (n < mlkit_tp_capacity) {
-        atomic_store_explicit(&p->records[n].pc,(uintptr_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss),memory_order_relaxed);
-        atomic_store_explicit(&p->records[n].tick,mach_absolute_time(),memory_order_relaxed);
+        atomic_store_explicit(&p->records[n].pc,tp_context_pc(uc),memory_order_relaxed);
+        atomic_store_explicit(&p->records[n].tick,tp_clock_tick(),memory_order_relaxed);
         atomic_store_explicit(&p->count,n+1,memory_order_release);
       } else {
         uint64_t drops = atomic_load_explicit(&p->dropped,memory_order_relaxed);
@@ -109,16 +113,16 @@ static void *tp_coordinate(void *unused) {
   (void)unused;
   sigset_t mask; sigemptyset(&mask); sigaddset(&mask,TP_PAR_SIGNAL);
   pthread_sigmask(SIG_BLOCK,&mask,NULL);
-  uint64_t due = mach_absolute_time()+tp_interval_ticks;
+  uint64_t due = tp_clock_tick()+tp_interval_ticks;
   unsigned first = 0;
   pthread_mutex_lock(&tp_lock);
   while (!tp_stopping) {
     if (!atomic_load(&tp_active)) {
       pthread_cond_wait(&tp_changed,&tp_lock);
-      due = mach_absolute_time()+tp_interval_ticks;
+      due = tp_clock_tick()+tp_interval_ticks;
       continue;
     }
-    uint64_t now = mach_absolute_time();
+    uint64_t now = tp_clock_tick();
     if (now >= due) {
       unsigned limit = atomic_load(&tp_thread_count);
       for (unsigned n = 0; n < limit; n++) {
@@ -130,12 +134,12 @@ static void *tp_coordinate(void *unused) {
       }
       if (limit) first = (first+1)%limit;
       due += ((now-due)/tp_interval_ticks+1)*tp_interval_ticks;
-      now = mach_absolute_time();
+      now = tp_clock_tick();
     }
     uint64_t ticks = due > now ? due-now : 1;
     uint64_t ns = ticks/tp_scale.denom*tp_scale.numer+ticks%tp_scale.denom*tp_scale.numer/tp_scale.denom;
-    struct timespec delay = {(time_t)(ns/1000000000),(long)(ns%1000000000)};
-    pthread_cond_timedwait_relative_np(&tp_changed,&tp_lock,&delay);
+    int rc = tp_cond_wait_ns(&tp_changed,&tp_lock,ns);
+    if (rc && rc != ETIMEDOUT) fail("cannot wait for sampling deadline");
   }
   pthread_mutex_unlock(&tp_lock);
   return NULL;
@@ -152,14 +156,13 @@ static void tp_add_thread(uint64_t id) {
   if (sigismember(&mask,TP_PAR_SIGNAL)) fail("parallel time sampling requires unblocked SIGUSR2 in each ML pthread");
   ParallelTimeThread *p = &tp_threads[n];
   p->thread = pthread_self(); p->id = id;
-  p->high = (uintptr_t)pthread_get_stackaddr_np(p->thread);
-  p->low = p->high-pthread_get_stacksize_np(p->thread);
+  if (tp_stack_bounds(p->thread,&p->low,&p->high)) fail("cannot discover sampling thread stack bounds");
   p->records = calloc(mlkit_tp_capacity,sizeof(ParallelTimeRecord));
   if (!p->records) fail("cannot allocate per-thread sampling buffer");
   for (size_t i = 0; i < mlkit_tp_capacity; i++) {
     atomic_init(&p->records[i].pc,0); atomic_init(&p->records[i].tick,0);
   }
-  errno = 0; (void)mach_absolute_time();
+  errno = 0; (void)tp_clock_tick();
   p->cpu_start = tp_thread_cpu(p);
   tp_thread_event(p,"start");
   atomic_store(&p->live,1);
@@ -193,8 +196,9 @@ static void tp_prepare(void) {
   if (mlkit_tp_attribution == MLKIT_TP_DETAILED) fail("parallel time sampling supports passive attribution only");
   if (!mlkit_tp_capacity) mlkit_tp_capacity = 131072;
   if (mlkit_tp_capacity < 2 || mlkit_tp_capacity > 1048576) fail("time buffer capacity must be 2..1048576");
-  if (mach_timebase_info(&tp_scale)) fail("cannot read timebase");
-  tp_origin = mach_absolute_time();
+  if (tp_cond_init(&tp_changed)) fail("cannot initialize sampling coordinator clock");
+  if (tp_clock_init(&tp_scale)) fail("cannot read timebase");
+  tp_origin = tp_clock_tick();
   tp_interval_ticks = (uint64_t)(((__uint128_t)mlkit_tp_interval_us*1000*tp_scale.denom+tp_scale.numer-1)/tp_scale.numer);
   struct sigaction old, action = {0};
   if (sigaction(TP_PAR_SIGNAL,NULL,&old) || old.sa_handler != SIG_DFL) fail("SIGUSR2 already in use by another handler");
@@ -205,7 +209,7 @@ static void tp_prepare(void) {
 static void tp_begin(void) {
   if (!mlkit_tp_enabled) return;
   atomic_store(&tp_active,!mlkit_tp_initially_paused);
-  emit_record(23,NUMS(3,mlkit_tp_interval_us*1000,mlkit_tp_capacity,0,0),STRS("wall","parallel passive 16-byte records; per-thread wall delivery; sum estimates are thread-wall time; missed expirations unobservable","mach-uptime-ns (excludes machine sleep)"));
+  emit_record(23,NUMS(3,mlkit_tp_interval_us*1000,mlkit_tp_capacity,0,0),STRS("wall","parallel passive 16-byte records; per-thread wall delivery; sum estimates are thread-wall time; missed expirations unobservable",TP_CLOCK_DESCRIPTION));
   tp_add_thread(0);
   tp_status(0);
   if (pthread_create(&tp_coordinator,NULL,tp_coordinate,NULL)) fail("cannot start sampling coordinator");

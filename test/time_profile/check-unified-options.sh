@@ -39,8 +39,10 @@ cp "$OUT/tp.prof" "$OUT/legacy.rp"
 "$PVIEW" "$OUT/legacy.rp" --format json -o "$OUT/legacy.json"
 cmp "$OUT/tp.json" "$OUT/legacy.json"
 for option in -rp_file -tp_file; do
- if "$OUT/combined" +RTS -p "$option" "$OUT/bad.prof" > "$OUT/error" 2>&1; then exit 1; fi
- grep -q 'unknown profiler option' "$OUT/error"
+ for exe in ordinary combined; do
+  if "$OUT/$exe" +RTS -tp "$option" "$OUT/bad.prof" > "$OUT/error" 2>&1; then exit 1; fi
+  grep -q 'unknown profiler option' "$OUT/error"
+ done
  if "$MLKIT" "$option" "$OUT/bad.prof" > "$OUT/error" 2>&1; then exit 1; fi
  grep -q 'unknown option' "$OUT/error"
 done

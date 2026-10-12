@@ -17,11 +17,11 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #endif
-#if defined(__APPLE__) && defined(__aarch64__) && !defined(ARGOBOTS)
-#include <mach/mach_time.h>
+#if ((defined(__APPLE__) && defined(__aarch64__)) || (defined(__linux__) && defined(__x86_64__))) && !defined(ARGOBOTS)
 #include <pthread.h>
 #include <sched.h>
 #define MLKIT_TP_NATIVE 1
+#include "TimeProfilePlatform.inc"
 static uint64_t tp_timestamp(void);
 #ifdef PARALLEL
 static void request_sample(int);

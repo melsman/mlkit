@@ -1,7 +1,7 @@
 #!/bin/sh
 # Explicit recording layout, attribution availability and independent IR navigation.
 set -eu
-case $(uname -sm) in 'Darwin arm64') ;; *) echo 'Requires macOS ARM64' >&2; exit 1;; esac
+case $(uname -sm) in 'Darwin arm64'|'Linux x86_64') ;; *) echo 'Requires macOS ARM64 or Linux X64' >&2; exit 1;; esac
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=${OUT:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-attribution-modes.XXXXXX")}
 mkdir -p "$OUT"

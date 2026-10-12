@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-case $(uname -sm) in 'Darwin arm64') ;; *) echo 'Requires macOS ARM64' >&2; exit 1;; esac
+case $(uname -sm) in 'Darwin arm64'|'Linux x86_64') ;; *) echo 'Requires macOS ARM64 or Linux X64' >&2; exit 1;; esac
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=${OUT:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-time-ordinary.XXXXXX")}
 echo "Ordinary time profiling artifacts: $OUT"
@@ -33,7 +33,7 @@ echo 'PASS: ordinary GC/GenGC/noGC sampling, output parity, passive ranges and s
 "${MLKIT:-$ROOT/bin/mlkit}" -no_par -gc -strip -o "$OUT/stripped" "$OUT/exit.mlb" > "$OUT/stripped-build.log" 2>&1
 "$OUT/stripped" +RTS -tp -tp_buffer 2 -p_file "$OUT/stripped.rp"
 "${PVIEW:-$ROOT/bin/pview}" "$OUT/stripped.rp" --format json -o "$OUT/stripped.json" >/dev/null
-node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse),a=require("assert"),f=r.filter(x=>x.type==="code_function");a(f.some(x=>x.function.includes("spin__noinline")));for(const n of ["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_reset_preserving","resetRegion","gc"])a(f.some(x=>x.function===n),n);' "$OUT/stripped.json"
+node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse),a=require("assert"),f=r.filter(x=>x.type==="code_function");a(f.some(x=>x.function.includes("spin__noinline")));for(const n of (f.some(x=>x.function==="mlkit_arm64_allocate_preserving")?["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_reset_preserving","resetRegion","gc"]:["__allocate","__reset_region","resetRegion","gc"]))a(f.some(x=>x.function===n),n);' "$OUT/stripped.json"
 echo 'PASS: stripped executable retains passive ML/shared runtime metadata'
 # Parallel detailed attribution remains unsupported; passive mode is tested separately.
 printf 'val x = 1\n' > "$OUT/parallel.sml"

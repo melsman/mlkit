@@ -1,4 +1,4 @@
-/* Single-thread macOS ARM64 recorder. Included after the wire encoder.
+/* Single-thread native wall recorder. Included after the wire encoder.
  * Only tp_signal executes asynchronously. No metadata lookup, allocation,
  * locks, stack walking or I/O occurs there. Explicit drains block delivery
  * while reusing the single buffer. All signal-visible mutable objects
@@ -49,7 +49,7 @@ static _Atomic unsigned tp_count, tp_active, tp_recorder;
 static _Atomic unsigned tp_region_active, tp_region_pending;
 static _Atomic uint64_t tp_due, tp_region_due, tp_dropped, tp_routing_dropped;
 static uint64_t tp_origin, tp_interval_ticks, tp_region_ticks, tp_written, tp_alarm_us;
-static mach_timebase_info_data_t tp_scale;
+static TpTimeScale tp_scale;
 static uintptr_t tp_stack_low, tp_stack_high;
 static sigset_t tp_mask;
 static int tp_draining, tp_closed;
@@ -57,7 +57,7 @@ static uint64_t tp_ns(uint64_t tick) {
   uint64_t n = tick-tp_origin;
   return n/tp_scale.denom*tp_scale.numer + n%tp_scale.denom*tp_scale.numer/tp_scale.denom;
 }
-static uint64_t tp_timestamp(void) { return tp_ns(mach_absolute_time()); }
+static uint64_t tp_timestamp(void) { return tp_ns(tp_clock_tick()); }
 static uint64_t tp_ticks(uint64_t us) {
   return (uint64_t)(((__uint128_t)us*1000*tp_scale.denom+tp_scale.numer-1)/tp_scale.numer);
 }
@@ -76,13 +76,13 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
   int saved_errno = errno;
   (void)sig; (void)info;
   ucontext_t *uc = context;
-  uintptr_t sp = (uintptr_t)__darwin_arm_thread_state64_get_sp(uc->uc_mcontext->__ss);
+  uintptr_t sp = tp_context_sp(uc);
   if (sp < tp_stack_low || sp >= tp_stack_high) {
     if (atomic_load_explicit(&tp_active,memory_order_relaxed)) tp_loss(&tp_routing_dropped);
     errno = saved_errno;
     return;
   }
-  uint64_t now = mach_absolute_time();
+  uint64_t now = tp_clock_tick();
   if (atomic_load_explicit(&tp_region_active,memory_order_relaxed) && tp_region_ticks &&
       now >= atomic_load_explicit(&tp_region_due,memory_order_relaxed)) {
     atomic_store_explicit(&tp_region_pending,1,memory_order_relaxed);
@@ -96,7 +96,7 @@ static void tp_signal(int sig, siginfo_t *info, void *context) {
     if (n < mlkit_tp_capacity) {
       TimeRecord *record = tp_detailed ? &tp_detailed_records[n].sample : &tp_buffer_records[n];
       atomic_store_explicit(&record->pc,
-        (uintptr_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss),memory_order_relaxed);
+        tp_context_pc(uc),memory_order_relaxed);
       atomic_store_explicit(&record->tick,now,memory_order_relaxed);
       if (tp_detailed) {
         DetailedTimeRecord *detail = &tp_detailed_records[n];
@@ -140,13 +140,12 @@ static void tp_prepare(void) {
   sigset_t current;
   if (sigprocmask(SIG_BLOCK,NULL,&current)) fail("cannot inspect signal mask");
   if (sigismember(&current,SIGALRM)) fail("time sampling requires an unblocked SIGALRM");
-  if (mach_timebase_info(&tp_scale) || !tp_scale.numer || !tp_scale.denom) fail("cannot read timebase");
+  if (tp_clock_init(&tp_scale) || !tp_scale.numer || !tp_scale.denom) fail("cannot read timebase");
   errno = 0; /* Resolve errno/timestamp stubs before installing the handler. */
-  tp_origin = mach_absolute_time();
+  tp_origin = tp_clock_tick();
   tp_interval_ticks = tp_ticks(mlkit_tp_interval_us);
   tp_region_ticks = tp_ticks(mlkit_rp_interval_us);
-  tp_stack_high = (uintptr_t)pthread_get_stackaddr_np(pthread_self());
-  tp_stack_low = tp_stack_high-pthread_get_stacksize_np(pthread_self());
+  if (tp_stack_bounds(pthread_self(),&tp_stack_low,&tp_stack_high)) fail("cannot discover sampling stack bounds");
   {
     if (tp_detailed) tp_detailed_records = calloc(mlkit_tp_capacity,sizeof(DetailedTimeRecord));
     else tp_buffer_records = calloc(mlkit_tp_capacity,sizeof(TimeRecord));
@@ -167,12 +166,12 @@ static void tp_prepare(void) {
 static void tp_begin(void) {
   if (!mlkit_tp_enabled) return;
   atomic_store(&tp_active,!mlkit_tp_initially_paused);
-  atomic_store(&tp_due,mach_absolute_time()+tp_interval_ticks);
+  atomic_store(&tp_due,tp_clock_tick()+tp_interval_ticks);
   emit_record(23,NUMS(2,mlkit_tp_interval_us*1000,mlkit_tp_capacity,0,0),
               STRS("wall",tp_detailed ?
                    "detailed 32-byte buffer records; elapsed delivery samples; blocked locations observed, missed expirations not reconstructed" :
                    "passive 16-byte buffer records; elapsed delivery samples; blocked locations observed, missed expirations not reconstructed",
-                   "mach-uptime-ns (excludes machine sleep)"));
+                   TP_CLOCK_DESCRIPTION));
   tp_status(0);
 }
 static void tp_install_handler(struct sigaction *action) {
@@ -188,7 +187,7 @@ static void tp_set_region(int running) {
   atomic_store(&tp_region_pending,0);
   atomic_store(&tp_region_active,running);
   next_due_ns = mlkit_rp_interval_us ? timestamp()+mlkit_rp_interval_us*1000 : 0;
-  atomic_store(&tp_region_due,mach_absolute_time()+tp_region_ticks);
+  atomic_store(&tp_region_due,tp_clock_tick()+tp_region_ticks);
   tp_alarm();
   tp_unblock(&previous);
 }
@@ -240,7 +239,7 @@ static uintptr_t tp_change(int running) {
   sigset_t previous;
   tp_block(&previous);
   atomic_store(&tp_active,running);
-  atomic_store(&tp_due,mach_absolute_time()+tp_interval_ticks);
+  atomic_store(&tp_due,tp_clock_tick()+tp_interval_ticks);
   tp_alarm();
   tp_unblock(&previous);
   tp_drain();
@@ -255,7 +254,7 @@ uintptr_t mlkit_tp_flush(void) {
   return 1;
 }
 #else
-static void tp_prepare(void) { fail("time sampling supports static macOS ARM64 native threads; Argobots and other platforms are unsupported"); }
+static void tp_prepare(void) { fail("time sampling supports static macOS ARM64 or Linux X64 native threads; Argobots and other platforms are unsupported"); }
 static void tp_begin(void) {}
 static void tp_install_handler(struct sigaction *action) { (void)action; }
 #ifdef PROFILING

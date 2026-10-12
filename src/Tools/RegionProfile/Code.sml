@@ -32,9 +32,9 @@ struct
       fun image r =
         let val id = uint r "image"
             val build = string(get r "build_id")
-            val () = require (size build = 32 andalso List.all
+            val () = require (size build >= 32 andalso size build <= 128 andalso size build mod 2 = 0 andalso List.all
               (fn c => Char.isDigit c orelse (c >= #"a" andalso c <= #"f")) (explode build))
-              "invalid Mach-O UUID"
+              "invalid executable build identifier"
             val () = ignore(string(get r "path"))
         in require (uint r "load_address" < addressLimit) "image address overflow";
            require (not(Option.isSome(Binarymap.peek(!imageMap,id)))) "duplicate code image";

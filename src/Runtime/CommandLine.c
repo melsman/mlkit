@@ -67,10 +67,10 @@ printUsage(void)
 #endif
   fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
 #endif
-  fprintf(stderr,"\nExperimental time profiling (macOS ARM64; parallel pthreads use passive mode):\n");
+  fprintf(stderr,"\nExperimental time profiling (macOS ARM64 / Linux X64; parallel pthreads use passive mode):\n");
   fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
   fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
-  fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU clocks unavailable.\n");
+  fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU sampling unavailable.\n");
   fprintf(stderr,"  -tp_attribution MODE     passive or detailed (default: available build instrumentation).\n");
   fprintf(stderr,"  -tp_buffer N             Records per thread, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
   fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
@@ -169,7 +169,7 @@ parseCmdLineArgs(int argc, char *argv[])
     }
     if (!strcmp(argv[0],"-tp_clock")) {
       if (strcmp(rtsValue(&argc,&argv),"wall")) {
-        fprintf(stderr,"time sampling supports only wall; CPU timers failed T1 calibration\n"); exit(EXIT_FAILURE);
+        fprintf(stderr,"time sampling supports only wall; CPU sampling clocks are not implemented\n"); exit(EXIT_FAILURE);
       }
       tp_options = 1; match = 1; continue;
     }
@@ -288,12 +288,17 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 #endif
 
-    if (!match && (!strncmp(argv[0], "-rp", 3) || !strncmp(argv[0], "-tp", 3))) {
-#ifdef PROFILING
-      fprintf(stderr, "unknown profiler option: %s\n", argv[0]);
-#else
-      fprintf(stderr, "profiler option %s requires an executable compiled with -rp\n", argv[0]);
+#ifndef PROFILING
+    if (!match && (!strcmp(argv[0],"-rp") || !strcmp(argv[0],"-rp_paused") ||
+        !strcmp(argv[0],"-rp_gc_samples") || !strcmp(argv[0],"-rp_report") ||
+        !strcmp(argv[0],"-rp_interval") || !strcmp(argv[0],"-rp_build") ||
+        !strcmp(argv[0],"-rp_region"))) {
+      fprintf(stderr,"region profiler option %s requires an executable compiled with -rp\n",argv[0]);
+      exit(EXIT_FAILURE);
+    }
 #endif
+    if (!match && (!strncmp(argv[0],"-rp",3) || !strncmp(argv[0],"-tp",3))) {
+      fprintf(stderr,"unknown profiler option: %s\n",argv[0]);
       exit(EXIT_FAILURE);
     }
     if (!match) {

@@ -14,7 +14,7 @@ struct
      "Emit packed object descriptors, IR metadata and safe-point polls for pview.")
   val timeProfile = regionOption
     ("time_profile",SOME "tp",RegionProfiling.timeEnabled,false,
-     "Ensure time profiling metadata (already emitted by ordinary ARM64 builds).")
+     "Ensure time profiling metadata (already emitted by ordinary native builds).")
   val profile = Flags.add_bool_action_entry
     {long = "profile", short = SOME "p", item = RegionProfiling.allEnabled,
      menu = ["Control Region Analyses","profile"],

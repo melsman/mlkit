@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-case $(uname -sm) in 'Darwin arm64') ;; *) echo 'Requires macOS ARM64' >&2; exit 1;; esac
+case $(uname -sm) in 'Darwin arm64'|'Linux x86_64') ;; *) echo 'Requires macOS ARM64 or Linux X64' >&2; exit 1;; esac
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-time-phases.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT

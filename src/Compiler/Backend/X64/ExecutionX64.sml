@@ -246,21 +246,18 @@ structure ExecutionX64 : EXECUTION =
                  | CEnvOnlyRes of CEnv
 
     fun compile fe (ce, CB, strdecs) =
-      let val () = if !RegionProfiling.timeEnabled then
-                     raise Fail "time profiling support requires the ARM64 backend"
-                   else ()
-          val (cb,closenv) = CompileBasis.de_CompileBasis CB
+      let val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
         case Compile.compile fe (ce, cb, strdecs)
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val irTree = if region_profile() then
-                             SOME (PhysSizeInf.layout_pgm_with_locations target)
-                           else NONE
+              val irTree = SOME (PhysSizeInf.layout_pgm_with_locations target)
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
-              val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
+              val identity = IRLocations.contentIdentity
+                {unit = AddressLabels.pr_label main_lab, source = !Flags.current_source_file,
+                 tree = valOf irTree}
               val () = IRLocations.currentIdentity := identity
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
               val linkinfo = mk_linkinfo {code_label=main_lab,
@@ -360,7 +357,7 @@ structure ExecutionX64 : EXECUTION =
                       "" => ""
                     | libdirs => " " ^ libdirsConvertList libdirs
 
-              val pthread = if parallelism_p() andalso not(onmac_p())
+              val pthread = if not(onmac_p())
                             then " -pthread"
                             else ""
               val shell_cmd = link_exe() ^ " -o " ^ run ^ " " ^
@@ -443,6 +440,7 @@ structure ExecutionX64 : EXECUTION =
                     | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
                     | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NOGC"
+              val subdir = if region_profile() then subdir ^ "_CODE1_TP1" else subdir
               val subdir = if parallelism_p() then
                              if par_alloc_unprotected_p() then
                                subdir ^ "_PAR0"
@@ -467,7 +465,7 @@ structure ExecutionX64 : EXECUTION =
                       "" => ""
                     | libdirs => " " ^ libdirsConvertList libdirs
 
-              val pthread = if parallelism_p() andalso not(onmac_p())
+              val pthread = if not(onmac_p())
                             then " -pthread"
                             else ""
               val runtime_lib = OS.Path.concat(dir, "libruntime.so")

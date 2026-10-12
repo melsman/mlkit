@@ -10,15 +10,15 @@ is unchanged. `rpview`, `-rp_file`, and `-tp_file` have been removed without ali
 | Option | Compiler | Runtime (`+RTS ... -RTS`) |
 | --- | --- | --- |
 | `-rp` | Emit region profiling instrumentation | Record region snapshots |
-| `-tp` | Ensure time metadata; ordinary ARM64 builds already emit it | Record time samples |
+| `-tp` | Ensure time metadata; ordinary native builds already emit it | Record time samples |
 | `-p` | Equivalent to `-rp -tp` | Equivalent to `-rp -tp` |
 | `-p_file PATH` | Select the REPL child's output where supported | Select the shared profile output |
 | `-p_paused` | Start enabled REPL profilers paused where supported | Start enabled profilers paused |
 
 Compiler support does not start recording in a batch executable. Time-only
 sampling still needs no compiler flag and reuses ordinary runtimes and caches.
-Explicit compiler `-tp` requires ARM64. Runtime time sampling currently requires
-static macOS ARM64 executables; supported pthreads use passive attribution.
+Explicit compiler `-tp` is available in both native backends. Runtime time sampling
+requires static macOS ARM64 or Linux X64 executables; supported pthreads use passive attribution.
 Combined activation fails when either requested profiler is unavailable.
 Dynamic REPL time profiling is unsupported and rejects an explicit request;
 REPL region profiling forwards the shared file and pause options.

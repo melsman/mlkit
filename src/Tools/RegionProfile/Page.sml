@@ -18,9 +18,9 @@ struct
                                  SOME(ProfileJson.Str name) => name | _ => ""
                 val shared = if String.isPrefix "<gc-stub>" function orelse runtime andalso function = "gc" then SOME "gc"
                              else if runtime andalso List.exists (fn name => name = function)
-                               ["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_alloc"] then SOME "allocation"
+                               ["mlkit_arm64_allocate_preserving","mlkit_arm64_allocate_untagged_preserving","mlkit_arm64_alloc","__allocate","__allocate_unprotected"] then SOME "allocation"
                              else if runtime andalso List.exists (fn name => name = function)
-                               ["mlkit_arm64_reset_preserving","mlkit_arm64_reset","resetRegion","resetRegionProf"] then SOME "reset"
+                               ["mlkit_arm64_reset_preserving","mlkit_arm64_reset","resetRegion","resetRegionProf","__reset_region"] then SOME "reset"
                              else NONE
                 val attribution =
                     if state = 1 then category "recorder"

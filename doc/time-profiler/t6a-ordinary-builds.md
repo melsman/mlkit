@@ -1,5 +1,8 @@
 # T6a: ordinary-build wall sampling
 
+[T9](t9-linux-x64.md) extends ordinary, detailed and pthread sampling to Linux X64.
+The platform-specific details below describe the original ARM64 implementation.
+
 [T7](t7-parallel-sampling.md) adds static macOS ARM64 no-GC pthread sampling,
 per-thread compact buffers and thread/stream views. Earlier parallel rejection
 statements below describe the pre-T7 implementation.

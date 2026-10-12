@@ -16,7 +16,7 @@ The default input is
 and the default output is
 .BR profile.html .
 .PP
-Time sampling uses runtime \-tp in ordinary supported ARM64 builds.
+Time sampling uses runtime \-tp in ordinary supported native builds.
 Region snapshots require compiler and runtime \-rp.
 Compiler and runtime \-p each mean \-rp \-tp; runtime \-p_file selects
 the shared output (default profile.prof); \-p_paused starts enabled profilers paused.

@@ -35,7 +35,7 @@ run () {
 }
 run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
-if [ "$(uname -sm)" = 'Darwin arm64' ]; then
+if [ "$(uname -sm)" = 'Darwin arm64' ] || [ "$(uname -sm)" = 'Linux x86_64' ]; then
   run unified-options sh "$ROOT/test/time_profile/check-unified-options.sh"
   run time-parallel-blocking sh "$ROOT/test/time_profile/check-parallel-blocking.sh"
   run time-parallel-conflicts sh "$ROOT/test/time_profile/check-parallel-conflicts.sh"
@@ -46,7 +46,12 @@ if [ "$(uname -sm)" = 'Darwin arm64' ]; then
   run time-attribution-modes sh "$ROOT/test/time_profile/check-attribution-modes.sh"
   run time-attribution sh "$ROOT/test/time_profile/check-attribution.sh"
   run time-recording sh "$ROOT/test/time_profile/check-recording.sh"
-  run code-metadata sh "$ROOT/test/time_profile/check-code-metadata.sh"
+  if [ "$(uname -sm)" = 'Linux x86_64' ]; then
+    run time-x64-abi sh "$ROOT/test/time_profile/check-x64-abi.sh"
+    run code-metadata-elf sh "$ROOT/test/time_profile/check-elf.sh"
+  else
+    run code-metadata sh "$ROOT/test/time_profile/check-code-metadata.sh"
+  fi
 fi
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"

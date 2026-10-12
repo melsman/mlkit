@@ -40,6 +40,43 @@ struct
    * different architectures/OSs (macos uses Mach-o and linux uses ELF).
    * ---------------------------------------------------------------- *)
 
+  fun timeProfile () = Flags.is_on "region_profile" andalso not (Flags.is_on "parallelism")
+  fun timeSave offset origin C =
+    if not (timeProfile()) then C
+    else G.load_ea (LA (NameLab "mlkit_tp_context"),r11)
+      (I.movq(D("0",r11),R r10) :: I.movq(R r10,D(Int.toString offset,rsp)) ::
+       (case origin of
+          NONE => I.movq(I "0",D("0",r11)) :: C
+        | SOME pc => G.load_ea (LA pc,r10)
+            (I.orq(I "2",R r10) :: I.movq(R r10,D("0",r11)) :: C)))
+  fun timeRestore offset C =
+    if not (timeProfile()) then C
+    else G.load_ea (LA (NameLab "mlkit_tp_context"),r11)
+      (I.movq(D(Int.toString offset,rsp),R r10) :: I.movq(R r10,D("0",r11)) :: C)
+  (* Preserve scratch arguments before publishing a C origin. The 32-byte
+   * frame keeps ABI alignment and leaves saved context/policy above C args. *)
+  fun withTimeCall name fsz F C =
+    if not (timeProfile()) then F fsz C
+    else
+      let
+        val origin = new_local_lab "x64_c_origin"
+        val protect = gc_p() andalso name <> "gc"
+        val after = timeRestore 0 (G.add(I "32",rsp) C)
+        val after = if protect then
+          G.load_ea(LA (NameLab "disable_gc"),r11)
+            (I.movq(D("8",rsp),R r10) :: I.movq(R r10,D("0",r11)) :: after)
+          else after
+        val body = I.movq(D("16",rsp),R r10) :: I.movq(D("24",rsp),R r11) :: F (fsz+4) after
+        val body = if protect then
+          G.load_ea(LA (NameLab "disable_gc"),r11)
+            (I.movq(D("0",r11),R r10) :: I.movq(R r10,D("8",rsp)) ::
+             I.movq(I "1",D("0",r11)) :: body)
+          else body
+      in
+        I.dot_p2align "2" :: I.lab origin :: I.subq(I "32",R rsp) ::
+        I.movq(R r10,D("16",rsp)) :: I.movq(R r11,D("24",rsp)) :: timeSave 0 (SOME origin) body
+      end
+
     (* giving numbers to registers---for garbage collection *)
     fun lv_to_reg_no lv =
         case RI.lv_to_reg lv of
@@ -157,10 +194,11 @@ struct
               | store_ret (NONE,C) = C
             val dynlinklab = "localResolveLibFnManual"
             fun mv (aty,(),r,sz_ff,C) = load(aty,r,sz_ff,C)
-        in shuffle_args fsz mv args
-            (with_stack_args push_arg fsz args_stack
-              (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
-              (store_ret(opt_ret,C)))
+        in withTimeCall name fsz (fn fsz => fn C =>
+             shuffle_args fsz mv args
+               (with_stack_args push_arg fsz args_stack
+                 (fn C => callc_static_or_dynamic (name,nargs,NameLab dynlinklab,C)) C))
+             (store_ret(opt_ret,C))
         end
 
     fun compile_c_call_prim args =
@@ -270,10 +308,11 @@ struct
 
             val dynlinklab = "localResolveLibFnAuto"
         in maybe_push_rho_for_result fsz (fn fsz =>
-            shuffle_args fsz mov_arg args
-              (with_stack_args push_arg fsz args_stack
-                (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-                (store_result(opt_res,C))))
+             withTimeCall name fsz (fn fsz => fn C =>
+               shuffle_args fsz mov_arg args
+                 (with_stack_args push_arg fsz args_stack
+                   (fn C => callc_static_or_dynamic (name,nargs,NameLab dynlinklab,C)) C))
+               (store_result(opt_res,C)))
         end
     end
 

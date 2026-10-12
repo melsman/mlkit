@@ -10,18 +10,20 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #endif
-#if defined(__APPLE__) && defined(__aarch64__) && !defined(ARGOBOTS)
-#include <mach/mach_time.h>
+#if ((defined(__APPLE__) && defined(__aarch64__)) || (defined(__linux__) && defined(__x86_64__))) && !defined(ARGOBOTS)
 #include <pthread.h>
 #include <sched.h>
 #define MLKIT_TP_NATIVE 1
+#include "TimeProfilePlatform.inc"
 #endif
 int mlkit_rp_enabled;
 _Atomic int mlkit_rp_pending;
 uint64_t mlkit_rp_interval_us, mlkit_rp_interval_entries;
 const char *mlkit_p_filename = "profile.prof";
 static FILE *output;
+#ifndef PARALLEL
 static int timer_installed;
+#endif
 static void fail(const char *s) {
   fprintf(stderr,"time profiler: %s\n",s);
   _Exit(EXIT_FAILURE);

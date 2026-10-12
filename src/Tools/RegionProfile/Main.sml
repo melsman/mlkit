@@ -32,7 +32,7 @@ struct
                      \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --resolve-pc ADDRESS    Resolve a recorded absolute PC; output JSON\n\
-                     \  --image-build UUID      Require matching image identity for PC resolution\n\
+                     \  --image-build ID      Require matching image identity for PC resolution\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --sites                 SVG: selected region split by allocation site\n\
                      \  --region rN              SVG: site contributions to region rN\n\

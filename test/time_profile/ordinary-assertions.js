@@ -8,7 +8,8 @@ assert(session.semantics.includes('passive 16-byte'));
 assert(!rows.some(r=>r.type==='sample_begin'||r.type==='allocation_session'));
 assert(functions.some(f=>f.function.includes('compute__noinline')));
 assert(functions.some(f=>f.source==='<runtime>'&&f.function==='tp_measure_busy'));
-for(const name of ['mlkit_arm64_allocate_preserving','mlkit_arm64_allocate_untagged_preserving','mlkit_arm64_reset_preserving'])assert(functions.some(f=>f.function===name));
+const arm=functions.some(f=>f.function==='mlkit_arm64_allocate_preserving');
+for(const name of (arm?['mlkit_arm64_allocate_preserving','mlkit_arm64_allocate_untagged_preserving','mlkit_arm64_reset_preserving']:['__allocate','__reset_region']))assert(functions.some(f=>f.function===name));
 const status=rows.filter(r=>r.type==='time_status').at(-1);
 assert.equal(status.final,1);assert.equal(status.dropped,0);assert.equal(status.routing_dropped,0);
 assert(samples.every(s=>s.origin_pc===0&&s.state===0),'ordinary code has no per-call markers');
@@ -21,7 +22,7 @@ console.log('PASS: ordinary passive ML and C resolution without boundary instrum
 
 // Resolve actual shared ranges through the wire reader and HTML attribution.
 const cp=require('child_process'),image=rows.find(r=>r.type==='code_image');
-const shared=[['allocation','mlkit_arm64_allocate_preserving'],['reset','mlkit_arm64_reset_preserving']];
+const shared=arm?[['allocation','mlkit_arm64_allocate_preserving'],['reset','mlkit_arm64_reset_preserving']]:[['allocation','__allocate'],['reset','__reset_region']];
 const gc=functions.find(f=>f.function.startsWith('<gc-stub>'));
 if(gc)shared.push(['gc',gc.function]);
 const modified=rows.map(r=>({...r}));

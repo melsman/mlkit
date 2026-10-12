@@ -53,6 +53,22 @@ run "$MLKIT" -gc
 run "$MLKIT" -no_gc -rp
 run "$MLKIT" -no_gc -par -rp
 run "$MLKIT" -gc -rp
+# Time-only activation must also work without modifying installed caches.
+case $(uname -sm) in
+ 'Darwin arm64'|'Linux x86_64')
+  for flags in '-no_gc -no_par' '-gc -no_par' '-no_gc -par'; do
+   n=$((n+1))
+   (cd "$OUT"
+    "$MLKIT" $flags -o time-client client.mlb > "build-$n.log" 2>&1
+    ./time-client +RTS -tp -tp_paused -p_file "time-$n.prof" > actual
+    cmp expected actual
+    "$PVIEW" "time-$n.prof" --format json > "time-$n.json"
+    grep -q 'time_session' "time-$n.json"
+    if grep -q 'sample_begin' "time-$n.json"; then exit 1; fi
+    "$PVIEW" "time-$n.prof" --ir-dir "$SML_LIB/basis/MLB" --ir-dir "$SML_LIB/kitlib/MLB" --ir-dir MLB -o "time-$n.html" > /dev/null)
+   echo "Installed time API passed: $MLKIT $flags"
+  done ;;
+esac
 # ReML must also reuse the explicit-region API, including region parameters.
 printf '$(SML_LIB)/basis/reml.mlb\nregion.sml\n' >> "$OUT/client.mlb"
 cat > "$OUT/region.sml" <<'SML'
@@ -71,4 +87,4 @@ run "$REML" -par
 run "$REML" -par -rp
 find "$SML_LIB/basis" "$SML_LIB/kitlib" -type f -exec cksum {} + | sort > "$OUT/after"
 cmp "$OUT/before" "$OUT/after"
-echo 'Read-only installed RegionProfile and Region checks passed; installed files unchanged'
+echo 'Read-only installed region/time APIs and Region checks passed; installed files unchanged'

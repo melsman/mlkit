@@ -1368,9 +1368,16 @@ static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
 
 /* Passive entry identity; no sampling bookkeeping in ordinary GC code. */
 const volatile uintptr_t mlkit_tp_gc_address = (uintptr_t)gc;
+#if defined(__linux__) && defined(__x86_64__)
+extern const char __stop_mlkit_tp_gc_code[];
+const volatile uintptr_t mlkit_tp_gc_end_address = (uintptr_t)__stop_mlkit_tp_gc_code;
+#define MLKIT_TP_GC_SECTION __attribute__((section("mlkit_tp_gc_code")))
+#else
+#define MLKIT_TP_GC_SECTION
+#endif
 
 void
-gc(Context ctx, uintptr_t **sp, size_t reg_map)
+MLKIT_TP_GC_SECTION gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   /* Allocation retains requests even while collection is disabled. ARM checks
    * this at ML safe points too; older backends only test time_to_gc. Keep the

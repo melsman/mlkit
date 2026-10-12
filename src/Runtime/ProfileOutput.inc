@@ -54,6 +54,7 @@ __attribute__((weak)) const MlkitProfileCodeUnit * const volatile mlkit_rp_code_
 extern const MlkitProfileCodeUnit * const volatile mlkit_rp_code_units[] __attribute__((weak));
 #endif
 #include "RuntimeCode.inc"
+#include "RuntimeElf.inc"
 /* Before sampling is armed, catalog compiler ranges and named C ranges in
  * the static executable. UUID and load base identify it independently of ASLR. */
 static void emit_code_metadata(void) {
@@ -127,6 +128,8 @@ static void emit_code_metadata(void) {
       return;
     }
   }
+#elif defined(__linux__) && defined(__x86_64__)
+  if (mlkit_rp_code_scope == 1) { emit_elf_code_metadata(); return; }
 #else
   if (mlkit_rp_code_scope == 1) scope = "unsupported-platform";
 #endif

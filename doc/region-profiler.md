@@ -165,8 +165,9 @@ the sampler's C frames, foreign-call frames, and unused OS stack capacity.
 The reader validates stack arithmetic, generation/page accounting and the
 required current metadata: source names, region kinds/types, page maxima, cache
 bytes and GC counts. Native frame maps use version 4.
-On macOS ARM64, new recordings also retain function code ranges and the
-executable's UUID/load address for offline interrupted-PC resolution. See
+On macOS ARM64 and Linux X64, new recordings also retain function code ranges
+and the executable's identity/load address for offline interrupted-PC resolution
+(Mach-O UUID or ELF GNU build ID). See
 [T2 function metadata](time-profiler/t2-function-metadata.md) for the metadata
 extension, `pview --resolve-pc`, supported static-code scope, and unknown-PC
 handling. Experimental time sampling records raw PCs alongside this metadata.
@@ -545,7 +546,9 @@ The viewer is `pview` (Profile Viewer); `-p_file PATH` selects the shared output
 whose default is `profile.prof`. `-p_paused` starts enabled profilers paused.
 Compiler and runtime `-p` each mean `-rp -tp`; compiler support and runtime
 recording are separate. Ordinary ARM64 builds already support time metadata.
-Time sampling remains limited to supported static macOS ARM64 configurations,
+Time sampling supports static macOS ARM64 and Linux X64 configurations,
 and combined activation rejects unavailable profilers. Existing `.rp` files
 remain readable, but `rpview`, `-rp_file` and `-tp_file` are removed without aliases.
 See [unified profiling options](time-profiler/t8-unified-profiling.md).
+
+Linux X64 time sampling and validation: [T9 native profiling](time-profiler/t9-linux-x64.md).
