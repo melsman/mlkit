@@ -72,7 +72,7 @@ struct
       val rendered =
         (PrettyPrint.raggedRight := true; PrettyPrint.colwidth := 80;
          (render tree 80 before restore ()) handle exn => (restore (); raise exn))
-    in MD5.fromString (unit ^ "\000" ^ source ^ "\000" ^ #text rendered ^
+    in MD5.fromString ("function-labels-1\000" ^ unit ^ "\000" ^ source ^ "\000" ^ #text rendered ^
                        "\000" ^ table (#text rendered) (#spans rendered))
     end
 
@@ -150,6 +150,8 @@ struct
           andalso String.isPrefix "\nMLKIT-IR-LOCATIONS 1\n"
                     (String.extract (payload,codeBytes,NONE))
           andalso String.isSuffix "MLKIT-IR-REGIONS-END\n" payload
+          andalso (not (String.isSubstring "fun " (String.substring(payload,0,codeBytes)))
+                   orelse String.isSubstring "\nfunction\t" payload)
           andalso MD5.fromString (prefix ^ payload) = digest
           andalso MD5.fromFile object = objectDigest
         end

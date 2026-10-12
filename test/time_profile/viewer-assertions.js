@@ -51,6 +51,16 @@ const second=functionLocation({function:'exists11',unit:'u',ir_identity:'repeate
 assert(first&&second);assert(first.spans[0].start<second.spans[0].start);
 repeated.region_data[1].label='other11';assert.equal(functionLocation({function:'exists10',unit:'u',ir_identity:'repeated'}),null);
 
+// Function rows precede nested children during closure conversion; optimized
+// away declarations must not prevent navigation to a complete repeated group.
+const nested={identity:'nested',unit:'u',text:'fun f(x) = let fun f(y) = y in x end\n',code_start:0,code_bytes:35,
+ region_data:[{kind:'function',flavor:'named',label:'f10',parent:'main'},
+ {kind:'function',flavor:'named',label:'removed11',parent:'main'},
+ {kind:'function',flavor:'named',label:'f12',parent:'f10'}]};
+irDocuments.set(nested.identity,nested);
+const outer=functionLocation({function:'f10',unit:'u',ir_identity:'nested'}),inner=functionLocation({function:'f12',unit:'u',ir_identity:'nested'});
+assert(outer&&inner);assert(outer.spans[0].start<inner.spans[0].start);
+
 timeSamples.splice(0,timeSamples.length,{time:timeLast/2n,thread:'0',stream:'0',attribution:{status:'function',...record}});
 timeStart=0;timeEnd=10000;timeReport();
 const functionLink=el('time-rows').querySelector('button');assert(functionLink);

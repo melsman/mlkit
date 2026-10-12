@@ -329,14 +329,17 @@ function functionLocation(record){
   const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   let matches=[...code.matchAll(new RegExp('\\bfun\\s+('+escaped+')(?=[\\s\\[(])','g'))];
   if(matches.length!==1){
-   // The compiler's named-function rows preserve declaration order. Accept
-   // an ordinal correspondence only if the entire document agrees, not
-   // just the repeated name requested by this row.
+   // Recover lexical order from the compiler's function-parent metadata.
    const declarations=[...code.matchAll(/\bfun\s+([^\s[(]+)/g)];
-   const functions=(doc.region_data||[]).filter(r=>r.kind==='function'&&r.flavor==='named');
-   if(declarations.length!==functions.length||!functions.every((f,i)=>{const label=shortFunction(f.label),printed=declarations[i][1];return label===printed||(label.startsWith(printed)&&/^[0-9]+$/.test(label.slice(printed.length)));}))return null;
+   const rows=(doc.region_data||[]).filter(r=>r.kind==='function'),labels=new Set(rows.map(r=>r.label)),ordered=[],visited=new Set();
+   function visit(row){if(visited.has(row.label))return;visited.add(row.label);if(row.flavor==='named')ordered.push(row);for(const child of rows)if(child.parent===row.label)visit(child);}
+   for(const row of rows)if(!labels.has(row.parent))visit(row);
+   // Closure conversion also records functions eliminated from the printed
+   // IR. Compare the complete group for this printed name, in lexical order.
+   const functions=ordered.filter(f=>irFunctionName(f.label,doc)===name),group=declarations.filter(d=>d[1]===name);
+   if(group.length!==functions.length)return null;
    const indices=functions.map((f,i)=>f.label===record.function?i:-1).filter(i=>i>=0);if(indices.length!==1)return null;
-   matches=[declarations[indices[0]]];
+   matches=[group[indices[0]]];
   }
   const match=matches[0],offset=match.index+match[0].indexOf(match[1]),encoder=new TextEncoder(),start=data.start+encoder.encode(code.slice(0,offset)).length,length=encoder.encode(match[1]).length;
   const line=data.lines.find(l=>start>=l.start&&start<=l.end);
