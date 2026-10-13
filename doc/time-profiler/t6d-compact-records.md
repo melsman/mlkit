@@ -2,9 +2,10 @@
 
 [T7](t7-parallel-sampling.md) adds static macOS ARM64 no-GC pthread sampling,
 per-thread compact buffers and thread/stream views. Earlier parallel rejection
-statements below describe the pre-T7 implementation.
+statements below describe the pre-T7 implementation. [T9](t9-linux-x64.md) adds
+the corresponding Linux X64 support.
 
-Passive sampling buffers only a 64-bit interrupted PC and 64-bit Mach timestamp.
+Passive sampling buffers only a 64-bit interrupted PC and 64-bit native clock tick (Mach ticks on ARM64, monotonic nanoseconds on Linux X64).
 The record is 16 bytes. Detailed sampling retains state and initiating C-origin
 PC in a 32-byte record. Static assertions verify both sizes on the supported ABI.
 The layout is selected before handler installation and stays fixed for the

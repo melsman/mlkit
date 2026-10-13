@@ -30,6 +30,7 @@ static mach_timebase_info_data_t scale;
 static uint64_t start_tick;
 static struct rusage start_usage;
 static unsigned interval;
+static const char *mode_name;
 static uintptr_t stack_low, stack_high;
 static void die(const char *s) { perror(s); exit(1); }
 static double seconds(uint64_t ticks) {
@@ -53,10 +54,12 @@ static void capture(int sig, siginfo_t *info, void *context) {
 }
 uintptr_t tp_start(void) {
   const char *mode = getenv("TP_MODE");
+  if (!mode) mode = "wall";
+  mode_name = mode;
   const char *value = getenv("TP_INTERVAL_US");
   interval = value ? (unsigned)strtoul(value, NULL, 10) : 1000;
   if (!interval || interval > 1000000) { fprintf(stderr,"bad interval\n"); exit(1); }
-  if (!mode || !strcmp(mode,"wall")) { timer_kind = ITIMER_REAL; timer_signal = SIGALRM; }
+  if (!strcmp(mode,"wall")) { timer_kind = ITIMER_REAL; timer_signal = SIGALRM; }
   else if (!strcmp(mode,"user")) { timer_kind = ITIMER_VIRTUAL; timer_signal = SIGVTALRM; }
   else if (!strcmp(mode,"cpu")) { timer_kind = ITIMER_PROF; timer_signal = SIGPROF; }
   else { fprintf(stderr,"bad mode\n"); exit(1); }
@@ -112,7 +115,7 @@ uintptr_t tp_stop(void) {
     }
   }
   printf("mode=%s interval_us=%u samples=%d dropped=%d wall=%.6f user=%.6f system=%.6f min_gap=%.6f max_gap=%.6f wrong_thread=%d zero_pc=%d backwards=%d\n",
-    getenv("TP_MODE"),interval,used,dropped,seconds(end-start_tick),user,system,
+    mode_name,interval,used,dropped,seconds(end-start_tick),user,system,
     used > 1 ? min : 0,max,wrong_thread,zero_pc,backwards);
   const char *path = getenv("TP_SAMPLES");
   if (path) {

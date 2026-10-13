@@ -1,5 +1,10 @@
 # T6b: ordinary-build measurement
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 This batch predates T6d compact records and uses 65,536 32-byte records.
 See [T6c/T6d measurements](t6c-optional-attribution.md) for current layouts and defaults.
 
@@ -216,6 +221,6 @@ intervals; combined profiles were checked for all three GC configurations.
 Browser visual layout remains unverified. No runtime/compiler behavior changes
 were needed for T6b. Keep 1ms as the starting interval for opt-in investigation;
 use finer intervals with attention to startup cost, loss counters and capacity.
-T6c's optional detailed C attribution remains separate work.
+[T6c](t6c-optional-attribution.md) subsequently completed optional detailed C attribution.
 
 Command examples use current T8 names (`pview`, `-p_file`). Archived measurement JSON retains the historical command names used when those measurements were collected; no measurements were rerun for this rename.

@@ -269,7 +269,10 @@ identity and validated companion contents suffice.
 
 If files have moved after linking, `pview --ir-dir DIR` optionally searches that
 directory recursively for missing companions; the option is repeatable. These
-fallbacks must pass the same identity checks. Normal use requires no search path.
+fallbacks must pass the same identity checks. For ordinary time-only builds,
+which omit the object manifest, the viewer automatically searches `MLB` caches
+beside recorded sources and in enclosing directories. Normal use requires no
+search path when matching companions remain in those caches.
 
 HTML metadata includes `ir_documents` (the complete IR text and file-relative
 spans) and `ir_sites` (one mapping per allocation definition). Status is
@@ -283,8 +286,9 @@ Static site descriptors contain the unit, function, source, site ID, location ki
 and IR identity. The linker supplies an object-path table. This metadata is read
 when serializing site definitions, rather than on each allocation. The current
 format is version 10 and site-metadata capability 4. Profiling cache directories
-use the normal mode names, such as `RI_PROF` or `ARM64_RI_GC_PROF`,
-without ABI-version suffixes.
+include the native metadata/instrumentation revision, for example
+`ARM64_RI_GC_PROF_CODE1_TP1` or `RI_GC_PROF_CODE1_TP1` on X64. Ordinary
+cache mode names remain unchanged; time sampling adds no separate cache family.
 Rebuild runtime and profiling objects together; older profiles must be regenerated.
 
 ## IR4: navigating allocation sites

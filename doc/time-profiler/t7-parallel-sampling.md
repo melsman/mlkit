@@ -1,6 +1,7 @@
 # T7: targeted pthread sampling and thread views
 
-Static macOS ARM64 executables built with `-no_gc -par` now support `+RTS -tp`.
+Static macOS ARM64 and Linux X64 executables built with `-no_gc -par` support
+`+RTS -tp`; [T9](t9-linux-x64.md) added the Linux platform implementation.
 Existing ordinary/profiling parallel runtimes and library caches are reused.
 Parallel GC/tagged values remain unsupported by the compiler; Argobots, dynamic
 REPL images, CPU timers and detailed C-origin attribution remain unsupported.
@@ -15,7 +16,7 @@ and waiting threads can be observed, so estimates describe wall time, not CPU
 consumption. The coordinator is not an ML thread and is not sampled. It does
 not change target signal masks and does not serialize records.
 
-Each registered thread gets one compact 16-byte PC/Mach-tick buffer. The default
+Each registered thread gets one compact 16-byte PC/native-clock-tick buffer. The default
 is 131,072 entries / 2 MiB **per live thread**; `-tp_buffer N` overrides the entry
 count per thread. Buffers are allocated and touched outside signal context.
 They drain on explicit flush/start/pause, thread exit and normal shutdown.
@@ -94,6 +95,9 @@ masking UUID differences in bootstrap comparison.
 
 ## Validation
 
+The following records the original T7 checks. Final cross-platform CI and
+review status is in [the final design reference](t8-unified-profiling.md).
+
 `check-parallel.sh` exercises ordinary/profiled builds, two waves of four workers,
 output parity, lifecycle flush/pause/start, bounded overflow and combined region
 recording. It checks every worker receives samples, per-stream time/lifetime
@@ -123,5 +127,6 @@ installed the final compiler. Ordinary and parallel profiling/IR checks also
 passed with that rebuilt compiler. Artifacts are retained locally under
 `/tmp/mlkit-t7-bootstrap-fixed`, `/tmp/mlkit-t7-repro`, and the
 `/tmp/mlkit-t7-new-compiler-ordinary` / `-parallel` directories. Cloud CI for this
-change and browser visual layout remain unverified. The checks establish the
+change was not assessed at that milestone; current CI status is in the final
+design reference. Real-browser visual layout inspection remains unverified. The checks establish the
 supported configuration, not an exact timer delivery rate or overhead bound.

@@ -1,8 +1,14 @@
 # T6: single-thread measurement and hardening
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 These measurements describe the earlier profiled-build, double-buffer prototype.
 T6a supersedes that recorder/build design; see the
-[T6b ordinary-build measurements](t6b-ordinary-measurement.md) for current costs.
+[T6c/T6d measurements](t6c-optional-attribution.md) and [T9 Linux measurements](t9-linux-x64.md)
+for the later layouts and measured costs.
 
 This milestone evaluates the experimental static, single-thread macOS ARM64 wall
 sampler. It does not add CPU timers, parallel delivery or dynamic REPL images.

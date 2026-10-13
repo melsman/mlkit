@@ -170,7 +170,11 @@ and the executable's identity/load address for offline interrupted-PC resolution
 (Mach-O UUID or ELF GNU build ID). See
 [T2 function metadata](time-profiler/t2-function-metadata.md) for the metadata
 extension, `pview --resolve-pc`, supported static-code scope, and unknown-PC
-handling. Experimental time sampling records raw PCs alongside this metadata.
+handling. Time sampling records interrupted PCs alongside this metadata. Passive
+samples taken while GC is active use the `gc` address, so helpers and GC-time
+allocation contribute to GC rather than separate C rows. See the
+[final profiling design](time-profiler/t8-unified-profiling.md) for supported
+configurations, current options and milestone/validation status.
 Binding definitions carry a session-local `definition` ID and the static
 `unit`, `binding`, `source`, `name`, `kind`, and `region_type` fields. Definitions
 are emitted once, immediately before the first snapshot that uses them; no
@@ -315,7 +319,7 @@ All three sampled Basis builds use `-log_to_file -Prfg -Ppp -Pcee` to
 write per-source diagnostic logs, including region-flow graphs, program points,
 and call-explicit code. These logs are installed alongside the IR files in each
 variant's cache directory (for example,
-`basis/MLB/ARM64_RI_GC_PROF/List.sml.log`). Use the logs for inspecting compiled
+`basis/MLB/ARM64_RI_GC_PROF_CODE1_TP1/List.sml.log`). Use the logs for inspecting compiled
 library code; the `.ir` files provide metadata for pview. Profiling compilations
 with `-log_to_file` also use this layout for application sources. Printing
 options and missing diagnostic logs never force recompilation of cached code,
@@ -545,7 +549,9 @@ Parallel time sampling and thread details: [T7 targeted pthread delivery](time-p
 The viewer is `pview` (Profile Viewer); `-p_file PATH` selects the shared output,
 whose default is `profile.prof`. `-p_paused` starts enabled profilers paused.
 Compiler and runtime `-p` each mean `-rp -tp`; compiler support and runtime
-recording are separate. Ordinary ARM64 builds already support time metadata.
+recording are separate. Ordinary ARM64 and X64 builds already emit time metadata.
+Runtime `-p` is advertised and accepted only in region-profiled executables;
+ordinary builds can use `-tp` with the shared file/pause options.
 Time sampling supports static macOS ARM64 and Linux X64 configurations,
 and combined activation rejects unavailable profilers. Existing `.rp` files
 remain readable, but `rpview`, `-rp_file` and `-tp_file` are removed without aliases.

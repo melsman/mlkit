@@ -259,6 +259,7 @@ static uintptr_t tp_change(int running) {
 uintptr_t mlkit_tp_start(void) { return tp_change(1); }
 uintptr_t mlkit_tp_pause(void) { return tp_change(0); }
 uintptr_t mlkit_tp_flush(void) {
+  if (!mlkit_tp_enabled || !output || tp_closed) return 1;
   tp_drain();
   if (output && fflush(output)) fail("cannot flush time profile");
   return 1;

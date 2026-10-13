@@ -1,5 +1,10 @@
 # T4: C origins and GC state
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 This instrumentation remains specific to region-profiled builds. Ordinary-build
 sampling uses [T6a passive ranges and runtime self-time](t6a-ordinary-builds.md).
 

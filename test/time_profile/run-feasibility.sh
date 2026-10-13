@@ -9,6 +9,8 @@ CC=${CC:-cc}
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
 export SML_LIB=${SML_LIB:-$ROOT}
 $CC -O2 -Wall -Wextra -Werror "$ROOT/test/time_profile/feasibility.c" -o "$OUT/timer"
+env -u TP_MODE "$OUT/timer" busy > "$OUT/default-mode.txt"
+grep -q '^mode=wall ' "$OUT/default-mode.txt"
 $CC -O2 -Wall -Wextra -Werror -DTP_LIBRARY -c "$ROOT/test/time_profile/feasibility.c" -o "$OUT/timer.o"
 ar rcs "$OUT/libtptime.a" "$OUT/timer.o"
 cp "$ROOT/test/time_profile/workload.sml" "$OUT/"

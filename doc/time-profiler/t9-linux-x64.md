@@ -23,6 +23,9 @@ instrumented cache gains the metadata/attribution format revision `_CODE1_TP1`;
 ordinary caches retain their names and regenerate objects without matching IR
 companions. Static IR identities derive from fixed-layout IR content and marks.
 Ordinary links omit object-path maps, preserving bootstrap reproducibility.
+The viewer automatically searches nearby `MLB` caches using recorded source
+paths; `--ir-dir` is an optional fallback for moved files. Function-label/parent
+metadata is emitted without `-rp` to distinguish repeated printed names.
 
 ## Native delivery and clocks
 
@@ -183,5 +186,8 @@ locks, uses pthread APIs or resolves metadata.
 
 ARM64 runtime builds, unified activation/removed options, lifecycle/overflow,
 combined reports, pthread sampling/IR, binary-reader and build-seed checks also
-passed after the shared platform changes. Real-browser visual layout and cloud
-CI for the final commit remain unverified.
+passed after the shared platform changes. Cloud CI at the T9 milestone was not yet verified. The pre-review head later passed all
+three CI configurations; see [the final design and validation status](t8-unified-profiling.md).
+The retained timing datasets predate later IR-navigation, UI and GC-address
+substitution fixes. They were not rerun for those changes and do not establish
+the exact cost of the current head.

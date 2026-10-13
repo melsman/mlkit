@@ -1,5 +1,10 @@
 # T3: buffered interrupted-PC recording
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 This documents the T3 prototype. [T6a](t6a-ordinary-builds.md) supersedes its
 profiled-build requirement, double buffers and automatic safe-point draining.
 
@@ -78,7 +83,7 @@ origin/category information.
 `pview --format json` exports these records. The reader validates lifecycle,
 sequence, timestamps, identities, counts and loss counters. A completed stream
 requires a final inactive status. Existing readers without these additive tags
-must be upgraded. Time report UI and aggregation remain T5 work.
+must be upgraded. Time report UI and aggregation were subsequently completed in T5.
 
 ## Validation
 

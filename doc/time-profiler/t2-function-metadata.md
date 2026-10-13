@@ -1,10 +1,15 @@
 # T2: function ranges and image identity
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 The macOS ARM64 backend emits code metadata when compiling with `-rp` (the
 alias for `-region_profile`). This supplies the function-address foundation for
 issue [#241](https://github.com/melsman/mlkit/issues/241).
 [T3](t3-recording.md) adds buffered time sampling; attribution and reporting
-remain T4–T5 work.
+were subsequently completed in T4–T5.
 
 ## Native tables and identities
 
@@ -71,18 +76,19 @@ range. A sorted vector provides binary search outside signal context.
 
 ## Inspect a PC
 
-Compile an executable with `-rp` and record its metadata with
-`+RTS -rp -rp_interval 0 -p_file profile.prof`. This disables periodic region
-snapshots while retaining initialization metadata. Obtain the interrupted PC and
-image UUID from the **same sampled executable**. The T3 recorder stores these PCs
-in production time-sample records; the T1 helper remains a feasibility aid.
+In the final implementation ordinary native builds already emit metadata. Record
+samples with runtime `-tp`, then take a `pc` from a `time_sample` record and the
+`build_id` from its matching `code_image` in the same profile. T3 introduced
+production sample records; the T1 helper is only a feasibility aid.
 
 ```sh
+mlkit -no_par -o run program.mlb
+./run +RTS -tp -p_file profile.prof -RTS
 bin/pview profile.prof --format json -o records.json
-bin/pview profile.prof --resolve-pc 0xADDRESS --image-build IMAGE_UUID
+bin/pview profile.prof --resolve-pc 0xADDRESS --image-build IMAGE_ID
 ```
 
-`--resolve-pc` requires the expected image UUID and prints one JSON result.
+`--resolve-pc` requires the expected image identity and prints one JSON result.
 `function` results contain the reused function identity, source, IR identity,
 range, and image identity. Other statuses are `unknown-pc`,
 `metadata-unavailable`, and `build-mismatch`. PCs at a function's end are outside
@@ -105,8 +111,8 @@ ranges or reuse the static executable's identity. Runtime entry bridges,
 allocation/GC stubs, C primitives, and GC implementation functions do not have
 ML ranges and resolve as `unknown-pc` here.
 
-T4 will distinguish GC and foreign execution using state maintained at GC and
-ML/C boundaries. It will charge foreign execution to the initiating ML function
+T4 subsequently added GC and foreign attribution using state maintained at GC and
+ML/C boundaries. Unresolved foreign execution can be charged to the initiating ML function
 and let an actual ML range match take precedence during a C-to-ML callback.
 T2 does not infer these categories from symbol names or perform any lookup in a
 signal handler.

@@ -1,5 +1,10 @@
 # T6c: optional detailed C attribution
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 [T7](t7-parallel-sampling.md) adds static macOS ARM64 no-GC pthread sampling,
 per-thread compact buffers and thread/stream views. Earlier parallel rejection
 statements below describe the pre-T7 implementation.
@@ -44,7 +49,7 @@ initiating ML function. GC state covers the collector's extent, including its
 helpers. Callback/exception restoration prevents an enclosing C origin from
 claiming recognized callback ML execution.
 
-The `passive` option on an instrumented build disables attribution recording,
+The `passive` option on an instrumented build disables C-origin recording,
 not the generated boundary instructions or region instrumentation. Thus comparing
 passive/detailed on that same executable compares recording modes at the same
 2 MiB budget; it does not isolate compiler marker cost. Comparing instrumented-off
@@ -59,7 +64,7 @@ needs no recompilation. A separately cached ordinary build with only C markers
 would add another compiler configuration; these measurements do not isolate
 its prospective cost or establish a need for that extra configuration.
 
-IR documents and function ranges are emitted in ordinary ARM64 builds. Both
+IR documents and function ranges are emitted in ordinary ARM64 and X64 builds. Both
 recording modes can navigate a sampled ML function in pview with matching IR,
 without region snapshots or allocation-site records. Runtime/C rows have no ML
 IR document. They remain time rows and are excluded from ML companion searches.
@@ -230,7 +235,10 @@ and Mach clock external calls; atomics compile inline. The linked all-regions CI
 companion search and corrected; local all-regions and IR11 passed with the runtime/C exclusion.
 
 The new explicit-mode checks run in macOS ARM64 profiler CI. Cloud checks for
-these commits and browser visual layout remain unverified. Detailed recording
-continues to reuse existing runtimes/caches; T7 parallel sampling is pending.
+these milestone snapshots were not assessed here; current CI status is in
+[the final design reference](t8-unified-profiling.md). Real-browser visual layout
+inspection remains unverified. Detailed recording
+continues to reuse existing runtimes/caches; [T7](t7-parallel-sampling.md) subsequently
+completed supported pthread sampling and [T9](t9-linux-x64.md) extended it to Linux X64.
 
 Command examples use current T8 names (`pview`, `-p_file`). Archived measurement JSON retains the historical command names used when those measurements were collected; no measurements were rerun for this rename.

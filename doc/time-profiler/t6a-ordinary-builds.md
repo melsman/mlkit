@@ -12,13 +12,14 @@ runtime archive or library-cache directory is introduced. On macOS ARM64,
 compile an ordinary static executable with `-no_par`, then run:
 
 ```
-./run +RTS -tp -tp_interval 1ms -tp_buffer 65536 -p_file run.rp
-bin/pview run.rp --ir-dir path/to/MLB -o run.html
+./run +RTS -tp -tp_interval 1ms -p_file run.prof
+bin/pview run.prof -o run.html
 ```
 
 GC, GenGC and no-GC configurations use their usual archives and caches.
-All runtimes recognize time options; activation on parallel builds or other
-platforms is rejected. Dynamic REPL sampling remains unsupported. Region
+All runtimes recognize time options. Static macOS ARM64 and Linux X64
+single-thread GC/GenGC/no-GC and no-GC pthread builds are supported;
+activation in other configurations is rejected. Dynamic REPL sampling remains unsupported. Region
 snapshots still require region-profile compilation and runtime `-rp`.
 
 ## Recording and draining
@@ -52,7 +53,11 @@ source and IR identities in ordinary objects. This adds data and labels,
 without boundary markers or changes to the ordinary function instructions.
 IR documents are generated independently of region profiling. Existing ARM64
 cache directories are reused; missing/inconsistent IR companions cause an
-ordinary cache refresh rather than selection of another profile cache.
+ordinary cache refresh rather than selection of another profile cache. Function-label
+and parent metadata is retained without `-rp`, including for repeated printed names.
+Without an object manifest, pview automatically searches `MLB` directories beside
+recorded sources and in their enclosing directories. `--ir-dir` supplies additional
+locations for moved artifacts; identity and unit checks still apply.
 
 Compiler ranges cover shared allocation/reset bridges and per-unit GC
 bridges, including builds with stripped symbols. For named C functions in the
@@ -67,8 +72,10 @@ The table aggregates recognized shared code as **Allocation**, **Reset**, and
 it from ML functions and separating equal static C names in different objects.
 These are self-time observations; callees get their own rows when known. For example, libc `malloc` time is not charged to its ML
 caller. Inline allocation/reset instructions within an ML function stay with
-that ML function. GC helper functions outside the shared GC bridge/main GC
-function receive their own C rows in ordinary builds.
+that ML function. The sampler reads the atomic `doing_gc` flag and substitutes
+the `gc` address throughout a passive GC sample, including helpers such as
+`evacuate` and GC calls to `alloc_new_page`. Ordinary `alloc_new_page` samples
+remain separate. Detailed mode retains actual helper PCs and GC state.
 
 Profiled builds retain their existing optional C-origin/GC state recording.
 That instrumentation is not required for ordinary sampling. [T6b measures](t6b-ordinary-measurement.md)
@@ -87,4 +94,6 @@ standalone metadata/deep-stack checks, binary/viewer regressions and IR5 passed.
 Two existing CI checks were repaired: the fixture encoder now accepts
 version-10 code/time tags, and the callback assertion permits a callback's own
 C-return restoration window while still rejecting an enclosing C origin.
-Cloud CI for this change and browser visual layout have not been verified.
+These checks describe the T6a implementation; later CI status is recorded in
+[the final milestone map](t8-unified-profiling.md). Real-browser visual layout
+inspection remains unverified.

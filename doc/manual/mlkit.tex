@@ -6981,8 +6981,8 @@ non-local region-polymorphic function introduces an edge in the region flow
 graph, but the graph says nothing about in which module the called function is
 located. Thus, it may be necessary to look in several log files to find the complete path
 from a formal region variable to an actual region variable. By inspecting the
-call-explicit programs found in the two log files \lstinline{basis/MLB/ARM64_RI_PROF/Int.sml.log} and
-\lstinline{kitdemo/MLB/ARM64_RI_PROF/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
+call-explicit programs found in the two log files \lstinline{basis/MLB/ARM64_RI_PROF_CODE1_TP1/Int.sml.log} and
+\lstinline{kitdemo/MLB/ARM64_RI_PROF_CODE1_TP1/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
 eventually call \kw{implode}. However, \kw{readWord} is called only initially,
 thus, we conclude that the space leak is caused by function \kw{Int.toString}
 being called with region \kw{r338955} instantiated for the formal region
@@ -7122,14 +7122,14 @@ the options \kw{-rp}, \kw{-Ppp}, \kw{-Prfg}, and \kw{-Pcee} are passed to the
 MLKit compiler.
 
 By also passing the option \kw{-log\_to\_file} to the MLKit compiler, the MLKit
-generates several files, of which we have \lstinline{MLB/ARM64_RI_PROF/life.sml.log} (containing, among
+generates several files, of which we have \lstinline{MLB/ARM64_RI_PROF_CODE1_TP1/life.sml.log} (containing, among
 other things, the call-explicit region-annotated program with program points and
 the region flow graph in text layout) and the executable file \kw{run}.
 
 %-------------------------------------------------
 \section{The Log File}
 %-------------------------------------------------
-In the file \lstinline{MLB/ARM64_RI_PROF/life.sml.log} you find the call-explicit region-annotated
+In the file \lstinline{MLB/ARM64_RI_PROF_CODE1_TP1/life.sml.log} you find the call-explicit region-annotated
 program with program points and the region flow graph in text layout for the
 \kw{life.sml} source file.  The region flow graph is found by searching for the
 string \kw{Region Flow Graph}. The graph contains the following

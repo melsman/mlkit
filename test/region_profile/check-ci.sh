@@ -46,6 +46,7 @@ if [ "$(uname -sm)" = 'Darwin arm64' ] || [ "$(uname -sm)" = 'Linux x86_64' ]; t
   run time-attribution-modes sh "$ROOT/test/time_profile/check-attribution-modes.sh"
   run time-attribution sh "$ROOT/test/time_profile/check-attribution.sh"
   run time-recording sh "$ROOT/test/time_profile/check-recording.sh"
+  run time-flush-disabled sh "$ROOT/test/time_profile/check-flush-disabled.sh"
   if [ "$(uname -sm)" = 'Linux x86_64' ]; then
     run time-x64-abi sh "$ROOT/test/time_profile/check-x64-abi.sh"
     run code-metadata-elf sh "$ROOT/test/time_profile/check-elf.sh"

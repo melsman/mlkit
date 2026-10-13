@@ -1,5 +1,10 @@
 # T1: macOS ARM64 interrupted-PC feasibility
 
+This is a historical milestone record. Later milestones supersede some of its
+implementation and validation details; see the [final design and milestone map](t8-unified-profiling.md)
+and [Linux X64 support](t9-linux-x64.md). Retained measurements describe the
+binaries measured at that milestone, not later changes.
+
 Issue [#241](https://github.com/melsman/mlkit/issues/241), experiment on
 2026-10-09. Host: macOS 26.5.1 (25F80), Darwin 25.5.0 ARM64 T6020;
 Apple clang 21.0.0; MLKit checkout `5bffdc30`.
