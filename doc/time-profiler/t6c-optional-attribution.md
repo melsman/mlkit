@@ -73,7 +73,8 @@ incorrectly reported as hundreds of missing region-flow IR companions.
 
 ## Reproduction and interpretation
 
-Run `sh test/time_profile/measure-attribution.sh`. `OUT`, `MLKIT`, `PVIEW` and
+Run `ATTRIBUTION=1 sh test/time_profile/measure-ordinary.sh` on macOS ARM64
+or Linux X64. The separate attribution wrapper has been removed. `OUT`, `MLKIT`, `PVIEW` and
 `REPEATS` may be overridden (five repeats by default; minimum three). The harness
 reuses the serial ordinary benchmark builder and runs GC/GenGC/no-GC phases,
 `kkb_eq` and twenty Topdec ML-Yacc generations. Settings include ordinary off,

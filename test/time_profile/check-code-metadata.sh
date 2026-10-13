@@ -10,38 +10,30 @@ MLKIT=${MLKIT:-$ROOT/bin/mlkit}
 PVIEW=${PVIEW:-$ROOT/bin/pview}
 CC=${CC:-cc}
 export SML_LIB=${SML_LIB:-$ROOT}
-$CC -O2 -Wall -Wextra -Werror -DTP_LIBRARY -c "$ROOT/test/time_profile/feasibility.c" -o "$OUT/timer.o"
-ar rcs "$OUT/libtptime.a" "$OUT/timer.o"
-cp "$ROOT/test/time_profile/workload.sml" "$OUT/"
-printf '$(SML_LIB)/basis/basis.mlb\nworkload.sml\n' > "$OUT/workload.mlb"
+$CC -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/measure.c" -o "$OUT/measure.o"
+ar rcs "$OUT/libmeasure.a" "$OUT/measure.o"
+cp "$ROOT/test/time_profile/measure.sml" "$OUT/"
+printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/kitlib/time-profile.mlb\nmeasure.sml\n' > "$OUT/measure.mlb"
 for mode in gc no_gc; do
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs tptime,m,c,dl \
-    -o "$OUT/$mode" "$OUT/workload.mlb" > "$OUT/$mode-build.log" 2>&1
+  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs measure,m,c,dl \
+    -o "$OUT/$mode" "$OUT/measure.mlb" > "$OUT/$mode-build.log" 2>&1
   nm -n "$OUT/$mode" > "$OUT/$mode-symbols.txt"
   for run in first second; do
-    TP_MODE=wall TP_INTERVAL_US=1000 TP_SAMPLES="$OUT/$mode-$run.pcs" \
-      "$OUT/$mode" ml +RTS -rp -rp_interval 0 -p_file "$OUT/$mode-$run.rp" \
+    "$OUT/$mode" +RTS -tp -tp_paused -rp -rp_interval 0 -p_file "$OUT/$mode-$run.rp" \
       > "$OUT/$mode-$run.log" 2>&1
     "$PVIEW" "$OUT/$mode-$run.rp" --format json -o "$OUT/$mode-$run.json" > /dev/null
   done
-  TP_MODE=wall TP_SAMPLES="$OUT/$mode-c.pcs" "$OUT/$mode" c +RTS -rp \
-    -rp_interval 0 -p_file "$OUT/$mode-c.rp" > "$OUT/$mode-c.log" 2>&1
-  "$PVIEW" "$OUT/$mode-c.rp" --format json -o "$OUT/$mode-c.json" > /dev/null
-  if [ "$mode" = gc ]; then
-    TP_MODE=wall TP_SAMPLES="$OUT/gc-allocation.pcs" "$OUT/gc" gc +RTS -rp \
-      -rp_interval 0 -p_file "$OUT/gc-allocation.rp" > "$OUT/gc-allocation.log" 2>&1
-    "$PVIEW" "$OUT/gc-allocation.rp" --format json -o "$OUT/gc-allocation.json" > /dev/null
-  fi
   "$PVIEW" "$OUT/$mode-first.rp" -o "$OUT/$mode.html" > /dev/null
   # One more link gives a different image identity and exercises mismatch checks.
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs tptime,m,c,dl \
-    -o "$OUT/$mode-other" "$OUT/workload.mlb" > "$OUT/$mode-other-build.log" 2>&1
-  TP_MODE=wall "$OUT/$mode-other" ml +RTS -rp -rp_interval 0 \
+  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs measure,m,c,dl \
+    -o "$OUT/$mode-other" "$OUT/measure.mlb" > "$OUT/$mode-other-build.log" 2>&1
+  "$OUT/$mode-other" +RTS -tp -tp_paused -rp -rp_interval 0 \
     -p_file "$OUT/$mode-other.rp" > "$OUT/$mode-other.log" 2>&1
   "$PVIEW" "$OUT/$mode-other.rp" --format json -o "$OUT/$mode-other.json" > /dev/null
 done
-printf ':quit;\n' | "$MLKIT" -no_gc -rp -rp_interval 0 -p_file "$OUT/repl.rp" \
-  > "$OUT/repl.log" 2>&1
+mkdir -p "$OUT/repl"
+(cd "$OUT/repl" && printf ':quit;\n' | "$MLKIT" -no_gc -rp -rp_interval 0 -p_file "$OUT/repl.rp" \
+  > "$OUT/repl.log" 2>&1)
 "$PVIEW" "$OUT/repl.rp" --format json -o "$OUT/repl.json" > /dev/null
 node "$ROOT/test/time_profile/code-metadata-assertions.js" "$OUT" "$PVIEW"
 # Optional SML compiler runs exact-address and malformed-input unit checks.

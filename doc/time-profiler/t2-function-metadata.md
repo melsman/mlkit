@@ -79,7 +79,7 @@ range. A sorted vector provides binary search outside signal context.
 In the final implementation ordinary native builds already emit metadata. Record
 samples with runtime `-tp`, then take a `pc` from a `time_sample` record and the
 `build_id` from its matching `code_image` in the same profile. T3 introduced
-production sample records; the T1 helper is only a feasibility aid.
+production sample records; the T1 feasibility helper has since been retired.
 
 ```sh
 mlkit -no_par -o run program.mlb

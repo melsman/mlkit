@@ -105,7 +105,7 @@ bounds, end/final counts, loss reconciliation and strong delivery imbalance.
 Malformed identities, timestamps, attribution and event counts are rejected.
 DOM checks exercise thread details, stream/time filtering and highlighted worker IR.
 `check-parallel-blocking.sh` compares sleeping and masked workers using actual
-lifetime durations; `check-parallel-conflicts.sh` rejects ownership/mask conflicts.
+lifetime durations; the unified `check-conflicts.sh` rejects single-thread and pthread ownership/mask conflicts.
 These checks run in macOS ARM64 profiler CI. Timing delivery is experimental and
 no exact sampling-rate or universal overhead claim is made.
 

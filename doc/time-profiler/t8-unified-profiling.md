@@ -131,7 +131,34 @@ the harness and view-switch assertions were corrected.
 The subsequent documentation/Copilot review fixes make disabled
 `TimeProfile.flush()` leave region output untouched and make the feasibility
 helper report its default wall mode without passing a null string to `printf`.
-Targeted regressions cover both. Those follow-ups require green CI on their
+The disabled-flush regression is retained in the unified API/option checks;
+the feasibility helper was fixed before the prototype harness was retired. Those follow-ups require green CI on their
 new head before merging. Real-browser visual layout inspection remains unverified.
 Archived timing JSON and manual examples were not regenerated for this review;
 the old measured costs do not establish the exact overhead of later fixes.
+
+## Consolidated regression and benchmark harnesses
+
+ARM64 metadata checks use the production recorder and shared workload; the T1
+sampler is retired. The attribution-mode driver checks compute/allocation/C/sleep
+phases at 1ms and 100us without a separate phase driver. One conflict driver
+covers SIGALRM/timer ownership and targeted pthread SIGUSR2 ownership. Disabled
+flush is covered by the unified option/API driver. Distinct ABI, callback,
+exception, lifecycle/overflow, pthread blocking, malformed-input and installation
+checks are retained.
+
+New opt-in measurements use one native framework:
+
+```sh
+sh test/time_profile/measure-ordinary.sh
+ATTRIBUTION=1 sh test/time_profile/measure-ordinary.sh
+CONFIGS=no_gc WORKLOADS=phases REPEATS=3 sh test/time_profile/measure-ordinary.sh
+```
+
+`CONFIGS` and `WORKLOADS` accept space-separated subsets; defaults cover
+GC/GenGC/no-GC and phases/kkb_eq/repeated ML-Yacc. Linux measurements pin to the
+first allowed CPU by default (`PROFILE_CPU` overrides it); Darwin measurements
+use its native resource-time/RSS reporting. Current default buffer capacities
+are used unless a setting explicitly overrides them. Historical T1/T6/T9
+harnesses remain in Git history and archived timing data is unchanged; no new
+performance claim or CI timing threshold is introduced by consolidation.

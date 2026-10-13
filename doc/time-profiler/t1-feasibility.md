@@ -31,6 +31,7 @@ by this experiment.
 From the repository root:
 
 ```sh
+# Historical command (prototype harness retired)
 sh test/time_profile/run-feasibility.sh
 ```
 
@@ -146,3 +147,8 @@ Unknown image/symbol rows stay explicit. Build UUIDs, stable function ranges,
 ASLR resolution, C-origin attribution, GC categories, callbacks, and exception
 state are T2/T4 work. No parallel, REPL, dynamic-image, alternative macOS timer,
 or other-platform support is established by T1.
+
+The prototype sampler and workload have been retired from the current tree.
+The [last harness snapshot](https://github.com/melsman/mlkit/blob/536bb934/test/time_profile/run-feasibility.sh)
+and its companion sources remain in Git history. Current metadata/ASLR tests
+use production time samples from the shared compute/allocation/C/sleep workload.

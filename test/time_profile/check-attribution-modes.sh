@@ -28,17 +28,21 @@ for config in gc gengc no_gc; do
   for mode in passive detailed combined-passive; do
    if [ "$build" = ordinary ] && [ "$mode" != passive ]; then continue; fi
    case $mode in combined-passive) attribution=passive; set -- -rp -rp_interval 10ms;; *) attribution=$mode; set --;; esac
-   stem="$exe-$mode"
-   "$exe" +RTS -tp -tp_paused -tp_attribution "$attribution" -p_file "$stem.rp" "$@" > "$stem.log" 2>&1
-   "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
-   "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
-   node "$ROOT/test/time_profile/attribution-modes-assertions.js" "$stem.json" "$mode"
-   {
-    sh "$ROOT/test/region_profile/viewer-prelude.sh" "$stem.html"
-    sed -n '/^<script>$/,/^<\/script>/p' "$stem.html" | sed '1d;$d'
-    cat "$ROOT/test/time_profile/function-ir-assertions.js"
-   } > "$stem-viewer.js"
-   node "$stem-viewer.js"
+   case "$mode:$config" in detailed:gc|detailed:no_gc) intervals="1ms 100us";; *) intervals=1ms;; esac
+   for interval in $intervals; do
+    stem="$exe-$mode-$interval"
+    "$exe" +RTS -tp -tp_paused -tp_interval "$interval" -tp_attribution "$attribution" -p_file "$stem.rp" "$@" > "$stem.log" 2>&1
+    "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --format json -o "$stem.json" >/dev/null
+    "${PVIEW:-$ROOT/bin/pview}" "$stem.rp" --ir-dir "$OUT/MLB" --ir-dir "$ROOT/basis/MLB" -o "$stem.html" >/dev/null
+    node "$ROOT/test/time_profile/attribution-modes-assertions.js" "$stem.json" "$mode"
+    if [ "$mode" = detailed ]; then node "$ROOT/test/time_profile/phase-assertions.js" "$stem.json" "$config"; fi
+    {
+     sh "$ROOT/test/region_profile/viewer-prelude.sh" "$stem.html"
+     sed -n '/^<script>$/,/^<\/script>/p' "$stem.html" | sed '1d;$d'
+     cat "$ROOT/test/time_profile/function-ir-assertions.js"
+    } > "$stem-viewer.js"
+    node "$stem-viewer.js"
+   done
   done
  done
 done

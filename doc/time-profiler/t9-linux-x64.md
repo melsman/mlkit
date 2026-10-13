@@ -109,12 +109,12 @@ clearly; the dynamic REPL still supports region profiling.
 as macOS ARM64. Linux uses `check-elf.sh` for ELF identity/PIE/ASLR, stripping,
 offline resolution and IR. Common checks cover activation, buffering, attribution,
 callbacks/exceptions, masking/conflicts, pthread lifetimes, stream selection and
-combined reports. The original T1 Darwin-specific feasibility program remains
-unchanged. Linux feasibility is exercised through the production recorder's
+combined reports. The T1 prototype program has been retired; its feasibility
+results remain documented. Native feasibility is exercised through the production recorder's
 compute/allocation/C/sleep phase checks and targeted pthread checks.
 
-The opt-in `test/time_profile/measure-linux.sh` builds GC/GenGC/no-GC ordinary and
-instrumented workloads, warms each executable, and shuffles settings within each
+The historical opt-in `test/time_profile/measure-linux.sh` built GC/GenGC/no-GC ordinary and
+instrumented workloads, warmed each executable, and shuffled settings within each
 of five repeats. Child processes are pinned to one allowed CPU. It measures off,
 paused, 1ms/100us/10us, optional passive recording on instrumented code, small
 buffers and large buffers. Output parity and record/count consistency are checked.
@@ -191,3 +191,9 @@ three CI configurations; see [the final design and validation status](t8-unified
 The retained timing datasets predate later IR-navigation, UI and GC-address
 substitution fixes. They were not rerun for those changes and do not establish
 the exact cost of the current head.
+
+The dedicated Linux timing driver is now retired; its [last snapshot](https://github.com/melsman/mlkit/blob/536bb934/test/time_profile/measure-linux.sh)
+remains in Git history. New measurements use `measure-ordinary.sh`, shared with
+ARM64, with Linux resource-time/RSS parsing and CPU affinity. Retained T9 data
+uses the original steady workload and must not be compared as if produced by
+the new phase-separated driver.

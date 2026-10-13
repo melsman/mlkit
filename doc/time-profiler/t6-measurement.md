@@ -15,7 +15,9 @@ sampler. It does not add CPU timers, parallel delivery or dynamic REPL images.
 
 ## Reproduction
 
-Run `sh test/time_profile/measure.sh` on macOS ARM64. `OUT`, `MLKIT`, `PVIEW`
+The historical batch used `sh test/time_profile/measure.sh` on macOS ARM64.
+That driver is retired; its [last snapshot](https://github.com/melsman/mlkit/blob/536bb934/test/time_profile/measure.sh)
+remains in Git history. Use `measure-ordinary.sh` for new native measurements. `OUT`, `MLKIT`, `PVIEW`
 and `REPEATS` may be overridden; at least three repetitions are required, with
 five the default. The harness builds GC/non-GC plain and profiled executables,
 uses fresh ML-Yacc library sources to avoid unrelated local caches, warms each
@@ -90,7 +92,7 @@ rejected. GC and non-GC single-thread configurations are supported.
 `check-conflicts.sh` checks startup mask/handler/timer conflicts in both builds.
 The conflict diagnostic now says to disable time sampling or release the
 conflicting facility; setting the region interval to zero cannot disable `-tp`.
-`check-phases.sh` checks explicit compute/allocation/C/sleep boundaries at 1ms and
+The phase assertions, now run by `check-attribution-modes.sh`, check explicit compute/allocation/C/sleep boundaries at 1ms and
 100us without demanding exact percentages. Existing recorder tests cover small
 buffers/overflow, signal masking, slow output, pause/flush, independent region
 frequency and malformed input. Attribution tests cover nested callbacks, caught

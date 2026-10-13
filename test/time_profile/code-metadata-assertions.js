@@ -13,7 +13,7 @@ function metadata(name) {
   assert.match(image.build_id, /^[a-f0-9]{32}$/);
   const functions = r.filter(x => x.type === 'code_function');
   assert(functions.length > 0);
-  assert(functions.some(f => f.source.endsWith('workload.sml')));
+  assert(functions.some(f => f.source.endsWith('measure.sml')));
   assert(functions.some(f => f.source.endsWith('Initial.sml')), 'linked Basis metadata missing');
   assert(functions.some(f => f.source.endsWith('List.sml')), 'linked List metadata missing');
   assert(functions.every(f => f.unit.length > 0));
@@ -36,7 +36,7 @@ for (const mode of ['gc', 'no_gc']) {
   const functions = [...a.functions].sort((x,y) => x.start-y.start);
   let previous = 0;
   for (const f of functions) { assert(f.start >= previous && f.end > f.start); previous = f.end; }
-  const loop = functions.find(f => f.source.endsWith('workload.sml') && f.function.startsWith('loop'));
+  const loop = functions.find(f => f.source.endsWith('measure.sml') && f.function.startsWith('compute__noinline'));
   assert(loop, 'tail-recursive loop optimized away unexpectedly');
   for (const run of ['first', 'second']) {
     const name = `${mode}-${run}`, m = metadata(name), base = BigInt(m.image.load_address);
@@ -46,26 +46,27 @@ for (const mode of ['gc', 'no_gc']) {
     const atEnd = resolve(name, end, m.image.build_id);
     assert(atEnd.status === 'unknown-pc' || atEnd.function !== loop.function);
     assert.equal(resolve(name, 0n, m.image.build_id).status, 'unknown-pc');
-    const pcs = fs.readFileSync(`${out}/${name}.pcs`, 'utf8').trim().split('\n').map(line => line.split(' '));
-    const inLoop = pcs.find(parts => parts[4] === `F.${loop.function}`);
-    assert(inLoop, 'no interrupted PC captured inside ML loop');
-    assert.equal(resolve(name, BigInt(inLoop[1]), m.image.build_id).function, loop.function);
+    const inLoop = rows(name).find(r => r.type === 'time_sample' && BigInt(r.pc) >= start && BigInt(r.pc) < end);
+    assert(inLoop, 'no production PC captured inside ML loop');
+    assert.equal(resolve(name, BigInt(inLoop.pc), m.image.build_id).function, loop.function);
   }
-  const c = metadata(`${mode}-c`);
-  const cPCs = fs.readFileSync(`${out}/${mode}-c.pcs`, 'utf8').trim().split('\n').map(line => line.split(' '));
-  const cPC = cPCs.find(parts => parts[4] === 'tp_busy');
+  const c = a, busy = c.functions.find(f => f.function === 'tp_measure_busy');
+  assert(busy, 'missing C range');
+  const cPC = rows(`${mode}-first`).find(r => r.type === 'time_sample' &&
+    BigInt(r.pc) >= BigInt(c.image.load_address)+BigInt(busy.start) && BigInt(r.pc) < BigInt(c.image.load_address)+BigInt(busy.end));
   assert(cPC, 'no foreign-C sample');
-  assert.equal(resolve(`${mode}-c`, BigInt(cPC[1]), c.image.build_id).function, 'tp_busy');
+  assert.equal(resolve(`${mode}-first`, BigInt(cPC.pc), c.image.build_id).function, 'tp_measure_busy');
   const other = metadata(`${mode}-other`);
   assert.notEqual(other.image.build_id, a.image.build_id);
   assert.equal(resolve(`${mode}-first`, BigInt(a.image.load_address)+BigInt(loop.start),
     other.image.build_id).status, 'build-mismatch');
 }
-const gc = metadata('gc-allocation');
-const gcPCs = fs.readFileSync(`${out}/gc-allocation.pcs`, 'utf8').trim().split('\n').map(line => line.split(' '));
-const gcPC = gcPCs.find(parts => ['gc', 'evacuate', 'allocGen'].includes(parts[4]));
-assert(gcPC, 'no interrupted GC PC');
-assert.equal(resolve('gc-allocation', BigInt(gcPC[1]), gc.image.build_id).function, gcPC[4]);
+const gc = metadata('gc-first');
+const gcSample = rows('gc-first').find(r => r.type === 'time_sample' && r.state === 3 &&
+ gc.functions.some(f => ['gc','evacuate','allocGen'].includes(f.function) &&
+  BigInt(r.pc) >= BigInt(gc.image.load_address)+BigInt(f.start) && BigInt(r.pc) < BigInt(gc.image.load_address)+BigInt(f.end)));
+assert(gcSample, 'no production GC PC');
+assert.equal(resolve('gc-first', BigInt(gcSample.pc), gc.image.build_id).status, 'function');
 const repl = rows('repl');
 assert.equal(repl.find(r => r.type === 'code_metadata').scope, 'unsupported-repl');
 assert(!repl.some(r => r.type === 'code_image' || r.type === 'code_function'));

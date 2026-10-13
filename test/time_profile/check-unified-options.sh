@@ -74,4 +74,13 @@ for option in -tp -p; do
  [ "$status" -ne 0 ] && [ "$status" -ne 124 ]
  grep -q 'time profiling is unsupported in the dynamic REPL' "$OUT/repl-error"
 done
+# Disabled time flush must not touch an open region-only stream.
+${CC:-cc} -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/flush-disabled.c" -o "$OUT/flush.o"
+ar rcs "$OUT/libflush.a" "$OUT/flush.o"
+printf 'val () = prim("tp_flush_disabled_check", ())\n' > "$OUT/flush.sml"
+for config in gc no_gc; do
+ "$MLKIT" -no_par -"$config" -rp -libdirs "$OUT" -libs flush,m,c,dl -o "$OUT/flush-$config" "$OUT/flush.sml" > "$OUT/flush-$config-build.log" 2>&1
+ "$OUT/flush-$config"
+ "$OUT/flush-$config" +RTS -rp -rp_interval 0 -p_file "$OUT/flush-$config.prof"
+done
 echo "PASS: unified profiler activation, shared output/pause/defaults, legacy files and removed options ($OUT)"

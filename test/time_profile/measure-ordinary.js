@@ -5,6 +5,17 @@ const [out, pview, repetitions = '5'] = process.argv.slice(2);
 const repeats = Number(repetitions);
 assert(Number.isInteger(repeats) && repeats >= 3);
 const results = [], checksums = new Map();
+const configs=(process.env.CONFIGS||'gc gengc no_gc').trim().split(/\s+/);
+const workloads=(process.env.WORKLOADS||'phases kkb mlyacc').trim().split(/\s+/);
+assert(configs.every(c=>['gc','gengc','no_gc'].includes(c)));
+assert(workloads.every(w=>['phases','kkb','mlyacc'].includes(w)));
+const linux=process.platform==='linux';
+const cpu=process.env.PROFILE_CPU||(linux?fs.readFileSync('/proc/self/status','utf8').match(/^Cpus_allowed_list:\s*(\d+)/m)[1]:null);
+function runTimed(exe,args){
+ const timing=linux?['-f','real %e\nuser %U\nsys %S\n%M maximum resident set size']:['-l','-p'];
+ const command=cpu?'taskset':'/usr/bin/time';
+ return cp.spawnSync(command,[...(cpu?['-c',cpu,'/usr/bin/time']:[]),...timing,exe,...args],{encoding:'utf8',maxBuffer:32*1024*1024});
+}
 const attributionStudy = process.argv.includes("--attribution");
 const settings = attributionStudy ? [
  {name:'off'}, {name:'profiled-off', instrumented:true},
@@ -35,17 +46,17 @@ function shuffle(xs) {
  }
  return a;
 }
-for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','kkb','mlyacc']) {
+for (const config of configs) for (const workload of workloads) {
  const args = workload === 'mlyacc' ? [path.join(out,'Topdec.grm')] : [];
  const executable = instrumented => path.join(out,`${workload}-${config}-${instrumented?'instrumented':'plain'}`);
  assert.equal(cp.spawnSync(executable(false),args,{stdio:'ignore'}).status,0);
  for (let repeat = 0; repeat < repeats; ++repeat) for (const setting of shuffle(settings.filter(s => (!s.phasesOnly || workload==='phases') && !(s.paused && workload==='phases')))) {
   const stem = path.join(out,`${workload}-${config}-${setting.name}-${repeat}`), profile = stem+'.rp';
   const options = [];
-  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,...(!attributionStudy || setting.capacity ? ['-tp_buffer',String(setting.capacity || 65536)] : []),'-p_file',profile,...(setting.attribution ? ['-tp_attribution',setting.attribution] : []),...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
+  if (setting.interval) options.push('-tp','-tp_interval',setting.interval,...(setting.capacity ? ['-tp_buffer',String(setting.capacity)] : []),'-p_file',profile,...(setting.attribution ? ['-tp_attribution',setting.attribution] : []),...(setting.paused || workload==='phases' ? ['-tp_paused'] : []));
   if (setting.region) options.push('-rp','-rp_interval','10ms','-p_file',profile);
   const begin = process.hrtime.bigint();
-  const run = cp.spawnSync('/usr/bin/time',['-l','-p',executable(setting.instrumented),...args,...(options.length?['+RTS',...options]:[])],{encoding:'utf8',maxBuffer:32*1024*1024});
+  const run = runTimed(executable(setting.instrumented),[...args,...(options.length?['+RTS',...options]:[])]);
   const elapsed = Number(process.hrtime.bigint()-begin)/1e9;
   fs.writeFileSync(stem+'.stdout',run.stdout || ''); fs.writeFileSync(stem+'.stderr',run.stderr || '');
   assert.equal(run.status,0,stem+'\n'+run.stderr);
@@ -56,7 +67,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
   const time = Object.fromEntries([...run.stderr.matchAll(/^(real|user|sys)\s+(\d+(?:\.\d+)?)/gm)].map(m => [m[1],Number(m[2])]));
   assert(['real','user','sys'].every(k => Number.isFinite(time[k])), 'Missing resource timing: '+stem);
   assert(Number(run.stderr.match(/(\d+)\s+maximum resident set size/)?.[1]) > 0, 'Missing peak RSS: '+stem);
-  const row = {workload,config,setting:setting.name,repeat,elapsed_s:elapsed,...time,rss_bytes:Number(run.stderr.match(/(\d+)\s+maximum resident set size/)?.[1]),executable_bytes:fs.statSync(executable(setting.instrumented)).size};
+  const row = {workload,config,setting:setting.name,repeat,elapsed_s:elapsed,...time,rss_bytes:Number(run.stderr.match(/(\d+)\s+maximum resident set size/)?.[1])*(linux?1024:1),executable_bytes:fs.statSync(executable(setting.instrumented)).size};
   if (options.length) {
    const decoded = cp.spawnSync(pview,[profile,'--format','json','-o',stem+'.json'],{encoding:'utf8',maxBuffer:1024*1024});
    assert.equal(decoded.status,0,decoded.stderr);
@@ -103,7 +114,7 @@ for (const config of ['gc','gengc','no_gc']) for (const workload of ['phases','k
    }
   }
   results.push(row);
-  fs.writeFileSync(path.join(out,'measurements.json'),JSON.stringify({host:{platform:process.platform,controller_arch:process.arch,benchmark_arch:'arm64',release:os.release(),cpu:os.cpus()[0]?.model},repeats,attributionStudy,settings,results},null,2)+'\n');
+  fs.writeFileSync(path.join(out,'measurements.json'),JSON.stringify({host:{platform:process.platform,controller_arch:process.arch,benchmark_arch:process.arch,cpu_affinity:cpu,release:os.release(),cpu:os.cpus()[0]?.model},repeats,attributionStudy,settings,results},null,2)+'\n');
   console.log(`${workload} ${config} ${setting.name} #${repeat}: ${time.real}s, ${row.samples ?? '-'} samples, ${row.buffer_drops ?? 0} drops`);
  }
 }
@@ -118,7 +129,7 @@ fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2)+'\
 console.table(summary);
 
 // Logical file sizes from fresh isolated ML-Yacc caches; exclude shared Basis caches.
-if (attributionStudy) {
+if (attributionStudy && workloads.includes('mlyacc')) {
  function cacheSize(directory) {
   const result={files:0,bytes:0,object_bytes:0,ir_bytes:0};
   for(const entry of fs.readdirSync(directory,{withFileTypes:true})) {
@@ -129,7 +140,7 @@ if (attributionStudy) {
   return result;
  }
  const caches=[];
- for(const [config,ordinary,instrumented] of [['gc','ARM64_RI_GC','ARM64_RI_GC_PROF_CODE1_TP1'],['gengc','ARM64_RI_GENGC','ARM64_RI_GENGC_PROF_CODE1_TP1'],['no_gc','ARM64_RI','ARM64_RI_PROF_CODE1_TP1']])for(const [mode,folder] of [['ordinary',ordinary],['instrumented',instrumented]]) {
+ for(const [config,ordinary,instrumented] of [['gc','ARM64_RI_GC','ARM64_RI_GC_PROF_CODE1_TP1'],['gengc','ARM64_RI_GENGC','ARM64_RI_GENGC_PROF_CODE1_TP1'],['no_gc','ARM64_RI','ARM64_RI_PROF_CODE1_TP1']].filter(row=>configs.includes(row[0])))for(const [mode,folder] of [['ordinary',ordinary],['instrumented',instrumented]].map(([mode,f])=>[mode,linux?f.replace(/^ARM64_/,''):f])) {
   const size={files:0,bytes:0,object_bytes:0,ir_bytes:0};
   for(const root of ['src','lib']) {const child=cacheSize(path.join(out,'yacc-source',root,'MLB',folder));for(const key of Object.keys(size))size[key]+=child[key];}
   caches.push({config,mode,folder,...size});
