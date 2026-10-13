@@ -62,7 +62,7 @@ struct
     in "MLKit time profile\n" ^
        "Samples: " ^ IntInf.toString total ^ " | Interval: " ^ ms interval ^
        " | Elapsed: " ^ ms elapsed ^ " | " ^ (if complete then "complete" else "INCOMPLETE") ^ "\n" ^
-       loss ^ "\n     Samples     Share    Estimated " ^ (if threaded then "thread wall" else "wall") ^ " time  Function / category\n" ^
+       loss ^ "\n     Samples     Share        Time share  Function / category\n" ^
        (if total = 0 then "No recorded time samples.\n" else String.concat(map row groups)) ^
        "\nShares include GC and unresolved samples. Estimates = samples × requested interval;\n" ^
        "includes blocking, excludes machine sleep; not measured CPU time or corrected for loss.\n" ^

@@ -36,7 +36,7 @@ input[type=range]{width:100%}table{border-collapse:collapse;width:100%;backgroun
 <div class="concept-heading" id="time-heading"><h2>Sampled time contributions</h2></div>
 <p id="time-summary"></p><p id="time-note"></p><p id="time-status" class="note"></p>
 <label>Execution stream <select id="time-stream"><option value="all">All recorded streams</option></select></label>
-<div id="time-table-scroll" tabindex="0" role="region" aria-label="Sampled time contributions"><table><thead><tr><th>Function</th><th>Share of samples</th><th>Samples</th><th id="time-estimate-heading">Estimated wall time</th></tr></thead><tbody id="time-rows"></tbody></table></div>
+<div id="time-table-scroll" tabindex="0" role="region" aria-label="Sampled time contributions"><table><thead><tr><th>Function</th><th>Share of samples</th><th>Samples</th><th id="time-estimate-heading">Time share</th></tr></thead><tbody id="time-rows"></tbody></table></div>
 <details id="time-thread-section" hidden><summary id="time-thread-heading">Thread lifetimes and samples</summary><table><thead><tr><th>Thread</th><th>Lifetime</th><th>Samples in window</th><th>Recorded total</th><th>Buffer drops</th><th>Thread CPU time</th></tr></thead><tbody id="time-thread-rows"></tbody></table></details>
 <div id="time-code"></div>
 </section>
@@ -164,7 +164,7 @@ function timeThreadReport(){
 }
 function timeReport(){
  const timeView=hasTime&&el('metric').value==='time';el('time-section').hidden=!timeView;if(!timeView)return;
- timeThreadReport();el('time-estimate-heading').textContent=String(timeSession.time_version)==='3'?'Estimated thread wall time':'Estimated wall time';
+ timeThreadReport();el('time-estimate-heading').textContent='Time share';
  const selected=timeSamples.filter(s=>inTime(s)&&(el('time-stream').value==='all'||el('time-stream').value===s.thread+':'+s.stream));
  const groups=new Map();
  for(const s of selected){const a=s.attribution||{status:'metadata-unavailable'},key=a.status==='function'?JSON.stringify([a.unit,a.function]):a.status;

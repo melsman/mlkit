@@ -1,6 +1,6 @@
 assert(hasTime);assert.equal(String(timeSession.time_version),'3');
 el('metric').value='time';draw();assert(!el('time-thread-section').hidden);assert.equal(el('time-thread-rows').children.length,9);
-assert(el('time-estimate-heading').textContent.includes('thread wall'));
+assert.equal(el('time-estimate-heading').textContent,'Time share');
 const worker=timeSamples.find(s=>String(s.thread)!=='0');el('time-stream').value=worker.thread+':'+worker.stream;timeReport();
 assert.equal(el('time-thread-rows').children.length,1);assert(el('time-summary').textContent.startsWith(timeSamples.filter(s=>s.thread===worker.thread).length.toLocaleString()+' samples'));
 timeStart=0;timeEnd=5000;draw();assert(timeSamples.filter(s=>inTime(s)).length<timeSamples.length);
