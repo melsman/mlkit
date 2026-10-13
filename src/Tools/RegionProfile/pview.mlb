@@ -12,4 +12,5 @@ IR.sml
 Html.sml
 Page.sml
 Svg.sml
+Text.sml
 Main.sml

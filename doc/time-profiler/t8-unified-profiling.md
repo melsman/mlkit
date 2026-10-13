@@ -48,6 +48,9 @@ ordinary builds. The viewer automatically searches nearby `MLB` caches when
 object paths are absent; `--ir-dir` is for extra/moved locations. Identity/unit
 checks and function-parent metadata support safe navigation of repeated names.
 The compact scrollable time table and shared slider are described in [T5](t5-report.md).
+`pview profile.prof --format text` provides a non-interactive aggregate time
+overview on standard output; `.txt` output files select the same format. HTML,
+SVG and raw JSON remain available. Text and HTML share attribution rules.
 
 `pview` is the MLKit **Profile Viewer**. A **profile** is one binary file that
 can contain **region snapshots**, **time samples**, or both. The default filename

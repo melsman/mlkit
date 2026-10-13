@@ -13,7 +13,7 @@ embed: Embed.sml embed.mlb
 Html.sml: viewer.html embed
 	./embed viewer.html $@
 
-$(OUT): Json.sml Binary.sml Code.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Main.sml pview.mlb
+$(OUT): Json.sml Binary.sml Code.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Text.sml Main.sml pview.mlb
 	mkdir -p $(dir $(OUT))
 	$(MLCOMP) -output $(OUT) pview.mlb
 

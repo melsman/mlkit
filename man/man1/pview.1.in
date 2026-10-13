@@ -9,8 +9,8 @@ pview \- display MLKit time and region profiles
 .SH DESCRIPTION
 .B pview
 reads a shared binary profile containing time samples, region snapshots, or both,
-and generates a standalone interactive HTML report, an SVG graph, or
-newline-delimited JSON records.
+and generates a standalone interactive HTML report, an SVG graph,
+newline-delimited JSON records, or a textual time-profile overview.
 The default input is
 .B profile.prof
 and the default output is
@@ -57,19 +57,27 @@ for standard output. The input file cannot also be the output file.
 Select
 .BR html ,
 .BR svg ,
+.BR json ,
 or
-.BR json .
+.BR text .
 Otherwise the format is inferred from the output suffix:
 .B .svg
 selects SVG,
 .B .json
 or
 .B .jsonl
-selects JSON, and other suffixes select HTML.
+selects JSON,
+.B .txt
+selects text, and other suffixes select HTML.
 Without an output filename, SVG goes to
 .B profile.svg
-and JSON goes to standard output.
+and JSON or text goes to standard output.
 JSON output contains one profile record per line.
+Text output requires a time session and reports all recorded samples, aggregated
+across streams, sorted by contribution. It includes shares, estimated wall time,
+session-wide losses and completion status. Estimates include blocking and are
+not measured CPU time; aggregated thread wall estimates may exceed elapsed time.
+Text output supports the aggregate scope only and does not require IR files.
 .TP
 .BI "\-\-ir\-dir " directory
 Add a fallback search location for moved IR companions. May be repeated.

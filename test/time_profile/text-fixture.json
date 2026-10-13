@@ -1,0 +1,11 @@
+{"type":"header","format":"mlkit-region-profile","version":10,"page_bytes":8192,"main_source":"program.sml","gc_enabled":true}
+{"type":"code_metadata","metadata_version":1,"function_count":1,"scope":"static-executable"}
+{"type":"code_image","image":1,"load_address":9007199254740993,"build_id":"0123456789abcdef0123456789abcdef","path":"program"}
+{"type":"code_function","image":1,"start":16,"end":32,"unit":"u","function":"compute42","source":"program.sml","ir_identity":""}
+{"type":"time_session","time_version":2,"interval_ns":1000000,"buffer_capacity":131072,"thread":0,"stream":0,"clock":"wall","semantics":"passive 16-byte records","coordinate":"monotonic-ns"}
+{"type":"time_sample","sequence":1,"time":1000000,"pc":9007199254741009,"thread":0,"stream":0,"state":0,"origin_pc":0}
+{"type":"time_sample","sequence":2,"time":2000000,"pc":9007199254741010,"thread":0,"stream":0,"state":0,"origin_pc":0}
+{"type":"time_sample","sequence":3,"time":3000000,"pc":0,"thread":0,"stream":0,"state":3,"origin_pc":0}
+{"type":"time_sample","sequence":4,"time":4000000,"pc":1,"thread":0,"stream":0,"state":0,"origin_pc":0}
+{"type":"time_status","time":5000000,"recorded":4,"dropped":2,"routing_dropped":1,"active":0,"final":1,"timer_loss":"unobservable"}
+{"type":"session_end","time":5000000,"samples":0,"max_pages":0,"gc_collections":0}

@@ -64,6 +64,18 @@ In time view the shared double slider sits directly below the table and above
 the code viewer; in region view it sits beneath the graph. It is moved only
 when switching views, so native handle dragging is not interrupted by redraws.
 
+For a non-interactive overview, `pview profile.prof --format text` prints an
+aggregate time report to standard output; `pview profile.prof -o profile.txt`
+infers the same format from `.txt`. It lists all functions/categories by sample
+count, with sample shares and estimated wall time, interval, elapsed time,
+completion status and session-wide buffer/routing loss. It uses the same
+attribution rules as HTML, without loading IR files. Native function names omit
+the generated MD5 suffix while retaining distinguishing numeric suffixes; source
+paths and runtime/C unit identities keep rows identifiable. The text overview
+covers the full recording and all streams; HTML remains the interface for time
+window/stream filtering. Empty and incomplete recordings are labelled explicitly.
+Thread wall estimates can exceed session elapsed time when aggregated.
+
 Passive GC samples store the `gc` address whenever the atomic `doing_gc` flag
 is set. This includes GC helpers and GC calls to shared allocation functions.
 Detailed samples retain actual PCs and GC state. Ordinary allocation samples

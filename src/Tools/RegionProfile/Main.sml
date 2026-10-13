@@ -28,8 +28,9 @@ struct
                               | NONE => raise Fail "PC must be decimal or 0x hexadecimal"
               end
           fun help () =
-              (print "Usage: pview [profile.prof] [-o output.html|output.svg|output.json] [options]\n\
-                     \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
+              (print "Usage: pview [profile.prof] [-o output.html|output.svg|output.json|output.txt] [options]\n\
+                     \  --format html|svg|json|text  Text/JSON default to stdout\n\
+                     \                          Text gives an aggregate time-profile overview\n\
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
                      \  --resolve-pc ADDRESS    Resolve a recorded absolute PC; output JSON\n\
                      \  --image-build ID      Require matching image identity for PC resolution\n\
@@ -59,8 +60,8 @@ struct
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
-              if value = "html" orelse value = "svg" orelse value = "json" then (format := value; options rest)
-              else raise Fail "format must be html, svg or json"
+              if value = "html" orelse value = "svg" orelse value = "json" orelse value = "text" then (format := value; options rest)
+              else raise Fail "format must be html, svg, json or text"
             | options ("--caption"::value::rest) = (setting "caption" (ProfileJson.Str value); options rest)
             | options ("--regions"::value::rest) =
               (case natural value of SOME n => (setting "limit" (ProfileJson.Num(Int.toString n)); options rest)
@@ -100,12 +101,13 @@ struct
                          else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
                                  String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
                          else if not(!haveOutput) andalso List.exists (fn (k,_) => k = "region") (!settings) then "svg"
+                         else if String.isSuffix ".txt" (String.map Char.toLower (!output)) then "text"
                          else "html"
           val sites = List.exists (fn (k,v) => k = "sites" andalso v = ProfileJson.Bool true) (!settings)
           val () = if sites andalso selected <> "svg" then raise Fail "--sites requires SVG output (-o sites.svg or --format svg)" else ()
           val () = if !haveOutput then ()
                    else if selected = "svg" then output := "profile.svg"
-                   else if selected = "json" then output := "-" else ()
+                   else if selected = "json" orelse selected = "text" then output := "-" else ()
           val inputId = OS.FileSys.fileId (!file)
           val same = !output <> "-" andalso ((inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false)
           val () = if same then raise Fail "input and output must be different files" else ()
@@ -115,7 +117,8 @@ struct
           val config = ProfileJson.Obj (!settings)
           val () = case ProfileJson.find config "scope" of
                        SOME (ProfileJson.Str scope) =>
-                         if scope = "all" then () else
+                         if selected = "text" andalso scope <> "all" then raise Fail "text overview supports aggregate scope only"
+                         else if scope = "all" then () else
                            let val (field,id) = case String.fields (fn c => c = #":") scope of
                                                     [field,id] => (field,id)
                                                   | _ => raise Fail "invalid scope"
@@ -128,6 +131,7 @@ struct
                          SOME pc => ProfileJson.encodeJson
                            (ProfileCode.resolver (#metadata profile) {pc = pc,buildId = !imageBuild}) ^ "\n"
                        | NONE => if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+                     else if selected = "text" then ProfileText.render profile
                      else if selected = "svg" then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
           val out = if !output = "-" then TextIO.stdOut else TextIO.openOut (!output)
           val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))

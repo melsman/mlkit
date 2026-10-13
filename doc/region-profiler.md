@@ -557,4 +557,9 @@ and combined activation rejects unavailable profilers. Existing `.rp` files
 remain readable, but `rpview`, `-rp_file` and `-tp_file` are removed without aliases.
 See [unified profiling options](time-profiler/t8-unified-profiling.md).
 
+For a terminal time overview, use `pview profile.prof --format text`, or write
+`pview profile.prof -o profile.txt`. This reports aggregate contributions, sample
+shares, estimated wall time and session-wide losses; it requires time samples
+or an empty time session. Region-only reports continue to use HTML/SVG/JSON.
+
 Linux X64 time sampling and validation: [T9 native profiling](time-profiler/t9-linux-x64.md).
