@@ -9,9 +9,9 @@ trap 'status=$?; if [ "$status" -ne 0 ]; then cat "$OUT"/*.log; fi; rm -rf "$OUT
 trap 'exit 1' HUP INT TERM
 for mode in plain gc profiling; do
   case "$mode" in
-    plain) flags=-no_gc ;;
-    gc) flags=-gc ;;
-    profiling) flags='-gc -rp' ;;
+    plain) flags=-no_gc; int_type=Int ;;
+    gc) flags=-gc; int_type=Int63 ;;
+    profiling) flags='-gc -rp'; int_type=Int63 ;;
   esac
   cp "$ROOT/test/real_auto_conversion/ir.sml" "$OUT/$mode.sml"
   # Both native backends must compile without linking test symbols.
@@ -28,9 +28,9 @@ for mode in plain gc profiling; do
   grep -q 'ccall(__f64_to_real,.*m2_produce.*\[ at ' "$OUT/$mode.log"
   grep -q 'R64.fromF64 \[at .*m2_mixed' "$OUT/$mode.log"
   awk '/AFTER LINEARISATION/ { emit = 1 } emit' "$OUT/$mode.log" > "$OUT/$mode.linear"
-  grep -q ':Float64 = ccall_auto("m2_mixed", <.*:Float64,.*:Int>)' "$OUT/$mode.linear"
+  grep -q ":Float64 = ccall_auto(\"m2_mixed\", <.*:Float64,.*:$int_type>)" "$OUT/$mode.linear"
   grep -q ':Float64 = ccall_auto("m2_produce", <>)' "$OUT/$mode.linear"
-  grep -q ':Int = ccall_auto("m2_consume", <.*:Float64>)' "$OUT/$mode.linear"
+  grep -q ":$int_type = ccall_auto(\"m2_consume\", <.*:Float64>)" "$OUT/$mode.linear"
   grep -q ':Unit = ccall_auto("m2_discard", <.*:Float64>)' "$OUT/$mode.linear"
   grep -q 'ccall("m2_raw", <' "$OUT/$mode.linear"
   if grep 'ccall("m2_raw", <' "$OUT/$mode.linear" | grep -q Float64; then

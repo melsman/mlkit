@@ -17,6 +17,62 @@ val word_mixed : real = prim ("@real_auto_word", (2.5,0wx7FFFFFFFFFFFFFFF:word))
 val () = check ("unsigned word argument", equal (word_mixed,2.5))
 val word_result : word = prim ("@real_auto_word_result", 2.5)
 val () = check ("unsigned word result", prim ("@real_auto_word_check", word_result) : bool)
+(* Arithmetic produces narrow register values, testing sign extension as well
+ * as literals. Each C function checks its input before returning it to ML. *)
+fun add31__noinline (x:int31,y:int31) : int31 = prim ("__plus_int31", (x,y))
+val precise_int31_0 : int31 = add31__noinline (~1073741823,~1)
+val result_int31_0 : int31 = prim ("@real_auto_int31", (2.5,0:int,precise_int31_0))
+val () = check ("int31 boundary 0", prim ("__equal_int31", (precise_int31_0,result_int31_0)))
+val precise_int31_1 : int31 = add31__noinline (~2,1)
+val result_int31_1 : int31 = prim ("@real_auto_int31", (2.5,1:int,precise_int31_1))
+val () = check ("int31 boundary 1", prim ("__equal_int31", (precise_int31_1,result_int31_1)))
+val precise_int31_2 : int31 = 0
+val result_int31_2 : int31 = prim ("@real_auto_int31", (2.5,2:int,precise_int31_2))
+val () = check ("int31 boundary 2", prim ("__equal_int31", (precise_int31_2,result_int31_2)))
+val precise_int31_3 : int31 = 1073741823
+val result_int31_3 : int31 = prim ("@real_auto_int31", (2.5,3:int,precise_int31_3))
+val () = check ("int31 boundary 3", prim ("__equal_int31", (precise_int31_3,result_int31_3)))
+val precise_int63_0 : int63 = ~4611686018427387904
+val result_int63_0 : int63 = prim ("@real_auto_int63", (2.5,0:int,precise_int63_0))
+val () = check ("int63 boundary 0", prim ("__equal_int63", (precise_int63_0,result_int63_0)))
+val precise_int63_1 : int63 = ~1
+val result_int63_1 : int63 = prim ("@real_auto_int63", (2.5,1:int,precise_int63_1))
+val () = check ("int63 boundary 1", prim ("__equal_int63", (precise_int63_1,result_int63_1)))
+val precise_int63_2 : int63 = 0
+val result_int63_2 : int63 = prim ("@real_auto_int63", (2.5,2:int,precise_int63_2))
+val () = check ("int63 boundary 2", prim ("__equal_int63", (precise_int63_2,result_int63_2)))
+val precise_int63_3 : int63 = 4611686018427387903
+val result_int63_3 : int63 = prim ("@real_auto_int63", (2.5,3:int,precise_int63_3))
+val () = check ("int63 boundary 3", prim ("__equal_int63", (precise_int63_3,result_int63_3)))
+val precise_word31_0 : word31 = 0w0
+val result_word31_0 : word31 = prim ("@real_auto_word31", (2.5,0:int,precise_word31_0))
+val () = check ("word31 boundary 0", prim ("__equal_word31", (precise_word31_0,result_word31_0)))
+val precise_word31_1 : word31 = 0w1
+val result_word31_1 : word31 = prim ("@real_auto_word31", (2.5,1:int,precise_word31_1))
+val () = check ("word31 boundary 1", prim ("__equal_word31", (precise_word31_1,result_word31_1)))
+val precise_word31_2 : word31 = 0w1073741824
+val result_word31_2 : word31 = prim ("@real_auto_word31", (2.5,2:int,precise_word31_2))
+val () = check ("word31 boundary 2", prim ("__equal_word31", (precise_word31_2,result_word31_2)))
+val precise_word31_3 : word31 = 0w2147483647
+val result_word31_3 : word31 = prim ("@real_auto_word31", (2.5,3:int,precise_word31_3))
+val () = check ("word31 boundary 3", prim ("__equal_word31", (precise_word31_3,result_word31_3)))
+val precise_word63_0 : word63 = 0w0
+val result_word63_0 : word63 = prim ("@real_auto_word63", (2.5,0:int,precise_word63_0))
+val () = check ("word63 boundary 0", prim ("__equal_word63", (precise_word63_0,result_word63_0)))
+val precise_word63_1 : word63 = 0w1
+val result_word63_1 : word63 = prim ("@real_auto_word63", (2.5,1:int,precise_word63_1))
+val () = check ("word63 boundary 1", prim ("__equal_word63", (precise_word63_1,result_word63_1)))
+val precise_word63_2 : word63 = 0w4611686018427387904
+val result_word63_2 : word63 = prim ("@real_auto_word63", (2.5,2:int,precise_word63_2))
+val () = check ("word63 boundary 2", prim ("__equal_word63", (precise_word63_2,result_word63_2)))
+val precise_word63_3 : word63 = 0w9223372036854775807
+val result_word63_3 : word63 = prim ("@real_auto_word63", (2.5,3:int,precise_word63_3))
+val () = check ("word63 boundary 3", prim ("__equal_word63", (precise_word63_3,result_word63_3)))
+val precise_stack : int31 = prim ("@real_auto_precise_stack",
+    (2.5,precise_int31_1,precise_word31_3,precise_int63_0,precise_word63_3,
+     precise_int31_1,precise_word31_3,precise_int63_0,precise_word63_3,
+     precise_int31_1,precise_word31_3))
+val () = check ("explicit integer stack arguments", prim ("__equal_int31", (precise_stack,precise_int31_0)))
 val () = check ("nine floats", equal (nine__noinline 1.0, 285.0))
 val mixed : real = prim ("@real_auto_mixed",
     (~10,0.25,11,1.25,12,2.25,13,3.25,14,4.25,15,5.25,16,6.25,17,7.25,18,8.25,19,9.25))

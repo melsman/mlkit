@@ -244,6 +244,12 @@ struct
                       LS.Bool => I.shrq(I "1",R tmp) :: tail
                     | LS.Int => if BI.tag_values() then I.sarq(I "1",R tmp) :: tail else tail
                     | LS.Word => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
+                    | LS.Int31 => I.movslq(R (I.doubleOfQuadReg tmp),R tmp) ::
+                                  I.sarq(I "1",R tmp) :: tail
+                    | LS.Word31 => I.mov(R (I.doubleOfQuadReg tmp),R (I.doubleOfQuadReg tmp)) ::
+                                   I.shrq(I "1",R tmp) :: tail
+                    | LS.Int63 => I.sarq(I "1",R tmp) :: tail
+                    | LS.Word63 => I.shrq(I "1",R tmp) :: tail
                     | LS.Int32 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
@@ -268,6 +274,10 @@ struct
             | LS.Bool => G.lea(DD("1",rax,rax,""),rax) tail
             | LS.Int => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
             | LS.Word => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
+            | LS.Int31 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Word31 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Int63 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Word63 => G.lea(DD("1",rax,rax,""),rax) tail
             | LS.ForeignPtr => if BI.tag_values() then G.lea(D("1",rax),rax) tail else tail
             | LS.CharArray => die "CCALL_AUTO.CharArray result not supported"
             | _ => if boxed then

@@ -49,6 +49,10 @@ signature LINE_STMT =
 			       * when garbage collection is
 			       * enabled. *)
     | Word                    (* Default words require logical untagging. *)
+    | Int31                   (* Explicit 31/63-bit values are always tagged. *)
+    | Word31
+    | Int63
+    | Word63
     | Int32                   (* Int32 (and word32) values are
                                * boxed when garbage collection is
                                * enabled. *)

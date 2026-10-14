@@ -254,6 +254,21 @@ Tagged words have a distinct foreign type and use a logical shift, preserving
 their high bit. The execution tests cover both negative integers and maximal
 default-word arguments and results.
 
+Explicit `Int31`, `Word31`, `Int63`, and `Word63` use distinct foreign types.
+Their representations are always tagged, even without GC, so argument
+untagging and result tagging do not depend on the global tagging flag.
+The 31-bit argument paths first sign-extend or zero-extend the encoded low
+32 bits before removing the tag. Default integer/word exports retain their
+existing callback convention.
+
+Boundary regressions cover all four explicit types, including signed minima,
+negative arithmetic results, zero, unsigned high bits, maxima, result tagging,
+and mixed stack arguments. These run with the existing native execution matrix.
+The expanded matrix and shared IR checks passed on Arm64, X64 under Rosetta,
+and native Linux X64, using compilers built with the configured installed
+MLKit seeds. Existing Arm64 callback tests also passed in plain, GC,
+generational-GC, and their profiling modes.
+
 The execution runner is now shared in `check-native.sh`, with `check-arm64.sh`
 and `check-x64.sh` wrappers. The C live-value fixture clobbers all caller-saved
 FP registers for each architecture. X64 assembly checks verify its independent

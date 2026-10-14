@@ -43,7 +43,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int32 | Int64 | Float64 | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -156,6 +156,10 @@ struct
     fun layout_f CharArray = LEAF "CharArray"
       | layout_f Int = LEAF "Int"
       | layout_f Word = LEAF "Word"
+      | layout_f Int31 = LEAF "Int31"
+      | layout_f Word31 = LEAF "Word31"
+      | layout_f Int63 = LEAF "Int63"
+      | layout_f Word63 = LEAF "Word63"
       | layout_f Int32 = LEAF "Int32"
       | layout_f Int64 = LEAF "Int64"
       | layout_f Float64 = LEAF "Float64"
@@ -1360,6 +1364,10 @@ struct
           if TyName.eq(tn,TyName.tyName_BOOL) then Bool
           else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
           else if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
+          else if TyName.eq(tn,TyName.tyName_INT31) then Int31
+          else if TyName.eq(tn,TyName.tyName_WORD31) then Word31
+          else if TyName.eq(tn,TyName.tyName_INT63) then Int63
+          else if TyName.eq(tn,TyName.tyName_WORD63) then Word63
           else if TyName.eq(tn,TyName.tyName_WordDefault()) then Word
           else if member tn [TyName.tyName_IntDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
           else if TyName.eq(tn,TyName.tyName_F64) then Float64
@@ -2474,7 +2482,9 @@ struct
                        in case RType.unCONSTYPE ty of
                               SOME(tn,_,_,_) => if TyName.eq(tn,TyName.tyName_F64) then
                                                 die "EXPORT.float64 not supported"
-                                              else (case tn_to_foreign_type tn of Word => Int | t => t)
+                                              else if TyName.eq(tn,TyName.tyName_IntDefault()) orelse
+                                                      TyName.eq(tn,TyName.tyName_WordDefault()) then Int
+                                              else tn_to_foreign_type tn
                             | NONE => case RType.unRECORD ty of
                                           SOME [] => Unit
                                         | _ => die "EXPORT.toForeignType"

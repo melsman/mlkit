@@ -42,6 +42,40 @@ uint64_t real_auto_word_result(double x) {
   return UINT64_C(0x7fffffffffffffff);
 }
 long real_auto_word_check(uint64_t w) { return w == UINT64_C(0x7fffffffffffffff); }
+/* Explicit 31/63-bit types remain tagged even in a no-GC build. */
+long real_auto_int31(double marker, long index, long value) {
+  static const long expected[] = {-1073741824L, -1L, 0L, 1073741823L};
+  assert(marker == 2.5 && index >= 0 && index < 4);
+  assert(value == expected[index]);
+  return value;
+}
+long real_auto_int63(double marker, long index, long value) {
+  static const long expected[] = {-4611686018427387904L, -1L, 0L, 4611686018427387903L};
+  assert(marker == 2.5 && index >= 0 && index < 4);
+  assert(value == expected[index]);
+  return value;
+}
+unsigned long real_auto_word31(double marker, long index, unsigned long value) {
+  static const unsigned long expected[] = {0UL, 1UL, 1073741824UL, 2147483647UL};
+  assert(marker == 2.5 && index >= 0 && index < 4);
+  assert(value == expected[index]);
+  return value;
+}
+unsigned long real_auto_word63(double marker, long index, unsigned long value) {
+  static const unsigned long expected[] = {0UL, 1UL, 4611686018427387904UL, 9223372036854775807UL};
+  assert(marker == 2.5 && index >= 0 && index < 4);
+  assert(value == expected[index]);
+  return value;
+}
+long real_auto_precise_stack(double marker, long a, unsigned long b, long c, unsigned long d,
+                             long e, unsigned long f, long g, unsigned long h,
+                             long i, unsigned long j) {
+  assert(marker == 2.5 && a == -1 && b == 2147483647UL);
+  assert(c == -4611686018427387904L && d == 9223372036854775807UL);
+  assert(e == a && f == b && g == c && h == d && i == a && j == b);
+  return -1073741824L;
+}
+
 double real_auto_nine(double a, double b, double c, double d, double e,
                       double f, double g, double h, double i) {
   return a + 2*b + 3*c + 4*d + 5*e + 6*f + 7*g + 8*h + 9*i;

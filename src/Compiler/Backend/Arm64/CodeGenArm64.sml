@@ -434,6 +434,16 @@ struct
           LS.Bool => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Int => if tagged() then A.asr (R(r),R(r),I(1)) :: code else code
         | LS.Word => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
+        | LS.Int31 =>
+            let val low = case r of X n => W n | _ => unsupported "auto-call integer register"
+            in A.sxtw (R(r),R low) :: A.asr (R(r),R(r),I(1)) :: code
+            end
+        | LS.Word31 =>
+            let val low = case r of X n => W n | _ => unsupported "auto-call word register"
+            in A.uxtw (R(r),R low) :: A.lsr (R(r),R(r),I(1)) :: code
+            end
+        | LS.Int63 => A.asr (R(r),R(r),I(1)) :: code
+        | LS.Word63 => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Int32 => if tagged() then loadInto (r,8,r) code else code
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
@@ -451,6 +461,10 @@ struct
            ++ tag) code
         | LS.Int => if tagged() then tag code else code
         | LS.Word => if tagged() then tag code else code
+        | LS.Int31 => tag code
+        | LS.Word31 => tag code
+        | LS.Int63 => tag code
+        | LS.Word63 => tag code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
         | LS.Float64 => code
