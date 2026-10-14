@@ -25,6 +25,9 @@ signature REGISTER_INFO =
     val allocatable_f64_phregs : lvar list
 
     (* CCALLs *)
+    (* Stage auto-call operands in code generation before placing C ABI
+     * registers. Such calls retain allocated operands through RegAlloc. *)
+    val staged_auto_ccall          : bool
     val args_reg_ccall             : reg list   (* Machine registers containing arguments in CCALLs *)
     val args_phreg_ccall           : lvar list  (* Machine registers containing arguments in CCALLs *)
     val res_phreg_ccall            : lvar list  (* Machine registers containing results in CCALLs *)

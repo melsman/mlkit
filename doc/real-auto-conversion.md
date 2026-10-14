@@ -22,7 +22,7 @@ through LambdaExp, RegionExp, and MulExp.
   conversions around auto-converted calls, preserve `float64` through closure
   conversion, and extend the foreign-type mapping. Audit downstream consumers.
   Verify IR dumps show unboxed call arguments/results and correct result boxing.
-- [ ] **M3: Implement Arm64 call generation.** Reuse the scalar ABI machinery
+- [x] **M3: Implement Arm64 call generation.** Reuse the scalar ABI machinery
   for floating-point arguments and results. Cover mixed integer/floating-point
   signatures, register exhaustion, stack arguments, and live values across
   calls. Verify the floating-point registers and stack layout in generated code.
@@ -121,10 +121,10 @@ printers, serialization, and downstream representations. Do not map boxed
 representation. The type mapper is also used by exports, so audit that path
 without silently adding floating-point export support.
 
-Arm64 already implements `Real_to_f64` by loading the real payload and
+At M1, Arm64 already implemented `Real_to_f64` by loading the real payload and
 `F64_to_real` by storing it in allocated result storage. However,
-`CodeGenArm64.autoCallInto` currently marshals through the integer call path
-and writes its result from `X 0`. M3 must use the scalar floating-point ABI
+`CodeGenArm64.autoCallInto` marshalled through the integer call path
+and wrote its result from `X 0`. M3 uses the scalar floating-point ABI
 for the new case, including a result in `D 0`, rather than only extending the
 foreign-type enumeration. X64 requires the corresponding work in M5.
 
@@ -147,17 +147,17 @@ The closure and linear IR foreign-type enumerations and printers now carry
 `Float64`, mapped only from `tyName_F64`. There is no separate foreign-type
 serialization in these IR modules. Exports explicitly reject float64.
 
-The existing auto-call register resolver only assigns integer registers.
-Until M3/M5 provide target ABI handling, it rejects Float64 calls before
-assigning registers. Backend pattern matches also have explicit pending-ABI
-diagnostics. This milestone enables typed IR construction, not execution of
-real auto-converted calls.
+At M2, the auto-call register resolver only assigned integer registers and
+rejected Float64 calls before assigning registers. M3 replaces that path for
+Arm64; the unstaged X64 resolver retains its explicit pending-ABI diagnostic
+until M5.
 
 The focused regression script is `test/real_auto_conversion/check-ir.sh`.
 It exercises mixed signatures, real arguments with integer/unit results,
 zero-argument real results, and an ordinary real call, in plain, GC, and
 profiling modes. It also checks explicit result storage in ReML mode.
-ABI execution and special-value coverage remain in M4/M5.
+Arm64 ABI execution and special-value coverage are added in M4; X64 coverage
+remains in M5.
 
 Validation for M2:
 
@@ -171,3 +171,23 @@ Validation for M2:
   checks in plain, GC, and profiling modes.
 - Type-checked the final X64 compiler with MLton; checked shell syntax and
   `git diff --check`.
+
+## M3: Arm64 ABI handling
+
+Arm64 declares `REGISTER_INFO.staged_auto_ccall`, so register allocation
+retains auto-call operands and their result in allocated registers or spill
+slots instead of imposing integer C registers. Existing call liveness and
+fetch/flush machinery preserves values across C; unboxed floats crossing C
+calls are spilled by the current allocator. X64 retains its existing resolver.
+
+`CodeGenArm64.autoCallInto` classifies `Float64` arguments as `AbiArm64.F64`
+and other supported arguments as word-sized scalars. It uses the existing
+scalar call emitter to stage every argument before changing ABI registers,
+place floats in d0–d7 independently of x0–x7, and pass overflow arguments in
+aligned stack slots. The real result is read from d0 into its allocated
+destination; the shared lowering subsequently boxes it in ML result storage.
+Boxed integer results still preserve their storage across C calls.
+
+The scalar emitter retains foreign-call GC deferral and profiling context
+save/restore. Result boxing and allocation use the existing region/GC code,
+including preservation of live float results across allocation helpers.

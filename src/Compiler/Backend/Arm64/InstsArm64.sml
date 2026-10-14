@@ -249,6 +249,7 @@ structure InstsArm64 : INSTS_ARM64 = struct
     val callers = Lvarset.lvarsetof caller_save_phregs
     fun is_caller_save lv = Lvarset.member(lv,callers)
     val args_reg_ccall = map X AbiArm64.mlArgumentGPRs
+    val staged_auto_ccall = true
     val args_phreg_ccall = map reg_to_lv args_reg_ccall
     val res_phreg_ccall = [reg_to_lv(X 0)]
     (* RegAlloc uses this set as an allocation palette, not merely an ABI
