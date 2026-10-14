@@ -14,13 +14,13 @@ for mode in plain gc profiling; do
     profiling) flags='-gc -rp' ;;
   esac
   cp "$ROOT/test/real_auto_conversion/ir.sml" "$OUT/$mode.sml"
-  # During M2 code generation deliberately rejects Float64 auto calls. Once
-  # ABI support lands, compile-only must succeed without linking test symbols.
+  # Arm64 must compile without linking test symbols. X64 remains unsupported
+  # until M5, but its shared lowering must reach the same typed IR.
   if "$MLKIT" $flags --no_basislib -c -no_opt -Pole -Prsp -Prip -Pdre -Pccp \
       --print_linearised_program -Ptypes "$OUT/$mode.sml" > "$OUT/$mode.log" 2>&1; then
     :
   else
-    grep -q 'float64 auto-conversion (Arm64 ABI support pending)\|CCALL_AUTO.float64 ABI support pending\|CCALL_AUTO.float64 X64 ABI support pending' "$OUT/$mode.log"
+    grep -q 'CCALL_AUTO.float64 X64 ABI support pending' "$OUT/$mode.log"
   fi
   grep -q 'Optimised Lambda Program' "$OUT/$mode.log"
   grep -q 'Float64' "$OUT/$mode.log"
@@ -52,7 +52,7 @@ if "$MLKIT" --reml -no_gc --no_basislib -c -no_opt -Pole -Prsp -Pdre \
     --print_linearised_program -Ptypes "$OUT/explicit.sml" > "$OUT/explicit.log" 2>&1; then
   :
 else
-  grep -q 'CCALL_AUTO.float64 ABI support pending\|float64 auto-conversion (Arm64 ABI support pending)\|CCALL_AUTO.float64 X64 ABI support pending' "$OUT/explicit.log"
+  grep -q 'CCALL_AUTO.float64 X64 ABI support pending' "$OUT/explicit.log"
 fi
 grep -q '):(real,`r)\[ at `r\]' "$OUT/explicit.log"
 if grep -q '\[ at `r, at `r\]' "$OUT/explicit.log"; then

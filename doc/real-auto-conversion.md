@@ -26,7 +26,7 @@ through LambdaExp, RegionExp, and MulExp.
   for floating-point arguments and results. Cover mixed integer/floating-point
   signatures, register exhaustion, stack arguments, and live values across
   calls. Verify the floating-point registers and stack layout in generated code.
-- [ ] **M4: Add Arm64 end-to-end regression coverage.** Test real arguments,
+- [x] **M4: Add Arm64 end-to-end regression coverage.** Test real arguments,
   real results, mixed signatures, stack-passed arguments, negative zero,
   infinities, and NaNs. Exercise GC and profiling configurations, including
   allocation after a real result. Add focused assembly checks for direct
@@ -191,3 +191,46 @@ Boxed integer results still preserve their storage across C calls.
 The scalar emitter retains foreign-call GC deferral and profiling context
 save/restore. Result boxing and allocation use the existing region/GC code,
 including preservation of live float results across allocation helpers.
+
+## M4: Arm64 regression coverage
+
+`test/real_auto_conversion/check-arm64.sh` compiles the ML fixtures against
+C functions with ordinary `double` signatures. Its checks cover:
+
+- Real arguments and results, zero-argument real results, integer/boolean/unit
+  results, boxed Int64 results, and mixed bool/string/integer arguments.
+- Nine float arguments and twenty interleaved integer/float arguments, using
+  both ABI register banks and overflowing both onto the aligned outgoing stack.
+- Exact binary64 payloads through result boxing and argument unboxing:
+  negative zero, positive/negative infinity, a quiet NaN with payload, a
+  subnormal, and an ordinary finite value.
+- Argument effects evaluated once in left-to-right order, and argument
+  exceptions preventing the C call.
+- Nine optimised unboxed values live across a C function that deliberately
+  clobbers all caller-saved FP registers.
+- Five hundred boxed real results retained in a list while C requests
+  collection before returning each result. GC builds assert that collection
+  is deferred in C and actually occurs afterward; the test then checks every
+  retained real. Profiling builds sample while the list is live and verify
+  recorded allocation sites and occupancy for the real results.
+- Explicit result-region storage in ReML mode.
+
+The matrix includes plain, GC, generational GC, each corresponding profiling
+mode, disabled register allocation, disabled optimisation in plain/GC modes,
+and forced GC checks. Assembly checks verify double passage through FP
+registers, mixed outgoing stack slots, and optimised FP arithmetic in the
+live-value test. `make check-arm64` now runs both the shared IR script and
+this execution suite.
+
+Validation for M3/M4:
+
+- Rebuilt the final Arm64 MLKit and ReML compilers from source.
+- All four shared IR checks, eleven execution configurations, and the
+  assembly checks passed with the final MLKit compiler.
+- The existing native Arm64 MLKit/ReML suite passed, including scalar ABI
+  generation, calls/callbacks, GC relocation/descriptors, regions, exceptions,
+  floating-point operations, spills, large frames, and target guards.
+- Existing boxed-integer auto-call profiling attribution and IR navigation
+  checks passed.
+- The final X64 compiler type-check, shell syntax checks, and
+  `git diff --check` passed. X64 real auto-call execution remains pending M5.
