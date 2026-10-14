@@ -31,7 +31,7 @@ through LambdaExp, RegionExp, and MulExp.
   infinities, and NaNs. Exercise GC and profiling configurations, including
   allocation after a real result. Add focused assembly checks for direct
   `double` passage where runtime tests cannot establish the representation.
-- [ ] **M5: Support the X64 backend.** Extend X64 auto-converted calls to use
+- [x] **M5: Support the X64 backend.** Extend X64 auto-converted calls to use
   the shared `float64` lowering and the target's floating-point C ABI. Cover
   mixed signatures, register exhaustion, stack alignment, result handling,
   and live values across calls. Run corresponding runtime and assembly
@@ -40,6 +40,8 @@ through LambdaExp, RegionExp, and MulExp.
   section 19.9 and add an ML/C example. Run the relevant Arm64 and X64 suites
   and check clear diagnostics on unsupported backends. Record validation in
   the PR and mark it ready for review when all implementation milestones pass.
+  Documentation and local validation are complete; native Linux validation
+  on the ThinkPad is pending completion of the seed-MLKit bootstrap.
 
 ## M1: Conversion contract and lowering decision
 
@@ -149,15 +151,15 @@ serialization in these IR modules. Exports explicitly reject float64.
 
 At M2, the auto-call register resolver only assigned integer registers and
 rejected Float64 calls before assigning registers. M3 replaces that path for
-Arm64; the unstaged X64 resolver retains its explicit pending-ABI diagnostic
-until M5.
+Arm64; M5 also replaces it for X64. Both native backends now stage auto-call
+operands in code generation.
 
 The focused regression script is `test/real_auto_conversion/check-ir.sh`.
 It exercises mixed signatures, real arguments with integer/unit results,
 zero-argument real results, and an ordinary real call, in plain, GC, and
 profiling modes. It also checks explicit result storage in ReML mode.
-Arm64 ABI execution and special-value coverage are added in M4; X64 coverage
-remains in M5.
+Arm64 ABI execution and special-value coverage are added in M4; M5 extends
+the same fixtures to X64.
 
 Validation for M2:
 
@@ -178,7 +180,7 @@ Arm64 declares `REGISTER_INFO.staged_auto_ccall`, so register allocation
 retains auto-call operands and their result in allocated registers or spill
 slots instead of imposing integer C registers. Existing call liveness and
 fetch/flush machinery preserves values across C; unboxed floats crossing C
-calls are spilled by the current allocator. X64 retains its existing resolver.
+calls are spilled by the current allocator. M5 applies the same strategy to X64.
 
 `CodeGenArm64.autoCallInto` classifies `Float64` arguments as `AbiArm64.F64`
 and other supported arguments as word-sized scalars. It uses the existing
@@ -233,4 +235,62 @@ Validation for M3/M4:
 - Existing boxed-integer auto-call profiling attribution and IR navigation
   checks passed.
 - The final X64 compiler type-check, shell syntax checks, and
-  `git diff --check` passed. X64 real auto-call execution remains pending M5.
+  `git diff --check` passed.
+
+## M5: X64 ABI handling
+
+X64 also retains allocated operands until code generation. Its auto-call
+emitter stages all arguments before profiling/GC policy changes or ABI
+register placement. Integer arguments use rdi, rsi, rdx, rcx, r8, and r9;
+float64 arguments independently use xmm0–xmm7. Overflow arguments retain
+source order in eight-byte outgoing stack slots, with the whole frame aligned
+to sixteen bytes. Real results are read from xmm0. The emitter sets rax to
+the number of FP argument registers used for the System V call convention.
+
+The staging frame saves boxed integer result storage, the previous GC policy,
+and profiling context as needed. Foreign auto-calls defer collection in GC
+builds, restore the prior policy on return, and preserve result bits through
+profiling restoration and subsequent ML boxing. Signed tagged integers use
+an arithmetic shift when converted to C, including in mixed signatures.
+Tagged words have a distinct foreign type and use a logical shift, preserving
+their high bit. The execution tests cover both negative integers and maximal
+default-word arguments and results.
+
+The execution runner is now shared in `check-native.sh`, with `check-arm64.sh`
+and `check-x64.sh` wrappers. The C live-value fixture clobbers all caller-saved
+FP registers for each architecture. X64 assembly checks verify its independent
+register banks, six overflowing stack arguments in the mixed fixture, and
+optimised unboxed values across the clobbering C call.
+
+Local X64 validation used Rosetta on Apple Silicon with isolated X64 runtime
+archives built from the current sources. All eleven execution configurations,
+the assembly checks, and four shared IR modes passed. Fourteen existing
+`test_dev` cases (auto/auto2, C calls, f64_1–f64_4, real arithmetic/comparisons,
+real references, and exceptions) passed in plain, generational-GC, and both
+profiling modes: 56 tests total. The shared runner also passed all eleven
+Arm64 configurations again. Final X64 type-check and shell syntax checks
+passed. Native Linux execution on the ThinkPad remains pending.
+
+## M6: Documentation and final validation
+
+Manual section 19.9 now documents ML real/Real64.real arguments and results
+as C double on Arm64 and X64, mixed signatures, result boxing, the absence
+of real-result region arguments in C, and the 64-bit-only scope. Its ML-to-C
+type table lists all supported argument and result types and explains the
+64-bit integral ABI slots used even for narrower ML types. The manual
+and `kitdemo/mylib.mlb` now include `power_real_auto`, with an ordinary C
+`double power_real_auto(double, long)` implementation and ML tests for its
+result and zero exponent.
+
+The manual compiled successfully with pdflatex. Its ML/C example was built
+and executed with the current Arm64 compiler and GC enabled. A source-built
+JavaScript compiler still rejects the unsupported foreign primitive with
+`pToJs2.unimplemented: @m2_mixed`, rather than emitting a native FFI call.
+The new `make check-real-auto-conversion` target runs shared IR and native
+execution checks; the X64 `check-compiler` target includes it.
+
+The ThinkPad is reachable at `mael@172.20.10.9`. Native Linux validation is
+pending completion of the seed-MLKit bootstrap. The installed November 2025
+compiler requires its matching Basis and runtime when compiling the initial
+compiler: the current runtime has a larger region descriptor. Keep the PR in
+draft until native Linux validation completes.
