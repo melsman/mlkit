@@ -36,12 +36,10 @@ through LambdaExp, RegionExp, and MulExp.
   mixed signatures, register exhaustion, stack alignment, result handling,
   and live values across calls. Run corresponding runtime and assembly
   regressions, including GC and profiling configurations, on X64.
-- [ ] **M6: Document and validate the completed implementation.** Update manual
+- [x] **M6: Document and validate the completed implementation.** Update manual
   section 19.9 and add an ML/C example. Run the relevant Arm64 and X64 suites
   and check clear diagnostics on unsupported backends. Record validation in
   the PR and mark it ready for review when all implementation milestones pass.
-  Documentation and local validation are complete; native Linux validation
-  on the ThinkPad is pending completion of the seed-MLKit bootstrap.
 
 ## M1: Conversion contract and lowering decision
 
@@ -269,7 +267,9 @@ the assembly checks, and four shared IR modes passed. Fourteen existing
 real references, and exceptions) passed in plain, generational-GC, and both
 profiling modes: 56 tests total. The shared runner also passed all eleven
 Arm64 configurations again. Final X64 type-check and shell syntax checks
-passed. Native Linux execution on the ThinkPad remains pending.
+passed. Native Linux execution on the ThinkPad also passed all eleven
+configurations, the assembly checks, four shared IR modes, and the same
+56 existing regression tests.
 
 ## M6: Documentation and final validation
 
@@ -283,14 +283,20 @@ and `kitdemo/mylib.mlb` now include `power_real_auto`, with an ordinary C
 result and zero exponent.
 
 The manual compiled successfully with pdflatex. Its ML/C example was built
-and executed with the current Arm64 compiler and GC enabled. A source-built
+and executed on both Arm64 and native Linux X64 with GC enabled. A source-built
 JavaScript compiler still rejects the unsupported foreign primitive with
 `pToJs2.unimplemented: @m2_mixed`, rather than emitting a native FFI call.
 The new `make check-real-auto-conversion` target runs shared IR and native
 execution checks; the X64 `check-compiler` target includes it.
 
-The ThinkPad is reachable at `mael@172.20.10.9`. Native Linux validation is
-pending completion of the seed-MLKit bootstrap. The installed November 2025
-compiler requires its matching Basis and runtime when compiling the initial
-compiler: the current runtime has a larger region descriptor. Keep the PR in
-draft until native Linux validation completes.
+Final compiler builds used each checkout's configured installed MLKit seed
+via `make mlkit`, on both Apple Silicon and the ThinkPad. On Linux, a
+temporary writable copy of the seed's installed Basis/runtime and a fresh
+cache avoided read-only installation directories and incompatible caches.
+The original ThinkPad checkout and installed seed were preserved.
+
+The final seed-built Arm64 MLKit/ReML compilers passed `make check-arm64`,
+including scalar ABI generation, GC relocation/descriptors, native integration,
+parallel execution, switches, shared IR, and the full real auto-conversion
+matrix. Argobots was skipped because it was not configured. Native Linux
+passed the shared matrix and the 56 existing regressions recorded above.
