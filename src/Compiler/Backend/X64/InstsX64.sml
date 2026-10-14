@@ -575,7 +575,7 @@ structure InstsX64 : INSTS_X64 =
     structure RI : REGISTER_INFO =
       struct
         val frame_layout = FrameLayout.x64
-        val staged_auto_ccall = false
+        val staged_auto_ccall = true
         type lvar = lvar
         type lvarset = Lvarset.lvarset
         type reg = reg

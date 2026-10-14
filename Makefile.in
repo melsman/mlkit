@@ -436,6 +436,11 @@ TEST_JOBS ?= 6
 check-build:
 	sh test/build/check.sh
 
+.PHONY: check-real-auto-conversion
+check-real-auto-conversion:
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
+	SML_LIB="$(CWD)" MLKIT_NATIVE="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-native.sh
+
 check-profiling:
 	SML_LIB="$(CWD)" sh test/prettyprint/check.sh
 	sh test/region_profile/check-ci.sh
@@ -460,6 +465,7 @@ check-native-install:
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
+	$(MAKE) check-real-auto-conversion
 	$(MAKE) -C test_dev -j $(TEST_JOBS) test test_prof
 	$(MAKE) -C test test_mlkit
 	$(MAKE) -C test test_mlkit_no_gc

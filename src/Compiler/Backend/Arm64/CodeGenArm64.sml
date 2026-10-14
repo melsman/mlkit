@@ -433,6 +433,7 @@ struct
         case #2(List.nth(args,i)) of
           LS.Bool => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Int => if tagged() then A.asr (R(r),R(r),I(1)) :: code else code
+        | LS.Word => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
         | LS.Int32 => if tagged() then loadInto (r,8,r) code else code
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
@@ -449,6 +450,7 @@ struct
            ++ instruction A.cset (R(X 0),C NE)
            ++ tag) code
         | LS.Int => if tagged() then tag code else code
+        | LS.Word => if tagged() then tag code else code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
         | LS.Float64 => code

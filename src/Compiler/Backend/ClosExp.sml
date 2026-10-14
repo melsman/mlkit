@@ -43,7 +43,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Int32 | Int64 | Float64 | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int32 | Int64 | Float64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -155,6 +155,7 @@ struct
 
     fun layout_f CharArray = LEAF "CharArray"
       | layout_f Int = LEAF "Int"
+      | layout_f Word = LEAF "Word"
       | layout_f Int32 = LEAF "Int32"
       | layout_f Int64 = LEAF "Int64"
       | layout_f Float64 = LEAF "Float64"
@@ -1359,7 +1360,8 @@ struct
           if TyName.eq(tn,TyName.tyName_BOOL) then Bool
           else if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
           else if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
-          else if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
+          else if TyName.eq(tn,TyName.tyName_WordDefault()) then Word
+          else if member tn [TyName.tyName_IntDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
           else if TyName.eq(tn,TyName.tyName_F64) then Float64
           else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
           else if member tn [TyName.tyName_INT32, TyName.tyName_WORD32] then Int32
@@ -2472,7 +2474,7 @@ struct
                        in case RType.unCONSTYPE ty of
                               SOME(tn,_,_,_) => if TyName.eq(tn,TyName.tyName_F64) then
                                                 die "EXPORT.float64 not supported"
-                                              else tn_to_foreign_type tn
+                                              else (case tn_to_foreign_type tn of Word => Int | t => t)
                             | NONE => case RType.unRECORD ty of
                                           SOME [] => Unit
                                         | _ => die "EXPORT.toForeignType"

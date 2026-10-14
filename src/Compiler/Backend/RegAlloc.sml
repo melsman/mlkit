@@ -166,10 +166,10 @@ struct
           LS.CCALL_AUTO{name = name,args = args,rhos_for_result = rhos_for_result,res = res} :: rest
         else
         let
-          (* The unstaged X64 resolver assigns only integer C registers. *)
+          (* An unstaged resolver assigns only integer C registers. *)
           val () = if #2 res = LS.Float64 orelse
                       List.exists (fn (_,ft) => ft = LS.Float64) args then
-                     die "CCALL_AUTO.float64 X64 ABI support pending"
+                     die "CCALL_AUTO.float64 requires a staged C ABI"
                    else ()
           val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
               CallConv.resolve_ccall_auto RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG

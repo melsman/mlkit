@@ -45,9 +45,10 @@ signature LINE_STMT =
 			       * must thus be converted when
 			       * passed between the C world and
 			       * the ML world. *)
-    | Int                     (* Integers (and words) are tagged
+    | Int                     (* Integers are tagged
 			       * when garbage collection is
 			       * enabled. *)
+    | Word                    (* Default words require logical untagging. *)
     | Int32                   (* Int32 (and word32) values are
                                * boxed when garbage collection is
                                * enabled. *)

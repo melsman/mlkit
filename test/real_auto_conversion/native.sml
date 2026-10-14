@@ -13,6 +13,10 @@ fun nine__noinline (a:real) : real =
 val () = check ("identity", equal (identity__noinline 2.5, 2.5))
 val sum : real = prim ("@real_auto_sum", (~1.5,2.25))
 val () = check ("two floats", equal (sum,0.75))
+val word_mixed : real = prim ("@real_auto_word", (2.5,0wx7FFFFFFFFFFFFFFF:word))
+val () = check ("unsigned word argument", equal (word_mixed,2.5))
+val word_result : word = prim ("@real_auto_word_result", 2.5)
+val () = check ("unsigned word result", prim ("@real_auto_word_check", word_result) : bool)
 val () = check ("nine floats", equal (nine__noinline 1.0, 285.0))
 val mixed : real = prim ("@real_auto_mixed",
     (~10,0.25,11,1.25,12,2.25,13,3.25,14,4.25,15,5.25,16,6.25,17,7.25,18,8.25,19,9.25))

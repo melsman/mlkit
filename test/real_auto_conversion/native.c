@@ -33,6 +33,15 @@ long real_auto_bits(double x, long kind) {
 }
 double real_auto_identity(double x) { return x; }
 double real_auto_sum(double x, double y) { return x + y; }
+double real_auto_word(double x, uint64_t w) {
+  assert(w == UINT64_C(0x7fffffffffffffff));
+  return x;
+}
+uint64_t real_auto_word_result(double x) {
+  assert(x == 2.5);
+  return UINT64_C(0x7fffffffffffffff);
+}
+long real_auto_word_check(uint64_t w) { return w == UINT64_C(0x7fffffffffffffff); }
 double real_auto_nine(double a, double b, double c, double d, double e,
                       double f, double g, double h, double i) {
   return a + 2*b + 3*c + 4*d + 5*e + 6*f + 7*g + 8*h + 9*i;
@@ -68,6 +77,7 @@ double real_auto_ordered(double x, long n) {
 void real_auto_never(double x, long n) { (void)x; (void)n; assert(0); }
 long real_auto_clobber(long n) {
   /* Exercise every caller-saved FP register, not just those used by C here. */
+#if defined(__aarch64__)
   __asm__ volatile(
     "movi v0.16b, #0\n\tmovi v1.16b, #0\n\tmovi v2.16b, #0\n\tmovi v3.16b, #0\n\t"
     "movi v4.16b, #0\n\tmovi v5.16b, #0\n\tmovi v6.16b, #0\n\tmovi v7.16b, #0\n\t"
@@ -78,6 +88,17 @@ long real_auto_clobber(long n) {
     : : : "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7",
     "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
     "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
+#elif defined(__x86_64__)
+  __asm__ volatile(
+    "pxor %%xmm0, %%xmm0\n\tpxor %%xmm1, %%xmm1\n\tpxor %%xmm2, %%xmm2\n\tpxor %%xmm3, %%xmm3\n\t"
+    "pxor %%xmm4, %%xmm4\n\tpxor %%xmm5, %%xmm5\n\tpxor %%xmm6, %%xmm6\n\tpxor %%xmm7, %%xmm7\n\t"
+    "pxor %%xmm8, %%xmm8\n\tpxor %%xmm9, %%xmm9\n\tpxor %%xmm10, %%xmm10\n\tpxor %%xmm11, %%xmm11\n\t"
+    "pxor %%xmm12, %%xmm12\n\tpxor %%xmm13, %%xmm13\n\tpxor %%xmm14, %%xmm14\n\tpxor %%xmm15, %%xmm15"
+    : : : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
+    "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15");
+#else
+#error Unsupported real auto-conversion test target
+#endif
   return n + 7;
 }
 double real_auto_gc_result(long n) {

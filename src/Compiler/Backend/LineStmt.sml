@@ -252,6 +252,7 @@ struct
         case ft of
             CharArray => LEAF "CharArray"
           | Int => LEAF "Int"
+          | Word => LEAF "Word"
           | Int32 => LEAF "Int32"
           | Int64 => LEAF "Int64"
           | Float64 => LEAF "Float64"
