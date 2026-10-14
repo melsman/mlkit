@@ -8604,6 +8604,11 @@ collection.
 
 Here is an overview of the main changes to MLKit since version 4.7.22.
 
+\subsubsection{Time Profiling}
+
+MLKit now support time profiling. Pass \lstinline{+RTS -tp} to the generated
+executable. Pass \lstinline{+RTS -help} to learn more.
+
 \subsubsection{Updated Region Profiling}
 
 MLKit now has a new modern region profiler, which is more efficient than the old
@@ -8611,9 +8616,9 @@ profiler. In particular, object headers are compacted into one machine
 word. Region profiling now does not track finite regions, but it works with
 threads and it has an interactive viewer that lets the user explore memory use
 of a program run interactively, after the program terminates. The new tool
-\lstinline{pview} also has a command-line interface, which allows the
-programmer to create region profiling graphs like the now retired
-\lstinline{rp2ps} program.
+\lstinline{pview} also has a command-line interface, which allows the programmer
+to create region profiling graphs like the now retired \lstinline{rp2ps}
+program.
 
 \subsubsection{Arm64 Backend}
 
