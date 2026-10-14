@@ -480,7 +480,7 @@ size_t NoOfPagesInGen(Gen* gen);
 // When profiling is turned on, every infinite-region object is prefixed by an object
 // descriptor, containing the information that is needed in order to
 // traverse objects in regions and identify allocation points in the
-// source program. The site token references resident compiler metadata; rpview
+// source program. The site token references resident compiler metadata; pview
 // resolves its unit-local site and IR location from the profile stream.
 //
 // Every object is stored taking up a multiple of words (not bytes).

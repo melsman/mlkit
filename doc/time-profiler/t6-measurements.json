@@ -1,0 +1,4954 @@
+{
+  "host": {
+    "platform": "darwin",
+    "release": "25.5.0",
+    "cpu": "Apple M2 Max",
+    "controller_arch": "x64",
+    "benchmark_arch": "arm64"
+  },
+  "base_revision": "c9188976",
+  "repeats": 5,
+  "protocol": "Serial repeated runs; phase batch starts sampling paused until first explicit phase; native ARM64 executables, X64 Node controller; child real/user/sys at 0.01s precision and separate launch-inclusive elapsed_s.",
+  "results": [
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 0.198043083,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 0.206906916,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 176,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 50834,
+      "recorder_samples": 0,
+      "gc_samples": 1
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 0.139415458,
+      "real": 0.11,
+      "user": 0.1,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 0.308574708,
+      "real": 0.28,
+      "user": 0.19,
+      "sys": 0.08,
+      "samples": 23241,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1458558,
+      "recorder_samples": 241,
+      "gc_samples": 170
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 0,
+      "elapsed_s": 0.204800458,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 40029,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 0.229640666,
+      "real": 0.2,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 1983,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 161061,
+      "recorder_samples": 0,
+      "gc_samples": 12
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 0.229006792,
+      "real": 0.2,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 1996,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 161854,
+      "recorder_samples": 0,
+      "gc_samples": 13
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 1,
+      "elapsed_s": 0.204939,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 40029,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 0.311253625,
+      "real": 0.28,
+      "user": 0.19,
+      "sys": 0.08,
+      "samples": 24276,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1521693,
+      "recorder_samples": 228,
+      "gc_samples": 152
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 0.198288209,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 0.138137292,
+      "real": 0.11,
+      "user": 0.1,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 0.205818,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 175,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 50773,
+      "recorder_samples": 0,
+      "gc_samples": 1
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 0.298378458,
+      "real": 0.27,
+      "user": 0.19,
+      "sys": 0.08,
+      "samples": 21925,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1378213,
+      "recorder_samples": 210,
+      "gc_samples": 131
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 2,
+      "elapsed_s": 0.207950708,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 40029,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 0.20589875,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 175,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 50773,
+      "recorder_samples": 0,
+      "gc_samples": 1
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 0.139054208,
+      "real": 0.11,
+      "user": 0.1,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 0.1995905,
+      "real": 0.17,
+      "user": 0.16,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 0.231088541,
+      "real": 0.2,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 2013,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 162891,
+      "recorder_samples": 0,
+      "gc_samples": 11
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 0.138517958,
+      "real": 0.11,
+      "user": 0.1,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.198660958,
+      "real": 0.17,
+      "user": 0.16,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 3,
+      "elapsed_s": 0.206031708,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 40029,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 0.305851625,
+      "real": 0.28,
+      "user": 0.19,
+      "sys": 0.08,
+      "samples": 27226,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1701781,
+      "recorder_samples": 281,
+      "gc_samples": 164
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 0.227544917,
+      "real": 0.2,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 1969,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 160207,
+      "recorder_samples": 0,
+      "gc_samples": 12
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 0.2046875,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 175,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 50773,
+      "recorder_samples": 0,
+      "gc_samples": 2
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 0.198451875,
+      "real": 0.17,
+      "user": 0.16,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.140208084,
+      "real": 0.11,
+      "user": 0.1,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.2071255,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 175,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 50773,
+      "recorder_samples": 0,
+      "gc_samples": 1
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 0.303487792,
+      "real": 0.28,
+      "user": 0.19,
+      "sys": 0.08,
+      "samples": 22878,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1436415,
+      "recorder_samples": 235,
+      "gc_samples": 148
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 0.228916,
+      "real": 0.2,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 1993,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 161671,
+      "recorder_samples": 0,
+      "gc_samples": 14
+    },
+    {
+      "workload": "kkb",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 4,
+      "elapsed_s": 0.206647584,
+      "real": 0.18,
+      "user": 0.16,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 40029,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 0.348095709,
+      "real": 0.32,
+      "user": 0.29,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 0.433096083,
+      "real": 0.41,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 402,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 652686,
+      "recorder_samples": 0,
+      "gc_samples": 18
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 0,
+      "elapsed_s": 0.432020375,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 628095,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 0.617745458,
+      "real": 0.59,
+      "user": 0.42,
+      "sys": 0.16,
+      "samples": 54538,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 3956776,
+      "recorder_samples": 424,
+      "gc_samples": 2480
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 0.469083459,
+      "real": 0.44,
+      "user": 0.4,
+      "sys": 0.03,
+      "samples": 4387,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 895909,
+      "recorder_samples": 2,
+      "gc_samples": 192
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 0.435566958,
+      "real": 0.41,
+      "user": 0.37,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 0.626284292,
+      "real": 0.6,
+      "user": 0.42,
+      "sys": 0.17,
+      "samples": 54474,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 3952872,
+      "recorder_samples": 392,
+      "gc_samples": 2585
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 0.431128,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.03,
+      "samples": 401,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 652625,
+      "recorder_samples": 0,
+      "gc_samples": 13
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 0.425819583,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 0.471758542,
+      "real": 0.44,
+      "user": 0.4,
+      "sys": 0.03,
+      "samples": 4412,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 897434,
+      "recorder_samples": 2,
+      "gc_samples": 206
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 0.345567,
+      "real": 0.32,
+      "user": 0.29,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 1,
+      "elapsed_s": 0.429927042,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 628095,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 2,
+      "elapsed_s": 0.435834042,
+      "real": 0.41,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 628095,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 0.432263167,
+      "real": 0.41,
+      "user": 0.37,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 0.362151334,
+      "real": 0.34,
+      "user": 0.3,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 0.618181416,
+      "real": 0.59,
+      "user": 0.42,
+      "sys": 0.16,
+      "samples": 53977,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 3922555,
+      "recorder_samples": 391,
+      "gc_samples": 2452
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 0.493502416,
+      "real": 0.47,
+      "user": 0.41,
+      "sys": 0.04,
+      "samples": 4603,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 909085,
+      "recorder_samples": 3,
+      "gc_samples": 221
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 0.46620825,
+      "real": 0.44,
+      "user": 0.4,
+      "sys": 0.03,
+      "samples": 432,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 654516,
+      "recorder_samples": 0,
+      "gc_samples": 23
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.435869958,
+      "real": 0.41,
+      "user": 0.37,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 0.348446334,
+      "real": 0.32,
+      "user": 0.3,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 0.432237416,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 401,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 652625,
+      "recorder_samples": 0,
+      "gc_samples": 21
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 0.465272916,
+      "real": 0.44,
+      "user": 0.4,
+      "sys": 0.03,
+      "samples": 4349,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 893591,
+      "recorder_samples": 4,
+      "gc_samples": 199
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 0.592208417,
+      "real": 0.56,
+      "user": 0.41,
+      "sys": 0.15,
+      "samples": 46983,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 3495645,
+      "recorder_samples": 530,
+      "gc_samples": 2086
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 3,
+      "elapsed_s": 0.417900291,
+      "real": 0.39,
+      "user": 0.36,
+      "sys": 0.02,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 628095,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "paused",
+      "repeat": 4,
+      "elapsed_s": 0.416404917,
+      "real": 0.39,
+      "user": 0.36,
+      "sys": 0.02,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 628095,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.425882041,
+      "real": 0.4,
+      "user": 0.37,
+      "sys": 0.02,
+      "samples": 396,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 652320,
+      "recorder_samples": 0,
+      "gc_samples": 20
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.352698708,
+      "real": 0.32,
+      "user": 0.29,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 0.480478666,
+      "real": 0.45,
+      "user": 0.41,
+      "sys": 0.04,
+      "samples": 4472,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 901094,
+      "recorder_samples": 4,
+      "gc_samples": 215
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 0.607570208,
+      "real": 0.58,
+      "user": 0.41,
+      "sys": 0.16,
+      "samples": 49900,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 3673720,
+      "recorder_samples": 563,
+      "gc_samples": 2308
+    },
+    {
+      "workload": "mlyacc",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 0.411787791,
+      "real": 0.39,
+      "user": 0.36,
+      "sys": 0.02
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 1.655558583,
+      "real": 1.63,
+      "user": 1.04,
+      "sys": 0.04,
+      "samples": 1623,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 199666,
+      "recorder_samples": 0,
+      "gc_samples": 85
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 2.120094375,
+      "real": 2.09,
+      "user": 1.16,
+      "sys": 0.61,
+      "samples": 134236,
+      "buffer_drops": 38864,
+      "routing_drops": 0,
+      "output_bytes": 8293199,
+      "recorder_samples": 1357,
+      "gc_samples": 12177
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 1.6878075,
+      "real": 1.66,
+      "user": 1.05,
+      "sys": 0.03
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 1.79748325,
+      "real": 1.77,
+      "user": 1.16,
+      "sys": 0.09,
+      "samples": 17664,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1178650,
+      "recorder_samples": 15,
+      "gc_samples": 1028
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 1.65605875,
+      "real": 1.63,
+      "user": 1.03,
+      "sys": 0.03
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 1.808266583,
+      "real": 1.78,
+      "user": 1.17,
+      "sys": 0.09,
+      "samples": 17781,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1185787,
+      "recorder_samples": 15,
+      "gc_samples": 1051
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 1.650109833,
+      "real": 1.62,
+      "user": 1.04,
+      "sys": 0.04,
+      "samples": 1619,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 199422,
+      "recorder_samples": 0,
+      "gc_samples": 93
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 2.121079292,
+      "real": 2.09,
+      "user": 1.15,
+      "sys": 0.62,
+      "samples": 167815,
+      "buffer_drops": 36931,
+      "routing_drops": 0,
+      "output_bytes": 10342622,
+      "recorder_samples": 1799,
+      "gc_samples": 13103
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 1.798297958,
+      "real": 1.77,
+      "user": 1.16,
+      "sys": 0.09,
+      "samples": 17675,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1179321,
+      "recorder_samples": 13,
+      "gc_samples": 1066
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 2.145098083,
+      "real": 2.12,
+      "user": 1.17,
+      "sys": 0.63,
+      "samples": 132790,
+      "buffer_drops": 36128,
+      "routing_drops": 0,
+      "output_bytes": 8204924,
+      "recorder_samples": 1235,
+      "gc_samples": 9820
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 1.649022667,
+      "real": 1.62,
+      "user": 1.04,
+      "sys": 0.04,
+      "samples": 1618,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 199361,
+      "recorder_samples": 0,
+      "gc_samples": 91
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 1.6802235,
+      "real": 1.65,
+      "user": 1.05,
+      "sys": 0.03
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 1.8020585,
+      "real": 1.77,
+      "user": 1.16,
+      "sys": 0.1,
+      "samples": 17699,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1180785,
+      "recorder_samples": 15,
+      "gc_samples": 1070
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 2.092349208,
+      "real": 2.07,
+      "user": 1.15,
+      "sys": 0.6,
+      "samples": 130376,
+      "buffer_drops": 36971,
+      "routing_drops": 0,
+      "output_bytes": 8057601,
+      "recorder_samples": 1276,
+      "gc_samples": 9490
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 1.685750416,
+      "real": 1.66,
+      "user": 1.05,
+      "sys": 0.03
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 1.650758208,
+      "real": 1.62,
+      "user": 1.04,
+      "sys": 0.03,
+      "samples": 1621,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 199544,
+      "recorder_samples": 0,
+      "gc_samples": 88
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 2.176921416,
+      "real": 2.15,
+      "user": 1.17,
+      "sys": 0.65,
+      "samples": 147256,
+      "buffer_drops": 37912,
+      "routing_drops": 0,
+      "output_bytes": 9087833,
+      "recorder_samples": 1572,
+      "gc_samples": 13498
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 1.68339825,
+      "real": 1.66,
+      "user": 1.04,
+      "sys": 0.03
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 1.6621705,
+      "real": 1.64,
+      "user": 1.05,
+      "sys": 0.04,
+      "samples": 1632,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 200215,
+      "recorder_samples": 0,
+      "gc_samples": 93
+    },
+    {
+      "workload": "callbacks",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 1.779393458,
+      "real": 1.75,
+      "user": 1.16,
+      "sys": 0.07,
+      "samples": 17484,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1167670,
+      "recorder_samples": 14,
+      "gc_samples": 1036
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 0,
+      "elapsed_s": 0.482279083,
+      "real": 0.46,
+      "user": 0.18,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 41323,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 0.191693875,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 164,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 51396,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 0.125999875,
+      "real": 0.1,
+      "user": 0.09,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 0.289661083,
+      "real": 0.26,
+      "user": 0.18,
+      "sys": 0.07,
+      "samples": 24806,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1555386,
+      "recorder_samples": 299,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 0.220033541,
+      "real": 0.19,
+      "user": 0.17,
+      "sys": 0.01,
+      "samples": 1907,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 157719,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 0.190913792,
+      "real": 0.16,
+      "user": 0.15,
+      "sys": 0.01
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 0.299756083,
+      "real": 0.27,
+      "user": 0.18,
+      "sys": 0.08,
+      "samples": 26198,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1640298,
+      "recorder_samples": 323,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 0.196542125,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 166,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 51518,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 1,
+      "elapsed_s": 0.195062584,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 41323,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 0.129555042,
+      "real": 0.1,
+      "user": 0.09,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 0.182234958,
+      "real": 0.16,
+      "user": 0.14,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 0.218278625,
+      "real": 0.19,
+      "user": 0.17,
+      "sys": 0.01,
+      "samples": 1896,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 157048,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 0.126101708,
+      "real": 0.1,
+      "user": 0.09,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 0.185030917,
+      "real": 0.16,
+      "user": 0.15,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 0.217565083,
+      "real": 0.19,
+      "user": 0.17,
+      "sys": 0.01,
+      "samples": 1905,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 157597,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 0.193959334,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 166,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 51518,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 2,
+      "elapsed_s": 0.194079792,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 41323,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 0.292191,
+      "real": 0.27,
+      "user": 0.18,
+      "sys": 0.08,
+      "samples": 25893,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1621693,
+      "recorder_samples": 324,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.186218625,
+      "real": 0.16,
+      "user": 0.15,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 0.290952083,
+      "real": 0.26,
+      "user": 0.18,
+      "sys": 0.07,
+      "samples": 25759,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1613519,
+      "recorder_samples": 324,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 0.199118583,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 169,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 51701,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 0.222489291,
+      "real": 0.19,
+      "user": 0.17,
+      "sys": 0.01,
+      "samples": 1915,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158207,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 3,
+      "elapsed_s": 0.199210542,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 41323,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 0.129246209,
+      "real": 0.1,
+      "user": 0.09,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 4,
+      "elapsed_s": 0.197249458,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 41323,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.194867375,
+      "real": 0.17,
+      "user": 0.15,
+      "sys": 0.01,
+      "samples": 165,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 51457,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.128807292,
+      "real": 0.1,
+      "user": 0.09,
+      "sys": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 0.219839542,
+      "real": 0.19,
+      "user": 0.17,
+      "sys": 0.01,
+      "samples": 1918,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158390,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 0.289778167,
+      "real": 0.26,
+      "user": 0.18,
+      "sys": 0.07,
+      "samples": 25833,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1618033,
+      "recorder_samples": 343,
+      "gc_samples": 0
+    },
+    {
+      "workload": "kkb",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 0.183625416,
+      "real": 0.16,
+      "user": 0.14,
+      "sys": 0.01
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 0.928919833,
+      "real": 0.9,
+      "user": 0.53,
+      "sys": 0.05
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 0.608632583,
+      "real": 0.58,
+      "user": 0.52,
+      "sys": 0.05,
+      "samples": 575,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 655772,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 0.671953416,
+      "real": 0.64,
+      "user": 0.57,
+      "sys": 0.06,
+      "samples": 6378,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1009962,
+      "recorder_samples": 6,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 0.867150416,
+      "real": 0.84,
+      "user": 0.59,
+      "sys": 0.23,
+      "samples": 64374,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 4549650,
+      "recorder_samples": 694,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 0,
+      "elapsed_s": 0.590531875,
+      "real": 0.56,
+      "user": 0.51,
+      "sys": 0.04,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 620628,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 0.32460725,
+      "real": 0.3,
+      "user": 0.26,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 0.327608834,
+      "real": 0.3,
+      "user": 0.27,
+      "sys": 0.02
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 0.577305917,
+      "real": 0.55,
+      "user": 0.5,
+      "sys": 0.04
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 1,
+      "elapsed_s": 0.581474375,
+      "real": 0.55,
+      "user": 0.51,
+      "sys": 0.04,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 620628,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 0.727494833,
+      "real": 0.7,
+      "user": 0.61,
+      "sys": 0.06,
+      "samples": 687,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 662604,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 0.672890625,
+      "real": 0.65,
+      "user": 0.57,
+      "sys": 0.06,
+      "samples": 6396,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1011060,
+      "recorder_samples": 5,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 0.871598583,
+      "real": 0.84,
+      "user": 0.59,
+      "sys": 0.24,
+      "samples": 69158,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 4841612,
+      "recorder_samples": 765,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 0.580161208,
+      "real": 0.55,
+      "user": 0.5,
+      "sys": 0.04
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 0.337833125,
+      "real": 0.31,
+      "user": 0.27,
+      "sys": 0.03
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 0.60988,
+      "real": 0.58,
+      "user": 0.52,
+      "sys": 0.05,
+      "samples": 576,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 655833,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 0.863749958,
+      "real": 0.84,
+      "user": 0.58,
+      "sys": 0.24,
+      "samples": 65925,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 4644330,
+      "recorder_samples": 684,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 2,
+      "elapsed_s": 0.585081084,
+      "real": 0.56,
+      "user": 0.51,
+      "sys": 0.04,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 620628,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 0.663767833,
+      "real": 0.64,
+      "user": 0.57,
+      "sys": 0.06,
+      "samples": 6305,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1005509,
+      "recorder_samples": 4,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 0.334570667,
+      "real": 0.31,
+      "user": 0.27,
+      "sys": 0.03
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 0.605390334,
+      "real": 0.58,
+      "user": 0.52,
+      "sys": 0.05,
+      "samples": 571,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 655528,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 3,
+      "elapsed_s": 0.591769834,
+      "real": 0.56,
+      "user": 0.51,
+      "sys": 0.04,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 620628,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 0.847588542,
+      "real": 0.82,
+      "user": 0.58,
+      "sys": 0.23,
+      "samples": 65104,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 4594180,
+      "recorder_samples": 633,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 0.664330542,
+      "real": 0.64,
+      "user": 0.57,
+      "sys": 0.06,
+      "samples": 6314,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1006058,
+      "recorder_samples": 4,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.598531291,
+      "real": 0.57,
+      "user": 0.52,
+      "sys": 0.04
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 0.597733416,
+      "real": 0.57,
+      "user": 0.52,
+      "sys": 0.04
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.589177208,
+      "real": 0.56,
+      "user": 0.51,
+      "sys": 0.04,
+      "samples": 556,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 654613,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 0.85156725,
+      "real": 0.82,
+      "user": 0.58,
+      "sys": 0.23,
+      "samples": 80448,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 5530716,
+      "recorder_samples": 1015,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.327084375,
+      "real": 0.3,
+      "user": 0.26,
+      "sys": 0.03
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "paused",
+      "repeat": 4,
+      "elapsed_s": 0.60274775,
+      "real": 0.58,
+      "user": 0.52,
+      "sys": 0.05,
+      "samples": 0,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 620628,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "mlyacc",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 0.684998458,
+      "real": 0.66,
+      "user": 0.58,
+      "sys": 0.06,
+      "samples": 6490,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1016794,
+      "recorder_samples": 5,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 1.615162542,
+      "real": 1.59,
+      "user": 0.95,
+      "sys": 0.06
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 2.101684167,
+      "real": 2.07,
+      "user": 1.09,
+      "sys": 0.66,
+      "samples": 148170,
+      "buffer_drops": 36553,
+      "routing_drops": 0,
+      "output_bytes": 9138232,
+      "recorder_samples": 1429,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 1.733780209,
+      "real": 1.7,
+      "user": 1.06,
+      "sys": 0.12,
+      "samples": 16953,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1129924,
+      "recorder_samples": 16,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 1.620500791,
+      "real": 1.59,
+      "user": 0.97,
+      "sys": 0.08,
+      "samples": 1584,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 191863,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 1.609253625,
+      "real": 1.58,
+      "user": 0.96,
+      "sys": 0.07,
+      "samples": 1573,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 191192,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 1.61457675,
+      "real": 1.59,
+      "user": 0.96,
+      "sys": 0.06
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 2.0948775,
+      "real": 2.07,
+      "user": 1.08,
+      "sys": 0.66,
+      "samples": 141627,
+      "buffer_drops": 30673,
+      "routing_drops": 0,
+      "output_bytes": 8738902,
+      "recorder_samples": 1220,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 1.736209167,
+      "real": 1.71,
+      "user": 1.06,
+      "sys": 0.13,
+      "samples": 16976,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1131327,
+      "recorder_samples": 16,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 1.634674416,
+      "real": 1.61,
+      "user": 0.97,
+      "sys": 0.07
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 1.605385917,
+      "real": 1.58,
+      "user": 0.96,
+      "sys": 0.07,
+      "samples": 1569,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 190948,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 1.781695625,
+      "real": 1.76,
+      "user": 1.08,
+      "sys": 0.14,
+      "samples": 17029,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1134491,
+      "recorder_samples": 16,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 2.158937375,
+      "real": 2.13,
+      "user": 1.1,
+      "sys": 0.7,
+      "samples": 135332,
+      "buffer_drops": 35181,
+      "routing_drops": 0,
+      "output_bytes": 8354700,
+      "recorder_samples": 1489,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 1.840533,
+      "real": 1.75,
+      "user": 1.09,
+      "sys": 0.14,
+      "samples": 17402,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1157313,
+      "recorder_samples": 17,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 2.076621958,
+      "real": 2.05,
+      "user": 1.08,
+      "sys": 0.65,
+      "samples": 150718,
+      "buffer_drops": 34193,
+      "routing_drops": 0,
+      "output_bytes": 9293729,
+      "recorder_samples": 1223,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 1.619853542,
+      "real": 1.59,
+      "user": 0.97,
+      "sys": 0.08,
+      "samples": 1579,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 191558,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 1.644842625,
+      "real": 1.62,
+      "user": 0.97,
+      "sys": 0.06
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 1.633000334,
+      "real": 1.61,
+      "user": 0.96,
+      "sys": 0.06
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 1.748766958,
+      "real": 1.72,
+      "user": 1.06,
+      "sys": 0.14,
+      "samples": 17116,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 1139867,
+      "recorder_samples": 15,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 2.064915166,
+      "real": 2.04,
+      "user": 1.08,
+      "sys": 0.64,
+      "samples": 123409,
+      "buffer_drops": 37960,
+      "routing_drops": 0,
+      "output_bytes": 7626983,
+      "recorder_samples": 1223,
+      "gc_samples": 0
+    },
+    {
+      "workload": "callbacks",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 1.609220792,
+      "real": 1.58,
+      "user": 0.96,
+      "sys": 0.07,
+      "samples": 1570,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 191009,
+      "recorder_samples": 0,
+      "gc_samples": 0
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 1.400690208,
+      "real": 1.36,
+      "user": 0.78,
+      "sys": 0.06,
+      "samples": 10691,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 752080,
+      "recorder_samples": 5,
+      "gc_samples": 644,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 363040750,
+          "samples": 3619,
+          "states": [
+            2604,
+            3,
+            1012,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 205792625,
+          "samples": 2055,
+          "states": [
+            1189,
+            2,
+            220,
+            644
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250263333,
+          "samples": 2499,
+          "states": [
+            0,
+            0,
+            2499,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252059125,
+          "samples": 2518,
+          "states": [
+            0,
+            0,
+            2518,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 1.227616375,
+      "real": 1.2,
+      "user": 0.71,
+      "sys": 0.34,
+      "samples": 74773,
+      "buffer_drops": 42338,
+      "routing_drops": 0,
+      "output_bytes": 4663083,
+      "recorder_samples": 814,
+      "gc_samples": 7944,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 412836916,
+          "samples": 40525,
+          "states": [
+            28379,
+            486,
+            11660,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 265179833,
+          "samples": 26056,
+          "states": [
+            14931,
+            328,
+            2853,
+            7944
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250382375,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265135417,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 1.0111915,
+      "real": 0.98,
+      "user": 0.7,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 1.01989375,
+      "real": 0.98,
+      "user": 0.7,
+      "sys": 0.02,
+      "samples": 964,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158595,
+      "recorder_samples": 0,
+      "gc_samples": 52,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 291067875,
+          "samples": 290,
+          "states": [
+            208,
+            0,
+            82,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 175675000,
+          "samples": 175,
+          "states": [
+            106,
+            0,
+            17,
+            52
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250060458,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250259541,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us-large",
+      "repeat": 0,
+      "elapsed_s": 1.236971834,
+      "real": 1.21,
+      "user": 0.72,
+      "sys": 0.34,
+      "samples": 117946,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7294566,
+      "recorder_samples": 342,
+      "gc_samples": 8188,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 421329500,
+          "samples": 41623,
+          "states": [
+            28948,
+            342,
+            12333,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 263704125,
+          "samples": 25797,
+          "states": [
+            14807,
+            0,
+            2802,
+            8188
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 252020583,
+          "samples": 24665,
+          "states": [
+            0,
+            0,
+            24665,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266100833,
+          "samples": 25861,
+          "states": [
+            0,
+            0,
+            25861,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 1.002114459,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 1.012503666,
+      "real": 0.97,
+      "user": 0.68,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 1.253739375,
+      "real": 1.21,
+      "user": 0.71,
+      "sys": 0.34,
+      "samples": 75351,
+      "buffer_drops": 42283,
+      "routing_drops": 0,
+      "output_bytes": 4698410,
+      "recorder_samples": 833,
+      "gc_samples": 8105,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 424042167,
+          "samples": 41715,
+          "states": [
+            28094,
+            529,
+            13092,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 259347708,
+          "samples": 25444,
+          "states": [
+            14276,
+            304,
+            2759,
+            8105
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250390625,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265355541,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 1.076778958,
+      "real": 1.05,
+      "user": 0.75,
+      "sys": 0.05,
+      "samples": 10402,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 734451,
+      "recorder_samples": 4,
+      "gc_samples": 650,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 330595625,
+          "samples": 3298,
+          "states": [
+            2357,
+            2,
+            939,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 209093584,
+          "samples": 2089,
+          "states": [
+            1208,
+            2,
+            229,
+            650
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250228000,
+          "samples": 2498,
+          "states": [
+            0,
+            0,
+            2498,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 251997416,
+          "samples": 2517,
+          "states": [
+            0,
+            0,
+            2517,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 0.997147333,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 1.013778167,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.02,
+      "samples": 958,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158229,
+      "recorder_samples": 0,
+      "gc_samples": 58,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 286897917,
+          "samples": 286,
+          "states": [
+            215,
+            0,
+            71,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 173199625,
+          "samples": 173,
+          "states": [
+            97,
+            0,
+            18,
+            58
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250086792,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250419833,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us-large",
+      "repeat": 1,
+      "elapsed_s": 1.2598925,
+      "real": 1.23,
+      "user": 0.72,
+      "sys": 0.36,
+      "samples": 118553,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7331593,
+      "recorder_samples": 359,
+      "gc_samples": 8136,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 433958000,
+          "samples": 41906,
+          "states": [
+            28435,
+            359,
+            13112,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 269596333,
+          "samples": 26288,
+          "states": [
+            15223,
+            0,
+            2929,
+            8136
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 252099958,
+          "samples": 24601,
+          "states": [
+            0,
+            0,
+            24601,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266225667,
+          "samples": 25758,
+          "states": [
+            0,
+            0,
+            25758,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 0.999313166,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.01
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us-large",
+      "repeat": 2,
+      "elapsed_s": 1.263479833,
+      "real": 1.22,
+      "user": 0.72,
+      "sys": 0.35,
+      "samples": 117752,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7282732,
+      "recorder_samples": 386,
+      "gc_samples": 8072,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 428828875,
+          "samples": 41784,
+          "states": [
+            29259,
+            386,
+            12139,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 264072084,
+          "samples": 25613,
+          "states": [
+            14760,
+            0,
+            2781,
+            8072
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 251991541,
+          "samples": 24651,
+          "states": [
+            0,
+            0,
+            24651,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266503000,
+          "samples": 25704,
+          "states": [
+            0,
+            0,
+            25704,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 1.091664,
+      "real": 1.06,
+      "user": 0.77,
+      "sys": 0.05,
+      "samples": 10550,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 743479,
+      "recorder_samples": 4,
+      "gc_samples": 642,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 347237792,
+          "samples": 3465,
+          "states": [
+            2508,
+            2,
+            955,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 207193375,
+          "samples": 2070,
+          "states": [
+            1132,
+            2,
+            294,
+            642
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250238167,
+          "samples": 2498,
+          "states": [
+            0,
+            0,
+            2498,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252016875,
+          "samples": 2517,
+          "states": [
+            0,
+            0,
+            2517,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 1.005407875,
+      "real": 0.98,
+      "user": 0.69,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 1.031470083,
+      "real": 0.98,
+      "user": 0.7,
+      "sys": 0.02,
+      "samples": 968,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158839,
+      "recorder_samples": 0,
+      "gc_samples": 56,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 294520709,
+          "samples": 294,
+          "states": [
+            222,
+            0,
+            72,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 175478375,
+          "samples": 175,
+          "states": [
+            101,
+            0,
+            18,
+            56
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250038916,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250628583,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 1.233623542,
+      "real": 1.2,
+      "user": 0.71,
+      "sys": 0.34,
+      "samples": 74989,
+      "buffer_drops": 42061,
+      "routing_drops": 0,
+      "output_bytes": 4676259,
+      "recorder_samples": 804,
+      "gc_samples": 8264,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 410432875,
+          "samples": 40374,
+          "states": [
+            27892,
+            462,
+            12020,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 268834625,
+          "samples": 26423,
+          "states": [
+            14936,
+            342,
+            2881,
+            8264
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250365917,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265169209,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 1.014859792,
+      "real": 0.98,
+      "user": 0.7,
+      "sys": 0.02,
+      "samples": 964,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158595,
+      "recorder_samples": 0,
+      "gc_samples": 58,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 290911083,
+          "samples": 290,
+          "states": [
+            217,
+            0,
+            73,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 176007750,
+          "samples": 175,
+          "states": [
+            95,
+            0,
+            22,
+            58
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250064750,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250691500,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.995548875,
+      "real": 0.96,
+      "user": 0.68,
+      "sys": 0.01
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 1.009443125,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.01
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us-large",
+      "repeat": 3,
+      "elapsed_s": 1.263993167,
+      "real": 1.22,
+      "user": 0.71,
+      "sys": 0.36,
+      "samples": 116881,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7229601,
+      "recorder_samples": 448,
+      "gc_samples": 8415,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 411822458,
+          "samples": 40303,
+          "states": [
+            28093,
+            448,
+            11762,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 279315792,
+          "samples": 26935,
+          "states": [
+            15669,
+            0,
+            2851,
+            8415
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 252101500,
+          "samples": 24334,
+          "states": [
+            0,
+            0,
+            24334,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 267166833,
+          "samples": 25309,
+          "states": [
+            0,
+            0,
+            25309,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 1.238576625,
+      "real": 1.21,
+      "user": 0.71,
+      "sys": 0.35,
+      "samples": 75663,
+      "buffer_drops": 42131,
+      "routing_drops": 0,
+      "output_bytes": 4717373,
+      "recorder_samples": 795,
+      "gc_samples": 8407,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 416619083,
+          "samples": 40900,
+          "states": [
+            28094,
+            487,
+            12319,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 270451625,
+          "samples": 26571,
+          "states": [
+            14987,
+            308,
+            2869,
+            8407
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250356250,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265277500,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 1.088010625,
+      "real": 1.06,
+      "user": 0.77,
+      "sys": 0.04,
+      "samples": 10504,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 740673,
+      "recorder_samples": 4,
+      "gc_samples": 651,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 342509375,
+          "samples": 3422,
+          "states": [
+            2494,
+            2,
+            926,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 207208459,
+          "samples": 2071,
+          "states": [
+            1210,
+            2,
+            208,
+            651
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250278791,
+          "samples": 2493,
+          "states": [
+            0,
+            0,
+            2493,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252010625,
+          "samples": 2518,
+          "states": [
+            0,
+            0,
+            2518,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 1.001669375,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.01
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 1.095077709,
+      "real": 1.06,
+      "user": 0.76,
+      "sys": 0.05,
+      "samples": 10451,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 737440,
+      "recorder_samples": 4,
+      "gc_samples": 661,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 335875250,
+          "samples": 3357,
+          "states": [
+            2421,
+            2,
+            934,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 207811167,
+          "samples": 2077,
+          "states": [
+            1198,
+            2,
+            216,
+            661
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250284833,
+          "samples": 2499,
+          "states": [
+            0,
+            0,
+            2499,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252057459,
+          "samples": 2518,
+          "states": [
+            0,
+            0,
+            2518,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.997351458,
+      "real": 0.97,
+      "user": 0.68,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us-large",
+      "repeat": 4,
+      "elapsed_s": 1.262225458,
+      "real": 1.22,
+      "user": 0.72,
+      "sys": 0.34,
+      "samples": 117612,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7274192,
+      "recorder_samples": 368,
+      "gc_samples": 8314,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 425227875,
+          "samples": 41200,
+          "states": [
+            28640,
+            368,
+            12192,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 265305416,
+          "samples": 25811,
+          "states": [
+            14579,
+            0,
+            2918,
+            8314
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 251951958,
+          "samples": 24707,
+          "states": [
+            0,
+            0,
+            24707,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265690375,
+          "samples": 25894,
+          "states": [
+            0,
+            0,
+            25894,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.999077083,
+      "real": 0.97,
+      "user": 0.69,
+      "sys": 0.02,
+      "samples": 960,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 158351,
+      "recorder_samples": 0,
+      "gc_samples": 51,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 284641666,
+          "samples": 284,
+          "states": [
+            210,
+            0,
+            74,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 177856083,
+          "samples": 177,
+          "states": [
+            106,
+            0,
+            20,
+            51
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250064042,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250422792,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 1.243669417,
+      "real": 1.21,
+      "user": 0.71,
+      "sys": 0.35,
+      "samples": 75683,
+      "buffer_drops": 42330,
+      "routing_drops": 0,
+      "output_bytes": 4718662,
+      "recorder_samples": 838,
+      "gc_samples": 8321,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 420772209,
+          "samples": 41061,
+          "states": [
+            28643,
+            504,
+            11914,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 269577375,
+          "samples": 26430,
+          "states": [
+            14786,
+            334,
+            2989,
+            8321
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250425292,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 264687250,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 0,
+      "elapsed_s": 1.437117708,
+      "real": 1.39,
+      "user": 0.68,
+      "sys": 0.37,
+      "samples": 74928,
+      "buffer_drops": 42167,
+      "routing_drops": 0,
+      "output_bytes": 4667183,
+      "recorder_samples": 861,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 413312042,
+          "samples": 39794,
+          "states": [
+            32046,
+            529,
+            7219,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 274675250,
+          "samples": 26942,
+          "states": [
+            24069,
+            332,
+            2541,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250431250,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265408333,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 0,
+      "elapsed_s": 0.981628625,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.04,
+      "samples": 933,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 151280,
+      "recorder_samples": 0,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 252134125,
+          "samples": 250,
+          "states": [
+            201,
+            0,
+            49,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 184281167,
+          "samples": 184,
+          "states": [
+            166,
+            0,
+            18,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250057750,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250477084,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us-large",
+      "repeat": 0,
+      "elapsed_s": 1.209385125,
+      "real": 1.18,
+      "user": 0.67,
+      "sys": 0.36,
+      "samples": 113679,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7028855,
+      "recorder_samples": 400,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 373423625,
+          "samples": 36691,
+          "states": [
+            29994,
+            400,
+            6297,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 277317292,
+          "samples": 26944,
+          "states": [
+            24467,
+            0,
+            2477,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 252112959,
+          "samples": 24594,
+          "states": [
+            1,
+            0,
+            24593,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266914208,
+          "samples": 25450,
+          "states": [
+            0,
+            0,
+            25450,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 0,
+      "elapsed_s": 0.975612834,
+      "real": 0.95,
+      "user": 0.64,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 0,
+      "elapsed_s": 0.96378825,
+      "real": 0.92,
+      "user": 0.63,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 0,
+      "elapsed_s": 1.07838,
+      "real": 1.04,
+      "user": 0.71,
+      "sys": 0.07,
+      "samples": 10300,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 722805,
+      "recorder_samples": 4,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 303975459,
+          "samples": 3038,
+          "states": [
+            2456,
+            2,
+            580,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 224603291,
+          "samples": 2245,
+          "states": [
+            2045,
+            2,
+            198,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250264500,
+          "samples": 2499,
+          "states": [
+            0,
+            0,
+            2499,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252124125,
+          "samples": 2518,
+          "states": [
+            0,
+            0,
+            2518,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us-large",
+      "repeat": 1,
+      "elapsed_s": 1.221190916,
+      "real": 1.19,
+      "user": 0.68,
+      "sys": 0.36,
+      "samples": 115206,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7122002,
+      "recorder_samples": 355,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 391747500,
+          "samples": 38129,
+          "states": [
+            30717,
+            355,
+            7057,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 272456667,
+          "samples": 26564,
+          "states": [
+            23971,
+            0,
+            2593,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 251935417,
+          "samples": 24698,
+          "states": [
+            0,
+            0,
+            24698,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266395375,
+          "samples": 25815,
+          "states": [
+            0,
+            0,
+            25815,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 1,
+      "elapsed_s": 0.983330625,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.05,
+      "samples": 935,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 151402,
+      "recorder_samples": 0,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 250572584,
+          "samples": 250,
+          "states": [
+            191,
+            0,
+            59,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 186995500,
+          "samples": 186,
+          "states": [
+            169,
+            0,
+            17,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250072375,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250449333,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 1,
+      "elapsed_s": 1.057801667,
+      "real": 1.03,
+      "user": 0.71,
+      "sys": 0.07,
+      "samples": 10163,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 714448,
+      "recorder_samples": 4,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 294022208,
+          "samples": 2937,
+          "states": [
+            2365,
+            2,
+            570,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 221337417,
+          "samples": 2212,
+          "states": [
+            1993,
+            2,
+            217,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250280667,
+          "samples": 2497,
+          "states": [
+            0,
+            0,
+            2497,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252023792,
+          "samples": 2517,
+          "states": [
+            0,
+            0,
+            2517,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 1,
+      "elapsed_s": 0.971461292,
+      "real": 0.94,
+      "user": 0.64,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 1,
+      "elapsed_s": 1.003225583,
+      "real": 0.96,
+      "user": 0.65,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 1,
+      "elapsed_s": 1.210795041,
+      "real": 1.17,
+      "user": 0.67,
+      "sys": 0.35,
+      "samples": 71632,
+      "buffer_drops": 42313,
+      "routing_drops": 0,
+      "output_bytes": 4465920,
+      "recorder_samples": 755,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 372265958,
+          "samples": 36675,
+          "states": [
+            29250,
+            441,
+            6984,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 272314750,
+          "samples": 26765,
+          "states": [
+            23947,
+            314,
+            2504,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250398917,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265341750,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 2,
+      "elapsed_s": 0.970564125,
+      "real": 0.94,
+      "user": 0.64,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 2,
+      "elapsed_s": 1.002921375,
+      "real": 0.96,
+      "user": 0.65,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 2,
+      "elapsed_s": 0.993903125,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.04,
+      "samples": 931,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 151158,
+      "recorder_samples": 0,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 252042209,
+          "samples": 251,
+          "states": [
+            217,
+            0,
+            34,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 181928458,
+          "samples": 181,
+          "states": [
+            160,
+            0,
+            21,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250065292,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250644875,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us-large",
+      "repeat": 2,
+      "elapsed_s": 1.198334542,
+      "real": 1.17,
+      "user": 0.66,
+      "sys": 0.35,
+      "samples": 111946,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 6923142,
+      "recorder_samples": 352,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 369563542,
+          "samples": 35962,
+          "states": [
+            28254,
+            352,
+            7356,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 267539417,
+          "samples": 26107,
+          "states": [
+            23613,
+            0,
+            2494,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 251988792,
+          "samples": 24597,
+          "states": [
+            0,
+            0,
+            24597,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 267085833,
+          "samples": 25280,
+          "states": [
+            0,
+            0,
+            25280,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 2,
+      "elapsed_s": 1.19631175,
+      "real": 1.17,
+      "user": 0.67,
+      "sys": 0.35,
+      "samples": 71594,
+      "buffer_drops": 42404,
+      "routing_drops": 0,
+      "output_bytes": 4463671,
+      "recorder_samples": 786,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 368528208,
+          "samples": 36116,
+          "states": [
+            28642,
+            408,
+            7066,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 277593875,
+          "samples": 27286,
+          "states": [
+            24397,
+            378,
+            2511,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250393541,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265040042,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 2,
+      "elapsed_s": 1.058958333,
+      "real": 1.03,
+      "user": 0.71,
+      "sys": 0.07,
+      "samples": 10214,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 717559,
+      "recorder_samples": 5,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 300811750,
+          "samples": 3004,
+          "states": [
+            2448,
+            2,
+            554,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 219599417,
+          "samples": 2195,
+          "states": [
+            1959,
+            3,
+            233,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250256500,
+          "samples": 2499,
+          "states": [
+            0,
+            0,
+            2499,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252095833,
+          "samples": 2516,
+          "states": [
+            0,
+            0,
+            2516,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 3,
+      "elapsed_s": 0.981946458,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.04
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 3,
+      "elapsed_s": 0.973323125,
+      "real": 0.93,
+      "user": 0.64,
+      "sys": 0.03
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 3,
+      "elapsed_s": 1.077116292,
+      "real": 1.04,
+      "user": 0.72,
+      "sys": 0.07,
+      "samples": 10228,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 718413,
+      "recorder_samples": 4,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 302799667,
+          "samples": 3023,
+          "states": [
+            2416,
+            2,
+            605,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 219500041,
+          "samples": 2191,
+          "states": [
+            1937,
+            2,
+            252,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250240666,
+          "samples": 2496,
+          "states": [
+            0,
+            0,
+            2496,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252120708,
+          "samples": 2518,
+          "states": [
+            0,
+            0,
+            2518,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us-large",
+      "repeat": 3,
+      "elapsed_s": 1.232742292,
+      "real": 1.2,
+      "user": 0.68,
+      "sys": 0.37,
+      "samples": 116054,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 7173730,
+      "recorder_samples": 414,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 390508875,
+          "samples": 38028,
+          "states": [
+            30133,
+            414,
+            7481,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 286252084,
+          "samples": 27675,
+          "states": [
+            25028,
+            0,
+            2647,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 251903667,
+          "samples": 24557,
+          "states": [
+            0,
+            0,
+            24557,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266370083,
+          "samples": 25794,
+          "states": [
+            0,
+            0,
+            25794,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 3,
+      "elapsed_s": 1.218694292,
+      "real": 1.19,
+      "user": 0.67,
+      "sys": 0.36,
+      "samples": 72950,
+      "buffer_drops": 42319,
+      "routing_drops": 0,
+      "output_bytes": 4546456,
+      "recorder_samples": 823,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 388369750,
+          "samples": 37512,
+          "states": [
+            29979,
+            489,
+            7044,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 278478625,
+          "samples": 27246,
+          "states": [
+            24390,
+            334,
+            2522,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250435292,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 265468125,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 3,
+      "elapsed_s": 0.991665125,
+      "real": 0.96,
+      "user": 0.65,
+      "sys": 0.05,
+      "samples": 937,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 151524,
+      "recorder_samples": 0,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 256521500,
+          "samples": 256,
+          "states": [
+            219,
+            0,
+            37,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 182514667,
+          "samples": 182,
+          "states": [
+            163,
+            0,
+            19,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250120291,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250778208,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "plain",
+      "repeat": 4,
+      "elapsed_s": 0.967562333,
+      "real": 0.94,
+      "user": 0.64,
+      "sys": 0.02
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "100us",
+      "repeat": 4,
+      "elapsed_s": 1.065206458,
+      "real": 1.02,
+      "user": 0.71,
+      "sys": 0.07,
+      "samples": 10121,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 711886,
+      "recorder_samples": 4,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 294999542,
+          "samples": 2947,
+          "states": [
+            2329,
+            2,
+            616,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 216108625,
+          "samples": 2160,
+          "states": [
+            1935,
+            2,
+            223,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250240875,
+          "samples": 2499,
+          "states": [
+            0,
+            0,
+            2499,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 252029292,
+          "samples": 2515,
+          "states": [
+            0,
+            0,
+            2515,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "1ms",
+      "repeat": 4,
+      "elapsed_s": 0.977220083,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.03,
+      "samples": 933,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 151280,
+      "recorder_samples": 0,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 250155750,
+          "samples": 249,
+          "states": [
+            199,
+            0,
+            50,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 185944250,
+          "samples": 185,
+          "states": [
+            174,
+            0,
+            11,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250079291,
+          "samples": 249,
+          "states": [
+            0,
+            0,
+            249,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 250401166,
+          "samples": 250,
+          "states": [
+            0,
+            0,
+            250,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us-large",
+      "repeat": 4,
+      "elapsed_s": 1.19390025,
+      "real": 1.16,
+      "user": 0.66,
+      "sys": 0.35,
+      "samples": 112481,
+      "buffer_drops": 0,
+      "routing_drops": 0,
+      "output_bytes": 6955777,
+      "recorder_samples": 365,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 366465542,
+          "samples": 35877,
+          "states": [
+            28585,
+            365,
+            6927,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 268810541,
+          "samples": 26169,
+          "states": [
+            23648,
+            0,
+            2521,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 252050500,
+          "samples": 24615,
+          "states": [
+            0,
+            0,
+            24615,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266323417,
+          "samples": 25820,
+          "states": [
+            0,
+            0,
+            25820,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "10us",
+      "repeat": 4,
+      "elapsed_s": 1.197293375,
+      "real": 1.17,
+      "user": 0.66,
+      "sys": 0.36,
+      "samples": 71406,
+      "buffer_drops": 41877,
+      "routing_drops": 0,
+      "output_bytes": 4452134,
+      "recorder_samples": 754,
+      "gc_samples": 0,
+      "phases": [
+        {
+          "name": "compute",
+          "duration_ns": 371671209,
+          "samples": 36509,
+          "states": [
+            29384,
+            426,
+            6699,
+            0
+          ]
+        },
+        {
+          "name": "allocate",
+          "duration_ns": 273637208,
+          "samples": 26705,
+          "states": [
+            23802,
+            328,
+            2575,
+            0
+          ]
+        },
+        {
+          "name": "c",
+          "duration_ns": 250361292,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        },
+        {
+          "name": "sleep",
+          "duration_ns": 266059084,
+          "samples": 4096,
+          "states": [
+            0,
+            0,
+            4096,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "workload": "phases",
+      "config": "no_gc",
+      "setting": "off",
+      "repeat": 4,
+      "elapsed_s": 0.981146208,
+      "real": 0.95,
+      "user": 0.65,
+      "sys": 0.03
+    }
+  ]
+}

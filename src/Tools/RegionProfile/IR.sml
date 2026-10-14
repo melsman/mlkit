@@ -218,7 +218,11 @@ struct
       val manifest = rows metadata "ir_objects"
       val neededSites = List.filter (fn r => Option.isSome(find r "ir_identity") andalso
                                  siteMark r <> SOME (Num "0")) sites
-      val needed = neededSites @ manifest
+      (* Runtime/C ranges have no ML IR companion. Keep them in the time
+       * catalogue, but do not turn them into missing region-flow documents. *)
+      val neededFunctions = List.filter (fn r => stringField r "ir_identity" <> "")
+                                       (rows metadata "code_functions")
+      val needed = neededSites @ manifest @ neededFunctions
       val paths = unique (fn s => s)
         (List.mapPartial (fn r => case stringField r "ir_object" of
             "" => NONE | path => SOME (path ^ ".ir")) needed)
@@ -255,7 +259,25 @@ struct
                   | NONE => ())
                else ())
           end) handle OS.SysErr _ => ())
-      val () = if null missing then () else app visit roots
+      (* Ordinary executables retain source paths and IR identities, but no
+       * linked-object manifest. Search MLB caches beside sources and their
+       * enclosing projects; matches still require the recorded identity. *)
+      fun sourceRoots entry =
+        case stringField entry "source" of
+            "" => []
+          | source => if String.isPrefix "<" source then []
+                      else
+                        let
+                          val source = OS.Path.mkAbsolute {path = source,relativeTo = OS.FileSys.getDir()}
+                          fun parents dir =
+                            let val parent = OS.Path.dir dir
+                            in OS.Path.concat(dir,"MLB") ::
+                               (if parent = dir orelse parent = "" then [] else parents parent)
+                            end
+                        in parents (OS.Path.dir source)
+                        end
+      val automaticRoots = unique (fn s => s) (List.concat(map sourceRoots missing))
+      val () = if null missing then () else app visit (roots @ automaticRoots)
       val documents = unique (fn r => stringField r "identity")
         (List.filter (fn doc => List.exists (fn entry => matches entry doc) needed) (!found))
       fun spanKey mark kind = encodeJson mark ^ ":" ^ encodeJson kind

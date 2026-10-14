@@ -37,6 +37,7 @@ mlkit_basislibs_dirs:
 $(MLKIT_BASIS_TARGETS): | mlkit_basislibs_dirs
 	SML_LIB=.. $(MLKIT) -c $(VARIANT_FLAGS) repl.mlb
 	SML_LIB=.. $(MLKIT) -c $(VARIANT_FLAGS) ../kitlib/region-profile.mlb
+	SML_LIB=.. $(MLKIT) -c $(VARIANT_FLAGS) ../kitlib/time-profile.mlb
 	$(if $(REML_VARIANT_FLAGS),SML_LIB=.. $(REML) -c $(REML_VARIANT_FLAGS) reml.mlb)
 
 $(MLKIT_KIT_TARGETS): mlkit_kitlib_%: mlkit_basislib_%

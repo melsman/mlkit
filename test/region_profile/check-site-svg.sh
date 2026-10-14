@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
 OUT=$1
-RPVIEW=${RPVIEW:-rpview}
-"$RPVIEW" "$OUT/reset.rp" --sites --regions 0 -o "$OUT/reset.svg" > /dev/null
-"$RPVIEW" "$OUT/callback.rp" --sites --regions 0 -o "$OUT/callback.svg" > /dev/null
-"$RPVIEW" "$OUT/callback.rp" --sites --regions 1 -o "$OUT/grouped.svg" > /dev/null
-"$RPVIEW" "$OUT/callback.rp" --sites --scope thread:0 -o "$OUT/thread.svg" > /dev/null
+PVIEW=${PVIEW:-pview}
+"$PVIEW" "$OUT/reset.rp" --sites --regions 0 -o "$OUT/reset.svg" > /dev/null
+"$PVIEW" "$OUT/callback.rp" --sites --regions 0 -o "$OUT/callback.svg" > /dev/null
+"$PVIEW" "$OUT/callback.rp" --sites --regions 1 -o "$OUT/grouped.svg" > /dev/null
+"$PVIEW" "$OUT/callback.rp" --sites --scope thread:0 -o "$OUT/thread.svg" > /dev/null
 for args in '--sites --format html' '--sites --format svg --metric stack'; do
-  if "$RPVIEW" "$OUT/reset.rp" $args -o "$OUT/rejected" > "$OUT/rejected.log" 2>&1; then
+  if "$PVIEW" "$OUT/reset.rp" $args -o "$OUT/rejected" > "$OUT/rejected.log" 2>&1; then
     echo "Invalid site graph options accepted: $args" >&2; exit 1
   fi
 done

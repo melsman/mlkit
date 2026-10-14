@@ -1,4 +1,4 @@
-# Flat JSON records emitted by the runtime. rpview separately validates JSON.
+# Flat JSON records emitted by the runtime. pview separately validates JSON.
 # Keep counters as decimal strings: awk numbers cannot represent all uint64s.
 function need(ok, message) {
     if (!ok) { print FILENAME ":" FNR ": " message > "/dev/stderr"; failed=1; exit 1 }
@@ -29,7 +29,7 @@ function parse(line,    key,token,k) {
     need(line ~ /^[ \t]*}[ \t]*$/, "expected flat record")
 }
 { parse($0) }
-# Resolve definition references independently of rpview for fixture accounting.
+# Resolve definition references independently of pview for fixture accounting.
 f["type"]=="binding" {
     id=f["definition"]
     need(!(id in definitions),"duplicate definition")

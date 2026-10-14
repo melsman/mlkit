@@ -1250,9 +1250,12 @@ struct
           | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound. " ^ f())
 
     (* Preserve region identities before closure conversion lowers them to loads.
-     * Imported formals are referred to by native function label and position. *)
+     * Imported formals are referred to by native function label and position.
+     * Function labels also disambiguate repeated IR names in ordinary time
+     * profiles, independently of region profiling. *)
     fun flowRow fields =
-      if Flags.is_on "region_profile" then
+      if Flags.is_on "region_profile" orelse
+         (case fields of "function"::_ => true | _ => false) then
         IRLocations.currentRegions := fields :: !IRLocations.currentRegions
       else ()
     fun flowRegion rho = Int.toString (Effect.key_of_eps_or_rho rho)

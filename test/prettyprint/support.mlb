@@ -1,0 +1,7 @@
+(* Sources adapted to the test Report interface are staged here by Makefile. *)
+$(SML_LIB)/basis/basis.mlb
+../../src/Common/md5.mlb
+report.sml
+support/PRETTYPRINT.sig
+support/PrettyPrint.sml
+support/IRLocations.sml

@@ -12,34 +12,16 @@ local
 
   open BasLib
 in
+  manager0.mlb
+
   local open Pickle Tools SyntaxObjects SpecialObjects Basics CompilerObjects
              Environment
-  in MANAGER_OBJECTS0.sml
-     MANAGER_OBJECTS.sml
-     MODCODE_MINI.sml
+  in MANAGER_OBJECTS.sml
   end
-
-  local open Basics
-  in INT_MODULES.sml
-     MANAGER.sig
-  end
-
-  local open Pickle CompilerObjects
-  in local open Tools
-     in ../Compiler/COMPILE_BASIS.sml
-     end
-     local open SyntaxObjects Basics
-     in EXECUTION.sml
-     end
-  end
-
-  ../Common/md5.mlb
 
   local open Pickle Tools Basics CompilerObjects
   in local open SyntaxObjects Environment
-     in ManagerObjects0.sml
-	ManagerObjects.sml
-        local open Edlib in IntModules.sml end
+     in ManagerObjects.sml
      end
      Scriptlet.sml
      local open Edlib SyntaxObjects MlbMake in Manager.sml end

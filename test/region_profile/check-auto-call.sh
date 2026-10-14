@@ -2,7 +2,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 CC=${CC:-cc}
 export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-auto-call.XXXXXX")
@@ -24,8 +24,8 @@ val () = if unboxed = 42 andalso List.last results = Int64.fromInt 10 then print
 SML
 printf '%s\n' '$(SML_LIB)/basis/basis.mlb' main.sml > "$OUT/main.mlb"
 "$MLKIT" -gc -rp -libdirs "$OUT" -libs foreign,m,c,dl -o "$OUT/program" "$OUT/main.mlb" > "$OUT/build.log" 2>&1
-"$OUT/program" +RTS -rp -rp_interval 0 -rp_region all -rp_file "$OUT/profile.rp" -RTS
-"$RPVIEW" "$OUT/profile.rp" --format json > "$OUT/profile.json"
+"$OUT/program" +RTS -rp -rp_interval 0 -rp_region all -p_file "$OUT/profile.prof" -RTS
+"$PVIEW" "$OUT/profile.prof" --format json > "$OUT/profile.json"
 node - "$OUT/profile.json" <<'JS'
 const fs = require('fs'), assert = require('assert');
 const rows = fs.readFileSync(process.argv[2], 'utf8').trim().split('\n').map(JSON.parse);
@@ -35,7 +35,7 @@ assert(sites.every(r => r.location_kind === 1), 'Foreign result lost its call lo
 assert(rows.some(r => r.type === 'allocation' && sites.some(s => s.definition === r.definition) && r.count > 0));
 console.log('Automatic foreign-call result attribution passed');
 JS
-"$RPVIEW" "$OUT/profile.rp" -o "$OUT/profile.html" > /dev/null
+"$PVIEW" "$OUT/profile.prof" -o "$OUT/profile.html" > /dev/null
 {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d'

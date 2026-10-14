@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "CommandLine.h"
 #include "String.h"
@@ -47,10 +48,15 @@ printUsage(void)
   fprintf(stderr,"  -RTS                     Resume application arguments.\n");
   fprintf(stderr,"  --RTS                    End runtime parsing permanently.\n");
   fprintf(stderr,"  --                       End runtime parsing; pass -- to the application.\n");
+  fprintf(stderr,"\nProfiling:\n");
+#ifdef PROFILING
+  fprintf(stderr,"  -p                       Record region snapshots and time samples.\n");
+#endif
+  fprintf(stderr,"  -p_file PATH             Shared output file (default: profile.prof).\n");
+  fprintf(stderr,"  -p_paused                Start enabled profilers paused.\n");
 #ifdef PROFILING
   fprintf(stderr,"\nRegion profiling:\n");
   fprintf(stderr,"  -rp                      Enable recording.\n");
-  fprintf(stderr,"  -rp_file PATH            Output file (default: profile.rp).\n");
   fprintf(stderr,"  -rp_interval INTERVAL     Snapshot interval (default: 10ms):\n");
   fprintf(stderr,"                             Nus, Nms, Ns   wall-clock duration\n");
   fprintf(stderr,"                             Ni            every N ML entries per thread\n");
@@ -63,6 +69,13 @@ printUsage(void)
 #endif
   fprintf(stderr,"  -rp_report               Report profiling overhead at exit.\n");
 #endif
+  fprintf(stderr,"\nTime profiling:\n");
+  fprintf(stderr,"  -tp                      Record interrupted PCs; add -rp for region snapshots.\n");
+  fprintf(stderr,"  -tp_interval INTERVAL     Nus, Nms or Ns, 1us..1s (default: 1ms).\n");
+  fprintf(stderr,"  -tp_clock wall           Wall delivery sampling; CPU sampling unavailable.\n");
+  fprintf(stderr,"  -tp_attribution MODE     passive or detailed (default: available build instrumentation).\n");
+  fprintf(stderr,"  -tp_buffer N             Records per thread, 2..1048576 (default: 131072 passive / 65536 detailed).\n");
+  fprintf(stderr,"  -tp_paused               Start time recording paused.\n");
 #ifdef ENABLE_GC
   fprintf(stderr,"\nGarbage collection:\n");
   fprintf(stderr,"  -disable_gc              Disable garbage collection.\n");
@@ -75,7 +88,7 @@ printUsage(void)
 #endif
 #ifdef ARGOBOTS
   fprintf(stderr,"\nParallel execution:\n");
-  fprintf(stderr,"  -p N                     Number of execution streams.\n");
+  fprintf(stderr,"  -par_threads N           Number of execution streams.\n");
   fprintf(stderr,"  -verbose_par, -vp        Report execution stream information.\n");
 #endif
   if (runtime_options) runtime_options->usage();
@@ -105,6 +118,8 @@ parseCmdLineArgs(int argc, char *argv[])
 #ifdef PROFILING
   int rp_options = 0;
 #endif
+  int tp_options = 0;
+  int p_options = 0;
 
 #ifdef ARGOBOTS
   posixThreads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -131,6 +146,57 @@ parseCmdLineArgs(int argc, char *argv[])
     }
     match = 0;
 
+    if (!strcmp(argv[0],"-p")) {
+#ifdef PROFILING
+      mlkit_rp_enabled = 1; mlkit_tp_enabled = 1; match = 1;
+#else
+      fprintf(stderr,"-p requires region profiling support; compile with -rp or -p\n");
+      exit(EXIT_FAILURE);
+#endif
+    }
+    if (!strcmp(argv[0],"-p_paused")) {
+      mlkit_tp_initially_paused = 1;
+#ifdef PROFILING
+      mlkit_rp_initially_paused = 1;
+#endif
+      p_options = 1; match = 1;
+    }
+    if (!strcmp(argv[0],"-tp")) { mlkit_tp_enabled = 1; match = 1; }
+    if (!strcmp(argv[0],"-tp_paused")) { mlkit_tp_initially_paused = 1; tp_options = 1; match = 1; }
+    if (!strcmp(argv[0],"-tp_interval")) {
+      if (!mlkit_tp_parse_interval(rtsValue(&argc,&argv))) {
+        fprintf(stderr,"-tp_interval requires a duration from 1us to 1s\n"); exit(EXIT_FAILURE);
+      }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_clock")) {
+      if (strcmp(rtsValue(&argc,&argv),"wall")) {
+        fprintf(stderr,"time sampling supports only wall; CPU sampling clocks are not implemented\n"); exit(EXIT_FAILURE);
+      }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_attribution")) {
+      const char *mode = rtsValue(&argc,&argv);
+      if (!strcmp(mode,"passive")) mlkit_tp_attribution = MLKIT_TP_PASSIVE;
+      else if (!strcmp(mode,"detailed")) mlkit_tp_attribution = MLKIT_TP_DETAILED;
+      else { fprintf(stderr,"-tp_attribution requires passive or detailed\n"); exit(EXIT_FAILURE); }
+      tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-tp_buffer")) {
+      const char *s = rtsValue(&argc,&argv);
+      char *end;
+      errno = 0;
+      unsigned long n = strtoul(s,&end,10);
+      if (*s < '0' || *s > '9' || errno || *end || n < 2 || n > 1048576) {
+        fprintf(stderr,"-tp_buffer requires 2..1048576 records\n"); exit(EXIT_FAILURE);
+      }
+      mlkit_tp_capacity = n; tp_options = 1; match = 1; continue;
+    }
+    if (!strcmp(argv[0],"-p_file")) {
+      const char *s = rtsValue(&argc,&argv);
+      if (!*s) { fprintf(stderr,"-p_file requires a path\n"); exit(EXIT_FAILURE); }
+      mlkit_p_filename = s; p_options = 1; match = 1; continue;
+    }
 #ifdef PROFILING
     if (strcmp(argv[0], "-rp") == 0) { mlkit_rp_enabled = 1; match = 1; }
     if (strcmp(argv[0], "-rp_paused") == 0) { mlkit_rp_initially_paused = 1; rp_options = 1; match = 1; }
@@ -152,13 +218,7 @@ parseCmdLineArgs(int argc, char *argv[])
       if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_region requires all or UNIT:BINDING\n"); exit(EXIT_FAILURE); }
       mlkit_rp_region = argv[0]; rp_options = 1; match = 1; continue;
     }
-    if (strcmp(argv[0], "-rp_file") == 0) {
-      if (!rtsValue(&argc,&argv)[0]) { fprintf(stderr, "-rp_file requires a path\n"); exit(EXIT_FAILURE); }
-      mlkit_rp_filename = argv[0];
-      rp_options = 1;
-      match = 1;
-      continue;
-    }
+
 #endif
     if ((strcmp((char *)argv[0], "-h")==0) ||
 	(strcmp((char *)argv[0], "-help")==0)) {
@@ -206,18 +266,18 @@ parseCmdLineArgs(int argc, char *argv[])
 #endif /*ENABLE_GC*/
 
 #ifdef ARGOBOTS
-    if (strcmp((char *)argv[0],"-p")==0) {
+    if (strcmp((char *)argv[0],"-par_threads")==0) {
       if (rtsValue(&argc,&argv)[0]) { /* Is there a number. */
 	if ((posixThreads = atoi((char *)argv[0])) == 0) {
-	  fprintf(stderr,"Expecting integer argument to the option -p.\n");
+	  fprintf(stderr,"Expecting integer argument to the option -par_threads.\n");
 	  exit(EXIT_FAILURE);
 	}
 	if (posixThreads < 1) {
-	  fprintf(stderr,"Expecting positive integer after option -p.\n");
+	  fprintf(stderr,"Expecting positive integer after option -par_threads.\n");
 	  exit(EXIT_FAILURE);
 	}
       } else {
-	fprintf(stderr,"Expecting integer after the option -p.\n");
+	fprintf(stderr,"Expecting integer after the option -par_threads.\n");
 	exit(EXIT_FAILURE);
       }
       continue;
@@ -230,12 +290,17 @@ parseCmdLineArgs(int argc, char *argv[])
     }
 #endif
 
-    if (!match && strncmp(argv[0], "-rp", 3) == 0) {
-#ifdef PROFILING
-      fprintf(stderr, "unknown profiler option: %s\n", argv[0]);
-#else
-      fprintf(stderr, "profiler option %s requires an executable compiled with -rp\n", argv[0]);
+#ifndef PROFILING
+    if (!match && (!strcmp(argv[0],"-rp") || !strcmp(argv[0],"-rp_paused") ||
+        !strcmp(argv[0],"-rp_gc_samples") || !strcmp(argv[0],"-rp_report") ||
+        !strcmp(argv[0],"-rp_interval") || !strcmp(argv[0],"-rp_build") ||
+        !strcmp(argv[0],"-rp_region"))) {
+      fprintf(stderr,"region profiler option %s requires an executable compiled with -rp\n",argv[0]);
+      exit(EXIT_FAILURE);
+    }
 #endif
+    if (!match && (!strncmp(argv[0],"-rp",3) || !strncmp(argv[0],"-tp",3))) {
+      fprintf(stderr,"unknown profiler option: %s\n",argv[0]);
       exit(EXIT_FAILURE);
     }
     if (!match) {
@@ -252,6 +317,16 @@ parseCmdLineArgs(int argc, char *argv[])
   }
 #endif
 
+  if (p_options && !mlkit_tp_enabled
+#ifdef PROFILING
+      && !mlkit_rp_enabled
+#endif
+     ) {
+    fprintf(stderr,"common profiler options require -rp, -tp or -p\n"); exit(EXIT_FAILURE);
+  }
+  if (!mlkit_tp_enabled && tp_options) {
+    fprintf(stderr,"time profiler options require -tp\n"); exit(EXIT_FAILURE);
+  }
 #ifdef PROFILING
   if (!mlkit_rp_enabled && rp_options) {
     fprintf(stderr, "profiler options require -rp\n"); exit(EXIT_FAILURE);

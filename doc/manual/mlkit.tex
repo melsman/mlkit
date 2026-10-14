@@ -995,7 +995,7 @@ is available as \inline{kitdemo/run}.
 Next, run the executable with a runtime argument block:
 \begin{scriptcode}[mathescape=false]
   $ ./run +RTS -rp -rp_interval 1ms -RTS
-  $ rpview profile.rp -o profile.html
+  $ pview profile.prof -o profile.html
 \end{scriptcode}
 This requests snapshots every millisecond, captured at safe points. A larger
 interval reduces sampling overhead. Without the runtime argument block, recording
@@ -4963,12 +4963,12 @@ page~\pageref{msortregion.fig}.
 \includerpv{msortreset2.pdf}
 \index{msortreset2.pdf@\texttt{msortreset2.pdf}}%
 \index{msortreset2.svg@\texttt{msortreset2.svg}}%
-\index{rpview@\texttt{rpview}}%
+\index{pview@\texttt{pview}}%
 \caption{Region profiling of the improved mergesort.  The upper triangle
   contains unsorted elements, while the lower triangle contains sorted elements.
   The program was compiled with profiling enabled and then run with the command
-  \inline{run -RTS -rp -rp_interval 1ms -rp_file msortreset2.rp}.  The svg picture \inline{msortreset2.svg} was
-  generated with the command \inline{rpview msortreset2.rp -o msortreset2.svg} and then
+  \inline{run +RTS -rp -rp_interval 1ms -p_file msortreset2.rp}.  The svg picture \inline{msortreset2.svg} was
+  generated with the command \inline{pview msortreset2.rp -o msortreset2.svg} and then
   converted into \inline{msortreset2.pdf} using the Inkscape command \inline{inkscape -D -o msortreset2.pdf msortreset2.svg}.}
 \label{msortreset.fig}
 \end{figure}
@@ -5156,7 +5156,7 @@ one line and then extracting the name.
 \caption{Region profile of the comment scanner. The occasional increases in
   memory use is due to the functions that read a file name from a file
   descriptor.  The program was compiled with profiling enabled, then run with
-  the command \inline{run +RTS -rp -rp_interval 1ms -rp_file scan.rp < ../kitdemo/scanfiles}.  An svg-file \inline{scan.svg} can be generated with the command \inline{rpview scan.rp -o scan.svg} and converted to \inline{scan.pdf} using
+  the command \inline{run +RTS -rp -rp_interval 1ms -p_file scan.rp < ../kitdemo/scanfiles}.  An svg-file \inline{scan.svg} can be generated with the command \inline{pview scan.rp -o scan.svg} and converted to \inline{scan.pdf} using
   \inline{inkscape -D -o scan.pdf scan.svg}. }
 \label{scan.fig}
 \end{figure}
@@ -6691,9 +6691,9 @@ well as \inline{-rp}-compiled libraries.
 Once an executable with profiling support has been built, it can be executed and
 runtime options can be passed to the executable using runtime option blocks on
 the form \kw{+RTS ... -RTS}. Options allow for specifying the sampling interval
-and for specifying in which rp-file to store the region profile data. Given an
-rp-file, the programmer may now use the interactive \inline{rpview} program or
-use \inline{rpview}'s command-line interface to generate region profile graphs of
+and for specifying in which profile file to store the region profile data. Given a
+profile file, the programmer may now use the interactive \inline{pview} program or
+use \inline{pview}'s command-line interface to generate region profile graphs of
 various kinds.
 
 We shall now explain in more detail how to profile programs. For example, we
@@ -6743,7 +6743,7 @@ be created:
   If one has a site attribution profile showing that program point \kw{pp42}, say,
   contributes with allocation, one can search for \kw{pp42} in the
   region-annotated program and find the construct that caused the
-  allocation. The interactive version of \inline{rpview} generates an
+  allocation. The interactive version of \inline{pview} generates an
   interactive HTML-file that allows the programmer to inspect allocation sites
   interactively.
 
@@ -6774,10 +6774,10 @@ runtime when region-polymorphic functions are applied. The region flow graph
 comes in handy when profiling large programs and when one wants to find out why
 a formal region variable is instantiated to a certain \lstinline{region}-bound
 region variable. Using the region flow graph, the interactive version of
-\inline{rpview} also allows the programmer to \emph{slice the program} with
+\inline{pview} also allows the programmer to \emph{slice the program} with
 respect to a particular region; the programmer may then see how the particular
 region is passed to other functions. We shall not document the interactive
-version of \inline{rpview} here but encourage the reader to try it out.
+version of \inline{pview} here but encourage the reader to try it out.
 
 The following example clarifies the use of a region flow graph.  Suppose the
 region profile shows that \kw{r5} is responsible for most of the memory usage.
@@ -6798,12 +6798,12 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
 \hrule \medskip
 \begin{center}
 \begin{picture}(18,17)
-\put(2,0){\picbox{Generate profile graph \\ with {\tt rpview}}}
+\put(2,0){\picbox{Generate profile graph \\ with {\tt pview}}}
 \put(2,6){\picbox{Choose runtime \\ profiling strategy \\ and execute}}
 \put(2,12){\picbox{Choose compile-time \\ profiling strategy \\ and compile}}
 \put(11,0){\dashbox{.5}(7,4){\parbox{38mm}{\begin{center}
         Region profile, site attribution profile, or stack profile \end{center}}}}
-\put(11,6){\dashbox{.5}(5,3){\parbox{20mm}{\begin{center} data file {\tt profile.rp} \end{center}}}}
+\put(11,6){\dashbox{.5}(5,3){\parbox{20mm}{\begin{center} data file {\tt profile.prof} \end{center}}}}
 \put(11,11){\dashbox{.5}(7,2){\parbox{38mm}{\begin{center}
         Region flow graph \end{center}}}}
 \put(11,15){\dashbox{.5}(7,2){\parbox{38mm}{\begin{center}
@@ -6830,7 +6830,7 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
 \caption{Overview of the profile process. The process sometimes requires the
   programmer to refine the runtime profiling strategy, or even the compile-time
   profiling strategy. Dotted boxes represent output from the compiler, from
-  executing the program, and from using the tool \kw{rpview}, which can be used
+  executing the program, and from using the tool \kw{pview}, which can be used
   for generating graphs (in svg format) from the exported data file.}
 \label{profStrategy.fig}
 \end{center}
@@ -6911,9 +6911,9 @@ Figure~\ref{scan_rev1.fig}.
   graphs, program points, and call-explicit expressions (redirected to log
   files). Then by executing
   %
-  \inline{echo life.sml | run +RTS -rp -rp_interval 723i -rp_region all -rp_file scan_rev1.rp}
+  \inline{echo life.sml | run +RTS -rp -rp_interval 723i -rp_region all -p_file scan_rev1.rp}
   %
-  and finally by typing \inline{rpview scan_rev1.rp -o scan_rev1.svg}.}
+  and finally by typing \inline{pview scan_rev1.rp -o scan_rev1.svg}.}
 \label{scan_rev1.fig}
 \medskip\hrule
 \end{figure}
@@ -6928,7 +6928,7 @@ profile of that region, see Figure \ref{scan_rev1_r.fig}.
 \caption{There seems to be a space leak at allocation site 118 (i.e., program point \kw{pp118}). The graph
   was generated by typing
   %
-  \inline{rpview scan_rev1.rp --region r338955 --show-base -o scan_rev1_r.svg}.}
+  \inline{pview scan_rev1.rp --region r338955 --show-base -o scan_rev1_r.svg}.}
 \label{scan_rev1_r.fig}
 \medskip\hrule
 \end{figure}
@@ -6981,8 +6981,8 @@ non-local region-polymorphic function introduces an edge in the region flow
 graph, but the graph says nothing about in which module the called function is
 located. Thus, it may be necessary to look in several log files to find the complete path
 from a formal region variable to an actual region variable. By inspecting the
-call-explicit programs found in the two log files \lstinline{basis/MLB/ARM64_RI_PROF/Int.sml.log} and
-\lstinline{kitdemo/MLB/ARM64_RI_PROF/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
+call-explicit programs found in the two log files \lstinline{basis/MLB/ARM64_RI_PROF_CODE1_TP1/Int.sml.log} and
+\lstinline{kitdemo/MLB/ARM64_RI_PROF_CODE1_TP1/lib.sml.log} one finds that both \kw{toString} and \kw{readWord}
 eventually call \kw{implode}. However, \kw{readWord} is called only initially,
 thus, we conclude that the space leak is caused by function \kw{Int.toString}
 being called with region \kw{r338955} instantiated for the formal region
@@ -7063,11 +7063,11 @@ project.
   project will use the same number of words. The graph was generated by
   executing
   %
-  \inline{echo life.sml | ./run +RTS -rp -rp_interval 723i -rp_file scan_rev2.rp}
+  \inline{echo life.sml | ./run +RTS -rp -rp_interval 723i -p_file scan_rev2.rp}
   %
   and
   %
-  \inline{rpview scan_rev2.rp -o scan_rev2.svg}.}
+  \inline{pview scan_rev2.rp -o scan_rev2.svg}.}
 \label{scan_rev2.fig}
 \medskip\hrule
 \end{figure}
@@ -7122,14 +7122,14 @@ the options \kw{-rp}, \kw{-Ppp}, \kw{-Prfg}, and \kw{-Pcee} are passed to the
 MLKit compiler.
 
 By also passing the option \kw{-log\_to\_file} to the MLKit compiler, the MLKit
-generates several files, of which we have \lstinline{MLB/ARM64_RI_PROF/life.sml.log} (containing, among
+generates several files, of which we have \lstinline{MLB/ARM64_RI_PROF_CODE1_TP1/life.sml.log} (containing, among
 other things, the call-explicit region-annotated program with program points and
 the region flow graph in text layout) and the executable file \kw{run}.
 
 %-------------------------------------------------
 \section{The Log File}
 %-------------------------------------------------
-In the file \lstinline{MLB/ARM64_RI_PROF/life.sml.log} you find the call-explicit region-annotated
+In the file \lstinline{MLB/ARM64_RI_PROF_CODE1_TP1/life.sml.log} you find the call-explicit region-annotated
 program with program points and the region flow graph in text layout for the
 \kw{life.sml} source file.  The region flow graph is found by searching for the
 string \kw{Region Flow Graph}. The graph contains the following
@@ -7206,24 +7206,26 @@ edge to scc node (id 33) containing region variable \kw{r339827}.
 \section{Runtime Profiling Strategy}
 Compile with \kw{-rp}, then enable recording through a runtime block:
 \begin{scriptcode}
-  $ ./run +RTS -rp -rp_interval 10ms -rp_file profile.rp -RTS
+  $ ./run +RTS -rp -rp_interval 10ms -p_file profile.prof -RTS
   $ ./run +RTS -rp -rp_region all -rp_gc_samples -RTS input.txt
-  $ rpview profile.rp -o profile.html
+  $ pview profile.prof -o profile.html
 \end{scriptcode}
 The second example requires a GC runtime. Periodic requests use wall-clock
 time and capture at safe points; \kw{-rp\_interval 0} disables periodic
 requests. The options \kw{-rp\_paused} and \kw{-rp\_report} control initial
-pausing and the final profiling report. Use \kw{+RTS -help} for runtime help.
+pausing and the final profiling report. The shared output option is
+\kw{-p\_file PATH}; its default is \kw{profile.prof}. The option
+\kw{-p\_paused} also starts enabled profiling paused. Use \kw{+RTS -help} for runtime help.
 
 %--------------------------------------------
 \section{Processing the Profile Data File}
 %--------------------------------------------
-The profile data-file \kw{profile.rp} can be processed by the
+The profile data-file \kw{profile.prof} can be processed by the
 %
-\index{rpview@\texttt{rpview} options|(}%
+\index{pview@\texttt{pview} options|(}%
 %
-graph generator \kw{rpview} (read: Region-profile-viewer) found in the \kw{bin}
-directory.\footnote{The \boxml{rpview} program is inspired by the retired tool
+graph generator \kw{pview} (read: Profile Viewer) found in the \kw{bin}
+directory.\footnote{The \boxml{pview} program is inspired by the retired tool
 \texttt{rp2ps}, which was based on a Haskell profiler written by Colin Runciman,
 David Wakeling and Niklas R\"{o}jemo.} The graph generator is controlled by
 command line options.
@@ -7234,14 +7236,14 @@ A
 %
 region profile is produced by typing
 \begin{scriptcode}
-  $ rpview -o region.svg
+  $ pview -o region.svg
 \end{scriptcode}
 at the command prompt. The program produces an svg-file \kw{region.svg} by
 reading profile information from the
 %
 \index{profile data file}%
 %
-profile data file \kw{profile.rp}, see Figure~\ref{profStrategy.fig}.  A region
+profile data file \kw{profile.prof}, see Figure~\ref{profStrategy.fig}.  A region
 profile for the \kw{life} program is shown in Figure~\ref{lifeprof2000.fig} on
 page~\pageref{lifeprof2000.fig}. The region that occupies the largest area is at
 the top. If there are more regions than can be shown in different colors, then
@@ -7262,7 +7264,7 @@ a
 %
 site attribution profile of region \kw{r339819} is produced by typing
 \begin{scriptcode}
-  $ rpview --region r339819 -o life_ex2.svg
+  $ pview --region r339819 -o life_ex2.svg
 \end{scriptcode}
 at the command prompt. We obtain the site attribution profile shown in
 Figure~\ref{prof_eks2.fig}.
@@ -7289,7 +7291,7 @@ stack, excluding space used by finite regions. A
 %
 stack profile is generated by typing
 \begin{scriptcode}
-  $ rpview --metric stack -o life_ex3.svg
+  $ pview --metric stack -o life_ex3.svg
 \end{scriptcode}
 at the command prompt.
 
@@ -8539,7 +8541,7 @@ profiler. In particular, object headers are compacted into one machine
 word. Region profiling now does not track finite regions, but it works with
 threads and it has an interactive viewer that lets the user explore memory use
 of a program run interactively, after the program terminates. The new tool
-\lstinline{rpview} also has a command-line interface, which allows the
+\lstinline{pview} also has a command-line interface, which allows the
 programmer to create region profiling graphs like the now retired
 \lstinline{rp2ps} program.
 
@@ -9489,7 +9491,7 @@ Options:
 
 --region_profile, -rp                                    (off)
      Emit packed object descriptors, IR metadata and safe-point
-     polls for rpview.
+     polls for pview.
 
 --regionvar N                                             (~1)
      Uses the provided number as the id of the first
@@ -9527,7 +9529,7 @@ Options:
      compiling mlb-files, which make use of the file system
      as a repository.
 
---rp_file S                                       (profile.rp)
+--p_file S                                       (profile.prof)
      Forward profiler option to the REPL runtime.
 
 --rp_gc_samples                                          (off)

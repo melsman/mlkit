@@ -7,7 +7,7 @@ set -eu
 case "$ARM64_PREFIX" in
   *[[:space:]]*) echo 'Use a stable, space-free symlink as ARM64_PREFIX (compiler dependency paths cannot contain whitespace).' >&2; exit 1 ;;
 esac
-native_tools='mlkit reml kittester rpview mlkit-mllex mlkit-mlyacc'
+native_tools='mlkit reml kittester pview mlkit-mllex mlkit-mlyacc'
 for tool in $native_tools; do
   [ "$(lipo -archs "$ARM64_NATIVE_BIN/$tool")" = arm64 ]
 done
@@ -51,7 +51,7 @@ for flags in '-no_gc' '-gc' '-gengc' '-gc -rp' '-no_gc -rp' '-no_gc -par'; do
   case "$flags" in
     *-rp*)
       (cd "$scratch" && ./probe +RTS -rp -rp_interval 0 > actual &&
-        "$ARM64_PREFIX/bin/rpview" profile.rp -o profile.html) ;;
+        "$ARM64_PREFIX/bin/pview" profile.prof -o profile.html) ;;
     *) (cd "$scratch" && ./probe > actual) ;;
   esac
   cmp "$scratch/expected" "$scratch/actual"

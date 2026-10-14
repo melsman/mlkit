@@ -133,7 +133,7 @@ for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
       case "$flags" in ''|'-rp') ;; *) continue;; esac
     fi
     "$compiler" $default_gc --no_basislib $flags $extra_gc -o gc-roots gc-roots.sml >> integration.log 2>&1
-    case "$flags" in *-rp*) profile_flags="-rp -rp_interval 1ms -rp_file integration.rp";; *) profile_flags="";; esac
+    case "$flags" in *-rp*) profile_flags="-rp -rp_interval 1ms -p_file integration.rp";; *) profile_flags="";; esac
     case "$flags" in *gc*) report_flags="-report_gc";; *) report_flags="";; esac
     ./gc-roots +RTS $profile_flags $report_flags > actual 2> gc-report.log
     cmp gc-expected actual

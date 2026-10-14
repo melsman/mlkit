@@ -127,9 +127,9 @@ install_smltojs_basislibs:
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js,df} $(LIBDIR)/basis/MLB/Js
 
 ifeq ($(DARWIN_NATIVE),1)
-BASIS_CACHES = ARM64_RI ARM64_RI_PAR ARM64_RI_GC ARM64_RI_GC_PROF ARM64_RI_PROF_PAR ARM64_RI_PROF
+BASIS_CACHES = ARM64_RI ARM64_RI_PAR ARM64_RI_GC ARM64_RI_GC_PROF_CODE1_TP1 ARM64_RI_PROF_CODE1_TP1_PAR ARM64_RI_PROF_CODE1_TP1
 else
-BASIS_CACHES = RI RI_PAR RI_GC RI_GC_PROF RI_PROF_PAR RI_PROF
+BASIS_CACHES = RI RI_PAR RI_GC RI_GC_PROF_CODE1_TP1 RI_PROF_CODE1_TP1_PAR RI_PROF_CODE1_TP1
 endif
 
 .PHONY: install_mlkit_basislibs
@@ -139,7 +139,7 @@ install_mlkit_basislibs:
 	    test -d "$$dir/MLB/$$cache" || { echo "Run make build_basislibs before installing" >&2; exit 1; }; \
 	    $(MKDIR) "$(LIBDIR)/$$dir/MLB/$$cache"; \
 	    set --; \
-	    pattern='*'; test "$$dir" != kitlib || pattern='region-profile.*'; \
+	    pattern='*'; test "$$dir" != kitlib || pattern='*-profile.*'; \
 	    for file in $$dir/MLB/$$cache/$$pattern; do \
 	      case "$$file" in \
 	        *.d|*.eb|*.eb1|*.lnk|*.o|*.o.ir|*.log|*.df|*.rev) \
@@ -188,6 +188,7 @@ install_basis:
 	$(INSTALLDATA) basis/Makefile $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p kitlib/region-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
+	$(INSTALLDATA) -p kitlib/time-profile.{sml,sig,mlb} $(LIBDIR)/kitlib
 	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 	@set -e; for file in basis/*.log; do if test -f "$$file"; then $(INSTALLDATA) -p "$$file" $(LIBDIR)/basis; fi; done
@@ -244,7 +245,7 @@ install0:
 	$(INSTALL) bin/reml $(BINDIR)
 	$(INSTALL) bin/mlkit-mllex $(BINDIR)
 	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
-	$(INSTALL) bin/rpview $(BINDIR)
+	$(INSTALL) bin/pview $(BINDIR)
 	$(INSTALL) bin/kittester $(BINDIR)
 	$(MKDIR) $(LIBDIR)
 	$(MKDIR) $(LIBDIR)/mlkit
@@ -258,7 +259,7 @@ install0:
 	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/kittester.1 $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/rpview.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/pview.1 $(MANDIR)/man1
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
@@ -603,17 +604,18 @@ test:
 	$(MAKE) -j1 -C test/explicit_regions all
 	$(MAKE) -j1 -C test/parallelism all
 
-.PHONY: rpview
-rpview:
+.PHONY: pview
+pview:
 	$(MAKE) -C src/Tools/RegionProfile
 
-# Test data encoder; use the same seed compiler and Basis as rpview.
+# Test data encoder; use the same seed compiler and Basis as pview.
 .PHONY: rpfixture
 rpfixture: bin/rpfixture
 
 bin/rpfixture: test/region_profile/encode-fixture.sml test/region_profile/encode-fixture.mlb \
               src/Tools/RegionProfile/Json.sml src/Tools/RegionProfile/Binary.sml \
-              src/Tools/RegionProfile/Reader.sml src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml
+              src/Tools/RegionProfile/Code.sml src/Tools/RegionProfile/Reader.sml \
+              src/Tools/RegionProfile/profile-data.mlb src/Kitlib/binarymap.mlb src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml
 	$(MKDIR) bin
 	cd test/region_profile && $(MLCOMP) -output "$(CWD)/bin/rpfixture" encode-fixture.mlb
 
@@ -623,11 +625,12 @@ PRETTYPRINT_BUILD ?= $(CWD)/test/prettyprint/build
 PRETTYPRINT_TESTS ?= spans locations ir-report link-map
 .PHONY: prettyprint-tools
 prettyprint-tools:
-	$(MKDIR) "$(PRETTYPRINT_BUILD)/test/prettyprint" "$(PRETTYPRINT_BUILD)/src/Common" "$(PRETTYPRINT_BUILD)/src/Kitlib" "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile"
+	$(MKDIR) "$(PRETTYPRINT_BUILD)/test/prettyprint" "$(PRETTYPRINT_BUILD)/src/Common" "$(PRETTYPRINT_BUILD)/test/prettyprint/support" "$(PRETTYPRINT_BUILD)/src/Kitlib" "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile"
 	cp -p test/prettyprint/*.sml test/prettyprint/*.mlb "$(PRETTYPRINT_BUILD)/test/prettyprint/"
-	cp -p src/Common/PRETTYPRINT.sig src/Common/PrettyPrint.sml src/Common/MD5.sml src/Common/IRLocations.sml "$(PRETTYPRINT_BUILD)/src/Common/"
-	cp -p src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml "$(PRETTYPRINT_BUILD)/src/Kitlib/"
-	cp -p src/Tools/RegionProfile/Json.sml src/Tools/RegionProfile/Binary.sml src/Tools/RegionProfile/Reader.sml src/Tools/RegionProfile/IR.sml "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile/"
+	cp -p src/Common/PRETTYPRINT.sig src/Common/PrettyPrint.sml src/Common/IRLocations.sml "$(PRETTYPRINT_BUILD)/test/prettyprint/support/"
+	cp -p src/Common/MD5.sml src/Common/md5.mlb "$(PRETTYPRINT_BUILD)/src/Common/"
+	cp -p src/Kitlib/BINARYMAP.sig src/Kitlib/Binarymap.sml src/Kitlib/binarymap.mlb "$(PRETTYPRINT_BUILD)/src/Kitlib/"
+	cp -p src/Tools/RegionProfile/Json.sml src/Tools/RegionProfile/Binary.sml src/Tools/RegionProfile/Code.sml src/Tools/RegionProfile/Reader.sml src/Tools/RegionProfile/IR.sml src/Tools/RegionProfile/profile-data.mlb src/Tools/RegionProfile/profile-ir.mlb "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile/"
 	set -e; cd "$(PRETTYPRINT_BUILD)/test/prettyprint"; for name in $(PRETTYPRINT_TESTS); do \
 	  $(MLCOMP) -output "$(PRETTYPRINT_BUILD)/$$name" "$$name.mlb"; \
 	done

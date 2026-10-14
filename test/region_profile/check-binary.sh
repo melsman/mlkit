@@ -2,7 +2,7 @@
 # Hand-encoded wire bytes are independent of the SML fixture encoder.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-binary.XXXXXX")
 cleanup () {
   status=$?
@@ -34,27 +34,27 @@ cd "$OUT"
  printf '\377\377\377\377\377\377\377\377'
  printf '\000\000\000\000\000\000\000\000'
 } > complete.rp
-"$RPVIEW" complete.rp --format json > complete.json
+"$PVIEW" complete.rp --format json > complete.json
 [ "$(wc -l < complete.json | tr -d ' ')" -eq 2 ]
 grep -Fq '"main_source":"test.sml"' complete.json
 grep -Fq '"page_bytes":8192' complete.json
 grep -Fq '"word_bytes":8' complete.json
 grep -Fq '"time":1' complete.json
 grep -Fq '"max_pages":18446744073709551615' complete.json
-"$RPVIEW" complete.rp -o inferred.json > /dev/null
+"$PVIEW" complete.rp -o inferred.json > /dev/null
 cmp complete.json inferred.json
-"$RPVIEW" complete.rp --format json -o - > stdout.json
+"$PVIEW" complete.rp --format json -o - > stdout.json
 cmp complete.json stdout.json
-"$RPVIEW" header.rp --format json > header.json
+"$PVIEW" header.rp --format json > header.json
 # Every partial prefix/payload of the final record leaves the header readable.
 n=49
 while [ "$n" -lt 86 ]; do
  dd if=complete.rp of=partial.rp bs=1 count="$n" 2>/dev/null
- "$RPVIEW" partial.rp --format json > partial.json
+ "$PVIEW" partial.rp --format json > partial.json
  cmp header.json partial.json
  n=$((n+1))
 done
-reject() { if "$RPVIEW" invalid.rp --format json > stdout 2>stderr; then echo 'Accepted corrupt binary' >&2; exit 1; fi; }
+reject() { if "$PVIEW" invalid.rp --format json > stdout 2>stderr; then echo 'Accepted corrupt binary' >&2; exit 1; fi; }
 cp complete.rp invalid.rp
 printf '\004' | dd of=invalid.rp bs=1 seek=6 conv=notrunc 2>/dev/null
 reject
@@ -84,6 +84,6 @@ cp complete.json invalid.rp
 reject
 # JSON output gets the same alias protection as HTML and SVG.
 ln complete.rp alias.rp
-if "$RPVIEW" complete.rp --format json -o alias.rp >stdout 2>stderr; then exit 1; fi
+if "$PVIEW" complete.rp --format json -o alias.rp >stdout 2>stderr; then exit 1; fi
 grep -q 'input and output' stderr
 echo 'Binary: golden bytes, uint64, JSON/stdout, truncation, malformed frames and aliases passed'

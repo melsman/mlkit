@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   context ctx = {0}; top_ctx = &ctx;
   Ro r = {0}, ignored = {0};
   mlkit_rp_enabled = 1; mlkit_rp_interval_us = 0;
-  mlkit_rp_region = "fixture:42"; mlkit_rp_filename = argv[1];
+  mlkit_rp_region = "fixture:42"; mlkit_p_filename = argv[1];
   mlkit_rp_init();
   /* Global selectors use compiler keys, not the run-type enumeration. */
   static const char *selectors[] = {

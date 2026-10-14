@@ -4,8 +4,8 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-ir-viewer.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
-sh "$ROOT/test/region_profile/encode-fixture.sh" "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.rp"
-"${RPVIEW:-$ROOT/bin/rpview}" "$OUT/profile.rp" -o "$OUT/profile.html" > /dev/null
+sh "$ROOT/test/region_profile/encode-fixture.sh" "$ROOT/test/region_profile/graph-fixture.json" "$OUT/profile.prof"
+"${PVIEW:-$ROOT/bin/pview}" "$OUT/profile.prof" -o "$OUT/profile.html" > /dev/null
 {
  sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/profile.html"
  sed -n '/^<script>$/,/^<\/script>/p' "$OUT/profile.html" | sed '1d;$d;s/^const samples=/let samples=/'
@@ -22,7 +22,7 @@ fi
 node "$OUT/check.js"
 # Optional native profiles verify the actual compiler/runtime/IR packaging chain.
 for profile in "$@"; do
- "${RPVIEW:-$ROOT/bin/rpview}" "$profile" -o "$OUT/native.html" > /dev/null
+ "${PVIEW:-$ROOT/bin/pview}" "$profile" -o "$OUT/native.html" > /dev/null
  {
   sh "$ROOT/test/region_profile/viewer-prelude.sh" "$OUT/native.html"
   sed -n '/^<script>$/,/^<\/script>/p' "$OUT/native.html" | sed '1d;$d'

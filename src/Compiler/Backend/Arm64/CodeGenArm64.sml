@@ -62,6 +62,11 @@ struct
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ AddressLabels.pr_label l)
   val rpSource = ref (NameLab "unused_rp_source")
   val rpUnit = ref (NameLab "unused_rp_unit")
+  (* Linked unit tables retain every emitted function, including library code.
+   * End labels follow the complete body and survive instruction relaxation. *)
+  fun codeMetadata () = true (* Passive ranges do not change executable instructions. *)
+  val codeRanges = ref ([] : string list list)
+  fun rpCodeUnit l = NameLab("mlkit_rp_code_" ^ AddressLabels.pr_label l)
   val rpName = ref (fn (_:string) => NameLab "unused_rp_name")
   val rpFrame = ref 0
   val rpArgs = ref 0
@@ -1967,6 +1972,14 @@ struct
            ++ loadInto (X 28,8,X 16)
            ++ storeInto (X 16,SP,off+16)
            ++ moveInto (SP,X 16)
+           (* The saved SP is 16-aligned. Preserve the GC-deferral policy
+            * in bit zero for nonlocal exits across protected C calls. *)
+           ++ (if timeProfile() andalso gc() then
+                 addressInto(NameLab "disable_gc",X 17)
+                 ++ loadInto(X 17,0,X 17)
+                 ++ instruction A.and_ (R(X 17),R(X 17),I(1))
+                 ++ instruction A.orr (R(X 16),R(X 16),R(X 17))
+               else fn c => c)
            ++ storeInto (X 16,SP,off+24)
            ++ storeInto (X 29,SP,off+32)
            ++ loadInto (X 28,0,X 16)
@@ -2087,6 +2100,8 @@ struct
                          ++ one (Directive(Quad ["0x52504d34"])) else fn code => code)
                    ++ one (Label returnLab)
                    ++ resumeGCInto()
+                   ++ timeRestoreInto 0
+                   ++ (if timeProfile() then stackInto(false,16) else fn c => c)
                    ++ restoreCInto()) code
                 val code = if parallel() then
                     (moveInto(X 0,X 19)
@@ -2104,6 +2119,8 @@ struct
                  ++ one (Directive(Quad ["0"]))
                  ++ functionInto(NameLab name)
                  ++ saveCInto()
+                 ++ (if timeProfile() then stackInto(true,16) else fn c => c)
+                 ++ timeSaveInto 0 NONE
                  ++ deferGCInto()) code
               end)
         in
@@ -2263,6 +2280,11 @@ struct
    * function header and the root walker continues to read it there. *)
   fun gcStubInto lab code =
     let
+      val finish = localFresh()
+      val name = stringData("<gc-stub>" ^ pr_lab lab)
+      val () = codeRanges := [pr_lab lab,pr_lab finish,pr_lab(!rpUnit),
+                             pr_lab name,pr_lab(!rpSource),pr_lab(!allocationIR)] :: !codeRanges
+      val code = Label finish :: code
       val registers = List.filter (fn n => n<>18) (List.tabulate(31,fn i => i))
       val floats = List.tabulate(8,fn i => i)
       val code = (stackInto (false,352) ++ (one A.ret)) code
@@ -2501,7 +2523,13 @@ struct
     end
   fun topInto (l,cc,body) code =
     let
-      val suffix = code
+      val finish = if codeMetadata() then localFresh() else NameLab "unused_rp_function_end"
+      val suffix = if codeMetadata() then Label finish :: code else code
+      val () = if codeMetadata() then
+        codeRanges := [pr_lab(MLFunLab l),pr_lab finish,pr_lab(!rpUnit),
+                       pr_lab(!rpName(AddressLabels.pr_label l)),pr_lab(!rpSource),
+                       pr_lab(!allocationIR)] :: !codeRanges
+        else ()
       val () = allocationFunction := AddressLabels.pr_label l
       val ac = CallConv.get_ccf_size cc
       val () = currentArgs := ac
@@ -2535,7 +2563,7 @@ struct
       val () = currentLoop := Option.map (fn loop => (l,loop)) loop
       val body = if not(gc()) andalso fsz > 0 andalso !spillSafe andalso Option.isSome loop then sinkLoopSpills fsz body else body
       val code = (stmtsInto fsz results body
-         ++ epilogueInto fsz) code
+         ++ epilogueInto fsz) suffix
       val code = rpPollInto fsz code
 
     in
@@ -2558,15 +2586,22 @@ struct
       val () = dataLabels := []
       val () = rpNames := []
       val () = rpName := stringData
-      val () = if sampledProfile() then rpSource := stringData(!Flags.current_source_file) else ()
+      val () = if codeMetadata() then rpSource := stringData(!Flags.current_source_file) else ()
       val () = allocationSites := []
-      val () = if allocationProfile() then allocationIR := stringData (!IRLocations.currentIdentity) else ()
-      val () = if sampledProfile() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
-      val () = if sampledProfile() then
+      val () = codeRanges := []
+      val () = if codeMetadata() then allocationIR := stringData (!IRLocations.currentIdentity) else ()
+      val () = if codeMetadata() then rpUnit := stringData(AddressLabels.pr_label main_lab) else ()
+      val () = if codeMetadata() then
         addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpSourceSlot main_lab)),
                    Label(rpSourceSlot main_lab),Directive(Quad [pr_lab(!rpSource) ^ " + 8"])] else ()
       val text = foldr (fn (LS.FUN x,code) => topInto x code
                         | (LS.FN x,code) => topInto x code) [] code
+      val () = if codeMetadata() then
+        addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpCodeUnit main_lab)),
+                   Label(rpCodeUnit main_lab),
+                   Directive(Quad ((if timeProfile() then "2" else "1") :: Int.toString(length(!codeRanges)) ::
+                                   List.concat(!codeRanges)))]
+        else ()
       fun data (l,code) =
         (one (Directive(Data))
            ++ one (Directive(Align 3))
@@ -2628,6 +2663,19 @@ struct
     end
   fun allocationStubsInto code =
     let
+      fun shared lab name target setup code =
+        let val finish = localFresh()
+            val unit = stringData("<runtime/C>")
+            val source = stringData("<runtime>")
+            val identity = stringData ""
+            val function = stringData name
+            val () = addStatic [Directive(Data),Directive(Align 3),
+              Directive(Global(NameLab("mlkit_tp_shared_" ^ name))),
+              Label(NameLab("mlkit_tp_shared_" ^ name)),
+              Directive(Quad ["1","1",pr_lab lab,pr_lab finish,pr_lab unit,
+                              pr_lab function,pr_lab source,pr_lab identity])]
+        in preservingStubInto lab setup target (Label finish :: code)
+        end
       fun setup untag bytes code =
         (moveInto (X 16,X 0)
          ++ moveInto (X 17,X 1)
@@ -2635,10 +2683,10 @@ struct
          ++ countInto (X 3) untag
          ++ (if profiling() then loadInto (SP,bytes,X 4) else countInto (X 4) 0)) code
     in
-      (preservingStubInto allocStub (setup 0) (NameLab "mlkit_arm64_alloc")
-       ++ preservingStubInto untaggedAllocStub (setup 1) (NameLab "mlkit_arm64_alloc")
-       ++ preservingStubInto resetStub
-        (fn _ => fn code => moveInto (X 16,X 0) code) (NameLab "resetRegion")) code
+      (shared allocStub "mlkit_arm64_allocate_preserving" (NameLab "mlkit_arm64_alloc") (setup 0)
+       ++ shared untaggedAllocStub "mlkit_arm64_allocate_untagged_preserving" (NameLab "mlkit_arm64_alloc") (setup 1)
+       ++ shared resetStub "mlkit_arm64_reset_preserving" (NameLab "resetRegion")
+        (fn _ => fn code => moveInto (X 16,X 0) code)) code
     end
   fun linkCode repl (labs,_) =
     let
@@ -2671,6 +2719,15 @@ struct
         (addStatic(datum (NameLab "mlkit_rp_allocation_capable") ["4"] []);
          addStatic(datum (NameLab "mlkit_rp_build_id")
            [pr_lab(stringData(Time.toString(Time.now()))) ^ " + 8"] [])) else ()
+      val () = if codeMetadata() then
+        (addStatic(datum (NameLab "mlkit_tp_attribution_capable") [if timeProfile() then "2" else "0"] []);
+         addStatic(datum (NameLab "mlkit_rp_code_scope") [if repl then "2" else "1"] []);
+         addStatic(datum (NameLab "mlkit_rp_code_units")
+           ((if repl then [] else map (pr_lab o rpCodeUnit) labs @
+             map (pr_lab o NameLab) ["mlkit_tp_shared_mlkit_arm64_allocate_preserving",
+               "mlkit_tp_shared_mlkit_arm64_allocate_untagged_preserving",
+               "mlkit_tp_shared_mlkit_arm64_reset_preserving"]) @ ["0"]) []))
+        else ()
       fun init (place,l) code =
         (stackInto(true,8*even(BackendInfo.size_of_reg_desc()))
           ++ moveInto(X 28,X 0)
@@ -2739,11 +2796,21 @@ struct
             ++ datum (NameLab "data_end_addr") [pr_lab linkEnd]) code
 
       fun initGlobals () code = foldr (fn (g,code) => init g code) code globals
+      (* Discover shared descriptors before serializing the static data. *)
+      val allocationStubs = allocationStubsInto []
       val code = gcData []
       val code =
         (loadInto(X 19,16,X 16)
          ++ storeInto(X 16,X 28,8)
+         ++ (if timeProfile() andalso gc() then
+               addressInto(NameLab "disable_gc",X 17)
+               ++ loadInto(X 19,24,X 16)
+               ++ instruction A.and_ (R(X 16),R(X 16),I(1))
+               ++ storeInto(X 16,X 17,0)
+             else fn c => c)
          ++ loadInto(X 19,24,X 16)
+         ++ (if timeProfile() andalso gc() then
+               instruction A.and_ (R(X 16),R(X 16),I(~2)) else fn c => c)
          ++ moveInto(X 16,SP)
          ++ loadInto(X 19,32,X 29)
          ++ loadInto(X 19,0,X 30)
@@ -2793,12 +2860,18 @@ struct
          ++ functionInto raising
          ++ moveInto(X 0,X 28)
          ++ moveInto(X 1,X 27)
+         (* Nonlocal exception transfer abandons C-call save slots. A caught
+          * exception resumes ML; callback bridges restore their outer token. *)
+         ++ (if timeProfile() then
+               addressInto(NameLab "mlkit_tp_context",X 16)
+               ++ constantInto(0,X 17) ++ storeInto(X 17,X 16,0)
+             else fn c => c)
          ++ loadInto(X 28,8,X 19)
          ++ instruction A.cbz (R(X 19),L(uncaught))) code
       val code =
         (constantInto(0,X 0)
          ++ instruction A.b (L(NameLab "terminateML"))
-         ++ allocationStubsInto
+         ++ (fn code => allocationStubs @ code)
          ++ functionInto alloc
          ++ instruction A.tbz (R(X 0),I(0),L(finite))
          ++ stackInto(true,48)

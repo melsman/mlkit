@@ -9,12 +9,12 @@ with `+RTS -rp -RTS` to start recording. In an interactive session, either spell
 both metadata generation and profiling of the session runtime.
 
 Compile the executable and its ML dependencies with `-rp` (or `-region_profile`). Enable a
-session with the executable's `-rp` option. This is the unified object-and-region profiler; rpview is the sole interface. See [site occupancy](allocation-profiler.md).
+session with the executable's `-rp` option. This is the unified object-and-region profiler; pview is the sole interface. See [site occupancy](allocation-profiler.md).
 
 ```sh
 mlkit -no_gc -rp -o app app.mlb
-./app +RTS -rp -rp_interval 10ms -rp_file profile.rp -rp_report -RTS
-rpview profile.rp --output profile.html
+./app +RTS -rp -rp_interval 10ms -p_file profile.prof -rp_report -RTS
+pview profile.prof --output profile.html
 ```
 
 Supported combinations are single-threaded no-GC, GC and generational GC, and
@@ -31,8 +31,8 @@ X64 validation also passes the standalone accounting fixture under ASan/UBSan.
 | Runtime option | Meaning |
 | --- | --- |
 | `-rp` | Enable a process-wide session. Otherwise the API and runtime bookkeeping are disabled. |
-| `-rp_file PATH` | Output path; defaults to `profile.rp`. |
-| `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in rpview. |
+| `-p_file PATH` | Output path; defaults to `profile.prof`. |
+| `-rp_region UNIT:BINDING` or `-rp_region all` | Record site occupancy for one binding or every infinite region. With `all`, choose a region later in pview. |
 | `-rp_interval Nus`, `Nms`, `Ns`, `Ni`, or `0` | Integral wall-clock interval (e.g. `400us`); defaults to `10ms`. `Ni` samples every N compiled ML function entries per thread. Zero disables automatic periodic snapshots. |
 | `-rp_paused` | Initialize the session and bookkeeping, but pause automatic samples. |
 | `-rp_gc_samples` | Add paired before/after-GC snapshots, with the collection kind. Requires GC. |
@@ -57,7 +57,8 @@ counter decrement to entry checks; small counts can produce substantial overhead
 and large profiles. Recompile ML code with the updated compiler to obtain the
 entry counters.
 
-Configuration options require `-rp`. Include `kitlib/region-profile.mlb` for
+Region-specific configuration options require `-rp` (or `-p`). Shared
+`-p_file` and `-p_paused` require any enabled profiler. Include `kitlib/region-profile.mlb` for
 `RegionProfile.start`, `pause`, `sample`, `mark`, and `flush`. Start and pause
 capture their transition boundaries and are idempotent. Explicit samples work
 while paused. Marks and flushes also work while paused. Disabled operations are
@@ -67,7 +68,7 @@ states at the timer deadline.
 The REPL accepts the same profiler options at startup. For example:
 
 ```sh
-mlkit -no_gc -rp -rp_interval 20ms -rp_file repl.rp
+mlkit -no_gc -rp -rp_interval 20ms -p_file repl.rp
 mlkit -gengc -region_profile -rp_gc_samples
 ```
 
@@ -155,7 +156,7 @@ measurement costs, not allocation costs or an application-wide CPU profile.
 
 ## Stream and offline HTML viewer
 
-Output is a compact version-10 binary stream. `rpview` accepts only this format; older profiles must be regenerated. Each captured thread has a `stack` record with
+Output is a compact version-10 binary stream. `pview` accepts only this format; older profiles must be regenerated. Each captured thread has a `stack` record with
 `active_bytes`, `finite_bytes = 0`, and `stack_bytes = active_bytes`. Finite-region
 storage is included in the stack, not split into separate bands.
 The active span runs from the innermost captured ML frame through the outermost
@@ -164,6 +165,16 @@ the sampler's C frames, foreign-call frames, and unused OS stack capacity.
 The reader validates stack arithmetic, generation/page accounting and the
 required current metadata: source names, region kinds/types, page maxima, cache
 bytes and GC counts. Native frame maps use version 4.
+On macOS ARM64 and Linux X64, new recordings also retain function code ranges
+and the executable's identity/load address for offline interrupted-PC resolution
+(Mach-O UUID or ELF GNU build ID). See
+[T2 function metadata](time-profiler/t2-function-metadata.md) for the metadata
+extension, `pview --resolve-pc`, supported static-code scope, and unknown-PC
+handling. Time sampling records interrupted PCs alongside this metadata. Passive
+samples taken while GC is active use the `gc` address, so helpers and GC-time
+allocation contribute to GC rather than separate C rows. See the
+[final profiling design](time-profiler/t8-unified-profiling.md) for supported
+configurations, current options and milestone/validation status.
 Binding definitions carry a session-local `definition` ID and the static
 `unit`, `binding`, `source`, `name`, `kind`, and `region_type` fields. Definitions
 are emitted once, immediately before the first snapshot that uses them; no
@@ -171,7 +182,7 @@ up-front list is needed, including for code loaded by later REPL phrases.
 A region measurement contains only its `definition` reference, sample/thread/
 worker/CPU identities, and changing storage counters. Different metadata for the
 same source binding receives a separate definition; source binding identities
-still control graph grouping. `rpview` resolves references and rejects undefined
+still control graph grouping. `pview` resolves references and rejects undefined
 IDs and duplicate definitions. Static metadata has no slot in measurement records.
 Relink profiled executables with the current runtime and regenerate data files
 to obtain site occupancy; native compiler frame maps are unchanged.
@@ -193,9 +204,9 @@ Tags and field order are specified by `ProfileBinary.schema` in
 For readable output, dump the decoded records as JSON Lines:
 
 ```sh
-rpview profile.rp --format json                 # stdout
-rpview profile.rp -o profile.json               # file; infer format
-rpview profile.rp --format json -o -            # explicit stdout
+pview profile.prof --format json                 # stdout
+pview profile.prof -o profile.json               # file; infer format
+pview profile.prof --format json -o -            # explicit stdout
 ```
 
 JSON output preserves the record sequence, definition IDs, timestamps, markers,
@@ -210,7 +221,7 @@ The stream preserves unsigned 64-bit counters. The viewer transports them as
 decimal strings and sums them with `BigInt`; only chart coordinates use floating
 point.
 
-`rpview` is a compiled Standard ML program in `src/Tools/RegionProfile`.
+`pview` is a compiled Standard ML program in `src/Tools/RegionProfile`.
 It reads a binary profile file and writes HTML, SVG, or decoded JSON Lines. Both building
 and running the tool require no Python. The HTML/JavaScript template is embedded
 in the executable at build time by a small SML helper; the installed executable
@@ -218,13 +229,13 @@ needs no template files. There is no HTTP server, live polling, or network acces
 in the tool or generated page. Open the output directly in a browser and
 regenerate it to include new samples.
 
-The normal build/install includes `bin/rpview`. Both the viewer and its HTML
+The normal build/install includes `bin/pview`. Both the viewer and its HTML
 embedding tool use the seed compiler selected by `./configure --with-compiler`.
 To build the viewer separately:
 
 ```sh
-make rpview
-bin/rpview profile.rp --output profile.html
+make pview
+bin/pview profile.prof --output profile.html
 ```
 
 The page caption is `Region profile for X (GC Y)`, where X is the main source
@@ -237,7 +248,7 @@ The counter includes collections while sampling is paused and does not require
 without its final summary shows the recorded count as incomplete. A header-only
 file has no recorded collection count yet; this is shown as unavailable.
 
-The defaults are `profile.rp` and `profile.html`; `-o` is an alias for `--output`.
+The defaults are `profile.prof` and `profile.html`; `-o` is an alias for `--output`.
 The tool validates the stream before opening its output and rejects an output
 path that aliases its input. The offline HTML has no external dependencies. Its default graph stacks the nine largest
 region bindings and the remaining ML stack as colored bands. **Regions shown**
@@ -308,8 +319,8 @@ All three sampled Basis builds use `-log_to_file -Prfg -Ppp -Pcee` to
 write per-source diagnostic logs, including region-flow graphs, program points,
 and call-explicit code. These logs are installed alongside the IR files in each
 variant's cache directory (for example,
-`basis/MLB/ARM64_RI_GC_PROF/List.sml.log`). Use the logs for inspecting compiled
-library code; the `.ir` files provide metadata for rpview. Profiling compilations
+`basis/MLB/ARM64_RI_GC_PROF_CODE1_TP1/List.sml.log`). Use the logs for inspecting compiled
+library code; the `.ir` files provide metadata for pview. Profiling compilations
 with `-log_to_file` also use this layout for application sources. Printing
 options and missing diagnostic logs never force recompilation of cached code,
 whether the cache is writable or read-only. Logs reflect the settings used
@@ -337,13 +348,13 @@ needed. The ML-stack band explanation is omitted from SVG output. Axis and
 legend text use 16 SVG user units, and the right margin adjusts to the
 legend width. Open the SVG in a vector editor or convert it to PDF when needed.
 
-`rpview` can also generate SVG directly, entirely in Standard ML:
+`pview` can also generate SVG directly, entirely in Standard ML:
 
 ```sh
-rpview profile.rp -o profile.svg
-rpview profile.rp -o pages.svg --metric pages --regions 9 --show-peak
-rpview profile.rp -o thread.svg --scope thread:2 --caption 'Thread 2 allocations'
-rpview profile.rp -o profile.html --show-base --show-type
+pview profile.prof -o profile.svg
+pview profile.prof -o pages.svg --metric pages --regions 9 --show-peak
+pview profile.prof -o thread.svg --scope thread:2 --caption 'Thread 2 allocations'
+pview profile.prof -o profile.html --show-base --show-type
 ```
 
 The output extension selects SVG or HTML; `--format svg|html` overrides it.
@@ -402,7 +413,7 @@ the current format does not record per-snapshot counter deltas.
 
 The snapshot slider, metric selection, markers, and table grouping remain
 available. Changing table grouping does not merge the region bands. Maxima are
-explicitly labelled as sampled. rp2ps is retired; use rpview.
+explicitly labelled as sampled. rp2ps is retired; use pview.
 
 A reproducible ReML example uses three named regions with different growth/reset
 phases and a growing recursive stack:
@@ -410,8 +421,8 @@ phases and a growing recursive stack:
 ```sh
 printf '%s\n' "$PWD/test/region_profile/graph.sml" > /tmp/region-graph.mlb
 reml -no_par -region_profile -o /tmp/region-graph /tmp/region-graph.mlb
-/tmp/region-graph +RTS -rp -rp_interval 0 -rp_file /tmp/region-graph.rp -RTS
-rpview /tmp/region-graph.rp --output graph.html
+/tmp/region-graph +RTS -rp -rp_interval 0 -p_file /tmp/region-graph.rp -RTS
+pview /tmp/region-graph.rp --output graph.html
 ```
 
 Hover a legend entry to see its full unit/binding identity. Select a snapshot to
@@ -424,8 +435,8 @@ socket or external command listener.
 ## Validation and measurements
 
 After `make mlkit_basislibs`, run `sh test/region_profile/check-ci.sh` for the
-native CI suite. It uses `bin/mlkit`, `bin/reml`, and `bin/rpview`, with optional
-absolute-path overrides through `MLKIT`, `REML`, and `RPVIEW`; `CC` overrides the
+native CI suite. It uses `bin/mlkit`, `bin/reml`, and `bin/pview`, with optional
+absolute-path overrides through `MLKIT`, `REML`, and `PVIEW`; `CC` overrides the
 C compiler. The existing Linux X64 and macOS ARM64 CI jobs run this entry point.
 It covers accounting, GC, pthreads, REPL sessions, binary decoding, HTML/SVG
 generation, and both region APIs against a staged read-only installation.
@@ -436,18 +447,18 @@ The fixture encoder is a test-only tool built with the configured seed compiler.
 Build it before running these checks individually; the CI script builds it automatically.
 
 ```sh
-make rpview rpfixture
+make pview rpfixture
 sh test/region_profile/check.sh
 ARGOBOTS_ROOT=/path/to/configured/argobots sh test/region_profile/check-extended.sh
 sh test/region_profile/check-binary.sh
-sh test/region_profile/check-viewer.sh /path/to/profile.rp
+sh test/region_profile/check-viewer.sh /path/to/profile.prof
 sh test/region_profile/check-graph.sh /tmp/rp-graph-check  # open the emitted HTML in a browser
 sh test/region_profile/check-svg.sh
 ```
 
 The regression harness uses POSIX shell and standard tools such as `awk`,
 `sed`, `grep`, `sort`, and `cmp`; it requires neither Python nor Node.js.
-Scripts accept `MLKIT`, `REML`, `RPVIEW`, and `CC` overrides as appropriate.
+Scripts accept `MLKIT`, `REML`, `PVIEW`, and `CC` overrides as appropriate.
 `check-records.sh` validates streams with the compiled SML reader and checks
 independent native-fixture accounting/lifecycle expectations with `awk`.
 Those native fixtures have small counters; exact uint64 boundary checks use
@@ -459,7 +470,7 @@ executable search path, and input/output aliases.
 `check-binary.sh` uses hand-encoded wire bytes to check little-endian decoding,
 uint64 limits, JSON/stdout output, every truncation point in a final record,
 and malformed headers, tags, lengths and booleans. Editable JSON test fixtures
-are converted by the test-only SML encoder (`encode-fixture.sh`); `rpview` itself
+are converted by the test-only SML encoder (`encode-fixture.sh`); `pview` itself
 accepts only binary files. The encoder uses `MLKIT` and can be overridden with
 `RPENCODER` for a prebuilt executable.
 
@@ -510,6 +521,45 @@ See [Selected-region site occupancy](allocation-profiler.md) for the unified
 histograms, packed descriptors, and IR navigation. All new profiles use version 10.
 
 For site contributions within the recorded selected region, use
-`rpview sites.rp --sites -o sites.svg`. For an all-regions recording, select one
-region with `rpview sites.rp --region r163 -o r163-sites.svg`;
+`pview sites.rp --sites -o sites.svg`. For an all-regions recording, select one
+region with `pview sites.rp --region r163 -o r163-sites.svg`;
 see [site occupancy](allocation-profiler.md).
+
+Experimental time recording: [T3 recorder and runtime API](time-profiler/t3-recording.md).
+
+C/GC attribution: [T4 boundary state and interpretation](time-profiler/t4-attribution.md).
+
+Offline time reporting: [T5 report, estimates and time filtering](time-profiler/t5-report.md).
+
+Single-thread measurements, uncertainty and timer ownership:
+[T6 measurement and hardening](time-profiler/t6-measurement.md).
+
+Ordinary-build sampling: [T6a runtime, buffers and passive attribution](time-profiler/t6a-ordinary-builds.md).
+
+Ordinary-build costs and accuracy: [T6b measurements](time-profiler/t6b-ordinary-measurement.md).
+
+Compact time records: [T6d buffer layout and capacity](time-profiler/t6d-compact-records.md).
+
+Optional detailed C attribution: [T6c selection, costs and IR navigation](time-profiler/t6c-optional-attribution.md).
+
+Parallel time sampling and thread details: [T7 targeted pthread delivery](time-profiler/t7-parallel-sampling.md).
+
+## Shared profiling names
+
+The viewer is `pview` (Profile Viewer); `-p_file PATH` selects the shared output,
+whose default is `profile.prof`. `-p_paused` starts enabled profilers paused.
+Compiler and runtime `-p` each mean `-rp -tp`; compiler support and runtime
+recording are separate. Ordinary ARM64 and X64 builds already emit time metadata.
+Runtime `-p` is advertised and accepted only in region-profiled executables;
+ordinary builds can use `-tp` with the shared file/pause options.
+Time sampling supports static macOS ARM64 and Linux X64 configurations,
+and combined activation rejects unavailable profilers. Existing `.rp` files
+remain readable, but `rpview`, `-rp_file` and `-tp_file` are removed without aliases.
+See [unified profiling options](time-profiler/t8-unified-profiling.md).
+
+For a terminal time overview, use `pview profile.prof --format text`, or write
+`pview profile.prof -o profile.txt`. This reports aggregate contributions, sample
+shares, estimated wall time and session-wide losses; it requires time samples
+or an empty time session. Region-only reports continue to use HTML/SVG/JSON.
+
+Linux X64 time sampling and validation: [T9 native profiling](time-profiler/t9-linux-x64.md).

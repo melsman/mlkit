@@ -14,7 +14,7 @@ mlkit -no_gc -rp -o app app.mlb
 
 The compiler's `-rp` option remains a compiler option. A block on the compiler's
 own command line configures the runtime executing the compiler, not the runtime
-of the generated program. Interactive compiler options such as `-rp_file` still
+of the generated program. Interactive compiler options such as `-p_file` still
 configure the child REPL runtime; MLKit adds the child's runtime block itself.
 
 | Marker | Meaning |

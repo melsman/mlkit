@@ -4,7 +4,7 @@ set -eu
 [ "$#" -eq 4 ] || { echo "Usage: $0 MLKIT_ARM64 MLKIT_X64 BARRY SMLTOJS" >&2; exit 2; }
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-native-flags.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
-options='region_profile region_inference print_region_flow_graph print_all_program_points rp_paused rp_report rp_gc_samples rp_file rp_interval'
+options='profile time_profile p_paused region_profile region_inference print_region_flow_graph print_all_program_points rp_paused rp_report rp_gc_samples p_file rp_interval'
 for compiler in "$1" "$2"; do
   "$compiler" -help > "$OUT/help" 2>&1
   for option in $options; do
@@ -17,7 +17,7 @@ for compiler in "$@"; do
   for option in $options; do
     ! grep -q -- "--$option" "$OUT/help"
   done
-  for option in $options rp ri no_ri Prfg Ppp; do
+  for option in $options p tp rp ri no_ri Prfg Ppp; do
     if "$compiler" "-$option" > "$OUT/error" 2>&1; then
       echo "$compiler unexpectedly accepted -$option" >&2
       exit 1

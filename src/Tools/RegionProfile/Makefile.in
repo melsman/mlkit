@@ -1,6 +1,6 @@
 # Offline SML viewer. No Python, server, or runtime template files are needed.
 ROOT := $(abspath ../../..)
-OUT ?= $(ROOT)/bin/rpview
+OUT ?= $(ROOT)/bin/pview
 # Inherit the configured seed compiler, just like the other compiler tools.
 include $(ROOT)/Makefiledefault
 
@@ -13,9 +13,9 @@ embed: Embed.sml embed.mlb
 Html.sml: viewer.html embed
 	./embed viewer.html $@
 
-$(OUT): Json.sml Binary.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Main.sml rpview.mlb
+$(OUT): Json.sml Binary.sml Code.sml Reader.sml IR.sml Html.sml Page.sml Svg.sml Text.sml Main.sml pview.mlb profile-data.mlb profile-ir.mlb ../../Kitlib/binarymap.mlb
 	mkdir -p $(dir $(OUT))
-	$(MLCOMP) -output $(OUT) rpview.mlb
+	$(MLCOMP) -output $(OUT) pview.mlb
 
 clean:
 	rm -rf build embed Html.sml MLB

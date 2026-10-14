@@ -185,7 +185,7 @@ Runtime options use the existing single-dash, underscore convention, with an
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `-rp` | Off | Enable a session before program initialization and start sampling. |
-| `-rp_file PATH` | `profile.rp` | Choose the output file. |
+| `-p_file PATH` | `profile.prof` | Choose the output file. |
 | `-rp_interval DURATION` | `10ms` | Request periodic wall-clock samples; accept explicit `us`, `ms`, and `s` units, or `Ni` for every N compiled ML entries per thread (without a timer). |
 | `-rp_gc_samples` | Off | Add before/after-GC samples; requires a GC runtime. |
 | `-rp_paused` | Off | Enable the session but start with automatic sampling paused. |
@@ -205,7 +205,7 @@ Examples:
 
 ```sh
 ./program +RTS -rp -RTS
-./program +RTS -rp -rp_interval 50ms -rp_file experiment.rp -RTS
+./program +RTS -rp -rp_interval 50ms -p_file experiment.rp -RTS
 ./program +RTS -rp -rp_interval 0 -rp_gc_samples -RTS
 ./program +RTS -rp -rp_paused -rp_report -RTS
 ./program +RTS -rp -rp_interval 20ms -RTS application-arguments
@@ -260,7 +260,7 @@ future unloading must unregister its metadata before releasing it.
 
 ## Output and visualization
 
-Use `profile.rp` by default. Design a versioned, append-only format with
+Use `profile.prof` by default. Design a versioned, append-only format with
 fixed-width counters, explicit units, unit/region definitions, thread
 lifecycle records, timestamps, samples, markers, and GC events. A reader
 should be able to use complete records in a truncated file and consume a
@@ -281,7 +281,7 @@ Encode each record with a 32-bit payload length, byte tag, fixed-order 64-bit
 integers, and length-prefixed byte strings. Use explicit little-endian encoding,
 never native C layouts, and preserve uint64 precision and marker NUL bytes.
 Buffer each record and write through stdio without decimal formatting. Keep
-JSON as an `rpview --format json` inspection output, preserving raw record order
+JSON as an `pview --format json` inspection output, preserving raw record order
 and definition references. The current reader rejects earlier encodings.
 
 Extend the HTML viewer with combined, colored region-and-stack graphs (M7).
@@ -291,7 +291,7 @@ samples. Do not silently truncate counters or present footprint as exact payload
 
 Record per-thread data and perform region/thread/worker filtering and
 aggregation in the generated HTML. Keep the workflow offline: the profiled
-program writes `profile.rp`; the compiled SML `rpview` tool reads that file and
+program writes `profile.prof`; the compiled SML `pview` tool reads that file and
 writes `profile.html`. Embed the template in the executable, with no Python,
 HTTP server, or network dependency. Runtime filtering and any future live
 viewer are separate work.

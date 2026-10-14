@@ -16,8 +16,8 @@ for mode in plain instrumented-disabled paused 1ms 10ms 100ms; do
         paused) set -- -rp -rp_paused ;;
         *) set -- -rp -rp_interval "$mode" ;;
     esac
-    [ "$#" -eq 0 ] || set -- +RTS "$@" -rp_file "$OUT/profile.rp" -rp_report -RTS
-    rm -f "$OUT/profile.rp"
+    [ "$#" -eq 0 ] || set -- +RTS "$@" -p_file "$OUT/profile.prof" -rp_report -RTS
+    rm -f "$OUT/profile.prof"
     : > "$OUT/times"
     i=0
     while [ "$i" -lt 7 ]; do
@@ -30,8 +30,8 @@ for mode in plain instrumented-disabled paused 1ms 10ms 100ms; do
     median=$(sort -n "$OUT/times" | sed -n '4p')
     bytes=0
     if [ "$#" -ne 0 ]; then
-        [ -f "$OUT/profile.rp" ]
-        bytes=$(wc -c < "$OUT/profile.rp" | tr -d ' ')
+        [ -f "$OUT/profile.prof" ]
+        bytes=$(wc -c < "$OUT/profile.prof" | tr -d ' ')
     fi
     printf '%s median_seconds=%s bytes=%s\n' "$mode" "$median" "$bytes"
     cat "$OUT/report"

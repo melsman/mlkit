@@ -53,7 +53,21 @@ struct
   val allocationFunction = ref "<entry>"
   val allocationSites = ref ([] : (int * lab) list)
   val allocationIR = ref (NameLab "unused_ir_identity")
+  val sharedRanges = ref ([] : string list list)
+  val codeRanges = ref ([] : string list list)
+  fun rpCodeUnit l = NameLab("mlkit_rp_code_" ^ Labels.pr_label l)
   val sampledProfile = Flags.is_on0 "region_profile"
+  fun recordShared (lab,name) =
+    let
+      val finish = new_local_lab "x64_shared_end"
+      val unit = gen_string_lab "<runtime>"
+      val function = gen_string_lab name
+      val source = gen_string_lab "<runtime>"
+      val identity = gen_string_lab ""
+      val () = sharedRanges := [I.pr_lab lab,I.pr_lab finish,I.pr_lab unit,
+                                I.pr_lab function,I.pr_lab source,I.pr_lab identity] :: !sharedRanges
+    in finish
+    end
   val rpRegions : ((Effect.effect * LS.phsize) * int) list ref = ref []
   fun rpSourceSlot l = NameLab("mlkit_rp_source_" ^ Labels.pr_label l)
   val rpSource = ref (NameLab "unused_rp_source")
@@ -810,8 +824,12 @@ struct
                       I.movq(R treg1, D(ctx_exnptr_offs,r14)) ::
                       C))))
                     fun store_sp C =
-                      comment ("STORE SP: sp[offset+3] = sp",
-                      store(rsp,rsp,WORDS(fsz-offset-1+3),C))
+                      if timeProfile() andalso gc_p() then
+                        I.movq(R rsp,R treg1) ::
+                        G.load_ea(LA (NameLab "disable_gc"),treg0)
+                          (I.movq(D("0",treg0),R treg0) :: I.andq(I "1",R treg0) ::
+                           I.orq(R treg0,R treg1) :: store(treg1,rsp,WORDS(fsz-offset-1+3),C))
+                      else store(rsp,rsp,WORDS(fsz-offset-1+3),C)
                     fun default_code C = comment ("HANDLER DEFAULT CODE",
                       CG_lss(default,fsz,size_ccf,C))
                     fun restore_exn_ptr C =
@@ -1580,6 +1598,7 @@ struct
                                I.movq(R r10, D("0",rsp)),
                                I.movq(I "1", L(NameLab "disable_gc"))]
                             else [])
+                         @ (if timeProfile() then I.subq(I "16",R rsp) :: timeSave 0 NONE [] else [])
                          @ [I.movq (L ctx_lab, R r14),            (* load ctx into ctx register *)
                             I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
@@ -1589,6 +1608,7 @@ struct
                          @ (if sampledProfile() then [I.dot_p2align "3",I.dot_quad "-2",I.dot_quad "0x52504d34"] else [])
                          @ [I.lab return_lab,
                             I.movq(R rdi, R rax)]                 (* move result to %rax *)
+                         @ (if timeProfile() then timeRestore 0 [I.addq(I "16",R rsp)] else [])
                          @ (if gc_p() then
                               [I.movq(D("0",rsp), R r10),
                                I.movq(R r10, L(NameLab "disable_gc")),
@@ -1636,6 +1656,10 @@ struct
 
     fun CG_top_decl' gen_fn (lab,cc,lss) =
       let
+        val finish = NameLab("mlkit_tp_end_" ^ Labels.pr_label lab)
+        val name = gen_string_lab (Labels.pr_label lab)
+        val () = codeRanges := [I.pr_lab(MLFunLab lab),I.pr_lab finish,I.pr_lab(!rpUnit),
+                               I.pr_lab name,I.pr_lab(!rpSource),I.pr_lab(!allocationIR)] :: !codeRanges
         val () = allocationFunction := Labels.pr_label lab
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
@@ -1680,7 +1704,7 @@ struct
             rpPoll fsz size_ccf (CG_lss(lss,fsz,size_ccf, return_code)
             )))))
       in
-        gen_fn(lab, C @ GCsnippet @ get_code_blocks())
+        gen_fn(lab, C @ GCsnippet @ get_code_blocks() @ [I.lab finish])
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1738,10 +1762,11 @@ struct
         val _ = reset_static_data()
         val _ = reset_label_counter()
         val () = rpNames := []
-        val () = if sampledProfile() then rpSource := gen_string_lab(!Flags.current_source_file) else ()
+        val () = rpSource := gen_string_lab(!Flags.current_source_file)
+        val () = codeRanges := []
         val () = allocationSites := []
-        val () = if allocationProfile() then allocationIR := gen_string_lab (!IRLocations.currentIdentity) else ()
-        val () = if sampledProfile() then rpUnit := gen_string_lab(Labels.pr_label main_lab) else ()
+        val () = allocationIR := gen_string_lab (!IRLocations.currentIdentity)
+        val () = rpUnit := gen_string_lab(Labels.pr_label main_lab)
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab,I.FUNC))
                                                    (main_lab::(#1 exports)))
         val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab,I.OBJ))
@@ -1749,7 +1774,11 @@ struct
         val () = if sampledProfile() then
           add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(rpSourceSlot main_lab,I.OBJ),
                            I.lab(rpSourceSlot main_lab),I.dot_quad(I.pr_lab(!rpSource) ^ " + 8")] else ()
-        val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
+        val tops = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg
+        val () = add_static_data ([I.dot_data,I.dot_p2align "3",I.dot_globl(rpCodeUnit main_lab,I.OBJ),
+                                   I.lab(rpCodeUnit main_lab)] @
+                   map I.dot_quad ((if timeProfile() then "2" else "1") :: Int.toString(length(!codeRanges)) :: List.concat(!codeRanges)))
+        val x64_prg = {top_decls = tops,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab @ data_roots (main_lab, #2 exports)}
         val x64_prg = x64_optimise x64_prg
@@ -1930,12 +1959,17 @@ struct
 
             comment ("RESTORE RSP AND PUSH RETURN LAB",
             I.movq(D("24", treg1), R rsp) ::             (* Restore sp *)
+            (fn C => if timeProfile() andalso gc_p() then
+               I.movq(R rsp,R treg0) :: I.andq(I "1",R treg0) ::
+               I.movq(R treg0,L(NameLab "disable_gc")) :: I.andq(I "-2",R rsp) :: C
+             else C) (
+            (fn C => if timeProfile() then I.movq(I "0",L(NameLab "mlkit_tp_context")) :: C else C) (
             I.push(D("0", treg1)) ::                     (* Push Return Lab *)
 
             comment ("JUMP TO HANDLE FUNCTION",
             I.movq(D("8", treg1), R clos_reg) ::         (* Fetch Closure into Closure Argument Register *)
             I.movq(D(offset_codeptr,clos_reg), R treg0) ::
-            I.jmp (R treg0) :: C))))))
+            I.jmp (R treg0) :: C))))))))
           end
 
         (* primitive exceptions *)
@@ -2033,6 +2067,8 @@ struct
             fun pop_callersave_regs C = foldr pop_reg C save_regs
             val fsz = 0 (* dummy *)
             val stublab = NameLab stubname
+            val finish = recordShared(stublab,stubname)
+            val C = I.lab finish :: C
             val res = if ret then SOME (SS.PHREG_ATY treg1) else NONE
           in
             I.dot_text ::
@@ -2075,6 +2111,8 @@ struct
         fun gc_stub C = (* treg1 must contain the register map and treg0 the return address. *)
           if gc_p() then
             let
+              val finish = recordShared(gc_stub_lab,"<gc-stub>" ^ I.pr_lab gc_stub_lab)
+              val C = I.lab finish :: C
               (* first push the fpr registers; the runtime systems knows
                  about the order the registers appear on the stack *)
               val regs_to_store = map RI.lv_to_reg RI.args_phfreg @ all_regs
@@ -2343,6 +2381,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
     fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg =
       let
         val _ = reset_static_data()
+        val () = sharedRanges := []
         val _ = reset_label_counter()
 
         val () = if sampledProfile() then
@@ -2370,6 +2409,16 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
                I.dot_globl(NameLab "mlkit_rp_build_id",I.OBJ),
                I.lab(NameLab "mlkit_rp_build_id"),I.dot_quad(I.pr_lab build ^ " + 8")]
           end else ()
+        val () = add_static_data ([I.dot_data,I.dot_p2align "3",
+                       I.dot_globl(NameLab "mlkit_tp_attribution_capable",I.OBJ),
+                       I.lab(NameLab "mlkit_tp_attribution_capable"),
+                       I.dot_quad(if timeProfile() then "2" else "0"),
+                       I.dot_globl(NameLab "mlkit_rp_code_scope",I.OBJ),
+                       I.lab(NameLab "mlkit_rp_code_scope"),I.dot_quad "1",
+                       I.dot_globl(NameLab "mlkit_rp_code_units",I.OBJ),
+                       I.lab(NameLab "mlkit_rp_code_units")] @
+                       map (I.dot_quad o I.pr_lab o rpCodeUnit) linkinfos @
+                       [I.dot_quad(I.pr_lab(NameLab "mlkit_tp_shared_x64")),I.dot_quad "0"])
         val progunit_labs = map MLFunLab linkinfos
         val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
 (*
@@ -2424,6 +2473,10 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val init_link_code = (main_insts o raise_insts o
                               toplevel_handler o allocate o allocate_unprotected o resetregion o allocinreg o
                               overflow_stub o gc_stub o proftick) nil
+        val () = add_static_data ([I.dot_data,I.dot_p2align "3",
+                                   I.dot_globl(NameLab "mlkit_tp_shared_x64",I.OBJ),
+                                   I.lab(NameLab "mlkit_tp_shared_x64")] @
+                   map I.dot_quad ("1" :: Int.toString(length(!sharedRanges)) :: List.concat(!sharedRanges)))
       in
         {top_decls = [],
          init_code = init_link_code,
@@ -2438,6 +2491,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
     fun generate_repl_init_code () : I.AsmPrg =
       let
         val _ = reset_static_data()
+        val () = add_static_data [I.dot_data,I.dot_p2align "3",
+                   I.dot_globl(NameLab "mlkit_rp_code_scope",I.OBJ),
+                   I.lab(NameLab "mlkit_rp_code_scope"),I.dot_quad "2"]
         val _ = reset_label_counter()
         val () = if sampledProfile() then
           add_static_data ([I.dot_data,I.dot_p2align "3",I.dot_globl(NameLab "mlkit_rp_capable",I.OBJ),

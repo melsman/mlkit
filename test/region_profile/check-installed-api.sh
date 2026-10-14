@@ -6,7 +6,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 : "${SML_LIB:?Set SML_LIB to a read-only installation}"
 MLKIT=${MLKIT:-$ROOT/bin/mlkit-arm64}
 REML=${REML:-$ROOT/bin/reml-arm64}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 [ ! -w "$SML_LIB/basis" ] && [ ! -w "$SML_LIB/kitlib" ] || {
   echo 'Basis and kitlib must be read-only for this check' >&2; exit 1;
 }
@@ -15,10 +15,14 @@ echo "Installed profiler API artifacts: $OUT"
 find "$SML_LIB/basis" "$SML_LIB/kitlib" -type f -exec cksum {} + | sort > "$OUT/before"
 cat > "$OUT/client.mlb" <<'MLB'
 $(SML_LIB)/kitlib/region-profile.mlb
+$(SML_LIB)/kitlib/time-profile.mlb
 $(SML_LIB)/basis/basis.mlb
 client.sml
 MLB
 cat > "$OUT/client.sml" <<'SML'
+val () = TimeProfile.start ()
+val () = TimeProfile.pause ()
+val () = TimeProfile.flush ()
 val () = RegionProfile.start ()
 val () = RegionProfile.mark "installed API"
 val () = RegionProfile.sample ()
@@ -35,8 +39,8 @@ run () {
   (cd "$OUT"
    "$compiler" "$@" -o client client.mlb > "build-$n.log" 2>&1
    case " $* " in
-     *' -rp '*) ./client +RTS -rp -rp_interval 0 -rp_file "profile-$n.rp" > actual
-       "$RPVIEW" "profile-$n.rp" --format json > "profile-$n.json"
+     *' -rp '*) ./client +RTS -rp -rp_interval 0 -p_file "profile-$n.rp" > actual
+       "$PVIEW" "profile-$n.rp" --format json > "profile-$n.json"
        grep -q 'sample_begin' "profile-$n.json" ;;
      *) ./client > actual ;;
    esac
@@ -49,6 +53,22 @@ run "$MLKIT" -gc
 run "$MLKIT" -no_gc -rp
 run "$MLKIT" -no_gc -par -rp
 run "$MLKIT" -gc -rp
+# Time-only activation must also work without modifying installed caches.
+case $(uname -sm) in
+ 'Darwin arm64'|'Linux x86_64')
+  for flags in '-no_gc -no_par' '-gc -no_par' '-no_gc -par'; do
+   n=$((n+1))
+   (cd "$OUT"
+    "$MLKIT" $flags -o time-client client.mlb > "build-$n.log" 2>&1
+    ./time-client +RTS -tp -tp_paused -p_file "time-$n.prof" > actual
+    cmp expected actual
+    "$PVIEW" "time-$n.prof" --format json > "time-$n.json"
+    grep -q 'time_session' "time-$n.json"
+    if grep -q 'sample_begin' "time-$n.json"; then exit 1; fi
+    "$PVIEW" "time-$n.prof" --ir-dir "$SML_LIB/basis/MLB" --ir-dir "$SML_LIB/kitlib/MLB" --ir-dir MLB -o "time-$n.html" > /dev/null)
+   echo "Installed time API passed: $MLKIT $flags"
+  done ;;
+esac
 # ReML must also reuse the explicit-region API, including region parameters.
 printf '$(SML_LIB)/basis/reml.mlb\nregion.sml\n' >> "$OUT/client.mlb"
 cat > "$OUT/region.sml" <<'SML'
@@ -67,4 +87,4 @@ run "$REML" -par
 run "$REML" -par -rp
 find "$SML_LIB/basis" "$SML_LIB/kitlib" -type f -exec cksum {} + | sort > "$OUT/after"
 cmp "$OUT/before" "$OUT/after"
-echo 'Read-only installed RegionProfile and Region checks passed; installed files unchanged'
+echo 'Read-only installed region/time APIs and Region checks passed; installed files unchanged'

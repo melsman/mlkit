@@ -13,6 +13,20 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <mach-o/loader.h>
+#endif
+#if ((defined(__APPLE__) && defined(__aarch64__)) || (defined(__linux__) && defined(__x86_64__))) && !defined(ARGOBOTS)
+#include <pthread.h>
+#include <sched.h>
+#define MLKIT_TP_NATIVE 1
+#include "TimeProfilePlatform.inc"
+static uint64_t tp_timestamp(void);
+#ifdef PARALLEL
+static void request_sample(int);
+#endif
+#endif
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -59,7 +73,7 @@ static uint64_t capture_ns, total_pages, max_delay_ns, next_due_ns;
 static uint64_t traversal_ns, serialization_ns, wait_ns, cpu_ns, total_frames, coalesced, skipped, peak_bytes;
 static int timer_installed;
 int mlkit_rp_initially_paused;
-const char *mlkit_rp_filename = "profile.rp";
+const char *mlkit_p_filename = "profile.prof";
 static FILE *output;
 static int active;
 static uint64_t sequence, request_time, sample_wait;
@@ -141,6 +155,9 @@ static uint64_t large_size(void *p) {
   return 0;
 }
 static uint64_t timestamp(void) {
+#ifdef MLKIT_TP_NATIVE
+  if (mlkit_tp_enabled) return tp_timestamp();
+#endif
   struct timespec now;
   if (clock_gettime(CLOCK_MONOTONIC, &now)) fail("cannot read clock");
   int64_t ns = (int64_t)(now.tv_sec-origin.tv_sec)*INT64_C(1000000000)
@@ -182,41 +199,7 @@ static void set_anchor(Participant *p, uintptr_t *base, const uintptr_t *map) {
   p->worker = -1;
 #endif
 }
-/* Portable wire format: magic/version, then LE uint32 payload length, byte tag,
- * fixed-order LE uint64 counters, and LE uint32-length-prefixed byte strings.
- * Never serialize native structs. One buffered stdio write per record. */
-static unsigned char *wire;
-static size_t wire_capacity;
-static void little_endian(unsigned char *p, uint64_t n, size_t bytes) {
-  for (size_t i = 0; i < bytes; i++, n >>= 8) p[i] = (unsigned char)n;
-}
-static void emit_record(unsigned char tag, const uint64_t *values, size_t count,
-                        const char *const *strings, size_t nstrings, const size_t *lengths) {
-  size_t size = 1 + count*8;
-  for (size_t i = 0; i < nstrings; i++) {
-    size_t n = lengths ? lengths[i] : strlen(strings[i]);
-    if (n > UINT32_MAX-4 || size > UINT32_MAX-4-n) fail("profile record too large");
-    size += 4+n;
-  }
-  if (size > SIZE_MAX-4) fail("profile record too large");
-  if (size+4 > wire_capacity) {
-    unsigned char *p = realloc(wire,size+4);
-    if (!p) fail("out of memory");
-    wire = p; wire_capacity = size+4;
-  }
-  little_endian(wire,size,4); wire[4] = tag;
-  size_t offset = 5;
-  for (size_t i = 0; i < count; i++, offset += 8) little_endian(wire+offset,values[i],8);
-  for (size_t i = 0; i < nstrings; i++) {
-    size_t n = lengths ? lengths[i] : strlen(strings[i]);
-    little_endian(wire+offset,n,4); offset += 4;
-    memcpy(wire+offset,strings[i],n); offset += n;
-  }
-  if (fwrite(wire,1,size+4,output) != size+4) fail("cannot write profile record");
-}
-#define NUMS(...) (const uint64_t[]){__VA_ARGS__}, sizeof((const uint64_t[]){__VA_ARGS__})/sizeof(uint64_t)
-#define STRS(...) (const char *const[]){__VA_ARGS__}, sizeof((const char *const[]){__VA_ARGS__})/sizeof(char *), NULL
-#define NO_STRINGS NULL, 0, NULL
+#include "ProfileOutput.inc"
 
 /* Occupancy is counted only during snapshots. C allocations carry their
  * site tokens explicitly through REG_POLY_FUN_HDR / REG_POLY_CALL. */
@@ -363,6 +346,7 @@ int mlkit_rp_parse_interval(const char *s) {
   return 1;
 }
 static void timer_state(int running) {
+  if (mlkit_tp_enabled) { tp_set_region(running); return; }
   mlkit_rp_pending = 0;
   next_due_ns = mlkit_rp_interval_us ? timestamp()+mlkit_rp_interval_us*1000 : 0;
   if (!timer_installed) return;
@@ -380,6 +364,7 @@ void mlkit_rp_close(void) {
   await_output();
   if (!output) { UNLOCK(); return; }
   timer_state(0);
+  tp_shutdown();
   /* Keep the harmless handler until process exit: another OS thread may
    * still have an already-delivered SIGALRM queued after timer disarm. */
   timer_installed = 0;
@@ -407,7 +392,13 @@ void mlkit_rp_close(void) {
   UNLOCK();
 }
 void mlkit_rp_init(void) {
-  if (!mlkit_rp_enabled) return;
+  if (!mlkit_rp_enabled && !mlkit_tp_enabled) return;
+  int time_only = mlkit_tp_enabled && !mlkit_rp_enabled;
+  if (time_only) {
+    mlkit_rp_enabled = 1; /* Retain safe-point polls and the main identity. */
+    mlkit_rp_interval_us = mlkit_rp_interval_entries = 0;
+  }
+  if (mlkit_tp_enabled) tp_prepare();
 #if defined(PARALLEL) && defined(ENABLE_GC)
   fail("GC plus parallel profiling is not supported");
 #endif
@@ -435,30 +426,34 @@ void mlkit_rp_init(void) {
       fail("recompile all ML code with -rp");
     mlkit_rp_allocation_enabled = 1;
   }
-  mlkit_rp_allocation_enabled = mlkit_rp_allocation_capable != 0;
-  output = fopen(mlkit_rp_filename, "wb");
+  mlkit_rp_allocation_enabled = !time_only && mlkit_rp_allocation_capable != 0;
+  output = fopen(mlkit_p_filename, "wb");
   if (!output) fail("cannot open profile output");
   if (clock_gettime(CLOCK_MONOTONIC, &origin)) fail("cannot read clock");
-  active = !mlkit_rp_initially_paused;
+  active = !time_only && !mlkit_rp_initially_paused;
   const unsigned char magic[] = {'M','L','K','R','P',0,10,0};
   if (fwrite(magic,1,sizeof(magic),output) != sizeof(magic)) fail("cannot write profile header");
   const char *main_source = mlkit_rp_main_source_slot ? *mlkit_rp_main_source_slot : "unknown source";
   emit_record(1,NUMS(sizeof(uintptr_t),sizeof(Rp),RP_GC_ENABLED),STRS(main_source));
+  emit_code_metadata();
+  tp_begin();
   if (mlkit_rp_allocation_capable) emit_record(12,NUMS(mlkit_rp_allocation_enabled,1),STRS(mlkit_rp_build_id,mlkit_rp_region ? mlkit_rp_region : ""));
   if (mlkit_rp_allocation_enabled && mlkit_rp_ir_objects)
     for (size_t i = 0; mlkit_rp_ir_objects[i][0]; i++)
       emit_record(17,NUMS(),STRS(mlkit_rp_ir_objects[i][0],mlkit_rp_ir_objects[i][1]));
   if (fflush(output)) fail("cannot write profile header");
-  if (mlkit_rp_interval_us) {
+  if (mlkit_rp_interval_us || mlkit_tp_enabled) {
     struct sigaction previous_alarm;
     struct itimerval old;
     if (getitimer(ITIMER_REAL, &old) || sigaction(SIGALRM, NULL, &previous_alarm))
       fail("cannot inspect sampling timer");
     if (old.it_value.tv_sec || old.it_value.tv_usec || previous_alarm.sa_handler != SIG_DFL)
-      fail("SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
+      fail(mlkit_tp_enabled ? "SIGALRM/ITIMER_REAL already in use; disable -tp or release the conflicting timer/handler"
+                           : "SIGALRM/ITIMER_REAL already in use; use -rp_interval 0");
     struct sigaction action = {0};
-    action.sa_handler = request_sample;
-    action.sa_flags = SA_RESTART;
+    if (mlkit_tp_enabled) tp_install_handler(&action);
+    else action.sa_handler = request_sample;
+    action.sa_flags |= SA_RESTART;
     sigemptyset(&action.sa_mask);
     if (sigaction(SIGALRM, &action, NULL)) fail("cannot install sampling timer");
     timer_installed = 1;
@@ -902,6 +897,9 @@ uintptr_t mlkit_rp_capture(Context ctx, uintptr_t *base, const uintptr_t *map, u
   return result;
 }
 uintptr_t mlkit_rp_poll(Context ctx, uintptr_t *base, const uintptr_t *map) {
+  if (mlkit_tp_enabled) {
+    if (!tp_region_request(ctx)) return 1;
+  }
   return mlkit_rp_capture(ctx, base, map, 3);
 }
 /* Non-instrumented compilation remains usable with profiling disabled. */
@@ -909,6 +907,7 @@ uintptr_t mlkit_rp_start(void) { if (mlkit_rp_enabled) fail("start called from c
 uintptr_t mlkit_rp_pause(void) { if (mlkit_rp_enabled) fail("pause called from code without profiling metadata"); return 1; }
 uintptr_t mlkit_rp_sample(void) { if (mlkit_rp_enabled) fail("sample called from code without profiling metadata"); return 1; }
 uintptr_t mlkit_rp_flush(void) {
+  tp_drain();
   LOCK();
   await_output();
   if (output && fflush(output)) fail("cannot flush profile output");
@@ -939,5 +938,6 @@ uintptr_t mlkit_rp_start(void) { return 1; }
 uintptr_t mlkit_rp_pause(void) { return 1; }
 uintptr_t mlkit_rp_sample(void) { return 1; }
 uintptr_t mlkit_rp_flush(void) { return 1; }
+#include "TimeProfileStandalone.inc"
 uintptr_t mlkit_rp_mark(String label) { (void)label; return 1; }
 #endif

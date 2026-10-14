@@ -58,15 +58,17 @@ MAKE
     "$ROOT/src/Tools/RegionProfile/viewer.html" "$dir/src/Tools/RegionProfile/"
   mkdir -p "$dir/test/region_profile" "$dir/src/Kitlib"
   cp "$ROOT"/test/region_profile/encode-fixture.sml "$ROOT"/test/region_profile/encode-fixture.mlb "$dir/test/region_profile/"
-  cp "$ROOT/src/Kitlib/BINARYMAP.sig" "$ROOT/src/Kitlib/Binarymap.sml" "$dir/src/Kitlib/"
-  (cd "$dir" && SML_LIB=must-not-leak make -s rpview rpfixture > rpview.log 2>&1)
+  cp "$ROOT/src/Kitlib/binarymap.mlb" "$ROOT/src/Kitlib/BINARYMAP.sig" \
+    "$ROOT/src/Kitlib/Binarymap.sml" "$dir/src/Kitlib/"
+  (cd "$dir" && SML_LIB=must-not-leak make -s pview rpfixture > pview.log 2>&1)
   grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output embed embed.mlb'
-  grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/rpview rpview.mlb'
+  grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/pview pview.mlb'
   grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-output .*/bin/rpfixture encode-fixture.mlb'
   mkdir -p "$dir/test/prettyprint" "$dir/src/Common"
   cp "$ROOT"/test/prettyprint/*.sml "$ROOT"/test/prettyprint/*.mlb "$dir/test/prettyprint/"
   cp "$ROOT/src/Common/PRETTYPRINT.sig" "$ROOT/src/Common/PrettyPrint.sml" \
-    "$ROOT/src/Common/MD5.sml" "$ROOT/src/Common/IRLocations.sml" "$dir/src/Common/"
+    "$ROOT/src/Common/MD5.sml" "$ROOT/src/Common/md5.mlb" \
+    "$ROOT/src/Common/IRLocations.sml" "$dir/src/Common/"
   (cd "$dir" && SML_LIB=must-not-leak make -s prettyprint-tools > prettyprint.log 2>&1)
   for helper in spans locations ir-report link-map; do
     grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- "/$helper $helper.mlb"

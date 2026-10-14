@@ -58,7 +58,7 @@ ssize_t num_gc = 0;                       // number of garbage collections
 #ifdef ENABLE_GEN_GC
 ssize_t num_gc_major = 0;                 // number of major garbage collections
 #endif
-ssize_t doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
+_Atomic ssize_t doing_gc = 0;             // set to 1 when GC'ing; otherwise 0
 ssize_t raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
 ssize_t raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
@@ -1366,8 +1366,18 @@ static void rp_gc_sample(Context ctx, uintptr_t **sp, uintptr_t op, int major) {
 
 #endif
 
+/* Passive entry identity; no sampling bookkeeping in ordinary GC code. */
+const volatile uintptr_t mlkit_tp_gc_address = (uintptr_t)gc;
+#if defined(__linux__) && defined(__x86_64__)
+extern const char __stop_mlkit_tp_gc_code[];
+const volatile uintptr_t mlkit_tp_gc_end_address = (uintptr_t)__stop_mlkit_tp_gc_code;
+#define MLKIT_TP_GC_SECTION __attribute__((section("mlkit_tp_gc_code")))
+#else
+#define MLKIT_TP_GC_SECTION
+#endif
+
 void
-gc(Context ctx, uintptr_t **sp, size_t reg_map)
+MLKIT_TP_GC_SECTION gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   /* Allocation retains requests even while collection is disabled. ARM checks
    * this at ML safe points too; older backends only test time_to_gc. Keep the
@@ -1410,7 +1420,10 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
 #endif
   rp_gc_sample(ctx, sp, 4, profile_major);
 #endif
-  doing_gc = 1;
+#ifdef PROFILING
+  uintptr_t tp_saved = mlkit_tp_gc_enter();
+#endif
+  atomic_store_explicit(&doing_gc,1,memory_order_relaxed);
 
 #ifdef CHECK_GC
   ////printf("entering gc\n");
@@ -1969,7 +1982,10 @@ gc(Context ctx, uintptr_t **sp, size_t reg_map)
     }
 
   time_to_gc = 0;
-  doing_gc = 0; // Mutex on the garbage collector
+#ifdef PROFILING
+  mlkit_tp_gc_leave(tp_saved);
+#endif
+  atomic_store_explicit(&doing_gc,0,memory_order_relaxed); // Mutex on the garbage collector
 #ifdef PROFILING
   if (mlkit_rp_enabled) mlkit_rp_gc_completed();
   rp_gc_sample(ctx, sp, 5, profile_major);

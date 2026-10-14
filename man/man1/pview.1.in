@@ -1,21 +1,27 @@
-.TH RPVIEW 1 "October 6, 2026" "MLKit @PACKAGE_VERSION@" "MLKit tools"
+.TH PVIEW 1 "October 6, 2026" "MLKit @PACKAGE_VERSION@" "MLKit tools"
 .SH NAME
-rpview \- display MLKit region profiles and allocation-site occupancy
+pview \- display MLKit time and region profiles
 .SH SYNOPSIS
-.B rpview
-.RI [ profile.rp ]
+.B pview
+.RI [ profile.prof ]
 .RB [ \-o " output" ]
 .RI [ options ]
 .SH DESCRIPTION
-.B rpview
-reads a binary region profile produced by an MLKit program compiled with
-.B \-rp
-and generates a standalone interactive HTML report, an SVG graph, or
-newline-delimited JSON records.
+.B pview
+reads a shared binary profile containing time samples, region snapshots, or both,
+and generates a standalone interactive HTML report, an SVG graph,
+newline-delimited JSON records, or a textual time-profile overview.
 The default input is
-.B profile.rp
+.B profile.prof
 and the default output is
 .BR profile.html .
+.PP
+Time sampling uses runtime \-tp in ordinary supported native builds.
+Region snapshots require compiler and runtime \-rp.
+Compiler and runtime \-p each mean \-rp \-tp; runtime \-p_file selects
+the shared output (default profile.prof); \-p_paused starts enabled profilers paused.
+Profiler-specific intervals and attribution remain independent.
+Existing .rp files remain readable.
 .PP
 The HTML report includes region and stack graphs, snapshot-range selection,
 thread and worker filters, and allocation-site occupancy when recorded.
@@ -51,23 +57,33 @@ for standard output. The input file cannot also be the output file.
 Select
 .BR html ,
 .BR svg ,
+.BR json ,
 or
-.BR json .
+.BR text .
 Otherwise the format is inferred from the output suffix:
 .B .svg
 selects SVG,
 .B .json
 or
 .B .jsonl
-selects JSON, and other suffixes select HTML.
+selects JSON,
+.B .txt
+selects text, and other suffixes select HTML.
 Without an output filename, SVG goes to
 .B profile.svg
-and JSON goes to standard output.
+and JSON or text goes to standard output.
 JSON output contains one profile record per line.
+Text output requires a time session and reports all recorded samples, aggregated
+across streams, sorted by contribution. It includes shares, estimated wall time,
+session-wide losses and completion status. Estimates include blocking and are
+not measured CPU time; aggregated thread wall estimates may exceed elapsed time.
+Text output supports the aggregate scope only and does not require IR files.
 .TP
 .BI "\-\-ir\-dir " directory
 Add a fallback search location for moved IR companions. May be repeated.
 Normally companions are found beside the object paths recorded in the profile.
+For ordinary builds without recorded object paths, MLB directories beside
+recorded source files and in their enclosing directories are searched automatically.
 Matching build identity and integrity checks are required.
 .TP
 .BI "\-\-caption " text
@@ -167,25 +183,25 @@ blocks. For example:
 .nf
 mlkit \-rp \-o program program.mlb
 \&./program +RTS \-rp \-rp_region all \-rp_interval 10ms \-RTS
-rpview profile.rp \-o profile.html
+pview profile.prof \-o profile.html
 .fi
 .PP
 For an individual binding, replace
 .B all
-with the unit-and-region identifier reported by rpview, such as
+with the unit-and-region identifier reported by pview, such as
 .BR UNIT:163 .
-Runtime profiling options belong to the executable, not to rpview.
+Runtime profiling options belong to the executable, not to pview.
 .SH EXAMPLES
 .nf
-rpview profile.rp \-o regions.svg \-\-regions 12
-rpview profile.rp \-\-sites \-o sites.svg
-rpview profile.rp \-\-sites \-\-scope thread:0 \-o thread.svg
-rpview profile.rp \-\-format json > records.jsonl
-rpview profile.rp \-\-ir\-dir /moved/build \-o report.html
+pview profile.prof \-o regions.svg \-\-regions 12
+pview profile.prof \-\-sites \-o sites.svg
+pview profile.prof \-\-sites \-\-scope thread:0 \-o thread.svg
+pview profile.prof \-\-format json > records.jsonl
+pview profile.prof \-\-ir\-dir /moved/build \-o report.html
 .fi
 .SH FILES
 .TP
-.B profile.rp
+.B profile.prof
 Default binary input profile. Current profiles use format version 10;
 unsupported older formats must be regenerated.
 .TP

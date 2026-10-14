@@ -1,0 +1,1310 @@
+[
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "off",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.026636445,
+    "median_cpu_s": 0.76,
+    "median_peak_rss_kib": 52664,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "paused",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.028269367,
+    "median_cpu_s": 0.76,
+    "median_peak_rss_kib": 55196,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.030290524,
+    "median_cpu_s": 0.77,
+    "median_peak_rss_kib": 55116,
+    "samples": [
+      1019,
+      1019,
+      1018,
+      1023,
+      1018
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.040535075,
+    "median_cpu_s": 0.8,
+    "median_peak_rss_kib": 55160,
+    "samples": [
+      10313,
+      10254,
+      10277,
+      10278,
+      10250
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.123082101,
+    "median_cpu_s": 0.92,
+    "median_peak_rss_kib": 55176,
+    "samples": [
+      110367,
+      110905,
+      110483,
+      110830,
+      110886
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "off",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.06930632,
+    "median_cpu_s": 0.81,
+    "median_peak_rss_kib": 57684,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "paused",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.072982548,
+    "median_cpu_s": 0.8,
+    "median_peak_rss_kib": 60116,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.075698847,
+    "median_cpu_s": 0.8200000000000001,
+    "median_peak_rss_kib": 60020,
+    "samples": [
+      1068,
+      1068,
+      1066,
+      1062,
+      1061
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.085343192,
+    "median_cpu_s": 0.85,
+    "median_peak_rss_kib": 60080,
+    "samples": [
+      10727,
+      10683,
+      10696,
+      10796,
+      10739
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "10us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.167318417,
+    "median_cpu_s": 0.97,
+    "median_peak_rss_kib": 60040,
+    "samples": [
+      65536,
+      65536,
+      65536,
+      65536,
+      65536
+    ],
+    "drops": [
+      49896,
+      50163,
+      49896,
+      49987,
+      50200
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.076330477,
+    "median_cpu_s": 0.8200000000000001,
+    "median_peak_rss_kib": 60024,
+    "samples": [
+      1065,
+      1065,
+      1068,
+      1060,
+      1067
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.082078031,
+    "median_cpu_s": 0.84,
+    "median_peak_rss_kib": 60056,
+    "samples": [
+      10706,
+      10694,
+      10685,
+      10671,
+      10734
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "capacity": 64,
+    "runs": 5,
+    "median_parent_wall_s": 1.036728403,
+    "median_cpu_s": 0.8,
+    "median_peak_rss_kib": 53076,
+    "samples": [
+      64,
+      64,
+      64,
+      64,
+      64
+    ],
+    "drops": [
+      10249,
+      10187,
+      10196,
+      10189,
+      10188
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "capacity": 1048576,
+    "runs": 5,
+    "median_parent_wall_s": 1.125119676,
+    "median_cpu_s": 0.93,
+    "median_peak_rss_kib": 69496,
+    "samples": [
+      110702,
+      110410,
+      110471,
+      110444,
+      110632
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "off",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.023316293,
+    "median_cpu_s": 0.76,
+    "median_peak_rss_kib": 73304,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "paused",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.022958691,
+    "median_cpu_s": 0.76,
+    "median_peak_rss_kib": 75756,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.025473913,
+    "median_cpu_s": 0.77,
+    "median_peak_rss_kib": 75772,
+    "samples": [
+      1012,
+      1014,
+      1024,
+      1013,
+      1013
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.035552408,
+    "median_cpu_s": 0.79,
+    "median_peak_rss_kib": 75772,
+    "samples": [
+      10217,
+      10219,
+      10195,
+      10253,
+      10196
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.11427633,
+    "median_cpu_s": 0.92,
+    "median_peak_rss_kib": 75744,
+    "samples": [
+      109905,
+      109588,
+      109673,
+      109940,
+      109944
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "off",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.05946601,
+    "median_cpu_s": 0.79,
+    "median_peak_rss_kib": 80780,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "paused",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.062469767,
+    "median_cpu_s": 0.8,
+    "median_peak_rss_kib": 83100,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.066215807,
+    "median_cpu_s": 0.81,
+    "median_peak_rss_kib": 83248,
+    "samples": [
+      1057,
+      1057,
+      1052,
+      1055,
+      1051
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.073983326,
+    "median_cpu_s": 0.8300000000000001,
+    "median_peak_rss_kib": 83084,
+    "samples": [
+      10574,
+      10639,
+      10631,
+      10581,
+      10594
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "10us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.15432189,
+    "median_cpu_s": 0.9600000000000001,
+    "median_peak_rss_kib": 83100,
+    "samples": [
+      65536,
+      65536,
+      65536,
+      65536,
+      65536
+    ],
+    "drops": [
+      47244,
+      48579,
+      48558,
+      48757,
+      48564
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.064713283,
+    "median_cpu_s": 0.8,
+    "median_peak_rss_kib": 83100,
+    "samples": [
+      1058,
+      1051,
+      1057,
+      1048,
+      1051
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.078089065,
+    "median_cpu_s": 0.8400000000000001,
+    "median_peak_rss_kib": 83124,
+    "samples": [
+      10639,
+      10609,
+      10580,
+      11970,
+      10628
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "capacity": 64,
+    "runs": 5,
+    "median_parent_wall_s": 1.031888907,
+    "median_cpu_s": 0.79,
+    "median_peak_rss_kib": 73780,
+    "samples": [
+      64,
+      64,
+      64,
+      64,
+      64
+    ],
+    "drops": [
+      10130,
+      10124,
+      10124,
+      10132,
+      10171
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "gengc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "capacity": 1048576,
+    "runs": 5,
+    "median_parent_wall_s": 1.119876401,
+    "median_cpu_s": 0.92,
+    "median_peak_rss_kib": 90068,
+    "samples": [
+      109609,
+      109640,
+      108778,
+      109903,
+      109826
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "off",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.934975051,
+    "median_cpu_s": 0.6699999999999999,
+    "median_peak_rss_kib": 253260,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "paused",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.936498323,
+    "median_cpu_s": 0.6699999999999999,
+    "median_peak_rss_kib": 255644,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.937942518,
+    "median_cpu_s": 0.6799999999999999,
+    "median_peak_rss_kib": 255640,
+    "samples": [
+      921,
+      919,
+      920,
+      919,
+      922
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.953012429,
+    "median_cpu_s": 0.71,
+    "median_peak_rss_kib": 255668,
+    "samples": [
+      9302,
+      9252,
+      9281,
+      9282,
+      9249
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 1.010181893,
+    "median_cpu_s": 0.8099999999999999,
+    "median_peak_rss_kib": 255680,
+    "samples": [
+      98834,
+      99107,
+      99017,
+      99346,
+      98607
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "off",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 0.976297177,
+    "median_cpu_s": 0.71,
+    "median_peak_rss_kib": 369916,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "paused",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 0.979239043,
+    "median_cpu_s": 0.72,
+    "median_peak_rss_kib": 372400,
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 0.984267739,
+    "median_cpu_s": 0.72,
+    "median_peak_rss_kib": 372380,
+    "samples": [
+      960,
+      964,
+      965,
+      961,
+      960
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 0.994690638,
+    "median_cpu_s": 0.76,
+    "median_peak_rss_kib": 372428,
+    "samples": [
+      9688,
+      9711,
+      9725,
+      9673,
+      9685
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "10us",
+    "attribution": "detailed",
+    "runs": 5,
+    "median_parent_wall_s": 1.062952961,
+    "median_cpu_s": 0.86,
+    "median_peak_rss_kib": 372324,
+    "samples": [
+      65536,
+      65536,
+      65536,
+      65536,
+      65536
+    ],
+    "drops": [
+      38654,
+      38295,
+      38328,
+      37737,
+      38632
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "1ms",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.981704352,
+    "median_cpu_s": 0.72,
+    "median_peak_rss_kib": 372428,
+    "samples": [
+      961,
+      962,
+      960,
+      962,
+      961
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "instrumented",
+    "mode": "100us",
+    "attribution": "passive",
+    "runs": 5,
+    "median_parent_wall_s": 0.997010932,
+    "median_cpu_s": 0.75,
+    "median_peak_rss_kib": 372380,
+    "samples": [
+      9717,
+      9686,
+      9730,
+      9680,
+      9690
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "100us",
+    "attribution": "passive",
+    "capacity": 64,
+    "runs": 5,
+    "median_parent_wall_s": 0.948645097,
+    "median_cpu_s": 0.71,
+    "median_peak_rss_kib": 253620,
+    "samples": [
+      64,
+      64,
+      64,
+      64,
+      64
+    ],
+    "drops": [
+      9222,
+      9223,
+      9215,
+      9194,
+      9190
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "config": "no_gc",
+    "build": "ordinary",
+    "mode": "10us",
+    "attribution": "passive",
+    "capacity": 1048576,
+    "runs": 5,
+    "median_parent_wall_s": 1.014220066,
+    "median_cpu_s": 0.82,
+    "median_peak_rss_kib": 270116,
+    "samples": [
+      98954,
+      98898,
+      98298,
+      98898,
+      98952
+    ],
+    "drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "routing_drops": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+]

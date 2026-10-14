@@ -1,12 +1,14 @@
 structure ProfileMain =
 struct
   fun run args =
-      let val file = ref "profile.rp"
+      let val file = ref "profile.prof"
           val haveFile = ref false
           val irRoots = ref []
           val output = ref "profile.html"
           val format = ref ""
           val haveOutput = ref false
+          val resolvePC = ref (NONE : IntInf.int option)
+          val imageBuild = ref (NONE : string option)
           val settings = ref ([] : (string * ProfileJson.t) list)
           fun setting k v = settings := (k,v)::List.filter (fn (key,_) => key <> k) (!settings)
           fun choice k value choices =
@@ -14,10 +16,24 @@ struct
               else raise Fail ("invalid " ^ k ^ ": " ^ value)
           fun natural s =
               if size s > 0 andalso List.all Char.isDigit (explode s) then Int.fromString s else NONE
+          fun address s =
+              let val hex = String.isPrefix "0x" s orelse String.isPrefix "0X" s
+                  val digits = if hex then String.extract(s,2,NONE) else s
+                  val valid = size digits > 0 andalso List.all
+                    (if hex then Char.isHexDigit else Char.isDigit) (explode digits)
+                  val parsed = if valid then StringCvt.scanString
+                    (IntInf.scan (if hex then StringCvt.HEX else StringCvt.DEC)) digits else NONE
+              in case parsed of SOME n => if n < ProfileCode.addressLimit then n
+                                          else raise Fail "PC exceeds 64 bits"
+                              | NONE => raise Fail "PC must be decimal or 0x hexadecimal"
+              end
           fun help () =
-              (print "Usage: rpview [profile.rp] [-o output.html|output.svg|output.json] [options]\n\
-                     \  --format html|svg|json  Infer from output extension; JSON defaults to stdout\n\
+              (print "Usage: pview [profile.prof] [-o output.html|output.svg|output.json|output.txt] [options]\n\
+                     \  --format html|svg|json|text  Text/JSON default to stdout\n\
+                     \                          Text gives an aggregate time-profile overview\n\
                      \  --ir-dir DIR            Fallback search for moved .o.ir files (repeatable)\n\
+                     \  --resolve-pc ADDRESS    Resolve a recorded absolute PC; output JSON\n\
+                     \  --image-build ID      Require matching image identity for PC resolution\n\
                      \  --caption TEXT          Override the profile caption\n\
                      \  --sites                 SVG: selected region split by allocation site\n\
                      \  --region rN              SVG: site contributions to region rN\n\
@@ -39,11 +55,13 @@ struct
                  (setting "region" (ProfileJson.Str value); setting "sites" (ProfileJson.Bool true); options rest)
                else raise Fail "region must be rN (for example, r163)")
             | options ("--ir-dir"::path::rest) = (irRoots := path :: !irRoots; options rest)
+            | options ("--resolve-pc"::value::rest) = (resolvePC := SOME(address value); options rest)
+            | options ("--image-build"::value::rest) = (imageBuild := SOME value; options rest)
             | options ("--output"::path::rest) = (output := path; haveOutput := true; options rest)
             | options ("-o"::path::rest) = options ("--output"::path::rest)
             | options ("--format"::value::rest) =
-              if value = "html" orelse value = "svg" orelse value = "json" then (format := value; options rest)
-              else raise Fail "format must be html, svg or json"
+              if value = "html" orelse value = "svg" orelse value = "json" orelse value = "text" then (format := value; options rest)
+              else raise Fail "format must be html, svg, json or text"
             | options ("--caption"::value::rest) = (setting "caption" (ProfileJson.Str value); options rest)
             | options ("--regions"::value::rest) =
               (case natural value of SOME n => (setting "limit" (ProfileJson.Num(Int.toString n)); options rest)
@@ -73,17 +91,23 @@ struct
               else if String.isPrefix "-" value orelse !haveFile then raise Fail ("unexpected argument: " ^ value)
               else (file := value; haveFile := true; options rest)
           val () = options args
-          val selected = if !format <> "" then !format
+          val () = if Option.isSome(!imageBuild) andalso not(Option.isSome(!resolvePC))
+                   then raise Fail "--image-build requires --resolve-pc" else ()
+          val () = if Option.isSome(!resolvePC) andalso not(Option.isSome(!imageBuild))
+                   then raise Fail "--resolve-pc requires --image-build from the sampled executable" else ()
+          val selected = if Option.isSome(!resolvePC) then "json"
+                         else if !format <> "" then !format
                          else if String.isSuffix ".svg" (String.map Char.toLower (!output)) then "svg"
                          else if String.isSuffix ".json" (String.map Char.toLower (!output)) orelse
                                  String.isSuffix ".jsonl" (String.map Char.toLower (!output)) then "json"
                          else if not(!haveOutput) andalso List.exists (fn (k,_) => k = "region") (!settings) then "svg"
+                         else if String.isSuffix ".txt" (String.map Char.toLower (!output)) then "text"
                          else "html"
           val sites = List.exists (fn (k,v) => k = "sites" andalso v = ProfileJson.Bool true) (!settings)
           val () = if sites andalso selected <> "svg" then raise Fail "--sites requires SVG output (-o sites.svg or --format svg)" else ()
           val () = if !haveOutput then ()
                    else if selected = "svg" then output := "profile.svg"
-                   else if selected = "json" then output := "-" else ()
+                   else if selected = "json" orelse selected = "text" then output := "-" else ()
           val inputId = OS.FileSys.fileId (!file)
           val same = !output <> "-" andalso ((inputId = OS.FileSys.fileId (!output)) handle OS.SysErr _ => false)
           val () = if same then raise Fail "input and output must be different files" else ()
@@ -93,7 +117,8 @@ struct
           val config = ProfileJson.Obj (!settings)
           val () = case ProfileJson.find config "scope" of
                        SOME (ProfileJson.Str scope) =>
-                         if scope = "all" then () else
+                         if selected = "text" andalso scope <> "all" then raise Fail "text overview supports aggregate scope only"
+                         else if scope = "all" then () else
                            let val (field,id) = case String.fields (fn c => c = #":") scope of
                                                     [field,id] => (field,id)
                                                   | _ => raise Fail "invalid scope"
@@ -102,7 +127,11 @@ struct
                            in if List.exists matches rows then () else raise Fail ("scope not present in profile: " ^ scope)
                            end
                      | _ => ()
-          val page = if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+          val page = case !resolvePC of
+                         SOME pc => ProfileJson.encodeJson
+                           (ProfileCode.resolver (#metadata profile) {pc = pc,buildId = !imageBuild}) ^ "\n"
+                       | NONE => if selected = "json" then String.concat(map (fn r => ProfileJson.encodeJson r ^ "\n") records)
+                     else if selected = "text" then ProfileText.render profile
                      else if selected = "svg" then ProfileSvg.render config profile else ProfilePage.htmlWith config profile
           val out = if !output = "-" then TextIO.stdOut else TextIO.openOut (!output)
           val () = (TextIO.output(out,page) handle e => (TextIO.closeOut out; raise e))
@@ -110,7 +139,7 @@ struct
       end
 end
 fun profileError message =
-    (TextIO.output(TextIO.stdErr,"rpview: " ^ message ^ "\n"); OS.Process.exit OS.Process.failure)
+    (TextIO.output(TextIO.stdErr,"pview: " ^ message ^ "\n"); OS.Process.exit OS.Process.failure)
 val () = (ProfileMain.run (CommandLine.arguments ())
           handle Fail message => profileError message
                | e => profileError (General.exnMessage e))

@@ -12,7 +12,7 @@ local
         bas SPLAYMAP.sig Splaymap.sml SPLAYSET.sig Splayset.sml end
     end
     basis BinMap = 
-      bas BINARYMAP.sig Binarymap.sml INTMAP.sig Intmap.sml end
+      bas binarymap.mlb INTMAP.sig Intmap.sml end
     basis BinSet = 
       bas BINARYSET.sig INTSET.sig Binaryset.sml Intset.sml end
   in

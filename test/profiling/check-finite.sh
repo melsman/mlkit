@@ -3,7 +3,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 export SML_LIB=${SML_LIB:-$ROOT}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-finite.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT HUP INT TERM
@@ -15,10 +15,10 @@ for variant in plain gc gengc tagged-pairs; do
     tagged-pairs) flags='-gc -tag_pairs';;
   esac
   "$MLKIT" $flags -rp -mlb-subdir unified -o "$OUT/program" test/profiling/finite-stack.mlb > "$OUT/build.log" 2>&1 || { cat "$OUT/build.log"; exit 1; }
-  "$OUT/program" +RTS -rp -rp_interval 0 -rp_file "$OUT/profile.rp" > "$OUT/output"
+  "$OUT/program" +RTS -rp -rp_interval 0 -p_file "$OUT/profile.prof" > "$OUT/output"
   printf 'finite stack: OK\n' > "$OUT/expected"
   cmp "$OUT/expected" "$OUT/output"
-  "$RPVIEW" "$OUT/profile.rp" --format json > "$OUT/profile.json"
+  "$PVIEW" "$OUT/profile.prof" --format json > "$OUT/profile.json"
   node - "$OUT/profile.json" <<'JS'
 const fs=require('fs'),assert=require('assert');
 const records=fs.readFileSync(process.argv[2],'utf8').trim().split('\n').map(JSON.parse);

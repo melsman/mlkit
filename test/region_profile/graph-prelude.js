@@ -40,7 +40,7 @@ class Element {
  showPopover(){this.popoverOpen=true;this.listeners.toggle?.({newState:'open'});}
  hidePopover(){this.popoverOpen=false;this.listeners.toggle?.({newState:'closed'});}
 }
-const document={body:new Element('body'),getElementById:id=>document.body.querySelector('#'+id),createTextNode:text=>{const n=new Element();n.textContent=text;return n;},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelectorAll:selector=>document.body.querySelectorAll(selector)};
+const document={body:new Element('body'),getElementById:id=>document.body.querySelector('#'+id),createTextNode:text=>{const n=new Element();n.textContent=text;return n;},createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>new Element(tag),querySelector:selector=>document.body.querySelector(selector),querySelectorAll:selector=>document.body.querySelectorAll(selector)};
 // Parse static markup only; style and script contents are never DOM fixtures.
 const decodeHTML=text=>text.replace(/&(?:amp|lt|gt|quot|apos|#(\d+)|#x([\da-f]+));/gi,(entity,decimal,hex)=>decimal||hex?String.fromCodePoint(parseInt(decimal||hex,hex?16:10)):({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'"}[entity]||entity));
 const voidTags=new Set(['meta','input','br','hr','img','link']),stack=[document.body];

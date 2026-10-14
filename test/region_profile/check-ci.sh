@@ -4,9 +4,9 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
 REML=${REML:-$ROOT/bin/reml}
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 CC=${CC:-${THECC:-cc}}
-export MLKIT REML RPVIEW CC
+export MLKIT REML PVIEW CC
 export SML_LIB="$ROOT"
 # Optional scheduler experiments and timing benchmarks are not release CI gates.
 unset ARGOBOTS_ROOT
@@ -35,6 +35,23 @@ run () {
 }
 run basis-linking sh "$ROOT/test/region_profile/check-basis-linking.sh"
 run metadata sh "$ROOT/test/region_profile/check-metadata.sh"
+if [ "$(uname -sm)" = 'Darwin arm64' ] || [ "$(uname -sm)" = 'Linux x86_64' ]; then
+  run unified-options sh "$ROOT/test/time_profile/check-unified-options.sh"
+  run time-parallel-blocking sh "$ROOT/test/time_profile/check-parallel-blocking.sh"
+  run time-parallel sh "$ROOT/test/time_profile/check-parallel.sh"
+  run time-ordinary sh "$ROOT/test/time_profile/check-ordinary.sh"
+  run time-conflicts sh "$ROOT/test/time_profile/check-conflicts.sh"
+  run time-attribution-modes sh "$ROOT/test/time_profile/check-attribution-modes.sh"
+  run time-attribution sh "$ROOT/test/time_profile/check-attribution.sh"
+  run time-recording sh "$ROOT/test/time_profile/check-recording.sh"
+  run time-text sh "$ROOT/test/time_profile/check-text.sh"
+  if [ "$(uname -sm)" = 'Linux x86_64' ]; then
+    run time-x64-abi sh "$ROOT/test/time_profile/check-x64-abi.sh"
+    run code-metadata-elf sh "$ROOT/test/time_profile/check-elf.sh"
+  else
+    run code-metadata sh "$ROOT/test/time_profile/check-code-metadata.sh"
+  fi
+fi
 
 run runtime-args sh "$ROOT/test/region_profile/check-runtime-args.sh"
 run library-builds sh "$ROOT/test/region_profile/check-library-builds.sh"

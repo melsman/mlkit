@@ -23,6 +23,7 @@ variant=$variant$profile
 case "$source" in
   repl.mlb) stage=basis ;;
   ../kitlib/region-profile.mlb) stage=api ;;
+  ../kitlib/time-profile.mlb) stage=time-api ;;
   reml.mlb) stage=reml ;;
   kitlib.mlb) stage=kit ;;
   *) exit 1 ;;
@@ -48,11 +49,12 @@ awk '
     active++; if(active>peak) peak=active;
     if($3=="basis" && done[$2]!="") exit 1;
     if($3=="api" && done[$2]!="basis") exit 2;
-    if($3=="reml" && done[$2]!="api") exit 3;
-    if($3=="kit" && done[$2]!=($2 ~ /^gc/ ? "api" : "reml")) exit 4;
+    if($3=="time-api" && done[$2]!="api") exit 3;
+    if($3=="reml" && done[$2]!="time-api") exit 3;
+    if($3=="kit" && done[$2]!=($2 ~ /^gc/ ? "time-api" : "reml")) exit 4;
     starts++;
   }
   $1 == "end" { active--; done[$2]=$3; if($3=="kit") completed++ }
-  END { if(active || peak<2 || starts!=22 || completed!=6) exit 5;
+  END { if(active || peak<2 || starts!=28 || completed!=6) exit 5;
         print "Library builds: concurrent variants, ordered stages, all six configurations passed" }
 ' "$OUT/events"

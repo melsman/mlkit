@@ -1043,8 +1043,18 @@ void resetGen(Gen *gen)
   return;
 }
 
+/* Passive time-profile identity, retained when optional symbols are stripped. */
+const volatile uintptr_t mlkit_tp_reset_address = (uintptr_t)resetRegion;
+#if defined(__linux__) && defined(__x86_64__)
+extern const char __stop_mlkit_tp_reset_code[];
+const volatile uintptr_t mlkit_tp_reset_end_address = (uintptr_t)__stop_mlkit_tp_reset_code;
+#define MLKIT_TP_RESET_SECTION __attribute__((section("mlkit_tp_reset_code")))
+#else
+#define MLKIT_TP_RESET_SECTION
+#endif
+
 Region
-resetRegion(Region rAdr)
+MLKIT_TP_RESET_SECTION resetRegion(Region rAdr)
 {
   debug(printf("[resetRegions..."));
   Ro* r = clearStatusBits(rAdr);

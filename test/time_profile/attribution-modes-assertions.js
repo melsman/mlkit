@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert');
+const [file,mode]=process.argv.slice(2),rows=fs.readFileSync(file,'utf8').trim().split('\n').map(JSON.parse);
+const session=rows.find(r=>r.type==='time_session'),samples=rows.filter(r=>r.type==='time_sample'),final=rows.filter(r=>r.type==='time_status').at(-1);
+assert(samples.length>0);assert.equal(final.final,1);assert.equal(final.recorded,samples.length);assert.equal(final.dropped,0);assert.equal(final.routing_dropped,0);
+const detailed=mode==='detailed';
+assert.equal(session.buffer_capacity,detailed?65536:131072);
+assert(session.semantics.includes(detailed?'detailed 32-byte':'passive 16-byte'));
+if(detailed) assert(samples.some(s=>s.state===2 && s.origin_pc>0));
+else assert(samples.every(s=>s.state===0 && s.origin_pc===0));
+assert.equal(rows.some(r=>r.type==='sample_begin'),mode==='combined-passive');
+console.log('PASS: explicit '+mode+' capacity, attribution and final count consistency');

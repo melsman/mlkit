@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-RPVIEW=${RPVIEW:-$ROOT/bin/rpview}
+PVIEW=${PVIEW:-$ROOT/bin/pview}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rp-svg.XXXXXX")
 cleanup () {
   status=$?
@@ -15,8 +15,8 @@ cleanup () {
 }
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
-cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
-run() { sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/profile.rp" "$OUT/input.rp"; PATH=/nonexistent "$RPVIEW" "$OUT/input.rp" -o "$OUT/graph.svg" "$@" > "$OUT/stdout" 2> "$OUT/stderr"; }
+cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.prof"
+run() { sh "$ROOT/test/region_profile/encode-fixture.sh" "$OUT/profile.prof" "$OUT/input.rp"; PATH=/nonexistent "$PVIEW" "$OUT/input.rp" -o "$OUT/graph.svg" "$@" > "$OUT/stdout" 2> "$OUT/stderr"; }
 svg() {
     run "$@"
     awk '{gsub(/></,">\n<"); print}' "$OUT/graph.svg" > "$OUT/lines"
@@ -33,16 +33,16 @@ svg
 grep 'data-tick="snapshot"' "$OUT/lines" | grep -q 'stroke="#2563eb"'
 count 4
 ! grep -q 'data-tick="gc"' "$OUT/lines"
-sed 's/"reason":"explicit"/"reason":"after_gc"/g' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+sed 's/"reason":"explicit"/"reason":"after_gc"/g' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.prof"
 svg
 [ "$(grep -c 'data-tick="gc"' "$OUT/lines")" -eq 2 ]
 grep 'data-tick="gc"' "$OUT/lines" | grep -q 'stroke="#dc2626"'
-sed '2s/"reason":"explicit"/"reason":"before_gc"/;11s/"reason":"explicit"/"reason":"after_gc"/' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+sed '2s/"reason":"explicit"/"reason":"before_gc"/;11s/"reason":"explicit"/"reason":"after_gc"/' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.prof"
 svg
 [ "$(grep -c 'data-gc="duration"' "$OUT/lines")" -eq 1 ]
 ! grep -q 'data-tick="gc"' "$OUT/lines"
 contains 'width="880.00" height="4" fill="#dc2626"'
-cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.rp"
+cp "$ROOT/test/region_profile/svg-fixture.json" "$OUT/profile.prof"
 svg
 contains 'Region profile for main.sml (GC enabled)'
 contains 'Metric: Regions + ML stack · View: All threads · Garbage collections: 17'
@@ -91,10 +91,10 @@ reject --format pdf
 reject --caption
 reject -o "$OUT/input.rp"
 # Retain one committed snapshot.
-sed '/"type":"sample_begin","sample":2/,$d' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+sed '/"type":"sample_begin","sample":2/,$d' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.prof"
 svg
 contains 'single snapshot'
-sed -n '1p' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.rp"
+sed -n '1p' "$ROOT/test/region_profile/svg-fixture.json" > "$OUT/profile.prof"
 reject
 grep -q 'no completed snapshots' "$OUT/stderr"
 echo 'SML SVG: filters, aggregation, colours, units, caption, CLI defaults and empty/single profiles passed'

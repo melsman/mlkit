@@ -61,8 +61,9 @@ fun rpFile () = !RegionProfiling.file
 fun rpInterval () = !RegionProfiling.interval
 fun rpArguments () =
     (if rpEnabled() then ["-rp"] else []) @
-         (if rpEnabled() orelse rpFile() <> "profile.rp"
-          then ["-rp_file",rpFile()] else []) @
+         (if !RegionProfiling.allPaused then ["-p_paused"] else []) @
+         (if rpEnabled() orelse rpFile() <> "profile.prof"
+          then ["-p_file",rpFile()] else []) @
          (if rpEnabled() orelse rpInterval() <> "10ms"
           then ["-rp_interval",rpInterval()] else []) @
          (if rpPaused() then ["-rp_paused"] else []) @
@@ -865,7 +866,7 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
     "parallelism_alloc_unprotected", "print_bit_vectors",
     "print_all_program_points", "parallelism", "output", "namebase",
     "mlb-subdir", "link_time_dead_code_elimination", "libs",
-    "rp_paused", "rp_report", "rp_gc_samples", "rp_file", "rp_interval",
+    "profile", "time_profile", "p_paused", "rp_paused", "rp_report", "rp_gc_samples", "p_file", "rp_interval",
     "link_code", "libdirs", "import_basislib",
     "generational_garbage_collection", "gdb_support",
     "garbage_collection", "extra_gc_checks", "compile_only",
@@ -879,7 +880,10 @@ val flags_to_block = ["regionvar", "values_64bit", "uncurrying",
 fun run () : OS.Process.status option =
     case MO.mk_repl_runtime of
         SOME mk_runtime =>
-        let val () = Flags.turn_on "report_file_sig"
+        let val () = if !RegionProfiling.timeEnabled then
+                       raise Fail "time profiling is unsupported in the dynamic REPL; use a static executable"
+                     else ()
+            val () = Flags.turn_on "report_file_sig"
             val () = List.app Flags.block_entry flags_to_block
             val () = if Flags.is_on "garbage_collection" andalso not MO.repl_supports_gc then
                        ( print("|Garbage collection disabled - it is not supported in the REPL!\n")

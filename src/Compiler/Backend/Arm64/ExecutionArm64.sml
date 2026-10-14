@@ -231,12 +231,12 @@ structure ExecutionArm64 : EXECUTION =
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val irTree = if region_profile() then
-                             SOME (PhysSizeInf.layout_pgm_with_locations target)
-                           else NONE
+              val irTree = SOME (PhysSizeInf.layout_pgm_with_locations target)
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
-              val identity = IRLocations.newIdentity (AddressLabels.pr_label main_lab)
+              val identity = IRLocations.contentIdentity
+                {unit = AddressLabels.pr_label main_lab, source = !Flags.current_source_file,
+                 tree = valOf irTree}
               val () = IRLocations.currentIdentity := identity
               val asm_prg = Timing.timing "CG" CodeGen.CG target_new
               val linkinfo = mk_linkinfo {code_label = main_lab,
@@ -310,6 +310,8 @@ structure ExecutionArm64 : EXECUTION =
     fun link_files_with_runtime_system0 path_to_runtime files run =
       let val mapFile = run ^ ".ir-map.s"
           val mapObject = run ^ ".ir-map.o"
+          (* Ordinary time metadata carries content identities; object/cache
+           * paths are unnecessary and would break bootstrap reproducibility. *)
           val hasMap = region_profile()
           val () = if hasMap then
             (writeFile mapFile (IRLocations.linkMap {darwin = onmac_p()} files);
@@ -418,6 +420,9 @@ structure ExecutionArm64 : EXECUTION =
                     | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
                     | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NOGC"
+              (* Code-range tables add linker symbols to every profiled unit.
+               * Keep older cached objects out of this metadata ABI. *)
+              val subdir = if region_profile() then subdir ^ "_CODE1_TP1" else subdir
               val subdir = if Flags.is_on "tag_values" andalso not(gc_p()) then subdir ^ "_TAG" else subdir
               val subdir = if parallelism_p() then
                              if par_alloc_unprotected_p() then

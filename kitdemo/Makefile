@@ -50,10 +50,10 @@ life.exe: life.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 life%.rp: life.exe
-	./$< +RTS -rp -rp_file $@ -rp_interval $*us > life.out
+	./$< +RTS -rp -p_file $@ -rp_interval $*us > life.out
 
 life%.svg: life%.rp
-	../bin/rpview $< --caption "Game of life - sampled every $*us" -o $@
+	../bin/pview $< --caption "Game of life - sampled every $*us" -o $@
 
 %.pdf: %.svg
 	inkscape -D -o $@ $<
@@ -62,85 +62,85 @@ msort.exe: msort.mlb Makefile msortrun.sml msort.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msort.rp: msort.exe
-	./$< +RTS -rp -rp_file $@ -rp_interval 50000i > msort.out
+	./$< +RTS -rp -p_file $@ -rp_interval 50000i > msort.out
 
 msortregion.svg: msort.rp
-	../bin/rpview $< --caption "Mergesort" -o $@
+	../bin/pview $< --caption "Mergesort" -o $@
 
 msortstack.svg: msort.rp
-	../bin/rpview $< --caption "Mergesort" --metric stack -o $@
+	../bin/pview $< --caption "Mergesort" --metric stack -o $@
 
 length.exe: length.sml Makefile
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 length.rp: length.exe
-	./$< +RTS -rp -rp_file $@ -rp_interval 2ms > length.out
+	./$< +RTS -rp -p_file $@ -rp_interval 2ms > length.out
 
 length_region.svg: length.rp
-	../bin/rpview $< --caption "List length functions" -o $@
+	../bin/pview $< --caption "List length functions" -o $@
 
 msortreset2.exe: msortreset2.mlb Makefile msortreset2.sml upto.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 msortreset2.rp: msortreset2.exe
-	./$< +RTS -rp -rp_file $@ -rp_interval 1ms > msortreset2.out
+	./$< +RTS -rp -p_file $@ -rp_interval 1ms > msortreset2.out
 
 msortreset2.svg: msortreset2.rp
-	../bin/rpview $< --caption "Improved mergesort" -o $@
+	../bin/pview $< --caption "Improved mergesort" -o $@
 
 scan.exe: scan.mlb Makefile scan.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan.rp: scan.exe
-	cat scanfiles | ./$< +RTS -rp -rp_file $@ -rp_interval 1000i > scan.out
+	cat scanfiles | ./$< +RTS -rp -p_file $@ -rp_interval 1000i > scan.out
 
 scan.svg: scan.rp
-	../bin/rpview $< --caption "Scanning text files" -o $@
+	../bin/pview $< --caption "Scanning text files" -o $@
 
 scan_stream.exe: scan_stream.mlb Makefile scan_stream.sml lib_stream.sml
 	SML_LIB=.. $(MLKIT) -output $@ -rp $<
 
 scan_stream.rp: scan_stream.exe
-	cat scanfiles | ./$< +RTS -rp -rp_file $@ -rp_interval 20000i > scan_stream.out
+	cat scanfiles | ./$< +RTS -rp -p_file $@ -rp_interval 20000i > scan_stream.out
 
 scan_stream.svg: scan_stream.rp
-	../bin/rpview $< --caption "Scanning text files with stream IO (garbage collection enabled)" -o $@
+	../bin/pview $< --caption "Scanning text files with stream IO (garbage collection enabled)" -o $@
 
 scan_stream_nogc.rp: scan_stream.exe
-	cat scanfiles | ./$< +RTS -disable_gc -rp -rp_file $@ -rp_interval 20000i > scan_stream_nogc.out
+	cat scanfiles | ./$< +RTS -disable_gc -rp -p_file $@ -rp_interval 20000i > scan_stream_nogc.out
 
 scan_stream_nogc.svg: scan_stream_nogc.rp
-	../bin/rpview $< --caption "Scanning text files with stream IO (garbage collection disabled)" -o $@
+	../bin/pview $< --caption "Scanning text files with stream IO (garbage collection disabled)" -o $@
 
 scan_rev1.exe: scan_rev1.mlb Makefile scan_rev1.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp -Prfg -Ppp -Pcee -log_to_file $<
 
 scan_rev1.rp: scan_rev1.exe
-	echo life.sml | ./$< +RTS -rp -rp_file $@ -rp_interval 5000i -rp_region all > scan_rev1.out
+	echo life.sml | ./$< +RTS -rp -p_file $@ -rp_interval 5000i -rp_region all > scan_rev1.out
 
 scan_rev1.svg: scan_rev1.rp
-	../bin/rpview $< --caption "Scanning life.sml 50 times" -o $@
+	../bin/pview $< --caption "Scanning life.sml 50 times" -o $@
 
 scan_rev1_r.svg: scan_rev1.rp
-	../bin/rpview $< --caption "Scanning life.sml 50 times" --show-base --region r338955 -o $@
+	../bin/pview $< --caption "Scanning life.sml 50 times" --show-base --region r338955 -o $@
 
 scan_rev2.exe: scan_rev2.mlb Makefile scan_rev2.sml lib.sml
 	SML_LIB=.. $(MLKIT) -output $@ -no_gc -rp $<
 
 scan_rev2.rp: scan_rev2.exe
-	echo life.sml | ./$< +RTS -rp -rp_file $@ -rp_interval 2000i > scan_rev2.out
+	echo life.sml | ./$< +RTS -rp -p_file $@ -rp_interval 2000i > scan_rev2.out
 
 scan_rev2.svg: scan_rev2.rp
-	../bin/rpview $< --caption "Scanning life.sml 50 times with no space leak" -o $@
+	../bin/pview $< --caption "Scanning life.sml 50 times with no space leak" -o $@
 
 life.rp: life.exe
-	./$< +RTS -rp -rp_file $@ -rp_interval 400us -rp_region all > life.out
+	./$< +RTS -rp -p_file $@ -rp_interval 400us -rp_region all > life.out
 
 life_ex2.svg: life.rp
-	../bin/rpview $< --region r339819 -o $@
+	../bin/pview $< --region r339819 -o $@
 
 life_ex3.svg: life.rp
-	../bin/rpview $< --metric stack -o $@
+	../bin/pview $< --metric stack -o $@
 
 LENGTH_N ?= 10000000
 .PHONY: length_timings

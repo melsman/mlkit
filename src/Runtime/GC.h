@@ -20,7 +20,7 @@ extern size_t lobjs_current;
 extern size_t lobjs_gc_treshold;
 extern size_t lobjs_period;
 
-extern ssize_t doing_gc;
+extern _Atomic ssize_t doing_gc;
 extern ssize_t time_gc_all_ms;
 
 #ifdef ENABLE_GEN_GC

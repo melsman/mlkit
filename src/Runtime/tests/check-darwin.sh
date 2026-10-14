@@ -33,7 +33,7 @@ run "smoke-$arch" "$logs/smoke-$arch"
 run "link-profiling-$arch" gcc -arch "$arch" -std=gnu99 -DPROFILING -iquote src/Runtime \
   src/Runtime/RegionProfile.c src/Runtime/tests/region-profile.c \
   -o "$logs/profiling-$arch"
-run "profiling-$arch" "$logs/profiling-$arch" "$logs/profile.rp"
+run "profiling-$arch" "$logs/profiling-$arch" "$logs/profile.prof"
 run "link-par-$arch" gcc -arch "$arch" -std=gnu99 -DPARALLEL -iquote src/Runtime \
   src/Runtime/tests/parallel-allocation.c lib/darwin-$arch/runtimeSystemPar.a \
   -Wl,-dead_strip -lm -pthread -o "$logs/parallel-$arch"

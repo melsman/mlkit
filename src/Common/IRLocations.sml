@@ -62,6 +62,20 @@ struct
   type document = {regions : string list list, calls : (string * string * string) list, identity : string, unit : string, source : string, tree : PrettyPrint.StringTree}
   val zeroDigest = String.implode (List.tabulate (32,fn _ => #"0"))
 
+  (* Ordinary native metadata must not inject build time into executable bytes. *)
+  fun contentIdentity {unit,source,tree} =
+    let
+      val oldRagged = !PrettyPrint.raggedRight
+      val oldWidth = !PrettyPrint.colwidth
+      fun restore () = (PrettyPrint.raggedRight := oldRagged;
+                        PrettyPrint.colwidth := oldWidth)
+      val rendered =
+        (PrettyPrint.raggedRight := true; PrettyPrint.colwidth := 80;
+         (render tree 80 before restore ()) handle exn => (restore (); raise exn))
+    in MD5.fromString ("function-labels-1\000" ^ unit ^ "\000" ^ source ^ "\000" ^ #text rendered ^
+                       "\000" ^ table (#text rendered) (#spans rendered))
+    end
+
   fun header {identity,unit,source,objectDigest,codeBytes} digest =
     String.concat ["MLKIT-IR 7\n", "identity\t",identity,"\n", "unit\t",unit,"\n", "source\t",source,"\n",
                    "object-md5\t",objectDigest,"\n", "content-md5\t",digest,"\n",
@@ -136,6 +150,8 @@ struct
           andalso String.isPrefix "\nMLKIT-IR-LOCATIONS 1\n"
                     (String.extract (payload,codeBytes,NONE))
           andalso String.isSuffix "MLKIT-IR-REGIONS-END\n" payload
+          andalso (not (String.isSubstring "fun " (String.substring(payload,0,codeBytes)))
+                   orelse String.isSubstring "\nfunction\t" payload)
           andalso MD5.fromString (prefix ^ payload) = digest
           andalso MD5.fromFile object = objectDigest
         end
