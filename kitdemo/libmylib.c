@@ -38,6 +38,14 @@ power_auto(long base, long n) {
   return p;
 }
 
+/* Automatic conversion passes ML reals as C doubles, including the result. */
+double
+power_real_auto(double base, long n) {
+  double p = 1.0;
+  for (; n > 0; --n) p *= base;
+  return p;
+}
+
 /* A variant of the power function where the base is a float. The base
  * and res are boxed, i.e. they are pointers to pre-allocated
  * space. We retrieve the real from base and put the result in memory

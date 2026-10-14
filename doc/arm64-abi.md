@@ -260,15 +260,21 @@ allocation is rounded to 16 bytes.
 Unnamed arguments are default-promoted (narrow integers to int, float to
 double) and placed in eight-byte stack slots even when argument registers
 remain unused. They follow any named stack arguments, aligned to eight.
-The current MLKit automatic FFI describes integer/boolean/pointer-like
-values; the layout helper additionally models scalar floats for runtime
-bridges. It does not introduce new source-level FFI syntax or silently map
+The MLKit automatic FFI describes integer/boolean/pointer-like values and
+64-bit ML reals as C `double`. The layout helper additionally models scalar
+float32 values for runtime bridges. It does not introduce variadic
+source-level FFI syntax or silently map
 aggregates, vectors, int128, or arbitrary C++ types to scalar registers.
 
 `CodeGenUtilArm64.scalarCall` now implements staging, scalar placement,
-narrow-integer extension, packed stack stores, and variadic promotion. Raw and
-automatic source FFI calls use its word-sized path, with ML conversion in
-`CodeGenArm64`. Automatic boxed integer results preserve their destination
+narrow-integer extension, packed stack stores, and variadic promotion. Raw
+source FFI calls use its word-sized path. Automatic calls retain allocated
+operands until code generation, stage every argument before overwriting C
+argument registers, and classify `Float64` as `F64`. Real arguments use d0–d7
+and overflow stack slots independently of the integer bank; real results
+arrive in d0. ML boxing/unboxing is lowered before region inference, with
+other ML conversions in `CodeGenArm64`.
+Automatic boxed integer results preserve their destination
 across C. Returning bridges preserve x19–x30 and d8–d15; x18 remains reserved.
 The exported source interface remains `int -> int`, using ML integer
 representation as on X64.

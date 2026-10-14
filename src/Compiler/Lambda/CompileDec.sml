@@ -3000,25 +3000,59 @@ the 12 lines above are very similar to the code below
                                      else die ("prim " ^ name ^ " has wrong number of arguments")
                                  | _ => die ("give prim " ^ name ^ " a record argument type"))))
                    val tau2 = compileType tau_result
-                   val tau = TLE.ARROWtype (taus1, NONE, [tau2], NONE)
+                   (* Expose real boxing to region inference; keep C calls unboxed. *)
+                   val auto = String.isPrefix "@" name
+                   fun isReal (TLE.CONStype ([], tn, _)) =
+                         TyName.eq (tn, TyName.tyName_REAL)
+                     | isReal _ = false
+                   fun foreignType ty =
+                       if auto andalso isReal ty then TLE.f64Type else ty
+                   fun foreignArg (ty, arg) =
+                       if auto andalso isReal ty then
+                         TLE.PRIM (ccall "__real_to_f64" [TLE.realType] TLE.f64Type, [arg])
+                       else arg
+                   val args' = ListPair.map foreignArg (taus1, map (compileExp env) args)
+                   val realResult = auto andalso isReal tau2
+                   val tau = TLE.ARROWtype (map foreignType taus1, NONE,
+                                            [foreignType tau2], NONE)
                    val tyvars = LambdaExp.tyvars tau
                    val tyvars_fresh = map (fn tyvar => LambdaExp.fresh_tyvar ()) tyvars
                    val subst = mk_subst
                                  (fn () => "CompileDec.compile_application_of_c_function")
                                     (tyvars, map (fn tv => TLE.TYVARtype {tv=tv}) tyvars_fresh)
-				   val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
+                   val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
+                   (* Explicit regions select boxing storage, not extra C
+                    * arguments. Primitive regvars would also pass a pointer. *)
+                   val boxedType =
+                       if realResult then
+                         case regvars of
+                             [] => tau2
+                           | [rv] => TLE.CONStype ([], TyName.tyName_REAL, SOME [rv])
+                           | _ => die "real auto-conversion expects one explicit result region"
+                       else tau2
 
                    (* Names for certain primitives are altered on the basis of
                     * whether tagging of integers is enabled; see the comment
                     * near the compileCName function above. *)
                    val name = compileCName name
                in
-                 TLE.PRIM (CCALLprim {name = name,
-                                      tyvars = tyvars_fresh,
-									  regvars = regvars,
-                                      Type = on_Type subst tau,
-                                      instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars},
-                           map (compileExp env) args)
+                 let
+                   val call = TLE.PRIM
+                         (CCALLprim {name = name,
+                                     tyvars = tyvars_fresh,
+                                     regvars = if realResult then [] else regvars,
+                                     Type = on_Type subst tau,
+                                     instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars},
+                          args')
+                 in
+                   if realResult then
+                     TLE.PRIM (CCALLprim {name = "__f64_to_real",
+                                         tyvars = [], regvars = [],
+                                         Type = TLE.ARROWtype ([TLE.f64Type], NONE,
+                                                               [boxedType], NONE),
+                                         instances = []}, [call])
+                   else call
+                 end
                end
            | _ => die "compile_application_of_prim: wrong type info in ccall")
 

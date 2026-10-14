@@ -1,0 +1,7 @@
+fun mixed__noinline (x:real, n:int) : real = prim ("@m2_mixed", (x,n))
+fun consume__noinline (x:real) : int = prim ("@m2_consume", x)
+fun produce__noinline () : real = prim ("@m2_produce", ())
+fun discard__noinline (x:real) : unit = prim ("@m2_discard", x)
+fun raw__noinline (x:real) : real = prim ("m2_raw", x)
+val x = mixed__noinline (produce__noinline (), consume__noinline 1.25)
+val () = discard__noinline (raw__noinline x)

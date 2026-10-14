@@ -207,113 +207,110 @@ struct
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. *)
 
-    fun compile_c_call_auto (name,args,rhos_for_result,opt_res,fsz,tmp,C) =
+    fun compile_c_call_auto (name,args,rhos_for_result,opt_res,fsz,(_:reg),C) =
         let
-            val nargs = List.length args (* not used for static calls *)
-            val args_stack = drop (List.length RI.args_reg_ccall) args
-            val args = ListPair.zip (args, RI.args_reg_ccall)
-            val args = List.map (fn ((x:SS.Aty,y:LS.foreign_type),z:reg) => (x,y,z)) args
-
-            fun mov_bool ((aty,r),fsz,C) =
-                load_aty(aty,r,fsz,
-                                  I.shrq(I "1", R r) :: C)
-
-            fun mov_foreignptr ((aty,r),fsz,C) =
-                if BI.tag_values() then
-                  case aty of
-                      SS.PHREG_ATY r => G.lea (D("-1", r),r) C
-                    | _ => load_aty(aty,r,fsz,
-                            G.lea (D("-1", r), r) C)
-                else load_aty(aty,r,fsz,C)
-
-            fun mov_chararray ((aty,r),fsz,C) =
-                case aty of
-                    SS.PHREG_ATY r' => G.lea (D("8", r'), r) C
-                  | _ => load_aty(aty,r,fsz,
-                          G.lea (D("8", r), r) C)
-
-            fun mov_int ((aty,r),fsz,C) =
-                if BI.tag_values() then
-                  load_aty(aty,r,fsz,
-                                    I.shrq(I "1", R r) :: C)
-                else
-                  load_aty(aty,r,fsz,C)
-
-            fun fetch_int_32_64 ((aty,r),fsz,C) =
-                if not(BI.tag_values()) then load_aty(aty,r,fsz,C)
-                else load_aty(aty,r,fsz,
-                      G.load_ea(D("8",r), r) C)
-
-            fun mov_arg (aty,ft:LS.foreign_type,r,fsz,C) =
-                let val mov_fun = case ft
-                                   of LS.Bool => mov_bool
-                                    | LS.Int => mov_int
-                                    | LS.Int32 => fetch_int_32_64
-                                    | LS.Int64 => fetch_int_32_64
-                                    | LS.ForeignPtr => mov_foreignptr
-                                    | LS.CharArray => mov_chararray
-                                    | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
-                in mov_fun((aty,r),fsz,C)
-                end
-
-            fun push_arg ((aty:SS.Aty,ft:LS.foreign_type),fsz,C) =
-                mov_arg (aty,ft,tmp,fsz,G.push_ea(R tmp) $ C)
-
-            fun tag_bool_result (r,C) = G.lea (DD("1", r, r, ""), r) C
-
-            fun maybe_tag_int_result (r,C) =
-                if BI.tag_values() then G.lea (DD("1", r, r, ""), r) C
-                else C
-
-            fun maybe_tag_foreignptr_result (r,C) =
-                if BI.tag_values() then G.lea (D("1", r), r) C
-                else C
-
-            fun maybe_push_rho_for_result fsz F =
-                case rhos_for_result of
-                    [SS.PHREG_ATY r] => G.push_ea(R r) $
-                                        G.push_ea(I"0") $
-                                        F (fsz+2)   (* push twice for alignment *)
-                  | _ => F fsz
-
-            fun box_int64_result (r,C) =
-                case rhos_for_result of
-                    [_] =>
-                     G.pop_ea (R treg0) $
-                      G.pop_ea (R treg0) $
-                       store(rax,treg0,WORDS 1,                        (* store content *)
-                        store_immed(BI.tag_word_boxed false, treg0, WORDS 0,   (* store tag *)
-                         G.copy(treg0, rax, C)))
-                  | _ => die "CCALL_AUTO.expecting exactly one memory location for int64 result"
-
-            fun convert_result ft =
-                case ft of
-                    LS.Bool => tag_bool_result
-                  | LS.Int => maybe_tag_int_result
-                  | LS.ForeignPtr => maybe_tag_foreignptr_result
-                  | LS.Unit => die "convert_result.Unit already dealt with"
-                  | LS.CharArray => die "convert_result.CharArray foreign type not supported in \
-                                        \auto-conversion result"
-                  | LS.Int32 =>
-                    if not (BI.tag_values()) then (fn (r,C) => C)
-                    else box_int64_result
-                  | LS.Int64 =>
-                    if not (BI.tag_values()) then (fn (r,C) => C)
-                    else box_int64_result
-
-            fun store_result ((aty,ft:LS.foreign_type), C) =
-                case ft of
-                    LS.Unit => C
-                  | _ => convert_result ft (rax, move_reg_into_aty(rax,aty,fsz,C))
-
-            val dynlinklab = "localResolveLibFnAuto"
-        in maybe_push_rho_for_result fsz (fn fsz =>
-             withTimeCall name fsz (fn fsz => fn C =>
-               shuffle_args fsz mov_arg args
-                 (with_stack_args push_arg fsz args_stack
-                   (fn C => callc_static_or_dynamic (name,nargs,NameLab dynlinklab,C)) C))
-               (store_result(opt_res,C)))
+          val tmp = treg0
+          datatype location = ArgReg of reg | ArgStack of int
+          val fregs = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7]
+          fun layout ([],g,f,sp,acc) = (rev acc,sp,f)
+            | layout ((aty,ft)::rest,g,f,sp,acc) =
+              let val floating = ft = LS.Float64
+                  val (loc,g',f',sp') =
+                      if floating andalso f < length fregs then
+                        (ArgReg(List.nth(fregs,f)),g,f+1,sp)
+                      else if not floating andalso g < length RI.args_reg_ccall then
+                        (ArgReg(List.nth(RI.args_reg_ccall,g)),g+1,f,sp)
+                      else (ArgStack sp,g,f,sp+1)
+              in layout(rest,g',f',sp',(aty,ft,loc)::acc)
+              end
+          val (arguments,stackWords,floatRegs) = layout(args,0,0,0,[])
+          val (dst,ft) = opt_res
+          val boxed = BI.tag_values() andalso (ft = LS.Int32 orelse ft = LS.Int64)
+          val protect = gc_p()
+          val rhoSlot = stackWords + length args
+          val policySlot = rhoSlot + (if boxed then 1 else 0)
+          val timeSlot = policySlot + (if protect then 1 else 0)
+          val usedWords = timeSlot + (if timeProfile() then 1 else 0)
+          val words = usedWords + usedWords mod 2
+          val bytes = Int.toString(8*words)
+          val callFrame = fsz + words
+          fun slot n = D(Int.toString(8*n),rsp)
+          fun indexed f xs C =
+              #2(foldr (fn (x,(i,C)) => (i-1,f(i,x,C))) (length xs-1,C) xs)
+          fun stage (i,(aty,t,_),C) =
+              let val off = slot(stackWords+i)
+                  val tail = I.movq(R tmp,off) :: C
+                  val converted = case t of
+                      LS.Bool => I.shrq(I "1",R tmp) :: tail
+                    | LS.Int => if BI.tag_values() then I.sarq(I "1",R tmp) :: tail else tail
+                    | LS.Word => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
+                    | LS.Int31 => I.movslq(R (I.doubleOfQuadReg tmp),R tmp) ::
+                                  I.sarq(I "1",R tmp) :: tail
+                    | LS.Word31 => I.mov(R (I.doubleOfQuadReg tmp),R (I.doubleOfQuadReg tmp)) ::
+                                   I.shrq(I "1",R tmp) :: tail
+                    | LS.Int63 => I.sarq(I "1",R tmp) :: tail
+                    | LS.Word63 => I.shrq(I "1",R tmp) :: tail
+                    | LS.Int32 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
+                    | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
+                    | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
+                    | LS.CharArray => G.lea(D("8",tmp),tmp) tail
+                    | LS.Float64 => C
+                    | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
+              in if t = LS.Float64 then
+                   load_aty(aty,RI.tfreg0,callFrame,I.movsd(R RI.tfreg0,off) :: C)
+                 else load_aty(aty,tmp,callFrame,converted)
+              end
+          fun place (i,(_,t,loc),C) =
+              let val off = slot(stackWords+i)
+              in case loc of
+                   ArgReg r => (if t = LS.Float64 then I.movsd else I.movq)(off,R r) :: C
+                 | ArgStack n => I.movq(off,R tmp) :: I.movq(R tmp,slot n) :: C
+              end
+          val tail = if words = 0 then C else G.add(I bytes,rsp) C
+          val tail = move_reg_into_aty(if ft = LS.Float64 then xmm0 else rax,dst,callFrame,tail)
+          val tail = case ft of
+              LS.Float64 => tail
+            | LS.Unit => move_unit(R rax,tail)
+            | LS.Bool => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Int => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
+            | LS.Word => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
+            | LS.Int31 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Word31 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Int63 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Word63 => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.ForeignPtr => if BI.tag_values() then G.lea(D("1",rax),rax) tail else tail
+            | LS.CharArray => die "CCALL_AUTO.CharArray result not supported"
+            | _ => if boxed then
+                     I.movq(slot rhoSlot,R treg1) ::
+                     store(rax,treg1,WORDS 1,
+                       store_immed(BI.tag_word_boxed false,treg1,WORDS 0,
+                         G.copy(treg1,rax,tail)))
+                   else tail
+          val tail = timeRestore (8*timeSlot) tail
+          val tail = if protect then G.load_ea(LA(NameLab "disable_gc"),treg1)
+                       (I.movq(slot policySlot,R tmp) :: I.movq(R tmp,D("0",treg1)) :: tail)
+                     else tail
+          val origin = new_local_lab "x64_c_origin"
+          val body = I.dot_p2align "2" :: I.lab origin ::
+                     I.movq(I(Int.toString floatRegs),R rax) ::
+                     callc_static_or_dynamic(name,length args,NameLab "localResolveLibFnAuto",tail)
+          val body = indexed place arguments body
+          val body = timeSave (8*timeSlot) (SOME origin) body
+          val body = if protect then G.load_ea(LA(NameLab "disable_gc"),treg1)
+                       (I.movq(D("0",treg1),R tmp) :: I.movq(R tmp,slot policySlot) ::
+                        I.movq(I "1",D("0",treg1)) :: body)
+                     else body
+          (* All operands are staged before profiling, GC policy, or ABI
+           * register placement can overwrite any input registers. *)
+          val body = indexed stage arguments body
+          val body = if boxed then
+                       case rhos_for_result of
+                           [rho] => load_aty(rho,tmp,callFrame,I.movq(R tmp,slot rhoSlot) :: body)
+                         | _ => die "CCALL_AUTO.expecting one boxed result storage location"
+                     else body
+        in if words = 0 then body else G.sub(I bytes,rsp) body
         end
+
     end
 
     (**********************)

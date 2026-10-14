@@ -45,15 +45,21 @@ signature LINE_STMT =
 			       * must thus be converted when
 			       * passed between the C world and
 			       * the ML world. *)
-    | Int                     (* Integers (and words) are tagged
+    | Int                     (* Integers are tagged
 			       * when garbage collection is
 			       * enabled. *)
+    | Word                    (* Default words require logical untagging. *)
+    | Int31                   (* Explicit 31/63-bit values are always tagged. *)
+    | Word31
+    | Int63
+    | Word63
     | Int32                   (* Int32 (and word32) values are
                                * boxed when garbage collection is
                                * enabled. *)
     | Int64                   (* Int64 (and word64) values are
                                * boxed when garbage collection is
                                * enabled. *)
+    | Float64                 (* Unboxed binary64 passed as C double. *)
     | Unit                    (* Possible in results *)
 
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)

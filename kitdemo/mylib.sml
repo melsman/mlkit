@@ -17,6 +17,10 @@ fun power(base : int, n : int) : int =
 fun power_auto(base : int, n : int) : int =
   prim ("@power_auto", (base, n))
 
+(* Reals use C double arguments and results with automatic conversion. *)
+fun power_real_auto (base : real, n : int) : real =
+  prim ("@power_real_auto", (base, n))
+
 (* The function power_real is similar to power, except that the base
  * is now a real. The result type is also a real so an address to
  * pre-allocated space for the result is passed to the C function. The

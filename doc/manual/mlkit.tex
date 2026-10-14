@@ -8357,12 +8357,72 @@ example~\ref{power_auto.ex} of Section~\ref{Cexamples.sec}; it is part of the
 We define the notion of \emph{base type} as one of \kw{int}, \kw{Int8.int},
 \kw{Int16.int}, \kw{Int31.int}, \kw{Int32.int}, \kw{Int63.int}, \kw{Int64.int},
 \kw{word}, \kw{Word8.word}, \kw{Word16.word}, \kw{Word31.word},
-\kw{Word32.word}, \kw{Word63.word}, \kw{Word64.word}, \kw{char}, or \kw{bool}.
+\kw{Word32.word}, \kw{Word63.word}, \kw{Word64.word}, \kw{char}, \kw{bool},
+\kw{foreignptr}, or \kw{real} (including \kw{Real64.real}).
 
 Auto conversion works when each of the argument types of the ML function is a
 base type or one of \kw{string}, \kw{CharArray.array}, \kw{Word8Vector.vector},
 or \kw{Word8Array.array}. The return type of the ML function must be a base type
 or the type \kw{unit}.
+
+Table~\ref{auto_conversion_types.tab} shows the corresponding C types on
+the supported 64-bit native targets. Integral arguments use 64-bit C ABI
+slots, including when the ML type has fewer bits; use the listed C types
+rather than narrower C parameter types. The values must remain within the
+range of the ML type. A C boolean argument or result is a \kw{long} with
+value zero or one. Include \kw{stdint.h} when using \kw{uint8\_t}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lll}
+\hline
+ML type & C argument type & C result type \\
+\hline
+\kw{int}, \kw{Int8.int}, \kw{Int16.int}, & \kw{long} & \kw{long} \\
+\quad \kw{Int31.int}, \kw{Int32.int}, & & \\
+\quad \kw{Int63.int}, \kw{Int64.int} & & \\
+\kw{word}, \kw{Word8.word}, \kw{Word16.word}, & \kw{unsigned long} & \kw{unsigned long} \\
+\quad \kw{Word31.word}, \kw{Word32.word}, & & \\
+\quad \kw{Word63.word}, \kw{Word64.word} & & \\
+\kw{char} & \kw{unsigned long} & \kw{unsigned long} \\
+\kw{bool} & \kw{long} (0 or 1) & \kw{long} (0 or 1) \\
+\kw{real}, \kw{Real64.real} & \kw{double} & \kw{double} \\
+\kw{foreignptr} & \kw{void *} & \kw{void *} \\
+\kw{string} & \kw{const char *} & Not supported \\
+\kw{CharArray.array} & \kw{char *} & Not supported \\
+\kw{Word8Vector.vector} & \kw{const uint8\_t *} & Not supported \\
+\kw{Word8Array.array} & \kw{uint8\_t *} & Not supported \\
+\kw{unit} & No arguments for \kw{()} & \kw{void} \\
+\hline
+\end{tabular}
+\caption{ML and C types for auto conversion on 64-bit native targets.}
+\label{auto_conversion_types.tab}
+\end{table}
+
+On the native Arm64 and X64 backends, an ML \kw{real} argument or result
+corresponds to a C \kw{double}. Only 64-bit reals are supported; MLKit does
+not provide \kw{Real32}. Real arguments may be mixed with the other supported
+argument types. The compiler unboxes real arguments and boxes real results;
+the C function receives neither a pointer to an ML real object nor a region
+argument for its result. For example:
+\begin{smlcode}
+  fun power_real_auto (base : real, n : int) : real =
+    prim ("@power_real_auto", (base, n))
+\end{smlcode}
+\noindent
+The C implementation uses the ordinary scalar calling convention:
+\begin{scriptcode}
+  double power_real_auto(double base, long n) {
+    double p = 1.0;
+    for (; n > 0; --n) p *= base;
+    return p;
+  }
+\end{scriptcode}
+\noindent
+This example is included in the \kw{kitdemo/mylib.mlb} project. The types
+of each argument and the result must be specified sufficiently to determine
+their C representations. Auto conversion does not recursively convert reals
+inside records, lists, or arrays.
 
 For the vector and array types, the data pointer is passed as argument to the C
 function. The C function may then access and mutate the content of the data but
@@ -8394,6 +8454,9 @@ contains the following ML declarations:
 
   fun power_real (base: real, n: int) : real =
     prim ("power_real", (base, n))
+
+  fun power_real_auto (base: real, n: int) : real =
+    prim ("@power_real_auto", (base, n))
 
   fun print_string_list (ss: string list) : unit =
     prim ("print_string_list", ss)
@@ -8428,6 +8491,13 @@ comments.)
 \begin{example}\label{power_real.ex}
   The \index{power_real@\texttt{power\_real}}\kw{power\_real} function shows how
   to convert reals with the macros \kw{convertRealToC} and \kw{convertRealToML}.
+\end{example}
+
+\begin{example}\label{power_real_auto.ex}
+  The \kw{power\_real\_auto} function uses auto conversion to pass a real
+  base as C \kw{double}, an integer exponent as C \kw{long}, and a real
+  result as C \kw{double}, without explicit conversion or result storage
+  in the C implementation.
 \end{example}
 
 \begin{example}\label{power_auto.ex}
@@ -8534,6 +8604,11 @@ collection.
 
 Here is an overview of the main changes to MLKit since version 4.7.22.
 
+\subsubsection{Time Profiling}
+
+MLKit now support time profiling. Pass \lstinline{+RTS -tp} to the generated
+executable. Pass \lstinline{+RTS -help} to learn more.
+
 \subsubsection{Updated Region Profiling}
 
 MLKit now has a new modern region profiler, which is more efficient than the old
@@ -8541,9 +8616,9 @@ profiler. In particular, object headers are compacted into one machine
 word. Region profiling now does not track finite regions, but it works with
 threads and it has an interactive viewer that lets the user explore memory use
 of a program run interactively, after the program terminates. The new tool
-\lstinline{pview} also has a command-line interface, which allows the
-programmer to create region profiling graphs like the now retired
-\lstinline{rp2ps} program.
+\lstinline{pview} also has a command-line interface, which allows the programmer
+to create region profiling graphs like the now retired \lstinline{rp2ps}
+program.
 
 \subsubsection{Arm64 Backend}
 

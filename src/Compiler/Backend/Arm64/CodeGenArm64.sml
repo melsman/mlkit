@@ -433,23 +433,41 @@ struct
         case #2(List.nth(args,i)) of
           LS.Bool => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Int => if tagged() then A.asr (R(r),R(r),I(1)) :: code else code
+        | LS.Word => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
+        | LS.Int31 =>
+            let val low = case r of X n => W n | _ => unsupported "auto-call integer register"
+            in A.sxtw (R(r),R low) :: A.asr (R(r),R(r),I(1)) :: code
+            end
+        | LS.Word31 =>
+            let val low = case r of X n => W n | _ => unsupported "auto-call word register"
+            in A.uxtw (R(r),R low) :: A.lsr (R(r),R(r),I(1)) :: code
+            end
+        | LS.Int63 => A.asr (R(r),R(r),I(1)) :: code
+        | LS.Word63 => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Int32 => if tagged() then loadInto (r,8,r) code else code
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
+        | LS.Float64 => code
         | LS.Unit => unsupported "unit foreign argument"
       val boxed = tagged() andalso (ft = LS.Int32 orelse ft = LS.Int64)
       fun tag code = (instruction A.lsl (R(X 0),R(X 0),I(1))
          ++ instruction A.add (R(X 0),R(X 0),I(1))) code
-      val code = writeInto fsz dst (X 0) code
+      val code = writeInto fsz dst (if ft = LS.Float64 then D 0 else X 0) code
       val code = case ft of
           LS.Unit => constantInto (1,X 0) code
         | LS.Bool => (instruction A.cmp (R(X 0),I(0))
            ++ instruction A.cset (R(X 0),C NE)
            ++ tag) code
         | LS.Int => if tagged() then tag code else code
+        | LS.Word => if tagged() then tag code else code
+        | LS.Int31 => tag code
+        | LS.Word31 => tag code
+        | LS.Int63 => tag code
+        | LS.Word63 => tag code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
+        | LS.Float64 => code
         | _ => if boxed then (loadInto (SP,0,X 16)
            ++ storeInto (X 0,X 16,8)
            ++ constantInto (IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 17)
@@ -457,7 +475,16 @@ struct
            ++ moveInto (X 16,X 0)
            ++ stackInto (false,16)) code
           else code
-      val code = foreignCallInto (fsz+(if boxed then 2 else 0)) name (map #1 args) convert code
+      val callFrame = fsz + (if boxed then 2 else 0)
+      val code = if name = ":" then unsupported "dynamic foreign symbol resolution"
+                 else scalarCallInto
+                   {name = name,
+                    fixed = map (fn (_,t) => if t = LS.Float64 then AbiArm64.F64
+                                            else AbiArm64.I64) args,
+                    variadic = [], protectGC = gc(),
+                    loadArgument = fn (i,extra) =>
+                      readInto (callFrame+extra) (#1(List.nth(args,i))) (X 16)
+                        ++ convert(i,X 16)} code
     in
       if boxed then
         case rhos_for_result of

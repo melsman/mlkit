@@ -1,14 +1,16 @@
 ## MLKit NEWS
 
-* 2026-10-12: Add Linux X64 time sampling in existing runtimes and caches,
+* mael 2026-10-14: FFI auto conversion for reals (issue #161, PR #246).
+
+* mael 2026-10-12: Add Linux X64 time sampling in existing runtimes and caches,
   ELF build-ID/ASLR resolution, optional C-origin attribution and targeted
   pthread sampling. The native backends share `-tp`, `-p` and `pview`.
 
-* 2026-10-12: Unify profiling names: `pview` (Profile Viewer), `-p_file`,
+* mael 2026-10-12: Unify profiling names: `pview` (Profile Viewer), `-p_file`,
   `profile.prof`, and compiler/runtime `-p` for `-rp -tp`. Shared `-p_paused`
-  pauses enabled profilers at startup. The old viewer and file-option names
-  are removed without aliases; existing `.rp` files remain readable.
-  Argobots execution-stream count moves to `-par_threads N`.
+  pauses enabled profilers at startup. The old viewer and file-option names are
+  removed without aliases; existing `.rp` files remain readable.  Argobots
+  execution-stream count moves to `-par_threads N`.
 
 ### MLKit version 4.7.25 is released
 

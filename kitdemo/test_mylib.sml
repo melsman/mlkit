@@ -22,6 +22,15 @@ fun power_auto_test () =
 	   ")=" ^ Int.toString(power_auto(base,n)) ^ ".\n\n")
   end
 
+fun power_real_auto_test () =
+  let
+    val result = power_real_auto (2.5,3)
+  in
+    if Real.== (result,15.625) andalso Real.== (power_real_auto (2.5,0),1.0)
+    then print "Test of power_real_auto passed.\n\n"
+    else raise Fail "power_real_auto"
+  end
+
 fun power_real_test () =
   let
     val base = 10.5
@@ -105,6 +114,7 @@ fun strrev_test () =
 
 val _ = power_test()
 val _ = power_auto_test ()
+val _ = power_real_auto_test ()
 val _ = power_real_test()
 val _ = power_exn_test()
 val _ = print_string_list_test()
