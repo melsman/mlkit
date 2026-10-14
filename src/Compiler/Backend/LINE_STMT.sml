@@ -54,6 +54,7 @@ signature LINE_STMT =
     | Int64                   (* Int64 (and word64) values are
                                * boxed when garbage collection is
                                * enabled. *)
+    | Float64                 (* Unboxed binary64 passed as C double. *)
     | Unit                    (* Possible in results *)
 
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)

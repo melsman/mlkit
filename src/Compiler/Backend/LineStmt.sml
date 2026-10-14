@@ -254,6 +254,7 @@ struct
           | Int => LEAF "Int"
           | Int32 => LEAF "Int32"
           | Int64 => LEAF "Int64"
+          | Float64 => LEAF "Float64"
           | Bool => LEAF "Bool"
           | ForeignPtr => LEAF "ForeignPtr"
           | Unit => LEAF "Unit"

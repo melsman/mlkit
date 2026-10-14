@@ -42,7 +42,7 @@ signature CLOS_EXP =
     type cc
     type label
 
-    datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Int32 | Int64 | Unit
+    datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Int32 | Int64 | Float64 | Unit
 
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int

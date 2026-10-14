@@ -18,7 +18,7 @@ through LambdaExp, RegionExp, and MulExp.
   real arguments/results and mixed signatures; trace the existing
   `__real_to_f64` and `__f64_to_real` primitives and identify where to insert
   conversions. Record the typing, evaluation-order, and allocation invariants.
-- [ ] **M2: Implement typed lowering through the shared compiler.** Insert
+- [x] **M2: Implement typed lowering through the shared compiler.** Insert
   conversions around auto-converted calls, preserve `float64` through closure
   conversion, and extend the foreign-type mapping. Audit downstream consumers.
   Verify IR dumps show unboxed call arguments/results and correct result boxing.
@@ -104,7 +104,7 @@ representations for unresolved type variables.
   using `RType.c_function_effects`. Therefore the inner float64 result needs
   no real-result storage, while the outer conversion carries the real
   allocation through RegionExp and MulExp. Attach explicit result-region
-  annotations to the outer boxing primitive when a real result is rewritten;
+  annotations to the outer boxing result type when a real result is rewritten;
   do not leave them on the unboxed inner call. Preserve existing annotations
   for calls whose result is unchanged.
 - Reuse existing boxing allocation, tagging, GC, and profiling machinery.
@@ -131,5 +131,43 @@ foreign-type enumeration. X64 requires the corresponding work in M5.
 M1 is validated by tracing these existing construction, region-spreading,
 type-definition, and backend conversion paths. M2 must verify the resulting
 IR and preserve argument effects and explicit result-region behavior in
-regressions; M3/M4 and M5 establish the actual ABI and GC behavior. Compiler
-implementation remains pending.
+regressions; M3/M4 and M5 establish the actual ABI and GC behavior.
+
+## M2: Shared lowering
+
+`CompileDec` now rewrites concrete real argument positions to `float64` and
+wraps real results in the existing boxing primitive. A single explicit
+result-region argument becomes an annotation on the outer boxed result type;
+it is not passed as an extra region pointer to either primitive. Multiple
+explicit result regions are rejected for the single boxed real result.
+Calls without `@` and all
+other argument/result types retain their previous representation.
+
+The closure and linear IR foreign-type enumerations and printers now carry
+`Float64`, mapped only from `tyName_F64`. There is no separate foreign-type
+serialization in these IR modules. Exports explicitly reject float64.
+
+The existing auto-call register resolver only assigns integer registers.
+Until M3/M5 provide target ABI handling, it rejects Float64 calls before
+assigning registers. Backend pattern matches also have explicit pending-ABI
+diagnostics. This milestone enables typed IR construction, not execution of
+real auto-converted calls.
+
+The focused regression script is `test/real_auto_conversion/check-ir.sh`.
+It exercises mixed signatures, real arguments with integer/unit results,
+zero-argument real results, and an ordinary real call, in plain, GC, and
+profiling modes. It also checks explicit result storage in ReML mode.
+ABI execution and special-value coverage remain in M4/M5.
+
+Validation for M2:
+
+- Built the Arm64 compiler with MLton and rebuilt the final sources with the
+  source-built compiler.
+- Ran `check-ir.sh` successfully in plain, GC, profiling, and explicit-region
+  modes. Checks cover conversion placement, unboxed call results without
+  result storage, boxed-result storage, foreign types in linear IR, and the
+  unchanged ordinary-call path.
+- Ran existing integer auto-conversion and real arithmetic/boxing smoke
+  checks in plain, GC, and profiling modes.
+- Type-checked the final X64 compiler with MLton; checked shell syntax and
+  `git diff --check`.

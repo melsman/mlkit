@@ -437,6 +437,7 @@ struct
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
+        | LS.Float64 => unsupported "float64 auto-conversion (Arm64 ABI support pending)"
         | LS.Unit => unsupported "unit foreign argument"
       val boxed = tagged() andalso (ft = LS.Int32 orelse ft = LS.Int64)
       fun tag code = (instruction A.lsl (R(X 0),R(X 0),I(1))
@@ -450,6 +451,7 @@ struct
         | LS.Int => if tagged() then tag code else code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
+        | LS.Float64 => unsupported "float64 auto-conversion (Arm64 ABI support pending)"
         | _ => if boxed then (loadInto (SP,0,X 16)
            ++ storeInto (X 0,X 16,8)
            ++ constantInto (IntInf.fromInt(Word.toInt(BackendInfo.tag_word_boxed false)),X 17)

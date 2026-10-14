@@ -252,6 +252,7 @@ struct
                                     | LS.Int64 => fetch_int_32_64
                                     | LS.ForeignPtr => mov_foreignptr
                                     | LS.CharArray => mov_chararray
+                                    | LS.Float64 => die "CCALL_AUTO.float64 X64 ABI support pending"
                                     | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
                 in mov_fun((aty,r),fsz,C)
                 end
@@ -291,6 +292,7 @@ struct
                     LS.Bool => tag_bool_result
                   | LS.Int => maybe_tag_int_result
                   | LS.ForeignPtr => maybe_tag_foreignptr_result
+                  | LS.Float64 => die "CCALL_AUTO.float64 X64 ABI support pending"
                   | LS.Unit => die "convert_result.Unit already dealt with"
                   | LS.CharArray => die "convert_result.CharArray foreign type not supported in \
                                         \auto-conversion result"
