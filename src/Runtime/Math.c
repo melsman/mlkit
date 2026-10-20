@@ -222,9 +222,17 @@ __mod_int32ub(Context ctx, ssize_t x0, ssize_t y0, uintptr_t exn)
       raise_exn(ctx,exn);
       return 0;                               // never reached
     }
-  if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) )
+  if ( (x > 0 && y > 0) || (x < 0 && y < 0) )
     {
+      if ( y == -1 && x == -2147483647 - 1 )
+	{
+	  return 0;
+	}
       return x % y;
+    }
+  if (x % y == 0)
+    {
+      return 0;
     }
   return (x % y) + y;
 }
@@ -239,9 +247,17 @@ __mod_int64ub(Context ctx, ssize_t x0, ssize_t y0, uintptr_t exn)
       raise_exn(ctx,exn);
       return 0;                               // never reached
     }
-  if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) )
+  if ( (x > 0 && y > 0) || (x < 0 && y < 0) )
     {
+      if ( y == -1 && x == -9223372036854775807 - 1 )
+	{
+	  return 0;
+	}
       return x % y;
+    }
+  if ( x % y == 0 )
+    {
+      return 0;
     }
   return (x % y) + y;
 }
@@ -319,7 +335,7 @@ __quot_int31(ssize_t xML, ssize_t yML)
 
   xC = i31_to_i32ub((int)xML);
   yC = i31_to_i32ub((int)yML);
-  return i32ub_to_i31(xC / yC);
+  return i32ub_to_i31((unsigned int)(xC / yC));
 }
 
 ssize_t
@@ -329,7 +345,7 @@ __quot_int63(ssize_t xML, ssize_t yML)
 
   xC = i63_to_i64ub((long int)xML);
   yC = i63_to_i64ub((long int)yML);
-  return i64ub_to_i63(xC / yC);
+  return i64ub_to_i63((unsigned long int)(xC / yC));
 }
 
 ssize_t
@@ -352,7 +368,7 @@ __rem_int31(ssize_t xML, ssize_t yML)
   xC = i31_to_i32ub((int)xML);
   yC = i31_to_i32ub((int)yML);
 
-  return i32ub_to_i31(xC % yC);
+  return i32ub_to_i31((unsigned int)(xC % yC));
 }
 
 ssize_t
@@ -363,7 +379,7 @@ __rem_int63(ssize_t xML, ssize_t yML)
   xC = i63_to_i64ub((long int)xML);
   yC = i63_to_i64ub((long int)yML);
 
-  return i64ub_to_i63(xC % yC);
+  return i64ub_to_i63((unsigned long int)(xC % yC));
 }
 
 #ifdef TAG_VALUES
@@ -568,7 +584,10 @@ truncFloat(Context ctx, ssize_t f)
   double r;
 
   r = get_d(f);
-  if ((r >= (Max_Int_d + 1.0)) || (r <= (Min_Int_d - 1.0)))
+  /* Use exact bounds: adding or subtracting one at these magnitudes
+   * rounds away. Adjacent doubles outside this range cannot truncate
+   * to a representable ML integer. */
+  if ((r >= -Min_Int_d) || (r < Min_Int_d))
     {
       raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
     }
@@ -585,13 +604,17 @@ ceilFloat(Context ctx, ssize_t f)
 
   if( arg >= 0.0 )
     {
-      if( arg > Max_Int_d ) goto raise_ceil;
+      /* -Min_Int_d is the exact exclusive upper bound; Max_Int_d
+       * rounds up to it, since double cannot represent Max_Int. */
+      if( arg >= -Min_Int_d ) goto raise_ceil;
       i = (ssize_t) arg;
       if( arg > ((double) i) ) i += 1;
     }
   else
     {
-      if( arg <= (Min_Int_d - 1.0) ) goto raise_ceil;
+      /* At this magnitude adjacent doubles are more than one apart,
+       * so no representable argument below Min_Int_d can ceil to it. */
+      if( arg < Min_Int_d ) goto raise_ceil;
       i = (ssize_t) arg;
     }
   return convertIntToML(i);
