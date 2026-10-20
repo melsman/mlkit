@@ -33,26 +33,12 @@
 #define Max_Int_d 4611686018427387903.0
 #define Min_Int_d -4611686018427387904.0
 #define val_precision 63
-/*
-#define Max_Int (INTPTR_MAX >> 1)
-#define Min_Int (INTPTR_MIN >> 1)
-#define Max_Int_d ((INTPTR_MAX >> 1) * 1.0)
-#define Min_Int_d ((INTPTR_MIN >> 1) * 1.0)
-#define val_precision (__WORDSIZE - 1)
-*/
 #else
 #define Max_Int 9223372036854775807
 #define Min_Int (-9223372036854775807-1)
 #define Max_Int_d 9223372036854775807.0
 #define Min_Int_d -9223372036854775808.0
 #define val_precision 64
-/*
-#define Max_Int INTPTR_MAX
-#define Min_Int INTPTR_MIN
-#define Max_Int_d (INTPTR_MAX * 1.0)
-#define Min_Int_d (INTPTR_MIN * 1.0)
-#define val_precision (__WORDSIZE)
-*/
 #endif
 
 /*----------------------------------------------------------------*
@@ -108,23 +94,14 @@ ssize_t negInfFloat(ssize_t d);
 void floatSetRoundingMode(ssize_t m); // 0:TONEAREST, 1: DOWNWARD, 2: UPWARD, 3: ZERO
 ssize_t floatGetRoundingMode(void);
 
-// #ifdef PROFILING
-// String stringOfFloatProf(Region rAddr, long f, uintptr_t pPoint);
-// String generalStringOfFloatProf(Region rAddr, String str, long f, long pPoint);
-// #else
 String REG_POLY_FUN_HDR(stringOfFloat,Region rAddr, size_t f);
 String REG_POLY_FUN_HDR(generalStringOfFloat,Region rAddr, String str, size_t f);
-// #endif
 
 /* For basislib Math structure */
 ssize_t sml_sqrt(ssize_t d, ssize_t s);
 
 /* For basislib PackReal{Big,Little} structures */
-//#ifdef PROFILING
-//String sml_real_to_bytes(Region rAddr, long f, long pPoint);
-//#else
 String REG_POLY_FUN_HDR(sml_real_to_bytes,Region rAddr, size_t f);
-//#endif
 size_t sml_bytes_to_real(size_t d, String s);
 
 void printReal(size_t f);
