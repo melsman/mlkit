@@ -1,0 +1,6 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+  storage_mode_type_instances_copy.sml
+in
+  storage_mode_type_instances.sml
+end

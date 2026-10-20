@@ -483,6 +483,31 @@ structure AtInf : AT_INF =
       in traverse f actuals nil
       end
 
+  (* A polymorphic callee treats its type arguments as opaque values. A
+     destination region may nevertheless contain data inside such a value,
+     even when it differs from every other actual region argument (#248).
+
+     Birkedal, Tofte and Vejlstrup, POPL '96, Section 6, construct the flow
+     graph from region/effect instantiations and define lrv using binding-site
+     types. Equation (23) excludes the call argument from the live set when
+     passing storage modes. Regions hidden in a type substitution for alpha
+     are therefore not explicitly covered by those checks. We conservatively
+     protect them here, for local as well as imported polymorphic calls;
+     this is an additional condition, not an explicit rule in the paper.
+     https://melsman.github.io/mlkit/pdf/popl96.pdf, pp. 8-9. *)
+  fun protect_type_instances (_,_,[]) modes = modes
+    | protect_type_instances (_,_,mus) modes =
+      let val free = List.concat (map (RType.ferv_sigma o RType.type_to_scheme) mus)
+          val type_rhos = RegFlow.reachable_with_insertion free
+          fun overlaps rho =
+              List.exists (fn p => List.exists (equal_places p) type_rhos)
+                          (RegFlow.reachable_in_graph_with_insertion rho)
+          fun protect (mode as ATTOP _) = mode
+            | protect (ATBOT rho) = if overlaps rho then ATTOP rho else ATBOT rho
+            | protect (SAT rho) = if overlaps rho then ATTOP rho else SAT rho
+      in if null type_rhos then modes else map protect modes
+      end
+
   fun check_mode rv inferred =
       let fun fail () =
               let open Report infix //
@@ -544,6 +569,7 @@ structure AtInf : AT_INF =
                                                        ^ "\n")
                                              else ())
                                           ; map (fn (rho, _) => ATTOP rho) actuals)
+                           val actuals' = protect_type_instances il actuals'
                            val actuals' = case RegionExp.argumentModes metaType of
                                               NONE => actuals'
                                             | SOME modes => ListPair.mapEq
