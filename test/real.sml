@@ -84,7 +84,10 @@ val test6a = tst "test6a" (map trunc args
 			   = [0, 99, ~5, 1, ~1, 1, ~1, 2, ~2, 1000001, ~1000001])
 
 val test6b = chksmallbig "test6b" trunc [rsmallInt-0.9] [rbigInt+0.9];
-val test6c = map (chkfail "test6c" trunc) [rminInt-1.0, rmaxInt+1.0];
+(* Adding or subtracting 1.0 rounds away at these integer limits. *)
+val test6c = map (chkfail "test6c" trunc)
+                [nextAfter (rminInt, negInf), nextAfter (rmaxInt, posInf)];
+val test6d = tst "test6d" (trunc rminInt = minInt andalso ceil rminInt = minInt);
 
 val test7a = tst "test7a" (map round args
 			   = [0, 99, ~5, 1, ~1, 2, ~2, 2, ~2, 1000001, ~1000001]);
