@@ -188,7 +188,7 @@ structure ExecutionX64 : EXECUTION =
 
     val par_alloc_unprotected_p =
         Flags.add_bool_entry
-            {long="parallelism_alloc_unprotected", short=SOME "par0", neg=false,
+            {long="parallelism_alloc_unprotected", short=SOME "par0", neg=true,
              menu=["General Control","parallelism allocation unprotected"], item=ref false,
              desc="When enabled, allocation into a region is not\n\
                   \guaranteed to be atomic."}
@@ -446,6 +446,7 @@ structure ExecutionX64 : EXECUTION =
                                subdir ^ "_PAR0"
                              else subdir ^ "_PAR"
                            else subdir
+              val subdir = if Flags.is_on "inline_allocation" then subdir else subdir ^ "_NOINLINEALLOC"
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

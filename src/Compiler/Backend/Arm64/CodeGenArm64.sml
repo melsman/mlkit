@@ -702,7 +702,8 @@ struct
       val finite = localFresh()
       fun finiteCode code = instruction A.and_ (R(X 16),R(X 16),I(~4)) code
       fun ordinaryInfiniteCode code =
-        if (parallel() andalso not(unprotected())) orelse
+        if not(Flags.is_on "inline_allocation") orelse
+           (parallel() andalso not(unprotected())) orelse
            words + (if profiling() then 1 else 0) > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
           allocSlowInto words untag site code
         else
@@ -2766,7 +2767,8 @@ struct
          ++ countInto (X 3) untag
          ++ (if profiling() then loadInto (SP,bytes,X 4) else countInto (X 4) 0)) code
       fun allocation lab name untag code =
-        if parallel() andalso not(unprotected()) andalso not(profiling()) then
+        if parallel() andalso not(unprotected()) andalso not(profiling()) andalso
+           Flags.is_on "inline_allocation" then
           let val slow = NameLab(name ^ "_slow")
           in fast lab slow (untag = 1)
                (shared slow name (NameLab "mlkit_arm64_alloc") (setup untag) code)

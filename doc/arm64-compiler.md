@@ -186,11 +186,22 @@ exception, including GC, tagged-pair GC, and generational GC.
 ## Parallel compilation
 
 Milestone 6 adds native pthread and optional Argobots execution for MLKit and
-ReML (`-par`, or `-par -argo`). These use the existing no-GC, untagged,
-non-profiling runtime configurations. `-argo` and `-par0` require `-par`.
-`-par0` disables allocation protection and is only appropriate when concurrent
-allocations cannot target the same region. See [arm64-runtime.md](arm64-runtime.md)
+ReML (`-par`, or `-par -argo`). These use the no-GC, untagged runtime
+configurations, including profiling variants. `-argo` requires `-par`.
+As in X64, ReML defaults to `-par -par0`; `-no_par0` enables normal allocation
+protection, and `-no_par` selects sequential execution. `par0` is inactive when
+parallelism is disabled. MLKit does not accept `-par0` or `-no_par0` and uses
+normal protection when parallelism is enabled. `-par0` disables allocation
+protection and relies on separation of concurrent allocation regions.
+See [arm64-runtime.md](arm64-runtime.md)
 for the synchronization design, Argobots setup, and validation coverage.
+
+Both native backends enable `--inline_allocation` by default. Use
+`--no_inline_allocation` to route infinite-region allocations through the
+existing C allocator, retaining its atomic protocol for protected regions.
+This disables generated page fast paths, including the shared atomic helper;
+it does not select a mutex-only allocator or change reset/finite-region behavior.
+The setting has its own compilation-cache suffix and is fixed for a REPL session.
 
 `make check-arm64` also runs `tests/check-parallel.sh`; set
 `ARGOBOTS_ROOT` to include its optional Argobots cases. The fixtures include

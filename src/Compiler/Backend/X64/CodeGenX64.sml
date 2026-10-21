@@ -1845,7 +1845,7 @@ struct
          *)
 
         fun allocinreg C =
-            if not(parallelism_p()) then C
+            if not(parallelism_p()) orelse not(Flags.is_on "inline_allocation") then C
             else
             let val allocinreg_protect = new_local_lab "alloc_protect"
                 val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())

@@ -34,10 +34,10 @@ its official release archive with `--disable-checks --disable-shared` in `/priva
   alternating C/generated allocation, frequent page expansion, and private
   regions without a mutex.
 
-The native and broad regression suites ran before the final frame reduction;
-the final helper is covered by the subsequent complete targeted parallel rerun.
-The reduction changes only the non-profiled protected-parallel helper; ordinary
-GC and nonparallel code generation are unchanged by that refinement.
+The broad regression counts above were obtained before the final frame
+reduction. The final helper and shared flag/default updates were subsequently
+validated by complete native and parallel suite reruns, including the new
+disabled-fast-path probes described below.
 
 Commands (from the configured checkout, with absolute paths exported):
 
@@ -61,6 +61,31 @@ Profiling tests inspect the generated link unit to ensure the new helper is
 excluded. Parallel GC and tagged-parallel configurations remain unsupported.
 
 ## Measurement method
+
+The later default-alignment update was checked with both X64 compiler front
+ends: ReML reports `par` and `par0` on by default, accepts `-no_par0`, and both
+MLKit front ends reject positive and negative short/long `par0` forms. The
+ARM64 parallel suite additionally exercises ReML's defaults without `-par` or
+`-par0` on the command line, explicit `-par0`, and protected modes using
+`-no_par0`, with pthreads and Argobots. Nonparallel ReML native checks explicitly
+use `-no_par`. The benchmarks below use MLKit, so their flags and interpretation
+are unaffected by the ReML default change.
+
+The shared `inline_allocation` boolean defaults to enabled. Its disabled mode
+was subsequently validated with the complete ARM64 native and parallel suites:
+plain/GC/generational-GC allocation probes run both ways; protected and
+unprotected parallel fixtures, profiling, callbacks, and pthread/Argobots REPLs
+pass. The tests check that disabled-mode link images omit the atomic helper and
+that generated units omit allocation page-space checks. Disabled modes use
+separate `_NOINLINEALLOC` caches.
+
+Both X64 front ends were rebuilt on the ARM64 host. Compile/assemble checks
+produce Mach-O X64 objects for sequential and protected MLKit allocation, and
+default-separated and protected ReML allocation, with fast paths on and off.
+Protected fast sites call `allocinreg`; protected disabled sites call
+`__allocate`; separated disabled sites call `__allocate_unprotected`. An MLB
+compiled both ways produces `RI_PAR` and `RI_PAR_NOINLINEALLOC` caches.
+These are cross-compilation checks; X64 executables were not run on this host.
 
 Measurements use the final 16-byte helper after correctness workloads finish.
 Each benchmark warms both variants, alternates their order over nine paired

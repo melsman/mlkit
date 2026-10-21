@@ -3,6 +3,11 @@
 Status: implemented; validation and measurements are recorded in
 `arm64-atomic-allocation-results.md`.
 
+Parallel defaults are aligned across X64 and ARM64: ReML enables `-par -par0`
+by default and accepts `-no_par0`; MLKit does not expose `par0` and retains
+parallelism off by default. To measure forced protection in ReML, combine
+`-no_par0` with `--alloc_protect_always`.
+
 ## Goal
 
 Give ordinary protected parallel allocations on ARM64 a generated assembly fast
@@ -208,3 +213,33 @@ value register: `stlxr` validates the exclusive reservation. Reusing the saved
 LR as a temporary and reconstructing the result keeps the ARM64 frame smaller
 than the initial 48-byte implementation. Both helpers keep the full allocator's
 mutex-based expansion behavior; neither makes the complete allocator lock-free.
+
+## Shared controls
+
+| Compiler / flags | Allocation behavior |
+| --- | --- |
+| MLKit default | Sequential; `par0` options are blocked |
+| MLKit `-no_gc -par` | Parallel allocation with normal protection decisions |
+| ReML default | `-par -par0`: parallel execution using region separation |
+| ReML `-no_par0` | Parallel execution with normal protection decisions |
+| Either compiler `--no_inline_allocation` | Infinite-region allocations use the existing C allocator |
+
+`--inline_allocation` defaults to enabled in both backends. It controls generated
+fast paths, including shared assembly helpers; disabling it does not select a
+mutex-only allocator. C allocations retain atomics for protected regions and
+use `alloc_unprotected` when ReML's `par0` is active. Finite regions and reset
+policy are unchanged. `_NOINLINEALLOC` separates caches for the disabled mode,
+and the flag is fixed when a REPL session starts.
+
+For example, the following ReML pairs measure separation and generated fast
+paths independently, with no additional strategy enumeration:
+
+```sh
+reml -o separated program.mlb
+reml -no_par0 -o protected program.mlb
+reml --no_inline_allocation -o separated_c program.mlb
+reml -no_par0 --no_inline_allocation -o protected_c program.mlb
+```
+
+Add `--alloc_protect_always` to the protected commands when the comparison
+should also disregard protection analysis.

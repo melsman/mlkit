@@ -738,6 +738,13 @@ val _ = add_bool_entry
      {long="log_to_file", short=NONE, menu=["File", "Log to file"],
       neg=false, item=log_to_file, desc="Log to files instead of stdout."}
 
+val _ = add_bool_entry
+     {long = "inline_allocation", short = NONE,
+      menu = ["Compiler", "native allocation fast paths"],
+      neg = true, item = ref true,
+      desc = "Use generated native allocation fast paths. When disabled,\n\
+             \infinite-region allocations call the existing C allocator."}
+
 val _ = add_string_entry
      {long="SML_LIB", short=NONE, menu=["File", "installation directory"],
       item=install_dir,

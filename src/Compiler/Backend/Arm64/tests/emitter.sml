@@ -461,7 +461,9 @@ local
     let
       val () = List.app Flags.turn_off
         ["garbage_collection","generational_garbage_collection","tag_values","region_profile","parallelism"]
-      val () = if suffix = "parallel" then Flags.turn_on "parallelism" else ()
+      val () = if String.isPrefix "parallel" suffix then Flags.turn_on "parallelism" else ()
+      val () = if String.isSuffix "-runtime" suffix then Flags.turn_off "inline_allocation"
+               else Flags.turn_on "inline_allocation"
       val () = if gc then List.app Flags.turn_on ["garbage_collection","tag_values"] else ()
       val () = if gen then Flags.turn_on "generational_garbage_collection" else ()
       val main = AddressLabels.new_named "allocation_paths"
@@ -490,7 +492,10 @@ local
       G.emit(G.generate_link_code([main],([],[])),"allocation-" ^ suffix ^ "-link.s")
     end
 in
-  val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true),("parallel",false,false)]
+  val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true),
+                              ("plain-runtime",false,false),("gc-runtime",true,false),
+                              ("gengc-runtime",true,true),("parallel-runtime",false,false),
+                              ("parallel",false,false)]
   (* The C concurrency fixture supplies its own runtime entry point. *)
   val () = G.emit(map (fn I.Label(I.NameLab "code") => I.Label(I.NameLab "unused_allocation_code")
                        | I.Directive(I.Global(I.NameLab "code")) => I.Directive(I.Global(I.NameLab "unused_allocation_code"))

@@ -366,7 +366,8 @@ struct
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
     fun ordinary_alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
-        if parallelism_p() andalso not(par_alloc_unprotected_p()) then (* new *)
+        if (parallelism_p() andalso not(par_alloc_unprotected_p())) orelse
+           not(Flags.is_on "inline_allocation") then
           let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
               val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"
               fun descriptor C = if not(region_profiling()) then C else
@@ -377,7 +378,9 @@ struct
                   G.lea(D("8",treg1),treg1) $ C
           in copy(t,treg1,
              move_immed(IntInf.fromInt n,R treg0,
-             I.call (NameLab (if region_profiling() then "__allocate" else "allocinreg")) :: descriptor(copy(treg1,t,C))))
+             I.call (NameLab (if Flags.is_on "inline_allocation" andalso not(region_profiling()) then "allocinreg"
+                             else if parallelism_p() andalso par_alloc_unprotected_p() then "__allocate_unprotected"
+                             else "__allocate")) :: descriptor(copy(treg1,t,C))))
           end
         else
           let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)

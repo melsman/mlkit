@@ -40,15 +40,30 @@ run allocation-failure-link gcc -arch arm64 -O2 -Wall -Wextra -Werror -DPARALLEL
   allocation-parallel.s allocation-failure-link.s \
   "$SML_LIB/lib/darwin-arm64/runtimeSystemPar.a" -lm -pthread -o allocation-failure
 run allocation-failure ./allocation-failure
+run allocation-runtime-link gcc -arch arm64 -O2 -Wall -Wextra -Werror -DPARALLEL \
+  -iquote "$SML_LIB/src/Runtime" "$fixtures/allocation.c" \
+  allocation-parallel-runtime.s allocation-parallel-runtime-link.s \
+  "$SML_LIB/lib/darwin-arm64/runtimeSystemPar.a" -lm -pthread -o allocation-runtime
+run allocation-runtime ./allocation-runtime
+if grep -q 'clrex' allocation-parallel-runtime-link.s; then
+  echo 'Disabled fast path still emitted an atomic allocation helper.' >&2; exit 1
+fi
 # Reject options that have no matching runtime before compiling source.
 printf 'val x = 1\n' > "$scratch/guard.sml"
-for options in '-argo' '-par0' '-par --tag_values' '-par -gc' '-par -gengc'; do
+for options in '-argo' '-par --tag_values' '-par -gc' '-par -gengc'; do
   if "$MLKIT_ARM64" --no_basislib $options -o "$scratch/rejected" \
        "$scratch/guard.sml" > "$scratch/guard.log" 2>&1; then
     echo "Unsupported options accepted: $options" >&2; exit 1
   fi
   grep -q 'ARM64' "$scratch/guard.log"
   [ ! -e "$scratch/rejected" ]
+done
+for option in -par0 -no_par0 --parallelism_alloc_unprotected --no_parallelism_alloc_unprotected; do
+  if "$MLKIT_ARM64" -no_gc -par --no_basislib "$option" -o "$scratch/rejected" \
+       "$scratch/guard.sml" > "$scratch/guard.log" 2>&1; then
+    echo "MLKit accepted ReML-only option: $option" >&2; exit 1
+  fi
+  grep -q 'option is blocked' "$scratch/guard.log"
 done
 for mode in pthread argobots; do
   flags=""; includes=""; libraries=""; runtime=runtimeSystemPar.a
@@ -97,54 +112,78 @@ for mode in pthread argobots; do
   for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
     default_gc=-no_gc
     [ "$compiler" != "$REML_ARM64" ] || default_gc=""
-    for policy in inferred always private profile; do
+    for policy in inferred always private profile default runtime private-runtime; do
+      if [ "$compiler" = "$MLKIT_ARM64" ]; then
+        case "$policy" in private|default|private-runtime) continue;; esac
+      fi
       name="$mode-$(basename "$compiler")-$policy"
       mkdir "$scratch/$name"
       cd "$scratch/$name"
       cp "$fixtures"/parallel*.sml .
       cp "$SML_LIB/basis/THREAD.sig" "$SML_LIB/basis/Thread.sml" .
-      sample=parallel; extra=""; callback=callback.o
+      sample=parallel; extra=""; callback=callback.o; parallel_flags=-par
+      [ "$compiler" != "$REML_ARM64" ] || extra=-no_par0
       case "$policy" in
-        always) extra=--alloc_protect_always ;;
+        always) extra="$extra --alloc_protect_always" ;;
         private) extra=-par0; sample=parallel-private; callback="" ;;
-        profile) extra=-rp ;;
+        default) extra=""; parallel_flags=""; sample=parallel-private; callback="" ;;
+        profile) extra="$extra -rp" ;;
+        runtime) extra="$extra --no_inline_allocation" ;;
+        private-runtime) extra='-par0 --no_inline_allocation'; sample=parallel-private; callback="" ;;
       esac
       printf 'parallel-prelude.sml\nTHREAD.sig\nThread.sml\n%s.sml\n' "$sample" > main.mlb
       run "$name-callback" gcc -arch arm64 -DPARALLEL $includes \
         -iquote "$SML_LIB/src/Runtime" -c "$fixtures/parallel-callback.c" -o callback.o
       run "$name-compile" "$compiler" $default_gc --no_basislib --no_delete_target_files \
-        -par $flags $extra -ldexe "gcc -arch arm64 $callback $libraries" -o program main.mlb
+        $parallel_flags $flags $extra -ldexe "gcc -arch arm64 $callback $libraries" -o program main.mlb
       printf 'parallel ML passed\n' > expected
-      [ "$policy" = private ] || printf 'parallel callback passed\n' >> expected
+      case "$policy" in private|default|private-runtime) ;; *) printf 'parallel callback passed\n' >> expected;; esac
       for streams in $stream_counts; do
         set --
         [ "$mode" != argobots ] || set -- +RTS -par_threads "$streams" -RTS
         run "$name-$streams" ./program "$@"
         cmp expected "$scratch/$name-$streams.log"
       done
-      if [ "$policy" = private ]; then
+      case "$policy" in
+      private|default|private-runtime)
         grep -q 'bl _alloc_unprotected' MLB/ARM64_*/*link*.s
-      else
+        ;;
+      *)
         grep -q 'bl _alloc$' MLB/ARM64_*/*link*.s
         grep -q 'bl _thread_init' MLB/ARM64_*/*.s
         grep -q 'bl _thread_exit' MLB/ARM64_*/*.s
         grep -q 'ldaxr ' MLB/ARM64_*/parallel.sml.s
         grep -q 'stlxr ' MLB/ARM64_*/parallel.sml.s
-      fi
-      if [ "$policy" = profile ]; then
+        ;;
+      esac
+      case "$policy" in profile|runtime|private-runtime)
         if grep -q 'clrex' MLB/ARM64_*/*link*.s; then
-          echo 'Profiling unexpectedly entered the atomic assembly helper.' >&2; exit 1
+          echo 'Disabled allocation fast path emitted an atomic helper.' >&2; exit 1
         fi
-      fi
+        ;;
+      esac
+      case "$policy" in runtime|private-runtime)
+        [ -d MLB/ARM64_*_NOINLINEALLOC ]
+        if grep -Eq 'orr .*#8191' MLB/ARM64_*/*.s; then
+          echo 'Disabled allocation fast path still emitted a page-space check.' >&2; exit 1
+        fi
+        ;;
+      esac
     done
-    # Separate REPL units must resolve the fast helper emitted by initialization.
-    run "$mode-$(basename "$compiler")-repl" "$compiler" $default_gc \
-      --no_basislib -par $flags --libs "$repl_libs" --libdirs "$repl_dirs" \
-      -ldexe 'gcc -arch arm64' < "$fixtures/repl-input.txt"
-    repl_log="$scratch/$mode-$(basename "$compiler")-repl.log"
-    grep -q 'REPL GC OK' "$repl_log"
-    grep -q 'REPL RECOVERED' "$repl_log"
-    if grep -Eq 'BAD|Compile error' "$repl_log"; then cat "$repl_log"; exit 1; fi
+    # Separate REPL units must resolve the helper selected by initialization.
+    for allocation in fast runtime; do
+      extra=""
+      [ "$compiler" != "$REML_ARM64" ] || extra=-no_par0
+      [ "$allocation" != runtime ] || extra="$extra --no_inline_allocation"
+      name="$mode-$(basename "$compiler")-repl-$allocation"
+      run "$name" "$compiler" $default_gc --no_basislib -par $flags $extra \
+        --libs "$repl_libs" --libdirs "$repl_dirs" \
+        -ldexe 'gcc -arch arm64' < "$fixtures/repl-input.txt"
+      repl_log="$scratch/$name.log"
+      grep -q 'REPL GC OK' "$repl_log"
+      grep -q 'REPL RECOVERED' "$repl_log"
+      if grep -Eq 'BAD|Compile error' "$repl_log"; then cat "$repl_log"; exit 1; fi
+    done
   done
 done
 printf 'ARM64 parallel validation passed.\n'
