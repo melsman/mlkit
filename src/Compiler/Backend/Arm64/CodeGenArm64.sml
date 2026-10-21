@@ -41,12 +41,6 @@ struct
   val alloc_protect_always = Flags.add_bool_entry
     {long = "alloc_protect_always",short = NONE,item = ref false,neg = false,
      menu = ["Compiler","always protect allocation"],desc = "Always protect parallel allocation."}
-  val tail_wrappers = Flags.add_bool_entry
-    {long = "arm64_tail_wrappers",short = NONE,item = ref true,neg = true,
-     menu = ["Compiler","ARM64 tail wrappers"],desc = "Omit frames in identity tail wrappers."}
-  val self_loops = Flags.add_bool_entry
-    {long = "arm64_self_loops",short = NONE,item = ref true,neg = true,
-     menu = ["Compiler","ARM64 self loops"],desc = "Reuse frames in eligible self-tail recursion."}
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
@@ -2582,9 +2576,9 @@ struct
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
       val optimiseFrame = not(extra_gc_checks())
-      val wrapper = if optimiseFrame andalso not(sampledProfile()) andalso tail_wrappers() then identityTail cc body else NONE
+      val wrapper = if optimiseFrame andalso not(sampledProfile()) then identityTail cc body else NONE
       val recursive = ref false
-      val loop = if optimiseFrame andalso self_loops() andalso (not(gc()) orelse fsz = 0) andalso ac = 0
+      val loop = if optimiseFrame andalso (not(gc()) orelse fsz = 0) andalso ac = 0
                     andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
                     andalso (not(gc()) orelse not(LS.allocating body)) andalso loopStatements (l,recursive) body andalso !recursive
                  then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE

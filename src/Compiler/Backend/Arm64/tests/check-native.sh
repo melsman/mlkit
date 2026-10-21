@@ -19,6 +19,14 @@ fi; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
 cp *.sml native.mlb probe.c scalar-calls.c allocation.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
 cd "$arm_test_dir"
+for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
+  for flag in --arm64_self_loops --no_arm64_self_loops --arm64_tail_wrappers --no_arm64_tail_wrappers; do
+    if "$compiler" "$flag" --version > removed-tail-flag.log 2>&1; then
+      echo "Removed tail-frame flag was accepted: $flag" >&2; exit 1
+    fi
+    grep -q 'unknown option' removed-tail-flag.log
+  done
+done
 # Generate a finite 33,600-byte record without checking in a huge fixture.
 awk 'BEGIN {
   print "fun large__noinline(w:word):word = let val t = (w";
