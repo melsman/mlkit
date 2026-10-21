@@ -29,8 +29,8 @@ The source review used master at `deffec47`, together with the local X64
   generated fast path.
 - `src/Compiler/Backend/Arm64/CodeGenArm64.sml`,
   `allocateInRegionInto`, currently sends protected parallel allocation through
-  `allocSlowInto`. The shared preserving stubs save 24 integer registers, 30
-  floating-point registers, and LR in a 448-byte frame before calling the
+  `allocSlowInto`. The shared preserving stubs save 16 integer registers, 22
+  floating-point registers, and LR in a 320-byte frame before calling the
   existing helper. Avoiding this fixed cost is the primary expected benefit.
 - The private ARM64 allocation ABI passes region/result in `x16` and word count
   in `x17`; `x16`, `x17`, and `x30` are scratch. Incoming ML LR is already saved
@@ -105,7 +105,7 @@ changing allocation behavior.
 - [ ] Check standalone initialization and incremental REPL helper linkage.
 
 Acceptance: inspect generated assembly to establish that success avoids the
-448-byte save frame and C allocation call, and failure preserves all required
+320-byte save frame and C allocation call, and failure preserves all required
 registers and arguments.
 
 ### 3. Validate correctness and interoperability
@@ -145,3 +145,33 @@ large-object handling retain mutexes.
 
 This planning change was checked by source inspection only. No builds,
 correctness tests, or benchmarks were run, and no speedup has been measured.
+
+## Resolved design (milestone 1)
+
+The resolved helper ABI preserves x0-x3 and its return address in a 48-byte
+aligned frame; x16 retains the region until reservation succeeds and x17 retains
+the original word count throughout. Allocation size is checked before shifting
+or entering the exclusive sequence. The maximum ordinary request is 1022 words
+in the supported non-GC parallel layout. A mutex-null region uses an ordinary
+load/store. Protected allocation uses ldaxr/stlxr without intervening memory
+accesses; only register arithmetic and branches separate the pair. On no space,
+clrex abandons the reservation. On failed stlxr, the reservation is already
+cleared. Both paths restore the small frame, reestablish the infinite-region bit,
+and tail-branch to the existing full preserving stub. Successful allocation
+returns the acquired old pointer, with the existing optional -8 adjustment.
+
+The acquire load pairs with allocGen's release page publication. An allocator
+that races the runtime's boundary-reservation CAS cannot successfully store a
+stale pointer: its exclusive store fails. The page-boundary test is algebraically
+the existing (a-1+bytes) <= ((a-1)|8191) test, expressed as
+(a+bytes) <= (((a-1)|8191)+1), and handles exact fills and a already at the end.
+No new runtime layout or concurrent-reset guarantee is introduced. Profiling,
+large objects, finite-region handling and reset semantics retain their existing
+paths; unsupported parallel GC/tagged combinations remain rejected. The new
+clrex instruction is represented in the shared datatype, signature, and printer.
+
+The source's current `savedRegs` palette is 16 integer registers and 22
+floating-point registers plus LR: a 320-byte preserving frame. The earlier
+allocation-path document described an older 448-byte frame. The fast helper
+uses 48 bytes on success; fallback restores that frame before entering the
+320-byte stub, whose C-ABI wrapper has its own 48-byte frame.

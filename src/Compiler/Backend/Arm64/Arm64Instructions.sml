@@ -91,5 +91,6 @@ structure Arm64Instructions = struct
     | sbfx of ea * ea * ea * ea
     | ubfx of ea * ea * ea * ea
     | csel of ea * ea * ea * ea
+    | clrex
     | ret
 end

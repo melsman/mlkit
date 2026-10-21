@@ -456,11 +456,12 @@ in val () = G.emit(code,"long-branches.s") end
  * objects, dynamic finite regions, tag-free payloads, and both reset paths. *)
 local
   fun raw n = S.INTEGER_ATY{value = IntInf.fromInt n,precision = 0}
-  val live = [I.X 0,I.X 4,I.X 8,I.X 15,I.X 21,I.X 26,I.D 0,I.D 7,I.D 15,I.D 29]
+  val live = [I.X 0,I.X 4,I.X 8,I.X 15,I.X 21,I.X 26,I.D 0,I.D 7,I.D 15,I.D 29,I.X 1,I.X 2,I.X 3]
   fun probeMode (suffix,gc,gen) =
     let
       val () = List.app Flags.turn_off
-        ["garbage_collection","generational_garbage_collection","tag_values","region_profile"]
+        ["garbage_collection","generational_garbage_collection","tag_values","region_profile","parallelism"]
+      val () = if suffix = "parallel" then Flags.turn_on "parallelism" else ()
       val () = if gc then List.app Flags.turn_on ["garbage_collection","tag_values"] else ()
       val () = if gen then Flags.turn_on "generational_garbage_collection" else ()
       val main = AddressLabels.new_named "allocation_paths"
@@ -489,8 +490,12 @@ local
       G.emit(G.generate_link_code([main],([],[])),"allocation-" ^ suffix ^ "-link.s")
     end
 in
-  val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true)]
-  val () = List.app Flags.turn_off ["garbage_collection","generational_garbage_collection","tag_values"]
+  val () = List.app probeMode [("plain",false,false),("gc",true,false),("gengc",true,true),("parallel",false,false)]
+  (* The C concurrency fixture supplies its own runtime entry point. *)
+  val () = G.emit(map (fn I.Label(I.NameLab "code") => I.Label(I.NameLab "unused_allocation_code")
+                       | I.Directive(I.Global(I.NameLab "code")) => I.Directive(I.Global(I.NameLab "unused_allocation_code"))
+                       | i => i) (G.generate_link_code([],([],[]))),"allocation-concurrent-link.s")
+  val () = List.app Flags.turn_off ["garbage_collection","generational_garbage_collection","tag_values","parallelism"]
 end
 
 (* Selection must not copy or destructively normalise an allocated selector. *)

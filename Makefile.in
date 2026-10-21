@@ -451,7 +451,8 @@ emitter:
 check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
 	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-native.sh
-	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
+	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-arm64.sh

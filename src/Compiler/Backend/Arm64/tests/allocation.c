@@ -53,7 +53,13 @@ uintptr_t allocation_prepare(Context ctx, uintptr_t id) {
   if (id == 14) allocatePairRegion(ctx, &region, 0);
   else allocateRegion(ctx, &region, 0);
 #else
-  allocateRegion(ctx, &region, 0);
+  allocateRegion(ctx, &region,
+#ifdef PARALLEL
+                 id != 0
+#else
+                 0
+#endif
+                 );
 #endif
   if (id == 1) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE - 2);
   if (id == 2) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE);
@@ -80,9 +86,10 @@ uintptr_t allocation_prepare(Context ctx, uintptr_t id) {
 void allocation_check(Context ctx, uintptr_t tagged_region, uintptr_t result, uintptr_t id,
                       uintptr_t r0, uintptr_t r4, uintptr_t r8, uintptr_t r15,
                       uintptr_t r21, uintptr_t r26, uintptr_t d0, uintptr_t d7,
-                      uintptr_t d15, uintptr_t d29) {
+                      uintptr_t d15, uintptr_t d29, uintptr_t r1, uintptr_t r2, uintptr_t r3) {
   assert(r0 == 100 && r4 == 101 && r8 == 102 && r15 == 103);
   assert(r21 == 104 && r26 == 105 && d0 == 106 && d7 == 107 && d15 == 108 && d29 == 109);
+  assert(r1 == 110 && r2 == 111 && r3 == 112);
   if (id == 4 || id == 7 || id == 17) {
     assert(tagged_region == (uintptr_t)finite);
     if (id != 17) assert(result == (uintptr_t)finite);
