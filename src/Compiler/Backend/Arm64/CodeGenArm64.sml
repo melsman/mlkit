@@ -2691,7 +2691,7 @@ struct
   fun allocationStubsInto code =
     let
       (* Parallel allocation uses a small assembly frame before entering the
-       * full preserving C stub. x16 = region/result, x17 = words; x0..x3 and
+       * full preserving C stub. x16 = region/result, x17 = words; x0 and
        * the helper's LR survive both paths. No stack accesses occur between
        * ldaxr and stlxr. An acquire reservation observes allocGen's release
        * publication of an initialized page; a failed reservation delegates
@@ -2702,16 +2702,16 @@ struct
           val abandon = localFresh()
           val fallback = localFresh()
           val success = localFresh()
-          val saved = [X 0,X 1,X 2,X 3,X 30]
+          val saved = [X 0,X 30]
           fun restore code =
             foldri (fn (i,r,c) => loadInto(SP,8*i,r) c)
-              (stackInto(false,48) code) saved
+              (stackInto(false,16) code) saved
           fun space code =
-            (instruction A.sub (R(X 2),R(X 0),I(1))
-             ++ instruction A.orr (R(X 2),R(X 2),imm(BackendInfo.size_region_page()-1))
-             ++ instruction A.add (R(X 2),R(X 2),I(1))
-             ++ instruction A.add (R(X 1),R(X 0),R(X 3))
-             ++ instruction A.cmp (R(X 1),R(X 2))) code
+            (instruction A.sub (R(X 30),R(X 0),I(1))
+             ++ instruction A.orr (R(X 30),R(X 30),imm(BackendInfo.size_region_page()-1))
+             ++ instruction A.add (R(X 30),R(X 30),I(1))
+             ++ instruction A.add (R(X 0),R(X 0),Shifted(X 17,LSL,3))
+             ++ instruction A.cmp (R(X 0),R(X 30))) code
           val code = (one (Label fallback)
              ++ instruction A.orr (R(X 16),R(X 16),I(1))
              ++ restore
@@ -2720,7 +2720,7 @@ struct
              ++ one A.clrex
              ++ instruction A.b (L(fallback))) code
           val code = (one (Label success)
-             ++ moveInto(X 0,X 16)
+             ++ instruction A.sub (R(X 16),R(X 0),Shifted(X 17,LSL,3))
              ++ (if untag then adjustInto A.sub (X 16) 8 else fn c => c)
              ++ restore
              ++ one A.ret) code
@@ -2728,24 +2728,23 @@ struct
              ++ loadInto(X 16,0,X 0)
              ++ space
              ++ instruction A.b_hi (L(fallback))
-             ++ storeInto(X 1,X 16,0)
+             ++ storeInto(X 0,X 16,0)
              ++ instruction A.b (L(success))) code
           val code = (instruction A.and_ (R(X 16),R(X 16),I(~4))
-             ++ countInto (X 2) (BackendInfo.size_region_page() div 8 - 2)
-             ++ instruction A.cmp (R(X 17),R(X 2))
+             ++ countInto (X 30) (BackendInfo.size_region_page() div 8 - 2)
+             ++ instruction A.cmp (R(X 17),R(X 30))
              ++ instruction A.b_hi (L(fallback))
-             ++ instruction A.lsl (R(X 3),R(X 17),I(3))
-             ++ loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 2)
-             ++ instruction A.cbz (R(X 2),L(ordinary))
+             ++ loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 30)
+             ++ instruction A.cbz (R(X 30),L(ordinary))
              ++ instruction A.ldaxr (R(X 0),M(X 16,0))
              ++ space
              ++ instruction A.b_hi (L(abandon))
-             ++ instruction A.stlxr (R(W 2),R(X 1),M(X 16,0))
-             ++ instruction A.cbnz (R(W 2),L(fallback))
+             ++ instruction A.stlxr (R(W 30),R(X 0),M(X 16,0))
+             ++ instruction A.cbnz (R(W 30),L(fallback))
              ++ instruction A.b (L(success))) code
           val code = foldri (fn (i,r,c) => storeInto(r,SP,8*i) c) code saved
         in
-          (functionInto lab ++ stackInto(true,48)) code
+          (functionInto lab ++ stackInto(true,16)) code
         end
       fun shared lab name target setup code =
         let val finish = localFresh()

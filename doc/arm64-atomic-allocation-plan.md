@@ -1,6 +1,7 @@
 # ARM64 atomic allocation fast path: development plan
 
-Status: planning only; no compiler or runtime implementation changes yet.
+Status: implemented; validation and measurements are recorded in
+`arm64-atomic-allocation-results.md`.
 
 ## Goal
 
@@ -48,11 +49,11 @@ The source review used master at `deffec47`, together with the local X64
   The script explicitly rejects parallel GC and generational GC combinations;
   this work should not imply support for those configurations.
 
-## Proposed approach
+## Implementation
 
-Add a shared assembly fast helper ahead of the full preserving fallback. Keep
-allocation sites short and preserve the existing private ABI. Determine the
-minimum additional register saves needed before choosing the final placement.
+A shared assembly fast helper precedes the full preserving fallback. Allocation
+sites keep the existing private ABI; the helper saves one working register
+and LR in a 16-byte frame. The resolved protocol is described below.
 
 For an ordinary page-sized allocation:
 
@@ -66,7 +67,7 @@ For an ordinary page-sized allocation:
    adjustment as appropriate. On insufficient space or exclusive-store failure,
    restore the original arguments and transfer to the preserving runtime path.
 
-Initially use a single exclusive-store attempt, following X64's bounded fast
+The helper uses a single exclusive-store attempt, following X64's bounded fast
 path. ARM64 exclusive stores can fail without a competing pointer update; the
 runtime fallback already retries. Consider a small bounded retry only if
 measurements justify it. Keep large objects, profiling, and parallel resets on
@@ -82,13 +83,13 @@ with the C allocator's sequentially consistent CAS operations.
 
 ### 1. Specify helper ABI and concurrency protocol
 
-- [ ] Choose helper placement, scratch registers, minimal saves, and LR handling.
-- [ ] Specify protected/unprotected dispatch, original-argument restoration, and
+- [x] Choose helper placement, scratch registers, minimal saves, and LR handling.
+- [x] Specify protected/unprotected dispatch, original-argument restoration, and
       the handoff to both allocation stubs.
-- [ ] Review acquire/release ordering and the page-boundary reservation protocol
+- [x] Review acquire/release ordering and the page-boundary reservation protocol
       against `allocGen`; decide whether an instruction/printer extension for
       exclusive-monitor cleanup is needed.
-- [ ] Confirm finite regions, at-bottom reset, exact page fills, tag-free values,
+- [x] Confirm finite regions, at-bottom reset, exact page fills, tag-free values,
       large objects, profiling, and supported parallel option combinations.
 
 Acceptance: document the final instruction sequence and invariants before
@@ -96,13 +97,13 @@ changing allocation behavior.
 
 ### 2. Implement the generated fast path
 
-- [ ] Emit the shared helper and route eligible protected parallel allocations
+- [x] Emit the shared helper and route eligible protected parallel allocations
       through it.
-- [ ] Preserve ordinary allocation for regions without a mutex and existing
+- [x] Preserve ordinary allocation for regions without a mutex and existing
       explicitly unprotected behavior.
-- [ ] Retain the full preserving fallback on insufficient space or failed
+- [x] Retain the full preserving fallback on insufficient space or failed
       reservation, without changing runtime layout or allocation semantics.
-- [ ] Check standalone initialization and incremental REPL helper linkage.
+- [x] Check standalone initialization and incremental REPL helper linkage.
 
 Acceptance: inspect generated assembly to establish that success avoids the
 320-byte save frame and C allocation call, and failure preserves all required
@@ -110,18 +111,18 @@ registers and arguments.
 
 ### 3. Validate correctness and interoperability
 
-- [ ] Add allocation-specific emitted-code checks rather than relying on the
+- [x] Add allocation-specific emitted-code checks rather than relying on the
       existing exception-counter `ldaxr`/`stlxr` matches.
-- [ ] Exercise uncontended allocation, exact fills, repeated expansion, large
+- [x] Exercise uncontended allocation, exact fills, repeated expansion, large
       objects, finite regions, reset modes, and tag-free pointer adjustment.
-- [ ] Verify integer/FP register sentinels on successful and fallback paths.
-- [ ] Stress multiple generated-code allocators sharing one protected region;
+- [x] Verify integer/FP register sentinels on successful and fallback paths.
+- [x] Stress multiple generated-code allocators sharing one protected region;
       verify disjoint storage and retained contents.
-- [ ] Mix generated-code and C allocation into the same region to exercise page
+- [x] Mix generated-code and C allocation into the same region to exercise page
       publication and contention across both implementations.
-- [ ] Run pthread and available Argobots coverage (including multiple execution
+- [x] Run pthread and available Argobots coverage (including multiple execution
       streams), MLKit/ReML, callbacks, protection policies, and REPL linkage.
-- [ ] Run the relevant native/regression suites and confirm existing profiling
+- [x] Run the relevant native/regression suites and confirm existing profiling
       behavior and unsupported-option guards remain correct.
 
 Acceptance: record commands, configurations, results, and any skipped coverage.
@@ -129,36 +130,41 @@ Source inspection alone is not correctness validation.
 
 ### 4. Measure and document results
 
-- [ ] Compare the baseline and implementation for uncontended allocation,
+- [x] Compare the baseline and implementation for uncontended allocation,
       shared-region contention, frequent expansion, and a private-region control.
-- [ ] Measure representative parallel programs with repeated runs, identical
+- [x] Measure representative parallel programs with repeated runs, identical
       flags and caches, and verified output.
-- [ ] Record generated code size and the fast/fallback register-save costs;
+- [x] Record generated code size and the fast/fallback register-save costs;
       report timing distributions and any regressions.
-- [ ] Update `doc/arm64-allocation-paths.md` with the final protocol and results.
+- [x] Update `doc/arm64-allocation-paths.md` with the final protocol and results.
 
 Acceptance: substantiate the benefit with measurements; do not assume X64-like
 speedups or make a lock-free claim for the complete allocator. Expansion and
 large-object handling retain mutexes.
 
-## Current validation
+## Validation
 
-This planning change was checked by source inspection only. No builds,
-correctness tests, or benchmarks were run, and no speedup has been measured.
+The results document records executed checks and measurements. The parallel
+script tests allocation-specific exclusives, deterministic reservation failure,
+all helper working-register sentinels, and mixed generated/C allocation with
+pthreads and Argobots. Profiling remains on the existing runtime path.
 
 ## Resolved design (milestone 1)
 
-The resolved helper ABI preserves x0-x3 and its return address in a 48-byte
+The resolved helper ABI preserves x0 and its return address in a 16-byte
 aligned frame; x16 retains the region until reservation succeeds and x17 retains
 the original word count throughout. Allocation size is checked before shifting
 or entering the exclusive sequence. The maximum ordinary request is 1022 words
 in the supported non-GC parallel layout. A mutex-null region uses an ordinary
-load/store. Protected allocation uses ldaxr/stlxr without intervening memory
+load/store. x30 is reused for the limit and exclusive-store status after its
+return address is saved. Protected allocation uses ldaxr/stlxr without intervening memory
 accesses; only register arithmetic and branches separate the pair. On no space,
 clrex abandons the reservation. On failed stlxr, the reservation is already
 cleared. Both paths restore the small frame, reestablish the infinite-region bit,
 and tail-branch to the existing full preserving stub. Successful allocation
-returns the acquired old pointer, with the existing optional -8 adjustment.
+reconstructs the old pointer by subtracting the byte size from the reserved new
+pointer, with the existing optional -8 adjustment. Scaled add/subtract operands
+avoid a separate byte-count register, mirroring X64's scaled LEA strategy.
 
 The acquire load pairs with allocGen's release page publication. An allocator
 that races the runtime's boundary-reservation CAS cannot successfully store a
@@ -173,5 +179,32 @@ clrex instruction is represented in the shared datatype, signature, and printer.
 The source's current `savedRegs` palette is 16 integer registers and 22
 floating-point registers plus LR: a 320-byte preserving frame. The earlier
 allocation-path document described an older 448-byte frame. The fast helper
-uses 48 bytes on success; fallback restores that frame before entering the
+uses 16 bytes on success; fallback restores that frame before entering the
 320-byte stub, whose C-ABI wrapper has its own 48-byte frame.
+
+## Comparison with X64
+
+| Detail | X64 `allocinreg` | ARM64 allocation helper |
+| --- | --- | --- |
+| Region and word-count arguments | `r11`, `r10` | `x16`, `x17` |
+| Unprotected explicit saves | Region and size: 16 bytes | `x0` and LR: 16 bytes |
+| Protected explicit saves | Region, size, and `rax`: 24 bytes | `x0` and LR: 16 bytes |
+| Return address | Additional 8 bytes pushed by `call` | Included in the 16-byte frame |
+| Total fast-path stack use | 24 bytes unprotected; 32 bytes protected | 16 bytes on either path |
+| Atomic reservation | One `lock cmpxchgq`; `rax` holds expected old pointer | One `ldaxr`/`stlxr`; exclusive monitor detects interference |
+| Result calculation | New pointer minus scaled size | New pointer minus scaled size |
+| No space / contention | Restore saves; tail-jump to `__allocate` | Clear abandoned reservation if needed; restore saves; tail-branch to preserving stub |
+| Retry / expansion | Shared C allocator | Same shared C allocator |
+
+Both backends use a small successful path and enter their broader C-call
+register-save stubs only on failure. Neither takes a mutex simply because a
+region is protected. The mutex-null test also lets private regions avoid atomic
+updates without globally disabling allocation protection.
+
+X64 can consume its two argument registers as arithmetic temporaries after
+stacking the inputs. Its CAS has the fixed `rax` operand, so `rax` must survive
+the operation. ARM64 keeps the inputs in registers and needs no fixed expected
+value register: `stlxr` validates the exclusive reservation. Reusing the saved
+LR as a temporary and reconstructing the result keeps the ARM64 frame smaller
+than the initial 48-byte implementation. Both helpers keep the full allocator's
+mutex-based expansion behavior; neither makes the complete allocator lock-free.

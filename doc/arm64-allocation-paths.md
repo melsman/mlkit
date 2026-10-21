@@ -16,8 +16,8 @@ retain the existing one-word pointer adjustment.
 
 Page expansion and large objects use shared preserving stubs. Allocation sites
 pass the region in `x16`, the word count in `x17`, and receive the result in `x16`.
-The stubs save the same 24 integer and 30 floating-point registers (including
-the FP spill temporaries), plus LR, in a 448-byte aligned frame in shared code,
+The stubs currently save 16 integer and 22 floating-point registers (including
+the FP spill temporaries), plus LR, in a 320-byte aligned frame in shared code,
 then call the existing runtime helper. The register-save sequences are no longer
 repeated at every object allocation or reset site. `x16`, `x17`, and `x30` remain
 scratch registers; the ML function's incoming LR is already saved in its frame.
@@ -32,9 +32,17 @@ the shared reset stub and `resetRegion` for page recycling and large-object clea
 
 Profiling continues through runtime allocation/reset routines so their counters
 and object descriptors remain correct. Profiling program points use an aligned
-caller stack slot. Protected parallel allocation retains the runtime's locking
-and atomic operations; explicitly unprotected parallel allocation can use the
-page fast path. Parallel resets retain the runtime path.
+caller stack slot. Protected parallel allocation first attempts a shared
+assembly fast path. It preserves `x0` and LR in 16 bytes, checks the region
+mutex pointer, and uses `ldaxr`/`stlxr` to reserve space in protected regions.
+Regions without a mutex use an ordinary pointer update. Insufficient space or
+a failed reservation restores the small frame and transfers to the existing
+preserving runtime stub. The acquire reservation observes release publication
+of new pages by the C allocator; `clrex` clears reservations abandoned after a
+boundary check. Explicitly unprotected parallel allocation can use the inline
+page fast path. Profiling and parallel resets retain the runtime paths. See the
+[development plan](arm64-atomic-allocation-plan.md) and
+[validation and measurements](arm64-atomic-allocation-results.md).
 
 The original C-ABI `mlkit_arm64_alloc` and `mlkit_arm64_reset` helpers remain
 available for previously cached objects. New preserving stubs are emitted in the

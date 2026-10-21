@@ -21,9 +21,9 @@ run emitter "$ARM64_EMITTER"
 # Check the allocation helper itself: exception counters also use exclusives.
 awk '/^_mlkit_arm64_allocate_preserving:/{p=1} p{print} p && /clrex/{exit}' \
   allocation-concurrent-link.s > allocation-helper.s
-grep -q 'sub sp, sp, #48' allocation-helper.s
+grep -q 'sub sp, sp, #16' allocation-helper.s
 grep -q 'ldaxr x0, \[x16, #0\]' allocation-helper.s
-grep -q 'stlxr w2, x1, \[x16, #0\]' allocation-helper.s
+grep -q 'stlxr w30, x0, \[x16, #0\]' allocation-helper.s
 grep -q 'clrex' allocation-helper.s
 run allocation-probes-link gcc -arch arm64 -O2 -Wall -Wextra -Werror -DPARALLEL \
   -iquote "$SML_LIB/src/Runtime" "$fixtures/allocation.c" \
@@ -52,6 +52,7 @@ for options in '-argo' '-par0' '-par --tag_values' '-par -gc' '-par -gengc'; do
 done
 for mode in pthread argobots; do
   flags=""; includes=""; libraries=""; runtime=runtimeSystemPar.a
+  repl_libs=m,c,dl; repl_dirs=""
   if [ "$mode" = argobots ]; then
     if [ -z "${ARGOBOTS_ROOT:-}" ]; then
       echo 'Argobots skipped (set ARGOBOTS_ROOT to test it).'; continue
@@ -60,6 +61,8 @@ for mode in pthread argobots; do
     includes="-DARGOBOTS -I$ARGOBOTS_ROOT/src/include"
     libraries="$ARGOBOTS_ROOT/src/.libs/libabt.a"
     runtime=runtimeSystemArPar.a
+    repl_libs=m,c,dl,abt
+    repl_dirs="$ARGOBOTS_ROOT/src/.libs"
   fi
   cd "$scratch"
   run "$mode-generated-link" gcc -arch arm64 -O2 -Wall -Wextra -Werror \
@@ -134,6 +137,14 @@ for mode in pthread argobots; do
         fi
       fi
     done
+    # Separate REPL units must resolve the fast helper emitted by initialization.
+    run "$mode-$(basename "$compiler")-repl" "$compiler" $default_gc \
+      --no_basislib -par $flags --libs "$repl_libs" --libdirs "$repl_dirs" \
+      -ldexe 'gcc -arch arm64' < "$fixtures/repl-input.txt"
+    repl_log="$scratch/$mode-$(basename "$compiler")-repl.log"
+    grep -q 'REPL GC OK' "$repl_log"
+    grep -q 'REPL RECOVERED' "$repl_log"
+    if grep -Eq 'BAD|Compile error' "$repl_log"; then cat "$repl_log"; exit 1; fi
   done
 done
 printf 'ARM64 parallel validation passed.\n'
