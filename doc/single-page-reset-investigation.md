@@ -1,10 +1,11 @@
 # Align C-call preservation, then assess single-page reset
 
-PR #253 first addresses issue #252 by aligning preservation across explicit
-foreign calls and implicit C calls in X64 and ARM64. Only after that work is
-validated does it investigate a frame-free single-page reset fast path in the
-shared helper. Allocation PR #251 is now merged into master; build on its ARM64 implementation
-and avoid duplicating its changes.
+PR #253 first addresses #252 through a focused change: support C-preserved
+registers consistently in the X64 backend, using the existing allocator and
+fetch-and-flush machinery. ARM64 supplies the reference behaviour. Implicit
+allocation/reset C-call bridges retain their required preservation. The second
+part investigates a frame-free single-page reset fast path in the shared helper.
+Allocation PR #251 is merged into master; build on its ARM64 implementation.
 This is an implementation plan: no emitted code changes or measured benefit yet.
 
 ## Eligibility and semantics
@@ -58,42 +59,31 @@ Complete milestones 1–5 before beginning the reset optimisation in 6–8.
 Keep changes separately reviewable so preservation fixes can stand on their own
 if the reset optimisation does not prove worthwhile.
 
-1. **Establish call contracts and baseline code.** Inventory explicit
-   `CCALL`/`CCALL_AUTO`, implicit allocation/reset calls, region creation/release,
-   GC, profiling and callback bridges in both backends. Record allocatable and
-   reserved registers, C clobbers, FP preservation widths, argument staging,
-   result placement and exception transfers. Identify where physical liveness
-   is available and where it is not. Capture representative emitted code.
-2. **Align explicit foreign-call preservation.** Trace register allocation and
-   fetch/flush handling of values live across calls. Determine why X64's
-   `is_callee_save_ccall` returns false despite its C-preserved palette, and
-   correct it where sound. Align both backends around saving live C-clobbered
-   values and retaining values in valid C-preserved registers. Keep argument
-   staging, conversions and ABI stack arguments distinct from preservation.
-   Check integer and FP cases and exclude newly defined call results from saves.
-3. **Align implicit C-call bridges.** Audit allocation, reset and other late
-   runtime calls. Preserve all C-clobbered ML registers whenever no sound
-   call-site live set is supplied, including spill temporaries that may be live.
-   Use the existing liveness-aware region creation/release design as a reference
-   where applicable. Do not reduce saves using only GC-root liveness. Check
-   return values, reserved scratch registers, ARM64 link-register handling and
-   ABI stack alignment; retain collector and callback-specific save contracts.
-4. **Validate preservation correctness.** Add focused tests for live/dead integer
-   and FP values, C-preserved registers, result-register overlap, register
-   pressure/spills, more arguments than ABI registers, conversions, callbacks
-   and exception paths. Exercise explicit calls and implicit allocation/reset
-   fallbacks with register sentinels, GC and supported profiling/parallel modes.
-   Verify emitted code removes redundant saves without losing required saves.
-   Correctness tests may run in CI; performance tests and timing collection may
-   not.
-5. **Assess and complete #252.** Build both native backends and run relevant
-   regressions. Manually compare before/after code size, stack traffic and
-   representative foreign/runtime-call workloads on X64 and ARM64. Publish
-   results and document justified backend-specific ABI differences. Assess full
-   reset inlining requested by #252, including unavoidable nested page/object
-   release calls; record why the bounded single-page case below is the first
-   candidate rather than assuming full inlining avoids preservation. Resolve
-   the call-preservation work before proceeding to milestone 6.
+1. **Confirm the X64 mismatch.** Trace the existing C-preserved allocation
+   palette through `RegAlloc` and `FetchAndFlush`. Check why
+   `is_callee_save_ccall` returns false and verify which palette registers can
+   safely hold ML values across an explicit C call, including runtime-reserved
+   uses and callbacks. Use ARM64 as a reference; no general call redesign.
+2. **Enable X64 C-preserved registers.** Make the predicate agree with the
+   verified palette so existing liveness and fetch/flush logic avoid redundant
+   stores/reloads. Adjust the palette only if the audit finds an unsafe member.
+   Leave ARM64 behaviour and argument staging unchanged. X64 FP registers remain
+   C-clobbered; implicit C-call bridges continue to preserve all required ML
+   registers rather than relying on this explicit-call optimisation.
+3. **Add focused correctness tests.** Keep values live across explicit manual
+   and automatically converted C calls, including register pressure, returned
+   values, callbacks and exception paths. Verify that C-preserved integer values
+   survive and C-clobbered integer/FP values still receive required protection.
+   Check emitted code to establish that redundant flush/fetch pairs disappear.
+4. **Run relevant regressions.** Build X64 and exercise C-call, allocation/reset,
+   GC, profiling and parallel correctness checks as applicable. Confirm implicit
+   bridges retain their preservation contract. Run relevant ARM64 checks as a
+   reference without expanding this milestone into backend restructuring.
+5. **Assess and document the focused fix.** Manually compare X64 generated code,
+   stack traffic and representative foreign-call workloads before/after. Record
+   results and any remaining ABI differences from ARM64. Resolve #252's
+   preservation mismatch through this bounded change; investigate reset inlining
+   separately in milestones 6–8. No performance tests or timing collection in CI.
 6. **Prototype the shared-helper single-page reset fast path.** Start on X64;
    check the large-object list and every generation's page successor before
    modifying state. Rewind allocation and colour pointers using reserved
