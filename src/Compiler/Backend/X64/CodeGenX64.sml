@@ -2003,9 +2003,36 @@ struct
               I.movsd(D("",rsp), R r) :: G.add(I "8", rsp) C
             else G.pop_ea (R r) C
 
+        (* Layout.c checks Gen, Ro.lobjs and Rp payload/colour offsets in all
+         * runtime variants. Inspect every generation before modifying either.
+         * xmm14 is reserved scratch; preserve the descriptor status bits there. *)
+        fun reset_fast C =
+          let
+            val gen = Flags.is_on "generational_garbage_collection"
+            val offsets = if gen then [0,16] else [0]
+            val header = if gen then 24 else 16
+            val slow = new_local_lab "reset_slow"
+            fun page off =
+              [I.movq(D(Int.toString(off+8),treg0),R treg1),
+               I.andq(I "-32",R treg1)]
+            fun check off = page off @
+              [I.cmpq(I "0",D("0",treg1)),I.jne slow]
+            fun reset off = page off @
+              [I.addq(I(Int.toString header),R treg1),
+               I.movq(R treg1,D(Int.toString off,treg0))] @
+              (if gen then [I.movq(R treg1,D("-8",treg1))] else [])
+          in
+            [I.movq(R treg1,R RI.tfreg0),I.movq(R treg1,R treg0),
+             I.andq(I "-4",R treg0),
+             I.cmpq(I "0",D(if gen then "40" else "24",treg0)),I.jne slow] @
+            List.concat(map check offsets) @ List.concat(map reset offsets) @
+            [I.movq(R RI.tfreg0,R treg1),I.ret,I.lab slow,
+             I.movq(R RI.tfreg0,R treg1)] @ C
+          end
+
         (* args can only be treg0 (r10) and treg1 (r11); no arguments
          * on the stack; only the return address! Destroys treg0! *)
-        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in treg1 if ret=true *)
+        fun ccall_stub_prefix (stubname, cfunction, args, ret, prefix, C) =  (* result in treg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax :: map RI.lv_to_reg RI.f64_phregs
                         (*caller_save_regs_ccall*)  (* maybe also save the other
@@ -2039,10 +2066,13 @@ struct
             I.dot_text ::
             I.dot_globl (stublab,I.FUNC) ::
             I.lab stublab ::
-            push_callersave_regs
+            prefix (push_callersave_regs
             (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, fsz, treg0,
-              pop_callersave_regs (I.ret :: C)))
+              pop_callersave_regs (I.ret :: C))))
           end
+
+        fun ccall_stub (name, target, args, ret, C) =
+          ccall_stub_prefix(name,target,args,ret,fn code => code,C)
 
         fun allocate C = (* args in treg1 and treg0; result in treg1. *)
           ccall_stub("__allocate", "alloc", [treg1, treg0], true, C)
@@ -2053,7 +2083,7 @@ struct
             else C
 
         fun resetregion C =
-          ccall_stub("__reset_region", "resetRegion", [treg1], true, C)
+          ccall_stub_prefix("__reset_region", "resetRegion", [treg1], true, reset_fast, C)
 
         fun proftick C = C
 

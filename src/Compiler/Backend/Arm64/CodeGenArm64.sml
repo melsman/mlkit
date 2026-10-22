@@ -636,40 +636,9 @@ struct
   fun resetLoadedInto mode code =
     if mode = 0 then code
     else
-      let
-        val done = localFresh()
-        val slow = localFresh()
-        val generations = if gengc() then [0,16] else [0]
-        val header = if gengc() then 24 else 16
-        val lobjs = if gengc() then 40 else 24
-        fun firstPage off code =
-          (instruction A.and_ (R(X 17),R(X 16),I(~4))
-             ++ loadInto (X 17,off+8,X 30)
-             ++ instruction A.and_ (R(X 30),R(X 30),I(~32))) code
-        fun check (off,code) = (firstPage off
-           ++ loadInto (X 30,0,X 17)
-           ++ instruction A.cbnz (R(X 17),L(slow))) code
-        fun reset (off,code) =
-          (firstPage off
-           ++ instruction A.add (R(X 30),R(X 30),imm header)
-           ++ storeInto (X 30,X 17,off)
-           ++ (if gengc() then storeInto (X 30,X 30,~8) else fn code => code)) code
-        val code = Label done :: code
-        val code = if profiling() orelse parallel() then privateCallInto resetStub code
-          else
-            let
-              val () = addStatic
-                (Directive(Text) :: Directive(Align 2) :: Label slow ::
-                 privateCallInto resetStub [A.b (L(done))])
-              val code = foldr reset code generations
-              val code = foldr check code generations
-            in
-              (instruction A.and_ (R(X 17),R(X 16),I(~4))
-                 ++ loadInto (X 17,lobjs,X 30)
-                 ++ instruction A.cbnz (R(X 30),L(slow))) code
-            end
-      in
-        if mode = 1 then A.tbz (R(X 16),I(1),L(done)) :: code else code
+      let val done = localFresh()
+          val code = privateCallInto resetStub (Label done :: code)
+      in if mode = 1 then A.tbz (R(X 16),I(1),L(done)) :: code else code
       end
   fun resetRegionInto fsz force sma code =
     let
@@ -2780,6 +2749,37 @@ struct
            ++ instruction A.fmov (R(D 30),R(X 0))
            ++ instruction A.fmov (R(D 31),R(X 30))) code
         end
+      (* d30/d31 are reserved scratch. Save the original descriptor and LR
+       * before using x16/x17/x30; no allocatable register or stack is touched.
+       * Layout.c checks these offsets, including profiling configurations. *)
+      fun resetFast lab slow code =
+        let
+          val offsets = if gengc() then [0,16] else [0]
+          val header = if gengc() then 24 else 16
+          val fallback = localFresh()
+          fun page off = loadInto(X 16,off+8,X 17)
+            ++ instruction A.and_ (R(X 17),R(X 17),I(~32))
+          fun check (off,code) = (page off
+            ++ loadInto(X 17,0,X 30)
+            ++ instruction A.cbnz (R(X 30),L(fallback))) code
+          fun reset (off,code) = (page off
+            ++ instruction A.add (R(X 17),R(X 17),imm header)
+            ++ storeInto(X 17,X 16,off)
+            ++ (if gengc() then storeInto(X 17,X 17,~8) else fn c => c)) code
+          fun restore code = (instruction A.fmov (R(X 16),R(D 30))
+            ++ instruction A.fmov (R(X 30),R(D 31))) code
+          val code = (restore ++ one A.ret ++ one(Label fallback)
+            ++ restore ++ instruction A.b (L(slow))) code
+          val code = foldr reset code offsets
+          val code = foldr check code offsets
+        in
+          (functionInto lab
+            ++ instruction A.fmov (R(D 30),R(X 16))
+            ++ instruction A.fmov (R(D 31),R(X 30))
+            ++ instruction A.and_ (R(X 16),R(X 16),I(~4))
+            ++ loadInto(X 16,if gengc() then 40 else 24,X 17)
+            ++ instruction A.cbnz (R(X 17),L(fallback))) code
+        end
       fun shared lab name target setup code =
         let val finish = localFresh()
             val unit = stringData("<runtime/C>")
@@ -2791,7 +2791,13 @@ struct
               Label(NameLab("mlkit_tp_shared_" ^ name)),
               Directive(Quad ["1","1",pr_lab lab,pr_lab finish,pr_lab unit,
                               pr_lab function,pr_lab source,pr_lab identity])]
-        in preservingStubInto lab setup target (Label finish :: code)
+        in
+          if name = "mlkit_arm64_reset_preserving" then
+            let val slow = NameLab "mlkit_arm64_reset_slow"
+            in resetFast lab slow
+                 (preservingStubInto slow setup target (Label finish :: code))
+            end
+          else preservingStubInto lab setup target (Label finish :: code)
         end
       fun setup untag bytes code =
         (moveInto (X 16,X 0)
