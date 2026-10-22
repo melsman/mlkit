@@ -685,7 +685,10 @@ structure InstsX64 : INSTS_X64 =
         val callee_save_regs_ccall = [rbx,rbp,r12,r13,(*r14,*)r15]   (* save r14 for context pointer; r15 used by raise_inst *)
         val callee_save_ccall_phregs = map reg_to_lv callee_save_regs_ccall
         val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
-        fun is_callee_save_ccall phreg = false
+        (* RegAlloc already uses this palette for values live across C calls.
+         * FetchAndFlush must recognise the same registers to avoid redundant
+         * stack copies. Implicit runtime calls preserve their own clobbers. *)
+        fun is_callee_save_ccall phreg = Lvarset.member(phreg,callee_save_ccall_phregset)
 
         val caller_save_regs_mlkit = [rax,rbx,rdi,rdx,rsi]
         val caller_save_phregs = map reg_to_lv caller_save_regs_mlkit
