@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1962462	 283096	    808	2246366	 2246de	logic.exe

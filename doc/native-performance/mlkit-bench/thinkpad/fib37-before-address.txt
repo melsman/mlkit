@@ -1,0 +1,9 @@
+0000000000074b79 <F.fib2_cpRH0SSemiunXFCOyEbTim>:
+   74b79:	48 8d 64 24 e8       	lea    -0x18(%rsp),%rsp
+   74b7e:	48 89 44 24 10       	mov    %rax,0x10(%rsp)
+   74b83:	49 89 c2             	mov    %rax,%r10
+   74b86:	49 c7 c3 03 00 00 00 	mov    $0x3,%r11
+   74b8d:	4d 39 da             	cmp    %r11,%r10
+   74b90:	7d 0e                	jge    74ba0 <L_k5F_kTHq3U3yeLG3O9IKGcJ4zs>
+   74b92:	48 c7 c7 03 00 00 00 	mov    $0x3,%rdi
+   74b99:	48 8d 64 24 18       	lea    0x18(%rsp),%rsp

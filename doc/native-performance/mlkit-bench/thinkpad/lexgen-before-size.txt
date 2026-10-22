@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1996886	 288984	    808	2286678	 22e456	lexgen.exe

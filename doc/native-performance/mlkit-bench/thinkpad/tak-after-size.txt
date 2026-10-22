@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 141747	  13968	    808	 156523	  2636b	tak.exe

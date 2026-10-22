@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 558291	  74288	    808	 633387	  9aa2b	fib37.exe

@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1063211	 138288	    808	1202307	 125883	msort.exe

@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+2030534	 299448	    808	2330790	 2390a6	barnes-hut.exe

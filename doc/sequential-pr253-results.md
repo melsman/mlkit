@@ -1,5 +1,7 @@
 # Standard sequential programs: PR #253 assessment
 
+Superseded by the [fifteen-program mlkit-bench assessment](mlkit-bench-pr253-results.md), using prepared Basis libraries and longer workloads. This earlier screen is retained for provenance.
+
 Ten unchanged repository benchmarks were run on native X64 (ThinkPad) and
 ARM64, exactly three times per before/after binary: 120 executions total.
 Every stdout result matched its repository `.out.ok` file; ray tracing also

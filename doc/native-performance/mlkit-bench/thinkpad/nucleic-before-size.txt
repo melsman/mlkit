@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 428979	  84912	    808	 514699	  7da8b	nucleic.exe

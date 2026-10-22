@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 277955	  34000	    808	 312763	  4c5bb	kbc.exe
