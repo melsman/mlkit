@@ -55,14 +55,15 @@ uintptr_t allocation_prepare(Context ctx, uintptr_t id) {
 #else
   allocateRegion(ctx, &region,
 #ifdef PARALLEL
-                 id != 0
+                 id != 0 && id != 8 && id != 9
 #else
                  0
 #endif
                  );
 #endif
   if (id == 1) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE - 2);
-  if (id == 2) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE);
+  if (id == 8) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE - 3);
+  if (id == 2 || id == 9) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE);
   if (id >= 10 || id == 5) alloc(&region, 3);
   if (id == 11) alloc(&region, ALLOCATABLE_WORDS_IN_REGION_PAGE);
   /* GC needs a valid size tag even when a large payload is never read. */
@@ -118,7 +119,7 @@ void allocation_check(Context ctx, uintptr_t tagged_region, uintptr_t result, ui
     if (id == 6) words = 4;
 #endif
     uintptr_t *expected = id == 5 ? clear_fp(region.g0.fp)->i : before;
-    if (id == 2) {
+    if (id == 2 || id == 9) {
       assert(clear_fp(region.g0.fp)->n != NULL);
       expected = clear_fp(region.g0.fp)->n->i;
     }

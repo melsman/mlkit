@@ -473,6 +473,8 @@ check-compiler:
 	$(MAKE) -C test test_mlkit
 	$(MAKE) -C test test_mlkit_no_gc
 	$(MAKE) -C test test_c_call_alignment
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
+	  sh src/Compiler/Backend/X64/tests/check-allocation.sh
 	$(MAKE) -C test/explicit_regions all
 	$(MAKE) -C test/repl all
 	$(MAKE) -C test/repl test_gc

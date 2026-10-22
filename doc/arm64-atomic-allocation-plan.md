@@ -1,8 +1,9 @@
 # ARM64 atomic allocation fast path: development plan
 
 Status: milestones 1–4 are implemented; validation and measurements are recorded
-in `arm64-atomic-allocation-results.md`. Milestones 5–8 below describe the agreed
-follow-up design and are not implemented yet.
+in `arm64-atomic-allocation-results.md`. Follow-up milestones 5–7 are implemented.
+Milestone 8 has ARM64 measurements and code-size assessment; native X64 paired
+performance measurements remain outstanding. See `native-inline-allocation-results.md`.
 
 Parallel defaults are aligned across X64 and ARM64: ReML enables `-par -par0`
 by default and accepts `-no_par0`; MLKit does not expose `par0` and retains
@@ -55,7 +56,7 @@ The source review used master at `deffec47`, together with the local X64
   The script explicitly rejects parallel GC and generational GC combinations;
   this work should not imply support for those configurations.
 
-## Implementation
+## Initial implementation (milestones 1–4)
 
 A shared assembly fast helper precedes the full preserving fallback. Allocation
 sites keep the existing private ABI; the helper saves one working register
@@ -188,7 +189,7 @@ allocation-path document described an older 448-byte frame. The fast helper
 uses 16 bytes on success; fallback restores that frame before entering the
 320-byte stub, whose C-ABI wrapper has its own 48-byte frame.
 
-## Comparison with X64
+## Initial comparison with X64
 
 | Detail | X64 `allocinreg` | ARM64 allocation helper |
 | --- | --- | --- |
@@ -272,11 +273,11 @@ No additional standard library variants or ReML `-no_par0` prebuilds are planned
 
 ### 5. Specify the common dispatch and backend ABIs
 
-- [ ] Specify the eligible sites, mutex-null test, page-space test, result/tag
+- [x] Specify the eligible sites, mutex-null test, page-space test, result/tag
       adjustment and no-space/protected transfers for X64 and ARM64.
-- [ ] Specify scratch registers, live-register preservation and original arguments
+- [x] Specify scratch registers, live-register preservation and original arguments
       at each helper entry; decide whether to add a protected-only entry.
-- [ ] Document unchanged ReML defaults, C/profiling paths, reset/finite behavior,
+- [x] Document unchanged ReML defaults, C/profiling paths, reset/finite behavior,
       and acquire/release requirements for protected allocation.
 
 Acceptance: review instruction sketches for both backends, including exact page
@@ -284,14 +285,14 @@ fills and all fallback edges, before implementing the change.
 
 ### 6. Implement aligned inline allocation-local paths
 
-- [ ] Implement the descriptor check and ordinary inline success path in X64 and
+- [x] Implement the descriptor check and ordinary inline success path in X64 and
       ARM64; keep atomic reservation in shared helpers.
-- [ ] Aim to use no stack storage or frames on successful fast allocation paths,
+- [x] Aim to use no stack storage or frames on successful fast allocation paths,
       both the inline allocation-local path and the shared protected CAS path.
       Prefer scratch-register allocation and result reconstruction over stack
       saves; document any unavoidable exception and its ABI constraint. Stack
       saves remain permitted in the runtime fallback.
-- [ ] Preserve standalone and incremental REPL helper linkage, flag behavior,
+- [x] Preserve standalone and incremental REPL helper linkage, flag behavior,
       existing runtime fallback and standard cache preparation policy.
 
 Acceptance: inspect emitted code from both backends: allocation-local success
@@ -302,12 +303,12 @@ requirement. Record added bytes per allocation site.
 
 ### 7. Validate allocation and fallback correctness
 
-- [ ] Extend allocation-specific assembly checks for both backends and flag modes.
-- [ ] Exercise allocation-local success, protected success/contention, exact fills,
+- [x] Extend allocation-specific assembly checks for both backends and flag modes.
+- [x] Exercise allocation-local success, protected success/contention, exact fills,
       expansion, large objects, finite/reset cases and tag-free adjustments.
-- [ ] Verify live integer/FP registers and fallback arguments; stress mixed C and
+- [x] Verify live integer/FP registers and fallback arguments; stress mixed C and
       generated allocation with pthreads and available Argobots configurations.
-- [ ] Run relevant MLKit/ReML native, profiling, callback, REPL and regression
+- [x] Run relevant MLKit/ReML native, profiling, callback, REPL and regression
       coverage, plus the read-only installed-library and build-order checks.
 
 Acceptance: execute on each architecture, or explicitly record unavailable native
@@ -317,13 +318,62 @@ coverage as a review limitation; assembly inspection alone is not execution proo
 
 - [ ] Compare against the current shared-helper implementation with repeated
       paired runs, matching flags/caches and verified results on each architecture.
-- [ ] Measure allocation-local workloads, uncontended protected allocation,
+      ARM64 is complete; native X64 timings are deferred until the ThinkPad is
+      available. CI must run correctness checks only, not performance tests.
+      X64 assembly size and translated correctness checks are recorded separately.
+- [x] Measure ARM64 allocation-local workloads, uncontended protected allocation,
       shared contention, mixed C/generated allocation and frequent expansion.
-- [ ] Measure representative parallel programs, retain default ReML as a control,
+- [x] Measure ARM64 representative parallel programs, retain default ReML as a control,
       and compare C allocation with `--no_inline_allocation` where useful.
-- [ ] Report timing distributions, allocation-site and total text size, and any
+- [x] Report available timing distributions, allocation-site and total text size, and any
       regressions, particularly the added check on protected-region allocations.
 
 Acceptance: document whether allocation-local gains justify code growth and
 protected-path costs on each backend; investigate material regressions before
 recommending the design for merge. Record commands, raw samples and limitations.
+
+## Resolved follow-up ABI (milestone 5)
+
+Both backends test the existing mutex field only for protected parallel mode.
+Allocation-local success updates the pointer inline without stack storage.
+Exact fills are accepted; an allocation pointer already at a page end fails the
+next nonzero request. Large requests and profiling retain runtime handling.
+
+ARM64 keeps region/result in x16, size in x17 and scratch x30 at allocation
+sites. The inline mutex check precedes a page-offset test. For bounded ordinary
+requests, `((a-1) & 8191) + bytes` is below 16384; bit 13 detects insufficient
+space, including a pointer already at the page end. x17 retains the old pointer
+for the result, and x30 computes the new pointer for the store. Protected sites
+call a separate helper entry which skips the repeated mutex/size checks; its
+preconditions are a protected descriptor and a compile-time bounded request.
+No-space edges restore the infinite-region bit and use the compatible shared
+helper. That helper retains its mutex/size checks for existing private-ABI
+callers (including C bridges), but saves x0 in d30 and its own
+LR in d31 instead of creating a frame. d30/d31 are reserved FP scratches, outside
+the ML allocation palette. They are restored to x0/LR on both success and fallback;
+the original size and region remain available on failure. The exclusive sequence
+and acquire/release protocol remain unchanged. The helper needs no stack storage.
+
+X64 keeps the descriptor in r11 and uses r10 for the inline space test and
+pointer update. For a local region, two pointer loads are safe because no other
+thread allocates into it. The offset test is `(a-1) & (page_size-1) <=
+page_size-1-bytes`; the compile-time request bound makes the right side
+nonnegative. Protected sites call a new `allocinreg_protected` entry, bypassing
+the helper's mutex dispatch; local expansion calls `__allocate` (or
+`__allocate_unprotected` under par0). Out-of-line calls return to the common
+result continuation without repeating inline allocation or GC accounting.
+
+The X64 shared helper saves rax in xmm14 and size in xmm15; both are reserved
+FP scratches. It keeps region in r11, computes new pointer in r10 and page limit
+in rax, then reconstructs the original expected pointer as `new-8*size` before
+CAS. No second shared-pointer load is used to reconstruct that expectation.
+Success returns the old pointer and restores rax. Failure restores rax and size
+before tail-transferring to the existing runtime stub. No explicit stack saves
+or frame are needed; the X64 call instruction still necessarily pushes its
+8-byte return address. That is the remaining architecture-specific stack cost.
+The compatible mutex-dispatch entry remains for existing private-ABI callers.
+
+Allocation may clobber the two reserved FP scratches, but no allocatable integer
+or FP register. Register preservation and real-valued allocation users require
+execution coverage. No runtime layout, protection inference or library-cache
+policy changes are part of this follow-up.

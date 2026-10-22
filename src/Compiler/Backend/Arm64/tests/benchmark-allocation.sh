@@ -10,11 +10,17 @@ cd "$scratch"
 "$ARM64_EMITTER" > emitter.log 2>&1
 # Remove only the assembly fast prefixes, leaving the old preserving C stubs
 # at the same private ABI entry points. This controls for all other code.
+if [ -n "${ARM64_BASELINE_EMITTER:-}" ]; then
+  mkdir baseline-image
+  (cd baseline-image; "$ARM64_BASELINE_EMITTER" > emitter.log 2>&1)
+  cp baseline-image/allocation-concurrent-link.s baseline-link.s
+else
 awk '
   /^_mlkit_arm64_allocate(_untagged)?_preserving:$/ {skip=1; print; next}
   skip && /^_mlkit_arm64_allocate(_untagged)?_preserving_slow:$/ {skip=0}
   !skip {print}
 ' allocation-concurrent-link.s > baseline-link.s
+fi
 for variant in baseline fast; do
   link=allocation-concurrent-link.s
   [ "$variant" != baseline ] || link=baseline-link.s

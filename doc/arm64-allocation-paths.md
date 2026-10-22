@@ -32,17 +32,24 @@ the shared reset stub and `resetRegion` for page recycling and large-object clea
 
 Profiling continues through runtime allocation/reset routines so their counters
 and object descriptors remain correct. Profiling program points use an aligned
-caller stack slot. Protected parallel allocation first attempts a shared
-assembly fast path. It preserves `x0` and LR in 16 bytes, checks the region
-mutex pointer, and uses `ldaxr`/`stlxr` to reserve space in protected regions.
-Regions without a mutex use an ordinary pointer update. Insufficient space or
-a failed reservation restores the small frame and transfers to the existing
+caller stack slot. In protected parallel mode, ordinary allocation sites now
+check the region mutex field. A NULL mutex selects the inline page-space test
+and pointer update, without a helper call or allocation frame. A protected region
+transfers to the shared assembly fast helper; no-space local allocations also
+use the shared fallback machinery.
+
+The helper preserves `x0` and LR in reserved FP scratch registers `d30`/`d31`,
+with no stack storage. Its compatible entry checks the region mutex pointer for existing private-ABI
+callers; protected sites use a bounded-request entry that skips that check. It uses `ldaxr`/`stlxr` to reserve space in protected
+regions. Regions without a mutex use an ordinary pointer update. Insufficient
+space or a failed reservation restores `x0`/LR and transfers to the existing
 preserving runtime stub. The acquire reservation observes release publication
 of new pages by the C allocator; `clrex` clears reservations abandoned after a
-boundary check. Explicitly unprotected parallel allocation can use the inline
-page fast path. Profiling and parallel resets retain the runtime paths. See the
-[development plan](arm64-atomic-allocation-plan.md) and
-[validation and measurements](arm64-atomic-allocation-results.md).
+boundary check. ReML's default `par0` path stays inline without a mutex check.
+Profiling and parallel resets retain their previous paths. See the
+[development plan](arm64-atomic-allocation-plan.md),
+[initial validation and measurements](arm64-atomic-allocation-results.md), and
+[inline-dispatch assessment](native-inline-allocation-results.md).
 
 The original C-ABI `mlkit_arm64_alloc` and `mlkit_arm64_reset` helpers remain
 available for previously cached objects. New preserving stubs are emitted in the

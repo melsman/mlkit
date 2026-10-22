@@ -54,7 +54,26 @@ static void *work(ThreadInfo *ti) {
   thread_exit(NULL);
   return NULL;
 }
+static void boundaries(Context ctx, int protect) {
+  Ro ro;
+  Region r = allocateRegion(ctx, &ro, protect);
+  uintptr_t *first = ro.g0.a;
+  uintptr_t *p = arm64_generated_alloc(r, ALLOCATABLE_WORDS_IN_REGION_PAGE);
+  assert(p == first);
+  assert(ro.g0.a == first + ALLOCATABLE_WORDS_IN_REGION_PAGE);
+  p[ALLOCATABLE_WORDS_IN_REGION_PAGE - 1] = 123;
+  uintptr_t *next = arm64_generated_alloc(r, 1);
+  assert(next != first + ALLOCATABLE_WORDS_IN_REGION_PAGE);
+  assert(p[ALLOCATABLE_WORDS_IN_REGION_PAGE - 1] == 123);
+  uintptr_t *large = arm64_generated_alloc(r, 2048);
+  large[0] = 456;
+  large[2047] = 789;
+  assert(large[0] == 456 && large[2047] == 789);
+  deallocateRegion(ctx);
+}
 void code(Context ctx) {
+  boundaries(ctx, 0);
+  boundaries(ctx, 1);
   const char *scenario = getenv("ALLOCATION_SCENARIO");
   int single = scenario && strcmp(scenario, "single") == 0;
   private_regions = scenario && strcmp(scenario, "private") == 0;

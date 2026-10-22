@@ -697,18 +697,26 @@ struct
       fun finiteCode code = instruction A.and_ (R(X 16),R(X 16),I(~4)) code
       fun ordinaryInfiniteCode code =
         if not(Flags.is_on "inline_allocation") orelse
-           (parallel() andalso not(unprotected())) orelse
+           (parallel() andalso not(unprotected()) andalso profiling()) orelse
            words + (if profiling() then 1 else 0) > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
           allocSlowInto words untag site code
         else
           let
             val slow = localFresh()
             val joined = localFresh()
+            val protected = localFresh()
+            val protectedMode = parallel() andalso not(unprotected()) andalso not(profiling())
+            val protectedTarget = NameLab(if untag then "mlkit_arm64_allocate_untagged_preserving_protected"
+                                         else "mlkit_arm64_allocate_preserving_protected")
             val bytes = 8*(words + (if profiling() then 1 else 0))
             val () = addStatic
               (Directive(Text) :: Directive(Align 2) :: Label slow ::
                A.orr (R(X 16),R(X 16),I(1)) ::
                allocSlowInto words untag site [A.b (L(joined))])
+            val () = if protectedMode then addStatic
+              ((one (Directive(Text)) ++ one (Directive(Align 2)) ++ one (Label protected)
+                ++ countInto (X 17) words
+                ++ privateCallInto protectedTarget) [A.b(L(joined))]) else ()
             val code = Label joined :: code
             val code = if gc() then (addressInto (NameLab "alloc_period",X 17)
                ++ loadInto (X 17,0,X 30)
@@ -716,16 +724,33 @@ struct
                ++ storeInto (X 30,X 17,0)) code else code
           in
             (instruction A.and_ (R(X 16),R(X 16),I(~4))
-             ++ loadInto (X 16,0,X 17)
-             ++ instruction A.sub (R(X 17),R(X 17),I(1))
-             ++ instruction A.orr (R(X 30),R(X 17),imm(BackendInfo.size_region_page()-1))
-             ++ adjustInto A.add (X 17) bytes
-             ++ instruction A.cmp (R(X 17),R(X 30))
-             ++ instruction A.b_hi (L(slow))
-             ++ instruction A.add (R(X 17),R(X 17),I(1))
-             ++ storeInto (X 17,X 16,0)
-             ++ moveInto (X 17,X 16)
-             ++ adjustInto A.sub (X 16) bytes
+             ++ (if parallel() andalso not(unprotected()) then
+                   loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 17)
+                   ++ instruction A.cbnz (R(X 17),L(protected))
+                 else fn c => c)
+             ++ (if protectedMode then
+                   loadInto(X 16,0,X 17)
+                   ++ instruction A.sub (R(X 30),R(X 17),I(1))
+                   ++ instruction A.and_ (R(X 30),R(X 30),imm(BackendInfo.size_region_page()-1))
+                   ++ adjustInto A.add (X 30) bytes
+                   (* The offset plus this bounded request is below 16384;
+                    * bit 13 alone detects crossing the 8192-byte page end. *)
+                   ++ instruction A.tbnz (R(X 30),I(13),L(slow))
+                   ++ (if bytes <= 4095 then instruction A.add (R(X 30),R(X 17),imm bytes)
+                       else moveInto(X 17,X 30) ++ adjustInto A.add (X 30) bytes)
+                   ++ storeInto (X 30,X 16,0)
+                   ++ moveInto (X 17,X 16)
+                 else
+                   loadInto (X 16,0,X 17)
+                   ++ instruction A.sub (R(X 17),R(X 17),I(1))
+                   ++ instruction A.orr (R(X 30),R(X 17),imm(BackendInfo.size_region_page()-1))
+                   ++ adjustInto A.add (X 17) bytes
+                   ++ instruction A.cmp (R(X 17),R(X 30))
+                   ++ instruction A.b_hi (L(slow))
+                   ++ instruction A.add (R(X 17),R(X 17),I(1))
+                   ++ storeInto (X 17,X 16,0)
+                   ++ moveInto (X 17,X 16)
+                   ++ adjustInto A.sub (X 16) bytes)
              ++ (if profiling() then
                    addressInto(site,X 17)
                    ++ instruction A.lsl (R(X 17),R(X 17),I(13))
@@ -2685,28 +2710,36 @@ struct
     end
   fun allocationStubsInto code =
     let
-      (* Parallel allocation uses a small assembly frame before entering the
-       * full preserving C stub. x16 = region/result, x17 = words; x0 and
-       * the helper's LR survive both paths. No stack accesses occur between
+      (* Parallel allocation uses reserved FP scratch registers rather than a
+       * stack frame before entering the full preserving C stub. x16 is the
+       * region/result and x17 the words; d30 saves x0 and d31 saves LR.
+       * All allocatable ML registers survive. No memory accesses occur between
        * ldaxr and stlxr. An acquire reservation observes allocGen's release
        * publication of an initialized page; a failed reservation delegates
        * retries and expansion to allocGen, just as X64 allocinreg does. *)
-      fun fast lab slow untag code =
+      fun fast lab protected slow untag code =
         let
           val ordinary = localFresh()
+          val atomic = localFresh()
           val abandon = localFresh()
           val fallback = localFresh()
           val success = localFresh()
-          val saved = [X 0,X 30]
           fun restore code =
-            foldri (fn (i,r,c) => loadInto(SP,8*i,r) c)
-              (stackInto(false,16) code) saved
+            (instruction A.fmov (R(X 0),R(D 30))
+             ++ instruction A.fmov (R(X 30),R(D 31))) code
           fun space code =
             (instruction A.sub (R(X 30),R(X 0),I(1))
              ++ instruction A.orr (R(X 30),R(X 30),imm(BackendInfo.size_region_page()-1))
              ++ instruction A.add (R(X 30),R(X 30),I(1))
              ++ instruction A.add (R(X 0),R(X 0),Shifted(X 17,LSL,3))
              ++ instruction A.cmp (R(X 0),R(X 30))) code
+          (* Only generated sites with a protected descriptor and a request
+           * bounded to the ordinary page capacity call this entry. *)
+          val code = (functionInto protected
+             ++ instruction A.fmov (R(D 30),R(X 0))
+             ++ instruction A.fmov (R(D 31),R(X 30))
+             ++ instruction A.and_ (R(X 16),R(X 16),I(~4))
+             ++ instruction A.b (L(atomic))) code
           val code = (one (Label fallback)
              ++ instruction A.orr (R(X 16),R(X 16),I(1))
              ++ restore
@@ -2731,15 +2764,17 @@ struct
              ++ instruction A.b_hi (L(fallback))
              ++ loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 30)
              ++ instruction A.cbz (R(X 30),L(ordinary))
+             ++ one (Label atomic)
              ++ instruction A.ldaxr (R(X 0),M(X 16,0))
              ++ space
              ++ instruction A.b_hi (L(abandon))
              ++ instruction A.stlxr (R(W 30),R(X 0),M(X 16,0))
              ++ instruction A.cbnz (R(W 30),L(fallback))
              ++ instruction A.b (L(success))) code
-          val code = foldri (fn (i,r,c) => storeInto(r,SP,8*i) c) code saved
         in
-          (functionInto lab ++ stackInto(true,16)) code
+          (functionInto lab
+           ++ instruction A.fmov (R(D 30),R(X 0))
+           ++ instruction A.fmov (R(D 31),R(X 30))) code
         end
       fun shared lab name target setup code =
         let val finish = localFresh()
@@ -2764,7 +2799,7 @@ struct
         if parallel() andalso not(unprotected()) andalso not(profiling()) andalso
            Flags.is_on "inline_allocation" then
           let val slow = NameLab(name ^ "_slow")
-          in fast lab slow (untag = 1)
+          in fast lab (NameLab(name ^ "_protected")) slow (untag = 1)
                (shared slow name (NameLab "mlkit_arm64_alloc") (setup untag) code)
           end
         else shared lab name (NameLab "mlkit_arm64_alloc") (setup untag) code

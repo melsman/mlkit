@@ -19,12 +19,30 @@ run() {
 cd "$scratch"
 run emitter "$ARM64_EMITTER"
 # Check the allocation helper itself: exception counters also use exclusives.
-awk '/^_mlkit_arm64_allocate_preserving:/{p=1} p{print} p && /clrex/{exit}' \
+awk '/^_mlkit_arm64_allocate_preserving:/{p=1} /^_mlkit_arm64_allocate_preserving_slow:/{exit} p{print}' \
   allocation-concurrent-link.s > allocation-helper.s
-grep -q 'sub sp, sp, #16' allocation-helper.s
+grep -q 'fmov d30, x0' allocation-helper.s
+grep -q 'fmov d31, x30' allocation-helper.s
+if grep -q 'sp' allocation-helper.s; then
+  echo 'Fast allocation helper uses stack storage.' >&2; exit 1
+fi
 grep -q 'ldaxr x0, \[x16, #0\]' allocation-helper.s
 grep -q 'stlxr w30, x0, \[x16, #0\]' allocation-helper.s
 grep -q 'clrex' allocation-helper.s
+# The ordinary allocation-local path must be inline; exclusives stay shared.
+grep -q 'ldr x17, \[x16, #32\]' allocation-parallel.s
+grep -q 'cbnz x17,' allocation-parallel.s
+if grep -q 'ldaxr\|stlxr' allocation-parallel.s; then
+  echo 'CAS instructions duplicated at allocation sites.' >&2; exit 1
+fi
+awk '
+  /ldr x17, \[x16, #32\]/ {emit=1}
+  emit {print}
+  emit && /str x(17|30), \[x16, #0\]/ {emit=0}
+' allocation-parallel.s > local-fast.s
+if grep -Eq 'sp|blr|bl ' local-fast.s; then
+  echo 'Inline local allocation uses a stack or helper call.' >&2; exit 1
+fi
 run allocation-probes-link gcc -arch arm64 -O2 -Wall -Wextra -Werror -DPARALLEL \
   -iquote "$SML_LIB/src/Runtime" "$fixtures/allocation.c" \
   allocation-parallel.s allocation-parallel-link.s \

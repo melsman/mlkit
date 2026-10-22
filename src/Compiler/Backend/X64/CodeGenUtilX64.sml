@@ -366,7 +366,42 @@ struct
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
     fun ordinary_alloc_kill_tmp01 (t:reg,n0:int,fsz,pp:LS.pp,C) =
-        if (parallelism_p() andalso not(par_alloc_unprotected_p())) orelse
+        if parallelism_p() andalso Flags.is_on "inline_allocation" andalso
+           not(region_profiling()) andalso n0 <= BI.size_region_page() div 8 - 2 then
+          let
+            val joined = new_local_lab "local_alloc_done"
+            val protected = new_local_lab "protected_alloc"
+            val expand = new_local_lab "local_alloc_expand"
+            fun slow lab target =
+                add_code_block
+                  (G.label lab $
+                   move_immed(IntInf.fromInt n0,R treg0,
+                   I.call(NameLab target) :: G.jump joined nil))
+            val protectedMode = parallelism_p() andalso not(par_alloc_unprotected_p())
+            val () = if protectedMode then slow protected "allocinreg_protected" else ()
+            val () = slow expand (if parallelism_p() andalso par_alloc_unprotected_p()
+                                  then "__allocate_unprotected" else "__allocate")
+          in
+            copy(t,treg1,
+            I.andq(I(i2s(~4)),R treg1) ::
+            (if protectedMode then
+               [I.cmpq(I "0",D(i2s(8*BI.region_mutex_offset_words()),treg1)),I.jne protected]
+             else []) @
+            (* With a single allocator the pointer cannot change between these
+             * loads. Testing its page offset needs only the two GPR scratches. *)
+            I.movq(D("0",treg1),R treg0) ::
+            I.subq(I "1",R treg0) ::
+            I.andq(I(i2s(BI.size_region_page()-1)),R treg0) ::
+            I.cmpq(I(i2s(BI.size_region_page()-1-8*n0)),R treg0) ::
+            I.ja expand ::
+            I.movq(D("0",treg1),R treg0) ::
+            I.addq(I(i2s(8*n0)),R treg0) ::
+            I.movq(R treg0,D("0",treg1)) ::
+            G.lea(D(i2s(~8*n0),treg0),treg1) $
+            (if gc_p() then I.addq(I(i2s(8*n0)),L(NameLab "alloc_period")) :: [] else []) @
+            G.label joined $ copy(treg1,t,C))
+          end
+        else if (parallelism_p() andalso not(par_alloc_unprotected_p())) orelse
            not(Flags.is_on "inline_allocation") then
           let val n = n0 + (if region_profiling() then BI.objectDescSizeP else 0)
               val site = if region_profiling() then (!allocationSite)(pp,0) else NameLab "unused_site"

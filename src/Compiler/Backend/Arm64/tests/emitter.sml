@@ -484,7 +484,7 @@ local
         in
           setup :: seeds @ [operation,check]
         end
-      val ids = [0,1,2,3,4,5,6,7,10,11,12,13,14,15,16,17]
+      val ids = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
       val code = [L.FUN(main,convention(0,0,0),List.concat(map sample ids))]
     in
       G.emit(G.CG{main_lab = main,code = code,imports = ([],[]),exports = ([],[]),safe = false},
