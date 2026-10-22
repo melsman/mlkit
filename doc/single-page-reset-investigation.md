@@ -8,7 +8,8 @@ part investigates a frame-free single-page reset fast path in the shared helper.
 Allocation PR #251 is merged into master; build on its ARM64 implementation.
 Milestones 1–5 are implemented and assessed; see
 [x64-c-call-preservation-results.md](x64-c-call-preservation-results.md).
-Milestones 6–8 remain planned.
+Milestones 6–8 are implemented and assessed; see
+[single-page-reset-results.md](single-page-reset-results.md).
 
 ## Eligibility and semantics
 

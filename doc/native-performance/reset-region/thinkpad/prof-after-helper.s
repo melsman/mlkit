@@ -1,0 +1,116 @@
+.text
+.globl __reset_region
+.type __reset_region,@function
+__reset_region:
+	movq %r11,%xmm14
+	movq %r11,%r10
+	andq $-4,%r10
+	cmpq $0,24(%r10)
+	jne L_reset_slow_yNXAUXy4ZgYN1FsbHMmMrg
+	movq 8(%r10),%r11
+	andq $-32,%r11
+	cmpq $0,(%r11)
+	jne L_reset_slow_yNXAUXy4ZgYN1FsbHMmMrg
+	movq 8(%r10),%r11
+	andq $-32,%r11
+	addq $16,%r11
+	movq %r11,(%r10)
+	movq %xmm14,%r11
+	ret
+L_reset_slow_yNXAUXy4ZgYN1FsbHMmMrg:
+	movq %xmm14,%r11
+	subq $8,%rsp
+	movsd %xmm13,(%rsp)
+	subq $8,%rsp
+	movsd %xmm12,(%rsp)
+	subq $8,%rsp
+	movsd %xmm11,(%rsp)
+	subq $8,%rsp
+	movsd %xmm10,(%rsp)
+	subq $8,%rsp
+	movsd %xmm9,(%rsp)
+	subq $8,%rsp
+	movsd %xmm8,(%rsp)
+	subq $8,%rsp
+	movsd %xmm7,(%rsp)
+	subq $8,%rsp
+	movsd %xmm6,(%rsp)
+	subq $8,%rsp
+	movsd %xmm5,(%rsp)
+	subq $8,%rsp
+	movsd %xmm4,(%rsp)
+	subq $8,%rsp
+	movsd %xmm3,(%rsp)
+	subq $8,%rsp
+	movsd %xmm2,(%rsp)
+	subq $8,%rsp
+	movsd %xmm1,(%rsp)
+	subq $8,%rsp
+	movsd %xmm0,(%rsp)
+	pushq %rax
+	pushq %r9
+	pushq %r8
+	pushq %rcx
+	pushq %rdx
+	pushq %rsi
+	pushq %rdi
+	.p2align 2
+L_x64_c_origin_rYEUBViQyo9BHpxaCu95ig:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_rYEUBViQyo9BHpxaCu95ig(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r11,%rdi
+	call resetRegion@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	movq %rax,%r11
+	popq %rdi
+	popq %rsi
+	popq %rdx
+	popq %rcx
+	popq %r8
+	popq %r9
+	popq %rax
+	movsd (%rsp),%xmm0
+	addq $8,%rsp
+	movsd (%rsp),%xmm1
+	addq $8,%rsp
+	movsd (%rsp),%xmm2
+	addq $8,%rsp
+	movsd (%rsp),%xmm3
+	addq $8,%rsp
+	movsd (%rsp),%xmm4
+	addq $8,%rsp
+	movsd (%rsp),%xmm5
+	addq $8,%rsp
+	movsd (%rsp),%xmm6
+	addq $8,%rsp
+	movsd (%rsp),%xmm7
+	addq $8,%rsp
+	movsd (%rsp),%xmm8
+	addq $8,%rsp
+	movsd (%rsp),%xmm9
+	addq $8,%rsp
+	movsd (%rsp),%xmm10
+	addq $8,%rsp
+	movsd (%rsp),%xmm11
+	addq $8,%rsp
+	movsd (%rsp),%xmm12
+	addq $8,%rsp
+	movsd (%rsp),%xmm13
+	addq $8,%rsp
+	ret
+L_x64_shared_end_1x2G7dxJx5JrSyqEBCVy9a:
+.text
+
+.section .note.GNU-stack,"",@progbits

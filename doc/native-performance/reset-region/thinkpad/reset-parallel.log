@@ -1,0 +1,6 @@
+make: Entering directory '/tmp/mlkit-callee253/test/parallelism'
+--- Testing Parallelism Support ---
+../../bin/kittester "SML_LIB=../.. ../../bin/mlkit -no_gc -par" --logdirect all.tst
+.................................................... [13/13]
+TEST SUCCEEDED; there were no errors.
+make: Leaving directory '/tmp/mlkit-callee253/test/parallelism'
