@@ -3,7 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Region.h"
+#include "Tagging.h"
 extern Region generated_reset(Region);
+/* Standalone C entry never invokes a collector/ML exception. Satisfy the
+ * collector reporting identities normally supplied by generated link code. */
+uintptr_t exn_OVERFLOW[2], exn_INTERRUPT[2];
+void *data_begin_addr, *data_end_addr;
 static size_t fallbacks;
 static uintptr_t *pending0;
 #ifdef ENABLE_GEN_GC
@@ -27,7 +32,16 @@ static void prepare(Region r, int scenario) {
     (void)alloc(r, ALLOCATABLE_WORDS_IN_REGION_PAGE);
     if (scenario == 3) (void)alloc(r, 1);
   }
-  if (scenario == 4) (void)alloc(r, ALLOCATABLE_WORDS_IN_REGION_PAGE+1);
+  if (scenario == 4) {
+    size_t n = ALLOCATABLE_WORDS_IN_REGION_PAGE+1;
+    uintptr_t *p = alloc(r,n);
+#ifdef PROFILING
+    p[0] = 0;
+    p[1] = val_tag_table(n-2);
+#else
+    p[0] = val_tag_table(n-1);
+#endif
+  }
 #ifdef ENABLE_GEN_GC
   if (scenario == 5) ro->g1.a = alloc_new_page(&ro->g1);
 #else
