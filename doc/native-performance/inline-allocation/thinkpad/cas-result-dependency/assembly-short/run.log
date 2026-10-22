@@ -1,0 +1,13 @@
+CAS-result experiment outputs: /tmp/mlkit-cas-result.oNaW2F
+Correctness passed: recompute
+Correctness passed: pointer-control
+Correctness passed: pointer-result
+Timing round 1 passed.
+Timing round 2 passed.
+Timing round 3 passed.
+Timing round 4 passed.
+Timing round 5 passed.
+Timing round 6 passed.
+Timing round 7 passed.
+Timing round 8 passed.
+Timing round 9 passed.

@@ -28,7 +28,10 @@ pointer update. Its new protected helper entry skips the already performed
 mutex check. The shared helper saves rax and word count in reserved xmm14/xmm15.
 After computing the new pointer and page bound, it reconstructs the expected
 old pointer as `new - 8*words` before `lock cmpxchgq`; it never reloads a potentially
-changed pointer to establish that expectation. Failure restores the original
+changed pointer to establish that expectation. Protected success now reconstructs
+its result independently from the proposed pointer and saved size, avoiding the
+implicit rax output of CAS (see the later dependency investigation below).
+Failure restores the original
 arguments and rax before runtime fallback. The helper's former 16/24 bytes of
 explicit stack saves are gone. An X64 `call` still pushes an 8-byte return address;
 ARM64 uses LR and needs no allocation stack storage on success.
@@ -281,6 +284,61 @@ record is retained and explicitly excluded, with a separately recorded repeat;
 no other outlier was discarded. See the
 [full methods, address controls, samples and reproduction scripts](native-performance/inline-allocation/thinkpad/layout-save-experiment/README.md).
 
+### Independent re-verification of the regression
+
+Fresh program builds and an untimed protection audit recheck `ac46a18e` versus
+`03e40cf2`, with identical flags and one common runtime. Both versions enter the
+protected helper exactly 100 million times in the short case and 500 million
+in a five-times-longer case. Region constructors assert a requested protection
+flag and non-NULL mutex. Both short audit executables enter C fallback exactly
+195,000 times; the candidate does not perform additional fallback work.
+
+ABBA/BAAB blocks balance run order on two physical performance cores. Median
+user CPU seconds (baseline → candidate):
+
+| Workload | CPU 0 | CPU 2 |
+| --- | ---: | ---: |
+| Original short loop | 1.07 → 1.11 (+3.7%) | 1.085 → 1.11 (+2.3%) |
+| Five-times-longer loop | 5.35 → 5.56 (+3.9%) | 5.39 → 5.565 (+3.2%) |
+
+CPU 2 is noisier, including one short block favoring the candidate. No sample
+was discarded. Every CPU-0 block and every long-workload block favors the
+baseline. The longer comparison confirms the original roughly 4% workload-
+specific regression beyond timer-rounding sensitivity. Full ranges, all 88
+samples, audit/compile logs, compiler/runtime hashes and reproduction scripts:
+[protected-reverification/](native-performance/inline-allocation/thinkpad/protected-reverification/README.md).
+
+### CAS-result dependency and retained X64 improvement
+
+A subsequent experiment removes the protected result's dependency on the implicit
+rax output of `cmpxchg`. Returning a saved old pointer directly does not help
+(1.11 s), but independently reconstructing the result from the proposed pointer
+and saved size gives 1.10 versus 1.11 s in the short case. The longer same-unit
+assembly comparison gives 5.50 versus 5.555 s. These are modest gains, not proof
+that CAS-output latency alone explains the regression.
+
+The independent reconstruction is retained in the compiler. Native current-PR
+before/after compilers, a retained spawning unit and a runtime policy assertion
+ensure protection is active despite the later no-spawn optimization. Five balanced
+blocks per case (ten samples/version) give:
+
+| Forced-protection case | Before | After |
+| --- | ---: | ---: |
+| MLKit, 500M cells | 5.55 [5.54, 5.57] | 5.50 [5.50, 5.50] |
+| ReML `-no_par0`, 500M cells | 5.56 [5.54, 5.57] | 5.50 [5.50, 5.50] |
+
+This recovers about 1%, leaving most of the original roughly 4% regression.
+It adds 12 shared-helper bytes and no allocation-site bytes or stack saves.
+Native allocation checks, including a stronger forced-CAS-failure returned-pointer
+case, and all 13 parallel regressions pass. Helper-bridge ranges overlap; parallel
+merge sort/allocation-computation, inferred local allocation and default ReML
+controls are unchanged at timer resolution. Full ranges and raw data:
+[cas-result-dependency/](native-performance/inline-allocation/thinkpad/cas-result-dependency/README.md).
+
+ARM64 already reconstructs its result from proposed pointer x0 and size x17;
+its exclusive store writes status to w30. There is no corresponding store-output
+pointer dependency. ARM64 code and its earlier 2.5% assessment are unchanged.
+
 ### Native code size and correctness
 
 The local-loop unit `.text` grows 442 → 516 bytes (+74), shared startup/helper
@@ -315,7 +373,9 @@ Milestones 5–8 are complete. Both architectures show allocation-local gains wi
 code growth and a modest protected-loop regression (ARM64 +2.5%, X64 +3.7%).
 The X64 investigation places its regression in the helper implementation.
 Controlled alignment and save-method experiments do not recover the old timing;
-they do not support adding back stack saves with the current arithmetic. The results support reviewing the inline-local design with
+they do not support adding back stack saves with the current arithmetic. A later
+independent-result reconstruction recovers about 1% on X64 without stack saves,
+but most of the original regression remains. The results support reviewing the inline-local design with
 this protected-throughput tradeoff explicit. The PR remains draft for that review.
 No general speedup or zero-overhead claim follows from these workloads. CI runs
 correctness checks only; no performance tests or timing collection are added.

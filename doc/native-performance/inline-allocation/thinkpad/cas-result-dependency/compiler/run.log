@@ -1,0 +1,5 @@
+Compiler-fix benchmark outputs: /tmp/mlkit-cas-compiler-benchmark.Uyv7tw
+Compiler comparison passed: mlkit short
+Compiler comparison passed: mlkit long
+Compiler comparison passed: reml short
+Compiler comparison passed: reml long

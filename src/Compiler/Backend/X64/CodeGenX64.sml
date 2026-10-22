@@ -1880,7 +1880,11 @@ struct
                   I.addq(R treg0,R rax) ::
                   (if atomic then
                      I.cmpxchgq(R treg0,D("0",treg1)) :: I.jne fallback ::
-                     I.movq(R rax,R treg1) :: []
+                     (* Do not consume CAS's implicit rax output for the
+                      * result. The proposed pointer and saved size are ready
+                      * before CAS, so reconstruct from those independently. *)
+                     [I.movq(R RI.tfreg1,R treg1),I.salq(I "3",R treg1),
+                      I.negq(R treg1),I.addq(R treg0,R treg1)]
                    else [I.movq(R treg0,D("0",treg1)),I.movq(R rax,R treg1)]) @
                   [I.movq(R RI.tfreg0,R rax),I.ret,I.lab fallback,
                    I.movq(R RI.tfreg1,R treg0),I.movq(R RI.tfreg0,R rax)] @ G.jump target C

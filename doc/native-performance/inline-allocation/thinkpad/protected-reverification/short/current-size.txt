@@ -1,0 +1,6 @@
+   text	   data	    bss	    dec	    hex	filename
+  49089	   2904	  82608	 134601	  20dc9	current
+   text	   data	    bss	    dec	    hex	filename
+    532	    756	      0	   1288	    508	MLB/RI_PAR_Verifycurrent/main.sml.o
+   1864	    888	      0	   2752	    ac0	MLB/RI_PAR_Verifycurrent/base-link_objects.o
+51fe054be781ad88bd0716c85691c7343e7ec8d2102cf925b7f856daff8b2a6e  current

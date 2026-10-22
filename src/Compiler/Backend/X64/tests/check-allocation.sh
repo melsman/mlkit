@@ -37,8 +37,14 @@ for scenario in single shared mixed expansion private; do
   ALLOCATION_SCENARIO=$scenario ./allocation > actual
   grep -qx 'generated/C allocation passed' actual
 done
-# Make every generated CAS fail without changing the region's pointer.
-awk '/lock cmpxchgq/ {print "\txorq %rax,%rax"} {print}' allocation-helpers.s > failure.s
+# Make every CAS fail, then perturb its returned pointer without changing flags
+# or the descriptor. Fallback must retain the requested size even when CAS
+# overwrites rax with a value different from the pre-attempt allocation pointer.
+awk '
+  /lock cmpxchgq/ {print "\txorq %rax,%rax"}
+  {print}
+  /lock cmpxchgq/ {print "\tleaq 8(%rax),%rax"}
+' allocation-helpers.s > failure.s
 ${CC:-cc} -O2 -Wall -Wextra -Werror -DPARALLEL \
   -Darm64_generated_alloc=x64_generated_alloc -iquote "$SML_LIB/src/Runtime" \
   "$fixtures/../../Arm64/tests/allocation-concurrent.c" \
