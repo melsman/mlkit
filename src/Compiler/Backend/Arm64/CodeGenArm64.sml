@@ -2765,7 +2765,10 @@ struct
           fun reset (off,code) = (page off
             ++ instruction A.add (R(X 17),R(X 17),imm header)
             ++ storeInto(X 17,X 16,off)
-            ++ (if gengc() then storeInto(X 17,X 17,~8) else fn c => c)) code
+            ++ (if gengc() then
+                  instruction A.sub (R(X 30),R(X 17),I(8))
+                  ++ storeInto(X 17,X 30,0)
+                else fn c => c)) code
           fun restore code = (instruction A.fmov (R(X 16),R(D 30))
             ++ instruction A.fmov (R(X 30),R(D 31))) code
           val code = (restore ++ one A.ret ++ one(Label fallback)
