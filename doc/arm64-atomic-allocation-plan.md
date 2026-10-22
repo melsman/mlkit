@@ -377,3 +377,87 @@ Allocation may clobber the two reserved FP scratches, but no allocatable integer
 or FP register. Register preservation and real-valued allocation users require
 execution coverage. No runtime layout, protection inference or library-cache
 policy changes are part of this follow-up.
+
+## Planned follow-up: standalone programs without spawning
+
+Each native compilation unit's link-object will carry a `may_spawn` boolean,
+recording whether its retained generated code contains a spawning operation.
+The compiler's final standalone link step ORs the booleans of all included units.
+This is compiler link metadata, not an `ld` feature or a scan of object symbols.
+A present but never executed spawning operation conservatively counts as spawning;
+this does not require whole-program call-graph reachability analysis.
+
+Before any global or other region is created, startup establishes a fixed runtime
+policy. If no linked unit may spawn, `allocateRegion` and related constructors
+initialize the existing mutex pointer to NULL even where protection was requested.
+Otherwise, constructors honor existing protection decisions. The descriptor layout
+and generated allocation checks stay unchanged; NULL selects ordinary allocation
+rather than CAS, including for global regions and C allocation fallback.
+
+The REPL always retains normal protection from startup: later input may spawn,
+and existing regions must already have suitable protection. There is no transition
+from unprotected to protected regions after the first spawn. Foreign-code analysis
+is explicitly out of scope. This work does not enable parallelism by default,
+change ReML's separation controls, or claim to remove all parallel-runtime overhead.
+
+### 9. Specify and record spawning in link-objects
+
+- [ ] Define `may_spawn` for retained generated spawning operations in both native
+      backends, following the lowering of `spawnone` to thread creation.
+- [ ] Add the boolean to native link metadata and its serialization; ensure it is
+      reset per compilation unit and survives separate compilation and cache reuse.
+- [ ] Choose and document cache compatibility: old/unknown metadata must either
+      conservatively mean may-spawn or be invalidated and rebuilt. It must never
+      silently imply no spawning. Keep the standard library variant count unchanged.
+
+Acceptance: units with and without spawning produce the expected link-object
+values on both backends, including unused-but-retained spawning code, fresh
+compilation and cached reuse. No linker-specific symbol mechanism is used.
+
+### 10. Aggregate the policy and initialize it before region creation
+
+- [ ] OR `may_spawn` across every included link-object, including cached library
+      units, and convey the result through native standalone startup code.
+- [ ] Establish a conservative runtime default and set the standalone policy before
+      global region construction on both X64 and ARM64.
+- [ ] Keep REPL startup and incremental linking permanently conservative, including
+      a session that first creates regions and only later evaluates spawning code.
+
+Acceptance: inspect and execute startup paths to show that the policy is set before
+any relevant region constructor, that one spawning unit preserves normal protection,
+and that the absence of spawning removes protection requests program-wide. Missing
+metadata or startup-policy information cannot accidentally disable protection.
+
+### 11. Apply the policy consistently to region constructors
+
+- [ ] Route global and local region constructors, including specialized constructors
+      and profiling configurations, through the common effective protection policy.
+- [ ] In proven no-spawn programs, initialize mutex pointers to NULL without obtaining
+      mutexes; otherwise retain existing inferred/forced protection decisions.
+- [ ] Preserve deallocation, reset, expansion and large-object invariants, the shared
+      C allocator's descriptor-based dispatch, and ReML's `par0` behavior.
+
+Acceptance: no-spawn global and local regions take ordinary generated/C allocation
+paths without CAS or region-mutex allocation. Programs containing spawning and REPLs
+retain their established protection behavior. No descriptor layout change, new
+strategy flag or additional prepared library variant is introduced.
+
+### 12. Validate correctness and assess remaining overhead
+
+- [ ] Add correctness checks for no-spawn/spawn units, mixed separate compilation,
+      cached Basis/library reuse and conservative cache compatibility.
+- [ ] Exercise global and local allocation, forced protection, generated paths on/off,
+      page fills/expansion, large objects, reset/deallocation and profiling.
+- [ ] Verify REPL protection both before and after evaluating a later spawning phrase;
+      run pthread/available Argobots coverage and read-only installation checks.
+- [ ] Run the relevant correctness suites on both backends and record unavailable
+      native execution coverage explicitly.
+- [ ] Manually compare standalone no-spawn programs with sequential compilation and
+      existing protected parallel allocation; record code size, remaining descriptor
+      checks, region creation and runtime startup costs. Native X64 performance work
+      waits for the ThinkPad. Do not add performance tests or timing collection to CI.
+
+Acceptance: publish commands, correctness results, manual measurements and limits.
+Separate the removal of region synchronization from other costs of parallel-enabled
+execution. Retain existing defaults until a separate decision enables MLKit
+parallelism by default. Foreign-code analysis is not part of these milestones.
