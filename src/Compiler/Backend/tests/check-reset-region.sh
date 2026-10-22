@@ -14,6 +14,9 @@ case $(uname -sm) in
 esac
 printf 'val _:unit = prim("putchar",0w65)\n' > helper.sml
 for mode in no_gc gc gengc prof gcprof genprof par parprof; do
+  mkdir "$mode"
+  cd "$mode"
+  cp ../helper.sml .
   flags=-$mode; defines=; lib=runtimeSystem
   case $mode in
     gc) defines=-DENABLE_GC; lib=runtimeSystemGC;;
@@ -26,7 +29,7 @@ for mode in no_gc gc gengc prof gcprof genprof par parprof; do
   esac
   "$MLKIT" $flags --no_basislib --no_delete_target_files --mlb-subdir "Reset$mode" \
     -o helper helper.sml > "$mode-compile.log" 2>&1 || { cat "$mode-compile.log"; exit 1; }
-  link=$(find MLB -path "*Reset$mode/*" -name base-link_objects.s)
+  link=$(find MLB -name base-link_objects.s)
   [ -n "$link" ]
   awk -v start=".globl $prefix$symbol" -v arch="$arch" '
     $0 == start {emit=1; print ".text"}
@@ -50,4 +53,5 @@ for mode in no_gc gc gengc prof gcprof genprof par parprof; do
   ./reset > actual
   grep -qx 'generated/C reset passed' actual
   echo "Shared reset ($mode): passed"
+  cd ..
 done
