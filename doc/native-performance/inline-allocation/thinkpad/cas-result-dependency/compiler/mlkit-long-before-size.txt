@@ -1,0 +1,4 @@
+   text	   data	    bss	    dec	    hex	filename
+  49889	   3296	  82608	 135793	  21271	mlkit-long-before
+    532	    754	      0	   1286	    506	MLB/RI_PAR_Casmlkitbefore/main.sml.o
+   1920	    896	      0	   2816	    b00	MLB/RI_PAR_Casmlkitbefore/base-link_objects.o

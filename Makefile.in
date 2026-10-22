@@ -127,10 +127,12 @@ install_smltojs_basislibs:
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js,df} $(LIBDIR)/basis/MLB/Js
 
 ifeq ($(DARWIN_NATIVE),1)
-BASIS_CACHES = ARM64_RI ARM64_RI_PAR ARM64_RI_GC ARM64_RI_GC_PROF_CODE1_TP1 ARM64_RI_PROF_CODE1_TP1_PAR ARM64_RI_PROF_CODE1_TP1
+BASIS_CACHE_PREFIX = ARM64_
 else
-BASIS_CACHES = RI RI_PAR RI_GC RI_GC_PROF_CODE1_TP1 RI_PROF_CODE1_TP1_PAR RI_PROF_CODE1_TP1
+BASIS_CACHE_PREFIX =
 endif
+BASIS_CACHE_VARIANTS = RI RI_PAR RI_PAR0 RI_GC RI_GC_PROF_CODE1_TP1 RI_PROF_CODE1_TP1_PAR RI_PROF_CODE1_TP1_PAR0 RI_PROF_CODE1_TP1
+BASIS_CACHES = $(addprefix $(BASIS_CACHE_PREFIX),$(BASIS_CACHE_VARIANTS))
 
 .PHONY: install_mlkit_basislibs
 install_mlkit_basislibs:
@@ -451,11 +453,12 @@ emitter:
 check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
 	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-native.sh
-	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
+	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
+	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-arm64.sh
-check-compiler: check-arm64
+check-compiler: check-arm64 check-spawn-policy
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
 	  KITTESTER="$(CWD)/bin/kittester" TEST_JOBS="$(TEST_JOBS)" VERBOSE="$(VERBOSE)" \
 	  sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
@@ -465,11 +468,14 @@ check-native-install:
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
+	$(MAKE) check-spawn-policy
 	$(MAKE) check-real-auto-conversion
 	$(MAKE) -C test_dev -j $(TEST_JOBS) test test_prof
 	$(MAKE) -C test test_mlkit
 	$(MAKE) -C test test_mlkit_no_gc
 	$(MAKE) -C test test_c_call_alignment
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
+	  sh src/Compiler/Backend/X64/tests/check-allocation.sh
 	$(MAKE) -C test/explicit_regions all
 	$(MAKE) -C test/repl all
 	$(MAKE) -C test/repl test_gc
@@ -642,3 +648,8 @@ prettyprint-tools:
 	set -e; cd "$(PRETTYPRINT_BUILD)/test/prettyprint"; for name in $(PRETTYPRINT_TESTS); do \
 	  $(MLCOMP) -output "$(PRETTYPRINT_BUILD)/$$name" "$$name.mlb"; \
 	done
+
+.PHONY: check-spawn-policy
+check-spawn-policy:
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
+	  sh src/Compiler/Backend/tests/check-spawn-policy.sh

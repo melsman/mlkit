@@ -235,14 +235,13 @@ functor ManagerObjects(
 	      else tfiles_with_linkinfos
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
-	    val labs = map Execution.code_label_of_linkinfo linkinfos
 	    val exports =
 	      List.foldr (fn ((fs,ds),(acc_f,acc_d)) =>  (fs@acc_f, ds@acc_d)) ([],[])
 	      (map Execution.exports_of_linkinfo linkinfos)  (* 2001-01-09, Niels *)
 	    val extobjs = elim_dupl (extobjs,[])
 	  in case Execution.generate_link_code of
                  SOME generate_link_code =>
-		 let val target_link = generate_link_code (labs, exports)
+		 let val target_link = generate_link_code (linkinfos, exports)
 		     val linkfile_o = emit(target_link, "base", "link_objects")
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
 		    (if delete_target_files() then delete_file linkfile_o

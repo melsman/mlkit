@@ -41,12 +41,6 @@ struct
   val alloc_protect_always = Flags.add_bool_entry
     {long = "alloc_protect_always",short = NONE,item = ref false,neg = false,
      menu = ["Compiler","always protect allocation"],desc = "Always protect parallel allocation."}
-  val tail_wrappers = Flags.add_bool_entry
-    {long = "arm64_tail_wrappers",short = NONE,item = ref true,neg = true,
-     menu = ["Compiler","ARM64 tail wrappers"],desc = "Omit frames in identity tail wrappers."}
-  val self_loops = Flags.add_bool_entry
-    {long = "arm64_self_loops",short = NONE,item = ref true,neg = true,
-     menu = ["Compiler","ARM64 self loops"],desc = "Reuse frames in eligible self-tail recursion."}
   fun parallel () = Flags.is_on "parallelism"
   fun unprotected () = Flags.is_on "parallelism_alloc_unprotected"
   val gc = Flags.is_on0 "garbage_collection"
@@ -612,6 +606,8 @@ struct
         (instruction opn (R(reg),R(reg),imm n)
            ++ adjustInto opn reg (bytes-n)) code
       end
+  val unitMaySpawn = ref false
+  fun may_spawn () = !unitMaySpawn
   val allocStub = NameLab "mlkit_arm64_allocate_preserving"
   val untaggedAllocStub = NameLab "mlkit_arm64_allocate_untagged_preserving"
   val resetStub = NameLab "mlkit_arm64_reset_preserving"
@@ -702,18 +698,27 @@ struct
       val finite = localFresh()
       fun finiteCode code = instruction A.and_ (R(X 16),R(X 16),I(~4)) code
       fun ordinaryInfiniteCode code =
-        if (parallel() andalso not(unprotected())) orelse
+        if not(Flags.is_on "inline_allocation") orelse
+           (parallel() andalso not(unprotected()) andalso profiling()) orelse
            words + (if profiling() then 1 else 0) > BackendInfo.size_region_page() div 8 - (if gengc() then 3 else 2) then
           allocSlowInto words untag site code
         else
           let
             val slow = localFresh()
             val joined = localFresh()
+            val protected = localFresh()
+            val protectedMode = parallel() andalso not(unprotected()) andalso not(profiling())
+            val protectedTarget = NameLab(if untag then "mlkit_arm64_allocate_untagged_preserving_protected"
+                                         else "mlkit_arm64_allocate_preserving_protected")
             val bytes = 8*(words + (if profiling() then 1 else 0))
             val () = addStatic
               (Directive(Text) :: Directive(Align 2) :: Label slow ::
                A.orr (R(X 16),R(X 16),I(1)) ::
                allocSlowInto words untag site [A.b (L(joined))])
+            val () = if protectedMode then addStatic
+              ((one (Directive(Text)) ++ one (Directive(Align 2)) ++ one (Label protected)
+                ++ countInto (X 17) words
+                ++ privateCallInto protectedTarget) [A.b(L(joined))]) else ()
             val code = Label joined :: code
             val code = if gc() then (addressInto (NameLab "alloc_period",X 17)
                ++ loadInto (X 17,0,X 30)
@@ -721,16 +726,33 @@ struct
                ++ storeInto (X 30,X 17,0)) code else code
           in
             (instruction A.and_ (R(X 16),R(X 16),I(~4))
-             ++ loadInto (X 16,0,X 17)
-             ++ instruction A.sub (R(X 17),R(X 17),I(1))
-             ++ instruction A.orr (R(X 30),R(X 17),imm(BackendInfo.size_region_page()-1))
-             ++ adjustInto A.add (X 17) bytes
-             ++ instruction A.cmp (R(X 17),R(X 30))
-             ++ instruction A.b_hi (L(slow))
-             ++ instruction A.add (R(X 17),R(X 17),I(1))
-             ++ storeInto (X 17,X 16,0)
-             ++ moveInto (X 17,X 16)
-             ++ adjustInto A.sub (X 16) bytes
+             ++ (if parallel() andalso not(unprotected()) then
+                   loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 17)
+                   ++ instruction A.cbnz (R(X 17),L(protected))
+                 else fn c => c)
+             ++ (if protectedMode then
+                   loadInto(X 16,0,X 17)
+                   ++ instruction A.sub (R(X 30),R(X 17),I(1))
+                   ++ instruction A.and_ (R(X 30),R(X 30),imm(BackendInfo.size_region_page()-1))
+                   ++ adjustInto A.add (X 30) bytes
+                   (* The offset plus this bounded request is below 16384;
+                    * bit 13 alone detects crossing the 8192-byte page end. *)
+                   ++ instruction A.tbnz (R(X 30),I(13),L(slow))
+                   ++ (if bytes <= 4095 then instruction A.add (R(X 30),R(X 17),imm bytes)
+                       else moveInto(X 17,X 30) ++ adjustInto A.add (X 30) bytes)
+                   ++ storeInto (X 30,X 16,0)
+                   ++ moveInto (X 17,X 16)
+                 else
+                   loadInto (X 16,0,X 17)
+                   ++ instruction A.sub (R(X 17),R(X 17),I(1))
+                   ++ instruction A.orr (R(X 30),R(X 17),imm(BackendInfo.size_region_page()-1))
+                   ++ adjustInto A.add (X 17) bytes
+                   ++ instruction A.cmp (R(X 17),R(X 30))
+                   ++ instruction A.b_hi (L(slow))
+                   ++ instruction A.add (R(X 17),R(X 17),I(1))
+                   ++ storeInto (X 17,X 16,0)
+                   ++ moveInto (X 17,X 16)
+                   ++ adjustInto A.sub (X 16) bytes)
              ++ (if profiling() then
                    addressInto(site,X 17)
                    ++ instruction A.lsl (R(X 17),R(X 17),I(13))
@@ -2037,6 +2059,7 @@ struct
         primitiveInto fsz p code
     | LS.CCALL {name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
+          val () = unitMaySpawn := true
           val () = if parallel() then () else unsupported "spawnone without -par"
           val entry = localFresh()
                       (* thread_init returns ThreadInfo*. Its leading fields are the
@@ -2581,9 +2604,9 @@ struct
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
       val optimiseFrame = not(extra_gc_checks())
-      val wrapper = if optimiseFrame andalso not(sampledProfile()) andalso tail_wrappers() then identityTail cc body else NONE
+      val wrapper = if optimiseFrame andalso not(sampledProfile()) then identityTail cc body else NONE
       val recursive = ref false
-      val loop = if optimiseFrame andalso self_loops() andalso (not(gc()) orelse fsz = 0) andalso ac = 0
+      val loop = if optimiseFrame andalso (not(gc()) orelse fsz = 0) andalso ac = 0
                     andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
                     andalso (not(gc()) orelse not(LS.allocating body)) andalso loopStatements (l,recursive) body andalso !recursive
                  then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE
@@ -2608,6 +2631,7 @@ struct
     end
   fun CG {main_lab,code,imports,exports,safe} =
     let
+      val () = unitMaySpawn := false
       val () = staticChunks := []
       val () = unitGCStub := NONE
       val () = dataLabels := []
@@ -2690,6 +2714,72 @@ struct
     end
   fun allocationStubsInto code =
     let
+      (* Parallel allocation uses reserved FP scratch registers rather than a
+       * stack frame before entering the full preserving C stub. x16 is the
+       * region/result and x17 the words; d30 saves x0 and d31 saves LR.
+       * All allocatable ML registers survive. No memory accesses occur between
+       * ldaxr and stlxr. An acquire reservation observes allocGen's release
+       * publication of an initialized page; a failed reservation delegates
+       * retries and expansion to allocGen, just as X64 allocinreg does. *)
+      fun fast lab protected slow untag code =
+        let
+          val ordinary = localFresh()
+          val atomic = localFresh()
+          val abandon = localFresh()
+          val fallback = localFresh()
+          val success = localFresh()
+          fun restore code =
+            (instruction A.fmov (R(X 0),R(D 30))
+             ++ instruction A.fmov (R(X 30),R(D 31))) code
+          fun space code =
+            (instruction A.sub (R(X 30),R(X 0),I(1))
+             ++ instruction A.orr (R(X 30),R(X 30),imm(BackendInfo.size_region_page()-1))
+             ++ instruction A.add (R(X 30),R(X 30),I(1))
+             ++ instruction A.add (R(X 0),R(X 0),Shifted(X 17,LSL,3))
+             ++ instruction A.cmp (R(X 0),R(X 30))) code
+          (* Only generated sites with a protected descriptor and a request
+           * bounded to the ordinary page capacity call this entry. *)
+          val code = (functionInto protected
+             ++ instruction A.fmov (R(D 30),R(X 0))
+             ++ instruction A.fmov (R(D 31),R(X 30))
+             ++ instruction A.and_ (R(X 16),R(X 16),I(~4))
+             ++ instruction A.b (L(atomic))) code
+          val code = (one (Label fallback)
+             ++ instruction A.orr (R(X 16),R(X 16),I(1))
+             ++ restore
+             ++ instruction A.b (L(slow))) code
+          val code = (one (Label abandon)
+             ++ one A.clrex
+             ++ instruction A.b (L(fallback))) code
+          val code = (one (Label success)
+             ++ instruction A.sub (R(X 16),R(X 0),Shifted(X 17,LSL,3))
+             ++ (if untag then adjustInto A.sub (X 16) 8 else fn c => c)
+             ++ restore
+             ++ one A.ret) code
+          val code = (one (Label ordinary)
+             ++ loadInto(X 16,0,X 0)
+             ++ space
+             ++ instruction A.b_hi (L(fallback))
+             ++ storeInto(X 0,X 16,0)
+             ++ instruction A.b (L(success))) code
+          val code = (instruction A.and_ (R(X 16),R(X 16),I(~4))
+             ++ countInto (X 30) (BackendInfo.size_region_page() div 8 - 2)
+             ++ instruction A.cmp (R(X 17),R(X 30))
+             ++ instruction A.b_hi (L(fallback))
+             ++ loadInto(X 16,8*BackendInfo.region_mutex_offset_words(),X 30)
+             ++ instruction A.cbz (R(X 30),L(ordinary))
+             ++ one (Label atomic)
+             ++ instruction A.ldaxr (R(X 0),M(X 16,0))
+             ++ space
+             ++ instruction A.b_hi (L(abandon))
+             ++ instruction A.stlxr (R(W 30),R(X 0),M(X 16,0))
+             ++ instruction A.cbnz (R(W 30),L(fallback))
+             ++ instruction A.b (L(success))) code
+        in
+          (functionInto lab
+           ++ instruction A.fmov (R(D 30),R(X 0))
+           ++ instruction A.fmov (R(D 31),R(X 30))) code
+        end
       fun shared lab name target setup code =
         let val finish = localFresh()
             val unit = stringData("<runtime/C>")
@@ -2709,13 +2799,21 @@ struct
          ++ countInto (X 2) 0
          ++ countInto (X 3) untag
          ++ (if profiling() then loadInto (SP,bytes,X 4) else countInto (X 4) 0)) code
+      fun allocation lab name untag code =
+        if parallel() andalso not(unprotected()) andalso not(profiling()) andalso
+           Flags.is_on "inline_allocation" then
+          let val slow = NameLab(name ^ "_slow")
+          in fast lab (NameLab(name ^ "_protected")) slow (untag = 1)
+               (shared slow name (NameLab "mlkit_arm64_alloc") (setup untag) code)
+          end
+        else shared lab name (NameLab "mlkit_arm64_alloc") (setup untag) code
     in
-      (shared allocStub "mlkit_arm64_allocate_preserving" (NameLab "mlkit_arm64_alloc") (setup 0)
-       ++ shared untaggedAllocStub "mlkit_arm64_allocate_untagged_preserving" (NameLab "mlkit_arm64_alloc") (setup 1)
+      (allocation allocStub "mlkit_arm64_allocate_preserving" 0
+       ++ allocation untaggedAllocStub "mlkit_arm64_allocate_untagged_preserving" 1
        ++ shared resetStub "mlkit_arm64_reset_preserving" (NameLab "resetRegion")
         (fn _ => fn code => moveInto (X 16,X 0) code)) code
     end
-  fun linkCode repl (labs,_) =
+  fun linkCode repl spawning (labs,_) =
     let
       val globals = [(Effect.toplevel_region_withtype_top,BackendInfo.toplevel_region_withtype_top_lab),
         (Effect.toplevel_region_withtype_string,BackendInfo.toplevel_region_withtype_string_lab),
@@ -2946,10 +3044,16 @@ struct
 
     in
       (functionInto(NameLab "code")
-       ++ moveInto(X 0,X 28)) code
+       ++ moveInto(X 0,X 28)
+       ++ (if parallel() then
+             addressInto(NameLab "mlkit_regions_may_spawn",X 16)
+             ++ countInto (X 17) (if repl orelse spawning then 1 else 0)
+             ++ storeInto(X 17,X 16,0)
+           else fn c => c)) code
     end
-  fun generate_link_code args = linkCode false args
-  fun generate_repl_init_code () = linkCode true ([],([],[]))
+  fun generate_link_code args = linkCode false true args
+  fun generate_link_code_with_policy (labs,exports,spawning) = linkCode false spawning (labs,exports)
+  fun generate_repl_init_code () = linkCode true true ([],([],[]))
   fun generate_repl_link_code (name,labs) =
     let
       val join = localFresh()

@@ -19,6 +19,14 @@ fi; exit "$status"' EXIT
 trap 'exit 1' HUP INT TERM
 cp *.sml native.mlb probe.c scalar-calls.c allocation.c callback.s foreign.c repl-input.txt "$arm_test_dir/"
 cd "$arm_test_dir"
+for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
+  for flag in --arm64_self_loops --no_arm64_self_loops --arm64_tail_wrappers --no_arm64_tail_wrappers; do
+    if "$compiler" "$flag" --version > removed-tail-flag.log 2>&1; then
+      echo "Removed tail-frame flag was accepted: $flag" >&2; exit 1
+    fi
+    grep -q 'unknown option' removed-tail-flag.log
+  done
+done
 # Generate a finite 33,600-byte record without checking in a huge fixture.
 awk 'BEGIN {
   print "fun large__noinline(w:word):word = let val t = (w";
@@ -35,7 +43,7 @@ check_compiler () {
   prefix=$2
   # These minimal fixtures use the untagged, non-GC primitive ABI.
   default_gc=-no_gc
-  [ "$compiler" != "$REML_ARM64" ] || default_gc=""
+  [ "$compiler" != "$REML_ARM64" ] || default_gc=-no_par
   "$compiler" $default_gc --no_basislib --no_delete_target_files -o "$prefix-native" native.mlb > "$prefix.log" 2>&1
   printf '@' | "./$prefix-native" > actual
   cmp expected actual
@@ -106,11 +114,11 @@ if "$MLKIT_ARM64" --no_basislib -par -gc -o unsupported native.mlb > unsupported
 fi
 grep -q 'ARM64 parallelism does not support garbage_collection' unsupported.log
 [ ! -e unsupported ]
-for mode in plain gc gengc; do
+for mode in plain gc gengc plain-runtime gc-runtime gengc-runtime; do
   case "$mode" in
-    plain) defines=""; archive=runtimeSystem.a ;;
-    gc) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC"; archive=runtimeSystemGC.a ;;
-    gengc) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -DENABLE_GEN_GC"; archive=runtimeSystemGenGC.a ;;
+    plain*) defines=""; archive=runtimeSystem.a ;;
+    gc|gc-runtime) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC"; archive=runtimeSystemGC.a ;;
+    gengc*) defines="-DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -DENABLE_GEN_GC"; archive=runtimeSystemGenGC.a ;;
   esac
   gcc -arch arm64 -O2 -Wall -Wextra -Werror $defines -I"$SML_LIB/src/Runtime" \
     allocation.c "allocation-$mode.s" "allocation-$mode-link.s" \
@@ -125,7 +133,7 @@ printf 'OK\nOK\nOK\nOK\nOK\nOK\n' > foreign-expected
 printf 'OK\n' > gc-expected
 for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
   default_gc=-no_gc
-  [ "$compiler" != "$REML_ARM64" ] || default_gc=""
+  [ "$compiler" != "$REML_ARM64" ] || default_gc=-no_par
   extra_gc=-extra_gc_checks
   [ "$compiler" != "$REML_ARM64" ] || extra_gc=""
   for flags in '' '--tag_values' '-rp' '-gc' '-gc -tag_pairs' '-gengc' '-gc -rp' '-gc -tag_pairs -rp' '-gengc -rp'; do

@@ -1,0 +1,16 @@
+/tmp/mlkit-local-benchmark.AGu1IZ/MLB/RI_PAR_Localfast/base-link_objects.o  :
+section           size   addr
+.text             1864      0
+.data              888      0
+.bss                 0      0
+.note.GNU-stack      0      0
+Total             2752
+
+
+/tmp/mlkit-local-benchmark.AGu1IZ/MLB/RI_PAR_Localfast/main.sml.o  :
+section           size   addr
+.text              516      0
+.data              747      0
+.bss                 0      0
+.note.GNU-stack      0      0
+Total             1263

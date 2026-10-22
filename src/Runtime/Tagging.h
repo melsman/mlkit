@@ -13,7 +13,6 @@
 #define is_const(x)             (((unsigned long)x) & 0x20)  // Bit 6 is the constant bit
 #define set_tag_const(x)        ((x) | 0x20)                 // Set bit 6, the constant bit
 #define clear_tag_const(x)      ((x) & (UINTPTR_MAX ^ 0x20)) // Clear bit 6
-// #define clear_tag_const(x)      ((x) & 0xFFFFFFDF)        // Clear bit 6
 #define val_tag_kind_const(x)   ((*(uintptr_t *)x) & 0x3F)   // Least 6 significant bits
 
 #define gen_record_tag(s,o,i,t) (((((s)<<19) | ((o)<<6)) | ((i)<<5)) | (t))
@@ -98,7 +97,6 @@
 #ifdef TAG_VALUES
 #define tag_scalar(s)      (((size_t)(s)) | 1)
 #define untag_scalar(s)    (((size_t)(s)) & (UINTPTR_MAX ^ 0x1))
-// #define untag_scalar(s)    (((unsigned long)(s)) & 0xFFFFFFFE)
 #else
 #define tag_scalar(s)   (s)
 #define untag_scalar(s) (s)

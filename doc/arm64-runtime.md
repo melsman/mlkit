@@ -64,10 +64,15 @@ Profiling reads SP based on architecture macros, not compiler identity. The
 protected C allocator uses acquire loads of its allocation pointer and a
 release store to publish an initialized page, replacing the compiler-selected
 empty barrier/mfence. Its compare/exchange operations remain sequentially
-consistent. X64 generated allocation uses locked compare/exchange. ARM generated allocation calls this protected C allocator, including its
-acquire/CAS/release page-publication path; there is no separate inline ARM
-allocation fast path. `-par0` explicitly selects `alloc_unprotected` and requires
-disjoint allocation regions.
+consistent. X64 generated allocation uses locked compare/exchange. ARM64
+generated allocation attempts an acquire/release exclusive reservation before
+falling back to the same C allocator; see [allocation paths](arm64-allocation-paths.md).
+ReML defaults to `-par -par0` in both backends. `-no_par0` selects normal
+allocation protection; `-par0` selects unprotected allocation and relies on
+disjoint concurrent allocation regions. MLKit blocks both forms of `par0`.
+The shared `--no_inline_allocation` flag disables generated allocation fast
+paths and uses the existing C allocator; it does not disable the C allocator's
+atomic operations. With ReML's `par0` enabled, the C path is `alloc_unprotected`.
 
 `Layout.c` is compiled for every runtime variant. It checks the 64-bit LP64
 word/pointer model, integer/double sizes and alignment, generation and region

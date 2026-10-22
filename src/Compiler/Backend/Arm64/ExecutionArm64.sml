@@ -155,7 +155,7 @@ structure ExecutionArm64 : EXECUTION =
 
     val par_alloc_unprotected_p =
         Flags.add_bool_entry
-            {long = "parallelism_alloc_unprotected", short = SOME "par0", neg = false,
+            {long = "parallelism_alloc_unprotected", short = SOME "par0", neg = true,
              menu = ["General Control","parallelism allocation unprotected"], item = ref false,
              desc = "When enabled, allocation into a region is not\n\
                   \guaranteed to be atomic."}
@@ -194,7 +194,7 @@ structure ExecutionArm64 : EXECUTION =
     val pr_lab = Labels.pr_label
 
     type linkinfo = {code_label:lab, imports: lab list * lab list,
-                     exports : lab list * lab list, unsafe:bool}
+                     exports : lab list * lab list, unsafe:bool, may_spawn:bool}
     fun code_label_of_linkinfo (li:linkinfo) = #code_label li
     fun exports_of_linkinfo (li:linkinfo) = #exports li
     fun imports_of_linkinfo (li:linkinfo) = #imports li
@@ -210,8 +210,8 @@ structure ExecutionArm64 : EXECUTION =
         List.app (fn flag => if Flags.is_on flag then
           reject("ARM64 parallelism does not support " ^ flag) else ())
           ["garbage_collection","generational_garbage_collection","tag_values","tag_pairs"]
-      else if argobots_p() orelse par_alloc_unprotected_p() then
-        reject "ARM64 -argo and -par0 require -par" else ()
+      else if argobots_p() then
+        reject "ARM64 -argo requires -par" else ()
     fun preHook () = (checkTarget();
       if Flags.is_on0 "generational_garbage_collection" () andalso Flags.is_on0 "tag_pairs" () then
         reject "Generational GC does not support -tag_pairs" else ();
@@ -242,7 +242,7 @@ structure ExecutionArm64 : EXECUTION =
               val linkinfo = mk_linkinfo {code_label = main_lab,
                                           imports = imports, (* (MLFunLab, DatLab) *)
                                           exports = exports, (* (MLFunLab, DatLab) *)
-                                          unsafe = not(safe)}
+                                          unsafe = not(safe), may_spawn = CodeGen.may_spawn()}
               val CB = CompileBasis.mk_CompileBasis(cb,closenv)
             in
               CodeRes(ce,CB,(asm_prg,Option.map (fn tree =>
@@ -251,7 +251,10 @@ structure ExecutionArm64 : EXECUTION =
             end
       end
 
-    val generate_link_code = SOME (fn (labs,exports) => (CodeGen.generate_link_code (labs,exports),NONE))
+    val generate_link_code = SOME (fn (infos,exports) =>
+      (CodeGen.generate_link_code_with_policy
+        (map code_label_of_linkinfo infos,exports,
+         List.exists (fn (li:linkinfo) => #may_spawn li) infos),NONE))
 
     val generate_repl_init_code = SOME (fn () => (CodeGen.generate_repl_init_code(),NONE))
 
@@ -430,6 +433,7 @@ structure ExecutionArm64 : EXECUTION =
                              else subdir ^ "_PAR"
                            else subdir
               val subdir = if argobots_p() then subdir ^ "_ARGO" else subdir
+              val subdir = if Flags.is_on "inline_allocation" then subdir else subdir ^ "_NOINLINEALLOC"
               val subdir = case mlb_subdir() of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
@@ -492,9 +496,10 @@ structure ExecutionArm64 : EXECUTION =
     val pu_linkinfo =
         let val pu_labels = Pickle.listGen Labels.pu
             val pu_pair = Pickle.pairGen(pu_labels,pu_labels)
-        in Pickle.convert (fn (c,i,e,u) => {code_label = c,imports = i,exports = e,unsafe = u},
-                           fn {code_label = c,imports = i,exports = e,unsafe = u} => (c,i,e,u))
-            (Pickle.tup4Gen(Labels.pu,pu_pair,pu_pair,Pickle.bool))
+        in Pickle.convert
+             (fn (c,i,e,(u,s)) => {code_label = c,imports = i,exports = e,unsafe = u,may_spawn = s},
+              fn {code_label = c,imports = i,exports = e,unsafe = u,may_spawn = s} => (c,i,e,(u,s)))
+             (Pickle.tup4Gen(Labels.pu,pu_pair,pu_pair,Pickle.pairGen(Pickle.bool,Pickle.bool)))
         end
 
     datatype cval = datatype Compile.cval

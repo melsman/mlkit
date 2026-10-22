@@ -1,0 +1,4 @@
+   text	   data	    bss	    dec	    hex	filename
+  49953	   3296	  82608	 135857	  212b1	reml-long-after
+    532	    754	      0	   1286	    506	MLB/RI_PAR_Casremlafter/main.sml.o
+   1932	    896	      0	   2828	    b0c	MLB/RI_PAR_Casremlafter/base-link_objects.o
