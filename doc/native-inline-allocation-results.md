@@ -244,6 +244,43 @@ expected-pointer-reconstruction hypothesis. Production allocation code is left
 unchanged; the protected regression remains. See the
 [recipe, raw samples and helper assembly](native-performance/inline-allocation/thinkpad/pointer-experiment/README.md).
 
+### Follow-up: alignment and stack-versus-FP saves
+
+Two further native experiments retain the same program unit and runtime. The
+protected helper sits in a fixed-size padded arena; its caller, downstream code
+and executable text size remain fixed. All four save strategies pass allocation
+boundaries, large objects, rax/FP sentinels, concurrent generated/C verification
+and forced CAS failure before timing.
+
+First, a three-round screen covers every byte offset 0–63 with unchanged helper
+instructions. Most per-offset medians are 1.11 s; offset 17 is consistently slower
+at 1.14 s. Two apparent 1.10 s best offsets do not retain that gain in independent
+nine-run confirmation: offsets 0,38,44 all give 1.11 s, offset 17 gives 1.14 s,
+and the old-helper reference remains 1.07 s. Alignment can hurt, but this scan
+does not recover the original helper's performance.
+
+Second, nine runs at each of four matched entry offsets keep allocation arithmetic
+unchanged and vary only saves/restores and necessary stack bookkeeping:
+
+| Save strategy | Pooled median user CPU (36 samples) |
+| --- | ---: |
+| Current FP saves | 1.11 s |
+| Only rax on stack | 1.11 s |
+| Only size on stack | 1.12 s |
+| Both on stack | 1.12 s |
+
+The rax-only median is 1.10 s at one offset and 1.11 s at the other three;
+there is no robust recovery. Entry alignment is matched, but different save
+instruction lengths still change internal positions, which are recorded.
+These results weaken both simple explanations; the old helper also differs in
+pointer/register data flow and instruction scheduling. The underlying bottleneck
+is still unresolved, and no production change was retained.
+
+The ThinkPad suspended during one screening sample. Its raw 5326.32 s wall-time
+record is retained and explicitly excluded, with a separately recorded repeat;
+no other outlier was discarded. See the
+[full methods, address controls, samples and reproduction scripts](native-performance/inline-allocation/thinkpad/layout-save-experiment/README.md).
+
 ### Native code size and correctness
 
 The local-loop unit `.text` grows 442 → 516 bytes (+74), shared startup/helper
@@ -276,9 +313,9 @@ these programs; set its `MLKIT_ARM64` variable to the native X64 compiler.
 
 Milestones 5–8 are complete. Both architectures show allocation-local gains with
 code growth and a modest protected-loop regression (ARM64 +2.5%, X64 +3.7%).
-The X64 investigation places its regression in the helper implementation; it
-does not support adding back stack saves without a separate implementation and
-broader assessment. The results support reviewing the inline-local design with
+The X64 investigation places its regression in the helper implementation.
+Controlled alignment and save-method experiments do not recover the old timing;
+they do not support adding back stack saves with the current arithmetic. The results support reviewing the inline-local design with
 this protected-throughput tradeoff explicit. The PR remains draft for that review.
 No general speedup or zero-overhead claim follows from these workloads. CI runs
 correctness checks only; no performance tests or timing collection are added.
