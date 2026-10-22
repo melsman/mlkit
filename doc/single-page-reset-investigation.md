@@ -47,9 +47,10 @@ reset helper, including parallel builds, rather than duplicating it at sites.
 ARM64 must preserve the caller's link register while using its scratch registers.
 Do not generalise the X64 return-address convention to ARM64.
 
-Ordinary GC, generational GC, profiling and parallel layouts must be considered
-separately. Start by retaining the existing C path for profiling until its
-accounting and profiler-visible helper ranges have been checked explicitly.
+Cover ordinary GC, generational GC, profiling and parallel layouts. Profiling
+is included in the fast-path scope: an eligible reset releases no pages or large
+objects. Verify the applicable profiling entry point, layout and metadata as
+part of implementation and correctness checks.
 
 ## Implementation and assessment milestones
 
@@ -98,7 +99,8 @@ if the reset optimisation does not prove worthwhile.
    modifying state. Rewind allocation and colour pointers using reserved
    scratch registers, preserve descriptor status/first-page marks, and return
    without an explicit frame. Verify runtime offsets. Retain the validated
-   preserving C fallback for ineligible cases and initially for profiling.
+   preserving C fallback for ineligible cases. Include profiling configurations
+   in the prototype, using their applicable layouts and entry points.
    Compare ARM64's existing site fast path with placement inside its shared
    helper, avoiding unnecessary duplicated checks and respecting its return ABI.
 7. **Validate reset semantics.** Compare emitted helpers with C `resetRegion`
@@ -106,8 +108,8 @@ if the reset optimisation does not prove worthwhile.
    with a single ordinary page, descriptor status bits, first-page marks and
    both generations. Check integer/FP preservation on fast and fallback paths,
    conditional/finite-region behaviour, supported GC/parallel configurations
-   and absence of explicit stack storage on the eligible path. Keep profiling
-   on the C path until its accounting is explicitly validated.
+   and absence of explicit stack storage on the eligible path. Include profiling
+   configurations and verify their accounting and helper metadata.
 8. **Measure and decide on reset inlining.** Measure native X64 and ARM64
    manually: repeated eligible resets, mostly ineligible resets, and realistic
    allocation/reset workloads. Hold caller code constant for helper-only
