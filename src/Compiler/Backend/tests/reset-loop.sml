@@ -10,5 +10,5 @@ val result =
               val value = !x
               val _ = forceResetting `[r] ()
           in loop__noinline(n-1,acc+value) end
-  in loop__noinline(20000000,0) end
-val () = prim("printStringML",if result=200000010000000 then "reset loop passed\n" else "BAD\n"):unit
+  in loop__noinline(200000000,0) end
+val () = prim("printStringML",if result=20000000100000000 then "reset loop passed\n" else "BAD\n"):unit

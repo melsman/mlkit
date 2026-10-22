@@ -636,9 +636,40 @@ struct
   fun resetLoadedInto mode code =
     if mode = 0 then code
     else
-      let val done = localFresh()
-          val code = privateCallInto resetStub (Label done :: code)
-      in if mode = 1 then A.tbz (R(X 16),I(1),L(done)) :: code else code
+      let
+        val done = localFresh()
+        val slow = localFresh()
+        val generations = if gengc() then [0,16] else [0]
+        val header = if gengc() then 24 else 16
+        val lobjs = if gengc() then 40 else 24
+        fun firstPage off code =
+          (instruction A.and_ (R(X 17),R(X 16),I(~4))
+             ++ loadInto (X 17,off+8,X 30)
+             ++ instruction A.and_ (R(X 30),R(X 30),I(~32))) code
+        fun check (off,code) = (firstPage off
+           ++ loadInto (X 30,0,X 17)
+           ++ instruction A.cbnz (R(X 17),L(slow))) code
+        fun reset (off,code) =
+          (firstPage off
+           ++ instruction A.add (R(X 30),R(X 30),imm header)
+           ++ storeInto (X 30,X 17,off)
+           ++ (if gengc() then storeInto (X 30,X 30,~8) else fn code => code)) code
+        val code = Label done :: code
+        val code = if profiling() orelse parallel() then privateCallInto resetStub code
+          else
+            let
+              val () = addStatic
+                (Directive(Text) :: Directive(Align 2) :: Label slow ::
+                 privateCallInto (NameLab "mlkit_arm64_reset_slow") [A.b (L(done))])
+              val code = foldr reset code generations
+              val code = foldr check code generations
+            in
+              (instruction A.and_ (R(X 17),R(X 16),I(~4))
+                 ++ loadInto (X 17,lobjs,X 30)
+                 ++ instruction A.cbnz (R(X 30),L(slow))) code
+            end
+      in
+        if mode = 1 then A.tbz (R(X 16),I(1),L(done)) :: code else code
       end
   fun resetRegionInto fsz force sma code =
     let
