@@ -556,4 +556,9 @@ void free_lobjs(Lobjs* lobjs);
 size_t size_thread_free_list();
 void free_thread_free_list();
 
+#ifdef PARALLEL
+/* Conservative until standalone startup establishes the fixed link policy. */
+extern uintptr_t mlkit_regions_may_spawn;
+#endif
+
 #endif /*REGION_H*/

@@ -1,0 +1,5 @@
+Native allocation checks passed.
+Native parallel regressions passed.
+Compiler-generated before/after comparison passed.
+Helper bridge comparisons passed.
+Parallel program comparisons passed.

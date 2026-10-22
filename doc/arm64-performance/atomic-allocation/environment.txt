@@ -1,0 +1,12 @@
+Date: 2026-10-21
+Host: native macOS ARM64, macOS 26.5.1 (25F80), Darwin 25.5.0
+C compiler: Apple clang 21.0.0 (clang-2100.1.1.101)
+Baseline source: deffec47; baseline compiler: /Users/mael/gits/mlkit/bin/mlkit
+Baseline local X64 comment cleanup does not change ARM64 code.
+Implementation: final 16-byte helper, following implementation commit 1577f7bc.
+C fixture: -arch arm64 -O2 -DPARALLEL -DALLOCS=131072; pthread runtimeSystemPar.a
+ML programs: -no_gc -par --no_basislib; separate Atomicbaseline/Atomicfast caches
+Argobots correctness dependency: official 1.2 release, --disable-checks --disable-shared
+Sampling: nine paired runs per case, alternating order, one warmup per variant
+No agent-launched correctness suites ran concurrently with final measurements.
+No CPU pinning or frequency controls were used.

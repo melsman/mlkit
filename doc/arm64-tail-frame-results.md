@@ -34,11 +34,46 @@ shuffle retains the ordinary tail-call path. Profiling and forced collection
 also retain that path. Allocating recursion continues through the ordinary
 entry and its GC poll.
 
-Both optimisations default to enabled. `-no_arm64_tail_wrappers` and
-`-no_arm64_self_loops` permit separate comparisons; use freshly compiled units
-when changing these options.
+Both optimisations are part of normal ARM64 code generation. The experimental
+`arm64_tail_wrappers` and `arm64_self_loops` switches have been removed; their
+previously enabled behavior and all eligibility checks remain. Historical
+measurements below used the switches available at that revision.
+
+## Comparison with X64
+
+Both backends lower direct tail transfers to branches after arranging stack
+arguments and releasing the current frame. Their physical sequences differ:
+X64 uses its stack return address and `jmp`; ARM64 restores FP/LR and uses
+`b` or `br`. ARM64 can additionally omit an identity wrapper's frame or branch
+inside an eligible self-recursive function after its prologue. X64's direct
+tail-call emitter branches to the function entry; it has no corresponding
+switches for these ARM64 frame optimizations.
+X64 does not have ARM64's mandatory FP/LR header saves in the first place;
+zero-frame wrappers can already be cheap, and its existing basic-function
+optimization can remove an otherwise unused one-word non-GC frame. The two
+backends need not use identical prologue optimizations to preserve tail calls.
+
+There is a remaining semantic difference in the emitted call discipline:
+X64 `FNJMP` becomes `FNCALL` when the closure call has spilled arguments.
+It therefore retains the caller frame and does not guarantee bounded stack
+usage for that case. ARM64 stages those arguments, reuses the caller's return
+continuation, and performs an indirect branch. Removing ARM64's experimental
+switches does not change this X64 fallback. It should be addressed separately
+with X64 execution coverage, especially for stack-argument overlap and GC maps.
+
+The shared `--preserve_tail_calls` / `-ptc` control remains. It controls region
+placement that might otherwise prevent a call from reaching the backend in
+tail position, rather than either of these ARM64 frame optimizations. ReML
+enables it by default, and enabling GC also enables it in MLKit.
 
 ## Validation
+
+After removing the experimental switches, `check-native.sh` checks that MLKit
+and ReML reject all four former positive/negative option names. The existing
+emitter and execution probes continue to cover identity integer/FP wrappers,
+100,000-iteration self loops, local-frame reuse, stack-argument and shuffle
+fallbacks, and forced-GC/profiling safeguards. The X64 indirect-stack-argument
+limitation above is a source finding, not an X64 execution result.
 
 MLKit, ReML and the direct emitter were built using MLKit with `-gc`; MLton
 was not used. The direct emitter checks frame-free integer and FP wrappers,

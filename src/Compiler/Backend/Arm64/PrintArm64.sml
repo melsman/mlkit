@@ -46,6 +46,7 @@ structure PrintArm64 = struct
       case i of Label l => InstsBase.pr_lab l ^ ":\n"
               | Directive d => pr_directive d ^ "\n"
               | A.ret => "\tret\n"
+              | A.clrex => "\tclrex\n"
               | A.b args => op1 "b" args
               | bl args => op1 "bl" args
               | br args => op1 "br" args

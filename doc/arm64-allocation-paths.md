@@ -16,8 +16,8 @@ retain the existing one-word pointer adjustment.
 
 Page expansion and large objects use shared preserving stubs. Allocation sites
 pass the region in `x16`, the word count in `x17`, and receive the result in `x16`.
-The stubs save the same 24 integer and 30 floating-point registers (including
-the FP spill temporaries), plus LR, in a 448-byte aligned frame in shared code,
+The stubs currently save 16 integer and 22 floating-point registers (including
+the FP spill temporaries), plus LR, in a 320-byte aligned frame in shared code,
 then call the existing runtime helper. The register-save sequences are no longer
 repeated at every object allocation or reset site. `x16`, `x17`, and `x30` remain
 scratch registers; the ML function's incoming LR is already saved in its frame.
@@ -32,9 +32,24 @@ the shared reset stub and `resetRegion` for page recycling and large-object clea
 
 Profiling continues through runtime allocation/reset routines so their counters
 and object descriptors remain correct. Profiling program points use an aligned
-caller stack slot. Protected parallel allocation retains the runtime's locking
-and atomic operations; explicitly unprotected parallel allocation can use the
-page fast path. Parallel resets retain the runtime path.
+caller stack slot. In protected parallel mode, ordinary allocation sites now
+check the region mutex field. A NULL mutex selects the inline page-space test
+and pointer update, without a helper call or allocation frame. A protected region
+transfers to the shared assembly fast helper; no-space local allocations also
+use the shared fallback machinery.
+
+The helper preserves `x0` and LR in reserved FP scratch registers `d30`/`d31`,
+with no stack storage. Its compatible entry checks the region mutex pointer for existing private-ABI
+callers; protected sites use a bounded-request entry that skips that check. It uses `ldaxr`/`stlxr` to reserve space in protected
+regions. Regions without a mutex use an ordinary pointer update. Insufficient
+space or a failed reservation restores `x0`/LR and transfers to the existing
+preserving runtime stub. The acquire reservation observes release publication
+of new pages by the C allocator; `clrex` clears reservations abandoned after a
+boundary check. ReML's default `par0` path stays inline without a mutex check.
+Profiling and parallel resets retain their previous paths. See the
+[development plan](arm64-atomic-allocation-plan.md),
+[initial validation and measurements](arm64-atomic-allocation-results.md), and
+[inline-dispatch assessment](native-inline-allocation-results.md).
 
 The original C-ABI `mlkit_arm64_alloc` and `mlkit_arm64_reset` helpers remain
 available for previously cached objects. New preserving stubs are emitted in the
@@ -97,3 +112,14 @@ SML_LIB=/private/tmp/mlkit-m2-source "$compiler" \
 The broad regression invocation uses `check-regressions.sh` with
 `REGRESSION_SUITES='dev gc explicit'`; mode-specific GC/profiling/parallel coverage
 comes from `check-native.sh` and `check-parallel.sh` (with Argobots enabled).
+
+## Standalone programs without spawning
+
+Native link metadata now records whether retained code may call `spawnone`.
+Before creating global regions, standalone startup sets a runtime policy from
+all retained units. If none may spawn, constructors leave region mutex pointers
+NULL, including global regions and explicitly requested protection. Existing
+inline/helper/C dispatch then uses ordinary allocation. The REPL always retains
+protection from startup because later phrases can spawn. See
+[native-no-spawn-results.md](native-no-spawn-results.md) for validation,
+measurements and the intentionally new cache format.

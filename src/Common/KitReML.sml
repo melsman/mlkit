@@ -4,6 +4,7 @@ structure K =
       val _ = Flags.turn_on "reml"
       val _ = Flags.turn_off "aggressive_opt"
       val _ = Flags.turn_on "parallelism"
+      val _ = Flags.turn_on "parallelism_alloc_unprotected"
       val _ = Flags.turn_off "tag_values"
       val _ = Flags.turn_on "preserve_tail_calls"
       val _ = Flags.turn_on "print_aux_reset"

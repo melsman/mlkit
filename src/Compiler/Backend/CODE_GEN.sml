@@ -15,6 +15,8 @@ signature CODE_GEN =
 	      exports:label list * label list,
 	      safe:bool} -> AsmPrg
 
+    val may_spawn : unit -> bool
+    val generate_link_code_with_policy : label list * (label list * label list) * bool -> AsmPrg
     val emit                    : AsmPrg * string -> unit
     val generate_link_code      : label list * (label list * label list) -> AsmPrg
     val generate_repl_init_code : unit -> AsmPrg

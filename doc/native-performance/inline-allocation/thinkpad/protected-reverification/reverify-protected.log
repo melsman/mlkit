@@ -1,0 +1,11 @@
+Re-verification outputs: /tmp/mlkit-protected-reverify.r2HWoH
+Fresh builds and protection audit passed: short
+Fresh builds and protection audit passed: long
+Short ABBA runs passed: CPU 0
+Short ABBA runs passed: CPU 2
+Long ABBA block 1 passed.
+Long ABBA block 2 passed.
+Long ABBA block 3 passed.
+Long ABBA block 4 passed.
+Long ABBA block 5 passed.
+Re-verification passed.

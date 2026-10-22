@@ -38,7 +38,7 @@ signature EXECUTION =
 	('a * ('a -> funid -> strid * Env * strexp * CEnv * 'a))
 	-> CEnv * CompileBasis * strdec list -> res
 
-    val generate_link_code : (lab list * (lab list * lab list) -> target) option
+    val generate_link_code : (linkinfo list * (lab list * lab list) -> target) option
     val emit: {target: target, filename:string} -> string   (* returns the filename for the .o file
 							     * or the .uo file, dependent on which
 							     * backend is used *)

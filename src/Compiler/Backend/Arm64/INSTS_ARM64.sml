@@ -91,6 +91,7 @@ signature INSTS_ARM64 = sig
     | sbfx of ea * ea * ea * ea
     | ubfx of ea * ea * ea * ea
     | csel of ea * ea * ea * ea
+    | clrex
     | ret
   type AsmPrg = inst list
   val pr_reg : reg -> string

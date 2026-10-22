@@ -24,6 +24,9 @@ struct
 
   infixr 5 $
 
+  val unitMaySpawn = ref false
+  fun may_spawn () = !unitMaySpawn
+
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
   (****************************************************************)
@@ -1458,6 +1461,7 @@ struct
                    (* The call_closure C function takes one argument (an ML closure). It
                     * extracts the closure pointer and the closure environment from the argument
                     * and makes an ML call to the function represented by the closure. *)
+                   val () = unitMaySpawn := true
                    val name = "spawnone"
                    val pc = new_local_lab "rp_thread_return"
                    fun callThread code = if sampledProfile() then
@@ -1758,6 +1762,7 @@ struct
             exports:label list * label list,
             safe:bool} =
       let
+        val () = unitMaySpawn := false
         val _ = chat "[X64 Code Generation..."
         val _ = reset_static_data()
         val _ = reset_label_counter()
@@ -1845,93 +1850,53 @@ struct
          *)
 
         fun allocinreg C =
-            if not(parallelism_p()) then C
+            if not(parallelism_p()) orelse not(Flags.is_on "inline_allocation") then C
             else
-            let val allocinreg_protect = new_local_lab "alloc_protect"
-                val mutex_offset_bytes = i2s (8*BackendInfo.region_mutex_offset_words())
-                val l_expand = new_local_lab "expand"
-                val l_expand_protect = new_local_lab "protect"
-                fun mk_expand_protect C =
-                    G.label l_expand_protect $                (* expand_protect:                    *)
-                    G.pop_ea(R I.rax) $                       (*   restore rax                      *)
-                    G.pop_ea(R treg1) $
-                    G.pop_ea(R treg0) $
-                    G.jump(NameLab "__allocate") C            (*   jmp to __allocate with args in   *)
-                                                              (*     treg1 and treg0; result  *)
-                                                              (*     in treg1; return address is *)
-                                                              (*     already on the stack...        *)
-                fun mk_expand C =
-                    G.label l_expand $                            (* expand:                            *)
-                    G.pop_ea(R treg1) $                        (*   pop region ptr                   *)
-                    G.pop_ea(R treg0) $
-                    G.jump(NameLab "__allocate_unprotected") C    (*   jmp to __allocate with args in   *)
-                                                                  (*     treg1 and treg0; result  *)
-                                                                  (*     in treg1; return address is *)
-                                                                  (*     already on the stack...        *)
-
-              (* remember to update alloc_period only when "alloc" or
-               * "alloc_protected" are not called, as these runtime
-               * routines themselves update alloc_period... *)
-              fun maybe_update_alloc_period r C =
-                  if gc_p() then
-                    I.addq(R r,L(NameLab "alloc_period")) :: C
-                  else C
-
-            in I.dot_globl(NameLab "allocinreg",I.FUNC) ::
-              I.lab (NameLab "allocinreg") ::
-              I.andq(I (i2s (~4)), R treg1) ::                    (*   treg1 = clearBits(treg1)   *)
-              I.cmpq(I "0",D(mutex_offset_bytes,treg1)) ::
-              I.jne allocinreg_protect ::
-              (* simple non-protected allocation *)
-              I.push(R treg0) ::                                   (*   push treg0 (n)                *)
-              I.push(R treg1) ::                                   (*   push treg1                    *)
-              load(treg1,WORDS 0,treg1,                         (*   treg1 = treg1[0]           *)
-              G.add(I "-1", treg1) $                               (*   treg1 = treg1 - 1          *)
-              copy(treg1, treg0,
-              I.movq(D("8",rsp), R treg1) ::
-              G.lea(DD("0",treg0,treg1,"8"),treg1) $         (*   treg1 = treg0 + 8n         *)
-              I.orq(I (allocBoundaryMask()), R treg0) ::
-              I.cmpq(R treg0, R treg1) ::                       (*   jmp expand if (treg0 > treg1) *)
-              I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
-              G.lea(D("1",treg1),treg0) $                       (*   treg0 = treg1 + 1          *)
-              I.pop (R treg1) ::
-              store (treg0,treg1,WORDS 0,                       (*   treg1[0] = treg0           *)
-              I.pop (R treg1) ::                                   (*   treg1 = n                     *)
-              G.mul(I"8",treg1) $                                  (*   treg1 = 8n                   *)
-              maybe_update_alloc_period treg1 (
-              G.sub (R treg1,treg0) $                           (*   treg0 = treg0-8n          *)
-              copy (treg0,treg1,
-              I.ret ::
-
-              (* complex atomic *)
-              I.lab allocinreg_protect ::
-              I.push(R treg0) ::                                  (*   push treg0 (n)                *)
-              I.push(R treg1) ::                                  (*   push treg1                    *)
-              load(treg1,WORDS 0,treg1,                        (*   treg1 = treg1[0]           *)
-              I.push(R I.rax) ::                                     (*   save rax on the stack            *)
-              copy(treg1, I.rax,                                  (*   rax = treg1                   *)
-              G.add(I "-1", treg1) $                              (*   treg1 = treg1 - 1          *)
-              copy(treg1, treg0,
-              I.orq(I (allocBoundaryMask()), R treg0) ::
-              I.movq(D("16",rsp), R treg1) ::                     (*   treg1 = n                     *)
-              G.lea(DD("-1",rax,treg1,"8"),treg1) $            (*   treg1 = a-1+8n                *)
-              I.cmpq(R treg0, R treg1) ::                      (*   jmp expand if (treg0 > treg1) *)
-              I.jg l_expand_protect ::                               (*        (a-1+8n > boundary-1)       *)
-              G.lea(D("1",treg1),treg0) $                      (*   treg0 = treg1 + 1          *)
-              I.movq(D("8",rsp),R treg1) ::                       (*   restore treg1                 *)
-              I.cmpxchgq(R treg0,D("0",treg1)) ::              (*   treg1[0] = treg0           *)
-              I.jne l_expand_protect ::                              (*      (if rax = treg1[0])        *)
-              G.pop_ea (R rax) $
-              G.pop_ea (R treg1) $
-              G.pop_ea (R treg1) $
-              G.mul(I"8",treg1) $                                 (*   treg1 = 8n                   *)
-              maybe_update_alloc_period treg1 (
-              G.sub (R treg1,treg0) $                          (*   treg0 = treg0-8n          *)
-              I.movq (R treg0,R treg1) ::
-              I.ret ::
-
-              mk_expand (
-              mk_expand_protect C))))))))))
+            let
+              val protected = NameLab "allocinreg_protected"
+              (* xmm14/xmm15 are reserved scratch registers, never ML values.
+               * Save rax and the word count there, keeping the region in r11.
+               * Reconstruct the expected old pointer from new - 8*n after the
+               * space test, so no stack saves or extra GPRs are needed. *)
+              fun path atomic C =
+                let
+                  val fallback = new_local_lab "alloc_fallback"
+                  val target = NameLab(if atomic then "__allocate" else "__allocate_unprotected")
+                in
+                  I.cmpq(I(i2s(BackendInfo.size_region_page() div 8 - 2)),R treg0) ::
+                  I.ja target ::
+                  I.movq(R rax,R RI.tfreg0) ::
+                  I.movq(R treg0,R RI.tfreg1) ::
+                  I.movq(D("0",treg1),R rax) ::
+                  I.leaq(DD("0",rax,treg0,"8"),R treg0) ::
+                  I.subq(I "1",R rax) ::
+                  I.orq(I(allocBoundaryMask()),R rax) ::
+                  I.addq(I "1",R rax) ::
+                  I.cmpq(R rax,R treg0) ::
+                  I.ja fallback ::
+                  I.movq(R RI.tfreg1,R rax) ::
+                  I.salq(I "3",R rax) ::
+                  I.negq(R rax) ::
+                  I.addq(R treg0,R rax) ::
+                  (if atomic then
+                     I.cmpxchgq(R treg0,D("0",treg1)) :: I.jne fallback ::
+                     (* Do not consume CAS's implicit rax output for the
+                      * result. The proposed pointer and saved size are ready
+                      * before CAS, so reconstruct from those independently. *)
+                     [I.movq(R RI.tfreg1,R treg1),I.salq(I "3",R treg1),
+                      I.negq(R treg1),I.addq(R treg0,R treg1)]
+                   else [I.movq(R treg0,D("0",treg1)),I.movq(R rax,R treg1)]) @
+                  [I.movq(R RI.tfreg0,R rax),I.ret,I.lab fallback,
+                   I.movq(R RI.tfreg1,R treg0),I.movq(R RI.tfreg0,R rax)] @ G.jump target C
+                end
+            in
+              I.dot_globl(NameLab "allocinreg",I.FUNC) ::
+              I.lab(NameLab "allocinreg") ::
+              I.andq(I(i2s(~4)),R treg1) ::
+              I.cmpq(I "0",D(i2s(8*BackendInfo.region_mutex_offset_words()),treg1)) ::
+              I.jne protected ::
+              path false
+                (I.dot_globl(protected,I.FUNC) :: I.lab protected :: path true C)
             end
 
         fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)
@@ -2378,7 +2343,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
             end
     in
 
-    fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg =
+    fun generate_link_code_with_policy (linkinfos:label list, exports: label list * label list, spawning:bool) : I.AsmPrg =
       let
         val _ = reset_static_data()
         val () = sharedRanges := []
@@ -2435,6 +2400,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             (* Install argument context in context register *)
             I.movq(R rdi, R r14) ::
+            (if parallelism_p() then
+               [I.movq(I(if spawning then "1" else "0"),L(NameLab "mlkit_regions_may_spawn"))]
+             else []) @
 
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
@@ -2488,6 +2456,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                         comment ("END OF STATIC DATA AREA",nil))))))}
       end
 
+    fun generate_link_code (labs,exports) = generate_link_code_with_policy(labs,exports,true)
+
     fun generate_repl_init_code () : I.AsmPrg =
       let
         val _ = reset_static_data()
@@ -2521,6 +2491,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             (* Install argument context in context register *)
             I.movq(R rdi, R r14) ::
+            (if parallelism_p() then
+               [I.movq(I "1",L(NameLab "mlkit_regions_may_spawn"))]
+             else []) @
 
             generate_data_begin_end([],
 

@@ -1,0 +1,57 @@
+   text	   data	    bss	    dec	    hex	filename
+  48961	   2896	  82608	 134465	  20d41	stack
+  49089	   2896	  82608	 134593	  20dc1	previous
+  49089	   2896	  82608	 134593	  20dc1	pointer
+   1858	    888	      0	   2746	    aba	pointer-link.o
+allocinreg:
+	andq $-4,%r11
+	cmpq $0,32(%r11)
+	jne allocinreg_protected@PLT
+	cmpq $1022,%r10
+	ja __allocate_unprotected@PLT
+	movq %rax,%xmm14
+	movq (%r11),%rax
+	movq %rax,%xmm15
+	leaq (%rax,%r10,8),%r10
+	subq $1,%rax
+	orq $0x1FFF,%rax
+	addq $1,%rax
+	cmpq %rax,%r10
+	ja L_alloc_fallback_laefQnFfmpTXXtDQeCnYbj
+	movq %xmm15,%rax
+	movq %r10,(%r11)
+	movq %rax,%r11
+	movq %xmm14,%rax
+	ret
+L_alloc_fallback_laefQnFfmpTXXtDQeCnYbj:
+	movq %xmm15,%rax
+	subq %rax,%r10
+	shrq $3,%r10
+	movq %xmm14,%rax
+	jmp __allocate_unprotected@PLT
+.globl allocinreg_protected
+.type allocinreg_protected,@function
+allocinreg_protected:
+	cmpq $1022,%r10
+	ja __allocate@PLT
+	movq %rax,%xmm14
+	movq (%r11),%rax
+	movq %rax,%xmm15
+	leaq (%rax,%r10,8),%r10
+	subq $1,%rax
+	orq $0x1FFF,%rax
+	addq $1,%rax
+	cmpq %rax,%r10
+	ja L_alloc_fallback_dziDRpFvLP4z9nrUXFmD9b
+	movq %xmm15,%rax
+	lock cmpxchgq %r10,(%r11)
+	jne L_alloc_fallback_dziDRpFvLP4z9nrUXFmD9b
+	movq %rax,%r11
+	movq %xmm14,%rax
+	ret
+L_alloc_fallback_dziDRpFvLP4z9nrUXFmD9b:
+	movq %xmm15,%rax
+	subq %rax,%r10
+	shrq $3,%r10
+	movq %xmm14,%rax
+	jmp __allocate@PLT
