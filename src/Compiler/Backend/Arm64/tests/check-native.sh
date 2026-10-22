@@ -238,3 +238,5 @@ done
 printf 'Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed\n'
 
 MLKIT="$MLKIT_ARM64" sh "$SML_LIB/src/Compiler/Backend/tests/check-reset-region.sh"
+
+REML="$REML_ARM64" sh "$SML_LIB/src/Compiler/Backend/Arm64/tests/check-reset-sites.sh"
