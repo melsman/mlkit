@@ -286,12 +286,19 @@ fills and all fallback edges, before implementing the change.
 
 - [ ] Implement the descriptor check and ordinary inline success path in X64 and
       ARM64; keep atomic reservation in shared helpers.
+- [ ] Aim to use no stack storage or frames on successful fast allocation paths,
+      both the inline allocation-local path and the shared protected CAS path.
+      Prefer scratch-register allocation and result reconstruction over stack
+      saves; document any unavoidable exception and its ABI constraint. Stack
+      saves remain permitted in the runtime fallback.
 - [ ] Preserve standalone and incremental REPL helper linkage, flag behavior,
       existing runtime fallback and standard cache preparation policy.
 
 Acceptance: inspect emitted code from both backends: allocation-local success
 makes no helper call or stack saves, protected allocation transfers to shared CAS,
-and default ReML gains no protection check. Record added bytes per allocation site.
+and default ReML gains no protection check. Inspect successful paths for stack
+accesses and frame creation, aiming to eliminate both; document any remaining
+requirement. Record added bytes per allocation site.
 
 ### 7. Validate allocation and fallback correctness
 
