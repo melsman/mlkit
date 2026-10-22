@@ -1,7 +1,8 @@
 # ARM64 atomic allocation fast path: development plan
 
-Status: implemented; validation and measurements are recorded in
-`arm64-atomic-allocation-results.md`.
+Status: milestones 1–4 are implemented; validation and measurements are recorded
+in `arm64-atomic-allocation-results.md`. Milestones 5–8 below describe the agreed
+follow-up design and are not implemented yet.
 
 Parallel defaults are aligned across X64 and ARM64: ReML enables `-par -par0`
 by default and accepts `-no_par0`; MLKit does not expose `par0` and retains
@@ -243,3 +244,79 @@ reml -no_par0 --no_inline_allocation -o protected_c program.mlb
 
 Add `--alloc_protect_always` to the protected commands when the comparison
 should also disregard protection analysis.
+
+## Agreed follow-up: inline allocation-local dispatch in both backends
+
+For MLKit with `-par` and ReML with `-no_par0`, eligible ordinary infinite-region
+allocation sites will check the existing region mutex field. A NULL mutex selects
+an inline ordinary bump-pointer update when the current page has room. A non-NULL
+mutex selects a shared protected allocation helper containing the CAS sequence.
+CAS instructions will not be duplicated at allocation sites. Consider a protected
+helper entry that skips the redundant mutex check; its ABI and fallback arguments
+must first be specified and verified.
+
+This differs from the current implementation, where these parallel modes call a
+shared helper even for allocation-local regions. Both backends already dispatch
+on the mutex inside that helper. The follow-up moves the allocation-local decision
+and ordinary successful allocation to the allocation site, avoiding the helper
+call and its saves for that case. No descriptor layout change is required.
+
+ReML's default `-par -par0` keeps its existing inline allocation without a
+protection check. This is not adoption of the earlier proposal to make `par0` a
+dynamic descriptor policy. MLKit continues to reject `par0` options. Disabling
+`--inline_allocation` continues to use the existing C allocator, including atomics
+for protected regions. Profiling retains its runtime path. Finite regions, reset
+semantics, large objects and page expansion must preserve their existing behavior;
+ordinary no-space fallback must retain the region's correct protection policy.
+No additional standard library variants or ReML `-no_par0` prebuilds are planned.
+
+### 5. Specify the common dispatch and backend ABIs
+
+- [ ] Specify the eligible sites, mutex-null test, page-space test, result/tag
+      adjustment and no-space/protected transfers for X64 and ARM64.
+- [ ] Specify scratch registers, live-register preservation and original arguments
+      at each helper entry; decide whether to add a protected-only entry.
+- [ ] Document unchanged ReML defaults, C/profiling paths, reset/finite behavior,
+      and acquire/release requirements for protected allocation.
+
+Acceptance: review instruction sketches for both backends, including exact page
+fills and all fallback edges, before implementing the change.
+
+### 6. Implement aligned inline allocation-local paths
+
+- [ ] Implement the descriptor check and ordinary inline success path in X64 and
+      ARM64; keep atomic reservation in shared helpers.
+- [ ] Preserve standalone and incremental REPL helper linkage, flag behavior,
+      existing runtime fallback and standard cache preparation policy.
+
+Acceptance: inspect emitted code from both backends: allocation-local success
+makes no helper call or stack saves, protected allocation transfers to shared CAS,
+and default ReML gains no protection check. Record added bytes per allocation site.
+
+### 7. Validate allocation and fallback correctness
+
+- [ ] Extend allocation-specific assembly checks for both backends and flag modes.
+- [ ] Exercise allocation-local success, protected success/contention, exact fills,
+      expansion, large objects, finite/reset cases and tag-free adjustments.
+- [ ] Verify live integer/FP registers and fallback arguments; stress mixed C and
+      generated allocation with pthreads and available Argobots configurations.
+- [ ] Run relevant MLKit/ReML native, profiling, callback, REPL and regression
+      coverage, plus the read-only installed-library and build-order checks.
+
+Acceptance: execute on each architecture, or explicitly record unavailable native
+coverage as a review limitation; assembly inspection alone is not execution proof.
+
+### 8. Assess performance and code-size tradeoffs
+
+- [ ] Compare against the current shared-helper implementation with repeated
+      paired runs, matching flags/caches and verified results on each architecture.
+- [ ] Measure allocation-local workloads, uncontended protected allocation,
+      shared contention, mixed C/generated allocation and frequent expansion.
+- [ ] Measure representative parallel programs, retain default ReML as a control,
+      and compare C allocation with `--no_inline_allocation` where useful.
+- [ ] Report timing distributions, allocation-site and total text size, and any
+      regressions, particularly the added check on protected-region allocations.
+
+Acceptance: document whether allocation-local gains justify code growth and
+protected-path costs on each backend; investigate material regressions before
+recommending the design for merge. Record commands, raw samples and limitations.
