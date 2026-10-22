@@ -606,6 +606,8 @@ struct
         (instruction opn (R(reg),R(reg),imm n)
            ++ adjustInto opn reg (bytes-n)) code
       end
+  val unitMaySpawn = ref false
+  fun may_spawn () = !unitMaySpawn
   val allocStub = NameLab "mlkit_arm64_allocate_preserving"
   val untaggedAllocStub = NameLab "mlkit_arm64_allocate_untagged_preserving"
   val resetStub = NameLab "mlkit_arm64_reset_preserving"
@@ -2057,6 +2059,7 @@ struct
         primitiveInto fsz p code
     | LS.CCALL {name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
+          val () = unitMaySpawn := true
           val () = if parallel() then () else unsupported "spawnone without -par"
           val entry = localFresh()
                       (* thread_init returns ThreadInfo*. Its leading fields are the
@@ -2628,6 +2631,7 @@ struct
     end
   fun CG {main_lab,code,imports,exports,safe} =
     let
+      val () = unitMaySpawn := false
       val () = staticChunks := []
       val () = unitGCStub := NONE
       val () = dataLabels := []
@@ -2809,7 +2813,7 @@ struct
        ++ shared resetStub "mlkit_arm64_reset_preserving" (NameLab "resetRegion")
         (fn _ => fn code => moveInto (X 16,X 0) code)) code
     end
-  fun linkCode repl (labs,_) =
+  fun linkCode repl spawning (labs,_) =
     let
       val globals = [(Effect.toplevel_region_withtype_top,BackendInfo.toplevel_region_withtype_top_lab),
         (Effect.toplevel_region_withtype_string,BackendInfo.toplevel_region_withtype_string_lab),
@@ -3040,10 +3044,16 @@ struct
 
     in
       (functionInto(NameLab "code")
-       ++ moveInto(X 0,X 28)) code
+       ++ moveInto(X 0,X 28)
+       ++ (if parallel() then
+             addressInto(NameLab "mlkit_regions_may_spawn",X 16)
+             ++ countInto (X 17) (if repl orelse spawning then 1 else 0)
+             ++ storeInto(X 17,X 16,0)
+           else fn c => c)) code
     end
-  fun generate_link_code args = linkCode false args
-  fun generate_repl_init_code () = linkCode true ([],([],[]))
+  fun generate_link_code args = linkCode false true args
+  fun generate_link_code_with_policy (labs,exports,spawning) = linkCode false spawning (labs,exports)
+  fun generate_repl_init_code () = linkCode true true ([],([],[]))
   fun generate_repl_link_code (name,labs) =
     let
       val join = localFresh()

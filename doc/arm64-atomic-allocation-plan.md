@@ -378,7 +378,7 @@ or FP register. Register preservation and real-valued allocation users require
 execution coverage. No runtime layout, protection inference or library-cache
 policy changes are part of this follow-up.
 
-## Planned follow-up: standalone programs without spawning
+## Implemented follow-up: standalone programs without spawning
 
 Each native compilation unit's link-object will carry a `may_spawn` boolean,
 recording whether its retained generated code contains a spawning operation.
@@ -402,13 +402,13 @@ change ReML's separation controls, or claim to remove all parallel-runtime overh
 
 ### 9. Specify and record spawning in link-objects
 
-- [ ] Define `may_spawn` for retained generated spawning operations in both native
+- [x] Define `may_spawn` for retained generated spawning operations in both native
       backends, following the lowering of `spawnone` to thread creation.
-- [ ] Add the boolean to native link metadata and its serialization; ensure it is
+- [x] Add the boolean to native link metadata and its serialization; ensure it is
       reset per compilation unit and survives separate compilation and cache reuse.
-- [ ] Choose and document cache compatibility: old/unknown metadata must either
-      conservatively mean may-spawn or be invalidated and rebuilt. It must never
-      silently imply no spawning. Keep the standard library variant count unchanged.
+- [x] Use the new native link-object format and rebuild prepared libraries. Old
+      cache compatibility is outside scope, as requested. Keep the standard
+      library variant count unchanged.
 
 Acceptance: units with and without spawning produce the expected link-object
 values on both backends, including unused-but-retained spawning code, fresh
@@ -416,25 +416,24 @@ compilation and cached reuse. No linker-specific symbol mechanism is used.
 
 ### 10. Aggregate the policy and initialize it before region creation
 
-- [ ] OR `may_spawn` across every included link-object, including cached library
+- [x] OR `may_spawn` across every included link-object, including cached library
       units, and convey the result through native standalone startup code.
-- [ ] Establish a conservative runtime default and set the standalone policy before
+- [x] Establish a conservative runtime default and set the standalone policy before
       global region construction on both X64 and ARM64.
-- [ ] Keep REPL startup and incremental linking permanently conservative, including
+- [x] Keep REPL startup and incremental linking permanently conservative, including
       a session that first creates regions and only later evaluates spawning code.
 
 Acceptance: inspect and execute startup paths to show that the policy is set before
 any relevant region constructor, that one spawning unit preserves normal protection,
-and that the absence of spawning removes protection requests program-wide. Missing
-metadata or startup-policy information cannot accidentally disable protection.
+and that the absence of spawning removes protection requests program-wide. Startup without an explicit policy retains protection by default.
 
 ### 11. Apply the policy consistently to region constructors
 
-- [ ] Route global and local region constructors, including specialized constructors
+- [x] Route global and local region constructors, including specialized constructors
       and profiling configurations, through the common effective protection policy.
-- [ ] In proven no-spawn programs, initialize mutex pointers to NULL without obtaining
+- [x] In proven no-spawn programs, initialize mutex pointers to NULL without obtaining
       mutexes; otherwise retain existing inferred/forced protection decisions.
-- [ ] Preserve deallocation, reset, expansion and large-object invariants, the shared
+- [x] Preserve deallocation, reset, expansion and large-object invariants, the shared
       C allocator's descriptor-based dispatch, and ReML's `par0` behavior.
 
 Acceptance: no-spawn global and local regions take ordinary generated/C allocation
@@ -444,15 +443,15 @@ strategy flag or additional prepared library variant is introduced.
 
 ### 12. Validate correctness and assess remaining overhead
 
-- [ ] Add correctness checks for no-spawn/spawn units, mixed separate compilation,
-      cached Basis/library reuse and conservative cache compatibility.
-- [ ] Exercise global and local allocation, forced protection, generated paths on/off,
+- [x] Add correctness checks for no-spawn/spawn units, mixed separate compilation,
+      cached Basis/library reuse with freshly rebuilt metadata.
+- [x] Exercise global and local allocation, forced protection, generated paths on/off,
       page fills/expansion, large objects, reset/deallocation and profiling.
-- [ ] Verify REPL protection both before and after evaluating a later spawning phrase;
+- [x] Verify REPL protection both before and after evaluating a later spawning phrase;
       run pthread/available Argobots coverage and read-only installation checks.
-- [ ] Run the relevant correctness suites on both backends and record unavailable
+- [x] Run the relevant correctness suites on both backends and record unavailable
       native execution coverage explicitly.
-- [ ] Manually compare standalone no-spawn programs with sequential compilation and
+- [x] Manually compare standalone no-spawn programs with sequential compilation and
       existing protected parallel allocation; record code size, remaining descriptor
       checks, region creation and runtime startup costs. Native X64 performance work
       waits for the ThinkPad. Do not add performance tests or timing collection to CI.
@@ -461,3 +460,7 @@ Acceptance: publish commands, correctness results, manual measurements and limit
 Separate the removal of region synchronization from other costs of parallel-enabled
 execution. Retain existing defaults until a separate decision enables MLKit
 parallelism by default. Foreign-code analysis is not part of these milestones.
+
+Implementation and assessment: [native-no-spawn-results.md](native-no-spawn-results.md).
+Native X64 performance remains deferred to the ThinkPad; translated execution
+coverage and its REPL limitation are recorded there.

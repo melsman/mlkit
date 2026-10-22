@@ -24,6 +24,9 @@ struct
 
   infixr 5 $
 
+  val unitMaySpawn = ref false
+  fun may_spawn () = !unitMaySpawn
+
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
   (****************************************************************)
@@ -1458,6 +1461,7 @@ struct
                    (* The call_closure C function takes one argument (an ML closure). It
                     * extracts the closure pointer and the closure environment from the argument
                     * and makes an ML call to the function represented by the closure. *)
+                   val () = unitMaySpawn := true
                    val name = "spawnone"
                    val pc = new_local_lab "rp_thread_return"
                    fun callThread code = if sampledProfile() then
@@ -1758,6 +1762,7 @@ struct
             exports:label list * label list,
             safe:bool} =
       let
+        val () = unitMaySpawn := false
         val _ = chat "[X64 Code Generation..."
         val _ = reset_static_data()
         val _ = reset_label_counter()
@@ -2334,7 +2339,7 @@ H[0]  rsp+8    &TopExnContLab        <-- exnPtr
             end
     in
 
-    fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg =
+    fun generate_link_code_with_policy (linkinfos:label list, exports: label list * label list, spawning:bool) : I.AsmPrg =
       let
         val _ = reset_static_data()
         val () = sharedRanges := []
@@ -2391,6 +2396,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             (* Install argument context in context register *)
             I.movq(R rdi, R r14) ::
+            (if parallelism_p() then
+               [I.movq(I(if spawning then "1" else "0"),L(NameLab "mlkit_regions_may_spawn"))]
+             else []) @
 
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
@@ -2444,6 +2452,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                         comment ("END OF STATIC DATA AREA",nil))))))}
       end
 
+    fun generate_link_code (labs,exports) = generate_link_code_with_policy(labs,exports,true)
+
     fun generate_repl_init_code () : I.AsmPrg =
       let
         val _ = reset_static_data()
@@ -2477,6 +2487,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             (* Install argument context in context register *)
             I.movq(R rdi, R r14) ::
+            (if parallelism_p() then
+               [I.movq(I "1",L(NameLab "mlkit_regions_may_spawn"))]
+             else []) @
 
             generate_data_begin_end([],
 

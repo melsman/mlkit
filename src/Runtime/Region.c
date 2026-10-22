@@ -12,6 +12,8 @@
 
 #ifdef PARALLEL
 #include "Spawn.h"
+/* Standalone startup sets this before constructing ML regions. */
+uintptr_t mlkit_regions_may_spawn = 1;
 #endif
 
 #include "Runtime.h"
@@ -550,7 +552,7 @@ allocateRegion0(Context ctx, Region r, Protect protect)
   r->g0.a = alloc_new_page(&(r->g0));      // Allocate the first region page in g0
 
 #ifdef PARALLEL
-  if ( protect ) { r->mutex = mutex_freelist_pop(ctx); }
+  if ( protect && mlkit_regions_may_spawn ) { r->mutex = mutex_freelist_pop(ctx); }
   else { r->mutex = NULL; }
 #endif
 

@@ -458,7 +458,7 @@ check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-arm64.sh
-check-compiler: check-arm64
+check-compiler: check-arm64 check-spawn-policy
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
 	  KITTESTER="$(CWD)/bin/kittester" TEST_JOBS="$(TEST_JOBS)" VERBOSE="$(VERBOSE)" \
 	  sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
@@ -468,6 +468,7 @@ check-native-install:
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
+	$(MAKE) check-spawn-policy
 	$(MAKE) check-real-auto-conversion
 	$(MAKE) -C test_dev -j $(TEST_JOBS) test test_prof
 	$(MAKE) -C test test_mlkit
@@ -647,3 +648,8 @@ prettyprint-tools:
 	set -e; cd "$(PRETTYPRINT_BUILD)/test/prettyprint"; for name in $(PRETTYPRINT_TESTS); do \
 	  $(MLCOMP) -output "$(PRETTYPRINT_BUILD)/$$name" "$$name.mlb"; \
 	done
+
+.PHONY: check-spawn-policy
+check-spawn-policy:
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
+	  sh src/Compiler/Backend/tests/check-spawn-policy.sh

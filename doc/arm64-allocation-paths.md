@@ -112,3 +112,14 @@ SML_LIB=/private/tmp/mlkit-m2-source "$compiler" \
 The broad regression invocation uses `check-regressions.sh` with
 `REGRESSION_SUITES='dev gc explicit'`; mode-specific GC/profiling/parallel coverage
 comes from `check-native.sh` and `check-parallel.sh` (with Argobots enabled).
+
+## Standalone programs without spawning
+
+Native link metadata now records whether retained code may call `spawnone`.
+Before creating global regions, standalone startup sets a runtime policy from
+all retained units. If none may spawn, constructors leave region mutex pointers
+NULL, including global regions and explicitly requested protection. Existing
+inline/helper/C dispatch then uses ordinary allocation. The REPL always retains
+protection from startup because later phrases can spawn. See
+[native-no-spawn-results.md](native-no-spawn-results.md) for validation,
+measurements and the intentionally new cache format.
