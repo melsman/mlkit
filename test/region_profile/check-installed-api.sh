@@ -83,6 +83,9 @@ val () =
 SML
 run "$REML" -no_par
 run "$REML" -no_par -rp
+# The standard invocation must work without rebuilding installed dependencies.
+run "$REML"
+run "$REML" -rp
 run "$REML" -par
 run "$REML" -par -rp
 find "$SML_LIB/basis" "$SML_LIB/kitlib" -type f -exec cksum {} + | sort > "$OUT/after"
