@@ -73,19 +73,19 @@ if [ "${SPAWN_POLICY_REPL:-1}" = 1 ]; then
   esac
   cat > repl.txt <<'SML'
 val _:unit = prim("mlkit_spawn_policy",((prim("__get_ctx",()):word),0w1));
-fun spawn_later (f:unit->unit) : foreignptr = let val r = ref f in prim("spawnone",(prim("pointer",(prim("!",r):unit->unit)):foreignptr)) end;
-val t = spawn_later (fn () => ());
-val _:unit = prim("thread_get",t);
+fun spawn_later (f:unit->unit) : unit =
+  let val rf = ref f
+      val t:foreignptr = prim("spawnone",(prim("pointer",(prim("!",rf):unit->unit)):foreignptr))
+      val v:unit = prim("thread_get",t)
+  in if prim("!",ref true) then v else (prim("!",rf):unit->unit)()
+  end;
+val () = spawn_later (fn () => ());
 val _:unit = prim("mlkit_spawn_policy",((prim("__get_ctx",()):word),0w1));
 val _:unit = prim("printStringML","REPL POLICY OK\n");
 :quit;
 SML
-  # Native checks execute the later spawn. Cross-host diagnosis can check
-  # startup/incremental policy alone when the host cannot execute that case.
-  if [ "${SPAWN_POLICY_REPL_EXECUTE:-1}" = 0 ]; then
-    sed '/^val t =/d; /prim("thread_get",t)/d' repl.txt > repl-policy.txt
-    mv repl-policy.txt repl.txt
-  fi
+  # Keep the closure live through joining, as basis/Thread.sml does: the raw
+  # foreignptr type hides its region dependencies from inference.
   for compiler in "$MLKIT" "$REML"; do
     protection=-no_gc
     [ "$compiler" != "$REML" ] || protection=-no_par0

@@ -38,10 +38,20 @@ Executed on macOS ARM64:
 - Both X64 front ends build. Under Rosetta, allocation correctness checks,
   standalone policy cases and all 13 parallel regression cases pass.
 
-The translated X64 REPL checks startup protection and later spawning declarations,
-but an actual REPL spawn faults under Rosetta. The same fault reproduces with the
-previous compiler; it is unresolved and is not counted as passing coverage.
-Standalone X64 spawning works. Native ARM64 passes the actual REPL spawn test.
+The initial translated X64 REPL failure was isolated to an unsafe test fixture,
+not an established backend fault. Its raw `spawnone` wrapper returned a
+`foreignptr`, hiding the closure's region dependencies and letting the parent
+return while the child still used its stack closure. The reduced reproducer
+fails without the C policy probe. Crash reports show the child jumping to address
+`0x1`, and emitted code places the closure in the parent's stack frame.
+
+The corrected fixture follows `basis/Thread.sml`: it joins before returning and
+keeps the function region live through the join with a typed alternative branch.
+Both MLKit and ReML now pass the full REPL policy probe, including actual later
+spawning, on ARM64 and translated X64. The earlier ARM64 pass of the unsafe
+fixture did not establish its validity. The actual Basis `Thread.spawn`/`Thread.get` implementation also passes in the
+translated X64 REPL, returning the expected integer 42. No backend/runtime fix
+was required.
 Native X64 execution and performance assessment remain for the ThinkPad/CI.
 
 Direct policy-check invocation:
