@@ -2,8 +2,9 @@
 
 Status: milestones 1–4 are implemented; validation and measurements are recorded
 in `arm64-atomic-allocation-results.md`. Follow-up milestones 5–7 are implemented.
-Milestone 8 has ARM64 measurements and code-size assessment; native X64 paired
-performance measurements remain outstanding. See `native-inline-allocation-results.md`.
+Milestone 8 is complete with ARM64 and native ThinkPad X64 paired measurements,
+code-size assessment and protected-path regression investigation. See
+`native-inline-allocation-results.md`.
 
 Parallel defaults are aligned across X64 and ARM64: ReML enables `-par -par0`
 by default and accepts `-no_par0`; MLKit does not expose `par0` and retains
@@ -316,14 +317,14 @@ coverage as a review limitation; assembly inspection alone is not execution proo
 
 ### 8. Assess performance and code-size tradeoffs
 
-- [ ] Compare against the current shared-helper implementation with repeated
-      paired runs, matching flags/caches and verified results on each architecture.
-      ARM64 is complete; native X64 timings are deferred until the ThinkPad is
-      available. CI must run correctness checks only, not performance tests.
-      X64 assembly size and translated correctness checks are recorded separately.
-- [x] Measure ARM64 allocation-local workloads, uncontended protected allocation,
+- [x] Compare against the shared-helper baseline with repeated paired runs,
+      matching flags/caches and verified results on ARM64 and native X64.
+      ThinkPad results include native allocation checks, parallel regressions,
+      size reports and protected-helper diagnostics. CI runs correctness checks
+      only, not performance tests.
+- [x] Measure ARM64 and X64 allocation-local workloads, uncontended protected allocation,
       shared contention, mixed C/generated allocation and frequent expansion.
-- [x] Measure ARM64 representative parallel programs, retain default ReML as a control,
+- [x] Measure ARM64 and X64 representative parallel programs, retain default ReML as a control,
       and compare C allocation with `--no_inline_allocation` where useful.
 - [x] Report available timing distributions, allocation-site and total text size, and any
       regressions, particularly the added check on protected-region allocations.
@@ -454,7 +455,8 @@ strategy flag or additional prepared library variant is introduced.
 - [x] Manually compare standalone no-spawn programs with sequential compilation and
       existing protected parallel allocation; record code size, remaining descriptor
       checks, region creation and runtime startup costs. Native X64 performance work
-      waits for the ThinkPad. Do not add performance tests or timing collection to CI.
+      remains separate from milestone 8's completed native comparison. Do not add
+      performance tests or timing collection to CI.
 
 Acceptance: publish commands, correctness results, manual measurements and limits.
 Separate the removal of region synchronization from other costs of parallel-enabled
@@ -462,5 +464,5 @@ execution. Retain existing defaults until a separate decision enables MLKit
 parallelism by default. Foreign-code analysis is not part of these milestones.
 
 Implementation and assessment: [native-no-spawn-results.md](native-no-spawn-results.md).
-Native X64 performance remains deferred to the ThinkPad; translated execution
-coverage and its REPL limitation are recorded there.
+Native X64 measurements of this later no-spawn policy remain separate from
+the completed milestone-8 comparison; execution coverage is recorded there.

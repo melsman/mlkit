@@ -1,0 +1,82 @@
+baseline
+baseline  :
+section                 size    addr
+.note.gnu.build-id        36     848
+.interp                   28     884
+.gnu.hash                 36     912
+.dynsym                 1920     952
+.dynstr                 1145    2872
+.gnu.version             160    4018
+.gnu.version_r           176    4184
+.rela.dyn               1728    4360
+.rela.plt               1728    6088
+.init                     27    8192
+.plt                    1168    8224
+.plt.got                   8    9392
+.text                  28530    9408
+mlkit_tp_reset_code      110   37952
+.fini                     13   38064
+.rodata                 4904   40960
+.eh_frame_hdr           1220   45864
+.eh_frame               5960   47088
+.note.gnu.property        32   53048
+.note.ABI-tag             32   53080
+.init_array                8   56136
+.fini_array                8   56144
+.data.rel.ro              24   56152
+.dynamic                 496   56176
+.got                     672   56672
+.data                   1688   57344
+.bss                   82608   59040
+.comment                  38       0
+.debug_aranges           448       0
+.debug_info            62280       0
+.debug_abbrev           9367       0
+.debug_line            25723       0
+.debug_str              9613       0
+.debug_line_str         1020       0
+.debug_loclists        25394       0
+.debug_rnglists         2569       0
+Total                 270917
+
+
+fast
+fast  :
+section                 size    addr
+.note.gnu.build-id        36     848
+.interp                   28     884
+.gnu.hash                 36     912
+.dynsym                 1920     952
+.dynstr                 1145    2872
+.gnu.version             160    4018
+.gnu.version_r           176    4184
+.rela.dyn               1728    4360
+.rela.plt               1728    6088
+.init                     27    8192
+.plt                    1168    8224
+.plt.got                   8    9392
+.text                  28658    9408
+mlkit_tp_reset_code      110   38080
+.fini                     13   38192
+.rodata                 4904   40960
+.eh_frame_hdr           1220   45864
+.eh_frame               5960   47088
+.note.gnu.property        32   53048
+.note.ABI-tag             32   53080
+.init_array                8   56136
+.fini_array                8   56144
+.data.rel.ro              24   56152
+.dynamic                 496   56176
+.got                     672   56672
+.data                   1688   57344
+.bss                   82608   59040
+.comment                  38       0
+.debug_aranges           448       0
+.debug_info            62280       0
+.debug_abbrev           9367       0
+.debug_line            25723       0
+.debug_str              9613       0
+.debug_line_str         1020       0
+.debug_loclists        25394       0
+.debug_rnglists         2569       0
+Total                 271045

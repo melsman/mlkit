@@ -158,15 +158,111 @@ allocation code is unchanged through `ac46a18e`. X64 timings are deliberately no
 inferred from Rosetta execution. Its helper has no explicit stack saves; `call`
 still pushes its return address.
 
-## Assessment and remaining coverage
+## Native X64 measurements (ThinkPad, 2026-10-22)
 
-Milestones 5–7 are implemented and validated within the execution coverage stated
-above. ARM64 measurements for milestone 8 show local-allocation gains, unchanged
-default ReML, code growth, and a modest forced-protection regression. Keep the PR
-in draft for review of that tradeoff. Native X64 paired performance measurements
-are deferred until the ThinkPad is available; the shared benchmark script can
-run there with matching baseline/current compilers. CI runs correctness checks
-only; no performance assessment or timing collection is added to CI.
+The ThinkPad has an Intel Core i7-1360P and runs Linux x86_64 with GCC 15.2.0.
+It was on AC power with the balanced power profile. Both versions were built
+using the same installed MLKit v4.7.15 seed, with clean compiler caches and the
+same runtime archive for measured programs. This compares `ac46a18e` with
+`03e40cf2`, isolating milestones 5–8 from the later standalone no-spawn policy.
+Local-loop runs were pinned to CPU 0; four-worker tests used CPUs 0,2,4,6
+(distinct performance cores, avoiding SMT siblings and efficiency cores).
+
+Nine paired runs alternate order and verify output. User CPU seconds below are
+median [minimum, maximum]. These are native hardware measurements, not Rosetta.
+
+| Workload | Previous helper | New inline dispatch | Median change |
+| --- | ---: | ---: | ---: |
+| Allocation-local loop, MLKit `-par` | 0.29 [0.29, 0.30] | 0.24 [0.24, 0.24] | -17.2% |
+| Same loop, forced protection | 1.07 [1.06, 1.07] | 1.11 [1.10, 1.11] | +3.7% |
+| Same loop, default ReML | 0.25 [0.25, 0.25] | 0.23 [0.23, 0.24] | -8.0% |
+| Same loop, ReML `-no_par0` | 0.29 [0.29, 0.29] | 0.24 [0.24, 0.24] | -17.2% |
+| Same loop, forced protection, C-only allocation | 1.27 [1.27, 1.27] | 1.27 [1.27, 1.27] | unchanged |
+| Parallel merge sort | 0.13 [0.12, 0.13] | 0.11 [0.10, 0.11] | -15.4% |
+| Parallel allocation/computation | 0.13 [0.13, 0.13] | 0.13 [0.13, 0.13] | unchanged |
+
+Default ReML benefits on X64 because its previous unchecked inline allocator
+saved the descriptor on the stack. The new ordinary inline path removes that
+save as well; it still performs no mutex check under `par0`. The default-ReML
+unit text shrinks from 509 to 500 bytes. This differs from ARM64, where default
+ReML's code and measured timing were unchanged.
+
+Compatible-helper bridge probes, median wall seconds [minimum, maximum]:
+
+| Scenario | Previous helper | New helper | Median change |
+| --- | ---: | ---: | ---: |
+| One protected allocator | 0.014425 [0.013787, 0.017325] | 0.014388 [0.014015, 0.016045] | -0.3% |
+| Four generated allocators, shared region | 0.082375 [0.081420, 0.083987] | 0.081034 [0.080381, 0.082894] | -1.6% |
+| Mixed generated/C, shared region | 0.081917 [0.080062, 0.083348] | 0.081374 [0.079983, 0.082070] | -0.7% |
+| Frequent expansion | 0.036962 [0.036098, 0.037838] | 0.036517 [0.035631, 0.037927] | -1.2% |
+| Private regions through C bridges | 0.027029 [0.025414, 0.028087] | 0.026437 [0.025604, 0.026883] | -2.2% |
+
+The bridge ranges overlap. These small differences do not establish a helper-only
+speedup. Bridge timing includes filling/verification and region lifecycle work.
+Whole-program timings have hundredth-second granularity, especially relevant to
+the short parallel programs.
+
+### Protected-path investigation
+
+A second set of nine alternating runs reproduces 1.07 s baseline versus 1.11 s
+candidate. Diagnostic assembly variants retain the same C runtime and verify
+output on every run:
+
+| Diagnostic | Median user CPU |
+| --- | ---: |
+| New unit and helper | 1.11 s |
+| Remove protected helper's size guard | 1.11 s |
+| Replace site's mutex/local dispatch with a direct protected call | 1.11 s |
+| Keep new unit/site, use old stack-saving protected helper | 1.07 s |
+
+The helper implementation accounts for the observed cost in this fixture more
+clearly than the added dispatch or size guard. The new helper transfers values
+through FP scratch registers and reconstructs the CAS expected pointer with
+shift/negate/add operations, whereas the old helper keeps that pointer in rax
+and restores saved inputs from the stack. These diagnostics do not distinguish
+FP-transfer latency, pointer dependencies and instruction layout; they do show
+that eliminating stack saves alone does not imply better protected throughput.
+The regression remains explicit. No production allocator change was made as
+part of this assessment.
+
+### Native code size and correctness
+
+The local-loop unit `.text` grows 442 → 516 bytes (+74), shared startup/helper
+`.text` 1822 → 1864 bytes (+42), and executable `.text` 28530 → 28658 bytes (+128,
+including linker alignment). GNU `size`'s aggregate text grows 48961 → 49089 bytes;
+that aggregate also includes read-only data and unwind information. Default ReML's
+unit shrinks 9 bytes, while its executable `.text` grows 64 bytes because of shared
+code/alignment. Neither successful helper has explicit stack saves in the candidate;
+X64's call still pushes its eight-byte return address.
+
+The native X64 allocation suite passes: inferred/forced protection, C-only and
+ReML modes, boundary/large-object cases, forced CAS failure, register sentinels,
+shared/mixed generated-C allocation and assembly invariants. All 13 existing
+parallel regression cases pass natively as well. These checks ran against the
+milestone-8 candidate; later no-spawn policy measurements are a separate assessment.
+
+Reproduce local comparisons with the shared command above and matching X64
+baseline/candidate compilers. The manual bridge entry point is:
+
+```sh
+SML_LIB=$PWD MLKIT=$PWD/bin/mlkit MLKIT_BASELINE=/path/to/baseline/mlkit \
+  taskset -c 0,2,4,6 sh src/Compiler/Backend/X64/tests/benchmark-allocation.sh
+```
+
+The existing `Arm64/tests/benchmark-parallel-programs.sh` script is portable for
+these programs; set its `MLKIT_ARM64` variable to the native X64 compiler.
+[Raw samples, host settings, size reports and diagnostic recipe](native-performance/inline-allocation/thinkpad/README.md).
+
+## Assessment
+
+Milestones 5–8 are complete. Both architectures show allocation-local gains with
+code growth and a modest protected-loop regression (ARM64 +2.5%, X64 +3.7%).
+The X64 investigation places its regression in the helper implementation; it
+does not support adding back stack saves without a separate implementation and
+broader assessment. The results support reviewing the inline-local design with
+this protected-throughput tradeoff explicit. The PR remains draft for that review.
+No general speedup or zero-overhead claim follows from these workloads. CI runs
+correctness checks only; no performance tests or timing collection are added.
 
 The full ARM64 regression pass comprised 260 developer, 189 GC, 89 explicit-region
 and 13 parallel checks. It preceded the final protected-mode-only instruction

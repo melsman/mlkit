@@ -1,0 +1,8 @@
+   text	   data	    bss	    dec	    hex	filename
+  48833	   2896	  82608	 134337	  20cc1	baseline
+  48833	   2896	  82608	 134337	  20cc1	fast
+   text	   data	    bss	    dec	    hex	filename
+   1663	    888	      0	   2551	    9f7	MLB/RI_PAR_NOINLINEALLOC_Localfast/base-link_objects.o
+    458	    747	      0	   1205	    4b5	MLB/RI_PAR_NOINLINEALLOC_Localfast/main.sml.o
+   1663	    888	      0	   2551	    9f7	MLB/RI_PAR_NOINLINEALLOC_Localbaseline/base-link_objects.o
+    458	    747	      0	   1205	    4b5	MLB/RI_PAR_NOINLINEALLOC_Localbaseline/main.sml.o

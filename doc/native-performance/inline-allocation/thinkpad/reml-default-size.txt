@@ -1,0 +1,8 @@
+   text	   data	    bss	    dec	    hex	filename
+  49025	   2896	  82608	 134529	  20d81	baseline
+  49089	   2896	  82608	 134593	  20dc1	fast
+   text	   data	    bss	    dec	    hex	filename
+   1864	    888	      0	   2752	    ac0	MLB/RI_PAR0_Localfast/base-link_objects.o
+    500	    747	      0	   1247	    4df	MLB/RI_PAR0_Localfast/main.sml.o
+   1822	    888	      0	   2710	    a96	MLB/RI_PAR0_Localbaseline/base-link_objects.o
+    509	    747	      0	   1256	    4e8	MLB/RI_PAR0_Localbaseline/main.sml.o

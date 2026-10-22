@@ -52,7 +52,8 @@ spawning, on ARM64 and translated X64. The earlier ARM64 pass of the unsafe
 fixture did not establish its validity. The actual Basis `Thread.spawn`/`Thread.get` implementation also passes in the
 translated X64 REPL, returning the expected integer 42. No backend/runtime fix
 was required.
-Native X64 execution and performance assessment remain for the ThinkPad/CI.
+Native X64 validation and performance of this later policy remain separate from
+the completed milestone-8 native comparison.
 
 Direct policy-check invocation:
 
@@ -85,4 +86,5 @@ difference from sequential execution at this resolution. It does not establish
 zero overhead generally: descriptor checks, linked parallel runtime/code size,
 startup and other parallel-runtime operations remain. Unused CAS instructions
 remain in shared helpers. Protected programs retain normal synchronization.
-Native X64 timing comparisons are deferred; no timings are inferred from Rosetta.
+Native X64 timings for this policy remain a separate assessment; no timings are
+inferred from Rosetta.
