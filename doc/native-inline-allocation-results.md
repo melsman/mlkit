@@ -225,6 +225,25 @@ that eliminating stack saves alone does not imply better protected throughput.
 The regression remains explicit. No production allocator change was made as
 part of this assessment.
 
+### Follow-up: save the original allocation pointer
+
+A further native experiment saves the old allocation pointer in xmm15 instead
+of the word count. Success restores the expected CAS pointer directly; fallback
+recovers the original size from `(new - saved_old) >> 3`, using the saved pointer
+because a failed CAS overwrites rax. The same emitted program unit and C runtime
+were relinked with this helper, retaining the no-stack-save ABI.
+
+Nine alternating runs yield 1.11 s median user CPU for both the existing and
+experimental helpers; the original stack-saving baseline is 1.06 s in this set
+(range 1.06–1.07). Shared/mixed allocation, expansion and private bridge timings
+also show no convincing improvement. Exact fills, large objects, rax/FP sentinels,
+concurrent data verification and forced CAS fallback pass with the variant.
+
+The experiment does not support adopting the change and weakens the specific
+expected-pointer-reconstruction hypothesis. Production allocation code is left
+unchanged; the protected regression remains. See the
+[recipe, raw samples and helper assembly](native-performance/inline-allocation/thinkpad/pointer-experiment/README.md).
+
 ### Native code size and correctness
 
 The local-loop unit `.text` grows 442 → 516 bytes (+74), shared startup/helper
