@@ -3,8 +3,8 @@
 PR #253 first addresses issue #252 by aligning preservation across explicit
 foreign calls and implicit C calls in X64 and ARM64. Only after that work is
 validated does it investigate a frame-free single-page reset fast path in the
-shared helper. It remains separate from allocation PR #251; use the ARM64
-implementation from that work once available and avoid duplicating its changes.
+shared helper. Allocation PR #251 is now merged into master; build on its ARM64 implementation
+and avoid duplicating its changes.
 This is an implementation plan: no emitted code changes or measured benefit yet.
 
 ## Eligibility and semantics
@@ -40,7 +40,7 @@ without explicit stack storage or touching allocatable integer/FP registers.
 The slow bridge continues to preserve C-clobbered ML registers. The helper's
 normal call/return still uses its architectural return-address mechanism.
 
-The ARM64 development in PR #251 already emits a simple reset fast path at
+ARM64 already emits a simple reset fast path at
 reset sites when parallelism and profiling are disabled. Other configurations
 reach a preserving C helper. Compare moving or sharing this logic inside the
 reset helper, including parallel builds, rather than duplicating it at sites.
@@ -124,4 +124,4 @@ if the reset optimisation does not prove worthwhile.
 - `src/Runtime/Region.h`: `Gen`, `Ro`, `Rp`, `clear_fp`, `clearStatusBits`.
 - `src/Compiler/Backend/X64/CodeGenX64.sml`: `ccall_stub`, `resetregion`.
 - `src/Compiler/Backend/X64/CodeGenUtilX64.sml`: `reset_region`.
-- ARM64 development in PR #251: `resetLoadedInto` and the preserving reset stub.
+- `src/Compiler/Backend/Arm64/CodeGenArm64.sml`: `resetLoadedInto` and the preserving reset stub.
