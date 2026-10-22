@@ -11,13 +11,12 @@ cp "$fixtures/c-call-preservation.sml" .
 ${CC:-cc} -c "$fixtures/c-call-preservation.S" -o clobber.o
 for mode in no_gc gc gengc prof gcprof par; do
   flags=-$mode
-  defines=
   case $mode in
-    gc|gengc|gcprof) defines=-DTAGGED;;
-    gcprof) flags='-gc -prof';;
+    prof) flags='-no_gc -rp';;
+    gcprof) flags='-gc -rp';;
     par) flags='-no_gc -par';;
   esac
-  ${CC:-cc} -O2 -Wall -Wextra -Werror $defines -c "$fixtures/c-call-preservation.c" -o probe.o
+  ${CC:-cc} -O2 -Wall -Wextra -Werror -c "$fixtures/c-call-preservation.c" -o probe.o
   "$MLKIT" --no_basislib --no_delete_target_files --mlb-subdir "Preserve$mode" \
     $flags -ldexe "${CC:-cc} probe.o clobber.o" -o probe c-call-preservation.sml > "$mode.log" 2>&1 || {
       cat "$mode.log"; exit 1;
