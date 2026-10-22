@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 155755	  17520	    808	 174083	  2a803	kitmandelbrot.exe

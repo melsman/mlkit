@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 299987	  37136	    808	 337931	  5280b	kitkbjul9.exe

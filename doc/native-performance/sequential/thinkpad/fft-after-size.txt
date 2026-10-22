@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1070683	 139312	    808	1210803	 1279b3	fft.exe

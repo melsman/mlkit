@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1858862	 278328	    808	2137998	 209f8e	ray.exe

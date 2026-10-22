@@ -1,0 +1,4 @@
+Darwin Mac.home 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:39:09 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6020 arm64
+43000419a30512d3758e7e79027e130c807d6a21bfcbc0ce7776cdf33da7a879  /private/tmp/mlkit-arm64-atomic-allocation/bin/mlkit
+3ac24d8c72e1a15729ceab46904b037eb36198c5a3ba639b3faee463fa76ca5e  bin/mlkit
+6545ad63656e3fc95ab5ff1981c4989a8d9449c1a7d6f878e1d8f9bda13466d6  lib/darwin-arm64/runtimeSystemGC.a

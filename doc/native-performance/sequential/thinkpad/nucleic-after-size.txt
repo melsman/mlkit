@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+2013110	 327000	    808	2340918	 23b836	nucleic.exe
