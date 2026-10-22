@@ -1,9 +1,11 @@
-# Single-page region reset in the shared helper
+# Align C-call preservation, then assess single-page reset
 
-Investigate a frame-free fast path inside the shared reset helper, independently
-of allocation PR #251 and the broader foreign-call alignment issue #252.
-This document records source-level findings and the experiment to run; it does
-not establish a performance benefit or change emitted code.
+PR #253 first addresses issue #252 by aligning preservation across explicit
+foreign calls and implicit C calls in X64 and ARM64. Only after that work is
+validated does it investigate a frame-free single-page reset fast path in the
+shared helper. It remains separate from allocation PR #251; use the ARM64
+implementation from that work once available and avoid duplicating its changes.
+This is an implementation plan: no emitted code changes or measured benefit yet.
 
 ## Eligibility and semantics
 
@@ -51,27 +53,68 @@ accounting and profiler-visible helper ranges have been checked explicitly.
 
 ## Implementation and assessment milestones
 
-1. Prototype the shared-helper fast prefix on X64. Check the large-object list
-   and page successor(s), then rewind pointers using only reserved scratch
-   registers. Retain the existing C fallback unchanged. Verify runtime layout
-   offsets rather than copying unchecked constants.
-2. Test emitted code against C `resetRegion`: empty/partially filled/full first
-   page, multiple pages, large objects with a single ordinary page, descriptor
-   status bits, first-page marks, and both generations. Use integer and FP
-   sentinels to check preservation on fast and fallback paths. Assert no explicit
-   frame on the eligible path. Exercise the supported GC and parallel modes.
-3. Measure manually on native X64: repeated eligible resets, mostly ineligible
-   resets, and allocation/reset workloads representative of generated ML code.
-   Compare identical caller code with only helper bodies changed. Record hit
-   rates separately from timings; inspect code size and all retained samples.
-   Measure whether the extra checks penalise the slow cases. No performance
-   tests or timing collection in CI.
-4. Compare ARM64 placement in the helper versus its existing site fast path.
-   Preserve link-register and GC/profiling contracts; measure native ARM64 before
-   deciding whether to move existing logic or extend its configuration coverage.
-5. Retain or reject the optimisation based on correctness, hit frequency,
-   eligible-path savings and fallback overhead. Publish raw manual results and
-   explain any backend differences left in place.
+Complete milestones 1–5 before beginning the reset optimisation in 6–8.
+Keep changes separately reviewable so preservation fixes can stand on their own
+if the reset optimisation does not prove worthwhile.
+
+1. **Establish call contracts and baseline code.** Inventory explicit
+   `CCALL`/`CCALL_AUTO`, implicit allocation/reset calls, region creation/release,
+   GC, profiling and callback bridges in both backends. Record allocatable and
+   reserved registers, C clobbers, FP preservation widths, argument staging,
+   result placement and exception transfers. Identify where physical liveness
+   is available and where it is not. Capture representative emitted code.
+2. **Align explicit foreign-call preservation.** Trace register allocation and
+   fetch/flush handling of values live across calls. Determine why X64's
+   `is_callee_save_ccall` returns false despite its C-preserved palette, and
+   correct it where sound. Align both backends around saving live C-clobbered
+   values and retaining values in valid C-preserved registers. Keep argument
+   staging, conversions and ABI stack arguments distinct from preservation.
+   Check integer and FP cases and exclude newly defined call results from saves.
+3. **Align implicit C-call bridges.** Audit allocation, reset and other late
+   runtime calls. Preserve all C-clobbered ML registers whenever no sound
+   call-site live set is supplied, including spill temporaries that may be live.
+   Use the existing liveness-aware region creation/release design as a reference
+   where applicable. Do not reduce saves using only GC-root liveness. Check
+   return values, reserved scratch registers, ARM64 link-register handling and
+   ABI stack alignment; retain collector and callback-specific save contracts.
+4. **Validate preservation correctness.** Add focused tests for live/dead integer
+   and FP values, C-preserved registers, result-register overlap, register
+   pressure/spills, more arguments than ABI registers, conversions, callbacks
+   and exception paths. Exercise explicit calls and implicit allocation/reset
+   fallbacks with register sentinels, GC and supported profiling/parallel modes.
+   Verify emitted code removes redundant saves without losing required saves.
+   Correctness tests may run in CI; performance tests and timing collection may
+   not.
+5. **Assess and complete #252.** Build both native backends and run relevant
+   regressions. Manually compare before/after code size, stack traffic and
+   representative foreign/runtime-call workloads on X64 and ARM64. Publish
+   results and document justified backend-specific ABI differences. Assess full
+   reset inlining requested by #252, including unavoidable nested page/object
+   release calls; record why the bounded single-page case below is the first
+   candidate rather than assuming full inlining avoids preservation. Resolve
+   the call-preservation work before proceeding to milestone 6.
+6. **Prototype the shared-helper single-page reset fast path.** Start on X64;
+   check the large-object list and every generation's page successor before
+   modifying state. Rewind allocation and colour pointers using reserved
+   scratch registers, preserve descriptor status/first-page marks, and return
+   without an explicit frame. Verify runtime offsets. Retain the validated
+   preserving C fallback for ineligible cases and initially for profiling.
+   Compare ARM64's existing site fast path with placement inside its shared
+   helper, avoiding unnecessary duplicated checks and respecting its return ABI.
+7. **Validate reset semantics.** Compare emitted helpers with C `resetRegion`
+   for empty, partially filled and full pages, multiple pages, large objects
+   with a single ordinary page, descriptor status bits, first-page marks and
+   both generations. Check integer/FP preservation on fast and fallback paths,
+   conditional/finite-region behaviour, supported GC/parallel configurations
+   and absence of explicit stack storage on the eligible path. Keep profiling
+   on the C path until its accounting is explicitly validated.
+8. **Measure and decide on reset inlining.** Measure native X64 and ARM64
+   manually: repeated eligible resets, mostly ineligible resets, and realistic
+   allocation/reset workloads. Hold caller code constant for helper-only
+   comparisons; assess ARM64 site-versus-helper placement separately. Record
+   hit rates separately from timings, code size, fallback overhead and all raw
+   samples. Retain or reject the optimisation from this evidence and document
+   remaining configuration differences. Add no performance tests to CI.
 
 ## Sources
 
