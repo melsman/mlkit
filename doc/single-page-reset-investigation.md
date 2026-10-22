@@ -6,7 +6,9 @@ fetch-and-flush machinery. ARM64 supplies the reference behaviour. Implicit
 allocation/reset C-call bridges retain their required preservation. The second
 part investigates a frame-free single-page reset fast path in the shared helper.
 Allocation PR #251 is merged into master; build on its ARM64 implementation.
-This is an implementation plan: no emitted code changes or measured benefit yet.
+Milestones 1–5 are implemented and assessed; see
+[x64-c-call-preservation-results.md](x64-c-call-preservation-results.md).
+Milestones 6–8 remain planned.
 
 ## Eligibility and semantics
 

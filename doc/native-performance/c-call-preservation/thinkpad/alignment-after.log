@@ -1,0 +1,10 @@
+C call alignment and SysDB (gc): OK
+C call alignment and SysDB (no_gc): OK
+C call alignment and SysDB (gengc): OK
+C preservation outputs: /tmp/mlkit-c-preservation.F5zNSm
+C preservation (no_gc): passed
+C preservation (gc): passed
+C preservation (gengc): passed
+C preservation (prof): passed
+C preservation (gcprof): passed
+C preservation (par): passed
