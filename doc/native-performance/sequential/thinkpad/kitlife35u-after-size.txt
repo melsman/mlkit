@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 222051	  26288	    808	 249147	  3cd3b	kitlife35u.exe

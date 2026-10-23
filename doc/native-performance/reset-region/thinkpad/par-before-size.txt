@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+  46892	   1288	  82640	 130820	  1ff04	reset

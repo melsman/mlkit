@@ -1,0 +1,7 @@
+C preservation outputs: /tmp/mlkit-c-preservation.mwcL3W
+C preservation (no_gc): passed
+C preservation (gc): passed
+C preservation (gengc): passed
+C preservation (prof): passed
+C preservation (gcprof): passed
+C preservation (par): passed

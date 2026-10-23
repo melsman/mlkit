@@ -1,0 +1,19 @@
+C call alignment and SysDB (gc): OK
+C call alignment and SysDB (no_gc): OK
+C call alignment and SysDB (gengc): OK
+C preservation outputs: /tmp/mlkit-c-preservation.4QsUYg
+C preservation (no_gc): passed
+C preservation (gc): passed
+C preservation (gengc): passed
+C preservation (prof): passed
+C preservation (gcprof): passed
+C preservation (par): passed
+Reset outputs: /tmp/mlkit-reset.uFiplL
+Shared reset (no_gc): passed
+Shared reset (gc): passed
+Shared reset (gengc): passed
+Shared reset (prof): passed
+Shared reset (gcprof): passed
+Shared reset (genprof): passed
+Shared reset (par): passed
+Shared reset (parprof): passed

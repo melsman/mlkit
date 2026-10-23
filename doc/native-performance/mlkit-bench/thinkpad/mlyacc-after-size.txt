@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+2768270	 415096	    808	3184174	 30962e	mlyacc.exe

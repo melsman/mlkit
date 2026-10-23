@@ -1,0 +1,9 @@
+0000000000074259 <F.fib2_loPAGCtpIVvYESaeJAMrrC>:
+   74259:	48 8d 64 24 e8       	lea    -0x18(%rsp),%rsp
+   7425e:	48 89 44 24 10       	mov    %rax,0x10(%rsp)
+   74263:	49 89 c2             	mov    %rax,%r10
+   74266:	49 c7 c3 03 00 00 00 	mov    $0x3,%r11
+   7426d:	4d 39 da             	cmp    %r11,%r10
+   74270:	7d 0e                	jge    74280 <L_k5F_kSbodDYdePZ62flcgttkTf>
+   74272:	48 c7 c7 03 00 00 00 	mov    $0x3,%rdi
+   74279:	48 8d 64 24 18       	lea    0x18(%rsp),%rsp

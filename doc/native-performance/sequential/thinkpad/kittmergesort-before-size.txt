@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 177443	  22416	    808	 200667	  30fdb	kittmergesort.exe

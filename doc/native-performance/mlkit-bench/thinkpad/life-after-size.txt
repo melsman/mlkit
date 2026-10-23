@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 209819	  24656	    808	 235283	  39713	life.exe

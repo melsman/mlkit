@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+  40109	   2400	    488	  42997	   a7f5	reset-loop

@@ -29,3 +29,8 @@ for mode in gc no_gc gengc; do
     done
     echo "C call alignment and SysDB ($mode): OK"
 done
+
+# Verify values retained in C-preserved registers and caller-save spills.
+SML_LIB="$root" MLKIT="$MLKIT" sh "$root/src/Compiler/Backend/X64/tests/check-c-call-preservation.sh"
+
+SML_LIB="$root" MLKIT="$MLKIT" sh "$root/src/Compiler/Backend/tests/check-reset-region.sh"

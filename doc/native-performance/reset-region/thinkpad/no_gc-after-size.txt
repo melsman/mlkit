@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+  39034	   1104	    520	  40658	   9ed2	reset

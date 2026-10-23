@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 559835	  74608	    808	 635251	  9b173	mandelbrot.exe

@@ -1,0 +1,12 @@
+ARM64 generated mixed, packed-stack, and variadic C calls passed
+ARM64 GC register/stack/global relocation, inline descriptors, and reserved-register checks passed
+Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed
+Reset outputs: /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-reset.JY9zrp
+Shared reset (no_gc): passed
+Shared reset (gc): passed
+Shared reset (gengc): passed
+Shared reset (prof): passed
+Shared reset (gcprof): passed
+Shared reset (genprof): passed
+Shared reset (par): passed
+Shared reset (parprof): passed

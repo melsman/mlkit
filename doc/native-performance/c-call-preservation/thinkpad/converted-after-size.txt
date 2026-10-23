@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+  39901	   2296	    488	  42685	   a6bd	converted-after

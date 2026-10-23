@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1049083	 136624	    808	1186515	 121ad3	kitqsort.exe

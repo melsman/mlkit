@@ -1,0 +1,3 @@
+ARM64 generated mixed, packed-stack, and variadic C calls passed
+ARM64 GC register/stack/global relocation, inline descriptors, and reserved-register checks passed
+Native ARM64 MLKit/ReML calls, closures, regions, exceptions, floats, spills, large frames, and target guards passed

@@ -1,0 +1,9 @@
+Reset outputs: /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-reset.X63M8P
+Shared reset (no_gc): passed
+Shared reset (gc): passed
+Shared reset (gengc): passed
+Shared reset (prof): passed
+Shared reset (gcprof): passed
+Shared reset (genprof): passed
+Shared reset (par): passed
+Shared reset (parprof): passed

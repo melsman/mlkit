@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1505179	 184176	    808	1690163	 19ca33	kitsimple.exe

@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+1510267	 184624	    808	1695699	 19dfd3	simple.exe

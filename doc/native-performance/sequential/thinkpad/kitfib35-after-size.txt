@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+ 141435	  13872	    808	 156115	  261d3	kitfib35.exe

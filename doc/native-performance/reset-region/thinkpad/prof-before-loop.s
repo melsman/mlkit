@@ -1,0 +1,1133 @@
+.text
+F.main1_sTu8njYAFZ87Mvlk0klZCk:
+	leaq -56(%rsp),%rsp
+	cmpq $0,24(%r14)
+	je L_rp_pending_sxoa0fSuyJJAhXpFCoABcx
+	subq $1,24(%r14)
+	je L_rp_sample_RKzXNH1i7UOLEpxd2dJD9d
+	.p2align 0x4
+L_rp_pending_sxoa0fSuyJJAhXpFCoABcx:
+	movq mlkit_rp_pending@GOTPCREL(%rip),%r10
+	cmpl $0,(%r10)
+	je L_rp_poll_done_99OKnKOvZpmzOfv4x6l5Cl
+	.p2align 0x4
+L_rp_sample_RKzXNH1i7UOLEpxd2dJD9d:
+	leaq L_rp_map_pSlgaHk8FUHoxCVeVPfD4b(%rip),%r11
+	subq $8,%rsp
+	subq $8,%rsp
+	movsd %xmm13,(%rsp)
+	subq $8,%rsp
+	movsd %xmm12,(%rsp)
+	subq $8,%rsp
+	movsd %xmm11,(%rsp)
+	subq $8,%rsp
+	movsd %xmm10,(%rsp)
+	subq $8,%rsp
+	movsd %xmm9,(%rsp)
+	subq $8,%rsp
+	movsd %xmm8,(%rsp)
+	subq $8,%rsp
+	movsd %xmm7,(%rsp)
+	subq $8,%rsp
+	movsd %xmm6,(%rsp)
+	subq $8,%rsp
+	movsd %xmm5,(%rsp)
+	subq $8,%rsp
+	movsd %xmm4,(%rsp)
+	subq $8,%rsp
+	movsd %xmm3,(%rsp)
+	subq $8,%rsp
+	movsd %xmm2,(%rsp)
+	subq $8,%rsp
+	movsd %xmm1,(%rsp)
+	subq $8,%rsp
+	movsd %xmm0,(%rsp)
+	pushq %rax
+	pushq %r9
+	pushq %r8
+	pushq %rcx
+	pushq %rdx
+	pushq %rsi
+	pushq %rdi
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_a69i4EMMCxxTmCf5IKIIQp:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_a69i4EMMCxxTmCf5IKIIQp(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	leaq 208(%rsp),%rsi
+	movq %r11,%rdx
+	call mlkit_rp_poll@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	popq %rdi
+	popq %rsi
+	popq %rdx
+	popq %rcx
+	popq %r8
+	popq %r9
+	popq %rax
+	movsd (%rsp),%xmm0
+	addq $8,%rsp
+	movsd (%rsp),%xmm1
+	addq $8,%rsp
+	movsd (%rsp),%xmm2
+	addq $8,%rsp
+	movsd (%rsp),%xmm3
+	addq $8,%rsp
+	movsd (%rsp),%xmm4
+	addq $8,%rsp
+	movsd (%rsp),%xmm5
+	addq $8,%rsp
+	movsd (%rsp),%xmm6
+	addq $8,%rsp
+	movsd (%rsp),%xmm7
+	addq $8,%rsp
+	movsd (%rsp),%xmm8
+	addq $8,%rsp
+	movsd (%rsp),%xmm9
+	addq $8,%rsp
+	movsd (%rsp),%xmm10
+	addq $8,%rsp
+	movsd (%rsp),%xmm11
+	addq $8,%rsp
+	movsd (%rsp),%xmm12
+	addq $8,%rsp
+	movsd (%rsp),%xmm13
+	addq $8,%rsp
+	addq $8,%rsp
+	.p2align 0x4
+L_rp_poll_done_99OKnKOvZpmzOfv4x6l5Cl:
+	leaq 16(%rsp),%r11
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_vmu5AaqpbJ4EX3zfSgtMBm:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_vmu5AaqpbJ4EX3zfSgtMBm(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	movq %r11,%rsi
+	movq $122,%rdx
+	call allocRegionInfiniteProfilingMaybeUnTag@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	leaq 8(%rsp),%rax
+	leaq 17(%rsp),%r10
+	movq %r10,(%rax)
+	xorq %rdi,%rdi
+	movq $200000000,%rbx
+	leaq L_ret_funcall_yOS2YaBhrR8SV6hTF6YPCl(%rip),%r9
+	pushq %r9
+	jmp F.loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv@PLT
+	.p2align 3
+	.quad 4
+mlkit_rp_anchor_L_offset_K4x6xkF7H8IN8VHRK5LNZc:
+	.quad D.StringLab12_kOHzY3dIyGkN9b2ps3HlUt - mlkit_rp_anchor_L_offset_K4x6xkF7H8IN8VHRK5LNZc
+	.quad -1
+	.quad 2
+	.quad 122
+	.quad 6
+	.quad 0
+	.quad 1
+	.quad 1
+	.quad 124
+mlkit_rp_anchor_L_offset_yTCjFr7DYesS8yEP3ej4Sb:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa - mlkit_rp_anchor_L_offset_yTCjFr7DYesS8yEP3ej4Sb
+mlkit_rp_anchor_L_offset_sr046iAMLxFUIPgCnJBdxg:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc - mlkit_rp_anchor_L_offset_sr046iAMLxFUIPgCnJBdxg
+	.quad 2
+	.quad 1
+	.quad 7
+	.quad 0x52504d34
+L_ret_funcall_yOS2YaBhrR8SV6hTF6YPCl:
+	movq %rdi,%rbx
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_25cQaaChJvhhTZQ0u6Ffeg:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_25cQaaChJvhhTZQ0u6Ffeg(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	call deallocateRegion@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	movq $20000000100000000,%r11
+	cmpq %r11,%rbx
+	jne L_k2F_E4hutyNPLyJAeQtJ2BiNqd
+	movq D.StringLab11_Ile8KOsD2Fgrb67aGKmtzb@GOTPCREL(%rip),%rdi
+	jmp L_done_uKrBevmlUGD6kGdCRJjLvb
+	.p2align 0x4
+L_k2F_E4hutyNPLyJAeQtJ2BiNqd:
+	movq D.StringLab10_esBfqah0rbutv0FHlNQbYe@GOTPCREL(%rip),%rdi
+	.p2align 0x4
+L_done_uKrBevmlUGD6kGdCRJjLvb:
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_iyi5QV5FUzLGriOf1J8QRa:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_iyi5QV5FUzLGriOf1J8QRa(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	call printStringML@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	movq D.result_lab5_EV3rFpPjzEguikVYeMrp8i@GOTPCREL(%rip),%r11
+	movq %rbx,(%r11)
+	leaq 56(%rsp),%rsp
+	ret
+mlkit_tp_end_main1_sTu8njYAFZ87Mvlk0klZCk:
+F.loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv:
+	leaq -8(%rsp),%rsp
+	cmpq $0,24(%r14)
+	je L_rp_pending_1anohPAidtkVyjlLTnSrbD
+	subq $1,24(%r14)
+	je L_rp_sample_Z86U5F4b20shD0CHacHCjc
+	.p2align 0x4
+L_rp_pending_1anohPAidtkVyjlLTnSrbD:
+	movq mlkit_rp_pending@GOTPCREL(%rip),%r10
+	cmpl $0,(%r10)
+	je L_rp_poll_done_JMdL2CrkaQUUsBatq18bAh
+	.p2align 0x4
+L_rp_sample_Z86U5F4b20shD0CHacHCjc:
+	leaq L_rp_map_fhSk81cDCcHp9fxy62qPTc(%rip),%r11
+	subq $8,%rsp
+	subq $8,%rsp
+	movsd %xmm13,(%rsp)
+	subq $8,%rsp
+	movsd %xmm12,(%rsp)
+	subq $8,%rsp
+	movsd %xmm11,(%rsp)
+	subq $8,%rsp
+	movsd %xmm10,(%rsp)
+	subq $8,%rsp
+	movsd %xmm9,(%rsp)
+	subq $8,%rsp
+	movsd %xmm8,(%rsp)
+	subq $8,%rsp
+	movsd %xmm7,(%rsp)
+	subq $8,%rsp
+	movsd %xmm6,(%rsp)
+	subq $8,%rsp
+	movsd %xmm5,(%rsp)
+	subq $8,%rsp
+	movsd %xmm4,(%rsp)
+	subq $8,%rsp
+	movsd %xmm3,(%rsp)
+	subq $8,%rsp
+	movsd %xmm2,(%rsp)
+	subq $8,%rsp
+	movsd %xmm1,(%rsp)
+	subq $8,%rsp
+	movsd %xmm0,(%rsp)
+	pushq %rax
+	pushq %r9
+	pushq %r8
+	pushq %rcx
+	pushq %rdx
+	pushq %rsi
+	pushq %rdi
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_i2G7IaASKXXcceEax0zCjd:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_i2G7IaASKXXcceEax0zCjd(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	leaq 208(%rsp),%rsi
+	movq %r11,%rdx
+	call mlkit_rp_poll@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	popq %rdi
+	popq %rsi
+	popq %rdx
+	popq %rcx
+	popq %r8
+	popq %r9
+	popq %rax
+	movsd (%rsp),%xmm0
+	addq $8,%rsp
+	movsd (%rsp),%xmm1
+	addq $8,%rsp
+	movsd (%rsp),%xmm2
+	addq $8,%rsp
+	movsd (%rsp),%xmm3
+	addq $8,%rsp
+	movsd (%rsp),%xmm4
+	addq $8,%rsp
+	movsd (%rsp),%xmm5
+	addq $8,%rsp
+	movsd (%rsp),%xmm6
+	addq $8,%rsp
+	movsd (%rsp),%xmm7
+	addq $8,%rsp
+	movsd (%rsp),%xmm8
+	addq $8,%rsp
+	movsd (%rsp),%xmm9
+	addq $8,%rsp
+	movsd (%rsp),%xmm10
+	addq $8,%rsp
+	movsd (%rsp),%xmm11
+	addq $8,%rsp
+	movsd (%rsp),%xmm12
+	addq $8,%rsp
+	movsd (%rsp),%xmm13
+	addq $8,%rsp
+	addq $8,%rsp
+	.p2align 0x4
+L_rp_poll_done_JMdL2CrkaQUUsBatq18bAh:
+	cmpq $0,%rbx
+	jne L_newSelLab_f6bqPP4iiy5o1ve6IPURZa
+	leaq 8(%rsp),%rsp
+	ret
+	.p2align 0x4
+L_newSelLab_f6bqPP4iiy5o1ve6IPURZa:
+	movq (%rax),%rdx
+	movq %rdx,%r11
+	andq $-4,%r11
+	pushq %r11
+	movq (%r11),%r11
+	addq $-1,%r11
+	movq %r11,%r10
+	orq $0x1FFF,%r10
+	addq $16,%r11
+	cmpq %r10,%r11
+	jg L_expand_Y2dVXiarSvKMiln5YALnjd
+	leaq 1(%r11),%r10
+	popq %r11
+	movq %r10,(%r11)
+	leaq -16(%r10),%r11
+	.p2align 0x4
+L_ret_alloc_jrLh0ZdlQ2Fvs8VC2h2Ixj:
+	leaq L_allocation_metadata_pKnaB6lBxldcB5fynAFBcn(%rip),%r10
+	salq $13,%r10
+	orq $1,%r10
+	movq %r10,(%r11)
+	leaq 8(%r11),%r11
+	movq %r11,%rdx
+	movq %rbx,(%rdx)
+	movq %rbx,%rdx
+	movq (%rax),%rsi
+	movq %rsi,%r11
+	call __reset_region@PLT
+	subq $1,%rbx
+	jo __raise_overflow@PLT
+	addq %rdx,%rdi
+	jo __raise_overflow@PLT
+	leaq 8(%rsp),%rsp
+	jmp F.loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv@PLT
+	.p2align 0x4
+L_expand_Y2dVXiarSvKMiln5YALnjd:
+	popq %r11
+	leaq L_ret_alloc_jrLh0ZdlQ2Fvs8VC2h2Ixj(%rip),%r10
+	pushq %r10
+	movq $2,%r10
+	jmp __allocate@PLT
+mlkit_tp_end_loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv:
+F._3_Gb9ieTMoL7hKQaaFRz4cEn:
+	leaq -8(%rsp),%rsp
+	cmpq $0,24(%r14)
+	je L_rp_pending_RQ20lxNzuCOsGDaM5N3eLq
+	subq $1,24(%r14)
+	je L_rp_sample_Y1rCQAJIBCnzqkAiJPY1ce
+	.p2align 0x4
+L_rp_pending_RQ20lxNzuCOsGDaM5N3eLq:
+	movq mlkit_rp_pending@GOTPCREL(%rip),%r10
+	cmpl $0,(%r10)
+	je L_rp_poll_done_GsaXmRNrtEYkK8msRSRAMt
+	.p2align 0x4
+L_rp_sample_Y1rCQAJIBCnzqkAiJPY1ce:
+	leaq L_rp_map_4CDgUKZUhcHGrkK8NkSccn(%rip),%r11
+	subq $8,%rsp
+	subq $8,%rsp
+	movsd %xmm13,(%rsp)
+	subq $8,%rsp
+	movsd %xmm12,(%rsp)
+	subq $8,%rsp
+	movsd %xmm11,(%rsp)
+	subq $8,%rsp
+	movsd %xmm10,(%rsp)
+	subq $8,%rsp
+	movsd %xmm9,(%rsp)
+	subq $8,%rsp
+	movsd %xmm8,(%rsp)
+	subq $8,%rsp
+	movsd %xmm7,(%rsp)
+	subq $8,%rsp
+	movsd %xmm6,(%rsp)
+	subq $8,%rsp
+	movsd %xmm5,(%rsp)
+	subq $8,%rsp
+	movsd %xmm4,(%rsp)
+	subq $8,%rsp
+	movsd %xmm3,(%rsp)
+	subq $8,%rsp
+	movsd %xmm2,(%rsp)
+	subq $8,%rsp
+	movsd %xmm1,(%rsp)
+	subq $8,%rsp
+	movsd %xmm0,(%rsp)
+	pushq %rax
+	pushq %r9
+	pushq %r8
+	pushq %rcx
+	pushq %rdx
+	pushq %rsi
+	pushq %rdi
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_i8kazKhFTZRhRvqsd7nd8m:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_i8kazKhFTZRhRvqsd7nd8m(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	leaq 208(%rsp),%rsi
+	movq %r11,%rdx
+	call mlkit_rp_poll@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	popq %rdi
+	popq %rsi
+	popq %rdx
+	popq %rcx
+	popq %r8
+	popq %r9
+	popq %rax
+	movsd (%rsp),%xmm0
+	addq $8,%rsp
+	movsd (%rsp),%xmm1
+	addq $8,%rsp
+	movsd (%rsp),%xmm2
+	addq $8,%rsp
+	movsd (%rsp),%xmm3
+	addq $8,%rsp
+	movsd (%rsp),%xmm4
+	addq $8,%rsp
+	movsd (%rsp),%xmm5
+	addq $8,%rsp
+	movsd (%rsp),%xmm6
+	addq $8,%rsp
+	movsd (%rsp),%xmm7
+	addq $8,%rsp
+	movsd (%rsp),%xmm8
+	addq $8,%rsp
+	movsd (%rsp),%xmm9
+	addq $8,%rsp
+	movsd (%rsp),%xmm10
+	addq $8,%rsp
+	movsd (%rsp),%xmm11
+	addq $8,%rsp
+	movsd (%rsp),%xmm12
+	addq $8,%rsp
+	movsd (%rsp),%xmm13
+	addq $8,%rsp
+	addq $8,%rsp
+	.p2align 0x4
+L_rp_poll_done_GsaXmRNrtEYkK8msRSRAMt:
+	movq (%rax),%rdi
+	leaq 8(%rsp),%rsp
+	ret
+mlkit_tp_end__3_Gb9ieTMoL7hKQaaFRz4cEn:
+F._2_lZiG68oS2fEk6TTnzAL6ol:
+	cmpq $0,24(%r14)
+	je L_rp_pending_jspfl330YlD6x2I5fDpt4c
+	subq $1,24(%r14)
+	je L_rp_sample_ZzjJJlxk4r4vKK5cVoZ48m
+	.p2align 0x4
+L_rp_pending_jspfl330YlD6x2I5fDpt4c:
+	movq mlkit_rp_pending@GOTPCREL(%rip),%r10
+	cmpl $0,(%r10)
+	je L_rp_poll_done_VHu0aga3BnlJ1r2a1A2Gfh
+	.p2align 0x4
+L_rp_sample_ZzjJJlxk4r4vKK5cVoZ48m:
+	leaq L_rp_map_SAnYpLiLTC4KenvHzQHbke(%rip),%r11
+	subq $8,%rsp
+	subq $8,%rsp
+	movsd %xmm13,(%rsp)
+	subq $8,%rsp
+	movsd %xmm12,(%rsp)
+	subq $8,%rsp
+	movsd %xmm11,(%rsp)
+	subq $8,%rsp
+	movsd %xmm10,(%rsp)
+	subq $8,%rsp
+	movsd %xmm9,(%rsp)
+	subq $8,%rsp
+	movsd %xmm8,(%rsp)
+	subq $8,%rsp
+	movsd %xmm7,(%rsp)
+	subq $8,%rsp
+	movsd %xmm6,(%rsp)
+	subq $8,%rsp
+	movsd %xmm5,(%rsp)
+	subq $8,%rsp
+	movsd %xmm4,(%rsp)
+	subq $8,%rsp
+	movsd %xmm3,(%rsp)
+	subq $8,%rsp
+	movsd %xmm2,(%rsp)
+	subq $8,%rsp
+	movsd %xmm1,(%rsp)
+	subq $8,%rsp
+	movsd %xmm0,(%rsp)
+	pushq %rax
+	pushq %r9
+	pushq %r8
+	pushq %rcx
+	pushq %rdx
+	pushq %rsi
+	pushq %rdi
+	.p2align 2
+	.p2align 0x4
+L_x64_c_origin_uRVf4aPMaYBIyhfoiftQft:
+	subq $32,%rsp
+	movq %r10,16(%rsp)
+	movq %r11,24(%rsp)
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%r11),%r10
+	movq %r10,(%rsp)
+	leaq L_x64_c_origin_uRVf4aPMaYBIyhfoiftQft(%rip),%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	movq 16(%rsp),%r10
+	movq 24(%rsp),%r11
+	movq %r14,%rdi
+	leaq 208(%rsp),%rsi
+	movq %r11,%rdx
+	call mlkit_rp_poll@PLT
+	movq mlkit_tp_context@GOTPCREL(%rip),%r11
+	movq (%rsp),%r10
+	movq %r10,(%r11)
+	addq $32,%rsp
+	popq %rdi
+	popq %rsi
+	popq %rdx
+	popq %rcx
+	popq %r8
+	popq %r9
+	popq %rax
+	movsd (%rsp),%xmm0
+	addq $8,%rsp
+	movsd (%rsp),%xmm1
+	addq $8,%rsp
+	movsd (%rsp),%xmm2
+	addq $8,%rsp
+	movsd (%rsp),%xmm3
+	addq $8,%rsp
+	movsd (%rsp),%xmm4
+	addq $8,%rsp
+	movsd (%rsp),%xmm5
+	addq $8,%rsp
+	movsd (%rsp),%xmm6
+	addq $8,%rsp
+	movsd (%rsp),%xmm7
+	addq $8,%rsp
+	movsd (%rsp),%xmm8
+	addq $8,%rsp
+	movsd (%rsp),%xmm9
+	addq $8,%rsp
+	movsd (%rsp),%xmm10
+	addq $8,%rsp
+	movsd (%rsp),%xmm11
+	addq $8,%rsp
+	movsd (%rsp),%xmm12
+	addq $8,%rsp
+	movsd (%rsp),%xmm13
+	addq $8,%rsp
+	addq $8,%rsp
+	.p2align 0x4
+L_rp_poll_done_VHu0aga3BnlJ1r2a1A2Gfh:
+	movq (%rsp),%rdx
+	btq $0,%rdx
+	jnc L_no_alloc_tBOczpsROmDN1dCDIIxAgf
+	movq %rdx,%r11
+	andq $-4,%r11
+	pushq %r11
+	movq (%r11),%r11
+	addq $-1,%r11
+	movq %r11,%r10
+	orq $0x1FFF,%r10
+	addq $24,%r11
+	cmpq %r10,%r11
+	jg L_expand_2sgkgFFe4chdJyPJEldZHu
+	leaq 1(%r11),%r10
+	popq %r11
+	movq %r10,(%r11)
+	leaq -24(%r10),%r11
+	.p2align 0x4
+L_ret_alloc_o19LTt3zNGqsg2yd4zofAi:
+	leaq L_allocation_metadata_E2cCV4lgs1LBPtSh6f6Epq(%rip),%r10
+	salq $13,%r10
+	orq $2,%r10
+	movq %r10,(%r11)
+	leaq 8(%r11),%r11
+	movq %r11,%rdx
+	.p2align 0x4
+L_no_alloc_tBOczpsROmDN1dCDIIxAgf:
+	movq %rbx,(%rdx)
+	movq %rdi,8(%rdx)
+	movq %rdx,%rbx
+	movq (%rax),%r11
+	leaq 8(%rsp),%rsp
+	jmp *%r11
+	.p2align 0x4
+L_expand_2sgkgFFe4chdJyPJEldZHu:
+	popq %r11
+	leaq L_ret_alloc_o19LTt3zNGqsg2yd4zofAi(%rip),%r10
+	pushq %r10
+	movq $3,%r10
+	jmp __allocate@PLT
+mlkit_tp_end__2_lZiG68oS2fEk6TTnzAL6ol:
+.section 	.note.GNU-stack,"",@progbits
+.data
+.data
+	.p2align 3
+.globl mlkit_rp_code_main1_sTu8njYAFZ87Mvlk0klZCk
+.type mlkit_rp_code_main1_sTu8njYAFZ87Mvlk0klZCk,@object
+mlkit_rp_code_main1_sTu8njYAFZ87Mvlk0klZCk:
+	.quad 2
+	.quad 4
+	.quad F.main1_sTu8njYAFZ87Mvlk0klZCk
+	.quad mlkit_tp_end_main1_sTu8njYAFZ87Mvlk0klZCk
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab9_JBLjag5HQq5vQ7zNA3aHJf
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+	.quad F.loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv
+	.quad mlkit_tp_end_loop__noinline4_LxZOnnHaEiHdNu0am2ZGjv
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab7_k4mhf6Vbhd9XRRvzDfyQ7c
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+	.quad F._3_Gb9ieTMoL7hKQaaFRz4cEn
+	.quad mlkit_tp_end__3_Gb9ieTMoL7hKQaaFRz4cEn
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab6_hkRTBMSFiymxEKjDxjdA3i
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+	.quad F._2_lZiG68oS2fEk6TTnzAL6ol
+	.quad mlkit_tp_end__2_lZiG68oS2fEk6TTnzAL6ol
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab4_UDDfMFSkGGabQFSvyPAsEa
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+.data
+	.p2align 3
+mlkit_rp_anchor_L_offset_CfA6FlgQoXXcijN5xASZvc:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa - mlkit_rp_anchor_L_offset_CfA6FlgQoXXcijN5xASZvc
+mlkit_rp_anchor_L_offset_PHmqYs9f7c1mvHs6pbNzFm:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc - mlkit_rp_anchor_L_offset_PHmqYs9f7c1mvHs6pbNzFm
+	.quad 0
+	.quad 0
+	.quad 7
+	.quad 0x52504d34
+L_rp_map_pSlgaHk8FUHoxCVeVPfD4b:
+.data
+	.align 8
+D.StringLab12_kOHzY3dIyGkN9b2ps3HlUt:
+	.quad 0XA1
+	.byte 96
+	.byte 114
+	.byte 0
+.data
+	.align 8
+D.StringLab11_Ile8KOsD2Fgrb67aGKmtzb:
+	.quad 0X4A1
+	.byte 114
+	.byte 101
+	.byte 115
+	.byte 101
+	.byte 116
+	.byte 32
+	.byte 108
+	.byte 111
+	.byte 111
+	.byte 112
+	.byte 32
+	.byte 112
+	.byte 97
+	.byte 115
+	.byte 115
+	.byte 101
+	.byte 100
+	.byte 10
+	.byte 0
+.data
+	.align 8
+D.StringLab10_esBfqah0rbutv0FHlNQbYe:
+	.quad 0X121
+	.byte 66
+	.byte 65
+	.byte 68
+	.byte 10
+	.byte 0
+.data
+	.align 8
+D.result_lab5_EV3rFpPjzEguikVYeMrp8i:
+	.quad 1
+.data
+	.align 8
+D.StringLab9_JBLjag5HQq5vQ7zNA3aHJf:
+	.quad 0X721
+	.byte 109
+	.byte 97
+	.byte 105
+	.byte 110
+	.byte 49
+	.byte 95
+	.byte 115
+	.byte 84
+	.byte 117
+	.byte 56
+	.byte 110
+	.byte 106
+	.byte 89
+	.byte 65
+	.byte 70
+	.byte 90
+	.byte 56
+	.byte 55
+	.byte 77
+	.byte 118
+	.byte 108
+	.byte 107
+	.byte 48
+	.byte 107
+	.byte 108
+	.byte 90
+	.byte 67
+	.byte 107
+	.byte 0
+.data
+	.p2align 3
+mlkit_rp_anchor_L_offset_0gHhI2UgYurXY6HnioNUGf:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa - mlkit_rp_anchor_L_offset_0gHhI2UgYurXY6HnioNUGf
+mlkit_rp_anchor_L_offset_qSebomUYYRjyz2ayRI4Dhe:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc - mlkit_rp_anchor_L_offset_qSebomUYYRjyz2ayRI4Dhe
+	.quad 0
+	.quad 0
+	.quad 1
+	.quad 0x52504d34
+L_rp_map_fhSk81cDCcHp9fxy62qPTc:
+.data
+	.p2align 3
+L_allocation_metadata_pKnaB6lBxldcB5fynAFBcn:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab8_LJpSDjtBrbR13KXZ5msv5d
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad 8
+	.quad 0
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+.data
+	.align 8
+D.StringLab8_LJpSDjtBrbR13KXZ5msv5d:
+	.quad 0X9A1
+	.byte 108
+	.byte 111
+	.byte 111
+	.byte 112
+	.byte 95
+	.byte 95
+	.byte 110
+	.byte 111
+	.byte 105
+	.byte 110
+	.byte 108
+	.byte 105
+	.byte 110
+	.byte 101
+	.byte 52
+	.byte 95
+	.byte 76
+	.byte 120
+	.byte 90
+	.byte 79
+	.byte 110
+	.byte 110
+	.byte 72
+	.byte 97
+	.byte 69
+	.byte 105
+	.byte 72
+	.byte 100
+	.byte 78
+	.byte 117
+	.byte 48
+	.byte 97
+	.byte 109
+	.byte 50
+	.byte 90
+	.byte 71
+	.byte 106
+	.byte 118
+	.byte 0
+.data
+	.align 8
+D.StringLab7_k4mhf6Vbhd9XRRvzDfyQ7c:
+	.quad 0X9A1
+	.byte 108
+	.byte 111
+	.byte 111
+	.byte 112
+	.byte 95
+	.byte 95
+	.byte 110
+	.byte 111
+	.byte 105
+	.byte 110
+	.byte 108
+	.byte 105
+	.byte 110
+	.byte 101
+	.byte 52
+	.byte 95
+	.byte 76
+	.byte 120
+	.byte 90
+	.byte 79
+	.byte 110
+	.byte 110
+	.byte 72
+	.byte 97
+	.byte 69
+	.byte 105
+	.byte 72
+	.byte 100
+	.byte 78
+	.byte 117
+	.byte 48
+	.byte 97
+	.byte 109
+	.byte 50
+	.byte 90
+	.byte 71
+	.byte 106
+	.byte 118
+	.byte 0
+.data
+	.p2align 3
+mlkit_rp_anchor_L_offset_DHzOB9bzizere94cMUkZMq:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa - mlkit_rp_anchor_L_offset_DHzOB9bzizere94cMUkZMq
+mlkit_rp_anchor_L_offset_XCFSPxMebhpTAcALPzmlYu:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc - mlkit_rp_anchor_L_offset_XCFSPxMebhpTAcALPzmlYu
+	.quad 0
+	.quad 0
+	.quad 1
+	.quad 0x52504d34
+L_rp_map_4CDgUKZUhcHGrkK8NkSccn:
+.data
+	.align 8
+D.StringLab6_hkRTBMSFiymxEKjDxjdA3i:
+	.quad 0X661
+	.byte 33
+	.byte 51
+	.byte 95
+	.byte 71
+	.byte 98
+	.byte 57
+	.byte 105
+	.byte 101
+	.byte 84
+	.byte 77
+	.byte 111
+	.byte 76
+	.byte 55
+	.byte 104
+	.byte 75
+	.byte 81
+	.byte 97
+	.byte 97
+	.byte 70
+	.byte 82
+	.byte 122
+	.byte 52
+	.byte 99
+	.byte 69
+	.byte 110
+	.byte 0
+.data
+	.p2align 3
+mlkit_rp_anchor_L_offset_FOGhramPv9uUbuZJSgPV6o:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa - mlkit_rp_anchor_L_offset_FOGhramPv9uUbuZJSgPV6o
+mlkit_rp_anchor_L_offset_8hdX3mty0hfe6NI7LBClRj:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc - mlkit_rp_anchor_L_offset_8hdX3mty0hfe6NI7LBClRj
+	.quad 0
+	.quad 0
+	.quad 1
+	.quad 0x52504d34
+L_rp_map_SAnYpLiLTC4KenvHzQHbke:
+.data
+	.p2align 3
+L_allocation_metadata_E2cCV4lgs1LBPtSh6f6Epq:
+	.quad D.StringLab3_aDcOLY4gT94t9DJI0qnaFc
+	.quad D.StringLab5_TcPcPznpBSLgs2SPq0FAYB
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa
+	.quad 3
+	.quad 0
+	.quad D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp
+.data
+	.align 8
+D.StringLab5_TcPcPznpBSLgs2SPq0FAYB:
+	.quad 0X661
+	.byte 61
+	.byte 50
+	.byte 95
+	.byte 108
+	.byte 90
+	.byte 105
+	.byte 71
+	.byte 54
+	.byte 56
+	.byte 111
+	.byte 83
+	.byte 50
+	.byte 102
+	.byte 69
+	.byte 107
+	.byte 54
+	.byte 84
+	.byte 84
+	.byte 110
+	.byte 122
+	.byte 65
+	.byte 76
+	.byte 54
+	.byte 111
+	.byte 108
+	.byte 0
+.data
+	.align 8
+D.StringLab4_UDDfMFSkGGabQFSvyPAsEa:
+	.quad 0X661
+	.byte 61
+	.byte 50
+	.byte 95
+	.byte 108
+	.byte 90
+	.byte 105
+	.byte 71
+	.byte 54
+	.byte 56
+	.byte 111
+	.byte 83
+	.byte 50
+	.byte 102
+	.byte 69
+	.byte 107
+	.byte 54
+	.byte 84
+	.byte 84
+	.byte 110
+	.byte 122
+	.byte 65
+	.byte 76
+	.byte 54
+	.byte 111
+	.byte 108
+	.byte 0
+.data
+	.p2align 3
+.globl mlkit_rp_source_main1_sTu8njYAFZ87Mvlk0klZCk
+.type mlkit_rp_source_main1_sTu8njYAFZ87Mvlk0klZCk,@object
+mlkit_rp_source_main1_sTu8njYAFZ87Mvlk0klZCk:
+	.quad D.StringLab1_uFido3Zi78ZxSNb99MnLJa + 8
+.data
+.globl D.result_lab5_EV3rFpPjzEguikVYeMrp8i
+.type D.result_lab5_EV3rFpPjzEguikVYeMrp8i,@object
+.data
+.globl F.main1_sTu8njYAFZ87Mvlk0klZCk
+.type F.main1_sTu8njYAFZ87Mvlk0klZCk,@function
+.globl F._2_lZiG68oS2fEk6TTnzAL6ol
+.type F._2_lZiG68oS2fEk6TTnzAL6ol,@function
+.globl F._3_Gb9ieTMoL7hKQaaFRz4cEn
+.type F._3_Gb9ieTMoL7hKQaaFRz4cEn,@function
+.data
+	.align 8
+D.StringLab3_aDcOLY4gT94t9DJI0qnaFc:
+	.quad 0X721
+	.byte 109
+	.byte 97
+	.byte 105
+	.byte 110
+	.byte 49
+	.byte 95
+	.byte 115
+	.byte 84
+	.byte 117
+	.byte 56
+	.byte 110
+	.byte 106
+	.byte 89
+	.byte 65
+	.byte 70
+	.byte 90
+	.byte 56
+	.byte 55
+	.byte 77
+	.byte 118
+	.byte 108
+	.byte 107
+	.byte 48
+	.byte 107
+	.byte 108
+	.byte 90
+	.byte 67
+	.byte 107
+	.byte 0
+.data
+	.align 8
+D.StringLab2_y5MdoOHatqGJ5rH5PjEtGp:
+	.quad 0X821
+	.byte 100
+	.byte 51
+	.byte 98
+	.byte 51
+	.byte 53
+	.byte 97
+	.byte 98
+	.byte 52
+	.byte 54
+	.byte 102
+	.byte 101
+	.byte 54
+	.byte 50
+	.byte 57
+	.byte 54
+	.byte 55
+	.byte 56
+	.byte 99
+	.byte 53
+	.byte 49
+	.byte 101
+	.byte 100
+	.byte 55
+	.byte 56
+	.byte 54
+	.byte 51
+	.byte 100
+	.byte 55
+	.byte 99
+	.byte 49
+	.byte 102
+	.byte 56
+	.byte 0
+.data
+	.align 8
+D.StringLab1_uFido3Zi78ZxSNb99MnLJa:
+	.quad 0XDE1
+	.byte 47
+	.byte 116
+	.byte 109
+	.byte 112
+	.byte 47
+	.byte 109
+	.byte 108
+	.byte 107
+	.byte 105
+	.byte 116
+	.byte 45
+	.byte 114
+	.byte 101
+	.byte 115
+	.byte 101
+	.byte 116
+	.byte 45
+	.byte 108
+	.byte 111
+	.byte 111
+	.byte 112
+	.byte 46
+	.byte 75
+	.byte 48
+	.byte 113
+	.byte 119
+	.byte 57
+	.byte 106
+	.byte 47
+	.byte 112
+	.byte 114
+	.byte 111
+	.byte 102
+	.byte 45
+	.byte 98
+	.byte 101
+	.byte 102
+	.byte 111
+	.byte 114
+	.byte 101
+	.byte 47
+	.byte 114
+	.byte 101
+	.byte 115
+	.byte 101
+	.byte 116
+	.byte 45
+	.byte 108
+	.byte 111
+	.byte 111
+	.byte 112
+	.byte 46
+	.byte 115
+	.byte 109
+	.byte 108
+	.byte 0

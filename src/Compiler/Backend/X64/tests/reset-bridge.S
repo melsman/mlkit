@@ -1,0 +1,130 @@
+#ifdef __APPLE__
+#define NAME(x) _##x
+#else
+#define NAME(x) x
+#endif
+.text
+.p2align 4
+.globl NAME(generated_reset)
+NAME(generated_reset):
+  pushq %rbx
+  pushq %rbp
+  pushq %r12
+  pushq %r13
+  pushq %r14
+  pushq %r15
+  subq $8,%rsp
+  movq %rdi,%r11
+  movq $1234567,%rax
+  movq %rax,%xmm0
+  movq %rax,%xmm1
+  movq %rax,%xmm2
+  movq %rax,%xmm3
+  movq %rax,%xmm4
+  movq %rax,%xmm5
+  movq %rax,%xmm6
+  movq %rax,%xmm7
+  movq %rax,%xmm8
+  movq %rax,%xmm9
+  movq %rax,%xmm10
+  movq %rax,%xmm11
+  movq %rax,%xmm12
+  movq %rax,%xmm13
+  movq %rax,%rbx
+  movq %rax,%rbp
+  movq %rax,%rcx
+  movq %rax,%rdx
+  movq %rax,%rsi
+  movq %rax,%rdi
+  movq %rax,%r8
+  movq %rax,%r9
+  movq %rax,%r12
+  movq %rax,%r13
+  movq %rax,%r14
+  movq %rax,%r15
+  call NAME(__reset_region)
+  cmpq $1234567,%rax
+  jne 1f
+  cmpq $1234567,%rbx
+  jne 1f
+  cmpq $1234567,%rbp
+  jne 1f
+  cmpq $1234567,%rcx
+  jne 1f
+  cmpq $1234567,%rdx
+  jne 1f
+  cmpq $1234567,%rsi
+  jne 1f
+  cmpq $1234567,%rdi
+  jne 1f
+  cmpq $1234567,%r8
+  jne 1f
+  cmpq $1234567,%r9
+  jne 1f
+  cmpq $1234567,%r12
+  jne 1f
+  cmpq $1234567,%r13
+  jne 1f
+  cmpq $1234567,%r14
+  jne 1f
+  cmpq $1234567,%r15
+  jne 1f
+  movq %xmm0,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm1,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm2,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm3,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm4,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm5,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm6,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm7,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm8,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm9,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm10,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm11,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm12,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %xmm13,%r10
+  cmpq $1234567,%r10
+  jne 1f
+  movq %r11,%rax
+  addq $8,%rsp
+  popq %r15
+  popq %r14
+  popq %r13
+  popq %r12
+  popq %rbp
+  popq %rbx
+  ret
+1:
+  call NAME(abort)
+.globl NAME(raise_exn)
+NAME(raise_exn):
+  jmp NAME(abort)
+#ifndef __APPLE__
+.section .note.GNU-stack,"",@progbits
+#endif

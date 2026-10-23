@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+2816630	 412376	    808	3229814	 314876	vliw.exe

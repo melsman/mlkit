@@ -1,0 +1,10 @@
+kitfib35 reset-audit site=0 shared_entry=0 shared_hit=0 slow=0 legacy=0 c=0 c_eligible=0 c_large=0 c_multi=0
+kitlife35u reset-audit site=397393 shared_entry=0 shared_hit=0 slow=9 legacy=0 c=9 c_eligible=0 c_large=0 c_multi=9
+kitqsort reset-audit site=231376 shared_entry=0 shared_hit=0 slow=46 legacy=0 c=46 c_eligible=0 c_large=0 c_multi=46
+kittmergesort reset-audit site=100002 shared_entry=0 shared_hit=0 slow=0 legacy=0 c=0 c_eligible=0 c_large=0 c_multi=0
+kitkbjul9 reset-audit site=2938731 shared_entry=0 shared_hit=0 slow=330 legacy=0 c=330 c_eligible=0 c_large=0 c_multi=330
+kitsimple reset-audit site=86111 shared_entry=0 shared_hit=0 slow=3 legacy=0 c=3 c_eligible=0 c_large=0 c_multi=3
+kitmandelbrot reset-audit site=3 shared_entry=0 shared_hit=0 slow=0 legacy=0 c=0 c_eligible=0 c_large=0 c_multi=0
+fft reset-audit site=1048064 shared_entry=0 shared_hit=0 slow=508 legacy=0 c=508 c_eligible=0 c_large=0 c_multi=508
+nucleic reset-audit site=3054 shared_entry=0 shared_hit=0 slow=0 legacy=0 c=0 c_eligible=0 c_large=0 c_multi=0
+ray reset-audit site=3145900 shared_entry=0 shared_hit=0 slow=0 legacy=0 c=0 c_eligible=0 c_large=0 c_multi=0
