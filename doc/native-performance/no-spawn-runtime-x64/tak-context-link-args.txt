@@ -1,0 +1,11 @@
+-o
+/tmp/mlkit-parallel-runtime.EWw99w/executables/tak-context.exe
+MLB/RI_PAR/base-link_objects.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial2.sml.o
+./MLB/RI_PAR/tak.sml.o
+/tmp/mlkit-page-pool256/lib/linux-x86_64/runtimeSystemPar.a
+-lm
+-lc
+-ldl
+-pthread

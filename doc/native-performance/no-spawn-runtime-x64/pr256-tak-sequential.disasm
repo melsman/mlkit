@@ -1,0 +1,57 @@
+
+/tmp/mlkit-parallel-runtime.EWw99w/executables/tak-sequential.exe:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .plt.got:
+
+Disassembly of section .text:
+
+000000000000abe2 <F.tak2_EChpqdV9u6ObIQKicxVjpc>:
+    abe2:	lea    -0x28(%rsp),%rsp
+    abe7:	mov    %rdi,0x10(%rsp)
+    abec:	mov    %rbx,0x18(%rsp)
+    abf1:	mov    %rax,0x20(%rsp)
+    abf6:	mov    0x18(%rsp),%r10
+    abfb:	mov    0x20(%rsp),%r11
+    ac00:	cmp    %r11,%r10
+    ac03:	jl     ac10 <L_k5F_D2bveqxFoOs1SkzlkqGPfq>
+    ac05:	mov    0x10(%rsp),%rdi
+    ac0a:	lea    0x28(%rsp),%rsp
+    ac0f:	ret
+
+000000000000ac10 <L_k5F_D2bveqxFoOs1SkzlkqGPfq>:
+    ac10:	mov    0x20(%rsp),%rax
+    ac15:	sub    $0x1,%rax
+    ac19:	jo     613b <__raise_overflow>
+    ac1f:	mov    0x10(%rsp),%rdi
+    ac24:	mov    0x18(%rsp),%rbx
+    ac29:	call   abe2 <F.tak2_EChpqdV9u6ObIQKicxVjpc>
+    ac2e:	mov    %rdi,0x8(%rsp)
+    ac33:	mov    0x18(%rsp),%rax
+    ac38:	sub    $0x1,%rax
+    ac3c:	jo     613b <__raise_overflow>
+    ac42:	mov    0x20(%rsp),%rdi
+    ac47:	mov    0x10(%rsp),%rbx
+    ac4c:	call   abe2 <F.tak2_EChpqdV9u6ObIQKicxVjpc>
+    ac51:	mov    %rdi,(%rsp)
+    ac55:	mov    0x10(%rsp),%rax
+    ac5a:	sub    $0x1,%rax
+    ac5e:	jo     613b <__raise_overflow>
+    ac64:	mov    0x18(%rsp),%rdi
+    ac69:	mov    0x20(%rsp),%rbx
+    ac6e:	call   abe2 <F.tak2_EChpqdV9u6ObIQKicxVjpc>
+    ac73:	mov    (%rsp),%rbx
+    ac77:	mov    0x8(%rsp),%rax
+    ac7c:	lea    0x28(%rsp),%rsp
+    ac81:	jmp    abe2 <F.tak2_EChpqdV9u6ObIQKicxVjpc>
+
+000000000000ac86 <mlkit_tp_end_tak2_EChpqdV9u6ObIQKicxVjpc>:
+    ac86:	cs nopw 0x0(%rax,%rax,1)
+
+Disassembly of section mlkit_tp_reset_code:
+
+Disassembly of section .fini:

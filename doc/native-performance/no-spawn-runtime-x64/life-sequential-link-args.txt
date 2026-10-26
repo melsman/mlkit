@@ -1,0 +1,13 @@
+-o
+/tmp/mlkit-parallel-runtime.EWw99w/executables/life-sequential.exe
+MLB/RI/base-link_objects.o
+/tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/General.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial2.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/List.sml.o
+./MLB/RI/life.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/seq/lib/runtimeSystem.a
+-lm
+-lc
+-ldl
+-pthread

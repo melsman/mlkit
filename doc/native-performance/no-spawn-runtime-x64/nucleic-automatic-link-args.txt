@@ -1,0 +1,14 @@
+-o
+/tmp/mlkit-parallel-runtime.EWw99w/executables/nucleic-automatic.exe
+MLB/RI_PAR/base-link_objects.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/General.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial2.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/List.sml.o
+./nucleic/MLB/RI_PAR/nucleic.sml.o
+./nucleic/MLB/RI_PAR/main.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/lib/runtimeSystemParNoSpawn.a
+-lm
+-lc
+-ldl
+-pthread

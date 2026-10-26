@@ -1,0 +1,4 @@
+SML_LIB="/tmp/mlkit-page-pool256" MLKIT="/tmp/mlkit-page-pool256/bin/mlkit" REML="/tmp/mlkit-page-pool256/bin/reml" CC="cc" \
+  sh src/Compiler/Backend/tests/check-spawn-policy.sh
+Spawn policy outputs: /tmp/mlkit-spawn-policy.HgSMQE
+Standalone spawn policy, cached true/false metadata, globals and runtime fallback passed.

@@ -1,10 +1,14 @@
 #!/bin/sh
-# Manual ARM64 assessment only. Never run timing collection in CI.
+# Manual native assessment only. Never run timing collection in CI.
 set -eu
 : "${SML_LIB:?Set SML_LIB to the built source/runtime checkout}"
 : "${MLKIT:?Set MLKIT to the compiler under test}"
 : "${BENCH_ROOT:?Set BENCH_ROOT to mlkit-bench}"
-[ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || exit 1
+case $(uname -s)-$(uname -m) in
+  Darwin-arm64) link_flags='-arch arm64 -Wl,-stack_size,0x10000000';;
+  Linux-x86_64) link_flags=;;
+  *) echo 'Unsupported native target' >&2; exit 1;;
+esac
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-page-pool-integrated.XXXXXX")
 echo "Page-pool benchmark outputs: $scratch"
 programs='barnes-hut fft fib37 kbc lexgen life logic mandelbrot mlyacc mpuz msort nucleic professor ratio ray simple tak tsp vliw zebra'
@@ -44,7 +48,7 @@ for name in $programs; do
     reference=0; [ "$variant" != reference ] || reference=1
     PAGE_POOL_REFERENCE=$reference PAGE_POOL_LINK_LOG=$scratch/$name-$variant-link-args.txt \
       SML_LIB=$stage "$MLKIT" -ri -par -no_gc -debug_linking --no_delete_target_files \
-      -ldexe "$scratch/linker -arch arm64 -Wl,-stack_size,0x10000000" \
+      -ldexe "$scratch/linker $link_flags" \
       -o "$scratch/executables/$name-$variant.exe" "$source" > "$scratch/$name-$variant-build.log" 2>&1
     archive=runtimeSystemParNoSpawn.a
     [ "$variant" != reference ] || archive=runtimeSystemPar.a
@@ -59,7 +63,9 @@ for name in $programs; do
   for round in 1 2 3 4 5; do
     case $round in 1|3|5) order='reference automatic';; *) order='automatic reference';; esac
     for variant in $order; do
-      "$scratch/timer" "$scratch/$name-$variant-$round.out" "$scratch/executables/$name-$variant.exe" \
+      set --
+      [ "$(uname -s)" != Linux ] || set -- taskset -c "${BENCH_CPU:-0}"
+      "$@" "$scratch/timer" "$scratch/$name-$variant-$round.out" "$scratch/executables/$name-$variant.exe" \
         > "$scratch/$name-$variant-$round.time" 2> "$scratch/$name-$variant-$round.err"
       cmp "$scratch/$name.expected" "$scratch/$name-$variant-$round.out"
       printf '%s,%s,%s,%s\n' "$name" "$round" "$variant" "$(cat "$scratch/$name-$variant-$round.time")" >> "$scratch/samples.csv"

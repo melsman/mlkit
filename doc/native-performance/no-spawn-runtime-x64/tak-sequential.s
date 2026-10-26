@@ -1,0 +1,329 @@
+.text
+F.main1_g3PpuUCg0Mxe0lcrScdPmb:
+	leaq -8(%rsp),%rsp
+	movq $5000,%rax
+	call F.f3_Lp9m44lDpDnI6J3e7kHV5g@PLT
+	leaq 8(%rsp),%rsp
+	ret
+mlkit_tp_end_main1_g3PpuUCg0Mxe0lcrScdPmb:
+F.f3_Lp9m44lDpDnI6J3e7kHV5g:
+	leaq -8(%rsp),%rsp
+	movq %rax,(%rsp)
+	movq %rax,%r11
+	cmpq $0,%r11
+	jne L_newSelLab_haUkZLloue9yhVEg11mY6a
+	leaq 8(%rsp),%rsp
+	ret
+	.p2align 0x4
+L_newSelLab_haUkZLloue9yhVEg11mY6a:
+	movq $6,%rdi
+	movq $12,%rbx
+	movq $18,%rax
+	call F.tak2_EChpqdV9u6ObIQKicxVjpc@PLT
+	movq (%rsp),%rax
+	subq $1,%rax
+	jo __raise_overflow@PLT
+	leaq 8(%rsp),%rsp
+	jmp F.f3_Lp9m44lDpDnI6J3e7kHV5g@PLT
+mlkit_tp_end_f3_Lp9m44lDpDnI6J3e7kHV5g:
+F.tak2_EChpqdV9u6ObIQKicxVjpc:
+	leaq -40(%rsp),%rsp
+	movq %rdi,16(%rsp)
+	movq %rbx,24(%rsp)
+	movq %rax,32(%rsp)
+	movq 24(%rsp),%r10
+	movq 32(%rsp),%r11
+	cmpq %r11,%r10
+	jl L_k5F_D2bveqxFoOs1SkzlkqGPfq
+	movq 16(%rsp),%rdi
+	leaq 40(%rsp),%rsp
+	ret
+	.p2align 0x4
+L_k5F_D2bveqxFoOs1SkzlkqGPfq:
+	movq 32(%rsp),%rax
+	subq $1,%rax
+	jo __raise_overflow@PLT
+	movq 16(%rsp),%rdi
+	movq 24(%rsp),%rbx
+	call F.tak2_EChpqdV9u6ObIQKicxVjpc@PLT
+	movq %rdi,8(%rsp)
+	movq 24(%rsp),%rax
+	subq $1,%rax
+	jo __raise_overflow@PLT
+	movq 32(%rsp),%rdi
+	movq 16(%rsp),%rbx
+	call F.tak2_EChpqdV9u6ObIQKicxVjpc@PLT
+	movq %rdi,(%rsp)
+	movq 16(%rsp),%rax
+	subq $1,%rax
+	jo __raise_overflow@PLT
+	movq 24(%rsp),%rdi
+	movq 32(%rsp),%rbx
+	call F.tak2_EChpqdV9u6ObIQKicxVjpc@PLT
+	movq (%rsp),%rbx
+	movq 8(%rsp),%rax
+	leaq 40(%rsp),%rsp
+	jmp F.tak2_EChpqdV9u6ObIQKicxVjpc@PLT
+mlkit_tp_end_tak2_EChpqdV9u6ObIQKicxVjpc:
+.section 	.note.GNU-stack,"",@progbits
+.data
+.data
+	.p2align 3
+.globl mlkit_rp_code_main1_g3PpuUCg0Mxe0lcrScdPmb
+.type mlkit_rp_code_main1_g3PpuUCg0Mxe0lcrScdPmb,@object
+mlkit_rp_code_main1_g3PpuUCg0Mxe0lcrScdPmb:
+	.quad 1
+	.quad 3
+	.quad F.main1_g3PpuUCg0Mxe0lcrScdPmb
+	.quad mlkit_tp_end_main1_g3PpuUCg0Mxe0lcrScdPmb
+	.quad D.StringLab3_SHTa1KeOqmjE0M3LIe7ZYq
+	.quad D.StringLab6_zMKejlJippSe9vmkXeMErt
+	.quad D.StringLab1_fXCoRURyNLpkqNYkgZKJIc
+	.quad D.StringLab2_k42Z1tmXiPSlsdaMtd8Ord
+	.quad F.f3_Lp9m44lDpDnI6J3e7kHV5g
+	.quad mlkit_tp_end_f3_Lp9m44lDpDnI6J3e7kHV5g
+	.quad D.StringLab3_SHTa1KeOqmjE0M3LIe7ZYq
+	.quad D.StringLab5_bLdEldhs8Gjh6ftx7mDfYt
+	.quad D.StringLab1_fXCoRURyNLpkqNYkgZKJIc
+	.quad D.StringLab2_k42Z1tmXiPSlsdaMtd8Ord
+	.quad F.tak2_EChpqdV9u6ObIQKicxVjpc
+	.quad mlkit_tp_end_tak2_EChpqdV9u6ObIQKicxVjpc
+	.quad D.StringLab3_SHTa1KeOqmjE0M3LIe7ZYq
+	.quad D.StringLab4_QDSinS2of0BcHSEPJHaj3e
+	.quad D.StringLab1_fXCoRURyNLpkqNYkgZKJIc
+	.quad D.StringLab2_k42Z1tmXiPSlsdaMtd8Ord
+.data
+	.align 8
+D.StringLab6_zMKejlJippSe9vmkXeMErt:
+	.quad 0X721
+	.byte 109
+	.byte 97
+	.byte 105
+	.byte 110
+	.byte 49
+	.byte 95
+	.byte 103
+	.byte 51
+	.byte 80
+	.byte 112
+	.byte 117
+	.byte 85
+	.byte 67
+	.byte 103
+	.byte 48
+	.byte 77
+	.byte 120
+	.byte 101
+	.byte 48
+	.byte 108
+	.byte 99
+	.byte 114
+	.byte 83
+	.byte 99
+	.byte 100
+	.byte 80
+	.byte 109
+	.byte 98
+	.byte 0
+.data
+	.align 8
+D.StringLab5_bLdEldhs8Gjh6ftx7mDfYt:
+	.quad 0X661
+	.byte 102
+	.byte 51
+	.byte 95
+	.byte 76
+	.byte 112
+	.byte 57
+	.byte 109
+	.byte 52
+	.byte 52
+	.byte 108
+	.byte 68
+	.byte 112
+	.byte 68
+	.byte 110
+	.byte 73
+	.byte 54
+	.byte 74
+	.byte 51
+	.byte 101
+	.byte 55
+	.byte 107
+	.byte 72
+	.byte 86
+	.byte 53
+	.byte 103
+	.byte 0
+.data
+	.align 8
+D.StringLab4_QDSinS2of0BcHSEPJHaj3e:
+	.quad 0X6E1
+	.byte 116
+	.byte 97
+	.byte 107
+	.byte 50
+	.byte 95
+	.byte 69
+	.byte 67
+	.byte 104
+	.byte 112
+	.byte 113
+	.byte 100
+	.byte 86
+	.byte 57
+	.byte 117
+	.byte 54
+	.byte 79
+	.byte 98
+	.byte 73
+	.byte 81
+	.byte 75
+	.byte 105
+	.byte 99
+	.byte 120
+	.byte 86
+	.byte 106
+	.byte 112
+	.byte 99
+	.byte 0
+.data
+.data
+.globl F.main1_g3PpuUCg0Mxe0lcrScdPmb
+.type F.main1_g3PpuUCg0Mxe0lcrScdPmb,@function
+.globl F.tak2_EChpqdV9u6ObIQKicxVjpc
+.type F.tak2_EChpqdV9u6ObIQKicxVjpc,@function
+.globl F.f3_Lp9m44lDpDnI6J3e7kHV5g
+.type F.f3_Lp9m44lDpDnI6J3e7kHV5g,@function
+.data
+	.align 8
+D.StringLab3_SHTa1KeOqmjE0M3LIe7ZYq:
+	.quad 0X721
+	.byte 109
+	.byte 97
+	.byte 105
+	.byte 110
+	.byte 49
+	.byte 95
+	.byte 103
+	.byte 51
+	.byte 80
+	.byte 112
+	.byte 117
+	.byte 85
+	.byte 67
+	.byte 103
+	.byte 48
+	.byte 77
+	.byte 120
+	.byte 101
+	.byte 48
+	.byte 108
+	.byte 99
+	.byte 114
+	.byte 83
+	.byte 99
+	.byte 100
+	.byte 80
+	.byte 109
+	.byte 98
+	.byte 0
+.data
+	.align 8
+D.StringLab2_k42Z1tmXiPSlsdaMtd8Ord:
+	.quad 0X821
+	.byte 100
+	.byte 55
+	.byte 49
+	.byte 53
+	.byte 55
+	.byte 55
+	.byte 55
+	.byte 51
+	.byte 97
+	.byte 97
+	.byte 101
+	.byte 100
+	.byte 55
+	.byte 57
+	.byte 54
+	.byte 56
+	.byte 100
+	.byte 102
+	.byte 101
+	.byte 101
+	.byte 48
+	.byte 53
+	.byte 99
+	.byte 100
+	.byte 54
+	.byte 53
+	.byte 101
+	.byte 50
+	.byte 101
+	.byte 51
+	.byte 102
+	.byte 100
+	.byte 0
+.data
+	.align 8
+D.StringLab1_fXCoRURyNLpkqNYkgZKJIc:
+	.quad 0XE61
+	.byte 47
+	.byte 116
+	.byte 109
+	.byte 112
+	.byte 47
+	.byte 109
+	.byte 108
+	.byte 107
+	.byte 105
+	.byte 116
+	.byte 45
+	.byte 112
+	.byte 97
+	.byte 114
+	.byte 97
+	.byte 108
+	.byte 108
+	.byte 101
+	.byte 108
+	.byte 45
+	.byte 114
+	.byte 117
+	.byte 110
+	.byte 116
+	.byte 105
+	.byte 109
+	.byte 101
+	.byte 46
+	.byte 69
+	.byte 87
+	.byte 119
+	.byte 57
+	.byte 57
+	.byte 119
+	.byte 47
+	.byte 115
+	.byte 101
+	.byte 113
+	.byte 47
+	.byte 98
+	.byte 101
+	.byte 110
+	.byte 99
+	.byte 104
+	.byte 109
+	.byte 97
+	.byte 114
+	.byte 107
+	.byte 115
+	.byte 47
+	.byte 116
+	.byte 97
+	.byte 107
+	.byte 46
+	.byte 115
+	.byte 109
+	.byte 108
+	.byte 0

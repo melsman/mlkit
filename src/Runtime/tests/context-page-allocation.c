@@ -3,6 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Spawn.h"
+#include "Exception.h"
+
+/* A C-only probe has no generated ML exception entry; never reach it. */
+void raise_exn(Context ctx, uintptr_t exn)
+{
+  (void)ctx;
+  (void)exn;
+  abort();
+}
 
 static _Thread_local size_t lookups;
 

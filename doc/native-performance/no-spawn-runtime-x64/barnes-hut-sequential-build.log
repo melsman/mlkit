@@ -1,0 +1,192 @@
+[reading source file:	barnes-hut/rand-sig.sml]
+[reading source file:	barnes-hut/rand.sml]
+[wrote X64 code file:	barnes-hut/MLB/RI/rand.sml.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/rand.sml.o' 'barnes-hut/MLB/RI/rand.sml.s']
+[reading source file:	barnes-hut/vector-sig.sml]
+[reading source file:	barnes-hut/space.sml]
+[reading source file:	barnes-hut/load.sml]
+[reading source file:	barnes-hut/grav.sml]
+[reading source file:	barnes-hut/getparam.sml]
+[wrote X64 code file:	barnes-hut/MLB/RI/getparam.sml.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/getparam.sml.o' 'barnes-hut/MLB/RI/getparam.sml.s']
+[reading source file:	barnes-hut/data-io.sml]
+[reading source file:	barnes-hut/main.sml]
+[reading source file:	barnes-hut/vector3.sml]
+[wrote X64 code file:	barnes-hut/MLB/RI/vector3.sml.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/vector3.sml.o' 'barnes-hut/MLB/RI/vector3.sml.s']
+[reading source file:	barnes-hut/main2.sml]
+[compiling body of functor Main (from source sources.mlb->main.sml) begin]
+[compiling body of functor Space (from source sources.mlb->space.sml) begin]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code2.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code2.o' 'barnes-hut/MLB/RI/main2.sml.code2.s']
+[compiling body of functor Space end]
+[compiling body of functor Load (from source sources.mlb->load.sml) begin]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code3.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code3.o' 'barnes-hut/MLB/RI/main2.sml.code3.s']
+[compiling body of functor Load end]
+[compiling body of functor Grav (from source sources.mlb->grav.sml) begin]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code4.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code4.o' 'barnes-hut/MLB/RI/main2.sml.code4.s']
+[compiling body of functor Grav end]
+[compiling body of functor DataIO (from source sources.mlb->data-io.sml) begin]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code5.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code5.o' 'barnes-hut/MLB/RI/main2.sml.code5.s']
+[compiling body of functor DataIO end]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code6.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code6.o' 'barnes-hut/MLB/RI/main2.sml.code6.s']
+[compiling body of functor Main end]
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.code7.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.code7.o' 'barnes-hut/MLB/RI/main2.sml.code7.s']
+[wrote X64 code file:	barnes-hut/MLB/RI/main2.sml.s]
+[Executing: as --64 -o 'barnes-hut/MLB/RI/main2.sml.o' 'barnes-hut/MLB/RI/main2.sml.s']
+ *** Warnings ***
+<string>, line 41, column 16:
+      fun putCell (Cell a, i, nd) = Array.update(a, i, nd)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 42, column 16:
+      fun getCell (Cell a, i) = Array.sub(a, i)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 56, column 23:
+            fun mkBodies ([], [], [], l) = l
+                         ^^^^^^^^^^^^^^^^^^^
+      (text omitted)
+                  end
+  ^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+[Link time dead code elimination begin...]
+Using       ./barnes-hut/MLB/RI/main2.sml.o (unsafe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code7.o (safe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code6.o (unsafe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code5.o (unsafe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code4.o (safe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code3.o (unsafe)
+Using       ./barnes-hut/MLB/RI/main2.sml.code2.o (unsafe)
+Using       ./barnes-hut/MLB/RI/vector3.sml.o (safe)
+Using       ./barnes-hut/MLB/RI/getparam.sml.o (unsafe)
+Using       ./barnes-hut/MLB/RI/rand.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Unix.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-io.sml.code6.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-io.sml.code5.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-io.sml.code4.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-io.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code7.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code6.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code5.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code4.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code1.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/cleaner.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code43.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code41.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code40.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code37.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code36.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code33.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code32.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code29.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code28.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code26.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code25.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code24.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code23.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code22.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code21.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code20.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code19.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code18.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code16.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code13.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code10.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code8.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code7.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code6.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code4.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code2.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code1.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-prim-io.sml.code2.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/bin-prim-io.sml.code1.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-prim-io.sml.code2.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-prim-io.sml.code1.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Socket.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/NetHostDB.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Date.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/CommandLine.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/OS.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Process.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/FileSys.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Path.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Random.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Timer.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Time.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/PosixStat.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IO.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/PackRealBig.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/PackRealLittle.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Real.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Math.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/inttables.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/wordtables.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IntInf.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IEEEReal.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Ints.sml.code4.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Ints.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Ints.sml.code2.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Ints.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int64.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int63.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int31.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int32.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Byte.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Pack32Big.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Pack32Little.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word16.sml.code2.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word16.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word8.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word31.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word32.sml.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word63.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word64.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IntInfRep.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Bool.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Substring.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/String.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Char.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/StrBase.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/StringCvt.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code12.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code10.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code9.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code7.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code6.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code4.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code3.o (safe)
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code14.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code11.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code10.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code7.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code4.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteTable.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Array2.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ArraySlice.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ArraySlice.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Array.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/VectorSlice.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/VectorSlice.sml.code1.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Vector.sml.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Vector.sml.code4.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Vector.sml.code3.o
+Discharging /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ListPair.sml.o
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/List.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial2.sml.o (unsafe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Option.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/General.sml.o (safe)
+Using       /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial.sml.o (unsafe)
+[Link time dead code elimination end...]
+[wrote X64 code file:	MLB/RI/base-link_objects.s]
+[Executing: as --64 -o 'MLB/RI/base-link_objects.o' 'MLB/RI/base-link_objects.s']
+[Executing: /tmp/mlkit-parallel-runtime.EWw99w/linker  -o /tmp/mlkit-parallel-runtime.EWw99w/executables/barnes-hut-sequential.exe MLB/RI/base-link_objects.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/General.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Option.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Initial2.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/List.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code3.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code6.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code9.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/ByteSlice.sml.code12.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/StringCvt.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/StrBase.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Char.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/String.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Substring.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Bool.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IntInfRep.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Word32.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Byte.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Int31.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IEEEReal.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IntInf.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Math.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Real.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/IO.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/PosixStat.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Time.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Timer.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Random.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Path.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/FileSys.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Process.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/OS.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-prim-io.sml.code1.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-prim-io.sml.code2.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code1.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code8.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code18.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code19.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code20.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code21.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code22.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code23.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/MLB/RI/Posix.sml.code24.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/cleaner.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code1.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code4.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code5.o /tmp/mlkit-parallel-runtime.EWw99w/seq/basis/io/MLB/RI/text-io.sml.code6.o ./barnes-hut/MLB/RI/rand.sml.o ./barnes-hut/MLB/RI/getparam.sml.o ./barnes-hut/MLB/RI/vector3.sml.o ./barnes-hut/MLB/RI/main2.sml.code2.o ./barnes-hut/MLB/RI/main2.sml.code3.o ./barnes-hut/MLB/RI/main2.sml.code4.o ./barnes-hut/MLB/RI/main2.sml.code5.o ./barnes-hut/MLB/RI/main2.sml.code6.o ./barnes-hut/MLB/RI/main2.sml.code7.o ./barnes-hut/MLB/RI/main2.sml.o /tmp/mlkit-parallel-runtime.EWw99w/seq/lib/runtimeSystem.a -lm -lc -ldl -pthread]
+[wrote executable file:	/tmp/mlkit-parallel-runtime.EWw99w/executables/barnes-hut-sequential.exe]

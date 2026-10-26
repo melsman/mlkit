@@ -1,5 +1,7 @@
 # Automatic no-spawn runtime selection: integrated ARM64 assessment
 
+Follow-up: [native X64 runtime assessment and repeated sequential/parallel comparison](no-spawn-runtime-x64-results.md) now complete the ThinkPad measurements. The original Mac evidence below is retained.
+
 ## Result
 
 A built, installed `runtimeSystemParNoSpawn.a` is now selected automatically for supported parallel standalone executables whose retained link objects all report `may_spawn=false`. Both X64 and ARM64 selection code is updated. The runtime uses the parallel ABI and adds no dynamic page-policy check or new user flag.

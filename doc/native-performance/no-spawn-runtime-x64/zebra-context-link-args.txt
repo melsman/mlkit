@@ -1,0 +1,12 @@
+-o
+/tmp/mlkit-parallel-runtime.EWw99w/executables/zebra-context.exe
+MLB/RI_PAR/base-link_objects.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/Initial2.sml.o
+/tmp/mlkit-parallel-runtime.EWw99w/par/basis/MLB/RI_PAR/List.sml.o
+./MLB/RI_PAR/zebra.sml.o
+/tmp/mlkit-page-pool256/lib/linux-x86_64/runtimeSystemPar.a
+-lm
+-lc
+-ldl
+-pthread
