@@ -18,6 +18,22 @@ uintptr_t mlkit_regions_may_spawn = 1;
 
 #include "Runtime.h"
 
+/* Experimental link-selected page policy. Keep all parallel ABI layouts. */
+#ifdef MLKIT_NO_SPAWN_PAGE_POOL
+#if !defined(PARALLEL) || defined(ARGOBOTS) || defined(PROFILING) || defined(ENABLE_GC)
+#error "The no-spawn page-pool experiment requires plain POSIX parallel runtime"
+#endif
+#undef MAYBE_DEFINE_CONTEXT
+#define MAYBE_DEFINE_CONTEXT
+#undef FREELIST
+#define FREELIST global_freelist
+#undef LOCK_LOCK
+#define LOCK_LOCK(name)
+#undef LOCK_UNLOCK
+#define LOCK_UNLOCK(name)
+#endif
+
+
 /*----------------------------------------------------*
  * Hash table to collect region page reuse statistics *
  *  region_page_addr -> int                           *
@@ -368,7 +384,7 @@ size_thread_free_list() {
 /* gives the pages in the local free list back to the global free list */
 void
 free_thread_free_list() {
-#ifdef PARALLEL
+#if defined(PARALLEL) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
   MAYBE_DEFINE_CONTEXT;
 
   LOCK_LOCK(FREELISTMUTEX);
@@ -441,7 +457,7 @@ alloc_new_page_context(Gen *gen, Context ctx)
     np = FREELIST;
     FREELIST = FREELIST->n;
   } else {
-#ifdef PARALLEL
+#if defined(PARALLEL) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
     LOCK_LOCK(FREELISTMUTEX);
     if ( FREELIST == NULL ) {
       // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
@@ -533,7 +549,7 @@ alloc_new_page_context(Gen *gen, Context ctx)
 uintptr_t *
 alloc_new_page(Gen *gen)
 {
-#if defined(PARALLEL) && !defined(ARGOBOTS)
+#if defined(PARALLEL) && !defined(ARGOBOTS) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
   MAYBE_DEFINE_CONTEXT;
   return alloc_new_page_context(gen, ctx);
 #else
