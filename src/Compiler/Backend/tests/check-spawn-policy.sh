@@ -38,10 +38,20 @@ for compiler in "$MLKIT" "$REML"; do
     [ "$compiler" != "$REML" ] || protection=-no_par0
     [ "$mode" != separated ] || protection=""
     for program in spawned spawned sequential sequential; do
-      "$compiler" $protection -par $flags --no_basislib --no_delete_target_files \
+      "$compiler" $protection -par $flags -debug_linking --no_basislib --no_delete_target_files \
         --mlb-subdir SpawnPolicy -ldexe "${CC:-cc} policy.o" \
         --assembler "${CC:-cc} -c" -o program "$program.mlb" > "$program-$mode.log" 2>&1
       ./program > actual
+      expected=runtimeSystemPar.a
+      [ "$mode" != profile ] || expected=runtimeSystemParProf.a
+      if [ "$program" = sequential ] && [ "$mode" != profile ]; then
+        expected=runtimeSystemParNoSpawn.a
+      fi
+      grep -Fq "/$expected" "$program-$mode.log"
+      if [ "$expected" != runtimeSystemParNoSpawn.a ] &&
+         grep -Fq '/runtimeSystemParNoSpawn.a' "$program-$mode.log"; then
+        echo 'Unsafe no-spawn runtime selection.' >&2; exit 1
+      fi
     done
     for program in spawned sequential; do
       if grep -Eq 'reading source file:.*(spawner|shared)\.sml' "$program-$mode.log"; then
@@ -58,9 +68,23 @@ printf '$(SML_LIB)/basis/basis.mlb\nshared.sml\nsequential.sml\n' > basis-client
 for compiler in "$MLKIT" "$REML"; do
   flags=-no_gc
   [ "$compiler" != "$REML" ] || flags=""
-  "$compiler" $flags -par -ldexe "${CC:-cc} policy.o" --assembler "${CC:-cc} -c" \
+  "$compiler" $flags -par -debug_linking -ldexe "${CC:-cc} policy.o" --assembler "${CC:-cc} -c" \
     -o program basis-client.mlb > basis-client.log 2>&1
   ./program > actual
+  grep -Fq "/runtimeSystemParNoSpawn.a" basis-client.log
+done
+# Object-only output also exposes selection without requiring Argobots to be installed.
+for setting in sequential argo argo-profile; do
+  case "$setting" in
+    sequential) flags="-no_gc -no_par"; expected=runtimeSystem.a;;
+    argo) flags="-no_gc -par -argo"; expected=runtimeSystemArPar.a;;
+    argo-profile) flags="-no_gc -par -argo -rp"; expected=runtimeSystemArParProf.a;;
+  esac
+  "$MLKIT" $flags --no_basislib --objs -o runtime-objects sequential.mlb > "objects-$setting.log" 2>&1
+  grep -Fq "/$expected " runtime-objects
+  if grep -Fq "/runtimeSystemParNoSpawn.a" runtime-objects; then
+    echo "Unexpected no-spawn runtime for $setting" >&2; exit 1
+  fi
 done
 if [ "${SPAWN_POLICY_REPL:-1}" = 1 ]; then
   ${CC:-cc} -O2 -fPIC -DPARALLEL -iquote "$SML_LIB/src/Runtime" \
@@ -87,14 +111,21 @@ SML
   # Keep the closure live through joining, as basis/Thread.sml does: the raw
   # foreignptr type hides its region dependencies from inference.
   for compiler in "$MLKIT" "$REML"; do
+    repl_subdir=SpawnPolicyReplMLKit
+    [ "$compiler" != "$REML" ] || repl_subdir=SpawnPolicyReplReML
     protection=-no_gc
     [ "$compiler" != "$REML" ] || protection=-no_par0
     env LD_LIBRARY_PATH="$scratch${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
       DYLD_LIBRARY_PATH="$scratch${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" \
-      "$compiler" $protection -par --no_basislib --mlb-subdir SpawnPolicyRepl \
+      "$compiler" $protection -par -debug_linking --no_basislib --mlb-subdir "$repl_subdir" \
       --libs m,c,dl,spawnpolicy --libdirs "$scratch" --assembler "${CC:-cc} -c" \
       --link_shared "$shared" -ldexe "${CC:-cc} -Wl,-rpath,$scratch" < repl.txt > repl.log 2>&1
+    cp repl.log "repl-${compiler##*/}.log"
     grep -q 'REPL POLICY OK' repl.log
+    grep -Fq '/runtimeSystemPar.a' repl.log
+    if grep -Fq '/runtimeSystemParNoSpawn.a' repl.log; then
+      echo 'REPL selected a no-spawn runtime.' >&2; exit 1
+    fi
     if grep -Eq 'Compile error|unbound|Assertion|assertion' repl.log; then cat repl.log; exit 1; fi
   done
 fi

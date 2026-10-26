@@ -1,0 +1,134 @@
+[reading source file:	shared.sml]
+[Executing: cc -c -o 'MLB/ARM64_RI_PAR0/shared.sml.o' 'MLB/ARM64_RI_PAR0/shared.sml.s']
+[Removing file: MLB/ARM64_RI_PAR0/shared.sml.s]
+[reading source file:	sequential.sml]
+[Executing: cc -c -o 'MLB/ARM64_RI_PAR0/sequential.sml.o' 'MLB/ARM64_RI_PAR0/sequential.sml.s']
+[Removing file: MLB/ARM64_RI_PAR0/sequential.sml.s]
+[Link time dead code elimination begin...]
+Using       ./MLB/ARM64_RI_PAR0/sequential.sml.o (unsafe)
+Discharging ./MLB/ARM64_RI_PAR0/shared.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Unix.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-io.sml.code6.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-io.sml.code5.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-io.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-io.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-io.sml.code7.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-io.sml.code6.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-io.sml.code5.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-io.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-io.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/cleaner.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code43.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code41.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code40.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code37.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code36.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code33.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code32.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code29.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code28.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code26.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code25.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code24.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code23.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code22.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code21.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code20.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code19.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code18.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code16.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code13.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code10.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code8.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code7.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code6.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code2.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Posix.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-prim-io.sml.code2.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/bin-prim-io.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-prim-io.sml.code2.o
+Discharging /private/tmp/mlkit-region-page-context/basis/io/MLB/ARM64_RI_PAR0/text-prim-io.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Socket.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/NetHostDB.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Date.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/CommandLine.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/OS.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Process.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/FileSys.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Path.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Random.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Timer.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Time.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/PosixStat.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/IO.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/PackRealBig.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/PackRealLittle.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Real.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Math.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/inttables.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/wordtables.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/IntInf.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/IEEEReal.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Ints.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Ints.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Ints.sml.code2.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Ints.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Int64.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Int63.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Int31.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Int32.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Int.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Byte.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Pack32Big.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Pack32Little.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word16.sml.code2.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word16.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word8.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word31.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word32.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word63.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word64.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Word.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/IntInfRep.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Bool.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Substring.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/String.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Char.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/StrBase.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/StringCvt.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code12.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code10.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code9.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code7.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code6.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteSlice.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code14.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code11.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code10.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code7.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ByteTable.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Array2.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ArraySlice.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ArraySlice.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Array.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/VectorSlice.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/VectorSlice.sml.code1.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Vector.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Vector.sml.code4.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Vector.sml.code3.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/ListPair.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/List.sml.o
+Using       /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Initial2.sml.o (unsafe)
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Option.sml.o
+Discharging /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/General.sml.o
+Using       /private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Initial.sml.o (unsafe)
+[Link time dead code elimination end...]
+[Executing: cc -c -o 'MLB/ARM64_RI_PAR0/base-link_objects.o' 'MLB/ARM64_RI_PAR0/base-link_objects.s']
+[Removing file: MLB/ARM64_RI_PAR0/base-link_objects.s]
+[Executing: cc policy.o -o 'program' 'MLB/ARM64_RI_PAR0/base-link_objects.o' '/private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Initial.sml.o' '/private/tmp/mlkit-region-page-context/basis/MLB/ARM64_RI_PAR0/Initial2.sml.o' './MLB/ARM64_RI_PAR0/sequential.sml.o' '/private/tmp/mlkit-region-page-context/lib/darwin-arm64/runtimeSystemParNoSpawn.a' -l'm' -l'c' -l'dl']
+[wrote executable file:	program]
+[Removing file: MLB/ARM64_RI_PAR0/base-link_objects.o]

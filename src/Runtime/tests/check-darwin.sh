@@ -22,7 +22,7 @@ for archive in lib/darwin-$arch/runtimeSystem*.a; do
   [ "$(lipo -archs "$archive")" = "$arch" ]
   case "$archive" in *runtimeSystemArPar.a|*runtimeSystemArParProf.a) ;; *) count=$((count + 1));; esac
 done
-[ "$count" = 11 ]
+[ "$count" = 12 ]
 for object in src/Runtime/build/darwin-$arch/*/*.o; do
   [ "$(lipo -archs "$object")" = "$arch" ]
 done
@@ -43,6 +43,10 @@ run "link-publication-$arch" gcc -arch "$arch" -O2 -std=gnu99 -DPARALLEL -iquote
   -Wl,-dead_strip -lm -pthread -o "$logs/publication-$arch"
 run "publication-$arch" "$logs/publication-$arch"
 run context-page-allocation sh src/Runtime/tests/check-context-page-allocation.sh
+run link-no-spawn-pool gcc -arch "$arch" -O2 -std=gnu11 -DPARALLEL -iquote src/Runtime \
+  src/Runtime/tests/no-spawn-page-pool.c lib/darwin-$arch/runtimeSystemParNoSpawn.a \
+  -Wl,-dead_strip -pthread -lm -o "$logs/no-spawn-pool"
+run no-spawn-pool "$logs/no-spawn-pool"
 run "install-$arch" make install_runtime LIBDIR="$logs/stage"
 for archive in lib/darwin-$arch/runtimeSystem*.a; do
   cmp "$archive" "$logs/stage/lib/darwin-$arch/$(basename "$archive")"
@@ -60,4 +64,4 @@ fi
 if DARWIN_NATIVE=0 ./configure CC=gcc > "$logs/unsupported-x64.log" 2>&1; then
   echo 'Darwin X64 configuration should have been rejected' >&2; exit 1
 fi
-printf 'ARM64 runtime checks passed: 11 variants, allocation, installation, and target guards.\n'
+printf 'ARM64 runtime checks passed: 12 variants, allocation, installation, and target guards.\n'

@@ -1,0 +1,383 @@
+[reading source file:	mlyacc/base.sig]
+[reading source file:	mlyacc/stream.sml]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/stream.sml.o' 'mlyacc/MLB/ARM64_RI_PAR/stream.sml.s']
+[reading source file:	mlyacc/lrtable.sml]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/lrtable.sml.o' 'mlyacc/MLB/ARM64_RI_PAR/lrtable.sml.s']
+[reading source file:	mlyacc/join.sml]
+[reading source file:	mlyacc/parser2.sml]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/parser2.sml.o' 'mlyacc/MLB/ARM64_RI_PAR/parser2.sml.s']
+[reading source file:	mlyacc/utils.sig]
+[reading source file:	mlyacc/sigs.sml]
+[reading source file:	mlyacc/hdr.sml]
+[compiling body of functor HeaderFun (from source sources.mlb->hdr.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/hdr.sml.code2.o' 'mlyacc/MLB/ARM64_RI_PAR/hdr.sml.code2.s']
+[compiling body of functor HeaderFun end]
+[reading source file:	mlyacc/yacc.grm.sig]
+[reading source file:	mlyacc/yacc.grm.sml]
+[reading source file:	mlyacc/yacc.lex.sml]
+[reading source file:	mlyacc/parse.sml]
+[reading source file:	mlyacc/utils.sml]
+[reading source file:	mlyacc/grammar.sml]
+[compiling body of functor Table (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code3.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code3.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code4.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code4.s']
+[compiling body of functor Table end]
+[compiling body of functor Table (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code5.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code5.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code6.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code6.s']
+[compiling body of functor Table end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code1.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code1.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code2.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code2.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code7.o' 'mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code7.s']
+[reading source file:	mlyacc/core.sml]
+[reading source file:	mlyacc/coreutils.sml]
+[reading source file:	mlyacc/graph.sml]
+[reading source file:	mlyacc/look.sml]
+[reading source file:	mlyacc/lalr.sml]
+[reading source file:	mlyacc/mklrtable.sml]
+[reading source file:	mlyacc/mkprstruct.sml]
+[reading source file:	mlyacc/shrink.sml]
+[reading source file:	mlyacc/verbose.sml]
+[reading source file:	mlyacc/absyn.sig]
+[reading source file:	mlyacc/absyn.sml]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/absyn.sml.o' 'mlyacc/MLB/ARM64_RI_PAR/absyn.sml.s']
+ *** Warnings ***
+mlyacc/absyn.sml, line 162, column 35:
+                        let fun scan (h :: nil) = [f h]
+                                     ^^^^^^^^^^^^^^^^^^
+                              | scan (h :: t) = f h :: ["::"] :: scan t
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+[reading source file:	mlyacc/yacc.sml]
+[reading source file:	mlyacc/link.sml]
+[compiling body of functor MlyaccLrValsFun (from source sources.mlb->yacc.grm.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code3.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code3.s']
+[compiling body of functor MlyaccLrValsFun end]
+[compiling body of functor LexMLYACC (from source sources.mlb->yacc.lex.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code6.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code6.s']
+[compiling body of functor LexMLYACC end]
+[compiling body of functor JoinWithArg (from source sources.mlb->join.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code9.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code9.s']
+[compiling body of functor JoinWithArg end]
+[compiling body of functor ParseGenParserFun (from source sources.mlb->parse.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code12.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code12.s']
+[compiling body of functor ParseGenParserFun end]
+[compiling body of functor mkMakeLrTable (from source sources.mlb->mklrtable.sml) begin]
+[compiling body of functor mkCore (from source sources.mlb->core.sml) begin]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code19.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code19.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code20.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code20.s']
+[compiling body of functor ListOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code18.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code18.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code21.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code21.s']
+[compiling body of functor mkCore end]
+[compiling body of functor mkCoreUtils (from source sources.mlb->coreutils.sml) begin]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code25.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code25.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code26.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code26.s']
+[compiling body of functor ListOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code27.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code27.s']
+[compiling body of functor mkCoreUtils end]
+[compiling body of functor mkGraph (from source sources.mlb->graph.sml) begin]
+[compiling body of functor RbOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code31.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code31.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code32.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code32.s']
+[compiling body of functor RbOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code33.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code33.s']
+[compiling body of functor mkGraph end]
+[compiling body of functor mkLook (from source sources.mlb->look.sml) begin]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code37.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code37.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code38.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code38.s']
+[compiling body of functor ListOrdSet end]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code40.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code40.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code41.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code41.s']
+[compiling body of functor ListOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code39.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code39.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code42.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code42.s']
+[compiling body of functor mkLook end]
+[compiling body of functor mkLalr (from source sources.mlb->lalr.sml) begin]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code46.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code46.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code47.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code47.s']
+[compiling body of functor ListOrdSet end]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code48.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code48.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code49.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code49.s']
+[compiling body of functor ListOrdSet end]
+[compiling body of functor RbOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code50.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code50.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code51.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code51.s']
+[compiling body of functor RbOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code45.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code45.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code52.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code52.s']
+[compiling body of functor mkLalr end]
+[compiling body of functor ListOrdSet (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code54.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code54.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code55.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code55.s']
+[compiling body of functor ListOrdSet end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code56.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code56.s']
+[compiling body of functor mkMakeLrTable end]
+[compiling body of functor mkVerbose (from source sources.mlb->verbose.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code59.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code59.s']
+[compiling body of functor mkVerbose end]
+[compiling body of functor ShrinkLrTableFun (from source sources.mlb->shrink.sml) begin]
+[compiling body of functor EquivFun (from source sources.mlb->shrink.sml) begin]
+[compiling body of functor MergeSortFun (from source sources.mlb->shrink.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code65.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code65.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code66.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code66.s']
+[compiling body of functor MergeSortFun end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code64.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code64.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code67.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code67.s']
+[compiling body of functor EquivFun end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code63.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code63.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code68.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code68.s']
+[compiling body of functor ShrinkLrTableFun end]
+[compiling body of functor mkPrintStruct (from source sources.mlb->mkprstruct.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code70.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code70.s']
+[compiling body of functor mkPrintStruct end]
+[compiling body of functor ParseGenFun (from source sources.mlb->yacc.sml) begin]
+[compiling body of functor Hash (from source sources.mlb->utils.sml) begin]
+[compiling body of functor Table (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code76.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code76.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code77.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code77.s']
+[compiling body of functor Table end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code74.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code74.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code78.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code78.s']
+[compiling body of functor Hash end]
+[compiling body of functor Table (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code79.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code79.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code80.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code80.s']
+[compiling body of functor Table end]
+[compiling body of functor Table (from source sources.mlb->utils.sml) begin]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code81.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code81.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code82.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code82.s']
+[compiling body of functor Table end]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code73.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code73.s']
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code83.o' 'mlyacc/MLB/ARM64_RI_PAR/link.sml.code83.s']
+[compiling body of functor ParseGenFun end]
+ *** Warnings ***
+<string>, line 68, column 46:
+                   if ok_rhs rhs then (lhs,map (fn (NONTERM (NT i)) => i) rhs)::r
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 110, column 40:
+                                let fun f (NONTERM b :: (r as (TERM _ :: _))) =
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      (text omitted)
+                                      | f (NONTERM b :: nil) = 0
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 148, column 33:
+                      else let val REDUCE num1 = action1
+                                   ^^^^^^^^^^^
+Pattern not exhaustive.
+<string>, line 149, column 33:
+                               val REDUCE num2 = action2
+                                   ^^^^^^^^^^^
+Pattern not exhaustive.
+<string>, line 186, column 29:
+                  else let val REDUCE rulenum = action
+                               ^^^^^^^^^^^^^^
+Pattern not exhaustive.
+<string>, line 586, column 32:
+                               of SOME i => i,name)
+                                  ^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 601, column 33:
+                                of SOME i => i-numTerms,name)
+                                   ^^^^^^^^^^^^^^^^^^^^
+Match not exhaustive.
+<string>, line 693, column 32:
+                               of SOME i => i,ty)
+                                  ^^^^^^^^^^^
+Match not exhaustive.
+[reading source file:	mlyacc/main.sml]
+[Executing: gcc -arch arm64 -c -o 'mlyacc/MLB/ARM64_RI_PAR/main.sml.o' 'mlyacc/MLB/ARM64_RI_PAR/main.sml.s']
+[Link time dead code elimination begin...]
+Using       ./mlyacc/MLB/ARM64_RI_PAR/main.sml.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code83.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code82.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code81.o (safe)
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code80.o
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code79.o
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code78.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code77.o (safe)
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code76.o
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code74.o
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code73.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code70.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code68.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code67.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code66.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code65.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code64.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code63.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code59.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code56.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code55.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code54.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code52.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code51.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code50.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code49.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code48.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code47.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code46.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code45.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code42.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code41.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code40.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code39.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code38.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code37.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code33.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code32.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code31.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code27.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code26.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code25.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code21.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code20.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code19.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code18.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code12.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code9.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code6.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/link.sml.code3.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/absyn.sml.o (safe)
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code7.o
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code6.o
+Discharging ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code5.o
+Using       ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code4.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code3.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code2.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code1.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/hdr.sml.code2.o (unsafe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/parser2.sml.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/lrtable.sml.o (safe)
+Using       ./mlyacc/MLB/ARM64_RI_PAR/stream.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Unix.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-io.sml.code6.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-io.sml.code5.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-io.sml.code4.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-io.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code7.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code6.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code5.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code4.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code1.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/cleaner.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code43.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code41.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code40.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code37.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code36.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code33.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code32.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code29.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code28.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code26.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code25.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code24.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code23.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code22.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code21.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code20.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code19.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code18.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code16.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code13.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code10.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code8.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code7.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code6.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code4.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code2.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code1.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-prim-io.sml.code2.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/bin-prim-io.sml.code1.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-prim-io.sml.code2.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-prim-io.sml.code1.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Socket.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/NetHostDB.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Date.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/CommandLine.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/OS.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Process.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/FileSys.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Path.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Random.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Timer.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Time.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/PosixStat.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IO.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/PackRealBig.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/PackRealLittle.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Real.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Math.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/inttables.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/wordtables.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IntInf.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IEEEReal.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Ints.sml.code4.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Ints.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Ints.sml.code2.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Ints.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int64.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int63.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int31.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int32.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Byte.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Pack32Big.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Pack32Little.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word16.sml.code2.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word16.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word8.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word31.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word32.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word63.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word64.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IntInfRep.sml.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Bool.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Substring.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/String.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Char.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/StrBase.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/StringCvt.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code12.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code10.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code9.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code7.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code6.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code4.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code3.o (safe)
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code14.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code11.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code10.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code7.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code4.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteTable.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Array2.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ArraySlice.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ArraySlice.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Array.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/VectorSlice.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/VectorSlice.sml.code1.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Vector.sml.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Vector.sml.code4.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Vector.sml.code3.o
+Discharging /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ListPair.sml.o
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/List.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Initial2.sml.o (unsafe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Option.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/General.sml.o (safe)
+Using       /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Initial.sml.o (unsafe)
+[Link time dead code elimination end...]
+[Executing: gcc -arch arm64 -c -o 'MLB/ARM64_RI_PAR/base-link_objects.o' 'MLB/ARM64_RI_PAR/base-link_objects.s']
+[Executing: /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/linker -arch arm64 -Wl,-stack_size,0x10000000 -o '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/executables/mlyacc-reference.exe' 'MLB/ARM64_RI_PAR/base-link_objects.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Initial.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/General.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Option.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Initial2.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/List.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code3.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code6.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code9.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/ByteSlice.sml.code12.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/StringCvt.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/StrBase.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Char.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/String.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IntInfRep.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Word32.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Byte.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Int31.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IEEEReal.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IntInf.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Real.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/IO.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/PosixStat.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Time.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Random.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Path.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/FileSys.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Process.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/OS.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-prim-io.sml.code1.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-prim-io.sml.code2.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code1.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code8.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code18.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code19.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code20.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code21.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code22.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code23.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/MLB/ARM64_RI_PAR/Posix.sml.code24.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/cleaner.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code1.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code4.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code5.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/basis/io/MLB/ARM64_RI_PAR/text-io.sml.code6.o' './mlyacc/MLB/ARM64_RI_PAR/stream.sml.o' './mlyacc/MLB/ARM64_RI_PAR/lrtable.sml.o' './mlyacc/MLB/ARM64_RI_PAR/parser2.sml.o' './mlyacc/MLB/ARM64_RI_PAR/hdr.sml.code2.o' './mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code1.o' './mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code2.o' './mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code3.o' './mlyacc/MLB/ARM64_RI_PAR/grammar.sml.code4.o' './mlyacc/MLB/ARM64_RI_PAR/absyn.sml.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code3.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code6.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code9.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code12.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code18.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code19.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code20.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code21.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code25.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code26.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code27.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code31.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code32.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code33.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code37.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code38.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code39.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code40.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code41.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code42.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code45.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code46.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code47.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code48.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code49.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code50.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code51.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code52.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code54.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code55.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code56.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code59.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code63.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code64.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code65.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code66.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code67.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code68.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code70.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code73.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code77.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code78.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code81.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code82.o' './mlyacc/MLB/ARM64_RI_PAR/link.sml.code83.o' './mlyacc/MLB/ARM64_RI_PAR/main.sml.o' '/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/stage/lib/darwin-arm64/runtimeSystemParNoSpawn.a' -l'm' -l'c' -l'dl']
+[wrote executable file:	/var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM/executables/mlyacc-reference.exe]

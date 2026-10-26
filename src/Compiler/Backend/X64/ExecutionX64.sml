@@ -272,10 +272,16 @@ structure ExecutionX64 : EXECUTION =
             end
       end
 
+    (* Set from the retained link objects immediately before standalone linking.
+     * REPL runtime creation always requests the conservative runtime explicitly. *)
+    val linked_may_spawn = ref true
+
     val generate_link_code = SOME (fn (infos,exports) =>
-      (CodeGen.generate_link_code_with_policy
-        (map code_label_of_linkinfo infos,exports,
-         List.exists (fn (li:linkinfo) => #may_spawn li) infos),NONE))
+      let val may_spawn = List.exists (fn (li:linkinfo) => #may_spawn li) infos
+          val () = linked_may_spawn := may_spawn
+      in (CodeGen.generate_link_code_with_policy
+            (map code_label_of_linkinfo infos,exports,may_spawn),NONE)
+      end)
 
     val generate_repl_init_code = SOME (fn () => (CodeGen.generate_repl_init_code(),NONE))
 
@@ -382,7 +388,7 @@ structure ExecutionX64 : EXECUTION =
           val gc_p = Flags.is_on0 "garbage_collection"
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
     in
-          fun path_to_runtime () =
+          fun path_to_runtime may_spawn () =
               let
                 fun file () =
                     if parallelism_p() then
@@ -395,7 +401,8 @@ structure ExecutionX64 : EXECUTION =
                        else if region_profile() then
                          (if argobots_p() then "runtimeSystemArParProf.a" else "runtimeSystemParProf.a")
                        else if argobots_p() then "runtimeSystemArPar.a"
-                       else "runtimeSystemPar.a")
+                       else if may_spawn then "runtimeSystemPar.a"
+                       else "runtimeSystemParNoSpawn.a")
                     else
                       if region_profile() andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
                       if region_profile() andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
@@ -412,7 +419,7 @@ structure ExecutionX64 : EXECUTION =
               end
 
       val link_files_with_runtime_system =
-          link_files_with_runtime_system0 path_to_runtime
+          link_files_with_runtime_system0 (fn () => path_to_runtime (!linked_may_spawn) ())
 
     end
 
@@ -478,7 +485,7 @@ structure ExecutionX64 : EXECUTION =
               val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
                               else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
               val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
-                               ^ concat files ^ wa ^ path_to_runtime() ^ nwa
+                               ^ concat files ^ wa ^ path_to_runtime true () ^ nwa
                                ^ libdirs ^ libConvertList(libs()) ^ pthread
               val rpath = if onmac_p() then ""
                           else " -Wl,-rpath," ^ mlbdir()

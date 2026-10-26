@@ -1,5 +1,7 @@
 # Link-selected no-spawn page pool: Mac experiment
 
+Historical experiment: see the [integrated automatic-selection assessment](no-spawn-runtime-results.md) for the completed implementation and seed-built compiler results.
+
 This tests selecting a sequential page-pool implementation at link time while retaining the parallel ABI. No new dynamic `may_spawn` check is added to page allocation. The comparison is against the context-passing runtime, not against the original runtime or `-no_par` compilation.
 
 ## Scope and implementation

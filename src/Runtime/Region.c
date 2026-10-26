@@ -18,10 +18,11 @@ uintptr_t mlkit_regions_may_spawn = 1;
 
 #include "Runtime.h"
 
-/* Experimental link-selected page policy. Keep all parallel ABI layouts. */
+/* Link-selected page policy for standalone executables that cannot spawn.
+ * Preserve parallel ABI layouts; never enable this for a REPL runtime. */
 #ifdef MLKIT_NO_SPAWN_PAGE_POOL
 #if !defined(PARALLEL) || defined(ARGOBOTS) || defined(PROFILING) || defined(ENABLE_GC)
-#error "The no-spawn page-pool experiment requires plain POSIX parallel runtime"
+#error "The no-spawn page pool requires plain POSIX parallel runtime"
 #endif
 #undef MAYBE_DEFINE_CONTEXT
 #define MAYBE_DEFINE_CONTEXT

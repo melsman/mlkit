@@ -1,0 +1,21 @@
+Page-pool benchmark outputs: /var/folders/yz/hm8jnsk51kbfr00mqpd5ml_w0000gn/T//mlkit-page-pool-integrated.2wj7eM
+barnes-hut: both executables built with identical ML function addresses
+fft: both executables built with identical ML function addresses
+fib37: both executables built with identical ML function addresses
+kbc: both executables built with identical ML function addresses
+lexgen: both executables built with identical ML function addresses
+life: both executables built with identical ML function addresses
+logic: both executables built with identical ML function addresses
+mandelbrot: both executables built with identical ML function addresses
+mlyacc: both executables built with identical ML function addresses
+mpuz: both executables built with identical ML function addresses
+msort: both executables built with identical ML function addresses
+nucleic: both executables built with identical ML function addresses
+professor: both executables built with identical ML function addresses
+ratio: both executables built with identical ML function addresses
+ray: both executables built with identical ML function addresses
+simple: both executables built with identical ML function addresses
+tak: both executables built with identical ML function addresses
+tsp: both executables built with identical ML function addresses
+vliw: both executables built with identical ML function addresses
+zebra: both executables built with identical ML function addresses

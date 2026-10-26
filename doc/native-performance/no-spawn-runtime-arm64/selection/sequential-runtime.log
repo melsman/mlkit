@@ -1,0 +1,7 @@
+[Link time dead code elimination begin...]
+Using       ./MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/sequential.sml.o (unsafe)
+Discharging ./MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/shared.sml.o
+[Link time dead code elimination end...]
+[Executing: cc -c -o 'MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.o' 'MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.s']
+[Executing: cc policy.o -o 'program' 'MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.o' './MLB/ARM64_RI_PAR_NOINLINEALLOC_SpawnPolicy/sequential.sml.o' '/private/tmp/mlkit-region-page-context/lib/darwin-arm64/runtimeSystemParNoSpawn.a' -l'm' -l'c' -l'dl']
+[wrote executable file:	program]

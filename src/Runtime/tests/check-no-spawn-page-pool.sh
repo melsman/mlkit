@@ -1,5 +1,5 @@
 #!/bin/sh
-# Manual ARM64 prototype check; deliberately not a general runtime selector.
+# Additional ARM64 archive/object correctness checks; no timing collection.
 set -eu
 cd "$(dirname "$0")/../../.."
 [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || {
@@ -28,5 +28,5 @@ if ${CC:-cc} -arch arm64 -std=gnu99 -DPARALLEL -DPROFILING \
   -c src/Runtime/Region.c -o "$work/unsupported.o" > "$work/unsupported.log" 2>&1; then
   echo 'Unsupported profiling variant should have been rejected.' >&2; exit 1
 fi
-grep -q 'no-spawn page-pool experiment requires plain POSIX parallel runtime' "$work/unsupported.log"
-echo "Experimental archive and validation files: $work"
+grep -q 'no-spawn page pool requires plain POSIX parallel runtime' "$work/unsupported.log"
+echo "Archive and validation files: $work"

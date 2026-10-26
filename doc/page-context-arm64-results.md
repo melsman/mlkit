@@ -1,5 +1,7 @@
 # Passing the existing context to first-page allocation: ARM64 assessment
 
+Historical experiment: see the [integrated automatic-selection assessment](no-spawn-runtime-results.md) for the completed implementation and seed-built compiler results.
+
 Experiment on 2026-10-26, using the same prepared parallel Basis and benchmark sources as the earlier Mac comparison: mlkit-bench revision `5293c79d478515912153d54b81bc7cea9a17b7a0`, flags `-ri -par -no_gc`. Twenty programs, five runs per binary, all 200 stdout outputs match their reference files. No warm-ups, excluded samples or resampling.
 
 ## Change and correctness

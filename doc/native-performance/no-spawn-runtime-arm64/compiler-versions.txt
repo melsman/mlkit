@@ -1,0 +1,3 @@
+/usr/local/bin/mlkit: MLKit v4.7.23 (v4.7.23 - 2026-09-24T12:26:51+02:00) [Arm64 Backend]
+/private/tmp/mlkit-region-page-context/bin/mlkit: MLKit v4.7.25 (v4.7.25-9-g9b0c404b-dirty - 2026-10-26T22:31:23+01:00) [Arm64 Backend]
+/private/tmp/mlkit-region-page-context/bin/reml: ReML v4.7.25 (v4.7.25-9-g9b0c404b-dirty - 2026-10-26T22:31:23+01:00) [Arm64 Backend]

@@ -1,0 +1,9 @@
+[Link time dead code elimination begin...]
+Using       ./MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/sequential.sml.o (unsafe)
+Discharging ./MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/shared.sml.o
+[Link time dead code elimination end...]
+[Executing: cc -c -o 'MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/base-link_objects.o' 'MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/base-link_objects.s']
+[Executing: cc -c -o 'program.ir-map.o' 'program.ir-map.s']
+[Executing: cc policy.o -o 'program' 'program.ir-map.o' 'MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/base-link_objects.o' './MLB/ARM64_RI_PROF_CODE1_TP1_PAR_SpawnPolicy/sequential.sml.o' '/private/tmp/mlkit-region-page-context/lib/darwin-arm64/runtimeSystemParProf.a' -l'm' -l'c' -l'dl']
+[wrote executable file:	program]
+[Removing file: program.ir-map.o]
