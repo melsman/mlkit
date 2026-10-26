@@ -1,0 +1,4 @@
+barnes-hut baseline may_spawn=0 lookups=33785830
+barnes-hut context may_spawn=0 lookups=81329
+kbc baseline may_spawn=0 lookups=19607689
+kbc context may_spawn=0 lookups=5211

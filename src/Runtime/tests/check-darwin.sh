@@ -42,6 +42,7 @@ run "link-publication-$arch" gcc -arch "$arch" -O2 -std=gnu99 -DPARALLEL -iquote
   src/Runtime/tests/parallel-publication.c lib/darwin-$arch/runtimeSystemPar.a \
   -Wl,-dead_strip -lm -pthread -o "$logs/publication-$arch"
 run "publication-$arch" "$logs/publication-$arch"
+run context-page-allocation sh src/Runtime/tests/check-context-page-allocation.sh
 run "install-$arch" make install_runtime LIBDIR="$logs/stage"
 for archive in lib/darwin-$arch/runtimeSystem*.a; do
   cmp "$archive" "$logs/stage/lib/darwin-$arch/$(basename "$archive")"
