@@ -545,10 +545,11 @@ structure InstsX64 : INSTS_X64 =
       in app emit_inst insts
       end
 
+    (* Keep entry placement stable, including within 64-byte boundaries. *)
     fun emit_topdecl K os t =
       case t
-        of FUN (l, insts) => emit_insts(K, os, lab (MLFunLab l)::insts)
-         | FN (l, insts) =>  emit_insts(K, os, lab (MLFunLab l)::insts)
+        of FUN (l, insts) => emit_insts(K, os, dot_p2align "6"::lab (MLFunLab l)::insts)
+         | FN (l, insts) => emit_insts(K, os, dot_p2align "6"::lab (MLFunLab l)::insts)
 
     fun emit (prg as {top_decls: top_decl list,
                       init_code: inst list,
