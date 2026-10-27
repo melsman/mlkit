@@ -251,13 +251,11 @@ structure ExecutionArm64 : EXECUTION =
             end
       end
 
-    (* Set from the retained link objects immediately before standalone linking.
-     * REPL runtime creation always requests the conservative runtime explicitly. *)
-    val linked_may_spawn = ref true
+    fun link_may_spawn (infos:linkinfo list) =
+        List.exists (fn li => #may_spawn li) infos
 
     val generate_link_code = SOME (fn (infos,exports) =>
-      let val may_spawn = List.exists (fn (li:linkinfo) => #may_spawn li) infos
-          val () = linked_may_spawn := may_spawn
+      let val may_spawn = link_may_spawn infos
       in (CodeGen.generate_link_code_with_policy
             (map code_label_of_linkinfo infos,exports,may_spawn),NONE)
       end)
@@ -398,8 +396,8 @@ structure ExecutionArm64 : EXECUTION =
               in !Flags.install_dir ## "lib" ## "darwin-arm64" ## file()
               end
 
-      val link_files_with_runtime_system =
-          link_files_with_runtime_system0 (fn () => path_to_runtime (!linked_may_spawn) ())
+      fun link_files_with_runtime_system infos =
+          link_files_with_runtime_system0 (path_to_runtime (link_may_spawn infos))
 
     end
 

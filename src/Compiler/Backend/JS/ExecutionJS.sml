@@ -107,7 +107,7 @@ structure ExecutionJS : EXECUTION =
 
     val () = Flags.turn_off "values_64bit"
 
-    fun link_files_with_runtime_system files run =
+    fun link_files_with_runtime_system _ files run =
 	let val html_file = run ^ ".html"
 	    val os = TextIO.openOut html_file
             fun out s = TextIO.output(os,s)

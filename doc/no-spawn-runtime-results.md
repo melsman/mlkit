@@ -12,7 +12,7 @@ The integrated Mac comparison uses the **seed-built MLKit compiler** for both co
 
 The no-spawn archive shares every parallel runtime object except Region.o, in the same archive-member order. Its page manager uses the global free-page pool directly, with no transfer loop, global-freelist lock calls, or context lookups solely for pool access. Freed/reset pages return directly to the same pool. Descriptor and context layouts remain parallel. Thread-freelist merging is a no-op for this policy; startup thread bookkeeping and unrelated runtime components are unchanged.
 
-The linker callback computes the policy from the retained link objects, including cached metadata, and uses that same policy for generated startup code and runtime selection. REPL runtime creation explicitly passes the conservative policy, independent of the previous standalone link.
+The manager passes the retained link objects, including cached metadata, explicitly to the runtime-linking callback. Both native backends derive the policy from those arguments with the same function used for generated startup code; no mutable link-policy state is retained between calls. REPL runtime creation explicitly passes the conservative policy.
 
 | Configuration | Runtime |
 |---|---|
