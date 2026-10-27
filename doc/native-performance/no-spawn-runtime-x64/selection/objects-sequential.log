@@ -1,6 +1,0 @@
-[reading source file:	shared.sml]
-[wrote X64 code file:	MLB/RI/shared.sml.s]
-[reading source file:	sequential.sml]
-[wrote X64 code file:	MLB/RI/sequential.sml.s]
-[wrote X64 code file:	MLB/RI/base-link_objects.s]
-[wrote object file paths to file:	runtime-objects]

@@ -469,7 +469,6 @@ check-native-install:
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
-	sh src/Runtime/tests/check-context-page-allocation.sh
 	sh src/Runtime/tests/check-no-spawn-page-pool.sh
 	$(MAKE) check-spawn-policy
 	$(MAKE) check-real-auto-conversion

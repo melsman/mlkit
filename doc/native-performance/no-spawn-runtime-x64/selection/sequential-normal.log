@@ -1,8 +1,0 @@
-[Link time dead code elimination begin...]
-Using       ./MLB/RI_PAR_SpawnPolicy/sequential.sml.o (unsafe)
-Discharging ./MLB/RI_PAR_SpawnPolicy/shared.sml.o
-[Link time dead code elimination end...]
-[wrote X64 code file:	MLB/RI_PAR_SpawnPolicy/base-link_objects.s]
-[Executing: cc -c -o 'MLB/RI_PAR_SpawnPolicy/base-link_objects.o' 'MLB/RI_PAR_SpawnPolicy/base-link_objects.s']
-[Executing: cc policy.o -o program MLB/RI_PAR_SpawnPolicy/base-link_objects.o ./MLB/RI_PAR_SpawnPolicy/sequential.sml.o /tmp/mlkit-page-pool256/lib/runtimeSystemParNoSpawn.a -lm -lc -ldl -pthread]
-[wrote executable file:	program]

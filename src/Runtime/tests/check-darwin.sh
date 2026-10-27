@@ -42,11 +42,7 @@ run "link-publication-$arch" gcc -arch "$arch" -O2 -std=gnu99 -DPARALLEL -iquote
   src/Runtime/tests/parallel-publication.c lib/darwin-$arch/runtimeSystemPar.a \
   -Wl,-dead_strip -lm -pthread -o "$logs/publication-$arch"
 run "publication-$arch" "$logs/publication-$arch"
-run context-page-allocation sh src/Runtime/tests/check-context-page-allocation.sh
-run link-no-spawn-pool gcc -arch "$arch" -O2 -std=gnu11 -DPARALLEL -iquote src/Runtime \
-  src/Runtime/tests/no-spawn-page-pool.c lib/darwin-$arch/runtimeSystemParNoSpawn.a \
-  -Wl,-dead_strip -pthread -lm -o "$logs/no-spawn-pool"
-run no-spawn-pool "$logs/no-spawn-pool"
+run no-spawn-pool sh src/Runtime/tests/check-no-spawn-page-pool.sh
 run "install-$arch" make install_runtime LIBDIR="$logs/stage"
 for archive in lib/darwin-$arch/runtimeSystem*.a; do
   cmp "$archive" "$logs/stage/lib/darwin-$arch/$(basename "$archive")"

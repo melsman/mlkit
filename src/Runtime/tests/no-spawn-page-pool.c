@@ -1,4 +1,4 @@
-/* Correctness probe for the link-selected, parallel-ABI page-pool experiment. */
+/* Page-pool invariants for the parallel-ABI runtime used without spawning. */
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

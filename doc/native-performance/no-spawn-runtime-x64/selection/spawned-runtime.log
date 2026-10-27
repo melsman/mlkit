@@ -1,9 +1,0 @@
-[Link time dead code elimination begin...]
-Using       ./MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/spawned.sml.o (unsafe)
-Discharging ./MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/shared.sml.o
-Using       ./MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/spawner.sml.o (unsafe)
-[Link time dead code elimination end...]
-[wrote X64 code file:	MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.s]
-[Executing: cc -c -o 'MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.o' 'MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.s']
-[Executing: cc policy.o -o program MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/base-link_objects.o ./MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/spawner.sml.o ./MLB/RI_PAR_NOINLINEALLOC_SpawnPolicy/spawned.sml.o /tmp/mlkit-page-pool256/lib/runtimeSystemPar.a -lm -lc -ldl -pthread]
-[wrote executable file:	program]

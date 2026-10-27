@@ -1,2 +1,0 @@
-Validation logs: /tmp/mlkit-runtime-check.xM0kkC
-ARM64 runtime checks passed: 12 variants, allocation, installation, and target guards.
