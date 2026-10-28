@@ -57,7 +57,9 @@ variant. The protected parallel caches are built for MLKit, without a ReML
 `-no_par0` preparation step. The `PAR0` caches are built with ReML because MLKit
 blocks that flag. This lets the standard ReML invocation reuse read-only
 installed libraries. No-GC MLKit defaults to parallelism, including with `-rp`;
-use `-no_gc -no_par` in that order for explicit sequential execution. Sequential
+use `-no_gc -no_par` in that order for explicit sequential execution. `-par`
+also selects no-GC execution. Enabling GC while parallelism is enabled is
+rejected (disable parallelism with `-no_par` first). Sequential
 no-GC caches are compiled on demand in a writable library tree rather than
 prepared or installed by default. Nonstandard code-generation
 settings such as `--no_inline_allocation` require separately prepared writable

@@ -308,12 +308,17 @@ struct
         raise Fail "-no_gc must precede -no_par; use -no_gc -no_par for sequential execution"
       else ()
 
+  fun check_gc () =
+      if native_options() andalso is_on "parallelism" andalso
+         not (is_on "garbage_collection") then
+        raise Fail "-gc requires -no_par first; parallelism and GC cannot be combined"
+      else ()
+
   fun check_options () =
       if not (native_options()) then ()
       else
         let
-          (* GC remains the ordinary MLKit default. An explicit -par action
-           * disables GC; a later -gc selects sequential execution again. *)
+          (* The initial parallel default applies only to no-GC execution. *)
           val () = if is_on "garbage_collection" then turn_off "parallelism" else ()
           fun reject condition message = if condition then raise Fail message else ()
         in
@@ -401,7 +406,11 @@ struct
                 | NONE =>
                   (case lookup_notnull_menu (!dir) key of
                        SOME (BOOL_ENTRY e) => (check_blocked (#long e); #item e := true; loop ss)
-                     | SOME (BOOLA_ENTRY e) => (check_blocked (#long e); #on e (); loop ss)
+                     | SOME (BOOLA_ENTRY e) =>
+                       (check_blocked (#long e);
+                        if #long e = "garbage_collection" orelse
+                           #long e = "generational_garbage_collection" then check_gc() else ();
+                        #on e (); loop ss)
                      | SOME (STRING_ENTRY e) =>
                        (check_blocked (#long e);
                         case ss of
