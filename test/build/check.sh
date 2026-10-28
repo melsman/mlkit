@@ -88,6 +88,7 @@ MAKE
     for stage in 1 2 3; do
       grep -q 'building ' "$output/stage$stage.log"
       grep -q 'compiler diagnostic' "$output/stage$stage.log"
+      test -s "$output/stage$stage.resources"
     done
     if [ "$verbose" = 1 ]; then
       grep -q 'building ' "$dir/success.log"

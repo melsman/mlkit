@@ -380,8 +380,10 @@ BOOTSTRAP_STRIP ?= $(STRIP)
 BOOTSTRAP_COMPARE ?= cmp
 ifeq ($(DARWIN_NATIVE),1)
 BOOTSTRAP_LINKER ?= gcc -arch arm64 -Wl,-stack_size,0x20000000
+BOOTSTRAP_TIME_FLAGS = -l
 else
 BOOTSTRAP_LINKER ?= gcc
+BOOTSTRAP_TIME_FLAGS = -v
 endif
 
 # Each invocation gets a fresh directory and cache namespace. The recursive
@@ -401,13 +403,18 @@ bootstrap-stage1 bootstrap-stage2 bootstrap-stage3: SHELL := /bin/bash
 
 # Compile with the preceding MLKit stage, regardless of which SML compiler
 # produced the initial seed. Preserve logs and executable outputs for inspection.
+# fd 3 keeps compiler diagnostics in the build log while time writes its report.
 define bootstrap_compile
 	mkdir -p "$(BOOTSTRAP_DIR)/stage$(1)"
-	@set -o pipefail; SML_LIB="$(CWD)" "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
+	@set -o pipefail; { SML_LIB="$(CWD)" /usr/bin/time $(BOOTSTRAP_TIME_FLAGS) \
+	  sh -c 'exec "$$@" 2>&3' bootstrap "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
 	  -ldexe '$(BOOTSTRAP_LINKER)' --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
 	  -o "$(BOOTSTRAP_DIR)/stage$(1)/mlkit" src/Compiler/mlkit$(BACKEND_SUFFIX).mlb \
+	  3>&2 2> "$(BOOTSTRAP_DIR)/stage$(1).resources"; } \
 	  $(if $(filter 1,$(VERBOSE)),2>&1 | tee "$(BOOTSTRAP_DIR)/stage$(1).log",> "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1) || \
-	  { $(if $(filter 1,$(VERBOSE)),:,tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2); exit 1; }
+	  { cat "$(BOOTSTRAP_DIR)/stage$(1).resources"; \
+	    $(if $(filter 1,$(VERBOSE)),:,tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2); exit 1; }
+	@echo "Bootstrap stage $(1) resource usage:"; cat "$(BOOTSTRAP_DIR)/stage$(1).resources"
 	$(call bootstrap_check,$(BOOTSTRAP_DIR)/stage$(1)/mlkit)
 	"$(BOOTSTRAP_DIR)/stage$(1)/mlkit" --version
 endef
