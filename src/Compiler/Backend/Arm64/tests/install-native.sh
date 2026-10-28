@@ -44,7 +44,7 @@ printf 'native installation passed\n' > "$scratch/expected"
 for flags in '-no_gc' '-gc' '-gengc' '-gc -rp' '-no_gc -rp' '-no_gc -par'; do
   printf 'Checking installed configuration: %s\n' "$flags"
   (cd "$ARM64_PREFIX/basis" && SML_LIB="$ARM64_PREFIX" \
-    "$ARM64_PREFIX/bin/mlkit" $flags -c basis.mlb)
+    "$ARM64_PREFIX/bin/mlkit" -j 6 $flags -c basis.mlb)
   (cd "$scratch" && SML_LIB="$ARM64_PREFIX" "$ARM64_PREFIX/bin/mlkit" \
     $flags -o probe probe.mlb)
   [ "$(lipo -archs "$scratch/probe")" = arm64 ]
