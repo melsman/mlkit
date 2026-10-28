@@ -12,7 +12,8 @@ ${CC:-cc} -c "$fixtures/c-call-preservation.S" -o clobber.o
 for mode in no_gc gc gengc prof gcprof par; do
   flags=-$mode
   case $mode in
-    prof) flags='-no_gc -rp';;
+    no_gc) flags="-no_gc -no_par";;
+    prof) flags='-no_gc -no_par -rp';;
     gcprof) flags='-gc -rp';;
     par) flags='-no_gc -par';;
   esac

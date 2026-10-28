@@ -136,6 +136,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    fun go_options options =
 		let val rest = Flags.read_options{options=options, nullary=nullary_options,
 						  unary=unary_options}
+                    val () = Flags.check_options()
 		    val baseDir =
 			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of
 			     SOME v => v

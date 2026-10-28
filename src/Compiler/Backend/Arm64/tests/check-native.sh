@@ -42,7 +42,7 @@ check_compiler () {
   compiler=$1
   prefix=$2
   # These minimal fixtures use the untagged, non-GC primitive ABI.
-  default_gc=-no_gc
+  default_gc='-no_gc -no_par'
   [ "$compiler" != "$REML_ARM64" ] || default_gc=-no_par
   "$compiler" $default_gc --no_basislib --no_delete_target_files -o "$prefix-native" native.mlb > "$prefix.log" 2>&1
   printf '@' | "./$prefix-native" > actual
@@ -108,11 +108,11 @@ grep -q 'sub sp, sp, #4080' MLB/ARM64_*/large.sml.s
 find MLB -name '*.o' -exec file {} \; > objects
 if grep -v 'Mach-O 64-bit object arm64' objects; then exit 1; fi
 [ ! -d MLB/RI ]
-# Parallel GC remains outside the supported runtime combinations.
-if "$MLKIT_ARM64" --no_basislib -par -gc -o unsupported native.mlb > unsupported.log 2>&1; then
-  echo 'ARM parallel GC was incorrectly accepted' >&2; exit 1
+# Tagged parallel allocation has no matching runtime.
+if "$MLKIT_ARM64" --no_basislib -no_gc -tag_values -o unsupported native.mlb > unsupported.log 2>&1; then
+  echo 'Tagged parallel allocation was incorrectly accepted' >&2; exit 1
 fi
-grep -q 'ARM64 parallelism does not support garbage_collection' unsupported.log
+grep -q 'parallelism does not support tagged values' unsupported.log
 [ ! -e unsupported ]
 for mode in plain gc gengc plain-runtime gc-runtime gengc-runtime; do
   case "$mode" in
@@ -132,7 +132,7 @@ gcc -arch arm64 -O2 -Wall -Wextra -Werror -c foreign.c -o foreign.o
 printf 'OK\nOK\nOK\nOK\nOK\nOK\n' > foreign-expected
 printf 'OK\n' > gc-expected
 for compiler in "$MLKIT_ARM64" "$REML_ARM64"; do
-  default_gc=-no_gc
+  default_gc='-no_gc -no_par'
   [ "$compiler" != "$REML_ARM64" ] || default_gc=-no_par
   extra_gc=-extra_gc_checks
   [ "$compiler" != "$REML_ARM64" ] || extra_gc=""

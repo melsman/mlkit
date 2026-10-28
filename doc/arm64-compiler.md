@@ -51,12 +51,15 @@ both backends. Configure `--prefix` to choose the installation directory;
 includes SMLtoJs and its JavaScript libraries and builds independent Basis
 variants in parallel.
 
-Standard installations prepare eight Basis/API caches: the six MLKit runtime
+Standard installations prepare six Basis/API caches: the four MLKit runtime
 configurations plus ReML's default `PAR0` configuration and its profiling
 variant. The protected parallel caches are built for MLKit, without a ReML
 `-no_par0` preparation step. The `PAR0` caches are built with ReML because MLKit
 blocks that flag. This lets the standard ReML invocation reuse read-only
-installed libraries. Nonstandard code-generation
+installed libraries. No-GC MLKit defaults to parallelism, including with `-rp`;
+use `-no_gc -no_par` in that order for explicit sequential execution. Sequential
+no-GC caches are compiled on demand in a writable library tree rather than
+prepared or installed by default. Nonstandard code-generation
 settings such as `--no_inline_allocation` require separately prepared writable
 caches and are not additional standard installation variants.
 

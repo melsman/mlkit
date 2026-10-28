@@ -11,7 +11,7 @@ printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/kitlib/time-profile.mlb\nmeasure.
 cc -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/measure.c" -o "$OUT/measure.o"
 ar rcs "$OUT/libmeasure.a" "$OUT/measure.o"
 for config in gc no_gc gengc; do
- "${MLKIT:-$ROOT/bin/mlkit}" -no_par -"$config" -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$config" "$OUT/measure.mlb" > "$OUT/$config-build.log" 2>&1
+ "${MLKIT:-$ROOT/bin/mlkit}" -"$config" -no_par -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$config" "$OUT/measure.mlb" > "$OUT/$config-build.log" 2>&1
  "$OUT/$config" > "$OUT/$config-off.log"
  "$OUT/$config" +RTS -tp -tp_paused -p_file "$OUT/$config.rp" > "$OUT/$config-on.log"
  sed '/^c /d' "$OUT/$config-off.log" > "$OUT/off-stable.log"

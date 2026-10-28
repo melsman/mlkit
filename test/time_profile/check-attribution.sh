@@ -16,7 +16,7 @@ for mode in gc no_gc; do
   case $mode in gc) gcflag=-DTP_GC;; no_gc) gcflag=;; esac
   ${CC:-cc} -O2 -Wall -Wextra -Werror $gcflag -iquote "$ROOT/src/Runtime" -c "$ROOT/test/time_profile/attribution.c" -o "$OUT/attribution.o"
   ar rcs "$OUT/libattribution.a" "$OUT/attribution.o"
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs attribution,m,c,dl -o "$OUT/$mode" "$OUT/attribution.mlb" > "$OUT/$mode-build.log" 2>&1
+  "$MLKIT" -"$mode" -no_par -rp -libdirs "$OUT" -libs attribution,m,c,dl -o "$OUT/$mode" "$OUT/attribution.mlb" > "$OUT/$mode-build.log" 2>&1
   "$OUT/$mode" +RTS -tp -p_file "$OUT/$mode.rp" > "$OUT/$mode.log" 2>&1
   "$PVIEW" "$OUT/$mode.rp" --format json -o "$OUT/$mode.json" > /dev/null
 done

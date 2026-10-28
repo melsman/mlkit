@@ -15,7 +15,7 @@ test_mlkit: prepare
 .PHONY: test_mlkit_no_gc
 test_mlkit_no_gc: prepare
 	@echo --- Testing MLKit with Regions ---
-	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc -no_par)
 	mv test_report.html test_report-native-nogc-$(DATE).html
 
 .PHONY: test_mlkit_par

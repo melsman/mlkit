@@ -18,8 +18,9 @@ esac
 for mode in ${RESET_MODES:-no_gc par prof gengc}; do
   flags=-$mode; defines=; lib=runtimeSystem
   case $mode in
+    no_gc) flags="-no_gc -no_par";;
     gengc) defines='-DENABLE_GC -DENABLE_GEN_GC'; lib=runtimeSystemGenGC;;
-    prof) flags='-no_gc -rp'; defines=-DPROFILING; lib=runtimeSystemProf;;
+    prof) flags='-no_gc -no_par -rp'; defines=-DPROFILING; lib=runtimeSystemProf;;
     par) flags='-no_gc -par'; defines=-DPARALLEL; lib=runtimeSystemPar;;
   esac
   for variant in before after; do

@@ -121,6 +121,8 @@ signature FLAGS =
     (* Read and interpret option list by looking in directory and
      * the extra nullary list and unary list *)
 
+    val check_options : unit -> unit
+
     val read_options : {nullary: (string*(unit->unit))list,
 			unary: (string*(string->unit))list,
 			options: string list} -> string list

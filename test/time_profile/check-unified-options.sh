@@ -79,7 +79,7 @@ ${CC:-cc} -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/flush-disabled.c
 ar rcs "$OUT/libflush.a" "$OUT/flush.o"
 printf 'val () = prim("tp_flush_disabled_check", ())\n' > "$OUT/flush.sml"
 for config in gc no_gc; do
- "$MLKIT" -no_par -"$config" -rp -libdirs "$OUT" -libs flush,m,c,dl -o "$OUT/flush-$config" "$OUT/flush.sml" > "$OUT/flush-$config-build.log" 2>&1
+ "$MLKIT" -"$config" -no_par -rp -libdirs "$OUT" -libs flush,m,c,dl -o "$OUT/flush-$config" "$OUT/flush.sml" > "$OUT/flush-$config-build.log" 2>&1
  "$OUT/flush-$config"
  "$OUT/flush-$config" +RTS -rp -rp_interval 0 -p_file "$OUT/flush-$config.prof"
 done

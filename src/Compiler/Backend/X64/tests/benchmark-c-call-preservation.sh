@@ -36,7 +36,7 @@ for workload in loop converted pressure; do
   for variant in before after; do
     compiler=$MLKIT_BEFORE
     [ "$variant" != after ] || compiler=$MLKIT_AFTER
-    "$compiler" -no_gc --no_basislib --no_delete_target_files \
+    "$compiler" -no_gc -no_par --no_basislib --no_delete_target_files \
       --mlb-subdir "Bench$variant" -ldexe "${CC:-cc} clobber.o" \
       -o "$workload-$variant" "$workload.sml" > "$workload-$variant-compile.log" 2>&1
     size "$workload-$variant" > "$workload-$variant-size.txt"

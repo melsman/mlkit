@@ -43,7 +43,7 @@ RESFILES_ALL=$(RI_RESFILES) $(RI_RESFILES_MLB) $(GC_RESFILES) $(GC_RESFILES_MLB)
 #GC_FLAGS=--no_basislib --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files
 FLAGS=--no_basislib --debug_linking --no_delete_target_files
 GC_FLAGS=$(FLAGS) -gengc
-RI_FLAGS=$(FLAGS) -no_gc
+RI_FLAGS=$(FLAGS) -no_gc -no_par
 PROF_FLAGS=$(RI_FLAGS) -rp
 GC_PROF_FLAGS=$(GC_FLAGS) -rp
 

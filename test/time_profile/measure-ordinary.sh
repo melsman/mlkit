@@ -43,7 +43,7 @@ for config in $CONFIGS; do
    case $workload in phases) source="$OUT/measure.mlb";;
     kkb) source="$ROOT/test/kkb_eq.sml";; mlyacc) source="$OUT/mlyacc.mlb";;
     *) echo "Unknown workload $workload" >&2; exit 1;; esac
-   "$MLKIT" -no_par -"$config" $flags -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$workload-$config-$mode" "$source" > "$OUT/$workload-$config-$mode-build.log" 2>&1
+   "$MLKIT" -"$config" -no_par $flags -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$workload-$config-$mode" "$source" > "$OUT/$workload-$config-$mode-build.log" 2>&1
   done
  done
 done

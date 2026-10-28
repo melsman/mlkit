@@ -19,9 +19,10 @@ for mode in no_gc gc gengc prof gcprof genprof par parprof; do
   cp ../helper.sml .
   flags=-$mode; defines=; lib=runtimeSystem
   case $mode in
+    no_gc) flags="-no_gc -no_par";;
     gc) defines=-DENABLE_GC; lib=runtimeSystemGC;;
     gengc) defines='-DENABLE_GC -DENABLE_GEN_GC'; lib=runtimeSystemGenGC;;
-    prof) flags='-no_gc -rp'; defines=-DPROFILING; lib=runtimeSystemProf;;
+    prof) flags='-no_gc -no_par -rp'; defines=-DPROFILING; lib=runtimeSystemProf;;
     gcprof) flags='-gc -rp'; defines='-DENABLE_GC -DPROFILING'; lib=runtimeSystemGCProf;;
     genprof) flags='-gengc -rp'; defines='-DENABLE_GC -DENABLE_GEN_GC -DPROFILING'; lib=runtimeSystemGenGCProf;;
     par) flags='-no_gc -par'; defines=-DPARALLEL; lib=runtimeSystemPar;;

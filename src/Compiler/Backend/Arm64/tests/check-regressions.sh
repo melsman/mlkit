@@ -59,8 +59,8 @@ EOF
       (cd "$root/test/repl" && make test MLKIT="$root/compiler" MLKIT_FLAGS="$flags") ;;
     *)
       case "$suite" in
-        plain) flags=-no_gc ;; gc) flags=-gc ;; gengc) flags=-gengc ;;
-        prof) flags='-no_gc -rp' ;; gcprof) flags='-gc -rp' ;;
+        plain) flags='-no_gc -no_par' ;; gc) flags=-gc ;; gengc) flags=-gengc ;;
+        prof) flags='-no_gc -no_par -rp' ;; gcprof) flags='-gc -rp' ;;
         par) flags='-no_gc -par' ;;
         *) echo "Unknown suite: $suite" >&2; exit 1 ;;
       esac

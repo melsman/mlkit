@@ -157,6 +157,7 @@ structure Directory : sig
 
                         (* read and interpret option list by looking in directory and
                          * the extra nullary list and unary list *)
+                        val check_options : unit -> unit
                         val read_options : {nullary:(string*(unit->unit))list,
                                             unary:(string*(string->unit))list,
                                             options: string list} -> string list
@@ -299,6 +300,34 @@ struct
        | SOME _ => die ("turn_off: entry " ^ key ^ " is of wrong kind")
        | NONE => die ("turn_off: no entry " ^ key ^ " in directory")
 
+  fun native_options () = Option.isSome (M.lookup (!dir) "parallelism")
+
+  (* Check ordered command-line transitions, not internal flag updates. *)
+  fun check_no_gc () =
+      if native_options() andalso not (is_on "parallelism") then
+        raise Fail "-no_gc must precede -no_par; use -no_gc -no_par for sequential execution"
+      else ()
+
+  fun check_options () =
+      if not (native_options()) then ()
+      else
+        let
+          (* GC remains the ordinary MLKit default. An explicit -par action
+           * disables GC; a later -gc selects sequential execution again. *)
+          val () = if is_on "garbage_collection" then turn_off "parallelism" else ()
+          fun reject condition message = if condition then raise Fail message else ()
+        in
+          reject (is_on "parallelism" andalso is_on "tag_values")
+                 "parallelism does not support tagged values";
+          reject (is_on "parallelism" andalso is_on "tag_pairs")
+                 "parallelism does not support tagged pairs";
+          reject (is_on "argobots" andalso not (is_on "parallelism"))
+                 "-argo requires parallelism";
+          reject (is_on "generational_garbage_collection" andalso
+                  not (is_on "garbage_collection"))
+                 "generational garbage collection requires garbage collection"
+        end
+
   fun add_string_entry (long, item) =
     string_entry {long=long, short=NONE, desc="", item=item, menu=nil}
 
@@ -362,7 +391,11 @@ struct
                        (check_blocked (#long e);
                         if #neg e then (#item e := false; loop ss)
                         else raise Fail ("negation not allowed on option: " ^ no_key))
-                     | SOME (BOOLA_ENTRY e) => (check_blocked (#long e); #off e (); loop ss)
+                     | SOME (BOOLA_ENTRY e) =>
+                       (check_blocked (#long e);
+                        if #long e = "garbage_collection" orelse
+                           #long e = "generational_garbage_collection" then check_no_gc() else ();
+                        #off e (); loop ss)
                      | SOME _ => raise Fail ("negation not allowed on option: " ^ no_key)
                      | NONE => raise Fail ("unknown option: " ^ s))
                 | NONE =>
@@ -658,6 +691,7 @@ local
   val gc = ref false
   val gengc = ref false
   fun off () = (gc := false;
+                gengc := false;
                 preserve_tail_calls := false;
                 dangling_pointers := true;
                 Directory.turn_off "aggressive_opt";
@@ -678,7 +712,9 @@ in
   val _ = add_bool_action_entry
     {long="garbage_collection", menu=["Control Garbage Collection", "garbage collection"],
      item=gc, on=on, off=off, short=SOME "gc",
-     desc="Enable garbage collection. When enabled, regions are\n\
+     desc="Enable garbage collection (sequential execution). For no-GC\n\
+      \execution, -no_gc defaults to parallelism; use -no_gc -no_par\n\
+      \in that order for sequential execution. When enabled, regions are\n\
       \garbage collected during execution of the program. When\n\
       \garbage collection is enabled, all values are tagged. Due\n\
       \to region inference, for most programs, the garbage\n\
@@ -821,6 +857,7 @@ val lookup_string_entry = Directory.lookup_string_entry
 val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_options = Directory.read_options
+val check_options = Directory.check_options
 val help = Directory.help
 val help_nodash = Directory.help_nodash
 val help_all = Directory.help_all

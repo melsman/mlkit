@@ -16,7 +16,7 @@ for mode in gc no_gc; do
   case $mode in gc) tagged=-DTP_TAGGED;; no_gc) tagged=;; esac
   ${CC:-cc} -O2 -Wall -Wextra -Werror $tagged -c "$ROOT/test/time_profile/recording.c" -o "$OUT/recording.o"
   ar rcs "$OUT/librecording.a" "$OUT/recording.o"
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs recording,m,c,dl -o "$OUT/$mode" "$OUT/recording.mlb" > "$OUT/$mode-build.log" 2>&1
+  "$MLKIT" -"$mode" -no_par -rp -libdirs "$OUT" -libs recording,m,c,dl -o "$OUT/$mode" "$OUT/recording.mlb" > "$OUT/$mode-build.log" 2>&1
   for scenario in normal overflow combined passive passive-overflow passive-combined; do
     case $scenario in
       normal) set -- -tp_buffer 4096;;

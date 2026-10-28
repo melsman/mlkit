@@ -15,7 +15,7 @@ ar rcs "$OUT/libmeasure.a" "$OUT/measure.o"
 cp "$ROOT/test/time_profile/measure.sml" "$OUT/"
 printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/kitlib/time-profile.mlb\nmeasure.sml\n' > "$OUT/measure.mlb"
 for mode in gc no_gc; do
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs measure,m,c,dl \
+  "$MLKIT" -"$mode" -no_par -rp -libdirs "$OUT" -libs measure,m,c,dl \
     -o "$OUT/$mode" "$OUT/measure.mlb" > "$OUT/$mode-build.log" 2>&1
   nm -n "$OUT/$mode" > "$OUT/$mode-symbols.txt"
   for run in first second; do
@@ -25,7 +25,7 @@ for mode in gc no_gc; do
   done
   "$PVIEW" "$OUT/$mode-first.rp" -o "$OUT/$mode.html" > /dev/null
   # One more link gives a different image identity and exercises mismatch checks.
-  "$MLKIT" -no_par -"$mode" -rp -libdirs "$OUT" -libs measure,m,c,dl \
+  "$MLKIT" -"$mode" -no_par -rp -libdirs "$OUT" -libs measure,m,c,dl \
     -o "$OUT/$mode-other" "$OUT/measure.mlb" > "$OUT/$mode-other-build.log" 2>&1
   "$OUT/$mode-other" +RTS -tp -tp_paused -rp -rp_interval 0 \
     -p_file "$OUT/$mode-other.rp" > "$OUT/$mode-other.log" 2>&1

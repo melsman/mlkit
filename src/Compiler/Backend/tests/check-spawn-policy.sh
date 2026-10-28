@@ -86,6 +86,30 @@ for setting in sequential argo argo-profile; do
     echo "Unexpected no-spawn runtime for $setting" >&2; exit 1
   fi
 done
+# Ordered no-GC defaults and consistency checks must precede compilation/cache use.
+for mode in default parallel par-option sequential profile sequential-profile gc-last nogc-last gen-last nogc-after-gen; do
+  flags=; expected=runtimeSystemGC.a
+  case "$mode" in
+    parallel) flags=-no_gc; expected=runtimeSystemParNoSpawn.a;;
+    par-option) flags=-par; expected=runtimeSystemParNoSpawn.a;;
+    sequential) flags='-no_gc -no_par'; expected=runtimeSystem.a;;
+    profile) flags='-no_gc -rp'; expected=runtimeSystemParProf.a;;
+    sequential-profile) flags='-no_gc -no_par -rp'; expected=runtimeSystemProf.a;;
+    gc-last) flags='-par -gc';;
+    nogc-last) flags='-gc -no_gc'; expected=runtimeSystemParNoSpawn.a;;
+    gen-last) flags='-no_gc -gengc'; expected=runtimeSystemGenGC.a;;
+    nogc-after-gen) flags='-gengc -no_gc'; expected=runtimeSystemParNoSpawn.a;;
+  esac
+  "$MLKIT" $flags --no_basislib --objs -o default-objects sequential.mlb > "default-$mode.log" 2>&1
+  grep -Fq "/$expected " default-objects
+done
+for flags in '-no_par -no_gc' '--no_parallelism --no_garbage_collection' \
+             '-no_gc -tag_values' '-no_gc -tag_pairs' '-no_gc -no_par -argo'; do
+  if "$MLKIT" $flags --no_basislib --objs -o rejected sequential.mlb > rejected.log 2>&1; then
+    echo "Expected inconsistent options to fail: $flags" >&2; exit 1
+  fi
+  grep -Eq 'must precede|does not support|requires parallelism' rejected.log
+done
 if [ "${SPAWN_POLICY_REPL:-1}" = 1 ]; then
   ${CC:-cc} -O2 -fPIC -DPARALLEL -iquote "$SML_LIB/src/Runtime" \
     -c "$fixtures/spawn-policy.c" -o policy.o
@@ -128,5 +152,9 @@ SML
     fi
     if grep -Eq 'Compile error|unbound|Assertion|assertion' repl.log; then cat repl.log; exit 1; fi
   done
+  printf 'val () = prim("printStringML","DEFAULT REPL OK\\n");\n:quit;\n' | \
+    "$MLKIT" --no_basislib --mlb-subdir SpawnPolicyDefaultGC -debug_linking > default-repl.log 2>&1
+  grep -q 'DEFAULT REPL OK' default-repl.log
+  grep -Fq '/runtimeSystemGC.a' default-repl.log
 fi
 echo 'Standalone spawn policy, cached true/false metadata, globals and runtime fallback passed.'

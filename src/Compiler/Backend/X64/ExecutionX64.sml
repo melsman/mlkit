@@ -179,12 +179,7 @@ structure ExecutionX64 : EXECUTION =
            end
          else ()
 
-    val parallelism_p =
-        Flags.add_bool_entry
-            {long="parallelism", short=SOME "par", neg=true,
-             menu=["General Control","parallelism"], item=ref false,
-             desc="When enabled, the runtime system supports\n\
-                  \parallel threads."}
+    val parallelism_p = NativeFlags.addParallelism()
 
     val par_alloc_unprotected_p =
         Flags.add_bool_entry
