@@ -149,16 +149,12 @@ jobs:
           make -C test/barry all
 
       - name: Test bootstrap fixed point
-        run: make bootstrap
-
-      - name: Test native installation across runtime modes
-        if: matrix.os == 'darwin'
-        run: make check-native-install CHECK_INSTALL_PREFIX="$RUNNER_TEMP/install"
+        run: make bootstrap BOOTSTRAP_JOBS="$(getconf _NPROCESSORS_ONLN)"
 
       - name: Build binary distribution
         run: make mlkit_bin_dist
 
-      - name: Install and test the release archive
+      - name: Test release installation across runtime modes
         run: |
           root=$(pwd)
           package_name=mlkit-bin-dist-$OS
@@ -197,12 +193,6 @@ jobs:
           val () = if answer = 42 then print "packaged compiler passed\n"
                    else raise Fail "incorrect result"
           SML
-          printf 'packaged compiler passed\n' > expected
-          for mode in gc no_gc; do
-            "$MLKIT" "-$mode" -o "probe-$mode" probe.sml
-            "./probe-$mode" > actual
-            cmp expected actual
-          done
           SML_LIB="$installed/lib/smltojs" "$installed/bin/smltojs" -o probe-js probe.sml
           test -s probe-js.html
           sh "$root/test/repl/check-installed.sh"

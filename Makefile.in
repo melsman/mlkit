@@ -185,6 +185,8 @@ install_kitdemo:
 
 .PHONY: install_basis
 install_basis:
+	$(MKDIR) $(LIBDIR)/ml-yacc-lib
+	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,sig,mlb} $(LIBDIR)/ml-yacc-lib
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
 	$(INSTALLDATA) basis/Makefile $(LIBDIR)/basis

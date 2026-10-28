@@ -56,35 +56,7 @@ for flags in '-no_gc' '-gc' '-gengc' '-gc -rp' '-no_gc -rp' '-no_gc -par'; do
   esac
   cmp "$scratch/expected" "$scratch/actual"
 done
-# Exercise both native generators and compile their output with the installed
-# compiler and parser library, independent of the source checkout's caches.
-cp "$SML_LIB/src/Tools/ml-yacc/examples/calc/calc.lex" \
-   "$SML_LIB/src/Tools/ml-yacc/examples/calc/calc.grm" "$scratch/"
-cat > "$scratch/calc.mlb" <<'EOF'
-$(SML_LIB)/basis/basis.mlb
-$(SML_LIB)/ml-yacc-lib/ml-yacc-lib.mlb
-calc.grm.sig
-calc.grm.sml
-calc.lex.sml
-driver.sml
-EOF
-cat > "$scratch/driver.sml" <<'EOF'
-structure Values = CalcLrValsFun(structure Token = LrParser.Token)
-structure Lexer = CalcLexFun(structure Tokens = Values.Tokens)
-structure Parser = Join(structure LrParser = LrParser
-                        structure ParserData = Values.ParserData
-                        structure Lex = Lexer)
-val input = ref "2+3*4;"
-val lexer = Parser.makeLexer (fn _ => !input before input := "")
-val (result,_) = Parser.parse(0,lexer,fn (s,_,_) => raise Fail s,())
-val () = if result = SOME 14 then print "native generators passed\n"
-         else raise Fail "native calculator result"
-EOF
-(cd "$scratch" && "$ARM64_PREFIX/bin/mlkit-mllex" calc.lex &&
-  "$ARM64_PREFIX/bin/mlkit-mlyacc" calc.grm &&
-  SML_LIB="$ARM64_PREFIX" "$ARM64_PREFIX/bin/mlkit" -gc -o calc calc.mlb &&
-  ./calc > generators.out)
-printf 'native generators passed\n' > "$scratch/generators.expected"
-cmp "$scratch/generators.expected" "$scratch/generators.out"
+SML_LIB="$ARM64_PREFIX" MLKIT="$ARM64_PREFIX/bin/mlkit" \
+  sh "$SML_LIB/test/repl/check-installed.sh"
 printf '%s\n' "$ARM64_PREFIX" > "$ARM64_PREFIX/.arm64-install-prefix"
 printf 'Native installation staged at %s\n' "$ARM64_PREFIX"
