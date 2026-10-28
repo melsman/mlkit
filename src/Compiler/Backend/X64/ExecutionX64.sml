@@ -477,7 +477,10 @@ structure ExecutionX64 : EXECUTION =
 
               val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
                               else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
-              val shell_cmd1 = link_shared() ^ " -shared -o " ^ runtime_lib ^ " "
+              (* ELF's lazy resolver may clobber the ML helper argument
+               * registers r10/r11 on calls within this shared runtime. *)
+              val binding = if onmac_p() then "" else " -Wl,-z,now"
+              val shell_cmd1 = link_shared() ^ binding ^ " -shared -o " ^ runtime_lib ^ " "
                                ^ concat files ^ wa ^ path_to_runtime true () ^ nwa
                                ^ libdirs ^ libConvertList(libs()) ^ pthread
               val rpath = if onmac_p() then ""
