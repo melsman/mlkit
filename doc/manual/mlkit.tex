@@ -1905,6 +1905,39 @@ The structures \inline{Real}, \inline{IEEEReal}, and \inline{Math} provide other
 useful operations on reals.\footnote{Consult the files \boxml{basis/REAL.sig},
 \boxml{basis/IEEE\_REAL.sig}, and \boxml{basis/MATH.sig}.}
 
+\subsection{Narrow Reals}
+
+The 64-bit native Arm64 and X64 backends also provide \kw{Real32} and
+\kw{Real16}, implementing IEEE binary32 and binary16 respectively. Real
+literals and the real arithmetic operators are overloaded; unconstrained
+real literals and division retain the ordinary \kw{real} default. Literals
+are rounded directly to the target format, without a binary64 intermediate.
+All three real types are distinct and do not admit polymorphic equality.
+
+Narrow real scalars are low-unboxed machine-word values, including when
+embedded in high-unboxed data. With tagging enabled their representation is
+\texttt{(zeroExtend(bits) << 1) + 1}; decoding uses a logical right shift.
+Without tagging they contain the zero-extended IEEE bits. These layouts
+apply with and without garbage collection.
+
+Binary16 core arithmetic, square root, integer conversion and narrowing
+from binary64 use an exact integer fallback on both native targets. The
+fallback requires no optional FP16 CPU extension and rounds once according
+to the current \kw{IEEEReal} rounding mode, including subnormal results.
+Negation and absolute value compile to inline bit operations. Transcendental
+functions in \kw{Math16} use binary64 C library functions followed by narrowing;
+they do not promise correctly rounded binary16 transcendental results.
+
+Both families include \kw{Math16}/\kw{Math32}, arrays, vectors, their slices,
+\kw{Array2}, and \kw{PackReal16Big}/\kw{PackReal16Little} and corresponding
+Real32 packers. Specialized collections store untagged two-byte or four-byte
+elements, preserving signed zero and NaN payloads. All real families share
+\kw{IEEEReal}. \kw{Real16.fromDecimal} uses nearest rounding; scanning and
+ordinary arithmetic use the current rounding mode. SMLtoJs support is not
+currently available. The automatic C interface supports \kw{float} and
+\kw{double}; use \kw{Real16.toLarge}/\kw{Real16.fromLarge} when crossing that
+interface rather than assuming a C \texttt{\_Float16} calling convention.
+
 \section{Characters and Strings}
 The
 %
