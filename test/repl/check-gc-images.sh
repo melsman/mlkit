@@ -28,8 +28,9 @@ chmod +x "$gc_work/link-shared"
 REPL_GC_PROBE=$gc_work/probe.o
 export CC REPL_GC_PROBE
 cd "$gc_work"
-# Optional shared cache for already rebuilt Basis units; local phrases remain fresh.
-gc_cache=${GC_CACHE:-$(basename "$gc_work" | tr -cd '[:alnum:]')}
+# An explicitly empty GC_CACHE reuses the normal prepared Basis. Leaving it
+# unset retains the fresh-cache standalone check; local phrases remain fresh.
+gc_cache=${GC_CACHE-$(basename "$gc_work" | tr -cd '[:alnum:]')}
 "$MLKIT" $GC_FLAGS --mlb-subdir "$gc_cache" -ldshared "$gc_work/link-shared" \
   < "$gc_sources/gc-images.cmd" > output.log 2> error.log
 if grep -Ei 'Garbage collection disabled|uncaught|error:|lost earlier|lost updated|lost exception|lost printed' output.log; then

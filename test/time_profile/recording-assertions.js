@@ -34,6 +34,10 @@ for (const mode of ['gc', 'no_gc']) {
 }
 
 const slow = fs.readFileSync(`${dir}/slow.json`, 'utf8').trim().split('\n').map(JSON.parse);
+assert.equal(slow.find(r => r.type === 'time_session').buffer_capacity,4096);
+const drains = slow.filter(r => r.type === 'time_status');
+assert(drains.some((r,i) => r.recorded - (i ? drains[i-1].recorded : 0) >= 4096),
+       'slow reader must drain a full buffer exceeding ordinary pipe capacity');
 assert(slow.some(r => r.type === 'time_sample'), 'slow output lost buffered samples');
 assert(!slow.some(r => r.type === 'time_sample' && r.state === 1), 'delivery was not masked during drain');
 // Mutate independently parsed wire fields; malformed lifecycle must be rejected.

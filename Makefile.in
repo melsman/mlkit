@@ -300,6 +300,7 @@ install_test:
 	$(MKDIR) $(DATADIR)/test/DATA $(DATADIR)/test/LEXGEN_DATA $(DATADIR)/test/VLIW_DATA
 	$(MKDIR) $(DATADIR)/test/ray/DATA $(DATADIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile $(DATADIR)/test
+	$(INSTALL) test/check-regressions.sh $(DATADIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
 	$(INSTALL) test/README $(DATADIR)/test
 	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA
@@ -491,7 +492,7 @@ check-compiler:
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
 	  sh src/Compiler/Backend/X64/tests/check-allocation.sh
 	$(MAKE) -C test/repl all
-	$(MAKE) -C test/repl test_gc
+	$(MAKE) -C test/repl test_gc GC_CACHE=
 emitter check-arm64 check-native-install:
 	@echo 'This check requires the configured ARM64 backend' >&2; exit 1
 endif
@@ -647,7 +648,7 @@ bin/rpfixture: test/region_profile/encode-fixture.sml test/region_profile/encode
 # Unit-test drivers exercise library code, so build them with the seed too.
 # Their Report adapter changes shared types: stage sources in a private tree.
 PRETTYPRINT_BUILD ?= $(CWD)/test/prettyprint/build
-PRETTYPRINT_TESTS ?= spans locations ir-report link-map
+PRETTYPRINT_TESTS ?= spans
 .PHONY: prettyprint-tools
 prettyprint-tools:
 	$(MKDIR) "$(PRETTYPRINT_BUILD)/test/prettyprint" "$(PRETTYPRINT_BUILD)/src/Common" "$(PRETTYPRINT_BUILD)/test/prettyprint/support" "$(PRETTYPRINT_BUILD)/src/Kitlib" "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile"

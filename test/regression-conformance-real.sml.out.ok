@@ -1,3 +1,64 @@
+floor nan: Domain
+floor inf: Overflow
+floor ~inf: Overflow
+floor 2.5: 2
+floor ~2.5: ~3
+ceil nan: Domain
+ceil inf: Overflow
+ceil ~inf: Overflow
+ceil 2.5: 3
+ceil ~2.5: ~2
+trunc nan: Domain
+trunc inf: Overflow
+trunc ~inf: Overflow
+trunc 2.5: 2
+trunc ~2.5: ~2
+round nan: Domain
+round inf: Overflow
+round ~inf: Overflow
+round 2.5: 2
+round ~2.5: ~2
+toInt NEAREST nan: Domain
+toInt NEAREST inf: Overflow
+toInt NEAREST ~inf: Overflow
+toInt NEAREST 2.5: 2
+toInt NEAREST ~2.5: ~2
+toInt NEGINF nan: Domain
+toInt NEGINF inf: Overflow
+toInt NEGINF ~inf: Overflow
+toInt NEGINF 2.5: 2
+toInt NEGINF ~2.5: ~3
+toInt POSINF nan: Domain
+toInt POSINF inf: Overflow
+toInt POSINF ~inf: Overflow
+toInt POSINF 2.5: 3
+toInt POSINF ~2.5: ~2
+toInt ZERO nan: Domain
+toInt ZERO inf: Overflow
+toInt ZERO ~inf: Overflow
+toInt ZERO 2.5: 2
+toInt ZERO ~2.5: ~2
+toLargeInt nan: Domain
+toLargeInt inf: Overflow
+toLargeInt 1e20: 100000000000000000000
+floor 1e300: Overflow
+min/max with nan: 1.0 1.0 1.0 1.0 nan 1.0 2.0
+nextAfter: inf ~inf nan nan 1.0 true true inf
+sameSign: false true false true true true true
+realRound: 0.0/0 2.0/2 2.0/2 ~0.0/0 ~2.0/~2 ~2.0/~2 0.0/0 4.0/4 ~4.0/~4 0.0/0
+realRound specials: inf ~inf nan true
+pow: nan nan nan inf 1024.0 1.0 1.0 0.0
+3.14E0 3E0 3E2 ~1.230E~4 1.500000E0 1.5E300 1.5E~300
+3.14 2 ~1.500000 0.000
+3.14 1E~5 1E2 1.23456789012E14 1E10
+1E300 1E~5 1E~10 123.0 ~0.001 1E15 0.0001
+FIX: inf ~inf nan
+SCI: inf ~inf nan
+GEN: inf ~inf nan
+GEN NONE: inf ~inf nan
+EXACT: inf ~inf nan
+toString: inf ~inf nan
+fmt (FIX ~1): Size, fmt (SCI ~1): Size, fmt (GEN 0): Size, fmt (GEN ~1) 1.0: Size, fmt (GEN 1): no exception
 toDecimal 1.5 = NORMAL + [1,5] 1 ; EXACT = 0.15E1 ; IEEEReal.toString = 0.15E1
 toDecimal ~12.25 = NORMAL ~ [1,2,2,5] 2 ; EXACT = ~0.1225E2 ; IEEEReal.toString = ~0.1225E2
 toDecimal 0.0 = ZERO + [] 0 ; EXACT = 0.0 ; IEEEReal.toString = 0.0

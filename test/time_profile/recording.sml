@@ -10,4 +10,8 @@ val () = masked ()
 val () = wait 50
 val () = TimeProfile.flush ()
 val () = print "recording done\n"
-val () = List.app (fn _ => (wait (if CommandLine.arguments () = ["slow"] then 1200 else 20); TimeProfile.flush ())) [1,2,3,4,5]
+(* One full buffer suffices for the blocked-drain check; normal lifecycle
+ * scenarios still exercise repeated flushes. *)
+val slow = CommandLine.arguments () = ["slow"]
+val () = List.app (fn _ => (wait (if slow then 1200 else 20); TimeProfile.flush ()))
+                  (if slow then [1] else [1,2,3,4,5])

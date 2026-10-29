@@ -192,28 +192,10 @@ stringconcat.sml               noopt         (* check transformation of calls to
 sma.sml                        noopt         (* storage mode error - issue #208 *)
 
 (* Tests of Basis Library conformance *)
-word63fold.sml
-realnan.sml
-realsign.sml
-wordneg.sml
-wordscan.sml
-word8x.sml
-intquot.sml
-intinffmt.sml
-charscan.sml
-stringscan.sml
-slicebounds.sml
-arrayneg.sml
-realdomain.sml
-realspecial.sml
-realfmt.sml
-realdecimal.sml
-timeneg.sml
-timer2.sml
-dateoffset.sml
-datefmt.sml
-datescan.sml
-pathvalid.sml
+regression-conformance-scalar.sml
+regression-conformance-text.sml
+regression-conformance-real.sml
+regression-conformance-time.sml
 fullpath.sml
 tmpname.sml
 setposout.sml
