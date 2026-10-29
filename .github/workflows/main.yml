@@ -212,6 +212,17 @@ jobs:
           make -C "$package" install PREFIX="$installed"
           if [ "$OS" = darwin ]; then
             test "$(lipo -archs "$installed/bin/mlkit")" = arm64
+            # Compiler releases must also be usable as bootstrap seeds.
+            for compiler in mlkit reml smltojs; do
+              stack=$(otool -l "$installed/bin/$compiler" | awk '
+                $1 == "cmd" && $2 == "LC_MAIN" { main = 1 }
+                main && $1 == "stacksize" { print $2; exit }
+              ')
+              if [ -z "$stack" ] || [ "$stack" -lt 536870912 ]; then
+                echo "$compiler has insufficient bootstrap stack: ${stack:-missing LC_MAIN}" >&2
+                exit 1
+              fi
+            done
           else
             readelf -h "$installed/bin/mlkit" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
           fi
