@@ -125,4 +125,14 @@ done
   --with-compiler="$OUT/seed-mlkit" --with-compiler-lib="$OUT/seed-library" > configure.log 2>&1 &&
   SML_LIB=must-not-leak make -s -f probe.mk seed-probe)
 grep -q "seed-mlkit|$OUT/seed-library|" "$BUILD_CHECK_LOG"
+# Cache cleanup must cover new backends/tools and paths containing spaces.
+for directory in src/Compiler/Backend/Arm64 src/Tools/RegionProfile \
+                 src/Tools/SigDoc 'src/Future Backend'; do
+  mkdir -p "$OUT/mlkit/$directory/MLB/cache/MLB"
+  printf 'stale cache\n' > "$OUT/mlkit/$directory/MLB/cache/stale.sml.d"
+done
+printf 'source\n' > "$OUT/mlkit/src/Future Backend/keep.sml"
+(cd "$OUT/mlkit" && make -s clean_mlb)
+test -z "$(find "$OUT/mlkit" -type d -name MLB -print)"
+test -f "$OUT/mlkit/src/Future Backend/keep.sml"
 echo 'Configured seeds and Makefile bootstrap ordering/failure handling passed'

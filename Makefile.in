@@ -160,7 +160,7 @@ barry:
 	$(MAKE) man_barry
 
 .PHONY: clean
-clean:
+clean: clean_mlb
 	$(CLEAN) bin run lib bootstrap dist man/man1/*.1
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
@@ -174,7 +174,7 @@ clean:
 
 .PHONY: clean_mlb
 clean_mlb:
-	find . -name "MLB" -type d | xargs rm -Rf
+	find . -name .git -prune -o -type d -name MLB -prune -exec rm -rf {} +
 
 .PHONY: install_kitdemo
 install_kitdemo:
