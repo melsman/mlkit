@@ -81,7 +81,7 @@ mlb%: Makefile %.sml %.mlb
          ; fi)
 
 .PHONY: test
-test: $(RES_TESTFILES)
+test: check-narrow-reals $(RES_TESTFILES)
 	@cat $(RES_TESTFILES)
 	@echo "-------T E S T --- R E P O R T-------"
 	@echo "Tests succeeded:   `grep "OK" $(RES_TESTFILES) | wc -l` /`grep "of test" $(RES_TESTFILES) | wc -l`"
@@ -94,3 +94,7 @@ clean:
 
 cleanall: clean
 	(cd ../basis; rm -rf MLB)
+
+.PHONY: check-narrow-reals
+check-narrow-reals:
+	sh check-narrow-reals.sh

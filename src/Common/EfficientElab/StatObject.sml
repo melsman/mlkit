@@ -1017,7 +1017,7 @@ structure StatObject: STATOBJECT =
               end
            | SCon.STRING _ => simple_scon String
            | SCon.REAL _ =>
-             let val tns = if values_64bit() then
+             let val tns = if values_64bit() orelse Flags.is_on0 "narrow_reals" () then
                              [TyName.tyName_REAL, TyName.tyName_REAL32, TyName.tyName_REAL16]
                            else [TyName.tyName_REAL]
                  val tv = TyVar.fresh_overloaded tns

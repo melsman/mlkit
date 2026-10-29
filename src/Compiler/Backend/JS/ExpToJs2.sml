@@ -264,11 +264,17 @@ in
   fun prLvarExport lv =
       patch (Lvars.name lv) (fn() => true) (pr_lv lv) NONE
   fun exconName e =
-      patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e)) NONE
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.en$" ^ field
+        | NONE => patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e)) NONE
   fun exconExn e =
-      patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.exn$" ^ field
+        | NONE => patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
   fun exconExnExport e =
-      patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.exn$" ^ field
+        | NONE => patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
   fun getLocalBase() = !localBase
   fun fresh_fixvar() =
       prLvar Context.empty (Lvars.new_named_lvar "fix")
@@ -379,7 +385,7 @@ fun jorw e w = J.Prim("|",[e,J.Cnst(J.Word w)])
 
 fun wrapWord31 (e: J.exp) : J.exp = jandw e 0x7FFFFFFF
 
-fun wrapWord32 (e: J.exp) : J.exp = jandw e 0xFFFFFFFF
+fun wrapWord32 (e: J.exp) : J.exp = J.Prim(">>>",[e,J.Cnst(J.Int 0)])
 
 fun callPrim0 n = J.App(J.Id n,[])
 
@@ -472,7 +478,7 @@ fun pToJs2 name e1 e2 : J.exp =
 
     | "__shift_right_unsigned_word32ub" => J.Prim(">>>", [e1,e2])
     | "__shift_right_unsigned_word31" => J.Prim(">>>", [e1,e2])
-    | "__shift_right_signed_word32ub" => J.Prim(">>", [e1,e2])
+    | "__shift_right_signed_word32ub" => wrapWord32(J.Prim(">>", [e1,e2]))
     | "__shift_right_signed_word31" =>
       J.IfExp(J.Prim("&", [e1,J.Id "-0x40000000"]),
               jandw (J.Prim(">>", [jorw e1 0x80000000, e2])) 0x7FFFFFFF,
@@ -481,15 +487,15 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__shift_left_word31" => wrapWord31(J.Prim("<<",[e1,jandw e2 0x1F]))
     | "__shift_left_word32ub" => wrapWord32(J.Prim("<<",[e1,jandw e2 0x1F]))
 
-    | "__andb_word32ub" => J.Prim("&",[e1,e2])
+    | "__andb_word32ub" => wrapWord32(J.Prim("&",[e1,e2]))
     | "__andb_word31" => J.Prim("&",[e1,e2])
     | "__andb_word" => J.Prim("&",[e1,e2])
 
-    | "__orb_word32ub" => J.Prim("|",[e1,e2])
+    | "__orb_word32ub" => wrapWord32(J.Prim("|",[e1,e2]))
     | "__orb_word31" => J.Prim("|",[e1,e2])
     | "__orb_word" => J.Prim("|",[e1,e2])
 
-    | "__xorb_word32ub" => J.Prim("^",[e1,e2])
+    | "__xorb_word32ub" => wrapWord32(J.Prim("^",[e1,e2]))
     | "__xorb_word31" => J.Prim("^",[e1,e2])
     | "__xorb_word" => J.Prim("^",[e1,e2])
 
@@ -614,11 +620,16 @@ fun pToJs0 name =
       | "sml_localoffset" => callPrim0 "SmlPrims.localoffset"
       | _ => die ("pToJs0 unimplemented: " ^ name)
 
-fun pToJs name [] = pToJs0 name
-  | pToJs name [e] = pToJs1 name e
-  | pToJs name [e1,e2] = pToJs2 name e1 e2
-  | pToJs name [e1,e2,e3] = pToJs3 name e1 e2 e3
-  | pToJs name _ = die ("pToJs unimplemented: " ^ name)
+fun pToJsBuiltin name [] = pToJs0 name
+  | pToJsBuiltin name [e] = pToJs1 name e
+  | pToJsBuiltin name [e1,e2] = pToJs2 name e1 e2
+  | pToJsBuiltin name [e1,e2,e3] = pToJs3 name e1 e2 e3
+  | pToJsBuiltin name _ = die ("pToJs unimplemented: " ^ name)
+
+fun pToJs name args =
+    case NarrowJs.lookup name of
+        SOME target => J.App(J.Id target,args)
+      | NONE => pToJsBuiltin name args
 
 (* Compilation of switches *)
 

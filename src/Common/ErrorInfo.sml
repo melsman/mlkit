@@ -194,7 +194,7 @@ structure ErrorInfo: ERROR_INFO =
           line ("unbound type constructor " ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
       | report (UNSUPPORTED_NARROW_REAL name) =
-          line (name ^ " requires a 64-bit native backend; Real32 and Real16 are not supported in SMLtoJs.")
+          line (name ^ " requires SMLtoJs or a 64-bit native backend with narrow real support.")
 
       | report (NOTCONSTYPE ty) =
           line (Type.string ty ^ "is not a constructed type.")

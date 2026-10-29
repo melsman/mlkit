@@ -85,6 +85,11 @@ local
           end
        end
 
+    basis IEEEReal =
+       let open General String Int List
+       in bas IEEE_REAL.sig IEEEReal.sml end
+       end
+
     basis Real =
        let open General String Int
        in bas MATH.sig Math.sml REAL.sig Real.sml
@@ -99,6 +104,17 @@ local
        in bas ann safeLinkTimeElimination
               in INT_INF.sml IntInf.sml Int64Dummy.sml
               end
+          end
+       end
+
+    basis NarrowReal =
+       let open General List ArrayVector String Word Int IntInf IntInfRep Real IEEEReal Byte
+       in bas
+            local NarrowWide.sml NARROW_REAL.sig RealBits.sml
+            in Math16.sml Real16.sml Math32.sml Real32.sml end
+            narrow-real-default.sml
+            MONO_ARRAY2.sml table-functors.sml
+            ann inline_functors in realtables.sml PackReal16.sml PackReal32.sml end
           end
        end
 
@@ -125,5 +141,5 @@ local
        bas CONTROL.sig Control.sml end
 in
   open General List ArrayVector String Bool Word Byte Text
-       Int Real IntInf IntInfRep System Io Control
+       Int Real IntInf IntInfRep IEEEReal NarrowReal System Io Control
 end

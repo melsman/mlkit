@@ -88,7 +88,7 @@ structure ElabDec: ELABDEC =
           : ElabInfo = ElabInfo.plus_OverloadingInfo (okConv i) oi
 
     fun unsupportedNarrowReal name =
-        not (values_64bit()) andalso
+        not (values_64bit() orelse Flags.is_on0 "narrow_reals" ()) andalso
         (name = "real32" orelse name = "real16" orelse
          String.isPrefix "Real32" name orelse String.isPrefix "Real16" name orelse
          String.isPrefix "Math32" name orelse String.isPrefix "Math16" name)

@@ -1175,7 +1175,8 @@ structure Environments: ENVIRONMENTS =
               end
 
           val narrowReals =
-              if Flags.is_on0 "values_64bit" () then [TyName.tyName_REAL32, TyName.tyName_REAL16]
+              if Flags.is_on0 "values_64bit" () orelse Flags.is_on0 "narrow_reals" ()
+              then [TyName.tyName_REAL32, TyName.tyName_REAL16]
               else []
 
           val tyvar_num = TyVar.fresh_overloaded (narrowReals @ [TyName.tyName_INT31,
@@ -1317,8 +1318,10 @@ structure Environments: ENVIRONMENTS =
             val TE_word = te (TyCon.tycon_WORD, defaultTyNameWord)
             val TEs = [TE_initial0, TE_word, TE_int]
                        @ (if values_64bit() then
-                            [TE_int63, TE_int64, TE_word63, TE_word64, TE_real32, TE_real16]
+                            [TE_int63, TE_int64, TE_word63, TE_word64]
                           else [])
+                       @ (if values_64bit() orelse Flags.is_on0 "narrow_reals" () then
+                            [TE_real32, TE_real16] else [])
             val TEs = if quotation() then TE_frag :: TEs else TEs
           in
             joinTE TEs

@@ -106,6 +106,7 @@ structure ExecutionJS : EXECUTION =
                \the resulting run.html file."}
 
     val () = Flags.turn_off "values_64bit"
+    val () = Flags.turn_on "narrow_reals"
 
     fun link_files_with_runtime_system _ files run =
 	let val html_file = run ^ ".html"

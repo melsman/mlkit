@@ -16,9 +16,9 @@ descriptions below and in the Math structure, we just refer to the NaN
 value.
 *)
 signature REAL = sig
-  type real = real
+  type real
 
-  structure Math : MATH
+  structure Math : MATH where type real = real
 
   val ~    : real -> real
   val +    : real * real -> real
@@ -33,8 +33,8 @@ signature REAL = sig
   val compare : real * real -> order
 
   val sameSign    : real * real -> bool
-  val toDefault   : real -> real
-  val fromDefault : real -> real
+  val toDefault   : real -> Initial.default_real
+  val fromDefault : Initial.default_real -> real
   val fromInt     : int -> real
 
   val floor : real -> int

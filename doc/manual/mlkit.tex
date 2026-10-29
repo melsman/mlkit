@@ -1934,8 +1934,8 @@ Real32 packers. Specialized collections store untagged two-byte or four-byte
 elements, preserving signed zero and NaN payloads. All real families share
 \kw{IEEEReal}. Both narrow families use nearest rounding for
 \kw{fromDecimal}; scanning and
-ordinary arithmetic use the current rounding mode. SMLtoJs support is not
-currently available. The automatic C interface supports \kw{float} and
+ordinary arithmetic use the current rounding mode. SMLtoJs also provides
+both narrow families, as described below. The automatic C interface supports \kw{float} and
 \kw{double}; use \kw{Real16.toLarge}/\kw{Real16.fromLarge} when crossing that
 interface rather than assuming a C \texttt{\_Float16} calling convention.
 
@@ -8799,6 +8799,27 @@ has been used for hosting a Standard ML compiler in a web browser
 \begin{quote}
 \url{https://diku-dk.github.io/sml-ide/}
 \end{quote}
+
+\paragraph{Narrow reals in JavaScript.}
+SMLtoJs provides \kw{Real16}, \kw{Real32}, their \kw{Math} structures,
+packed arrays, vectors, slices and two-dimensional arrays, and both endian
+packers. Scalars are unsigned IEEE bit patterns held in JavaScript numbers;
+collection payloads use \texttt{Uint8Array}, with two or four bytes per element.
+Bit operations and packing preserve signed zero and NaN payloads. Conversion
+through a JavaScript floating-point value may quiet or canonicalize a NaN.
+
+Core arithmetic, square root and narrowing use exact \texttt{BigInt}
+significands and remainders, rounding once to the destination format. These
+operations require a JavaScript engine supporting \texttt{BigInt} and
+\texttt{DataView}; packed collections require typed arrays. Ordinary programs
+can still run on older engines when they do not perform narrow arithmetic.
+A shared \kw{IEEEReal} structure controls software rounding for the narrow
+families. It does not alter the JavaScript engine's rounding of ordinary
+\kw{real} arithmetic or \kw{Math} functions. Narrow transcendental functions
+use JavaScript \kw{Math} followed by narrowing and do not promise correctly
+rounded transcendental results. Decimal formatting retains SMLtoJs's existing
+precision limit of 20 digits. Real types remain distinct and non-equality,
+and unconstrained literals and division default to ordinary \kw{real}.
 
 \subsubsection*{Generational Garbage Collection}
 \index{garbage collection!generational}%

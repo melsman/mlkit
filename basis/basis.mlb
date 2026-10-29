@@ -113,7 +113,7 @@ local
 
     basis TableFunctors =
        let open General List ArrayVector Word Int
-       in bas wordtable-functors.sml end
+       in bas table-functors.sml wordtable-functors.sml end
        end
 
     basis WordArrayVector =

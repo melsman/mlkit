@@ -7,6 +7,7 @@ local
       open Pickle CompilerObjects 
    in Backend/JS/jsast.mlb
       Backend/JS/EXP_TO_JS.sig
+      Backend/JS/NarrowJs.sml
       Backend/JS/ExpToJs2.sml
    end
    local open CompilerObjects in Backend/JS/CompileJS.sml end
