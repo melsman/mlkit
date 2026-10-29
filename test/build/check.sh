@@ -70,6 +70,12 @@ MAKE
     "$ROOT/src/Common/MD5.sml" "$ROOT/src/Common/md5.mlb" \
     "$ROOT/src/Common/IRLocations.sml" "$dir/src/Common/"
   (cd "$dir" && SML_LIB=must-not-leak make -s prettyprint-tools > prettyprint.log 2>&1)
+  test -x "$dir/test/prettyprint/build/spans"
+  for helper in locations ir-report link-map; do
+    test ! -e "$dir/test/prettyprint/build/$helper"
+  done
+  (cd "$dir" && SML_LIB=must-not-leak make -s prettyprint-tools \
+    PRETTYPRINT_TESTS='locations ir-report link-map' > prettyprint-optional.log 2>&1)
   for helper in spans locations ir-report link-map; do
     grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- "/$helper $helper.mlb"
   done
