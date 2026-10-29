@@ -140,8 +140,11 @@ local
     basis NarrowReal =
        let open General String Int Word List IEEEReal IntInf IntInfRep Real ArrayVector Byte TableFunctors
        in bas
-            local RealBits.sml
-            in Math16.sml Real16.sml Math32.sml Real32.sml end
+            (* Numeric modules only initialize constants and function closures. *)
+            ann safeLinkTimeElimination
+            in local RealBits.sml
+               in Math16.sml Real16.sml Math32.sml Real32.sml end
+            end
             ann inline_functors in realtables.sml PackReal16.sml PackReal32.sml end
           end
        end

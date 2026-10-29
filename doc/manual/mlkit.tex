@@ -1932,7 +1932,8 @@ Both families include \kw{Math16}/\kw{Math32}, arrays, vectors, their slices,
 \kw{Array2}, and \kw{PackReal16Big}/\kw{PackReal16Little} and corresponding
 Real32 packers. Specialized collections store untagged two-byte or four-byte
 elements, preserving signed zero and NaN payloads. All real families share
-\kw{IEEEReal}. \kw{Real16.fromDecimal} uses nearest rounding; scanning and
+\kw{IEEEReal}. Both narrow families use nearest rounding for
+\kw{fromDecimal}; scanning and
 ordinary arithmetic use the current rounding mode. SMLtoJs support is not
 currently available. The automatic C interface supports \kw{float} and
 \kw{double}; use \kw{Real16.toLarge}/\kw{Real16.fromLarge} when crossing that

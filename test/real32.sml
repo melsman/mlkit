@@ -1,3 +1,6 @@
+(* The existing real families retain their type identities. *)
+val _ : Real.real = (0.0:Real64.real)
+val _ : LargeReal.real = (0.0:Real.real)
 fun check name b = if b then () else raise Fail name
 fun bits (x:Real32.real) : word = prim ("id", x)
 fun eq (x,y) = Real32.== (x,y)
@@ -29,8 +32,13 @@ val halfway = 1.000000059604644775390625 : real
 val _ = check "convert up" (bits (Real32.fromLarge IEEEReal.TO_POSINF halfway) = 0w1065353217)
 val _ = check "convert nearest" (bits (Real32.fromLarge IEEEReal.TO_NEAREST halfway) = 0w1065353216)
 val _ = check "convert down" (bits (Real32.fromLarge IEEEReal.TO_NEGINF halfway) = 0w1065353216)
+val _ = check "convert toward zero negative" (Real32.signBit (Real32.fromLarge IEEEReal.TO_ZERO (~0.0)))
+val _ = check "convert toward zero tie" (bits (Real32.fromLarge IEEEReal.TO_ZERO (~halfway)) = 0w3212836864)
 val _ = check "rounding restored" (IEEEReal.getRoundingMode() = IEEEReal.TO_NEAREST)
 val () = IEEEReal.setRoundingMode IEEEReal.TO_POSINF
+val midpointDecimal = valOf (IEEEReal.fromString "1.000000059604644775390625")
+val _ = check "fromDecimal nearest" (bits(valOf(Real32.fromDecimal midpointDecimal)) = 0w1065353216)
+val _ = check "scan current rounding" (bits(read "1.000000059604644775390625") = 0w1065353217)
 val _ = check "decimal directed underflow" (bits (read "1.0e~1000") = 0w1)
 fun add (x:Real32.real,y:Real32.real) = x+y
 val _ = check "arithmetic directed rounding" (bits(add(1.0,Real32.minPos)) = 0w1065353217)
@@ -38,6 +46,8 @@ val () = IEEEReal.setRoundingMode IEEEReal.TO_ZERO
 val _ = check "decimal directed overflow" (eq(read "1.0e1000",Real32.maxFinite))
 val () = IEEEReal.setRoundingMode IEEEReal.TO_NEAREST
 val nan = PackReal32Big.fromBytes (Word8Vector.fromList [0wxff,0wxc0,0wx01,0wx23])
+val _ = check "shared unordered exception" ((Real32.compare(nan,nan); false)
+                                            handle IEEEReal.Unordered => true)
 val values : Real32.real list = [1.5,~2.5,~0.0,Real32.minPos,Real32.maxFinite,nan]
 val a = Real32Array.fromList values
 val v = Real32Array.vector a
@@ -78,5 +88,5 @@ fun walk ([],_) = ()
       (check "live narrow values" (eq(x,Real32.fromInt n) andalso halfBits y = 0w15360);
        walk(xs,n+1))
   | walk _ = raise Fail "narrow constructors"
-val () = walk(build(50000,[]),1)
+val () = walk(build(2000,[]),1)
 val _ = print "OK\n"

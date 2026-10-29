@@ -1,5 +1,5 @@
 #!/bin/sh
-# Exhaustive unary/conversion checks and sampled binary arithmetic, no MPFR needed.
+# Boundary checks in all rounding modes; no exhaustive loops or MPFR dependency.
 set -eu
 cd "$(dirname "$0")/../../.."
 case $(uname -s)-$(uname -m) in

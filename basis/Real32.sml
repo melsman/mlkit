@@ -8,7 +8,7 @@ struct
   val maxFinite : real = 3.40282346638528859811704183484516925e38
   val minPos : real = 1.40129846432481707092372958328991613e~45
   val minNormalPos : real = 1.17549435082228750796873653722224568e~38
-  val posInf : real = 1.0/0.0
+  val posInf : real = prim ("id", 0wx7f800000:word)
   val negInf : real = ~posInf
   val op + : real * real -> real = op +
   val op - : real * real -> real = op -
@@ -110,7 +110,7 @@ struct
   fun decimal mode s =
       fromBits (Word.fromLargeInt (RealBits.fromStringMode format (rounding mode) s))
   fun fromLargeInt x = decimal (IEEEReal.getRoundingMode()) (IntInf.toString x)
-  fun fromDecimal {class,sign,digits,exp} =
+  fun fromDecimalMode mode {class,sign,digits,exp} =
       let fun signed x = if sign then ~x else x
           fun valid d = Int.<= (0,d) andalso Int.<= (d,9)
           fun digit d = String.str (Char.chr (Int.+ (48,d)))
@@ -119,15 +119,16 @@ struct
            | IEEEReal.INF => SOME (signed posInf)
            | IEEEReal.ZERO => SOME (signed 0.0)
            | _ => if List.all valid digits then
-                    SOME (decimal (IEEEReal.getRoundingMode())
+                    SOME (decimal mode
                       ((if sign then "~" else "") ^ "0." ^ String.concat (List.map digit digits) ^
                        "e" ^ Int.toString exp))
                   else NONE
       end
+  fun fromDecimal d = fromDecimalMode IEEEReal.TO_NEAREST d
   fun scan getc source =
       case IEEEReal.scan getc source of
           NONE => NONE
-        | SOME (d,rest) => Option.map (fn r => (r,rest)) (fromDecimal d)
+        | SOME (d,rest) => Option.map (fn r => (r,rest)) (fromDecimalMode (IEEEReal.getRoundingMode()) d)
   fun fromString s = StringCvt.scanString scan s
   fun toDecimal x =
       let val cls = class x

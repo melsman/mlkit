@@ -28,6 +28,8 @@ val halfway = 1.00048828125 : real
 val _ = check "convert up" (bits (Real16.fromLarge IEEEReal.TO_POSINF halfway) = 0w15361)
 val _ = check "convert nearest" (bits (Real16.fromLarge IEEEReal.TO_NEAREST halfway) = 0w15360)
 val _ = check "convert down" (bits (Real16.fromLarge IEEEReal.TO_NEGINF halfway) = 0w15360)
+val _ = check "convert toward zero negative" (Real16.signBit (Real16.fromLarge IEEEReal.TO_ZERO (~0.0)))
+val _ = check "convert toward zero tie" (bits (Real16.fromLarge IEEEReal.TO_ZERO (~halfway)) = 0w48128)
 val _ = check "rounding restored" (IEEEReal.getRoundingMode() = IEEEReal.TO_NEAREST)
 val () = IEEEReal.setRoundingMode IEEEReal.TO_POSINF
 val midpointDecimal = valOf (IEEEReal.fromString "1.00048828125")
@@ -40,6 +42,8 @@ val () = IEEEReal.setRoundingMode IEEEReal.TO_ZERO
 val _ = check "decimal directed overflow" (eq(read "1.0e1000",Real16.maxFinite))
 val () = IEEEReal.setRoundingMode IEEEReal.TO_NEAREST
 val nan = PackReal16Big.fromBytes (Word8Vector.fromList [0wxfe,0wx23])
+val _ = check "shared unordered exception" ((Real16.compare(nan,nan); false)
+                                            handle IEEEReal.Unordered => true)
 val values : Real16.real list = [1.5,~2.5,~0.0,Real16.minPos,Real16.maxFinite,nan]
 val a = Real16Array.fromList values
 val v = Real16Array.vector a

@@ -98,6 +98,12 @@ jobs:
           echo "SEED_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.mlkit"
           echo "SML_LIB $seed/lib/mlkit" > "$HOME/.mlkit/mlb-path-map"
+          if [ "$OS" = darwin ]; then
+            # This private release seed predates the larger compiler stack.
+            "$THECC" -O2 -Wall -Wextra -Werror test/build/seed-stack.c -o "$RUNNER_TEMP/seed-stack"
+            "$RUNNER_TEMP/seed-stack" "$seed/bin/mlkit"
+            codesign --force --sign - "$seed/bin/mlkit"
+          fi
           SML_LIB="$seed/lib/mlkit" "$seed/bin/mlkit" --version
 
       - name: Configure
