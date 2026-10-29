@@ -150,3 +150,14 @@ long real_auto_gc_verify(void) {
   return 1;
 #endif
 }
+
+/* Float arguments share the FP register bank with doubles. The last arguments
+ * spill to the C stack on both supported native targets. */
+float real_auto_single_mixed(long marker, double wide,
+                            float a, float b, float c, float d, float e,
+                            float f, float g, float h, float i, float last) {
+  assert(marker == 123 && wide == 2.5);
+  assert(a == 1 && b == 2 && c == 3 && d == 4 && e == 5);
+  assert(f == 6 && g == 7 && h == 8 && i == 9);
+  return last;
+}

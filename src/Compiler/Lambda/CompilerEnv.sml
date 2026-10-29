@@ -36,7 +36,7 @@ structure CompilerEnv: COMPILER_ENV =
                     | CON of con * tyvar list * Type * Type list
                     | REF       (* ref is *not* a constructor in the backend, but a primitive! *)
                     | EXCON of excon * Type
-                    | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS
+                    | ABS | NEG | PLUS | MINUS | MUL | REALDIV | DIV | MOD | LESS
                     | GREATER | LESSEQ | GREATEREQ
                                 (* ABS .. GREATEREQ are place-holders for
                                    the built-in overloaded operators
@@ -151,6 +151,7 @@ structure CompilerEnv: COMPILER_ENV =
                  (Ident.id_PLUS, PLUS),
                  (Ident.id_MINUS, MINUS),
                  (Ident.id_MUL, MUL),
+                 (Ident.id_REALDIV, REALDIV),
                  (Ident.id_DIV, DIV),
                  (Ident.id_MOD, MOD),
                  (Ident.id_LESS, LESS),
@@ -186,6 +187,8 @@ structure CompilerEnv: COMPILER_ENV =
                           (tycon_WORD63, ([tyName_WORD63], emptyCEnv)),
                           (tycon_WORD64, ([tyName_WORD64], emptyCEnv)),
                           (tycon_WORD, ([tyName_WordDefault()], emptyCEnv)),
+                          (tycon_REAL16, ([tyName_REAL16], emptyCEnv)),
+                          (tycon_REAL32, ([tyName_REAL32], emptyCEnv)),
                           (tycon_REAL, ([tyName_REAL], emptyCEnv)),
                           (tycon_STRING, ([tyName_STRING], emptyCEnv)),
                           (tycon_ARRAY, ([tyName_ARRAY], emptyCEnv)),
@@ -426,6 +429,7 @@ structure CompilerEnv: COMPILER_ENV =
        | eq_res (PLUS,PLUS) = true
        | eq_res (MINUS,MINUS) = true
        | eq_res (MUL,MUL) = true
+       | eq_res (REALDIV,REALDIV) = true
        | eq_res (DIV,DIV) = true
        | eq_res (MOD,MOD) = true
        | eq_res (LESS,LESS) = true
@@ -678,6 +682,7 @@ structure CompilerEnv: COMPILER_ENV =
                                           | PLUS => "PLUS"
                                           | MINUS => "MINUS"
                                           | MUL => "MUL"
+                                          | REALDIV => "REALDIV"
                                           | DIV => "DIV"
                                           | MOD => "MOD"
                                           | LESS => "LESS"
@@ -718,6 +723,7 @@ structure CompilerEnv: COMPILER_ENV =
               | toInt FORCE_RESET_REGIONS = 16
               | toInt PRIM = 17
               | toInt EXPORT = 18
+              | toInt REALDIV = 19
 
             fun fun_LVAR _ =
                 Pickle.con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
@@ -749,7 +755,8 @@ structure CompilerEnv: COMPILER_ENV =
                            Pickle.con0 RESET_REGIONS,
                            Pickle.con0 FORCE_RESET_REGIONS,
                            Pickle.con0 PRIM,
-                           Pickle.con0 EXPORT])
+                           Pickle.con0 EXPORT,
+                           Pickle.con0 REALDIV])
         end
 
     val pu_PathEnv =

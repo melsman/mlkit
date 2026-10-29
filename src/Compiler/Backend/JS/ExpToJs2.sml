@@ -498,6 +498,7 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__quot_int32ub" => chkOvfI32(callPrim2 "SmlPrims.quot" e1 e2)
     | "__rem_int32ub" => J.Prim("%",[e1,e2])
 
+    | "__div_real" => J.Prim("/",[e1,e2])
     | "divFloat" => J.Prim("/",[e1,e2])
     | "remFloat" => J.Prim("%",[e1,e2])
     | "__div_f64" => J.Prim("/",[e1,e2])

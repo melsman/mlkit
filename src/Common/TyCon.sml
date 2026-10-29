@@ -29,6 +29,8 @@ structure TyCon :> TYCON where type strid = StrId.strid =
     val tycon_WORD32 = "word32"
     val tycon_WORD63 = "word63"
     val tycon_WORD64 = "word64"
+    val tycon_REAL16 = "real16"
+    val tycon_REAL32 = "real32"
     val tycon_REAL   = "real"
     val tycon_F64    = "f64"
     val tycon_STRING = "string"

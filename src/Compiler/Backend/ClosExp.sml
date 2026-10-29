@@ -43,7 +43,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float64 | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float32 | Float64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -162,6 +162,7 @@ struct
       | layout_f Word63 = LEAF "Word63"
       | layout_f Int32 = LEAF "Int32"
       | layout_f Int64 = LEAF "Int64"
+      | layout_f Float32 = LEAF "Float32"
       | layout_f Float64 = LEAF "Float64"
       | layout_f Bool = LEAF "Bool"
       | layout_f ForeignPtr = LEAF "ForeignPtr"
@@ -1370,6 +1371,7 @@ struct
           else if TyName.eq(tn,TyName.tyName_WORD63) then Word63
           else if TyName.eq(tn,TyName.tyName_WordDefault()) then Word
           else if member tn [TyName.tyName_IntDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
+          else if TyName.eq(tn,TyName.tyName_REAL32) then Float32
           else if TyName.eq(tn,TyName.tyName_F64) then Float64
           else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
           else if member tn [TyName.tyName_INT32, TyName.tyName_WORD32] then Int32
@@ -1412,6 +1414,9 @@ struct
           else if TyName.eq(tn, TyName.tyName_WORD32) then 32
           else if TyName.eq(tn, TyName.tyName_WORD63) then 63
           else if TyName.eq(tn, TyName.tyName_WORD64) then 64
+          (* Narrow-real payloads fit in an immediate machine word. *)
+          else if TyName.eq(tn, TyName.tyName_REAL32) orelse
+                  TyName.eq(tn, TyName.tyName_REAL16) then 0
           else if TyName.eq(tn, TyName.tyName_CHAR) then 8
           else die "precisionNumType.wrong tyname"
       | NONE => die "precisionNumType.wrong type"
@@ -1624,7 +1629,12 @@ struct
            | MulExp.INTEGER(i,t,alloc) =>
              (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
            | MulExp.WORD(w,t,alloc) =>
-             (WORD {value=w, precision=precisionNumType t}, NONE_SE)
+             let val precision = precisionNumType t
+                 (* Precision zero denotes a raw machine literal here. Keep
+                  * IEEE bits unencoded until after constant folding. *)
+                 val value = if precision = 0 andalso BI.tag_values() then 2*w+1 else w
+             in (WORD {value=value, precision=precision}, NONE_SE)
+             end
            | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
            | MulExp.REAL(r,alloc) => (REAL (convert_real r),NONE_SE)
            | MulExp.F64 r => (F64 (convert_real r),NONE_SE)

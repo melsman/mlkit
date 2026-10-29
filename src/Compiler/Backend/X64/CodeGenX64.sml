@@ -1192,6 +1192,12 @@ struct
                             | Bytetable_size => bytetable_size arg
                             | Table_size     => table_size arg
 
+                            | Neg_real32 => sign_real32 true arg
+                            | Abs_real32 => sign_real32 false arg
+                            | Sqrt_real32 => sqrt_real32 arg
+                            | Int_to_real32 => int_to_real32 arg
+                            | Real32_to_f64 => real32_to_f64 arg
+                            | F64_to_real32 => f64_to_real32 arg
                             | Real_to_f64    => real_to_f64 arg
                             | Sqrt_f64       => sqrt_f64 arg
                             | Neg_f64        => neg_f64 arg
@@ -1390,11 +1396,22 @@ struct
 
                             | Bytetable_sub => bytetable_sub arg
                             | Bytetable_sub_word16 => bytetable_sub_word16 arg
+                            | Bytetable_sub_real32 => bytetable_sub_word31 arg
                             | Bytetable_sub_word31 => bytetable_sub_word31 arg
                             | Bytetable_sub_word32ub => bytetable_sub_word32ub arg
                             | Bytetable_sub_word63 => bytetable_sub_word63 arg
                             | Bytetable_sub_word64ub => bytetable_sub_word64ub arg
 
+                            | Plus_real32 => binary_real32 I.addss arg
+                            | Minus_real32 => binary_real32 I.subss arg
+                            | Mul_real32 => binary_real32 I.mulss arg
+                            | Div_real32 => binary_real32 I.divss arg
+                            | Less_real32 => compare_real32 {swap=true,unordered=NONE} I.cmovaq arg
+                            | Lesseq_real32 => compare_real32 {swap=true,unordered=NONE} I.cmovaeq arg
+                            | Greater_real32 => compare_real32 {swap=false,unordered=NONE} I.cmovaq arg
+                            | Greatereq_real32 => compare_real32 {swap=false,unordered=NONE} I.cmovaeq arg
+                            | Equal_real32 => compare_real32 {swap=false,unordered=SOME BI.ml_false} I.cmoveq arg
+                            | Unequal_real32 => compare_real32 {swap=false,unordered=SOME BI.ml_true} I.cmovneq arg
                             | Word_sub0 => word_sub0 arg
                             | Plus_f64 => plus_f64 arg
                             | Minus_f64 => minus_f64 arg
@@ -1439,6 +1456,7 @@ struct
                           | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,fsz,C)
                           | Bytetable_update => bytetable_update (b,x,y,d,fsz,C)
                           | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,fsz,C)
+                          | Bytetable_update_real32 => bytetable_update_real32 (b,x,y,d,fsz,C)
                           | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,fsz,C)
                           | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,fsz,C)
                           | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,fsz,C)

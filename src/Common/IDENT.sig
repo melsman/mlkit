@@ -40,6 +40,7 @@ signature IDENT =
     (* Identifiers needed for initial environment - because of overloading *)
     val id_ABS          : id
     val id_NEG          : id
+    val id_REALDIV      : id
     val id_DIV          : id
     val id_MOD          : id
     val id_PLUS         : id

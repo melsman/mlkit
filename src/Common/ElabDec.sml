@@ -87,11 +87,24 @@ structure ElabDec: ELABDEC =
     fun preOverloadingConv (i : ParseInfo, oi : OverloadingInfo.OverloadingInfo)
           : ElabInfo = ElabInfo.plus_OverloadingInfo (okConv i) oi
 
+    fun unsupportedNarrowReal name =
+        not (values_64bit()) andalso
+        (name = "real32" orelse name = "real16" orelse
+         String.isPrefix "Real32" name orelse String.isPrefix "Real16" name orelse
+         String.isPrefix "Math32" name orelse String.isPrefix "Math16" name)
+
     fun lookupIdError (i : ParseInfo, longid : Ident.longid) : ElabInfo =
-          errorConv (i, ErrorInfo.LOOKUP_LONGID longid)
+          let val name = Ident.pr_longid longid
+          in errorConv (i, if unsupportedNarrowReal name then ErrorInfo.UNSUPPORTED_NARROW_REAL name
+                           else ErrorInfo.LOOKUP_LONGID longid)
+          end
 
     fun lookupTyConError (i : ParseInfo, longtycon : Environments.longtycon)
-          : ElabInfo = errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon)
+          : ElabInfo =
+          let val name = TyCon.pr_LongTyCon longtycon
+          in errorConv (i, if unsupportedNarrowReal name then ErrorInfo.UNSUPPORTED_NARROW_REAL name
+                           else ErrorInfo.LOOKUP_LONGTYCON longtycon)
+          end
 
     fun repeatedIdsError (i : ParseInfo, rids: ErrorInfo.RepeatedId list)
           : ElabInfo = errorConv (i, ErrorInfo.REPEATED_IDS rids)
@@ -1988,6 +2001,8 @@ let
         [(Type.Int31,  OverloadingInfo.RESOLVED_INT31),
          (Type.Int32,  OverloadingInfo.RESOLVED_INT32),
          (Type.IntInf, OverloadingInfo.RESOLVED_INTINF),
+         (Type.Real16, OverloadingInfo.RESOLVED_REAL16),
+         (Type.Real32, OverloadingInfo.RESOLVED_REAL32),
          (Type.Real,   OverloadingInfo.RESOLVED_REAL),
          (Type.String, OverloadingInfo.RESOLVED_STRING),
          (Type.Char,   OverloadingInfo.RESOLVED_CHAR),
@@ -2020,6 +2035,7 @@ let
           if Set.member tyName_WORD31 ts then
             Type.WordDefault()
           else Type.Word32
+        else if Set.member tyName_REAL ts then Type.Real
         else Crash.impossible ("resolve_tv.hmm; maybe insert cases for string, etc; ts = {"
                                ^ String.concatWith "," (map pr_TyName (Set.list ts)) ^ "}")
     end
@@ -2055,11 +2071,9 @@ let
   in
 
   (*resolve_tyvar gives `default' overloading info when overloading
-   couldn't be resolved.  According to the definition (p. 72), int is
-   the default type except for /, but / is not overloaded in this
-   compiler; / always has type real * real -> real, as there is only
-   one kind of real.  25/06/1997 10:30. tho. Another exception is when
-   the choice is between word8, word31, and word32! mael 2001-05-15 *)
+   couldn't be resolved. According to the Definition (p. 72), int is
+   the default for numeric operators, real for / and real literals,
+   and word for the word-only classes. *)
 
     fun resolve_tyvar (tv : TyVar) : OverloadingInfo.OverloadingInfo =
       (resolve_tau o Type.from_TyVar) tv

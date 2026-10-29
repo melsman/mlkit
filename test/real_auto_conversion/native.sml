@@ -132,4 +132,18 @@ fun roots__noinline (nil, n:int) = check ("root count", n = 501)
 val retained_results = collect__noinline (500,nil)
 val () = roots__noinline (retained_results,1)
 val () = check ("collection after result", prim ("@real_auto_gc_verify", ()) : bool)
+(* Preserve the sign and NaN payload across float registers and stack slots. *)
+fun single_bits (x:real32) : word = prim ("id", x)
+fun single_from_bits (x:word) : real32 = prim ("id", x)
+fun single__noinline (last:real32) : real32 =
+    prim ("@real_auto_single_mixed",
+          (123:int,2.5:real,1.0:real32,2.0:real32,3.0:real32,4.0:real32,
+           5.0:real32,6.0:real32,7.0:real32,8.0:real32,9.0:real32,last))
+val single_nan = single_from_bits 0wxFFC01234
+val single_nan_result = single__noinline single_nan
+val () = check ("single NaN payload",
+                prim ("=", (single_bits single_nan_result, single_bits single_nan)))
+val single_zero_result = single__noinline (~0.0:real32)
+val () = check ("single negative zero",
+                prim ("=", (single_bits single_zero_result, 0wx80000000:word)))
 val () : unit = prim ("printStringML", "real auto-conversion passed\n")

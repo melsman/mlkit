@@ -131,6 +131,8 @@ signature STATOBJECT =
         val IntDefault              : unit -> Type   (* Either Int31 or Int32,
                                                       * dependent on tagging; used
                                                       * for resolving overloading. *)
+        val Real16                  : Type
+        val Real32                  : Type
         val Real                    : Type
         val Bool                    : Type           (* needed for initial TE and VE *)
         val Word8                   : Type

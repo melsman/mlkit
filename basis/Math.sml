@@ -1,5 +1,4 @@
 
-fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
 
 (** SigDoc *)
 structure Math : MATH = struct

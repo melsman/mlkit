@@ -183,6 +183,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                  (tyName_WORD32, []),
                                  (tyName_WORD63, []),
                                  (tyName_WORD64, []),
+                                 (tyName_REAL16, []),
+                                 (tyName_REAL32, []),
                                  (tyName_REAL, []),
                                  (tyName_F64, []),
                                  (tyName_STRING, []),
@@ -735,7 +737,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                         val unboxed_types =
                             let open LambdaExp
                             in [boolType, charType, word8Type, unitType, int31Type, word31Type,
-                                int63Type, word63Type,
+                                int63Type, word63Type, real32Type, real16Type,
                                 intDefaultType(), wordDefaultType(), foreignptrType]
                                @ (if tag_values() then []
                                   else [int32Type, word32Type])

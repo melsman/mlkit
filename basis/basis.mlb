@@ -111,9 +111,13 @@ local
           end
        end
 
-    basis WordArrayVector =
+    basis TableFunctors =
        let open General List ArrayVector Word Int
-           wordtable-functors.sml
+       in bas wordtable-functors.sml end
+       end
+
+    basis WordArrayVector =
+       let open General List ArrayVector Word Int TableFunctors
        in bas ann inline_functors
               in wordtables.sml
                  inttables.sml
@@ -130,6 +134,15 @@ local
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
             open IEEEReal
+          end
+       end
+
+    basis NarrowReal =
+       let open General String Int Word List IEEEReal IntInf IntInfRep Real ArrayVector Byte TableFunctors
+       in bas
+            local RealBits.sml
+            in Real16.sml Math32.sml Real32.sml end
+            ann inline_functors in realtables.sml PackReal32.sml end
           end
        end
 
@@ -233,5 +246,5 @@ local
 in
   open General List ArrayVector String Bool Word Byte
        Int Real IntInf IntInfRep Io System Text Posix IO Socket PrimIO
-       WordArrayVector
+       WordArrayVector NarrowReal
 end

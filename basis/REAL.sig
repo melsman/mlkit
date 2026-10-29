@@ -24,7 +24,7 @@ value.
 signature REAL = sig
   type real
 
-  structure Math : MATH
+  structure Math : MATH where type real = real
 
   val radix        : int
   val precision    : int

@@ -36,6 +36,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | UNIFICATION_RANK of Type * Type * TyVar * TyName
       | LOOKUP_LONGID of longid
       | LOOKUP_LONGTYCON of longtycon
+      | UNSUPPORTED_NARROW_REAL of string
       | NOTCONSTYPE of Type
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list

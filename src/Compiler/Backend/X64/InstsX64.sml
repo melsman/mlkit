@@ -96,6 +96,15 @@ structure InstsX64 : INSTS_X64 =
     | movsd of ea * ea
     | mulsd of ea * ea
     | divsd of ea * ea
+    | addss of ea * ea
+    | subss of ea * ea
+    | mulss of ea * ea
+    | divss of ea * ea
+    | sqrtss of ea * ea
+    | ucomiss of ea * ea
+    | cvtss2sd of ea * ea
+    | cvtsd2ss of ea * ea
+    | cmovpq of ea * ea
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
@@ -107,6 +116,7 @@ structure InstsX64 : INSTS_X64 =
     | ucomisd of ea * ea
     | xorps of ea * ea
     | sqrtsd of ea * ea
+    | cvtsi2ssq of ea * ea
     | cvtsi2sdq of ea * ea
     | pxor of ea
     | cvttsd2siq of ea * ea
@@ -472,6 +482,15 @@ structure InstsX64 : INSTS_X64 =
                | movsd a => emit_bin("movsd", a)
                | mulsd a => emit_bin("mulsd", a)
                | divsd a => emit_bin("divsd", a)
+               | addss a => emit_bin("addss", a)
+               | subss a => emit_bin("subss", a)
+               | mulss a => emit_bin("mulss", a)
+               | divss a => emit_bin("divss", a)
+               | sqrtss a => emit_bin("sqrtss", a)
+               | ucomiss a => emit_bin("ucomiss", a)
+               | cvtss2sd a => emit_bin("cvtss2sd", a)
+               | cvtsd2ss a => emit_bin("cvtsd2ss", a)
+               | cmovpq a => emit_bin("cmovpq", a)
                | addsd a => emit_bin("addsd", a)
                | subsd a => emit_bin("subsd", a)
                | maxsd a => emit_bin("maxsd", a)
@@ -483,6 +502,7 @@ structure InstsX64 : INSTS_X64 =
                | ucomisd a => emit_bin("ucomisd", a)
                | xorps a => emit_bin("xorps", a)
                | sqrtsd a => emit_bin("sqrtsd", a)
+               | cvtsi2ssq a => emit_bin("cvtsi2ssq", a)
                | cvtsi2sdq a => emit_bin("cvtsi2sdq", a)
                | pxor a => emit_unary("pxor", a)
                | cvttsd2siq a => emit_bin("cvttsd2siq", a)
@@ -809,6 +829,15 @@ structure InstsX64 : INSTS_X64 =
              | movsd (ea1,ea2) => movsd (Em ea1,Em ea2)
              | mulsd (ea1,ea2) => mulsd (Em ea1,Em ea2)
              | divsd (ea1,ea2) => divsd (Em ea1,Em ea2)
+             | addss (ea1,ea2) => addss (Em ea1,Em ea2)
+             | subss (ea1,ea2) => subss (Em ea1,Em ea2)
+             | mulss (ea1,ea2) => mulss (Em ea1,Em ea2)
+             | divss (ea1,ea2) => divss (Em ea1,Em ea2)
+             | sqrtss (ea1,ea2) => sqrtss (Em ea1,Em ea2)
+             | ucomiss (ea1,ea2) => ucomiss (Em ea1,Em ea2)
+             | cvtss2sd (ea1,ea2) => cvtss2sd (Em ea1,Em ea2)
+             | cvtsd2ss (ea1,ea2) => cvtsd2ss (Em ea1,Em ea2)
+             | cmovpq (ea1,ea2) => cmovpq (Em ea1,Em ea2)
              | addsd (ea1,ea2) => addsd (Em ea1,Em ea2)
              | subsd (ea1,ea2) => subsd (Em ea1,Em ea2)
              | maxsd (ea1,ea2) => maxsd (Em ea1,Em ea2)
@@ -820,6 +849,7 @@ structure InstsX64 : INSTS_X64 =
              | ucomisd (ea1,ea2) => ucomisd (Em ea1,Em ea2)
              | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)
              | sqrtsd (ea1,ea2) => sqrtsd (Em ea1,Em ea2)
+             | cvtsi2ssq (ea1,ea2) => cvtsi2ssq (Em ea1,Em ea2)
              | cvtsi2sdq (ea1,ea2) => cvtsi2sdq (Em ea1,Em ea2)
              | pxor ea => pxor (Em ea)
              | cvttsd2siq (ea1,ea2) => cvttsd2siq (Em ea1,Em ea2)

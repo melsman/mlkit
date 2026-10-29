@@ -454,6 +454,7 @@ fun pToJs2 name e1 e2 =
     | "__quot_int32ub" => chkOvfI32(callPrim2 "SmlPrims.quot" e1 e2)
     | "__rem_int32ub" => parJs(e1 & $"%" & e2)
 
+    | "__div_real" => parJs(e1 & $"/" & e2)
     | "divFloat" => parJs(e1 & $"/" & e2)
     | "remFloat" => parJs(e1 & $"%" & e2)
     | "atan2Float" => $"Math.atan2" & seq[e1,e2]

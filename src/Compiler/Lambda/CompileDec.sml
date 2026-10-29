@@ -2027,7 +2027,7 @@ end; (*match compiler local*)
 
       fun resolve err_str i args {int31, int32, int63, int64, intinf,
                                   word8, word31, word32, word63, word64,
-                                  real, string, char} =
+                                  real, real32, real16, string, char} =
         let fun no s (SOME e) = e args
               | no s NONE = die (err_str ^ ": " ^ s)
            (* int resolved to int31, int32, int63, or int64 and word resolved to
@@ -2038,6 +2038,8 @@ end; (*match compiler local*)
              | OverloadingInfo.RESOLVED_INT63 => no "int63" int63
              | OverloadingInfo.RESOLVED_INT64 => no "int64" int64
              | OverloadingInfo.RESOLVED_INTINF => no "intinf" intinf
+             | OverloadingInfo.RESOLVED_REAL32 => no "real32" real32
+             | OverloadingInfo.RESOLVED_REAL16 => no "real16" real16
              | OverloadingInfo.RESOLVED_REAL => no "real" real
              | OverloadingInfo.RESOLVED_WORD8 => no "word8" word8
              | OverloadingInfo.RESOLVED_WORD31 => no "word31" word31
@@ -2049,31 +2051,31 @@ end; (*match compiler local*)
              | _ => die (err_str ^ ": unresolved")
         end
 
-      fun int_or_real i args {int31, int32, int63, int64, intinf, real} =
+      fun int_or_real i args {int31, int32, int63, int64, intinf, real, real32, real16} =
         resolve "int_or_word" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=NONE, word31=NONE, word32=NONE, word63=NONE, word64=NONE,
-                 real=SOME real, string=NONE, char=NONE}
+                 real=SOME real, real32=SOME real32, real16=SOME real16, string=NONE, char=NONE}
 
       fun int_or_word i args {int31, int32, int63, int64, intinf, word8, word31, word32, word63, word64} =
         resolve "int_or_word" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=NONE, string=NONE, char=NONE}
+                 word64=SOME word64, real=NONE, real32=NONE, real16=NONE, string=NONE, char=NONE}
 
       fun int_or_word_or_real i args {int31, int32, int63, int64, intinf, word8, word31,
-                                      word32, word63, word64, real} =
+                                      word32, word63, word64, real, real32, real16} =
         resolve "int_or_word_or_real" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=SOME real, string=NONE, char=NONE}
+                 word64=SOME word64, real=SOME real, real32=SOME real32, real16=SOME real16, string=NONE, char=NONE}
 
       fun string_or_int_or_word_or_real_or_char i args {string, int31, int32, int63, int64, intinf,
-                                                        word8, word31, word32, word63, word64, real, char} =
+                                                        word8, word31, word32, word63, word64, real, real32, real16, char} =
         resolve "string_or_int_or_word_or_real_or_char" i args
                 {int31=SOME int31, int32=SOME int32, int63=SOME int63, int64=SOME int64, intinf=SOME intinf,
                  word8=SOME word8, word31=SOME word31, word32=SOME word32, word63=SOME word63,
-                 word64=SOME word64, real=SOME real, string=SOME string, char=SOME char}
+                 word64=SOME word64, real=SOME real, real32=SOME real32, real16=SOME real16, string=SOME string, char=SOME char}
 
       fun binary_ccall t n args =
         let val c = ccall n [t,t] t
@@ -2265,21 +2267,43 @@ end; (*match compiler local*)
       val abs_int32 = unary_ccall int32Type "__abs_int32"
       val abs_int63 = unary_ccall int63Type "__abs_int63"
       val abs_int64 = unary_ccall int64Type "__abs_int64"
+      val abs_real32 = unary_ccall real32Type "__abs_real32"
+      val abs_real16 = unary_ccall real16Type "__abs_real16"
       val abs_real = unary_ccall realType "__abs_real"
       val neg_int31 = unary_ccall int31Type "__neg_int31"
       val neg_int32 = unary_ccall int32Type "__neg_int32"
       val neg_int63 = unary_ccall int63Type "__neg_int63"
       val neg_int64 = unary_ccall int64Type "__neg_int64"
+      val neg_real32 = unary_ccall real32Type "__neg_real32"
+      val neg_real16 = unary_ccall real16Type "__neg_real16"
       val neg_real = unary_ccall realType "__neg_real"
 
       (* Real operations *)
+      val plus_real32 = binary_ccall real32Type "__plus_real32"
+      val plus_real16 = binary_ccall real16Type "__plus_real16"
       val plus_real = binary_ccall realType "__plus_real"
+      val minus_real32 = binary_ccall real32Type "__minus_real32"
+      val minus_real16 = binary_ccall real16Type "__minus_real16"
       val minus_real = binary_ccall realType "__minus_real"
+      val mul_real32 = binary_ccall real32Type "__mul_real32"
+      val mul_real16 = binary_ccall real16Type "__mul_real16"
       val mul_real = binary_ccall realType "__mul_real"
+      val less_real32 = cmp_ccall real32Type "__less_real32"
+      val less_real16 = cmp_ccall real16Type "__less_real16"
       val less_real = cmp_ccall realType "__less_real"
+      val greater_real32 = cmp_ccall real32Type "__greater_real32"
+      val greater_real16 = cmp_ccall real16Type "__greater_real16"
       val greater_real = cmp_ccall realType "__greater_real"
+      val lesseq_real32 = cmp_ccall real32Type "__lesseq_real32"
+      val lesseq_real16 = cmp_ccall real16Type "__lesseq_real16"
       val lesseq_real = cmp_ccall realType "__lesseq_real"
+      val greatereq_real32 = cmp_ccall real32Type "__greatereq_real32"
+      val greatereq_real16 = cmp_ccall real16Type "__greatereq_real16"
       val greatereq_real = cmp_ccall realType "__greatereq_real"
+
+      val div_real = binary_ccall realType "__div_real"
+      val div_real32 = binary_ccall real32Type "__div_real32"
+      val div_real16 = binary_ccall real16Type "__div_real16"
 
       (* IntInf operations *)
       fun intInfOp opr e args =
@@ -2308,31 +2332,37 @@ end; (*match compiler local*)
           case p of
               CE.ABS =>
               int_or_real i args {int31=abs_int31, int32=abs_int32, int63=abs_int63, int64=abs_int64,
-                                  intinf=abs_intinf env, real=abs_real}
+                                  intinf=abs_intinf env, real=abs_real, real32=abs_real32, real16=abs_real16}
             | CE.NEG =>
               int_or_real i args {int31=neg_int31, int32=neg_int32, int63=neg_int63, int64=neg_int64,
-                                  intinf=neg_intinf env, real=neg_real}
+                                  intinf=neg_intinf env, real=neg_real, real32=neg_real32, real16=neg_real16}
             | CE.PLUS =>
               int_or_word_or_real i args {int31=plus_int31, int32=plus_int32,
                                           int63=plus_int63, int64=plus_int64,
                                           intinf=plus_intinf env, word8=plus_word8,
                                           word31=plus_word31, word32=plus_word32,
                                           word63=plus_word63, word64=plus_word64,
-                                          real=plus_real}
+                                          real=plus_real, real32=plus_real32, real16=plus_real16}
             | CE.MINUS =>
               int_or_word_or_real i args {int31=minus_int31, int32=minus_int32,
                                           int63=minus_int63, int64=minus_int64,
                                           intinf=minus_intinf env, word8=minus_word8,
                                           word31=minus_word31, word32=minus_word32,
                                           word63=minus_word63, word64=minus_word64,
-                                          real=minus_real}
+                                          real=minus_real, real32=minus_real32, real16=minus_real16}
             | CE.MUL =>
               int_or_word_or_real i args {int31=mul_int31, int32=mul_int32,
                                           int63=mul_int63, int64=mul_int64,
                                           intinf=mul_intinf env, word8=mul_word8,
                                           word31=mul_word31, word32=mul_word32,
                                           word63=mul_word63, word64=mul_word64,
-                                          real=mul_real}
+                                          real=mul_real, real32=mul_real32, real16=mul_real16}
+            | CE.REALDIV =>
+              resolve "real division" i args
+                {int31=NONE, int32=NONE, int63=NONE, int64=NONE, intinf=NONE,
+                 word8=NONE, word31=NONE, word32=NONE, word63=NONE, word64=NONE,
+                 real=SOME div_real, real32=SOME div_real32, real16=SOME div_real16,
+                 string=NONE, char=NONE}
             | CE.DIV =>
               int_or_word i args {int31=div_int31, int32=div_int32,
                                   int63=div_int63, int64=div_int64,
@@ -2353,7 +2383,7 @@ end; (*match compiler local*)
                                              intinf=less_intinf env, word8=less_word8,
                                              word31=less_word31, word32=less_word32,
                                              word63=less_word63, word64=less_word64,
-                                             real=less_real,
+                                             real=less_real, real32=less_real32, real16=less_real16,
                                              char=less_char}
             | CE.GREATER =>
               string_or_int_or_word_or_real_or_char i args
@@ -2363,7 +2393,7 @@ end; (*match compiler local*)
                                              intinf=greater_intinf env, word8=greater_word8,
                                              word31=greater_word31, word32=greater_word32,
                                              word63=greater_word63, word64=greater_word64,
-                                             real=greater_real,
+                                             real=greater_real, real32=greater_real32, real16=greater_real16,
                                              char=greater_char}
             | CE.LESSEQ =>
               string_or_int_or_word_or_real_or_char i args
@@ -2373,7 +2403,7 @@ end; (*match compiler local*)
                                              intinf=lesseq_intinf env, word8=lesseq_word8,
                                              word31=lesseq_word31, word32=lesseq_word32,
                                              word63=lesseq_word63, word64=lesseq_word64,
-                                             real=lesseq_real,
+                                             real=lesseq_real, real32=lesseq_real32, real16=lesseq_real16,
                                              char=lesseq_char}
             | CE.GREATEREQ =>
               string_or_int_or_word_or_real_or_char i args
@@ -2383,7 +2413,7 @@ end; (*match compiler local*)
                                              intinf=greatereq_intinf env, word8=greatereq_word8,
                                              word31=greatereq_word31, word32=greatereq_word32,
                                              word63=greatereq_word63, word64=greatereq_word64,
-                                             real=greatereq_real,
+                                             real=greatereq_real, real32=greatereq_real32, real16=greatereq_real16,
                                              char=greatereq_char}
            | _ => die "unoverload"
     in
@@ -2420,7 +2450,7 @@ end; (*match compiler local*)
                  intinf=fn() => intinfType, word8=wordDefaultType,
                  word31=fn() => word31Type, word32=fn() => word32Type,
                  word63=fn() => word63Type, word64=fn() => word64Type,
-                 real=fn() => realType}
+                 real=fn() => realType, real32=fn() => real32Type, real16=fn() => real16Type}
               val exn_args = if LambdaBasics.eq_Type(LambdaExp.intinfType,ty) then nil
                              else exn_args
               val lvar1 = Lvars.newLvar ()
@@ -2451,6 +2481,8 @@ end; (*match compiler local*)
                                                       word63=fn()=>TyName.tyName_WORD63,
                                                       word64=fn()=>TyName.tyName_WORD64,
                                                       real=fn()=>TyName.tyName_REAL,
+                                                      real32=fn() => TyName.tyName_REAL32,
+                                                      real16=fn() => TyName.tyName_REAL16,
                                                       char=fn()=>TyName.tyName_CHAR}
               val ty = CONStype ([], tn, NONE)
               val lvar1 = Lvars.newLvar ()
@@ -2512,8 +2544,16 @@ end; (*match compiler local*)
                end
            | SCONatexp(_, SCon.STRING x, rv_opt) => (attach_loc_info_opt rv_opt;
                                                      STRING (x, Option.map #2 rv_opt))
-           | SCONatexp(_, SCon.REAL x, rv_opt) => (attach_loc_info_opt rv_opt;
-                                                   REAL (x, Option.map #2 rv_opt))
+           | SCONatexp(info, SCon.REAL x, rv_opt) =>
+               let val t = typeScon info
+                   fun narrow format =
+                       WORD (RealBits.fromString format x, t)
+               in if LambdaBasics.eq_Type (t, real32Type) then
+                    narrow {precision=24, exponentBits=8}
+                  else if LambdaBasics.eq_Type (t, real16Type) then
+                    narrow {precision=11, exponentBits=5}
+                  else (attach_loc_info_opt rv_opt; REAL (x, Option.map #2 rv_opt))
+               end
            | SCONatexp(info, SCon.CHAR x, rv_opt) =>
                if x < 0 orelse x > 255 then die "compileAtexp.CHAR"
                else WORD(IntInf.fromInt x, typeScon info)
@@ -2593,6 +2633,7 @@ end; (*match compiler local*)
            | CE.PLUS =>      overloaded_prim_fn env info CE.PLUS      false []
            | CE.MINUS =>     overloaded_prim_fn env info CE.MINUS     false []
            | CE.MUL =>       overloaded_prim_fn env info CE.MUL       false []
+           | CE.REALDIV =>   overloaded_prim_fn env info CE.REALDIV   false []
            | CE.DIV =>       overloaded_prim_fn env info CE.DIV       false
                   [PRIM (EXCONprim Excon.ex_DIV, [])]
            | CE.MOD =>       overloaded_prim_fn env info CE.MOD       false
@@ -2796,6 +2837,7 @@ end; (*match compiler local*)
             | CE.PLUS =>      overloaded_prim env info CE.PLUS      (compileAtexp env) (compileExp env) arg false []
             | CE.MINUS =>     overloaded_prim env info CE.MINUS     (compileAtexp env) (compileExp env) arg false []
             | CE.MUL =>       overloaded_prim env info CE.MUL       (compileAtexp env) (compileExp env) arg false []
+            | CE.REALDIV =>   overloaded_prim env info CE.REALDIV   (compileAtexp env) (compileExp env) arg false []
             | CE.DIV =>       overloaded_prim env info CE.DIV       (compileAtexp env) (compileExp env) arg false
                 [PRIM (EXCONprim Excon.ex_DIV, [])]
             | CE.MOD =>       overloaded_prim env info CE.MOD       (compileAtexp env) (compileExp env) arg false
@@ -2900,6 +2942,20 @@ the 12 lines above are very similar to the code below
                      [exp] => compileExp env exp
                    | _ => die "compile_application_of_prim: prim id")
  *)
+              | "__real32_to_real" =>
+                (case args of
+                     [arg] =>
+                     TLE.PRIM (ccall "__f64_to_real" [TLE.f64Type] TLE.realType,
+                       [TLE.PRIM (ccall "__real32_to_f64" [TLE.real32Type] TLE.f64Type,
+                                  [compileExp env arg])])
+                   | _ => die "real32 to real arity")
+              | "__real_to_real32" =>
+                (case args of
+                     [arg] =>
+                     TLE.PRIM (ccall "__f64_to_real32" [TLE.f64Type] TLE.real32Type,
+                       [TLE.PRIM (ccall "__real_to_f64" [TLE.realType] TLE.f64Type,
+                                  [compileExp env arg])])
+                   | _ => die "real to real32 arity")
               | "__blockf64" =>
                 let fun real_to_f64 x = TLE.PRIM(ccall "__real_to_f64" [TLE.realType] TLE.f64Type, [x])
                     val args' = map (real_to_f64 o compileExp env) args   (* each of type real *)

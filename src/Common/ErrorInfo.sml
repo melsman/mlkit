@@ -60,6 +60,7 @@ structure ErrorInfo: ERROR_INFO =
       | UNIFICATION_RANK of Type * Type * TyVar * TyName
       | LOOKUP_LONGID of longid
       | LOOKUP_LONGTYCON of longtycon
+      | UNSUPPORTED_NARROW_REAL of string
       | NOTCONSTYPE of Type
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
@@ -191,6 +192,9 @@ structure ErrorInfo: ERROR_INFO =
 
       | report (LOOKUP_LONGTYCON longtycon) =
           line ("unbound type constructor " ^ TyCon.pr_LongTyCon longtycon ^ ".")
+
+      | report (UNSUPPORTED_NARROW_REAL name) =
+          line (name ^ " requires a 64-bit native backend; Real32 and Real16 are not supported in SMLtoJs.")
 
       | report (NOTCONSTYPE ty) =
           line (Type.string ty ^ "is not a constructed type.")
@@ -419,6 +423,7 @@ structure ErrorInfo: ERROR_INFO =
              | UNIFICATION_RANK _ =>                    "UNIFICATION_RANK"
              | LOOKUP_LONGID _ =>                       "LOOKUP_LONGID"
              | LOOKUP_LONGTYCON _ =>                    "LOOKUP_LONGTYCON"
+             | UNSUPPORTED_NARROW_REAL _ =>             "UNSUPPORTED_NARROW_REAL"
              | NOTCONSTYPE _ =>                         "NOTCONSTYPE"
              | QUALIFIED_ID _ =>                        "QUALIFIED_ID"
              | UNGUARDED_TYVARS _ =>                    "UNGUARDED_TYVARS"

@@ -167,8 +167,8 @@ struct
         else
         let
           (* An unstaged resolver assigns only integer C registers. *)
-          val () = if #2 res = LS.Float64 orelse
-                      List.exists (fn (_,ft) => ft = LS.Float64) args then
+          val () = if #2 res = LS.Float64 orelse #2 res = LS.Float32 orelse
+                      List.exists (fn (_,ft) => ft = LS.Float64 orelse ft = LS.Float32) args then
                      die "CCALL_AUTO.float64 requires a staged C ABI"
                    else ()
           val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =

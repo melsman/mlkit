@@ -8387,6 +8387,7 @@ ML type & C argument type & C result type \\
 \kw{char} & \kw{unsigned long} & \kw{unsigned long} \\
 \kw{bool} & \kw{long} (0 or 1) & \kw{long} (0 or 1) \\
 \kw{real}, \kw{Real64.real} & \kw{double} & \kw{double} \\
+\kw{Real32.real} & \kw{float} & \kw{float} \\
 \kw{foreignptr} & \kw{void *} & \kw{void *} \\
 \kw{string} & \kw{const char *} & Not supported \\
 \kw{CharArray.array} & \kw{char *} & Not supported \\
@@ -8400,11 +8401,13 @@ ML type & C argument type & C result type \\
 \end{table}
 
 On the native Arm64 and X64 backends, an ML \kw{real} argument or result
-corresponds to a C \kw{double}. Only 64-bit reals are supported; MLKit does
-not provide \kw{Real32}. Real arguments may be mixed with the other supported
-argument types. The compiler unboxes real arguments and boxes real results;
+corresponds to a C \kw{double}, while \kw{Real32.real} corresponds to a C
+\kw{float}. Real arguments may be mixed with the other supported argument
+types. The compiler unboxes ordinary real arguments and boxes ordinary real results;
 the C function receives neither a pointer to an ML real object nor a region
-argument for its result. For example:
+argument for its result. Real32 scalars remain immediate machine-word values
+on the ML side, including with GC enabled; the compiler transfers their IEEE
+bits to and from the C floating-point argument and result locations. For example:
 \begin{smlcode}
   fun power_real_auto (base : real, n : int) : real =
     prim ("@power_real_auto", (base, n))
