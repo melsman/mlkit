@@ -19,8 +19,10 @@ fun phase (name, work) =
       print (name ^ " " ^ Int.toString result ^ "\n")
     end
 val keep = List.tabulate (200000, fn i => i)
-val () = phase ("compute", fn () => compute__noinline (50000000, 0))
-val () = phase ("allocate", fn () => allocate__noinline 1500)
+(* Enough work for timer samples and multiple collections, without making the
+ * attribution matrix a benchmark. Each phase is checked for actual samples. *)
+val () = phase ("compute", fn () => compute__noinline (5000000, 0))
+val () = phase ("allocate", fn () => allocate__noinline 150)
 val () = phase ("c", busy__noinline)
 val () = phase ("sleep", sleep__noinline)
 val () = if List.length keep = 200000 then () else raise Fail "lost live data"
