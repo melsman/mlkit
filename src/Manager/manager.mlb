@@ -23,7 +23,6 @@ in
   in local open SyntaxObjects Environment
      in ManagerObjects.sml
      end
-     Scriptlet.sml
      local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
 
