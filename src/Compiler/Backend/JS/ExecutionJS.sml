@@ -12,6 +12,8 @@ structure ExecutionJS : EXECUTION =
 
     val repl_supports_gc = false
     val backend_name = "SmlToJs"
+    val artifacts_consistent = fn _ => true
+    val source_name = fn name => name
     val backend_longname = "SmlToJs - Standard ML to JavaScript Compiler"
 
     type CompileBasis = CompileBasis.CompileBasis

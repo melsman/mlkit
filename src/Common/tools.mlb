@@ -2,7 +2,6 @@ local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
   basis Kitlib = bas ../Kitlib/kitlib.mlb end
-  basis IRDigest = bas md5.mlb end
   basis Configuration = bas ../Tools/MlbMake/configuration.mlb end
   open BasLib
 in
@@ -17,7 +16,6 @@ in
   PRETTYPRINT.sig
   ListUtils.sml
   PrettyPrint.sml
-  local open IRDigest in IRLocations.sml end
   ORDER.sig
   local open Pickle
   in MONO_FINMAP.sml

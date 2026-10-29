@@ -12,6 +12,8 @@ structure ExecutionBarry : EXECUTION =
 
     val repl_supports_gc = false
     val backend_name = "Barry"
+    val artifacts_consistent = fn _ => true
+    val source_name = fn name => name
     val backend_longname = "Barry - the Standard ML barifier"
 
     type CompileBasis = CompileBasis.CompileBasis

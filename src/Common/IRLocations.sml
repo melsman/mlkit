@@ -1,6 +1,11 @@
 (* Location tables for printed IR. All offsets and columns count bytes. *)
 structure IRLocations =
 struct
+  fun sourceName unitname =
+      if String.isPrefix "stdin-" unitname andalso not (Option.isSome (OS.Path.ext unitname)) then
+        "REPL #" ^ List.last (String.fields (fn c => c = #"-") unitname)
+      else OS.Path.mkAbsolute {path=unitname,relativeTo=OS.FileSys.getDir()}
+
   fun render tree width =
     let val chunks = ref []
         val spans = PrettyPrint.outputTreeWithSpans

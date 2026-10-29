@@ -85,6 +85,9 @@ check-online-tools:
 smltojsonline: check-online-tools Makefile online/index.html online/terser.json online/loader.js online/package.mjs online/build-dojo.mjs online/dojo.profile.js doc favicon.ico
 	rm -rf smltojsonline
 	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(ONLINE_LIB_FLAGS) -o index smltojs0.mlb)
+	@if grep -q 'IRLocations-sml' ../src/Compiler/index.html; then \
+	  echo 'Native IRLocations must not be included in the online compiler.' >&2; exit 1; \
+	fi
 	mkdir -p smltojsonline
 	cp -p ../src/Compiler/index.html smltojsonline/
 	(cd ..; tar c `sed 's/.*src="\(.*\)".*/\1/g' < js/smltojsonline/index.html | grep '\.js'` $(THEBASISFILES) $(JSDOCFILES) $(CODEMIRRORFILES) | tar xv -C js/smltojsonline/)
@@ -108,6 +111,9 @@ smltojsonline: check-online-tools Makefile online/index.html online/terser.json 
 # part of the packaged tar-file.
 smltojs_web: Makefile doc
 	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(ONLINE_LIB_FLAGS) -o index smltojs0.mlb)
+	@if grep -q 'IRLocations-sml' ../src/Compiler/index.html; then \
+	  echo 'Native IRLocations must not be included in the online compiler.' >&2; exit 1; \
+	fi
 	(cd ..; cp src/Compiler/index.html .)
 	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html js/appfun/style.css $(THEBASISFILES) js/smltojs_logo_color160.png $(JSDOCFILES) $(CODEMIRRORFILES))
 

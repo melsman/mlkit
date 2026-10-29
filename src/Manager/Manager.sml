@@ -476,9 +476,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val s = readFile lnkFile
             val mc = Pickle.unpickle ModCode.pu s
             val files = ModCode.target_files (ModCode.dirMod (OS.Path.dir lnkFile) mc)
-        in (not (!RegionProfiling.enabled) andalso
-            MO.backend_name <> "Arm64" andalso MO.backend_name <> "X64") orelse
-           List.all IRLocations.consistent files
+        in MO.artifacts_consistent files
         end handle _ => false
 
     fun writeBasisJs toJsString punit ofile B =

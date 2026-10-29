@@ -29,6 +29,7 @@ functor ManagerObjects(
 
     val repl_supports_gc = Execution.repl_supports_gc
     val backend_name = Execution.backend_name
+    val artifacts_consistent = Execution.artifacts_consistent
     val compile_only = Flags.is_on0 "compile_only"
 
     fun die s = Crash.impossible("ManagerObjects." ^ s)
