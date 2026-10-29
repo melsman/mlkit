@@ -118,7 +118,12 @@ jobs:
 
       - name: Build MLKit, ReML, tools, and Basis libraries
         timeout-minutes: 240
-        run: make -j6 mlkit_basislibs VERBOSE=1
+        run: |
+          # Each Basis variant already uses two compiler workers. Limit the
+          # concurrent variants on the 7 GiB ARM64 runner to reduce memory pressure.
+          basis_jobs=6
+          if [ "$OS" = darwin ]; then basis_jobs=2; fi
+          make -j"$basis_jobs" mlkit_basislibs VERBOSE=1
 
       - name: Check pretty-printer spans and region profiler
         run: make check-profiling
