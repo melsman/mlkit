@@ -104,11 +104,13 @@ jobs:
         run: |
           ./autobuild
           "$THECC" --version
+          compiler_jobs=$(getconf _NPROCESSORS_ONLN)
+          echo "COMPILER_JOBS=$compiler_jobs" >> "$GITHUB_ENV"
           if [ "$MLCOMP_HOST" = mlton ]; then
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
           else
-            ./configure CC="$THECC" --with-compiler='mlkit -j 2' --with-compiler-lib="$SEED_LIB"
+            ./configure CC="$THECC" --with-compiler="mlkit -j $compiler_jobs" --with-compiler-lib="$SEED_LIB"
           fi
 
       - name: Check configured build and bootstrap targets
@@ -133,7 +135,7 @@ jobs:
       - name: Build SMLtoJs
         run: |
           if [ "$MLCOMP_HOST" = mlton ]; then
-            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit -j 2"
+            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit -j $COMPILER_JOBS"
           fi
           make smltojs_basislibs
 
