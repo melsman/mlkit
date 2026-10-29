@@ -193,7 +193,8 @@ local
                 IntInf Initial2 BitFlags PosixStat
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROC_ENV.sig
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml
-              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig Posix.sml
+              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig
+              ann inline_functors in Posix.sml end
           end
        end
 
