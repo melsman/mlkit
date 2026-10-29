@@ -214,7 +214,7 @@ struct
           val fregs = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7]
           fun layout ([],g,f,sp,acc) = (rev acc,sp,f)
             | layout ((aty,ft)::rest,g,f,sp,acc) =
-              let val floating = ft = LS.Float64 orelse ft = LS.Float32
+              let val floating = ft = LS.Float64 orelse ft = LS.Float32 orelse ft = LS.Float16
                   val (loc,g',f',sp') =
                       if floating andalso f < length fregs then
                         (ArgReg(List.nth(fregs,f)),g,f+1,sp)
@@ -254,6 +254,7 @@ struct
                     | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
                     | LS.CharArray => G.lea(D("8",tmp),tmp) tail
+                    | LS.Float16 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
                     | LS.Float32 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
                     | LS.Float64 => C
                     | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
@@ -264,13 +265,16 @@ struct
           fun place (i,(_,t,loc),C) =
               let val off = slot(stackWords+i)
               in case loc of
-                   ArgReg r => (if t = LS.Float64 orelse t = LS.Float32 then I.movsd else I.movq)(off,R r) :: C
+                   ArgReg r => (if t = LS.Float64 orelse t = LS.Float32 orelse t = LS.Float16 then I.movsd else I.movq)(off,R r) :: C
                  | ArgStack n => I.movq(off,R tmp) :: I.movq(R tmp,slot n) :: C
               end
           val tail = if words = 0 then C else G.add(I bytes,rsp) C
           val tail = move_reg_into_aty(if ft = LS.Float64 then xmm0 else rax,dst,callFrame,tail)
           val tail = case ft of
-              LS.Float32 =>
+              LS.Float16 =>
+                I.movq(R xmm0,R rax) :: I.andq(I "65535",R rax) ::
+                (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
+            | LS.Float32 =>
                 I.movq(R xmm0,R rax) :: I.mov(R eax,R eax) ::
                 (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
             | LS.Float64 => tail

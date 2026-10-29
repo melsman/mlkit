@@ -1935,9 +1935,9 @@ elements, preserving signed zero and NaN payloads. All real families share
 \kw{IEEEReal}. Both narrow families use nearest rounding for
 \kw{fromDecimal}; scanning and
 ordinary arithmetic use the current rounding mode. SMLtoJs also provides
-both narrow families, as described below. The automatic C interface supports \kw{float} and
-\kw{double}; use \kw{Real16.toLarge}/\kw{Real16.fromLarge} when crossing that
-interface rather than assuming a C \texttt{\_Float16} calling convention.
+both narrow families, as described below. The native automatic C interface maps
+\kw{Real16.real}, \kw{Real32.real}, and ordinary \kw{real} to
+C \texttt{\_Float16}, \kw{float}, and \kw{double}, respectively.
 
 \section{Characters and Strings}
 The
@@ -8421,6 +8421,7 @@ ML type & C argument type & C result type \\
 \kw{char} & \kw{unsigned long} & \kw{unsigned long} \\
 \kw{bool} & \kw{long} (0 or 1) & \kw{long} (0 or 1) \\
 \kw{real}, \kw{Real64.real} & \kw{double} & \kw{double} \\
+\kw{Real16.real} & \texttt{\_Float16} & \texttt{\_Float16} \\
 \kw{Real32.real} & \kw{float} & \kw{float} \\
 \kw{foreignptr} & \kw{void *} & \kw{void *} \\
 \kw{string} & \kw{const char *} & Not supported \\
@@ -8436,12 +8437,23 @@ ML type & C argument type & C result type \\
 
 On the native Arm64 and X64 backends, an ML \kw{real} argument or result
 corresponds to a C \kw{double}, while \kw{Real32.real} corresponds to a C
-\kw{float}. Real arguments may be mixed with the other supported argument
+\kw{float}, and \kw{Real16.real} corresponds to IEEE binary16
+\texttt{\_Float16}. Real arguments may be mixed with the other supported argument
 types. The compiler unboxes ordinary real arguments and boxes ordinary real results;
 the C function receives neither a pointer to an ML real object nor a region
-argument for its result. Real32 scalars remain immediate machine-word values
+argument for its result. Real16 and Real32 scalars remain immediate machine-word values
 on the ML side, including with GC enabled; the compiler transfers their IEEE
-bits to and from the C floating-point argument and result locations. For example:
+bits to and from the C floating-point argument and result locations, preserving
+signed zero, infinities, and NaN payloads without arithmetic conversion.
+
+Binary16 calls require a C compiler providing a two-byte IEEE
+\texttt{\_Float16} with the platform scalar ABI: Darwin AArch64 or the
+x86-64 System V ABI. They do not require FP16 arithmetic instructions.
+C \texttt{\_Float16} is distinct from \texttt{uint16\_t},
+\kw{float}, and bfloat16; declare the C prototype to match the ML types.
+This interface covers fixed scalar arguments and a scalar result; it does
+not add variadic calls, aggregate conversion, or floating-point callbacks.
+For example:
 \begin{smlcode}
   fun power_real_auto (base : real, n : int) : real =
     prim ("@power_real_auto", (base, n))

@@ -161,3 +161,20 @@ float real_auto_single_mixed(long marker, double wide,
   assert(f == 6 && g == 7 && h == 8 && i == 9);
   return last;
 }
+
+/* _Float16 uses the binary16 scalar ABI without requiring FP16 arithmetic.
+ * Distinct adjacent half stack slots are followed by aligned float/double slots. */
+#if !defined(__FLT16_MANT_DIG__) || __FLT16_MANT_DIG__ != 11 || __FLT16_MAX_EXP__ != 16
+#error "Narrow-real FFI tests require C IEEE binary16 _Float16 support"
+#endif
+_Static_assert(sizeof(_Float16) == 2, "_Float16 must occupy two bytes");
+_Float16 real_auto_half_identity(_Float16 x) { return x; }
+_Float16 real_auto_half_mixed(long marker, _Float16 a, float b, double c,
+                            _Float16 d, _Float16 e, _Float16 f, _Float16 g,
+                            _Float16 h, _Float16 i, _Float16 last,
+                            float tail, double end) {
+  assert(marker == 123 && a == 1 && b == 2 && c == 3 && d == 4);
+  assert(e == 5 && f == 6 && g == 7 && h == 8 && i == 9);
+  assert(tail == 10 && end == 11);
+  return last;
+}

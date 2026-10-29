@@ -442,6 +442,7 @@ struct
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
+        | LS.Float16 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
         | LS.Float32 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
         | LS.Float64 => code
         | LS.Unit => unsupported "unit foreign argument"
@@ -462,6 +463,9 @@ struct
         | LS.Word63 => tag code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
+        | LS.Float16 =>
+            (instruction A.fmov (R(W 0),R(S 0))
+             ++ instruction A.uxth (R(W 0),R(W 0))) (if tagged() then tag code else code)
         | LS.Float32 =>
             instruction A.fmov (R(W 0),R(S 0)) (if tagged() then tag code else code)
         | LS.Float64 => code
@@ -478,6 +482,7 @@ struct
                    {name = name,
                     fixed = map (fn (_,t) => if t = LS.Float64 then AbiArm64.F64
                                             else if t = LS.Float32 then AbiArm64.F32
+                                            else if t = LS.Float16 then AbiArm64.F16
                                             else AbiArm64.I64) args,
                     variadic = [], protectGC = gc(),
                     loadArgument = fn (i,extra) =>

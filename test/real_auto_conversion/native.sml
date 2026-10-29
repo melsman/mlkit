@@ -146,4 +146,21 @@ val () = check ("single NaN payload",
 val single_zero_result = single__noinline (~0.0:real32)
 val () = check ("single negative zero",
                 prim ("=", (single_bits single_zero_result, 0wx80000000:word)))
+(* One register identity and a mixed call with adjacent two-byte stack slots.
+ * Only bit transport is intended, including signalling NaNs. *)
+fun half_bits (x:real16) : word = prim ("id", x)
+fun half_from_bits (x:word) : real16 = prim ("id", x)
+fun half__noinline (x:real16) : real16 =
+    prim ("@real_auto_half_mixed",
+          (123:int,1.0:real16,2.0:real32,3.0:real,4.0:real16,5.0:real16,
+           6.0:real16,7.0:real16,8.0:real16,9.0:real16,
+           prim ("@real_auto_half_identity", x) : real16,10.0:real32,11.0:real))
+fun half_cases__noinline (nil:word list) = ()
+  | half_cases__noinline (w::ws) =
+    let val result = half__noinline (half_from_bits w)
+    in check ("half payload", prim ("=", (half_bits result,w)));
+       half_cases__noinline ws
+    end
+val () = half_cases__noinline
+  [0w0,0wx8000,0wx7c00,0wxfc00,0wxfe23,0wx7c01,0w1,0wx7bff]
 val () : unit = prim ("printStringML", "real auto-conversion passed\n")

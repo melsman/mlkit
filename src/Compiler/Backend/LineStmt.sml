@@ -259,6 +259,7 @@ struct
           | Word63 => LEAF "Word63"
           | Int32 => LEAF "Int32"
           | Int64 => LEAF "Int64"
+          | Float16 => LEAF "Float16"
           | Float32 => LEAF "Float32"
           | Float64 => LEAF "Float64"
           | Bool => LEAF "Bool"

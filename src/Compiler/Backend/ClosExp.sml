@@ -43,7 +43,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float32 | Float64 | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float16 | Float32 | Float64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -162,6 +162,7 @@ struct
       | layout_f Word63 = LEAF "Word63"
       | layout_f Int32 = LEAF "Int32"
       | layout_f Int64 = LEAF "Int64"
+      | layout_f Float16 = LEAF "Float16"
       | layout_f Float32 = LEAF "Float32"
       | layout_f Float64 = LEAF "Float64"
       | layout_f Bool = LEAF "Bool"
@@ -1371,6 +1372,7 @@ struct
           else if TyName.eq(tn,TyName.tyName_WORD63) then Word63
           else if TyName.eq(tn,TyName.tyName_WordDefault()) then Word
           else if member tn [TyName.tyName_IntDefault(), TyName.tyName_CHAR, TyName.tyName_WORD8] then Int
+          else if TyName.eq(tn,TyName.tyName_REAL16) then Float16
           else if TyName.eq(tn,TyName.tyName_REAL32) then Float32
           else if TyName.eq(tn,TyName.tyName_F64) then Float64
           else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
