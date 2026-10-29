@@ -18,6 +18,23 @@ uintptr_t mlkit_regions_may_spawn = 1;
 
 #include "Runtime.h"
 
+/* Link-selected page policy for standalone executables that cannot spawn.
+ * Preserve parallel ABI layouts; never enable this for a REPL runtime. */
+#ifdef MLKIT_NO_SPAWN_PAGE_POOL
+#if !defined(PARALLEL) || defined(ARGOBOTS) || defined(PROFILING) || defined(ENABLE_GC)
+#error "The no-spawn page pool requires plain POSIX parallel runtime"
+#endif
+#undef MAYBE_DEFINE_CONTEXT
+#define MAYBE_DEFINE_CONTEXT
+#undef FREELIST
+#define FREELIST global_freelist
+#undef LOCK_LOCK
+#define LOCK_LOCK(name)
+#undef LOCK_UNLOCK
+#define LOCK_UNLOCK(name)
+#endif
+
+
 /*----------------------------------------------------*
  * Hash table to collect region page reuse statistics *
  *  region_page_addr -> int                           *
@@ -368,7 +385,7 @@ size_thread_free_list() {
 /* gives the pages in the local free list back to the global free list */
 void
 free_thread_free_list() {
-#ifdef PARALLEL
+#if defined(PARALLEL) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
   MAYBE_DEFINE_CONTEXT;
 
   LOCK_LOCK(FREELISTMUTEX);
@@ -407,8 +424,9 @@ free_thread_free_list() {
  *  Important: alloc_new_page must preserve all marks in fp (Region.h)  *
  *----------------------------------------------------------------------*/
 
-uintptr_t *
-alloc_new_page(Gen *gen)
+/* Reuse a caller-supplied context when allocating a region's first page. */
+static uintptr_t *
+alloc_new_page_context(Gen *gen, Context ctx)
 {
   Rp* np;
   debug(printf("[alloc_new_page: gen: %p", gen);)
@@ -436,13 +454,11 @@ alloc_new_page(Gen *gen)
     }
   #endif /* ENABLE_GC */
 
-  MAYBE_DEFINE_CONTEXT;
-
   if ( FREELIST ) {
     np = FREELIST;
     FREELIST = FREELIST->n;
   } else {
-#ifdef PARALLEL
+#if defined(PARALLEL) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
     LOCK_LOCK(FREELISTMUTEX);
     if ( FREELIST == NULL ) {
       // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
@@ -530,6 +546,18 @@ alloc_new_page(Gen *gen)
   return (uintptr_t *) (&(np->i));    /* Return the allocation pointer. */
 }
 
+/* Callers without a context retain the existing public entry point. */
+uintptr_t *
+alloc_new_page(Gen *gen)
+{
+#if defined(PARALLEL) && !defined(ARGOBOTS) && !defined(MLKIT_NO_SPAWN_PAGE_POOL)
+  MAYBE_DEFINE_CONTEXT;
+  return alloc_new_page_context(gen, ctx);
+#else
+  return alloc_new_page_context(gen, NULL);
+#endif
+}
+
 /*----------------------------------------------------------------------*
  *allocateRegion:                                                       *
  *  Get a first regionpage for the region.                              *
@@ -549,7 +577,8 @@ allocateRegion0(Context ctx, Region r, Protect protect)
   r->g0.fp = NULL;
   r->p = TOP_REGION;	                   // Push this region onto the region stack
   r->lobjs = NULL;                         // The list of large objects is empty
-  r->g0.a = alloc_new_page(&(r->g0));      // Allocate the first region page in g0
+  // Allocate the first region page using the context already supplied.
+  r->g0.a = alloc_new_page_context(&(r->g0), ctx);
 
 #ifdef PARALLEL
   if ( protect && mlkit_regions_may_spawn ) { r->mutex = mutex_freelist_pop(ctx); }
@@ -559,7 +588,7 @@ allocateRegion0(Context ctx, Region r, Protect protect)
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);                        // Mark generation
-  r->g1.a = alloc_new_page(&(r->g1));      // Allocate the first region page in g1
+  r->g1.a = alloc_new_page_context(&(r->g1), ctx);
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;

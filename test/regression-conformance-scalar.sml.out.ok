@@ -1,0 +1,86 @@
+~>> top 62 = 0wx7FFFFFFFFFFFFFFF
+~>> top 1 = 0wx6000000000000000
+~>> top 0 = 0wx4000000000000000
+~>> 1 62 = 0wx0
+~>> allOnes 5 = 0wx7FFFFFFFFFFFFFFF
+>> top 62 = 0wx1
+<< 1 62 = 0wx4000000000000000
+<< 1 63 = 0wx0
+Word63 ~>> top 62 = 0wx7FFFFFFFFFFFFFFF
+Int.fromLarge 2^62 = Overflow
+Int.fromLarge (2^62 - 1) = 4611686018427387903
+Int.fromLarge ~2^62 = ~4611686018427387904
+Int.fromLarge (~2^62 - 1) = Overflow
+Int63.fromLarge 2^62 = Overflow
+nan < 1 false, nan <= 1 false, nan > 1 false, nan >= 1 false
+1 < nan false, 1 <= nan false, 1 > nan false, 1 >= nan false
+if nan < 1: no, if nan <= 1: no, if nan > 1: no, if nan >= 1: no
+1 < 2 true, 2 < 1 false, 1 <= 1 true, 1 > 2 false, 1 >= 1 true, 2 >= 1 true
+constants: false true false
+Real.== (nan, nan) false, Real.?= (nan, 1) true
+signBit (~zero) true, signBit (~(~zero)) false, signBit (~one) true
+signBit (abs (~nan)) false, signBit (abs (~one)) false, abs (~2.5) = 2.5
+1/(~zero) = ~inf
+constants: true false 2.5
+unboxed: true 1.0 ~1.0
+Word63: 138266DD0B831B87
+Word63: 7FFFFFFFFFFFFFFF
+Word: 0
+Word63: 3FFFFFFFFFFFFFFF
+Word31: 3FFFFFFF
+Word32: 7FFFFFFF
+Word64: 7FFFFFFFFFFFFFFF
+Word8: 7F
+Word16: 7FFF
+law: ok
+Word DEC: Overflow
+Word HEX: Overflow
+Word fromString: Overflow
+Word max: 7FFFFFFFFFFFFFFF
+Word max+1 DEC: Overflow
+Word 2^63-1 DEC: 7FFFFFFFFFFFFFFF
+Word8: Overflow
+Word8 ok: FF
+Word8 DEC 256: Overflow
+Word8 DEC 255: FF
+Word31: Overflow
+Word31 ok: 7FFFFFFF
+Word32: Overflow
+Word32 ok: FFFFFFFF
+Word32 DEC: Overflow
+Word63: Overflow
+Word63 ok: 7FFFFFFFFFFFFFFF
+Word64: Overflow
+Word64 ok: FFFFFFFFFFFFFFFF
+Word64 DEC: Overflow
+Word64 DEC ok: FFFFFFFFFFFFFFFF
+Word16: Overflow
+Word16 ok: FFFF
+toLargeX E2 = FFFFFFFFFFFFFFE2
+toLargeX 7F = 7F
+toLargeX FF = FFFFFFFFFFFFFFFF
+toLarge FF = FF
+toIntX E2 = ~30
+via large: ~30
+toLargeIntX FF = ~1
+Int quot: Overflow
+Int rem: 0
+Int quot 7 ~2: ~3 rem 1
+Int quot ~7 2: ~3 rem ~1
+Int quot by 0: Div
+Int31 quot: Overflow
+Int31 rem: 0
+Int32 quot: Overflow
+Int32 rem: 0
+Int63 quot: Overflow
+Int63 rem: 0
+Int64 quot: Overflow
+Int64 rem: 0
+Int64 quot 7 ~2: ~3 rem ~1
+Int32 quot minInt 1: ~2147483648
+FF
+~BEEF
+400000000000000000
+0
+777 1010 ~10
+FF FF

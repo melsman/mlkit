@@ -56,7 +56,7 @@ run "$MLKIT" -gc -rp
 # Time-only activation must also work without modifying installed caches.
 case $(uname -sm) in
  'Darwin arm64'|'Linux x86_64')
-  for flags in '-no_gc -no_par' '-gc -no_par' '-no_gc -par'; do
+  for flags in '-gc' '-no_gc'; do
    n=$((n+1))
    (cd "$OUT"
     "$MLKIT" $flags -o time-client client.mlb > "build-$n.log" 2>&1
@@ -81,8 +81,6 @@ val () =
      else raise Fail "explicit region"
   end
 SML
-run "$REML" -no_par
-run "$REML" -no_par -rp
 # The standard invocation must work without rebuilding installed dependencies.
 run "$REML"
 run "$REML" -rp

@@ -56,7 +56,7 @@ structure ExecutionBarry : EXECUTION =
       end
     val generate_link_code = NONE
     fun emit a = Compile.emit a
-    fun link_files_with_runtime_system files run =
+    fun link_files_with_runtime_system _ files run =
 	let val mlb_file = run ^ ".mlb"
 	    val os = TextIO.openOut mlb_file
 	in

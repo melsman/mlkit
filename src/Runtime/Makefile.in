@@ -67,6 +67,25 @@ $(eval $(call variant,gctp,runtimeSystemGCTP.a,$(COMMON) GC.c,-DTAG_VALUES -DENA
 $(eval $(call variant,gctpprof,runtimeSystemGCTPProf.a,$(COMMON) GC.c,-DTAG_VALUES -DENABLE_GC -DPROFILING))
 $(eval $(call variant,par,runtimeSystemPar.a,$(COMMON) Spawn.c,-DPARALLEL))
 $(eval $(call variant,parprof,runtimeSystemParProf.a,$(COMMON) Spawn.c,-DPARALLEL -DPROFILING))
+# Share every ordinary parallel object except the page manager. Keep Region.o
+# at the same position in the archive to limit unrelated runtime layout changes.
+NO_SPAWN_REGION=$(BUILD)/par-nospawn/Region.o
+ALL_OBJECTS+=$(NO_SPAWN_REGION)
+ARCHIVES+=runtimeSystemParNoSpawn.a
+$(NO_SPAWN_REGION): Region.c Makefile Target.h config.h | $(BUILD)/SysErrTable.h
+	@mkdir -p $(@D)
+	$(CC) $(OPT) -DPARALLEL -DMLKIT_NO_SPAWN_PAGE_POOL -MMD -MP -c $< -o $@
+$(BUILD)/runtimeSystemParNoSpawn.a: $(OBJECTS_par) $(NO_SPAWN_REGION)
+	rm -f $@
+	$(AR) rc $@ $(subst $(BUILD)/par/Region.o,$(NO_SPAWN_REGION),$(OBJECTS_par))
+.PHONY: runtimeSystemParNoSpawn.a
+runtimeSystemParNoSpawn.a: $(BUILD)/runtimeSystemParNoSpawn.a
+	$(MKDIR) $(LIBDIR)
+	$(INSTALLDATA) $< $(LIBDIR)/runtimeSystemParNoSpawn.a
+ifeq ($(DARWIN_NATIVE),0)
+	$(INSTALLDATA) $< $(LEGACY_LIBDIR)/runtimeSystemParNoSpawn.a
+endif
+
 DEFAULT_ARCHIVES:=$(ARCHIVES)
 $(eval $(call variant,arpar,runtimeSystemArPar.a,$(COMMON) Spawn.c,-DARGOBOTS -DPARALLEL -I$(ARGOBOTS_ROOT)/src/include))
 

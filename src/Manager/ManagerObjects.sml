@@ -243,12 +243,12 @@ functor ManagerObjects(
                  SOME generate_link_code =>
 		 let val target_link = generate_link_code (linkinfos, exports)
 		     val linkfile_o = emit(target_link, "base", "link_objects")
-		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
+		 in link_files_with_runtime_system linkinfos (linkfile_o :: (target_files @ extobjs)) run;
 		    (if delete_target_files() then delete_file linkfile_o
                      else ())
 		 end
 	       | NONE =>
-		 link_files_with_runtime_system target_files run
+		 link_files_with_runtime_system linkinfos target_files run
 	  end
 
         fun mk_sharedlib (tfiles_with_linkinfos, libs, name, sofile) : unit =

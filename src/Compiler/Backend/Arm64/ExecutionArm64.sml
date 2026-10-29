@@ -146,12 +146,7 @@ structure ExecutionArm64 : EXECUTION =
            end
          else ()
 
-    val parallelism_p =
-        Flags.add_bool_entry
-            {long = "parallelism", short = SOME "par", neg = true,
-             menu = ["General Control","parallelism"], item = ref false,
-             desc = "When enabled, the runtime system supports\n\
-                  \parallel threads."}
+    val parallelism_p = NativeFlags.addParallelism()
 
     val par_alloc_unprotected_p =
         Flags.add_bool_entry
@@ -251,10 +246,14 @@ structure ExecutionArm64 : EXECUTION =
             end
       end
 
+    fun link_may_spawn (infos:linkinfo list) =
+        List.exists (fn li => #may_spawn li) infos
+
     val generate_link_code = SOME (fn (infos,exports) =>
-      (CodeGen.generate_link_code_with_policy
-        (map code_label_of_linkinfo infos,exports,
-         List.exists (fn (li:linkinfo) => #may_spawn li) infos),NONE))
+      let val may_spawn = link_may_spawn infos
+      in (CodeGen.generate_link_code_with_policy
+            (map code_label_of_linkinfo infos,exports,may_spawn),NONE)
+      end)
 
     val generate_repl_init_code = SOME (fn () => (CodeGen.generate_repl_init_code(),NONE))
 
@@ -362,7 +361,7 @@ structure ExecutionArm64 : EXECUTION =
           val gc_p = Flags.is_on0 "garbage_collection"
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
     in
-          fun path_to_runtime () =
+          fun path_to_runtime may_spawn () =
               let
                 fun file () =
                     if parallelism_p() then
@@ -375,7 +374,8 @@ structure ExecutionArm64 : EXECUTION =
                        else if region_profile() then
                          (if argobots_p() then "runtimeSystemArParProf.a" else "runtimeSystemParProf.a")
                        else if argobots_p() then "runtimeSystemArPar.a"
-                       else "runtimeSystemPar.a")
+                       else if may_spawn then "runtimeSystemPar.a"
+                       else "runtimeSystemParNoSpawn.a")
                     else
                       if region_profile() andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
                       if region_profile() andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
@@ -391,8 +391,8 @@ structure ExecutionArm64 : EXECUTION =
               in !Flags.install_dir ## "lib" ## "darwin-arm64" ## file()
               end
 
-      val link_files_with_runtime_system =
-          link_files_with_runtime_system0 path_to_runtime
+      fun link_files_with_runtime_system infos =
+          link_files_with_runtime_system0 (path_to_runtime (link_may_spawn infos))
 
     end
 
@@ -462,7 +462,7 @@ structure ExecutionArm64 : EXECUTION =
               val (wa, nwa) = if onmac_p() then (" -Wl,-all_load ", "")
                               else (" -Wl,-whole-archive ", " -Wl,-no-whole-archive ")
               val shell_cmd1 = link_shared() ^ " -shared -o " ^ shellQuote runtime_lib ^ " "
-                               ^ concat files ^ wa ^ shellQuote(path_to_runtime()) ^ nwa
+                               ^ concat files ^ wa ^ shellQuote(path_to_runtime true ()) ^ nwa
                                ^ libdirs ^ libConvertList(libs()) ^ pthread
               val rpath = if onmac_p() then ""
                           else " -Wl,-rpath," ^ mlbdir()

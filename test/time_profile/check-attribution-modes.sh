@@ -15,7 +15,7 @@ for config in gc gengc no_gc; do
  for build in ordinary instrumented; do
   case $build in ordinary) flags=;; instrumented) flags=-rp;; esac
   exe="$OUT/$config-$build"
-  "${MLKIT:-$ROOT/bin/mlkit}" -no_par -"$config" $flags -libdirs "$OUT" -libs measure,m,c,dl -o "$exe" "$OUT/measure.mlb" > "$exe-build.log" 2>&1
+  "${MLKIT:-$ROOT/bin/mlkit}" -"$config" -no_par $flags -libdirs "$OUT" -libs measure,m,c,dl -o "$exe" "$OUT/measure.mlb" > "$exe-build.log" 2>&1
   if [ "$build" = ordinary ]; then
    for options in '-tp -tp_attribution detailed' '-tp -tp_attribution wrong' '-tp_attribution passive'; do
     if "$exe" +RTS $options > "$OUT/rejected.log" 2>&1; then

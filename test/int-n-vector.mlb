@@ -1,0 +1,8 @@
+(* Keep application batches separate to bound compiler memory. *)
+local
+  $(SML_LIB)/basis/basis.mlb
+  int-n-vector.sml
+in
+  int-n-vector-1.sml
+  int-n-vector-2.sml
+end

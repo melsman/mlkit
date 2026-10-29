@@ -1,6 +1,22 @@
 (* Shared by the X64 and ARM64 pipelines; initialized before region analysis. *)
 structure NativeFlags =
 struct
+  fun addParallelism () =
+  let
+    (* The no-GC default is parallel. Final option checking retains MLKit's
+     * GC-enabled sequential default when no mode was selected. *)
+    val enabled = ref true
+  in
+    Flags.add_bool_action_entry
+      {long = "parallelism", short = SOME "par", item = enabled,
+       menu = ["General Control","parallelism"],
+       on = fn () => (enabled := true;
+                       if Flags.is_on "reml" then () else Flags.turn_off "garbage_collection"),
+       off = fn () => enabled := false,
+       desc = "Enable parallel threads without GC (the default with -no_gc).\n\
+              \Use -no_gc -no_par, in that order, for sequential execution."}
+  end
+
   fun regionOption (name,short,item,neg,desc) =
     Flags.add_bool_entry
       {long = name, short = short, item = item, neg = neg,

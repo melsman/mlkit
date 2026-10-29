@@ -62,7 +62,7 @@ for config in gc gengc no_gc; do
  [ "$config" != no_gc ] || define=
  cc -O2 -Wall -Wextra -Werror $define -c "$OUT/foreign.c" -o "$OUT/foreign.o"
  ar rcs "$OUT/libforeign.a" "$OUT/foreign.o"
- "$MLKIT" -no_par -"$config" -rp -libdirs "$OUT" -libs foreign,m,c,dl -o "$OUT/$config" "$OUT/main.mlb" > "$OUT/$config-build.log" 2>&1
+ "$MLKIT" -"$config" -no_par -rp -libdirs "$OUT" -libs foreign,m,c,dl -o "$OUT/$config" "$OUT/main.mlb" > "$OUT/$config-build.log" 2>&1
  "$OUT/$config" > "$OUT/$config-off.log"
  grep -qx 'abi ok' "$OUT/$config-off.log"
  "$OUT/$config" +RTS -tp -tp_interval 100us -p_file "$OUT/$config.prof" > "$OUT/$config-on.log"

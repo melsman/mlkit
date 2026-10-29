@@ -2,6 +2,10 @@ This directory contains test programs for the ML Kit. Many of the test
 cases for the SML Basis Library are stolen from the Moscow ML
 distribution.
 
+`all.tst` includes four `regression-conformance-*.sml` programs that batch
+small conformance checks to avoid repeated compiler startup. Each check has
+its own local scope, and expected output follows the original test order.
+
 The test is invoked with the `kittester' program located (after the
 Kit is installed) in the kit/bin directory. (The sources for
 `kittester' are available in the directory kit/src/Tools/Tester.)

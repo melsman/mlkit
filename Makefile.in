@@ -131,7 +131,7 @@ BASIS_CACHE_PREFIX = ARM64_
 else
 BASIS_CACHE_PREFIX =
 endif
-BASIS_CACHE_VARIANTS = RI RI_PAR RI_PAR0 RI_GC RI_GC_PROF_CODE1_TP1 RI_PROF_CODE1_TP1_PAR RI_PROF_CODE1_TP1_PAR0 RI_PROF_CODE1_TP1
+BASIS_CACHE_VARIANTS = RI_PAR RI_PAR0 RI_GC RI_GC_PROF_CODE1_TP1 RI_PROF_CODE1_TP1_PAR RI_PROF_CODE1_TP1_PAR0
 BASIS_CACHES = $(addprefix $(BASIS_CACHE_PREFIX),$(BASIS_CACHE_VARIANTS))
 
 .PHONY: install_mlkit_basislibs
@@ -185,6 +185,8 @@ install_kitdemo:
 
 .PHONY: install_basis
 install_basis:
+	$(MKDIR) $(LIBDIR)/ml-yacc-lib
+	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,sig,mlb} $(LIBDIR)/ml-yacc-lib
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
 	$(INSTALLDATA) basis/Makefile $(LIBDIR)/basis
@@ -230,6 +232,7 @@ ifeq ($(DARWIN_NATIVE),0)
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemPar.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemParNoSpawn.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemParProf.a $(LIBDIR)/lib
 
 endif
@@ -297,6 +300,7 @@ install_test:
 	$(MKDIR) $(DATADIR)/test/DATA $(DATADIR)/test/LEXGEN_DATA $(DATADIR)/test/VLIW_DATA
 	$(MKDIR) $(DATADIR)/test/ray/DATA $(DATADIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile $(DATADIR)/test
+	$(INSTALL) test/check-regressions.sh $(DATADIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
 	$(INSTALL) test/README $(DATADIR)/test
 	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA
@@ -377,8 +381,10 @@ BOOTSTRAP_STRIP ?= $(STRIP)
 BOOTSTRAP_COMPARE ?= cmp
 ifeq ($(DARWIN_NATIVE),1)
 BOOTSTRAP_LINKER ?= gcc -arch arm64 -Wl,-stack_size,0x20000000
+BOOTSTRAP_TIME_FLAGS = -l
 else
 BOOTSTRAP_LINKER ?= gcc
+BOOTSTRAP_TIME_FLAGS = -v
 endif
 
 # Each invocation gets a fresh directory and cache namespace. The recursive
@@ -398,13 +404,18 @@ bootstrap-stage1 bootstrap-stage2 bootstrap-stage3: SHELL := /bin/bash
 
 # Compile with the preceding MLKit stage, regardless of which SML compiler
 # produced the initial seed. Preserve logs and executable outputs for inspection.
+# fd 3 keeps compiler diagnostics in the build log while time writes its report.
 define bootstrap_compile
 	mkdir -p "$(BOOTSTRAP_DIR)/stage$(1)"
-	@set -o pipefail; SML_LIB="$(CWD)" "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
+	@set -o pipefail; { SML_LIB="$(CWD)" /usr/bin/time $(BOOTSTRAP_TIME_FLAGS) \
+	  sh -c 'exec "$$@" 2>&3' bootstrap "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
 	  -ldexe '$(BOOTSTRAP_LINKER)' --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
 	  -o "$(BOOTSTRAP_DIR)/stage$(1)/mlkit" src/Compiler/mlkit$(BACKEND_SUFFIX).mlb \
+	  3>&2 2> "$(BOOTSTRAP_DIR)/stage$(1).resources"; } \
 	  $(if $(filter 1,$(VERBOSE)),2>&1 | tee "$(BOOTSTRAP_DIR)/stage$(1).log",> "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1) || \
-	  { $(if $(filter 1,$(VERBOSE)),:,tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2); exit 1; }
+	  { cat "$(BOOTSTRAP_DIR)/stage$(1).resources"; \
+	    $(if $(filter 1,$(VERBOSE)),:,tail -80 "$(BOOTSTRAP_DIR)/stage$(1).log" >&2); exit 1; }
+	@echo "Bootstrap stage $(1) resource usage:"; cat "$(BOOTSTRAP_DIR)/stage$(1).resources"
 	$(call bootstrap_check,$(BOOTSTRAP_DIR)/stage$(1)/mlkit)
 	"$(BOOTSTRAP_DIR)/stage$(1)/mlkit" --version
 endef
@@ -433,6 +444,9 @@ bootstrap-compare: bootstrap-stage3
 
 # Only test_dev has isolated compiler/linker scratch directories.
 TEST_JOBS ?= 6
+# Full native suites have private trees and can share prepared library caches
+# when their runtime configurations differ. Limit compiler memory pressure.
+REGRESSION_JOBS ?= 2
 
 .PHONY: check-build check-profiling check-compiler check-arm64 emitter check-native-install
 check-build:
@@ -459,28 +473,26 @@ check-arm64: emitter
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-arm64.sh
 check-compiler: check-arm64 check-spawn-policy
-	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" REML_ARM64="$(CWD)/bin/reml" \
-	  KITTESTER="$(CWD)/bin/kittester" TEST_JOBS="$(TEST_JOBS)" VERBOSE="$(VERBOSE)" \
-	  sh src/Compiler/Backend/Arm64/tests/check-regressions.sh
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" \
+	  KITTESTER="$(CWD)/bin/kittester" TEST_JOBS="$(TEST_JOBS)" REGRESSION_JOBS="$(REGRESSION_JOBS)" VERBOSE="$(VERBOSE)" \
+	  sh test/check-regressions.sh
 CHECK_INSTALL_PREFIX ?= $(CWD)/stage/$(RUNTIME_TARGET)
 check-native-install:
 	SML_LIB="$(CWD)" ARM64_NATIVE_BIN="$(CWD)/bin" ARM64_PREFIX="$(CHECK_INSTALL_PREFIX)" \
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
 check-compiler:
+	sh src/Runtime/tests/check-no-spawn-page-pool.sh
 	$(MAKE) check-spawn-policy
 	$(MAKE) check-real-auto-conversion
 	$(MAKE) -C test_dev -j $(TEST_JOBS) test test_prof
-	$(MAKE) -C test test_mlkit
-	$(MAKE) -C test test_mlkit_no_gc
+	$(MAKE) -C test test REGRESSION_JOBS="$(REGRESSION_JOBS)" \
+	  REGRESSION_SUITES='gc plain explicit parallel region-info'
 	$(MAKE) -C test test_c_call_alignment
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" CC="$(CC)" \
 	  sh src/Compiler/Backend/X64/tests/check-allocation.sh
-	$(MAKE) -C test/explicit_regions all
 	$(MAKE) -C test/repl all
-	$(MAKE) -C test/repl test_gc
-	$(MAKE) -C test/parallelism all
-	$(MAKE) -C test/region_info all
+	$(MAKE) -C test/repl test_gc GC_CACHE=
 emitter check-arm64 check-native-install:
 	@echo 'This check requires the configured ARM64 backend' >&2; exit 1
 endif
@@ -636,7 +648,7 @@ bin/rpfixture: test/region_profile/encode-fixture.sml test/region_profile/encode
 # Unit-test drivers exercise library code, so build them with the seed too.
 # Their Report adapter changes shared types: stage sources in a private tree.
 PRETTYPRINT_BUILD ?= $(CWD)/test/prettyprint/build
-PRETTYPRINT_TESTS ?= spans locations ir-report link-map
+PRETTYPRINT_TESTS ?= spans
 .PHONY: prettyprint-tools
 prettyprint-tools:
 	$(MKDIR) "$(PRETTYPRINT_BUILD)/test/prettyprint" "$(PRETTYPRINT_BUILD)/src/Common" "$(PRETTYPRINT_BUILD)/test/prettyprint/support" "$(PRETTYPRINT_BUILD)/src/Kitlib" "$(PRETTYPRINT_BUILD)/src/Tools/RegionProfile"

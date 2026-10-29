@@ -15,7 +15,8 @@ for mode in no_gc gc; do
     -o switches switches.sml > "switches-$mode.log" 2>&1
   ./switches > actual
   cmp expected actual
-  "$MLKIT_ARM64" -"$mode" --mlb-subdir "${ARM64_SWITCH_CACHE:-SwitchTests}" \
+  # Sources already live in a private directory; reuse the prepared Basis.
+  "$MLKIT_ARM64" -"$mode" --mlb-subdir "${ARM64_SWITCH_CACHE:-}" \
     --no_delete_target_files -o boundaries switch-boundaries.sml > "boundaries-$mode.log" 2>&1
   ./boundaries > actual
   cmp expected actual

@@ -47,8 +47,7 @@ fun pair `[e1 e2] (f: 'a #e1 -> 'b, g: 'c #e2 -> 'd) (x:'a,y:'c) : 'b * 'd while
 
 type gcs = int * int (* max parallelism, min sequential work *)
 
-val rec parfor'__noinline `[e] : (int*int #e-> unit) -> gcs -> int*int -> unit while noput e =
-  fn doit => fn (P,G) => fn (lo,hi) =>
+fun parfor'__noinline `e (doit: int*int #e-> unit) ((P,G):gcs) (lo,hi) : unit while noput e =
     if hi-lo <= 0 then () else
     let val n = hi-lo
         val m = Int.min(P+1, 1 + (n-1) div G) (* blocks *)
@@ -66,13 +65,10 @@ val rec parfor'__noinline `[e] : (int*int #e-> unit) -> gcs -> int*int -> unit w
     in loop 0
     end
 
-val rec parfor' `[e] : gcs -> int*int -> (int #e -> unit) -> unit while noput e =
- fn gcs => fn (lo,hi) => fn f =>
+fun parfor' `e (gcs:gcs) (lo,hi) (f: int #e -> unit) : unit while noput e =
     let fun doit (lo,hi) = for (lo,hi) f
     in parfor'__noinline doit gcs (lo,hi)
     end
-
-val parfor' = parfor'
 
 end
 end

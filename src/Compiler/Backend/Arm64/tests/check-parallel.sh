@@ -68,12 +68,12 @@ if grep -q 'clrex' allocation-parallel-runtime-link.s; then
 fi
 # Reject options that have no matching runtime before compiling source.
 printf 'val x = 1\n' > "$scratch/guard.sml"
-for options in '-argo' '-par --tag_values' '-par -gc' '-par -gengc'; do
+for options in '-argo' '-no_gc -par --tag_values' '-no_par -no_gc' '-no_gc -no_par -argo'; do
   if "$MLKIT_ARM64" --no_basislib $options -o "$scratch/rejected" \
        "$scratch/guard.sml" > "$scratch/guard.log" 2>&1; then
     echo "Unsupported options accepted: $options" >&2; exit 1
   fi
-  grep -q 'ARM64' "$scratch/guard.log"
+  grep -Eq 'ARM64|parallelism|must precede' "$scratch/guard.log"
   [ ! -e "$scratch/rejected" ]
 done
 for option in -par0 -no_par0 --parallelism_alloc_unprotected --no_parallelism_alloc_unprotected; do

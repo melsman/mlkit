@@ -1,0 +1,35 @@
+negative: ~1 true ~1.000 ~1.500 ~0.001 ~0.000
+arithmetic: 3.000 1.000 ~1.000 ~0.800 ~0.001 0.000
+towards zero: ~1 ~1 0 0 ~1 ~1
+units: 2 2010 2010000 2010000000 ~2010000000
+fmt: Size 2 1 1.4 1.00 0.001000 0.00100000 ~14.824 ~0 ~3.87
+scan: 1.500 ~1.500 ~1.500 1.000 0.500 2.000 1.000 1.000 NONE NONE ~0.250 NONE NONE
+scan rest: 1.500 "x"
+real: ~2.5 1.5 0.000 1234.568
+compare: true true true LESS true
+now is positive: true
+Time: Time
+non-negative: true
+total covers the parts: true
+gc time within total: true
+checkGCTime later is not smaller: true
+real timer runs: true
+offsets: SOME 0/10/12 SOME 3600/10/12 SOME 43200/10/12 SOME 50000/10/12 SOME 86399/10/12 SOME 3600/11/12 SOME 3600/12/12
+local: NONE
+utc: SOME 0
+toString: Sat Jan 01 12:30:45 2000 (24) Fri Dec 31 23:59:59 1999 Thu Feb 29 00:05:07 2024
+fmt: Sat Jan 01 12:30:45 2000 | 2000-01-02 002 09AM 00 % | q ~ 5 aqb x2000y %||
+unknown directives: ok
+scan: SOME Sat Jan 01 12:30:45 2000 | SOME Sat Jan 01 12:30:45 2000 | NONE | NONE | NONE | SOME Sat Jan 01 12:30:45 2000 | NONE | NONE | SOME Mon Feb 29 00:00:00 2024
+scan rest: 2000 " tail"
+round trip: ok
+InvalidArc
+x/ab
+x/
+ab
+InvalidArc
+InvalidArc
+InvalidArc
+/a//d
+
+a/b.c

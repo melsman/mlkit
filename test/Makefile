@@ -1,7 +1,12 @@
 DATE=$(shell date -u '+%Y-%m-%dT-%H:%M:%S')
+REGRESSION_JOBS ?= 2
+REGRESSION_SUITES ?= gc plain
 
 .PHONY: test
-test: test_mlkit_no_gc test_mlkit
+test:
+	SML_LIB="$(abspath ..)" MLKIT="$(abspath ../bin/mlkit)" REML="$(abspath ../bin/reml)" KITTESTER="$(abspath ../bin/kittester)" \
+	  REGRESSION_SUITES='$(REGRESSION_SUITES)' REGRESSION_JOBS="$(REGRESSION_JOBS)" \
+	  sh check-regressions.sh
 
 .PHONY: all
 all: test_mlkit
@@ -15,7 +20,7 @@ test_mlkit: prepare
 .PHONY: test_mlkit_no_gc
 test_mlkit_no_gc: prepare
 	@echo --- Testing MLKit with Regions ---
-	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc -no_par)
 	mv test_report.html test_report-native-nogc-$(DATE).html
 
 .PHONY: test_mlkit_par

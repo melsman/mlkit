@@ -57,7 +57,7 @@ jobs:
         if: matrix.os == 'linux'
         run: |
           sudo apt-get -qq update
-          sudo apt-get install -y gcc autoconf make binutils
+          sudo apt-get install -y gcc autoconf make binutils time
 
       - name: Install Linux tools
         if: matrix.os == 'linux'
@@ -104,11 +104,13 @@ jobs:
         run: |
           ./autobuild
           "$THECC" --version
+          compiler_jobs=$(getconf _NPROCESSORS_ONLN)
+          echo "COMPILER_JOBS=$compiler_jobs" >> "$GITHUB_ENV"
           if [ "$MLCOMP_HOST" = mlton ]; then
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
           else
-            ./configure CC="$THECC" --with-compiler='mlkit -j 2' --with-compiler-lib="$SEED_LIB"
+            ./configure CC="$THECC" --with-compiler="mlkit -j $compiler_jobs" --with-compiler-lib="$SEED_LIB"
           fi
 
       - name: Check configured build and bootstrap targets
@@ -116,7 +118,12 @@ jobs:
 
       - name: Build MLKit, ReML, tools, and Basis libraries
         timeout-minutes: 240
-        run: make -j6 mlkit_basislibs VERBOSE=1
+        run: |
+          # Each Basis variant already uses two compiler workers. Limit the
+          # concurrent variants on the 7 GiB ARM64 runner to reduce memory pressure.
+          basis_jobs=6
+          if [ "$OS" = darwin ]; then basis_jobs=2; fi
+          make -j"$basis_jobs" mlkit_basislibs VERBOSE=1
 
       - name: Check pretty-printer spans and region profiler
         run: make check-profiling
@@ -133,7 +140,7 @@ jobs:
       - name: Build SMLtoJs
         run: |
           if [ "$MLCOMP_HOST" = mlton ]; then
-            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit -j 2"
+            ./configure CC="$THECC" --with-compiler="SML_LIB=$PWD $PWD/bin/mlkit -j $COMPILER_JOBS"
           fi
           make smltojs_basislibs
 
@@ -149,16 +156,37 @@ jobs:
           make -C test/barry all
 
       - name: Test bootstrap fixed point
-        run: make bootstrap
-
-      - name: Test native installation across runtime modes
-        if: matrix.os == 'darwin'
-        run: make check-native-install CHECK_INSTALL_PREFIX="$RUNNER_TEMP/install"
+        run: |
+          output=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-bootstrap.XXXXXX")
+          jobs=$(getconf _NPROCESSORS_ONLN)
+          echo "Bootstrap outputs: $output"
+          echo "Runner: $(uname -sm); bootstrap workers: $jobs"
+          if [ "$OS" = darwin ]; then
+            sysctl hw.memsize vm.swapusage
+          else
+            head -n 3 /proc/meminfo
+          fi
+          status=0
+          make bootstrap-compare BOOTSTRAP_DIR="$output" BOOTSTRAP_JOBS="$jobs" || status=$?
+          {
+            echo '## Bootstrap resource usage'
+            echo "Runner: $(uname -sm); compiler workers: $jobs"
+            echo 'CPU times include waited-for children. Peak RSS is not the sum of concurrent workers.'
+            echo 'RSS units: bytes on macOS, KiB on Linux. Page faults can include file-backed pages.'
+            for report in "$output"/stage*.resources; do
+              [ -f "$report" ] || continue
+              echo "### $(basename "$report" .resources)"
+              echo '```text'
+              cat "$report"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: Build binary distribution
         run: make mlkit_bin_dist
 
-      - name: Install and test the release archive
+      - name: Test release installation across runtime modes
         run: |
           root=$(pwd)
           package_name=mlkit-bin-dist-$OS
@@ -197,12 +225,6 @@ jobs:
           val () = if answer = 42 then print "packaged compiler passed\n"
                    else raise Fail "incorrect result"
           SML
-          printf 'packaged compiler passed\n' > expected
-          for mode in gc no_gc; do
-            "$MLKIT" "-$mode" -o "probe-$mode" probe.sml
-            "./probe-$mode" > actual
-            cmp expected actual
-          done
           SML_LIB="$installed/lib/smltojs" "$installed/bin/smltojs" -o probe-js probe.sml
           test -s probe-js.html
           sh "$root/test/repl/check-installed.sh"

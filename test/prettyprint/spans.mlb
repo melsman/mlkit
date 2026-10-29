@@ -1,2 +1,5 @@
-support.mlb
+$(SML_LIB)/basis/basis.mlb
+report.sml
+support/PRETTYPRINT.sig
+support/PrettyPrint.sml
 spans.sml

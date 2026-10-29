@@ -6,6 +6,7 @@ structure L = N.LineStmt
 structure S = N.SubstAndSimplify
 structure I = InstsArm64
 structure A = I
+val () = Flags.turn_off "parallelism"
 (* Check both useful rewrites and boundaries where a similar rewrite would
  * change register width, memory semantics, metadata, or pair encodability. *)
 local

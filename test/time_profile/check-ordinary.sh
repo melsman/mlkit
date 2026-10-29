@@ -11,7 +11,7 @@ printf '$(SML_LIB)/basis/basis.mlb\n$(SML_LIB)/kitlib/time-profile.mlb\nmeasure.
 cc -O2 -Wall -Wextra -Werror -c "$ROOT/test/time_profile/measure.c" -o "$OUT/measure.o"
 ar rcs "$OUT/libmeasure.a" "$OUT/measure.o"
 for config in gc no_gc gengc; do
- "${MLKIT:-$ROOT/bin/mlkit}" -no_par -"$config" -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$config" "$OUT/measure.mlb" > "$OUT/$config-build.log" 2>&1
+ "${MLKIT:-$ROOT/bin/mlkit}" -"$config" -no_par -libdirs "$OUT" -libs measure,m,c,dl -o "$OUT/$config" "$OUT/measure.mlb" > "$OUT/$config-build.log" 2>&1
  "$OUT/$config" > "$OUT/$config-off.log"
  "$OUT/$config" +RTS -tp -tp_paused -p_file "$OUT/$config.rp" > "$OUT/$config-on.log"
  sed '/^c /d' "$OUT/$config-off.log" > "$OUT/off-stable.log"
@@ -22,7 +22,9 @@ for config in gc no_gc gengc; do
  node "$ROOT/test/time_profile/ordinary-assertions.js" "$OUT/$config.json" "$OUT/$config.html" "${PVIEW:-$ROOT/bin/pview}" "${RPENCODER:-$ROOT/bin/rpfixture}"
 done
 # No explicit API calls: overflow persists until normal-shutdown draining.
-printf 'val x = List.tabulate (200000, fn i => i)\nfun spin__noinline 0 = () | spin__noinline n = (List.foldl op+ 0 x; spin__noinline(n-1))\nval () = spin__noinline 2000\n' > "$OUT/exit.sml"
+# Only three timer deliveries are needed to overflow the two-entry buffer.
+# Keep enough work for that check without traversing 400 million list cells.
+printf 'val x = List.tabulate (200000, fn i => i)\nfun spin__noinline 0 = () | spin__noinline n = (List.foldl op+ 0 x; spin__noinline(n-1))\nval () = spin__noinline 20\n' > "$OUT/exit.sml"
 printf '$(SML_LIB)/basis/basis.mlb\nexit.sml\n' > "$OUT/exit.mlb"
 "${MLKIT:-$ROOT/bin/mlkit}" -no_par -gc -o "$OUT/exit" "$OUT/exit.mlb" > "$OUT/exit-build.log" 2>&1
 "$OUT/exit" +RTS -tp -tp_buffer 2 -tp_interval 100us -p_file "$OUT/exit.rp"

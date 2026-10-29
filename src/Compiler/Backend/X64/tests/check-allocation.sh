@@ -13,6 +13,11 @@ printf 'val _:unit = prim("putchar",0w65)\n' > helper.sml
 ./helper > actual
 printf A > expected
 cmp expected actual
+# ML entries must remain aligned independently of preceding function sizes.
+nm -n helper | awk '
+  $3 ~ /^_?F\./ { count++; if ($1 !~ /[048cC]0$/) exit 1 }
+  END { if (!count) exit 1 }
+'
 prefix=
 case $(uname -s) in Darwin) prefix=_;; esac
 awk -v p="$prefix" '

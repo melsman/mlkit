@@ -24,18 +24,42 @@ uintptr_t tp_masked_wait(void) {
 }
 #ifdef TP_SLOW_READER
 #include <unistd.h>
-int main(void) {
-  char bytes[256];
-  ssize_t n;
-  while ((n = read(0,bytes,sizeof(bytes))) > 0) {
-    ssize_t done = 0;
-    while (done < n) {
-      ssize_t written = write(1,bytes+done,n-done);
-      if (written < 0) { if (errno == EINTR) continue; return 1; }
-      done += written;
-    }
-    tp_wait_raw(10);
+/* Preserve the wire stream, delaying samples rather than the much larger
+ * static code/IR metadata. Return 0 only for EOF before a new frame. */
+static int transfer(unsigned char *bytes, size_t size) {
+  size_t done = 0;
+  while (done < size) {
+    ssize_t n = read(0,bytes+done,size-done);
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) return done == 0 && n == 0 ? 0 : -1;
+    done += (size_t)n;
   }
-  return n < 0;
+  done = 0;
+  while (done < size) {
+    ssize_t n = write(1,bytes+done,size-done);
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) return -1;
+    done += (size_t)n;
+  }
+  return 1;
+}
+int main(void) {
+  unsigned char bytes[4096];
+  if (transfer(bytes,8) != 1) return 1;
+  for (;;) {
+    int status = transfer(bytes,4);
+    if (status == 0) return 0;
+    if (status < 0) return 1;
+    uint32_t remaining = (uint32_t)bytes[0] | (uint32_t)bytes[1]<<8 |
+                         (uint32_t)bytes[2]<<16 | (uint32_t)bytes[3]<<24;
+    if (remaining == 0 || transfer(bytes,1) != 1) return 1;
+    if (bytes[0] == 24) tp_wait_raw(1); /* time_sample */
+    remaining--;
+    while (remaining) {
+      size_t n = remaining < sizeof(bytes) ? remaining : sizeof(bytes);
+      if (transfer(bytes,n) != 1) return 1;
+      remaining -= (uint32_t)n;
+    }
+  }
 }
 #endif

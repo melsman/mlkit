@@ -46,7 +46,7 @@ signature EXECUTION =
     val generate_repl_init_code : (unit -> target) option
 
     (* -----------------------------------------------------------
-     * link_files_with_runtime_system files run : Link
+     * link_files_with_runtime_system linkinfos files run : Link
      * a list `files' of partially linked files (.o files) to the
      * runtime system (also partially linked) and produce an executable
      * called `run'.
@@ -57,7 +57,8 @@ signature EXECUTION =
      * executable using gcc -o run.exe -L . -lruntime).
      * ----------------------------------------------------------- *)
 
-    val link_files_with_runtime_system : string list -> string -> unit
+    (* Retained link metadata is passed explicitly, also for runtime selection. *)
+    val link_files_with_runtime_system : linkinfo list -> string list -> string -> unit
 
     val create_repl_runtime : string list -> string -> string
 

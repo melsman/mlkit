@@ -9,7 +9,7 @@ cp "$ROOT/basis/Makefile" "$OUT/basis/Makefile"
 cat > "$OUT/compiler" <<'SH'
 #!/bin/sh
 set -eu
-parallel=0
+parallel=1
 unprotected=0
 gc=0
 case "$0" in *compiler-reml) parallel=1; unprotected=1;; esac
@@ -72,6 +72,13 @@ awk '
     starts++;
   }
   $1 == "end" { active--; done[$2]=$3; if($3=="kit") completed++ }
-  END { if(active || peak<2 || starts!=36 || completed!=8) exit 5;
-        print "Library builds: concurrent variants, ordered stages, all eight configurations passed" }
+  END { if(active || peak<2 || starts!=26 || completed!=6) exit 5;
+        print "Library builds: concurrent variants, ordered stages, all six configurations passed" }
 ' "$OUT/events"
+
+# Sequential caches are available explicitly, but absent from standard preparation.
+if grep -Eq '^start ri(_rp)? ' "$OUT/events"; then exit 1; fi
+make -C "$OUT/basis" mlkit_basislib_ri mlkit_basislib_ri_rp \
+  MLKIT=../compiler-mlkit REML=../compiler-reml > "$OUT/sequential.log" 2>&1
+grep -q '^end ri reml$' "$OUT/events"
+grep -q '^end ri_rp reml$' "$OUT/events"
