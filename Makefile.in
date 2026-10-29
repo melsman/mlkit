@@ -452,8 +452,11 @@ REGRESSION_JOBS ?= 2
 check-build:
 	sh test/build/check.sh
 
-.PHONY: check-real-auto-conversion
-check-real-auto-conversion:
+.PHONY: check-real16 check-real-auto-conversion
+check-real16:
+	sh src/Runtime/tests/check-real16.sh
+
+check-real-auto-conversion: check-real16
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_NATIVE="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-native.sh
 

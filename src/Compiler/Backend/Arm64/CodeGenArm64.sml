@@ -931,6 +931,17 @@ struct
              instruction A.add (R(X 16),R(X 16),I(1))
            else fn c => c) ++
           writeInto fsz d (X 16)
+      fun signReal16 negate code =
+          let val bit = if tagged() then 16 else 15
+              val sign = IntInf.<< (1,Word.fromInt bit)
+              val mask = if negate then sign else sign-1
+          in case (args,res) of
+                 ([a],[d]) =>
+                 (readInto fsz a (X 16) ++ constantInto(mask,X 17) ++
+                  instruction (if negate then A.eor else A.and_) (R(X 16),R(X 16),R(X 17)) ++
+                  writeInto fsz d (X 16)) code
+               | _ => unsupported "real16 sign arity"
+          end
       fun binaryReal32 opn code =
           (case (args,res) of
                ([a,rhs],[d]) =>
@@ -1465,6 +1476,8 @@ struct
         | Minus_real32 => binaryReal32 A.fsub code
         | Mul_real32 => binaryReal32 A.fmul code
         | Div_real32 => binaryReal32 A.fdiv code
+        | Neg_real16 => signReal16 true code
+        | Abs_real16 => signReal16 false code
         | Neg_real32 => unaryReal32 A.fneg code
         | Abs_real32 => unaryReal32 A.fabs code
         | Sqrt_real32 => unaryReal32 A.fsqrt code

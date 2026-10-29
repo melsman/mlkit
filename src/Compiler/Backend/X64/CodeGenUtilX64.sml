@@ -1410,15 +1410,15 @@ struct
          load_real32 (x,tfreg0,fsz,
            I.sqrtss(R tfreg0,R tfreg0) :: store_real32(tfreg0,d,fsz,C))
 
-     fun sign_real32 negate (x,d,fsz,C) =
+     fun sign_narrow_real bit negate (x,d,fsz,C) =
          let val (d,C) = resolve_aty_def(d,treg0,fsz,C)
-             val signBit = if BI.tag_values() then "32" else "31"
+             val signBit = bit + (if BI.tag_values() then 1 else 0)
              val finish = copy(treg0,d,C)
          in load_aty(x,treg0,fsz,
               if negate then
-                G.move_num(if BI.tag_values() then "4294967296" else "2147483648",R treg1)
+                G.move_num(IntInf.toString (IntInf.<< (1,Word.fromInt signBit)),R treg1)
                   (I.xorq(R treg1,R treg0) :: finish)
-              else I.btrq(I signBit,R treg0) :: finish)
+              else I.btrq(I (Int.toString signBit),R treg0) :: finish)
          end
 
      fun compare_real32 {swap,unordered} cmov (x,y,d,fsz,C) =

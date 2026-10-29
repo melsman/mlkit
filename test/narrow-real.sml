@@ -58,6 +58,17 @@ fun many (n,a,b,c,d,e,f,g,h,flag,x:real32,y:real16) =
        assert (b = a+1 andalso flag = (a mod 2 = 1)))
 val seed : int = prim ("get_time_base", 0:int)
 val () = many(seed mod 3 + 1,1,2,3,4,5,6,7,8,true,1.0,2.0)
+fun eq16 (x:real16,y:real16) : bool = prim ("__equal_real16", (x,y))
+fun calc16 (x:real16,y:real16) = (x+y,x-y,x*y,x/y)
+val (ha,hb,hc,hd) = calc16(7.0,2.0)
+val _ = assert (eq16(ha,9.0) andalso eq16(hb,5.0) andalso
+                eq16(hc,14.0) andalso eq16(hd,3.5))
+val _ = assert (bits16 (~(0.0:real16)) = 0w32768 andalso bits16 (abs (~0.0:real16)) = 0w0)
+val halfZero : real16 = 0.0
+val halfNan = halfZero/halfZero
+val _ = assert (not (halfNan < halfZero) andalso not (halfNan <= halfZero) andalso
+                not (halfNan > halfZero) andalso not (halfNan >= halfZero) andalso
+                not (eq16(halfNan,halfNan)))
 (* Unconstrained reals still default to ordinary real. *)
 val default = 1.0/2.0
 val _ : real = default

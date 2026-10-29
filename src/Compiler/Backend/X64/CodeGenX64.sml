@@ -1192,8 +1192,10 @@ struct
                             | Bytetable_size => bytetable_size arg
                             | Table_size     => table_size arg
 
-                            | Neg_real32 => sign_real32 true arg
-                            | Abs_real32 => sign_real32 false arg
+                            | Neg_real16 => sign_narrow_real 15 true arg
+                            | Abs_real16 => sign_narrow_real 15 false arg
+                            | Neg_real32 => sign_narrow_real 31 true arg
+                            | Abs_real32 => sign_narrow_real 31 false arg
                             | Sqrt_real32 => sqrt_real32 arg
                             | Int_to_real32 => int_to_real32 arg
                             | Real32_to_f64 => real32_to_f64 arg
