@@ -31,6 +31,6 @@ struct
 end
 
 (** SigDoc *)
-structure PackReal32Little = PackReal32(val isBigEndian = false)
+structure PackReal32Little : PACK_REAL where type real = Real32.real = PackReal32(val isBigEndian = false)
 (** SigDoc *)
-structure PackReal32Big = PackReal32(val isBigEndian = true)
+structure PackReal32Big : PACK_REAL where type real = Real32.real = PackReal32(val isBigEndian = true)

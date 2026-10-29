@@ -9,16 +9,19 @@ structure SmlToJsCompiler = struct
       in (res,t)
       end
 
-  val basislibs = ["Initial","General","Option", "List", "ListPair",
+  val basislibs = map (fn n => n ^ ".sml") ["Initial","General","Option", "List", "ListPair",
                    "Vector", "VectorSlice", "Array", "ArraySlice", "Array2", "ByteTable", "ByteSlice",
                    "StringCvt", "String2", "Substring", "Text", "Bool", "IntInfRep",
                    "Word32", "Word8", "Word31", "Pack32Little", "Pack32Big", "Byte",
                    "Int32", "Int31",
                    "Math", "Real",
-                   "IntInf",
+                   "IntInf", "IEEEReal", "Math16", "Real16", "Math32", "Real32",
+                   "narrow-real-default", "realtables", "PackReal16", "PackReal32",
+                   "MONO_VECTOR", "MONO_ARRAY", "MONO_VECTOR_SLICE",
+                   "MONO_ARRAY_SLICE", "MONO_ARRAY2", "PACK_REAL",
                    "Time", "Random", "Path", "Date", "Timer", "TextIO",
                    "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "formlets", "utest"
-                  ]
+                  ] @ ["REAL.sig", "MATH.sig", "IEEE_REAL.sig"]
 
   val envRef : Env.t option ref = ref NONE
 
@@ -54,7 +57,9 @@ structure SmlToJsCompiler = struct
         fun e ++ e' = Env.plus (e,e')
         fun load_env n =
             let val () = out "."
-                val eb_s = JsCore.exec0{stmt="return " ^ n ^ "_sml_eb;",res=JsCore.string}()
+                val eb_s = JsCore.exec1{stmt="return window[n + '_eb'];",
+                                        arg1=("n",JsCore.string),res=JsCore.string}
+                    (String.translate (fn #"." => "_" | c => String.str c) n)
             (* val () = out ("Unpickling " ^ n ^ "\n") *)
             in Pickle.unpickle Env.pu eb_s
             end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)

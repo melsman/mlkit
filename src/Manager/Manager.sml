@@ -482,7 +482,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun writeBasisJs toJsString punit ofile B =
         let val s = Pickle.pickle Basis.pu B
             val punit = String.translate (fn #"." => "_" | c => String.str c) punit
-            val s = String.concat [punit, "_eb = ",
+            (* Source filenames need not be JavaScript identifiers. *)
+            val s = String.concat ["window[", toJsString (punit ^ "_eb"), "] = ",
                                    toJsString s,
                                    ";"]
             val file = targetFromOutput ofile "eb.js"
