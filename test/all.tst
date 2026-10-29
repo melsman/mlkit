@@ -181,8 +181,8 @@ with-escape.sml
 sigs-avail.sml                                (* basis library available signatures *)
 structs-avail.sml                             (* basis library available structures *)
 
-word-n-vector.sml
-int-n-vector.sml
+word-n-vector.mlb
+int-n-vector.mlb
 auto2.sml                                     (* ffi auto-conversion *)
 foldbug.sml
 seltuptup.sml
