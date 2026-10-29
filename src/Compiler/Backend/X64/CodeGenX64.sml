@@ -1670,12 +1670,9 @@ struct
         fun pws ws = app pw ws
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
+        (* A one-word frame can contain a live spill, even in a basic
+         * tail-call wrapper. Keep the frame calculated by CalcOffset. *)
         val fsz = CallConv.get_frame_size cc
-        val fsz = if not(gc_p()) andalso not(sampledProfile()) andalso fsz = 1 andalso basic_lss lss then 0
-                      else fsz
-(*
-        val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
-*)
         val size_ccf = CallConv.get_ccf_size cc
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^

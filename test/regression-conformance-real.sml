@@ -90,3 +90,14 @@ val () = List.app sc ["+1.5", "-1.5", "~1.5", "1.", ".5", "1.5E3", "1.5e3", "1.5
 
 in
 end
+
+local
+  (* Continuations forwarding a parsed exponent can spill its sign flag.
+   * A one-word local frame must survive a tail call with stack arguments. *)
+  fun exponent (text,expected) =
+      case IEEEReal.fromString text of
+          SOME {exp,...} => if exp = expected then () else raise Fail "decimal exponent sign"
+        | NONE => raise Fail "decimal exponent scan"
+  val () = List.app exponent [("1.0e~1",0),("1.0e-1",0),("1.0e~1000",~999)]
+in
+end
