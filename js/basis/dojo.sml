@@ -31,11 +31,11 @@ structure Dojo :> DOJO = struct
                        arg2=("f",fptr2unit_T),
                        res=JsCore.unit} (s,f)
 
-  structure Promise : sig
-    type 'a t
-    val When  : 'a JsCore.T -> ('a t * ('a -> unit) -> unit) M
-    val WhenE : 'a JsCore.T -> ('a t * ('a -> unit) * (string->unit) -> unit) M
-  end = struct
+  structure Promise
+    : sig type 'a t
+          val When  : 'a JsCore.T -> ('a t * ('a -> unit) -> unit) M
+          val WhenE : 'a JsCore.T -> ('a t * ('a -> unit) * (string->unit) -> unit) M
+      end = struct
     type 'a t = foreignptr
     fun When t =
       require1 "dojo/when" >>= (fn whenF =>
