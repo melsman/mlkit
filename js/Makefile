@@ -45,7 +45,7 @@ IDE_BASISLIBS=Initial General Option List ListPair Vector VectorSlice	\
    Array ArraySlice Array2 ByteTable ByteSlice StringCvt String2	\
    Substring Text Bool IntInfRep Word32 Word8 Word31 Pack32Little	\
    Pack32Big Byte Int32 Int31 Math Real IntInf IEEEReal Math16 Real16 Math32 Real32 \
-   narrow-real-default realtables PackReal16 PackReal32 \
+   narrow-real-default real64tables realtables PackReal16 PackReal32 \
    MONO_VECTOR MONO_ARRAY MONO_VECTOR_SLICE MONO_ARRAY_SLICE MONO_ARRAY2 PACK_REAL \
    Time Random Path Date	\
    Timer TextIO JsCore Js Html Rwp XMLrpcClient dojo formlets utest
@@ -63,7 +63,7 @@ IDE_EXTRACODE=Array2-sml ArraySlice-sml-code1 ArraySlice-sml-code3	\
    StrBase-sml Math-sml Html-sml Rwp-sml Parsercomb-sml			\
    XMLrpcClient-sml-code1 XMLrpcClient-sml-code2			\
    XMLrpcClient-sml-code3 utest-sml Random-sml \
-   Math16-sml Math32-sml narrow-real-default-sml realtables-sml \
+   real-core-sml real64tables-sml Real-sml Math16-sml Math32-sml narrow-real-default-sml realtables-sml \
    realtables-sml-code1 PackReal16-sml PackReal32-sml
 IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
 

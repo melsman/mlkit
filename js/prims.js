@@ -613,12 +613,45 @@ SmlPrims.narrowWideRound = function(x) {
   if (r > 0.5 || r === 0.5 && lo%2) ++lo;
   return x < 0 ? -lo : lo;
 };
+SmlPrims.narrowIntegerString = function(x) { return BigInt(x).toString().replace('-','~'); };
+
+// Binary64 scaling and bit transport use DataView without BigInt.
 SmlPrims.narrowWideFrexp = function(x) {
   if (!isFinite(x) || x === 0) return [x,0];
-  var e=Math.floor(Math.log(Math.abs(x))/Math.LN2)+1;
-  var man=x*Math.pow(2,-e);
-  if (Math.abs(man)<0.5) {man*=2;--e;}
-  if (Math.abs(man)>=1) {man/=2;++e;}
-  return [man,e];
+  var adjust=0, buf=new ArrayBuffer(8), view=new DataView(buf);
+  if (Math.abs(x)<Math.pow(2,-1022)) {x*=Math.pow(2,54);adjust=-54;}
+  view.setFloat64(0,x,false);
+  var e=((view.getUint32(0,false)>>>20)&2047)-1022;
+  return [x*Math.pow(2,-e),e+adjust];
 };
-SmlPrims.narrowIntegerString = function(x) { return BigInt(x).toString().replace('-','~'); };
+SmlPrims.real64Ldexp = function(x,n) {
+  if (!isFinite(x) || x === 0) return x;
+  var p=SmlPrims.narrowWideFrexp(x), m=p[0], e=p[1]+n;
+  if (e>1024) return m<0 ? -Infinity : Infinity;
+  if (e < -1074) return m<0 ? -0 : 0;
+  if (e === 1024) return (m*2)*Math.pow(2,1023);
+  if (e < -1022) return (m*Math.pow(2,e+1074))*Number.MIN_VALUE;
+  return m*Math.pow(2,e);
+};
+SmlPrims.real64NextAfter = function(x,y) {
+  if (isNaN(x) || isNaN(y)) return NaN;
+  if (x === y) return y;
+  if (x === 0) return y<0 ? -Number.MIN_VALUE : Number.MIN_VALUE;
+  var view=new DataView(new ArrayBuffer(8));
+  view.setFloat64(0,x,false);
+  var hi=view.getUint32(0,false), lo=view.getUint32(4,false);
+  if ((x>0) === (y>x)) {lo=(lo+1)>>>0;if(lo===0)hi=(hi+1)>>>0;}
+  else {if(lo===0)hi=(hi-1)>>>0;lo=(lo-1)>>>0;}
+  view.setUint32(0,hi,false);view.setUint32(4,lo,false);
+  return view.getFloat64(0,false);
+};
+SmlPrims.real64Sub = function(t,i) {
+  var v=new DataView(new ArrayBuffer(8));
+  for(var j=0;j<8;j++)v.setUint8(j,t[8*i+j]);
+  return v.getFloat64(0,true);
+};
+SmlPrims.real64Update = function(t,i,x) {
+  var v=new DataView(new ArrayBuffer(8));v.setFloat64(0,x,true);
+  for(var j=0;j<8;j++)t[8*i+j]=v.getUint8(j);
+  return 0;
+};

@@ -8812,6 +8812,23 @@ has been used for hosting a Standard ML compiler in a web browser
 \url{https://diku-dk.github.io/sml-ide/}
 \end{quote}
 
+\paragraph{Real Basis support in JavaScript.}
+The default \kw{Real}, \kw{Real64}, and \kw{LargeReal} structures share
+binary64 values and implement the same \kw{REAL} signature as the narrow
+families. This includes classification, signed-zero operations, adjacent-value
+stepping, mantissa/exponent decomposition, decimal conversion, and conversions
+to arbitrary-precision integers. Decimal scanning uses nearest binary64
+rounding; ordinary arithmetic retains JavaScript's rounding semantics.
+The legacy JavaScript \kw{toDefault}/\kw{fromDefault} aliases remain available.
+
+The \kw{RealArray}/\kw{RealVector} families include slices and
+\kw{RealArray2}; their \kw{Real64} and \kw{LargeReal} aliases share collection
+types. These collections store eight-byte binary64 elements. Classification,
+bit transport and packing require \texttt{DataView}; the default real API
+and collections do not require JavaScript \texttt{BigInt}. Formatting prints
+\kw{inf}, \kw{~inf}, and \kw{nan} for non-finite values and preserves negative
+zero. The existing limit of 20 requested formatting digits remains.
+
 \paragraph{Narrow reals in JavaScript.}
 SMLtoJs provides \kw{Real16}, \kw{Real32}, their \kw{Math} structures,
 packed arrays, vectors, slices and two-dimensional arrays, and both endian
