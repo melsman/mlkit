@@ -22,6 +22,7 @@ signature EXCON =
     (* Names *)
     type name
     val match : excon * excon -> unit
+    val str : excon -> string
     val name : excon -> name
 
     (* Predefined exception constructors *)

@@ -1,4 +1,4 @@
-TESTFILES=fib35.sml life.sml testdyn1.sml general.sml string.sml qsort.sml fft.sml \
+TESTFILES=basisnames.sml fib35.sml life.sml testdyn1.sml general.sml string.sml qsort.sml fft.sml \
           tststrcmp.sml msort.sml int.sml precedence.sml simple.sml mandelbrot.sml \
           professor.sml
 

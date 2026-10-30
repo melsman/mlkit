@@ -2,8 +2,8 @@
 File general.sml: Testing structure General...
 
 Should be `E1 or E2':
-  E1155
-  E1155
+  E1
+  E1
 Should be `Bind':
   Bind
   Bind

@@ -34,6 +34,8 @@ structure Excon :> EXCON where type name = Name.name =
     fun renew ({str,name}:excon) : excon =
         {name=Name.new(), str=str}
 
+    fun str ({str,...}:excon) = str
+
     fun name ({name,...}: excon) : name = name
 
     val op < = fn (e1,e2) => Name.lt (name e1,name e2)

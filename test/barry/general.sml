@@ -30,13 +30,16 @@ exception NoExceptionRaised
 fun getExn (f : unit -> 'a) = 
     (f (); NoExceptionRaised) handle e => e
 
-fun prExn(exnStr, exn) =
-    (print "\nShould be `"; print exnStr; print "':\n  ";
-     print (exnName exn); print "\n  ";
-     print (exnMessage exn));
-
 exception E1;
 exception E2 = E1;
+
+(* Barry gives local exceptions unique generated names. Check aliases without
+ * making the expected output depend on the compiler's numeric name keys. *)
+fun stableName s = if s = exnName E1 then "E1" else s
+fun prExn(exnStr, exn) =
+    (print "\nShould be `"; print exnStr; print "':\n  ";
+     print (stableName (exnName exn)); print "\n  ";
+     print (stableName (exnMessage exn)));
 
 val _ = List.map prExn
     [("E1 or E2",  E2),

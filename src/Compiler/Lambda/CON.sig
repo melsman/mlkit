@@ -20,6 +20,7 @@ signature CON =
     (* Names *)
     type name
     val match : con * con -> unit
+    val str : con -> string
     val name : con -> name
 
     (* Predefined Constructors *)

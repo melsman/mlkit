@@ -23,6 +23,8 @@ structure Con :> CON where type name = Name.name =
 	in str ^ Int.toString i ^ ":" ^ s
 	end
 
+    fun str ({str,...}:con) = str
+
     fun name ({name,...}: con) : name = name
 
     val op < = fn (con1, con2) =>
