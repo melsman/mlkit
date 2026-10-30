@@ -8,7 +8,7 @@ SMLSIGS=INTEGER STRING_CVT MONO_VECTOR MONO_ARRAY MONO_VECTOR_SLICE MONO_ARRAY_S
 IMPL=General List Bool Int31 Int32 IntInf String2 \
  Substring ByteTable Char Array2 Array Vector VectorSlice \
  ArraySlice ByteSlice Date Time Timer Word8 Word31 Word32 \
- Byte Real Math IEEEReal Math16 Real16 Math32 Real32 real64tables realtables \
+ Byte Real Math IEEEReal Math16 Real16 Math32 Real32 real-tables \
  PackReal16 PackReal32 Random Pack32Little Pack32Big ListPair Option Listsort \
  StringCvt JsCore Js Html Rwp XMLrpcClient dojo utest
 

@@ -17,7 +17,7 @@ local
     basis ArrayVector =
         let open General List
             basis Poly =
-              let wordtables.sml TableSlice.sml
+              let polytable.sml TableSlice.sml
               in bas
                     VECTOR.sig Vector.sml
                     VECTOR_SLICE.sml VectorSlice.sml
@@ -114,8 +114,8 @@ local
             local RealBits.sml
             in Math16.sml Real16.sml Math32.sml Real32.sml end
             narrow-real-default.sml
-            MONO_ARRAY2.sml table-functors.sml
-            ann inline_functors in real64tables.sml realtables.sml PackReal16.sml PackReal32.sml end
+            MONO_ARRAY2.sml table-functors.sml tablearg-functors.sml
+            ann inline_functors in real-tables.sml PackReal16.sml PackReal32.sml end
           end
        end
 

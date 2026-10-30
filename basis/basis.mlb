@@ -113,16 +113,21 @@ local
 
     basis TableFunctors =
        let open General List ArrayVector Word Int
-       in bas table-functors.sml wordtable-functors.sml end
+       in bas table-functors.sml tablearg-functors.sml end
        end
 
     basis WordArrayVector =
        let open General List ArrayVector Word Int TableFunctors
-       in bas ann inline_functors
-              in wordtables.sml
-                 inttables.sml
-              end
-          end
+           basis BoolTables = bas ann inline_functors in bool-tables.sml end end
+           basis WordTables1 = bas ann inline_functors in word-tables1.sml end end
+           basis WordTables2 = bas ann inline_functors in word-tables2.sml end end
+           basis IntTables1 = bas ann inline_functors in int-tables1.sml end end
+           basis IntTables2 =
+             let open IntInf
+             in bas ann inline_functors in int-tables2.sml end end
+             end
+           basis RealTables = bas ann inline_functors in real-tables.sml end end
+       in bas open BoolTables WordTables1 WordTables2 IntTables1 IntTables2 RealTables end
        end
 
     basis Real =
@@ -145,7 +150,7 @@ local
             in local RealBits.sml
                in Math16.sml Real16.sml Math32.sml Real32.sml end
             end
-            ann inline_functors in realtables.sml PackReal16.sml PackReal32.sml end
+            ann inline_functors in PackReal16.sml PackReal32.sml end
           end
        end
 

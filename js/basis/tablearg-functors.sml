@@ -1,8 +1,34 @@
-(* Packed real tables use the same collection functors as integer tables.
- * Bounds and slice operations remain specialized at each application. *)
+(* Binary64 mono collections share the packed collection functors. *)
+functor TableArgReal(type table) : WORD_TABLE_ARG =
+struct
+  type elem = real
+  type array = chararray
+  type vector = string
+  type table = table
+  val wordSizeBytes = 8
+  fun toBytes n = Word.toIntX (Word.* (Word.fromInt n,0w8))
+  fun fromBytes n = Word.toIntX (Word.>> (Word.fromInt n,0w3))
+  fun asub (t:array,i:int) : elem =
+      prim ("execStmtJS", ("return SmlPrims.real64Sub(t,i);","t,i",t,i))
+  fun aupd (t:array,i:int,x:elem) : unit =
+      prim ("execStmtJS", ("return SmlPrims.real64Update(t,i,x);","t,i,x",t,i,x))
+  fun vsub (t:vector,i:int) : elem =
+      prim ("execStmtJS", ("return SmlPrims.real64Sub(t,i);","t,i",t,i))
+  fun vupd (t:vector,i:int,x:elem) : unit =
+      prim ("execStmtJS", ("return SmlPrims.real64Update(t,i,x);","t,i,x",t,i,x))
+  fun tsub (t:table,i:int) : elem =
+      prim ("execStmtJS", ("return SmlPrims.real64Sub(t,i);","t,i",t,i))
+  fun tupd (t:table,i:int,x:elem) : unit =
+      prim ("execStmtJS", ("return SmlPrims.real64Update(t,i,x);","t,i,x",t,i,x))
+  fun tlen (t:table) : int = fromBytes (prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes (prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim ("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim ("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim ("allocStringML", toBytes n)
+end
 functor TableArgReal32(type table) : WORD_TABLE_ARG =
 struct
-  type elem = Real32.real
+  type elem = real32
   type array = chararray
   type vector = string
   type table = table
@@ -22,25 +48,9 @@ struct
   fun aalloc (n:int) : array = prim ("allocStringML", toBytes n)
 end
 
-local
-  structure T = BuildTables(structure ArgV = TableArgReal32(type table = string)
-                            structure ArgA = TableArgReal32(type table = chararray))
-in
-  (** SigDoc *)
-  structure Real32Vector : MONO_VECTOR = T.V
-  (** SigDoc *)
-  structure Real32VectorSlice : MONO_VECTOR_SLICE = T.VS
-  (** SigDoc *)
-  structure Real32Array : MONO_ARRAY = T.A
-  (** SigDoc *)
-  structure Real32ArraySlice : MONO_ARRAY_SLICE = T.AS
-  (** SigDoc *)
-  structure Real32Array2 : MONO_ARRAY2 = T.A2
-end
-
 functor TableArgReal16(type table) : WORD_TABLE_ARG =
 struct
-  type elem = Real16.real
+  type elem = real16
   type array = chararray
   type vector = string
   type table = table
@@ -58,20 +68,4 @@ struct
   fun talloc (n:int) : table = prim ("allocStringML", toBytes n)
   fun valloc (n:int) : vector = prim ("allocStringML", toBytes n)
   fun aalloc (n:int) : array = prim ("allocStringML", toBytes n)
-end
-
-local
-  structure T = BuildTables(structure ArgV = TableArgReal16(type table = string)
-                            structure ArgA = TableArgReal16(type table = chararray))
-in
-  (** SigDoc *)
-  structure Real16Vector : MONO_VECTOR = T.V
-  (** SigDoc *)
-  structure Real16VectorSlice : MONO_VECTOR_SLICE = T.VS
-  (** SigDoc *)
-  structure Real16Array : MONO_ARRAY = T.A
-  (** SigDoc *)
-  structure Real16ArraySlice : MONO_ARRAY_SLICE = T.AS
-  (** SigDoc *)
-  structure Real16Array2 : MONO_ARRAY2 = T.A2
 end

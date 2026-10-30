@@ -18,7 +18,7 @@ structure SmlToJsCompiler = struct
       "Word31.sml", "Pack32Little.sml", "Pack32Big.sml", "Byte.sml", "Int32.sml",
       "Int31.sml", "Math.sml", "IntInf.sml", "IEEEReal.sml", "REAL.sig",
       "Real.sml", "Math16.sml", "Real16.sml", "Math32.sml", "Real32.sml",
-      "narrow-real-default.sml", "real64tables.sml", "realtables.sml", "PackReal16.sml", "PackReal32.sml",
+      "narrow-real-default.sml", "real-tables.sml", "PackReal16.sml", "PackReal32.sml",
       "MONO_VECTOR.sml", "MONO_ARRAY.sml", "MONO_VECTOR_SLICE.sml", "MONO_ARRAY_SLICE.sml", "MONO_ARRAY2.sml",
       "PACK_REAL.sml", "Time.sml", "Random.sml", "Path.sml", "Date.sml",
       "Timer.sml", "TextIO.sml", "JsCore.sml", "Js.sml", "Html.sml",

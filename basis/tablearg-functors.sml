@@ -2,7 +2,7 @@
    Here comes the basic functors for building the argument structures
    to the BuildTables functor. There is one functor for each
    underlying type (e.g., word31, bool, real, ...) The functors are
-   applied in the file wordtables.sml.
+   applied in the separate *-tables*.sml compilation units.
    --------------------------------------------------------------- *)
 
 functor TableArgBool(type table) : WORD_TABLE_ARG = struct
@@ -334,4 +334,48 @@ functor TableArgInt(type table) : WORD_TABLE_ARG = struct
   fun talloc (n:int) : table = prim("allocStringML", toBytes n)
   fun valloc (n:int) : vector = prim("allocStringML", toBytes n)
   fun aalloc (n:int) : array = prim("allocStringML", toBytes n)
+end
+
+functor TableArgReal32(type table) : WORD_TABLE_ARG =
+struct
+  type elem = real32
+  type array = chararray
+  type vector = string
+  type table = table
+  val wordSizeBytes = 4
+  fun toBytes n = Word.toIntX (Word.* (Word.fromInt n,0w4))
+  fun fromBytes n = Word.toIntX (Word.>> (Word.fromInt n,0w2))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_real32", (t,i))
+  fun aupd (t:array,i:int,x:elem) : unit = prim ("__bytetable_update_real32", (t,i,x))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_real32", (t,i))
+  fun vupd (t:vector,i:int,x:elem) : unit = prim ("__bytetable_update_real32", (t,i,x))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_real32", (t,i))
+  fun tupd (t:table,i:int,x:elem) : unit = prim ("__bytetable_update_real32", (t,i,x))
+  fun tlen (t:table) : int = fromBytes (prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes (prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim ("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim ("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim ("allocStringML", toBytes n)
+end
+
+functor TableArgReal16(type table) : WORD_TABLE_ARG =
+struct
+  type elem = real16
+  type array = chararray
+  type vector = string
+  type table = table
+  val wordSizeBytes = 2
+  fun toBytes n = Word.toIntX (Word.* (Word.fromInt n,0w2))
+  fun fromBytes n = Word.toIntX (Word.>> (Word.fromInt n,0w1))
+  fun asub (t:array,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun aupd (t:array,i:int,x:elem) : unit = prim ("__bytetable_update_word16", (t,i,x))
+  fun vsub (t:vector,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun vupd (t:vector,i:int,x:elem) : unit = prim ("__bytetable_update_word16", (t,i,x))
+  fun tsub (t:table,i:int) : elem = prim ("__bytetable_sub_word16", (t,i))
+  fun tupd (t:table,i:int,x:elem) : unit = prim ("__bytetable_update_word16", (t,i,x))
+  fun tlen (t:table) : int = fromBytes (prim ("__bytetable_size", t))
+  fun vlen (t:vector) : int = fromBytes (prim ("__bytetable_size", t))
+  fun talloc (n:int) : table = prim ("allocStringML", toBytes n)
+  fun valloc (n:int) : vector = prim ("allocStringML", toBytes n)
+  fun aalloc (n:int) : array = prim ("allocStringML", toBytes n)
 end
