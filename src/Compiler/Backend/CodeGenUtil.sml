@@ -231,7 +231,7 @@ struct
   fun maybeTagIntOrWord {value: IntInf.int, precision:int} : IntInf.int =
       if precision = 31 orelse precision = 63 orelse (precision = 8 andalso BI.tag_values())
       then 2 * value + 1                (* use tagged-unboxed representation *)
-      else if precision = 32 orelse precision = 64 orelse (precision = 8 andalso not(BI.tag_values()))
+      else if precision = 0 orelse precision = 32 orelse precision = 64 orelse (precision = 8 andalso not(BI.tag_values()))
       then value                        (* use untagged representation - maybe boxed *)
       else die "maybeTagIntOrWord"
 
@@ -361,7 +361,8 @@ struct
           fun direct_word (w:{value: IntInf.int, precision:int}) : bool =
               not(boxedNum(#precision w)) andalso
               case #precision w of
-                  31 => #value w <= 0x7FFF
+                  0 => #value w <= 0xFFFF
+                | 31 => #value w <= 0x7FFF
                 | 32 => #value w <= 0xFFFF
                 | 63 => #value w <= 0x7FFF
                 | 64 => #value w <= 0xFFFF
@@ -370,7 +371,8 @@ struct
           fun direct_int (i:{value: IntInf.int, precision:int}) =
               not(boxedNum(#precision i)) andalso
               case #precision i of
-                  31 => #value i <= 0x3FFF andalso #value i > ~0x4000
+                  0 => #value i <= 0x7FFF andalso #value i > ~0x8000
+                | 31 => #value i <= 0x3FFF andalso #value i > ~0x4000
                 | 32 => #value i <= 0x7FFF andalso #value i > ~0x8000
                 | 63 => #value i <= 0x3FFF andalso #value i > ~0x4000
                 | 64 => #value i <= 0x7FFF andalso #value i > ~0x8000
@@ -500,8 +502,10 @@ struct
                  | SOME Effect.TRIPLE_RT => true
                  | _ => false)
 
+  (* Typed region descriptors and their allocators belong to the GC runtime.
+   * Tagging scalar values alone must still work with the no-GC runtime. *)
   fun regions_holding_values_of_the_same_type_only (place:Effect.place) : bool =
-      BI.tag_values() andalso not(tag_pairs_p())
+      gc_p() andalso not(tag_pairs_p())
       andalso (case Effect.get_place_ty place of
                    SOME Effect.PAIR_RT => true
                  | SOME Effect.REF_RT => true

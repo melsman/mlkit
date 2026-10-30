@@ -1,237 +1,115 @@
-
-structure Real : REAL = 
-  struct
-
-    (* Primitives *)
-
-    fun real (x : int) : real = prim ("realInt", x)
-    fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
-    fun ceil (x : real) : int = prim ("ceilFloat", x)      (* may raise Overflow *)
-    fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
-
-    fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
-    fun rem (x: real, y: real): real = prim ("remFloat", (x, y))
-
-    fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
-
-    fun maybeAddDotZero s = (* Add ".0" if not "e" or "." in s  *)
-	      let val stop = size s
-		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
-		      if i = stop then s ^ ".0"
-		      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
-		      else loop (i+1)
-	      in loop 0 end
-
-    fun special s = 
-        case s of
-          "Infinity" => "inf"
-        | "~Infinity" => "~inf"
-        | "NaN" => "nan"
-        | s => s
-
-    fun convert_e s = special(String.translate (fn #"e" => "E" | #"-" => "~" | #"+" => "" | c => Char.toString c) s)
-
-    fun toStringFix (precision:int) (x : real) : string = 
-        convert_e(prim ("stringOfFloatFix", (precision,x)))
-    fun toStringSci (precision:int) (x : real) : string = 
-        convert_e(prim ("stringOfFloatSci", (precision,x)))
-    fun toStringGen (precision:int) (x : real) : string = 
-        convert_e(maybeAddDotZero(prim ("stringOfFloatGen", (precision,x))))
-    fun toString(x : real) : string = toStringGen 12 x
-
-    fun isNan (x : real) : bool = prim ("isnanFloat", x)
-
-    type real = real
-
-    structure Math = Math
-
-    val posInf = Initial.posInf
-    val negInf = Initial.negInf
-
-    val fromInt = real
-
-    (* The following should be replaced by numerically better conversion
-     functions; see 
-
-     Steele and White : How to print floating-point numbers accurately,
-     PLDI'90, pages 112-123, and
-
-     Clinger: How to read floating-point numbers accurately, PLDI'90, pages
-     92-101.
-
-     D.M. Gay: Correctly rounded binary-decimal and decimal-binary
-     conversions, AT&T Bell Labs, Numerical Analysis Manuscript 90-10,
-     November 30, 1990 *)
-
-    fun fmt spec = 
-      let 
-	  open StringCvt
-	  (* Below we check that the requested number of decimal digits 
-	   * is reasonable... *)
-	  val fmtspec = 
-	  case spec of
-	      SCI NONE     => toStringSci 6
-	    | SCI (SOME n) => 
-		  if n < 0 orelse n > 20 then raise Size 
-		  else toStringSci n
-	    | FIX NONE     => toStringFix 6
-	    | FIX (SOME n) =>
-		  if n < 0 orelse n > 20 then raise Size 
-		  else toStringFix n
-	    | GEN NONE     => toString
-	    | GEN (SOME n) => 
-		  if n < 1 orelse n > 20 then raise Size 
-		  else toStringGen n
-            | EXACT => toStringGen 20
-      in fmtspec 
+(** SigDoc *)
+structure Real : REAL =
+struct
+  open Real
+  val radix = 2
+  val precision = 53
+  val maxFinite : real = 1.7976931348623157e308
+  val minPos : real = 4.9406564584124654e~324
+  val minNormalPos : real = 2.2250738585072014e~308
+  fun signBit (x:real) : bool = prim ("execStmtJS", ("var v=new DataView(new ArrayBuffer(8));v.setFloat64(0,x);return (v.getUint32(0) >>> 31) !== 0;","x",x))
+  fun sameSign (x,y) = signBit x = signBit y
+  fun copySign (x,y) = if signBit y then ~(abs x) else abs x
+  fun op == (x:real,y:real) : bool = prim ("execStmtJS", ("return x === y;","x,y",x,y))
+  fun op != (x,y) = not (op == (x,y))
+  fun unordered (x,y) = isNan x orelse isNan y
+  fun op ?= (x,y) = unordered (x,y) orelse op == (x,y)
+  fun isFinite x = not (isNan x) andalso not (op == (abs x,posInf))
+  fun isNormal x = isFinite x andalso abs x >= minNormalPos
+  fun class x =
+      if isNan x then IEEEReal.NAN
+      else if not (isFinite x) then IEEEReal.INF
+      else if op == (x,0.0) then IEEEReal.ZERO
+      else if isNormal x then IEEEReal.NORMAL else IEEEReal.SUBNORMAL
+  fun sign x = if isNan x then raise Domain else if x > 0.0 then 1 else if x < 0.0 then ~1 else 0
+  fun compareReal (x,y) =
+      if unordered (x,y) then IEEEReal.UNORDERED
+      else if x < y then IEEEReal.LESS else if x > y then IEEEReal.GREATER else IEEEReal.EQUAL
+  fun compare (x,y) =
+      if unordered (x,y) then raise IEEEReal.Unordered
+      else if x < y then LESS else if x > y then GREATER else EQUAL
+  fun min (x,y) = if isNan y orelse x < y then x else y
+  fun max (x,y) = if isNan y orelse x > y then x else y
+  fun op *+ (x,y,z) = x*y+z
+  fun op *- (x,y,z) = x*y-z
+  fun checkFloat x =
+      if isNan x then raise Div else if not (isFinite x) then raise Overflow else x
+  fun realFloor (x:real) : real = prim ("floorFloatWide", x)
+  fun realCeil (x:real) : real = prim ("ceilFloatWide", x)
+  fun realTrunc (x:real) : real = prim ("truncFloatWide", x)
+  fun realRound (x:real) : real = prim ("narrowWideRound", x)
+  fun floor x = if isNan x then raise Domain else Real.floor x
+  fun ceil x = if isNan x then raise Domain else Real.ceil x
+  fun trunc x = if isNan x then raise Domain else Real.trunc x
+  fun round x = trunc (realRound x)
+  fun rounded mode x =
+      case mode of
+          IEEEReal.TO_NEAREST => realRound x
+        | IEEEReal.TO_NEGINF => realFloor x
+        | IEEEReal.TO_POSINF => realCeil x
+        | IEEEReal.TO_ZERO => realTrunc x
+  fun toInt mode x = if isNan x then raise Domain else trunc (rounded mode x)
+  fun toLargeInt mode x =
+      if isNan x then raise Domain else if not (isFinite x) then raise Overflow
+      else
+        let val n = rounded mode x
+            (* Decode the exact integer significand; no host decimal rounding or
+             * JavaScript BigInt is needed for the default real interface. *)
+            val (hi,lo,e) : word * word * int =
+                prim ("execStmtJS", ("var v=new DataView(new ArrayBuffer(8));v.setFloat64(0,n);var h=v.getUint32(0),e=(h>>>20)&2047;return [((h&1048575)|(e?1048576:0))>>>0,v.getUint32(4),e?e-1075:-1074];","n",n))
+            val m = IntInf.+ (IntInf.<< (Word.toLargeInt hi,0w32),Word.toLargeInt lo)
+            val z = if Int.>= (e,0) then IntInf.<< (m,Word.fromInt e)
+                    else IntInf.~>> (m,Word.fromInt (Int.~ e))
+        in if n < 0.0 then IntInf.~ z else z
+        end
+  fun number (s:string) : real = prim ("execStmtJS", ("return Number(s.replace(/~/g,'-'));","s",s))
+  fun fromLargeInt x = number (IntInf.toString x)
+  fun toLarge x = x
+  fun fromLarge _ x = x
+  fun toManExp x =
+      let val (man,exp) : real * int = prim ("narrowWideFrexp", x)
+      in {man=man,exp=exp}
       end
-
-    fun scan getc source = 
-      let fun decval c = Char.ord c - 48
-	  fun pow10 0 = 1.0
-	    | pow10 n = 
-	      if n mod 2 = 0 then 
-		  let val x = pow10 (n div 2) in x * x end
-	      else 10.0 * pow10 (n-1)
-	  fun pointsym src = 
-	      case getc src of
-		  NONE           => (false, src)
-		| SOME (c, rest) => if c = #"." then (true, rest)
-				    else (false, src)
-	  fun esym src = 
-	      case getc src of
-		  NONE           => (false, src)
-		| SOME (c, rest) => 
-		      if c = #"e" orelse c = #"E"  then 
-			  (true, rest)
-		      else (false, src)
-	  fun scandigs first next final source =
-	      let fun digs state src = 
-		  case getc src of
-		      NONE          => (SOME (final state), src)
-		    | SOME(c, rest) => 
-			  if Char.isDigit c then 
-			      digs (next(state, decval c)) rest
-			  else 
-			      (SOME (final state), src)
-	      in 
-		  case getc source of
-		      NONE          => (NONE, source)
-		    | SOME(c, rest) => 
-			  if Char.isDigit c then digs (first (decval c)) rest
-			  else (NONE, source)
-	      end
-
-	  fun ident x = x
-	  val getint  = 
-	      scandigs real (fn (res, cval) => 10.0 * res + real cval) ident
-	  val getfrac = 
-	      scandigs (fn cval => (1, real cval))    
-		       (fn ((decs, frac), cval) => (decs+1, 10.0*frac+real cval))
-		       (fn (decs, frac) => frac / pow10 decs)
-	  val getexp = scandigs ident (fn (res, cval) => 10 * res + cval) ident
-
-	  fun sign src =
-	      case getc src of
-		  SOME(#"+", rest) => (true,  rest)
-		| SOME(#"-", rest) => (false, rest)
-		| SOME(#"~", rest) => (false, rest)
-		| _                => (true,  src )
-
-	  val src = StringCvt.dropl Char.isSpace getc source
-	  val (manpos, src1) = sign src
-	  val (intg,   src2) = getint src1
-	  val (decpt,  src3) = pointsym src2
-	  val (frac,   src4) = getfrac src3 
-
-	  fun mkres v rest = 
-	      SOME(if manpos then v else ~v, rest)
-
-	  fun expopt manval src = 
-	      let val (esym,   src1) = esym src
-		  val (exppos, src2) = sign src1
-		  val (expv,   rest) = getexp src2 
-	      in 
-		  case (esym, expv) of
-		      (_,     NONE)     => mkres manval src
-		    | (true,  SOME exp) => 
-			  if exppos then mkres (manval * pow10 exp) rest
-			  else mkres (manval / pow10 exp) rest
-		    | _                 => NONE
-	      end
-      in 
-	  case (intg,     decpt, frac) of
-	      (NONE,      true,  SOME fval) => expopt fval src4
-	    | (SOME ival, false, SOME _   ) => NONE
-	    | (SOME ival, true,  NONE     ) => mkres ival src2
-	    | (SOME ival, false, NONE     ) => expopt ival src2
-	    | (SOME ival, _    , SOME fval) => expopt (ival+fval) src4
-	    | _                             => NONE 
+  fun fromManExp {man:real,exp:int} : real =
+      prim ("execStmtJS", ("return SmlPrims.real64Ldexp(x,e);","x,e",man,exp))
+  fun nextAfter (x:real,y:real) : real =
+      prim ("execStmtJS", ("return SmlPrims.real64NextAfter(x,y);","x,y",x,y))
+  fun split x =
+      let val whole = realTrunc x
+          val frac = if isFinite x then copySign (x-whole,x) else if isNan x then x else copySign (0.0,x)
+      in {whole=whole,frac=frac}
       end
-
-    fun fromString s = StringCvt.scanString scan s
-
-    val ~       : real -> real        = ~
-    val op +    : real * real -> real = op +
-    val op -    : real * real -> real = op -
-    val op *    : real * real -> real = op *
-    val op /    : real * real -> real = op /
-    val op >    : real * real -> bool = op >
-    val op >=   : real * real -> bool = op >=
-    val op <    : real * real -> bool = op <
-    val op <=   : real * real -> bool = op <=
-    val abs     : real -> real = abs
-    fun sign i = if i > 0.0 then 1 else if i < 0.0 then ~1 else 0
-
-    fun compare (x, y: real) = 
-      if x<y then LESS else if x>y then GREATER else EQUAL
-
-    fun op == (x, y) = case compare (x,y)
-		     of EQUAL => true
-		      | _ => false
-    fun op != (x,y) = case compare (x,y)
-			of EQUAL => false
-			 | _ => true 
-
-    infix != ==
-    fun isFinite r = 
-      if isNan r then false
-      else r != posInf andalso r != negInf
-
-    fun sameSign (i, j) = sign i = sign j
-      
-    fun min (x, y) = if x < y then x else y : real
-    fun max (x, y) = if x < y then y else x : real
-
-    fun round (x : real) : int = 
-      let (* val _ = print "**R1**\n" *)
-	  val t0 = x+0.5
-	  (* val _ = print "**R2**\n" *)
-	  val floor_t0 = floor t0
-	  (* val _ = print "**R3**\n" *)
-	  fun even x = x mod 2 = 0
-	  (* val _ = print "**R4**\n" *)
-      in
-	if real(floor_t0) == t0 (* tie *) then
-	  let (* val _ = print "**R5**\n" *)
-	      val t = floor x
-	      (* val _ = print "**R6**\n" *)
-	  in if even t then t else floor_t0 
-	  end
-	else floor_t0
+  fun realMod x = #frac (split x)
+  fun fromDecimal ({class,sign,digits,exp}:IEEEReal.decimal_approx) =
+      let val prefix = if sign then "~" else ""
+      in case class of
+             IEEEReal.INF => SOME (if sign then negInf else posInf)
+           | IEEEReal.NAN => SOME (copySign (posInf-posInf,if sign then ~1.0 else 1.0))
+           | IEEEReal.ZERO => SOME (if sign then ~0.0 else 0.0)
+           | _ =>
+             if List.all (fn d => Int.>= (d,0) andalso Int.<= (d,9)) digits then
+               SOME (number (prefix ^ "0." ^ String.concat (List.map Int.toString digits) ^ "e" ^ Int.toString exp))
+             else NONE
       end
-
-    fun toDefault   i   = i
-    fun fromDefault i   = i
-
-  end (*structure Real*)
-
-structure Real64 = Real
-structure LargeReal = Real
-
-fun real a = Real.fromInt a
-fun floor a = Real.floor a
-fun ceil a = Real.ceil a
-fun trunc a = Real.trunc a
-fun round a = Real.round a
-
+  fun scan getc source =
+      case IEEEReal.scan getc source of
+          NONE => NONE
+        | SOME (d,rest) => Option.map (fn x => (x,rest)) (fromDecimal d)
+  fun fromString s = StringCvt.scanString scan s
+  fun toDecimal x =
+      let val cls = class x
+          val sign = signBit x
+      in case cls of
+             IEEEReal.NORMAL => finiteDecimal (cls,sign,x)
+           | IEEEReal.SUBNORMAL => finiteDecimal (cls,sign,x)
+           | _ => {class=cls,sign=sign,digits=[],exp=0}
+      end
+  and finiteDecimal (cls,sign,x:real) =
+      let val s : string = prim ("execStmtJS", ("return Math.abs(x).toString();","x",x))
+          val {digits,exp,...} = valOf (IEEEReal.fromString s)
+      in {class=cls,sign=sign,digits=digits,exp=exp}
+      end
+  fun fmt StringCvt.EXACT = IEEEReal.toString o toDecimal
+    | fmt spec = Real.fmt spec
+  val toString = fmt (StringCvt.GEN NONE)
+end

@@ -92,7 +92,8 @@ Parsing/Topdec.grm.sml: Parsing/Topdec.grm
 
 .PHONY: clean
 clean:
-	$(CLEAN) run smltojs
+	find . -name .git -prune -o -type d -name MLB -prune -exec rm -rf {} +
+	$(CLEAN) run smltojs reml barry
 	$(MAKE) -C Pickle clean
 	cd Pickle && $(CLEAN)
 	cd Kitlib && $(CLEAN)
@@ -107,6 +108,7 @@ clean:
 	cd Tools/Tester && $(MAKE) clean
 	cd Tools/MlbMake && $(MAKE) clean
 	cd Tools/Benchmark && $(MAKE) clean
+	$(MAKE) -C Tools/RegionProfile clean
 	$(MAKE) -C Tools/ml-lex clean
 	$(MAKE) -C Tools/ml-yacc clean
 	cd Compiler && $(CLEAN)

@@ -1,0 +1,5 @@
+. > val half = 1.5 : real16
+. > val single = ~2.25 : real32
+. > val nested = ([1.5,~0.0],{single=~2.25}) : real16 list * {single: real32}
+. > val extremes = (inf,~inf) : real16 * real32
+. > val small = 5.96046447754E~8 : real16

@@ -127,8 +127,13 @@ structure TyName :> TYNAME =
         val tyName_CHARARRAY  = predef BOXED   {tycon=TyCon.tycon_CHARARRAY,  arity=0, rarity=1, equality=true}
         val tyName_FOREIGNPTR = predef UNB_ALL {tycon=TyCon.tycon_FOREIGNPTR, arity=0, rarity=0, equality=true}
         val tyName_EXN        = predef BOXED   {tycon=TyCon.tycon_EXN,        arity=0, rarity=1, equality=false}
+        (* Predefined pickle slots are persistent: extend their original order,
+         * rather than shifting the slots used by bootstrap compilers. *)
+        val originalPredefined = !bucket
+        val tyName_REAL16     = predef UNB_LOW {tycon=TyCon.tycon_REAL16, arity=0, rarity=0, equality=false}
+        val tyName_REAL32     = predef UNB_LOW {tycon=TyCon.tycon_REAL32, arity=0, rarity=0, equality=false}
         val _ = Rank.reset()
-        val tynamesPredefined = !bucket
+        val tynamesPredefined = originalPredefined @ [tyName_REAL16, tyName_REAL32]
     end
 
     fun tyName_IntDefault () =

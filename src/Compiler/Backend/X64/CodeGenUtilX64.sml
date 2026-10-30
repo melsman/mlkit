@@ -214,7 +214,7 @@ struct
           val fregs = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7]
           fun layout ([],g,f,sp,acc) = (rev acc,sp,f)
             | layout ((aty,ft)::rest,g,f,sp,acc) =
-              let val floating = ft = LS.Float64
+              let val floating = ft = LS.Float64 orelse ft = LS.Float32 orelse ft = LS.Float16
                   val (loc,g',f',sp') =
                       if floating andalso f < length fregs then
                         (ArgReg(List.nth(fregs,f)),g,f+1,sp)
@@ -254,6 +254,8 @@ struct
                     | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
                     | LS.CharArray => G.lea(D("8",tmp),tmp) tail
+                    | LS.Float16 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
+                    | LS.Float32 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
                     | LS.Float64 => C
                     | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
               in if t = LS.Float64 then
@@ -263,13 +265,19 @@ struct
           fun place (i,(_,t,loc),C) =
               let val off = slot(stackWords+i)
               in case loc of
-                   ArgReg r => (if t = LS.Float64 then I.movsd else I.movq)(off,R r) :: C
+                   ArgReg r => (if t = LS.Float64 orelse t = LS.Float32 orelse t = LS.Float16 then I.movsd else I.movq)(off,R r) :: C
                  | ArgStack n => I.movq(off,R tmp) :: I.movq(R tmp,slot n) :: C
               end
           val tail = if words = 0 then C else G.add(I bytes,rsp) C
           val tail = move_reg_into_aty(if ft = LS.Float64 then xmm0 else rax,dst,callFrame,tail)
           val tail = case ft of
-              LS.Float64 => tail
+              LS.Float16 =>
+                I.movq(R xmm0,R rax) :: I.andq(I "65535",R rax) ::
+                (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
+            | LS.Float32 =>
+                I.movq(R xmm0,R rax) :: I.mov(R eax,R eax) ::
+                (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
+            | LS.Float64 => tail
             | LS.Unit => move_unit(R rax,tail)
             | LS.Bool => G.lea(DD("1",rax,rax,""),rax) tail
             | LS.Int => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
@@ -1382,6 +1390,71 @@ struct
 
      (* unboxed f64 operations *)
 
+     (* The temporary SSE registers never become the ML representation. *)
+     fun load_real32 (x,fp,fsz,C) =
+         load_aty (x,treg0,fsz,
+           (if BI.tag_values() then fn c => I.shrq(I "1",R treg0) :: c else fn c => c)
+           (I.movq(R treg0,R fp) :: C))
+
+     fun store_real32 (fp,d,fsz,C) =
+         let val (d,C) = resolve_aty_def(d,treg0,fsz,C)
+             val finish = if BI.tag_values() then
+                            I.shlq(I "1",R treg0) :: I.orq(I "1",R treg0) :: copy(treg0,d,C)
+                          else copy(treg0,d,C)
+         in I.movq(R fp,R treg0) ::
+            I.mov(R(I.doubleOfQuadReg treg0),R(I.doubleOfQuadReg treg0)) :: finish
+         end
+
+     fun binary_real32 opn (x,y,d,fsz,C) =
+         load_real32 (x,tfreg0,fsz,
+         load_real32 (y,tfreg1,fsz,
+           opn(R tfreg1,R tfreg0) :: store_real32(tfreg0,d,fsz,C)))
+
+     fun sqrt_real32 (x,d,fsz,C) =
+         load_real32 (x,tfreg0,fsz,
+           I.sqrtss(R tfreg0,R tfreg0) :: store_real32(tfreg0,d,fsz,C))
+
+     fun sign_narrow_real bit negate (x,d,fsz,C) =
+         let val (d,C) = resolve_aty_def(d,treg0,fsz,C)
+             val signBit = bit + (if BI.tag_values() then 1 else 0)
+             val finish = copy(treg0,d,C)
+         in load_aty(x,treg0,fsz,
+              if negate then
+                G.move_num(IntInf.toString (IntInf.<< (1,Word.fromInt signBit)),R treg1)
+                  (I.xorq(R treg1,R treg0) :: finish)
+              else I.btrq(I (Int.toString signBit),R treg0) :: finish)
+         end
+
+     fun compare_real32 {swap,unordered} cmov (x,y,d,fsz,C) =
+         let val (d,C) = resolve_aty_def(d,treg0,fsz,C)
+             val cmp = if swap then I.ucomiss(R tfreg0,R tfreg1)
+                       else I.ucomiss(R tfreg1,R tfreg0)
+             val finish = case unordered of
+                              NONE => C
+                            | SOME value =>
+                              G.move_num(i2s value,R treg1) (I.cmovpq(R treg1,R d) :: C)
+         in load_real32(x,tfreg0,fsz,
+            load_real32(y,tfreg1,fsz,
+              cmp :: G.move_num(i2s BI.ml_false,R d)
+                (G.move_num(i2s BI.ml_true,R treg1)
+                  (cmov(R treg1,R d) :: finish))))
+         end
+
+     fun int_to_real32 (x,d,fsz,C) =
+         load_aty(x,treg0,fsz,
+           (if BI.tag_values() then fn c => I.sarq(I "1",R treg0) :: c else fn c => c)
+           (I.cvtsi2ssq(R treg0,R tfreg0) :: store_real32(tfreg0,d,fsz,C)))
+
+     fun real32_to_f64 (x,d,fsz,C) =
+         let val (d,C) = resolve_aty_def(d,tfreg0,fsz,C)
+         in load_real32(x,tfreg0,fsz,I.cvtss2sd(R tfreg0,R d) :: C)
+         end
+
+     fun f64_to_real32 (x,d,fsz,C) =
+         let val (x,loadX) = resolve_arg_aty(x,tfreg0,fsz)
+         in loadX(I.cvtsd2ss(R x,R tfreg0) :: store_real32(tfreg0,d,fsz,C))
+         end
+
      fun copy_f64 (x,y,C) =
          if x = y then C
          else if I.is_freg x andalso I.is_freg y then I.movsd(R x,R y)::C
@@ -2221,6 +2294,39 @@ struct
                 I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*treg0==%r10*)
                 C))
             | SOME _ => die "bytetable_update_word31"
+            | NONE =>
+              load_aty(t,treg0,fsz,                     (* treg0 = t *)
+              load_aty(i,treg1,fsz,                     (* treg1 = i *)
+              G.mul(I "4", treg1) $
+              G.add(R treg0, treg1) $                (* treg1 += treg0 *)
+              load_aty(x,treg0,fsz,                     (* treg0 (%rcx) = x *)
+              I.mov (R r10d, D("8", treg1)) ::          (* *(treg1+8) = %r10d *)
+              C))))
+
+     fun bytetable_update_real32 (t,i,x,d,fsz,C) =
+       if BI.tag_values() then
+         let
+           (* i, x are represented tagged only when BI.tag_values() is true *)
+           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
+         in
+            load_aty(t,treg0,fsz,                        (* treg0 = t *)
+            load_aty(i,treg1,fsz,                        (* treg1 = i *)
+            I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
+            G.mul(I "4", treg1) $
+            G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
+            load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
+            I.shrq (I "1", R treg0) ::                       (* untag x: treg0 >> 1 *)
+            I.mov (R r10d, D("8", treg1)) ::             (* *(treg1+8) = %r10d *)
+            move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
+            C'))))
+         end
+       else
+         (case resolve_args([t,i],[treg1],fsz) of
+              SOME ([t_reg,i_reg],F) =>
+              F(load_aty(x,treg0,fsz,
+                I.mov (R r10d, DD("8", t_reg, i_reg, "4")) ::    (*treg0==%r10*)
+                C))
+            | SOME _ => die "bytetable_update_real32"
             | NONE =>
               load_aty(t,treg0,fsz,                     (* treg0 = t *)
               load_aty(i,treg1,fsz,                     (* treg1 = i *)

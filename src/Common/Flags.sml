@@ -690,6 +690,10 @@ val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
                          \tag-free representation of pairs, so this option\n\
                          \is here for measurement purposes."}
 
+val _ = add_bool_entry {long="narrow_reals", short=NONE, item=ref false,
+                        menu=["General Control", "narrow real support"], neg=false,
+                        desc="Enable narrow real types independently of native integer width."}
+
 val _ = add_bool_entry {long="values_64bit", short=NONE, item=ref true,
                         menu=["General Control", "values 64bit"], neg=false,
                         desc=

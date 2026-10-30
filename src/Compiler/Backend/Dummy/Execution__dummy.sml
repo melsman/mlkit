@@ -32,6 +32,8 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     val be_rigid = false
     val repl_supports_gc = false
     val backend_name = "Dummy"
+    val artifacts_consistent = fn _ => true
+    val source_name = fn name => name
     val backend_longname = "Dummy (no output generated)"
 
     type CompileBasis = CompileBasis.CompileBasis

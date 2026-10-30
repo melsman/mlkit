@@ -8,6 +8,7 @@ signature MANAGER_OBJECTS =
 
     val repl_supports_gc : bool
     val backend_name : string (* native or kam *)
+    val artifacts_consistent : string list -> bool
 
     exception PARSE_ELAB_ERROR of ParseElab.ErrorCode.ErrorCode list
     val error : string -> 'a    (* raises PARSE_ELAB_ERROR[] *)

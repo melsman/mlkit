@@ -965,6 +965,8 @@ structure Environments: ENVIRONMENTS =
         val TE_word32 =    te (TyCon.tycon_WORD32, TyName.tyName_WORD32)
         val TE_word63 =    te (TyCon.tycon_WORD63, TyName.tyName_WORD63)
         val TE_word64 =    te (TyCon.tycon_WORD64, TyName.tyName_WORD64)
+        val TE_real16 = te (TyCon.tycon_REAL16, TyName.tyName_REAL16)
+        val TE_real32 = te (TyCon.tycon_REAL32, TyName.tyName_REAL32)
         val TE_real =      te (TyCon.tycon_REAL, TyName.tyName_REAL)
         val TE_string =    te (TyCon.tycon_STRING, TyName.tyName_STRING)
         val TE_chararray = te (TyCon.tycon_CHARARRAY, TyName.tyName_CHARARRAY)
@@ -1172,7 +1174,12 @@ structure Environments: ENVIRONMENTS =
                   TypeScheme.from_Type tau_export
               end
 
-          val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT31,
+          val narrowReals =
+              if Flags.is_on0 "values_64bit" () orelse Flags.is_on0 "narrow_reals" ()
+              then [TyName.tyName_REAL32, TyName.tyName_REAL16]
+              else []
+
+          val tyvar_num = TyVar.fresh_overloaded (narrowReals @ [TyName.tyName_INT31,
                                                   TyName.tyName_INT32,
                                                   TyName.tyName_INT63,
                                                   TyName.tyName_INT64,
@@ -1182,28 +1189,28 @@ structure Environments: ENVIRONMENTS =
                                                   TyName.tyName_WORD32,
                                                   TyName.tyName_WORD63,
                                                   TyName.tyName_WORD64,
-                                                  TyName.tyName_REAL]
+                                                  TyName.tyName_REAL])
           val tau_num = Type.from_TyVar tyvar_num
 
           val tau_num_X_num_to_num =
                 mk_Arrow0 (Type.from_pair (tau_num, tau_num), tau_num)
 
           val tyvar_realint =
-            TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT31,
+            TyVar.fresh_overloaded (narrowReals @ [TyName.tyName_REAL, TyName.tyName_INT31,
                                     TyName.tyName_INT32, TyName.tyName_INT63,
-                                    TyName.tyName_INT64, TyName.tyName_INTINF]
+                                    TyName.tyName_INT64, TyName.tyName_INTINF])
 
           val tau_realint = Type.from_TyVar tyvar_realint
 
           val tau_realint_to_realint = mk_Arrow0 (tau_realint, tau_realint)
 
           val tyvar_numtxt = TyVar.fresh_overloaded
-            [TyName.tyName_INT31, TyName.tyName_INT32, TyName.tyName_INT63,
+            (narrowReals @ [TyName.tyName_INT31, TyName.tyName_INT32, TyName.tyName_INT63,
              TyName.tyName_INT64, TyName.tyName_INTINF,
              TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32,
              TyName.tyName_WORD63, TyName.tyName_WORD64,
              TyName.tyName_REAL, TyName.tyName_CHAR,
-             TyName.tyName_STRING]
+             TyName.tyName_STRING])
 
           val tau_numtxt = Type.from_TyVar tyvar_numtxt
           val tau_numtxt_X_numtxt_to_bool =
@@ -1221,11 +1228,16 @@ structure Environments: ENVIRONMENTS =
                 mk_Arrow0 (Type.from_pair (tau_wordint, tau_wordint),
                            tau_wordint)
 
+          val realTV = TyVar.fresh_overloaded (TyName.tyName_REAL :: narrowReals)
+          val realTy = Type.from_TyVar realTV
+          val realDivTy = mk_Arrow0 (Type.from_pair (realTy, realTy), realTy)
+
           val _ = Level.pop()
 
           (*overloaded types manually closed, to ensure closing of overloaded
            type variable:*)
 
+          val sigma_realdiv = TypeScheme.close_overload realDivTy
           val sigma_num_X_num_to_num = TypeScheme.close_overload tau_num_X_num_to_num
           val sigma_realint_to_realint = TypeScheme.close_overload tau_realint_to_realint
           val sigma_numtxt_X_numtxt_to_bool = TypeScheme.close_overload tau_numtxt_X_numtxt_to_bool
@@ -1240,6 +1252,7 @@ structure Environments: ENVIRONMENTS =
                                           LONGVARpriv sigma_realint_to_realint)
           val negVE       = VE.singleton (Ident.id_NEG,
                                           LONGVARpriv sigma_realint_to_realint)
+          val realDivVE = VE.singleton (Ident.id_REALDIV, LONGVARpriv sigma_realdiv)
           val divVE       = VE.singleton (Ident.id_DIV,
                                           LONGVARpriv sigma_wordint_X_wordint_to_wordint)
           val modVE       = VE.singleton (Ident.id_MOD,
@@ -1307,6 +1320,8 @@ structure Environments: ENVIRONMENTS =
                        @ (if values_64bit() then
                             [TE_int63, TE_int64, TE_word63, TE_word64]
                           else [])
+                       @ (if values_64bit() orelse Flags.is_on0 "narrow_reals" () then
+                            [TE_real32, TE_real16] else [])
             val TEs = if quotation() then TE_frag :: TEs else TEs
           in
             joinTE TEs
@@ -1334,7 +1349,7 @@ structure Environments: ENVIRONMENTS =
         val VEs =
           [VE.close refVE, VE.close boolVE, VE.close listVE,
            VE.close primVE, VE.close exportVE, VE_IntInf,
-           absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
+           absVE, negVE, realDivVE, divVE, modVE, plusVE, minusVE, mulVE,
            lessVE, greaterVE, lesseqVE, greatereqVE,
            resetRegionsVE, forceResettingVE, DivVE,
            BindVE, MatchVE, OverflowVE, InterruptVE, SubscriptVE, SizeVE]

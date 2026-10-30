@@ -26,14 +26,14 @@ struct
   val gcFloatSlots = 8      (* d0..d7; other live f64s are flushed *)
   val gcMetadataWords = 4   (* region/FP count, result count, arg count, arg base *)
 
-  datatype scalar = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64 | Ptr | F32 | F64
+  datatype scalar = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64 | Ptr | F16 | F32 | F64
   datatype location = GPR of int | FPR of int | Stack of {offset:int, bytes:int}
   datatype extension = None | SignTo32 | ZeroTo32
   type argument = {source:scalar, passed:scalar, location:location, extension:extension}
 
-  fun bytes t = case t of I8 => 1 | U8 => 1 | I16 => 2 | U16 => 2
+  fun bytes t = case t of I8 => 1 | U8 => 1 | I16 => 2 | U16 => 2 | F16 => 2
                        | I32 => 4 | U32 => 4 | F32 => 4 | _ => 8
-  fun floating t = t = F32 orelse t = F64
+  fun floating t = t = F16 orelse t = F32 orelse t = F64
   fun promotion t = case t of I8 => I32 | U8 => I32 | I16 => I32 | U16 => I32
                            | F32 => F64 | _ => t
   fun extension t = case t of I8 => SignTo32 | I16 => SignTo32

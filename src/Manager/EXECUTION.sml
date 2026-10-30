@@ -67,6 +67,11 @@ signature EXECUTION =
     val repl_supports_gc : bool
     val backend_name : string (* e.g., X86, KAM, Barry, JS *)
 
+    (* Validate backend-specific companion files before reusing cached code. *)
+    val artifacts_consistent : string list -> bool
+    (* Diagnostic/metadata source label; native backends resolve file paths. *)
+    val source_name : string -> string
+
     val mlbdir : unit -> string
 
     val pu_linkinfo : linkinfo Pickle.pu

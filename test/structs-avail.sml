@@ -199,4 +199,26 @@ structure X = Word64ArraySlice : MONO_ARRAY_SLICE
 structure X = Word64Vector : MONO_VECTOR
 structure X = Word64VectorSlice : MONO_VECTOR_SLICE
 
+(* LargeInt collection elements share IntInf, including values beyond 64 bits. *)
+structure X = LargeIntVector : MONO_VECTOR where type elem = LargeInt.int
+structure X = LargeIntVectorSlice : MONO_VECTOR_SLICE
+  where type elem = LargeInt.int and type vector = LargeIntVector.vector
+structure X = LargeIntArray : MONO_ARRAY
+  where type elem = LargeInt.int and type vector = LargeIntVector.vector
+structure X = LargeIntArraySlice : MONO_ARRAY_SLICE
+  where type elem = LargeInt.int and type array = LargeIntArray.array
+    and type vector_slice = LargeIntVectorSlice.slice
+structure X = LargeIntArray2 : MONO_ARRAY2 where type elem = LargeInt.int
+val big = IntInf.<< (1,0w100)
+val signed = LargeIntArray.fromList [IntInf.~ big,big]
+val snapshot = LargeIntArray.vector signed
+val slice = LargeIntArraySlice.full signed
+val () = LargeIntArraySlice.update(slice,0,big)
+val m = LargeIntArray2.array(1,1,IntInf.~ big)
+val () = if LargeIntVector.sub(snapshot,0) = IntInf.~ big andalso
+            LargeIntArray.sub(signed,0) = big andalso
+            LargeIntVectorSlice.sub(LargeIntVectorSlice.full snapshot,1) = big andalso
+            LargeIntArray2.sub(m,0,0) = IntInf.~ big
+         then () else raise Fail "LargeInt collection payload"
+
 val () = print "All ok\n"

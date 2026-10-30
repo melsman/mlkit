@@ -1,6 +1,9 @@
 structure PrimName = struct
 
 datatype prim =
+         Neg_real16 | Abs_real16 |
+         Int_to_real32 | Bytetable_sub_real32 | Bytetable_update_real32 |
+         Plus_real32 | Minus_real32 | Mul_real32 | Div_real32 | Neg_real32 | Abs_real32 | Sqrt_real32 | Less_real32 | Lesseq_real32 | Greater_real32 | Greatereq_real32 | Equal_real32 | Unequal_real32 | Real32_to_f64 | F64_to_real32 |
          (* flow primitives *)
          Equal_int31 | Equal_int32ub | Equal_int32b |
 	 Equal_char | Equal_word8 | Equal_word31 | Equal_word32ub | Equal_word32b |
@@ -201,7 +204,26 @@ local
   val M_flow = M.fromList flow_pairs
 
   val pairs =
-        [("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+        [("__neg_real16", Neg_real16), ("__abs_real16", Abs_real16),
+         ("__int_to_real32", Int_to_real32),
+         ("__bytetable_sub_real32", Bytetable_sub_real32),
+         ("__bytetable_update_real32", Bytetable_update_real32),
+         ("__plus_real32", Plus_real32),
+         ("__minus_real32", Minus_real32),
+         ("__mul_real32", Mul_real32),
+         ("__div_real32", Div_real32),
+         ("__neg_real32", Neg_real32),
+         ("__abs_real32", Abs_real32),
+         ("__sqrt_real32", Sqrt_real32),
+         ("__less_real32", Less_real32),
+         ("__lesseq_real32", Lesseq_real32),
+         ("__greater_real32", Greater_real32),
+         ("__greatereq_real32", Greatereq_real32),
+         ("__equal_real32", Equal_real32),
+         ("__unequal_real32", Unequal_real32),
+         ("__real32_to_f64", Real32_to_f64),
+         ("__f64_to_real32", F64_to_real32),
+         ("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
          ("__less_f64", Less_f64), ("__lesseq_f64", Lesseq_f64), ("__greater_f64", Greater_f64), ("__greatereq_f64", Greatereq_f64),
 
 	 ("__plus_int31", Plus_int31), ("__plus_int32ub", Plus_int32ub), ("__plus_int32b", Plus_int32b),
@@ -457,6 +479,26 @@ fun is_flow_prim (p:prim) : bool =
 fun pp_prim (p:prim) : string =
     case p of
         Equal_int31 => "Equal_int31"
+      | Neg_real16 => "Neg_real16"
+      | Abs_real16 => "Abs_real16"
+      | Int_to_real32 => "Int_to_real32"
+      | Bytetable_sub_real32 => "Bytetable_sub_real32"
+      | Bytetable_update_real32 => "Bytetable_update_real32"
+      | Plus_real32 => "Plus_real32"
+      | Minus_real32 => "Minus_real32"
+      | Mul_real32 => "Mul_real32"
+      | Div_real32 => "Div_real32"
+      | Neg_real32 => "Neg_real32"
+      | Abs_real32 => "Abs_real32"
+      | Sqrt_real32 => "Sqrt_real32"
+      | Less_real32 => "Less_real32"
+      | Lesseq_real32 => "Lesseq_real32"
+      | Greater_real32 => "Greater_real32"
+      | Greatereq_real32 => "Greatereq_real32"
+      | Equal_real32 => "Equal_real32"
+      | Unequal_real32 => "Unequal_real32"
+      | Real32_to_f64 => "Real32_to_f64"
+      | F64_to_real32 => "F64_to_real32"
       | Equal_int32ub => "Equal_int32ub"
       | Equal_int32b => "Equal_int32b"
       | Equal_char => "Equal_char"

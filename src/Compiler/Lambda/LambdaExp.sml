@@ -89,6 +89,8 @@ structure LambdaExp : LAMBDA_EXP =
     val boolType = consType0 TyName.tyName_BOOL
     val foreignptrType = consType0 TyName.tyName_FOREIGNPTR
     val exnType = consType0 TyName.tyName_EXN
+    val real16Type = consType0 TyName.tyName_REAL16
+    val real32Type = consType0 TyName.tyName_REAL32
     val realType = consType0 TyName.tyName_REAL
     val f64Type = consType0 TyName.tyName_F64
     val charType = consType0 TyName.tyName_CHAR
@@ -446,12 +448,12 @@ structure LambdaExp : LAMBDA_EXP =
    val structures = [("General", dup ["option", "print", "not", "chr", "implode", "explode",
                                       "ord", "size", "exnName", "exnMessage", "valOf", "NONE",
                                       "SOME", "EQUAL", "LESS", "GREATER"] @
-                                 [("o","(op o)"), ("v176","(op ^)"), ("v140","(op =)"),
-                                  ("v155","(op <>)"), ("v73","!"), ("v77","(op :=)"),
-                                  ("Chr61", "Chr")]),
+                                 [("o","(op o)"), ("^","(op ^)"), ("=","(op =)"),
+                                  ("<>","(op <>)"), ("!","!"), (":=","(op :=)"),
+                                  ("Chr", "Chr")]),
                      ("StringCvt", dupQ "StringCvt" ["radix","DEC","scanString","BIN","OCT","HEX"]),
-                     ("String", [("v64","String.^"), ("v481","String.<"), ("v483","String.<="),
-                                 ("v485","String.>"), ("v487","String.>=")] @
+                     ("String", [("^","String.^"), ("<","String.<"), ("<=","String.<="),
+                                 (">","String.>"), (">=","String.>=")] @
                                 dupQ "String" ["size","substring","concat","str","implode","explode","extract",
                                                "sub","translate","tokens","fields","compare","toString",
                                                "fromString","toCString","fromCString","isPrefix","isSuffix"]),
@@ -462,28 +464,14 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Array", dupQ "Array" ["array","maxLen"]),
                      ("Real", dup ["floor", "real"]),
                      ("textio", dupQ "TextIO" ["openOut"]),
-                     ("Int", [("toString","Int.toString"), ("v483","Int.>"), ("v123","Int.+")] @
+                     ("Int", [("toString","Int.toString"), (">","Int.>"), ("+","Int.+")] @
                              dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
                                          "sameSign","scan","fromString","fmt","precision"]),
-                     ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("v54","(op /)")]),
+                     ("Math", dupQ "Math" ["sqrt", "sin", "cos"] @ [("/","(op /)")]),
                      ("List", dupQ "List" ["all", "take", "drop"] @
                               dup ["rev","map","hd","length"] @
-                              [("v652","(op @)"), ("v266", "List.@")])
+                              [("@","(op @)")])
                     ]
-
-   fun barify_catch_basislib s =
-       let val ss = Substring.full s
-       in if String.isSubstring "basismlb" s andalso
-             Substring.isSuffix "sml" (Substring.dropr Char.isDigit ss) then
-            case List.filter (fn (S,_) => Substring.isSubstring S (#2(Substring.position "basismlb" ss)))
-                             structures of
-                (S,vars) :: _ =>
-                (case List.filter (fn (V,_) => String.isPrefix V s) vars of
-                     (_,V) :: _ => V
-                   | nil => s)
-              | _ => s
-          else s
-       end
 
    type StringTree = PP.StringTree
 
@@ -520,7 +508,23 @@ structure LambdaExp : LAMBDA_EXP =
             else implode(do_unsymb(explode s))
      end
 
-   fun pr_lvar lv = if !barify_p then barify_catch_basislib (unsymb(Lvars.pr_lvar' lv))
+   (* Look up retained source spellings before generating legal unique names.
+    * Numeric keys and punctuation-stripped names are not source identities. *)
+   fun barify_catch_basislib (source,base,fallback) =
+       let val base = unsymb base
+       in if String.isSubstring "basismlb" base then
+            case List.find (fn (unit,_) =>
+                Substring.isSuffix (unit ^ "sml")
+                  (Substring.dropr Char.isDigit (Substring.full base))) structures of
+                SOME (_,vars) =>
+                (case List.find (fn (name,_) => name = source) vars of
+                     SOME (_,surface) => surface
+                   | NONE => unsymb fallback)
+              | NONE => unsymb fallback
+          else unsymb fallback
+       end
+
+   fun pr_lvar lv = if !barify_p then barify_catch_basislib (Lvars.str lv,#2(Lvars.key lv),Lvars.pr_lvar' lv)
                     else Lvars.pr_lvar lv
 
    fun pr_excon ex =
@@ -529,7 +533,7 @@ structure LambdaExp : LAMBDA_EXP =
                                 Excon.ex_OVERFLOW,Excon.ex_INTERRUPT,
                                 Excon.ex_SUBSCRIPT,Excon.ex_SIZE]
                then Excon.pr_excon ex
-         else barify_catch_basislib (unsymb(Excon.pr_excon' ex))
+         else barify_catch_basislib (Excon.str ex,#2(Name.key(Excon.name ex)),Excon.pr_excon' ex)
        else Excon.pr_excon ex
 
    fun pr_con c =
@@ -537,12 +541,13 @@ structure LambdaExp : LAMBDA_EXP =
            if Con.eq(c,Con.con_CONS) then "op ::"
            else if member Con.eq c [Con.con_NIL,Con.con_FALSE,Con.con_TRUE]
                     then Con.pr_con c
-                else barify_catch_basislib (unsymb(Con.pr_con' c))
+                else barify_catch_basislib (Con.str c,#2(Name.key(Con.name c)),Con.pr_con' c)
        else Con.pr_con c
 
    fun pr_tyname (tn:TyName) : string =
        if !barify_p andalso not(List.exists (fn x => TyName.eq(tn,x)) TyName.tynamesPredefined) then
-         barify_catch_basislib (unsymb(TyName.pr_TyName' tn))
+         barify_catch_basislib (TyCon.pr_TyCon(TyName.tycon tn),
+                               #2(Name.key(TyName.name tn)),TyName.pr_TyName' tn)
        else TyName.pr_TyName tn
 
     fun layoutRegVar r = (PP.LEAF o RegVar.pr) r
@@ -617,6 +622,7 @@ structure LambdaExp : LAMBDA_EXP =
                PP.NODE{start=":=(",finish=")",indent=2,
                   children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF " := "
+      | CCALLprim{name="__div_real", ...} => PP.LEAF("/")
       | CCALLprim{name="__mul_real", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int31", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int32", ...} => PP.LEAF("*")
@@ -1208,6 +1214,7 @@ structure LambdaExp : LAMBDA_EXP =
               else default ()
            end
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
+         | (CCALLprim{name="__div_real", ...}, [_,_]) => layout_infix context 7 " / " lambs
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int32ub", ...}, [_,_]) =>  layout_infix context 7 " * " lambs

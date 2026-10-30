@@ -949,6 +949,8 @@ structure StatObject: STATOBJECT =
           | (false, true)  => Int64
           | (false, false) => Int32
 
+      val Real16       = mk_ConsType0 TyName.tyName_REAL16
+      val Real32       = mk_ConsType0 TyName.tyName_REAL32
       val Real         = mk_ConsType0 TyName.tyName_REAL
       val String       = mk_ConsType0 TyName.tyName_STRING
       val Bool         = mk_ConsType0 TyName.tyName_BOOL
@@ -1014,7 +1016,13 @@ structure StatObject: STATOBJECT =
                  else simple_scon IntInf
               end
            | SCon.STRING _ => simple_scon String
-           | SCon.REAL _ => simple_scon Real
+           | SCon.REAL _ =>
+             let val tns = if values_64bit() orelse Flags.is_on0 "narrow_reals" () then
+                             [TyName.tyName_REAL, TyName.tyName_REAL32, TyName.tyName_REAL16]
+                           else [TyName.tyName_REAL]
+                 val tv = TyVar.fresh_overloaded tns
+             in {type_scon=from_TyVar tv, overloading=SOME tv}
+             end
            | SCon.CHAR _ => simple_scon Char
            | SCon.WORD w =>
              let fun mk tns =

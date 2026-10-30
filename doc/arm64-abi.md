@@ -261,9 +261,13 @@ Unnamed arguments are default-promoted (narrow integers to int, float to
 double) and placed in eight-byte stack slots even when argument registers
 remain unused. They follow any named stack arguments, aligned to eight.
 The MLKit automatic FFI describes integer/boolean/pointer-like values and
-64-bit ML reals as C `double`. The layout helper additionally models scalar
-float32 values for runtime bridges. It does not introduce variadic
-source-level FFI syntax or silently map
+64-bit ML reals as C `double`, Real32 as C `float`, and Real16 as IEEE
+binary16 C `_Float16`. Narrow reals retain their immediate ML representation;
+only tagging is removed/restored at the boundary. Half arguments occupy the
+low 16 bits of FP registers or naturally aligned two-byte stack slots.
+The C compiler must implement the platform `_Float16` scalar ABI; FP16
+arithmetic instructions are unnecessary for this bit transport.
+This does not introduce variadic source-level FFI syntax or silently map
 aggregates, vectors, int128, or arbitrary C++ types to scalar registers.
 
 `CodeGenUtilArm64.scalarCall` now implements staging, scalar placement,

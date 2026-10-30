@@ -101,7 +101,8 @@ structure CompBasisToLamb
          * The exception constructors Subscript and Size are also
          * included here, which allows us to let the optimiser
          * inline array and string subscription and array allocation
-         * across module boundaries.
+         * across module boundaries. Overflow is needed for inlined integer
+         * operations and checked collection sizes, as in the native pipeline.
          *
          * To allow for even more aggressive inlining, all what is
          * needed is to track the identifiers that are free in the
@@ -113,7 +114,7 @@ structure CompBasisToLamb
 
           val excons =
               Excon.ex_DIV :: Excon.ex_MATCH :: Excon.ex_BIND ::
-              Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: excons
+              Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: Excon.ex_OVERFLOW :: excons
 	  val cns = Con.con_NIL :: Con.con_CONS ::
 	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cns   (* for elim eq *)
 	  val cns = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cns

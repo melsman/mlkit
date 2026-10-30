@@ -59,6 +59,8 @@ signature LINE_STMT =
     | Int64                   (* Int64 (and word64) values are
                                * boxed when garbage collection is
                                * enabled. *)
+    | Float16                 (* Immediate IEEE bits passed as C _Float16. *)
+    | Float32                 (* Immediate IEEE bits passed as C float. *)
     | Float64                 (* Unboxed binary64 passed as C double. *)
     | Unit                    (* Possible in results *)
 

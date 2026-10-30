@@ -215,12 +215,18 @@ in
             (Context.lookup C lv)   (* Fix variables *)
   fun prLvarExport lv =
       patch (Lvars.name lv) (fn() => true) (pr_lv lv) NONE
-  fun exconName e = 
-      patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e)) NONE
-  fun exconExn e = 
-      patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
-  fun exconExnExport e = 
-      patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
+  fun exconName e =
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.en$" ^ field
+        | NONE => patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e)) NONE
+  fun exconExn e =
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.exn$" ^ field
+        | NONE => patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
+  fun exconExnExport e =
+      case NarrowJs.predefinedExcon e of
+          SOME field => "CompilerInitial.exn$" ^ field
+        | NONE => patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
   fun getLocalBase() = !localBase
   fun fresh_fixvar() =
       prLvar Context.empty (Lvars.new_named_lvar "fix")
@@ -356,8 +362,7 @@ arithmentic operations must consider signs explicitly. *)
 fun wrapWord31 (js: Js) : Js =
     parJs(js & $" & 0x7FFFFFFF")
 
-fun wrapWord32 (js: Js) : Js =
-    parJs(js & $" & 0xFFFFFFFF")
+fun wrapWord32 (js: Js) : Js = parJs(parJs js & $" >>> 0")
 
 fun callPrim0 n =
     $n & seq[]
@@ -437,15 +442,15 @@ fun pToJs2 name e1 e2 =
     | "__shift_left_word31" => wrapWord31(e1 & $" << " & parJs(e2 & $" & 0x1F"))
     | "__shift_left_word32ub" => wrapWord32(e1 & $" << " & parJs(e2 & $" & 0x1F"))
 
-    | "__andb_word32ub" => parJs(e1 & $"&" & e2)
+    | "__andb_word32ub" => wrapWord32(e1 & $"&" & e2)
     | "__andb_word31" => parJs(e1 & $"&" & e2)
     | "__andb_word" => parJs(e1 & $"&" & e2)
 
-    | "__orb_word32ub" => parJs(e1 & $"|" & e2)
+    | "__orb_word32ub" => wrapWord32(e1 & $"|" & e2)
     | "__orb_word31" => parJs(e1 & $"|" & e2)
     | "__orb_word" => parJs(e1 & $"|" & e2)
 
-    | "__xorb_word32ub" => parJs(e1 & $"^" & e2)
+    | "__xorb_word32ub" => wrapWord32(e1 & $"^" & e2)
     | "__xorb_word31" => parJs(e1 & $"^" & e2)
     | "__xorb_word" => parJs(e1 & $"^" & e2)
                        
@@ -454,6 +459,7 @@ fun pToJs2 name e1 e2 =
     | "__quot_int32ub" => chkOvfI32(callPrim2 "SmlPrims.quot" e1 e2)
     | "__rem_int32ub" => parJs(e1 & $"%" & e2)
 
+    | "__div_real" => parJs(e1 & $"/" & e2)
     | "divFloat" => parJs(e1 & $"/" & e2)
     | "remFloat" => parJs(e1 & $"%" & e2)
     | "atan2Float" => $"Math.atan2" & seq[e1,e2]
@@ -490,6 +496,8 @@ fun pToJs1 name e =
       | "charArraysConcat" => callPrim1 "SmlPrims.charArraysConcat" e
       | "printStringML" => callPrim1 "document.write" e
       | "exnNameML" => parJs e & $"[0]"
+      | "__real_to_f64" => e
+      | "__f64_to_real" => e
       | "id" => e
       | "word_table0" => $"Array" & parJs e
       | "table_size" => parJs e & $".length"
@@ -559,11 +567,16 @@ fun pToJs0 name =
       | "sml_localoffset" => callPrim0 "SmlPrims.localoffset"
       | _ => die ("pToJs0 unimplemented: " ^ name)
 
-fun pToJs name [] = pToJs0 name
-  | pToJs name [e] = pToJs1 name e
-  | pToJs name [e1,e2] = pToJs2 name e1 e2
-  | pToJs name [e1,e2,e3] = pToJs3 name e1 e2 e3
-  | pToJs name _ = die ("pToJs unimplemented: " ^ name)
+fun pToJsBuiltin name [] = pToJs0 name
+  | pToJsBuiltin name [e] = pToJs1 name e
+  | pToJsBuiltin name [e1,e2] = pToJs2 name e1 e2
+  | pToJsBuiltin name [e1,e2,e3] = pToJs3 name e1 e2 e3
+  | pToJsBuiltin name _ = die ("pToJs unimplemented: " ^ name)
+
+fun pToJs name args =
+    case NarrowJs.lookup name of
+        SOME target => (case args of [] => callPrim0 target | [a] => callPrim1 target a | [a,b] => callPrim2 target a b | [a,b,c] => callPrim3 target a b c | _ => die "narrow primitive arity")
+      | NONE => pToJsBuiltin name args
 
 fun varJs (v:string) (js1:Js) (js2:Js) =
     case js2 of

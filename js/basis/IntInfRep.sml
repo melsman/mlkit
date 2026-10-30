@@ -347,7 +347,18 @@ structure IntInfRep : INT_INF_REP =
       fun fromWordX (w:word) : intinf =
 	  fromWord32X(w_w32_X w)
 
-      fun toWord32 (x : intinf) : word32 = i32_w32(toInt32 x) 
+      (* Word conversion keeps the low bits, including the unsigned high bit.
+       * Each digit holds 30 bits, so only the first two can contribute. *)
+      fun toWord32 (_IntInf{negative,digits}) : word32 =
+          let val w : word32 =
+                  case digits of
+                      [] => 0w0
+                    | [d] => i32_w32 (i31_i32 d)
+                    | d::e::_ =>
+                      i32_w32 (i31_i32 d) +
+                      prim ("__shift_left_word32", (i32_w32 (i31_i32 e),0w30:word))
+          in if negative then 0w0 - w else w
+          end
 
       fun fromWord (w : word) : intinf =
 	  fromWord32 (w_w32 w)

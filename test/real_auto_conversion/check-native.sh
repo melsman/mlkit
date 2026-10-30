@@ -22,9 +22,10 @@ trap 'exit 1' HUP INT TERM
 $CC $CCFLAGS -O2 -Wall -Wextra -Werror -c "$ROOT/test/real_auto_conversion/native.c" -o "$OUT/plain.o"
 $CC $CCFLAGS -O2 -Wall -Wextra -Werror -DREAL_AUTO_GC -c "$ROOT/test/real_auto_conversion/native.c" -o "$OUT/gc.o"
 printf 'real auto-conversion passed\n' > "$OUT/expected"
-for mode in plain gc gengc prof gcprof gengcprof gcspill gcnoopt plainnoopt forced explicit; do
+for mode in plain tagged gc gengc prof gcprof gengcprof gcspill gcnoopt plainnoopt forced explicit; do
   case "$mode" in
     plain) flags=-no_gc; obj=plain ;;
+    tagged) flags='-no_gc -no_par -tag'; obj=plain ;;
     gc) flags=-gc; obj=gc ;;
     gengc) flags=-gengc; obj=gc ;;
     prof) flags='-no_gc -rp'; obj=plain ;;

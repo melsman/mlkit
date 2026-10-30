@@ -78,6 +78,15 @@ signature INSTS_X64 =
     | movsd of ea * ea  (* FLOAT OPERATIONS *)
     | mulsd of ea * ea
     | divsd of ea * ea
+    | addss of ea * ea
+    | subss of ea * ea
+    | mulss of ea * ea
+    | divss of ea * ea
+    | sqrtss of ea * ea
+    | ucomiss of ea * ea
+    | cvtss2sd of ea * ea
+    | cvtsd2ss of ea * ea
+    | cmovpq of ea * ea
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
@@ -89,6 +98,7 @@ signature INSTS_X64 =
     | ucomisd of ea * ea
     | xorps of ea * ea
     | sqrtsd of ea * ea
+    | cvtsi2ssq of ea * ea
     | cvtsi2sdq of ea * ea
     | pxor of ea
     | cvttsd2siq of ea * ea

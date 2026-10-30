@@ -1,6 +1,6 @@
 TEST_NB_FILES=simple.cmd simple2.cmd
 
-TEST_B_FILES=$(TEST_NB_FILES) load.cmd pretty.cmd basis.cmd chdir.cmd
+TEST_B_FILES=$(TEST_NB_FILES) load.cmd pretty.cmd narrow-reals.cmd basis.cmd chdir.cmd
 
 RES_NB_FILES=$(TEST_NB_FILES:%.cmd=%-ri-nb.res)
 

@@ -23,7 +23,7 @@ ifneq ($(RUNTIME_TARGET),@RUNTIME_TARGET@)
 $(error RUNTIME_TARGET is selected by configure)
 endif
 
-SOURCES=Runtime IO String Math Region Icp Table Time CommandLine \
+SOURCES=Runtime IO String Math Real16 Region Icp Table Time CommandLine \
         Posix Dlsym Export Socket Repl Layout Arm64GC StaticGC RegionProfile
 COMMON=$(addsuffix .c,$(SOURCES)) ../CUtils/hashmap.c ../CUtils/hashmap_typed.c
 VARIANTS=plain tag prof gc gcprof gengc gengcprof gctp gctpprof par parprof
@@ -36,6 +36,7 @@ define variant
 OBJECTS_$(1)=$$(addprefix $$(BUILD)/$(1)/,$$(notdir $$(patsubst %.c,%.o,$(3))))
 ALL_OBJECTS+=$$(OBJECTS_$(1))
 ARCHIVES+=$(2)
+$$(BUILD)/$(1)/Real16.o: OPT += -frounding-math
 $$(BUILD)/$(1)/RegionProfile.o: TimeProfile.inc TimeProfilePlatform.inc TimeProfileParallel.inc TimeProfileStandalone.inc ProfileOutput.inc RuntimeCode.inc RuntimeElf.inc RegionProfile.h
 
 $$(BUILD)/$(1)/%.o: %.c Makefile Target.h config.h | $$(BUILD)/SysErrTable.h

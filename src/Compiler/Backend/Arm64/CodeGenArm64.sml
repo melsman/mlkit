@@ -352,7 +352,7 @@ struct
           else stackInto (true,8*workspace) code
       | _ => stackInto (true,8*workspace) code
     end
-  (* Precision zero is private to raw runtime-helper arguments. *)
+  (* Precision zero denotes a raw machine word, including helper arguments. *)
   fun integer n = SS.INTEGER_ATY{value = IntInf.fromInt n,precision = 0}
   (* Late allocation calls preserve C-clobbered ML registers, including the
    * FP spill temporaries. C callees already preserve x19-x28 and d8-d15.
@@ -442,6 +442,8 @@ struct
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
+        | LS.Float16 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
+        | LS.Float32 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
         | LS.Float64 => code
         | LS.Unit => unsupported "unit foreign argument"
       val boxed = tagged() andalso (ft = LS.Int32 orelse ft = LS.Int64)
@@ -461,6 +463,11 @@ struct
         | LS.Word63 => tag code
         | LS.ForeignPtr => if tagged() then A.add (R(X 0),R(X 0),I(1)) :: code else code
         | LS.CharArray => unsupported "foreign char-array result"
+        | LS.Float16 =>
+            (instruction A.fmov (R(W 0),R(S 0))
+             ++ instruction A.uxth (R(W 0),R(W 0))) (if tagged() then tag code else code)
+        | LS.Float32 =>
+            instruction A.fmov (R(W 0),R(S 0)) (if tagged() then tag code else code)
         | LS.Float64 => code
         | _ => if boxed then (loadInto (SP,0,X 16)
            ++ storeInto (X 0,X 16,8)
@@ -474,6 +481,8 @@ struct
                  else scalarCallInto
                    {name = name,
                     fixed = map (fn (_,t) => if t = LS.Float64 then AbiArm64.F64
+                                            else if t = LS.Float32 then AbiArm64.F32
+                                            else if t = LS.Float16 then AbiArm64.F16
                                             else AbiArm64.I64) args,
                     variadic = [], protectGC = gc(),
                     loadArgument = fn (i,extra) =>
@@ -914,6 +923,52 @@ struct
             in (loadA ++ instruction opn (R(d),R(a)) ++ storeD) code
             end
           | _ => unsupported "floating unary arity")
+      (* Scalars carry zero-extended IEEE bits in a GPR, with the ordinary
+       * low tag when enabled. Only the arithmetic instruction uses an S reg. *)
+      fun readReal32 a fp =
+          readInto fsz a (X 16) ++
+          (if tagged() then instruction A.lsr (R(X 16),R(X 16),I(1)) else fn c => c) ++
+          instruction A.fmov (R(fp),R(W 16))
+      fun writeReal32 d =
+          instruction A.fmov (R(W 16),R(S 30)) ++
+          (if tagged() then
+             instruction A.lsl (R(X 16),R(X 16),I(1)) ++
+             instruction A.add (R(X 16),R(X 16),I(1))
+           else fn c => c) ++
+          writeInto fsz d (X 16)
+      fun signReal16 negate code =
+          let val bit = if tagged() then 16 else 15
+              val sign = IntInf.<< (1,Word.fromInt bit)
+              val mask = if negate then sign else sign-1
+          in case (args,res) of
+                 ([a],[d]) =>
+                 (readInto fsz a (X 16) ++ constantInto(mask,X 17) ++
+                  instruction (if negate then A.eor else A.and_) (R(X 16),R(X 16),R(X 17)) ++
+                  writeInto fsz d (X 16)) code
+               | _ => unsupported "real16 sign arity"
+          end
+      fun binaryReal32 opn code =
+          (case (args,res) of
+               ([a,rhs],[d]) =>
+               (readReal32 a (S 30) ++ readReal32 rhs (S 31) ++
+                instruction opn (R(S 30),R(S 30),R(S 31)) ++ writeReal32 d) code
+             | _ => unsupported "real32 binary arity")
+      fun unaryReal32 opn code =
+          (case (args,res) of
+               ([a],[d]) =>
+               (readReal32 a (S 30) ++ instruction opn (R(S 30),R(S 30)) ++
+                writeReal32 d) code
+             | _ => unsupported "real32 unary arity")
+      fun compareReal32 cc code =
+          (case (args,res) of
+               ([a,rhs],[d]) =>
+               (readReal32 a (S 30) ++ readReal32 rhs (S 31) ++
+                instruction A.fcmp (R(S 30),R(S 31)) ++
+                instruction A.cset (R(X 16),C(cc)) ++
+                instruction A.lsl (R(X 16),R(X 16),I(1)) ++
+                instruction A.add (R(X 16),R(X 16),I(1)) ++
+                writeInto fsz d (X 16)) code
+             | _ => unsupported "real32 comparison arity")
       fun overflow () code =
         (addressInto(NameLab "exn_OVERFLOW",X 1)
           ++ moveInto(X 28,X 0)
@@ -1422,6 +1477,42 @@ struct
         | Minus_word63 => taggedBinary A.sub false code
         | Plus_int64ub => checked A.adds code
         | Minus_int64ub => checked A.subs code
+        | Plus_real32 => binaryReal32 A.fadd code
+        | Minus_real32 => binaryReal32 A.fsub code
+        | Mul_real32 => binaryReal32 A.fmul code
+        | Div_real32 => binaryReal32 A.fdiv code
+        | Neg_real16 => signReal16 true code
+        | Abs_real16 => signReal16 false code
+        | Neg_real32 => unaryReal32 A.fneg code
+        | Abs_real32 => unaryReal32 A.fabs code
+        | Sqrt_real32 => unaryReal32 A.fsqrt code
+        | Less_real32 => compareReal32 MI code
+        | Lesseq_real32 => compareReal32 LS code
+        | Greater_real32 => compareReal32 GT code
+        | Greatereq_real32 => compareReal32 GE code
+        | Equal_real32 => compareReal32 EQ code
+        | Unequal_real32 => compareReal32 NE code
+        | Int_to_real32 =>
+          (case (args,res) of
+               ([a],[d]) =>
+               (readInto fsz a (X 16) ++
+                (if tagged() then instruction A.asr (R(X 16),R(X 16),I(1)) else fn c => c) ++
+                instruction A.scvtf (R(S 30),R(X 16)) ++ writeReal32 d) code
+             | _ => unsupported "int to real32 arity")
+        | Bytetable_sub_real32 => tableSub 2 (32,false,false,tagged()) code
+        | Bytetable_update_real32 => tableUpdate 2 (32,false,false,tagged()) code
+        | Real32_to_f64 =>
+          (case (args,res) of
+               ([a],[d]) =>
+               (readReal32 a (S 30) ++ instruction A.fcvt (R(D 30),R(S 30)) ++
+                writeInto fsz d (D 30)) code
+             | _ => unsupported "real32 to f64 arity")
+        | F64_to_real32 =>
+          (case (args,res) of
+               ([a],[d]) =>
+               (readInto fsz a (D 30) ++ instruction A.fcvt (R(S 30),R(D 30)) ++
+                writeReal32 d) code
+             | _ => unsupported "f64 to real32 arity")
         | Plus_real => boxed A.fadd code
         | Minus_real => boxed A.fsub code
         | Mul_real => boxed A.fmul code

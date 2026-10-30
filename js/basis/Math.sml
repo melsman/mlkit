@@ -1,6 +1,6 @@
 (*Math.sml*)
 
-fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
+
 
 structure Math : MATH = struct
   type real = real

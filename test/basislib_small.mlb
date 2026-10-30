@@ -18,7 +18,7 @@ in
     basis Array =
         let open General List
             basis Poly =
-              let wordtables.sml
+              let polytable.sml
               in bas 
                     VECTOR.sml Vector.sml ARRAY.sml Array.sml
                  end

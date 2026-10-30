@@ -55,6 +55,7 @@ structure Ident :> IDENT where type strid = StrId.strid =
     (* Identifiers for predefined overloaded variables *)
     val id_ABS = "abs"
     val id_NEG = "~"
+    val id_REALDIV = "/"
     val id_DIV = "div"
     val id_MOD = "mod"
     val id_PLUS = "+"

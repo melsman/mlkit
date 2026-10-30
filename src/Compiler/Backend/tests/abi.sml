@@ -63,6 +63,10 @@ val () = check "narrow named extension"
    = [SignTo32,ZeroTo32,SignTo32,ZeroTo32])
 val () = check "overflow floating bank"
   (List.last(locations (List.tabulate(9,fn _ => F64)) []) = Stack{offset = 0,bytes = 8})
+val () = check "half stack slots and alignment"
+  (List.drop(locations (List.tabulate(8,fn _ => F16)@[F16,F16,F32,F64]) [],8)
+   = [Stack{offset = 0,bytes = 2},Stack{offset = 2,bytes = 2},
+      Stack{offset = 4,bytes = 4},Stack{offset = 8,bytes = 8}])
 val () = check "C stack alignment"
   (#stackBytes(arguments{fixed = List.tabulate(10,fn _ => I8),variadic = []}) = 16)
 val () = check "result registers" (result(SOME F64) = SOME(FPR 0) andalso result(SOME Ptr) = SOME(GPR 0) andalso result NONE = NONE)

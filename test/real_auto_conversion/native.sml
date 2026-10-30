@@ -132,4 +132,35 @@ fun roots__noinline (nil, n:int) = check ("root count", n = 501)
 val retained_results = collect__noinline (500,nil)
 val () = roots__noinline (retained_results,1)
 val () = check ("collection after result", prim ("@real_auto_gc_verify", ()) : bool)
+(* Preserve the sign and NaN payload across float registers and stack slots. *)
+fun single_bits (x:real32) : word = prim ("id", x)
+fun single_from_bits (x:word) : real32 = prim ("id", x)
+fun single__noinline (last:real32) : real32 =
+    prim ("@real_auto_single_mixed",
+          (123:int,2.5:real,1.0:real32,2.0:real32,3.0:real32,4.0:real32,
+           5.0:real32,6.0:real32,7.0:real32,8.0:real32,9.0:real32,last))
+val single_nan = single_from_bits 0wxFFC01234
+val single_nan_result = single__noinline single_nan
+val () = check ("single NaN payload",
+                prim ("=", (single_bits single_nan_result, single_bits single_nan)))
+val single_zero_result = single__noinline (~0.0:real32)
+val () = check ("single negative zero",
+                prim ("=", (single_bits single_zero_result, 0wx80000000:word)))
+(* One register identity and a mixed call with adjacent two-byte stack slots.
+ * Only bit transport is intended, including signalling NaNs. *)
+fun half_bits (x:real16) : word = prim ("id", x)
+fun half_from_bits (x:word) : real16 = prim ("id", x)
+fun half__noinline (x:real16) : real16 =
+    prim ("@real_auto_half_mixed",
+          (123:int,1.0:real16,2.0:real32,3.0:real,4.0:real16,5.0:real16,
+           6.0:real16,7.0:real16,8.0:real16,9.0:real16,
+           prim ("@real_auto_half_identity", x) : real16,10.0:real32,11.0:real))
+fun half_cases__noinline (nil:word list) = ()
+  | half_cases__noinline (w::ws) =
+    let val result = half__noinline (half_from_bits w)
+    in check ("half payload", prim ("=", (half_bits result,w)));
+       half_cases__noinline ws
+    end
+val () = half_cases__noinline
+  [0w0,0wx8000,0wx7c00,0wxfc00,0wxfe23,0wx7c01,0w1,0wx7bff]
 val () : unit = prim ("printStringML", "real auto-conversion passed\n")

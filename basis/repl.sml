@@ -397,6 +397,8 @@ fun pretty_exported (i:int) : int =
                       | C ([], "word63") => ("0wx" ^ Word63.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "word64") => ("0wx" ^ Word64.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "word") => ("0wx" ^ Word.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "real16") => (Real16.toString (prim("unsafe_cast", v)), z_base)
+                      | C ([], "real32") => (Real32.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "real") => (Real.toString (prim("unsafe_cast", v)), z_base)
                       | C ([], "char") => ("#\"" ^ Char.toString (prim("unsafe_cast", v)) ^ "\"",
                                            z_base)

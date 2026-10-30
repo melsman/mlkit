@@ -1,0 +1,8 @@
+(* Native IR documents and object metadata are not part of the JS compiler. *)
+local
+  $(SML_LIB)/basis/basis.mlb
+  ../../Common/tools.mlb
+  ../../Common/md5.mlb
+in
+  ../../Common/IRLocations.sml
+end

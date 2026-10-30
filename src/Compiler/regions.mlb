@@ -9,8 +9,10 @@ local
   basis Basics = bas ../Common/basics.mlb end
   basis Manager = bas ../Manager/manager.mlb end
   basis Compiler = bas compiler.mlb end
+  basis NativeIR = bas Backend/ir-locations.mlb end
   open BasLib (* Compiler *)
 in
+  open NativeIR
   local open Tools in Backend/NativeFlags.sml end
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml

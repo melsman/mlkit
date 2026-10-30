@@ -1192,6 +1192,14 @@ struct
                             | Bytetable_size => bytetable_size arg
                             | Table_size     => table_size arg
 
+                            | Neg_real16 => sign_narrow_real 15 true arg
+                            | Abs_real16 => sign_narrow_real 15 false arg
+                            | Neg_real32 => sign_narrow_real 31 true arg
+                            | Abs_real32 => sign_narrow_real 31 false arg
+                            | Sqrt_real32 => sqrt_real32 arg
+                            | Int_to_real32 => int_to_real32 arg
+                            | Real32_to_f64 => real32_to_f64 arg
+                            | F64_to_real32 => f64_to_real32 arg
                             | Real_to_f64    => real_to_f64 arg
                             | Sqrt_f64       => sqrt_f64 arg
                             | Neg_f64        => neg_f64 arg
@@ -1390,11 +1398,22 @@ struct
 
                             | Bytetable_sub => bytetable_sub arg
                             | Bytetable_sub_word16 => bytetable_sub_word16 arg
+                            | Bytetable_sub_real32 => bytetable_sub_word31 arg
                             | Bytetable_sub_word31 => bytetable_sub_word31 arg
                             | Bytetable_sub_word32ub => bytetable_sub_word32ub arg
                             | Bytetable_sub_word63 => bytetable_sub_word63 arg
                             | Bytetable_sub_word64ub => bytetable_sub_word64ub arg
 
+                            | Plus_real32 => binary_real32 I.addss arg
+                            | Minus_real32 => binary_real32 I.subss arg
+                            | Mul_real32 => binary_real32 I.mulss arg
+                            | Div_real32 => binary_real32 I.divss arg
+                            | Less_real32 => compare_real32 {swap=true,unordered=NONE} I.cmovaq arg
+                            | Lesseq_real32 => compare_real32 {swap=true,unordered=NONE} I.cmovaeq arg
+                            | Greater_real32 => compare_real32 {swap=false,unordered=NONE} I.cmovaq arg
+                            | Greatereq_real32 => compare_real32 {swap=false,unordered=NONE} I.cmovaeq arg
+                            | Equal_real32 => compare_real32 {swap=false,unordered=SOME BI.ml_false} I.cmoveq arg
+                            | Unequal_real32 => compare_real32 {swap=false,unordered=SOME BI.ml_true} I.cmovneq arg
                             | Word_sub0 => word_sub0 arg
                             | Plus_f64 => plus_f64 arg
                             | Minus_f64 => minus_f64 arg
@@ -1439,6 +1458,7 @@ struct
                           | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,fsz,C)
                           | Bytetable_update => bytetable_update (b,x,y,d,fsz,C)
                           | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,fsz,C)
+                          | Bytetable_update_real32 => bytetable_update_real32 (b,x,y,d,fsz,C)
                           | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,fsz,C)
                           | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,fsz,C)
                           | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,fsz,C)
@@ -1670,12 +1690,9 @@ struct
         fun pws ws = app pw ws
         fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
+        (* A one-word frame can contain a live spill, even in a basic
+         * tail-call wrapper. Keep the frame calculated by CalcOffset. *)
         val fsz = CallConv.get_frame_size cc
-        val fsz = if not(gc_p()) andalso not(sampledProfile()) andalso fsz = 1 andalso basic_lss lss then 0
-                      else fsz
-(*
-        val () = print ("basic: " ^ Bool.toString (basic_lss lss) ^ "\n")
-*)
         val size_ccf = CallConv.get_ccf_size cc
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^

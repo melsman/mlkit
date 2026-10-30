@@ -175,6 +175,8 @@ structure ExecutionArm64 : EXECUTION =
 
     val repl_supports_gc = true
     val backend_name = "Arm64"
+    val artifacts_consistent = List.all IRLocations.consistent
+    val source_name = IRLocations.sourceName
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv

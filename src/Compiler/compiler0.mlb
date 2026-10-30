@@ -30,7 +30,8 @@ in
      Lambda/EliminateEq.sml
   end
   local open Edlib Tools Basics SyntaxObjects CompilerObjects
-  in Lambda/CompileDec.sml
+  in ../Common/RealBits.sml
+     Lambda/CompileDec.sml
      local open Pickle in CompBasisToLamb.sml end
      COMPILE_TO_LAMB.sml
      CompileToLamb.sml

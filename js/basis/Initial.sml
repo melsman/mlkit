@@ -1,5 +1,7 @@
 structure Initial =
   struct
+    val wordtable_maxlen = 16777216
+    type default_real = real
     type int0 = int
     type word0 = word
 

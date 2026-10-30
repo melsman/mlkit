@@ -160,7 +160,7 @@ barry:
 	$(MAKE) man_barry
 
 .PHONY: clean
-clean:
+clean: clean_mlb
 	$(CLEAN) bin run lib bootstrap dist man/man1/*.1
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
@@ -174,7 +174,7 @@ clean:
 
 .PHONY: clean_mlb
 clean_mlb:
-	find . -name "MLB" -type d | xargs rm -Rf
+	find . -name .git -prune -o -type d -name MLB -prune -exec rm -rf {} +
 
 .PHONY: install_kitdemo
 install_kitdemo:
@@ -452,8 +452,11 @@ REGRESSION_JOBS ?= 2
 check-build:
 	sh test/build/check.sh
 
-.PHONY: check-real-auto-conversion
-check-real-auto-conversion:
+.PHONY: check-real16 check-real-auto-conversion
+check-real16:
+	sh src/Runtime/tests/check-real16.sh
+
+check-real-auto-conversion: check-real16
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
 	SML_LIB="$(CWD)" MLKIT_NATIVE="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-native.sh
 

@@ -211,3 +211,12 @@ mul_exception_app.sml
 mul_exception_tree.sml
 mul_exception_helper.sml
 mul_exception_function.sml
+
+(* Narrow native reals: exact literals, primitive operations, and type safety. *)
+narrow-real.sml             nobasislib
+narrow-real-equality.sml    nobasislib ecte
+narrow-real16-equality.sml  nobasislib ecte
+narrow-real-mixing.sml      nobasislib ecte
+real32.sml
+real16.sml
+narrow-real-portable.sml

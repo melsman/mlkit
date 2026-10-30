@@ -8,7 +8,8 @@ if (system.args.length === 1) {
 }
 
 var address = system.args[1];
-page.settings.resourceTimeout = 10;
+// Allow one second for local script loads on busy CI runners.
+page.settings.resourceTimeout = 1000;
 page.open(address, function(status) {
   if (status !== 'success') {
     console.log('FAILED to load ' + address);

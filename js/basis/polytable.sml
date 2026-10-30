@@ -1,4 +1,4 @@
-(*tables.sml: implementation of Vector and Array *)
+(* Polymorphic table implementation for Vector and Array. *)
 
 (* table is the basic table type with functions
      sub0: extract element from table

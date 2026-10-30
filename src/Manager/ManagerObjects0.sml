@@ -255,7 +255,9 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
 			       TyName.tyName_CHAR,    (* char is needed for char constants *)
 			       TyName.tyName_REF,
-			       TyName.tyName_REAL,    (* real needed because of overloading *)
+			       TyName.tyName_REAL16,
+                               TyName.tyName_REAL32,
+                               TyName.tyName_REAL,    (* real needed because of overloading *)
 			       TyName.tyName_F64]     (* f64 needed because of optimiser *)
 		  @ TyName.Set.list tynames
 		val IB(ife,ise,ce,cb) = ib
