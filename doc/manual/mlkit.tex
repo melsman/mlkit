@@ -1920,10 +1920,18 @@ embedded in high-unboxed data. With tagging enabled their representation is
 Without tagging they contain the zero-extended IEEE bits. These layouts
 apply with and without garbage collection.
 
-Binary16 core arithmetic, square root, integer conversion and narrowing
-from binary64 use an exact integer fallback on both native targets. The
-fallback requires no optional FP16 CPU extension and rounds once according
-to the current \kw{IEEEReal} rounding mode, including subnormal results.
+Binary16 arithmetic uses C \texttt{\_Float16} on scalar FP16 targets and
+on GCC 15 or later, whose compiler emulation supports dynamic rounding.
+Scalar FP16 targets generate native half instructions; baseline x64 requires
+no optional FP16 CPU extension. Other compiler/target combinations use
+binary64 arithmetic followed by a small binary16 rounding helper. Binary16
+operands have sufficient precision separation for binary64 division and
+square root not to cross a binary16 rounding boundary through intermediate
+rounding. Narrowing from an arbitrary binary64 value is performed directly,
+including probes immediately around binary16 midpoints. All paths honor
+the current \kw{IEEEReal} mode and preserve gradual underflow. The runtime
+requires an IEEE \texttt{\_Float16} C type and compiles this module with
+\texttt{-frounding-math}; it does not change the ML scalar layout or C FFI.
 Negation and absolute value compile to inline bit operations. Transcendental
 functions in \kw{Math16} use binary64 C library functions followed by narrowing;
 they do not promise correctly rounded binary16 transcendental results.

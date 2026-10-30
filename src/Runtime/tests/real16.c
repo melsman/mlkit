@@ -53,7 +53,12 @@ int main(void) {
   const unsigned cases[] = {0,1,2,0x3fe,0x3ff,0x400,0x401,0x3555,
     0x3bff,0x3c00,0x3c01,0x3c02,0x4000,0x63ff,0x6400,0x7bfe,0x7bff,
     0x7c00,0x7c01,0x7e55};
-  const int integers[] = {-65536,-65520,-65504,-2051,-2049,-1,0,1,2049,2051,65504,65520,65536};
+  const int64_t integers[] = {-65536,-65520,-65504,-2051,-2049,-1,0,1,2049,2051,65504,65520,65536,
+    -(INT64_C(1)<<62),(INT64_C(1)<<62)-1
+#ifndef TAG_VALUES
+    ,INT64_MIN,INT64_MAX
+#endif
+  };
   const int modes[] = {FE_TONEAREST,FE_DOWNWARD,FE_UPWARD,FE_TOWARDZERO};
   for (unsigned mode = 0; mode < 4; ++mode) {
     assert(fesetround(modes[mode]) == 0);
@@ -94,8 +99,10 @@ int main(void) {
         assert(__equal_real16(ml(a),ml(b)) == (uintptr_t)convertBoolToML(x==y));
         assert(__unequal_real16(ml(a),ml(b)) == (uintptr_t)convertBoolToML(x!=y));
       }
+    check("negative zero sum",0x8000,0x8000,
+          raw(__plus_real16(ml(0x8000),ml(0x8000))),0x8000);
     for (unsigned i = 0; i < sizeof integers / sizeof integers[0]; ++i) {
-      int n = integers[i];
+      int64_t n = integers[i];
       check("integer",n,0,raw(__int_to_real16(convertIntToML(n))),reference(n,modes[mode]));
     }
   }

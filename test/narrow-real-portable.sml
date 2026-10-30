@@ -12,6 +12,15 @@ val () = check "unsigned word conversion"
   (Word32.fromLargeInt 4294967295 = 0wxffffffff andalso
    Word32.fromLargeInt ~1 = 0wxffffffff andalso
    Word32.fromLargeInt 4294967297 = 0w1)
+(* Default real temporaries must survive the half helper's FP-register use. *)
+fun mixed__noinline (wide:real, half:Real16.real) =
+    let val a = wide+1.0
+        val b = half+0.5
+        val c = wide+2.0
+        val d = half*2.0
+    in a+c+Real16.toLarge(b+d)
+    end
+val () = check "wide value across half operations" (Real.==(mixed__noinline(4.0,1.0),14.5))
 val a16 : Real16.real = 1.00048828125000000001
 val a32 : Real32.real = 1.00000005960464477539062500001
 val () = show(bits16 a16,bits32 a32)

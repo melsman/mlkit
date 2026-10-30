@@ -10,7 +10,7 @@ struct
   fun narrow (x:LargeReal.real) : real =
       prim ("id", prim ("@mlkit_double_to_real16", x) : word)
   (* Transcendentals use libm at binary64 precision, then narrow once.
-   * Core arithmetic and sqrt use the exact binary16 runtime fallback. *)
+   * Core arithmetic and sqrt use the rounding-aware binary16 runtime. *)
   fun sin (x:real) : real = narrow (prim ("@sin", widen x) : LargeReal.real)
   fun cos (x:real) : real = narrow (prim ("@cos", widen x) : LargeReal.real)
   fun tan (x:real) : real = narrow (prim ("@tan", widen x) : LargeReal.real)

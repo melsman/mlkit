@@ -10,11 +10,14 @@ case $(uname -s)-$(uname -m) in
 esac
 work=$(mktemp -d "${TMPDIR:-/tmp}/mlkit-real16-check.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-for mode in plain tagged; do
-  flags=
-  if [ "$mode" = tagged ]; then flags=-DTAG_VALUES; fi
-  ${CC:-cc} $arch -O2 -std=gnu11 -frounding-math -Wall -Wextra -Werror \
-    $flags -iquote src/Runtime -include src/Runtime/Target.h \
-    src/Runtime/Real16.c src/Runtime/tests/real16.c -lm -o "$work/check"
-  "$work/check"
+for policy in default software; do
+  for mode in plain tagged; do
+    flags=
+    if [ "$mode" = tagged ]; then flags=-DTAG_VALUES; fi
+    if [ "$policy" = software ]; then flags="$flags -DMLKIT_REAL16_FORCE_SOFTWARE"; fi
+    ${CC:-cc} $arch -O2 -std=gnu11 -frounding-math -Wall -Wextra -Werror \
+      $flags -iquote src/Runtime -include src/Runtime/Target.h \
+      src/Runtime/Real16.c src/Runtime/tests/real16.c -lm -o "$work/check"
+    "$work/check"
+  done
 done
