@@ -29,18 +29,18 @@ jobs:
             runner: ubuntu-24.04
             os: linux
             mlcomp: mlkit
-            seed_version: v4.7.22
+            seed_version: v4.7.26
           - platform: linux-x64
             runner: ubuntu-24.04
             os: linux
             mlcomp: mlton
-            seed_version: v4.7.22
+            seed_version: v4.7.26
           - platform: macos-arm64
-            # The native v4.7.23 seed requires macOS 26.0 or newer.
+            # The native v4.7.26 seed requires macOS 26.0 or newer.
             runner: macos-26
             os: darwin
             mlcomp: mlkit
-            seed_version: v4.7.23
+            seed_version: v4.7.26
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -98,12 +98,6 @@ jobs:
           echo "SEED_LIB=$seed/lib/mlkit" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.mlkit"
           echo "SML_LIB $seed/lib/mlkit" > "$HOME/.mlkit/mlb-path-map"
-          if [ "$OS" = darwin ]; then
-            # This private release seed predates the larger compiler stack.
-            "$THECC" -O2 -Wall -Wextra -Werror test/build/seed-stack.c -o "$RUNNER_TEMP/seed-stack"
-            "$RUNNER_TEMP/seed-stack" "$seed/bin/mlkit"
-            codesign --force --sign - "$seed/bin/mlkit"
-          fi
           SML_LIB="$seed/lib/mlkit" "$seed/bin/mlkit" --version
 
       - name: Configure
