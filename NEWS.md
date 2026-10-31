@@ -1,5 +1,12 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.26 is released
+
+* mael 2026-10-31: Parallelism support is now enabled by default when GC is
+  disabled with -no_gc.
+
+* mael 2026-10-31: Real16 and Real32 structure families.
+
 * mael 2026-10-14: FFI auto conversion for reals (issue #161, PR #246).
 
 * mael 2026-10-12: Add Linux X64 time sampling in existing runtimes and caches,

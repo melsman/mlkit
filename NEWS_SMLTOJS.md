@@ -1,5 +1,14 @@
 ## SMLtoJs NEWS
 
+### SMLtoJs version 4.7.26 is released
+
+* mael 2026-10-31: Real16 and Real32 structure families.
+
+* mael 2026-10-31: Mono arrays, vectors, and slices for Real.
+
+* mael 2026-10-31: Extended support for Real operations and the IEEEReal
+  structure.
+
 ### SMLtoJs version 4.7.24 is released
 
 * mael 2026-10-07: The [SMLtoJs online IDE](https://diku-dk.github.io/sml-ide/)
