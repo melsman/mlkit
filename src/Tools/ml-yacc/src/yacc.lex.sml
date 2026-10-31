@@ -774,20 +774,57 @@ let	val yygone0=1
 		 yybegin := x
 
 fun lex (yyarg as (inputSource)) =
-let fun continue() : Internal.result = 
-  let fun scan (s,AcceptingLeaves : Internal.yyfinstate list list,l,i0) =
-	let fun action (i,nil) = raise LexError
-	| action (i,nil::l) = action (i-1,l)
-	| action (i,(node::acts)::l) =
-		case node of
-		    Internal.N yyk => 
-			(let fun yymktext() = substring(!yyb,i0,i-i0)
-			     val yypos = i0+ !yygone
-			open UserDeclarations Internal.StartStates
- in (yybufpos := i; case yyk of 
-
-			(* Application actions *)
-
+let
+datatype yyrequest =
+    YYMatch of int * int * int * Internal.yyfinstate list list
+  | YYEnd | YYStart
+val yycurrent = ref YYStart
+fun yyselect (i,leaves,i0) : unit =
+  case leaves of
+      [] => raise LexError
+    | actions::rest =>
+        case actions of
+            [] => yyselect(i-1,rest,i0)
+          | Internal.N rule::remaining => yycurrent := YYMatch(rule,i,i0,remaining::rest)
+fun yyscan (s,accepting,l,i0) : unit =
+  let val {fin,trans} = Vector.sub(Internal.tab,s)
+      val accepting' = fin::accepting
+  in
+    if l = !yybl then
+      if trans = #trans(Vector.sub(Internal.tab,0)) then yyselect(l,accepting',i0)
+      else
+        let val chars = if !yydone then "" else yyinput 1024
+        in
+          if size chars = 0 then
+            (yydone := true;
+             if l = i0 then yycurrent := YYEnd else yyselect(l,accepting',i0))
+          else
+            (if i0 = l then yyb := chars else yyb := substring(!yyb,i0,l-i0)^chars;
+             yygone := !yygone+i0;
+             yybl := size(!yyb);
+             yyscan(s,accepting,l-i0,0))
+        end
+    else
+      let val ch = Char.ord(CharVector.sub(!yyb,l))
+          val ch = if ch < 128 then ch else 128
+          val next = Char.ord(CharVector.sub(trans,ch))
+      in if next = 0 then yyselect(l,accepting',i0)
+         else yyscan(next,accepting',l+1,i0)
+      end
+  end
+  fun yyrun () : Internal.result =
+    case !yycurrent of
+        YYStart =>
+          let val start = !yybegin
+          in (yyscan(start,[],!yybufpos,!yybufpos); yyrun()) end
+      | YYEnd => UserDeclarations.eof yyarg
+      | YYMatch(yyk,i,i0,remaining) =>
+          let fun continue () = (yycurrent := YYStart; yyrun())
+              fun yymktext () = substring(!yyb,i0,i-i0)
+              val yypos = i0 + !yygone
+              open UserDeclarations Internal.StartStates
+          in yybufpos := i; yycurrent := YYEnd;
+             case yyk of
   100 => let val yytext=yymktext() in UNKNOWN(yytext,!lineno,!lineno) end
 | 102 => let val yytext=yymktext() in inc pcount; Add yytext; continue() end
 | 104 => let val yytext=yymktext() in dec pcount;
@@ -854,39 +891,8 @@ let fun continue() : Internal.result =
 | 98 => (pcount := 1; actionstart := (!lineno);
 		    text := nil; YYBEGIN CODE; continue() before YYBEGIN A)
 | _ => raise Internal.LexerError
-
-		) end )
-
-	val {fin,trans} = Vector.sub(Internal.tab, s)
-	val NewAcceptingLeaves = fin::AcceptingLeaves
-	in if l = !yybl then
-	     if trans = #trans(Vector.sub(Internal.tab,0))
-	       then action(l,NewAcceptingLeaves
-) else	    let val newchars= if !yydone then "" else yyinput 1024
-	    in if (size newchars)=0
-		  then (yydone := true;
-		        if (l=i0) then UserDeclarations.eof yyarg
-		                  else action(l,NewAcceptingLeaves))
-		  else (if i0=l then yyb := newchars
-		     else yyb := substring(!yyb,i0,l-i0)^newchars;
-		     yygone := !yygone+i0;
-		     yybl := size (!yyb);
-		     scan (s,AcceptingLeaves,l-i0,0))
-	    end
-	  else let val NewChar = Char.ord(CharVector.sub(!yyb,l))
-		val NewChar = if NewChar<128 then NewChar else 128
-		val NewState = Char.ord(CharVector.sub(trans,NewChar))
-		in if NewState=0 then action(l,NewAcceptingLeaves)
-		else scan(NewState,NewAcceptingLeaves,l+1,i0)
-	end
-	end
-(*
-	val start= if substring(!yyb,!yybufpos-1,1)="\n"
-then !yybegin+1 else !yybegin
-*)
-	in scan(!yybegin (* start *),nil,!yybufpos,!yybufpos)
-    end
-in continue end
-  in lex
-  end
+          end
+in fn () => (yycurrent := YYStart; yyrun()) end
+in lex
+end
 end
