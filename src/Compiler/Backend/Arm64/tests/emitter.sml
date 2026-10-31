@@ -69,6 +69,11 @@ in
   val () = check("keep known-zero definition",
     [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0)),A.orr (I.R(I.X 0),I.R(I.X 0),I.R(I.X 17))],
     [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0))])
+  val () = check("known-zero OR with reversed operands",
+    [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0)),A.orr (I.R(I.X 0),I.R(I.X 17),I.R(I.X 0))],
+    [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,0))])
+  val () = unchanged("keep zero definition with other shift",
+    [A.movz (I.R(I.X 17),I.I(0),I.ShiftImm(I.LSL,16)),A.orr (I.R(I.X 0),I.R(I.X 0),I.R(I.X 17))])
   val () = unchanged("unknown OR operand",
     [A.movz (I.R(I.X 17),I.I(1),I.ShiftImm(I.LSL,0)),A.orr (I.R(I.X 0),I.R(I.X 0),I.R(I.X 17))])
   val () = check("descending pair",
@@ -86,6 +91,9 @@ in
   val () = check("thread bit-test retaining metadata",
     [A.tbz (I.R(I.X 0),I.I(0),I.L(l)),Directive(I.Quad ["0"]),Label l,branch],
     [A.tbz (I.R(I.X 0),I.I(0),I.L(other)),Directive(I.Quad ["0"]),Label l,branch])
+  val () = check("thread branch chain",
+    [A.b (I.L(l)),Label l,branch,Label other,A.ret],
+    [branch,Label l,Label other,A.ret])
   val () = unchanged("thread cycle terminates",
     [Label l,branch,Directive(I.Quad ["0"]),Label other,A.b (I.L(l))])
   val () = unchanged("directive blocks threading",
