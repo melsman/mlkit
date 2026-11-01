@@ -160,6 +160,7 @@ pickletest.mlb
 packreal.sml
 packreal2.sml
 packreal3.sml
+packreal-narrow.sml
 patricia.sml
 stream.mlb
 natset.sml

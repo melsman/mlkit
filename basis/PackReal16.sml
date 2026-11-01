@@ -7,26 +7,44 @@ struct
   val bytesPerElem = 2
   fun bits (x:real) : word = prim ("id", x)
   fun fromBits (x:word) : real = prim ("id", x)
+  (* These private operations are only used after validating the complete
+   * two-byte range. Neither arrays nor vectors can change length afterwards. *)
+  fun unsafeSubVec (v:Word8Vector.vector,i:int) : Word8.word =
+      prim ("__bytetable_sub", (v,i))
+  fun unsafeSubArr (a:Word8Array.array,i:int) : Word8.word =
+      prim ("__bytetable_sub", (a,i))
+  fun unsafeUpdate (a:Word8Array.array,i:int,b:Word8.word) : unit =
+      prim ("__bytetable_update", (a,i,b))
   fun shift j = Word.fromInt (8 * (if isBigEndian then 1-j else j))
   fun byte (w,j) = Word8.fromInt (Word.toInt (Word.andb(Word.>>(w,shift j),0w255)))
   fun toBytes x = Word8Vector.tabulate(2,fn j => byte(bits x,j))
+  (* Keep the fixed-width read straight-line so shifts and byte accesses can
+   * be inlined without relying on recursive-loop unrolling. *)
   fun read sub (v,i) =
-      let fun loop (2,w) = fromBits w
-            | loop (j,w) = loop(j+1,Word.orb(w,Word.<<(Word.fromInt(Word8.toInt(sub(v,i+j))),shift j)))
-      in loop(0,0w0)
+      let val first = Word.fromInt (Word8.toInt (sub(v,i)))
+          val second = Word.fromInt (Word8.toInt (sub(v,i+1)))
+      in fromBits (if isBigEndian
+                   then Word.orb(Word.<<(first,0w8),second)
+                   else Word.orb(first,Word.<<(second,0w8)))
       end
+  (* Byte lengths are nonnegative, so an unsigned shift gives the element
+   * count. Check before scaling: invalid large indices must raise Subscript,
+   * not Overflow. A valid index satisfies 2*i <= length-2. *)
   fun check (length,i) =
-      if i < 0 orelse i >= length div 2 then raise Subscript else 2*i
+      if i < 0 orelse Word.fromInt i >= Word.>>(Word.fromInt length,0w1)
+      then raise Subscript else i+i
   fun fromBytes v =
-      if Word8Vector.length v < 2 then raise Subscript else read Word8Vector.sub (v,0)
-  fun subVec (v,i) = read Word8Vector.sub (v,check(Word8Vector.length v,i))
-  fun subArr (a,i) = read Word8Array.sub (a,check(Word8Array.length a,i))
+      if Word8Vector.length v < 2 then raise Subscript else read unsafeSubVec (v,0)
+  fun subVec (v,i) = read unsafeSubVec (v,check(Word8Vector.length v,i))
+  fun subArr (a,i) = read unsafeSubArr (a,check(Word8Array.length a,i))
   fun update (a,i,x) =
       let val offset = check(Word8Array.length a,i)
           val w = bits x
-          fun loop 2 = ()
-            | loop j = (Word8Array.update(a,offset+j,byte(w,j)); loop(j+1))
-      in loop 0
+          val low = Word8.fromInt (Word.toInt (Word.andb(w,0w255)))
+          val high = Word8.fromInt (Word.toInt (Word.andb(Word.>>(w,0w8),0w255)))
+      in if isBigEndian
+         then (unsafeUpdate(a,offset,high); unsafeUpdate(a,offset+1,low))
+         else (unsafeUpdate(a,offset,low); unsafeUpdate(a,offset+1,high))
       end
 end
 
