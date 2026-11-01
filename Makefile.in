@@ -452,6 +452,12 @@ REGRESSION_JOBS ?= 2
 check-build:
 	sh test/build/check.sh
 
+.PHONY: check-posix-seek
+check-posix-seek:
+	sh src/Runtime/tests/check-posix-seek.sh
+
+check-compiler: check-posix-seek
+
 .PHONY: check-real16 check-real-auto-conversion
 check-real16:
 	sh src/Runtime/tests/check-real16.sh
