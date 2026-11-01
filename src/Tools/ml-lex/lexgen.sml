@@ -1214,108 +1214,80 @@ val skel_hd =
 \      struct\n\
 \"
 
-val skel_mid2 =
-"                       | Internal.D k => action (i,(acts::l),k::rs)\n\
-\                       | Internal.T k =>\n\
-\                         let fun f (a::b,r) =\n\
-\                              if a=k\n\
-\                                then action(i,(((Internal.N a)::acts)::l),(b@r))\n\
-\                                else f (b,a::r)\n\
-\                               | f (nil,r) = action(i,(acts::l),rs)\n\
-\                          in f (rs,nil)\n\
-\                          end\n\
-\"
-
 fun lexGen(infile) =
     let val outfile = infile ^ ".sml"
-      fun PrintLexer (ends) =
-    let val sayln = fn x => (say x; say "\n")
-     in case !ArgCode 
-	 of NONE => (sayln "fun lex () : Internal.result =";
-		     sayln "let fun continue() = lex() in")
-	  | SOME s => (say "fun lex "; say "(yyarg as ("; say s; sayln ")) =";
-		       sayln "let fun continue() : Internal.result = ");
-	 say "  let fun scan (s,AcceptingLeaves : Internal.yyfinstate";
-	 sayln " list list,l,i0) =";
-	 if !UsesTrailingContext
-	     then say "\tlet fun action (i,nil,rs)"
-	     else say "\tlet fun action (i,nil)";
-	 sayln " = raise LexError";
-	 if !UsesTrailingContext
-	     then sayln "\t| action (i,nil::l,rs) = action(i-1,l,rs)"
-	     else sayln "\t| action (i,nil::l) = action (i-1,l)";
-	 if !UsesTrailingContext
-	     then sayln "\t| action (i,(node::acts)::l,rs) ="
-	     else sayln "\t| action (i,(node::acts)::l) =";
-	 sayln "\t\tcase node of";
-	 sayln "\t\t    Internal.N yyk => ";
-	 sayln "\t\t\t(let fun yymktext() = substring(!yyb,i0,i-i0)\n\
-	       \\t\t\t     val yypos = i0+ !yygone";
-	 if !CountNewLines 
-	    then (sayln "\t\t\tval _ = yylineno := CharVectorSlice.foldli";
-	  	  sayln "\t\t\t\t(fn (_,#\"\\n\", n) => n+1 | (_,_, n) => n) (!yylineno) (CharVectorSlice.slice (!yyb,i0,SOME(i-i0)))")
-	    else ();
-	 if !HaveReject
-	     then (say "\t\t\tfun REJECT() = action(i,acts::l";
-		   if !UsesTrailingContext
-		       then sayln ",rs)" else sayln ")")
-	     else ();	 
-	 sayln "\t\t\topen UserDeclarations Internal.StartStates";
-	 sayln " in (yybufpos := i; case yyk of ";
-	 sayln "";
-	 sayln "\t\t\t(* Application actions *)\n";
-	 makeaccept(ends);
-	 say "\n\t\t) end ";
-	 say ")\n\n";
-	 if (!UsesTrailingContext) then say skel_mid2 else ();
-	 sayln "\tval {fin,trans} = Vector.sub(Internal.tab, s)";
-	 sayln "\tval NewAcceptingLeaves = fin::AcceptingLeaves";
-	 sayln "\tin if l = !yybl then";
-	 sayln "\t     if trans = #trans(Vector.sub(Internal.tab,0))";
-	 sayln "\t       then action(l,NewAcceptingLeaves";
-	 if !UsesTrailingContext then say ",nil" else ();
-         say ") else";
-	 sayln "\t    let val newchars= if !yydone then \"\" else yyinput 1024";
-	 sayln "\t    in if (size newchars)=0";
-	 sayln "\t\t  then (yydone := true;";
-	 say "\t\t        if (l=i0) then UserDeclarations.eof ";
-	 sayln (case !ArgCode of NONE => "()" | SOME _ => "yyarg");
-	 say   "\t\t                  else action(l,NewAcceptingLeaves";
-	 if !UsesTrailingContext then
-	    sayln ",nil))" else sayln "))";
-	 sayln "\t\t  else (if i0=l then yyb := newchars";
-	 sayln "\t\t     else yyb := substring(!yyb,i0,l-i0)^newchars;";
-	 sayln "\t\t     yygone := !yygone+i0;";
-	 sayln "\t\t     yybl := size (!yyb);";
-	 sayln "\t\t     scan (s,AcceptingLeaves,l-i0,0))";
-	 sayln "\t    end";
-	 sayln "\t  else let val NewChar = Char.ord(CharVector.sub(!yyb,l))";
-         if !CharSetSize=129
-           then sayln "\t\tval NewChar = if NewChar<128 then NewChar else 128" 
-           else ();
-	 say "\t\tval NewState = ";
-	 sayln (if !CharFormat 
-                then "Char.ord(CharVector.sub(trans,NewChar))"
-                else "Vector.sub(trans, NewChar)");
-	 say "\t\tin if NewState=0 then action(l,NewAcceptingLeaves";
-	 if !UsesTrailingContext then sayln ",nil)" else sayln ")";
-	 sayln "\t\telse scan(NewState,NewAcceptingLeaves,l+1,i0)";
-	 sayln "\tend";
-	 sayln "\tend";
-	 if !UsesPrevNewLine then () else sayln "(*";
-	 sayln "\tval start= if substring(!yyb,!yybufpos-1,1)=\"\\n\"";
-	 sayln "then !yybegin+1 else !yybegin";
-	 if !UsesPrevNewLine then () else sayln "*)";
-	 say "\tin scan(";
-	 if !UsesPrevNewLine then say "start" 
-	 else say "!yybegin (* start *)";
-	 sayln ",nil,!yybufpos,!yybufpos)";
-	 sayln "    end";
-	 sayln (case !ArgCode of NONE => "end" | SOME _ => "in continue end");
-	 sayln "  in lex";
-	 sayln "  end";
-	 sayln "end"
-	end
+      (* Finish the tail-recursive scan before invoking an application action.
+       * Otherwise continue retains a scan frame for every skipped token.
+       * One request cell bridges the two phases without allocating a request
+       * for each character. Clear it before an action can return a token. *)
+      fun PrintLexer ends =
+        let val sayln = fn x => (say x; say "\n")
+        in
+          (case !ArgCode of NONE => sayln "fun lex () : Internal.result ="
+            | SOME arg => (say "fun lex (yyarg as ("; say arg; sayln ")) ="));
+          sayln "let";
+          sayln "datatype yyrequest =";
+          sayln "    YYMatch of int * int * int * Internal.yyfinstate list list";
+          sayln "  | YYEnd | YYStart";
+          sayln "val yycurrent = ref YYStart";
+          sayln "fun yyselect (i,leaves,i0) : unit =";
+          sayln "  case leaves of";
+          sayln "      [] => raise LexError";
+          sayln "    | actions::rest =>";
+          sayln "        case actions of";
+          sayln "            [] => yyselect(i-1,rest,i0)";
+          sayln "          | Internal.N rule::remaining => yycurrent := YYMatch(rule,i,i0,remaining::rest)";
+          sayln "fun yyscan (s,accepting,l,i0) : unit =";
+          sayln "  let val {fin,trans} = Vector.sub(Internal.tab,s)";
+          sayln "      val accepting' = fin::accepting";
+          sayln "  in";
+          sayln "    if l = !yybl then";
+          sayln "      if trans = #trans(Vector.sub(Internal.tab,0)) then yyselect(l,accepting',i0)";
+          sayln "      else";
+          sayln "        let val chars = if !yydone then \"\" else yyinput 1024";
+          sayln "        in";
+          sayln "          if size chars = 0 then";
+          sayln "            (yydone := true;";
+          sayln "             if l = i0 then yycurrent := YYEnd else yyselect(l,accepting',i0))";
+          sayln "          else";
+          sayln "            (if i0 = l then yyb := chars else yyb := substring(!yyb,i0,l-i0)^chars;";
+          sayln "             yygone := !yygone+i0;";
+          sayln "             yybl := size(!yyb);";
+          sayln "             yyscan(s,accepting,l-i0,0))";
+          sayln "        end";
+          sayln "    else";
+          sayln "      let val ch = Char.ord(CharVector.sub(!yyb,l))";
+          if !CharSetSize = 129 then sayln "          val ch = if ch < 128 then ch else 128" else ();
+          sayln (if !CharFormat then "          val next = Char.ord(CharVector.sub(trans,ch))" else "          val next = Vector.sub(trans,ch)");
+          sayln "      in if next = 0 then yyselect(l,accepting',i0)";
+          sayln "         else yyscan(next,accepting',l+1,i0)";
+          sayln "      end";
+          sayln "  end";
+          sayln "  fun yyrun () : Internal.result =";
+          sayln "    case !yycurrent of";
+          sayln "        YYStart =>";
+          (if !UsesPrevNewLine then
+             sayln "          let val start = if substring(!yyb,!yybufpos-1,1)=\"\\n\" then !yybegin+1 else !yybegin"
+           else sayln "          let val start = !yybegin");
+          sayln "          in (yyscan(start,[],!yybufpos,!yybufpos); yyrun()) end";
+          sayln ("      | YYEnd => UserDeclarations.eof " ^ (case !ArgCode of NONE => "()" | SOME _ => "yyarg"));
+          sayln "      | YYMatch(yyk,i,i0,remaining) =>";
+          sayln "          let fun continue () = (yycurrent := YYStart; yyrun())";
+          sayln "              fun yymktext () = substring(!yyb,i0,i-i0)";
+          sayln "              val yypos = i0 + !yygone";
+          if !CountNewLines then sayln "              val _ = yylineno := CharVectorSlice.foldli (fn (_,#\"\\n\",n) => n+1 | (_,_,n) => n) (!yylineno) (CharVectorSlice.slice(!yyb,i0,SOME(i-i0)))" else ();
+          if !HaveReject then sayln "              fun REJECT () = (yyselect(i,remaining,i0); yyrun())" else ();
+          sayln "              open UserDeclarations Internal.StartStates";
+          sayln "          in yybufpos := i; yycurrent := YYEnd;";
+          sayln "             case yyk of";
+          makeaccept ends;
+          sayln "          end";
+
+          sayln (case !ArgCode of NONE => "in yyrun() end" | SOME _ => "in fn () => (yycurrent := YYStart; yyrun()) end");
+          sayln "in lex";
+          sayln "end";
+          sayln "end"
+        end
 
     in (UsesPrevNewLine := false;
 	ResetFlags();

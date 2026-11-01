@@ -448,6 +448,11 @@ TEST_JOBS ?= 6
 # when their runtime configurations differ. Limit compiler memory pressure.
 REGRESSION_JOBS ?= 2
 
+.PHONY: check-mllex
+check-compiler: check-mllex
+check-mllex:
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" MLLEX="$(CWD)/bin/mlkit-mllex" sh test/mllex/check.sh
+
 .PHONY: check-build check-profiling check-compiler check-arm64 emitter check-native-install
 check-build:
 	sh test/build/check.sh

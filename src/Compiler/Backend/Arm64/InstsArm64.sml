@@ -55,25 +55,35 @@ structure InstsArm64 : INSTS_ARM64 = struct
   fun threadBranches code =
     let
       val table = labelTable()
-      fun scan (Label l::rest,pending) = scan(rest,l::pending)
-        | scan (A.b target::rest,pending) =
-            (List.app (fn l => Polyhash.insert table (l,target)) pending; scan(rest,[]))
-        | scan (_::rest,_) = scan(rest,[])
-        | scan ([],_) = ()
+      (* Inspect one constructor at a time to avoid shared match continuations
+       * retaining recursive scan frames. *)
+      fun scan ([],_) = ()
+        | scan (i::rest,pending) =
+            let val pending = case i of
+                    Label l => l::pending
+                  | A.b target => (List.app (fn l => Polyhash.insert table (l,target)) pending; [])
+                  | _ => []
+            in scan(rest,pending)
+            end
       val () = scan(code,[])
       fun resolve original =
         let
-          fun follow (target as L l,seen) =
-                if List.exists (fn t => eq_lab(t,l)) seen then original
+          datatype resolution = Follow of ea * lab list | Resolved of ea
+          fun step (target as L l,seen) =
+                if List.exists (fn t => eq_lab(t,l)) seen then Resolved original
                 else (case Polyhash.peek table l of
-                        SOME next => follow(next,l::seen) | NONE => target)
-            | follow (target,_) = target
-        in follow(original,[])
+                        SOME next => Follow(next,l::seen) | NONE => Resolved target)
+            | step (target,_) = Resolved target
+          fun follow state =
+              case state of
+                  Resolved target => target
+                | Follow(target,seen) => follow(step(target,seen))
+        in follow(Follow(original,[]))
         end
       fun rewrite (A.b target) = A.b(resolve target)
         | rewrite i = case conditional i of
             SOME(target,make,_,_) => make(resolve target) | NONE => i
-    in map rewrite code
+    in List.rev (List.foldl (fn (i,acc) => rewrite i :: acc) [] code)
     end
   fun optimise code =
     let
@@ -107,49 +117,58 @@ structure InstsArm64 : INSTS_ARM64 = struct
           | orr args => alu orr args | eor args => alu eor args | lsl args => alu lsl args
           | lsr args => alu lsr args | asr args => alu asr args | _ => NONE
         end
-      fun loop ([],acc) = rev acc
-        | loop ((i as mov(a,rhs))::rest,acc) =
-            if integer a andalso eq_ea(a,rhs) then loop(rest,acc) else window(i,rest,acc)
-        | loop (i::rest,acc) = window(i,rest,acc)
-      and window (i,rest,acc) =
+      (* Keep the rule match nonrecursive, and pass its result intact to the
+       * tail-recursive driver. Destructuring a temporary result pair before
+       * recursing can retain its finite region and the caller's stack frame. *)
+      datatype scan_state = Scan of inst list * inst list
+      fun step (i,rest,acc) =
         case (i,rest) of
           (mov(a,rhs),mov(c,d)::tail) =>
             if integer a andalso integer rhs andalso eq_ea(a,d) andalso eq_ea(rhs,c) then
-              loop(i::tail,acc) else loop(rest,i::acc)
+              Scan(i::tail,acc) else Scan(rest,i::acc)
         | (mov(a,rhs),j::tail) =>
-            (case foldCopy(a,rhs,j) of SOME j => loop(j::tail,acc) | NONE => loop(rest,i::acc))
+            (case foldCopy(a,rhs,j) of SOME j => Scan(j::tail,acc) | NONE => Scan(rest,i::acc))
         | (movz(zero,I 0,ShiftImm(LSL,0)),orr(dst,a,rhs)::tail) =>
             if integer zero andalso integer dst andalso
                ((eq_ea(a,dst) andalso eq_ea(rhs,zero)) orelse
-                (eq_ea(a,zero) andalso eq_ea(rhs,dst))) then loop(i::tail,acc)
-            else loop(rest,i::acc)
+                (eq_ea(a,zero) andalso eq_ea(rhs,dst))) then Scan(i::tail,acc)
+            else Scan(rest,i::acc)
         | (A.b(L target),(lab as Label l)::tail) =>
-            if eq_lab(target,l) then loop(lab::tail,acc) else loop(rest,i::acc)
+            if eq_lab(target,l) then Scan(lab::tail,acc) else Scan(rest,i::acc)
         | (_,(lab as Label l)::tail) =>
             (case conditional i of
                SOME(L target,_,_,_) =>
-                 if eq_lab(target,l) then loop(lab::tail,acc) else loop(rest,i::acc)
-             | _ => loop(rest,i::acc))
+                 if eq_lab(target,l) then Scan(lab::tail,acc) else Scan(rest,i::acc)
+             | _ => Scan(rest,i::acc))
         | (_,A.b other::(lab as Label l)::tail) =>
             (case conditional i of
                SOME(L target,_,opposite,_) =>
-                 if eq_lab(target,l) then loop(opposite other::lab::tail,acc)
-                 else loop(rest,i::acc)
-             | _ => loop(rest,i::acc))
+                 if eq_lab(target,l) then Scan(opposite other::lab::tail,acc)
+                 else Scan(rest,i::acc)
+             | _ => Scan(rest,i::acc))
         | (A.str(a,ma as M(SP,x)),ldr(rhs,M(SP,y))::tail) =>
             if x = y andalso sameClass(a,rhs) then
-              loop((case a of R(D _) => fmov(rhs,a) | _ => mov(rhs,a))::tail,i::acc)
-            else loop(rest,i::acc)
+              Scan((case a of R(D _) => fmov(rhs,a) | _ => mov(rhs,a))::tail,i::acc)
+            else Scan(rest,i::acc)
         | (ldr(a,ma),ldr(rhs,mb)::tail) =>
             (case pair(true,ldp,a,ma,rhs,mb) of
-               SOME p => loop(tail,p::acc) | NONE => loop(rest,i::acc))
+               SOME p => Scan(tail,p::acc) | NONE => Scan(rest,i::acc))
         | (A.str(a,ma),A.str(rhs,mb)::tail) =>
             (case pair(false,stp,a,ma,rhs,mb) of
-               SOME p => loop(tail,p::acc) | NONE => loop(rest,i::acc))
-        | _ => loop(rest,i::acc)
-      val code = loop(threadBranches code,[])
-      val code = loop(code,[])
-    in loop(code,[])
+               SOME p => Scan(tail,p::acc) | NONE => Scan(rest,i::acc))
+        | _ => Scan(rest,i::acc)
+      fun loop (Scan(code,acc)) =
+          case code of
+              [] => rev acc
+            | i::rest =>
+                case i of
+                    mov(a,rhs) =>
+                      if integer a andalso eq_ea(a,rhs) then loop(Scan(rest,acc))
+                      else loop(step(i,rest,acc))
+                  | _ => loop(step(i,rest,acc))
+      val code = loop(Scan(threadBranches code,[]))
+      val code = loop(Scan(code,[]))
+    in loop(Scan(code,[]))
     end
   fun relax code =
     let
@@ -192,25 +211,31 @@ structure InstsArm64 : INSTS_ARM64 = struct
         case Polyhash.peek labels target of
           SOME (s,p) => s = segment andalso p-offset >= low andalso p-offset <= high
         | NONE => false
-      fun loop ([],acc) = rev acc
-        | loop ((i as adrp(R dst,Page target),here)::
+      (* As in optimise, finish each rule match before the tail iteration. *)
+      datatype relax_state = Relax of (inst * (int * int)) list * inst list
+      fun step (i,here,rest,acc) =
+        case conditional i of
+          NONE => Relax(rest,i::acc)
+        | SOME(target,_,opposite,reach) =>
+            if (case target of L l => within here l (~reach) (reach-4) | _ => false) then
+              Relax(rest,i::acc)
+            else
+              let val skip = LocalLab(AddressLabels.new_named "arm64_branch_skip")
+              in Relax(rest,Label skip :: A.b target :: opposite(L skip) :: acc)
+              end
+      fun next ((i as adrp(R dst,Page target),here)::
                 (j as add(R dst',R base,PageOff off),there)::rest,acc) =
             if dst = dst' andalso dst = base andalso eq_lab(target,off) andalso
                within here target (~1048576) 1048575 then
-              loop(rest,adr(R dst,L target)::acc)
+              Relax(rest,adr(R dst,L target)::acc)
             else step(i,here,(j,there)::rest,acc)
-        | loop ((i,here)::rest,acc) = step(i,here,rest,acc)
-      and step (i,here,rest,acc) =
-        case conditional i of
-          NONE => loop(rest,i::acc)
-        | SOME(target,_,opposite,reach) =>
-            if (case target of L l => within here l (~reach) (reach-4) | _ => false) then
-              loop(rest,i::acc)
-            else
-              let val skip = LocalLab(AddressLabels.new_named "arm64_branch_skip")
-              in loop(rest,Label skip :: A.b target :: opposite(L skip) :: acc)
-              end
-    in loop(located,[])
+        | next ((i,here)::rest,acc) = step(i,here,rest,acc)
+        | next ([],acc) = Relax([],acc)
+      fun loop (Relax(located,acc)) =
+          case located of
+              [] => rev acc
+            | _ => loop(next(located,acc))
+    in loop(Relax(located,[]))
     end
   fun emit (code,file) =
     let val code = relax code
