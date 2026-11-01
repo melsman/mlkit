@@ -21,3 +21,5 @@ Posix.TTY.TC.flush invalid fd    	OK
 Posix.TTY.TC.flow invalid fd    	OK
 Posix.TTY.TC.getpgrp invalid fd    	OK
 Posix.TTY.TC.setpgrp invalid fd    	OK
+Posix.IO.lseek large offsets    	OK
+Posix.IO.lseek invalid fd    	OK

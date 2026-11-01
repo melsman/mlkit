@@ -137,3 +137,36 @@ val _ = tst "Posix.TTY.TC.getpgrp invalid fd"
 val _ = tst "Posix.TTY.TC.setpgrp invalid fd"
             (expectSyserr (fn () =>
                              Posix.TTY.TC.setpgrp (fderr, Posix.Process.wordToPid 0w1)))
+
+(* Sparse files exercise large offsets without allocating gigabytes of data. *)
+val _ = tst' "Posix.IO.lseek large offsets" (fn () =>
+  let
+    val path = OS.FileSys.tmpName ()
+    val fd = Posix.FileSys.openf (path, Posix.FileSys.O_RDWR,
+                                 Posix.FileSys.O.flags [])
+    val big = Position.fromLarge (valOf (LargeInt.fromString "5368709243"))
+    fun cleanup () = (Posix.IO.close fd; OS.FileSys.remove path)
+    fun exercise () =
+      let
+        val start = Posix.IO.lseek (fd, big, Posix.IO.SEEK_SET)
+        val written = Posix.IO.writeVec
+            (fd, Word8VectorSlice.full (Byte.stringToBytes "x"))
+        val current = Posix.IO.lseek (fd, ~1, Posix.IO.SEEK_CUR)
+        val content = Posix.IO.readVec (fd, 1)
+        val ending = Posix.IO.lseek (fd, ~1, Posix.IO.SEEK_END)
+        val zero = Posix.IO.lseek (fd, ~big, Posix.IO.SEEK_CUR)
+        val hole = Posix.IO.readVec (fd, 1)
+        val size = Posix.IO.lseek (fd, 0, Posix.IO.SEEK_END)
+      in
+        start = big andalso written = 1 andalso current = big andalso
+        content = Byte.stringToBytes "x" andalso ending = big andalso
+        zero = 0 andalso hole = Word8Vector.fromList [0w0] andalso size = big + 1
+      end
+    val result = exercise () handle ex => (cleanup (); raise ex)
+  in
+    cleanup ();
+    result
+  end)
+
+val _ = tst "Posix.IO.lseek invalid fd"
+    (expectSyserr (fn () => ignore (Posix.IO.lseek (fderr, 0, Posix.IO.SEEK_SET))))
