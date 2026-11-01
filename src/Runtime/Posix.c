@@ -383,23 +383,33 @@ sml_readArr (size_t fd, char *base, size_t start, size_t length)
   return r;
 }
 
-int
-sml_lseek (int fd, int p, int w)
+/* Position.int follows the native ML integer width. Keep tagged arguments
+ * pointer-sized and the syscall result in off_t: C int truncates a tagged
+ * offset above 1 GiB (and an untagged offset above 2 GiB). */
+ssize_t
+sml_lseek (ssize_t fd, ssize_t p, ssize_t w)
 {
-  int r;
+  off_t r;
   switch (convertIntToC(w))
   {
     case 0:
-      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_SET);
+      r = lseek((int)convertIntToC(fd), (off_t)convertIntToC(p), SEEK_SET);
       break;
     case 1:
-      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_END);
+      r = lseek((int)convertIntToC(fd), (off_t)convertIntToC(p), SEEK_END);
       break;
     default:
-      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_CUR);
+      r = lseek((int)convertIntToC(fd), (off_t)convertIntToC(p), SEEK_CUR);
       break;
   }
-  return convertIntToML(r);
+#ifdef TAG_VALUES
+  if (r > (off_t)(INTPTR_MAX >> 1))
+  {
+    errno = EOVERFLOW;
+    return convertIntToML(-1);
+  }
+#endif
+  return convertIntToML((ssize_t)r);
 }
 
 int
