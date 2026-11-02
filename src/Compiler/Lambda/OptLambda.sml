@@ -1638,13 +1638,16 @@ structure OptLambda : OPT_LAMBDA =
                            NONE => NONE
                          | SOME n =>
                            let val result =
-                                   if isDiv then
-                                     if n = 0 then x
-                                     else ccall ("__shift_right_signed_" ^ suffix)
-                                            [t,wordDefaultType()] t
-                                            [x,WORD(Int.toLarge n,wordDefaultType())]
-                                   else ccall ("__andb_" ^ suffix) [t,t] t
-                                          [x,INTEGER(d-1,t)]
+                                   case x of
+                                       INTEGER(v,_) => INTEGER(if isDiv then v div d else v mod d,t)
+                                     | _ =>
+                                       if isDiv then
+                                         if n = 0 then x
+                                         else ccall ("__shift_right_signed_" ^ suffix)
+                                                [t,wordDefaultType()] t
+                                                [x,WORD(Int.toLarge n,wordDefaultType())]
+                                       else ccall ("__andb_" ^ suffix) [t,t] t
+                                              [x,INTEGER(d-1,t)]
                            in decr_uses exn; SOME result
                            end)
                   | _ => NONE
