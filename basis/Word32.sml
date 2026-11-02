@@ -11,7 +11,7 @@ structure Word32 : WORD =
     fun fromInt (i : int) : word32 =
         let val w : word32 = prim("__word_to_word32", cast_iw i)
         in if Word.wordSize = 31 andalso i < 0
-           then prim("__orb_word32", (w,0wx80000000))
+           then prim("__orb_word32", (w,(0wx80000000:word32)))
            else w
         end
 
