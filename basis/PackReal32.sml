@@ -9,12 +9,9 @@ struct
   fun fromBits (x:word) : real = prim ("id", x)
   (* Public operations validate the complete four-byte range before using
    * these private accesses. Arrays and vectors have immutable lengths. *)
-  fun unsafeSubVec (v:Word8Vector.vector,i:int) : Word8.word =
-      prim ("__bytetable_sub", (v,i))
-  fun unsafeSubArr (a:Word8Array.array,i:int) : Word8.word =
-      prim ("__bytetable_sub", (a,i))
-  fun unsafeUpdate (a:Word8Array.array,i:int,b:Word8.word) : unit =
-      prim ("__bytetable_update", (a,i,b))
+  val unsafeSubVec = PackRealBytes.subVec
+  val unsafeSubArr = PackRealBytes.subArr
+  val unsafeUpdate = PackRealBytes.update
   fun shift j = Word.fromInt (8 * (if isBigEndian then 3-j else j))
   fun byte (w,j) = Word8.fromInt (Word.toInt (Word.andb(Word.>>(w,shift j),0w255)))
   fun toBytes x = Word8Vector.tabulate(4,fn j => byte(bits x,j))
