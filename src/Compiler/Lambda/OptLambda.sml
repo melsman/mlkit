@@ -1529,10 +1529,10 @@ structure OptLambda : OPT_LAMBDA =
       fun constfold_f64_ext () = false
 
       fun conv t2 i =
-          (* Normalize at the target width, independently of the compiler
-           * host's word conversions and integer range. *)
+          (* Modulo gives two's-complement residues for negative inputs,
+           * independently of the host's signed bit-operation semantics. *)
           let fun word width =
-                  SOME(WORD(IntInf.andb(i,IntInf.<<(1,Word.fromInt width)-1),t2))
+                  SOME(WORD(IntInf.mod(i,IntInf.<<(1,Word.fromInt width)),t2))
           in if eq_Type(t2,word8Type) then word 8
           else if eq_Type(t2,word31Type) then word 31
           else if eq_Type(t2,word32Type) then word 32
@@ -1645,25 +1645,25 @@ structure OptLambda : OPT_LAMBDA =
                            NONE => NONE
                          | SOME width =>
                            let val modulus = IntInf.<<(1,Word.fromInt width)
-                               val mask = modulus-1
-                           in Option.map (fn result => WORD(IntInf.andb(result,mask),t))
-                                  (f (width,modulus,mask))
+                           in Option.map (fn result => WORD(IntInf.mod(result,modulus),t))
+                                  (f (width,modulus))
                            end
               fun shift prefix f =
-                  operation prefix (fn (width,modulus,mask) =>
+                  operation prefix (fn (width,modulus) =>
                     if amount < 0 orelse amount >= Int.toLarge width then NONE
-                    else SOME(f (IntInf.andb(v,mask),Word.fromLargeInt amount,modulus)))
+                    else SOME(f (IntInf.mod(v,modulus),
+                                 IntInf.<<(1,Word.fromLargeInt amount),modulus)))
           in case operation "__xorb_" (fn _ => SOME(IntInf.xorb(v,amount))) of
                  SOME result => SOME result
                | NONE =>
-                 (case shift "__shift_left_" (fn (w,n,_) => IntInf.<<(w,n)) of
+                 (case shift "__shift_left_" (fn (w,power,_) => w*power) of
                       SOME result => SOME result
                     | NONE =>
-                      (case shift "__shift_right_unsigned_" (fn (w,n,_) => IntInf.~>>(w,n)) of
+                      (case shift "__shift_right_unsigned_" (fn (w,power,_) => w div power) of
                            SOME result => SOME result
                          | NONE => shift "__shift_right_signed_"
-                             (fn (w,n,modulus) =>
-                               IntInf.~>>(if w >= modulus div 2 then w-modulus else w,n))))
+                             (fn (w,power,modulus) =>
+                               (if w >= modulus div 2 then w-modulus else w) div power)))
           end
 
       (* SML signed div rounds down, so arithmetic shift is exact even for
