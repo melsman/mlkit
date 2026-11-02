@@ -258,6 +258,7 @@ struct
           | Int63 => LEAF "Int63"
           | Word63 => LEAF "Word63"
           | Int32 => LEAF "Int32"
+          | Word32 => LEAF "Word32"
           | Int64 => LEAF "Int64"
           | Float16 => LEAF "Float16"
           | Float32 => LEAF "Float32"

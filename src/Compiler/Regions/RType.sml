@@ -1286,16 +1286,11 @@ struct
     | matchSchemes _ = raise FAIL_MATCH "matchSchemes: type scheme had bound type variables"
 
 
-  (* Whether word32 and int32 (and word64 and int64) types are boxed
-   is determined dynamically in SpreadExpression on the basis of the
-   function TyName.is_unboxed(tn), which depends on the flag
-   tag_values. At the stage of region inference, integer and word
-   types are resolved to be either word8, word31, word32, word63,
-   word64, int31, int32, int63, or int64. The default integer type is
-   dynamically determined to be the largest integer type that fits in
-   64 bits (i.e., int63 or int64, depending on tagging scheme);
-   similarly for words.
-   *)
+  (* Native 64-bit targets keep Word32 and Int32 low-unboxed, including
+   * when tagging is enabled: [x] = (x << 1) + 1. Both payloads are zero-extended before tagging;
+   * signed operations decode Int32 with sign extension. Full-width Word64/Int64 are
+   * boxed when tagging is enabled. TyName.boxity supplies the dynamic
+   * classification used by SpreadExpression. *)
 
   val int31Type     : Type = CONSTYPE(TyName.tyName_INT31,[],[],[])
   val int32Type     : Type = CONSTYPE(TyName.tyName_INT32,[],[],[])

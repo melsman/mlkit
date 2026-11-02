@@ -225,7 +225,7 @@ struct
               end
           val (arguments,stackWords,floatRegs) = layout(args,0,0,0,[])
           val (dst,ft) = opt_res
-          val boxed = BI.tag_values() andalso (ft = LS.Int32 orelse ft = LS.Int64)
+          val boxed = BI.tag_values() andalso ft = LS.Int64
           val protect = gc_p()
           val rhoSlot = stackWords + length args
           val policySlot = rhoSlot + (if boxed then 1 else 0)
@@ -250,7 +250,8 @@ struct
                                    I.shrq(I "1",R tmp) :: tail
                     | LS.Int63 => I.sarq(I "1",R tmp) :: tail
                     | LS.Word63 => I.shrq(I "1",R tmp) :: tail
-                    | LS.Int32 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
+                    | LS.Word32 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
+                    | LS.Int32 => if BI.tag_values() then I.sarq(I "1",R tmp) :: tail else tail
                     | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
                     | LS.CharArray => G.lea(D("8",tmp),tmp) tail
@@ -280,6 +281,10 @@ struct
             | LS.Float64 => tail
             | LS.Unit => move_unit(R rax,tail)
             | LS.Bool => G.lea(DD("1",rax,rax,""),rax) tail
+            | LS.Word32 => I.mov(R eax,R eax) ::
+                (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
+            | LS.Int32 => I.mov(R eax,R eax) ::
+                (if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail)
             | LS.Int => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
             | LS.Word => if BI.tag_values() then G.lea(DD("1",rax,rax,""),rax) tail else tail
             | LS.Int31 => G.lea(DD("1",rax,rax,""),rax) tail
@@ -1679,7 +1684,7 @@ struct
          do_tag C'))))
        end
 
-     fun binop_word_boxed__ {ovf,quad} inst (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
+     fun binop_word_boxed__ {ovf,quad} inst (r,x,y,d,fsz,C) = (* Full-width boxed arithmetic when tagging is enabled. *)
        if not(BI.tag_values()) then die "binop_word_boxed__.tagging_disabled"
        else
          let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
@@ -1701,56 +1706,29 @@ struct
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
          end
 
-     fun addw32boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.add (r,x,y,d,fsz,C)
-
      fun addw64boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.add (r,x,y,d,fsz,C)
-
-     fun subw32boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.sub (r,y,x,d,fsz,C) (* x and y swapped, see spec for subq *)
 
      fun subw64boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.sub (r,y,x,d,fsz,C) (* x and y swapped, see spec for subq *)
 
-     fun mulw32boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.mul (r,x,y,d,fsz,C)
-
      fun mulw64boxed (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.mul (r,x,y,d,fsz,C)
-
-     fun orw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.or (r,x,y,d,fsz,C)
 
      fun orw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.or (r,x,y,d,fsz,C)
 
-     fun andw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.andd (r,x,y,d,fsz,C)
-
      fun andw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.andd (r,x,y,d,fsz,C)
-
-     fun xorw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-         binop_word_boxed__ {ovf=false,quad=false} G.xor (r,x,y,d,fsz,C)
 
      fun xorw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
          binop_word_boxed__ {ovf=false,quad=true} G.xor (r,x,y,d,fsz,C)
 
-     fun mul_int32b (b,x,y,d,fsz,C) =
-         binop_word_boxed__ {ovf=true,quad=false} G.mul (b,x,y,d,fsz,C)
-
      fun mul_int64b (b,x,y,d,fsz,C) =
          binop_word_boxed__ {ovf=true,quad=true} G.mul (b,x,y,d,fsz,C)
 
-     fun sub_int32b (b,x,y,d,fsz,C) =
-         binop_word_boxed__ {ovf=true,quad=false} G.sub (b,y,x,d,fsz,C)
-
      fun sub_int64b (b,x,y,d,fsz,C) =
          binop_word_boxed__ {ovf=true,quad=true} G.sub (b,y,x,d,fsz,C)
-
-     fun add_int32b (b,x,y,d,fsz,C) =
-         binop_word_boxed__ {ovf=true,quad=false} G.add (b,x,y,d,fsz,C)
 
      fun add_int64b (b,x,y,d,fsz,C) =
          binop_word_boxed__ {ovf=true,quad=true} G.add (b,x,y,d,fsz,C)
@@ -1771,25 +1749,6 @@ struct
          end
        else die "num31_to_num_boxed.tagging_disabled"
 
-     fun num32b_to_num32b {ovf:bool} (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "num32b_to_num32b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-             fun check_ovf C =
-               if ovf then
-                 I.btq(I "31", R treg0) ::     (* sign bit set? *)
-                 I.jc (NameLab "__raise_overflow") :: C
-               else C
-         in
-           x_C (
-           load (x_reg,WORDS 1,treg0,
-           check_ovf (
-           load_aty(b,d_reg,fsz,
-           store(treg0,d_reg, WORDS 1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
-         end
-
      fun num64b_to_num64b {ovf:bool} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "num64b_to_num64b.tagging_disabled"
        else
@@ -1809,52 +1768,6 @@ struct
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
-     fun word32b_to_word64b {signext} (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "num32b_to_num64b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-             fun maybe_signext C =
-                 if signext then
-                   I.movslq(R (I.doubleOfQuadReg treg0), R treg0) :: C
-                 else C
-         in
-           x_C (
-           load (x_reg,WORDS 1,treg0,
-           maybe_signext(
-           load_aty(b,d_reg,fsz,
-           store(treg0,d_reg, WORDS 1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
-         end
-
-     fun int32b_to_int64b (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "int32b_to_int64b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-         in
-           x_C (
-           load (x_reg,WORDS 1,treg0,
-           I.movslq(R (I.doubleOfQuadReg treg0), R treg0) ::       (* sign-extend *)
-           load_aty(b,d_reg,fsz,
-           store(treg0,d_reg, WORDS 1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
-         end
-
-     fun num64b_to_num32b (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "num64b_to_num32b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-         in
-           x_C (
-           load (x_reg,WORDS 1,treg0,
-           I.mov(R (I.doubleOfQuadReg treg0),R (I.doubleOfQuadReg treg0)) ::  (* clears the upper bits *)
-           load_aty(b,d_reg,fsz,
-           store(treg0,d_reg, WORDS 1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
-         end
-
      fun num63_to_num64b {shr_inst} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "int63_to_int64b.tagging_disabled"
        else
@@ -1868,39 +1781,6 @@ struct
                 store(treg0,d_reg, WORDS 1,
                 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
          end
-
-     fun word63_to_word32b (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "word63_to_word32b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-         in
-           x_C (copy(x_reg, treg0,
-                I.shrq (I "1", R treg0) ::
-                I.mov(R (I.doubleOfQuadReg treg0), R (I.doubleOfQuadReg treg0)) ::
-                load_aty(b,d_reg,fsz,
-                store(treg0,d_reg, WORDS 1,
-                store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
-         end
-
-     fun int63_to_int32b (b,x,d,fsz,C) =
-       if not(BI.tag_values()) then die "int63_to_int32b.tagging_disabled"
-       else
-       let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,treg1,fsz, C)
-           (* to test whether the argument can be represented in 32 (31) bits, we copy with
-            * sign-extension and compare *)
-       in x_C(copy(x_reg, treg0,
-              I.sarq (I "1", R treg0) ::
-              I.movslq(R (I.doubleOfQuadReg treg0), R treg1) ::
-              I.cmpq(R treg0, R treg1) ::
-              I.jne (NameLab "__raise_overflow") ::
-              copy(treg1, treg0,
-              load_aty(b,d_reg,fsz,
-              store(treg0,d_reg, WORDS 1,
-              store_immed(BI.tag_word_boxed false, d_reg, WORDS 0,
-              C'))))))
-       end
 
      fun word31_to_word64b {signext} (b,x,d,fsz,C) =
        if not(BI.tag_values()) then die "word31_to_word64b.tagging_disabled"
@@ -1944,20 +1824,11 @@ struct
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))))   (* store tag *)
        end
 
-     fun shift_leftw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_word_boxed__ {quad=false} I.sall (r,x,y,d,fsz,C)
-
      fun shift_leftw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
        shift_word_boxed__ {quad=true} I.salq (r,x,y,d,fsz,C)
 
-     fun shift_right_signedw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_word_boxed__ {quad=false} I.sarl (r,x,y,d,fsz,C)
-
      fun shift_right_signedw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
        shift_word_boxed__ {quad=true} I.sarq (r,x,y,d,fsz,C)
-
-     fun shift_right_unsignedw32boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_word_boxed__ {quad=false} I.shrl (r,x,y,d,fsz,C)
 
      fun shift_right_unsignedw64boxed__ (r,x,y,d,fsz,C) = (* Only used when tagging is enabled; Word64.sml *)
        shift_word_boxed__ {quad=true} I.shrq (r,x,y,d,fsz,C)
@@ -2131,22 +2002,6 @@ struct
             t_C(i_C(
             I.mov(DD("8",t_reg,i_reg,"4"), R d_reg') ::
             C'))
-       end
-
-     fun bytetable_sub_word32b (r,t,i,d,fsz,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,treg1,fsz)
-           val (i_reg,i_C) = resolve_arg_aty(i,treg0,fsz)
-           val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
-           (* i is represented tagged only when BI.tag_values() is true *)
-       in if not(BI.tag_values()) then die "bytetable_sub_word32b"
-          else
-            t_C(i_C(
-            copy(i_reg, treg0,
-            I.sarq (I "1", R treg0) ::                (* untag i: i >> 1 *)
-            I.mov(DD("8",t_reg,treg0,"4"), R r10d) :: (* tmp=table[i] *)
-            load_aty(r,d_reg,fsz,
-            store(r10,d_reg,WORDS 1,
-            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
        end
 
      fun bytetable_sub_word63 (t,i,d,fsz,C) =
@@ -2355,24 +2210,6 @@ struct
               load_aty(x,treg0,fsz,                     (* treg0 (%rcx) = x *)
               I.mov (R r10d, D("8", treg1)) ::          (* *(treg1+8) = %r10d *)
               C))))
-
-     fun bytetable_update_word32b (t,i,x,d,fsz,C) =
-         if not(BI.tag_values()) then die "bytetable_update_word32b"
-         else
-           let (* i, x are represented tagged only when BI.tag_values() is true *)
-             val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
-           in
-             load_aty(t,treg0,fsz,                        (* treg0 = t *)
-             load_aty(i,treg1,fsz,                        (* treg1 = i *)
-             I.sarq (I "1", R treg1) ::                   (* untag i: treg1 >> 1 *)
-             G.mul(I "4", treg1) $
-             G.add(R treg0, treg1) $                   (* treg1 += treg0 *)
-             load_aty(x,treg0,fsz,                        (* treg0 (%r10) = x *)
-             G.load_ea(D("8", treg0), treg0) $         (* x = *(x+8) *)
-             I.mov (R r10d, D("8", treg1)) ::             (* *(treg1+8) = %r10d *)
-             move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
-             C'))))
-           end
 
      fun bytetable_update_word63 (t,i,x,d,fsz,C) =
        if BI.tag_values() then
@@ -2628,5 +2465,166 @@ struct
                  G.load_ea(DD("8",t_reg,i_reg,"8"), d) C'))
               end
          end
+
+     (* Historical 32b primitive names now operate on low-unboxed values.
+      * Decode before 32-bit arithmetic and normalize before tagging, so both
+      * signed overflow and unsigned wrapping retain their Basis semantics. *)
+     fun low32Primitive (name,args,res,fsz,C) =
+       let
+         open PrimName
+         val d = case res of [d] => d | _ => SS.UNIT_ATY
+         fun norm (bits,sgn,_,_) r C =
+           if bits = 64 then C
+           else if bits = 32 then
+             (if sgn then I.movslq(R (I.doubleOfQuadReg r), R r)
+              else I.mov(R (I.doubleOfQuadReg r), R (I.doubleOfQuadReg r))) :: C
+           else I.shlq(I(Int.toString(64-bits)),R r) ::
+                (if sgn then I.sarq else I.shrq)(I(Int.toString(64-bits)),R r) :: C
+         fun get level (rep as (_,sgn,box,tag)) a r C =
+           load_aty(a,r,level,
+             (if box then fn c => load(r,WORDS 1,r,c) else fn c => c)
+             ((if tag then fn c => (if sgn then I.sarq else I.shrq)(I "1",R r) :: c
+               else fn c => c) (norm rep r C)))
+         fun put (rep as (bits,_,box,tag)) buffer C =
+           norm (if bits = 32 then (32,false,false,false) else rep) treg0
+             ((if tag then fn c => G.lea(DD("1",treg0,treg0,""),treg0) c else fn c => c)
+               (if box then
+                  case buffer of
+                    SOME b => I.subq(I "16",R rsp) :: I.movq(R treg0,D("0",rsp)) ::
+                      load_aty(b,treg1,fsz+2,
+                        I.movq(D("0",rsp),R treg0) :: I.addq(I "16",R rsp) ::
+                        store(treg0,treg1,WORDS 1,
+                          store_immed(BI.tag_word_boxed false,treg1,WORDS 0,
+                            move_reg_into_aty(treg1,d,fsz,C))))
+                  | NONE => die "low32Primitive.buffer"
+                else move_reg_into_aty(treg0,d,fsz,C)))
+         val signed = (32,true,false,true)
+         val unsigned = (32,false,false,true)
+         fun compare jump cmov =
+           case args of [a,b] =>
+             let val code = case d of
+                   SS.FLOW_VAR_ATY(_,t,f) =>
+                     jump(LocalLab t) :: I.jmp(L(LocalLab f)) :: C
+                 | _ => I.movq(I "1",R treg0) :: I.movq(I "3",R treg1) ::
+                        cmov(R treg1,R treg0) :: move_reg_into_aty(treg0,d,fsz,C)
+             in SOME(get fsz signed a treg0
+               (I.subq(I "16",R rsp) :: I.movq(R treg0,D("0",rsp)) ::
+                get (fsz+2) signed b treg1
+                 (I.movq(D("0",rsp),R treg0) :: I.addq(I "16",R rsp) ::
+                  I.cmpq(R treg1,R treg0) :: code)))
+             end
+           | _ => die "low32Primitive.compare"
+         fun unary opn =
+           case args of [a] => SOME(get fsz signed a treg0
+             (opn (R r10d) :: jump_overflow(put signed NONE C)))
+           | _ => die "low32Primitive.unary"
+         fun absolute () =
+           case args of [a] =>
+             let val done = new_local_lab "abs32"
+             in SOME(get fsz signed a treg0
+                (I.cmpl(I "0",R r10d) :: I.jge done :: I.negl(R r10d) ::
+                 jump_overflow(I.lab done :: put signed NONE C)))
+             end
+           | _ => die "low32Primitive.abs"
+         fun binary sgn opn =
+           let val rep = if sgn then signed else unsigned
+           in case args of [a,b] => SOME(
+             get fsz rep a treg0
+               (I.subq(I "16",R rsp) :: I.movq(R treg0,D("0",rsp)) ::
+                get (fsz+2) rep b treg1
+                 (I.movq(D("0",rsp),R treg0) :: I.addq(I "16",R rsp) ::
+                  opn(R r11d,R r10d) ::
+                  (if sgn then jump_overflow else fn c => c)(put rep NONE C))))
+           | _ => die "low32Primitive.binary"
+           end
+         fun shift arithmetic opn =
+           case args of [a,b] =>
+             let val wide = new_local_lab "shift32_wide"
+                 val done = new_local_lab "shift32_done"
+                 val rep = if arithmetic then signed else unsigned
+             in SOME(get fsz rep a treg0
+               (I.subq(I "16",R rsp) :: I.movq(R treg0,D("0",rsp)) ::
+                get (fsz+2) (63,false,false,true) b treg1
+                  (I.movq(D("0",rsp),R treg0) :: I.addq(I "16",R rsp) ::
+                   I.cmpq(I "32",R treg1) :: I.jae wide ::
+                   G.push_ea(R rcx)
+                    (I.movq(R treg1,R rcx) :: opn(R cl,R r10d) ::
+                     G.pop_ea(R rcx)
+                      (I.jmp(L done) :: I.lab wide ::
+                       (if arithmetic then I.sarl(I "31",R r10d)
+                        else I.mov(I "0",R r10d)) ::
+                       I.lab done :: put unsigned NONE C)))))
+             end
+           | _ => die "low32Primitive.shift"
+         fun conversion (src as (bits,sgn,_,_)) (dst as (_,signed,box,_)) extend =
+           let
+             val (buffer,a) = case (box,args) of
+                 (false,[a]) => (NONE,a)
+               | (true,[b,a]) => (SOME b,a)
+               | _ => die "low32Primitive.conversion"
+             fun range C =
+               if signed then
+                 norm dst treg1
+                   (I.cmpq(R treg1,R treg0) :: I.jne(NameLab "__raise_overflow") :: C)
+               else C
+             val code = range (put dst buffer C)
+             val code = if signed andalso not sgn andalso not extend then
+                 I.cmpq(I "0",R treg0) :: I.jl(NameLab "__raise_overflow") :: code
+               else code
+             val code = I.movq(R treg0,R treg1) :: code
+             val code = if extend then norm (bits,true,false,false) treg0 code else code
+             (* Compare the normalized candidate with the original decoded value. *)
+           in SOME(get fsz src a treg0 code)
+           end
+       in
+         case name of
+           Equal_int32b => compare I.je I.cmoveq
+         | Less_int32b => compare I.jl I.cmovlq
+         | Lesseq_int32b => compare I.jle I.cmovleq
+         | Greater_int32b => compare I.jg I.cmovgq
+         | Greatereq_int32b => compare I.jge I.cmovgeq
+         | Plus_int32b => binary true I.addl
+         | Minus_int32b => binary true I.subl
+         | Mul_int32b => binary true I.imull
+         | Plus_word32b => binary false I.addl
+         | Minus_word32b => binary false I.subl
+         | Mul_word32b => binary false I.imull
+         | Andb_word32b => binary false I.andl
+         | Orb_word32b => binary false I.orl
+         | Xorb_word32b => binary false I.xorl
+         | Neg_int32b => unary I.negl
+         | Abs_int32b => absolute()
+         | Shift_left_word32b => shift false I.sall
+         | Shift_right_signed_word32b => shift true I.sarl
+         | Shift_right_unsigned_word32b => shift false I.shrl
+         | Bytetable_sub_word32b =>
+             (case args of [t,i] => SOME(bytetable_sub_word31(t,i,d,fsz,C))
+              | _ => die "low32Primitive.tableSub")
+         | Bytetable_update_word32b =>
+             (case args of [t,i,x] => SOME(bytetable_update_real32(t,i,x,d,fsz,C))
+              | _ => die "low32Primitive.tableUpdate")
+         | Int31_to_int32b => conversion (31,true,false,true) (32,true,false,true) false
+         | Int32b_to_int31 => conversion (32,true,false,true) (31,true,false,true) false
+         | Int32b_to_word32b => conversion (32,true,false,true) (32,false,false,true) false
+         | Word31_to_word32b => conversion (31,false,false,true) (32,false,false,true) false
+         | Word32b_to_word31 => conversion (32,false,false,true) (31,false,false,true) false
+         | Word31_to_word32b_X => conversion (31,false,false,true) (32,false,false,true) true
+         | Word32b_to_int32b => conversion (32,false,false,true) (32,true,false,true) false
+         | Word32b_to_int32b_X => conversion (32,false,false,true) (32,true,false,true) true
+         | Word32b_to_int31 => conversion (32,false,false,true) (31,true,false,true) false
+         | Int32b_to_word31 => conversion (32,true,false,true) (31,false,false,true) false
+         | Word32b_to_int31_X => conversion (32,false,false,true) (31,true,false,true) true
+         | Word32b_to_word64b => conversion (32,false,false,true) (64,false,true,false) false
+         | Word32b_to_word64b_X => conversion (32,false,false,true) (64,false,true,false) true
+         | Word64b_to_word32b => conversion (64,false,true,false) (32,false,false,true) false
+         | Int32b_to_int64b => conversion (32,true,false,true) (64,true,true,false) false
+         | Word32b_to_word63 => conversion (32,false,false,true) (63,false,false,true) false
+         | Word63_to_word32b => conversion (63,false,false,true) (32,false,false,true) false
+         | Int32b_to_int63 => conversion (32,true,false,true) (63,true,false,true) false
+         | Int63_to_int32b => conversion (63,true,false,true) (32,true,false,true) false
+         | Word32b_to_int63 => conversion (32,false,false,true) (63,true,false,true) false
+         | Word32b_to_int63_X => conversion (32,false,false,true) (63,true,false,true) true
+         | _ => NONE
+       end
 
 end

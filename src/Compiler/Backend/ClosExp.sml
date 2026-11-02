@@ -43,7 +43,7 @@ struct
   (* ClosExp *)
   (***********)
 
-  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Int64 | Float16 | Float32 | Float64 | Unit
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Word | Int31 | Word31 | Int63 | Word63 | Int32 | Word32 | Int64 | Float16 | Float32 | Float64 | Unit
 
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
@@ -161,6 +161,7 @@ struct
       | layout_f Int63 = LEAF "Int63"
       | layout_f Word63 = LEAF "Word63"
       | layout_f Int32 = LEAF "Int32"
+      | layout_f Word32 = LEAF "Word32"
       | layout_f Int64 = LEAF "Int64"
       | layout_f Float16 = LEAF "Float16"
       | layout_f Float32 = LEAF "Float32"
@@ -1376,7 +1377,8 @@ struct
           else if TyName.eq(tn,TyName.tyName_REAL32) then Float32
           else if TyName.eq(tn,TyName.tyName_F64) then Float64
           else if member tn [TyName.tyName_INT64, TyName.tyName_WORD64] then Int64
-          else if member tn [TyName.tyName_INT32, TyName.tyName_WORD32] then Int32
+          else if TyName.eq(tn,TyName.tyName_INT32) then Int32
+          else if TyName.eq(tn,TyName.tyName_WORD32) then Word32
           else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn
                     ^ " not supported in auto conversion")
     end

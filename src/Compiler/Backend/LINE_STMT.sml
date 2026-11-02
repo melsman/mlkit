@@ -53,9 +53,8 @@ signature LINE_STMT =
     | Word31
     | Int63
     | Word63
-    | Int32                   (* Int32 (and word32) values are
-                               * boxed when garbage collection is
-                               * enabled. *)
+    | Int32                   (* Low-unboxed signed 32-bit payload, tagged when enabled. *)
+    | Word32                  (* Low-unboxed unsigned 32-bit payload, tagged when enabled. *)
     | Int64                   (* Int64 (and word64) values are
                                * boxed when garbage collection is
                                * enabled. *)

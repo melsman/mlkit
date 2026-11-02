@@ -1507,10 +1507,10 @@ structure OptLambda : OPT_LAMBDA =
       fun is_unboxed_value lamb =
           case lamb of
               INTEGER (_,t) => if tag_values() then (eq_Type(t, int31Type) orelse
-                                                     eq_Type(t, int63Type))
+                                                     eq_Type(t, int63Type) orelse
+                                                     eq_Type(t, int32Type))
                                else true
-            | WORD (_,t) => if tag_values() then (not(eq_Type(t, word32Type)) andalso
-                                                  not(eq_Type(t, word64Type)))
+            | WORD (_,t) => if tag_values() then not(eq_Type(t, word64Type))
                             else true
             | F64 _ => true
             | PRIM(CONprim {con,...},nil) => is_boolean con

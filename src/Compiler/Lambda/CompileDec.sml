@@ -1832,33 +1832,18 @@ end; (*match compiler local*)
     (*         Compilation of CCall names                                     *)
     (* ---------------------------------------------------------------------- *)
 
-    (* The flag "tag_values" determines whether 32/64-bit integer
-       values and 32/64-bit word values are implemented boxed or
-       unboxed. When "tag_values" is enabled, 32/64-bit integers and
-       32/64-bit words are represented boxed and the default integer type
-       (int) is defined, internally, to be int31 and the default word
-       type is defined to be word31. Contrary, when "tag_values" is
-       disabled, 32/64-bit integers and 32/64-bit words are represented
-       unboxed-untagged and the default integer type (int) is defined,
-       internally, to be int32/64 and the default word type is defined to
-       be word32/64.
-
-       The function compileCName transforms 32/64-bit primitives into
-       primitives on either boxed or unboxed representations dependent
-       on the value of the "tag_values" flag. The function also
-       transforms operations on integers and words into operations on
-       either 32/64-bit representations or 31/63-bit representations.
-
-       Overloading is dealt with independently, but whether 32/64-bit
-       primitives work on boxed or unboxed representations is resolved
-       here.
-    *)
+    (* Resolve primitive names for the target representation. On native
+     * 64-bit targets, 32-bit values are low-unboxed in both modes; legacy
+     * 32b names identify tagged immediates, [x] = (x << 1) + 1. Full-width
+     * 64-bit values still use boxes when tagging is enabled. Default
+     * integers/words use the largest immediate payload (63 or 64 bits).
+     * Overloading is resolved independently. *)
 
     local
         structure CNameMap = StringFinMap
 
-      (* 32-bit and 64-bit primitives are resolved to primitives working on either
-       * boxed or unboxed representations *)
+      (* The b/ub suffix selects tagged/untagged 32-bit primitives and
+       * boxed/unboxed full-width 64-bit primitives. *)
       fun resolve_boxity p = (p, (p ^ "b", p ^ "ub"))
 
       (* primitives on integers and words are resolved to primitives working

@@ -73,7 +73,7 @@ struct
   fun staticDataInto code =
     foldl (fn (chunk,code) => foldr (op ::) code chunk) code (!staticChunks)
   fun numberInto {value,precision} dst code =
-    if tagged() andalso (precision = 32 orelse precision = 64) then
+    if tagged() andalso precision = 64 then
       let
         val l = DatLab(AddressLabels.new_named "arm64_integer")
         val () = addStatic
@@ -84,8 +84,11 @@ struct
       in
         addressInto (l,dst) code
       end
+    else if precision = 32 then
+      constantInto ((if tagged() then 2 * IntInf.mod(value,4294967296) + 1
+                     else IntInf.mod(value,4294967296)),dst) code
     else constantInto
-      (if precision = 63 orelse precision = 31 orelse (precision = 8 andalso tagged())
+      (if precision = 63 orelse precision = 31 orelse ((precision = 8 orelse precision = 32) andalso tagged())
        then 2*value+1 else value,dst) code
   fun readInto fsz aty dst code =
     case aty of
@@ -137,9 +140,12 @@ struct
   fun machineConstant aty =
     let
       fun number {value,precision} =
-        if tagged() andalso (precision = 32 orelse precision = 64) then NONE
+        if tagged() andalso precision = 64 then NONE
+        else if precision = 32 then
+          SOME(if tagged() then 2 * IntInf.mod(value,4294967296) + 1
+               else IntInf.mod(value,4294967296))
         else SOME(if precision = 63 orelse precision = 31 orelse
-                     (precision = 8 andalso tagged()) then 2*value+1 else value)
+                     ((precision = 8 orelse precision = 32) andalso tagged()) then 2*value+1 else value)
     in
       case aty of
         SS.INTEGER_ATY n => number n
@@ -438,7 +444,8 @@ struct
             end
         | LS.Int63 => A.asr (R(r),R(r),I(1)) :: code
         | LS.Word63 => A.lsr (R(r),R(r),I(1)) :: code
-        | LS.Int32 => if tagged() then loadInto (r,8,r) code else code
+        | LS.Word32 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
+        | LS.Int32 => if tagged() then A.asr (R(r),R(r),I(1)) :: code else code
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
@@ -446,7 +453,7 @@ struct
         | LS.Float32 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
         | LS.Float64 => code
         | LS.Unit => unsupported "unit foreign argument"
-      val boxed = tagged() andalso (ft = LS.Int32 orelse ft = LS.Int64)
+      val boxed = tagged() andalso ft = LS.Int64
       fun tag code = (instruction A.lsl (R(X 0),R(X 0),I(1))
          ++ instruction A.add (R(X 0),R(X 0),I(1))) code
       val code = writeInto fsz dst (if ft = LS.Float64 then D 0 else X 0) code
@@ -455,6 +462,8 @@ struct
         | LS.Bool => (instruction A.cmp (R(X 0),I(0))
            ++ instruction A.cset (R(X 0),C NE)
            ++ tag) code
+        | LS.Word32 => (instruction A.uxtw (R(X 0),R(W 0))) (if tagged() then tag code else code)
+        | LS.Int32 => (instruction A.uxtw (R(X 0),R(W 0))) (if tagged() then tag code else code)
         | LS.Int => if tagged() then tag code else code
         | LS.Word => if tagged() then tag code else code
         | LS.Int31 => tag code
@@ -1153,7 +1162,7 @@ struct
             (instruction A.sbfx (R(X 30),R(X 16),I(0),imm (bits))
               ++ instruction A.cmp (R(X 30),R(X 16))
               ++ failUnless EQ) code
-      fun putnum (rep as (_,_,box,tag)) buffer d code =
+      fun putnum (rep as (bits,_,box,tag)) buffer d code =
         let
           val code = if box then
               (case buffer of
@@ -1178,7 +1187,7 @@ struct
         in
           (* Tagging discards bit 63, so another unsigned mask is redundant. *)
           if rep = (63,false,false,true) then code
-          else normalize rep (X 16) code
+          else normalize (if bits = 32 then (32,false,false,false) else rep) (X 16) code
         end
       fun numeric opn (rep as (bits,sgn,box,tag)) code =
         let
@@ -1640,76 +1649,76 @@ struct
         | Bytetable_update_word16 => update 1 A.strh true code
         | Word_update0 => update 3 A.str false code
         | Equal_int31 => numeric NumEqual (31,true,false,true) code
-        | Equal_int32b => numeric NumEqual (32,true,true,false) code
+        | Equal_int32b => numeric NumEqual (32,true,false,tagged()) code
         | Equal_char => numeric NumEqual (8,false,false,tagged()) code
         | Equal_word8 => numeric NumEqual (8,false,false,tagged()) code
         | Equal_word31 => numeric NumEqual (31,false,false,true) code
         | Equal_word32ub => numeric NumEqual (32,false,false,false) code
-        | Equal_word32b => numeric NumEqual (32,false,true,false) code
+        | Equal_word32b => numeric NumEqual (32,false,false,tagged()) code
         | Equal_int64b => numeric NumEqual (64,true,true,false) code
         | Equal_word64b => numeric NumEqual (64,false,true,false) code
         | Less_int31 => numeric NumLess (31,true,false,true) code
         | Less_int32ub => numeric NumLess (32,true,false,false) code
-        | Less_int32b => numeric NumLess (32,true,true,false) code
+        | Less_int32b => numeric NumLess (32,true,false,tagged()) code
         | Less_char => numeric NumLess (8,false,false,tagged()) code
         | Less_word8 => numeric NumLess (8,false,false,tagged()) code
         | Less_word31 => numeric NumLess (31,false,false,true) code
         | Less_word32ub => numeric NumLess (32,false,false,false) code
-        | Less_word32b => numeric NumLess (32,false,true,false) code
+        | Less_word32b => numeric NumLess (32,false,false,tagged()) code
         | Less_int64b => numeric NumLess (64,true,true,false) code
         | Less_word64b => numeric NumLess (64,false,true,false) code
         | Lesseq_int31 => numeric NumLesseq (31,true,false,true) code
         | Lesseq_int32ub => numeric NumLesseq (32,true,false,false) code
-        | Lesseq_int32b => numeric NumLesseq (32,true,true,false) code
+        | Lesseq_int32b => numeric NumLesseq (32,true,false,tagged()) code
         | Lesseq_char => numeric NumLesseq (8,false,false,tagged()) code
         | Lesseq_word8 => numeric NumLesseq (8,false,false,tagged()) code
         | Lesseq_word31 => numeric NumLesseq (31,false,false,true) code
         | Lesseq_word32ub => numeric NumLesseq (32,false,false,false) code
-        | Lesseq_word32b => numeric NumLesseq (32,false,true,false) code
+        | Lesseq_word32b => numeric NumLesseq (32,false,false,tagged()) code
         | Lesseq_int64b => numeric NumLesseq (64,true,true,false) code
         | Lesseq_word64b => numeric NumLesseq (64,false,true,false) code
         | Greater_int31 => numeric NumGreater (31,true,false,true) code
         | Greater_int32ub => numeric NumGreater (32,true,false,false) code
-        | Greater_int32b => numeric NumGreater (32,true,true,false) code
+        | Greater_int32b => numeric NumGreater (32,true,false,tagged()) code
         | Greater_char => numeric NumGreater (8,false,false,tagged()) code
         | Greater_word8 => numeric NumGreater (8,false,false,tagged()) code
         | Greater_word31 => numeric NumGreater (31,false,false,true) code
         | Greater_word32ub => numeric NumGreater (32,false,false,false) code
-        | Greater_word32b => numeric NumGreater (32,false,true,false) code
+        | Greater_word32b => numeric NumGreater (32,false,false,tagged()) code
         | Greater_int64b => numeric NumGreater (64,true,true,false) code
         | Greater_word64b => numeric NumGreater (64,false,true,false) code
         | Greatereq_int31 => numeric NumGreatereq (31,true,false,true) code
         | Greatereq_int32ub => numeric NumGreatereq (32,true,false,false) code
-        | Greatereq_int32b => numeric NumGreatereq (32,true,true,false) code
+        | Greatereq_int32b => numeric NumGreatereq (32,true,false,tagged()) code
         | Greatereq_char => numeric NumGreatereq (8,false,false,tagged()) code
         | Greatereq_word8 => numeric NumGreatereq (8,false,false,tagged()) code
         | Greatereq_word31 => numeric NumGreatereq (31,false,false,true) code
         | Greatereq_word32ub => numeric NumGreatereq (32,false,false,false) code
-        | Greatereq_word32b => numeric NumGreatereq (32,false,true,false) code
+        | Greatereq_word32b => numeric NumGreatereq (32,false,false,tagged()) code
         | Greatereq_int64b => numeric NumGreatereq (64,true,true,false) code
         | Greatereq_word64b => numeric NumGreatereq (64,false,true,false) code
         | Plus_int31 => numeric NumPlus (31,true,false,true) code
         | Plus_int32ub => numeric NumPlus (32,true,false,false) code
-        | Plus_int32b => numeric NumPlus (32,true,true,false) code
+        | Plus_int32b => numeric NumPlus (32,true,false,tagged()) code
         | Plus_word31 => numeric NumPlus (31,false,false,true) code
         | Plus_word32ub => numeric NumPlus (32,false,false,false) code
-        | Plus_word32b => numeric NumPlus (32,false,true,false) code
+        | Plus_word32b => numeric NumPlus (32,false,false,tagged()) code
         | Plus_int64b => numeric NumPlus (64,true,true,false) code
         | Plus_word64b => numeric NumPlus (64,false,true,false) code
         | Minus_int31 => numeric NumMinus (31,true,false,true) code
         | Minus_int32ub => numeric NumMinus (32,true,false,false) code
-        | Minus_int32b => numeric NumMinus (32,true,true,false) code
+        | Minus_int32b => numeric NumMinus (32,true,false,tagged()) code
         | Minus_word31 => numeric NumMinus (31,false,false,true) code
         | Minus_word32ub => numeric NumMinus (32,false,false,false) code
-        | Minus_word32b => numeric NumMinus (32,false,true,false) code
+        | Minus_word32b => numeric NumMinus (32,false,false,tagged()) code
         | Minus_int64b => numeric NumMinus (64,true,true,false) code
         | Minus_word64b => numeric NumMinus (64,false,true,false) code
         | Mul_int31 => numeric NumMul (31,true,false,true) code
         | Mul_int32ub => numeric NumMul (32,true,false,false) code
-        | Mul_int32b => numeric NumMul (32,true,true,false) code
+        | Mul_int32b => numeric NumMul (32,true,false,tagged()) code
         | Mul_word31 => numeric NumMul (31,false,false,true) code
         | Mul_word32ub => numeric NumMul (32,false,false,false) code
-        | Mul_word32b => numeric NumMul (32,false,true,false) code
+        | Mul_word32b => numeric NumMul (32,false,false,tagged()) code
         | Mul_int63 => numeric NumMul (63,true,false,true) code
         | Mul_int64ub => numeric NumMul (64,true,false,false) code
         | Mul_int64b => numeric NumMul (64,true,true,false) code
@@ -1717,29 +1726,29 @@ struct
         | Mul_word64b => numeric NumMul (64,false,true,false) code
         | Neg_int31 => numeric NumNeg (31,true,false,true) code
         | Neg_int32ub => numeric NumNeg (32,true,false,false) code
-        | Neg_int32b => numeric NumNeg (32,true,true,false) code
+        | Neg_int32b => numeric NumNeg (32,true,false,tagged()) code
         | Neg_int63 => numeric NumNeg (63,true,false,true) code
         | Neg_int64ub => numeric NumNeg (64,true,false,false) code
         | Neg_int64b => numeric NumNeg (64,true,true,false) code
         | Abs_int31 => numeric NumAbs (31,true,false,true) code
         | Abs_int32ub => numeric NumAbs (32,true,false,false) code
-        | Abs_int32b => numeric NumAbs (32,true,true,false) code
+        | Abs_int32b => numeric NumAbs (32,true,false,tagged()) code
         | Abs_int63 => numeric NumAbs (63,true,false,true) code
         | Abs_int64ub => numeric NumAbs (64,true,false,false) code
         | Abs_int64b => numeric NumAbs (64,true,true,false) code
         | Andb_word31 => numeric NumAndb (31,false,false,true) code
         | Andb_word32ub => numeric NumAndb (32,false,false,false) code
-        | Andb_word32b => numeric NumAndb (32,false,true,false) code
+        | Andb_word32b => numeric NumAndb (32,false,false,tagged()) code
         | Andb_word63 => numeric NumAndb (63,false,false,true) code
         | Andb_word64b => numeric NumAndb (64,false,true,false) code
         | Orb_word31 => numeric NumOrb (31,false,false,true) code
         | Orb_word32ub => numeric NumOrb (32,false,false,false) code
-        | Orb_word32b => numeric NumOrb (32,false,true,false) code
+        | Orb_word32b => numeric NumOrb (32,false,false,tagged()) code
         | Orb_word63 => numeric NumOrb (63,false,false,true) code
         | Orb_word64b => numeric NumOrb (64,false,true,false) code
         | Xorb_word31 => numeric NumXorb (31,false,false,true) code
         | Xorb_word32ub => numeric NumXorb (32,false,false,false) code
-        | Xorb_word32b => numeric NumXorb (32,false,true,false) code
+        | Xorb_word32b => numeric NumXorb (32,false,false,tagged()) code
         | Xorb_word63 => numeric NumXorb (63,false,false,true) code
         | Xorb_word64b => numeric NumXorb (64,false,true,false) code
         | Neg_real => realUnary A.fneg code
@@ -1759,43 +1768,43 @@ struct
             | _ => unsupported "null arity")
         | Shift_left_word31 => shift false A.lsl (31,false,false,true) code
         | Shift_left_word32ub => shift false A.lsl (32,false,false,false) code
-        | Shift_left_word32b => shift false A.lsl (32,false,true,false) code
+        | Shift_left_word32b => shift false A.lsl (32,false,false,tagged()) code
         | Shift_left_word63 => shift false A.lsl (63,false,false,true) code
         | Shift_left_word64ub => shift false A.lsl (64,false,false,false) code
         | Shift_left_word64b => shift false A.lsl (64,false,true,false) code
         | Shift_right_signed_word31 => shift true A.asr (31,false,false,true) code
         | Shift_right_signed_word32ub => shift true A.asr (32,false,false,false) code
-        | Shift_right_signed_word32b => shift true A.asr (32,false,true,false) code
+        | Shift_right_signed_word32b => shift true A.asr (32,false,false,tagged()) code
         | Shift_right_signed_word63 => shift true A.asr (63,false,false,true) code
         | Shift_right_signed_word64ub => shift true A.asr (64,false,false,false) code
         | Shift_right_signed_word64b => shift true A.asr (64,false,true,false) code
         | Shift_right_unsigned_word31 => shift false A.lsr (31,false,false,true) code
         | Shift_right_unsigned_word32ub => shift false A.lsr (32,false,false,false) code
-        | Shift_right_unsigned_word32b => shift false A.lsr (32,false,true,false) code
+        | Shift_right_unsigned_word32b => shift false A.lsr (32,false,false,tagged()) code
         | Shift_right_unsigned_word63 => shift false A.lsr (63,false,false,true) code
         | Shift_right_unsigned_word64ub => shift false A.lsr (64,false,false,false) code
         | Shift_right_unsigned_word64b => shift false A.lsr (64,false,true,false) code
-        | Int31_to_int32b => convert (31,true,false,true) (32,true,true,false) false code
+        | Int31_to_int32b => convert (31,true,false,true) (32,true,false,tagged()) false code
         | Int31_to_int32ub => convert (31,true,false,true) (32,true,false,false) false code
-        | Int32b_to_int31 => convert (32,true,true,false) (31,true,false,true) false code
-        | Int32b_to_word32b => convert (32,true,true,false) (32,false,true,false) false code
+        | Int32b_to_int31 => convert (32,true,false,tagged()) (31,true,false,true) false code
+        | Int32b_to_word32b => convert (32,true,false,tagged()) (32,false,false,tagged()) false code
         | Int32ub_to_int31 => convert (32,true,false,false) (31,true,false,true) false code
         | Int31_to_int64b => convert (31,true,false,true) (64,true,true,false) false code
         | Int31_to_int64ub => convert (31,true,false,true) (64,true,false,false) false code
         | Int64b_to_int31 => convert (64,true,true,false) (31,true,false,true) false code
-        | Word31_to_word32b => convert (31,false,false,true) (32,false,true,false) false code
+        | Word31_to_word32b => convert (31,false,false,true) (32,false,false,tagged()) false code
         | Word31_to_word32ub => convert (31,false,false,true) (32,false,false,false) false code
-        | Word32b_to_word31 => convert (32,false,true,false) (31,false,false,true) false code
+        | Word32b_to_word31 => convert (32,false,false,tagged()) (31,false,false,true) false code
         | Word32ub_to_word31 => convert (32,false,false,false) (31,false,false,true) false code
         | Word31_to_word32ub_X => convert (31,false,false,true) (32,false,false,false) true code
-        | Word31_to_word32b_X => convert (31,false,false,true) (32,false,true,false) true code
-        | Word32b_to_int32b => convert (32,false,true,false) (32,true,true,false) false code
-        | Word32b_to_int32b_X => convert (32,false,true,false) (32,true,true,false) true code
+        | Word31_to_word32b_X => convert (31,false,false,true) (32,false,false,tagged()) true code
+        | Word32b_to_int32b => convert (32,false,false,tagged()) (32,true,false,tagged()) false code
+        | Word32b_to_int32b_X => convert (32,false,false,tagged()) (32,true,false,tagged()) true code
         | Word32ub_to_int32ub => convert (32,false,false,false) (32,true,false,false) false code
         | Word31_to_int31 => convert (31,false,false,true) (31,true,false,true) false code
-        | Word32b_to_int31 => convert (32,false,true,false) (31,true,false,true) false code
-        | Int32b_to_word31 => convert (32,true,true,false) (31,false,false,true) false code
-        | Word32b_to_int31_X => convert (32,false,true,false) (31,true,false,true) true code
+        | Word32b_to_int31 => convert (32,false,false,tagged()) (31,true,false,true) false code
+        | Int32b_to_word31 => convert (32,true,false,tagged()) (31,false,false,true) false code
+        | Word32b_to_int31_X => convert (32,false,false,tagged()) (31,true,false,true) true code
         | Word64ub_to_int32ub => convert (64,false,false,false) (32,true,false,false) false code
         | Word32ub_to_word64ub => convert (32,false,false,false) (64,false,false,false) false code
         | Word64ub_to_word32ub => convert (64,false,false,false) (32,false,false,false) false code
@@ -1806,19 +1815,19 @@ struct
         | Word64b_to_int31 => convert (64,false,true,false) (31,true,false,true) false code
         | Word64b_to_int64b_X => convert (64,false,true,false) (64,true,true,false) true code
         | Word64b_to_int64b => convert (64,false,true,false) (64,true,true,false) false code
-        | Word32b_to_word64b => convert (32,false,true,false) (64,false,true,false) false code
-        | Word32b_to_word64b_X => convert (32,false,true,false) (64,false,true,false) true code
-        | Word64b_to_word32b => convert (64,false,true,false) (32,false,true,false) false code
+        | Word32b_to_word64b => convert (32,false,false,tagged()) (64,false,true,false) false code
+        | Word32b_to_word64b_X => convert (32,false,false,tagged()) (64,false,true,false) true code
+        | Word64b_to_word32b => convert (64,false,true,false) (32,false,false,tagged()) false code
         | Word64b_to_int31_X => convert (64,false,true,false) (31,true,false,true) true code
-        | Int32b_to_int64b => convert (32,true,true,false) (64,true,true,false) false code
+        | Int32b_to_int64b => convert (32,true,false,tagged()) (64,true,true,false) false code
         | Int32ub_to_int64ub => convert (32,true,false,false) (64,true,false,false) false code
         | Int64b_to_word64b => convert (64,true,true,false) (64,false,true,false) false code
         | Int64ub_to_word64ub => convert (64,true,false,false) (64,false,false,false) false code
         | Int64ub_to_int32ub => convert (64,true,false,false) (32,true,false,false) false code
         | Int63_to_int64b => convert (63,true,false,true) (64,true,true,false) false code
         | Int64b_to_int63 => convert (64,true,true,false) (63,true,false,true) false code
-        | Word32b_to_word63 => convert (32,false,true,false) (63,false,false,true) false code
-        | Word63_to_word32b => convert (63,false,false,true) (32,false,true,false) false code
+        | Word32b_to_word63 => convert (32,false,false,tagged()) (63,false,false,true) false code
+        | Word63_to_word32b => convert (63,false,false,true) (32,false,false,tagged()) false code
         | Word63_to_word31 => convert (63,false,false,true) (31,false,false,true) false code
         | Word31_to_word63 => convert (31,false,false,true) (63,false,false,true) false code
         | Word31_to_word63_X => convert (31,false,false,true) (63,false,false,true) true code
@@ -1828,10 +1837,10 @@ struct
         | Word64ub_to_word63 => convert (64,false,false,false) (63,false,false,true) false code
         | Int31_to_int63 => convert (31,true,false,true) (63,true,false,true) false code
         | Int63_to_int31 => convert (63,true,false,true) (31,true,false,true) false code
-        | Int32b_to_int63 => convert (32,true,true,false) (63,true,false,true) false code
-        | Int63_to_int32b => convert (63,true,false,true) (32,true,true,false) false code
-        | Word32b_to_int63 => convert (32,false,true,false) (63,true,false,true) false code
-        | Word32b_to_int63_X => convert (32,false,true,false) (63,true,false,true) true code
+        | Int32b_to_int63 => convert (32,true,false,tagged()) (63,true,false,true) false code
+        | Int63_to_int32b => convert (63,true,false,true) (32,true,false,tagged()) false code
+        | Word32b_to_int63 => convert (32,false,false,tagged()) (63,true,false,true) false code
+        | Word32b_to_int63_X => convert (32,false,false,tagged()) (63,true,false,true) true code
         | Word64b_to_word31 => convert (64,false,true,false) (31,false,false,true) false code
         | Word64b_to_int63 => convert (64,false,true,false) (63,true,false,true) false code
         | Word64b_to_int63_X => convert (64,false,true,false) (63,true,false,true) true code
@@ -1855,8 +1864,8 @@ struct
           tableUpdate 2 (if tagged() then 31 else 32,false,false,tagged()) code
         | Bytetable_sub_word32ub => tableSub 2 (32,false,false,false) code
         | Bytetable_update_word32ub => tableUpdate 2 (32,false,false,false) code
-        | Bytetable_sub_word32b => tableSub 2 (32,false,true,false) code
-        | Bytetable_update_word32b => tableUpdate 2 (32,false,true,false) code
+        | Bytetable_sub_word32b => tableSub 2 (32,false,false,tagged()) code
+        | Bytetable_update_word32b => tableUpdate 2 (32,false,false,tagged()) code
         | Bytetable_sub_word63 => tableSub 3 (if tagged() then 63 else 64,false,false,tagged()) code
         | Bytetable_update_word63 =>
           tableUpdate 3 (if tagged() then 63 else 64,false,false,tagged()) code
@@ -2345,11 +2354,14 @@ struct
     | constructorSwitchInto _ _ _ _ = unsupported "empty constructor switch"
   and numericSwitchInto fsz live signed precision (LS.SWITCH(a,cases,default)) code =
     let
-      val tag = precision = 31 orelse precision = 63 orelse (precision = 8 andalso tagged())
-      val box = tagged() andalso (precision = 32 orelse precision = 64)
-      fun value n = if tag then 2*n+1 else n
+      val tag = precision = 31 orelse precision = 63 orelse ((precision = 8 orelse precision = 32) andalso tagged())
+      val box = tagged() andalso precision = 64
+      fun value n =
+        let val n = if precision = 32 then IntInf.mod(n,4294967296) else n
+        in if tag then 2*n+1 else n
+        end
       val (src,load) = operandInto fsz a (X 16)
-      val narrow = precision = 31 orelse precision = 32
+      val narrow = precision = 31 orelse (precision = 32 andalso not(tagged()))
       val selector = if box orelse narrow then X 16 else src
       val code = switchCodeInto fsz live
         (LS.SWITCH(SS.PHREG_ATY selector,map (fn (n,rhs) => (value n,rhs)) cases,default)) code
@@ -2358,7 +2370,7 @@ struct
       val code = if narrow then
           let val input = if box then X 16 else src
               val low = case input of X n => W n | _ => unsupported "numeric switch register"
-          in (if signed then A.sxtw else A.uxtw) (R(X 16),R low) :: code
+          in (if signed andalso precision <> 32 then A.sxtw else A.uxtw) (R(X 16),R low) :: code
           end
         else code
       val code = if box then loadInto (src,8,X 16) code else code

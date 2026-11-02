@@ -206,7 +206,7 @@ struct
      fun CG_lss (lss,fsz,size_ccf,C) =
        let
          fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
-         fun CG_ls (ls,C) =
+         fun CG_ls_default (ls,C) =
            (case ls
               of LS.ASSIGN{pat=SS.FLOW_VAR_ATY(lv,lab_t,lab_f),
                            bind=LS.CON0{con,con_kind,aux_regions=[],alloc=LS.IGNORE}} =>
@@ -586,7 +586,7 @@ struct
                   val offset_codeptr = if BI.tag_values() then "8" else "0"
                 in
                   if List.length spilled_args > 0 then
-                    CG_ls(LS.FNCALL cc,C)
+                    CG_ls_default(LS.FNCALL cc,C)
                   else
                     case opr (* We fetch the addr from the closure and opr points at the closure *)
                       of SS.PHREG_ATY opr_reg =>
@@ -881,13 +881,14 @@ struct
                   let
                     (* Packed narrow integer loads define only the low 32
                      * bits. Sign-extend before the 64-bit switch compares. *)
-                    val narrow = precision = 31 orelse precision = 32
+                    val narrow = precision = 31 orelse (precision = 32 andalso not(BI.tag_values()))
                     val (operand, prepare) =
                       if narrow then
                         (SS.PHREG_ATY treg1,
                          fn C => load_aty(opr_aty,treg1,fsz,
-                           I.movslq(if boxedNum precision then D("8",treg1)
-                                    else R (I.doubleOfQuadReg treg1), R treg1) :: C))
+                           (if precision = 32 then
+                              I.mov(R (I.doubleOfQuadReg treg1),R (I.doubleOfQuadReg treg1))
+                            else I.movslq(R (I.doubleOfQuadReg treg1),R treg1)) :: C))
                       else (opr_aty, fn C => C)
                   in prepare (compileNumSwitch {fsz = fsz,
                                     size_ccf = size_ccf,
@@ -1006,13 +1007,13 @@ struct
                       open PrimName
                   in case name of
                          Equal_int32ub =>  cmp       I.je
-                       | Equal_int32b =>   cmp_boxed I.je
+                       | Equal_int32b =>   cmp_quad I.je
                        | Equal_int31 =>    cmp       I.je
                        | Equal_char =>     cmp       I.je
                        | Equal_word8 =>    cmp       I.je
                        | Equal_word31 =>   cmp       I.je
                        | Equal_word32ub => cmp       I.je
-                       | Equal_word32b =>  cmp_boxed I.je
+                       | Equal_word32b =>  cmp_quad I.je
 
                        | Equal_int64ub =>  cmp_quad       I.je
                        | Equal_int64b =>   cmp_boxed_quad I.je
@@ -1023,13 +1024,13 @@ struct
                        | Equal_ptr =>      cmp_quad       I.je
 
                        | Less_int32ub =>    cmp       I.jl
-                       | Less_int32b =>     cmp_boxed I.jl
+                       | Less_int32b =>     cmp_quad I.jl
                        | Less_int31 =>      cmp       I.jl
                        | Less_char =>       cmp       I.jb
                        | Less_word8 =>      cmp       I.jb
                        | Less_word31 =>     cmp       I.jb
                        | Less_word32ub =>   cmp       I.jb
-                       | Less_word32b =>    cmp_boxed I.jb
+                       | Less_word32b =>    cmp_quad I.jb
 
                        | Less_int64ub =>    cmp_quad       I.jl
                        | Less_int64b =>     cmp_boxed_quad I.jl
@@ -1039,13 +1040,13 @@ struct
                        | Less_word64b =>    cmp_boxed_quad I.jb
 
                        | Lesseq_int32ub =>  cmp       I.jle
-                       | Lesseq_int32b =>   cmp_boxed I.jle
+                       | Lesseq_int32b =>   cmp_quad I.jle
                        | Lesseq_int31 =>    cmp       I.jle
                        | Lesseq_char =>     cmp       I.jbe
                        | Lesseq_word8 =>    cmp       I.jbe
                        | Lesseq_word31 =>   cmp       I.jbe
                        | Lesseq_word32ub => cmp       I.jbe
-                       | Lesseq_word32b =>  cmp_boxed I.jbe
+                       | Lesseq_word32b =>  cmp_quad I.jbe
 
                        | Lesseq_int64ub =>  cmp_quad       I.jle
                        | Lesseq_int64b =>   cmp_boxed_quad I.jle
@@ -1055,13 +1056,13 @@ struct
                        | Lesseq_word64b =>  cmp_boxed_quad I.jbe
 
                        | Greater_int32ub =>  cmp       I.jg
-                       | Greater_int32b =>   cmp_boxed I.jg
+                       | Greater_int32b =>   cmp_quad I.jg
                        | Greater_int31 =>    cmp       I.jg
                        | Greater_char =>     cmp       I.ja
                        | Greater_word8 =>    cmp       I.ja
                        | Greater_word31 =>   cmp       I.ja
                        | Greater_word32ub => cmp       I.ja
-                       | Greater_word32b =>  cmp_boxed I.ja
+                       | Greater_word32b =>  cmp_quad I.ja
 
                        | Greater_int64ub =>  cmp_quad       I.jg
                        | Greater_int64b =>   cmp_boxed_quad I.jg
@@ -1071,13 +1072,13 @@ struct
                        | Greater_word64b =>  cmp_boxed_quad I.ja
 
                        | Greatereq_int32ub =>  cmp       I.jge
-                       | Greatereq_int32b =>   cmp_boxed I.jge
+                       | Greatereq_int32b =>   cmp_quad I.jge
                        | Greatereq_int31 =>    cmp       I.jge
                        | Greatereq_char =>     cmp       I.jae
                        | Greatereq_word8 =>    cmp       I.jae
                        | Greatereq_word31 =>   cmp       I.jae
                        | Greatereq_word32ub => cmp       I.jae
-                       | Greatereq_word32b =>  cmp_boxed I.jae
+                       | Greatereq_word32b =>  cmp_quad I.jae
 
                        | Greatereq_int64ub =>  cmp_quad       I.jge
                        | Greatereq_int64b =>   cmp_boxed_quad I.jge
@@ -1125,16 +1126,11 @@ struct
                             | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  arg
 
                             | Int31_to_int32ub     => num31_to_num32ub {signext=true} arg
-                            | Int32b_to_int31      => int32_to_int31 {boxedarg=true} arg
                             | Int32ub_to_int31     => int32_to_int31 {boxedarg=false} arg
                             | Word31_to_word32ub   => num31_to_num32ub {signext=false} arg
-                            | Word32b_to_word31    => word32_to_word31 {boxedarg=true} arg
                             | Word32ub_to_word31   => word32_to_word31 {boxedarg=false} arg
                             | Word31_to_word32ub_X => num31_to_num32ub {signext=true} arg
                             | Word32ub_to_int32ub  => word32ub_to_int32ub arg
-                            | Word32b_to_int31     => word32_to_int31 {boxedarg=true,ovf=true} arg
-                            | Int32b_to_word31     => word32_to_word31 {boxedarg=true} arg
-                            | Word32b_to_int31_X   => word32_to_int31 {boxedarg=true,ovf=false} arg
 
                             | Word64ub_to_word32ub => word64ub_to_word32ub arg
                             | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} arg
@@ -1157,16 +1153,12 @@ struct
                             | Int64b_to_int63      => int64_to_int63 {boxedarg=true} arg
                             | Word64b_to_word63    => word64_to_word63 {boxedarg=true} arg
                             | Word64ub_to_word63   => word64_to_word63 {boxedarg=false} arg
-                            | Word32b_to_word63    => word32_to_word63 {boxedarg=true,signext=false} arg
                             | Word63_to_word31     => word63_to_word31 arg
                             | Word31_to_word63_X   => num31_to_num63 {signext=true} arg
                             | Word31_to_word63     => num31_to_num63 {signext=false} arg
 
-                            | Int32b_to_int63      => word32_to_word63 {boxedarg=true,signext=true} arg
                             | Int63_to_int31       => int63_to_int31 arg
                             | Int31_to_int63       => num31_to_num63 {signext=true} arg
-                            | Word32b_to_int63     => word32_to_word63 {boxedarg=true,signext=false} arg
-                            | Word32b_to_int63_X   => word32_to_word63 {boxedarg=true,signext=true} arg
                             | Word64b_to_word31    => word64_to_word31 {boxedarg=true} arg
 
                             | Word64b_to_int63     => word64_to_int63 {boxedarg=true,ovf=true} arg
@@ -1218,13 +1210,13 @@ struct
                        let val arg = (x,y,d,fsz,C)
                        in case name of
                               Equal_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
-                            | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmoveq arg
                             | Equal_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
                             | Equal_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmoveq arg
-                            | Equal_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmoveq arg
+                            | Equal_word32b =>  cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmoveq arg
                             | Equal_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
                             | Equal_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmoveq arg
                             | Equal_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmoveq arg
@@ -1260,21 +1252,19 @@ struct
                             | Mul_word63 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
                             | Mul_word64ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                            | Neg_int32b => neg_int_boxed_kill_tmp0 {quad=false} arg
                             | Neg_int64b => neg_int_boxed_kill_tmp0 {quad=true} arg
                             | Neg_real =>   negf_kill_tmp01 arg
-                            | Abs_int32b => abs_int_boxed_kill_tmp0 {quad=false} arg
                             | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} arg
                             | Abs_real =>   absf_kill_tmp01 arg
 
                             | Less_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
-                            | Less_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovlq arg
+                            | Less_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovlq arg
                             | Less_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovlq arg
                             | Less_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
                             | Less_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbq arg
-                            | Less_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbq arg
+                            | Less_word32b =>  cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovbq arg
                             | Less_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
                             | Less_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovlq arg
                             | Less_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovlq arg
@@ -1286,13 +1276,13 @@ struct
                             | Less_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaq arg
 
                             | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
-                            | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovleq arg
+                            | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovleq arg
                             | Lesseq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
                             | Lesseq_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
                             | Lesseq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovbeq arg
-                            | Lesseq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovbeq arg
+                            | Lesseq_word32b =>  cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovbeq arg
                             | Lesseq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
                             | Lesseq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovleq arg
                             | Lesseq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovleq arg
@@ -1304,13 +1294,13 @@ struct
                             | Lesseq_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaeq arg
 
                             | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
-                            | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgq arg
+                            | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovgq arg
                             | Greater_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
                             | Greater_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
                             | Greater_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaq arg
-                            | Greater_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaq arg
+                            | Greater_word32b =>  cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovaq arg
                             | Greater_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
                             | Greater_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgq arg
                             | Greater_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgq arg
@@ -1322,13 +1312,13 @@ struct
                             | Greater_f64 => cmpf64_kill_tmp01_cmov {swap=false} I.cmovaq arg
 
                             | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
-                            | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovgeq arg
+                            | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovgeq arg
                             | Greatereq_int31 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
                             | Greatereq_char =>     cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word8 =>    cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word31 =>   cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
                             | Greatereq_word32ub => cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovaeq arg
-                            | Greatereq_word32b =>  cmpi_kill_tmp01_cmov {box=true,  quad=false} I.cmovaeq arg
+                            | Greatereq_word32b =>  cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovaeq arg
                             | Greatereq_int64ub =>  cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
                             | Greatereq_int64b =>   cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovgeq arg
                             | Greatereq_int63 =>    cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovgeq arg
@@ -1369,32 +1359,20 @@ struct
                             | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  arg
                             | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                            | Int31_to_int32b => num31_to_num_boxed {quad=false,signext=true} arg
-                            | Word31_to_word32b => num31_to_num_boxed {quad=false,signext=false} arg
-                            | Word31_to_word32b_X => num31_to_num_boxed {quad=false,signext=true} arg
-                            | Word32b_to_int32b => num32b_to_num32b {ovf=true} arg
-                            | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} arg
-                            | Int32b_to_word32b => num32b_to_num32b {ovf=false} arg
 
                             | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} arg
                             | Word64b_to_int64b => num64b_to_num64b {ovf=true} arg
-                            | Word32b_to_word64b => word32b_to_word64b {signext=false} arg
-                            | Word32b_to_word64b_X => word32b_to_word64b {signext=true} arg
-                            | Word64b_to_word32b => num64b_to_num32b arg
                             | Word31_to_word64b => word31_to_word64b {signext=false} arg
                             | Word31_to_word64b_X => word31_to_word64b {signext=true} arg
 
-                            | Int32b_to_int64b => int32b_to_int64b arg
                             | Int64b_to_word64b => num64b_to_num64b {ovf=false} arg
 
                             | Int31_to_int64b => num31_to_num_boxed {quad=true,signext=true} arg
 
                             | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} arg
-                            | Word63_to_word32b => word63_to_word32b arg
                             | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} arg
                             | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} arg
 
-                            | Int63_to_int32b => int63_to_int32b arg
 
                             | Bytetable_sub => bytetable_sub arg
                             | Bytetable_sub_word16 => bytetable_sub_word16 arg
@@ -1428,45 +1406,31 @@ struct
                        end
                      | [b,x,y] =>
                        (case name of
-                            Plus_int32b => add_int32b (b,x,y,d,fsz,C)
-                          | Plus_int64b => add_int64b (b,x,y,d,fsz,C)
-                          | Plus_word32b => addw32boxed (b,x,y,d,fsz,C)
+                          Plus_int64b => add_int64b (b,x,y,d,fsz,C)
                           | Plus_word64b => addw64boxed (b,x,y,d,fsz,C)
                           | Plus_real => addf_kill_tmp01 (x,y,b,d,fsz,C)
-                          | Minus_int32b => sub_int32b (b,x,y,d,fsz,C)
                           | Minus_int64b => sub_int64b (b,x,y,d,fsz,C)
-                          | Minus_word32b => subw32boxed (b,x,y,d,fsz,C)
                           | Minus_word64b => subw64boxed (b,x,y,d,fsz,C)
                           | Minus_real => subf_kill_tmp01 (x,y,b,d,fsz,C)
-                          | Mul_int32b => mul_int32b (b,x,y,d,fsz,C)
                           | Mul_int64b => mul_int64b (b,x,y,d,fsz,C)
-                          | Mul_word32b => mulw32boxed (b,x,y,d,fsz,C)
                           | Mul_word64b => mulw64boxed (b,x,y,d,fsz,C)
                           | Mul_real => mulf_kill_tmp01 (x,y,b,d,fsz,C)
                           | Div_real => divf_kill_tmp01 (x,y,b,d,fsz,C)
-                          | Andb_word32b => andw32boxed__ (b,x,y,d,fsz,C)
                           | Andb_word64b => andw64boxed__ (b,x,y,d,fsz,C)
-                          | Orb_word32b => orw32boxed__ (b,x,y,d,fsz,C)
                           | Orb_word64b => orw64boxed__ (b,x,y,d,fsz,C)
-                          | Xorb_word32b => xorw32boxed__ (b,x,y,d,fsz,C)
                           | Xorb_word64b => xorw64boxed__ (b,x,y,d,fsz,C)
-                          | Shift_left_word32b => shift_leftw32boxed__ (b,x,y,d,fsz,C)
                           | Shift_left_word64b => shift_leftw64boxed__ (b,x,y,d,fsz,C)
-                          | Shift_right_signed_word32b => shift_right_signedw32boxed__ (b,x,y,d,fsz,C)
                           | Shift_right_signed_word64b => shift_right_signedw64boxed__ (b,x,y,d,fsz,C)
-                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,fsz,C)
                           | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,fsz,C)
                           | Bytetable_update => bytetable_update (b,x,y,d,fsz,C)
                           | Bytetable_update_word16 => bytetable_update_word16 (b,x,y,d,fsz,C)
                           | Bytetable_update_real32 => bytetable_update_real32 (b,x,y,d,fsz,C)
                           | Bytetable_update_word31 => bytetable_update_word31 (b,x,y,d,fsz,C)
                           | Bytetable_update_word32ub => bytetable_update_word32ub (b,x,y,d,fsz,C)
-                          | Bytetable_update_word32b => bytetable_update_word32b (b,x,y,d,fsz,C)
                           | Bytetable_update_word63 => bytetable_update_word63 (b,x,y,d,fsz,C)
                           | Bytetable_update_word64ub => bytetable_update_word64ub (b,x,y,d,fsz,C)
                           | Bytetable_update_word64b => bytetable_update_word64b (b,x,y,d,fsz,C)
 
-                          | Bytetable_sub_word32b => bytetable_sub_word32b (b,x,y,d,fsz,C)
                           | Bytetable_sub_word64b => bytetable_sub_word64b (b,x,y,d,fsz,C)
 
                           | Word_update0 => word_update0 (b,x,y,d,fsz,C)
@@ -1661,6 +1625,13 @@ struct
                       (G.add (I "8", rsp) C)))))
                   end
                 )
+         fun CG_ls (ls,C) =
+           case ls of
+             LS.PRIM{name,args,res} =>
+               (case low32Primitive(name,args,res,fsz,C) of
+                  SOME code => code
+                | NONE => CG_ls_default(ls,C))
+           | _ => CG_ls_default(ls,C)
        in
          foldr (fn (ls,C) => CG_ls(ls,C)) C lss
        end

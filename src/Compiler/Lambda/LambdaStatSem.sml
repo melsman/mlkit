@@ -739,8 +739,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                             in [boolType, charType, word8Type, unitType, int31Type, word31Type,
                                 int63Type, word63Type, real32Type, real16Type,
                                 intDefaultType(), wordDefaultType(), foreignptrType]
-                               @ (if tag_values() then []
-                                  else [int32Type, word32Type])
+                               @ (if TyName.is_unboxed TyName.tyName_INT32 then
+                                    [int32Type, word32Type] else [])
                             end
                         fun is_unboxed t =
                             List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types

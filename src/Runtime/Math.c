@@ -96,10 +96,10 @@ __div_int32ub(Context ctx, ssize_t x0, ssize_t y0, uintptr_t exn)               
       return 0;                                // never reached
     }
   if (x < 0 && y > 0)
-    return ((x + 1) / y) - 1;
+    return (uint32_t)(((x + 1) / y) - 1);
   else if (x > 0 && y < 0)
-    return ((x - 1) / y) - 1;
-  else return x / y;
+    return (uint32_t)(((x - 1) / y) - 1);
+  else return (uint32_t)(x / y);
 }
 
 ssize_t
@@ -228,13 +228,13 @@ __mod_int32ub(Context ctx, ssize_t x0, ssize_t y0, uintptr_t exn)
 	{
 	  return 0;
 	}
-      return x % y;
+      return (uint32_t)(x % y);
     }
   if (x % y == 0)
     {
       return 0;
     }
-  return (x % y) + y;
+  return (uint32_t)((x % y) + y);
 }
 
 ssize_t
@@ -319,7 +319,7 @@ __mod_word63(Context ctx, size_t x, size_t y, uintptr_t exn)
 ssize_t
 __quot_int32ub(ssize_t xML, ssize_t yML)
 {
-  return ((int)xML)/((int)yML);
+  return (uint32_t)(((int)xML)/((int)yML));
 }
 
 ssize_t
@@ -351,7 +351,7 @@ __quot_int63(ssize_t xML, ssize_t yML)
 ssize_t
 __rem_int32ub(ssize_t xML, ssize_t yML)
 {
-  return ((int)xML) % ((int)yML);
+  return (uint32_t)(((int)xML) % ((int)yML));
 }
 
 ssize_t
@@ -384,54 +384,41 @@ __rem_int63(ssize_t xML, ssize_t yML)
 
 #ifdef TAG_VALUES
 
-size_t*
-__div_int32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn)
+/* The legacy b suffix denotes tagged 32-bit immediates on native 64-bit targets. */
+ssize_t
+__div_int32b(Context ctx, ssize_t x, ssize_t y, uintptr_t exn)
 {
-  get_i32b(b) = __div_int32ub(ctx, get_i32b(x), get_i32b(y), exn);
-  set_i32b_tag(b);
-  return b;
+  return (ssize_t)(((size_t)(uint32_t)__div_int32ub(ctx, x >> 1, y >> 1, exn) << 1) | 1);
 }
 
-size_t*
-__div_word32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn)
+size_t
+__div_word32b(Context ctx, size_t x, size_t y, uintptr_t exn)
 {
-  get_i32b(b) = __div_word32ub(ctx, get_i32b(x), get_i32b(y), exn);
-  set_i32b_tag(b);
-  return b;
+  return (size_t)(((size_t)__div_word32ub(ctx, x >> 1, y >> 1, exn) << 1) | 1);
 }
 
-size_t*
-__mod_int32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn)
+ssize_t
+__mod_int32b(Context ctx, ssize_t x, ssize_t y, uintptr_t exn)
 {
-  get_i32b(b) = __mod_int32ub(ctx, get_i32b(x), get_i32b(y), exn);
-  set_i32b_tag(b);
-  return b;
+  return (ssize_t)(((size_t)(uint32_t)__mod_int32ub(ctx, x >> 1, y >> 1, exn) << 1) | 1);
 }
 
-size_t*
-__mod_word32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn)
+size_t
+__mod_word32b(Context ctx, size_t x, size_t y, uintptr_t exn)
 {
-  get_i32b(b) = __mod_word32ub(ctx, get_i32b(x), get_i32b(y), exn);
-  set_i32b_tag(b);
-  return b;
+  return (size_t)(((size_t)__mod_word32ub(ctx, x >> 1, y >> 1, exn) << 1) | 1);
 }
 
-// quot need not check for y being 0; this is checked for in Int32
-size_t*
-__quot_int32b(size_t* b, size_t* x, size_t* y)
+ssize_t
+__quot_int32b(ssize_t x, ssize_t y)
 {
-  get_i32b(b) = __quot_int32ub(get_i32b(x), get_i32b(y));
-  set_i32b_tag(b);
-  return b;
+  return (ssize_t)(((size_t)(uint32_t)__quot_int32ub(x >> 1, y >> 1) << 1) | 1);
 }
 
-// rem need not check for y being 0; this is checked for in Int32
-size_t*
-__rem_int32b(size_t* b, size_t* x, size_t* y)
+ssize_t
+__rem_int32b(ssize_t x, ssize_t y)
 {
-  get_i32b(b) = __rem_int32ub(get_i32b(x), get_i32b(y));
-  set_i32b_tag(b);
-  return b;
+  return (ssize_t)(((size_t)(uint32_t)__rem_int32ub(x >> 1, y >> 1) << 1) | 1);
 }
 
 size_t*
