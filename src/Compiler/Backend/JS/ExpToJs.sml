@@ -431,6 +431,11 @@ fun pToJs2 name e1 e2 =
     | "lesseqStringML" => parJs(e1 & $"<=" & e2)
     | "lessStringML" => parJs(e1 & $"<" & e2)
 
+    | "__shift_right_signed_int31" => parJs(e1 & $" >> " & e2)
+    | "__shift_right_signed_int32ub" => parJs(e1 & $" >> " & e2)
+    | "__andb_int31" => parJs(e1 & $" & " & e2)
+    | "__andb_int32ub" => parJs(e1 & $" & " & e2)
+
     | "__shift_right_unsigned_word32ub" => parJs(e1 & $" >>> " & e2)
     | "__shift_right_unsigned_word31" => parJs(e1 & $" >>> " & e2)
     | "__shift_right_signed_word32ub" => parJs(e1 & $" >> " & e2)

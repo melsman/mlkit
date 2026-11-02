@@ -1082,10 +1082,11 @@ struct
                    I.jc (NameLab "__raise_overflow") :: C'))
        end
 
-     fun num31_to_num32ub (x,d,fsz,C) =
+     fun num31_to_num32ub {signext} (x,d,fsz,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,treg0,fsz)
            val (d_reg,C') = resolve_aty_def(d,treg0,fsz, C)
-       in x_C(copy(x_reg, d_reg, I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) :: C'))
+           val shift = if signext then I.sarl else I.shrl
+       in x_C(copy(x_reg, d_reg, shift (I "1", R (I.doubleOfQuadReg d_reg)) :: C'))
        end
 
      fun int31_to_int64ub (x,d,fsz,C) =
@@ -1366,7 +1367,8 @@ struct
                  if signext then
                    I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) ::
                    I.movslq(R (I.doubleOfQuadReg d_reg), R d_reg) :: C
-                 else I.shrq (I "1", R d_reg) :: C
+                 (* Only the low 32 bits contain the tagged Word31 value. *)
+                 else I.shrl (I "1", R (I.doubleOfQuadReg d_reg)) :: C
          in
            x_C (
            copy(x_reg, d_reg,
@@ -1753,16 +1755,16 @@ struct
      fun add_int64b (b,x,y,d,fsz,C) =
          binop_word_boxed__ {ovf=true,quad=true} G.add (b,x,y,d,fsz,C)
 
-     fun num31_to_num_boxed {quad} (b,x,d,fsz,C) =   (* a boxed word is tagged as a scalar record *)
+     fun num31_to_num_boxed {quad,signext} (b,x,d,fsz,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
          let val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
-             val (inst_sar, maybeDoubleOfQuadReg) =
+             val (inst_shift, maybeDoubleOfQuadReg) =
                  if quad
                  then (I.sarq, fn r => r)
-                 else (I.sarl, I.doubleOfQuadReg)
+                 else (if signext then I.sarl else I.shrl, I.doubleOfQuadReg)
          in
            load_aty(x,treg0,fsz,
-           inst_sar (I "1", R (maybeDoubleOfQuadReg treg0)) ::
+           inst_shift (I "1", R (maybeDoubleOfQuadReg treg0)) ::
            load_aty(b,d_reg,fsz,
            store(treg0,d_reg,WORDS 1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
@@ -1909,7 +1911,7 @@ struct
                  if signext then
                    I.sarl (I "1", R (I.doubleOfQuadReg treg0)) ::
                    I.movslq(R (I.doubleOfQuadReg treg0), R treg0) :: C
-                 else I.shrq (I "1", R treg0) :: C
+                 else I.shrl (I "1", R (I.doubleOfQuadReg treg0)) :: C
          in
            x_C (
            copy(x_reg, treg0,

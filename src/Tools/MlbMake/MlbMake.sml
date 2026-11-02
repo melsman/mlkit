@@ -393,7 +393,7 @@ struct
                   | SOME (file,(mlb,mlbhash:string),anns) =>
                     let
                       (*   val _ =  print ("About to compile: " ^ (fileToString file) ^ "\n")  *)
-                      val flags = (String.concatWith "" anns) ^ " " ^ flags
+                      val flags = (String.concatWith " " anns) ^ " " ^ flags
                       val b = if setRegionEffectVarCounter
                               then P.maybeSetRegionEffectVarCounter(#regionVar acc ())
                               else false

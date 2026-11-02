@@ -6,6 +6,9 @@ structure K =
       val () = Flags.turn_off "unbox_real_funargs"
       val () = Flags.turn_off "eliminate_polymorphic_equality"
       val () = Flags.turn_off "uncurrying"
+      (* Barry emits portable Standard ML, which has no integer shift or
+       * mask operations. Keep div/mod for its source-level output. *)
+      val () = Flags.turn_off "divmod_pow2"
       val () = Flags.turn_off "equalelim_opt_unboxed"
       val () = List.app Flags.block_entry
                         ["garbage_collection",
@@ -13,7 +16,7 @@ structure K =
                          "values_64bit", "unbox_real_funargs", "unbox_reals", "tag_values", "tag_pairs",
                          "repository", "reml",
                          "preserve_tail_calls", "dangling_pointers", "report_boxities", "high_pointer_tagging",
-                         "equalelim_opt_unboxed"
+                         "equalelim_opt_unboxed", "divmod_pow2"
                       ]
 
   in KitMain(KC)

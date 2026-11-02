@@ -3,15 +3,6 @@
 structure OptLambda : OPT_LAMBDA =
   struct
 
-    (* 63-bit words and integers, as used by the tagged backends, emulated
-       in the 64-bit types of the host compiler.  The functors take the
-       width from the argument, so it must be overridden here: passing
-       Word64 as is would make W63 a plain Word64 (its high mask, ~1 << 64,
-       is 0), and signed shifts and range checks would be folded at the
-       wrong width. *)
-    structure W63 = WordN(struct open Word64 val wordSize = 63 end)
-    structure I63 = IntN(struct open Int64 val precision = SOME 63 end)
-
     structure LvarDiGraphScc =
       DiGraphScc(struct
                      type nodeId = Lvars.lvar
@@ -242,6 +233,14 @@ structure OptLambda : OPT_LAMBDA =
          item=ref true,neg=true,
          desc=
          "Enable constant folding optimisations."}
+
+    val divmod_pow2_p = Flags.add_bool_entry
+        {long="divmod_pow2",short=NONE,
+         menu=["Optimiser Control", "integer and word division and modulo by powers of two"],
+         item=ref true,neg=true,
+         desc=
+         "Replace fixed-width integer and word div and mod by constant powers of two\n\
+         \with shifts and masks. Requires constant folding."}
 
    val uncurrying_p = Flags.add_bool_entry
        {long="uncurrying",short=SOME "uncurry",
@@ -1521,16 +1520,25 @@ structure OptLambda : OPT_LAMBDA =
       fun constfold_f64_ext () = false
 
       fun conv t2 i =
-          if eq_Type(t2,word8Type) then SOME(WORD(Word8.toLargeInt(Word8.fromLargeInt i),t2))
-          else if eq_Type(t2,word31Type) then if i < 0 then NONE else SOME(WORD(Word31.toLargeInt(Word31.fromLargeInt i),t2))
-          else if eq_Type(t2,word32Type) then if i < 0 then NONE else SOME(WORD(Word32.toLargeInt(Word32.fromLargeInt i),t2))
-          else if eq_Type(t2,word63Type) then if i < 0 then NONE else SOME(WORD(W63.toLargeInt(W63.fromLargeInt i),t2))
-          else if eq_Type(t2,word64Type) then if i < 0 then NONE else SOME(WORD(Word64.toLargeInt(Word64.fromLargeInt i),t2))
-          else if eq_Type(t2,int31Type) then (SOME(INTEGER(Int31.toLarge(Int31.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int32Type) then (SOME(INTEGER(Int32.toLarge(Int32.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int63Type) then (SOME(INTEGER(I63.toLarge(I63.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int64Type) then (SOME(INTEGER(Int64.toLarge(Int64.fromLarge i),t2)) handle _ => NONE)
+          (* Modulo gives two's-complement residues for negative inputs,
+           * independently of the host's signed bit-operation semantics. *)
+          let fun word width =
+                  SOME(WORD(IntInf.mod(i,IntInf.<<(1,Word.fromInt width)),t2))
+              fun integer width =
+                  let val limit = IntInf.<<(1,Word.fromInt (width-1))
+                  in if ~limit <= i andalso i < limit then SOME(INTEGER(i,t2)) else NONE
+                  end
+          in if eq_Type(t2,word8Type) then word 8
+          else if eq_Type(t2,word31Type) then word 31
+          else if eq_Type(t2,word32Type) then word 32
+          else if eq_Type(t2,word63Type) then word 63
+          else if eq_Type(t2,word64Type) then word 64
+          else if eq_Type(t2,int31Type) then integer 31
+          else if eq_Type(t2,int32Type) then integer 32
+          else if eq_Type(t2,int63Type) then integer 63
+          else if eq_Type(t2,int64Type) then integer 64
           else NONE
+          end
 
       fun isZero (i:IntInf.int) : bool =
           IntInf.compare(IntInf.fromInt 0,i) = EQUAL
@@ -1586,12 +1594,143 @@ structure OptLambda : OPT_LAMBDA =
       fun castConstFold t (tyvars,instances,Type) v : (string * LambdaExp) option =
           let val S = mk_subst (fn () => "OptLambda.constantFolding.id.int.mk_subst") (tyvars, instances)
               fun Some x = SOME("cast", x)
+              (* Same-width word-to-int id casts reinterpret the sign bit.
+               * This exposes IntN's negative bounds and sign extension. *)
+              fun signedValue t2 =
+                  let val width =
+                          if eq_Type(t,word31Type) andalso eq_Type(t2,int31Type) then SOME 31
+                          else if eq_Type(t,word32Type) andalso eq_Type(t2,int32Type) then SOME 32
+                          else if eq_Type(t,word63Type) andalso eq_Type(t2,int63Type) then SOME 63
+                          else if eq_Type(t,word64Type) andalso eq_Type(t2,int64Type) then SOME 64
+                          else NONE
+                  in case width of
+                         NONE => v
+                       | SOME n =>
+                         let val modulus = IntInf.<<(1,Word.fromInt n)
+                         in if v >= modulus div 2 andalso v < modulus then v-modulus else v
+                         end
+                  end
           in case LambdaBasics.on_Type S Type of
                  ARROWtype([t1],_,[t2],_) =>
-                 (case conv t2 v of
+                 (case conv t2 (signedValue t2) of
                       SOME e => Some e
                     | NONE => NONE)
                | _ => die "constantFolding.id.expecting arrow type"
+          end
+
+      (* Work on the resolved primitive names, including boxed and unboxed
+       * widths. Word constants are unsigned even when their top bit is set. *)
+      fun wordWidth suffix =
+          case suffix of
+              "word31" => SOME 31
+            | "word32b" => SOME 32
+            | "word32ub" => SOME 32
+            | "word63" => SOME 63
+            | "word64b" => SOME 64
+            | "word64ub" => SOME 64
+            | _ => NONE
+
+      (* These folds expose IntN's constant masks and sign-test shifts.
+       * Only fold in-range primitive shifts: the public Word operations
+       * handle oversized counts before reaching these primitives. *)
+      fun wordBitFolding name (v:IntInf.int,t) (amount:IntInf.int,_) =
+          let fun operation prefix f =
+                  if not(String.isPrefix prefix name) then NONE
+                  else case wordWidth (String.extract(name,String.size prefix,NONE)) of
+                           NONE => NONE
+                         | SOME width =>
+                           let val modulus = IntInf.<<(1,Word.fromInt width)
+                           in Option.map (fn result => WORD(IntInf.mod(result,modulus),t))
+                                  (f (width,modulus))
+                           end
+              fun shift prefix f =
+                  operation prefix (fn (width,modulus) =>
+                    if amount < 0 orelse amount >= Int.toLarge width then NONE
+                    else SOME(f (IntInf.mod(v,modulus),
+                                 IntInf.<<(1,Word.fromLargeInt amount),modulus)))
+          in case operation "__xorb_" (fn _ => SOME(IntInf.xorb(v,amount))) of
+                 SOME result => SOME result
+               | NONE =>
+                 (case shift "__shift_left_" (fn (w,power,_) => w*power) of
+                      SOME result => SOME result
+                    | NONE =>
+                      (case shift "__shift_right_unsigned_" (fn (w,power,_) => w div power) of
+                           SOME result => SOME result
+                         | NONE => shift "__shift_right_signed_"
+                             (fn (w,power,modulus) =>
+                               (if w >= modulus div 2 then w-modulus else w) div power)))
+          end
+
+      (* SML signed div rounds down, so arithmetic shift is exact even for
+       * negative dividends and minInt; unsigned div needs logical shift.
+       * A positive power-of-two divisor makes mod a low-bit mask. Both
+       * results fit, and neither operation can raise. The integer-typed
+       * shift primitives keep JavaScript results signed while sharing the
+       * native word instructions and their tagging/boxing machinery. *)
+      fun divModPow2 name exps =
+          let fun representation suffix =
+                  case suffix of
+                      "int31" => SOME (int31Type,31,true)
+                    | "int32b" => SOME (int32Type,32,true)
+                    | "int32ub" => SOME (int32Type,32,true)
+                    | "int63" => SOME (int63Type,63,true)
+                    | "int64b" => SOME (int64Type,64,true)
+                    | "int64ub" => SOME (int64Type,64,true)
+                    | "word31" => SOME (word31Type,31,false)
+                    | "word32b" => SOME (word32Type,32,false)
+                    | "word32ub" => SOME (word32Type,32,false)
+                    | "word63" => SOME (word63Type,63,false)
+                    | "word64b" => SOME (word64Type,64,false)
+                    | "word64ub" => SOME (word64Type,64,false)
+                    | _ => NONE
+              fun exponent (d:IntInf.int) =
+                  if d = 1 then SOME 0
+                  else if d <= 0 orelse d mod 2 <> 0 then NONE
+                  else Option.map (fn n => n+1) (exponent (d div 2))
+              fun ccall name argtypes restype args =
+                  PRIM(CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
+                                 Type=ARROWtype(argtypes,NONE,[restype],NONE)},args)
+              fun constant true (INTEGER(v,t)) = SOME(v,t)
+                | constant false (WORD(v,t)) = SOME(v,t)
+                | constant _ _ = NONE
+              val isDiv = String.isPrefix "__div_" name
+              val isMod = String.isPrefix "__mod_" name
+          in if not(divmod_pow2_p()) orelse not(isDiv orelse isMod) then NONE
+             else
+             let val suffix = String.extract(name,6,NONE)
+             in case (representation suffix,exps) of
+                    (SOME (t,precision,signed),[x,divisor,exn]) =>
+                    (case constant signed divisor of
+                         NONE => NONE
+                       | SOME(d,dt) =>
+                         (* Word8 arithmetic is widened to a machine word,
+                          * then masked by CompileDec's norm operation. *)
+                         if not(eq_Type(t,dt) orelse
+                                (not signed andalso eq_Type(dt,word8Type))) orelse
+                            not(safeLambdaExp exn) orelse
+                            d >= IntInf.<<(1,Word.fromInt (if signed then precision-1 else precision))
+                         then NONE
+                         else
+                           (case exponent d of
+                                NONE => NONE
+                              | SOME n =>
+                                let val literal = if signed then INTEGER else WORD
+                                    val result =
+                                        case constant signed x of
+                                            SOME(v,_) => literal(if isDiv then v div d else v mod d,t)
+                                          | NONE =>
+                                            if isDiv then
+                                              if n = 0 then x
+                                              else ccall ((if signed then "__shift_right_signed_"
+                                                           else "__shift_right_unsigned_") ^ suffix)
+                                                     [t,wordDefaultType()] t
+                                                     [x,WORD(Int.toLarge n,wordDefaultType())]
+                                            else ccall ("__andb_" ^ suffix) [t,t] t
+                                                   [x,literal(d-1,t)]
+                                in decr_uses exn; SOME result
+                                end))
+                  | _ => NONE
+             end
           end
 
       fun constantFolding (env:env) lamb =
@@ -1601,7 +1740,10 @@ structure OptLambda : OPT_LAMBDA =
                     case lamb of
 					  PRIM(CCALLprim{name,instances,regvars,tyvars,Type},exps) =>
                         let fun Some e = SOME(name,e)
-                        in case exps of
+                        in case divModPow2 name exps of
+                               SOME e => Some e
+                             | NONE =>
+                             case exps of
                                [STRING (s1,NONE),STRING (s2,NONE)] =>
                                let fun opp opr = Some(if opr(s1,s2) then lexp_true else lexp_false)
                                in case name of
@@ -1669,7 +1811,10 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__div_int64ub" => opp_ov (op div)
                                   | _ => NONE
                              end
-                           | [WORD(v1,t),WORD(v2,_)] =>
+                           | [WORD(v1,t),WORD(v2,t2)] =>
+                             (case wordBitFolding name (v1,t) (v2,t2) of
+                                  SOME e => Some e
+                                | NONE =>
                              let fun opp opr = Some(if opr(v1,v2) then lexp_true else lexp_false)
                              in case name of
                                     "__less_word31" => opp (op <)
@@ -1717,23 +1862,8 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__orb_word63" => Some(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64b" => Some(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64ub" => Some(WORD(IntInf.orb(v1,v2),t))
-                                  | "__shift_right_signed_word63" => Some(WORD(W63.toLargeInt(W63.~>> (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word63" => Some(WORD(W63.toLargeInt(W63.>> (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word63" => Some(WORD(W63.toLargeInt(W63.<< (W63.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_signed_word64" => Some(WORD(Word64.toLargeInt(Word64.~>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word64" => Some(WORD(Word64.toLargeInt(Word64.>> (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word64" => Some(WORD(Word64.toLargeInt(Word64.<< (Word64.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_signed_word31" => Some(WORD(Word31.toLargeInt(Word31.~>> (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word31" => Some(WORD(Word31.toLargeInt(Word31.>> (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word31" => Some(WORD(Word31.toLargeInt(Word31.<< (Word31.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_signed_word32" => Some(WORD(Word32.toLargeInt(Word32.~>> (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word32" => Some(WORD(Word32.toLargeInt(Word32.>> (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word32" => Some(WORD(Word32.toLargeInt(Word32.<< (Word32.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_signed_word8" => Some(WORD(Word8.toLargeInt(Word8.~>> (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_right_word8" => Some(WORD(Word8.toLargeInt(Word8.>> (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
-                                  | "__shift_left_word8" => Some(WORD(Word8.toLargeInt(Word8.<< (Word8.fromLargeInt v1,Word.fromLargeInt v2)),t))
                                   | _ => NONE
-                             end
+                             end)
                            | [F64 s1,F64 s2] =>
                              if not(constfold_f64()) then NONE
                              else
@@ -2595,7 +2725,9 @@ structure OptLambda : OPT_LAMBDA =
                      List.foldl (fn (lv,acc) =>
                                     case LvarMap.lookup env lv of
                                         SOME res =>
-                                        let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE,Excon.ex_OVERFLOW]) lv res
+                                        (* Div is predefined, just like Overflow;
+                                         * permitting it exposes Basis div/mod wrappers. *)
+                                        let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE,Excon.ex_OVERFLOW,Excon.ex_DIV]) lv res
                                         in if xinl
                                            then LvarMap.add(lv,res,acc)
                                            else LvarMap.add(lv,(nil,CUNKNOWN),acc)

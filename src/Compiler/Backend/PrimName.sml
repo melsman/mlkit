@@ -254,6 +254,20 @@ local
 	 ("__abs_int63", Abs_int63), ("__abs_int64ub", Abs_int64ub), ("__abs_int64b", Abs_int64b),
          ("__abs_real", Abs_real), ("__abs_f64", Abs_f64),
 
+         (* Integer strength reduction shares the native word representation. *)
+         ("__andb_int31", Andb_word31),
+         ("__shift_right_signed_int31", Shift_right_signed_word31),
+         ("__andb_int32ub", Andb_word32ub),
+         ("__shift_right_signed_int32ub", Shift_right_signed_word32ub),
+         ("__andb_int32b", Andb_word32b),
+         ("__shift_right_signed_int32b", Shift_right_signed_word32b),
+         ("__andb_int63", Andb_word63),
+         ("__shift_right_signed_int63", Shift_right_signed_word63),
+         ("__andb_int64ub", Andb_word64ub),
+         ("__shift_right_signed_int64ub", Shift_right_signed_word64ub),
+         ("__andb_int64b", Andb_word64b),
+         ("__shift_right_signed_int64b", Shift_right_signed_word64b),
+
 	 ("__andb_word31", Andb_word31), ("__andb_word32ub", Andb_word32ub), ("__andb_word32b", Andb_word32b),
 	 ("__andb_word63", Andb_word63), ("__andb_word64ub", Andb_word64ub), ("__andb_word64b", Andb_word64b),
 
