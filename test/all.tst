@@ -118,6 +118,7 @@ int31-switch.sml
 int31_2.sml
 int32.sml
 int32_2.sml
+intword32-representation.sml
 int63.sml
 int63_2.sml
 int64.sml
