@@ -336,11 +336,24 @@ local
 	struct
 	    structure Word8Array = Word8Array
 	    structure Word8Vector = Word8Vector
+            (* Internal packing access; callers must check the complete byte range. *)
+            structure PackRealBytes =
+            struct
+              val subVec = Word8Vector.sub_vector_unsafe
+              val subArr = Word8Array.sub_unsafe
+              val update = Word8Array.update_unsafe
+            end
 	end
     : sig
 	   structure Word8Vector : MONO_VECTOR where type elem = word8
 	   structure Word8Array : MONO_ARRAY where type elem = word8
 	   sharing type Word8Vector.vector = Word8Array.vector
+           structure PackRealBytes :
+           sig
+             val subVec : Word8Vector.vector * int -> word8
+             val subArr : Word8Array.array * int -> word8
+             val update : Word8Array.array * int * word8 -> unit
+           end
        end
 in
     (** SigDoc *)
@@ -348,4 +361,6 @@ in
 
     (** SigDoc *)
     structure Word8Array : MONO_ARRAY = Tmp.Word8Array
+
+    structure PackRealBytes = Tmp.PackRealBytes
 end

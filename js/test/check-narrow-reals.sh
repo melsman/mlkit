@@ -1,5 +1,5 @@
 #!/bin/sh
-# One small shared fixture, plus independent type errors. No exhaustive sweeps.
+# Shared arithmetic and bit-exact packing fixtures, plus independent type errors.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 SMLTOJS=${SMLTOJS:-$ROOT/bin/smltojs}
@@ -11,6 +11,10 @@ cp "$ROOT/test/narrow-real-portable.sml" "$work/main.sml"
 "$SMLTOJS" -aopt -o "$work/main" "$work/main.sml" > "$work/build.log" 2>&1
 node "$ROOT/js/test/run-node.js" "$work/main.html" > "$work/actual"
 cmp "$ROOT/test/narrow-real-portable.sml.out.ok" "$work/actual"
+cp "$ROOT/test/packreal-narrow.sml" "$work/packreal-narrow.sml"
+"$SMLTOJS" -aopt -o "$work/packreal-narrow" "$work/packreal-narrow.sml" > "$work/packreal-narrow.log" 2>&1
+node "$ROOT/js/test/run-node.js" "$work/packreal-narrow.html" > "$work/packing.out"
+cmp "$ROOT/test/packreal-narrow.sml.out.ok" "$work/packing.out"
 if SMLTOJS_NO_BIGINT=1 node "$ROOT/js/test/run-node.js" "$work/main.html" > "$work/capability.log" 2>&1; then
   echo 'Narrow arithmetic unexpectedly succeeded without BigInt' >&2; exit 1
 fi

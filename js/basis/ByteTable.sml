@@ -322,6 +322,13 @@ structure Word8Array =
 	struct
 	    structure Word8Array = Word8Array
 	    structure Word8Vector = Word8Vector
+            (* Internal packing access; callers must check the complete byte range. *)
+            structure PackRealBytes =
+            struct
+              val subVec = Word8Vector.sub_vector_unsafe
+              val subArr = Word8Array.sub_array_unsafe
+              val update = Word8Array.update_array_unsafe
+            end
 	end :
 sig
 (** Unsigned 8-bit-word vector operations. *)
@@ -330,6 +337,12 @@ structure Word8Vector : MONO_VECTOR where type elem = word8
 (** Unsigned 8-bit-word array operations. *)
 structure Word8Array : MONO_ARRAY where type elem = word8
 sharing type Word8Vector.vector = Word8Array.vector
+           structure PackRealBytes :
+           sig
+             val subVec : Word8Vector.vector * int -> word8
+             val subArr : Word8Array.array * int -> word8
+             val update : Word8Array.array * int * word8 -> unit
+           end
 end
 in
     open Tmp
