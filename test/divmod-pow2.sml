@@ -80,6 +80,11 @@ val () = check (Word32.>>(0wx80000000,0w1) = 0wx40000000)
 val () = check (Word32.~>>(0wx80000000,0w1) = 0wxc0000000)
 val () = check (Word32.<<(0wx80000000,0w32) = 0w0)
 val () = check (Word32.xorb(0wxffffffff,0wxffff0000) = 0wx0000ffff)
+fun identity31__noinline (x:Word31.word) = x div 0w1
+val largest31 = identity31__noinline (Word31.fromInt ~1)
+val () = check (Word31.toLarge largest31 = (0wx7fffffff:Word64.word))
+val () = check (Word31.toLargeInt largest31 = 2147483647)
+val () = check (Word31.toLargeX largest31 = (0wxffffffffffffffff:Word64.word))
 fun zeroDiv__noinline (x:int) = x div 0
 fun zeroMod__noinline (x:int) = x mod 0
 fun negativeDiv__noinline (x:int) = x div ~1

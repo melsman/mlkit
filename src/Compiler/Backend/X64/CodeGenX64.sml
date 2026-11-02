@@ -1124,13 +1124,13 @@ struct
                             | Abs_int64ub => abs_int_kill_tmp0 {tag=false, quad=true}  arg
                             | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  arg
 
-                            | Int31_to_int32ub     => num31_to_num32ub arg
+                            | Int31_to_int32ub     => num31_to_num32ub {signext=true} arg
                             | Int32b_to_int31      => int32_to_int31 {boxedarg=true} arg
                             | Int32ub_to_int31     => int32_to_int31 {boxedarg=false} arg
-                            | Word31_to_word32ub   => num31_to_num32ub arg
+                            | Word31_to_word32ub   => num31_to_num32ub {signext=false} arg
                             | Word32b_to_word31    => word32_to_word31 {boxedarg=true} arg
                             | Word32ub_to_word31   => word32_to_word31 {boxedarg=false} arg
-                            | Word31_to_word32ub_X => num31_to_num32ub arg
+                            | Word31_to_word32ub_X => num31_to_num32ub {signext=true} arg
                             | Word32ub_to_int32ub  => word32ub_to_int32ub arg
                             | Word32b_to_int31     => word32_to_int31 {boxedarg=true,ovf=true} arg
                             | Int32b_to_word31     => word32_to_word31 {boxedarg=true} arg
@@ -1369,9 +1369,9 @@ struct
                             | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  arg
                             | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                            | Int31_to_int32b => num31_to_num_boxed {quad=false} arg
-                            | Word31_to_word32b => num31_to_num_boxed {quad=false} arg
-                            | Word31_to_word32b_X => num31_to_num_boxed {quad=false} arg
+                            | Int31_to_int32b => num31_to_num_boxed {quad=false,signext=true} arg
+                            | Word31_to_word32b => num31_to_num_boxed {quad=false,signext=false} arg
+                            | Word31_to_word32b_X => num31_to_num_boxed {quad=false,signext=true} arg
                             | Word32b_to_int32b => num32b_to_num32b {ovf=true} arg
                             | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} arg
                             | Int32b_to_word32b => num32b_to_num32b {ovf=false} arg
@@ -1387,7 +1387,7 @@ struct
                             | Int32b_to_int64b => int32b_to_int64b arg
                             | Int64b_to_word64b => num64b_to_num64b {ovf=false} arg
 
-                            | Int31_to_int64b => num31_to_num_boxed {quad=true} arg
+                            | Int31_to_int64b => num31_to_num_boxed {quad=true,signext=true} arg
 
                             | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} arg
                             | Word63_to_word32b => word63_to_word32b arg
