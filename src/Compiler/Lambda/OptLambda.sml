@@ -3,15 +3,6 @@
 structure OptLambda : OPT_LAMBDA =
   struct
 
-    (* 63-bit words and integers, as used by the tagged backends, emulated
-       in the 64-bit types of the host compiler.  The functors take the
-       width from the argument, so it must be overridden here: passing
-       Word64 as is would make W63 a plain Word64 (its high mask, ~1 << 64,
-       is 0), and signed shifts and range checks would be folded at the
-       wrong width. *)
-    structure W63 = WordN(struct open Word64 val wordSize = 63 end)
-    structure I63 = IntN(struct open Int64 val precision = SOME 63 end)
-
     structure LvarDiGraphScc =
       DiGraphScc(struct
                      type nodeId = Lvars.lvar
@@ -1533,15 +1524,19 @@ structure OptLambda : OPT_LAMBDA =
            * independently of the host's signed bit-operation semantics. *)
           let fun word width =
                   SOME(WORD(IntInf.mod(i,IntInf.<<(1,Word.fromInt width)),t2))
+              fun integer width =
+                  let val limit = IntInf.<<(1,Word.fromInt (width-1))
+                  in if ~limit <= i andalso i < limit then SOME(INTEGER(i,t2)) else NONE
+                  end
           in if eq_Type(t2,word8Type) then word 8
           else if eq_Type(t2,word31Type) then word 31
           else if eq_Type(t2,word32Type) then word 32
           else if eq_Type(t2,word63Type) then word 63
           else if eq_Type(t2,word64Type) then word 64
-          else if eq_Type(t2,int31Type) then (SOME(INTEGER(Int31.toLarge(Int31.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int32Type) then (SOME(INTEGER(Int32.toLarge(Int32.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int63Type) then (SOME(INTEGER(I63.toLarge(I63.fromLarge i),t2)) handle _ => NONE)
-          else if eq_Type(t2,int64Type) then (SOME(INTEGER(Int64.toLarge(Int64.fromLarge i),t2)) handle _ => NONE)
+          else if eq_Type(t2,int31Type) then integer 31
+          else if eq_Type(t2,int32Type) then integer 32
+          else if eq_Type(t2,int63Type) then integer 63
+          else if eq_Type(t2,int64Type) then integer 64
           else NONE
           end
 
