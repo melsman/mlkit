@@ -124,7 +124,7 @@ int64.sml
 intinf.sml
 intinf2.sml
 int-n.sml
-int-divmod-pow2.sml
+divmod-pow2.sml
 list.sml
 listpair.sml
 string.sml
