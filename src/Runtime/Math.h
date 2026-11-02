@@ -108,12 +108,12 @@ void printReal(size_t f);
 
 #ifdef TAG_VALUES
 
-size_t* __div_int32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);
-size_t* __div_word32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);
-size_t* __mod_int32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);
-size_t* __mod_word32b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);
-size_t* __quot_int32b(size_t* b, size_t* x, size_t* y);
-size_t* __rem_int32b(size_t* b, size_t* x, size_t* y);
+ssize_t __div_int32b(Context ctx, ssize_t x, ssize_t y, uintptr_t exn);
+size_t __div_word32b(Context ctx, size_t x, size_t y, uintptr_t exn);
+ssize_t __mod_int32b(Context ctx, ssize_t x, ssize_t y, uintptr_t exn);
+size_t __mod_word32b(Context ctx, size_t x, size_t y, uintptr_t exn);
+ssize_t __quot_int32b(ssize_t x, ssize_t y);
+ssize_t __rem_int32b(ssize_t x, ssize_t y);
 
 size_t* __div_int64b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);
 size_t* __div_word64b(size_t* b, Context ctx, size_t* x, size_t* y, uintptr_t exn);

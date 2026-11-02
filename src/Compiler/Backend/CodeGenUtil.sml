@@ -229,11 +229,19 @@ struct
                                    precision=if BI.tag_values() then 63 else 64}
 
   fun maybeTagIntOrWord {value: IntInf.int, precision:int} : IntInf.int =
-      if precision = 31 orelse precision = 63 orelse (precision = 8 andalso BI.tag_values())
+      if precision = 32 then
+        (if BI.tag_values() then 2 * IntInf.mod(value,4294967296) + 1
+         else IntInf.mod(value,4294967296))
+      else if precision = 31 orelse precision = 63 orelse (precision = 8 andalso BI.tag_values())
       then 2 * value + 1                (* use tagged-unboxed representation *)
       else if precision = 0 orelse precision = 32 orelse precision = 64 orelse (precision = 8 andalso not(BI.tag_values()))
       then value                        (* use untagged representation - maybe boxed *)
       else die "maybeTagIntOrWord"
+
+  (* X64 memory stores and pushes only accept sign-extended 32-bit immediates.
+   * Test the encoded value, since a negative Int32 payload is now positive
+   * after zero extension, and tagging may require 33 bits. *)
+  fun fitsSigned32 (n: IntInf.int) = ~2147483648 <= n andalso n <= 2147483647
 
   (* formatting of immediate integer and word values *)
   fun fmtInt a : string = I.intToStr(maybeTagIntOrWord a)
@@ -242,7 +250,7 @@ struct
   (* returns true if boxed representation is used for
    * integers of the given precision *)
   fun boxedNum (precision:int) : bool =
-      (precision = 32 orelse precision = 64) andalso BI.tag_values()
+      precision = 64 andalso BI.tag_values()
 
   (* Find a register for aty and generate code to store into the aty *)
   fun resolve_aty_def (SS.STACK_ATY offset,t:reg,fsz,C) =
@@ -343,10 +351,16 @@ struct
           store (s, tmp1, WORDS 0, C)
         | SS.INTEGER_ATY i =>
           load_ea(LA lab, tmp1) $
-          move_num_generic (#precision i, fmtInt i, D("0",tmp1), C)
+          let val tmp0 = if tmp1 = RI.treg0 then RI.treg1 else RI.treg0
+          in move_num_generic (#precision i, fmtInt i, R tmp0,
+                               store(tmp0,tmp1,WORDS 0,C))
+          end
         | SS.WORD_ATY w =>
           load_ea(LA lab,tmp1) $
-          move_num_generic (#precision w, fmtWord w, D("0",tmp1), C)
+          let val tmp0 = if tmp1 = RI.treg0 then RI.treg1 else RI.treg0
+          in move_num_generic (#precision w, fmtWord w, R tmp0,
+                               store(tmp0,tmp1,WORDS 0,C))
+          end
         | SS.UNIT_ATY =>
           load_ea(LA lab,tmp1) $
           move_unit(D("0",tmp1), C)
@@ -373,7 +387,7 @@ struct
               case #precision i of
                   0 => #value i <= 0x7FFF andalso #value i > ~0x8000
                 | 31 => #value i <= 0x3FFF andalso #value i > ~0x4000
-                | 32 => #value i <= 0x7FFF andalso #value i > ~0x8000
+                | 32 => #value i >= 0 andalso #value i <= 0x7FFF
                 | 63 => #value i <= 0x3FFF andalso #value i > ~0x4000
                 | 64 => #value i <= 0x7FFF andalso #value i > ~0x8000
                 | _ => die "store_aty_indexed.direct_int - weird precision"
@@ -438,11 +452,11 @@ struct
                 | _ => (R r, Id))
            | SS.INTEGER_ATY i =>
              if boxedNum (#precision i) then die "protect_arg_aty.boxed int"
-             else if rep16bit (#value i) then (I (fmtInt i), Id)
+             else if rep16bit (maybeTagIntOrWord i) then (I (fmtInt i), Id)
              else default()
            | SS.WORD_ATY w =>
              if boxedNum (#precision w) then die "protect_arg_aty.boxed int"
-             else if rep16bit (#value w) then (I (fmtWord w), Id)
+             else if rep16bit (maybeTagIntOrWord w) then (I (fmtWord w), Id)
              else default()
            | _ => default()
       end
@@ -453,11 +467,11 @@ struct
              SS.PHREG_ATY r => (R r, Id)
            | SS.INTEGER_ATY i =>
              if boxedNum (#precision i) then die "resolve_arg_aty_ea.boxed int"
-             else if rep16bit (#value i) then (I (fmtInt i), Id)
+             else if rep16bit (maybeTagIntOrWord i) then (I (fmtInt i), Id)
              else default()
            | SS.WORD_ATY w =>
              if boxedNum (#precision w) then die "resolve_arg_aty_ea.boxed int"
-             else if rep16bit (#value w) then (I (fmtWord w), Id)
+             else if rep16bit (maybeTagIntOrWord w) then (I (fmtWord w), Id)
              else default()
            | _ => default()
       end
@@ -554,11 +568,10 @@ struct
              SS.PHREG_ATY aty_reg => G.push_ea (R aty_reg) C
            | SS.INTEGER_ATY i =>
              if boxedNum (#precision i)
-                orelse #value i > 0x3FFFFFFF
-                orelse #value i <= ~0x40000000 then default()
+                orelse not(fitsSigned32(maybeTagIntOrWord i)) then default()
              else G.push_ea (I(fmtInt i)) C
            | SS.WORD_ATY w =>
-             if boxedNum (#precision w) orelse #value w > 0x7FFFFFFF then default()
+             if boxedNum (#precision w) orelse not(fitsSigned32(maybeTagIntOrWord w)) then default()
              else G.push_ea (I(fmtWord w)) C
            | _ => default()
       end

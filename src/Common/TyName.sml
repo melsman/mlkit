@@ -151,8 +151,9 @@ structure TyName :> TYNAME =
           | (false, false) => tyName_WORD32
 
     local
+      (* A 64-bit slot holds all 32 payload bits plus the immediate tag. *)
       fun boxity_num32 () =
-          if tag_values() then BOXED else UNB_LOW
+          if tag_values() andalso not(values_64bit()) then BOXED else UNB_LOW
       fun boxity_num64 () =
           if tag_values() then BOXED else UNB_ALL
     in

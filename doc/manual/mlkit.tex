@@ -1773,9 +1773,14 @@ the structures
 \index{Int64 structure@\lstinline{Int64} structure}
 %
 \lstinline{Int64} for operations on 31-bit, 32-bit integers, 63-bit, and 64-bit
-integers. When garbage collection is enabled, values of type \lstinline{Int64.int} and
-\lstinline{Int32.int} (for historical reasons) are represented boxed, whereas values
-of type \lstinline{Int31.int} and \lstinline{Int63.int} are represented unboxed. When
+integers. On native 64-bit targets, \lstinline{Int32.int} and
+\lstinline{Word32.word} have low-unboxed representations. When tagging is
+enabled (for example, for garbage collection), their encoding is
+$[x] = (x \ll 1) + 1$, with both 32-bit payloads zero-extended before tagging. Signed operations
+decode the integer payload with sign extension. With tagging disabled,
+they use the untagged payload. Values of type \lstinline{Int64.int} are boxed
+when tagging is enabled; \lstinline{Int31.int} and \lstinline{Int63.int}
+remain unboxed. When
 garbage collection is enabled, the structure \lstinline{Int} is identical to the
 structure \lstinline{Int63}. When garbage collection is disabled, the structure \lstinline{Int} is identical to the structure \lstinline{Int64}.
 

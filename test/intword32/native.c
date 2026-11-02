@@ -1,0 +1,35 @@
+#include <stdint.h>
+#include <stdlib.h>
+
+static uintptr_t encode(uintptr_t x)
+{
+#ifdef TAG_VALUES
+  return (x << 1) | 1;
+#else
+  return x;
+#endif
+}
+
+/* Raw ML calls deliberately bypass auto-conversion to check the encoding. */
+uintptr_t mlkit_check_word32(uintptr_t x)
+{
+  if (x != encode(UINT32_MAX)) abort();
+  return encode(1);
+}
+uintptr_t mlkit_check_int32(uintptr_t x)
+{
+  if (x != encode((uintptr_t)(uint32_t)INT32_MIN)) abort();
+  return encode(1);
+}
+/* Auto-conversion uses C long/unsigned long, not 32-bit C parameter types.
+ * Inspect the entire argument to catch missing sign extension. */
+unsigned long mlkit_word32_identity(unsigned long x)
+{
+  if (x > UINT32_MAX) abort();
+  return x;
+}
+long mlkit_int32_identity(long x)
+{
+  if (x < INT32_MIN || x > INT32_MAX) abort();
+  return x;
+}

@@ -453,6 +453,11 @@ check-compiler: check-mllex
 check-mllex:
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" MLLEX="$(CWD)/bin/mlkit-mllex" sh test/mllex/check.sh
 
+# Verify tagged/untagged 32-bit immediates and their C ABI across runtime modes.
+.PHONY: check-intword32
+check-intword32:
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/intword32/check.sh
+
 .PHONY: check-build check-profiling check-compiler check-arm64 emitter check-native-install
 check-build:
 	sh test/build/check.sh
@@ -469,6 +474,7 @@ check-real16:
 
 check-real-auto-conversion: check-real16
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/intword32/check.sh
 	SML_LIB="$(CWD)" MLKIT_NATIVE="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-native.sh
 
 check-profiling:
@@ -485,6 +491,7 @@ check-arm64: emitter
 	  ARM64_EMITTER="$(CWD)/bin/arm64-emitter-test" sh src/Compiler/Backend/Arm64/tests/check-parallel.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh src/Compiler/Backend/Arm64/tests/check-switches.sh
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-ir.sh
+	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" sh test/intword32/check.sh
 	SML_LIB="$(CWD)" MLKIT_ARM64="$(CWD)/bin/mlkit" sh test/real_auto_conversion/check-arm64.sh
 check-compiler: check-arm64 check-spawn-policy
 	SML_LIB="$(CWD)" MLKIT="$(CWD)/bin/mlkit" REML="$(CWD)/bin/reml" \
