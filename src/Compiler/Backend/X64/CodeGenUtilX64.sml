@@ -728,7 +728,13 @@ struct
                            toInt : 'a -> IntInf.int,
                            C) =
           let
-            val sels = map (fn (i,e) => (toInt i, e)) sels
+            (* Branches compare signed machine words, including Word64 keys
+             * whose top bit is set. Sort by that same machine ordering. *)
+            fun machineValue n =
+                let val n = IntInf.mod(n,18446744073709551616)
+                in if n >= 9223372036854775808 then n - 18446744073709551616 else n
+                end
+            val sels = map (fn (i,e) => (machineValue(toInt i), e)) sels
             fun cmp (i,opr,C) =
                 if rep16bit i then I.cmpq(I (I.intToStr i),opr) :: C
                 else G.move_immed(i, R treg0, I.cmpq(R treg0,opr) :: C)
@@ -750,15 +756,19 @@ struct
                jmp,
                fn (sel1,sel2) => IntInf.abs(sel1-sel2), (* sel_dist *)
                fn (lab,sel,_,C) => (G.load_ea(opr, treg0) $
-                                    I.salq(I "3", R treg0) ::
                                     G.push_ea (R treg1) $
+                                    (* Index from the table base before scaling;
+                                     * -8*sel need not fit a memory displacement. *)
+                                    G.move_immed(sel,R treg1,
+                                    I.subq(R treg1,R treg0) ::
+                                    I.salq(I "3", R treg0) ::
                                     G.lea(LA lab,treg1) $
                                     G.add(R treg1, treg0) $
-                                    G.load_ea(D(I.intToStr(~8*sel), treg0), treg0) $
+                                    G.load_ea(D("0", treg0), treg0) $
                                     G.add(R treg1, treg0) $
                                     G.pop_ea (R treg1) $
                                     I.jmp(R treg0) ::
-                                    rem_dead_code C),
+                                    rem_dead_code C)),
                fn (lab,lab_table,C) => I.dot_quad_sub (lab,lab_table) :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
                inline_cont,

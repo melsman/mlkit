@@ -13,6 +13,12 @@ fun remInt__noinline (x:Int32.int,y) = Int32.rem (x,y)
 fun cast__noinline (x:Int32.int) : Word32.word = prim ("id", x)
 fun words9__noinline (a:Word32.word,b,c,d,e,f,g,h,i) =
     List.foldl Word32.xorb a [b,c,d,e,f,g,h,i]
+fun switchInt__noinline (x:Int32.int) =
+    case x of ~2147483648 => 0 | ~2147483647 => 1 | ~2147483646 => 2
+            | ~2147483645 => 3 | ~2147483644 => 4 | _ => 99
+fun switchWord__noinline (x:Word32.word) =
+    case x of 0wx7ffffffe => 0 | 0wx7fffffff => 1 | 0wx80000000 => 2
+            | 0wx80000001 => 3 | 0wx80000002 => 4 | _ => 99
 fun ffiWord__noinline (x:Word32.word) : Word32.word = prim ("@mlkit_word32_identity", x)
 fun ffiInt__noinline (x:Int32.int) : Int32.int = prim ("@mlkit_int32_identity", x)
 val w = word__noinline 0wxffffffff
@@ -23,6 +29,10 @@ val () = check ("unboxed cast", cast__noinline (~1) = w)
 val () = check ("stack word arguments", words9__noinline
                 (0wx7fffffff,0wx7fffffff,0wx7fffffff,0wx7fffffff,0wx7fffffff,
                  0wx7fffffff,0wx7fffffff,0wx7fffffff,0wx7fffffff) = 0wx7fffffff)
+val () = check ("dense integer switch", switchInt__noinline (~2147483648) = 0 andalso
+                switchInt__noinline (~2147483644) = 4 andalso switchInt__noinline (~2147483643) = 99)
+val () = check ("dense word switch", switchWord__noinline 0wx7fffffff = 1 andalso
+                switchWord__noinline 0wx80000002 = 4 andalso switchWord__noinline 0wx80000003 = 99)
 val () = check ("word wrap", plus__noinline (w,0w1) = 0w0)
 val () = check ("word multiply", mul__noinline (w,w) = 0w1)
 val () = check ("word subtract", sub__noinline (0w0,0w1) = w)
