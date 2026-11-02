@@ -46,7 +46,10 @@ val () = check ("int overflow", ((addInt__noinline (i,~1); false) handle Overflo
 val () = check ("division overflow", ((divInt__noinline (i,~1); false) handle Overflow => true))
 val () = check ("minimum remainder", remInt__noinline (i,~1) = 0)
 val () = check ("word FFI", ffiWord__noinline w = w)
-val () = check ("int FFI", ffiInt__noinline i = i)
+val () = check ("int FFI", List.all
+                (fn x => ffiInt__noinline x = x) [i,~1,0,1,2147483647])
+val () = check ("word FFI boundaries", List.all
+                (fn x => ffiWord__noinline x = x) [0w0,0w1,0wx80000000,w])
 val () = check ("unsigned widening", Word32.toLargeWord w = 0wxffffffff)
 val () = check ("signed widening", Word32.toLargeWordX w = 0wxffffffffffffffff)
 val () = check ("signed large", Int32.fromLarge (Int32.toLarge i) = i)

@@ -21,5 +21,15 @@ uintptr_t mlkit_check_int32(uintptr_t x)
   if (x != encode((uintptr_t)(uint32_t)INT32_MIN)) abort();
   return encode(1);
 }
-uint32_t mlkit_word32_identity(uint32_t x) { return x; }
-int32_t mlkit_int32_identity(int32_t x) { return x; }
+/* Auto-conversion uses C long/unsigned long, not 32-bit C parameter types.
+ * Inspect the entire argument to catch missing sign extension. */
+unsigned long mlkit_word32_identity(unsigned long x)
+{
+  if (x > UINT32_MAX) abort();
+  return x;
+}
+long mlkit_int32_identity(long x)
+{
+  if (x < INT32_MIN || x > INT32_MAX) abort();
+  return x;
+}

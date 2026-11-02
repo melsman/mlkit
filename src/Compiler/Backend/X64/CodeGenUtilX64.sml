@@ -251,7 +251,9 @@ struct
                     | LS.Int63 => I.sarq(I "1",R tmp) :: tail
                     | LS.Word63 => I.shrq(I "1",R tmp) :: tail
                     | LS.Word32 => if BI.tag_values() then I.shrq(I "1",R tmp) :: tail else tail
-                    | LS.Int32 => if BI.tag_values() then I.sarq(I "1",R tmp) :: tail else tail
+                    | LS.Int32 =>
+                        (if BI.tag_values() then fn c => I.shrq(I "1",R tmp) :: c else fn c => c)
+                          (I.movslq(R (I.doubleOfQuadReg tmp),R tmp) :: tail)
                     | LS.Int64 => if BI.tag_values() then I.movq(D("8",tmp),R tmp) :: tail else tail
                     | LS.ForeignPtr => if BI.tag_values() then G.lea(D("-1",tmp),tmp) tail else tail
                     | LS.CharArray => G.lea(D("8",tmp),tmp) tail

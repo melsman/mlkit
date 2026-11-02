@@ -445,7 +445,11 @@ struct
         | LS.Int63 => A.asr (R(r),R(r),I(1)) :: code
         | LS.Word63 => A.lsr (R(r),R(r),I(1)) :: code
         | LS.Word32 => if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
-        | LS.Int32 => if tagged() then A.asr (R(r),R(r),I(1)) :: code else code
+        | LS.Int32 =>
+            let val low = case r of X n => W n | _ => unsupported "auto-call Int32 register"
+                val code = A.sxtw (R(r),R low) :: code
+            in if tagged() then A.lsr (R(r),R(r),I(1)) :: code else code
+            end
         | LS.Int64 => if tagged() then loadInto (r,8,r) code else code
         | LS.ForeignPtr => if tagged() then A.sub (R(r),R(r),I(1)) :: code else code
         | LS.CharArray => A.add (R(r),R(r),I(8)) :: code
