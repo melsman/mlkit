@@ -1,5 +1,5 @@
 (* Unknown dividends exercise strength reduction; IntInf supplies the oracle. *)
-fun test divisor split toLarge inputs =
+fun test (divisor:IntInf.int) split toLarge inputs =
     List.app (fn x =>
       let val (q,r) = split x
           val n = toLarge x
@@ -7,7 +7,7 @@ fun test divisor split toLarge inputs =
             toLarge r = IntInf.mod(n,divisor) then ()
          else raise Fail "integer division/modulo by power of two"
       end) inputs
-fun inputs fromInt minimum maximum =
+fun inputs (fromInt:int -> 'a) (minimum:'a option) (maximum:'a option) =
     valOf minimum :: valOf maximum ::
     map fromInt [~9,~8,~7,~1,0,1,7,8,9]
 fun p__noinline (x:int) = (x div 8,x mod 8)
@@ -42,6 +42,8 @@ val () = test 4611686018427387904 high64__noinline Int64.toLarge
 
 (* Unsupported divisors, exceptions, and evaluating the dividend still matter. *)
 fun check b = if b then () else raise Fail "integer div/mod evaluation"
+val () = check (~7 div 4 = ~2 andalso ~7 mod 4 = 1)
+val () = check (7 div 8 = 0 andalso 7 mod 8 = 7)
 fun zeroDiv__noinline (x:int) = x div 0
 fun zeroMod__noinline (x:int) = x mod 0
 fun negativeDiv__noinline (x:int) = x div ~1
