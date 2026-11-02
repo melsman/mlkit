@@ -8,7 +8,12 @@ structure Word32 : WORD =
 
     fun toInt (w : word32) : int = prim("__word32_to_int", w)
     fun toIntX (w : word32) : int = prim("__word32_to_int_X", w)
-    fun fromInt (i : int) : word32 = prim("__word_to_word32", cast_iw i)
+    fun fromInt (i : int) : word32 =
+        let val w : word32 = prim("__word_to_word32", cast_iw i)
+        in if Word.wordSize = 31 andalso i < 0
+           then prim("__orb_word32", (w,0wx80000000))
+           else w
+        end
 
     fun toLargeWord (w : word32) : word64 = prim("__word32_to_word64", w)
     val toLarge = toLargeWord

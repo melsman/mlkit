@@ -76,6 +76,7 @@ fun check b = if b then () else raise Fail "integer div/mod evaluation"
 val () = check (~7 div 4 = ~2 andalso ~7 mod 4 = 1)
 val () = check (7 div 8 = 0 andalso 7 mod 8 = 7)
 val () = check (Word.toIntX(Word.fromInt ~1) = ~1)
+val () = check (Word32.fromInt ~1 = 0wxffffffff)
 val () = check (Word32.>>(0wx80000000,0w1) = 0wx40000000)
 val () = check (Word32.~>>(0wx80000000,0w1) = 0wxc0000000)
 val () = check (Word32.<<(0wx80000000,0w32) = 0w0)
