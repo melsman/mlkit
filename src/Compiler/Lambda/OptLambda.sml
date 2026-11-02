@@ -243,6 +243,14 @@ structure OptLambda : OPT_LAMBDA =
          desc=
          "Enable constant folding optimisations."}
 
+    val integer_divmod_pow2_p = Flags.add_bool_entry
+        {long="integer_divmod_pow2",short=NONE,
+         menu=["Optimiser Control", "integer division and modulo by powers of two"],
+         item=ref true,neg=true,
+         desc=
+         "Replace integer div and mod by positive constant powers of two\n\
+         \with arithmetic shifts and masks. Requires constant folding."}
+
    val uncurrying_p = Flags.add_bool_entry
        {long="uncurrying",short=SOME "uncurry",
         menu=["Optimiser Control", "uncurrying"],
@@ -1594,6 +1602,55 @@ structure OptLambda : OPT_LAMBDA =
                | _ => die "constantFolding.id.expecting arrow type"
           end
 
+      (* SML div rounds down, so arithmetic right shift is exact even for
+       * negative dividends and minInt. For positive 2^n, mod is a low-bit
+       * mask. Both results fit the input type; neither operation can raise.
+       * Use integer-typed primitives: native lowering shares word machinery,
+       * but JavaScript must retain a signed result rather than wrap a word. *)
+      fun integerDivModPow2 name exps =
+          let fun representation suffix =
+                  case suffix of
+                      "int31" => SOME (int31Type,31)
+                    | "int32b" => SOME (int32Type,32)
+                    | "int32ub" => SOME (int32Type,32)
+                    | "int63" => SOME (int63Type,63)
+                    | "int64b" => SOME (int64Type,64)
+                    | "int64ub" => SOME (int64Type,64)
+                    | _ => NONE
+              fun exponent (d:IntInf.int) =
+                  if d = 1 then SOME 0
+                  else if d <= 0 orelse d mod 2 <> 0 then NONE
+                  else Option.map (fn n => n+1) (exponent (d div 2))
+              fun ccall name argtypes restype args =
+                  PRIM(CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
+                                 Type=ARROWtype(argtypes,NONE,[restype],NONE)},args)
+              val isDiv = String.isPrefix "__div_" name
+              val isMod = String.isPrefix "__mod_" name
+          in if not(integer_divmod_pow2_p()) orelse not(isDiv orelse isMod) then NONE
+             else
+             let val suffix = String.extract(name,6,NONE)
+             in case (representation suffix,exps) of
+                    (SOME (t,precision),[x,INTEGER(d,dt),exn]) =>
+                    if not(eq_Type(t,dt)) orelse not(safeLambdaExp exn) orelse
+                       d >= IntInf.<<(1,Word.fromInt (precision-1)) then NONE
+                    else
+                      (case exponent d of
+                           NONE => NONE
+                         | SOME n =>
+                           let val result =
+                                   if isDiv then
+                                     if n = 0 then x
+                                     else ccall ("__shift_right_signed_" ^ suffix)
+                                            [t,wordDefaultType()] t
+                                            [x,WORD(Int.toLarge n,wordDefaultType())]
+                                   else ccall ("__andb_" ^ suffix) [t,t] t
+                                          [x,INTEGER(d-1,t)]
+                           in decr_uses exn; SOME result
+                           end)
+                  | _ => NONE
+             end
+          end
+
       fun constantFolding (env:env) lamb =
           let val opt =
                   if not(constant_folding_p()) then NONE
@@ -1601,7 +1658,10 @@ structure OptLambda : OPT_LAMBDA =
                     case lamb of
 					  PRIM(CCALLprim{name,instances,regvars,tyvars,Type},exps) =>
                         let fun Some e = SOME(name,e)
-                        in case exps of
+                        in case integerDivModPow2 name exps of
+                               SOME e => Some e
+                             | NONE =>
+                             case exps of
                                [STRING (s1,NONE),STRING (s2,NONE)] =>
                                let fun opp opr = Some(if opr(s1,s2) then lexp_true else lexp_false)
                                in case name of

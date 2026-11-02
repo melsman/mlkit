@@ -476,6 +476,11 @@ fun pToJs2 name e1 e2 : J.exp =
     | "lesseqStringML" => J.Prim("<=", [e1,e2])
     | "lessStringML" => J.Prim("<", [e1,e2])
 
+    | "__shift_right_signed_int31" => J.Prim(">>", [e1,e2])
+    | "__shift_right_signed_int32ub" => J.Prim(">>", [e1,e2])
+    | "__andb_int31" => J.Prim("&", [e1,e2])
+    | "__andb_int32ub" => J.Prim("&", [e1,e2])
+
     | "__shift_right_unsigned_word32ub" => J.Prim(">>>", [e1,e2])
     | "__shift_right_unsigned_word31" => J.Prim(">>>", [e1,e2])
     | "__shift_right_signed_word32ub" => wrapWord32(J.Prim(">>", [e1,e2]))
