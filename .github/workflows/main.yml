@@ -134,6 +134,17 @@ jobs:
       - name: Run compiler and runtime regression tests
         run: make check-compiler CC="$THECC"
 
+      - name: Check numeric conversion composition and lowering
+        run: TMPDIR="$RUNNER_TEMP" sh test/numeric-conversions/check.sh
+
+      - name: Retain failed numeric conversion checks
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: numeric-conversions-${{ matrix.platform }}-${{ matrix.mlcomp }}
+          path: ${{ runner.temp }}/mlkit-conversions.*
+          if-no-files-found: ignore
+
       - name: Check explicit storage modes
         run: make -C test/explicit_regions test_storage_modes
 

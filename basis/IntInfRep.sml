@@ -373,11 +373,7 @@ structure IntInfRep (* : INT_INF_REP *)  =
 	fun intInfToW64 (_IntInf{digits=[], ...}) = 0w0
 	  | intInfToW64 (_IntInf{negative=false, digits}) = natInfToW64 digits
 	  | intInfToW64 (_IntInf{negative=true, digits}) =
-            let val i = natInfToI64 digits
-	    in i64_w64 (~i)
-            end handle _ =>
-                       if digits = bigNatMinNeg64() then i64_w64 (minNeg64())
-		       else raise Overflow
+            prim("__minus_word64", ((0w0:word64), natInfToW64 digits))
 
 	fun zero () = _IntInf{negative=false, digits=BN.zero()}
 	fun i32ToIntInf (0:int32) = zero()
@@ -495,10 +491,8 @@ structure IntInfRep (* : INT_INF_REP *)  =
       fun toWord32 (x : intinf) : word32 =
           w64_w32(toWord64 x)
 
-      exception IntInfRep_toWord63
       fun toWord63 (x : intinf) : word63 =
-	  i63_w63(toInt63 x)
-	  handle _ => raise IntInfRep_toWord63
+          prim("__word64_to_word63", toWord64 x)
 
       fun fromWord (w : word) : intinf =
 	  fromWord64 (w_w64 w)

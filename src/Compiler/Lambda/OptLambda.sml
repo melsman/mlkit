@@ -14,6 +14,7 @@ structure OptLambda : OPT_LAMBDA =
                      structure Map = Lvars.Map
                  end)
 
+    structure NC = NumericConversions
     structure PP = PrettyPrint
 
     structure LvarMap = Lvars.Map
@@ -1011,7 +1012,8 @@ structure OptLambda : OPT_LAMBDA =
        * Compile time values
        * ----------------------------------------------------------------- *)
 
-      datatype cv = CVAR of {exp:LambdaExp}
+      datatype cv = CCONV of LambdaExp (* conversion of an already evaluated variable *)
+                  | CVAR of {exp:LambdaExp}
                   | CRECORD of cv list
                   | CUNKNOWN
                   | CCONST of {exp:LambdaExp}
@@ -1026,7 +1028,8 @@ structure OptLambda : OPT_LAMBDA =
 
       fun eq_cv (cv1,cv2) =
         case (cv1,cv2)
-          of (CVAR {exp=e1},CVAR {exp=e2}) => eq_lamb(e1,e2)
+          of (CCONV e1,CCONV e2) => eq_lamb(e1,e2)
+           | (CVAR {exp=e1},CVAR {exp=e2}) => eq_lamb(e1,e2)
            | (CRECORD cvs1, CRECORD cvs2) => eq_cvs(cvs1,cvs2)
            | (CUNKNOWN, CUNKNOWN) => true
            | (CCONST {exp=e1}, CCONST {exp=e2}) => eq_lamb(e1,e2)
@@ -1048,7 +1051,9 @@ structure OptLambda : OPT_LAMBDA =
 
       fun closed_small_cv (lvars_free_ok,excons_free_ok,lvar,tyvars,cv) : bool =
         case cv
-          of CVAR {exp=e1} => closed (lvars_free_ok, excons_free_ok,
+          of CCONV e => closed (lvars_free_ok, excons_free_ok,
+                                      FN{pat=[(lvar,unitType)],body=e})
+           | CVAR {exp=e1} => closed (lvars_free_ok, excons_free_ok,
                                       FN{pat=[(lvar,unitType)],body=e1})
            | CRECORD cvs => (List.foldl (fn (cv,acc) => acc
                                          andalso closed_small_cv(lvars_free_ok, excons_free_ok,lvar,tyvars,cv))
@@ -1077,7 +1082,9 @@ structure OptLambda : OPT_LAMBDA =
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
        *)
-      fun remove lv (CRECORD l) = CRECORD(map (remove lv) l)
+      fun remove lv (cv as CCONV e) =
+          if lvar_in_lamb lv e then CUNKNOWN else cv
+        | remove lv (CRECORD l) = CRECORD(map (remove lv) l)
         | remove lv (cv as (CVAR {exp=VAR{lvar,...}})) = if Lvars.eq(lv,lvar) then CUNKNOWN else cv
         | remove _ (cv as (CCONST _)) = cv
         | remove _ (cv as (CBLKSZ _)) = cv
@@ -1095,7 +1102,8 @@ structure OptLambda : OPT_LAMBDA =
         | pp_opti (SOME i) = IntInf.toString i
 
       (* pretty printing *)
-      fun show_cv (CVAR {exp=VAR x}) = " cvar " ^ Lvars.pr_lvar (#lvar x)
+      fun show_cv (CCONV _) = "conversion"
+        | show_cv (CVAR {exp=VAR x}) = " cvar " ^ Lvars.pr_lvar (#lvar x)
         | show_cv (CVAR _) = "<not possible>"
         | show_cv (CRECORD l) = concat ("[" :: (map show_cv l @ ["]"]))
         | show_cv (CCONST _) = "const"
@@ -1113,7 +1121,8 @@ structure OptLambda : OPT_LAMBDA =
 
       (* substitution *)
       fun on_cv S cv =
-        let fun on (CVAR {exp=lamb}) = CVAR {exp=on_LambdaExp S lamb}
+        let fun on (CCONV e) = CCONV(on_LambdaExp S e)
+              | on (CVAR {exp=lamb}) = CVAR {exp=on_LambdaExp S lamb}
               | on (cv as CCONST _) = cv
               | on (CRECORD cvs) = CRECORD (map on cvs)
               | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
@@ -1135,7 +1144,9 @@ structure OptLambda : OPT_LAMBDA =
         end
 
       (* least upper bound *)
-      fun lub (cv as CVAR {exp=e1},CVAR {exp=e2}) =
+      fun lub (cv as CCONV e1,CCONV e2) =
+          if eq_lamb(e1,e2) then cv else CUNKNOWN
+        | lub (cv as CVAR {exp=e1},CVAR {exp=e2}) =
           if eq_lamb(e1,e2) then cv else CUNKNOWN
         | lub (CRECORD cvals,CRECORD cvals') =
           (CRECORD (map lub (BasisCompat.ListPair.zipEq(cvals,cvals')))
@@ -2082,6 +2093,28 @@ structure OptLambda : OPT_LAMBDA =
             | PRIM(CONprim {con,...},[e]) => CCON1 (con,cvOfExp e)
             | _ => CUNKNOWN
 
+      val semantic_conversions = ref true
+
+      fun composeConversion env p arg =
+          if not(!semantic_conversions) orelse not(NC.supported()) then NONE
+          else let fun provenance (PRIM(q,[x])) =
+                      (case NC.forComposition q of SOME c => SOME(c,x) | NONE => NONE)
+                | provenance (VAR{lvar,...}) =
+                      (case lookup_lvar(env,lvar) of
+                           SOME([],CCONV e) => provenance e
+                         | SOME([],CVAR{exp=VAR{lvar=lv,instances=[],regvars=[]}}) =>
+                           if Lvars.eq(lvar,lv) then NONE
+                           else provenance(VAR{lvar=lv,instances=[],regvars=[]})
+                         | _ => NONE)
+                | provenance _ = NONE
+          in case (NC.forComposition p,provenance arg) of
+                 (SOME outer,SOME(inner,x)) =>
+                 (case NC.compose(inner,outer) of
+                      SOME c => SOME(PRIM(NC.primitive c,[x]))
+                    | NONE => NONE)
+               | _ => NONE
+          end
+
       fun reduce (env, (fail as (lamb,cv))) =
           let fun constantFold () =
                   case constantFolding env lamb of
@@ -2394,8 +2427,11 @@ structure OptLambda : OPT_LAMBDA =
             end
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
-          | PRIM(CCALLprim{name,Type,...},xs) =>
-            if unbox_reals() then
+          | PRIM(p as CCALLprim{name,Type,...},xs) =>
+            (case (case xs of [arg] => composeConversion env p arg | _ => NONE) of
+                 SOME e => (tick "compose numeric conversions";
+                            decr_uses lamb; incr_uses e; (e,CUNKNOWN))
+               | NONE => if unbox_reals() then
               case (name,xs) of
                   ("__plus_real",[x,y]) => reduce_f64bin f64_plus (x,y)
                 | ("__minus_real",[x,y]) => reduce_f64bin f64_minus (x,y)
@@ -2443,7 +2479,7 @@ structure OptLambda : OPT_LAMBDA =
                       CUNKNOWN)
                   end
                 | _ => constantFold ()
-            else constantFold ()
+            else constantFold ())
           | _ => constantFold ()
           end
 
@@ -2663,7 +2699,14 @@ structure OptLambda : OPT_LAMBDA =
                                  | _ => CUNKNOWN
                 in (PRIM(prim,[e']), cv'')
                 end
-              | PRIM(prim,lambs) => (PRIM(prim,map (fst o (fn e => contr (env,e))) lambs),CUNKNOWN)
+              | PRIM(prim,lambs) =>
+                let val es = map (fst o (fn e => contr (env,e))) lambs
+                    val e = PRIM(prim,es)
+                    val cv = case (NC.forComposition prim,es) of
+                                 (SOME _,[VAR{instances=[],regvars=[],...}]) => CCONV e
+                               | _ => CUNKNOWN
+                in (e,cv)
+                end
               | FIX{functions,scope} =>
                let val lvs = map #lvar functions
                    val env0 = updateEnv lvs (map (fn _ => ([],CUNKNOWN)) functions) env
@@ -2770,6 +2813,15 @@ structure OptLambda : OPT_LAMBDA =
         else
           (lamb, contract_env_dummy lamb)
 
+      (* Post-lowering rounds must not recreate semantic primitives. *)
+      fun contract_internal ce lamb =
+          let val previous = !semantic_conversions
+              val () = semantic_conversions := false
+              val result = contract ce lamb
+                  handle ex => (semantic_conversions := previous; raise ex)
+          in semantic_conversions := previous; result
+          end
+
       fun enrich_contract_env (ce1,ce2) =
           LvarMap.enrich eq_cv_scheme (ce1,ce2)
 
@@ -2782,7 +2834,8 @@ structure OptLambda : OPT_LAMBDA =
 
       fun free_cv (cv,acc) =
           case cv of
-              CVAR {exp} => free_exp (exp,acc)
+              CCONV e => free_exp(e,acc)
+            | CVAR {exp} => free_exp (exp,acc)
             | CRECORD cvs => List.foldl free_cv acc cvs
             | CUNKNOWN => acc
             | CCONST {exp} => free_exp (exp,acc)
@@ -2850,7 +2903,8 @@ structure OptLambda : OPT_LAMBDA =
       (* Serialisation *)
 
       val pu_contract_env =
-          let fun toInt (CVAR _) = 0
+          let fun toInt (CCONV _) = 12
+                | toInt (CVAR _) = 0
                 | toInt (CRECORD _) = 1
                 | toInt CUNKNOWN = 2
                 | toInt (CCONST _) = 3
@@ -2862,6 +2916,9 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CCON1 _) = 9
                 | toInt (CCON0 _) = 10
                 | toInt (CCSE _) = 11
+              fun fun_CCONV _ =
+                  Pickle.con1 CCONV (fn CCONV e => e | _ => die "pu_contract_env.CCONV")
+                              LambdaExp.pu_LambdaExp
               fun fun_CVAR _ =
                   Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
                   LambdaExp.pu_LambdaExp
@@ -2906,7 +2963,7 @@ structure OptLambda : OPT_LAMBDA =
               val pu_cv =
                   Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
                                                        fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,
-                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0,fun_CCSE])
+                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0,fun_CCSE,fun_CCONV])
           in LvarMap.pu Lvars.pu
               (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
           end
@@ -4145,11 +4202,11 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser Engine
     * ----------------------------------------------------------------- *)
 
-    fun optimise (ce:contract_env) (phi:FixFlatten.phi) e =
+    fun optimise lower (ce:contract_env) (phi:FixFlatten.phi) e =
       let
-          fun loop_opt1 n ce e =
+          fun loop_opt1 internal n ce e =
               let val _ = reset_tick()
-                  val (e, ce1) = contract ce e
+                  val (e, ce1) = if internal then contract_internal ce e else contract ce e
                   val e = eliminate_explicit_records e
                   val e = unbox_real_bindings e
                   val e = eliminate_explicit_blockf64_bindings e
@@ -4157,7 +4214,7 @@ structure OptLambda : OPT_LAMBDA =
                   val e = hoist_bindings e
                   val _ = end_round() (*stat*)
               in if test_tick() andalso n < max_optimise
-                 then loop_opt1 (n+1) ce e
+                 then loop_opt1 internal (n+1) ce e
                  else (e, ce1)                 (* last ce1 is the most precise *)
               end
 
@@ -4184,10 +4241,16 @@ structure OptLambda : OPT_LAMBDA =
 
           val _ = reset_statistics()
           val e1 = do_minimize_fixs e
-          val (e2, ce') = loop_opt1 0 ce e1
+          val (e2, ce') = loop_opt1 false 0 ce e1
           val (e3, phi') = loop_opt2 0 (unknown_env ce) phi e2
-          val _ = print_stat e e3
-      in (e3,ce',phi')
+          (* Flattening exports calling conventions, so finish it before lowering.
+           * Only the executable term participates in the final local rounds. *)
+          val executable = if NC.needsLowering e3 then
+                               #1(loop_opt1 true 0 LvarMap.empty (lower e3))
+                           else e3
+          val () = if NC.needsLowering executable then die "unlowered numeric conversion" else ()
+          val _ = print_stat e executable
+      in (executable,ce',phi')
       end
 
 
@@ -4251,15 +4314,15 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser
     * ----------------------------------------------------------------- *)
 
-    fun maybeoptimise cenv phi e =
-        if optimise_p() then optimise cenv phi e
+    fun maybeoptimise lower cenv phi e =
+        if optimise_p() then optimise lower cenv phi e
         else let val (e',phi') = FixFlatten.flattening_noopt phi e
-             in (e', contract_env_dummy e', phi')
+             in (lower e', contract_env_dummy e', phi')
              end
 
-    fun optimise (env, PGM(DATBINDS db,lamb)) =
+    fun optimise lookup (env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
-            val (lamb, cenv, phi) = maybeoptimise cenv phi lamb
+            val (lamb, cenv, phi) = maybeoptimise (NC.lower lookup) cenv phi lamb
             (*val _ = prLambdaExp "Before rewriting" lamb *)
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)

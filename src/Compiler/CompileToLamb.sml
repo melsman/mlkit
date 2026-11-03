@@ -158,11 +158,11 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     val optimise_p = Flags.is_on0 "optimiser"
 
-    fun optlambda (env, lamb) =
+    fun optlambda lookup (env, lamb) =
           ((if optimise_p() then chat "[begin optimising lambda term]"
 	    else chat "[begin rewriting lambda term]");
 	   Timing.timing_begin();
-	   let val (lamb_opt, env') = Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
+	   let val (lamb_opt, env') = Timing.timing_end_res ("OptLam", OptLambda.optimise lookup (env,lamb))
 	   in if optimise_p() then chat "[end optimising lambda term]"
 	      else chat "[end rewriting lambda term]"
 	    ; if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
@@ -194,7 +194,13 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
         val (lamb, CEnv1, NEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, NEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
-        val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
+        val conversionEnv = CE.plus(CEnv,CEnv1)
+        fun conversionImplementation n =
+            case CE.lookup_longid conversionEnv (Ident.mk_LongId ["IntInfRep",n]) of
+                SOME(CE.LVAR(lv,[],_,[])) =>
+                SOME(LambdaExp.VAR{lvar=lv,instances=[],regvars=[]})
+              | _ => NONE
+        val (lamb_opt,OEnv1) = optlambda conversionImplementation (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
 	if isEmptyLambdaPgm lamb_opt

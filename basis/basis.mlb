@@ -65,6 +65,10 @@ local
        let open General List
        in bas INT_INF_REP.sml IntInfRep.sml end
        end
+    (* Lowering imported semantic conversions may require IntInfRep even
+     * in Basis modules whose source does not mention it explicitly. *)
+    open IntInfRep
+
 
     basis Word =
        let open General String IntInfRep

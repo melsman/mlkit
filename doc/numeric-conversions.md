@@ -1,55 +1,73 @@
 # Numeric conversion optimization
 
-Design for issue #264. This document describes the intended implementation;
-the conversion optimization is not implemented yet.
+Numeric conversion wrappers retain semantic operations until the Lambda
+optimizer has composed them. The native scalar model covers Int31, Int32,
+Int63, Int64 and Word8, Word31, Word32, Word63, Word64; default Int and Word
+resolve according to the target configuration. Modern and legacy Basis names
+share implementations. Int8, Int16 and Word16 retain their existing wrappers;
+there are no special rules for these types or for IntInf-to-finite-to-IntInf
+round trips. SMLtoJs retains its separate Basis conversion implementations.
 
-## Scope and semantics
+## Semantic representation
 
-Preserve conversions through IntInf and LargeWord as semantic operations until
-the Lambda optimizer can compose them. Cover Int31, Int32, Int63, Int64 and
-Word8, Word31, Word32, Word63, Word64. Resolve default Int and Word according
-to the target configuration. Existing API aliases share the same operations.
-Direct treatment of Int8, Int16 and Word16 is outside this scope, as are
-toLarge(fromLarge x) compositions.
+`NumericConversions` decodes string-named `CCALLprim` operations into source,
+destination and signed/unsigned interpretation. An integer destination checks
+its range; a word destination converts modulo its precision. X operations
+interpret the source word's high bit as a sign bit. These distinctions must
+survive composition even when physical representations coincide.
 
-A common conversion description records source and destination types, signed
-or unsigned source interpretation, and checked or modulo conversion semantics.
-Signed word interpretation (the X variants) must remain distinguishable from
-unsigned interpretation. Mathematical identity does not imply representation
-identity: tagging, boxing, extension and normalization must remain correct.
+Primitive names retain logical precisions independently of their Lambda types.
+In particular, CompileDec erases Word8 to the default word type, so its 8-bit
+precision cannot be recovered from the primitive's type alone. Generated
+primitive types describe physical representations, while their names describe
+logical conversions. Representation lowering selects existing backend
+operations, including their legacy aliases, or implements mixed cases with a
+full-width bit carrier, extension, masks and range checks.
 
-There are 126 forward composition cases through IntInf: 14 source operations
+The forward matrix contains 126 IntInf compositions: fourteen source operations
 (four signed integers and two interpretations of five words) times nine
-destination operations. Removing 14 same-type identities and ten duplicate
-signed/unsigned word truncations leaves 102 distinct typed non-self-identity
-results. Some of these can still lower to a typed identity. The 50 forward
-LargeWord cases add no distinct result kinds. These are semantic matrix sizes,
-not counts of new backend primitives.
+destinations. Removing fourteen same-type identities and ten duplicate signed
+and unsigned word truncations leaves 102 distinct typed non-self-identity maps.
+Some maps still lower to a representation identity. Fifty LargeWord cases add
+no result kinds; these counts do not describe new backend primitives.
 
-## Optimization and lowering boundary
+## Let bindings and exported information
 
-Compile Basis conversion wrappers to explicit semantic conversion primitives,
-including fixed-width integer/word conversions to and from IntInf. Compose
-operations after inlining, including opportunities exposed through let bindings.
-Preserve evaluation order and Overflow behavior.
+The contraction environment records conversion provenance only for an already
+evaluated source variable. An outer conversion can compose with this fact
+without duplicating or moving the original source expression. Independent
+consumers simplify independently; ordinary dead-binding elimination removes an
+intermediate only when it has no remaining uses and is safe to discard.
+Provenance participates in scope removal, substitution, joins and serialization.
+Conversions that can check or lose information are not treated as generally
+invertible operations.
 
-Run normal optimization with the imported optimizer environment and save the
-exported environment before lowering. Exported function bodies retain semantic
-conversions so later compilation units can optimize compositions across module
-boundaries.
+Normal contraction exports semantic function bodies. Flattening also completes
+before lowering, because its exported metadata describes external calling
+conventions. These semantic exports remain available to later compilation units.
 
-Lower surviving IntInf conversions to the existing IntInfRep implementation
-functions. Extend the existing conservative IntInfRep dependency mechanism to
-these conversions. Then optimize executable code internally without importing
-or exporting an optimizer environment. Lowering is mandatory even when
-optimization is disabled; additional optimization respects the selected mode.
-No semantic IntInf conversion primitives may reach region inference/backends.
+## Executable lowering
 
-## Validation requirements
+After normal optimization, surviving finite-to-IntInf operations construct the
+existing signed, little-endian base-2^30 representation directly. At most three
+digits suffice for a native scalar, including the magnitude of the minimum
+signed integer. This bounded construction exposes ordinary constructors and
+branches to subsequent local optimization. Surviving IntInf-to-finite operations
+call the existing IntInfRep implementations. The compiler's conservative
+IntInfRep dependency keeps these functions available; internal Basis scopes
+must also make the module available when imported semantic bodies require it.
 
-Exercise the complete forward composition matrix using runtime inputs, with
-boundary values, signed X variants and Overflow behavior. Verify generated code
-as well as results: eliminated intermediate IntInf conversions must not allocate
-digit lists. Check cross-compilation-unit composition, surviving conversion
-lowering, and optimization-disabled compilation. Validate native tagged and
-untagged configurations and the JavaScript backend where supported.
+The post-lowering rounds import no contraction environment, export no optimizer
+information and cannot create semantic conversion primitives. Lowering remains
+mandatory with optimization disabled. No semantic conversion may reach region
+inference or a backend. Typed identities involving boxed values are not used:
+sharing their regions requires more than equality of their machine layouts.
+
+## Validation
+
+`test/numeric-conversions.sml` exercises the forward matrix with runtime boundary
+inputs and independent mathematical range/modulo expectations. The companion
+`test/numeric-conversions/check.sh` runs tagged, untagged and optimization-disabled
+configurations, checks cross-unit imports, shared intermediates, evaluation and
+exception ordering, fallback conversions, and the optimized selection unit.
+It preserves generated artifacts in a temporary directory printed at startup.
