@@ -190,9 +190,10 @@ make -j3
 The installed native MLKit builds MLKit, ReML, and the SML tools directly,
 using its own Basis library, cached objects, and matching runtime. There is
 no intermediate compiler build. Compiler builds use the default GC mode.
-The Makefile links the generated executables with a
-512 MiB stack for self-compilation (the ARM64 linker maximum), using
-`gcc -arch arm64 -Wl,-stack_size,0x20000000`. It does not use `-ld_classic`.
+MLKit seed and self-hosting builds use the compiler's default linker settings,
+including its 256 MiB executable stack on ARM64. MLton seed builds retain a
+separate stack linker option. `SEED_FLAGS` and `BOOTSTRAP_LINKER` remain available
+for explicit overrides.
 
 The native executables are available at the usual `bin/mlkit`, `bin/reml`,
 `bin/kittester`, `bin/mlkit-mllex`, `bin/mlkit-mlyacc`, and `bin/pview` paths.
