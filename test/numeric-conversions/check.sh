@@ -28,10 +28,16 @@ for mode in gc plain noopt; do
         noopt) set -- -no_optimiser --mlb-subdir NUMERIC_NOOPT ;;
     esac
     "$compiler" "$@" -output "$archive/matrix-$mode" "$archive/matrix.mlb" > "$archive/matrix-$mode.log" 2>&1
-    "$archive/matrix-$mode" > "$archive/matrix-$mode.out"
+    if ! "$archive/matrix-$mode" > "$archive/matrix-$mode.out" 2>&1; then
+        cat "$archive/matrix-$mode.out" >&2
+        exit 1
+    fi
     cmp "$archive/matrix-$mode.out" "$root/test/numeric-conversions.sml.out.ok"
     "$compiler" "$@" -output "$archive/client-$mode" "$archive/client.mlb" > "$archive/client-$mode.log" 2>&1
-    "$archive/client-$mode" 255 > "$archive/client-$mode.out"
+    if ! "$archive/client-$mode" 255 > "$archive/client-$mode.out" 2>&1; then
+        cat "$archive/client-$mode.out" >&2
+        exit 1
+    fi
     test "$(cat "$archive/client-$mode.out")" = 'conversion client: OK'
 done
 # The library and client are distinct compilation units. Inspect the optimized

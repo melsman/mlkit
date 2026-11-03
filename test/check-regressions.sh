@@ -83,7 +83,17 @@ EOF
       esac
       (cd "$root/test" && make prepare && "$KITTESTER" "$root/compiler" all.tst $flags) ;;
   esac < /dev/null > "$scratch/$suite.log" 2>&1 || {
-    tail -60 "$scratch/$suite.log" >&2; exit 1;
+    tail -60 "$scratch/$suite.log" >&2
+    # Runtime failures are redirected by kittester; include their actual output
+    # in the CI log rather than leaving only a runexe failure marker.
+    for actual in "$root"/test/*.out; do
+      expected=$actual.ok
+      if [ -f "$expected" ] && ! cmp -s "$actual" "$expected"; then
+        printf '\nUnexpected test output: %s\n' "$actual" >&2
+        tail -30 "$actual" >&2
+      fi
+    done
+    exit 1;
   }
   echo "$suite passed"
 )

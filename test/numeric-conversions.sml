@@ -27,8 +27,10 @@ struct
           NONE => ()
         | SOME x =>
           let val expected = integerExpected (valOf D.precision) v
-          in check "int/int" expected (fn () => D.toString(D.fromLarge(S.toLarge x)));
-             check "int/int let" expected
+              val label = "Int" ^ Int.toString(valOf S.precision) ^ " -> Int" ^
+                          Int.toString(valOf D.precision) ^ " input " ^ IntInf.toString v
+          in check label expected (fn () => D.toString(D.fromLarge(S.toLarge x)));
+             check (label ^ " let") expected
                (fn () => let val large = S.toLarge x
                              val alias = large
                          in D.toString(D.fromLarge alias)
@@ -42,7 +44,9 @@ struct
   fun run v =
       case (S.fromString(IntInf.toString v) handle Overflow => NONE) of
           NONE => ()
-        | SOME x => check "int/word" (wordExpected D.wordSize v)
+        | SOME x => check ("Int" ^ Int.toString(valOf S.precision) ^ " -> Word" ^
+                           Int.toString D.wordSize ^ " input " ^ IntInf.toString v)
+                          (wordExpected D.wordSize v)
                           (fn () => D.fmt StringCvt.DEC (D.fromLargeInt(S.toLarge x)))
   val () = List.app run candidates
 end
@@ -55,9 +59,11 @@ struct
         let val x = valOf(S.fromString(IntInf.fmt StringCvt.HEX v))
             val signed = if v >= pow(S.wordSize-1) then v-pow S.wordSize else v
             val bits = valOf D.precision
-        in check "word/int" (integerExpected bits v)
+            val label = "Word" ^ Int.toString S.wordSize ^ " -> Int" ^
+                        Int.toString bits ^ " input " ^ IntInf.toString v
+        in check (label ^ " unsigned") (integerExpected bits v)
                  (fn () => D.toString(D.fromLarge(S.toLargeInt x)));
-           check "wordX/int" (integerExpected bits signed)
+           check (label ^ " signed") (integerExpected bits signed)
                  (fn () => D.toString(D.fromLarge(S.toLargeIntX x)))
         end
   val () = List.app run candidates
@@ -72,13 +78,15 @@ struct
             val signed = if v >= pow(S.wordSize-1) then v-pow S.wordSize else v
             val expected = wordExpected D.wordSize v
             val expectedX = wordExpected D.wordSize signed
-        in check "word/word IntInf" expected
+            val label = "Word" ^ Int.toString S.wordSize ^ " -> Word" ^
+                        Int.toString D.wordSize ^ " input " ^ IntInf.toString v
+        in check (label ^ " unsigned via IntInf") expected
                  (fn () => D.fmt StringCvt.DEC(D.fromLargeInt(S.toLargeInt x)));
-           check "wordX/word IntInf" expectedX
+           check (label ^ " signed via IntInf") expectedX
                  (fn () => D.fmt StringCvt.DEC(D.fromLargeInt(S.toLargeIntX x)));
-           check "word/word LargeWord" expected
+           check (label ^ " unsigned via LargeWord") expected
                  (fn () => D.fmt StringCvt.DEC(D.fromLarge(S.toLarge x)));
-           check "wordX/word LargeWord" expectedX
+           check (label ^ " signed via LargeWord") expectedX
                  (fn () => D.fmt StringCvt.DEC(D.fromLarge(S.toLargeX x)))
         end
   val () = List.app run candidates
