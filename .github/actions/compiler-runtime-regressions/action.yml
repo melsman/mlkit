@@ -1,0 +1,25 @@
+name: Compiler and runtime regression tests
+description: Run native regressions and retain diagnostics on failure.
+runs:
+  using: composite
+  steps:
+    - name: Run regression checks
+      shell: bash
+      run: |
+        export TMPDIR="$RUNNER_TEMP"
+        make check-compiler CC="$THECC"
+        sh test/numeric-conversions/check.sh
+        make -C test/explicit_regions test_storage_modes
+
+    - name: Retain failure diagnostics
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: compiler-runtime-${{ runner.os }}-${{ runner.arch }}-${{ env.MLCOMP_HOST }}
+        path: |
+          ${{ runner.temp }}/mlkit-conversions.*
+          ${{ runner.temp }}/mlkit-regressions.*/*.log
+          ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.sml.out
+          ${{ runner.temp }}/mlkit-regressions.*/*/test/MLB/*/numeric-conversions.sml*.o.ir
+          ${{ runner.temp }}/mlkit-regressions.*/*/test/test_report.html
+        if-no-files-found: ignore

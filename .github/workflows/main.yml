@@ -140,26 +140,7 @@ jobs:
         run: sudo make install
 
       - name: Run compiler and runtime regression tests
-        run: TMPDIR="$RUNNER_TEMP" make check-compiler CC="$THECC"
-
-      - name: Check numeric conversion composition and lowering
-        run: TMPDIR="$RUNNER_TEMP" sh test/numeric-conversions/check.sh
-
-      - name: Retain failed numeric conversion checks
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: numeric-conversions-${{ matrix.platform }}-${{ matrix.mlcomp }}
-          path: |
-            ${{ runner.temp }}/mlkit-conversions.*
-            ${{ runner.temp }}/mlkit-regressions.*/*.log
-            ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.sml.out
-            ${{ runner.temp }}/mlkit-regressions.*/*/test/MLB/*/numeric-conversions.sml*.o.ir
-            ${{ runner.temp }}/mlkit-regressions.*/*/test/test_report.html
-          if-no-files-found: ignore
-
-      - name: Check explicit storage modes
-        run: make -C test/explicit_regions test_storage_modes
+        uses: ./.github/actions/compiler-runtime-regressions
 
       - name: Build SMLtoJs
         run: |
