@@ -121,6 +121,8 @@ structure Tester : TESTER =
           (if !logdirect then " " else " --log_to_file ") ^
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
           (if opt "noopt" then "-no_opt " else "") ^
+          (if opt "inl0" then "--maximum_inline_size 0 "
+           else if opt "inl20" then "--maximum_inline_size 20 " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
 	  (if opt "nogc" then "-no_gc " else "") ^
 	  (if opt "parallel" then "-par " else "") ^

@@ -249,10 +249,10 @@ structure ExecutionX64 : EXECUTION =
           of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
            | Compile.CodeRes(ce,cb,target,safe) =>
             let
-              val irTree = SOME (PhysSizeInf.layout_pgm_with_locations target)
+              val irTree = SOME (Timing.timing "IRTree" PhysSizeInf.layout_pgm_with_locations target)
               val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
               val {main_lab, code, imports, exports, safe} = target_new
-              val identity = IRLocations.contentIdentity
+              val identity = Timing.timing "IRIdentity" IRLocations.contentIdentity
                 {unit = AddressLabels.pr_label main_lab, source = !Flags.current_source_file,
                  tree = valOf irTree}
               val () = IRLocations.currentIdentity := identity
@@ -314,9 +314,9 @@ structure ExecutionX64 : EXECUTION =
     fun emit {target = (target,ir), filename:string} : string =
       let val filename_o = filename ^ ".o"
           val filename_s = filename ^ ".s"
-      in CodeGen.emit (target, filename_s);
-        assemble(filename_s, filename_o);
-        (case ir of SOME document => IRLocations.write {object = filename_o, document = document}
+      in Timing.timing "EmitAsm" CodeGen.emit (target, filename_s);
+        Timing.timing "Assemble" assemble (filename_s, filename_o);
+        (case ir of SOME document => Timing.timing "WriteIR" IRLocations.write {object = filename_o, document = document}
                   | NONE => ());
         filename_o
       end
@@ -367,7 +367,7 @@ structure ExecutionX64 : EXECUTION =
               val shell_cmd = link_exe() ^ " -o " ^ run ^ " " ^
                               concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(libs()) ^ pthread
           in
-            execute_command shell_cmd;
+            Timing.timing "Link" execute_command shell_cmd;
             strip run;
             message(fn () => "[wrote executable file:\t" ^ run ^ "]\n");
             report_dangle_stat();
@@ -489,9 +489,9 @@ structure ExecutionX64 : EXECUTION =
                           else " -Wl,-rpath," ^ mlbdir()
               val shell_cmd2 = link_exe() ^ rpath ^ " -o " ^ runtime_exe ^ " -L " ^ dir ^ " -lruntime"
           in
-            execute_command shell_cmd1;
+            Timing.timing "Link" execute_command shell_cmd1;
             message(fn () => "[wrote shared runtime library:\t" ^ runtime_lib ^ "]\n");
-            execute_command shell_cmd2;
+            Timing.timing "Link" execute_command shell_cmd2;
             message(fn () => "[wrote runtime executable:\t" ^ runtime_exe ^ "]\n");
             runtime_exe
           end
@@ -510,7 +510,7 @@ structure ExecutionX64 : EXECUTION =
                       else " -Wl,-rpath," ^ mlbdir()
           val shell_cmd = link_shared() ^ rpath ^ " -o " ^ sofile ^ " -shared "
                           ^ ofiles_str ^ " -L " ^ mlbdir() ^ " " ^ libs_str
-        in execute_command shell_cmd;
+        in Timing.timing "Link" execute_command shell_cmd;
            message(fn () => "[wrote " ^ sofile ^ "]\n")
         end
 

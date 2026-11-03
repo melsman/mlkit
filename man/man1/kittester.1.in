@@ -42,6 +42,10 @@ do not import basis library
 disable lambda optimiser
 .IP \fBccl\fR 4
 compare compiler logs
+.IP \fBinl0\fR 4
+set the maximum inline size to zero
+.IP \fBinl20\fR 4
+set the maximum inline size to 20
 .IP \fBtx\fR 4
 time executable
 .IP \fBtc\fR 4
