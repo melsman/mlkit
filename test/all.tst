@@ -123,7 +123,7 @@ int32_2.sml
 intword32-representation.sml
 int63.sml
 int63_2.sml
-numeric-conversions.sml inl20
+numeric-conversions.mlb inl20
 int64.sml
 intinf.sml
 intinf2.sml

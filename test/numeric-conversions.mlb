@@ -1,2 +1,4 @@
 $(SML_LIB)/basis/basis.mlb
-numeric-conversions.sml
+ann inline_functors
+in numeric-conversions.sml
+end
