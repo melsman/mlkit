@@ -40,6 +40,7 @@ in
 
      local open Tools SyntaxObjects SpecialObjects Basics
      in Lambda/CompilerEnv.sml
+        Lambda/NumericConversions.sml
      end
   end
 

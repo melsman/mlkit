@@ -9105,6 +9105,10 @@ Options:
 
 --compiler_timings, -timings                             (off)
      Show compiler timings for each compilation phase.
+     KITtimings records elapsed wall-clock time for each phase.
+     KITtimings.details records phase user/system/elapsed times, including
+     reaped subprocess CPU, and overall totals and unattributed CPU time.
+     Phase elapsed times can overlap when compiling in parallel.
 
 --constant_folding, -cfold                                (on)
      Enable constant folding optimisations.

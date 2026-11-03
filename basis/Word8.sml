@@ -14,14 +14,14 @@ structure Word8 : WORD =
     fun w8_w (w : word8) : word = prim("id", w)
     fun toInt (x : word8) : int = prim ("id", x)
 
-    fun toLargeWord (w: word8) : word64 = prim ("__word_to_word64", w8_w w)
+    fun toLargeWord (w: word8) : word64 = prim ("__convert_word8_to_word64", w)
     val toLarge = toLargeWord
 
     fun toLargeInt (w: word8) : intinf =
-	IntInfRep.fromWord8 w
+	prim("__word8_to_intinf", w)
 
     fun norm (w: word) : word = andb_w (0w255, w)
-    fun fromLargeWord (w: word64) : word8 = w_w8(norm(prim ("__word64_to_word", w)))
+    fun fromLargeWord (w: word64) : word8 = prim ("__convert_word64_to_word8", w)
     val fromLarge = fromLargeWord
 
     (* The rest does not make use of prim *)
@@ -47,14 +47,13 @@ structure Word8 : WORD =
 		   else toInt w - 256          (* msbit = 1 *)
 
     fun toLargeIntX (w : word8) : intinf =
-	IntInfRep.fromWord8X w
+	prim("__word8_to_intinf_X", w)
 
     fun fromLargeInt (i:intinf) : word8 =
-      w_w8 (norm (Word.fromLargeInt i))
+      prim("__intinf_to_word8", i)
 
-    fun toLargeWordX (w: word8) =
-      if w < 0w128 then toLargeWord w               (* msbit = 0 *)
-      else Word64.orb(toLargeWord w, Word64.notb 0wxFF)   (* msbit = 1 *)
+    fun toLargeWordX (w: word8) : word64 =
+      prim("__convert_word8_to_word64_X", w)
     val toLargeX = toLargeWordX
 
     fun notb x = xorb(x, 0wxFF)

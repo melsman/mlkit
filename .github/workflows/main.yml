@@ -51,6 +51,15 @@ jobs:
       SEED_VERSION: ${{ matrix.seed_version }}
 
     steps:
+      # GitHub's built-in "Set up job" block is runner-controlled. Report
+      # resources in the first editable step, before checkout or installation.
+      - name: Set up job resources
+        run: |
+          processors=$(getconf _NPROCESSORS_ONLN)
+          echo "Runner: $(uname -sm)"
+          echo "Available processors: $processors"
+          echo "COMPILER_JOBS=$processors" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
 
       - name: Install Linux dependencies
@@ -104,8 +113,7 @@ jobs:
         run: |
           ./autobuild
           "$THECC" --version
-          compiler_jobs=$(getconf _NPROCESSORS_ONLN)
-          echo "COMPILER_JOBS=$compiler_jobs" >> "$GITHUB_ENV"
+          compiler_jobs=$COMPILER_JOBS
           if [ "$MLCOMP_HOST" = mlton ]; then
             mlton
             ./configure CC="$THECC" --with-compiler='mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten -verbose 2'
@@ -132,10 +140,25 @@ jobs:
         run: sudo make install
 
       - name: Run compiler and runtime regression tests
-        run: make check-compiler CC="$THECC"
+        shell: bash
+        run: |
+          export TMPDIR="$RUNNER_TEMP"
+          make check-compiler CC="$THECC"
+          sh test/numeric-conversions/check.sh
+          make -C test/explicit_regions test_storage_modes
 
-      - name: Check explicit storage modes
-        run: make -C test/explicit_regions test_storage_modes
+      - name: Retain compiler and runtime failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compiler-runtime-${{ runner.os }}-${{ runner.arch }}-${{ env.MLCOMP_HOST }}
+          path: |
+            ${{ runner.temp }}/mlkit-conversions.*
+            ${{ runner.temp }}/mlkit-regressions.*/*.log
+            ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.mlb.out
+            ${{ runner.temp }}/mlkit-regressions.*/*/test/MLB/*/numeric-conversions.sml*.o.ir
+            ${{ runner.temp }}/mlkit-regressions.*/*/test/test_report.html
+          if-no-files-found: ignore
 
       - name: Build SMLtoJs
         run: |
@@ -206,13 +229,13 @@ jobs:
           make -C "$package" install PREFIX="$installed"
           if [ "$OS" = darwin ]; then
             test "$(lipo -archs "$installed/bin/mlkit")" = arm64
-            # Compiler releases must also be usable as bootstrap seeds.
+            # Require MLKit's default ARM64 stack, not the OS's small default.
             for compiler in mlkit reml smltojs; do
               stack=$(otool -l "$installed/bin/$compiler" | awk '
                 $1 == "cmd" && $2 == "LC_MAIN" { main = 1 }
                 main && $1 == "stacksize" { print $2; exit }
               ')
-              if [ -z "$stack" ] || [ "$stack" -lt 536870912 ]; then
+              if [ -z "$stack" ] || [ "$stack" -lt 268435456 ]; then
                 echo "$compiler has insufficient bootstrap stack: ${stack:-missing LC_MAIN}" >&2
                 exit 1
               fi

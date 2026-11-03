@@ -8,6 +8,8 @@ by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
  noopt          ; disable lambda optimiser
+ inl0           ; set maximum inline size to 0
+ inl20          ; set maximum inline size to 20
  ccl            ; compare compiler logs
  tx             ; time executable
  tc             ; time compiler
@@ -121,6 +123,7 @@ int32_2.sml
 intword32-representation.sml
 int63.sml
 int63_2.sml
+numeric-conversions.mlb inl20
 int64.sml
 intinf.sml
 intinf2.sml
@@ -184,8 +187,8 @@ with-escape.sml
 sigs-avail.sml                                (* basis library available signatures *)
 structs-avail.sml                             (* basis library available structures *)
 
-word-n-vector.mlb
-int-n-vector.mlb
+word-n-vector.mlb inl20
+int-n-vector.mlb inl20
 auto2.sml                                     (* ffi auto-conversion *)
 foldbug.sml
 seltuptup.sml

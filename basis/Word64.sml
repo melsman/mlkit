@@ -18,13 +18,13 @@ structure Word64 : WORD =
     val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word64) : intinf =
-	IntInfRep.fromWord64 w
+	prim("__word64_to_intinf", w)
 
     fun toLargeIntX (w : word64) : intinf =
-	IntInfRep.fromWord64X w
+	prim("__word64_to_intinf_X", w)
 
     fun fromLargeInt (i : intinf) : word64 =
-	IntInfRep.toWord64 i
+	prim("__intinf_to_word64", i)
 
     fun orb (x : word64, y : word64) : word64 = prim("__orb_word64", (x, y))
     fun andb (x : word64, y : word64) : word64 = prim("__andb_word64", (x, y))

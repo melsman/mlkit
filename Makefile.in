@@ -379,11 +379,11 @@ BOOTSTRAP_JOBS ?= 2
 VERBOSE ?= 0
 BOOTSTRAP_STRIP ?= $(STRIP)
 BOOTSTRAP_COMPARE ?= cmp
+# Use MLKit's linker defaults unless the caller explicitly overrides them.
+BOOTSTRAP_LINKER ?=
 ifeq ($(DARWIN_NATIVE),1)
-BOOTSTRAP_LINKER ?= gcc -arch arm64 -Wl,-stack_size,0x20000000
 BOOTSTRAP_TIME_FLAGS = -l
 else
-BOOTSTRAP_LINKER ?= gcc
 BOOTSTRAP_TIME_FLAGS = -v
 endif
 
@@ -409,7 +409,7 @@ define bootstrap_compile
 	mkdir -p "$(BOOTSTRAP_DIR)/stage$(1)"
 	@set -o pipefail; { SML_LIB="$(CWD)" /usr/bin/time $(BOOTSTRAP_TIME_FLAGS) \
 	  sh -c 'exec "$$@" 2>&3' bootstrap "$(2)" -gc -j $(BOOTSTRAP_JOBS) \
-	  -ldexe '$(BOOTSTRAP_LINKER)' --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
+	  $(if $(strip $(BOOTSTRAP_LINKER)),-ldexe '$(BOOTSTRAP_LINKER)') --mlb-subdir "$(BOOTSTRAP_CACHE)Stage$(1)" \
 	  -o "$(BOOTSTRAP_DIR)/stage$(1)/mlkit" src/Compiler/mlkit$(BACKEND_SUFFIX).mlb \
 	  3>&2 2> "$(BOOTSTRAP_DIR)/stage$(1).resources"; } \
 	  $(if $(filter 1,$(VERBOSE)),2>&1 | tee "$(BOOTSTRAP_DIR)/stage$(1).log",> "$(BOOTSTRAP_DIR)/stage$(1).log" 2>&1) || \
@@ -442,11 +442,10 @@ bootstrap-compare: bootstrap-stage3
 	$(INSTALL) "$(BOOTSTRAP_DIR)/stage3/mlkit" bin/mlkit
 	@echo "$(BACKEND) bootstrap fixed point passed."
 
-# Only test_dev has isolated compiler/linker scratch directories.
-TEST_JOBS ?= 6
-# Full native suites have private trees and can share prepared library caches
-# when their runtime configurations differ. Limit compiler memory pressure.
-REGRESSION_JOBS ?= 2
+# Prefer concurrent regression suites; the script shares remaining CPUs among
+# their compiler subprocesses. TEST_JOBS caps test_dev's separate make workers.
+TEST_JOBS ?= $(shell getconf _NPROCESSORS_ONLN)
+REGRESSION_JOBS ?=
 
 .PHONY: check-mllex
 check-compiler: check-mllex

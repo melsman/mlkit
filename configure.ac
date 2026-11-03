@@ -82,12 +82,11 @@ AS_CASE([$SEED_KIND], [mlkit|mlton|generic], [], [AC_MSG_ERROR([unsupported comp
 AC_ARG_WITH([compiler-lib],
   [AS_HELP_STRING([--with-compiler-lib=DIR], [Basis/runtime installation for an MLKit seed])],
   [SEED_LIB=$withval], [SEED_LIB=])
-AC_ARG_VAR([SEED_FLAGS], [extra seed compiler flags (defaults include the macOS bootstrap stack setting)])
+AC_ARG_VAR([SEED_FLAGS], [extra seed compiler flags (MLton defaults include the macOS bootstrap stack setting)])
 AS_IF([test "${SEED_FLAGS+set}" != set], [
   SEED_FLAGS=
   AS_IF([test "$DARWIN_NATIVE" = 1], [
     AS_CASE([$SEED_KIND],
-      [mlkit], [SEED_FLAGS="-ldexe 'gcc -arch arm64 -Wl,-stack_size,0x20000000'"],
       [mlton], [SEED_FLAGS="-link-opt -Wl,-stack_size,0x20000000"])
   ])
 ])

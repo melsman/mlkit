@@ -1,6 +1,7 @@
 
 signature OPT_LAMBDA =
   sig
+    type LambdaExp
     type LambdaPgm
     type env
     type Type

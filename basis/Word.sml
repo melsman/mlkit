@@ -22,13 +22,13 @@ structure Word : WORD =
     val toLarge = toLargeWord
 
     fun toLargeInt (w : word) : intinf =
-	IntInfRep.fromWord w
+	prim("__word_to_intinf", w)
 
     fun toLargeIntX (w : word) : intinf =
-	IntInfRep.fromWordX w
+	prim("__word_to_intinf_X", w)
 
     fun fromLargeInt (i : intinf) : word =
-	IntInfRep.toWord i
+	prim("__intinf_to_word", i)
 
     fun toLargeWordX (w : word) : word64 = prim("__word_to_word64_X", w)
     val toLargeX = toLargeWordX

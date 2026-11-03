@@ -23,13 +23,13 @@ structure Word32 : WORD =
     val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word32) : intinf =
-	IntInfRep.fromWord32 w
+	prim("__word32_to_intinf", w)
 
     fun toLargeIntX (w : word32) : intinf =
-	IntInfRep.fromWord32X w
+	prim("__word32_to_intinf_X", w)
 
     fun fromLargeInt (i : intinf) : word32 =
-	IntInfRep.toWord32 i
+	prim("__intinf_to_word32", i)
 
     fun orb (x : word32, y : word32) : word32 = prim("__orb_word32", (x, y))
     fun andb (x : word32, y : word32) : word32 = prim("__andb_word32", (x, y))

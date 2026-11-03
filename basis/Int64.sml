@@ -17,8 +17,8 @@ structure Int64 : INTEGER =
       | not false = true
 
     (* Body *)
-    fun toLarge (x: int64) : intinf = IntInfRep.fromInt64 x
-    fun fromLarge (x: intinf) : int64 = IntInfRep.toInt64 x
+    fun toLarge (x: int64) : intinf = prim("__int64_to_intinf", x)
+    fun fromLarge (x: intinf) : int64 = prim("__intinf_to_int64", x)
     fun toInt (x: int64) : int = prim("__int64_to_int", x)
     fun fromInt (x: int) : int64 = prim("__int_to_int64", x)
 

@@ -1137,7 +1137,13 @@ struct
            fun maybe_unbox C = if boxedarg then load(x_reg,WORDS 1,d_reg,C)
                                else copy(x_reg,d_reg,C)
        in x_C(
-          maybe_unbox(   (* MEMO: we should raise Overflow more often *)
+          maybe_unbox(
+          (* Check the full Int64 before the 32-bit multiply discards its
+           * upper bits. A multiply-overflow check alone misses truncation. *)
+          I.cmpq(I "-1073741824", R d_reg) ::
+          I.jl(NameLab "__raise_overflow") ::
+          I.cmpq(I "1073741823", R d_reg) ::
+          I.jg(NameLab "__raise_overflow") ::
           G.mul(I "2", I.doubleOfQuadReg d_reg) $
           jump_overflow (
           G.add(I "1", d_reg) C')))   (* No need to check for overflow after adding 1; the
@@ -1748,16 +1754,18 @@ struct
      fun num31_to_num_boxed {quad,signext} (b,x,d,fsz,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
          let val (d_reg,C') = resolve_aty_def(d,treg1,fsz,C)
-             val (inst_shift, maybeDoubleOfQuadReg) =
-                 if quad
-                 then (I.sarq, fn r => r)
-                 else (if signext then I.sarl else I.shrl, I.doubleOfQuadReg)
+             val inst_shift = if signext then I.sarl else I.shrl
+             fun widen C =
+                 if quad andalso signext then
+                   I.movslq(R (I.doubleOfQuadReg treg0), R treg0) :: C
+                 else C
          in
            load_aty(x,treg0,fsz,
-           inst_shift (I "1", R (maybeDoubleOfQuadReg treg0)) ::
-           load_aty(b,d_reg,fsz,
+           (* Only the low 32 bits of a tagged Int31 are meaningful. *)
+           inst_shift (I "1", R (I.doubleOfQuadReg treg0)) ::
+           widen(load_aty(b,d_reg,fsz,
            store(treg0,d_reg,WORDS 1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))   (* store tag *)
          end
        else die "num31_to_num_boxed.tagging_disabled"
 
@@ -2510,8 +2518,10 @@ struct
                             move_reg_into_aty(treg1,d,fsz,C))))
                   | NONE => die "low32Primitive.buffer"
                 else move_reg_into_aty(treg0,d,fsz,C)))
-         val signed = (32,true,false,true)
-         val unsigned = (32,false,false,true)
+         (* Legacy 32b aliases follow the current tagging mode; Int31 and
+          * Int63 retain their tagged representations in either mode. *)
+         val signed = (32,true,false,BI.tag_values())
+         val unsigned = (32,false,false,BI.tag_values())
          fun compare jump cmov =
            case args of [a,b] =>
              let val code = case d of
@@ -2615,27 +2625,27 @@ struct
          | Bytetable_update_word32b =>
              (case args of [t,i,x] => SOME(bytetable_update_real32(t,i,x,d,fsz,C))
               | _ => die "low32Primitive.tableUpdate")
-         | Int31_to_int32b => conversion (31,true,false,true) (32,true,false,true) false
-         | Int32b_to_int31 => conversion (32,true,false,true) (31,true,false,true) false
-         | Int32b_to_word32b => conversion (32,true,false,true) (32,false,false,true) false
-         | Word31_to_word32b => conversion (31,false,false,true) (32,false,false,true) false
-         | Word32b_to_word31 => conversion (32,false,false,true) (31,false,false,true) false
-         | Word31_to_word32b_X => conversion (31,false,false,true) (32,false,false,true) true
-         | Word32b_to_int32b => conversion (32,false,false,true) (32,true,false,true) false
-         | Word32b_to_int32b_X => conversion (32,false,false,true) (32,true,false,true) true
-         | Word32b_to_int31 => conversion (32,false,false,true) (31,true,false,true) false
-         | Int32b_to_word31 => conversion (32,true,false,true) (31,false,false,true) false
-         | Word32b_to_int31_X => conversion (32,false,false,true) (31,true,false,true) true
-         | Word32b_to_word64b => conversion (32,false,false,true) (64,false,true,false) false
-         | Word32b_to_word64b_X => conversion (32,false,false,true) (64,false,true,false) true
-         | Word64b_to_word32b => conversion (64,false,true,false) (32,false,false,true) false
-         | Int32b_to_int64b => conversion (32,true,false,true) (64,true,true,false) false
-         | Word32b_to_word63 => conversion (32,false,false,true) (63,false,false,true) false
-         | Word63_to_word32b => conversion (63,false,false,true) (32,false,false,true) false
-         | Int32b_to_int63 => conversion (32,true,false,true) (63,true,false,true) false
-         | Int63_to_int32b => conversion (63,true,false,true) (32,true,false,true) false
-         | Word32b_to_int63 => conversion (32,false,false,true) (63,true,false,true) false
-         | Word32b_to_int63_X => conversion (32,false,false,true) (63,true,false,true) true
+         | Int31_to_int32b => conversion (31,true,false,true) signed false
+         | Int32b_to_int31 => conversion signed (31,true,false,true) false
+         | Int32b_to_word32b => conversion signed unsigned false
+         | Word31_to_word32b => conversion (31,false,false,true) unsigned false
+         | Word32b_to_word31 => conversion unsigned (31,false,false,true) false
+         | Word31_to_word32b_X => conversion (31,false,false,true) unsigned true
+         | Word32b_to_int32b => conversion unsigned signed false
+         | Word32b_to_int32b_X => conversion unsigned signed true
+         | Word32b_to_int31 => conversion unsigned (31,true,false,true) false
+         | Int32b_to_word31 => conversion signed (31,false,false,true) false
+         | Word32b_to_int31_X => conversion unsigned (31,true,false,true) true
+         | Word32b_to_word64b => conversion unsigned (64,false,true,false) false
+         | Word32b_to_word64b_X => conversion unsigned (64,false,true,false) true
+         | Word64b_to_word32b => conversion (64,false,true,false) unsigned false
+         | Int32b_to_int64b => conversion signed (64,true,true,false) false
+         | Word32b_to_word63 => conversion unsigned (63,false,false,true) false
+         | Word63_to_word32b => conversion (63,false,false,true) unsigned false
+         | Int32b_to_int63 => conversion signed (63,true,false,true) false
+         | Int63_to_int32b => conversion (63,true,false,true) signed false
+         | Word32b_to_int63 => conversion unsigned (63,true,false,true) false
+         | Word32b_to_int63_X => conversion unsigned (63,true,false,true) true
          | _ => NONE
        end
 

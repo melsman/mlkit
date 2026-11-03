@@ -308,7 +308,18 @@ structure LambdaExp : LAMBDA_EXP =
      exception NotSafe
 
      val safeCNames = StringSet.fromList
-       ["__plus_word31", "__plus_word32ub", "__plus_word32b",
+       ["__int_to_intinf", "__int31_to_intinf", "__int32_to_intinf",
+        "__int63_to_intinf", "__int64_to_intinf", "__word_to_intinf",
+        "__word_to_intinf_X", "__word8_to_intinf", "__word8_to_intinf_X",
+        "__word31_to_intinf", "__word31_to_intinf_X", "__word32_to_intinf",
+        "__word32_to_intinf_X", "__word63_to_intinf", "__word63_to_intinf_X",
+        "__word64_to_intinf", "__word64_to_intinf_X", "__convert_int31_to_intinf_X",
+        "__convert_int32_to_intinf_X", "__convert_int63_to_intinf_X", "__convert_int64_to_intinf_X",
+        "__convert_word8_to_intinf", "__convert_word8_to_intinf_X", "__convert_word31_to_intinf",
+        "__convert_word31_to_intinf_X", "__convert_word32_to_intinf", "__convert_word32_to_intinf_X",
+        "__convert_word63_to_intinf", "__convert_word63_to_intinf_X", "__convert_word64_to_intinf",
+        "__convert_word64_to_intinf_X",
+        "__plus_word31", "__plus_word32ub", "__plus_word32b",
         "__minus_word31", "__minus_word32ub", "__minus_word32b",
         "__mul_word31", "__mul_word32ub", "__mul_word32b",
         "__less_word31", "__less_word32ub", "__less_word32b",
@@ -364,7 +375,27 @@ structure LambdaExp : LAMBDA_EXP =
         "__blockf64_sub_f64"
        ]
 
-     fun safeCName n = if StringSet.member n safeCNames then ()
+     (* Semantic finite conversions are pure precisely when no range check
+      * can fail. This allows dead intermediates to disappear before lowering. *)
+     fun safeNumericConversion n =
+         let fun bits s =
+                 if String.isPrefix "int" s then Int.fromString(String.extract(s,3,NONE))
+                 else if String.isPrefix "word" s then Int.fromString(String.extract(s,4,NONE))
+                 else NONE
+         in case String.tokens (fn c => c = #"_") n of
+                "convert"::src::"to"::dst::rest =>
+                (case bits src of
+                     NONE => false
+                   | SOME a =>
+                     if dst = "intinf" orelse String.isPrefix "word" dst then true
+                     else case bits dst of
+                              SOME b => if String.isPrefix "int" src orelse rest = ["X"]
+                                        then b >= a else b > a
+                            | NONE => false)
+              | _ => false
+         end
+
+     fun safeCName n = if StringSet.member n safeCNames orelse safeNumericConversion n then ()
                        else raise NotSafe
 
      fun safe_prim prim =

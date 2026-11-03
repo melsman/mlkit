@@ -50,7 +50,10 @@ MAKE
   (cd "$dir" && SML_LIB=must-not-leak make -s -f probe.mk seed-probe)
   grep -q "seed-$seed|unset|-test-argument" "$BUILD_CHECK_LOG"
   case "$(uname -s):$seed" in
-    Darwin:mlkit) grep -q -- '-ldexe gcc -arch arm64' "$BUILD_CHECK_LOG" ;;
+    Darwin:mlkit)
+      if grep "seed-$seed|unset|" "$BUILD_CHECK_LOG" | grep -q -- '-ldexe'; then
+        echo 'MLKit seed unexpectedly overrides its default linker' >&2; exit 1
+      fi ;;
     Darwin:mlton) grep -q -- '-link-opt -Wl,-stack_size' "$BUILD_CHECK_LOG" ;;
   esac
   # The viewer and its embedding helper must use the same configured seed.

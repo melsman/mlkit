@@ -18,8 +18,8 @@ structure Int : INTEGER =
 
     (* Body *)
     type int = int
-    fun toLarge (x: int) : intinf = IntInfRep.fromInt x
-    fun fromLarge (x: intinf) : int = IntInfRep.toInt x
+    fun toLarge (x: int) : intinf = prim("__int_to_intinf", x)
+    fun fromLarge (x: intinf) : int = prim("__intinf_to_int", x)
     fun toInt (x: int) : int = x
     fun fromInt (x: int) : int = x
 

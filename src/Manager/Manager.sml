@@ -603,7 +603,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build_mlb_one (mlbfile, ebfiles, smlfile) : unit =
         let (* load the bases that smlfile depends on *)
             val () = message (fn () => "[reading source file:\t" ^ smlfile)
-            val (unpickleStream, elabBasesInfo) = PB.unpickleBases0 ebfiles
+            val (unpickleStream, elabBasesInfo) = Timing.timing "LoadElabEnv" PB.unpickleBases0 ebfiles
             val initialBasis0 = Basis.initialBasis0()
             val (infB,elabB) =
                 List.foldl (fn ({infixElabBasis,...}, acc) =>
@@ -635,21 +635,22 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = chat "[finding free identifiers begin...]"
                 val freelongids =
                     let val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
-                    in PB.add_longstrid intinfrep (FreeIds.fid_topdec topdec)
+                    in PB.add_longstrid intinfrep (Timing.timing "FreeIds" FreeIds.fid_topdec topdec)
                     end
                 val _ = chat "[finding free identifiers end...]"
 
                 val _ = chat "[computing actual dependencies begin...]"
-                val ebfiles_actual = PB.compute_actual_deps
-                    (#2 initialBasis0) elabBasesInfo freelongids
+                val ebfiles_actual = Timing.timing "Dependencies"
+                    (fn () => PB.compute_actual_deps (#2 initialBasis0) elabBasesInfo freelongids) ()
                 val ebfiles_actual = map (fn x => x ^ "1") ebfiles_actual
                 val _ = chat "[computing actual dependencies end...]"
 
                 val (B_im,_) =
                     let val (opaq_env,intB) =
-                        PB.unpickleBases1 unpickleStream ebfiles_actual
+                        Timing.timing "LoadCompEnv"
+                          (fn () => PB.unpickleBases1 unpickleStream ebfiles_actual) ()
                         val B = Basis.mk(infB,elabB,opaq_env,intB)
-                    in Basis.restrict(B,freelongids)
+                    in Timing.timing "RestrictEnv" Basis.restrict (B,freelongids)
                     end
                 val () = message (fn () => "\n")
                 val (_,_,opaq_env_im,intB_im) = Basis.un B_im
@@ -661,7 +662,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = Name.baseSet (base ^ "1")
 
                 val _ = chat "[opacity elimination begin...]"
-                val (topdec', opaq_env') = OpacityElim.opacity_elimination(opaq_env_im, topdec)
+                val (topdec', opaq_env') = Timing.timing "OpacityElim" OpacityElim.opacity_elimination (opaq_env_im, topdec)
                 val _ = chat "[opacity elimination end...]"
 
 	        val _ = maybe_print_topdec "AST after opacity elimination" topdec
@@ -686,7 +687,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                        ; print "\n")
                     else ()
 
-                val B'Closed = Basis.closure (B_im,B')
+                val B'Closed = Timing.timing "CloseEnv" Basis.closure (B_im,B')
 
                 val _ =
                     if print_closed_export_bases() then
@@ -704,10 +705,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 (* Write export bases to disk if there are not
                  * already identical export bases on disk *)
                 val ofile = Flags.get_string_entry "output"
-                val _ = PB.pickleNB smlfile ofile (NB0',NB1')
+                val _ = Timing.timing "SaveEnv"
+                    (fn () => PB.pickleNB smlfile ofile (NB0',NB1')) ()
 
                 val modc = ModCode.emit (abs_mlbfile,modc)
-                val _ = PB.pickleLnkFile smlfile ofile modc
+                val _ = Timing.timing "SaveLink" (fn () => PB.pickleLnkFile smlfile ofile modc) ()
 
                 (* Maybe write smlfile.eb.js to disk with export basis binding
                  * for JavaScript loading *)
@@ -1007,10 +1009,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         let val os = (TextIO.openOut (timingfile)
                       handle _ => (print ("Error: I could not open file `" ^ timingfile ^ "' for writing");
                                    raise PARSE_ELAB_ERROR nil))
-          fun close () = (TextIO.closeOut os;
+          fun close () = (Timing.finish_report();
+                          TextIO.closeOut os;
                           Flags.timings_stream := NONE;
                           print ("[wrote compiler timings file: "  ^ timingfile ^ "]\n"))
-        in Flags.timings_stream := SOME os;
+        in Timing.start_report (timingfile ^ ".details");
+          Flags.timings_stream := SOME os;
           comp0 file handle E => (close(); raise E);
             close()
         end

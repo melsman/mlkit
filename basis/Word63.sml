@@ -19,11 +19,11 @@ structure Word63 : WORD =
     val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word63) : intinf =
-	IntInfRep.fromWord63 w
+	prim("__word63_to_intinf", w)
     fun toLargeIntX (w : word63) : intinf =
-	IntInfRep.fromWord63X w
+	prim("__word63_to_intinf_X", w)
     fun fromLargeInt (i : intinf) : word63 =
-	IntInfRep.toWord63 i
+	prim("__intinf_to_word63", i)
 
     fun orb (x : word63, y : word63) : word63 = prim("__orb_word63", (x, y))
     fun andb (x : word63, y : word63) : word63 = prim("__andb_word63", (x, y))

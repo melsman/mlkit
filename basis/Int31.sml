@@ -17,8 +17,8 @@ structure Int31 : INTEGER =
       | not false = true
 
     (* Body *)
-    fun toLarge (x: int31) : intinf = IntInfRep.fromInt31 x
-    fun fromLarge (x: intinf) : int31 = IntInfRep.toInt31 x
+    fun toLarge (x: int31) : intinf = prim("__int31_to_intinf", x)
+    fun fromLarge (x: intinf) : int31 = prim("__intinf_to_int31", x)
     fun toInt (x: int31) : int = prim("__int31_to_int", x)
     fun fromInt (x: int) : int31 = prim("__int_to_int31", x)
 

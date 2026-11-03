@@ -203,8 +203,8 @@ structure TestReport : TEST_REPORT =
 	      outpar "This section shows timings for the Kit compiler. \
 	             \The times measured are the times used by different phases of the Kit for compiling \
 	             \the source programs. \
-	             \Timings are written (<i>time</i>/<i>pct</i>), where <i>time</i> is the user \
-	             \CPU time (including garbage collection) in seconds and <i>pct</i> is the percentage \
+	             \Timings are written (<i>time</i>/<i>pct</i>), where <i>time</i> is the elapsed \
+	             \wall-clock time (including subprocesses) in seconds and <i>pct</i> is the percentage \
 	             \of time used in the phase compared to the time used for all the measured phases (the Total column).";
 	      app mktable tables
      end

@@ -19,6 +19,8 @@ signature TIMING =
 				    wallclock: Time.time}) list) list
 *)
     val reset_timings  : unit -> unit
+    val start_report : string -> unit
+    val finish_report : unit -> unit
 
     (* Local timers used manually (and temporarily) in modules. *)
     (* There is only one local timer available.                 *)
@@ -60,6 +62,7 @@ structure Timing: TIMING =
 
     val t = ref (Timer.startCPUTimer())
     val rt = ref (Timer.startRealTimer())
+    val childTimer = ref (Posix.ProcEnv.times())
 
     val timingNow = ref false
     val timer_nesting = ref 0
@@ -76,7 +79,8 @@ structure Timing: TIMING =
 	(if !timingNow then
 	   timer_nesting:= !timer_nesting+1 (*die ("Only one timer available (" ^ s ^ ")")*)
 	 else
-	   (t := Timer.startCPUTimer();
+	   (childTimer := Posix.ProcEnv.times();
+            t := Timer.startCPUTimer();
 	    timingNow := true;
 	    rt := Timer.startRealTimer())
         )
@@ -112,11 +116,68 @@ structure Timing: TIMING =
 	else
 	  timings::(insert_time_elem rest time_elem)
 
+    (* Keep the phase wall-clock stream separate from detailed measurements and
+       totals, so summing KITtimings does not double-count the whole build. *)
+    val details : TextIO.outstream option ref = ref NONE
+    val reportTimer = ref (Posix.ProcEnv.times(), Timer.startRealTimer())
+    val reportFile = ref ""
+
+    fun detail (name, usr, sys, real) =
+      case !details of
+          NONE => ()
+        | SOME os => TextIO.output(os, String.concatWith " "
+            [name, Time.fmt 6 usr, Time.fmt 6 sys, Time.fmt 6 real] ^ "\n")
+            before TextIO.flushOut os
+
+    fun start_report file =
+      (reportFile := file;
+       details := SOME (TextIO.openOut file);
+       Option.app (fn os => (TextIO.output(os, "phase user system elapsed\n# Detailed CPU includes reaped subprocesses; KITtimings records phase wall-clock time.\n# Measured elapsed is a sum of phase durations; parallel workers may overlap.\n# UnattributedCPU has no elapsed measurement (shown as zero).\n"); TextIO.flushOut os)) (!details);
+       reportTimer := (Posix.ProcEnv.times(), Timer.startRealTimer()))
+
+    fun finish_report () =
+      let val (cpu, real) = !reportTimer
+          val now = Posix.ProcEnv.times()
+          (* Include reaped workers and their assembler/linker subprocesses. *)
+          val usr = Time.-(Time.+(#utime now, #cutime now),
+                           Time.+(#utime cpu, #cutime cpu))
+          val sys = Time.-(Time.+(#stime now, #cstime now),
+                           Time.+(#stime cpu, #cstime cpu))
+          val elapsed = Timer.checkRealTimer real
+          (* Workers inherit the stream, but not updates to ML references.
+             Each record is flushed before worker exit; sum the shared file. *)
+          val input = TextIO.openIn (!reportFile)
+          fun sum acc =
+            case TextIO.inputLine input of
+                NONE => acc
+              | SOME line =>
+                case String.tokens Char.isSpace line of
+                    [_,u,s,r] =>
+                    (case (Time.fromString u, Time.fromString s, Time.fromString r) of
+                         (SOME u, SOME s, SOME r) =>
+                         let val (au,ass,ar) = acc
+                         in sum (Time.+(au,u), Time.+(ass,s), Time.+(ar,r))
+                         end
+                       | _ => sum acc)
+                  | _ => sum acc
+          val (mu, ms, mr) = sum (Time.zeroTime, Time.zeroTime, Time.zeroTime)
+                            before TextIO.closeIn input
+      in
+        detail ("Measured", mu, ms, mr);
+        detail ("UnattributedCPU", Time.-(usr,mu), Time.-(sys,ms), Time.zeroTime);
+        detail ("Total", usr, sys, elapsed);
+        Option.app TextIO.closeOut (!details);
+        details := NONE;
+        print ("[compiler total: user " ^ Time.toString usr ^
+               "s, system " ^ Time.toString sys ^ "s, elapsed " ^
+               Time.toString elapsed ^ "s; details in KITtimings.details]\n")
+      end
+
     fun maybe_export_timings {name, non_gc=usr, system=sys, gc, wallclock=real} =
      (case !Flags.timings_stream
 	of SOME os =>
 	  (let fun out t = TextIO.output(os, name ^ " " ^ Time.toString t ^ "\n")
-	   in out usr ; TextIO.flushOut os
+	   in out real ; TextIO.flushOut os
 	   end handle _ => die "maybe_export_timings.I could not write timings to timings stream")
 	 | NONE => ())
 	  handle E => raise_again "maybe_export_timings" E
@@ -145,6 +206,11 @@ structure Timing: TIMING =
 			    gc = Time.zeroTime,
 			    wallclock = wallclock}
 
+               val children = Posix.ProcEnv.times()
+               val childUsr = Time.-(#cutime children, #cutime (!childTimer))
+               val childSys = Time.-(#cstime children, #cstime (!childTimer))
+               val _ = detail (name, Time.+(non_gc,childUsr),
+                               Time.+(system,childSys), wallclock)
 	       val _ = maybe_export_timings time_elem
 
 	       val _ = timings :=

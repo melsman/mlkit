@@ -1,5 +1,5 @@
 DATE=$(shell date -u '+%Y-%m-%dT-%H:%M:%S')
-REGRESSION_JOBS ?= 2
+REGRESSION_JOBS ?=
 REGRESSION_SUITES ?= gc plain
 
 .PHONY: test
