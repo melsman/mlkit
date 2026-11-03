@@ -56,11 +56,23 @@ infix +
 fun f `[r1 r2] () : real * real = (5.4`r1,6.4`r2)
 fun g () = let with r1 r2 val (x,y) = f `[r1 r2] () in x + y end
 SML
+# Internal numeric primitives must not silently lose allocation annotations.
+cat > numeric_region.sml <<'SML'
+fun conversion () =
+    let with r
+    in prim`atbot r ("__word8_to_intinf", 0w1) : intinf
+    end
+SML
 for source in *.sml; do printf '%s\n' "$source" > "${source%.sml}.mlb"; done
 printf 'external.sml\nexternal_call.sml\n' > external_call.mlb
 printf 'external.sml\nexternal_bad.sml\n' > external_bad.mlb
 printf 'external.sml\nexternal_alias.sml\n' > external_alias.mlb
 for optimise in -no_opt -opt; do
+  if "$REML" -no_basislib "$optimise" -c numeric_region.mlb > numeric_region.log 2>&1; then
+    echo "Internal conversion discarded an explicit region ($optimise)" >&2; exit 1
+  fi
+  grep -q 'Internal numeric conversions do not support explicit region annotations' numeric_region.log
+  if grep -Eq 'Impossible:|uncaught exception' numeric_region.log; then exit 1; fi
   "$REML" -no_basislib "$optimise" -o good good.mlb > good.log 2>&1
   ./good > actual
   printf ABCDE > expected

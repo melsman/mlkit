@@ -630,6 +630,12 @@ structure OptLambda : OPT_LAMBDA =
        fun c b x e =
          case e
            of VAR{lvar,...} => if is_in_lv lvar b then () else raise OPEN
+            (* The captured canonical implementation is an explicit optimizer
+             * dependency, retained by free_cv/restrict even across units. *)
+            | PRIM(p as CCALLprim _,[arg,implementation as VAR{instances=[],regvars=[],...}]) =>
+              (case NC.decode p of
+                   SOME {src=NC.Inf,...} => c b x arg
+                 | _ => (c b x arg; c b x implementation))
             | PRIM(CONprim{con,...},es) => (check_con con ; app (c b x) es)
             | PRIM(DECONprim{con,...},es) => (check_con con ; app (c b x) es)
             | PRIM(EXCONprim ex,es) => (check_excon ex x ; app (c b x) es)
@@ -2428,7 +2434,8 @@ structure OptLambda : OPT_LAMBDA =
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
           | PRIM(p as CCALLprim{name,Type,...},xs) =>
-            (case (case xs of [arg] => composeConversion env p arg | _ => NONE) of
+            (case (case xs of [arg] => composeConversion env p arg
+                                  | [arg,_] => composeConversion env p arg | _ => NONE) of
                  SOME e => (tick "compose numeric conversions";
                             decr_uses lamb; incr_uses e; (e,CUNKNOWN))
                | NONE => if unbox_reals() then
@@ -2700,7 +2707,10 @@ structure OptLambda : OPT_LAMBDA =
                 in (PRIM(prim,[e']), cv'')
                 end
               | PRIM(prim,lambs) =>
-                let val es = map (fst o (fn e => contr (env,e))) lambs
+                let val es = case (NC.decode prim,lambs) of
+                          (SOME {src=NC.Inf,...},[arg,implementation as VAR{instances=[],regvars=[],...}]) =>
+                          [fst(contr(env,arg)),implementation]
+                        | _ => map (fst o (fn e => contr (env,e))) lambs
                     val e = PRIM(prim,es)
                     val cv = case (NC.forComposition prim,es) of
                                  (SOME _,[VAR{instances=[],regvars=[],...}]) => CCONV e
@@ -4320,9 +4330,9 @@ structure OptLambda : OPT_LAMBDA =
              in (lower e', contract_env_dummy e', phi')
              end
 
-    fun optimise lookup (env, PGM(DATBINDS db,lamb)) =
+    fun optimise (env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
-            val (lamb, cenv, phi) = maybeoptimise (NC.lower lookup) cenv phi lamb
+            val (lamb, cenv, phi) = maybeoptimise NC.lower cenv phi lamb
             (*val _ = prLambdaExp "Before rewriting" lamb *)
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)

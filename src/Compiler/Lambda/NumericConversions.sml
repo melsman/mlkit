@@ -62,8 +62,9 @@ struct
         | "intinf" => SOME Inf
         | _ => scalar t
 
-  fun decode (CCALLprim{name,Type=ARROWtype([a],_,[b],_),...}) =
-      let val tokens = String.tokens (fn c => c = #"_") name
+  fun decode (CCALLprim{name,Type=ARROWtype(a::_,_,[b],_),...}) =
+      if name <> "id" andalso not(String.isPrefix "__" name) then NONE
+      else let val tokens = String.tokens (fn c => c = #"_") name
           val numeric = fn s => String.isPrefix "int" s orelse String.isPrefix "word" s
           val names = case tokens of
                           [a,"to",b] => if numeric a andalso numeric b then SOME(a,b) else NONE
@@ -294,28 +295,27 @@ struct
   fun needsLowering e =
       LambdaBasics.foldTD (fn found => fn e => found orelse
           (case e of
-               PRIM(p as CCALLprim{name,...},[_]) =>
+               PRIM(p as CCALLprim{name,...},_::_) =>
                (case decode p of
                     SOME {src,dst,...} => String.isPrefix "__convert_" name orelse src = Inf orelse dst = Inf
                   | NONE => false)
              | _ => false)) false e
 
-  fun lower lookup e =
+  fun lower e =
       let fun walk e =
               case e of
-                  PRIM(p, [arg]) =>
+                  PRIM(p, arg::implementations) =>
                   (case decode p of
                        SOME c =>
                        if String.isPrefix "__convert_" (case p of CCALLprim{name,...} => name | _ => "")
                           orelse #src c = Inf orelse #dst c = Inf then
                          let val arg = walk arg
                          in if #dst c = Inf then toInf c arg
-                            else case fallback c of
-                                SOME n =>
-                                (case lookup n of
-                                     SOME f => APP(f,arg,NONE)
-                                   | NONE => Crash.impossible("NumericConversions.lower: " ^ n))
-                              | NONE => fixed c arg
+                            else if #src c = Inf then
+                              (case implementations of
+                                   [f] => APP(walk f,arg,NONE)
+                                 | _ => Crash.impossible "NumericConversions.lower: missing captured implementation; rebuild Basis caches")
+                            else fixed c arg
                          end
                        else LambdaBasics.map_lamb walk e
                      | NONE => LambdaBasics.map_lamb walk e)

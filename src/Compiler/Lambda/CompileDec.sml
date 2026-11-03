@@ -3078,13 +3078,38 @@ the 12 lines above are very similar to the code below
                    val name = compileCName name
                in
                  let
-                   val call = TLE.PRIM
-                         (CCALLprim {name = name,
-                                     tyvars = tyvars_fresh,
-                                     regvars = if realResult then [] else regvars,
-                                     Type = on_Type subst tau,
-                                     instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars},
-                          args')
+                   val primitive = CCALLprim
+                         {name = name, tyvars = tyvars_fresh,
+                          regvars = if realResult then [] else regvars,
+                          Type = on_Type subst tau,
+                          instances = map (fn tv => TLE.TYVARtype {tv=tv}) tyvars}
+                   val conversion = if NumericConversions.supported() then
+                                      NumericConversions.decode primitive else NONE
+                   val () = case conversion of
+                       SOME {src,dst,...} =>
+                       if (src = NumericConversions.Inf orelse dst = NumericConversions.Inf)
+                          andalso not(null regvars) then
+                         raise Report.DeepError
+                           (loc_report_of_ElabInfo info // line
+                             "Internal numeric conversions do not support explicit region annotations")
+                       else ()
+                     | NONE => ()
+                   (* Capture the implementation while its lexical environment is
+                    * available. Exported optimizer bodies retain this dependency
+                    * even if a client shadows the source IntInfRep structure. *)
+                   val call = case (conversion, args') of
+                       (SOME (c as {src=NumericConversions.Inf,...}), [arg]) =>
+                       let val n = valOf (NumericConversions.fallback c)
+                       in case CE.lookup_longid env (Ident.mk_LongId ["IntInfRep",n]) of
+                            SOME(CE.LVAR(lv,[],_,[])) =>
+                            TLE.PRIM(CCALLprim
+                              {name = name, tyvars = [], regvars = [], instances = [],
+                               Type = TLE.ARROWtype(map foreignType taus1 @ [on_Type subst tau],
+                                                    NONE,[foreignType tau2],NONE)},
+                              [arg,TLE.VAR{lvar=lv,instances=[],regvars=[]}])
+                          | _ => die ("Missing numeric conversion implementation: " ^ n)
+                       end
+                     | _ => TLE.PRIM(primitive,args')
                  in
                    if realResult then
                      TLE.PRIM (CCALLprim {name = "__f64_to_real",

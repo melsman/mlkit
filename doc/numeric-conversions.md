@@ -55,7 +55,16 @@ signed integer. This bounded construction exposes ordinary constructors and
 branches to subsequent local optimization. Surviving IntInf-to-finite operations
 call the existing IntInfRep implementations. The compiler's conservative
 IntInfRep dependency keeps these functions available; internal Basis scopes
-must also make the module available when imported semantic bodies require it.
+must also make the module available when compiling semantic wrapper definitions.
+
+IntInf-to-finite semantic primitives carry their implementation function as a
+second internal operand, captured in the lexical compilation environment. This
+keeps exported optimizer bodies independent of later `IntInfRep` shadowing.
+Only names in the reserved `__` namespace (and `id`) decode as conversions.
+Explicit region annotations on internal IntInf conversion primitives are
+rejected: lowering does not yet define a mapping from their region arguments
+to the separately allocated IntInf record and digit list. No storage
+directive is silently discarded.
 
 The post-lowering rounds import no contraction environment, export no optimizer
 information and cannot create semantic conversion primitives. Lowering remains
@@ -69,5 +78,6 @@ sharing their regions requires more than equality of their machine layouts.
 inputs and independent mathematical range/modulo expectations. The companion
 `test/numeric-conversions/check.sh` runs tagged, untagged and optimization-disabled
 configurations, checks cross-unit imports, shared intermediates, evaluation and
-exception ordering, fallback conversions, and the optimized selection unit.
+exception ordering, fallback conversions, lexical shadowing, ordinary foreign
+calls with side effects, and the optimized selection unit.
 It preserves generated artifacts in a temporary directory printed at startup.

@@ -155,7 +155,7 @@ jobs:
           path: |
             ${{ runner.temp }}/mlkit-conversions.*
             ${{ runner.temp }}/mlkit-regressions.*/*.log
-            ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.sml.out
+            ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.mlb.out
             ${{ runner.temp }}/mlkit-regressions.*/*/test/MLB/*/numeric-conversions.sml*.o.ir
             ${{ runner.temp }}/mlkit-regressions.*/*/test/test_report.html
           if-no-files-found: ignore
