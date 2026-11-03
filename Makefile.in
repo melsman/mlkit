@@ -442,11 +442,10 @@ bootstrap-compare: bootstrap-stage3
 	$(INSTALL) "$(BOOTSTRAP_DIR)/stage3/mlkit" bin/mlkit
 	@echo "$(BACKEND) bootstrap fixed point passed."
 
-# Only test_dev has isolated compiler/linker scratch directories.
-TEST_JOBS ?= 6
-# Full native suites have private trees and can share prepared library caches
-# when their runtime configurations differ. Limit compiler memory pressure.
-REGRESSION_JOBS ?= 2
+# Prefer concurrent regression suites; the script shares remaining CPUs among
+# their compiler subprocesses. TEST_JOBS caps test_dev's separate make workers.
+TEST_JOBS ?= $(shell getconf _NPROCESSORS_ONLN)
+REGRESSION_JOBS ?=
 
 .PHONY: check-mllex
 check-compiler: check-mllex
