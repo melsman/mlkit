@@ -201,7 +201,9 @@ struct
   val _ = rewrite LambdaStatSem.initial empty
   val deep = bind (ty [ty [ty [intTy]]]) (tuple [tuple [tuple [int 42]]])
       (fn x => discard intTy (select 0 (select 0 (select 0 x))))
-  val () = List.app Flags.turn_on ["data_flattening","data_flattening_refs","data_flattening_tuples"]
+  val () = assert "default pass flattens references"
+      (allocations (Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (pgm refGood))
+       < allocations (pgm refGood))
   val deepResult = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (pgm deep)
   val () = assert "sequential flattening reaches a fixed point" (allocations deepResult=1)
   val () = assert "no eligible opportunity remains"

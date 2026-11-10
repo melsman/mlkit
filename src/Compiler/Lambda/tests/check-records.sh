@@ -89,7 +89,7 @@ for flags in '--no_data_flattening --unbox_funargs' \
 done
 for feature in data_flattening_refs no_data_flattening_refs; do
   cp "$TESTS/analysis-source.sml" "$OUT/$feature.sml"
-  "$MLKIT" --mlb-subdir RecordTestsCross --data_flattening --report_data_flattening \
+  "$MLKIT" --mlb-subdir RecordTestsCross --report_data_flattening \
     --no_unbox_funargs "--$feature" \
     -o "$OUT/$feature" "$OUT/$feature.sml" > "$OUT/$feature-build.log" 2>&1
   grep -q 'data flattening .* reference:' "$OUT/$feature-build.log"
@@ -104,8 +104,9 @@ done
 # The same source runs with independent reference/tuple/argument controls.
 # Recursive consumers prevent elimination of all record allocations.
 for mode in no_gc gc gengc; do
-  for features in none refs tuples both; do
+  for features in default none refs tuples both; do
     case "$features" in
+      default) switches= ;;
       none) switches='--no_data_flattening_refs --no_data_flattening_tuples' ;;
       refs) switches='--data_flattening_refs --no_data_flattening_tuples' ;;
       tuples) switches='--no_data_flattening_refs --data_flattening_tuples' ;;
@@ -114,7 +115,7 @@ for mode in no_gc gc gengc; do
     for args in unbox_funargs no_unbox_funargs; do
       name=flatten-$mode-$features-$args
       cp "$TESTS/flatten-source.sml" "$OUT/$name.sml"
-      "$MLKIT" --mlb-subdir RecordTestsCross --data_flattening --report_data_flattening \
+      "$MLKIT" --mlb-subdir RecordTestsCross --report_data_flattening \
         "--$mode" "--$args" $switches \
         -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
       if [ "$features" = none ]; then

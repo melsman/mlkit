@@ -1712,6 +1712,17 @@ function arguments.
 
 A tuple is not allocated until its components have been evaluated.
 
+The optimiser can absorb a directly nested reference or tuple allocation into
+its enclosing tuple when the inner object is accessed only through that tuple.
+Reference contents become mutable fields. This \emph{data flattening} is enabled
+by default in all backends and is independent of argument flattening. Use
+\texttt{--no\_data\_flattening} to disable both forms, or
+\texttt{--no\_data\_flattening\_refs} and
+\texttt{--no\_data\_flattening\_tuples} to disable them individually.
+The corresponding positive options re-enable them; disabling the global
+optimiser also disables data flattening. Datatype specialisation and
+float-specific data flattening remain disabled.
+
 When reference-tracing garbage collection is enabled, records and tuples are
 tagged (with an extra tag-word) unless they are of size two or three (pairs or
 triples), in which case they will reside in regions of runtime type {\sc

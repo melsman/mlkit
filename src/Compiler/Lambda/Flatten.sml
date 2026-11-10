@@ -8,14 +8,14 @@ struct
   type candidate = {outer:repvar, index:int, inner:repvar option, width:int,
                     feature:feature, decision:decision}
 
-  fun option (name,description) = Flags.add_bool_entry
-      {long=name,short=NONE,menu=["Optimiser Control",name],item=ref false,neg=true,
+  fun option (name,initial,description) = Flags.add_bool_entry
+      {long=name,short=NONE,menu=["Optimiser Control",name],item=ref initial,neg=true,
        desc=description}
-  val enabled = option ("data_flattening","Flatten nested heap records (requires a feature switch).")
-  val refs = option ("data_flattening_refs","Flatten directly nested reference allocations.")
-  val tuples = option ("data_flattening_tuples","Flatten directly nested tuple allocations.")
-  val datatypes = option ("data_flattening_datatypes","Reserved for datatype layout specialisation.")
-  val floats = option ("data_flattening_floats","Reserved for unboxed-float data flattening.")
+  val enabled = option ("data_flattening",true,"Flatten nested heap records (requires a feature switch).")
+  val refs = option ("data_flattening_refs",true,"Flatten directly nested reference allocations.")
+  val tuples = option ("data_flattening_tuples",true,"Flatten directly nested tuple allocations.")
+  val datatypes = option ("data_flattening_datatypes",false,"Reserved for datatype layout specialisation.")
+  val floats = option ("data_flattening_floats",false,"Reserved for unboxed-float data flattening.")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
        item=ref false,neg=true,desc="Report eligible, rejected and disabled data-flattening candidates."}
