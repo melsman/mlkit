@@ -16,8 +16,11 @@ build ir records
 "$OUT/ir" > "$OUT/ir.log" 2>&1
 grep -q 'record IR tests passed' "$OUT/ir.log"
 build analysis analysis
-"$OUT/analysis" > "$OUT/analysis.log" 2>&1
+"$OUT/analysis" "$OUT/barified.sml" > "$OUT/analysis.log" 2>&1
 grep -q 'data flattening analysis tests passed' "$OUT/analysis.log"
+"$MLKIT" -o "$OUT/barified" "$OUT/barified.sml" > "$OUT/barified-build.log" 2>&1
+"$OUT/barified" > "$OUT/barified.log" 2>&1
+grep -q 'mutable singleton barification passed' "$OUT/barified.log"
 build js records-js
 "$OUT/js" "$OUT/mixed.js" > "$OUT/js.log" 2>&1
 node - "$OUT/mixed.js" <<'JS'
@@ -45,6 +48,28 @@ for mode in plain gc gengc; do
   "$OUT/$mode" > "$OUT/$mode.log" 2>&1
   grep -q 'mixed record read/store passed' "$OUT/$mode.log"
 done
+# Execute an actual multi-field splice, including mutable raw and pointer
+# fields, through the same native and JavaScript backend drivers.
+FLATTEN_RECORD_TEST=1 "$OUT/js" "$OUT/flatten.js" > "$OUT/flatten-js.log" 2>&1
+node - "$OUT/flatten.js" <<'JS'
+global.recordCheck = (f,s,n) => {
+  if (f !== 3.5 || s !== 'after' || n !== 7) throw Error('flattened mixed record');
+  console.log('flattened mixed record passed');
+};
+require(process.argv[2]);
+JS
+for mode in plain gc gengc; do
+  FLATTEN_RECORD_TEST=1 "$OUT/native" "$mode" "$OUT/flatten-$mode" > "$OUT/flatten-$mode-emit.log" 2>&1
+  case "$mode" in
+    plain) defines=; archive=runtimeSystem.a ;;
+    gc) defines=-DTAG_VALUES; archive=runtimeSystemGC.a ;;
+    gengc) defines=-DTAG_VALUES; archive=runtimeSystemGenGC.a ;;
+  esac
+  "$CC" $defines -iquote"$ROOT/src/Runtime" "$OUT/flatten-$mode.s" "$OUT/flatten-$mode-link.s" \
+    "$TESTS/record-check.c" "$runtime/$archive" -lm -o "$OUT/flatten-$mode" > "$OUT/flatten-$mode-link.log" 2>&1
+  "$OUT/flatten-$mode" > "$OUT/flatten-$mode.log" 2>&1
+  grep -q 'mixed record read/store passed' "$OUT/flatten-$mode.log"
+done
 if [ "$target" = arm64 ]; then
   "$CC" -DDARWIN_NATIVE=1 -DENABLE_GC -DENABLE_GEN_GC -DTAG_VALUES -iquote"$ROOT/src/Runtime" \
     "$ROOT/src/Runtime/tests/mutable-record-gc.c" "$runtime/runtimeSystemGenGC.a" \
@@ -65,14 +90,42 @@ done
 for feature in data_flattening_refs no_data_flattening_refs; do
   cp "$TESTS/analysis-source.sml" "$OUT/$feature.sml"
   "$MLKIT" --mlb-subdir RecordTestsCross --data_flattening --report_data_flattening \
-    --no_eliminate_explicit_records --no_unbox_funargs "--$feature" \
+    --no_unbox_funargs "--$feature" \
     -o "$OUT/$feature" "$OUT/$feature.sml" > "$OUT/$feature-build.log" 2>&1
   grep -q 'data flattening .* reference:' "$OUT/$feature-build.log"
   if [ "$feature" = no_data_flattening_refs ]; then
     grep -q 'reference: disabled' "$OUT/$feature-build.log"
+  else
+    grep -q 'data flattening: transformed' "$OUT/$feature-build.log"
   fi
   "$OUT/$feature" > "$OUT/$feature.log" 2>&1
   grep -q 'analysis source test passed' "$OUT/$feature.log"
+done
+# The same source runs with independent reference/tuple/argument controls.
+# Recursive consumers prevent elimination of all record allocations.
+for mode in no_gc gc gengc; do
+  for features in none refs tuples both; do
+    case "$features" in
+      none) switches='--no_data_flattening_refs --no_data_flattening_tuples' ;;
+      refs) switches='--data_flattening_refs --no_data_flattening_tuples' ;;
+      tuples) switches='--no_data_flattening_refs --data_flattening_tuples' ;;
+      both) switches='--data_flattening_refs --data_flattening_tuples' ;;
+    esac
+    for args in unbox_funargs no_unbox_funargs; do
+      name=flatten-$mode-$features-$args
+      cp "$TESTS/flatten-source.sml" "$OUT/$name.sml"
+      "$MLKIT" --mlb-subdir RecordTestsCross --data_flattening --report_data_flattening \
+        "--$mode" "--$args" $switches \
+        -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
+      if [ "$features" = none ]; then
+        if grep -q 'data flattening: transformed' "$OUT/$name-build.log"; then
+          echo 'Disabled features transformed a program' >&2; exit 1
+        fi
+      fi
+      "$OUT/$name" > "$OUT/$name.log" 2>&1
+      grep -q 'data flattening semantics passed' "$OUT/$name.log"
+    done
+  done
 done
 # Retain type schemes when the master switch is requested, even with optional
 # checking and the global optimiser off; reuse them when optimisation resumes.

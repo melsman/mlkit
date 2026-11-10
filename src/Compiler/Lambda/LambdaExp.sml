@@ -938,7 +938,13 @@ structure LambdaExp : LAMBDA_EXP =
                                    indent=1,
                                    children=[x],childsep=PP.NOSEP})
           | RECORDtype {fields=taus, regvar=rvopt, repvar=rp} =>
-            (case taus of
+            if !barify_p then
+              PP.NODE {start="{",finish="}",indent=1,childsep=PP.RIGHT ",",
+                children=ListPair.mapEq (fn (i,(t,m)) =>
+                  PP.NODE {start=Int.toString i ^ ": ",finish=if #mutable m then " ref" else "",
+                    indent=1,childsep=PP.NOSEP,children=[layoutType0 config t]})
+                  (List.tabulate(length taus,fn i => i+1),taus)}
+            else (case taus of
                  [] (* unit *) => PP.LEAF (if #repl config then "{}" else "{}" ^ pr_rvopt rvopt ^ pr_repvar rp)
                | _ => PP.NODE{start="(",
                               finish=if #repl config then ")" else ")" ^ pr_rvopt rvopt ^ pr_repvar rp,
@@ -1240,7 +1246,15 @@ structure LambdaExp : LAMBDA_EXP =
                   childsep=PP.RIGHT " : "
                   }
       | RECORD {regvar,repvar,elements} =>
-        PP.NODE {start="(", finish=")" ^
+        if !barify_p then
+          (* SML has no mutable tuple fields. Rebox them for executable Barry
+             output; numbered records also represent singleton tuples. *)
+          PP.NODE {start="{",finish="}",indent=1,childsep=PP.RIGHT ",",
+            children=ListPair.mapEq (fn (i,(e,m)) =>
+              PP.NODE {start=Int.toString i ^ " = " ^ (if #mutable m then "ref (" else "("),
+                finish=")",indent=1,childsep=PP.NOSEP,children=[layoutLambdaExp(e,0)]})
+              (List.tabulate(length elements,fn i => i+1),elements)}
+        else PP.NODE {start="(", finish=")" ^
                    (case regvar of NONE => "" | SOME r => "`" ^ RegVar.pr r) ^
                    (case repvar of NONE => "" | SOME r => "^" ^ RepVar.layout r),
                  indent=1, childsep=PP.RIGHT ",",
@@ -1264,10 +1278,24 @@ structure LambdaExp : LAMBDA_EXP =
          | (SELECTprim {index=i,repvar}, [lamb]) =>
            let val i = if !barify_p then i+1 else i
            in maybepar context
-                       (PP.NODE{start="#" ^ Int.toString i ^ pr_repvar repvar ^ " ",finish="",indent=1,
+                       (PP.NODE{start="#" ^ Int.toString i ^ (if !barify_p then "" else pr_repvar repvar) ^ " ",finish="",indent=1,
                                 children=[layoutLambdaExp(lamb,14)],
                                 childsep=PP.NOSEP})
            end
+         | (READprim {index,repvar},[lamb]) =>
+           if !barify_p then
+             PP.NODE {start="!(#" ^ Int.toString(index+1) ^ " (",finish="))",indent=1,
+                      childsep=PP.NOSEP,children=[layoutLambdaExp(lamb,0)]}
+           else PP.NODE {start="read" ^ Int.toString index ^ pr_repvar repvar ^ "(",finish=")",
+                         indent=1,childsep=PP.NOSEP,children=[layoutLambdaExp(lamb,0)]}
+         | (STOREprim {index,repvar},[lamb,value]) =>
+           if !barify_p then
+             PP.NODE {start="(",finish=")",indent=1,childsep=PP.RIGHT " := ",
+               children=[PP.NODE {start="#" ^ Int.toString(index+1) ^ " (",finish=")",
+                           indent=1,childsep=PP.NOSEP,children=[layoutLambdaExp(lamb,0)]},
+                         layoutLambdaExp(value,4)]}
+           else PP.NODE {start="store" ^ Int.toString index ^ pr_repvar repvar ^ "(",finish=")",
+                         indent=1,childsep=PP.RIGHT ",",children=map (fn e => layoutLambdaExp(e,0)) lambs}
          | (DEREFprim{instance},[lamb]) =>
            maybepar context
                     (PP.NODE{start="!(",finish=")",indent=2,

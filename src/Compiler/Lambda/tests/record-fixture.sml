@@ -41,4 +41,40 @@ struct
           {env=LambdaStatSem.initial,pgm=pgm,letrec_polymorphism_only=false}
     in pgm
     end
+  fun makeFlatten js =
+    let val intTy = intDefaultType()
+        val raw = {mutable=true,traversable=false}
+        val mut = RecordField.mutable
+        val plain = RecordField.ordinary
+        val innerTy = RECORDtype {fields=[(f64Type,raw),(stringType,mut)],regvar=NONE,repvar=NONE}
+        val outerTy = recordType([recordType([],NONE),innerTy,intTy],NONE)
+        fun var x = VAR {lvar=x,instances=[],regvars=[]}
+        fun bind t e k =
+            let val x = Lvars.newLvar()
+            in LET {pat=[(x,[],t)],bind=e,scope=k(var x)}
+            end
+        fun select i e = PRIM(SELECTprim {index=i,repvar=NONE},[e])
+        fun read i e = PRIM(READprim {index=i,repvar=NONE},[select 1 e])
+        fun store i e v = PRIM(STOREprim {index=i,repvar=NONE},[select 1 e,v])
+        val allocation = recordExp(NONE,
+            [recordExp(NONE,[]),RECORD {regvar=NONE,repvar=NONE,
+               elements=[(F64 "1.5",raw),(STRING("before",NONE),mut)]},INTEGER(7,intTy)])
+        val e = bind outerTy allocation (fn x => bind outerTy x (fn alias =>
+            bind unitType (store 0 x
+                (bind unitType (store 1 alias (STRING("after",NONE))) (fn _ => F64 "3.5"))) (fn _ =>
+              bind unitType (PRIM(CCALLprim
+                  {name=if js then "callJS" else "@recordCheck",instances=[],regvars=[],tyvars=[],
+                   Type=ARROWtype((if js then [stringType] else []) @ [f64Type,stringType,intTy],NONE,[unitType],NONE)},
+                  (if js then [STRING("recordCheck",NONE)] else []) @ [read 0 alias,read 1 x,select 2 alias]))
+                (fn _ => FRAME {declared_lvars=[],declared_excons=[]}))))
+        val () = List.app Flags.turn_on ["data_flattening","data_flattening_tuples"]
+        val pgm as PGM(_,e) = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (PGM(DATBINDS [],e))
+        val n = LambdaBasics.foldTD (fn n => fn RECORD _ => n+1 | _ => n) 0 e
+        val () = if n=1 then () else raise Fail "mixed tuple did not flatten"
+    in pgm
+    end
+
+  val make = fn js => case OS.Process.getEnv "FLATTEN_RECORD_TEST" of
+                         SOME "1" => makeFlatten js | _ => make js
+
 end

@@ -15,5 +15,7 @@ sig
   (* Undefined for the disappearing outer field. Inner indices are usable only
      in accesses syntactically composed with that outer selection. *)
   val accessMap : candidate -> repvar * int -> int option
+  (* Apply one eligible choice to the annotated program returned by analyse. *)
+  val transform : candidate -> LambdaPgm -> LambdaPgm
   val optimise : {enabled:bool, env:env} -> LambdaPgm -> LambdaPgm
 end

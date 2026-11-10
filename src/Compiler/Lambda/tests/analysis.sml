@@ -176,6 +176,38 @@ struct
   val localBody = LambdaBasics.passBU (fn FRAME _ => frame | e => e) expanded
   val () = assert "loaded inline body is analysed locally" (eligible (#candidates
       (Flatten.analyse {env=LambdaStatSem.initial,pgm=PGM(db,localBody),references=true,tuples=true})))
+  (* Every accepted choice must remove an allocation and remain well typed.
+     Exercise the fixed point separately, since one splice may expose another. *)
+  fun allocations (PGM(_,e)) = LambdaBasics.foldTD
+      (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1 | _ => n) 0 e
+  fun rewrite env e =
+      let val {pgm=p,candidates} = Flatten.analyse
+              {env=env,pgm=pgm e,references=true,tuples=true}
+          val c = valOf(List.find (fn {decision,...}:Flatten.candidate =>
+                                      decision=Flatten.Eligible) candidates)
+          val p' = Flatten.transform c p
+          val _ = LambdaStatSem.type_check {env=env,pgm=p',letrec_polymorphism_only=false}
+          val () = assert "flattening removes an allocation" (allocations p' < allocations p)
+      in p'
+      end
+  val () = List.app (fn e => ignore(rewrite LambdaStatSem.initial e))
+      [good,wide,refGood,coordinated,
+       bind mutableOuterTy mutableAllocation (fn x =>
+         bind unitType (store 0 (select 0 x) (int 42)) (fn _ =>
+           discard intTy (read 0 (select 0 x))))]
+  val _ = rewrite abstractEnv abstractCall
+  val empty = bind (ty [ty [],intTy]) (tuple [tuple [],int 42])
+      (fn x => discard intTy (select 1 x))
+  val _ = rewrite LambdaStatSem.initial empty
+  val deep = bind (ty [ty [ty [intTy]]]) (tuple [tuple [tuple [int 42]]])
+      (fn x => discard intTy (select 0 (select 0 (select 0 x))))
+  val () = List.app Flags.turn_on ["data_flattening","data_flattening_refs","data_flattening_tuples"]
+  val deepResult = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (pgm deep)
+  val () = assert "sequential flattening reaches a fixed point" (allocations deepResult=1)
+  val () = assert "no eligible opportunity remains"
+      (not(eligible (#candidates(Flatten.analyse
+          {env=LambdaStatSem.initial,pgm=deepResult,references=true,tuples=true}))))
+  val () = List.app Flags.turn_off ["data_flattening_refs","data_flattening_tuples"]
   val () = Flags.turn_on "data_flattening"
   val _ = Flatten.optimise {enabled=false,env=LambdaStatSem.empty} (pgm good)
   val () = Flags.turn_off "optimiser"
@@ -183,5 +215,21 @@ struct
   val () = assert "master request retains typed cache" (Flatten.requested())
   val () = Flags.turn_on "optimiser"
   val () = Flags.turn_off "data_flattening"
+  (* Executable Barry output must handle singleton mutable records and nested
+     assignment on the right-hand side, including SML infix precedence. *)
+  val () = case CommandLine.arguments() of
+      [file] =>
+        let val unitRef = CONStype([unitType],TyName.tyName_REF,NONE)
+            val objectTy = ty [unitRef]
+            fun assign r value = PRIM(ASSIGNprim {instance=ty [unitRef,unitType]},[r,value])
+            val e = bind objectTy (tuple [PRIM(REFprim {instance=unitType,regvar=NONE},[tuple []])])
+                (fn x => discard unitType (assign (select 0 x) (assign (select 0 x) (tuple []))))
+            val result = rewrite LambdaStatSem.initial e
+            val out = TextIO.openOut file
+            val () = PrettyPrint.outputTree ((fn s => TextIO.output(out,s)),LambdaExp.barify result,100)
+            val () = TextIO.output(out,"\nval () = print \"mutable singleton barification passed\\n\"\n")
+        in TextIO.closeOut out
+        end
+    | _ => ()
   val () = print "data flattening analysis tests passed\n"
 end

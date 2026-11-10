@@ -1,10 +1,9 @@
 val () =
   let
-    fun make n = (ref n,n)
-    fun increment (p:int ref * int) = #1 p := !(#1 p) + 1
-    fun inspect (p:int ref * int) = !(#1 p)
-    val p = make 40
-  in increment p; increment p;
-     if inspect p = 42 then print "analysis source test passed\n"
-     else raise Fail "analysis changed behaviour"
+    fun inspect 0 (p:int ref * int) = !(#1 p)
+      | inspect n p = inspect (n-1) p
+    val p = (ref 40,2)
+    val () = #1 p := 42
+  in if inspect 3 p = 42 then print "analysis source test passed\n"
+     else raise Fail "flattening changed behaviour"
   end

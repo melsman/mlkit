@@ -10,10 +10,10 @@ struct
 
   fun option (name,description) = Flags.add_bool_entry
       {long=name,short=NONE,menu=["Optimiser Control",name],item=ref false,neg=true,
-       desc=description ^ " Analysis only; data-flattening rewrites are not implemented yet."}
-  val enabled = option ("data_flattening","Analyse data flattening of heap records.")
-  val refs = option ("data_flattening_refs","Find reference data-flattening candidates.")
-  val tuples = option ("data_flattening_tuples","Find tuple data-flattening candidates.")
+       desc=description}
+  val enabled = option ("data_flattening","Flatten nested heap records (requires a feature switch).")
+  val refs = option ("data_flattening_refs","Flatten directly nested reference allocations.")
+  val tuples = option ("data_flattening_tuples","Flatten directly nested tuple allocations.")
   val datatypes = option ("data_flattening_datatypes","Reserved for datatype layout specialisation.")
   val floats = option ("data_flattening_floats","Reserved for unboxed-float data flattening.")
   val diagnostics = Flags.add_bool_entry
@@ -193,15 +193,103 @@ struct
     in {pgm=annotated,candidates=map check prospects}
     end
 
+  (* A choice changes an entire representation class. Rewrite composed accesses
+     before visiting their children: the intermediate selection disappears and
+     must never be translated on its own. No evaluation is duplicated or moved
+     across another initializer or the right-hand side of a store. *)
+  fun transform (c as {outer=u,index=i,width,feature,decision,...}:candidate)
+                (PGM(db,e)) =
+    let val () = case decision of Eligible => () | _ => die "ineligible transformation"
+        val target = RepVar.fresh (valOf(RepVar.span u)+width-1)
+        fun splice xs inserted = List.take(xs,i) @ inserted @ List.drop(xs,i+1)
+        fun ty t = case t of
+            RECORDtype {fields,regvar,repvar} =>
+              let val fields = if is u repvar then
+                    let val inserted = case (feature,#1(List.nth(fields,i))) of
+                            (Tuple,RECORDtype {fields,...}) => fields
+                          | (Reference,CONStype([t],tn,_)) =>
+                              if TyName.eq(tn,TyName.tyName_REF) then [(t,RecordField.mutable)]
+                              else die "reference field type"
+                          | _ => die "absorbed field type"
+                    in splice fields inserted
+                    end
+                  else fields
+              in RECORDtype {fields=map (fn (t,m) => (ty t,m)) fields,regvar=regvar,
+                             repvar=if is u repvar then SOME target else repvar}
+              end
+          | ARROWtype(a,r,b,s) => ARROWtype(map ty a,r,map ty b,s)
+          | CONStype(ts,tn,rs) => CONStype(map ty ts,tn,rs)
+          | TYVARtype _ => t
+        fun selected (PRIM(SELECTprim {index,repvar},[base])) =
+              if index=i andalso is u repvar then SOME base else NONE
+          | selected _ = NONE
+        fun walk e =
+          let fun access make rp j receiver rest =
+                let val (base,index,repvar) = case selected receiver of
+                        SOME base => (base,i+j,SOME target)
+                      | NONE =>
+                          (receiver,case rp of SOME r =>
+                              (case accessMap c (r,j) of SOME j => j
+                                 | NONE => die "residual disappearing access")
+                            | NONE => die "unannotated access",
+                           if is u rp then SOME target else rp)
+                in PRIM(make {index=index,repvar=repvar},map walk (base::rest))
+                end
+          in case e of
+              RECORD {regvar,repvar,elements} =>
+                let val elements = if is u repvar then
+                      let val inserted = case (feature,#1(List.nth(elements,i))) of
+                              (Tuple,RECORD {elements,...}) => elements
+                            | (Reference,PRIM(REFprim _,[e])) => [(e,RecordField.mutable)]
+                            | _ => die "absorbed allocation"
+                      in splice elements inserted
+                      end
+                    else elements
+                in RECORD {regvar=regvar,repvar=if is u repvar then SOME target else repvar,
+                           elements=map (fn (e,m) => (walk e,m)) elements}
+                end
+            | PRIM(SELECTprim {index,repvar},[r]) => access SELECTprim repvar index r []
+            | PRIM(READprim {index,repvar},[r]) => access READprim repvar index r []
+            | PRIM(STOREprim {index,repvar},[r,x]) => access STOREprim repvar index r [x]
+            | PRIM(DEREFprim _,[r]) =>
+                (case (feature,selected r) of
+                     (Reference,SOME base) => PRIM(READprim {index=i,repvar=SOME target},[walk base])
+                   | _ => LambdaBasics.map_lamb walk e)
+            | PRIM(ASSIGNprim _,[r,x]) =>
+                (case (feature,selected r) of
+                     (Reference,SOME base) => PRIM(STOREprim {index=i,repvar=SOME target},[walk base,walk x])
+                   | _ => LambdaBasics.map_lamb walk e)
+            | _ => LambdaBasics.map_lamb walk e
+          end
+    in PGM(db,mapExpTypes ty (walk e))
+    end
+
   fun optimise {enabled=global,env} pgm =
       if global andalso enabled() then
-        let val {candidates,...} = analyse {env=env,pgm=pgm,references=refs(),tuples=tuples()}
-            fun report ({outer,index,feature,decision,...}:candidate) =
+        let fun report ({outer,index,feature,decision,...}:candidate) =
               print ("[data flattening " ^ RepVar.layout outer ^ "." ^ Int.toString index ^ " " ^
                      (case feature of Reference => "reference" | Tuple => "tuple") ^ ": " ^
                      (case decision of Eligible => "eligible" | Disabled => "disabled"
                        | Rejected s => "rejected: " ^ s) ^ "]\n")
-        in if diagnostics() then List.app report candidates else (); pgm
+            (* Each choice removes at least one syntactically nested allocation
+               and introduces none, including when the absorbed tuple is empty.
+               Reanalysis prevents stale or overlapping choices from composing. *)
+            fun loop pgm =
+              let val {pgm=prepared,candidates} = analyse
+                      {env=env,pgm=pgm,references=refs(),tuples=tuples()}
+                  val () = if diagnostics() then List.app report candidates else ()
+              in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
+                     NONE => pgm
+                   | SOME c =>
+                     let val result = transform c prepared
+                         val _ = LambdaStatSem.type_check
+                             {env=env,pgm=result,letrec_polymorphism_only=false}
+                         val () = if diagnostics() then
+                             print "[data flattening: transformed]\n" else ()
+                     in loop result
+                     end
+              end
+        in loop pgm
         end
       else pgm
 end
