@@ -282,8 +282,8 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
      * Compile a sequence of structure declarations
      * ---------------------------------------------------- *)
 
-    fun compile_strdecs(fi,intB, [], unitname_opt) = (CE.emptyCEnv, CompileBasis.empty, ModCode.empty)
-      | compile_strdecs(fi,intB, strdecs, unitname_opt) =
+    fun compile_strdecs(fi,intB, [], unitname_opt, terminal) = (CE.emptyCEnv, CompileBasis.empty, ModCode.empty)
+      | compile_strdecs(fi,intB, strdecs, unitname_opt, terminal) =
       let val (_,_,ce,cb) = IntBasis.un intB
 	  val (unitname,resetName) = case unitname_opt
 			   of SOME unitname => (unitname,fn() => ())
@@ -293,7 +293,11 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                                       in ("code" ^ i, fn() => Name.baseSet name)
                                       end
 
-          val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs)
+          val saved = !Flags.final_unit
+          val () = Flags.final_unit := (terminal andalso !Flags.final_source)
+          val res = (Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs)
+                     before Flags.final_unit := saved)
+                    handle e => (Flags.final_unit := saved; raise e)
           val _ = resetName()
           val _ = if Execution.be_rigid then cleanBucket() else ()
       in case res
@@ -363,11 +367,11 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     (* comp_int_strdec(intB, strdec): strdecs not containing functor
      * applications are sent to the compiler. *)
 
-    fun comp_int_strdec (fi:bool,intB, strdec, unitname_opt) =
-      let fun loop (intB, [], strdecs) = compile_strdecs(fi,intB, rev strdecs, unitname_opt)
+    fun comp_int_strdec (fi:bool,intB, strdec, unitname_opt, terminal) =
+      let fun loop (intB, [], strdecs) = compile_strdecs(fi,intB, rev strdecs, unitname_opt, terminal)
 	    | loop (intB, strdec::strdecs, strdecs') =
 	    if not fi andalso funapp_strdec strdec then
-	      let val (ce1,cb1,mc1) = compile_strdecs(fi,intB, rev strdecs', NONE)
+	      let val (ce1,cb1,mc1) = compile_strdecs(fi,intB, rev strdecs', NONE, false)
 		  val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
 		  val intB' = IntBasis.plus(intB,intB1)
 		  val (ce2,cb2,mc2) = int_strdec(intB', strdec)
@@ -387,9 +391,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
       case strdec
 	of STRUCTUREstrdec(i,strbind) => int_strbind(intB,strbind)
 	 | LOCALstrdec(i,strdec1,strdec2) =>
-	  let val (ce1,cb1,mc1) = comp_int_strdec(false,intB,strdec1,NONE)
+	  let val (ce1,cb1,mc1) = comp_int_strdec(false,intB,strdec1,NONE,false)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
-	      val (ce2,cb2,mc2) = comp_int_strdec(false,IntBasis.plus(intB,intB1),strdec2,NONE)
+	      val (ce2,cb2,mc2) = comp_int_strdec(false,IntBasis.plus(intB,intB1),strdec2,NONE,false)
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
 	  end
 	 | DECstrdec _ => die "int_strdec.DECstrdec.the compiler should deal with this"
@@ -409,7 +413,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 
     and int_strexp (intB: IntBasis, strexp: strexp) : CEnv * CompileBasis * modcode =
       case strexp
-	of STRUCTstrexp(i, strdec) => comp_int_strdec(false,intB, strdec,NONE)
+	of STRUCTstrexp(i, strdec) => comp_int_strdec(false,intB, strdec,NONE,false)
 	 | LONGSTRIDstrexp(i, longstrid) =>
 	  let val (_,_,ce,_) = IntBasis.un intB
 	      val (strids,strid) = StrId.explode_longstrid longstrid
@@ -518,7 +522,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	  end
 
 	| LETstrexp(info, strdec, strexp) =>
-	  let val (ce1,cb1,mc1) = comp_int_strdec(false,intB,strdec,NONE)
+	  let val (ce1,cb1,mc1) = comp_int_strdec(false,intB,strdec,NONE,false)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
 	      val (ce2,cb2,mc2) = int_strexp(IntBasis.plus(intB,intB1),strexp)
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
@@ -639,7 +643,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	: IntBasisTree * modcode =
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
-	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt)
+	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt,not(Option.isSome topdec_opt))
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce,cb)
 	  in case topdec_opt
 	       of SOME topdec2 =>
@@ -686,7 +690,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     fun interp_aux(fi:bool,absprjid,intB,topdec, unitname) =
       case push_topdec topdec
 	of (SOME strdec, topdec_opt) =>
-        	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
+                  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname,not(Option.isSome topdec_opt))
 	              val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
           	  in case topdec_opt
 	             of SOME topdec =>

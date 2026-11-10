@@ -3,6 +3,7 @@ signature MLB_PLUGIN =
   sig
      val compile : {verbose:unit->bool}
 	           -> {basisFiles: string list,
+                       terminal: bool,
 	               source: string,
 	               namebase: string,     (* for uniqueness of type names, etc *)
 	               target: string,
@@ -13,6 +14,7 @@ signature MLB_PLUGIN =
      val wait : Posix.Process.pid option -> Posix.Process.pid
      val link : {verbose:unit->bool}
 	        -> {mlbfile: string,
+                    terminal: bool,
 	            target: string,
 	            lnkFiles: string list,
 	            flags: string}
@@ -20,6 +22,7 @@ signature MLB_PLUGIN =
 
 (*     val flag_pp_bg : unit -> bool (* Should we print the dependency graph *) *)
      val getParallelN : unit -> int
+     val finalMlbdir : unit -> string
      val mlbdir       : unit -> string
      val objFileExt   : unit -> string (* e.g., .o *)
      val maybeSetRegionEffectVarCounter : int -> bool

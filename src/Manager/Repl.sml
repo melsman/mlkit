@@ -517,7 +517,10 @@ local
   fun print_flags () = print_search ""
 
   fun load stepno (rp:rp) libs_acc deps mlbfilepath =
-      let val () = Manager.comp mlbfilepath
+      let val saved = !Flags.reusable_build
+          val () = Flags.reusable_build := true
+          val () = (Manager.comp mlbfilepath before Flags.reusable_build := saved)
+                   handle e => (Flags.reusable_build := saved; raise e)
           (* Now, we create a new sofile that links the runtime and all the object files found in
            * the modcode for the compiled mlbfile - later we can keep track of already
            * linked objects, but for now, we just assume that the mlb-file does not import other

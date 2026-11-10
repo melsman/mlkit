@@ -197,6 +197,17 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	val {TCEnv,EqEnv,OEnv,NEnv} = CompBasisToLamb.de_CompBasis Basis
 
         val (lamb, CEnv1, NEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, NEnv, strdecs)
+        (* The manager marks only a terminal executable unit. Foreign EXPORT
+           primitives remain in the body and keep their representation constraints. *)
+        val lamb = if !Flags.final_unit then
+              let val LambdaExp.PGM(db,e) = lamb
+                  val e = LambdaBasics.passBU
+                      (fn LambdaExp.FRAME _ => LambdaExp.FRAME {declared_lvars=[],declared_excons=[]}
+                        | e => e) e
+              in LambdaExp.PGM(db,e)
+              end
+            else lamb
+        val CEnv1 = if !Flags.final_unit then CE.emptyCEnv else CEnv1
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
         val (lamb_opt,OEnv1) = optlambda (TCEnv, OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
@@ -207,7 +218,8 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	else
 	  let
 	    val safe = LambdaExp.safeLambdaPgm lamb_opt
-	    val Basis1 = CompBasisToLamb.mk_CompBasis{TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,NEnv=NEnv1}
+	    val Basis1 = if !Flags.final_unit then CompBasisToLamb.empty
+                         else CompBasisToLamb.mk_CompBasis{TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,NEnv=NEnv1}
 	  in CodeRes (CEnv1, Basis1, lamb_opt, safe orelse safeLinkTimeElimination())
 	  end
       end
