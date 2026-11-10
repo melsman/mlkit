@@ -28,6 +28,8 @@ signature LAMBDA_STAT_SEM =
        Hooks are scoped to this call, including exceptional exits. *)
     val constrain : {env:env, pgm:LambdaPgm,
                      unify:Type * Type -> unit, observe:Type -> unit,
-                     pin:Type -> unit} -> unit
+                     pin:Type -> unit, switch:con list * Type -> unit} -> unit
+    (* The map must preserve free type variables and quantified binders. *)
+    val map_types : (Type -> Type) -> env -> env
     val look_tyname : env -> TyName -> (con * (tyvar list * Type)) list option
   end

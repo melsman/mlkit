@@ -47,6 +47,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     val representationUnify = ref (fn (_:Type, _:Type) => ())
     val representationObserve = ref (fn (_:Type) => ())
     val representationPin = ref (fn (_:Type) => ())
+    val representationSwitch = ref (fn (_:con list, _:Type) => ())
     val solving = ref false
 
     type TypeScheme = tyvar list * Type
@@ -72,6 +73,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     structure E : sig
                     type env
                     val top : env -> env
+                    val map_types : (Type -> Type) -> env -> env
                     val empty : env
                     val initial : env
                     val plus : env * env -> env
@@ -119,13 +121,15 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                     lvar_env : TypeScheme LvarMap.map,
                     excon_env : (Type option) ExconMap.map}
 
-        fun top {ftv,con_env,tyname_env,lvar_env,excon_env} =
-            let fun scheme (vs,t) = (vs,topType t)
+        fun map_types f ({ftv,con_env,tyname_env,lvar_env,excon_env}:env) =
+            let fun scheme (vs,t) = (vs,f t)
             in {ftv=ftv,con_env=ConMap.composemap scheme con_env,
                 tyname_env=TyNameMap.composemap (map (fn (c,s) => (c,scheme s))) tyname_env,
                 lvar_env=LvarMap.composemap scheme lvar_env,
-                excon_env=ExconMap.composemap (Option.map topType) excon_env}
+                excon_env=ExconMap.composemap (Option.map f) excon_env}
             end
+
+        fun top e = map_types topType e
 
         val empty_con_env = ConMap.empty
         val empty_tyname_env = TyNameMap.empty
@@ -593,10 +597,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
 
     (* Type checking of switches *)
-    fun type_switch type_lexp get_tyname (SWITCH (lexp, sel, defopt)) : TypeList =
+    fun type_switch note type_lexp get_tyname (SWITCH (lexp, sel, defopt)) : TypeList =
       let
         val tyname = case type_lexp lexp
-                       of Types [CONStype(_, tyname, _)] => tyname
+                       of Types [t as CONStype(_, tyname, _)] => (note t; tyname)
                         | _ => die "SWITCH.Wrong typelist kind"
 
         fun check sel (SOME e) NONE = check sel NONE (SOME (type_lexp e))
@@ -991,7 +995,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                            | 64 => tyName_INT64
                         (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
                            | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
-           in type_switch (type_lexp env) (fn _ => tn) switch
+           in type_switch (fn _ => ()) (type_lexp env) (fn _ => tn) switch
            end
          | SWITCH_W {switch, precision, tyname} =>
            let val ok = (* check consistency of precision and tyname *)
@@ -1005,15 +1009,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                val () = if ok then ()
                         else die ("SWITCH_W.inconsistency: precision " ^ Int.toString precision ^
                                   " used with tyname " ^ TyName.pr_TyName tyname)
-           in type_switch (type_lexp env) (fn _ => tyname) switch
+           in type_switch (fn _ => ()) (type_lexp env) (fn _ => tyname) switch
            end
-         | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw
-         | SWITCH_C sw => type_switch (type_lexp env)
+         | SWITCH_S sw => type_switch (fn _ => ()) (type_lexp env) (fn (s:string) => tyName_STRING) sw
+         | SWITCH_C (sw as SWITCH(_,sel,_)) => type_switch
+                   (fn t => (!representationSwitch)(map (#1 o #1) sel,t)) (type_lexp env)
                    (fn (con:con,_) => case lookup_con env con
                                       of (_, CONStype(_,tyname,_)) => tyname
                                        | (_, ARROWtype(_,_,[CONStype(_,tyname,_)],_)) => tyname
                                        | _ => die "SWITCH_C.Wrong con type") sw
-         | SWITCH_E sw => type_switch (type_lexp env)
+         | SWITCH_E sw => type_switch (fn _ => ()) (type_lexp env)
                    (fn (excon:excon,_) => (lookup_excon env excon; tyName_EXN)) sw
          | TYPED (lexp, t,_) => ( valid_t env t;
                                   let val tl = type_lexp env lexp
@@ -1147,20 +1152,23 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     in env' plus env''
     end
 
-  fun constrain {env,pgm,unify,observe,pin} =
-      let val saved = (!representationUnify,!representationObserve,!representationPin,!solving)
+  fun constrain {env,pgm,unify,observe,pin,switch} =
+      let val saved = (!representationUnify,!representationObserve,!representationPin,!representationSwitch,!solving)
           fun restore () =
-              let val (u,o',p,s) = saved
+              let val (u,o',p,w,s) = saved
               in representationUnify := u; representationObserve := o';
-                 representationPin := p; solving := s
+                 representationPin := p; representationSwitch := w; solving := s
               end
           val () = representationUnify := unify
           val () = representationObserve := observe
           val () = representationPin := pin
+          val () = representationSwitch := switch
           val () = solving := true
       in (ignore(type_check {env=E.top env,pgm=pgm,letrec_polymorphism_only=false}); restore())
          handle ex => (restore(); raise ex)
       end
+
+  val map_types = E.map_types
 
   fun look_tyname e tn : (con * (tyvar list * Type)) list option =
       E.lookup_tyname_opt e tn
