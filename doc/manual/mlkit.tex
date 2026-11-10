@@ -1722,15 +1722,16 @@ by default in all backends and is independent of argument flattening. Use
 The corresponding positive options re-enable them; disabling the global
 optimiser also disables data flattening.
 
-The optional \texttt{--data\_flattening\_datatypes} switch enables
-specialisation of private, monomorphic groups of datatype uses. The pass
+Specialisation of private, monomorphic groups of datatype uses is also enabled
+by default. The pass
 creates fresh internal datatypes and applies the reference and tuple rewrites
 to their constructor argument tuples. Separate uses may retain the ordinary
 representation. Imported and exported concrete representations, shared
 polymorphic traversals, and escaping inner objects can prevent flattening.
 The reference and tuple switches also control rewrites inside specialised
-payloads. Datatype specialisation is off by default and uses a separate compiler
-cache; disabling it leaves ordinary tuple and reference flattening available.
+payloads. Use \texttt{--no\_data\_flattening\_datatypes} to disable datatype
+specialisation while leaving ordinary tuple and reference flattening available.
+Enabled and disabled builds use separate compiler caches.
 Float-specific data flattening remains disabled.
 
 When reference-tracing garbage collection is enabled, records and tuples are

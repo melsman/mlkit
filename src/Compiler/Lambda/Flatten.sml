@@ -14,7 +14,7 @@ struct
   val enabled = option ("data_flattening",true,"Flatten nested heap records (requires a feature switch).")
   val refs = option ("data_flattening_refs",true,"Flatten directly nested reference allocations.")
   val tuples = option ("data_flattening_tuples",true,"Flatten directly nested tuple allocations.")
-  val datatypes = option ("data_flattening_datatypes",false,"Specialise private datatype representation groups.")
+  val datatypes = option ("data_flattening_datatypes",true,"Specialise private datatype representation groups.")
   val floats = option ("data_flattening_floats",false,"Reserved for unboxed-float data flattening.")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
@@ -255,6 +255,18 @@ struct
                  | (ARROWtype(a,_,b,_),ARROWtype(c,_,d,_)) =>
                      ListPair.allEq equal(a,c) andalso ListPair.allEq equal(b,d)
                  | _ => true)
+        (* An imported constructor template can mention hidden datatype names
+           omitted from the restricted compiler/region environments. Retaining
+           the ordinary type needs only its existing arity; materialising its
+           payload would require the unavailable dependencies. *)
+        fun available n = Option.isSome(LambdaStatSem.look_tyname env n) orelse
+              Option.isSome(LambdaStatSem.look_tyname LambdaStatSem.initial n) orelse
+              List.exists (fn (_,m,_) => TyName.eq(n,m)) (List.concat originalDbs)
+        val supported = map (fn (_,n,cs) => (n,List.all (fn (_,t) => case t of
+                NONE => true
+              | SOME t => foldType (fn ok => fn CONStype(_,m,_) => ok andalso available m
+                                             | _ => ok) true t) cs)) (!templates)
+        fun complete n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) supported))
         (* Check each use against one representative per family member. Testing
            every occurrence against every other occurrence is prohibitively
            expensive for large units with repeated polymorphic instantiations. *)
@@ -267,7 +279,7 @@ struct
                                 in families := f :: !families; f
                                 end
           in if not(!valid) then ()
-             else if not(List.all ground ts) then valid := false
+             else if not(complete tn) orelse not(List.all ground ts) then valid := false
              else case List.find (fn (n,_) => TyName.eq(n,tn)) (!members) of
                       NONE => members := (tn,ts) :: !members
                     | SOME(_,us) =>

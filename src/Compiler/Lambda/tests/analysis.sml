@@ -209,6 +209,30 @@ struct
   val () = assert "no eligible opportunity remains"
       (not(eligible (#candidates(Flatten.analyse
           {env=LambdaStatSem.initial,pgm=deepResult,references=true,tuples=true}))))
+  (* Restricted imported templates may mention a hidden payload datatype.
+     Do not expose that unavailable dependency through a fresh declaration. *)
+  fun freshName () = TyName.freshTyName
+      {tycon=TyName.tycon TyName.tyName_LIST,arity=0,arity_reml=(0,0),equality=false}
+  val hiddenName = freshName ()
+  val publicName = freshName ()
+  val hiddenCon = Con.mk_con "Hidden"
+  val publicCon = Con.mk_con "Box"
+  val otherCon = Con.mk_con "Other"
+  val importedType = CONStype([],publicName,NONE)
+  val definitions = DATBINDS [[([],hiddenName,[(hiddenCon,NONE)])],
+      [([],publicName,[(publicCon,SOME refOuterTy),
+                      (otherCon,SOME(CONStype([],hiddenName,NONE)))])]]
+  val imported = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=PGM(definitions,frame),letrec_polymorphism_only=false}
+  val imported = LambdaStatSem.plus(LambdaStatSem.initial,
+      LambdaStatSem.restrict(imported,{lvars=[],excons=[],tynames=[publicName],cons=[publicCon,otherCon]}))
+  val privateUse = pgm (bind importedType
+      (PRIM(CONprim{con=publicCon,instances=[],regvar=NONE},
+            [tuple [PRIM(REFprim{instance=intTy,regvar=NONE},[int 7]),int 0]]))
+      (fn x => discard intTy (PRIM(DEREFprim{instance=refTy},
+          [select 0 (PRIM(DECONprim{con=publicCon,instances=[],lv_opt=NONE},[x]))]))))
+  val PGM(DATBINDS freshDefinitions,_) = Flatten.optimise {enabled=true,env=imported} privateUse
+  val () = assert "hidden imported payload dependencies remain ordinary" (null freshDefinitions)
   val () = List.app Flags.turn_off ["data_flattening_refs","data_flattening_tuples"]
   val () = Flags.turn_on "data_flattening"
   val _ = Flatten.optimise {enabled=false,env=LambdaStatSem.empty} (pgm good)
