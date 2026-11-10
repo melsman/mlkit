@@ -1390,6 +1390,61 @@ structure OptLambda : OPT_LAMBDA =
         | is_fn (FIX{functions,scope}) = is_fn scope
         | is_fn _ = false
 
+      (* Inline primitive forwarding wrappers without argument bindings when
+       * a selected reference is consumed immediately. Arguments retain their
+       * order and are evaluated exactly once; no computation or closure
+       * boundary is crossed. This does not require aggressive_opt. *)
+      fun inlineSelectedReference (pat,bind,body) =
+          let fun selected (PRIM(SELECTprim _,[VAR _])) = true
+                | selected _ = false
+              fun forwards ([],[]) = true
+                | forwards ((lv,_)::ps,VAR{lvar,instances=[],regvars=[]}::es) =
+                    Lvars.eq(lv,lvar) andalso forwards(ps,es)
+                | forwards _ = false
+              (* A tupled Basis wrapper may still contain the projections
+               * introduced by pattern compilation. Only unpack a freshly
+               * constructed immutable pair, forwarding its fields in order. *)
+              fun tupled () =
+                  case (pat,bind) of
+                      ([(lv,_)],RECORD {elements=[(r,m),(x,n)],...}) =>
+                      if selected r andalso not (#mutable m) andalso not (#mutable n) then
+                        let fun projection aliases e =
+                                  case e of
+                                      PRIM(SELECTprim {index,...},
+                                           [VAR{lvar,instances=[],regvars=[]}]) =>
+                                        if Lvars.eq(lv,lvar) then SOME index else NONE
+                                    | VAR{lvar,instances=[],regvars=[]} =>
+                                        (case List.find (fn (v,_) => Lvars.eq(v,lvar)) aliases of
+                                             SOME (_,i) => SOME i | NONE => NONE)
+                                    | _ => NONE
+                            fun unpack aliases (LET {pat=[(v,[],_)],bind,scope}) =
+                                  (case projection aliases bind of
+                                       SOME i => if i = 0 orelse i = 1
+                                                 then unpack ((v,i)::aliases) scope else NONE
+                                     | NONE => NONE)
+                              | unpack aliases (PRIM(p as ASSIGNprim _,[a,b])) =
+                                  if projection aliases a = SOME 0 andalso
+                                     projection aliases b = SOME 1
+                                  then SOME(PRIM(p,[r,x])) else NONE
+                              | unpack _ _ = NONE
+                        in unpack [] body
+                        end
+                      else NONE
+                    | _ => NONE
+              val args = case pat of
+                             [_] => SOME [bind]
+                           | _ => (case bind of PRIM(UB_RECORDprim,args) => SOME args
+                                               | _ => NONE)
+          in case (args,body) of
+                 (SOME [r],PRIM(p as DEREFprim _,es)) =>
+                   if selected r andalso length pat = 1 andalso forwards(pat,es)
+                   then SOME(PRIM(p,[r])) else NONE
+               | (SOME [r,x],PRIM(p as ASSIGNprim _,es)) =>
+                   if selected r andalso length pat = 2 andalso forwards(pat,es)
+                   then SOME(PRIM(p,[r,x])) else NONE
+               | _ => tupled()
+          end
+
       (* inlining of unsafe bindings in safe contexts *)
       fun simpleContext lv e =
           if aggressive_opt() andalso Lvars.one_use lv then
@@ -2339,9 +2394,12 @@ structure OptLambda : OPT_LAMBDA =
                       | _ => fail
             end
           | APP(FN{pat,body=scope},bind,_) =>
-            let val pat' = fn_to_let_pat pat
-            in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
-            end
+            (case inlineSelectedReference(pat,bind,scope) of
+                 SOME e => (tick "inline-selected-reference"; reduce(env,(e,CUNKNOWN)))
+               | NONE =>
+                 let val pat' = fn_to_let_pat pat
+                 in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
+                 end)
           | APP(VAR{lvar,instances,regvars=[]}, lamb2, tailpos) =>
             let fun specialise_p lvar large bind =                               (* appication-context size-max overwrites *)
                     (not large andalso small_lamb (max_specialise_size()) bind)  (* declaration-context size-max *)
@@ -2377,7 +2435,9 @@ structure OptLambda : OPT_LAMBDA =
                       | seekFN (FN{pat,body}, f) = {pat=pat,body=body,f=f}
                       | seekFN _ = raise NoBetaReduction
                 in let val {pat, body, f} = seekFN (exp1, fn x => x)
-                       val res = f (LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
+                       val res = f (case inlineSelectedReference(pat,exp2,body) of
+                                        SOME e => (tick "inline-selected-reference"; e)
+                                      | NONE => LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
                    in tick "appletfn-fn"; reduce (env, (res, CUNKNOWN))
                    end handle NoBetaReduction => fail
                 end

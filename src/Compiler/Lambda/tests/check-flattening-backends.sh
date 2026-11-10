@@ -51,4 +51,43 @@ for feature in default none refs tuples both; do
     fi
   done
 done
+# The inliner must expose selections to reference primitives without relying
+# on aggressive optimisation. Exercise RHS effects and non-forwarding wrappers.
+for mode in no_gc gc gengc; do
+  file=$OUT/inline-$mode.sml
+  cp "$TESTS/inline-reference.sml" "$file"
+  SML_LIB=$ROOT "$MLKIT" "--$mode" --no_aggressive_opt --no_unbox_funargs \
+    --report_data_flattening -o "$OUT/inline-$mode" "$file" > "$OUT/inline-$mode-build.log" 2>&1
+  "$OUT/inline-$mode" > "$OUT/inline-$mode.log" 2>&1
+  grep -q 'selected reference inlining passed' "$OUT/inline-$mode.log"
+  grep -q 'reference: eligible' "$OUT/inline-$mode-build.log"
+  grep -q 'data flattening: transformed' "$OUT/inline-$mode-build.log"
+  if [ -n "${MLKIT_X64:-}" ]; then
+    file=$OUT/x64-inline-$mode.sml
+    printf 'fun print (s:string) : unit = prim("printStringML", s)\n' > "$file"
+    cat "$TESTS/inline-reference.sml" >> "$file"
+    SML_LIB=$ROOT "$MLKIT_X64" -no_basislib -c "--$mode" --no_aggressive_opt \
+      --no_unbox_funargs --report_data_flattening \
+      --assembler "${X64_ASSEMBLER:-cc -c}" "$file" > "$OUT/x64-inline-$mode-build.log" 2>&1
+    grep -q 'reference: eligible' "$OUT/x64-inline-$mode-build.log"
+  fi
+done
+if [ -n "${SMLTOJS:-}" ]; then
+  cp "$TESTS/inline-reference.sml" "$OUT/js-inline.sml"
+  SML_LIB=$ROOT/js "$SMLTOJS" --no_aggressive_opt --no_unbox_funargs \
+    --report_data_flattening -o "$OUT/js-inline" "$OUT/js-inline.sml" > "$OUT/js-inline-build.log" 2>&1
+  node "$ROOT/js/test/run-node.js" "$OUT/js-inline.html" > "$OUT/js-inline.log" 2>&1
+  grep -q 'selected reference inlining passed' "$OUT/js-inline.log"
+  grep -q 'reference: eligible' "$OUT/js-inline-build.log"
+fi
+if [ -n "${BARRY:-}" ]; then
+  cp "$TESTS/inline-reference.sml" "$OUT/barry-inline.sml"
+  (cd "$OUT" && SML_LIB=$ROOT "$BARRY" --no_aggressive_opt --no_unbox_funargs \
+    --report_data_flattening "$OUT/barry-inline.sml") > "$OUT/barry-inline-build.log" 2>&1
+  generated=$(find "$OUT/MLB" -name barry-inline.sml.sml -print)
+  SML_LIB=$ROOT "$MLKIT" -o "$OUT/barry-inline" "$generated" > "$OUT/barry-inline-recompile.log" 2>&1
+  "$OUT/barry-inline" > "$OUT/barry-inline.log" 2>&1
+  grep -q 'selected reference inlining passed' "$OUT/barry-inline.log"
+  grep -q 'reference: eligible' "$OUT/barry-inline-build.log"
+fi
 echo 'Flattening backend checks passed'
